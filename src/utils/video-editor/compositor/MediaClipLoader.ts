@@ -16,6 +16,7 @@ export interface LoadVideoRuntimeParams {
   requestedSourceDurationUs: number;
   requestedSourceRangeDurationUs: number;
   startUs: number;
+  abortSignal?: AbortSignal;
 }
 
 export interface LoadedVideoRuntime {
@@ -42,49 +43,66 @@ export class MediaClipLoader {
       requestedSourceDurationUs,
       requestedSourceRangeDurationUs,
       startUs,
+      abortSignal,
     } = params;
+    if (abortSignal?.aborted) {
+      const abortErr = new Error('Video runtime load was aborted');
+      (abortErr as any).name = 'AbortError';
+      throw abortErr;
+    }
 
     const source = new mediabunny.BlobSource(file);
     const input = new mediabunny.Input({
       source,
       formats: mediabunny.ALL_FORMATS,
     } as any);
-    const track = await input.getPrimaryVideoTrack();
+    try {
+      const track = await input.getPrimaryVideoTrack();
 
-    if (!track || !(await track.canDecode())) {
+      if (abortSignal?.aborted) {
+        const abortErr = new Error('Video runtime load was aborted');
+        (abortErr as any).name = 'AbortError';
+        throw abortErr;
+      }
+
+      if (!track || !(await track.canDecode())) {
+        safeDispose(input);
+        return null;
+      }
+
+      const sink = new mediabunny.VideoSampleSink(track);
+      const firstTimestampS = await track.getFirstTimestamp();
+      const trackAny = track as any;
+      const frameRateRaw =
+        typeof trackAny.getFrameRate === 'function'
+          ? await trackAny.getFrameRate()
+          : (trackAny.frameRate ?? trackAny.fps);
+      const frameRate = Number(frameRateRaw);
+      const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
+      const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
+      const sourceDurationUs =
+        requestedSourceDurationUs > 0
+          ? Math.min(requestedSourceDurationUs, maxSourceTailUs)
+          : maxSourceTailUs;
+      const durationUs =
+        requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
+      const endUs = startUs + durationUs;
+
+      return {
+        input,
+        sink,
+        firstTimestampS,
+        frameRate: Number.isFinite(frameRate) && frameRate > 0 ? frameRate : undefined,
+        sourceDurationUs,
+        sourceRangeDurationUs:
+          requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
+        durationUs,
+        endUs,
+        imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+      };
+    } catch (error) {
       safeDispose(input);
-      return null;
+      throw error;
     }
-
-    const sink = new mediabunny.VideoSampleSink(track);
-    const firstTimestampS = await track.getFirstTimestamp();
-    const trackAny = track as any;
-    const frameRateRaw =
-      typeof trackAny.getFrameRate === 'function'
-        ? await trackAny.getFrameRate()
-        : (trackAny.frameRate ?? trackAny.fps);
-    const frameRate = Number(frameRateRaw);
-    const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
-    const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
-    const sourceDurationUs =
-      requestedSourceDurationUs > 0
-        ? Math.min(requestedSourceDurationUs, maxSourceTailUs)
-        : maxSourceTailUs;
-    const durationUs =
-      requestedTimelineDurationUs > 0 ? requestedTimelineDurationUs : sourceDurationUs;
-    const endUs = startUs + durationUs;
-
-    return {
-      input,
-      sink,
-      firstTimestampS,
-      frameRate: Number.isFinite(frameRate) && frameRate > 0 ? frameRate : undefined,
-      sourceDurationUs,
-      sourceRangeDurationUs:
-        requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
-      durationUs,
-      endUs,
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
-    };
   }
 }

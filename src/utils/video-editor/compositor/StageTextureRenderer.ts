@@ -127,23 +127,25 @@ export class StageTextureRenderer {
       clip.sprite.visible = true;
     }
 
-    this.context.app.renderer.render({
-      container: this.context.app.stage,
-      target: texture,
-      clear: true,
-    });
+    try {
+      this.context.app.renderer.render({
+        container: this.context.app.stage,
+        target: texture,
+        clear: true,
+      });
+    } finally {
+      if (clip.sprite) {
+        clip.sprite.visible = previousClipVisible;
+      }
 
-    if (clip.sprite) {
-      clip.sprite.visible = previousClipVisible;
-    }
-
-    for (let i = 0; i < containerChildren.length; i++) {
-      (containerChildren[i] as any).visible = containerPrev[i] ?? true;
-    }
-    for (let i = 0; i < stageChildren.length; i++) {
-      const child = stageChildren[i];
-      if (!child) continue;
-      child.visible = stagePrev[i] ?? true;
+      for (let i = 0; i < containerChildren.length; i++) {
+        (containerChildren[i] as any).visible = containerPrev[i] ?? true;
+      }
+      for (let i = 0; i < stageChildren.length; i++) {
+        const child = stageChildren[i];
+        if (!child) continue;
+        child.visible = stagePrev[i] ?? true;
+      }
     }
   }
 
@@ -159,16 +161,18 @@ export class StageTextureRenderer {
       child.visible = childLayer < layer;
     }
 
-    this.context.app.renderer.render({
-      container: this.context.app.stage,
-      target: texture,
-      clear: true,
-    });
-
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i];
-      if (!child) continue;
-      child.visible = previous[i] ?? true;
+    try {
+      this.context.app.renderer.render({
+        container: this.context.app.stage,
+        target: texture,
+        clear: true,
+      });
+    } finally {
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (!child) continue;
+        child.visible = previous[i] ?? true;
+      }
     }
   }
 }

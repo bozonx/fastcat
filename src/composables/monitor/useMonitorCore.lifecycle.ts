@@ -8,7 +8,7 @@ export function initializeMonitorCoreRuntime(params: {
   params.scheduleBuild();
 }
 
-export function disposeMonitorCoreRuntime(params: {
+export async function disposeMonitorCoreRuntime(params: {
   setUnmounted: (value: boolean) => void;
   stopPlayback: () => void;
   clearPendingRender: () => void;
@@ -27,7 +27,7 @@ export function disposeMonitorCoreRuntime(params: {
     console.error('[Monitor] Failed to destroy AudioEngine', error);
   }
 
-  void params.destroyCompositor().catch((error) => {
+  await params.destroyCompositor().catch((error) => {
     console.error('[Monitor] Failed to destroy compositor on unmount', error);
   });
 }

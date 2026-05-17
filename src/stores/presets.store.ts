@@ -3,9 +3,6 @@ import { ref, watch } from 'vue';
 import { useWorkspaceStore } from './workspace.store';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
-import {
-  STORAGE_KEYS,
-} from '~/stores/ui/uiLocalStorage';
 
 export interface CustomPreset {
   id: string; // Used as the type in registry
@@ -122,8 +119,12 @@ export const usePresetsStore = defineStore('presets', () => {
     () => workspaceStore.workspaceState.presets,
     (presets) => {
       if (!presets) return;
-      
-      const { custom: newPresets, defaultTextPresetId: newDefaultText, collapsed: newCollapsed } = presets;
+
+      const {
+        custom: newPresets,
+        defaultTextPresetId: newDefaultText,
+        collapsed: newCollapsed,
+      } = presets;
 
       if (newPresets && newPresets.length > 0) {
         if (JSON.stringify(newPresets) !== JSON.stringify(customPresets.value)) {

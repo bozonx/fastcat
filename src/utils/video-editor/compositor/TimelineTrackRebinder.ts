@@ -14,6 +14,7 @@ export class TimelineTrackRebinder {
     }
 
     if (clip.sprite.parent !== trackRuntime.container) {
+      clip.sprite.parent?.removeChild(clip.sprite);
       trackRuntime.container.addChild(clip.sprite);
     }
   }

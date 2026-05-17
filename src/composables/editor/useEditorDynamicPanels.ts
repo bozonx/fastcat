@@ -3,11 +3,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
-import {
-  readLocalStorageJson,
-  writeLocalStorageJson,
-  getPlatformSuffix,
-} from '~/stores/ui/uiLocalStorage';
+import { readLocalStorageJson, getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { DynamicPanel } from '~/stores/editor-view.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 
@@ -67,14 +63,13 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   const dragOverPanelId = ref<string | null>(null);
   const dropPosition = ref<'left' | 'right' | 'top' | 'bottom' | null>(null);
 
-
-
   const verticalSplitSizesKey = computed(
     () =>
       `fastcat-cut-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
   );
   const verticalSplitSizes = ref<Record<string, number[]>>(
-    readLocalStorageJson<Record<string, number[]>>(verticalSplitSizesKey.value, {}),
+    projectStore.projectSettings.ui.layout.verticalSplitSizes[verticalSplitSizesKey.value] ??
+      readLocalStorageJson<Record<string, number[]>>(verticalSplitSizesKey.value, {}),
   );
 
   const soundVerticalSplitSizesKey = computed(
@@ -82,22 +77,27 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
       `fastcat-sound-vertical-splits-${currentProjectId.value ?? 'no-project'}${getPlatformSuffix()}`,
   );
   const soundVerticalSplitSizes = ref<Record<string, number[]>>(
-    readLocalStorageJson<Record<string, number[]>>(soundVerticalSplitSizesKey.value, {}),
+    projectStore.projectSettings.ui.layout.verticalSplitSizes[soundVerticalSplitSizesKey.value] ??
+      readLocalStorageJson<Record<string, number[]>>(soundVerticalSplitSizesKey.value, {}),
   );
 
-  watch(
-    () => verticalSplitSizesKey.value,
-    (key) => {
-      verticalSplitSizes.value = readLocalStorageJson<Record<string, number[]>>(key, {});
-    },
+  const verticalSplitSizesSnapshot = computed(() =>
+    JSON.stringify(projectStore.projectSettings.ui.layout.verticalSplitSizes),
   );
 
-  watch(
-    () => soundVerticalSplitSizesKey.value,
-    (key) => {
-      soundVerticalSplitSizes.value = readLocalStorageJson<Record<string, number[]>>(key, {});
-    },
-  );
+  watch([() => verticalSplitSizesKey.value, verticalSplitSizesSnapshot], (key) => {
+    const targetKey = Array.isArray(key) ? key[0] : key;
+    verticalSplitSizes.value =
+      projectStore.projectSettings.ui.layout.verticalSplitSizes[targetKey] ??
+      readLocalStorageJson<Record<string, number[]>>(targetKey, {});
+  });
+
+  watch([() => soundVerticalSplitSizesKey.value, verticalSplitSizesSnapshot], (key) => {
+    const targetKey = Array.isArray(key) ? key[0] : key;
+    soundVerticalSplitSizes.value =
+      projectStore.projectSettings.ui.layout.verticalSplitSizes[targetKey] ??
+      readLocalStorageJson<Record<string, number[]>>(targetKey, {});
+  });
 
   const cutPanelsLayoutKey = computed(() =>
     JSON.stringify(
@@ -425,12 +425,16 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     const newSizes = panes.map((pane) => pane.size);
     if (view === 'cut') {
       verticalSplitSizes.value[colId] = newSizes;
-      writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
+      projectStore.projectSettings.ui.layout.verticalSplitSizes[verticalSplitSizesKey.value] = {
+        ...verticalSplitSizes.value,
+      };
       return;
     }
 
     soundVerticalSplitSizes.value[colId] = newSizes;
-    writeLocalStorageJson(soundVerticalSplitSizesKey.value, soundVerticalSplitSizes.value);
+    projectStore.projectSettings.ui.layout.verticalSplitSizes[soundVerticalSplitSizesKey.value] = {
+      ...soundVerticalSplitSizes.value,
+    };
   }
 
   function getVerticalSize(input: GetVerticalSizeInput): number | undefined {
@@ -448,10 +452,15 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   function resetVerticalSizes(colId: string, view: 'cut' | 'sound' = 'cut') {
     if (view === 'cut') {
       delete verticalSplitSizes.value[colId];
-      writeLocalStorageJson(verticalSplitSizesKey.value, verticalSplitSizes.value);
+      projectStore.projectSettings.ui.layout.verticalSplitSizes[verticalSplitSizesKey.value] = {
+        ...verticalSplitSizes.value,
+      };
     } else {
       delete soundVerticalSplitSizes.value[colId];
-      writeLocalStorageJson(soundVerticalSplitSizesKey.value, soundVerticalSplitSizes.value);
+      projectStore.projectSettings.ui.layout.verticalSplitSizes[soundVerticalSplitSizesKey.value] =
+        {
+          ...soundVerticalSplitSizes.value,
+        };
     }
   }
 

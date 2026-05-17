@@ -81,5 +81,7 @@ describe('project-settings.repository', () => {
     expect((raw as any).project.width).toBe(data.project.width);
     expect((raw as any).monitors).toBeUndefined();
     expect((raw as any).timelines).toBeUndefined();
+    expect((raw as any).ui).toBeUndefined();
+    expect((raw as any).timeline).toBeUndefined();
   });
 });

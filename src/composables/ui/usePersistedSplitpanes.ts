@@ -25,6 +25,10 @@ export function usePersistedSplitpanes(
   pageKey: string | Ref<string>,
   projectId: Ref<string | null>,
   defaultSizes: number[] | Ref<number[]>,
+  storage?: {
+    get: (key: string) => number[] | null | undefined;
+    set: (key: string, value: number[]) => void;
+  },
 ) {
   const getKey = () => {
     const keyString = isRef(pageKey) ? pageKey.value : pageKey;
@@ -38,7 +42,7 @@ export function usePersistedSplitpanes(
   function loadSizes() {
     const newKey = getKey();
     key.value = newKey;
-    const stored = readLocalStorageJson<number[] | null>(newKey, null);
+    const stored = storage?.get(newKey) ?? readLocalStorageJson<number[] | null>(newKey, null);
     const defaults = isRef(defaultSizes) ? defaultSizes.value : defaultSizes;
 
     if (stored && Array.isArray(stored) && stored.length === defaults.length) {
@@ -66,14 +70,22 @@ export function usePersistedSplitpanes(
     if (Array.isArray(event?.panes)) {
       const newSizes = event.panes.map((p) => p.size);
       sizes.value = newSizes;
-      writeLocalStorageJson(key.value, newSizes);
+      if (storage) {
+        storage.set(key.value, newSizes);
+      } else {
+        writeLocalStorageJson(key.value, newSizes);
+      }
     }
   }
 
   function reset() {
     const defaults = isRef(defaultSizes) ? defaultSizes.value : defaultSizes;
     sizes.value = [...defaults];
-    writeLocalStorageJson(key.value, sizes.value);
+    if (storage) {
+      storage.set(key.value, sizes.value);
+    } else {
+      writeLocalStorageJson(key.value, sizes.value);
+    }
   }
 
   return {

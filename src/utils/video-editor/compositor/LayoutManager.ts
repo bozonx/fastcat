@@ -29,8 +29,8 @@ export class LayoutManager {
     clip.sprite.width = box.targetWidth;
     clip.sprite.height = box.targetHeight;
     if (clip.sprite.scale) {
-      clip.sprite.scale.x = Math.abs(clip.sprite.scale.x) * box.scaleX;
-      clip.sprite.scale.y = Math.abs(clip.sprite.scale.y) * box.scaleY;
+      clip.sprite.scale.x *= box.scaleX;
+      clip.sprite.scale.y *= box.scaleY;
     }
     clip.sprite.rotation = (box.rotationDeg * Math.PI) / 180;
     clip.sprite.x = box.baseX + anchor.x * box.targetWidth + box.stagePositionX;
@@ -62,8 +62,8 @@ export class LayoutManager {
     clip.sprite.width = box.targetWidth;
     clip.sprite.height = box.targetHeight;
     if (clip.sprite.scale) {
-      clip.sprite.scale.x = Math.abs(clip.sprite.scale.x) * box.scaleX;
-      clip.sprite.scale.y = Math.abs(clip.sprite.scale.y) * box.scaleY;
+      clip.sprite.scale.x *= box.scaleX;
+      clip.sprite.scale.y *= box.scaleY;
     }
     clip.sprite.rotation = (box.rotationDeg * Math.PI) / 180;
     clip.sprite.x = box.baseX + anchor.x * box.targetWidth + box.stagePositionX;

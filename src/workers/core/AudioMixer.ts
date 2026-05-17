@@ -455,14 +455,14 @@ function buildGainEnvelope(params: {
   }
 
   if (clip.audioFadeInS > 0) {
-    applyEnvelopeRange(0, Math.ceil(clip.audioFadeInS * targetSampleRate));
+    applyEnvelopeRange(0, Math.floor(clip.audioFadeInS * targetSampleRate));
   }
 
   if (clip.audioFadeOutS > 0) {
     const fadeOutStartS = Math.max(0, clip.playDurationS - clip.audioFadeOutS);
     applyEnvelopeRange(
       Math.floor(fadeOutStartS * targetSampleRate),
-      Math.ceil(clip.playDurationS * targetSampleRate),
+      Math.floor(clip.playDurationS * targetSampleRate),
     );
   }
 
@@ -579,11 +579,14 @@ async function loadClipSourcePlanes(args: {
         sourceChannels = ch;
         totalFrames = Math.max(1, Math.ceil(windowS * sr));
         planes = Array.from({ length: ch }, () => new Float32Array(totalFrames));
-      } else if ((sr !== sourceSampleRate || ch !== sourceChannels) && !warnedRateChange) {
-        warnedRateChange = true;
-        await reportExportWarning(
-          '[Worker Export] Audio clip changed sample rate or channel count mid-stream; using initial format.',
-        );
+      } else if (sr !== sourceSampleRate || ch !== sourceChannels) {
+        if (!warnedRateChange) {
+          warnedRateChange = true;
+          await reportExportWarning(
+            '[Worker Export] Audio clip changed sample rate or channel count mid-stream; skipping incompatible samples.',
+          );
+        }
+        continue;
       }
 
       // A sample's timestamp can land before sinkStartS when mediabunny rewinds
@@ -1238,14 +1241,19 @@ export class AudioMixer {
           }
         }
 
-        // Final clip pass — counts each clipped sample exactly once, regardless
-        // of how many sources contributed to it.
+        // Final clip pass — count clipped audio frames once even for stereo.
         const mixLen = mixedInterleaved.length;
-        for (let i = 0; i < mixLen; i += 1) {
-          const v = mixedInterleaved[i] ?? 0;
-          const clamped = clampFloat32(v);
-          if (v !== clamped) clippedFrames += 1;
-          mixedInterleaved[i] = clamped;
+        for (let frame = 0; frame < framesInChunk; frame += 1) {
+          let clippedFrame = false;
+          for (let channel = 0; channel < numberOfChannels; channel += 1) {
+            const index = frame * numberOfChannels + channel;
+            if (index >= mixLen) continue;
+            const v = mixedInterleaved[index] ?? 0;
+            const clamped = clampFloat32(v);
+            if (v !== clamped) clippedFrame = true;
+            mixedInterleaved[index] = clamped;
+          }
+          if (clippedFrame) clippedFrames += 1;
         }
 
         for (let i = activeClips.length - 1; i >= 0; i -= 1) {

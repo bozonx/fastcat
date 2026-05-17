@@ -137,7 +137,7 @@ export class RenderingEngine {
 
       return context.canvas;
     } finally {
-      const clipsToClean = updatedClips.length > 0 ? updatedClips : processingClips;
+      const clipsToClean = new Set([...processingClips, ...updatedClips]);
       for (const clip of clipsToClean) {
         if (!clip.lastVideoFrame) {
           continue;

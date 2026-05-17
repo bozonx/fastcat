@@ -33,7 +33,10 @@ export interface PendingRemoteDownloadRequest {
 export const useUiStore = defineStore('ui', () => {
   const workspaceStore = useWorkspaceStore();
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
-  const showHiddenFiles = ref(readLocalStorageJson(STORAGE_KEYS.UI.SHOW_HIDDEN_FILES, false));
+  const showHiddenFiles = ref(
+    workspaceStore.workspaceState?.ui?.showHiddenFiles ??
+      readLocalStorageJson(STORAGE_KEYS.UI.SHOW_HIDDEN_FILES, false),
+  );
   const monitorVolume = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, 1));
   const monitorMuted = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, false));
 
@@ -41,7 +44,17 @@ export const useUiStore = defineStore('ui', () => {
     () => showHiddenFiles.value,
     (val) => {
       if (workspaceStore.isEphemeral) return;
-      writeLocalStorageJson(STORAGE_KEYS.UI.SHOW_HIDDEN_FILES, val);
+      void workspaceStore.batchUpdateWorkspaceState((draft) => {
+        draft.ui.showHiddenFiles = val;
+      });
+    },
+  );
+
+  watch(
+    () => workspaceStore.workspaceState?.ui?.showHiddenFiles,
+    (val) => {
+      if (typeof val !== 'boolean') return;
+      if (showHiddenFiles.value !== val) showHiddenFiles.value = val;
     },
   );
 
@@ -104,7 +117,17 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   const projectStore = useProjectStore();
-  const fileTreeModule = createUiFileTreePersistenceModule({ fileTreeExpandedPaths });
+  const fileTreeModule = createUiFileTreePersistenceModule({
+    fileTreeExpandedPaths,
+    loadExpandedPaths: (projectId) =>
+      projectId === projectStore.currentProjectId
+        ? projectStore.projectSettings.ui.fileTreeExpandedPaths
+        : null,
+    saveExpandedPaths: (projectId, paths) => {
+      if (projectId !== projectStore.currentProjectId) return;
+      projectStore.projectSettings.ui.fileTreeExpandedPaths = paths;
+    },
+  });
   const {
     restoreFileTreeStateOnce: _restore,
     hasPersistedFileTreeState: _hasState,

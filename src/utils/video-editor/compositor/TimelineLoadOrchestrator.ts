@@ -296,6 +296,10 @@ export class TimelineLoadOrchestrator {
     }
 
     try {
+      const abortController = new AbortController();
+      if (callbacks.checkCancel?.()) {
+        abortController.abort();
+      }
       const loadedVideo = await this.context.mediaClipLoader.loadVideoRuntime({
         mediabunny,
         file,
@@ -304,6 +308,7 @@ export class TimelineLoadOrchestrator {
         requestedSourceDurationUs,
         requestedSourceRangeDurationUs,
         startUs,
+        abortSignal: abortController.signal,
       });
       if (!loadedVideo) {
         return { sequentialTimeUs };

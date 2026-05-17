@@ -19,6 +19,14 @@ export interface WorkspaceState {
   ui: {
     recentSearchQueries: string[];
     pinnedItems: string[];
+    showHiddenFiles: boolean;
+    lastProjectName: string | null;
+    recentProjects: Array<{
+      projectName: string;
+      projectId: string;
+      updatedAt: string;
+      lastTimelinePath?: string;
+    }>;
   };
   fileBrowser: {
     instances: Record<string, FileBrowserInstanceState>;
@@ -36,6 +44,9 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     ui: {
       recentSearchQueries: [],
       pinnedItems: [],
+      showHiddenFiles: false,
+      lastProjectName: null,
+      recentProjects: [],
     },
     fileBrowser: {
       instances: {},
@@ -54,12 +65,14 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
   return {
     presets: {
       custom: Array.isArray(data.presets?.custom) ? data.presets.custom : defaults.presets.custom,
-      defaultTextPresetId: typeof data.presets?.defaultTextPresetId === 'string'
-        ? data.presets.defaultTextPresetId
-        : defaults.presets.defaultTextPresetId,
-      collapsed: (data.presets?.collapsed && typeof data.presets.collapsed === 'object')
-        ? data.presets.collapsed
-        : defaults.presets.collapsed,
+      defaultTextPresetId:
+        typeof data.presets?.defaultTextPresetId === 'string'
+          ? data.presets.defaultTextPresetId
+          : defaults.presets.defaultTextPresetId,
+      collapsed:
+        data.presets?.collapsed && typeof data.presets.collapsed === 'object'
+          ? data.presets.collapsed
+          : defaults.presets.collapsed,
     },
     ui: {
       recentSearchQueries: Array.isArray(data.ui?.recentSearchQueries)
@@ -68,11 +81,23 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
       pinnedItems: Array.isArray(data.ui?.pinnedItems)
         ? data.ui.pinnedItems
         : defaults.ui.pinnedItems,
+      showHiddenFiles:
+        typeof data.ui?.showHiddenFiles === 'boolean'
+          ? data.ui.showHiddenFiles
+          : defaults.ui.showHiddenFiles,
+      lastProjectName:
+        typeof data.ui?.lastProjectName === 'string' || data.ui?.lastProjectName === null
+          ? data.ui.lastProjectName
+          : defaults.ui.lastProjectName,
+      recentProjects: Array.isArray(data.ui?.recentProjects)
+        ? data.ui.recentProjects
+        : defaults.ui.recentProjects,
     },
     fileBrowser: {
-      instances: (data.fileBrowser?.instances && typeof data.fileBrowser.instances === 'object')
-        ? data.fileBrowser.instances
-        : defaults.fileBrowser.instances,
+      instances:
+        data.fileBrowser?.instances && typeof data.fileBrowser.instances === 'object'
+          ? data.fileBrowser.instances
+          : defaults.fileBrowser.instances,
       activeTab: ['computer', 'bloggerdog', 'fastcat'].includes(data.fileBrowser?.activeTab)
         ? data.fileBrowser.activeTab
         : defaults.fileBrowser.activeTab,

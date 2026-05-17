@@ -18,7 +18,7 @@ import {
 
 import { useWorkspaceStore } from './workspace.store';
 import { useProjectSettingsStore } from './project-settings.store';
-import { createEditorViewModule } from './editor-view.store';
+import { createDefaultLayoutState, createEditorViewModule } from './editor-view.store';
 import { useMediaStore } from './media.store';
 import { useTimelineStore } from './timeline.store';
 import { useSelectionStore } from './selection.store';
@@ -48,6 +48,12 @@ export const useProjectStore = defineStore('project', () => {
 
   const editorViewModule = createEditorViewModule(currentProjectId, {
     getProjectOrientation: () => projectSettingsStore.projectSettings.project.orientation,
+    getLayout: () => projectSettingsStore.projectSettings.ui.layout,
+    updateLayout: (updater) => {
+      const layout = projectSettingsStore.projectSettings.ui.layout ?? createDefaultLayoutState();
+      projectSettingsStore.projectSettings.ui.layout = layout;
+      updater(layout);
+    },
   });
 
   const fsModule = createProjectFsModule({

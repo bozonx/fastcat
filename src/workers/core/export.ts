@@ -4,6 +4,7 @@ import { safeDispose } from '../../utils/video-editor/utils';
 import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 import { buildMixedAudioTrack } from './audio';
 import {
+  computeExportFrameInterval,
   computeExportTotalFrames,
   computeMaxAudioDurationUs,
   getClipRangesS,
@@ -144,6 +145,29 @@ function isOpusCodec(codec: string | undefined): boolean {
 
 function isMediaClip(clip: any): clip is WorkerTimelineClip {
   return clip.clipType === 'media';
+}
+
+async function waitForVideoBackpressure(videoSource: any) {
+  const maxQueueSize = 4;
+
+  while (Number(videoSource?.encodeQueueSize ?? 0) >= maxQueueSize) {
+    if (typeof videoSource?.flush === 'function') {
+      await videoSource.flush();
+      return;
+    }
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+function fillCanvasBlack(canvas: OffscreenCanvas | HTMLCanvasElement | undefined | null) {
+  if (!canvas) return;
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  context.save();
+  context.fillStyle = '#000';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.restore();
 }
 
 export function isPassthroughCompatibleClip(
@@ -392,10 +416,12 @@ export async function runExport(
       });
       const generatedCanvas = await params.compositor.renderFrame(frame.timeUs);
       if (!generatedCanvas) {
-        throw new Error(
-          `[Export] Frame ${frameNum} at ${frame.timestampS}s render returned null; export stopped to avoid a blank frame.`,
+        fillCanvasBlack(params.compositor.canvas);
+        await reportExportWarning(
+          `[Worker Export] Frame ${frameNum} at ${frame.timestampS}s rendered empty; substituting black frame.`,
         );
       }
+      await waitForVideoBackpressure(params.videoSource);
       await (params.videoSource as any).add(frame.timestampS, frame.durationS);
 
       const progress = Math.min(99, Math.round(((frameNum + 1) / totalFrames) * 99));
@@ -468,12 +494,11 @@ export async function runExport(
 
       const fullCodecString =
         fallbackCodecString && options.videoCodec ? options.videoCodec : undefined;
-      const keyFrameIntervalSec = Number(options.keyframeIntervalSec);
       const fps = Math.max(1, Number(options.fps) || 30);
-      const keyFrameInterval =
-        Number.isFinite(keyFrameIntervalSec) && keyFrameIntervalSec > 0
-          ? Math.max(1, Math.round(keyFrameIntervalSec * fps))
-          : undefined;
+      const keyFrameInterval = computeExportFrameInterval({
+        intervalSec: options.keyframeIntervalSec,
+        fps,
+      });
 
       const videoSource = new CanvasSource(localCompositor.canvas as any, {
         codec: getBunnyVideoCodec(options.videoCodec),
@@ -545,8 +570,10 @@ export async function runExport(
         }
       }
 
+      let started = false;
       try {
         await output.start();
+        started = true;
 
         await writeOpusPassthroughIfNeeded({ audioPacketState });
 
@@ -562,17 +589,17 @@ export async function runExport(
           taskId,
         });
 
-        if ('close' in videoSource) (videoSource as any).close();
-        if (audioSource && 'close' in audioSource) (audioSource as any).close();
-
         await notifyPhase('saving', taskId);
 
         await output.finalize();
       } catch (e) {
+        if (started) {
+          await safeCancel({ output, writable });
+        }
+        throw e;
+      } finally {
         safeDispose(audioSource);
         safeDispose(videoSource);
-        await safeCancel({ output, writable });
-        throw e;
       }
     }
 

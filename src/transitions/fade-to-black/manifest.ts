@@ -51,12 +51,12 @@ void main(void) {
   vec4 fadeColor = vec4(uFadeColor, 1.0);
 
   if (progress < 0.5) {
-    float local = progress * 2.0;
+    float local = smoothstep(0.0, 1.0, progress * 2.0);
     finalColor = mix(fromColor, fadeColor, local);
     return;
   }
 
-  float local = (progress - 0.5) * 2.0;
+  float local = smoothstep(0.0, 1.0, (progress - 0.5) * 2.0);
   finalColor = mix(fadeColor, toColor, local);
 }
 `;

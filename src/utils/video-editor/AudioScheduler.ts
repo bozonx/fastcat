@@ -2,6 +2,7 @@ export interface AudioSchedulerOptions {
   getContext: () => AudioContext | null;
   onScheduleLookahead: () => void;
   onStopNodes: () => void;
+  kickoffLatencyS?: number;
 }
 
 // Time we hold off before audio actually starts emitting sound, to absorb
@@ -9,12 +10,22 @@ export interface AudioSchedulerOptions {
 // future. Web Audio source nodes scheduled at a ctx time in the past would
 // glitch or get dropped; scheduling at ctx.currentTime + this delta gives us
 // a stable kickoff for synchronous video/audio start.
-const KICKOFF_LATENCY_S = 0.15;
+const DEFAULT_KICKOFF_LATENCY_S = 0.05;
+
+function normalizeKickoffLatency(value: number | undefined): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_KICKOFF_LATENCY_S;
+  }
+
+  return Math.min(0.15, Math.max(0.03, parsed));
+}
 
 export class AudioScheduler {
   private readonly getContext: AudioSchedulerOptions['getContext'];
   private readonly onScheduleLookahead: AudioSchedulerOptions['onScheduleLookahead'];
   private readonly onStopNodes: AudioSchedulerOptions['onStopNodes'];
+  private readonly kickoffLatencyS: number;
   private isPlaying = false;
   private baseTimeS = 0;
   // ctx.currentTime at which the timeline clock starts ticking — set to a
@@ -29,6 +40,7 @@ export class AudioScheduler {
     this.getContext = options.getContext;
     this.onScheduleLookahead = options.onScheduleLookahead;
     this.onStopNodes = options.onStopNodes;
+    this.kickoffLatencyS = normalizeKickoffLatency(options.kickoffLatencyS);
   }
 
   async play(timeUs: number, speed = 1) {
@@ -48,7 +60,7 @@ export class AudioScheduler {
       });
     }
 
-    this.playbackContextTimeS = ctx.currentTime + KICKOFF_LATENCY_S;
+    this.playbackContextTimeS = ctx.currentTime + this.kickoffLatencyS;
 
     if (this.globalSpeed > 0) {
       this.startLookahead();
@@ -84,7 +96,7 @@ export class AudioScheduler {
     this.stopLookahead();
     this.scheduledClipIds.clear();
     this.baseTimeS = currentTimeS;
-    this.playbackContextTimeS = ctx.currentTime + KICKOFF_LATENCY_S;
+    this.playbackContextTimeS = ctx.currentTime + this.kickoffLatencyS;
 
     if (this.globalSpeed > 0) {
       this.startLookahead();
@@ -105,7 +117,7 @@ export class AudioScheduler {
       return;
     }
 
-    this.playbackContextTimeS = ctx.currentTime + KICKOFF_LATENCY_S;
+    this.playbackContextTimeS = ctx.currentTime + this.kickoffLatencyS;
 
     if (this.globalSpeed > 0) {
       this.onScheduleLookahead();

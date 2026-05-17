@@ -13,12 +13,6 @@ import SettingsVideo from '~/components/settings/SettingsVideo.vue';
 import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
 import { useUiStore } from '~/stores/ui.store';
-import {
-  readLocalStorageJson,
-  writeLocalStorageJson,
-  removeLocalStorageKey,
-  STORAGE_KEYS,
-} from '~/stores/ui/uiLocalStorage';
 
 interface Props {
   open: boolean;
@@ -46,32 +40,12 @@ type SettingsSection =
   | 'user.audio'
   | 'workspace.storage';
 
-const EXPIRATION_MS = 24 * 60 * 60 * 1000;
-
-function getStoredSection(): SettingsSection {
-  const parsed = readLocalStorageJson<{ section: SettingsSection; timestamp: number } | null>(
-    STORAGE_KEYS.SETTINGS.ACTIVE_SECTION,
-    null,
-  );
-
-  if (!parsed) return 'user.general';
-
-  if (Date.now() - parsed.timestamp > EXPIRATION_MS) {
-    removeLocalStorageKey(STORAGE_KEYS.SETTINGS.ACTIVE_SECTION);
-    return 'user.general';
-  }
-
-  return parsed.section;
-}
-
-const activeSection = ref<SettingsSection>(getStoredSection());
+const activeSection = ref<SettingsSection>(
+  (uiStore.editorSettingsActiveSection as SettingsSection) || 'user.general',
+);
 
 watch(activeSection, (section) => {
   uiStore.editorSettingsActiveSection = section;
-  writeLocalStorageJson(STORAGE_KEYS.SETTINGS.ACTIVE_SECTION, {
-    section,
-    timestamp: Date.now(),
-  });
 });
 
 watch(

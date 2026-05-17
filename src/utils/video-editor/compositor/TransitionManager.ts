@@ -1,4 +1,5 @@
 import type { Filter } from 'pixi.js';
+import { safeDispose } from '../utils';
 import {
   getTransitionManifest,
   normalizeTransitionParams,
@@ -288,5 +289,14 @@ export class TransitionManager {
       clip.transitionFilter = null;
       clip.transitionFilterType = null;
     }
+
+    safeDispose(clip.transitionFromTexture);
+    safeDispose(clip.transitionToTexture);
+    safeDispose(clip.transitionOutputTexture);
+    safeDispose(clip.transitionCombinedTexture);
+    clip.transitionFromTexture = null;
+    clip.transitionToTexture = null;
+    clip.transitionOutputTexture = null;
+    clip.transitionCombinedTexture = null;
   }
 }

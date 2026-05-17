@@ -1,12 +1,9 @@
 import { defineStore, storeToRefs } from 'pinia';
 import { ref, computed, watch, type Ref } from 'vue';
-import {
-  readLocalStorageJson,
-  writeLocalStorageJson,
-  getPlatformSuffix,
-} from './ui/uiLocalStorage';
+import { readLocalStorageJson, getPlatformSuffix } from './ui/uiLocalStorage';
 import { getPanelSizesKey } from '~/composables/ui/usePersistedSplitpanes';
 import type { FsEntry } from '~/types/fs';
+import type { ProjectUiLayoutState } from '~/utils/project-settings';
 
 export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen' | 'settings';
 
@@ -68,6 +65,8 @@ export function buildDefaultCutPanelsForOrientation(
 
 export interface CreateEditorViewModuleOptions {
   getProjectOrientation: () => 'landscape' | 'portrait';
+  getLayout?: () => ProjectUiLayoutState | null | undefined;
+  updateLayout?: (updater: (layout: ProjectUiLayoutState) => void) => void;
 }
 
 const viewConfigs: Record<EditorView, ViewConfig> = {
@@ -126,12 +125,26 @@ function sanitizePanelColumns(columns: unknown, fallback: PanelColumn[]): PanelC
   return fallback.map((col) => ({ id: col.id, panels: [...col.panels] }));
 }
 
+export function createDefaultLayoutState(): ProjectUiLayoutState {
+  return {
+    cutPanels: null,
+    soundPanels: null,
+    splitSizes: {},
+    verticalSplitSizes: {},
+    timelineHeights: {},
+  };
+}
+
 export function createEditorViewModule(
   projectIdRef: Ref<string | null>,
   options?: CreateEditorViewModuleOptions,
 ) {
   const getProjectOrientation =
     options?.getProjectOrientation ?? (() => 'landscape' as 'landscape' | 'portrait');
+  const getStoredLayout = () => options?.getLayout?.() ?? null;
+  const updateStoredLayout = (updater: (layout: ProjectUiLayoutState) => void) => {
+    options?.updateLayout?.(updater);
+  };
 
   function getDefaultCutLayout(): PanelColumn[] {
     return buildDefaultCutPanelsForOrientation(getProjectOrientation()).map((col) => ({
@@ -150,6 +163,9 @@ export function createEditorViewModule(
     () =>
       `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:cut${layoutPlatformSuffix.value}`,
   );
+  const storedCutPanelsSnapshot = computed(() =>
+    JSON.stringify(getStoredLayout()?.cutPanels ?? null),
+  );
   const cutPanels = ref<PanelColumn[]>(getDefaultCutLayout());
 
   // Dynamic panels for sound view
@@ -161,13 +177,22 @@ export function createEditorViewModule(
     () =>
       `fastcat:layout:panels:${projectIdRef.value ?? 'no-project'}:sound${layoutPlatformSuffix.value}`,
   );
+  const storedSoundPanelsSnapshot = computed(() =>
+    JSON.stringify(getStoredLayout()?.soundPanels ?? null),
+  );
   const soundPanels = ref<PanelColumn[]>([
     ...defaultSoundPanels.map((col) => ({ id: col.id, panels: [...col.panels] })),
   ]);
 
-  // Load cut panels from local storage (re-apply orientation default when nothing stored)
+  // Load cut panels from project UI state, with localStorage read-only migration fallback.
   watch(
-    () => [projectIdRef.value, cutPanelsKey.value, getProjectOrientation()] as const,
+    () =>
+      [
+        projectIdRef.value,
+        cutPanelsKey.value,
+        getProjectOrientation(),
+        storedCutPanelsSnapshot.value,
+      ] as const,
     ([projectId, key, orientation]) => {
       if (!projectId || !key || !orientation) return;
       if (!projectId) {
@@ -180,7 +205,8 @@ export function createEditorViewModule(
       const loadId = internalLoadCount;
       try {
         const fallback = buildDefaultCutPanelsForOrientation(orientation);
-        const stored = readLocalStorageJson<any[] | null>(key, null);
+        const stored =
+          getStoredLayout()?.cutPanels ?? readLocalStorageJson<any[] | null>(key, null);
 
         if (stored && Array.isArray(stored) && stored.length > 0) {
           if (!Array.isArray(stored[0]) && !stored[0].panels) {
@@ -212,16 +238,17 @@ export function createEditorViewModule(
     { immediate: true },
   );
 
-  // Load sound panels from local storage
+  // Load sound panels from project UI state, with localStorage read-only migration fallback.
   watch(
-    () => [projectIdRef.value, soundPanelsKey.value] as const,
+    () => [projectIdRef.value, soundPanelsKey.value, storedSoundPanelsSnapshot.value] as const,
     ([projectId, key]) => {
       if (!projectId) return;
 
       internalLoadCount++;
       const loadId = internalLoadCount;
       try {
-        const stored = readLocalStorageJson<any[] | null>(key, null);
+        const stored =
+          getStoredLayout()?.soundPanels ?? readLocalStorageJson<any[] | null>(key, null);
         if (stored && Array.isArray(stored) && stored.length > 0) {
           soundPanels.value = sanitizePanelColumns(stored, defaultSoundPanels);
         } else {
@@ -239,27 +266,28 @@ export function createEditorViewModule(
     { immediate: true },
   );
 
-  // Save cut panels to local storage
+  // Save cut panels to project UI state
   // flush: 'sync' guarantees the callback runs in the same call stack as the mutation,
   // so internalLoadCount is still > 0 during loads and 0 during user-driven changes.
   watch(
     cutPanels,
     (panels) => {
       if (internalLoadCount > 0 || !isInitialized.value || !projectIdRef.value) return;
-      writeLocalStorageJson(
-        cutPanelsKey.value,
-        sanitizePanelColumns(panels, getDefaultCutLayout()),
-      );
+      updateStoredLayout((layout) => {
+        layout.cutPanels = sanitizePanelColumns(panels, getDefaultCutLayout());
+      });
     },
     { deep: true, flush: 'sync' },
   );
 
-  // Save sound panels to local storage
+  // Save sound panels to project UI state
   watch(
     soundPanels,
     (panels) => {
       if (internalLoadCount > 0 || !isInitialized.value || !projectIdRef.value) return;
-      writeLocalStorageJson(soundPanelsKey.value, sanitizePanelColumns(panels, defaultSoundPanels));
+      updateStoredLayout((layout) => {
+        layout.soundPanels = sanitizePanelColumns(panels, defaultSoundPanels);
+      });
     },
     { deep: true, flush: 'sync' },
   );
@@ -446,14 +474,19 @@ export function createEditorViewModule(
   const timelineHeightKey = computed(() =>
     getPanelSizesKey(`timeline-height-${currentView.value}`, projectIdRef.value),
   );
+  const storedTimelineHeightsSnapshot = computed(() =>
+    JSON.stringify(getStoredLayout()?.timelineHeights ?? {}),
+  );
 
   const timelineHeight = ref(viewConfigs[currentView.value].timelineHeight);
 
-  // Sync with local storage
+  // Sync with project UI state, with localStorage read-only migration fallback.
   watch(
-    timelineHeightKey,
+    [timelineHeightKey, storedTimelineHeightsSnapshot],
     () => {
-      const stored = readLocalStorageJson<number | null>(timelineHeightKey.value, null);
+      const stored =
+        getStoredLayout()?.timelineHeights?.[timelineHeightKey.value] ??
+        readLocalStorageJson<number | null>(timelineHeightKey.value, null);
       if (stored && stored > 0 && stored < 100) {
         timelineHeight.value = stored;
       } else {
@@ -467,7 +500,9 @@ export function createEditorViewModule(
     timelineHeight,
     (newVal) => {
       if (internalLoadCount > 0) return;
-      writeLocalStorageJson(timelineHeightKey.value, newVal);
+      updateStoredLayout((layout) => {
+        layout.timelineHeights[timelineHeightKey.value] = newVal;
+      });
     },
     { flush: 'sync' },
   );

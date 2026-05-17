@@ -107,35 +107,67 @@ const defaultSoundPanelSizes = computed(() => {
   return Array(len).fill(size);
 });
 
+const projectSplitSizesStorage = {
+  get: (key: string) => projectStore.projectSettings.ui.layout.splitSizes[key] ?? null,
+  set: (key: string, value: number[]) => {
+    projectStore.projectSettings.ui.layout.splitSizes[key] = value;
+  },
+};
+
 const {
   sizes: topSplitSizes,
   onResized: onTopSplitResize,
   reset: topSplitReset,
-} = usePersistedSplitpanes('editor-cut-top-dynamic', currentProjectId, defaultCutPanelSizes);
+} = usePersistedSplitpanes(
+  'editor-cut-top-dynamic',
+  currentProjectId,
+  defaultCutPanelSizes,
+  projectSplitSizesStorage,
+);
 
 const {
   sizes: soundTopSplitSizes,
   onResized: onSoundTopSplitResize,
   reset: soundTopSplitReset,
-} = usePersistedSplitpanes('editor-sound-dynamic', currentProjectId, defaultSoundPanelSizes);
+} = usePersistedSplitpanes(
+  'editor-sound-dynamic',
+  currentProjectId,
+  defaultSoundPanelSizes,
+  projectSplitSizesStorage,
+);
 
 const {
   sizes: filesSizes,
   onResized: onFilesResize,
   reset: filesReset,
-} = usePersistedSplitpanes('editor-files-top', currentProjectId, [20, 60, 20]);
+} = usePersistedSplitpanes(
+  'editor-files-top',
+  currentProjectId,
+  [20, 60, 20],
+  projectSplitSizesStorage,
+);
 
 const {
   sizes: soundSizes,
   onResized: onSoundResize,
   reset: soundReset,
-} = usePersistedSplitpanes('editor-sound-top', currentProjectId, [75, 25]);
+} = usePersistedSplitpanes(
+  'editor-sound-top',
+  currentProjectId,
+  [75, 25],
+  projectSplitSizesStorage,
+);
 
 const {
   sizes: exportSizes,
   onResized: onExportResize,
   reset: exportReset,
-} = usePersistedSplitpanes('editor-export-top', currentProjectId, [40, 60]);
+} = usePersistedSplitpanes(
+  'editor-export-top',
+  currentProjectId,
+  [40, 60],
+  projectSplitSizesStorage,
+);
 
 let fileManager: ReturnType<typeof useFileManager> | null = null;
 

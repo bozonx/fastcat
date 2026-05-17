@@ -95,7 +95,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           const timelineStore = useTimelineStore();
 
           const timelines = { ...projectSettings.value.timelines };
-          
+
           if (focusStore.activeTimelinePath) {
             timelines.sessions[focusStore.activeTimelinePath] = {
               playheadUs: timelineStore.currentTime,
@@ -208,6 +208,26 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     }
   }
 
+  async function projectFileExists(path: string): Promise<boolean> {
+    const dir = await getProjectDirHandle.value?.();
+    if (!dir) return false;
+
+    const parts = path.split('/').filter(Boolean);
+    const fileName = parts.pop();
+    if (!fileName) return false;
+
+    try {
+      let currentDir = dir;
+      for (const part of parts) {
+        currentDir = await currentDir.getDirectoryHandle(part);
+      }
+      await currentDir.getFileHandle(fileName);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function loadProjectSettings() {
     isLoadingProjectSettings.value = true;
 
@@ -246,21 +266,15 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
           if (uiRaw.timelines) {
             settings.timelines = { ...settings.timelines, ...uiRaw.timelines };
-            
+
             // Validate openPaths exist and normalize
-            const dir = await getProjectDirHandle.value?.();
-            if (dir) {
-              const validatedPaths: string[] = [];
-              for (const path of settings.timelines.openPaths) {
-                try {
-                  await dir.getFileHandle(path);
-                  validatedPaths.push(path);
-                } catch {
-                   // Skip non-existent files
-                }
+            const validatedPaths: string[] = [];
+            for (const path of settings.timelines.openPaths) {
+              if (await projectFileExists(path)) {
+                validatedPaths.push(path);
               }
-              settings.timelines.openPaths = validatedPaths;
             }
+            settings.timelines.openPaths = validatedPaths;
           }
 
           if (uiRaw.ui) {
@@ -274,32 +288,28 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       }
 
       projectSettings.value = settings;
-      
-      // Sync loaded state to other stores
-      if (!isLoadingProjectSettings.value) {
-          const projectTabsStore = useProjectTabsStore();
-          if (settings.ui.activeTabId || settings.ui.fileTabs.length > 0) {
-              projectTabsStore.setTabsState({
-                  activeTabId: settings.ui.activeTabId,
-                  fileTabs: settings.ui.fileTabs,
-                  staticTabsOrder: settings.ui.staticTabsOrder,
-              });
-          }
-          
-          const fmStores = {
-            editor: useFileManagerStore(),
-            filesPage: useFilesPageFileManagerStore(),
-            'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
-            'computer-sidebar': useComputerSidebarStore(),
-            'bloggerdog-sidebar': useBloggerDogSidebarStore(),
-          };
 
-          for (const [key, store] of Object.entries(fmStores)) {
-            const savedPath = settings.ui.fileManagerPaths[key];
-            if (savedPath && (!store.selectedFolder || store.selectedFolder.path !== savedPath)) {
-                store.openFolderByPath(savedPath);
-            }
-          }
+      // Sync loaded state to other stores
+      const projectTabsStore = useProjectTabsStore();
+      projectTabsStore.setTabsState({
+        activeTabId: settings.ui.activeTabId,
+        fileTabs: settings.ui.fileTabs,
+        staticTabsOrder: settings.ui.staticTabsOrder,
+      });
+
+      const fmStores = {
+        editor: useFileManagerStore(),
+        filesPage: useFilesPageFileManagerStore(),
+        'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
+        'computer-sidebar': useComputerSidebarStore(),
+        'bloggerdog-sidebar': useBloggerDogSidebarStore(),
+      };
+
+      for (const [key, store] of Object.entries(fmStores)) {
+        const savedPath = settings.ui.fileManagerPaths[key];
+        if (savedPath && (!store.selectedFolder || store.selectedFolder.path !== savedPath)) {
+          store.openFolderByPath(savedPath);
+        }
       }
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name === 'NotFoundError') {

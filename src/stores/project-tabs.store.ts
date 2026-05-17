@@ -1,5 +1,4 @@
-import { ref, computed, watch } from 'vue';
-import { readLocalStorageJson, writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
+import { ref, computed } from 'vue';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
 
 import { defineStore } from 'pinia';

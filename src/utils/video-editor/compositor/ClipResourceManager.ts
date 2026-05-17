@@ -136,7 +136,13 @@ export class ClipResourceManager {
       return inFlight;
     }
 
-    const promise = this.fetchVideoSampleForClip(clip, sampleTimeS, frameIndex, cacheKey, abortSignal);
+    const promise = this.fetchVideoSampleForClip(
+      clip,
+      sampleTimeS,
+      frameIndex,
+      cacheKey,
+      abortSignal,
+    );
     this.inFlightSamples.set(cacheKey, promise);
 
     try {
@@ -253,6 +259,12 @@ export class ClipResourceManager {
   }
 
   public destroyClip(clip: CompositorClip, deps: { transitionManager: TransitionManager }) {
+    for (const key of this.inFlightSamples.keys()) {
+      if (key.startsWith(`${clip.itemId}:`)) {
+        this.inFlightSamples.delete(key);
+      }
+    }
+
     this.context.videoFrameCache.clearForClip(clip.itemId);
     safeDispose(clip.sink);
     safeDispose(clip.input);

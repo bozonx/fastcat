@@ -4,9 +4,9 @@ import { setActivePinia, createPinia } from 'pinia';
 import { ref } from 'vue';
 import {
   buildDefaultCutPanelsForOrientation,
+  createDefaultLayoutState,
   createEditorViewModule,
 } from '~/stores/editor-view.store';
-import { writeLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 
 // Mock localStorage utils — path must use tilde alias so Vitest resolves to the same
 // absolute path that the store resolves when it imports './ui/uiLocalStorage'.
@@ -133,17 +133,23 @@ describe('useEditorViewStore module', () => {
 
   it('saves cut panels synchronously after movePanel (flush: sync)', () => {
     vi.useFakeTimers();
-    const store = createEditorViewModule(mockProjectId);
+    const layout = createDefaultLayoutState();
+    const updateLayout = vi.fn((updater: any) => updater(layout));
+    const store = createEditorViewModule(mockProjectId, {
+      getProjectOrientation: () => 'landscape',
+      getLayout: () => layout,
+      updateLayout,
+    });
     // Advance past the 50ms internalLoadCount reset so the save guard is cleared
     vi.runAllTimers();
-    vi.clearAllMocks();
+    updateLayout.mockClear();
     // Move monitor into fileManager's column — triggers cutPanels mutation
     store.movePanel('monitor', 'fileManager', 'bottom');
     // With flush:'sync' the save watch runs in the same call stack as the mutation
-    expect(writeLocalStorageJson).toHaveBeenCalledWith(
-      expect.stringContaining('test-project'),
-      expect.any(Array),
-    );
+    expect(updateLayout).toHaveBeenCalled();
+    expect(
+      layout.cutPanels?.some((col) => col.panels.some((panel) => panel.id === 'monitor')),
+    ).toBe(true);
     vi.useRealTimers();
   });
 });

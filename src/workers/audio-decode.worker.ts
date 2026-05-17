@@ -131,7 +131,7 @@ async function decodeToFloat32Channels(
           if (actualStartTimeS === undefined) {
             actualStartTimeS = sampleStartS;
           }
-          const startFrame = Math.max(0, Math.round((sampleStartS - decodeStartS) * sampleRate));
+          const startFrame = Math.max(0, Math.floor((sampleStartS - decodeStartS) * sampleRate));
           const planes: Float32Array[] = [];
           // Copy only the channels the sample actually provides; the merge step
           // below leaves missing channels as silence rather than dropping the sample.
@@ -335,10 +335,11 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
           const monoChunk = new Float32Array(frames);
           const channelBuffer = new Float32Array(frames);
 
+          const equalPowerGain = 1 / Math.sqrt(channels);
           for (let ch = 0; ch < channels; ch += 1) {
             sample.copyTo(channelBuffer, { format: 'f32-planar', planeIndex: ch });
             for (let i = 0; i < frames; i += 1) {
-              monoChunk[i] = (monoChunk[i] ?? 0) + (channelBuffer[i] ?? 0) / channels;
+              monoChunk[i] = (monoChunk[i] ?? 0) + (channelBuffer[i] ?? 0) * equalPowerGain;
             }
           }
 

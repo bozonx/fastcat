@@ -68,6 +68,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const scrubPreviewState = {
     lastScrubPreviewAtMs: 0,
   };
+  let scrubPreviewRequestId = 0;
   let localCurrentTimeUs = 0;
   const uiCurrentTimeUs = ref(0);
   let isUnmounted = false;
@@ -270,13 +271,17 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
             workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled &&
             canPlayScrubPreview(previousTimeUs, normalizedTimeUs)
           ) {
-            void audioEngine.previewScrubForward(
-              previousTimeUs,
-              normalizedTimeUs,
-              SCRUB_PREVIEW_DURATION_US,
-            );
+            const requestId = ++scrubPreviewRequestId;
+            audioEngine.stopScrubPreview();
+            void audioEngine
+              .previewScrubForward(previousTimeUs, normalizedTimeUs, SCRUB_PREVIEW_DURATION_US)
+              .catch((error) => {
+                if (requestId !== scrubPreviewRequestId || isUnmounted) return;
+                console.warn('[Monitor] Failed to preview audio scrub', error);
+              });
           }
         } else {
+          scrubPreviewRequestId += 1;
           audioEngine.stopScrubPreview();
         }
 
@@ -298,8 +303,6 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     setLocalTimeFromStore();
 
     visibilityHandler = () => {
-      const wasHidden = document.hidden;
-
       syncMonitorPlaybackVisibility({
         isPlaying: isPlaying.value,
         isMobile,
@@ -350,6 +353,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
   onBeforeUnmount(() => {
     isUnmounted = true;
+    scrubPreviewRequestId += 1;
     audioEngine.stopScrubPreview();
     cancelAnimationFrame(playbackLoopId);
     timecodeEl = null;

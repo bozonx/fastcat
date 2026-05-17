@@ -44,6 +44,31 @@ const ProjectFileTabSchema = z.object({
   icon: z.string(),
 });
 
+const DynamicPanelSchema = z
+  .object({
+    id: z.string(),
+    type: z.string(),
+    title: z.string().optional(),
+    filePath: z.string().optional(),
+    mediaType: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const PanelColumnSchema = z.object({
+  id: z.string(),
+  panels: z.array(DynamicPanelSchema).catch([]),
+});
+
+const ProjectUiLayoutSchema = z.object({
+  cutPanels: z.array(PanelColumnSchema).nullable().catch(null),
+  soundPanels: z.array(PanelColumnSchema).nullable().catch(null),
+  splitSizes: z.record(z.string(), z.array(z.coerce.number())).catch({}),
+  verticalSplitSizes: z
+    .record(z.string(), z.record(z.string(), z.array(z.coerce.number())))
+    .catch({}),
+  timelineHeights: z.record(z.string(), z.coerce.number()).catch({}),
+});
+
 export const ProjectUiSettingsSchema = z.object({
   version: z.coerce.number().catch(1),
   monitors: z.record(z.string(), MonitorSettingsSchema).catch({}),
@@ -68,8 +93,29 @@ export const ProjectUiSettingsSchema = z.object({
       fileTabs: z.array(ProjectFileTabSchema).catch([]),
       staticTabsOrder: z.array(z.string()).catch([]),
       fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
+      fileTreeExpandedPaths: z.array(z.string()).catch([]),
+      layout: ProjectUiLayoutSchema.catch({
+        cutPanels: null,
+        soundPanels: null,
+        splitSizes: {},
+        verticalSplitSizes: {},
+        timelineHeights: {},
+      }),
     })
-    .catch({ activeTabId: null, fileTabs: [], staticTabsOrder: [], fileManagerPaths: {} }),
+    .catch({
+      activeTabId: null,
+      fileTabs: [],
+      staticTabsOrder: [],
+      fileManagerPaths: {},
+      fileTreeExpandedPaths: [],
+      layout: {
+        cutPanels: null,
+        soundPanels: null,
+        splitSizes: {},
+        verticalSplitSizes: {},
+        timelineHeights: {},
+      },
+    }),
 });
 
 export type ProjectUiSettings = z.infer<typeof ProjectUiSettingsSchema>;

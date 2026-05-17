@@ -74,10 +74,13 @@ export class CanvasFallbackRenderer {
         );
         try {
           const bmp = await createImageBitmap(imageSource);
-          ctx.drawImage(bmp, 0, 0, frameW, frameH);
-          this.context.layoutApplier.applySpriteLayout(frameW, frameH, clip);
-          clip.sprite.texture.source.update();
-          bmp.close();
+          try {
+            ctx.drawImage(bmp, 0, 0, frameW, frameH);
+            this.context.layoutApplier.applySpriteLayout(frameW, frameH, clip);
+            clip.sprite.texture.source.update();
+          } finally {
+            bmp.close();
+          }
           return;
         } catch (innerErr) {
           console.error('[CanvasFallbackRenderer] Fallback createImageBitmap failed:', innerErr);

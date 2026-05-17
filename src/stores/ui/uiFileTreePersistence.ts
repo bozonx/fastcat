@@ -1,11 +1,7 @@
 import { ref, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
 
-import {
-  hasLocalStorageKey,
-  readLocalStorageJson,
-  writeLocalStorageJson,
-} from '~/stores/ui/uiLocalStorage';
+import { hasLocalStorageKey, readLocalStorageJson } from '~/stores/ui/uiLocalStorage';
 
 interface PersistedFileTreeState {
   expandedPaths: string[];
@@ -25,6 +21,8 @@ export interface UiFileTreePersistenceModule {
 
 export function createUiFileTreePersistenceModule(deps: {
   fileTreeExpandedPaths: Ref<Record<string, true>>;
+  loadExpandedPaths?: (projectId: string) => string[] | null | undefined;
+  saveExpandedPaths?: (projectId: string, paths: string[]) => void;
 }) {
   const currentFileTreeProjectId = ref<string | null>(null);
 
@@ -34,7 +32,11 @@ export function createUiFileTreePersistenceModule(deps: {
       if (!currentFileTreeProjectId.value) return false;
       const projectId = currentFileTreeProjectId.value;
       const expandedPaths = Object.keys(deps.fileTreeExpandedPaths.value);
-      writeLocalStorageJson(getFileTreeStorageKey(projectId), { expandedPaths });
+      if (deps.saveExpandedPaths) {
+        deps.saveExpandedPaths(projectId, expandedPaths);
+        return true;
+      }
+      return false;
     },
   });
 
@@ -44,9 +46,12 @@ export function createUiFileTreePersistenceModule(deps: {
 
     currentFileTreeProjectId.value = projectId;
 
-    const parsed = readLocalStorageJson<PersistedFileTreeState>(getFileTreeStorageKey(projectId), {
-      expandedPaths: [],
-    });
+    const storedPaths = deps.loadExpandedPaths?.(projectId);
+    const parsed = storedPaths
+      ? { expandedPaths: storedPaths }
+      : readLocalStorageJson<PersistedFileTreeState>(getFileTreeStorageKey(projectId), {
+          expandedPaths: [],
+        });
 
     const next: Record<string, true> = {};
     for (const p of parsed.expandedPaths) {
@@ -59,6 +64,7 @@ export function createUiFileTreePersistenceModule(deps: {
   }
 
   function hasPersistedFileTreeState(projectId: string): boolean {
+    if (deps.loadExpandedPaths?.(projectId)?.length) return true;
     return hasLocalStorageKey(getFileTreeStorageKey(projectId));
   }
 

@@ -31,6 +31,27 @@ export interface TimelineSessionState {
   selectionRange?: { startUs: number; endUs: number };
 }
 
+export interface ProjectUiDynamicPanel {
+  id: string;
+  type: string;
+  title?: string;
+  filePath?: string;
+  mediaType?: string | null;
+}
+
+export interface ProjectUiPanelColumn {
+  id: string;
+  panels: ProjectUiDynamicPanel[];
+}
+
+export interface ProjectUiLayoutState {
+  cutPanels: ProjectUiPanelColumn[] | null;
+  soundPanels: ProjectUiPanelColumn[] | null;
+  splitSizes: Record<string, number[]>;
+  verticalSplitSizes: Record<string, Record<string, number[]>>;
+  timelineHeights: Record<string, number>;
+}
+
 export interface FastCatProjectSettings {
   version: number;
   project: {
@@ -71,6 +92,8 @@ export interface FastCatProjectSettings {
     fileTabs: any[]; // ProjectFileTab[]
     staticTabsOrder: string[];
     fileManagerPaths: Record<string, string | null>;
+    fileTreeExpandedPaths: string[];
+    layout: ProjectUiLayoutState;
   };
   timeline: {
     frameSnapMode: 'free' | 'frames';
@@ -137,6 +160,14 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     fileTabs: [],
     staticTabsOrder: [],
     fileManagerPaths: {},
+    fileTreeExpandedPaths: [],
+    layout: {
+      cutPanels: null,
+      soundPanels: null,
+      splitSizes: {},
+      verticalSplitSizes: {},
+      timelineHeights: {},
+    },
   },
   timeline: {
     frameSnapMode: 'frames',
@@ -213,6 +244,14 @@ export function createDefaultProjectSettings(
       fileTabs: [],
       staticTabsOrder: [],
       fileManagerPaths: {},
+      fileTreeExpandedPaths: [],
+      layout: {
+        cutPanels: null,
+        soundPanels: null,
+        splitSizes: {},
+        verticalSplitSizes: {},
+        timelineHeights: {},
+      },
     },
     timeline: { ...DEFAULT_PROJECT_SETTINGS.timeline },
   };
@@ -239,6 +278,31 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     zoom: z.coerce.number().catch(1),
     trackHeights: z.record(z.string(), z.coerce.number()).catch({}),
     selectionRange: z.object({ startUs: z.number(), endUs: z.number() }).optional(),
+  });
+
+  const dynamicPanelSchema = z
+    .object({
+      id: z.string(),
+      type: z.string(),
+      title: z.string().optional(),
+      filePath: z.string().optional(),
+      mediaType: z.string().nullable().optional(),
+    })
+    .catch({ id: '', type: '' });
+
+  const panelColumnSchema = z.object({
+    id: z.string(),
+    panels: z.array(dynamicPanelSchema).catch([]),
+  });
+
+  const layoutSchema = z.object({
+    cutPanels: z.array(panelColumnSchema).nullable().catch(null),
+    soundPanels: z.array(panelColumnSchema).nullable().catch(null),
+    splitSizes: z.record(z.string(), z.array(z.coerce.number())).catch({}),
+    verticalSplitSizes: z
+      .record(z.string(), z.record(z.string(), z.array(z.coerce.number())))
+      .catch({}),
+    timelineHeights: z.record(z.string(), z.coerce.number()).catch({}),
   });
 
   return z
@@ -329,8 +393,10 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
           fileTabs: z.array(z.any()).catch([]),
           staticTabsOrder: z.array(z.string()).catch([]),
           fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
+          fileTreeExpandedPaths: z.array(z.string()).catch([]),
+          layout: layoutSchema.catch(defaults.ui.layout as any),
         })
-        .catch(defaults.ui),
+        .catch(defaults.ui as any),
       timeline: z
         .object({
           frameSnapMode: z.enum(['free', 'frames']).catch(defaults.timeline.frameSnapMode),
@@ -341,11 +407,13 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
           toolbarDragMode: z
             .enum(['pseudo_overlap', 'copy', 'slip'])
             .catch(defaults.timeline.toolbarDragMode),
-          toolbarDragModeEnabled: z.coerce.boolean().catch(defaults.timeline.toolbarDragModeEnabled),
+          toolbarDragModeEnabled: z.coerce
+            .boolean()
+            .catch(defaults.timeline.toolbarDragModeEnabled),
         })
         .catch(defaults.timeline),
     })
-    .catch(defaults);
+    .catch(defaults as any);
 }
 
 export function normalizeProjectSettings(

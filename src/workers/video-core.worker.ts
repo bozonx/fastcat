@@ -27,6 +27,7 @@ initTransitions();
 let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
 let cancelExportRequested = false;
+let latestLoadTimelineRequestId = 0;
 
 let renderInFlight = false;
 let latestRenderTimeUs: number | null = null;
@@ -174,26 +175,38 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
   async loadTimeline(
     clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
+    requestId?: number,
   ) {
     if (!compositor) throw new Error('Compositor not initialized');
-    return compositor.loadTimeline(clips, {
-      getFileHandleByPath: async (path: string) => {
-        if (!hostClient) return null;
-        return hostClient.getFileHandleByPath(path);
+    if (typeof requestId === 'number' && Number.isFinite(requestId)) {
+      latestLoadTimelineRequestId = requestId;
+    }
+    const isStaleRequest = () =>
+      typeof requestId === 'number' &&
+      Number.isFinite(requestId) &&
+      requestId !== latestLoadTimelineRequestId;
+    return compositor.loadTimeline(
+      clips,
+      {
+        getFileHandleByPath: async (path: string) => {
+          if (!hostClient) return null;
+          return hostClient.getFileHandleByPath(path);
+        },
+        getFileByPath: async (path: string) => {
+          if (!hostClient?.getFileByPath) return null;
+          return hostClient.getFileByPath(path);
+        },
+        getCurrentProjectId: async () => {
+          if (!hostClient) return null;
+          return await hostClient.getCurrentProjectId();
+        },
+        ensureVectorImageRaster: async (params) => {
+          if (!hostClient) return null;
+          return await hostClient.ensureVectorImageRaster(params);
+        },
       },
-      getFileByPath: async (path: string) => {
-        if (!hostClient?.getFileByPath) return null;
-        return hostClient.getFileByPath(path);
-      },
-      getCurrentProjectId: async () => {
-        if (!hostClient) return null;
-        return await hostClient.getCurrentProjectId();
-      },
-      ensureVectorImageRaster: async (params) => {
-        if (!hostClient) return null;
-        return await hostClient.ensureVectorImageRaster(params);
-      },
-    });
+      isStaleRequest,
+    );
   },
 
   async updateTimelineLayout(
@@ -256,22 +269,24 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       cancelExportRequested = false;
     }
 
-    await runExport(
-      targetHandle,
-      ExportOptionsSchema.parse(options),
-      timelineClips,
-      audioClips,
-      hostClient,
-      (msg) => reportExportWarning(msg, taskId),
-      () => {
-        if (taskId) return activeCancels.get(taskId) === true;
-        return cancelExportRequested;
-      },
-      taskId,
-    );
-
-    if (taskId) {
-      activeCancels.delete(taskId);
+    try {
+      await runExport(
+        targetHandle,
+        ExportOptionsSchema.parse(options),
+        timelineClips,
+        audioClips,
+        hostClient,
+        (msg) => reportExportWarning(msg, taskId),
+        () => {
+          if (taskId) return activeCancels.get(taskId) === true;
+          return cancelExportRequested;
+        },
+        taskId,
+      );
+    } finally {
+      if (taskId) {
+        activeCancels.delete(taskId);
+      }
     }
   },
 

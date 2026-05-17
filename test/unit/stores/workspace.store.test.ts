@@ -21,15 +21,17 @@ describe('WorkspaceStore', () => {
     expect(store.userSettings.exportPresets.items[0]?.format).toBe('mkv');
   });
 
-  it('updates lastProjectName in localStorage', async () => {
+  it('updates lastProjectName in workspace state', async () => {
     const store = useWorkspaceStore();
     store.lastProjectName = 'test-project';
     await nextTick();
-    expect(localStorage.getItem('fastcat:workspace:last-opened-project')).toBe('test-project');
+    expect(store.workspaceState.ui.lastProjectName).toBe('test-project');
+    expect(localStorage.getItem('fastcat:workspace:last-opened-project')).toBeNull();
     expect(localStorage.getItem('fastcat-editor-last-opened-project')).toBeNull();
 
     store.lastProjectName = null;
     await nextTick();
+    expect(store.workspaceState.ui.lastProjectName).toBeNull();
     expect(localStorage.getItem('fastcat:workspace:last-opened-project')).toBeNull();
     expect(localStorage.getItem('fastcat-editor-last-opened-project')).toBeNull();
   });

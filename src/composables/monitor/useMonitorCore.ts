@@ -266,7 +266,10 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       );
 
       const payload = cloneWorkerPayload(preparedTimeline.payload);
-      const maxDuration = clips.length > 0 ? await client.loadTimeline(payload) : 0;
+      const maxDuration = clips.length > 0 ? await client.loadTimeline(payload, requestId) : 0;
+      if (requestId !== buildRequestId) {
+        return;
+      }
       if (clips.length === 0) {
         await client.clearClips();
       }
@@ -294,6 +297,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       // keep duration including disabled clips.
       scheduleRender(getRenderTimeForLayoutUpdate());
     } catch (e: any) {
+      if (e?.name === 'AbortError' && requestId !== buildRequestId) {
+        return;
+      }
       console.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {
         loadError.value = e.message || t('fastcat.monitor.loadError');
@@ -369,8 +375,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     });
   });
 
-  onBeforeUnmount(() => {
-    disposeMonitorCoreRuntime({
+  onBeforeUnmount(async () => {
+    await disposeMonitorCoreRuntime({
       setUnmounted: (value) => {
         isUnmounted = value;
       },

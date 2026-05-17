@@ -182,8 +182,8 @@ export class LayoutApplier {
     sprite.height = input.targetH;
 
     if (sprite.scale) {
-      sprite.scale.x = Math.abs(sprite.scale.x) * input.scaleX;
-      sprite.scale.y = Math.abs(sprite.scale.y) * input.scaleY;
+      sprite.scale.x *= input.scaleX;
+      sprite.scale.y *= input.scaleY;
     }
 
     sprite.rotation = (input.rotationDeg * Math.PI) / 180;

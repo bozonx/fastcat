@@ -83,6 +83,7 @@ interface BuildVideoTrackTreeParams {
   inheritedTrackOpacity?: number;
   inheritedTrackBlendMode?: TimelineBlendMode;
   inheritedTrackEffects?: ClipEffect[];
+  fallbackFps?: number;
 }
 
 async function buildVideoTrackTree(
@@ -193,7 +194,7 @@ async function buildVideoTrackTree(
           const nestedDoc = parseTimelineFromOtio(text, {
             id: 'nested',
             name: 'nested',
-            fps: 25,
+            fps: params.fallbackFps ?? params.projectStore.projectSettings.project.fps,
           });
 
           const nestedResult = await buildVideoTrackTree({
@@ -209,6 +210,7 @@ async function buildVideoTrackTree(
             inheritedTrackBlendMode: item.blendMode ?? trackBlendMode,
             inheritedTrackEffects:
               trackEffects.length > 0 ? [...itemEffects, ...trackEffects] : itemEffects,
+            fallbackFps: nestedDoc.fps,
           });
 
           result.tracks.push(...nestedResult.tracks);
@@ -340,6 +342,7 @@ export async function buildVideoWorkerPayloadFromTracks(input: {
     tracks: input.tracks,
     projectStore: input.projectStore,
     workspaceStore: input.workspaceStore,
+    fallbackFps: input.projectStore.projectSettings.project.fps,
   });
 
   return {
@@ -406,6 +409,7 @@ export async function toWorkerTimelineClips(
     parentOpacity?: number;
     parentBlendMode?: TimelineBlendMode;
     parentEffects?: ClipEffect[];
+    fallbackFps?: number;
   },
 ): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];
@@ -505,7 +509,7 @@ export async function toWorkerTimelineClips(
             const nestedDoc = parseTimelineFromOtio(text, {
               id: 'nested',
               name: 'nested',
-              fps: 25,
+              fps: options?.fallbackFps ?? projectStore.projectSettings.project.fps,
             });
 
             const nextVisited = new Set(visitedPaths).add(path);
@@ -538,6 +542,7 @@ export async function toWorkerTimelineClips(
                     parentOpacity: combinedOpacity,
                     parentBlendMode: combinedBlendMode,
                     parentEffects: combinedTrackEffects,
+                    fallbackFps: nestedDoc.fps,
                   },
                 );
 

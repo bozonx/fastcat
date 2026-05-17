@@ -71,6 +71,7 @@ export class VideoCompositor {
   private masterEffectFilters = new Map<string, Filter>();
   private stageSortDirty = true;
   private activeSortDirty = true;
+  private timelineMutation: Promise<unknown> | null = null;
   private clipPreferBitmapFallback = new Map<string, boolean>();
   private videoFrameCache = new VideoFrameCache(
     Math.max(0, Number(VIDEO_CORE_LIMITS.MAX_VIDEO_FRAME_CACHE_MB) || 0) * 1024 * 1024,
@@ -597,8 +598,33 @@ export class VideoCompositor {
   ): Promise<number> {
     if (!this.app) throw new Error('VideoCompositor not initialized');
 
-    // Extract stage-level (master) effects from meta items.
-    // We keep the payload format flexible since it comes from a worker boundary.
+    const mutation = this.loadTimelineLocked(timelineClips, deps, checkCancel);
+    this.timelineMutation = mutation;
+    try {
+      return await mutation;
+    } finally {
+      if (this.timelineMutation === mutation) {
+        this.timelineMutation = null;
+      }
+    }
+  }
+
+  private async loadTimelineLocked(
+    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
+    deps: {
+      getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+      getFileByPath?: (path: string) => Promise<File | null>;
+      getCurrentProjectId?: () => Promise<string | null>;
+      ensureVectorImageRaster?: (params: {
+        projectId: string;
+        projectRelativePath: string;
+        width: number;
+        height: number;
+        sourceFileHandle: FileSystemFileHandle;
+      }) => Promise<FileSystemFileHandle | null>;
+    },
+    checkCancel?: () => boolean,
+  ): Promise<number> {
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
     const nextMaster = meta ? (this.toVideoEffects((meta as any).masterEffects) ?? null) : null;
     this.masterEffects = nextMaster;
@@ -630,6 +656,16 @@ export class VideoCompositor {
         toVideoEffects: (value) => this.toVideoEffects(value),
       },
     });
+    if (checkCancel?.()) {
+      for (const clip of nextClips) {
+        if (!this.clipById.has(clip.itemId)) {
+          this.destroyClip(clip);
+        }
+      }
+      const abortErr = new Error('Timeline load request was superseded');
+      (abortErr as any).name = 'AbortError';
+      throw abortErr;
+    }
     return this.applyLoadedTimeline({
       nextClips,
       nextClipById,
@@ -677,6 +713,7 @@ export class VideoCompositor {
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas) return null;
+    await this.timelineMutation;
 
     return this.renderingEngine.renderFrame(timeUs, options, {
       app: this.app,

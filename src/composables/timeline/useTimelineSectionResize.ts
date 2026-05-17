@@ -1,18 +1,32 @@
-import { ref, onBeforeUnmount, type Ref } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
+import { ref, onBeforeUnmount, watch, type Ref } from 'vue';
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
 const DEFAULT_VIDEO_SECTION_PERCENT = 60;
 
 export interface UseTimelineSectionResizeOptions {
   projectId: Ref<string | null | undefined>;
+  storage?: {
+    get: (key: string) => number | null | undefined;
+    set: (key: string, value: number) => void;
+  };
 }
 
-export function useTimelineSectionResize({ projectId }: UseTimelineSectionResizeOptions) {
-  const videoSectionPercent = useLocalStorage(
-    () => `fastcat-timeline-video-section-${projectId.value}${getPlatformSuffix()}`,
-    DEFAULT_VIDEO_SECTION_PERCENT,
+export function useTimelineSectionResize({ projectId, storage }: UseTimelineSectionResizeOptions) {
+  const getStorageKey = () =>
+    `fastcat-timeline-video-section-${projectId.value}${getPlatformSuffix()}`;
+  const videoSectionPercent = ref(storage?.get(getStorageKey()) ?? DEFAULT_VIDEO_SECTION_PERCENT);
+
+  watch(
+    () => getStorageKey(),
+    (key) => {
+      videoSectionPercent.value = storage?.get(key) ?? DEFAULT_VIDEO_SECTION_PERCENT;
+    },
+    { immediate: true },
   );
+
+  watch(videoSectionPercent, (value) => {
+    storage?.set(getStorageKey(), value);
+  });
 
   const sectionContainerRef = ref<HTMLElement | null>(null);
   const isResizingSections = ref(false);

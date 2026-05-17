@@ -5,6 +5,11 @@ import { useUiStore } from '~/stores/ui.store';
 
 const mockProjectStore = {
   currentProjectId: 'p',
+  projectSettings: {
+    ui: {
+      fileTreeExpandedPaths: [] as string[],
+    },
+  },
 };
 
 vi.mock('~/stores/project.store', () => ({
@@ -15,6 +20,8 @@ describe('ui.store file tree expanded paths', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     localStorage.clear();
+    mockProjectStore.currentProjectId = 'p';
+    mockProjectStore.projectSettings.ui.fileTreeExpandedPaths = [];
     vi.useFakeTimers();
   });
 
@@ -33,10 +40,9 @@ describe('ui.store file tree expanded paths', () => {
 
     await vi.runAllTimersAsync();
 
-    const raw = localStorage.getItem('fastcat:ui:file-tree:p');
-    expect(raw).toBeTypeOf('string');
-    const parsed = JSON.parse(raw!);
-    expect(new Set(parsed.expandedPaths)).toEqual(new Set(['x']));
+    expect(new Set(mockProjectStore.projectSettings.ui.fileTreeExpandedPaths)).toEqual(
+      new Set(['x']),
+    );
   });
 
   it('isolates state between projects', async () => {
@@ -47,25 +53,18 @@ describe('ui.store file tree expanded paths', () => {
     ui.restoreFileTreeStateOnce(); // Initialize context for Project A
     ui.setFileTreePathExpanded('folder-a', true);
     await vi.runAllTimersAsync();
-    
-    const rawA = localStorage.getItem('fastcat:ui:file-tree:project-a');
-    expect(rawA).not.toBeNull();
-    expect(rawA).toContain('folder-a');
+
+    expect(mockProjectStore.projectSettings.ui.fileTreeExpandedPaths).toEqual(['folder-a']);
 
     // Project B
     mockProjectStore.currentProjectId = 'project-b';
+    mockProjectStore.projectSettings.ui.fileTreeExpandedPaths = [];
     ui.restoreFileTreeStateOnce(); // Emulate context switch, should clear memory state
-    
+
     expect(ui.fileTreeExpandedPaths).toEqual({});
     ui.setFileTreePathExpanded('folder-b', true);
     await vi.runAllTimersAsync();
-    
-    const rawB = localStorage.getItem('fastcat:ui:file-tree:project-b');
-    expect(rawB).not.toBeNull();
-    expect(rawB).toContain('folder-b');
-    
-    const rawA_final = localStorage.getItem('fastcat:ui:file-tree:project-a');
-    expect(rawA_final).toContain('folder-a');
-    expect(rawA_final).not.toContain('folder-b');
+
+    expect(mockProjectStore.projectSettings.ui.fileTreeExpandedPaths).toEqual(['folder-b']);
   });
 });

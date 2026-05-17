@@ -125,7 +125,7 @@ export interface VideoCoreWorkerAPI {
     height: number,
     bgColor: string,
   ): Promise<void>;
-  loadTimeline(clips: WorkerVideoPayloadItem[]): Promise<number>;
+  loadTimeline(clips: WorkerVideoPayloadItem[], requestId?: number): Promise<number>;
   updateTimelineLayout(clips: WorkerVideoPayloadItem[]): Promise<number>;
   renderFrame(
     timeUs: number,

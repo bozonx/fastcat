@@ -49,7 +49,7 @@ export function useExportConfig() {
   const normalizedExportFps = computed(() => {
     const value = Number(exportFps.value);
     if (!Number.isFinite(value) || value <= 0) return 30;
-    return Math.round(Math.min(240, Math.max(1, value)));
+    return Math.min(240, Math.max(1, value));
   });
 
   return {

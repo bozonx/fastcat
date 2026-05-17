@@ -20,9 +20,6 @@ import { useRuntimeConfig } from '#app';
 import {
   readLocalStorageJson,
   readLocalStorageString,
-  writeLocalStorageJson,
-  writeLocalStorageString,
-  removeLocalStorageKey,
   STORAGE_KEYS,
 } from '~/stores/ui/uiLocalStorage';
 
@@ -126,18 +123,18 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   watch(lastProjectName, (v) => {
     if (isEphemeral.value) return;
-    if (v === null) {
-      removeLocalStorageKey(STORAGE_KEYS.WORKSPACE.LAST_PROJECT);
-    } else {
-      writeLocalStorageString(STORAGE_KEYS.WORKSPACE.LAST_PROJECT, v);
-    }
+    void batchUpdateWorkspaceState((draft) => {
+      draft.ui.lastProjectName = v;
+    });
   });
 
   watch(
     recentProjects,
     (v) => {
       if (isEphemeral.value) return;
-      writeLocalStorageJson(STORAGE_KEYS.WORKSPACE.RECENT_PROJECTS, v);
+      void batchUpdateWorkspaceState((draft) => {
+        draft.ui.recentProjects = [...v];
+      });
     },
     { deep: true },
   );
@@ -204,6 +201,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     await loadAppSettingsFromDisk();
     await loadUserSettingsFromDisk();
     await loadWorkspaceStateFromDisk();
+    if (workspaceState.value.ui.lastProjectName !== null) {
+      lastProjectName.value = workspaceState.value.ui.lastProjectName;
+    } else if (lastProjectName.value !== null) {
+      workspaceState.value.ui.lastProjectName = lastProjectName.value;
+    }
+    if (workspaceState.value.ui.recentProjects.length > 0) {
+      recentProjects.value = workspaceState.value.ui.recentProjects;
+    } else if (recentProjects.value.length > 0) {
+      workspaceState.value.ui.recentProjects = recentProjects.value;
+    }
     await saveAppSettingsToDisk();
     await saveUserSettingsToDisk();
     await saveWorkspaceStateToDisk();

@@ -81,7 +81,15 @@ const timelineWidthStyle = computed(() => {
 
 // --- Composables ---
 const { videoSectionPercent, sectionContainerRef, onSectionResizeStart, resetSectionPercent } =
-  useTimelineSectionResize({ projectId: currentProjectId });
+  useTimelineSectionResize({
+    projectId: currentProjectId,
+    storage: {
+      get: (key) => projectStore.projectSettings.ui.layout.splitSizes[key]?.[0] ?? null,
+      set: (key, value) => {
+        projectStore.projectSettings.ui.layout.splitSizes[key] = [value];
+      },
+    },
+  });
 
 const {
   scrollLeftRef,

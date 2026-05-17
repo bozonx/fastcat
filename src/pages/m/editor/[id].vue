@@ -12,7 +12,7 @@ import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { until, useLocalStorage, useMediaQuery } from '@vueuse/core';
+import { until, useMediaQuery } from '@vueuse/core';
 
 definePageMeta({
   layout: 'mobile',
@@ -120,8 +120,20 @@ const isVerticalProject = computed(() => {
 });
 
 // Persisted panel sizes (percent of container)
-const portraitMonitorHeight = useLocalStorage('mobile_monitor_size_portrait', 38);
-const landscapeMonitorWidth = useLocalStorage('mobile_monitor_size_landscape', 42);
+const portraitMonitorHeight = computed({
+  get: () =>
+    projectStore.projectSettings.ui.layout.splitSizes['mobile-monitor:portrait']?.[0] ?? 38,
+  set: (value: number) => {
+    projectStore.projectSettings.ui.layout.splitSizes['mobile-monitor:portrait'] = [value];
+  },
+});
+const landscapeMonitorWidth = computed({
+  get: () =>
+    projectStore.projectSettings.ui.layout.splitSizes['mobile-monitor:landscape']?.[0] ?? 42,
+  set: (value: number) => {
+    projectStore.projectSettings.ui.layout.splitSizes['mobile-monitor:landscape'] = [value];
+  },
+});
 
 const monitorStyle = computed(() =>
   isLandscapeMode.value
