@@ -134,4 +134,137 @@ describe('TimelineStore Copy/Paste', () => {
       5_000_000,
     );
   });
+
+  it('creates a new linked group on paste instead of reusing the original group id', () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withTrack('a1', 'audio', 'Audio 1')
+      .withClip('vclip', 'v1', { startUs: 0, durationUs: 1_000_000 })
+      .withClip('aclip', 'a1', { startUs: 0, durationUs: 1_000_000 })
+      .build() as any;
+
+    const video = store.timelineDoc.tracks[0].items.find((item: any) => item.id === 'vclip');
+    const audio = store.timelineDoc.tracks[1].items.find((item: any) => item.id === 'aclip');
+    video.linkedGroupId = 'original-group';
+    audio.linkedGroupId = 'original-group';
+    audio.linkedVideoClipId = 'vclip';
+    audio.lockToLinkedVideo = true;
+
+    store.selectedItemIds = ['vclip', 'aclip'];
+    const copiedItems = store.copySelectedClips();
+
+    const pastedItems = store.pasteClips(copiedItems, {
+      targetTrackId: 'v1',
+      insertStartUs: 5_000_000,
+    });
+
+    const pastedVideo = store.timelineDoc.tracks
+      .flatMap((track: any) => track.items)
+      .find((item: any) => item.id === pastedItems.find((item) => item.trackId === 'v1')?.itemId);
+    const pastedAudio = store.timelineDoc.tracks
+      .flatMap((track: any) => track.items)
+      .find((item: any) => item.id === pastedItems.find((item) => item.trackId === 'a1')?.itemId);
+
+    expect(pastedVideo.linkedGroupId).toBeTruthy();
+    expect(pastedVideo.linkedGroupId).toBe(pastedAudio.linkedGroupId);
+    expect(pastedVideo.linkedGroupId).not.toBe('original-group');
+    expect(pastedAudio.linkedVideoClipId).toBe(pastedVideo.id);
+    expect(pastedAudio.lockToLinkedVideo).toBe(true);
+  });
+
+  it('drops linked video lock when pasting only linked audio', () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withTrack('a1', 'audio', 'Audio 1')
+      .withClip('vclip', 'v1', { startUs: 0, durationUs: 1_000_000 })
+      .withClip('aclip', 'a1', { startUs: 0, durationUs: 1_000_000 })
+      .build() as any;
+
+    const audio = store.timelineDoc.tracks[1].items.find((item: any) => item.id === 'aclip');
+    audio.linkedVideoClipId = 'vclip';
+    audio.lockToLinkedVideo = true;
+
+    store.selectedItemIds = ['aclip'];
+    const copiedItems = store.copySelectedClips();
+
+    const [pasted] = store.pasteClips(copiedItems, {
+      targetTrackId: 'a1',
+      insertStartUs: 5_000_000,
+    });
+
+    const pastedAudio = store.timelineDoc.tracks
+      .flatMap((track: any) => track.items)
+      .find((item: any) => item.id === pasted?.itemId);
+
+    expect(pastedAudio.linkedVideoClipId).toBeUndefined();
+    expect(pastedAudio.lockToLinkedVideo).toBe(false);
+  });
+
+  it('preserves clip active flags, mask and hud frame properties on paste', () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withClip('clip1', 'v1', { startUs: 0, durationUs: 1_000_000, clipType: 'media' })
+      .build() as any;
+
+    const clip = store.timelineDoc.tracks[0].items.find((item: any) => item.id === 'clip1');
+    Object.assign(clip, {
+      speedActive: true,
+      transformActive: true,
+      opacityActive: true,
+      blendModeActive: true,
+      audioFadesActive: true,
+      maskActive: true,
+      mask: { source: { path: '/mask.png' }, mode: 'alpha' },
+      frame: { scaleX: 1.5 },
+    });
+
+    store.selectedItemIds = ['clip1'];
+    const copiedItems = store.copySelectedClips();
+    const [pasted] = store.pasteClips(copiedItems, {
+      targetTrackId: 'v1',
+      insertStartUs: 5_000_000,
+    });
+
+    const pastedClip = store.timelineDoc.tracks[0].items.find(
+      (item: any) => item.id === pasted?.itemId,
+    );
+    expect(pastedClip.speedActive).toBe(true);
+    expect(pastedClip.transformActive).toBe(true);
+    expect(pastedClip.opacityActive).toBe(true);
+    expect(pastedClip.blendModeActive).toBe(true);
+    expect(pastedClip.audioFadesActive).toBe(true);
+    expect(pastedClip.maskActive).toBe(true);
+    expect(pastedClip.mask).toEqual({ source: { path: '/mask.png' }, mode: 'alpha' });
+    expect(pastedClip.frame).toEqual({ scaleX: 1.5 });
+  });
+
+  it('keeps pasted audio clips on compatible audio tracks', () => {
+    const store = useTimelineStore();
+    const builder = new TimelineBuilder();
+    store.timelineDoc = builder
+      .withTrack('v1', 'video', 'Video 1')
+      .withTrack('v2', 'video', 'Video 2')
+      .withTrack('a1', 'audio', 'Audio 1')
+      .withClip('aclip', 'a1', { startUs: 0, durationUs: 1_000_000 })
+      .build() as any;
+
+    store.selectedItemIds = ['aclip'];
+    const copiedItems = store.copySelectedClips();
+    const [pasted] = store.pasteClips(copiedItems, {
+      targetTrackId: 'v2',
+      insertStartUs: 5_000_000,
+    });
+
+    expect(pasted?.trackId).toBe('a1');
+    const pastedAudio = store.timelineDoc.tracks
+      .find((track: any) => track.id === 'a1')
+      ?.items.find((item: any) => item.id === pasted?.itemId);
+    expect(pastedAudio).toBeTruthy();
+  });
 });

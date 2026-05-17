@@ -515,16 +515,42 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     // Map to translate old IDs to new IDs for preserving links within the pasted group
     const idMap = new Map<string, string>();
 
+    const pastedGroupIds = new Map<string, string>();
+
+    function getSourceTrackKind(item: TimelineClipClipboardItem): TimelineTrack['kind'] {
+      const sourceTrack = doc.tracks.find((track) => track.id === item.sourceTrackId);
+      if (sourceTrack) return sourceTrack.kind;
+      if (item.clip.clipType !== 'media' && item.clip.clipType !== 'timeline') return 'video';
+      return baseTargetTrack.kind;
+    }
+
+    function resolveCompatibleTargetTrack(item: TimelineClipClipboardItem): TimelineTrack {
+      const sourceTrackIndex = doc.tracks.findIndex((track) => track.id === item.sourceTrackId);
+      const desiredIndex =
+        sourceTrackIndex === -1
+          ? baseTargetTrackIndex
+          : baseTargetTrackIndex + (sourceTrackIndex - minSourceTrackIndex);
+      const sourceKind = getSourceTrackKind(item);
+      const desiredTrack = doc.tracks[desiredIndex];
+
+      if (desiredTrack?.kind === sourceKind) return desiredTrack;
+      if (baseTargetTrack.kind === sourceKind) return baseTargetTrack;
+
+      return doc.tracks.find((track) => track.kind === sourceKind) ?? baseTargetTrack;
+    }
+
     for (const item of items) {
       const clip = item.clip;
-      const targetTrack =
-        doc.tracks[
-          baseTargetTrackIndex +
-            (doc.tracks.findIndex((t) => t.id === item.sourceTrackId) - minSourceTrackIndex)
-        ] || baseTargetTrack;
+      const targetTrack = resolveCompatibleTargetTrack(item);
 
       const newClipId = `clip_${targetTrack.id}_paste_${Math.random().toString(36).substring(2, 9)}`;
       idMap.set(clip.id, newClipId);
+      if (clip.linkedGroupId && !pastedGroupIds.has(clip.linkedGroupId)) {
+        pastedGroupIds.set(
+          clip.linkedGroupId,
+          `group_paste_${Math.random().toString(36).substring(2, 9)}`,
+        );
+      }
       pasteDescriptor.push({ trackId: targetTrack.id, itemId: newClipId });
     }
 
@@ -569,10 +595,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
       // Translate linked IDs if the target is also being pasted
       const translatedLinkedVideoId = clip.linkedVideoClipId
-        ? idMap.get(clip.linkedVideoClipId) || clip.linkedVideoClipId
+        ? idMap.get(clip.linkedVideoClipId)
         : undefined;
       const translatedGroupId = clip.linkedGroupId
-        ? idMap.get(clip.linkedGroupId) || clip.linkedGroupId
+        ? pastedGroupIds.get(clip.linkedGroupId)
         : undefined;
 
       commands.push({
@@ -587,13 +613,16 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           effects: cloneClip(clip.effects ?? []),
           freezeFrameSourceUs: clip.freezeFrameSourceUs,
           speed: clip.speed,
+          speedActive: clip.speedActive,
           transform: cloneValue(clip.transform),
+          transformActive: clip.transformActive,
           audioGain: clip.audioGain,
           audioBalance: clip.audioBalance,
           audioFadeInUs: clip.audioFadeInUs,
           audioFadeOutUs: clip.audioFadeOutUs,
           audioFadeInCurve: clip.audioFadeInCurve,
           audioFadeOutCurve: clip.audioFadeOutCurve,
+          audioFadesActive: clip.audioFadesActive,
           audioMuted: clip.audioMuted,
           audioWaveformMode: clip.audioWaveformMode,
           showWaveform: clip.showWaveform,
@@ -602,8 +631,12 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           sourceDurationUs: clip.sourceDurationUs,
           audioFromVideoDisabled: clip.audioFromVideoDisabled,
           linkedVideoClipId: translatedLinkedVideoId,
-          lockToLinkedVideo: clip.lockToLinkedVideo,
+          lockToLinkedVideo: translatedLinkedVideoId ? clip.lockToLinkedVideo : false,
           linkedGroupId: translatedGroupId,
+          opacityActive: clip.opacityActive,
+          blendModeActive: clip.blendModeActive,
+          mask: cloneValue(clip.mask),
+          maskActive: clip.maskActive,
           backgroundColor: 'backgroundColor' in clip ? clip.backgroundColor : undefined,
           text: 'text' in clip ? clip.text : undefined,
           style: 'style' in clip ? cloneValue(clip.style) : undefined,
@@ -615,6 +648,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           hudType: 'hudType' in clip ? clip.hudType : undefined,
           background: 'background' in clip ? cloneValue(clip.background) : undefined,
           content: 'content' in clip ? cloneValue(clip.content) : undefined,
+          frame: 'frame' in clip ? cloneValue(clip.frame) : undefined,
         },
       });
 

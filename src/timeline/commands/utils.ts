@@ -207,6 +207,42 @@ export function mergeAdjacentGaps(items: TimelineTrackItem[]): TimelineTrackItem
   return result;
 }
 
+export function getClipSourceRangeForTimelineSegment(
+  clip: TimelineClipItem,
+  segmentStartUs: number,
+  segmentDurationUs: number,
+): { startUs: number; durationUs: number } {
+  const clipStartUs = Math.max(0, Math.round(clip.timelineRange.startUs));
+  const clipDurationUs = Math.max(0, Math.round(clip.timelineRange.durationUs));
+  const clipEndUs = clipStartUs + clipDurationUs;
+  const segmentStart = Math.max(clipStartUs, Math.round(segmentStartUs));
+  const segmentEnd = Math.min(clipEndUs, segmentStart + Math.max(0, Math.round(segmentDurationUs)));
+  const safeSegmentDurationUs = Math.max(0, segmentEnd - segmentStart);
+
+  const speed = typeof clip.speed === 'number' && Number.isFinite(clip.speed) ? clip.speed : 1;
+  const absSpeed = Math.abs(speed) || 1;
+  const sourceStartUs = Math.round(clip.sourceRange.startUs);
+  const sourceDurationUs = Math.max(0, Math.round(clip.sourceRange.durationUs));
+  const sourceEndUs = sourceStartUs + sourceDurationUs;
+  const localStartUs = Math.max(0, Math.round((segmentStart - clipStartUs) * absSpeed));
+  const localDurationUs = Math.max(0, Math.round(safeSegmentDurationUs * absSpeed));
+
+  if (speed >= 0) {
+    const nextStartUs = Math.min(sourceEndUs, sourceStartUs + localStartUs);
+    return {
+      startUs: nextStartUs,
+      durationUs: Math.max(0, Math.min(localDurationUs, sourceEndUs - nextStartUs)),
+    };
+  }
+
+  const nextEndUs = Math.max(sourceStartUs, sourceEndUs - localStartUs);
+  const nextStartUs = Math.max(sourceStartUs, nextEndUs - localDurationUs);
+  return {
+    startUs: nextStartUs,
+    durationUs: Math.max(0, nextEndUs - nextStartUs),
+  };
+}
+
 export function sliceTrackItemsForOverlay(
   items: TimelineTrackItem[],
   startUs: number,
@@ -251,20 +287,16 @@ export function sliceTrackItemsForOverlay(
       continue;
     }
 
-    const itSpeed = typeof it.speed === 'number' && Number.isFinite(it.speed) ? it.speed : 1;
-    const itAbsSpeed = Math.abs(itSpeed) || 1;
-
     // Overlaps only on the left side: trim end of existing clip
     if (itStart < startUs && itEnd > startUs && itEnd <= endUs) {
       const newDuration = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
         : Math.max(0, Math.round(startUs - itStart));
       if (newDuration > 0) {
-        const newSourceDuration = Math.max(0, Math.round(newDuration * itAbsSpeed));
         nextItems.push({
           ...it,
           timelineRange: { startUs: itStart, durationUs: newDuration },
-          sourceRange: { ...it.sourceRange, durationUs: newSourceDuration },
+          sourceRange: getClipSourceRangeForTimelineSegment(it, itStart, newDuration),
         });
       }
       continue;
@@ -272,8 +304,6 @@ export function sliceTrackItemsForOverlay(
 
     // Overlaps only on the right side: trim start of existing clip
     if (itStart >= startUs && itStart < endUs && itEnd > endUs) {
-      const trimDelta = endUs - itStart;
-      const sourceTrimDelta = Math.max(0, Math.round(trimDelta * itAbsSpeed));
       const newStart = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
         : Math.max(0, Math.round(endUs));
@@ -281,24 +311,10 @@ export function sliceTrackItemsForOverlay(
         ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endUs));
       if (newDuration > 0) {
-        const newSourceDuration = Math.max(
-          0,
-          Math.min(
-            Math.round(newDuration * itAbsSpeed),
-            it.sourceRange.durationUs - sourceTrimDelta,
-          ),
-        );
-        const newSourceStartUs = Math.min(
-          it.sourceRange.startUs + sourceTrimDelta,
-          it.sourceRange.startUs + it.sourceRange.durationUs,
-        );
         nextItems.push({
           ...it,
           timelineRange: { startUs: newStart, durationUs: newDuration },
-          sourceRange: {
-            startUs: newSourceStartUs,
-            durationUs: newSourceDuration,
-          },
+          sourceRange: getClipSourceRangeForTimelineSegment(it, newStart, newDuration),
         });
       }
       continue;
@@ -310,15 +326,12 @@ export function sliceTrackItemsForOverlay(
         ? quantizeTimeUsToFrames(startUs - itStart, fps, 'floor')
         : Math.max(0, Math.round(startUs - itStart));
       if (leftDuration > 0) {
-        const leftSourceDuration = Math.max(0, Math.round(leftDuration * itAbsSpeed));
         nextItems.push({
           ...it,
           timelineRange: { startUs: itStart, durationUs: leftDuration },
-          sourceRange: { ...it.sourceRange, durationUs: leftSourceDuration },
+          sourceRange: getClipSourceRangeForTimelineSegment(it, itStart, leftDuration),
         });
       }
-      const rightTrimDelta = endUs - itStart;
-      const rightSourceTrimDelta = Math.max(0, Math.round(rightTrimDelta * itAbsSpeed));
       const rightStart = shouldQuantizeToFrames
         ? quantizeTimeUsToFrames(endUs, fps, 'ceil')
         : Math.max(0, Math.round(endUs));
@@ -326,25 +339,11 @@ export function sliceTrackItemsForOverlay(
         ? quantizeTimeUsToFrames(itEnd - endUs, fps, 'floor')
         : Math.max(0, Math.round(itEnd - endUs));
       if (rightDuration > 0) {
-        const rightSourceDuration = Math.max(
-          0,
-          Math.min(
-            Math.round(rightDuration * itAbsSpeed),
-            it.sourceRange.durationUs - rightSourceTrimDelta,
-          ),
-        );
-        const rightSourceStartUs = Math.min(
-          it.sourceRange.startUs + rightSourceTrimDelta,
-          it.sourceRange.startUs + it.sourceRange.durationUs,
-        );
         nextItems.push({
           ...it,
           id: nextItemId(it.trackId, 'clip'),
           timelineRange: { startUs: rightStart, durationUs: rightDuration },
-          sourceRange: {
-            startUs: rightSourceStartUs,
-            durationUs: rightSourceDuration,
-          },
+          sourceRange: getClipSourceRangeForTimelineSegment(it, rightStart, rightDuration),
         });
       }
       continue;

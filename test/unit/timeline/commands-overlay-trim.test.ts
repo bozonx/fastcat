@@ -120,4 +120,41 @@ describe('timeline/commands overlay_trim_item', () => {
     expect(mover).toBeTruthy();
     expect(mover.timelineRange.startUs).toBe(3_500_000);
   });
+
+  it('trims the correct source edge for reversed clips', () => {
+    const doc = makeDoc([
+      {
+        id: 'v1',
+        kind: 'video',
+        name: 'V1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'mover',
+            trackId: 'v1',
+            name: 'Mover',
+            source: { path: 'a.mp4' },
+            sourceDurationUs: 10_000_000,
+            speed: -1,
+            timelineRange: { startUs: 2_000_000, durationUs: 2_000_000 },
+            sourceRange: { startUs: 4_000_000, durationUs: 2_000_000 },
+          },
+        ],
+      },
+    ]);
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'overlay_trim_item',
+      trackId: 'v1',
+      itemId: 'mover',
+      edge: 'start',
+      deltaUs: 1_000_000,
+      quantizeToFrames: false,
+    });
+
+    const mover = clips(next.tracks[0]!).find((x) => x.id === 'mover');
+    expect(mover.timelineRange).toEqual({ startUs: 3_000_000, durationUs: 1_000_000 });
+    expect(mover.sourceRange).toEqual({ startUs: 4_000_000, durationUs: 1_000_000 });
+  });
 });

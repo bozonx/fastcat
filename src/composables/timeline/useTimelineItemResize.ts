@@ -520,6 +520,7 @@ export function useTimelineItemResize(
       let newDurationUs = Math.min(
         Math.max(0, resizeTransition.value.startDurationUs + deltaUs),
         hardMaxUs,
+        maxUsRaw,
       );
 
       if (timelineSettingsStore.toolbarSnapMode === 'snap') {
@@ -569,7 +570,7 @@ export function useTimelineItemResize(
               item.timelineRange.startUs + item.timelineRange.durationUs - snap.snappedUs,
             );
           }
-          newDurationUs = Math.min(hardMaxUs, newDurationUs);
+          newDurationUs = Math.min(hardMaxUs, maxUsRaw, newDurationUs);
         }
       }
 

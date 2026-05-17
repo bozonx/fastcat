@@ -286,6 +286,60 @@ describe('timeline/commands overlay_place_item', () => {
     expect(movedClip.timelineRange.startUs).toBe(3_000_000);
   });
 
+  it('preserves source ranges when splitting a reversed clip', () => {
+    const doc = makeDoc([
+      {
+        id: 'v1',
+        kind: 'video',
+        name: 'V1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'long',
+            trackId: 'v1',
+            name: 'Long',
+            source: { path: 'a.mp4' },
+            sourceDurationUs: 10_000_000,
+            speed: -1,
+            timelineRange: { startUs: 0, durationUs: 6_000_000 },
+            sourceRange: { startUs: 2_000_000, durationUs: 6_000_000 },
+          },
+          {
+            kind: 'clip',
+            clipType: 'background',
+            id: 'short',
+            trackId: 'v1',
+            name: 'Short',
+            backgroundColor: '#fff',
+            timelineRange: { startUs: 20_000_000, durationUs: 2_000_000 },
+            sourceRange: { startUs: 0, durationUs: 2_000_000 },
+          },
+        ],
+      },
+    ]);
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'overlay_place_item',
+      fromTrackId: 'v1',
+      toTrackId: 'v1',
+      itemId: 'short',
+      startUs: 2_000_000,
+      quantizeToFrames: false,
+    });
+
+    const resultClips = clips(next.tracks[0]!);
+    const longPieces = resultClips
+      .filter((x) => x.id !== 'short')
+      .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+    expect(longPieces).toHaveLength(2);
+    expect(longPieces[0].timelineRange).toEqual({ startUs: 0, durationUs: 2_000_000 });
+    expect(longPieces[0].sourceRange).toEqual({ startUs: 6_000_000, durationUs: 2_000_000 });
+    expect(longPieces[1].timelineRange).toEqual({ startUs: 4_000_000, durationUs: 2_000_000 });
+    expect(longPieces[1].sourceRange).toEqual({ startUs: 2_000_000, durationUs: 2_000_000 });
+  });
+
   it('no gaps between clips after overlay placement', () => {
     const doc = makeDoc([
       {
