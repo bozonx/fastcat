@@ -14,6 +14,9 @@ export class CanvasFallbackRenderer {
 
   public ensureCanvasFallback(clip: CompositorClip) {
     if (clip.canvas && clip.ctx) return;
+    if (!clip.sprite) {
+      throw new Error('Cannot ensure canvas fallback: clip.sprite is null');
+    }
     const clipCanvas = new OffscreenCanvas(2, 2);
     const clipCtx = clipCanvas.getContext('2d');
     if (!clipCtx) {
@@ -27,6 +30,7 @@ export class CanvasFallbackRenderer {
   }
 
   public async drawSampleToCanvas(sample: any, clip: CompositorClip) {
+    if (!clip.sprite) return;
     this.ensureCanvasFallback(clip);
     const ctx = clip.ctx;
     const canvas = clip.canvas;

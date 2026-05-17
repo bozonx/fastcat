@@ -1,6 +1,30 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { formatTime } from '~/utils/time';
+import { formatTime, secondsToUs } from '~/utils/time';
+
+describe('secondsToUs', () => {
+  it('rounds by default', () => {
+    expect(secondsToUs(1.000_000_4)).toBe(1_000_000);
+    expect(secondsToUs(1.000_000_5)).toBe(1_000_001);
+  });
+
+  it('floors when requested', () => {
+    expect(secondsToUs(1.000_000_9, 'floor')).toBe(1_000_000);
+    expect(secondsToUs(1.0, 'floor')).toBe(1_000_000);
+  });
+
+  it('ceils when requested', () => {
+    expect(secondsToUs(1.000_000_1, 'ceil')).toBe(1_000_001);
+    expect(secondsToUs(1.0, 'ceil')).toBe(1_000_000);
+  });
+
+  it('returns 0 for non-finite or non-positive values', () => {
+    expect(secondsToUs(NaN)).toBe(0);
+    expect(secondsToUs(Infinity)).toBe(0);
+    expect(secondsToUs(-1)).toBe(0);
+    expect(secondsToUs(0)).toBe(0);
+  });
+});
 
 describe('formatTime', () => {
   it('formats 0 seconds correctly', () => {

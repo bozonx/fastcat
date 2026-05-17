@@ -43,9 +43,36 @@ export class VideoFrameCache {
   public get(key: string): CachedVideoFrameEntry | null {
     const entry = this.videoFrameCache.get(key);
     if (!entry) return null;
+
+    const closed = !!(entry.frame as any).closed;
+    if (closed) {
+      this.videoFrameCache.delete(key);
+      this.videoFrameCacheSizeBytes -= entry.sizeBytes;
+      if (this.videoFrameCacheSizeBytes < 0) {
+        this.videoFrameCacheSizeBytes = 0;
+      }
+      return null;
+    }
+
     this.videoFrameCache.delete(key);
     this.videoFrameCache.set(key, entry);
     return entry;
+  }
+
+  public delete(key: string): boolean {
+    const entry = this.videoFrameCache.get(key);
+    if (!entry) return false;
+    this.videoFrameCache.delete(key);
+    this.videoFrameCacheSizeBytes -= entry.sizeBytes;
+    if (this.videoFrameCacheSizeBytes < 0) {
+      this.videoFrameCacheSizeBytes = 0;
+    }
+    try {
+      entry.frame.close();
+    } catch {
+      // ignore
+    }
+    return true;
   }
 
   public set(entry: CachedVideoFrameEntry) {

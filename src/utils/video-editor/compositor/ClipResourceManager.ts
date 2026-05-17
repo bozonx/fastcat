@@ -23,6 +23,8 @@ export interface ClipResourceManagerContext {
 }
 
 export class ClipResourceManager {
+  private readonly inFlightSamples = new Map<string, Promise<any | null>>();
+
   constructor(private readonly context: ClipResourceManagerContext) {}
 
   public setSize(width: number, height: number) {
@@ -116,13 +118,41 @@ export class ClipResourceManager {
     const { clip, sampleTimeS, abortSignal } = params;
     const frameIndex = computeFrameIndex(clip, sampleTimeS);
     const cacheKey = buildVideoFrameCacheKey(clip, frameIndex);
+
     const cached = this.context.videoFrameCache.get(cacheKey);
     if (cached) {
       return {
-        toVideoFrame: () => cached.frame.clone(),
+        toVideoFrame: () => {
+          if ((cached.frame as any).closed) {
+            throw new Error('Cached VideoFrame is closed');
+          }
+          return cached.frame.clone();
+        },
       };
     }
 
+    const inFlight = this.inFlightSamples.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const promise = this.fetchVideoSampleForClip(clip, sampleTimeS, frameIndex, cacheKey, abortSignal);
+    this.inFlightSamples.set(cacheKey, promise);
+
+    try {
+      return await promise;
+    } finally {
+      this.inFlightSamples.delete(cacheKey);
+    }
+  }
+
+  private async fetchVideoSampleForClip(
+    clip: CompositorClip,
+    sampleTimeS: number,
+    frameIndex: number,
+    cacheKey: string,
+    abortSignal?: AbortSignal,
+  ): Promise<any | null> {
     const sample = await this.context.resourceManager.withVideoSampleSlot(
       () => getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
       abortSignal,
@@ -156,7 +186,12 @@ export class ClipResourceManager {
       });
 
       return {
-        toVideoFrame: () => frame.clone(),
+        toVideoFrame: () => {
+          if ((frame as any).closed) {
+            throw new Error('VideoFrame is closed');
+          }
+          return frame.clone();
+        },
       };
     } finally {
       if (typeof sampleValue?.close === 'function') {
