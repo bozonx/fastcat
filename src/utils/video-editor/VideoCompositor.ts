@@ -689,6 +689,7 @@ export class VideoCompositor {
       stageSortDirty: this.stageSortDirty,
       activeSortDirty: this.activeSortDirty,
       contextLost: this.contextLost,
+      previewEffectsEnabled: this.previewEffectsEnabled,
       setPreviewEffectsEnabled: (enabled) => {
         this.previewEffectsEnabled = enabled;
       },

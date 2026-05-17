@@ -231,9 +231,10 @@ export class TransitionRenderer {
       clip.clipKind === 'image' ||
       clip.clipKind === 'solid' ||
       clip.clipKind === 'text' ||
-      clip.clipKind === 'shape'
+      clip.clipKind === 'shape' ||
+      clip.clipKind === 'hud'
     ) {
-      params.stageTextureRenderer.renderSingleClipToTexture(clip, texture);
+      params.stageTextureRenderer.renderSingleClipToTexture(clip, texture, true);
       return true;
     }
 

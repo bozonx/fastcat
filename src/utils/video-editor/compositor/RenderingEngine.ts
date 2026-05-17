@@ -14,6 +14,7 @@ export interface RenderingEngineContext {
   stageSortDirty: boolean;
   activeSortDirty: boolean;
   contextLost: boolean;
+  previewEffectsEnabled: boolean;
   setPreviewEffectsEnabled: (enabled: boolean) => void;
   applyVideoFrameCacheLimit: (limitMb: number | undefined) => void;
   abortInFlightResources: () => void;
@@ -54,7 +55,9 @@ export class RenderingEngine {
       context.abortInFlightResources();
     }
 
-    context.setPreviewEffectsEnabled(options?.previewEffectsEnabled !== false);
+    const nextPreviewEffectsEnabled = options?.previewEffectsEnabled !== false;
+    const previewEffectsChanged = context.previewEffectsEnabled !== nextPreviewEffectsEnabled;
+    context.setPreviewEffectsEnabled(nextPreviewEffectsEnabled);
 
     if (context.contextLost) {
       return null;
@@ -62,6 +65,7 @@ export class RenderingEngine {
 
     if (
       timeUs === context.lastRenderedTimeUs &&
+      !previewEffectsChanged &&
       !context.stageSortDirty &&
       !context.activeSortDirty
     ) {

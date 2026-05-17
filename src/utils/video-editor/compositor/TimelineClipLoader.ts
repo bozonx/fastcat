@@ -109,7 +109,7 @@ export class TimelineClipLoader {
         Number(
           typeof clipSourceDurationRaw === 'number' && clipSourceDurationRaw > 0
             ? clipSourceDurationRaw
-            : clipData.sourceRange?.durationUs || requestedTimelineDurationUs,
+            : 0,
         ),
       ),
     );

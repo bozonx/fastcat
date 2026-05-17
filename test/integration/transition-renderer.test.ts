@@ -241,4 +241,76 @@ describe('TransitionRenderer', () => {
     expect(sample.close).toHaveBeenCalledTimes(1);
     expect(app.renderer.render).toHaveBeenCalledTimes(1);
   });
+
+  it('forces an inactive static adjacent clip visible while rendering transition texture', async () => {
+    const renderer = new TransitionRenderer();
+    const prevClip = {
+      itemId: 'clip-prev',
+      clipKind: 'image',
+      sprite: { visible: false },
+    } as any;
+    const clip = {
+      itemId: 'clip-current',
+      startUs: 1_000,
+      layer: 1,
+      clipKind: 'video',
+      sprite: { visible: true },
+      transitionSprite: null,
+      transitionFilter: { id: 'existing-filter' },
+      transitionFromTexture: null,
+      transitionToTexture: null,
+      transitionOutputTexture: null,
+    } as any;
+    const transitionSprite = {
+      visible: false,
+      filters: null,
+      scale: { set: vi.fn() },
+      width: 0,
+      height: 0,
+      alpha: 0,
+      blendMode: 'normal',
+      texture: null,
+    } as any;
+    const stageTextureRenderer = {
+      renderSingleClipToTexture: vi.fn(),
+      renderLowerLayersToTexture: vi.fn(),
+      ensureTransitionSprite: vi.fn(() => transitionSprite),
+    } as any;
+
+    await renderer.applyShaderTransitions([clip], 1_250, {
+      app: {
+        renderer: { render: vi.fn() },
+        stage: { children: [] },
+      } as any,
+      clips: [clip, prevClip],
+      width: 1280,
+      height: 720,
+      transitionManager: {
+        ensureUsableTransitionFilter: vi.fn(() => ({ id: 'usable-filter' })),
+        updateTransitionFilterSafely: vi.fn(() => ({ id: 'updated-filter' })),
+      } as any,
+      stageTextureRenderer,
+      getTrackById: vi.fn(),
+      getActiveTransitionState: () => ({
+        manifest: { renderMode: 'shader' },
+        progress: 0.25,
+        curve: 'linear',
+        edge: 'in',
+        transition: { durationUs: 1_000, mode: 'adjacent', params: {} },
+      }),
+      ensureTransitionRenderTexture: ((texture: any) => texture ?? { id: Math.random() }) as any,
+      findPrevClipOnLayer: vi.fn(() => prevClip),
+      findNextClipOnLayer: vi.fn(),
+      createAbortController: vi.fn(() => new AbortController()),
+      getVideoSampleForClip: vi.fn(),
+      updateClipTextureFromSample: vi.fn(),
+    });
+
+    expect(stageTextureRenderer.renderSingleClipToTexture).toHaveBeenCalledWith(
+      prevClip,
+      clip.transitionFromTexture,
+      true,
+    );
+    expect(prevClip.sprite.visible).toBe(false);
+  });
 });

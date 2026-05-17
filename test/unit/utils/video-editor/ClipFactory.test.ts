@@ -158,6 +158,20 @@ describe('ClipFactory', () => {
     });
 
     expect(clip.clipKind).toBe('video');
+    expect(clip.clipType).toBe('media');
     expect(clip.sourcePath).toBe('video.mp4');
+  });
+
+  it('creates an image clip with media clipType so it can be reused', () => {
+    const clip = factory.createImageClip({
+      ...baseParams,
+      sourcePath: 'image.png',
+      fileHandle: {} as any,
+      bitmap: null,
+      imageSource: {} as any,
+    });
+
+    expect(clip.clipKind).toBe('image');
+    expect(clip.clipType).toBe('media');
   });
 });

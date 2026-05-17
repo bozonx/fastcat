@@ -48,6 +48,16 @@ describe('VideoCompositor render optimization', () => {
     expect(app.renderer.render).toHaveBeenCalledTimes(1);
   });
 
+  it('renders when preview effects state changes even if time is unchanged', async () => {
+    const { compositor, app } = createCompositor();
+    compositor.previewEffectsEnabled = true;
+
+    await compositor.renderFrame(1_000, { previewEffectsEnabled: false });
+
+    expect(compositor.previewEffectsEnabled).toBe(false);
+    expect(app.renderer.render).toHaveBeenCalledTimes(1);
+  });
+
   it('prepares adjustment clips before and after shader transitions during renderFrame', async () => {
     const { compositor, app } = createCompositor();
     compositor.lastRenderedTimeUs = 0;
