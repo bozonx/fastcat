@@ -8,7 +8,7 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
     template:
-      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode"><slot /></div>',
+      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode"><slot /></div>',
     props: ['item', 'track'],
   },
 }));
@@ -383,5 +383,53 @@ describe('TimelineTracks', () => {
     expect(clip.attributes('data-show-waveform')).toBe('false');
     expect(clip.attributes('data-show-thumbnails')).toBe('false');
     expect(clip.attributes('data-waveform-mode')).toBe('full');
+  });
+
+  it('updates clip state props such as locked without waiting for a later track rerender', async () => {
+    const tracks = [
+      {
+        id: 'track-1',
+        kind: 'video',
+        items: [
+          {
+            id: 'clip-1',
+            kind: 'clip',
+            locked: false,
+            disabled: false,
+            audioMuted: false,
+            timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          },
+        ],
+      },
+    ];
+
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks,
+        trackHeights: { 'track-1': 50 },
+      },
+    });
+
+    await component.setProps({
+      tracks: [
+        {
+          ...tracks[0],
+          items: [
+            {
+              ...tracks[0]!.items[0],
+              locked: true,
+              disabled: true,
+              audioMuted: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    const clip = component.find('.mock-timeline-clip');
+    expect(clip.attributes('data-locked')).toBe('true');
+    expect(clip.attributes('data-disabled')).toBe('true');
+    expect(clip.attributes('data-audio-muted')).toBe('true');
   });
 });

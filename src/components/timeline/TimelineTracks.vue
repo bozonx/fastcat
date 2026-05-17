@@ -92,6 +92,36 @@ interface TrackVisibilityIndexEntry {
   startPositions: number[];
 }
 
+function buildClipRenderMemo(item: TimelineTrackItem): string {
+  if (item.kind !== 'clip') return item.id;
+
+  const clip = item as TimelineClipItem;
+  return [
+    clip.id,
+    clip.name,
+    clip.locked ? 1 : 0,
+    clip.disabled ? 1 : 0,
+    clip.audioMuted ? 1 : 0,
+    clip.showWaveform !== false ? 1 : 0,
+    clip.showThumbnails !== false ? 1 : 0,
+    clip.audioWaveformMode ?? 'half',
+    clip.audioGain ?? 1,
+    clip.audioBalance ?? 0,
+    clip.audioFadeInUs ?? 0,
+    clip.audioFadeOutUs ?? 0,
+    clip.audioFadeInCurve ?? 'linear',
+    clip.audioFadeOutCurve ?? 'linear',
+    clip.speed ?? 1,
+    clip.freezeFrameSourceUs ?? '',
+    clip.transitionIn?.type ?? '',
+    clip.transitionIn?.durationUs ?? 0,
+    clip.transitionIn?.curve ?? '',
+    clip.transitionOut?.type ?? '',
+    clip.transitionOut?.durationUs ?? 0,
+    clip.transitionOut?.curve ?? '',
+  ].join(':');
+}
+
 function lowerBound(values: number[], target: number): number {
   let low = 0;
   let high = values.length;
@@ -239,18 +269,7 @@ const trackViewModels = computed(() => {
       isVisuallySelected,
       isHovered,
       visibleItems: visibleItemsMap[track.id] ?? [],
-      clipPresentationMemo: (visibleItemsMap[track.id] ?? [])
-        .map((item) =>
-          item.kind === 'clip'
-            ? [
-                item.id,
-                (item as TimelineClipItem).showWaveform !== false ? 1 : 0,
-                (item as TimelineClipItem).showThumbnails !== false ? 1 : 0,
-                (item as TimelineClipItem).audioWaveformMode ?? 'half',
-              ].join(':')
-            : item.id,
-        )
-        .join('|'),
+      clipRenderMemo: (visibleItemsMap[track.id] ?? []).map(buildClipRenderMemo).join('|'),
       selectionColor: track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
       backgroundColor:
         track.color && track.color !== '#2a2a2a'
@@ -623,7 +642,11 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           trackViewModel.isDirectlySelected,
           trackViewModel.isVisuallySelected,
           trackViewModel.visibleItems.length,
-          trackViewModel.clipPresentationMemo,
+          trackViewModel.track.videoHidden,
+          trackViewModel.track.audioMuted,
+          trackViewModel.track.audioSolo,
+          timelineStore.isAnyTrackSoloed,
+          trackViewModel.clipRenderMemo,
           movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
           dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
           trackViewModel.track.items.some((i) => i.id === draggingItemId) ? draggingItemId : null,
