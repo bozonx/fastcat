@@ -1,4 +1,5 @@
 import { ref, watch, onBeforeUnmount, type Ref } from 'vue';
+import { safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -23,7 +24,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
     activeHashes.clear();
 
     activeImageUrls.forEach((url) => {
-      URL.revokeObjectURL(url);
+      safeRevokeObjectURL(url);
     });
     activeImageUrls.clear();
   }
@@ -42,7 +43,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
         if (!validPaths.has(path)) {
           const url = thumbnails.value[path];
           if (activeImageUrls.has(path)) {
-            URL.revokeObjectURL(activeImageUrls.get(path)!);
+            safeRevokeObjectURL(activeImageUrls.get(path)!);
             activeImageUrls.delete(path);
           }
           delete thumbnails.value[path];

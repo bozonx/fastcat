@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue';
+import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
 import type { TimelineClipItem } from '~/timeline/types';
 import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -68,7 +69,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     return ext ? ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tiff', 'tif'].includes(ext) : false;
   });
 
-  const imageUrl = ref('');
+  const { url: imageUrl, set: setImageUrl, revoke: revokeImageUrl } = useSafeObjectUrl();
 
   watch(
     [isImage, fileUrl],
@@ -77,16 +78,12 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
         try {
           const file = await fileManager.vfs.getFile(path);
           if (!file) return;
-          if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
-          imageUrl.value = URL.createObjectURL(file);
+          setImageUrl(URL.createObjectURL(file));
         } catch (e) {
           console.error('Failed to load image for thumbnail:', e);
         }
       } else {
-        if (imageUrl.value) {
-          URL.revokeObjectURL(imageUrl.value);
-          imageUrl.value = '';
-        }
+        revokeImageUrl();
       }
     },
     { immediate: true },
@@ -321,11 +318,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
   onBeforeUnmount(() => {
     isUnmounted = true;
-
-    if (imageUrl.value) {
-      URL.revokeObjectURL(imageUrl.value);
-      imageUrl.value = '';
-    }
+    revokeImageUrl();
   });
 
   watch(fileUrl, () => {

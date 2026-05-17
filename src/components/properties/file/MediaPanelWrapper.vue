@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { watch, ref, computed, onUnmounted } from 'vue';
+import { watch, computed, onUnmounted } from 'vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
 import type { PanelFocusId } from '~/stores/focus.store';
 
 const props = defineProps<{
@@ -10,7 +11,7 @@ const props = defineProps<{
   focusPanelId?: PanelFocusId;
 }>();
 
-const currentUrl = ref<string | null>(null);
+const { url: currentUrl, set: setCurrentUrl, revoke: revokeCurrentUrl } = useSafeObjectUrl();
 const fileManager = useFileManager();
 
 const fileName = computed(() => {
@@ -20,10 +21,7 @@ const fileName = computed(() => {
 });
 
 async function loadPreviewMedia() {
-  if (currentUrl.value) {
-    URL.revokeObjectURL(currentUrl.value);
-    currentUrl.value = null;
-  }
+  revokeCurrentUrl();
 
   if (!props.filePath) return;
 
@@ -31,7 +29,7 @@ async function loadPreviewMedia() {
     if (props.mediaType === 'video' || props.mediaType === 'audio') {
       const streamingUrl = await fileManager.vfs.getObjectUrl(props.filePath).catch(() => null);
       if (streamingUrl) {
-        currentUrl.value = streamingUrl;
+        setCurrentUrl(streamingUrl);
         return;
       }
     }
@@ -39,7 +37,7 @@ async function loadPreviewMedia() {
     const fileToPlay = await fileManager.vfs.getFile(props.filePath);
     if (!fileToPlay) return;
     if (props.mediaType === 'image' || props.mediaType === 'video' || props.mediaType === 'audio') {
-      currentUrl.value = URL.createObjectURL(fileToPlay);
+      setCurrentUrl(URL.createObjectURL(fileToPlay));
     }
   } catch (e) {
     console.error('Failed to load media for panel:', e);
@@ -49,9 +47,7 @@ async function loadPreviewMedia() {
 watch(() => props.filePath, loadPreviewMedia, { immediate: true });
 
 onUnmounted(() => {
-  if (currentUrl.value) {
-    URL.revokeObjectURL(currentUrl.value);
-  }
+  revokeCurrentUrl();
 });
 </script>
 

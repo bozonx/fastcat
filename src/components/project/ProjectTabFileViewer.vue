@@ -3,6 +3,7 @@ import { ref, computed, watch, onUnmounted } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
 import FilePreview from '~/components/preview/FilePreview.vue';
 
 const props = defineProps<{
@@ -16,7 +17,7 @@ const projectStore = useProjectStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 
-const currentUrl = ref<string | null>(null);
+const { url: currentUrl, set: setCurrentUrl, revoke: revokeCurrentUrl } = useSafeObjectUrl();
 const textContent = ref<string>('');
 const isLoading = ref(false);
 const loadError = ref<string | null>(null);
@@ -28,10 +29,7 @@ const isAudio = computed(() => props.mediaType === 'audio');
 const isUnknown = computed(() => props.mediaType === 'unknown' || props.mediaType === null);
 
 async function loadFile() {
-  if (currentUrl.value) {
-    URL.revokeObjectURL(currentUrl.value);
-    currentUrl.value = null;
-  }
+  revokeCurrentUrl();
   textContent.value = '';
   loadError.value = null;
 
@@ -57,18 +55,18 @@ async function loadFile() {
       if ((isVideo.value || isAudio.value) && props.filePath) {
         const proxyFile = await proxyStore.getProxyFile(props.filePath).catch(() => null);
         if (proxyFile) {
-          currentUrl.value = URL.createObjectURL(proxyFile);
+          setCurrentUrl(URL.createObjectURL(proxyFile));
           return;
         }
 
         // Use streaming URL for large video/audio files in Tauri
         const streamingUrl = await fileManager.vfs.getObjectUrl(props.filePath).catch(() => null);
         if (streamingUrl) {
-          currentUrl.value = streamingUrl;
+          setCurrentUrl(streamingUrl);
           return;
         }
       }
-      currentUrl.value = URL.createObjectURL(file);
+      setCurrentUrl(URL.createObjectURL(file));
     }
   } catch (e) {
     console.error('ProjectTabFileViewer: failed to load file:', e);
@@ -81,7 +79,7 @@ async function loadFile() {
 watch(() => props.filePath, loadFile, { immediate: true });
 
 onUnmounted(() => {
-  if (currentUrl.value) URL.revokeObjectURL(currentUrl.value);
+  revokeCurrentUrl();
 });
 </script>
 

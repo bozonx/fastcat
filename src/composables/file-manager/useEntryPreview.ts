@@ -1,4 +1,5 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
+import { useSafeObjectUrl, safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import yaml from 'js-yaml';
 import {
   TEXT_EXTENSIONS,
@@ -64,7 +65,7 @@ export function useEntryPreview(params: {
   getDirectoryHandleByPath?: (path: string) => Promise<FileSystemDirectoryHandle | null>;
   onResetPreviewMode: (mode: 'original' | 'proxy') => void;
 }) {
-  const currentUrl = ref<string | null>(null);
+  const { url: currentUrl, set: setCurrentUrl, revoke: revokeCurrentUrl } = useSafeObjectUrl();
   const mediaType = ref<MediaType>(null);
   const textContent = ref<string>('');
   const fileInfo = ref<EntryPreviewInfo | null>(null);
@@ -125,8 +126,7 @@ export function useEntryPreview(params: {
       version: number | null;
     } | null;
   }) {
-    const previousUrl = currentUrl.value;
-    currentUrl.value = next.currentUrl;
+    setCurrentUrl(next.currentUrl);
     mediaType.value = next.mediaType;
     textContent.value = next.textContent;
     fileInfo.value = next.fileInfo;
@@ -134,10 +134,6 @@ export function useEntryPreview(params: {
     imageDimensions.value = next.imageDimensions;
     lineCount.value = next.lineCount;
     timelineDocSummary.value = next.timelineDocSummary;
-
-    if (previousUrl && previousUrl !== next.currentUrl) {
-      URL.revokeObjectURL(previousUrl);
-    }
   }
 
   async function resolvePreviewMediaState(
@@ -221,9 +217,7 @@ export function useEntryPreview(params: {
     const previewState = await resolvePreviewMediaState(entry, nextMediaType, nextFileInfo);
 
     if (requestId !== loadRequestId) {
-      if (previewState.currentUrl) {
-        URL.revokeObjectURL(previewState.currentUrl);
-      }
+      safeRevokeObjectURL(previewState.currentUrl);
       return;
     }
 
@@ -410,9 +404,7 @@ export function useEntryPreview(params: {
 
         const previewState = await resolvePreviewMediaState(entry, nextMediaType, nextFileInfo);
         if (requestId !== loadRequestId) {
-          if (previewState.currentUrl) {
-            URL.revokeObjectURL(previewState.currentUrl);
-          }
+          safeRevokeObjectURL(previewState.currentUrl);
           return;
         }
 
@@ -434,9 +426,7 @@ export function useEntryPreview(params: {
   );
 
   onUnmounted(() => {
-    if (currentUrl.value) {
-      URL.revokeObjectURL(currentUrl.value);
-    }
+    revokeCurrentUrl();
   });
 
   return {
