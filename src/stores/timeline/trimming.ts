@@ -61,6 +61,7 @@ export interface TimelineTrimmingModule {
   splitClipAtPlayhead: (
     targetOverride?: { trackId: string; itemId: string } | null,
   ) => Promise<void>;
+  splitClipAtTime: (target: { trackId: string; itemId: string }, atUs: number) => Promise<void>;
   splitAllClipsAtPlayhead: () => Promise<void>;
   splitClipsAtPlayhead: () => Promise<void>;
 }
@@ -209,10 +210,16 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
   }
 
   async function splitClipAtPlayhead(targetOverride?: { trackId: string; itemId: string } | null) {
+    await splitClipAtTime(targetOverride ?? deps.getHotkeyTargetClip(), deps.currentTime.value);
+  }
+
+  async function splitClipAtTime(
+    target: { trackId: string; itemId: string } | null,
+    atUs: number,
+  ) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
-    const target = targetOverride ?? deps.getHotkeyTargetClip();
     if (!target) return;
 
     const track = doc.tracks.find((t) => t.id === target.trackId);
@@ -220,7 +227,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const item = track.items.find((it) => it.id === target.itemId);
     if (!item || (item.kind === 'clip' && item.locked)) return;
 
-    const cmds = buildSplitClipCommands(doc, deps.currentTime.value, target);
+    const cmds = buildSplitClipCommands(doc, atUs, target);
     for (const cmd of cmds) {
       deps.applyTimeline(cmd, { saveMode: 'none' });
     }
@@ -281,6 +288,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     jumpToPrevClipBoundary,
     jumpToNextClipBoundary,
     splitClipAtPlayhead,
+    splitClipAtTime,
     splitAllClipsAtPlayhead,
     splitClipsAtPlayhead,
   };

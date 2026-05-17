@@ -18,7 +18,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
-import { timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
+import { pxToTimeUs, timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import {
   getClipClass,
@@ -237,6 +237,8 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
   trimToPlayheadLeftNoRipple: (target) => void timelineStore.trimToPlayheadLeftNoRipple(target),
   trimToPlayheadRightNoRipple: (target) => void timelineStore.trimToPlayheadRightNoRipple(target),
   splitClipAtPlayhead: (target) => void timelineStore.splitClipAtPlayhead(target),
+  splitClipAtTime: (target, atUs) => void timelineStore.splitClipAtTime(target, atUs),
+  getPointerTimeUs: getClipPointerTimeUs,
   emitSelectItem: (e, itemId) => emit('selectItem', e, itemId),
   didStartDrag,
   longPressTriggered,
@@ -416,6 +418,16 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     left: `${Math.max(0, clipWidthPx.value - offsetPx)}px`,
   };
 });
+
+function getClipPointerTimeUs(e: MouseEvent): number | null {
+  const el = e.currentTarget instanceof HTMLElement ? e.currentTarget : null;
+  if (!el) return null;
+
+  const rect = el.getBoundingClientRect();
+  const localX = Math.min(rect.width, Math.max(0, e.clientX - rect.left));
+  return props.item.timelineRange.startUs + pxToTimeUs(localX, timelineStore.timelineZoom);
+}
+
 function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }) {
   if (!clipItem.value || !props.canEditClipContent) return;
 

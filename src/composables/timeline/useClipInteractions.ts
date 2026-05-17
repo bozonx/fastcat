@@ -13,6 +13,8 @@ export interface ClipInteractionsContext {
   trimToPlayheadLeftNoRipple: (target: { trackId: string; itemId: string }) => void;
   trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) => void;
   splitClipAtPlayhead: (target: { trackId: string; itemId: string }) => void;
+  splitClipAtTime?: (target: { trackId: string; itemId: string }, atUs: number) => void;
+  getPointerTimeUs?: (e: MouseEvent) => number | null;
   emitSelectItem: (e: PointerEvent, itemId: string) => void;
   didStartDrag: Ref<boolean>;
   longPressTriggered: Ref<boolean>;
@@ -48,7 +50,12 @@ export function useClipInteractions(ctx: ClipInteractionsContext) {
         } else if (!isShift && isCtrl) {
           ctx.trimToPlayheadRightNoRipple(target);
         } else {
-          ctx.splitClipAtPlayhead(target);
+          const pointerTimeUs = ctx.getPointerTimeUs?.(e) ?? null;
+          if (pointerTimeUs !== null && ctx.splitClipAtTime) {
+            ctx.splitClipAtTime(target, pointerTimeUs);
+          } else {
+            ctx.splitClipAtPlayhead(target);
+          }
         }
       }
       return;
