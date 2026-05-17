@@ -309,13 +309,23 @@ export class AudioEngine {
 
       this.analyserNodes.set('master', masterAnalyser);
 
-      if (this.ctx.destination) {
-        this.ctx.destination.channelCount = channelCount;
-      }
+      this.setDestinationChannelCount(channelCount);
     } else {
       if (this.ctx.destination && this.ctx.destination.channelCount !== channelCount) {
-        this.ctx.destination.channelCount = channelCount;
+        this.setDestinationChannelCount(channelCount);
       }
+    }
+  }
+
+  private setDestinationChannelCount(channelCount: number) {
+    // Some browsers expose `destination.channelCount` as read-only or clamp it
+    // to `maxChannelCount`. Swallow the failure: the audio still plays — at
+    // worst, channel routing is up to the browser's default mixer.
+    if (!this.ctx?.destination) return;
+    try {
+      this.ctx.destination.channelCount = channelCount;
+    } catch (err) {
+      console.warn('[AudioEngine] Failed to set destination channelCount', err);
     }
   }
 
@@ -417,16 +427,18 @@ export class AudioEngine {
 
     let sumSquares = 0;
     let peak = 0;
+    let count = 0;
     const len = this.analyserData.length;
     for (let i = 0; i < len; i++) {
       const val = this.analyserData[i];
-      if (!val) continue; // handle NaN/undefined
+      if (val === undefined || !Number.isFinite(val)) continue;
       const abs = Math.abs(val);
       sumSquares += abs * abs;
       if (abs > peak) peak = abs;
+      count += 1;
     }
 
-    const rms = Math.sqrt(sumSquares / len);
+    const rms = count > 0 ? Math.sqrt(sumSquares / count) : 0;
 
     return {
       rmsDb: rms > 0.001 ? 20 * Math.log10(rms) : -60,
@@ -587,6 +599,13 @@ export class AudioEngine {
       return null;
     }
 
+    // Audio is not rendered for clips with negative speed (reversed playback).
+    // Reversing PCM produces aliasing and breaks stateful effects; skipping
+    // keeps preview/export aligned with the explicit product decision.
+    if (reversed) {
+      return null;
+    }
+
     const { previousClip, nextClip } = this.getAdjacentClips(clip);
     const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
       clipDurationS,
@@ -652,6 +671,7 @@ export class AudioEngine {
       audioGain,
       audioBalance,
       effectiveSpeed,
+      globalSpeed: speed,
     } satisfies ClipPlaybackWindow;
   }
 
@@ -741,8 +761,13 @@ export class AudioEngine {
       });
     }
 
+    // Clip-local time advances at globalSpeed per wall-clock second, regardless
+    // of the per-clip speed (that's already folded into playbackRate).
+    const globalSpeed = Math.max(1e-9, window.globalSpeed);
+    const clipLocalToCtxS = (tClipS: number) => startAtS + (tClipS - window.currentClipLocalS) / globalSpeed;
+
     const t0 = window.currentClipLocalS;
-    const t1 = window.currentClipLocalS + playedClipDurationS;
+    const t1 = window.currentClipLocalS + window.remainingInClipS;
     const gainParam: any = clipGain.gain;
 
     gainParam.cancelScheduledValues?.(this.ctx.currentTime);
@@ -750,7 +775,7 @@ export class AudioEngine {
 
     if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
       const rampEndClipS = Math.min(window.fadeInS, t1);
-      const rampEndAtS = startAtS + (rampEndClipS - t0);
+      const rampEndAtS = clipLocalToCtxS(rampEndClipS);
       this.scheduleGainCurve({
         gainParam,
         startClipS: t0,
@@ -764,7 +789,7 @@ export class AudioEngine {
     const outStartClipS = window.clipDurationS - window.fadeOutS;
     if (window.fadeOutS > 0 && t1 > outStartClipS) {
       const rampStartClipS = Math.max(outStartClipS, t0);
-      const rampStartAtS = startAtS + (rampStartClipS - t0);
+      const rampStartAtS = clipLocalToCtxS(rampStartClipS);
       gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
       this.scheduleGainCurve({
         gainParam,
@@ -949,6 +974,9 @@ export class AudioEngine {
     const windowEndS = timeS + LOOKAHEAD_S;
 
     const activeClips = this.currentClips.filter((clip) => {
+      // Reversed clips don't emit audio (see buildClipPlaybackWindow); skip
+      // their decode entirely so we don't pin chunks that won't be used.
+      if (this.isReversedClip(clip)) return false;
       const startS = clip.startUs / 1_000_000;
       const endS = startS + clip.durationUs / 1_000_000;
       return endS > timeS && startS <= windowEndS;
@@ -967,17 +995,26 @@ export class AudioEngine {
           ? Math.min(10, Math.abs(clip.speed))
           : 1;
       const sourceStartS = clip.sourceStartUs / 1_000_000;
-      const reversed =
-        typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed < 0;
-      const sourceTimeS = reversed
-        ? sourceStartS + (clip.durationUs / 1_000_000) * clipSpeed - clipLocalS * clipSpeed
-        : sourceStartS + clipLocalS * clipSpeed;
-      const chunkTimeS = reversed ? Math.max(0, sourceTimeS - 1 / 48_000) : sourceTimeS;
-      const chunkIndex = this.getChunkIndex(chunkTimeS);
-      await this.ensureChunkDecoded(sourceKey, clip.fileHandle, chunkIndex);
+      const sourceTimeS = sourceStartS + clipLocalS * clipSpeed;
+      // Decode every chunk that overlaps the kickoff lookahead window so the
+      // streamer never blocks on the first chunk boundary right after play().
+      const sourceEndS = sourceTimeS + LOOKAHEAD_S * clipSpeed;
+      const startChunkIndex = this.getChunkIndex(sourceTimeS);
+      const endChunkIndex = this.getChunkIndex(Math.max(sourceTimeS, sourceEndS));
+      const tasks: Array<Promise<unknown>> = [];
+      for (let i = startChunkIndex; i <= endChunkIndex; i += 1) {
+        tasks.push(this.ensureChunkDecoded(sourceKey, clip.fileHandle, i));
+      }
+      await Promise.all(tasks);
     });
 
     await Promise.all(decodes);
+  }
+
+  private isReversedClip(clip: AudioEngineClip): boolean {
+    return (
+      typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed < 0
+    );
   }
 
   stop() {
@@ -1229,8 +1266,12 @@ export class AudioEngine {
         tClipS,
       });
 
+    // Clip-local time advances at globalSpeed per wall-clock second.
+    const globalSpeed = Math.max(1e-9, window.globalSpeed);
+    const clipLocalToCtxS = (tClipS: number) => playStartS + (tClipS - window.currentClipLocalS) / globalSpeed;
+
     const t0 = window.currentClipLocalS;
-    const t1 = window.currentClipLocalS + playedClipDurationS;
+    const t1 = window.currentClipLocalS + window.remainingInClipS;
     const gainParam: any = clipGain.gain;
 
     gainParam.cancelScheduledValues?.(this.ctx.currentTime);
@@ -1238,7 +1279,7 @@ export class AudioEngine {
 
     if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
       const rampEndClipS = Math.min(window.fadeInS, t1);
-      const rampEndAtS = playStartS + (rampEndClipS - t0);
+      const rampEndAtS = clipLocalToCtxS(rampEndClipS);
       this.scheduleGainCurve({
         gainParam,
         startClipS: t0,
@@ -1252,7 +1293,7 @@ export class AudioEngine {
     const outStartClipS = window.clipDurationS - window.fadeOutS;
     if (window.fadeOutS > 0 && t1 > outStartClipS) {
       const rampStartClipS = Math.max(outStartClipS, t0);
-      const rampStartAtS = playStartS + (rampStartClipS - t0);
+      const rampStartAtS = clipLocalToCtxS(rampStartClipS);
       gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
       this.scheduleGainCurve({
         gainParam,

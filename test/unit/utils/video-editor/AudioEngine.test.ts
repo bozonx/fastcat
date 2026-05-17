@@ -294,7 +294,7 @@ describe('AudioEngine', () => {
     expect(source.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('schedules reversed audio for negative-speed clips', async () => {
+  it('does not schedule any audio for reversed (negative-speed) clips', async () => {
     const engine = new AudioEngine();
     await engine.init();
 
@@ -307,8 +307,7 @@ describe('AudioEngine', () => {
 
     await engine.play(0);
 
-    expect(audioContextInstance.createdSources.length).toBe(1);
-    expect(audioContextInstance.createdSources[0]?.start).toHaveBeenCalledTimes(1);
+    expect(audioContextInstance.createdSources.length).toBe(0);
   });
 
   it('retries playback after seek when playing', async () => {

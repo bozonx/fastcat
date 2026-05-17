@@ -6,7 +6,7 @@ import {
   AudioMixer,
   resampleChannelsOfflineAudioContext,
   resampleAndStretchOffline,
-  getStereoPanScales,
+  getStereoPanMatrix,
   type PreparedClip,
 } from '~/workers/core/AudioMixer';
 import { applyAudioEffectsOffline } from '~/utils/audio/apply-audio-effects-offline';
@@ -99,19 +99,37 @@ describe('AudioMixer channel normalization', () => {
   });
 });
 
-describe('AudioMixer pan law', () => {
-  it('keeps center at unity and uses equal-power attenuation toward edges', () => {
-    expect(getStereoPanScales(0)).toEqual({ leftScale: 1, rightScale: 1 });
-    expect(getStereoPanScales(-1)).toMatchObject({ leftScale: 1, rightScale: 0 });
-    expect(getStereoPanScales(1)).toMatchObject({ leftScale: 0, rightScale: 1 });
+describe('AudioMixer pan matrix', () => {
+  it('matches StereoPannerNode equal-power mixing at center', () => {
+    expect(getStereoPanMatrix(0)).toEqual({ ll: 1, lr: 0, rl: 0, rr: 1 });
+  });
 
-    const leftHalf = getStereoPanScales(-0.5);
-    expect(leftHalf.leftScale).toBe(1);
-    expect(leftHalf.rightScale).toBeCloseTo(Math.SQRT1_2);
+  it('mixes the right channel into the left as pan moves left', () => {
+    const fullLeft = getStereoPanMatrix(-1);
+    expect(fullLeft.ll).toBe(1);
+    expect(fullLeft.lr).toBeCloseTo(1);
+    expect(fullLeft.rl).toBe(0);
+    expect(fullLeft.rr).toBeCloseTo(0);
 
-    const rightHalf = getStereoPanScales(0.5);
-    expect(rightHalf.leftScale).toBeCloseTo(Math.SQRT1_2);
-    expect(rightHalf.rightScale).toBe(1);
+    const halfLeft = getStereoPanMatrix(-0.5);
+    expect(halfLeft.ll).toBe(1);
+    expect(halfLeft.lr).toBeCloseTo(Math.SQRT1_2);
+    expect(halfLeft.rl).toBe(0);
+    expect(halfLeft.rr).toBeCloseTo(Math.SQRT1_2);
+  });
+
+  it('mixes the left channel into the right as pan moves right', () => {
+    const fullRight = getStereoPanMatrix(1);
+    expect(fullRight.ll).toBeCloseTo(0);
+    expect(fullRight.lr).toBe(0);
+    expect(fullRight.rl).toBeCloseTo(1);
+    expect(fullRight.rr).toBe(1);
+
+    const halfRight = getStereoPanMatrix(0.5);
+    expect(halfRight.ll).toBeCloseTo(Math.SQRT1_2);
+    expect(halfRight.lr).toBe(0);
+    expect(halfRight.rl).toBeCloseTo(Math.SQRT1_2);
+    expect(halfRight.rr).toBe(1);
   });
 });
 
@@ -413,11 +431,13 @@ describe('AudioMixer.writeMixedToSource', () => {
 
     const resultInstance = audioSource.add.mock.calls[0][0];
     const mixedData = resultInstance.data.data;
-    expect(mixedData[0]).toBeCloseTo(0.5);
+    // Mono source promoted to stereo carries the same 0.5 in both planes.
+    // Full-left pan (W3C matrix): L_out = L + R = 1.0, R_out = 0.
+    expect(mixedData[0]).toBeCloseTo(1.0);
     expect(mixedData[48000]).toBeCloseTo(0);
   });
 
-  it('handles reversed playback correctly', async () => {
+  it('skips reversed clips entirely (no audio rendered)', async () => {
     const sampleRate = 1000;
     const numberOfChannels = 1;
     const durationS = 1;
@@ -472,9 +492,9 @@ describe('AudioMixer.writeMixedToSource', () => {
 
     const resultInstance = audioSource.add.mock.calls[0][0];
     const mixedData = resultInstance.data.data;
-    expect(mixedData[0]).toBeCloseTo(0.999);
-    expect(mixedData[500]).toBeCloseTo(0.499);
-    expect(mixedData[999]).toBeCloseTo(0);
+    for (let i = 0; i < mixedData.length; i += 1) {
+      expect(mixedData[i]).toBe(0);
+    }
   });
 
   it('applies audio effects if present', async () => {
@@ -529,7 +549,7 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[0]).toBeCloseTo(1.0);
   });
 
-  it('applies fade-in on reversed clips in timeline order (not source order)', async () => {
+  it('drops audio on negative-speed clips even when fades are set', async () => {
     const sampleRate = 1000;
     const numberOfChannels = 1;
     const durationS = 1;
@@ -582,11 +602,9 @@ describe('AudioMixer.writeMixedToSource', () => {
     });
 
     const mixedData = audioSource.add.mock.calls[0][0].data.data;
-    // First sample of the timeline must reflect fade-in start (≈0), not fade-out tail.
-    expect(mixedData[0]).toBeCloseTo(0);
-    expect(mixedData[250]).toBeCloseTo(0.5, 1);
-    // After fade-in ends (t≥0.5s) gain reaches the base value.
-    expect(mixedData[800]).toBeCloseTo(1, 1);
+    for (let i = 0; i < mixedData.length; i += 1) {
+      expect(mixedData[i]).toBe(0);
+    }
   });
 });
 

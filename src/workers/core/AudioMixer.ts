@@ -291,22 +291,39 @@ export interface AudioMixerWriteParams {
   }) => unknown;
 }
 
-export function getStereoPanScales(audioBalance: number): {
-  leftScale: number;
-  rightScale: number;
-} {
+export interface StereoPanMatrix {
+  ll: number;
+  lr: number;
+  rl: number;
+  rr: number;
+}
+
+/**
+ * Equal-power stereo pan matrix matching the W3C StereoPannerNode formula
+ * (used by the monitor): for pan ∈ [-1, 0] the right channel attenuates by
+ * cos(angle) and is folded into the left by sin(angle); for pan ∈ (0, 1]
+ * the left channel does the same toward the right. This is the per-frame
+ * mixing that StereoPannerNode performs internally — keeping render in sync
+ * with preview.
+ */
+export function getStereoPanMatrix(audioBalance: number): StereoPanMatrix {
   const pan = Math.max(-1, Math.min(1, Number.isFinite(audioBalance) ? audioBalance : 0));
-  const cleanScale = (value: number) => (Math.abs(value) < 1e-12 ? 0 : value);
-  if (pan < 0) {
+  const clean = (value: number) => (Math.abs(value) < 1e-12 ? 0 : value);
+  if (pan <= 0) {
+    const t = -pan;
     return {
-      leftScale: 1,
-      rightScale: cleanScale(Math.cos((-pan * Math.PI) / 2)),
+      ll: 1,
+      lr: clean(Math.sin((t * Math.PI) / 2)),
+      rl: 0,
+      rr: clean(Math.cos((t * Math.PI) / 2)),
     };
   }
-
+  const t = pan;
   return {
-    leftScale: cleanScale(Math.cos((pan * Math.PI) / 2)),
-    rightScale: 1,
+    ll: clean(Math.cos((t * Math.PI) / 2)),
+    lr: 0,
+    rl: clean(Math.sin((t * Math.PI) / 2)),
+    rr: 1,
   };
 }
 
@@ -314,8 +331,7 @@ interface ProcessedClipAudio {
   planes: Float32Array[];
   frames: number;
   gainEnvelope: Float32Array;
-  leftScale: number;
-  rightScale: number;
+  audioBalance: number;
 }
 
 /**
@@ -381,25 +397,32 @@ async function loadClipSourcePlanes(args: {
         );
       }
 
-      const writeFrameOffset = Math.max(
-        0,
-        Math.round((Number(sample.timestamp) - sinkStartS) * sourceSampleRate),
+      // A sample's timestamp can land before sinkStartS when mediabunny rewinds
+      // to the nearest keyframe. We must skip the leading frames that belong to
+      // the pre-window region, not write them to offset 0 (which would smear
+      // unrelated audio over the first frames of the clip).
+      const desiredFrameOffset = Math.round(
+        (Number(sample.timestamp) - sinkStartS) * sourceSampleRate,
       );
+      const skipFramesInSample = Math.max(0, -desiredFrameOffset);
+      const writeFrameOffset = Math.max(0, desiredFrameOffset);
       if (writeFrameOffset >= totalFrames) continue;
+      if (skipFramesInSample >= frames) continue;
+
+      const framesAvailable = frames - skipFramesInSample;
+      const framesToCopy = Math.min(framesAvailable, totalFrames - writeFrameOffset);
+      if (framesToCopy <= 0) continue;
 
       const writableChannels = Math.min(sourceChannels, ch);
-      const framesToCopy = Math.min(frames, totalFrames - writeFrameOffset);
       for (let planeIndex = 0; planeIndex < writableChannels; planeIndex += 1) {
         const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex });
         const sourcePlane = new Float32Array(bytesNeeded / 4);
         sample.copyTo(sourcePlane, { format: 'f32-planar', planeIndex });
         const dest = planes[planeIndex];
         if (!dest) continue;
-        if (framesToCopy === sourcePlane.length) {
-          dest.set(sourcePlane, writeFrameOffset);
-        } else {
-          dest.set(sourcePlane.subarray(0, framesToCopy), writeFrameOffset);
-        }
+        const copyEnd = Math.min(sourcePlane.length, skipFramesInSample + framesToCopy);
+        if (copyEnd <= skipFramesInSample) continue;
+        dest.set(sourcePlane.subarray(skipFramesInSample, copyEnd), writeFrameOffset);
       }
     } finally {
       safeDispose(sample);
@@ -430,6 +453,10 @@ async function processClipAudio(args: {
   checkCancel?: () => boolean;
 }): Promise<ProcessedClipAudio | null> {
   const { clip, targetSampleRate, numberOfChannels, reportExportWarning, checkCancel } = args;
+  // Defense in depth: prepareClips already skips reversed clips. This guard
+  // keeps writeMixedToSource correct for any caller that hands in prepared
+  // clips directly (tests, future re-entry).
+  if (clip.reversed) return null;
   const expectedOutFrames = Math.max(0, Math.round(clip.playDurationS * targetSampleRate));
   if (expectedOutFrames <= 0) return null;
 
@@ -476,7 +503,14 @@ async function processClipAudio(args: {
       });
       frames = planes[0]?.length ?? expectedOutFrames;
     } catch (err) {
-      await reportExportWarning('[Worker Export] Failed to resample audio clip; using raw audio.');
+      // Falling back to the source-rate planes would mix pitch-shifted audio
+      // into the output (the downstream loop assumes targetSampleRate). Prefer
+      // a silent clip — the export still completes and the user is warned.
+      await reportExportWarning(
+        '[Worker Export] Failed to resample audio clip; substituting silence.',
+      );
+      planes = Array.from({ length: numberOfChannels }, () => new Float32Array(expectedOutFrames));
+      frames = expectedOutFrames;
     }
   }
 
@@ -511,11 +545,6 @@ async function processClipAudio(args: {
     frames = expectedOutFrames;
   }
 
-  const { leftScale, rightScale } =
-    numberOfChannels === 2
-      ? getStereoPanScales(clip.audioBalance)
-      : { leftScale: 1, rightScale: 1 };
-
   const gainEnvelope = new Float32Array(frames);
   if (clip.audioFadeInS === 0 && clip.audioFadeOutS === 0) {
     gainEnvelope.fill(clip.audioGain);
@@ -533,7 +562,7 @@ async function processClipAudio(args: {
     }
   }
 
-  return { planes, frames, gainEnvelope, leftScale, rightScale };
+  return { planes, frames, gainEnvelope, audioBalance: clip.audioBalance };
 }
 
 interface AdjacencyMap {
@@ -609,21 +638,34 @@ export class AudioMixer {
       const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
       const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
 
+      const speedRaw = Number((clipData as any).speed);
+      const speed =
+        Number.isFinite(speedRaw) && speedRaw !== 0
+          ? Math.max(0.0001, Math.min(10, Math.abs(speedRaw)))
+          : 1;
+      const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
+
+      // Reversed clips emit no audio — keeps preview and export in sync.
+      if (reversed) continue;
+
       const previousClip = adjacency.prev.get(clipData) ?? null;
       const nextClip = adjacency.next.get(clipData) ?? null;
+      // Fade math is done in timeline-space: source duration must be scaled by
+      // 1/speed before comparing with timeline duration so the clamp doesn't
+      // chop fades short when speed < 1.
+      const timelineDurationS = usToS(Number(durationUs));
+      const sourceTimelineDurationS = usToS(Number(sourceDurationUs)) / speed;
+      const fadeClipDurationS = Math.max(
+        0,
+        Math.min(sourceTimelineDurationS, timelineDurationS || sourceTimelineDurationS),
+      );
       const {
         fadeInS: audioFadeInS,
         fadeOutS: audioFadeOutS,
         fadeInCurve,
         fadeOutCurve,
       } = resolveEffectiveFadeDurationsSeconds({
-        clipDurationS: Math.max(
-          0,
-          Math.min(
-            usToS(Number(sourceDurationUs)),
-            usToS(Number(durationUs)) || usToS(Number(sourceDurationUs)),
-          ),
-        ),
+        clipDurationS: fadeClipDurationS,
         clip: {
           audioFadeInUs: clipData.audioFadeInUs ?? clipData.fastcat?.audioFadeInUs,
           audioFadeOutUs: clipData.audioFadeOutUs ?? clipData.fastcat?.audioFadeOutUs,
@@ -642,12 +684,6 @@ export class AudioMixer {
 
       const clipStartS = Math.max(0, usToS(Number(startUs)));
       const rawOffsetS = Math.max(0, usToS(Number(sourceStartUs)));
-      const speedRaw = Number((clipData as any).speed);
-      const speed =
-        Number.isFinite(speedRaw) && speedRaw !== 0
-          ? Math.max(0.0001, Math.min(10, Math.abs(speedRaw)))
-          : 1;
-      const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
 
       const baseClipDurationS = Math.max(
         0,
@@ -863,25 +899,46 @@ export class AudioMixer {
           );
           if (framesToWrite <= 0) continue;
 
-          const hasStereoPan = numberOfChannels === 2;
-          const { leftScale, rightScale, gainEnvelope } = processed;
+          const { gainEnvelope } = processed;
 
-          for (let c = 0; c < numberOfChannels; c += 1) {
-            const plane = processed.planes[c];
-            if (!plane) continue;
-            const panScale = hasStereoPan ? (c === 0 ? leftScale : rightScale) : 1;
-            if (panScale === 0) continue;
+          if (numberOfChannels === 2) {
+            const planeL = processed.planes[0];
+            const planeR = processed.planes[1];
+            if (!planeL || !planeR) continue;
+            const { ll, lr, rl, rr } = getStereoPanMatrix(processed.audioBalance);
             for (let i = 0; i < framesToWrite; i += 1) {
               const srcIdx = sourceStartFrame + i;
               const dstFrame = writeStartFrame + i;
-              const v = (plane[srcIdx] ?? 0) * (gainEnvelope[srcIdx] ?? 0) * panScale;
-              const idx = dstFrame * numberOfChannels + c;
-              const sum = mixedInterleaved[idx]! + v;
-              const clamped = clampFloat32(sum);
-              if (sum !== clamped) clippedFrames += 1;
-              mixedInterleaved[idx] = clamped;
+              const g = gainEnvelope[srcIdx] ?? 0;
+              if (g === 0) continue;
+              const L = (planeL[srcIdx] ?? 0) * g;
+              const R = (planeR[srcIdx] ?? 0) * g;
+              const idxL = dstFrame * 2;
+              // Sum all clip contributions first, clip once at chunk end so
+              // that A=+1.5 followed by B=-1.0 still yields the correct 0.5.
+              mixedInterleaved[idxL] = (mixedInterleaved[idxL] ?? 0) + (ll * L + lr * R);
+              mixedInterleaved[idxL + 1] = (mixedInterleaved[idxL + 1] ?? 0) + (rl * L + rr * R);
+            }
+          } else {
+            const plane = processed.planes[0];
+            if (!plane) continue;
+            for (let i = 0; i < framesToWrite; i += 1) {
+              const srcIdx = sourceStartFrame + i;
+              const dstFrame = writeStartFrame + i;
+              const v = (plane[srcIdx] ?? 0) * (gainEnvelope[srcIdx] ?? 0);
+              mixedInterleaved[dstFrame] = (mixedInterleaved[dstFrame] ?? 0) + v;
             }
           }
+        }
+
+        // Final clip pass — counts each clipped sample exactly once, regardless
+        // of how many sources contributed to it.
+        const mixLen = mixedInterleaved.length;
+        for (let i = 0; i < mixLen; i += 1) {
+          const v = mixedInterleaved[i] ?? 0;
+          const clamped = clampFloat32(v);
+          if (v !== clamped) clippedFrames += 1;
+          mixedInterleaved[i] = clamped;
         }
 
         // Drop processed clips whose end is now behind the chunk to free memory.

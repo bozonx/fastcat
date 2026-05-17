@@ -19,6 +19,7 @@ export interface ClipPlaybackWindow {
   audioGain: number;
   audioBalance: number;
   effectiveSpeed: number;
+  globalSpeed: number;
 }
 
 export interface AudioEngineClip {
