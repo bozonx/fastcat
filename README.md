@@ -68,9 +68,11 @@ The application will be available at `http://localhost:3000`.
 
 - Desktop mode uses Tauri 2 with `@tauri-apps/plugin-fs` for file system access.
 - File streaming in desktop mode uses `tauri-plugin-fs-stream` and `tauri-plugin-fs-stream-api`.
+- Selected desktop workspace folders are persisted with `tauri-plugin-persisted-scope`, so the app can restore access after restart without granting the whole home directory.
 - The desktop VFS adapter stores its local app-managed data in `BaseDirectory.AppData`.
 - FastCat stores global `user.settings.json` and `app.settings.json` in the OS-recommended Tauri `BaseDirectory.AppConfig` location.
-- Tauri capabilities are scoped to `$APPDATA/**/*` for the file manager and stream APIs.
+- Tauri capabilities are scoped to app-managed directories (`$APPDATA`, `$APPCONFIG`, `$APPCACHE`, `$TEMP`) and dev resource paths. User-selected folders are added to the runtime scope by the dialog plugin and restored by persisted scope.
+- Desktop production builds use `tauri build` with Linux `deb` and `rpm` bundle targets enabled. Add `appimage` back when the build environment provides a working `linuxdeploy`.
 
 ## Architecture
 

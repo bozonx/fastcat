@@ -207,12 +207,12 @@ function resetPathDefaults() {
         "
       >
         <div class="flex gap-2">
-          <UiTextInput v-model="ephemeralTmpRootPath" full-width />
+          <UiTextInput v-model="contentRootPath" full-width />
           <UButton
             color="neutral"
             variant="soft"
             icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('ephemeralTmp')"
+            @click="pickDesktopPath('content')"
           />
         </div>
       </UiFormField>

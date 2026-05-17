@@ -21,7 +21,9 @@
       "identifier": "fs:scope",
       "allow": [
         "$APPDATA/**/*",
-        "$HOME/**/*",
+        "$APPCONFIG/**/*",
+        "$APPCACHE/**/*",
+        "$TEMP/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*"
       ]
@@ -30,7 +32,9 @@
       "identifier": "fs-stream:allow-open-read-file-stream",
       "allow": [
         "$APPDATA/**/*",
-        "$HOME/**/*",
+        "$APPCONFIG/**/*",
+        "$APPCACHE/**/*",
+        "$TEMP/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*"
       ]
@@ -39,7 +43,9 @@
       "identifier": "fs-stream:allow-open-write-file-stream",
       "allow": [
         "$APPDATA/**/*",
-        "$HOME/**/*",
+        "$APPCONFIG/**/*",
+        "$APPCACHE/**/*",
+        "$TEMP/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*"
       ]
