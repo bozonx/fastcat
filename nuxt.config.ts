@@ -60,15 +60,20 @@ export default defineNuxtConfig({
     worker: {
       format: 'es',
     },
-    server: {
-      headers:
-        process.env.E2E_TEST === '1'
-          ? {
-              'Cross-Origin-Opener-Policy': 'same-origin',
-              'Cross-Origin-Embedder-Policy': 'require-corp',
-            }
-          : undefined,
-    },
+    plugins: [
+      {
+        name: 'fastcat:e2e-headers',
+        configureServer(server) {
+          if (process.env.E2E_TEST !== '1') return;
+
+          server.middlewares.use((_req, res, next) => {
+            res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+            res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+            next();
+          });
+        },
+      },
+    ],
   },
 
   nitro: {

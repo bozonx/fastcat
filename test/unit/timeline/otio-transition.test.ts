@@ -104,22 +104,23 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(clip.audioFadeOutUs).toBe(400_000);
   });
 
-  it('serializes markers as OTIO Marker.2 on Timeline.markers (not in metadata)', () => {
+  it('serializes markers as OTIO Marker.2 on Stack.markers (not in metadata)', () => {
     const doc = makeDoc();
     const raw = JSON.parse(serializeTimelineToOtio(doc));
 
-    expect(Array.isArray(raw.markers)).toBe(true);
-    expect(raw.markers).toHaveLength(2);
-    expect(raw.markers[0].OTIO_SCHEMA).toBe('Marker.2');
+    expect(raw.markers).toBeUndefined();
+    expect(Array.isArray(raw.tracks.markers)).toBe(true);
+    expect(raw.tracks.markers).toHaveLength(2);
+    expect(raw.tracks.markers[0].OTIO_SCHEMA).toBe('Marker.2');
     // sorted by time ascending
-    expect(raw.markers[0].metadata.fastcat.marker.id).toBe('m2');
-    expect(raw.markers[1].metadata.fastcat.marker.id).toBe('m1');
+    expect(raw.tracks.markers[0].metadata.fastcat.marker.id).toBe('m2');
+    expect(raw.tracks.markers[1].metadata.fastcat.marker.id).toBe('m1');
 
     // fastcat metadata should NOT contain markers array
     expect(raw.metadata.fastcat.markers).toBeUndefined();
   });
 
-  it('parses markers from Timeline.markers', () => {
+  it('parses markers from Stack.markers', () => {
     const doc = makeDoc();
     const serialized = serializeTimelineToOtio(doc);
     const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', fps: 30 });
@@ -131,6 +132,20 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(markers[0].text).toBe('Second');
     expect(markers[1].id).toBe('m1');
     expect(markers[1].timeUs).toBe(1_000_000);
+  });
+
+  it('parses legacy markers from Timeline.markers', () => {
+    const raw = JSON.parse(serializeTimelineToOtio(makeDoc()));
+    raw.markers = raw.tracks.markers;
+    delete raw.tracks.markers;
+
+    const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
+      id: 'doc1',
+      name: 'Test',
+      fps: 30,
+    });
+
+    expect(parsed.metadata?.fastcat?.markers?.map((marker) => marker.id)).toEqual(['m2', 'm1']);
   });
 
   it('does not parse removed fastcat.markers legacy metadata', () => {
@@ -197,6 +212,53 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(parsed.tracks).toHaveLength(2);
     expect(parsed.tracks[0]?.kind).toBe('video');
     expect(parsed.tracks[1]?.kind).toBe('audio');
+  });
+
+  it('serializes video tracks with top layer last in OTIO Stack order', () => {
+    const doc: TimelineDocument = {
+      ...makeDoc(),
+      tracks: [
+        { id: 'v2', kind: 'video', name: 'Video 2', items: [] },
+        { id: 'v1', kind: 'video', name: 'Video 1', items: [] },
+        { id: 'a1', kind: 'audio', name: 'Audio 1', items: [] },
+      ],
+    };
+
+    const raw = JSON.parse(serializeTimelineToOtio(doc));
+
+    expect(raw.tracks.children.map((track: any) => track.metadata.fastcat.id)).toEqual([
+      'v1',
+      'v2',
+      'a1',
+    ]);
+  });
+
+  it('preserves track-level markers through OTIO round-trip', () => {
+    const doc: TimelineDocument = {
+      ...makeDoc(),
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [],
+          markers: [{ id: 'tm1', timeUs: 300_000, durationUs: 100_000, text: 'Track mark' }],
+        },
+      ],
+    };
+
+    const raw = JSON.parse(serializeTimelineToOtio(doc));
+    expect(raw.tracks.children[0].markers[0].metadata.fastcat.marker.id).toBe('tm1');
+
+    const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
+      id: 'doc1',
+      name: 'Test',
+      fps: 30,
+    });
+
+    expect(parsed.tracks[0]?.markers).toEqual([
+      { id: 'tm1', timeUs: 300_000, durationUs: 100_000, text: 'Track mark' },
+    ]);
   });
 
   it('preserves transition params, mode and curve through OTIO round-trip', () => {
@@ -445,7 +507,8 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(Array.isArray(clipNode.effects)).toBe(true);
     expect(clipNode.effects).toHaveLength(2);
     expect(clipNode.effects[0].OTIO_SCHEMA).toBe('Effect.1');
-    expect(clipNode.effects[0].effect_name).toBe('blur');
+    expect(clipNode.effects[0].name).toBe('blur');
+    expect(clipNode.effects[0].effect_name).toBe('fastcat:blur');
     expect(clipNode.effects[0].enabled).toBe(true);
     expect(clipNode.effects[0].metadata.fastcat.effect.params.radius).toBe(10);
     expect(clipNode.effects[1].enabled).toBe(false);
@@ -574,6 +637,58 @@ describe('timeline/otio-serializer: transitions', () => {
     expect(clip.sourceDurationUs).toBe(10_000_000);
     // source_range: 24 frames at 24fps = 1 second
     expect(clip.sourceRange.durationUs).toBe(1_000_000);
+  });
+
+  it('prefers ExternalReference available_range over duplicated fastcat source duration', () => {
+    const raw = {
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'External',
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'V1',
+            kind: 'Video',
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'C1',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'clip.mp4',
+                  available_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 24 },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 240, rate: 24 },
+                  },
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 24 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 24, rate: 24 },
+                },
+                metadata: {
+                  fastcat: {
+                    id: 'c1',
+                    clipType: 'media',
+                    source: { durationUs: 123 },
+                  },
+                },
+              },
+            ],
+            metadata: { fastcat: { id: 'v1' } },
+          },
+        ],
+      },
+      metadata: { fastcat: { docId: 'ext1', timebase: { fps: 24 } } },
+    };
+
+    const parsed = parseTimelineFromOtio(JSON.stringify(raw), { id: 'ext1', name: 'Ext', fps: 24 });
+    const clip = parsed.tracks[0]?.items[0] as any;
+
+    expect(clip.sourceDurationUs).toBe(10_000_000);
   });
 
   it('serializes clips without path as MissingReference', () => {

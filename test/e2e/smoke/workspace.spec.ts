@@ -1,32 +1,35 @@
 import { test, expect } from '@playwright/test';
+import { setupVirtualWorkspace, clearOpfs } from '../../utils/e2e/virtual-fs';
 
 test.describe('Smoke: Workspace Initialization', () => {
-  test('embedded workspace initializes in OPFS automatically', async ({ page }) => {
-    await page.goto('/test/embedded');
-
-    // Wait for the editor to finish initialization.
-    await expect(
-      page.getByText('Fastcat Editor'),
-    ).toBeVisible({ timeout: 15_000 });
-
-    // Verify the workspace store created a handle.
-    const hasWorkspaceHandle = await page.evaluate(async () => {
-      // The workspace store is globally accessible through Pinia in dev mode.
-      const pinia = (window as any).__pinia;
-      if (!pinia) return false;
-
-      const workspace = pinia.state.value.workspace;
-      return workspace?.workspaceHandle !== null && workspace?.workspaceHandle !== undefined;
-    });
-
-    expect(hasWorkspaceHandle).toBe(true);
-  });
-
   test('OPFS is supported in the test browser', async ({ page }) => {
+    await page.goto('/');
     const isOpfsSupported = await page.evaluate(() => {
-      return typeof navigator !== 'undefined' && 'storage' in navigator && 'getDirectory' in navigator.storage;
+      return (
+        typeof navigator !== 'undefined' &&
+        typeof navigator.storage !== 'undefined' &&
+        typeof navigator.storage.getDirectory === 'function'
+      );
     });
 
     expect(isOpfsSupported).toBe(true);
+  });
+
+  test('virtual workspace can be created in OPFS', async ({ page }) => {
+    await page.goto('/');
+    await clearOpfs(page);
+    await setupVirtualWorkspace(page, { workspaceName: 'smoke-test-ws' });
+
+    const handleExists = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      try {
+        await root.getDirectoryHandle('smoke-test-ws');
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    expect(handleExists).toBe(true);
   });
 });

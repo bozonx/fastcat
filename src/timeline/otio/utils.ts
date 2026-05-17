@@ -176,9 +176,10 @@ export function coerceTransform(raw: unknown): ClipTransform | undefined {
 }
 
 export function hashString(input: string): string {
-  let hash = 0;
+  let hash = 0x811c9dc5;
   for (let i = 0; i < input.length; i += 1) {
-    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return hash.toString(36);
 }

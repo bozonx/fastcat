@@ -3,6 +3,8 @@
 !.env.example
 !.env.*.example
 playwright-report
+test-results/
+playwright/.cache/
 coverage/
 dist-lib/
 .dev-files/

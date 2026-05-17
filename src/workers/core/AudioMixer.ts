@@ -334,6 +334,167 @@ interface ProcessedClipAudio {
   audioBalance: number;
 }
 
+const CLIP_PROCESS_BLOCK_DURATION_S = 10;
+
+function clampFiniteNumber(value: unknown, fallback: number, min: number, max: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+function estimateEffectTailS(effect: AudioEffectData): number {
+  if (!effect.enabled || effect.target !== 'audio') return 0;
+
+  switch (effect.type) {
+    case 'audio-reverb':
+    case 'reverb':
+      return (
+        clampFiniteNumber(effect.decay, 2.5, 0.1, 10) +
+        clampFiniteNumber(effect.preDelay, 0.01, 0, 0.5)
+      );
+    case 'audio-env-stadium': {
+      const size = clampFiniteNumber(effect.size, 80, 0, 100);
+      return 1 + (size / 100) * 4;
+    }
+    case 'audio-thought-monologue':
+      return 2.2;
+    case 'audio-env-behind-wall':
+      return 1;
+    case 'audio-echo':
+    case 'echo': {
+      const delayTime = clampFiniteNumber(effect.delayTime, 0.25, 0.02, 1);
+      const feedback = clampFiniteNumber(effect.feedback, 0.35, 0, 0.9);
+      return Math.min(8, delayTime * Math.max(2, Math.ceil(1 / Math.max(0.1, 1 - feedback))));
+    }
+    case 'audio-flanger':
+    case 'audio-voice-robot':
+      return 0.08;
+    case 'audio-old-vinyl':
+      return 0.12;
+    case 'audio-compressor':
+      return 0.4;
+    case 'audio-phaser':
+      return 0.2;
+    default:
+      return 0;
+  }
+}
+
+function estimateClipProcessingOverlapS(effects: AudioEffectData[]): number {
+  const enabledEffects = effects.filter((effect) => effect.enabled && effect.target === 'audio');
+  if (enabledEffects.length === 0) return 0;
+  const maxTailS = Math.max(0, ...enabledEffects.map(estimateEffectTailS));
+  return Math.min(CLIP_PROCESS_BLOCK_DURATION_S, Math.max(0.05, maxTailS));
+}
+
+function trimOrPadPlanes(params: {
+  planes: Float32Array[];
+  channels: number;
+  frames: number;
+}): Float32Array[] {
+  const { planes, channels, frames } = params;
+  return Array.from({ length: channels }, (_, channel) => {
+    const plane = planes[channel] ?? new Float32Array(0);
+    if (plane.length === frames) return plane;
+    const fixed = new Float32Array(frames);
+    fixed.set(plane.subarray(0, Math.min(plane.length, frames)));
+    return fixed;
+  });
+}
+
+function writeProcessedBlock(params: {
+  outputPlanes: Float32Array[];
+  blockPlanes: Float32Array[];
+  blockStartFrame: number;
+  expectedOutFrames: number;
+  overlapFrames: number;
+}) {
+  const { outputPlanes, blockPlanes, blockStartFrame, expectedOutFrames, overlapFrames } = params;
+  const frames = blockPlanes[0]?.length ?? 0;
+  if (frames <= 0) return;
+
+  const overlapLimit = Math.min(overlapFrames, frames, expectedOutFrames - blockStartFrame);
+  for (let c = 0; c < outputPlanes.length; c += 1) {
+    const output = outputPlanes[c];
+    const block = blockPlanes[c];
+    if (!output || !block) continue;
+
+    for (let i = 0; i < frames; i += 1) {
+      const dst = blockStartFrame + i;
+      if (dst >= expectedOutFrames) break;
+
+      if (blockStartFrame > 0 && i < overlapLimit && overlapLimit > 1) {
+        const progress = i / (overlapLimit - 1);
+        const previousGain = Math.cos(progress * 0.5 * Math.PI);
+        const currentGain = Math.sin(progress * 0.5 * Math.PI);
+        output[dst] = (output[dst] ?? 0) * previousGain + (block[i] ?? 0) * currentGain;
+      } else {
+        output[dst] = block[i] ?? 0;
+      }
+    }
+  }
+}
+
+function buildGainEnvelope(params: {
+  frames: number;
+  targetSampleRate: number;
+  clip: PreparedClip;
+}): Float32Array {
+  const { frames, targetSampleRate, clip } = params;
+  const gainEnvelope = new Float32Array(frames);
+  if (clip.audioFadeInS === 0 && clip.audioFadeOutS === 0) {
+    gainEnvelope.fill(clip.audioGain);
+    return gainEnvelope;
+  }
+
+  gainEnvelope.fill(clip.audioGain);
+
+  const applyEnvelopeRange = (startFrame: number, endFrame: number) => {
+    const start = Math.max(0, Math.min(frames, startFrame));
+    const end = Math.max(start, Math.min(frames, endFrame));
+    for (let i = start; i < end; i += 1) {
+      gainEnvelope[i] = getGainAtClipTime({
+        clipDurationS: clip.playDurationS,
+        fadeInS: clip.audioFadeInS,
+        fadeOutS: clip.audioFadeOutS,
+        fadeInCurve: clip.audioFadeInCurve,
+        fadeOutCurve: clip.audioFadeOutCurve,
+        baseGain: clip.audioGain,
+        tClipS: i / targetSampleRate,
+      });
+    }
+  };
+
+  if (
+    (clip.audioFadeInS > 0 && clip.audioFadeInS >= clip.playDurationS) ||
+    (clip.audioFadeOutS > 0 && clip.audioFadeOutS >= clip.playDurationS)
+  ) {
+    applyEnvelopeRange(0, frames);
+    return gainEnvelope;
+  }
+
+  if (clip.audioFadeInS > 0) {
+    applyEnvelopeRange(0, Math.ceil(clip.audioFadeInS * targetSampleRate));
+  }
+
+  if (clip.audioFadeOutS > 0) {
+    const fadeOutStartS = Math.max(0, clip.playDurationS - clip.audioFadeOutS);
+    applyEnvelopeRange(
+      Math.floor(fadeOutStartS * targetSampleRate),
+      Math.ceil(clip.playDurationS * targetSampleRate),
+    );
+  }
+
+  const clipEndFrame = Math.max(
+    0,
+    Math.min(frames, Math.ceil(clip.playDurationS * targetSampleRate)),
+  );
+  if (clipEndFrame < frames) {
+    gainEnvelope.fill(0, clipEndFrame);
+  }
+
+  return gainEnvelope;
+}
+
 /**
  * Loads all PCM samples covering the clip's playable source window into a
  * contiguous per-channel buffer. The buffer is sized by sinkEnd-sinkStart and
@@ -438,13 +599,6 @@ async function loadClipSourcePlanes(args: {
   };
 }
 
-/**
- * Processes a single clip end-to-end: load -> normalize channels -> reverse ->
- * resample with time-stretch -> apply effects -> trim/pad to expected length ->
- * pre-compute gain envelope. Stateful effects (reverb, delay, compressors) and
- * resampling now see the whole clip in one pass, eliminating the per-sample
- * artefacts of the previous chunk-wise design.
- */
 async function processClipAudio(args: {
   clip: PreparedClip;
   targetSampleRate: number;
@@ -460,161 +614,121 @@ async function processClipAudio(args: {
   const expectedOutFrames = Math.max(0, Math.round(clip.playDurationS * targetSampleRate));
   if (expectedOutFrames <= 0) return null;
 
-  const sourceWindowDurationS = clip.playDurationS * clip.speed;
-  const sinkStartS = Math.max(0, clip.offsetS);
-  const sinkEndS = Math.max(sinkStartS, sinkStartS + sourceWindowDurationS);
+  const outputPlanes = Array.from(
+    { length: numberOfChannels },
+    () => new Float32Array(expectedOutFrames),
+  );
+  const blockFrames = Math.max(1, Math.round(CLIP_PROCESS_BLOCK_DURATION_S * targetSampleRate));
+  const overlapFrames = Math.min(
+    blockFrames,
+    Math.round(estimateClipProcessingOverlapS(clip.audioEffects) * targetSampleRate),
+  );
 
-  const loaded = await loadClipSourcePlanes({
-    sink: clip.sink,
-    sinkStartS,
-    sinkEndS,
-    checkCancel,
-    reportExportWarning,
-  });
-  if (!loaded) return null;
-
-  let planes = normalizeSampleChannels({
-    planes: loaded.planes,
-    sourceChannels: loaded.channels,
-    targetChannels: numberOfChannels,
-    frames: loaded.frames,
-  });
-  let frames = loaded.frames;
-
-  if (clip.reversed) {
-    for (let c = 0; c < planes.length; c += 1) {
-      const plane = planes[c];
-      if (plane) plane.reverse();
+  for (
+    let blockStartFrame = 0;
+    blockStartFrame < expectedOutFrames;
+    blockStartFrame += blockFrames
+  ) {
+    if (checkCancel?.()) {
+      const abortErr = new Error('Export was cancelled');
+      (abortErr as any).name = 'AbortError';
+      throw abortErr;
     }
-  }
 
-  const needsResample = loaded.sampleRate !== targetSampleRate;
-  const needsStretch = clip.speed !== 1;
-  if (needsResample || needsStretch) {
-    try {
-      planes = await resampleAndStretchOffline({
-        planes,
-        sourceSampleRate: loaded.sampleRate,
-        sourceFrames: frames,
-        targetSampleRate,
-        targetFrames: expectedOutFrames,
-        channels: numberOfChannels,
-        playbackRate: clip.speed,
-      });
-      frames = planes[0]?.length ?? expectedOutFrames;
-    } catch (err) {
-      // Falling back to the source-rate planes would mix pitch-shifted audio
-      // into the output (the downstream loop assumes targetSampleRate). Prefer
-      // a silent clip — the export still completes and the user is warned.
-      await reportExportWarning(
-        '[Worker Export] Failed to resample audio clip; substituting silence.',
-      );
-      planes = Array.from({ length: numberOfChannels }, () => new Float32Array(expectedOutFrames));
-      frames = expectedOutFrames;
-    }
-  }
+    const remainingFrames = expectedOutFrames - blockStartFrame;
+    const targetFrames = Math.min(blockFrames + overlapFrames, remainingFrames);
+    const blockStartS = blockStartFrame / targetSampleRate;
+    const outputDurationS = targetFrames / targetSampleRate;
+    const sourceStartS = Math.max(0, clip.offsetS + blockStartS * clip.speed);
+    const sourceEndS = Math.max(sourceStartS, sourceStartS + outputDurationS * clip.speed);
 
-  if (clip.audioEffects.length > 0) {
-    const processed = await applyAudioEffectsOffline({
-      planes,
-      sampleRate: targetSampleRate,
-      frames,
-      channels: numberOfChannels,
-      effects: clip.audioEffects,
+    const loaded = await loadClipSourcePlanes({
+      sink: clip.sink,
+      sinkStartS: sourceStartS,
+      sinkEndS: sourceEndS,
+      checkCancel,
+      reportExportWarning,
     });
-    planes = processed.planes;
-    frames = processed.frames;
+
+    if (!loaded) {
+      continue;
+    }
+
+    let blockPlanes = normalizeSampleChannels({
+      planes: loaded.planes,
+      sourceChannels: loaded.channels,
+      targetChannels: numberOfChannels,
+      frames: loaded.frames,
+    });
+    let blockOutputFrames = loaded.frames;
+
+    if (loaded.sampleRate !== targetSampleRate || clip.speed !== 1) {
+      try {
+        blockPlanes = await resampleAndStretchOffline({
+          planes: blockPlanes,
+          sourceSampleRate: loaded.sampleRate,
+          sourceFrames: blockOutputFrames,
+          targetSampleRate,
+          targetFrames,
+          channels: numberOfChannels,
+          playbackRate: clip.speed,
+        });
+        blockOutputFrames = blockPlanes[0]?.length ?? targetFrames;
+      } catch {
+        await reportExportWarning(
+          '[Worker Export] Failed to resample audio clip block; substituting silence.',
+        );
+        blockPlanes = Array.from(
+          { length: numberOfChannels },
+          () => new Float32Array(targetFrames),
+        );
+        blockOutputFrames = targetFrames;
+      }
+    }
+
+    blockPlanes = trimOrPadPlanes({
+      planes: blockPlanes,
+      channels: numberOfChannels,
+      frames: targetFrames,
+    });
+    blockOutputFrames = targetFrames;
+
+    if (clip.audioEffects.length > 0) {
+      const processed = await applyAudioEffectsOffline({
+        planes: blockPlanes,
+        sampleRate: targetSampleRate,
+        frames: blockOutputFrames,
+        channels: numberOfChannels,
+        effects: clip.audioEffects,
+      });
+      blockPlanes = trimOrPadPlanes({
+        planes: processed.planes,
+        channels: numberOfChannels,
+        frames: targetFrames,
+      });
+    }
+
+    writeProcessedBlock({
+      outputPlanes,
+      blockPlanes,
+      blockStartFrame,
+      expectedOutFrames,
+      overlapFrames,
+    });
   }
 
-  // Defensive trim/pad to the timeline-expected length to avoid any drift from
-  // resampler rounding or an effect that changes block length.
-  if (frames !== expectedOutFrames) {
-    const fixed: Float32Array[] = [];
-    for (let c = 0; c < numberOfChannels; c += 1) {
-      const plane = planes[c] ?? new Float32Array(frames);
-      if (plane.length === expectedOutFrames) {
-        fixed.push(plane);
-        continue;
-      }
-      const next = new Float32Array(expectedOutFrames);
-      const copyLen = Math.min(plane.length, expectedOutFrames);
-      next.set(plane.subarray(0, copyLen), 0);
-      fixed.push(next);
-    }
-    planes = fixed;
-    frames = expectedOutFrames;
-  }
+  const gainEnvelope = buildGainEnvelope({
+    frames: expectedOutFrames,
+    targetSampleRate,
+    clip,
+  });
 
-  const gainEnvelope = new Float32Array(frames);
-  if (clip.audioFadeInS === 0 && clip.audioFadeOutS === 0) {
-    gainEnvelope.fill(clip.audioGain);
-  } else {
-    gainEnvelope.fill(clip.audioGain);
-
-    const applyEnvelopeRange = (startFrame: number, endFrame: number) => {
-      const start = Math.max(0, Math.min(frames, startFrame));
-      const end = Math.max(start, Math.min(frames, endFrame));
-      for (let i = start; i < end; i += 1) {
-        gainEnvelope[i] = getGainAtClipTime({
-          clipDurationS: clip.playDurationS,
-          fadeInS: clip.audioFadeInS,
-          fadeOutS: clip.audioFadeOutS,
-          fadeInCurve: clip.audioFadeInCurve,
-          fadeOutCurve: clip.audioFadeOutCurve,
-          baseGain: clip.audioGain,
-          tClipS: i / targetSampleRate,
-        });
-      }
-    };
-
-    if (clip.audioFadeInS > 0) {
-      applyEnvelopeRange(0, Math.ceil(clip.audioFadeInS * targetSampleRate));
-    }
-
-    if (clip.audioFadeOutS > 0) {
-      const fadeOutStartS = Math.max(0, clip.playDurationS - clip.audioFadeOutS);
-      applyEnvelopeRange(
-        Math.floor(fadeOutStartS * targetSampleRate),
-        Math.ceil(clip.playDurationS * targetSampleRate),
-      );
-    }
-
-    const clipEndFrame = Math.max(
-      0,
-      Math.min(frames, Math.ceil(clip.playDurationS * targetSampleRate)),
-    );
-    if (clipEndFrame < frames) {
-      gainEnvelope.fill(0, clipEndFrame);
-    }
-
-    if (clip.audioFadeInS > 0 && clip.audioFadeInS >= clip.playDurationS) {
-      for (let i = 0; i < frames; i += 1) {
-        gainEnvelope[i] = getGainAtClipTime({
-          clipDurationS: clip.playDurationS,
-          fadeInS: clip.audioFadeInS,
-          fadeOutS: clip.audioFadeOutS,
-          fadeInCurve: clip.audioFadeInCurve,
-          fadeOutCurve: clip.audioFadeOutCurve,
-          baseGain: clip.audioGain,
-          tClipS: i / targetSampleRate,
-        });
-      }
-    } else if (clip.audioFadeOutS > 0 && clip.audioFadeOutS >= clip.playDurationS) {
-      for (let i = 0; i < frames; i += 1) {
-        gainEnvelope[i] = getGainAtClipTime({
-          clipDurationS: clip.playDurationS,
-          fadeInS: clip.audioFadeInS,
-          fadeOutS: clip.audioFadeOutS,
-          fadeInCurve: clip.audioFadeInCurve,
-          fadeOutCurve: clip.audioFadeOutCurve,
-          baseGain: clip.audioGain,
-          tClipS: i / targetSampleRate,
-        });
-      }
-    }
-  }
-
-  return { planes, frames, gainEnvelope, audioBalance: clip.audioBalance };
+  return {
+    planes: outputPlanes,
+    frames: expectedOutFrames,
+    gainEnvelope,
+    audioBalance: clip.audioBalance,
+  };
 }
 
 interface AdjacencyMap {

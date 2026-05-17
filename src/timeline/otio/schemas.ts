@@ -77,12 +77,30 @@ export const ShapeConfigSchema = z.object({
   pointerDirection: z.enum(['left', 'right']).optional(),
 });
 
+export const ClipTransitionFastCatSchema = z.object({
+  type: z.string().trim().min(1),
+  durationUs: z.number().min(0),
+  mode: z.enum(['adjacent', 'background', 'transparent']).optional(),
+  isOverridden: z.boolean().optional(),
+  curve: z.enum(['linear', 'smooth']).optional(),
+  params: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const ClipEffectFastCatSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    type: z.string().trim().min(1),
+    enabled: z.boolean().optional(),
+    target: z.enum(['video', 'audio']).optional(),
+  })
+  .passthrough();
+
 export const HudMediaParamsSchema = z.object({
   source: z.object({ path: z.string() }).optional(),
   sourceKind: z.enum(['media', 'timeline']).optional(),
-  transitionIn: z.any().optional(),
-  transitionOut: z.any().optional(),
-  effects: z.array(z.any()).optional(),
+  transitionIn: ClipTransitionFastCatSchema.optional(),
+  transitionOut: ClipTransitionFastCatSchema.optional(),
+  effects: z.array(ClipEffectFastCatSchema).optional(),
   scaleX: z.number().optional(),
   scaleY: z.number().optional(),
   offsetX: z.number().optional(),
@@ -178,8 +196,8 @@ export const TimelineClipFastCatMetaSchema = z
     mask: ClipMaskSchema.optional(),
     transitions: z
       .object({
-        in: z.any().optional(),
-        out: z.any().optional(),
+        in: ClipTransitionFastCatSchema.optional(),
+        out: ClipTransitionFastCatSchema.optional(),
       })
       .optional(),
     typeData: z
@@ -245,7 +263,7 @@ export const TimelineDocFastCatMetaSchema = z
       .object({
         masterGain: z.number().min(0).max(10).optional(),
         masterMuted: z.boolean().optional(),
-        masterEffects: z.array(z.any()).optional(),
+        masterEffects: z.array(ClipEffectFastCatSchema).optional(),
       })
       .optional(),
   })

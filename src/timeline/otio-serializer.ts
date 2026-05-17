@@ -39,6 +39,13 @@ import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './
 // Public API
 // ---------------------------------------------------------------------------
 
+function sortTracksForOtioStack(tracks: TimelineTrack[]): TimelineTrack[] {
+  const videoTracks = tracks.filter((track) => track.kind === 'video').reverse();
+  const audioTracks = tracks.filter((track) => track.kind === 'audio');
+
+  return [...videoTracks, ...audioTracks];
+}
+
 export function createDefaultTimelineDocument(params: {
   id: string;
   name: string;
@@ -68,7 +75,7 @@ export function createDefaultTimelineDocument(params: {
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
   const fps = doc.timebase?.fps;
 
-  const tracks: OtioTrack[] = doc.tracks.map((t) => {
+  const tracks: OtioTrack[] = sortTracksForOtioStack(doc.tracks).map((t) => {
     const sortedItems = [...t.items].sort(
       (a, b) => a.timelineRange.startUs - b.timelineRange.startUs,
     );
@@ -232,6 +239,9 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       kind: trackKindToOtioKind(t.kind),
       children,
       effects: serializeEffects(t.effects),
+      markers: Array.isArray(t.markers)
+        ? [...t.markers].sort((a, b) => a.timeUs - b.timeUs).map((m) => serializeMarker(m, fps))
+        : undefined,
       metadata: {
         fastcat: {
           id: t.id,
@@ -272,8 +282,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
       OTIO_SCHEMA: 'Stack.1',
       name: 'tracks',
       children: tracks,
+      markers,
     },
-    markers,
     metadata: {
       fastcat: {
         version: 1,
@@ -479,22 +489,48 @@ export function parseTimelineFromOtio(
   });
 
   const normalizedTracks = [...video, ...audio];
+  const clipIds = new Set(
+    normalizedTracks.flatMap((track) =>
+      track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
+    ),
+  );
+  const tracksWithValidLinks = normalizedTracks.map((track) => ({
+    ...track,
+    items: track.items.map((item) => {
+      if (item.kind !== 'clip' || !item.linkedVideoClipId || clipIds.has(item.linkedVideoClipId)) {
+        return item;
+      }
+
+      console.warn(
+        `[fastcat:otio] Dropping broken linkedVideoClipId "${item.linkedVideoClipId}" on clip "${item.id}".`,
+      );
+
+      const next = { ...item };
+      delete next.linkedVideoClipId;
+      delete next.lockToLinkedVideo;
+
+      return next;
+    }),
+  }));
 
   const docId = coerceId(fastcatMeta.docId, fallback.id);
   const version = typeof fastcatMeta.version === 'number' ? fastcatMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);
 
-  // Markers: prefer standard OTIO markers on Timeline, fallback to fastcat metadata for old files.
+  // Markers: prefer standard OTIO markers on Stack, fallback to Timeline for old files.
   const markers =
-    Array.isArray(parsed.markers) && (parsed.markers as any[]).length > 0
-      ? parseOtioMarkers(parsed.markers as any[])
-      : [];
+    Array.isArray((parsed.tracks as any)?.markers) &&
+    ((parsed.tracks as any).markers as any[]).length > 0
+      ? parseOtioMarkers((parsed.tracks as any).markers as any[])
+      : Array.isArray(parsed.markers) && (parsed.markers as any[]).length > 0
+        ? parseOtioMarkers(parsed.markers as any[])
+        : [];
 
   const masterEffects = fastcatMeta.audio?.masterEffects;
   const masterGain = fastcatMeta.audio?.masterGain;
   const masterMuted = fastcatMeta.audio?.masterMuted;
 
-  if (normalizedTracks.length === 0) {
+  if (tracksWithValidLinks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
     base.metadata = {
       ...(base.metadata ?? {}),
@@ -517,7 +553,7 @@ export function parseTimelineFromOtio(
     id: docId,
     name,
     timebase,
-    tracks: normalizedTracks,
+    tracks: tracksWithValidLinks,
     metadata: {
       fastcat: {
         version,

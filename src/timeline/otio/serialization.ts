@@ -19,8 +19,8 @@ export function serializeEffects(effects: ClipEffect[] | undefined): OtioEffect[
   if (!Array.isArray(effects) || effects.length === 0) return undefined;
   return effects.map((e) => ({
     OTIO_SCHEMA: 'Effect.1' as const,
-    name: e.id,
-    effect_name: e.type,
+    name: e.type,
+    effect_name: `fastcat:${e.type}`,
     enabled: e.enabled !== false,
     metadata: {
       fastcat: {
@@ -53,7 +53,7 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
       typeof effectMeta.type === 'string'
         ? effectMeta.type
         : typeof e.effect_name === 'string'
-          ? e.effect_name
+          ? e.effect_name.replace(/^fastcat:/, '')
           : '';
     if (!id || !type) continue;
     const params =
@@ -74,7 +74,7 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
 // ---------------------------------------------------------------------------
 
 function colorToOtioColor(color: string | undefined): string {
-  if (!color) return 'WHITE';
+  if (!color) return 'RED';
   const map: Record<string, string> = {
     red: 'RED',
     '#ff0000': 'RED',

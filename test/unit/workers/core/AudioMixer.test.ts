@@ -549,6 +549,90 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[0]).toBeCloseTo(1.0);
   });
 
+  it('processes long effect clips in overlapped chunks', async () => {
+    vi.mocked(applyAudioEffectsOffline).mockClear();
+    const sampleRate = 1000;
+    const numberOfChannels = 1;
+    const durationS = 25;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const customSink = new mockMediabunny.AudioSampleSink();
+    customSink.samples = vi.fn((startS: number, endS: number) => ({
+      [Symbol.asyncIterator]: async function* () {
+        const frames = Math.round((endS - startS) * sampleRate);
+        const data = new Float32Array(frames).fill(0.25);
+        yield {
+          numberOfFrames: frames,
+          sampleRate,
+          numberOfChannels: 1,
+          timestamp: startS,
+          allocationSize: () => frames * 4,
+          copyTo: (dst: Float32Array) => dst.set(data),
+        };
+      },
+    }));
+
+    (applyAudioEffectsOffline as any).mockImplementation(({ planes, frames }: any) => {
+      const newPlanes = planes.map((p: Float32Array) => {
+        const out = new Float32Array(p.length);
+        for (let i = 0; i < p.length; i += 1) out[i] = p[i]! * 2;
+        return out;
+      });
+      return Promise.resolve({ planes: newPlanes, frames });
+    });
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: durationS,
+        input: new mockMediabunny.Input() as any,
+        sink: customSink as any,
+        sourcePath: 'long-effects.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [
+          {
+            id: 'fx1',
+            type: 'audio-echo',
+            enabled: true,
+            target: 'audio',
+            delayTime: 0.5,
+            feedback: 0.5,
+          },
+        ] as any,
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS,
+      audioSource,
+      chunkDurationS: 25,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    expect(customSink.samples).toHaveBeenCalledTimes(3);
+    expect(customSink.samples).toHaveBeenNthCalledWith(1, 0, 11);
+    expect(customSink.samples).toHaveBeenNthCalledWith(2, 10, 21);
+    expect(customSink.samples).toHaveBeenNthCalledWith(3, 20, 25);
+    expect(applyAudioEffectsOffline).toHaveBeenCalledTimes(3);
+
+    const mixedData = audioSource.add.mock.calls[0][0].data.data;
+    expect(mixedData[0]).toBeCloseTo(0.5);
+    expect(mixedData[15_000]).toBeCloseTo(0.5);
+    expect(mixedData[24_999]).toBeCloseTo(0.5);
+  });
+
   it('drops audio on negative-speed clips even when fades are set', async () => {
     const sampleRate = 1000;
     const numberOfChannels = 1;

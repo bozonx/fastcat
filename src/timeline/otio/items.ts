@@ -50,7 +50,7 @@ export function parseClipItem(input: {
       ? ref.target_url
       : '';
 
-  // Source duration: prefer available_range on media_reference, then metadata.
+  // Source duration: prefer OTIO available_range, then fastcat metadata.
   const availableRange =
     ref?.OTIO_SCHEMA === 'ExternalReference.1' && ref.available_range
       ? fromTimeRange(ref.available_range)
@@ -64,9 +64,11 @@ export function parseClipItem(input: {
 
   const sourceDurationUsFromMeta = Math.max(0, Math.round(fastcatMeta.source?.durationUs ?? 0));
   const sourceDurationUs =
-    sourceDurationUsFromMeta > 0
-      ? sourceDurationUsFromMeta
-      : (availableRange?.durationUs ?? sourceRange.durationUs);
+    availableRange?.durationUs && availableRange.durationUs > 0
+      ? availableRange.durationUs
+      : sourceDurationUsFromMeta > 0
+        ? sourceDurationUsFromMeta
+        : sourceRange.durationUs;
 
   const id = resolveStableItemId({
     prefix: 'clip',

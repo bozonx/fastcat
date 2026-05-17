@@ -365,6 +365,7 @@ export interface TimelineTrack {
   items: TimelineTrackItem[];
   color?: string;
   locked?: boolean;
+  markers?: TimelineMarker[];
 }
 
 export interface TimelineMarker {
