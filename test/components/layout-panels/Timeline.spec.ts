@@ -62,6 +62,16 @@ describe('Timeline Component', () => {
     expect(component.findAllComponents({ name: 'TimelineTrackSection' }).length).toBe(2);
   });
 
+  it('keeps the horizontal scroll viewport aligned with the track area', async () => {
+    const component = await mountSuspended(Timeline);
+    const masterScroll = component.find('.timeline-master-scroll');
+    const scrollRow = masterScroll.element.parentElement as HTMLElement;
+    const labelSpacer = scrollRow.firstElementChild as HTMLElement;
+
+    expect(labelSpacer.getAttribute('style')).toContain('width: 220px');
+    expect(masterScroll.classes()).toContain('flex-1');
+  });
+
   it('displays correct timecode from store', async () => {
     const component = await mountSuspended(Timeline);
     const timecode = component.findComponent(UiTimecode);

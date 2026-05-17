@@ -644,6 +644,22 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
   function getDropPosition(e: DragEvent) {
     if (!scrollEl.value) return null;
+
+    // When dragging over a track, use the track element's bounding rect.
+    // The track lives inside TimelineTracks which has a CSS transform
+    // (translate3d(-scrollLeft, 0, 0)) applied, so its getBoundingClientRect()
+    // already accounts for horizontal scroll. Adding scrollLeft again would
+    // double-count it. Additionally, the masterScrollEl (scrollEl) sits
+    // flush against the left edge of the panel and doesn't include the
+    // 220px track labels offset, causing a constant rightward shift.
+    const targetEl = e.currentTarget as HTMLElement | null;
+    if (targetEl?.dataset.trackId) {
+      const rect = targetEl.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      return pxToTimeUs(x, timelineStore.timelineZoom);
+    }
+
+    // Fallback for non-track drop targets
     const rect = scrollEl.value.getBoundingClientRect();
     const x = e.clientX - rect.left + scrollEl.value.scrollLeft;
     return pxToTimeUs(x, timelineStore.timelineZoom);

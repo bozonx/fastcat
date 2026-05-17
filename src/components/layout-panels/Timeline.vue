@@ -51,6 +51,7 @@ const rulerContainerRef = ref<HTMLElement | null>(null);
 const videoSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(null);
 const audioSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(null);
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
+const TRACK_LABELS_WIDTH = 220;
 
 // --- Derived scroll elements (from TimelineTrackSection via defineExpose) ---
 // Vue unwraps refs exposed via defineExpose, so .scrollEl is HTMLElement | null directly
@@ -465,7 +466,7 @@ function onDragVirtualEnd() {
       <UContextMenu :items="emptyAreaContextMenuItems">
         <div
           class="shrink-0 border-r border-ui-border bg-ui-bg-elevated flex items-center px-2 gap-2 cursor-pointer"
-          style="width: 220px"
+          :style="{ width: `${TRACK_LABELS_WIDTH}px` }"
           @click="
             timelineStore.selectTimelineProperties();
             selectionStore.selectTimelineProperties();
@@ -631,12 +632,15 @@ function onDragVirtualEnd() {
         @update-track-height="updateTrackHeight"
       />
 
-      <div
-        ref="masterScrollEl"
-        class="timeline-master-scroll shrink-0 overflow-x-auto overflow-y-hidden"
-        @scroll="onMasterScroll"
-      >
-        <div :style="timelineWidthStyle" class="h-px" />
+      <div class="flex shrink-0">
+        <div class="shrink-0" :style="{ width: `${TRACK_LABELS_WIDTH}px` }" />
+        <div
+          ref="masterScrollEl"
+          class="timeline-master-scroll min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
+          @scroll="onMasterScroll"
+        >
+          <div :style="timelineWidthStyle" class="h-px" />
+        </div>
       </div>
     </div>
   </div>
