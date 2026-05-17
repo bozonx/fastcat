@@ -513,6 +513,67 @@ describe('AudioEngine', () => {
     expect(audioContextInstance.createdSources.length).toBe(3);
   });
 
+  it('throttles streaming so it does not pre-schedule the entire clip up front', async () => {
+    // 200s clip → 40 chunks. With SCHEDULING_LOOKAHEAD_S = 30s, only ~7
+    // chunks should be scheduled ahead at any time, regardless of how long
+    // we wait. Past the lookahead window the streaming loop parks itself.
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({
+      durationUs: 200_000_000,
+      sourceRangeDurationUs: 200_000_000,
+      sourceDurationUs: 200_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 1000;
+
+    await engine.play(0);
+    // Plenty of time for unthrottled streaming to drain the whole clip.
+    await new Promise<void>((resolve) => setTimeout(resolve, 250));
+
+    expect(audioContextInstance.createdSources.length).toBeGreaterThan(0);
+    // 30s lookahead / 5s per chunk = 6 chunks; first chunk is already
+    // playing (scheduled at kickoff), so up to ~7 active sources.
+    expect(audioContextInstance.createdSources.length).toBeLessThanOrEqual(8);
+  });
+
+  it('keeps streaming after every scheduled source has ended', async () => {
+    // The throttled streaming loop parks itself once it's pre-scheduled
+    // SCHEDULING_LOOKAHEAD_S of audio. If real time advances past everything
+    // that was queued, the loop must wake up, snap the cursor forward, and
+    // schedule more — instead of tearing the clip graph down.
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip({
+      durationUs: 500_000_000,
+      sourceRangeDurationUs: 500_000_000,
+      sourceDurationUs: 500_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 100;
+
+    await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+
+    const sourcesAfterInitial = audioContextInstance.createdSources.length;
+    // Lookahead window ~30s ÷ chunk 5s ≈ up to ~7 sources scheduled ahead.
+    expect(sourcesAfterInitial).toBeGreaterThanOrEqual(1);
+    expect(sourcesAfterInitial).toBeLessThanOrEqual(8);
+
+    // Fast-forward ctx clock past every currently-scheduled source. The
+    // streaming loop should wake, gap-compensate, then schedule more.
+    audioContextInstance.currentTime += 60;
+    await new Promise<void>((resolve) => setTimeout(resolve, 150));
+
+    expect(audioContextInstance.createdSources.length).toBeGreaterThan(sourcesAfterInitial);
+  });
+
   it('decodes the correct chunk when playback starts in the middle of the source', async () => {
     // Clip uses source seconds 7..12, so the first chunk needed is index 1
     // (covers 5..10s in source time).

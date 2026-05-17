@@ -24,7 +24,16 @@ const logger = createDevLogger('AudioEngine');
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private readonly chunkSizeS = 5;
-  private readonly maxChunkCount = 50;
+  // Holds enough decoded PCM for multi-clip projects: each active clip pins
+  // ~SCHEDULING_LOOKAHEAD_S / chunkSizeS chunks while playing; this limit
+  // gives ample headroom on top of that and only kicks in for unusually
+  // large timelines.
+  private readonly maxChunkCount = 100;
+  // How far ahead (in AudioContext seconds) the streaming loop is allowed to
+  // pre-schedule source nodes for a given clip. Bigger = more decoder slack
+  // (resilient to slow decodes) but more pinned AudioBuffers in memory.
+  // 30s = up to ~6 chunks/clip in flight, ~12 MB stereo float32.
+  private readonly schedulingLookaheadS = 30;
   private chunkCache = new Map<string, AudioChunk[]>();
   private chunkDecodeInFlight = new Map<string, Promise<AudioChunk | null>>();
   private failedChunkKeys = new Set<string>();
@@ -1214,8 +1223,26 @@ export class AudioEngine {
       }
     };
 
+    // If the decoder fell behind real time, advance the scheduling cursor so
+    // the next source plays at the position the clock thinks we should be at.
+    // We drop the audio that "should have played" during the gap — silence is
+    // preferable to losing video/audio sync.
+    const compensateForRealTimeGap = () => {
+      if (!this.ctx) return;
+      const ctxNow = this.ctx.currentTime;
+      if (state.scheduledCtxTimeS >= ctxNow) return;
+      const lostCtxS = ctxNow - state.scheduledCtxTimeS;
+      const lostSourceS = lostCtxS * window.effectiveSpeed;
+      state.scheduledCtxTimeS = ctxNow;
+      state.currentSourceTimeS += lostSourceS;
+      state.remainingToPlayS = Math.max(0, state.remainingToPlayS - lostSourceS);
+    };
+
     const scheduleSource = (chunk: AudioChunk) => {
       if (!this.ctx || state.teardownDone) return;
+      if (state.remainingToPlayS <= 0) return;
+
+      compensateForRealTimeGap();
       if (state.remainingToPlayS <= 0) return;
 
       const chunkStartS = chunk.startTimeS;
@@ -1262,18 +1289,30 @@ export class AudioEngine {
       return;
     }
 
-    // Stream the rest of the chunks one-by-one as their decode completes.
+    // Stream the remaining chunks, throttled to a fixed lookahead window. The
+    // loop survives gaps where every scheduled source has already played
+    // out — it only tears down when the user stops, the generation flips, or
+    // the clip is fully scheduled and all sources have ended (maybeTeardown).
     void (async () => {
-      for (let i = firstChunkIndex + 1; i <= lastChunkIndex; i += 1) {
+      let i = firstChunkIndex + 1;
+      while (i <= lastChunkIndex) {
         if (state.teardownDone) return;
         if (state.remainingToPlayS <= 0) break;
-        if (generation !== this.scheduleGeneration) {
-          teardown();
+
+        const canProceed = await this.waitForSchedulingSlot(state, generation);
+        if (!canProceed) {
+          if (!state.teardownDone) teardown();
           return;
         }
-        if (!this.scheduler.isPlayingActive()) {
-          teardown();
-          return;
+
+        // After waking up, real time may have outrun us — re-anchor and skip
+        // any chunks that fall entirely behind the new cursor.
+        compensateForRealTimeGap();
+        if (state.remainingToPlayS <= 0) break;
+        const expectedChunkIdx = this.getChunkIndex(state.currentSourceTimeS);
+        if (expectedChunkIdx > i) {
+          i = expectedChunkIdx;
+          continue;
         }
 
         const chunk = await this.ensureChunkDecoded(sourceKey, clip.fileHandle, i);
@@ -1286,14 +1325,35 @@ export class AudioEngine {
           teardown();
           return;
         }
-        if (!chunk) continue;
-
-        scheduleSource(chunk);
+        if (chunk) {
+          scheduleSource(chunk);
+        }
+        i += 1;
       }
 
       state.streamingDone = true;
       maybeTeardown();
     })();
+  }
+
+  private async waitForSchedulingSlot(
+    state: { teardownDone: boolean; scheduledCtxTimeS: number },
+    generation: number,
+  ): Promise<boolean> {
+    while (true) {
+      if (state.teardownDone) return false;
+      if (generation !== this.scheduleGeneration) return false;
+      if (!this.scheduler.isPlayingActive()) return false;
+      if (!this.ctx) return false;
+
+      const slackS = state.scheduledCtxTimeS - this.ctx.currentTime - this.schedulingLookaheadS;
+      if (slackS <= 0) return true;
+
+      // Sleep until we're close enough to needing the next chunk — but cap so
+      // we re-check generation/isPlaying state periodically.
+      const sleepMs = Math.min(1000, Math.max(50, slackS * 1000 * 0.5));
+      await new Promise<void>((resolve) => setTimeout(resolve, sleepMs));
+    }
   }
 
   private stopNodeCollection(
