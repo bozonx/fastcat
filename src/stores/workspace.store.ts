@@ -16,6 +16,7 @@ import { useProjectStore } from './project.store';
 import { useProxyStore } from './proxy.store';
 
 import { getErrorMessage } from '~/utils/errors';
+import { useRuntimeConfig } from '#app';
 import {
   readLocalStorageJson,
   readLocalStorageString,
@@ -25,7 +26,6 @@ import {
   STORAGE_KEYS,
 } from '~/stores/ui/uiLocalStorage';
 
-
 export interface RecentProject {
   projectName: string;
   projectId: string;
@@ -34,6 +34,7 @@ export interface RecentProject {
 }
 
 export const useWorkspaceStore = defineStore('workspace', () => {
+  const runtimeConfig = useRuntimeConfig();
   const workspaceProvider = createWorkspaceProvider();
   const workspaceTopology = getWorkspaceStorageTopology();
 
@@ -132,10 +133,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
   });
 
-  watch(recentProjects, (v) => {
-    if (isEphemeral.value) return;
-    writeLocalStorageJson(STORAGE_KEYS.WORKSPACE.RECENT_PROJECTS, v);
-  }, { deep: true });
+  watch(
+    recentProjects,
+    (v) => {
+      if (isEphemeral.value) return;
+      writeLocalStorageJson(STORAGE_KEYS.WORKSPACE.RECENT_PROJECTS, v);
+    },
+    { deep: true },
+  );
 
   function updateRecentProject(project: Omit<RecentProject, 'updatedAt'>) {
     const now = new Date().toISOString();
@@ -167,7 +172,10 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
-    settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
+    settingsRepo.value = createWorkspaceSettingsRepository({
+      workspaceDir: handle,
+      fastcatDevDir: runtimeConfig.public.fastcatDevDir as string | undefined,
+    });
 
     const folders = [
       workspaceTopology.projectsDirName,
@@ -210,6 +218,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error,
     isInitializing,
     isEphemeral,
+    fastcatDevDir: runtimeConfig.public.fastcatDevDir as string | undefined,
     loadProjects,
     loadAppSettingsFromDisk,
     loadWorkspaceSettingsFromDisk,

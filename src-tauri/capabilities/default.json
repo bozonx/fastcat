@@ -2,9 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "dialog:allow-open",
@@ -23,21 +21,27 @@
       "identifier": "fs:scope",
       "allow": [
         "$APPDATA/**/*",
-        "$HOME/**/*"
+        "$HOME/**/*",
+        "$RESOURCE/.dev-files/**/*",
+        "$RESOURCE/../.dev-files/**/*"
       ]
     },
     {
       "identifier": "fs-stream:allow-open-read-file-stream",
       "allow": [
         "$APPDATA/**/*",
-        "$HOME/**/*"
+        "$HOME/**/*",
+        "$RESOURCE/.dev-files/**/*",
+        "$RESOURCE/../.dev-files/**/*"
       ]
     },
     {
       "identifier": "fs-stream:allow-open-write-file-stream",
       "allow": [
         "$APPDATA/**/*",
-        "$HOME/**/*"
+        "$HOME/**/*",
+        "$RESOURCE/.dev-files/**/*",
+        "$RESOURCE/../.dev-files/**/*"
       ]
     }
   ]

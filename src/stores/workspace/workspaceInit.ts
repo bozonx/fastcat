@@ -15,6 +15,7 @@ export interface WorkspaceInitDeps {
   error: Ref<string | null>;
   isInitializing: Ref<boolean>;
   isEphemeral: Ref<boolean>;
+  fastcatDevDir?: string;
 
   loadProjects: () => Promise<void>;
   loadAppSettingsFromDisk: () => Promise<void>;
@@ -39,7 +40,10 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     deps.workspaceHandle.value = handle;
-    deps.settingsRepo.value = createWorkspaceSettingsRepository({ workspaceDir: handle });
+    deps.settingsRepo.value = createWorkspaceSettingsRepository({
+      workspaceDir: handle,
+      fastcatDevDir: deps.fastcatDevDir,
+    });
 
     const folders = [
       workspaceTopology.projectsDirName,

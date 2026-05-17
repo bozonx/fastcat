@@ -141,12 +141,54 @@ function isMediaClip(clip: any): clip is WorkerTimelineClip {
   return clip.clipType === 'media';
 }
 
+export function isPassthroughCompatibleClip(
+  clip: any,
+  options: { audioSampleRate?: number; audioChannels?: 'mono' | 'stereo' },
+): { ok: true } | { ok: false; reason: string } {
+  const fastcat = clip?.fastcat ?? {};
+  const gain = Number(clip?.audioGain ?? fastcat.audioGain ?? 1);
+  if (Number.isFinite(gain) && Math.abs(gain - 1) > 1e-6) {
+    return { ok: false, reason: 'clip gain is not unity' };
+  }
+  const balance = Number(clip?.audioBalance ?? fastcat.audioBalance ?? 0);
+  if (Number.isFinite(balance) && Math.abs(balance) > 1e-6) {
+    return { ok: false, reason: 'clip balance is not centered' };
+  }
+  const fadeInUs = Number(clip?.audioFadeInUs ?? fastcat.audioFadeInUs ?? 0);
+  const fadeOutUs = Number(clip?.audioFadeOutUs ?? fastcat.audioFadeOutUs ?? 0);
+  if (fadeInUs > 0 || fadeOutUs > 0) {
+    return { ok: false, reason: 'clip has fade in/out' };
+  }
+  const transitionIn = clip?.transitionIn ?? fastcat.transitionIn;
+  const transitionOut = clip?.transitionOut ?? fastcat.transitionOut;
+  if (
+    (transitionIn?.durationUs && Number(transitionIn.durationUs) > 0) ||
+    (transitionOut?.durationUs && Number(transitionOut.durationUs) > 0)
+  ) {
+    return { ok: false, reason: 'clip has audio transition' };
+  }
+  const audioEffects = Array.isArray(clip?.effects)
+    ? clip.effects.filter((e: any) => e?.target === 'audio' && e?.enabled !== false)
+    : [];
+  if (audioEffects.length > 0) {
+    return { ok: false, reason: 'clip has audio effects' };
+  }
+  const speedRaw = Number(clip?.speed);
+  if (Number.isFinite(speedRaw) && speedRaw !== 1) {
+    return { ok: false, reason: 'clip has non-unit speed or reverse' };
+  }
+  // Output sampleRate/channels are checked once we have decoder info; we still
+  // record the request for the caller to compare against.
+  return { ok: true };
+}
+
 async function buildPassthroughAudioTrack(params: {
   clip: any;
   hostClient: VideoCoreHostAPI | null;
   reportExportWarning: (message: string) => Promise<void>;
+  options: { audioSampleRate?: number; audioChannels?: 'mono' | 'stereo' };
 }) {
-  const { clip, hostClient, reportExportWarning } = params;
+  const { clip, hostClient, reportExportWarning, options } = params;
   const sourcePath = (clip as any).sourcePath || (clip as any).source?.path;
   if (!sourcePath || !hostClient) return null;
 
@@ -166,11 +208,31 @@ async function buildPassthroughAudioTrack(params: {
     const codec = codecParam || audioTrack.codec || '';
     if (!isOpusCodec(codec)) return null;
 
+    const requestedSampleRate = Number(options.audioSampleRate) || 48000;
+    const requestedChannels = options.audioChannels === 'mono' ? 1 : 2;
+    const sourceSampleRate = Number((audioTrack as any).sampleRate) || 0;
+    const sourceChannels = Number((audioTrack as any).numberOfChannels) || 0;
+    if (sourceSampleRate > 0 && sourceSampleRate !== requestedSampleRate) {
+      await reportExportWarning(
+        `[Worker Export] Opus passthrough disabled: source sample rate ${sourceSampleRate}Hz differs from requested ${requestedSampleRate}Hz.`,
+      );
+      safeDispose(input);
+      return null;
+    }
+    if (sourceChannels > 0 && sourceChannels !== requestedChannels) {
+      await reportExportWarning(
+        `[Worker Export] Opus passthrough disabled: source has ${sourceChannels} channel(s); requested ${requestedChannels}.`,
+      );
+      safeDispose(input);
+      return null;
+    }
+
     const decoderConfig = await audioTrack.getDecoderConfig();
     if (!decoderConfig) {
       await reportExportWarning(
         '[Worker Export] Opus audio passthrough requires decoder config; falling back to re-encode.',
       );
+      safeDispose(input);
       return null;
     }
 
@@ -271,6 +333,10 @@ export async function runExport(
         const packetEnd = packetStart + packetDuration;
         if (packetEnd <= ranges.sourceStartS) continue;
         if (packetStart >= ranges.sourceEndS) break;
+        // A packet straddling sourceStartS would produce a negative timestamp,
+        // which breaks muxing. We drop it; this loses at most one Opus frame
+        // (~20 ms) at the start, but keeps the stream valid.
+        if (packetStart < ranges.sourceStartS) continue;
 
         const adjustedTimestamp = packetStart - ranges.sourceStartS + ranges.timelineStartS;
         const adjustedPacket = packet.clone({ timestamp: adjustedTimestamp });
@@ -428,18 +494,26 @@ export async function runExport(
       } | null = null;
       if (options.audio && hasAnyAudio) {
         if (options.audioPassthrough && audioClips.length === 1 && audioClips[0] !== undefined) {
-          audioPacketState = await buildPassthroughAudioTrack({
-            clip: audioClips[0] as any,
-            hostClient,
-            reportExportWarning,
-          });
-          if (audioPacketState) {
-            audioSource = audioPacketState.audioSource;
-            output.addAudioTrack(audioSource);
-          } else {
+          const compat = isPassthroughCompatibleClip(audioClips[0], options);
+          if (!compat.ok) {
             await reportExportWarning(
-              '[Worker Export] Opus audio passthrough not available; falling back to re-encode.',
+              `[Worker Export] Opus audio passthrough disabled (${compat.reason}); re-encoding audio.`,
             );
+          } else {
+            audioPacketState = await buildPassthroughAudioTrack({
+              clip: audioClips[0] as any,
+              hostClient,
+              reportExportWarning,
+              options,
+            });
+            if (audioPacketState) {
+              audioSource = audioPacketState.audioSource;
+              output.addAudioTrack(audioSource);
+            } else {
+              await reportExportWarning(
+                '[Worker Export] Opus audio passthrough not available; falling back to re-encode.',
+              );
+            }
           }
         }
 

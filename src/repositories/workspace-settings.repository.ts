@@ -12,6 +12,8 @@ import {
 } from './app-fs.repository';
 import { FASTCAT_CONFIG_DIR_NAME, LEGACY_WORKSPACE_CONFIG_DIR_NAME } from '~/utils/storage-roots';
 
+const isDevMode = (): boolean => import.meta.dev;
+
 export interface WorkspaceSettingsRepository {
   loadUserSettings(): Promise<unknown | null>;
   saveUserSettings(data: FastCatUserSettings): Promise<void>;
@@ -58,8 +60,26 @@ function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
-async function readTauriConfigJson(filename: string): Promise<unknown | null> {
-  const { BaseDirectory, exists, readTextFile } = await import('@tauri-apps/plugin-fs');
+async function readTauriConfigJson(
+  filename: string,
+  fastcatDevDir?: string,
+): Promise<unknown | null> {
+  const { exists, readTextFile, mkdir } = await import('@tauri-apps/plugin-fs');
+
+  if (fastcatDevDir && isDevMode()) {
+    const { resolve, join } = await import('@tauri-apps/api/path');
+    const devPath = await resolve(fastcatDevDir);
+    await mkdir(devPath, { recursive: true }).catch(() => undefined);
+    const filePath = await join(devPath, filename);
+    const fileExists = await exists(filePath);
+    if (!fileExists) return null;
+    const text = await readTextFile(filePath);
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+    return JSON.parse(trimmed) as unknown;
+  }
+
+  const { BaseDirectory } = await import('@tauri-apps/plugin-fs');
   const fileExists = await exists(filename, { baseDir: BaseDirectory.AppConfig });
   if (!fileExists) return null;
   const text = await readTextFile(filename, { baseDir: BaseDirectory.AppConfig });
@@ -68,8 +88,23 @@ async function readTauriConfigJson(filename: string): Promise<unknown | null> {
   return JSON.parse(trimmed) as unknown;
 }
 
-async function writeTauriConfigJson(filename: string, data: unknown): Promise<void> {
-  const { BaseDirectory, writeTextFile } = await import('@tauri-apps/plugin-fs');
+async function writeTauriConfigJson(
+  filename: string,
+  data: unknown,
+  fastcatDevDir?: string,
+): Promise<void> {
+  const { writeTextFile, mkdir } = await import('@tauri-apps/plugin-fs');
+
+  if (fastcatDevDir && isDevMode()) {
+    const { resolve, join } = await import('@tauri-apps/api/path');
+    const devPath = await resolve(fastcatDevDir);
+    await mkdir(devPath, { recursive: true }).catch(() => undefined);
+    const filePath = await join(devPath, filename);
+    await writeTextFile(filePath, `${JSON.stringify(data, null, 2)}\n`);
+    return;
+  }
+
+  const { BaseDirectory } = await import('@tauri-apps/plugin-fs');
   await writeTextFile(filename, `${JSON.stringify(data, null, 2)}\n`, {
     baseDir: BaseDirectory.AppConfig,
   });
@@ -77,6 +112,7 @@ async function writeTauriConfigJson(filename: string, data: unknown): Promise<vo
 
 export function createWorkspaceSettingsRepository(input: {
   workspaceDir: DirectoryHandleLike;
+  fastcatDevDir?: string;
 }): WorkspaceSettingsRepository {
   async function loadSettings(
     filename: string,
@@ -84,7 +120,7 @@ export function createWorkspaceSettingsRepository(input: {
     legacyFilename?: string,
   ): Promise<unknown | null> {
     if (isTauriRuntime() && isGlobal) {
-      return await readTauriConfigJson(filename);
+      return await readTauriConfigJson(filename, input.fastcatDevDir);
     }
 
     const currentConfig = await readWorkspaceJson({
@@ -107,7 +143,7 @@ export function createWorkspaceSettingsRepository(input: {
 
   async function saveSettings(filename: string, isGlobal: boolean, data: unknown): Promise<void> {
     if (isTauriRuntime() && isGlobal) {
-      await writeTauriConfigJson(filename, data);
+      await writeTauriConfigJson(filename, data, input.fastcatDevDir);
       return;
     }
 

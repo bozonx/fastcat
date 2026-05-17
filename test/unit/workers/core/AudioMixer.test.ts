@@ -5,6 +5,7 @@ import {
   normalizeSampleChannels,
   AudioMixer,
   resampleChannelsOfflineAudioContext,
+  resampleAndStretchOffline,
   getStereoPanScales,
   type PreparedClip,
 } from '~/workers/core/AudioMixer';
@@ -526,5 +527,249 @@ describe('AudioMixer.writeMixedToSource', () => {
     const resultInstance = audioSource.add.mock.calls[0][0];
     const mixedData = resultInstance.data.data;
     expect(mixedData[0]).toBeCloseTo(1.0);
+  });
+
+  it('applies fade-in on reversed clips in timeline order (not source order)', async () => {
+    const sampleRate = 1000;
+    const numberOfChannels = 1;
+    const durationS = 1;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const customSink = new mockMediabunny.AudioSampleSink();
+    customSink.samples = vi.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        const data = new Float32Array(1000).fill(1.0);
+        yield {
+          numberOfFrames: 1000,
+          sampleRate: 1000,
+          numberOfChannels: 1,
+          timestamp: 0,
+          allocationSize: () => 4000,
+          copyTo: (dst: Float32Array) => dst.set(data),
+        };
+      },
+    });
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: 1,
+        input: new mockMediabunny.Input() as any,
+        sink: customSink as any,
+        sourcePath: 'reverse-fade.mp3',
+        speed: 1,
+        reversed: true,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0.5,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS,
+      audioSource,
+      chunkDurationS: 1,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    const mixedData = audioSource.add.mock.calls[0][0].data.data;
+    // First sample of the timeline must reflect fade-in start (≈0), not fade-out tail.
+    expect(mixedData[0]).toBeCloseTo(0);
+    expect(mixedData[250]).toBeCloseTo(0.5, 1);
+    // After fade-in ends (t≥0.5s) gain reaches the base value.
+    expect(mixedData[800]).toBeCloseTo(1, 1);
+  });
+});
+
+describe('AudioMixer time-stretch via speed', () => {
+  it('invokes resampleAndStretchOffline when speed != 1', async () => {
+    const sampleRate = 1000;
+    const numberOfChannels = 1;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+    const data = new Float32Array(2000).fill(0.5);
+    const customSink = new mockMediabunny.AudioSampleSink();
+    customSink.samples = vi.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          numberOfFrames: 2000,
+          sampleRate: 1000,
+          numberOfChannels: 1,
+          timestamp: 0,
+          allocationSize: () => 8000,
+          copyTo: (dst: Float32Array) => dst.set(data),
+        };
+      },
+    });
+
+    const offlineRendered = new Float32Array(1000).fill(0.5);
+    const mockOfflineCtx = {
+      createBuffer: vi.fn().mockReturnValue({ copyToChannel: vi.fn() }),
+      createBufferSource: vi.fn().mockReturnValue({
+        buffer: null,
+        playbackRate: { value: 1 },
+        connect: vi.fn(),
+        start: vi.fn(),
+      }),
+      destination: {},
+      startRendering: vi.fn().mockResolvedValue({
+        getChannelData: () => offlineRendered,
+        length: offlineRendered.length,
+      }),
+    };
+    const savedCtx = (globalThis as any).OfflineAudioContext;
+    (globalThis as any).OfflineAudioContext = vi.fn().mockImplementation(function () {
+      return mockOfflineCtx;
+    });
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: 1, // 2 source seconds at speed=2 → 1 output second
+        input: new mockMediabunny.Input() as any,
+        sink: customSink as any,
+        sourcePath: 'speed2.mp3',
+        speed: 2,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS: 1,
+      audioSource,
+      chunkDurationS: 1,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    expect((globalThis as any).OfflineAudioContext).toHaveBeenCalledWith(1, 1000, 1000);
+    expect(mockOfflineCtx.createBufferSource().playbackRate.value).toBe(2);
+    const mixedData = audioSource.add.mock.calls[0][0].data.data;
+    expect(mixedData[0]).toBeCloseTo(0.5);
+    expect(mixedData[999]).toBeCloseTo(0.5);
+
+    (globalThis as any).OfflineAudioContext = savedCtx;
+  });
+});
+
+describe('AudioMixer clip warning', () => {
+  it('reports a warning when the mix sum exceeds [-1, 1]', async () => {
+    const sampleRate = 1000;
+    const numberOfChannels = 1;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    function makeSink() {
+      const sink = new mockMediabunny.AudioSampleSink();
+      sink.samples = vi.fn().mockReturnValue({
+        [Symbol.asyncIterator]: async function* () {
+          const data = new Float32Array(100).fill(0.8);
+          yield {
+            numberOfFrames: 100,
+            sampleRate: 1000,
+            numberOfChannels: 1,
+            timestamp: 0,
+            allocationSize: () => 400,
+            copyTo: (dst: Float32Array) => dst.set(data),
+          };
+        },
+      });
+      return sink;
+    }
+
+    const prepared: PreparedClip[] = [0, 1].map(() => ({
+      clipStartS: 0,
+      offsetS: 0,
+      playDurationS: 0.1,
+      input: new mockMediabunny.Input() as any,
+      sink: makeSink() as any,
+      sourcePath: 'a.mp3',
+      speed: 1,
+      reversed: false,
+      audioGain: 1,
+      audioBalance: 0,
+      audioFadeInS: 0,
+      audioFadeOutS: 0,
+      audioFadeInCurve: 'linear',
+      audioFadeOutCurve: 'linear',
+      audioEffects: [],
+    }));
+
+    const reportExportWarning = vi.fn().mockResolvedValue(undefined);
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS: 0.1,
+      audioSource,
+      chunkDurationS: 1,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning,
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    expect(reportExportWarning).toHaveBeenCalledWith(
+      expect.stringContaining('Audio output clipped'),
+    );
+  });
+});
+
+describe('resampleAndStretchOffline', () => {
+  it('passes playbackRate through to the buffer source', async () => {
+    const buffer = { copyToChannel: vi.fn() };
+    const bufferSource = {
+      buffer: null,
+      playbackRate: { value: 1 },
+      connect: vi.fn(),
+      start: vi.fn(),
+    };
+    const rendered = new Float32Array(500).fill(0.25);
+    const offlineCtx = {
+      createBuffer: vi.fn().mockReturnValue(buffer),
+      createBufferSource: vi.fn().mockReturnValue(bufferSource),
+      destination: {},
+      startRendering: vi.fn().mockResolvedValue({
+        getChannelData: () => rendered,
+        length: rendered.length,
+      }),
+    };
+    const saved = (globalThis as any).OfflineAudioContext;
+    (globalThis as any).OfflineAudioContext = vi.fn().mockImplementation(function () {
+      return offlineCtx;
+    });
+
+    const result = await resampleAndStretchOffline({
+      planes: [new Float32Array(1000).fill(0.25)],
+      sourceSampleRate: 1000,
+      sourceFrames: 1000,
+      targetSampleRate: 1000,
+      targetFrames: 500,
+      channels: 1,
+      playbackRate: 2,
+    });
+
+    expect((globalThis as any).OfflineAudioContext).toHaveBeenCalledWith(1, 500, 1000);
+    expect(bufferSource.playbackRate.value).toBe(2);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.length).toBe(500);
+
+    (globalThis as any).OfflineAudioContext = saved;
   });
 });

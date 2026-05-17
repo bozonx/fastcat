@@ -52,6 +52,7 @@ export default defineNuxtConfig({
       fastcatAccountApiUrl: '',
       fastcatAccountUiUrl: '',
       blockContextMenu: true,
+      fastcatDevDir: process.env.FASTCAT_DEV_DIR || './.dev-files',
     },
   },
 

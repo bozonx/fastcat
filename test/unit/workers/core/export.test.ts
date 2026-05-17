@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { extractMetadata } from '~/workers/core/export';
+import { extractMetadata, isPassthroughCompatibleClip } from '~/workers/core/export';
 
 // Use variables that can be modified per test
 const mockFunctions = {
@@ -90,5 +90,35 @@ describe('extractMetadata', () => {
     mockFunctions.computeDuration.mockRejectedValue(new Error('Decode error'));
 
     await expect(extractMetadata(file)).rejects.toThrow('Decode error');
+  });
+});
+
+describe('isPassthroughCompatibleClip', () => {
+  const options = { audioSampleRate: 48000, audioChannels: 'stereo' as const };
+
+  it('accepts a clean clip', () => {
+    expect(isPassthroughCompatibleClip({}, options)).toEqual({ ok: true });
+  });
+
+  it.each([
+    ['audioGain', { audioGain: 0.5 }, 'gain'],
+    ['audioBalance', { audioBalance: 0.5 }, 'balance'],
+    ['fade in', { audioFadeInUs: 1000 }, 'fade'],
+    ['fade out', { audioFadeOutUs: 1000 }, 'fade'],
+    ['transition in', { transitionIn: { durationUs: 1000 } }, 'transition'],
+    ['speed != 1', { speed: 2 }, 'speed'],
+    ['reverse', { speed: -1 }, 'speed'],
+    ['audio effect', { effects: [{ target: 'audio', enabled: true }] }, 'effects'],
+  ])('rejects clip with %s', (_label, patch, reasonSubstring) => {
+    const result = isPassthroughCompatibleClip(patch, options);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain(reasonSubstring);
+  });
+
+  it('reads envelope values from fastcat shim', () => {
+    expect(isPassthroughCompatibleClip({ fastcat: { audioGain: 0.5 } }, options)).toEqual({
+      ok: false,
+      reason: 'clip gain is not unity',
+    });
   });
 });
