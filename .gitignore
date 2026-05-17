@@ -5,6 +5,7 @@
 playwright-report
 coverage/
 dist-lib/
+.dev-files/
 
 # Nuxt
 .nuxt

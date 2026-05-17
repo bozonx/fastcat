@@ -4,11 +4,12 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { timeUsToPx } from '~/utils/timeline/geometry';
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
-import type { TimelineClipItem, TimelineDocument, TimelineTrackItem } from '~/timeline/types';
+import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
+import { computeWaveformWindowMetrics, resolveWaveformSourceUs } from '~/utils/audio/waveform';
+import { resolveNestedMediaPath } from '~/utils/video-editor/worker-clip-utils';
 
 const props = defineProps<{
   item: TimelineClipItem;
@@ -90,8 +91,9 @@ async function buildTimelinePeaks(params: {
   durationUs: number;
   maxLength: number;
   visiting: Set<string>;
+  timelinePath?: string;
 }): Promise<number[][] | null> {
-  const { doc, durationUs, maxLength, visiting } = params;
+  const { doc, durationUs, maxLength, visiting, timelinePath } = params;
   if (durationUs <= 0 || maxLength <= 0) return null;
 
   const effectiveItems = buildEffectiveAudioClipItems({
@@ -104,16 +106,19 @@ async function buildTimelinePeaks(params: {
   for (const item of effectiveItems) {
     if (item.kind !== 'clip') continue;
     const clip = item as TimelineClipItem;
-    const path = clip.source?.path;
-    if (!path) continue;
+    const rawPath = clip.source?.path;
+    if (!rawPath) continue;
+    const path = timelinePath
+      ? resolveNestedMediaPath({ nestedTimelinePath: timelinePath, mediaPath: rawPath })
+      : rawPath;
 
     let sourcePeaks: number[][] | null = null;
     const clipSourceDurationUs =
       clip.sourceDurationUs && clip.sourceDurationUs > 0
         ? clip.sourceDurationUs
-        : clip.source?.path
+        : path
           ? (() => {
-              const metaDurationS = mediaStore.mediaMetadata[clip.source.path]?.duration;
+              const metaDurationS = mediaStore.mediaMetadata[path]?.duration;
               return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * 1_000_000) : 0;
             })()
           : 0;
@@ -143,6 +148,7 @@ async function buildTimelinePeaks(params: {
         durationUs: sourceDurationUs,
         maxLength,
         visiting,
+        timelinePath: path,
       });
       visiting.delete(path);
     } else {
@@ -175,11 +181,15 @@ async function buildTimelinePeaks(params: {
     for (let sampleIndex = startIndex; sampleIndex < endIndex; sampleIndex++) {
       const parentRatio = sampleIndex / maxLength;
       const absoluteUs = parentRatio * durationUs;
-      const localUs = absoluteUs - itemStartUs;
-      if (localUs < 0 || localUs > itemDurationUs) continue;
-
-      const sourceUs =
-        itemSourceStartUs + (localUs / Math.max(1, itemDurationUs)) * itemSourceDurationUs;
+      const sourceUs = resolveWaveformSourceUs({
+        absoluteUs,
+        clipStartUs: itemStartUs,
+        clipDurationUs: itemDurationUs,
+        sourceStartUs: itemSourceStartUs,
+        sourceRangeDurationUs: itemSourceDurationUs,
+        speed: clip.speed,
+      });
+      if (sourceUs === null) continue;
 
       for (let channelIndex = 0; channelIndex < mixedPeaks.length; channelIndex++) {
         const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0] ?? [];
@@ -233,6 +243,7 @@ const extractPeaks = async () => {
         durationUs: Math.max(1, Math.round(effectiveSourceDurationUs.value)),
         maxLength,
         visiting: new Set<string>([fileUrl.value]),
+        timelinePath: fileUrl.value,
       });
 
       if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
@@ -312,17 +323,6 @@ onBeforeUnmount(() => {
 
 const isReversed = computed(() => (props.item.speed ?? 1) < 0);
 
-const speed = computed(() => {
-  const s = props.item.speed || 1;
-  const abs = Math.abs(s);
-  // Prevent division by zero and extreme values
-  return Math.max(0.001, Math.min(100, abs));
-});
-
-const clipWidthPx = computed(() => {
-  return Math.round(timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom));
-});
-
 const effectiveSourceDurationUs = computed(() => {
   const explicit = props.item.sourceDurationUs;
   if (explicit && explicit > 0) return explicit;
@@ -340,20 +340,26 @@ const effectiveSourceDurationUs = computed(() => {
   return props.item.sourceRange.durationUs || 0;
 });
 
-const trimOffsetPx = computed(() => {
-  return Math.round(
-    timeUsToPx(props.item.sourceRange.startUs / speed.value, timelineStore.timelineZoom),
-  );
-});
-
 const durationUs = computed(() => effectiveSourceDurationUs.value);
+
+const waveformMetrics = computed(() =>
+  computeWaveformWindowMetrics({
+    sourceStartUs: props.item.sourceRange.startUs,
+    sourceDurationUs: durationUs.value,
+    timelineDurationUs: props.item.timelineRange.durationUs,
+    speed: props.item.speed,
+    zoom: timelineStore.timelineZoom,
+  }),
+);
 
 // Chunking logic (similar to video thumbnails but for waveform rendering)
 const CHUNK_WIDTH_PX = 1000; // Fixed chunk width in pixels for canvas
 
 const totalWidthPx = computed(() => {
-  return Math.round(timeUsToPx(durationUs.value / speed.value, timelineStore.timelineZoom));
+  return waveformMetrics.value.totalWidthPx;
 });
+
+const waveformLeftPx = computed(() => waveformMetrics.value.leftPx);
 
 const track = computed(() => {
   return timelineStore.timelineDoc?.tracks.find((t) => t.id === props.item.trackId);
@@ -603,7 +609,7 @@ watch(
       v-else-if="audioPeaks"
       class="absolute inset-y-0 h-full flex"
       :style="{
-        left: `${isReversed ? trimOffsetPx + clipWidthPx - totalWidthPx : -trimOffsetPx}px`,
+        left: `${waveformLeftPx}px`,
         width: `${totalWidthPx}px`,
         transform: isReversed ? 'scaleX(-1)' : undefined,
       }"
