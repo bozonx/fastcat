@@ -63,7 +63,7 @@ defineExpose({
 
 <template>
     <ClipTransitionPanel
-      v-if="clip"
+      v-if="clip && transitionSelection.edge"
       ref="panelRef"
       :edge="transitionSelection.edge"
       :track-id="transitionSelection.trackId"

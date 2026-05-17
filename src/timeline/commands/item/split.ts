@@ -22,40 +22,31 @@ import {
   quantizeTimeUsToFrames,
   usToFrame,
   frameToUs,
-  computeTrackEndUs,
-  assertNoOverlap,
+  assertClipNotLocked,
   nextItemId,
-  sliceTrackItemsForOverlay,
   normalizeGaps,
-  findClipById,
-  updateLinkedLockedAudio,
-  getLinkedClipGroupItemIds,
-  quantizeDeltaUsToFrames,
-  clampInt,
   quantizeRangeToFrames,
   autoAdaptClipTransitions,
 } from '../utils';
-import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
-import {
-  normalizeTransitionCurve,
-  normalizeTransitionMode,
-  normalizeTransitionParams,
-} from '~/transitions';
-import type { TransitionCurve, TransitionMode } from '~/transitions';
-import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-
-function assertClipNotLocked(item: TimelineTrackItem, action: string) {
-  if (item.kind !== 'clip') return;
-  if (!item.locked) return;
-  throw new Error(`Locked clip: ${action}`);
-}
+import { cloneValue } from '~/utils/clone';
 
 function cloneEffects<T>(value: T): T {
-  try {
-    return JSON.parse(JSON.stringify(value));
-  } catch {}
-
-  return value;
+  // structuredClone in modern runtimes; fallback to JSON-clone. The previous
+  // implementation silently returned the original ref on failure, so editing
+  // effects on the left half of a split leaked into the right half. Now we
+  // ensure a fresh ref by manually walking arrays of plain objects when the
+  // structured/JSON paths fail.
+  if (value === null || typeof value !== 'object') return value;
+  const cloned = cloneValue(value);
+  if (cloned !== value) return cloned;
+  if (Array.isArray(value)) {
+    return value.map((entry) => cloneEffects(entry)) as unknown as T;
+  }
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>)) {
+    result[key] = cloneEffects((value as Record<string, unknown>)[key]);
+  }
+  return result as T;
 }
 
 export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): TimelineCommandResult {

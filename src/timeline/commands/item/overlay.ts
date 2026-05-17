@@ -20,34 +20,17 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
-  usToFrame,
-  frameToUs,
-  computeTrackEndUs,
   assertNoOverlap,
+  assertClipNotLocked,
   sliceTrackItemsForOverlay,
   normalizeGaps,
   findClipById,
   updateLinkedLockedAudio,
-  getLinkedClipGroupItemIds,
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
   autoAdaptClipTransitions,
 } from '../utils';
-import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
-import {
-  normalizeTransitionCurve,
-  normalizeTransitionMode,
-  normalizeTransitionParams,
-} from '~/transitions';
-import type { TransitionCurve, TransitionMode } from '~/transitions';
-import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-
-function assertClipNotLocked(item: TimelineTrackItem, action: string) {
-  if (item.kind !== 'clip') return;
-  if (!item.locked) return;
-  throw new Error(`Locked clip: ${action}`);
-}
 
 export function overlayTrimItem(
   doc: TimelineDocument,
@@ -184,22 +167,53 @@ export function overlayTrimItem(
   if (track.kind === 'video' && movedNext.clipType === 'media') {
     const updatedMoved = findClipById({ ...doc, tracks: nextTracks }, movedNext.id);
     if (updatedMoved && updatedMoved.track.kind === 'video') {
+      // Linked-audio sync: shift the audio so its head still lines up with the
+      // video, and mirror the *amount* of source consumption — never copy the
+      // video's absolute sourceRange wholesale, because extract-audio clips can
+      // point to a different file with its own range/duration.
+      const videoBefore = moved;
+      const videoAfter = updatedMoved.item;
+      const startDeltaUs = videoAfter.timelineRange.startUs - videoBefore.timelineRange.startUs;
+      const sourceStartDeltaUs = videoAfter.sourceRange.startUs - videoBefore.sourceRange.startUs;
+      const newDurationUs = videoAfter.timelineRange.durationUs;
       nextTracks = updateLinkedLockedAudio(
         { ...doc, tracks: nextTracks },
         updatedMoved.item.id,
-        (audio) => ({
-          ...audio,
-          timelineRange: {
-            ...audio.timelineRange,
-            startUs: updatedMoved.item.timelineRange.startUs,
-            durationUs: updatedMoved.item.timelineRange.durationUs,
-          },
-          sourceRange: {
-            ...audio.sourceRange,
-            startUs: updatedMoved.item.sourceRange.startUs,
-            durationUs: updatedMoved.item.sourceRange.durationUs,
-          },
-        }),
+        (audio) => {
+          const audioSpeed =
+            typeof audio.speed === 'number' && Number.isFinite(audio.speed)
+              ? audio.speed
+              : 1;
+          const audioAbsSpeed = Math.max(0.0001, Math.abs(audioSpeed));
+          const audioSourceLimit = Math.max(
+            0,
+            Math.round(Number(audio.sourceDurationUs ?? 0)),
+          );
+          const nextAudioSourceStartUs = Math.max(
+            0,
+            Math.round(audio.sourceRange.startUs + sourceStartDeltaUs),
+          );
+          const requestedAudioSourceDurationUs = Math.max(
+            0,
+            Math.round(newDurationUs * audioAbsSpeed),
+          );
+          const audioSourceDurationUs = audioSourceLimit > 0
+            ? Math.min(requestedAudioSourceDurationUs, Math.max(0, audioSourceLimit - nextAudioSourceStartUs))
+            : requestedAudioSourceDurationUs;
+          return {
+            ...audio,
+            timelineRange: {
+              ...audio.timelineRange,
+              startUs: Math.max(0, audio.timelineRange.startUs + startDeltaUs),
+              durationUs: newDurationUs,
+            },
+            sourceRange: {
+              ...audio.sourceRange,
+              startUs: nextAudioSourceStartUs,
+              durationUs: audioSourceDurationUs,
+            },
+          };
+        },
       );
     }
   }

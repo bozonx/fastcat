@@ -94,7 +94,7 @@ describe('export-helpers', () => {
       expect(frame.durationS).toBeGreaterThan(0);
     });
 
-    it('keeps the final frame on the fps grid instead of creating a partial frame', () => {
+    it('clips the final frame duration to the requested timeline duration', () => {
       const fps = 30;
       const durationUs = 1_000_001;
       const totalFrames = computeExportTotalFrames({ durationUs, fps });
@@ -106,8 +106,8 @@ describe('export-helpers', () => {
       });
 
       expect(lastFrame.timeUs).toBe(1_000_000);
-      expect(lastFrame.durationS).toBeCloseTo(0.033333);
-      expect(lastFrame.timestampS + lastFrame.durationS).toBeCloseTo(31 / fps);
+      expect(lastFrame.durationS).toBeCloseTo(0.000001);
+      expect(lastFrame.timestampS + lastFrame.durationS).toBeCloseTo(durationUs / 1_000_000);
     });
   });
 });

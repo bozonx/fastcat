@@ -20,34 +20,13 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
-  usToFrame,
-  frameToUs,
   computeTrackEndUs,
   assertNoOverlap,
   nextItemId,
   sliceTrackItemsForOverlay,
   normalizeGaps,
-  findClipById,
-  updateLinkedLockedAudio,
-  getLinkedClipGroupItemIds,
-  quantizeDeltaUsToFrames,
-  clampInt,
-  quantizeRangeToFrames,
 } from '../utils';
-import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
-import {
-  normalizeTransitionCurve,
-  normalizeTransitionMode,
-  normalizeTransitionParams,
-} from '~/transitions';
-import type { TransitionCurve, TransitionMode } from '~/transitions';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-
-function assertClipNotLocked(item: TimelineTrackItem, action: string) {
-  if (item.kind !== 'clip') return;
-  if (!item.locked) return;
-  throw new Error(`Locked clip: ${action}`);
-}
 
 export function addClipToTrack(
   doc: TimelineDocument,

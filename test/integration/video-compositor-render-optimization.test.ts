@@ -77,6 +77,30 @@ describe('VideoCompositor render optimization', () => {
     expect(app.renderer.render).toHaveBeenCalledTimes(1);
   });
 
+  it('restores stage visibility after shader transitions render the current frame', async () => {
+    const { compositor } = createCompositor();
+    const lowerTrack = { visible: true, alpha: 1, blendMode: 'normal' } as any;
+    const currentTrack = { visible: true, alpha: 1, blendMode: 'normal' } as any;
+    compositor.app.stage.children = [lowerTrack, currentTrack];
+    compositor.lastRenderedTimeUs = 0;
+    compositor.clips = [];
+    compositor.tracks = [];
+    compositor.activeTracker = {
+      update: vi.fn(() => ({ activeClips: [], activeChanged: false })),
+    };
+    compositor.transitionRenderer = {
+      applyShaderTransitions: vi.fn(async () => {
+        lowerTrack.visible = false;
+      }),
+    };
+    compositor.applyMasterEffects = vi.fn();
+
+    await compositor.renderFrame(1_000);
+
+    expect(lowerTrack.visible).toBe(true);
+    expect(currentTrack.visible).toBe(true);
+  });
+
   it('sorts track containers and clip order inside a track when stage sort is dirty', async () => {
     const { compositor, app } = createCompositor();
 

@@ -19,36 +19,16 @@ import type {
 import {
   getTrackById,
   getDocFps,
-  quantizeTimeUsToFrames,
-  usToFrame,
   frameToUs,
-  computeTrackEndUs,
   assertNoOverlap,
-  nextItemId,
-  sliceTrackItemsForOverlay,
+  assertClipNotLocked,
   normalizeGaps,
-  findClipById,
   updateLinkedLockedAudio,
-  getLinkedClipGroupItemIds,
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
   autoAdaptClipTransitions,
 } from '../utils';
-import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
-import {
-  normalizeTransitionCurve,
-  normalizeTransitionMode,
-  normalizeTransitionParams,
-} from '~/transitions';
-import type { TransitionCurve, TransitionMode } from '~/transitions';
-import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-
-function assertClipNotLocked(item: TimelineTrackItem, action: string) {
-  if (item.kind !== 'clip') return;
-  if (!item.locked) return;
-  throw new Error(`Locked clip: ${action}`);
-}
 
 export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
@@ -142,7 +122,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
     }
   }
 
-  const nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
+  let nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
 
   if (shouldQuantizeToFrames) {
     const qTimeline = quantizeRangeToFrames(
@@ -150,8 +130,49 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
       fps,
     );
 
+    // Quantization may shift timeline start/end by up to one frame. Re-derive
+    // sourceRange from the quantized timeline so the invariant
+    // sourceDuration = timelineDuration * absSpeed holds — otherwise long
+    // edits accumulate sub-frame source drift.
+    const timelineDeltaStartUs = qTimeline.startUs - nextTimelineStartUs;
+    const timelineDeltaDurationUs = qTimeline.durationUs - nextTimelineDurationUs;
     nextTimelineStartUs = qTimeline.startUs;
     nextTimelineDurationUs = qTimeline.durationUs;
+
+    if (cmd.edge === 'start') {
+      if (speed >= 0) {
+        nextSourceStartUs = Math.max(
+          0,
+          nextSourceStartUs + Math.round(timelineDeltaStartUs * absSpeed),
+        );
+      } else {
+        nextSourceEndUs = Math.max(
+          nextSourceStartUs,
+          nextSourceEndUs - Math.round(timelineDeltaStartUs * absSpeed),
+        );
+      }
+    } else {
+      if (speed >= 0) {
+        nextSourceEndUs = Math.max(
+          nextSourceStartUs,
+          nextSourceEndUs + Math.round(timelineDeltaDurationUs * absSpeed),
+        );
+      } else {
+        nextSourceStartUs = Math.max(
+          0,
+          nextSourceStartUs - Math.round(timelineDeltaDurationUs * absSpeed),
+        );
+      }
+    }
+
+    nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
+  }
+
+  // Refuse to shrink below one frame — a zero-duration clip is invisible in the
+  // UI and a hazard for downstream calculations (Math.min(...) === 0 chains).
+  const minFrameDurationUs = frameToUs(1, fps);
+  if (nextTimelineDurationUs < minFrameDurationUs) {
+    return { next: doc };
   }
 
   assertNoOverlap(track, item.id, nextTimelineStartUs, nextTimelineDurationUs);

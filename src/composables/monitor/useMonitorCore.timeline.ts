@@ -40,11 +40,7 @@ export function computeMonitorTimelineDuration(params: {
   audioDurationUs: number;
   normalize?: boolean;
 }): number {
-  const nextDurationUs = Math.max(
-    params.currentDurationUs,
-    params.maxDurationUs,
-    params.audioDurationUs,
-  );
+  const nextDurationUs = Math.max(params.maxDurationUs, params.audioDurationUs);
 
   return params.normalize ? normalizeTimeUs(nextDurationUs) : nextDurationUs;
 }

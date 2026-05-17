@@ -109,15 +109,27 @@ export class RenderingEngine {
       }
 
       context.prepareAdjustmentClips(activeClips);
-      await context.applyShaderTransitions(activeClips, timeUs);
 
-      if (!context.app || !context.canvas || !context.app.renderer) {
-        return null;
+      const stageChildren = [...context.app.stage.children];
+      const previousStageVisibility = stageChildren.map((child) => child.visible);
+
+      try {
+        await context.applyShaderTransitions(activeClips, timeUs);
+
+        if (!context.app || !context.canvas || !context.app.renderer) {
+          return null;
+        }
+
+        context.setLastRenderedTimeUs(timeUs);
+        context.applyMasterEffects();
+        context.app.renderer.render(context.app.stage);
+      } finally {
+        for (let i = 0; i < stageChildren.length; i += 1) {
+          const child = stageChildren[i];
+          if (!child || (child as any).destroyed) continue;
+          child.visible = previousStageVisibility[i] ?? true;
+        }
       }
-
-      context.setLastRenderedTimeUs(timeUs);
-      context.applyMasterEffects();
-      context.app.renderer.render(context.app.stage);
 
       return context.canvas;
     } finally {

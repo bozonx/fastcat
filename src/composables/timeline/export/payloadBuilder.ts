@@ -8,7 +8,7 @@ import type {
   TimelineBlendMode,
   ClipEffect,
 } from '~/timeline/types';
-import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
+import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
   cloneEffects,
@@ -307,6 +307,7 @@ async function buildVideoTrackTree(
             typeof (item as any).strokeColor === 'string' ? (item as any).strokeColor : undefined,
           strokeWidth:
             typeof (item as any).strokeWidth === 'number' ? (item as any).strokeWidth : undefined,
+          shapeConfig: clonePlain((item as any).shapeConfig),
         });
         continue;
       }
@@ -317,6 +318,7 @@ async function buildVideoTrackTree(
           hudType: (item as any).hudType ?? 'media_frame',
           background: clonePlain((item as any).background),
           content: clonePlain((item as any).content),
+          frame: clonePlain((item as any).frame),
         });
         continue;
       }
@@ -455,6 +457,7 @@ export async function toWorkerTimelineClips(
       opacity: (item as any).opacityActive !== false ? combinedOpacity : undefined,
       blendMode: (item as any).blendModeActive !== false ? combinedBlendMode : undefined,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
+      mask: (item as any).maskActive !== false ? clonePlain((item as any).mask) : undefined,
       transform:
         (item as any).transformActive !== false ? clonePlain((item as any).transform) : undefined,
       transitionIn: clonePlain((item as any).transitionIn),
@@ -467,9 +470,11 @@ export async function toWorkerTimelineClips(
       fillColor: (item as any).fillColor,
       strokeColor: (item as any).strokeColor,
       strokeWidth: (item as any).strokeWidth,
+      shapeConfig: clonePlain((item as any).shapeConfig),
       hudType: (item as any).hudType,
       background: clonePlain((item as any).background),
       content: clonePlain((item as any).content),
+      frame: clonePlain((item as any).frame),
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
@@ -724,6 +729,7 @@ export async function toWorkerTimelineClips(
           typeof (item as any).strokeColor === 'string' ? (item as any).strokeColor : undefined,
         strokeWidth:
           typeof (item as any).strokeWidth === 'number' ? (item as any).strokeWidth : undefined,
+        shapeConfig: clonePlain((item as any).shapeConfig),
       });
     } else if (clipType === 'hud') {
       clips.push({
@@ -731,6 +737,7 @@ export async function toWorkerTimelineClips(
         hudType: (item as any).hudType ?? 'media_frame',
         background: clonePlain((item as any).background),
         content: clonePlain((item as any).content),
+        frame: clonePlain((item as any).frame),
       });
     } else {
       clips.push(base);

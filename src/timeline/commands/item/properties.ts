@@ -27,19 +27,11 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
-  usToFrame,
-  frameToUs,
-  computeTrackEndUs,
   assertNoOverlap,
-  nextItemId,
-  sliceTrackItemsForOverlay,
+  assertClipNotLocked,
   normalizeGaps,
   findClipById,
   updateLinkedLockedAudio,
-  getLinkedClipGroupItemIds,
-  quantizeDeltaUsToFrames,
-  clampInt,
-  quantizeRangeToFrames,
   autoAdaptClipTransitions,
 } from '../utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
@@ -50,12 +42,6 @@ import {
 } from '~/transitions';
 import type { TransitionCurve, TransitionMode } from '~/transitions';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-
-function assertClipNotLocked(item: TimelineTrackItem, action: string) {
-  if (item.kind !== 'clip') return;
-  if (!item.locked) return;
-  throw new Error(`Locked clip: ${action}`);
-}
 
 export function renameItem(doc: TimelineDocument, cmd: RenameItemCommand): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
@@ -87,6 +73,17 @@ export function updateClipProperties(
 
   const nextProps: Record<string, unknown> = { ...cmd.properties };
   const fps = getDocFps(doc);
+
+  // If the clip is locked, allow only `locked` itself to change (so unlocking
+  // remains possible) and otherwise reject the edit. Geometry/audio/transform
+  // changes on a locked clip are a UX bug we used to tolerate silently.
+  if (item.locked) {
+    const onlyTogglingLock =
+      Object.keys(nextProps).length === 1 && Object.prototype.hasOwnProperty.call(nextProps, 'locked');
+    if (!onlyTogglingLock) {
+      assertClipNotLocked(item, 'updateProperties');
+    }
+  }
 
   function clampNumber(value: unknown, min: number, max: number): number {
     const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
@@ -234,7 +231,26 @@ export function updateClipProperties(
             }
 
             if (foundCurrent) {
-              // Shift all subsequent clips by the duration delta
+              // Ripple only shifts unlocked downstream clips. Stop the ripple
+              // when we hit a locked clip — silently shoving past it would lose
+              // the lock invariant — but still throw an overlap error if the
+              // new geometry would collide with the locked clip.
+              if (curr.locked) {
+                const lockedStartUs = curr.timelineRange.startUs;
+                const lockedEndUs = lockedStartUs + curr.timelineRange.durationUs;
+                const rippledEndOfCurrent = nextClips
+                  .slice(0, i)
+                  .reduce(
+                    (max, c) =>
+                      Math.max(max, c.timelineRange.startUs + c.timelineRange.durationUs),
+                    0,
+                  );
+                if (rippledEndOfCurrent > lockedStartUs + 1) {
+                  throw new Error('Item overlaps with another item');
+                }
+                break;
+              }
+
               const newStartUs = Math.max(0, curr.timelineRange.startUs + deltaUs);
               const qStartUs = quantizeTimeUsToFrames(newStartUs, fps, 'round');
               if (qStartUs !== curr.timelineRange.startUs) {
@@ -249,9 +265,20 @@ export function updateClipProperties(
             }
           }
 
+          // Cross-check rippled layout for residual overlaps; rounding can put
+          // two clips on the same frame even when delta math is exact.
+          for (let i = 1; i < nextClips.length; i++) {
+            const prev = nextClips[i - 1]!;
+            const cur = nextClips[i]!;
+            const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
+            if (cur.timelineRange.startUs + 1 < prevEnd) {
+              throw new Error('Item overlaps with another item');
+            }
+          }
+
           let nextTracksLocal = doc.tracks.map((t) =>
             t.id === track.id
-              ? { ...t, items: normalizeGaps(doc, t.id, nextClips, { quantizeToFrames: false }) }
+              ? { ...t, items: normalizeGaps(doc, t.id, nextClips, { quantizeToFrames: true }) }
               : t,
           );
 
@@ -270,24 +297,49 @@ export function updateClipProperties(
 
           const updatedClip = nextClips.find((c) => c.id === item.id);
           if (updatedClip && track.kind === 'video' && updatedClip.clipType === 'media') {
+            const startDeltaUs = updatedClip.timelineRange.startUs - item.timelineRange.startUs;
+            const sourceStartDeltaUs = updatedClip.sourceRange.startUs - item.sourceRange.startUs;
+            const newTimelineDurationUs = updatedClip.timelineRange.durationUs;
             nextTracksLocal = updateLinkedLockedAudio(
               { ...doc, tracks: nextTracksLocal },
               updatedClip.id,
-              (a) => ({
-                ...a,
-                timelineRange: {
-                  ...a.timelineRange,
-                  startUs: updatedClip.timelineRange.startUs,
-                  durationUs: updatedClip.timelineRange.durationUs,
-                },
-                sourceRange: {
-                  ...a.sourceRange,
-                  startUs: updatedClip.sourceRange.startUs,
-                  durationUs: updatedClip.sourceRange.durationUs,
-                },
-                sourceDurationUs: updatedClip.sourceDurationUs,
-                speed: (updatedClip as any).speed,
-              }),
+              (a) => {
+                const audioSpeed =
+                  typeof a.speed === 'number' && Number.isFinite(a.speed) ? a.speed : 1;
+                const audioAbsSpeed = Math.max(0.0001, Math.abs(audioSpeed));
+                const audioSourceLimit = Math.max(0, Math.round(Number(a.sourceDurationUs ?? 0)));
+                const nextAudioSourceStartUs = Math.max(
+                  0,
+                  Math.round(a.sourceRange.startUs + sourceStartDeltaUs),
+                );
+                const requestedAudioSourceDurationUs = Math.max(
+                  0,
+                  Math.round(newTimelineDurationUs * audioAbsSpeed),
+                );
+                const audioSourceDurationUs =
+                  audioSourceLimit > 0
+                    ? Math.min(
+                        requestedAudioSourceDurationUs,
+                        Math.max(0, audioSourceLimit - nextAudioSourceStartUs),
+                      )
+                    : requestedAudioSourceDurationUs;
+                return {
+                  ...a,
+                  timelineRange: {
+                    ...a.timelineRange,
+                    startUs: Math.max(0, a.timelineRange.startUs + startDeltaUs),
+                    durationUs: newTimelineDurationUs,
+                  },
+                  sourceRange: {
+                    ...a.sourceRange,
+                    startUs: nextAudioSourceStartUs,
+                    durationUs: audioSourceDurationUs,
+                  },
+                  // Keep audio's own sourceDurationUs and speed — they may come
+                  // from a different file (extracted audio) and overriding them
+                  // would corrupt the clip.
+                };
+              },
             );
           }
 
@@ -720,6 +772,13 @@ export function updateClipTransition(
 
   const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
 
+  // Existing transitions on the *other* edge cap how long this edge can grow.
+  // Without this, setting a long fade-in on a short clip with an existing
+  // fade-out drops the user's value through the global normalization pass and
+  // also shrinks the unrelated opposite edge — surprising behaviour.
+  const existingInUs = Math.max(0, Math.round(item.transitionIn?.durationUs ?? 0));
+  const existingOutUs = Math.max(0, Math.round(item.transitionOut?.durationUs ?? 0));
+
   function clampTransitionUs(input: {
     edge: 'in' | 'out';
     requested: {
@@ -738,7 +797,8 @@ export function updateClipTransition(
     params?: Record<string, unknown>;
     isOverridden?: boolean;
   } {
-    const maxUs = Math.max(0, clipDurationUs);
+    const oppositeUs = input.edge === 'in' ? existingOutUs : existingInUs;
+    const maxUs = Math.max(0, clipDurationUs - oppositeUs);
     return {
       ...input.requested,
       durationUs: Math.min(Math.max(0, Math.round(input.requested.durationUs)), maxUs),

@@ -6,6 +6,7 @@ import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
 import { createMockAudioItems } from '~/composables/monitor/useMonitorCore.payload';
+import { computeMonitorTimelineDuration } from '~/composables/monitor/useMonitorCore.timeline';
 
 const mockClient = {
   loadTimeline: vi.fn().mockResolvedValue(0),
@@ -125,6 +126,16 @@ describe('useMonitorCore', () => {
       transitionIn: { durationUs: 100_000 },
       transitionOut: { durationUs: 200_000 },
     });
+  });
+
+  it('does not keep stale monitor duration after timeline shrink', () => {
+    expect(
+      computeMonitorTimelineDuration({
+        currentDurationUs: 10_000_000,
+        maxDurationUs: 3_000_000,
+        audioDurationUs: 4_000_000,
+      }),
+    ).toBe(4_000_000);
   });
 
   afterEach(() => {

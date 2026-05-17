@@ -75,7 +75,7 @@ const selectedClip = computed<TimelineClipItem | null>(() => {
 
 const selectedTransition = computed(() => {
   const entity = props.entity !== undefined ? props.entity : selectionStore.selectedEntity;
-  if (entity?.source !== 'timeline' || entity.kind !== 'transition') return null;
+  if (entity?.source !== 'timeline' || entity.kind !== 'transition' || !entity.edge) return null;
   return { trackId: entity.trackId, itemId: entity.itemId, edge: entity.edge };
 });
 

@@ -208,7 +208,7 @@ describe('timeline/commands update_clip_transition', () => {
     expect(nextRight.transitionIn?.durationUs).toBe(2_000_000);
   });
 
-  it('proportionally shrinks both clip transitions when they would overlap', () => {
+  it('clamps the changed edge against the opposite edge without resizing it', () => {
     const clip = {
       ...baseClip,
       transitionOut: { type: 'dissolve', durationUs: 3_000_000 },
@@ -223,8 +223,11 @@ describe('timeline/commands update_clip_transition', () => {
     }).next;
 
     const nextClip = (next.tracks[0] as TimelineTrack).items[0] as any;
-    expect(nextClip.transitionIn.durationUs).toBe(2_857_143);
-    expect(nextClip.transitionOut.durationUs).toBe(2_142_857);
+    // transitionIn requested 4s on a 5s clip with existing 3s transitionOut →
+    // clamps to (clip - opposite) = 2s. The opposite edge stays untouched
+    // instead of being silently shrunk by a proportional pass.
+    expect(nextClip.transitionIn.durationUs).toBe(2_000_000);
+    expect(nextClip.transitionOut.durationUs).toBe(3_000_000);
     expect(nextClip.transitionIn.durationUs + nextClip.transitionOut.durationUs).toBe(5_000_000);
   });
 

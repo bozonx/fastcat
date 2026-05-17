@@ -6,6 +6,17 @@ import type {
   TimelineTrackItem,
 } from '../types';
 
+/**
+ * Throws if the given item is a locked clip — single source of truth for the
+ * lock check used across every mutating command. Gaps are exempt because they
+ * are synthesised by normalizeGaps and never bear a user-facing lock.
+ */
+export function assertClipNotLocked(item: TimelineTrackItem, action: string) {
+  if (item.kind !== 'clip') return;
+  if (!item.locked) return;
+  throw new Error(`Locked clip: ${action}`);
+}
+
 export const FALLBACK_FPS = 30;
 export const MIN_FPS = 1;
 export const MAX_FPS = 240;
@@ -369,38 +380,43 @@ export function normalizeGaps(
 
   clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-  // Auto-adjust transitions based on adjacency before generating gaps
+  // Auto-adjust transitions based on adjacency before generating gaps. Always
+  // produce *new* transition objects when changing mode so we don't mutate the
+  // shared ref held by undo snapshots.
   for (let i = 0; i < clips.length; i++) {
     const current = clips[i];
     if (!current) continue;
     const prev = i > 0 ? clips[i - 1] : null;
     const next = i < clips.length - 1 ? clips[i + 1] : null;
 
-    // Check left adjacency
     let isAdjacentLeft = false;
     if (prev) {
       const prevEnd = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-      if (Math.abs(prevEnd - current.timelineRange.startUs) <= 1_000) {
+      if (Math.abs(prevEnd - current.timelineRange.startUs) <= TRANSITION_ADJACENCY_THRESHOLD_US) {
         isAdjacentLeft = true;
       }
     }
 
-    // Check right adjacency
     let isAdjacentRight = false;
     if (next) {
       const currentEnd = current.timelineRange.startUs + current.timelineRange.durationUs;
-      if (Math.abs(currentEnd - next.timelineRange.startUs) <= 1_000) {
+      if (Math.abs(currentEnd - next.timelineRange.startUs) <= TRANSITION_ADJACENCY_THRESHOLD_US) {
         isAdjacentRight = true;
       }
     }
 
     if (current.transitionIn && !current.transitionIn.isOverridden) {
-      current.transitionIn.mode = isAdjacentLeft ? 'adjacent' : 'transparent';
+      const nextMode = isAdjacentLeft ? 'adjacent' : 'transparent';
+      if (current.transitionIn.mode !== nextMode) {
+        current.transitionIn = { ...current.transitionIn, mode: nextMode };
+      }
     }
-    // If isOverridden is set, keep both the mode and the flag exactly as the user picked them.
 
     if (current.transitionOut && !current.transitionOut.isOverridden) {
-      current.transitionOut.mode = isAdjacentRight ? 'adjacent' : 'transparent';
+      const nextMode = isAdjacentRight ? 'adjacent' : 'transparent';
+      if (current.transitionOut.mode !== nextMode) {
+        current.transitionOut = { ...current.transitionOut, mode: nextMode };
+      }
     }
   }
 
@@ -486,7 +502,11 @@ export function nextItemId(trackId: string, prefix: string): string {
   if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
     return `${prefix}_${trackId}_${cryptoObj.randomUUID()}`;
   }
-  return `${prefix}_${trackId}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 5)}`;
+  // Fallback for environments without crypto.randomUUID. 10 random base36 chars
+  // (≈52 bits) avoids the burst-collisions the previous 3-char suffix allowed.
+  const r1 = Math.random().toString(36).substring(2, 12);
+  const r2 = Math.random().toString(36).substring(2, 8);
+  return `${prefix}_${trackId}_${Date.now().toString(36)}_${r1}${r2}`;
 }
 
 export function computeTrackEndUs(track: TimelineTrack): number {
@@ -566,14 +586,14 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
         endDurationUs: transitionOut?.durationUs,
       });
 
-      if (transitionIn) {
+      if (transitionIn && transitionIn.durationUs !== normalizedTransitions.startDurationUs) {
         transitionIn = {
           ...transitionIn,
           durationUs: normalizedTransitions.startDurationUs,
         };
       }
 
-      if (transitionOut) {
+      if (transitionOut && transitionOut.durationUs !== normalizedTransitions.endDurationUs) {
         transitionOut = {
           ...transitionOut,
           durationUs: normalizedTransitions.endDurationUs,
@@ -581,7 +601,10 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
       }
     }
 
-    if (transitionIn?.mode === 'adjacent') {
+    // Downgrade 'adjacent' mode to 'transparent' when the neighbour gap is too
+    // wide — but never override a user-overridden mode (otherwise the override
+    // flag becomes meaningless).
+    if (transitionIn?.mode === 'adjacent' && !transitionIn.isOverridden) {
       const gap = prev
         ? it.timelineRange.startUs - (prev.timelineRange.startUs + prev.timelineRange.durationUs)
         : Infinity;
@@ -590,7 +613,7 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
       }
     }
 
-    if (transitionOut?.mode === 'adjacent') {
+    if (transitionOut?.mode === 'adjacent' && !transitionOut.isOverridden) {
       const gap = next
         ? next.timelineRange.startUs - (it.timelineRange.startUs + it.timelineRange.durationUs)
         : Infinity;

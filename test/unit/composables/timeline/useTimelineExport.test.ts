@@ -164,6 +164,54 @@ describe('useTimelineExport pure functions', () => {
     expect(nested[0]?.layer).toBe(3);
   });
 
+  it('serializes HUD frame and masks into video worker payloads', async () => {
+    const tracks = [
+      {
+        id: 'v1',
+        kind: 'video',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'hud',
+            id: 'hud-1',
+            trackId: 'v1',
+            name: 'HUD',
+            hudType: 'media_frame',
+            background: { source: { path: '/background.png' } },
+            content: { source: { path: '/content.mp4' } },
+            frame: { source: { path: '/frame.png' }, scaleX: 1.5 },
+            mask: { source: { path: '/mask.png' }, mode: 'alpha' },
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          },
+        ],
+      },
+    ] as any;
+    const projectStoreMock = {
+      getFileByPath: async () => null,
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+    } as any;
+
+    const built = await buildVideoWorkerPayloadFromTracks({
+      tracks,
+      projectStore: projectStoreMock,
+      workspaceStore: wsMock,
+    });
+
+    expect(built.clips[0]).toMatchObject({
+      clipType: 'hud',
+      frame: { source: { path: '/frame.png' }, scaleX: 1.5 },
+      mask: { source: { path: '/mask.png' }, mode: 'alpha' },
+    });
+
+    const legacy = await toWorkerTimelineClips(tracks[0].items, projectStoreMock, wsMock);
+    expect(legacy[0]).toMatchObject({
+      clipType: 'hud',
+      frame: { source: { path: '/frame.png' }, scaleX: 1.5 },
+      mask: { source: { path: '/mask.png' }, mode: 'alpha' },
+    });
+  });
+
   it('trimWorkerClipToRange should preserve fade progress when cropping export range', () => {
     const clipped = trimWorkerClipToRange(
       {

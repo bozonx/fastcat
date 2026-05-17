@@ -6,6 +6,7 @@ const { timelineStoreMock, mediaStoreMock, vfsGetFileMock } = vi.hoisted(() => (
   timelineStoreMock: {
     currentTime: 0,
     timelineDoc: {
+      timebase: { fps: 30 },
       tracks: [
         {
           id: 'v1',
@@ -59,6 +60,7 @@ describe('useAddMediaToTimeline', () => {
   beforeEach(() => {
     timelineStoreMock.currentTime = 0;
     timelineStoreMock.timelineDoc = {
+      timebase: { fps: 30 },
       tracks: [
         {
           id: 'v1',

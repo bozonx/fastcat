@@ -127,6 +127,7 @@ export function createTimelineDispatcherModule(
     const prev = deps.timelineDoc.value;
     let current = prev;
     const allCreatedItemIds: string[] = [];
+    let batchFailed = false;
 
     for (const cmd of cmds) {
       const hydrated = deps.hydration.hydrateClipSourceDuration(current, cmd);
@@ -137,16 +138,20 @@ export function createTimelineDispatcherModule(
           allCreatedItemIds.push(...createdItemIds);
         }
       } catch (error) {
-        if (error instanceof Error && error.message === 'Item overlaps with another item') {
-          // Expected behavior when validating moves/trims that result in overlap
-          break;
+        const overlap =
+          error instanceof Error && error.message === 'Item overlaps with another item';
+        if (!overlap) {
+          console.warn('Failed to apply timeline command in batch:', error, cmd);
         }
-        console.warn('Failed to apply timeline command in batch:', error, cmd);
+        // The batch is atomic: any failure rolls back to the document state
+        // that existed before the first command ran, so we never leave a
+        // half-applied state in the doc or in history.
+        batchFailed = true;
         break;
       }
     }
 
-    if (current === prev) return [];
+    if (batchFailed || current === prev) return [];
 
     if (!options?.skipHistory) {
       deps.historyDebounce.pushHistory(cmds[0]!, prev, {

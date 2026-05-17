@@ -62,7 +62,8 @@ export function getExportFrameTiming(params: {
   const frameStartUs = Math.round((frameNum * 1_000_000) / fps);
   const nextFrameStartUs = Math.round(((frameNum + 1) * 1_000_000) / fps);
   const clampedStartUs = Math.min(frameStartUs, durationUs);
-  const frameDurationUs = Math.max(1, nextFrameStartUs - frameStartUs);
+  const clampedNextFrameStartUs = Math.min(nextFrameStartUs, durationUs);
+  const frameDurationUs = Math.max(1, clampedNextFrameStartUs - clampedStartUs);
   const durationS = totalFrames > 0 ? frameDurationUs / 1_000_000 : 0;
 
   return {

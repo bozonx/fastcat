@@ -25,6 +25,12 @@ export interface TimelineActiveClipProcessorResult {
   sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>>;
 }
 
+const VIDEO_SAMPLE_END_GUARD_US = 1_000;
+
+function clampToLastReadableSourceUs(durationUs: number): number {
+  return Math.max(0, Math.round(durationUs) - VIDEO_SAMPLE_END_GUARD_US);
+}
+
 export class TimelineActiveClipProcessor {
   public process(params: TimelineActiveClipProcessorParams): TimelineActiveClipProcessorResult {
     const { activeClips, timeUs, width, height } = params;
@@ -65,7 +71,11 @@ export class TimelineActiveClipProcessor {
           const reversed = speedRaw < 0;
 
           const sampleUs = reversed
-            ? Math.max(0, state.sourceDurationUs - Math.round(localTimeUs * speed))
+            ? Math.max(
+                0,
+                clampToLastReadableSourceUs(state.sourceDurationUs) -
+                  Math.round(localTimeUs * speed),
+              )
             : Math.round(localTimeUs * speed);
 
           let sampleTimeS = sampleUs / 1_000_000;
@@ -146,7 +156,11 @@ export class TimelineActiveClipProcessor {
 
       const freezeUs = clip.freezeFrameSourceUs;
       const effectiveLocalUs = reversed
-        ? Math.max(0, clip.sourceRangeDurationUs - Math.round(localTimeUs * speed))
+        ? Math.max(
+            0,
+            clampToLastReadableSourceUs(clip.sourceRangeDurationUs) -
+              Math.round(localTimeUs * speed),
+          )
         : Math.round(localTimeUs * speed);
 
       let sampleTimeS =

@@ -20,40 +20,36 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
-  usToFrame,
-  frameToUs,
-  computeTrackEndUs,
+  quantizeDeltaUsToFrames,
   assertNoOverlap,
-  nextItemId,
-  sliceTrackItemsForOverlay,
+  assertClipNotLocked,
   normalizeGaps,
   findClipById,
   updateLinkedLockedAudio,
   getLinkedClipGroupItemIds,
-  quantizeDeltaUsToFrames,
-  clampInt,
-  quantizeRangeToFrames,
   autoAdaptClipTransitions,
 } from '../utils';
-import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
-import {
-  normalizeTransitionCurve,
-  normalizeTransitionMode,
-  normalizeTransitionParams,
-} from '~/transitions';
-import type { TransitionCurve, TransitionMode } from '~/transitions';
-import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
-
-function assertClipNotLocked(item: TimelineTrackItem, action: string) {
-  if (item.kind !== 'clip') return;
-  if (!item.locked) return;
-  throw new Error(`Locked clip: ${action}`);
-}
 
 export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): TimelineCommandResult {
-  let currentDoc = doc;
+  // Order moves so we never step on an item that hasn't moved yet. We compute
+  // each item's current start, then apply moves in the direction of travel:
+  // rightward moves go right-to-left (the rightmost item moves first), leftward
+  // moves go left-to-right. Without this, a batch like [a:0→100, b:50→150]
+  // throws mid-application because `a` collides with `b` before `b` moves.
+  const annotated = cmd.moves.map((move) => {
+    const track = doc.tracks.find((t) => t.id === move.fromTrackId);
+    const item = track?.items.find((x) => x.id === move.itemId);
+    const currentStartUs = Math.max(0, Math.round(Number(item?.timelineRange?.startUs ?? 0)));
+    const targetStartUs = Math.max(0, Math.round(Number(move.startUs)));
+    return { move, currentStartUs, deltaUs: targetStartUs - currentStartUs };
+  });
 
-  for (const move of cmd.moves) {
+  const totalDelta = annotated.reduce((acc, m) => acc + m.deltaUs, 0);
+  const movingRight = totalDelta >= 0;
+  annotated.sort((a, b) => (movingRight ? b.currentStartUs - a.currentStartUs : a.currentStartUs - b.currentStartUs));
+
+  let currentDoc = doc;
+  for (const { move } of annotated) {
     const res = moveItemToTrack(currentDoc, {
       type: 'move_item_to_track',
       fromTrackId: move.fromTrackId,
@@ -81,12 +77,17 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
   if (!cmd.ignoreLinks && item.kind === 'clip') {
     const linkedIds = getLinkedClipGroupItemIds(doc, item.id).filter((id) => id !== item.id);
     if (linkedIds.length > 0) {
+      const fps = getDocFps(doc);
+      const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
       const currentStartUs = Math.max(0, Math.round(Number(item.timelineRange.startUs)));
       const requestedStartUs = Math.max(0, Math.round(Number(cmd.startUs)));
-      const rawDeltaUs = requestedStartUs - currentStartUs;
+      // Quantize delta once so every group member shifts by the same number of
+      // frames; per-member quantization rounds in different directions for
+      // non-integer fps and drifts group geometry.
+      const rawDeltaUs = shouldQuantizeToFrames
+        ? quantizeDeltaUsToFrames(requestedStartUs - currentStartUs, fps, 'round')
+        : requestedStartUs - currentStartUs;
 
-      // Collect everyone we are about to move so we can clamp delta against the leftmost member,
-      // otherwise a negative shift would clamp individual members to 0 and break group geometry.
       const memberStarts: number[] = [];
       for (const track of doc.tracks) {
         for (const trackItem of track.items) {
@@ -133,7 +134,9 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
             toTrackId: move.toTrackId,
             itemId: move.itemId,
             startUs: move.startUs,
-            quantizeToFrames: cmd.quantizeToFrames,
+            // Delta was already quantized; skip per-member rounding to preserve
+            // group geometry exactly.
+            quantizeToFrames: false,
             ignoreLocks: cmd.ignoreLocks,
             ignoreLinks: true,
           });
