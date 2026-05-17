@@ -239,6 +239,18 @@ const trackViewModels = computed(() => {
       isVisuallySelected,
       isHovered,
       visibleItems: visibleItemsMap[track.id] ?? [],
+      clipPresentationMemo: (visibleItemsMap[track.id] ?? [])
+        .map((item) =>
+          item.kind === 'clip'
+            ? [
+                item.id,
+                (item as TimelineClipItem).showWaveform !== false ? 1 : 0,
+                (item as TimelineClipItem).showThumbnails !== false ? 1 : 0,
+                (item as TimelineClipItem).audioWaveformMode ?? 'half',
+              ].join(':')
+            : item.id,
+        )
+        .join('|'),
       selectionColor: track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
       backgroundColor:
         track.color && track.color !== '#2a2a2a'
@@ -611,6 +623,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           trackViewModel.isDirectlySelected,
           trackViewModel.isVisuallySelected,
           trackViewModel.visibleItems.length,
+          trackViewModel.clipPresentationMemo,
           movePreviewMemoByTrack[trackViewModel.track.id] ?? null,
           dragPreview?.trackId === trackViewModel.track.id ? dragPreview.startUs : null,
           trackViewModel.track.items.some((i) => i.id === draggingItemId) ? draggingItemId : null,

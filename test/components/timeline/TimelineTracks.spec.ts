@@ -7,7 +7,8 @@ import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
-    template: '<div class="mock-timeline-clip" :data-item-id="item.id"><slot /></div>',
+    template:
+      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode"><slot /></div>',
     props: ['item', 'track'],
   },
 }));
@@ -334,5 +335,53 @@ describe('TimelineTracks', () => {
 
     expect(renderedClipIds).toContain('preview-clip-1');
     expect(renderedClipIds).toContain('preview-clip-2');
+  });
+
+  it('updates clip presentation props without waiting for a later track rerender', async () => {
+    const tracks = [
+      {
+        id: 'track-1',
+        kind: 'video',
+        items: [
+          {
+            id: 'clip-1',
+            kind: 'clip',
+            showWaveform: true,
+            showThumbnails: true,
+            audioWaveformMode: 'half',
+            timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          },
+        ],
+      },
+    ];
+
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks,
+        trackHeights: { 'track-1': 50 },
+      },
+    });
+
+    await component.setProps({
+      tracks: [
+        {
+          ...tracks[0],
+          items: [
+            {
+              ...tracks[0]!.items[0],
+              showWaveform: false,
+              showThumbnails: false,
+              audioWaveformMode: 'full',
+            },
+          ],
+        },
+      ],
+    });
+
+    const clip = component.find('.mock-timeline-clip');
+    expect(clip.attributes('data-show-waveform')).toBe('false');
+    expect(clip.attributes('data-show-thumbnails')).toBe('false');
+    expect(clip.attributes('data-waveform-mode')).toBe('full');
   });
 });
