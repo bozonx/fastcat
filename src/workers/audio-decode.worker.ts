@@ -2,102 +2,185 @@ import { AudioSampleSink, BlobSource, Input, ALL_FORMATS } from 'mediabunny';
 
 import type { DecodeRequest, DecodeResponse } from '../utils/audio/types';
 
-async function decodeToFloat32Channels(
+interface CachedDecodeSource {
+  input: InstanceType<typeof Input>;
+  sink: InstanceType<typeof AudioSampleSink>;
+}
+
+const MAX_CACHED_DECODE_SOURCES = 16;
+const decodeSourceCache = new Map<string, CachedDecodeSource>();
+const decodeSourceLocks = new Map<string, Promise<void>>();
+
+function disposeDecodeSource(source: CachedDecodeSource) {
+  const anySink = source.sink as any;
+  const anyInput = source.input as any;
+  if (typeof anySink.close === 'function') anySink.close();
+  if (typeof anySink.dispose === 'function') anySink.dispose();
+  if (typeof anyInput.dispose === 'function') anyInput.dispose();
+  else if (typeof anyInput.close === 'function') anyInput.close();
+}
+
+async function getCachedDecodeSource(
+  sourceKey: string | undefined,
   source: Blob | ArrayBuffer,
-  rangeStartTimeS = 0,
-  rangeDurationS?: number,
-) {
+): Promise<CachedDecodeSource & { cached: boolean }> {
+  if (sourceKey) {
+    const cached = decodeSourceCache.get(sourceKey);
+    if (cached) {
+      decodeSourceCache.delete(sourceKey);
+      decodeSourceCache.set(sourceKey, cached);
+      return { ...cached, cached: true };
+    }
+  }
+
   const blob = source instanceof Blob ? source : new Blob([source]);
   const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
-
+  let aTrack: Awaited<ReturnType<InstanceType<typeof Input>['getPrimaryAudioTrack']>>;
   try {
-    const aTrack = await input.getPrimaryAudioTrack();
+    aTrack = await input.getPrimaryAudioTrack();
     if (!aTrack) {
       const err = new Error('No audio track');
       (err as any).name = 'NoAudioTrackError';
       throw err;
     }
     if (!(await aTrack.canDecode())) throw new Error('Audio track cannot be decoded');
+  } catch (err) {
+    const anyInput = input as any;
+    if (typeof anyInput.dispose === 'function') anyInput.dispose();
+    else if (typeof anyInput.close === 'function') anyInput.close();
+    throw err;
+  }
 
-    const sink = new AudioSampleSink(aTrack);
-    try {
-      const metaDurationS = await input.computeDuration();
-      const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
-
-      let sampleRate = 48000;
-      let numberOfChannels = 2;
-      let actualStartTimeS: number | undefined;
-
-      const channelChunks: Float32Array[][] = [];
-      let totalFrames = 0;
-
-      const decodeStartS = rangeStartTimeS;
-      const decodeEndS = rangeDurationS ? rangeStartTimeS + rangeDurationS : durationS || 1e9;
-
-      for await (const sampleRaw of (sink as any).samples(decodeStartS, decodeEndS)) {
-        const sample = sampleRaw as any;
-        try {
-          sampleRate = sample.sampleRate;
-          numberOfChannels = sample.numberOfChannels;
-
-          if (channelChunks.length !== numberOfChannels) {
-            channelChunks.length = 0;
-            for (let ch = 0; ch < numberOfChannels; ch += 1) channelChunks.push([]);
-            totalFrames = 0;
-            actualStartTimeS = undefined;
-          }
-
-          const frames = Number(sample.numberOfFrames) || 0;
-          if (frames > 0) {
-            if (actualStartTimeS === undefined) {
-              const ts = Number(sample.timestamp);
-              actualStartTimeS = Number.isFinite(ts) ? ts : decodeStartS;
-            }
-            for (let ch = 0; ch < numberOfChannels; ch += 1) {
-              const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
-              const chunk = new Float32Array(bytesNeeded / 4);
-              sample.copyTo(chunk, { format: 'f32-planar', planeIndex: ch });
-              if (chunk.length > 0) {
-                channelChunks[ch]?.push(chunk);
-              }
-            }
-            totalFrames += frames;
-          }
-        } finally {
-          if (typeof sample.close === 'function') sample.close();
-        }
-      }
-
-      if (totalFrames <= 0) throw new Error('Decoded audio is empty');
-
-      const channelBuffers = channelChunks.map((chunks) => {
-        const combined = new Float32Array(totalFrames);
-        let offset = 0;
-        for (const chunk of chunks) {
-          if (!chunk.length) continue;
-          combined.set(chunk, offset);
-          offset += chunk.length;
-        }
-        return combined.buffer as ArrayBuffer;
-      });
-
-      return {
-        sampleRate,
-        numberOfChannels,
-        channelBuffers,
-        startTimeS: decodeStartS,
-        actualStartTimeS: actualStartTimeS ?? decodeStartS,
-        durationS: totalFrames / sampleRate,
-        totalFrames,
-      };
-    } finally {
-      if (typeof (sink as any).close === 'function') (sink as any).close();
-      if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
+  const entry: CachedDecodeSource = { input, sink: new AudioSampleSink(aTrack) };
+  if (sourceKey) {
+    decodeSourceCache.set(sourceKey, entry);
+    while (decodeSourceCache.size > MAX_CACHED_DECODE_SOURCES) {
+      const oldestKey = decodeSourceCache.keys().next().value;
+      if (!oldestKey) break;
+      const oldest = decodeSourceCache.get(oldestKey);
+      decodeSourceCache.delete(oldestKey);
+      if (oldest) disposeDecodeSource(oldest);
     }
+    return { ...entry, cached: true };
+  }
+
+  return { ...entry, cached: false };
+}
+
+async function withDecodeSourceLock<T>(sourceKey: string | undefined, task: () => Promise<T>) {
+  if (!sourceKey) return task();
+
+  const previous = decodeSourceLocks.get(sourceKey) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const chained = previous.then(() => current);
+  decodeSourceLocks.set(sourceKey, chained);
+
+  await previous;
+  try {
+    return await task();
   } finally {
-    if ('dispose' in input && typeof (input as any).dispose === 'function')
-      (input as any).dispose();
-    else if ('close' in input && typeof (input as any).close === 'function') (input as any).close();
+    release();
+    if (decodeSourceLocks.get(sourceKey) === chained) {
+      decodeSourceLocks.delete(sourceKey);
+    }
+  }
+}
+
+async function decodeToFloat32Channels(
+  source: Blob | ArrayBuffer,
+  sourceKey?: string,
+  rangeStartTimeS = 0,
+  rangeDurationS?: number,
+) {
+  const { input, sink, cached } = await getCachedDecodeSource(sourceKey, source);
+
+  try {
+    const metaDurationS = await input.computeDuration();
+    const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
+
+    let sampleRate = 48000;
+    let numberOfChannels: number | undefined;
+    let actualStartTimeS: number | undefined;
+
+    const channelChunks: Array<{ startFrame: number; planes: Float32Array[]; frames: number }> = [];
+    let maxFrame = 0;
+
+    const decodeStartS = rangeStartTimeS;
+    const decodeEndS = rangeDurationS ? rangeStartTimeS + rangeDurationS : durationS || 1e9;
+
+    for await (const sampleRaw of (sink as any).samples(decodeStartS, decodeEndS)) {
+      const sample = sampleRaw as any;
+      try {
+        sampleRate = Math.max(1, Number(sample.sampleRate) || sampleRate);
+        const sampleChannels = Math.max(1, Number(sample.numberOfChannels) || 1);
+        if (numberOfChannels === undefined) {
+          numberOfChannels = sampleChannels;
+        } else if (sampleChannels !== numberOfChannels) {
+          console.warn(
+            `[audio-decode.worker] Dropping sample with channel count ${sampleChannels}; expected ${numberOfChannels}.`,
+          );
+          continue;
+        }
+
+        const frames = Number(sample.numberOfFrames) || 0;
+        if (frames > 0) {
+          const ts = Number(sample.timestamp);
+          const sampleStartS = Number.isFinite(ts) ? ts : decodeStartS + maxFrame / sampleRate;
+          if (actualStartTimeS === undefined) {
+            actualStartTimeS = sampleStartS;
+          }
+          const startFrame = Math.max(0, Math.round((sampleStartS - decodeStartS) * sampleRate));
+          const planes: Float32Array[] = [];
+          for (let ch = 0; ch < numberOfChannels; ch += 1) {
+            const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
+            const chunk = new Float32Array(bytesNeeded / 4);
+            sample.copyTo(chunk, { format: 'f32-planar', planeIndex: ch });
+            planes.push(chunk);
+          }
+          channelChunks.push({ startFrame, planes, frames });
+          maxFrame = Math.max(maxFrame, startFrame + frames);
+        }
+      } finally {
+        if (typeof sample.close === 'function') sample.close();
+      }
+    }
+
+    const windowFrames =
+      rangeDurationS && Number.isFinite(rangeDurationS)
+        ? Math.max(0, Math.round(rangeDurationS * sampleRate))
+        : maxFrame;
+    const totalFrames = Math.max(windowFrames, maxFrame);
+    const resolvedChannels = numberOfChannels ?? 2;
+
+    if (totalFrames <= 0 || channelChunks.length === 0) throw new Error('Decoded audio is empty');
+
+    const channelBuffers = Array.from({ length: resolvedChannels }, (_, ch) => {
+      const combined = new Float32Array(totalFrames);
+      for (const chunk of channelChunks) {
+        const plane = chunk.planes[ch];
+        if (!plane?.length) continue;
+        combined.set(
+          plane.subarray(0, Math.min(plane.length, totalFrames - chunk.startFrame)),
+          chunk.startFrame,
+        );
+      }
+      return combined.buffer as ArrayBuffer;
+    });
+
+    return {
+      sampleRate,
+      numberOfChannels: resolvedChannels,
+      channelBuffers,
+      startTimeS: decodeStartS,
+      actualStartTimeS: rangeDurationS ? decodeStartS : (actualStartTimeS ?? decodeStartS),
+      durationS: totalFrames / sampleRate,
+      totalFrames,
+    };
+  } finally {
+    if (!cached) disposeDecodeSource({ input, sink });
   }
 }
 
@@ -246,7 +329,7 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
           for (let ch = 0; ch < channels; ch += 1) {
             sample.copyTo(channelBuffer, { format: 'f32-planar', planeIndex: ch });
             for (let i = 0; i < frames; i += 1) {
-              monoChunk[i] += channelBuffer[i] / channels;
+              monoChunk[i] = (monoChunk[i] ?? 0) + (channelBuffer[i] ?? 0) / channels;
             }
           }
 
@@ -332,10 +415,13 @@ self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
     }
 
     if (data.type === 'decode-range') {
-      const result = await decodeToFloat32Channels(
-        data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
-        data.startTimeS ?? 0,
-        data.durationS,
+      const result = await withDecodeSourceLock(data.sourceKey, () =>
+        decodeToFloat32Channels(
+          data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
+          data.sourceKey,
+          data.startTimeS ?? 0,
+          data.durationS,
+        ),
       );
 
       response.ok = true;
@@ -347,8 +433,8 @@ self.addEventListener('message', async (event: MessageEvent<DecodeRequest>) => {
       return;
     }
 
-    const result = await decodeToFloat32Channels(
-      data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
+    const result = await withDecodeSourceLock(data.sourceKey, () =>
+      decodeToFloat32Channels(data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0), data.sourceKey),
     );
 
     response.ok = true;

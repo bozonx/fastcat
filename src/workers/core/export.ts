@@ -564,6 +564,8 @@ export async function runExport(
 
         await output.finalize();
       } catch (e) {
+        safeDispose(audioSource);
+        safeDispose(videoSource);
         await safeCancel({ output, writable });
         throw e;
       }

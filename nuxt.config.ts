@@ -60,6 +60,15 @@ export default defineNuxtConfig({
     worker: {
       format: 'es',
     },
+    server: {
+      headers:
+        process.env.E2E_TEST === '1'
+          ? {
+              'Cross-Origin-Opener-Policy': 'same-origin',
+              'Cross-Origin-Embedder-Policy': 'require-corp',
+            }
+          : undefined,
+    },
   },
 
   nitro: {

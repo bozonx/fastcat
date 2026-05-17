@@ -549,16 +549,68 @@ async function processClipAudio(args: {
   if (clip.audioFadeInS === 0 && clip.audioFadeOutS === 0) {
     gainEnvelope.fill(clip.audioGain);
   } else {
-    for (let i = 0; i < frames; i += 1) {
-      gainEnvelope[i] = getGainAtClipTime({
-        clipDurationS: clip.playDurationS,
-        fadeInS: clip.audioFadeInS,
-        fadeOutS: clip.audioFadeOutS,
-        fadeInCurve: clip.audioFadeInCurve,
-        fadeOutCurve: clip.audioFadeOutCurve,
-        baseGain: clip.audioGain,
-        tClipS: i / targetSampleRate,
-      });
+    gainEnvelope.fill(clip.audioGain);
+
+    const applyEnvelopeRange = (startFrame: number, endFrame: number) => {
+      const start = Math.max(0, Math.min(frames, startFrame));
+      const end = Math.max(start, Math.min(frames, endFrame));
+      for (let i = start; i < end; i += 1) {
+        gainEnvelope[i] = getGainAtClipTime({
+          clipDurationS: clip.playDurationS,
+          fadeInS: clip.audioFadeInS,
+          fadeOutS: clip.audioFadeOutS,
+          fadeInCurve: clip.audioFadeInCurve,
+          fadeOutCurve: clip.audioFadeOutCurve,
+          baseGain: clip.audioGain,
+          tClipS: i / targetSampleRate,
+        });
+      }
+    };
+
+    if (clip.audioFadeInS > 0) {
+      applyEnvelopeRange(0, Math.ceil(clip.audioFadeInS * targetSampleRate));
+    }
+
+    if (clip.audioFadeOutS > 0) {
+      const fadeOutStartS = Math.max(0, clip.playDurationS - clip.audioFadeOutS);
+      applyEnvelopeRange(
+        Math.floor(fadeOutStartS * targetSampleRate),
+        Math.ceil(clip.playDurationS * targetSampleRate),
+      );
+    }
+
+    const clipEndFrame = Math.max(
+      0,
+      Math.min(frames, Math.ceil(clip.playDurationS * targetSampleRate)),
+    );
+    if (clipEndFrame < frames) {
+      gainEnvelope.fill(0, clipEndFrame);
+    }
+
+    if (clip.audioFadeInS > 0 && clip.audioFadeInS >= clip.playDurationS) {
+      for (let i = 0; i < frames; i += 1) {
+        gainEnvelope[i] = getGainAtClipTime({
+          clipDurationS: clip.playDurationS,
+          fadeInS: clip.audioFadeInS,
+          fadeOutS: clip.audioFadeOutS,
+          fadeInCurve: clip.audioFadeInCurve,
+          fadeOutCurve: clip.audioFadeOutCurve,
+          baseGain: clip.audioGain,
+          tClipS: i / targetSampleRate,
+        });
+      }
+    } else if (clip.audioFadeOutS > 0 && clip.audioFadeOutS >= clip.playDurationS) {
+      for (let i = 0; i < frames; i += 1) {
+        gainEnvelope[i] = getGainAtClipTime({
+          clipDurationS: clip.playDurationS,
+          fadeInS: clip.audioFadeInS,
+          fadeOutS: clip.audioFadeOutS,
+          fadeInCurve: clip.audioFadeInCurve,
+          fadeOutCurve: clip.audioFadeOutCurve,
+          baseGain: clip.audioGain,
+          tClipS: i / targetSampleRate,
+        });
+      }
     }
   }
 
@@ -859,6 +911,8 @@ export class AudioMixer {
           } catch (err: any) {
             if (err?.name === 'AbortError') throw err;
             await reportExportWarning('[Worker Export] Failed to decode audio clip');
+            safeDispose(clip.sink);
+            safeDispose(clip.input);
             processedByClip.set(clip, null);
           }
           nextLoadIndex += 1;
