@@ -159,11 +159,33 @@ export class ClipResourceManager {
     cacheKey: string,
     abortSignal?: AbortSignal,
   ): Promise<any | null> {
-    const sample = await this.context.resourceManager.withVideoSampleSlot(
+    let sample = await this.context.resourceManager.withVideoSampleSlot(
       () => getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
       abortSignal,
     );
-    const sampleValue = sample as any;
+    let sampleValue = sample as any;
+
+    if (!sampleValue || typeof sampleValue.toVideoFrame !== 'function') {
+      // The decoder occasionally returns null for a midstream timestamp even
+      // though neighbouring frames decode fine. Retry slightly earlier so the
+      // clip shows the previous source frame instead of becoming invisible
+      // (which would leak through as a one-frame flicker in the export).
+      const frameRate = Number(clip.frameRate);
+      const frameStepS =
+        Number.isFinite(frameRate) && frameRate > 0 ? 1 / frameRate : 1 / 30;
+      const fallbackTimeS = Math.max(0, sampleTimeS - frameStepS * 0.5);
+      if (fallbackTimeS < sampleTimeS) {
+        const retry = await this.context.resourceManager.withVideoSampleSlot(
+          () =>
+            getVideoSampleWithZeroFallback(clip.sink as any, fallbackTimeS, clip.firstTimestampS),
+          abortSignal,
+        );
+        if (retry && typeof (retry as any).toVideoFrame === 'function') {
+          sample = retry;
+          sampleValue = retry as any;
+        }
+      }
+    }
 
     if (!sampleValue || typeof sampleValue.toVideoFrame !== 'function') {
       return sample;

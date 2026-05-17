@@ -154,14 +154,18 @@ export class VideoFrameCache {
   }
 }
 
-export function resolveClipFrameRate(clip: VideoFrameCacheClipLike): number {
+export function resolveClipFrameRate(clip: VideoFrameCacheClipLike): number | null {
   const clipFrameRate = Number(clip.frameRate);
   if (Number.isFinite(clipFrameRate) && clipFrameRate > 0) {
     return clipFrameRate;
   }
-  return 30;
+  return null;
 }
 
+// Without a known frame rate, key the cache by exact sampleTime in microseconds:
+// distinct sampleTimeS values never collide. With a known frame rate we round
+// to the nearest source frame so one decoded frame serves all timeline frames
+// that resolve to it.
 export function computeFrameIndex(clip: VideoFrameCacheClipLike, sampleTimeS: number): number {
   const safeTimeS = Number.isFinite(sampleTimeS) ? Math.max(0, sampleTimeS) : 0;
   const originS =
@@ -169,6 +173,9 @@ export function computeFrameIndex(clip: VideoFrameCacheClipLike, sampleTimeS: nu
       ? Math.max(0, clip.firstTimestampS)
       : 0;
   const frameRate = resolveClipFrameRate(clip);
+  if (frameRate === null) {
+    return Math.max(0, Math.round(safeTimeS * 1_000_000));
+  }
   const relativeTimeS = Math.max(0, safeTimeS - originS);
   return Math.max(0, Math.round(relativeTimeS * frameRate));
 }

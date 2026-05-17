@@ -126,66 +126,73 @@ export class TransitionManager {
   ): number {
     const baseOpacity = clip.opacity ?? 1;
     const localTimeUs = timeUs - clip.startUs;
-    let opacity = baseOpacity;
+
+    const inDurUs = clip.transitionIn?.durationUs ?? 0;
+    const outDurUs = clip.transitionOut?.durationUs ?? 0;
+    const outStartUs = clip.durationUs - outDurUs;
+
+    const inActive = inDurUs > 0 && localTimeUs >= 0 && localTimeUs < inDurUs;
+    const outActive = outDurUs > 0 && localTimeUs >= outStartUs && localTimeUs < clip.durationUs;
+
+    // If a clip is shorter than transitionIn + transitionOut, both windows
+    // overlap. Picking the nearer edge keeps the curve monotonic; multiplying
+    // both produced a black hole in the middle of short clips.
+    let applyIn = inActive;
+    let applyOut = outActive;
+    if (inActive && outActive) {
+      const distToInEnd = inDurUs - localTimeUs;
+      const distToOutStart = localTimeUs - outStartUs;
+      if (distToInEnd <= distToOutStart) {
+        applyOut = false;
+      } else {
+        applyIn = false;
+      }
+    }
 
     if (!previewEffectsEnabled) {
-      if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
-        const dur = clip.transitionIn.durationUs;
-        if (localTimeUs < dur) {
-          const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
-          opacity = Math.min(opacity, baseOpacity * rawProgress);
-        }
+      let opacity = baseOpacity;
+
+      if (applyIn) {
+        const rawProgress = Math.max(0, Math.min(1, localTimeUs / inDurUs));
+        opacity = Math.min(opacity, baseOpacity * rawProgress);
       }
 
-      if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
-        const dur = clip.transitionOut.durationUs;
-        const outStartUs = clip.durationUs - dur;
-        if (localTimeUs >= outStartUs) {
-          const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
-          opacity = Math.min(opacity, baseOpacity * (1 - rawProgress));
-        }
+      if (applyOut) {
+        const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / outDurUs));
+        opacity = Math.min(opacity, baseOpacity * (1 - rawProgress));
       }
 
       return Math.max(0, Math.min(1, opacity));
     }
 
-    if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
-      const dur = clip.transitionIn.durationUs;
+    let opacity = baseOpacity;
+
+    if (applyIn && clip.transitionIn) {
       const curve = clip.transitionIn.curve ?? DEFAULT_TRANSITION_CURVE;
-      if (localTimeUs < dur) {
-        const manifest = getTransitionManifest(clip.transitionIn.type);
-        if (manifest && manifest.renderMode !== 'shader') {
-          const rawProgress = Math.max(0, Math.min(1, localTimeUs / dur));
-          const params = normalizeTransitionParams(
-            clip.transitionIn.type,
-            clip.transitionIn.params,
-          );
-          opacity = Math.min(
-            opacity,
-            baseOpacity * manifest.computeInOpacity(rawProgress, (params as any) ?? {}, curve),
-          );
-        }
+      const manifest = getTransitionManifest(clip.transitionIn.type);
+      if (manifest && manifest.renderMode !== 'shader') {
+        const rawProgress = Math.max(0, Math.min(1, localTimeUs / inDurUs));
+        const params = normalizeTransitionParams(clip.transitionIn.type, clip.transitionIn.params);
+        opacity = Math.min(
+          opacity,
+          baseOpacity * manifest.computeInOpacity(rawProgress, (params as any) ?? {}, curve),
+        );
       }
     }
 
-    if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
-      const dur = clip.transitionOut.durationUs;
+    if (applyOut && clip.transitionOut) {
       const curve = clip.transitionOut.curve ?? DEFAULT_TRANSITION_CURVE;
-      const clipDurUs = clip.durationUs;
-      const outStartUs = clipDurUs - dur;
-      if (localTimeUs >= outStartUs) {
-        const manifest = getTransitionManifest(clip.transitionOut.type);
-        if (manifest && manifest.renderMode !== 'shader') {
-          const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / dur));
-          const params = normalizeTransitionParams(
-            clip.transitionOut.type,
-            clip.transitionOut.params,
-          );
-          opacity = Math.min(
-            opacity,
-            baseOpacity * manifest.computeOutOpacity(rawProgress, (params as any) ?? {}, curve),
-          );
-        }
+      const manifest = getTransitionManifest(clip.transitionOut.type);
+      if (manifest && manifest.renderMode !== 'shader') {
+        const rawProgress = Math.max(0, Math.min(1, (localTimeUs - outStartUs) / outDurUs));
+        const params = normalizeTransitionParams(
+          clip.transitionOut.type,
+          clip.transitionOut.params,
+        );
+        opacity = Math.min(
+          opacity,
+          baseOpacity * manifest.computeOutOpacity(rawProgress, (params as any) ?? {}, curve),
+        );
       }
     }
 

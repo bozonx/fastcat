@@ -19,6 +19,7 @@ export interface HudMediaState {
   input?: any;
   sink?: any;
   firstTimestampS?: number;
+  frameRate?: number;
   sourceDurationUs: number;
   clipKind: 'video' | 'image' | 'solid';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';

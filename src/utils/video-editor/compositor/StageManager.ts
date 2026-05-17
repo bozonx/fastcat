@@ -12,11 +12,14 @@ export class StageManager {
   public sortStage(params: StageManagerParams) {
     this.sortTrackContainerChildren(params.tracks, params.getClipById);
     params.app.stage.children.sort((a: any, b: any) => {
-      const aTrack = params.getTrackById((a as any).__trackId ?? '');
-      const bTrack = params.getTrackById((b as any).__trackId ?? '');
+      const aTrackId = String((a as any).__trackId ?? '');
+      const bTrackId = String((b as any).__trackId ?? '');
+      const aTrack = params.getTrackById(aTrackId);
+      const bTrack = params.getTrackById(bTrackId);
       const aLayer = typeof aTrack?.layer === 'number' ? aTrack.layer : 0;
       const bLayer = typeof bTrack?.layer === 'number' ? bTrack.layer : 0;
-      return aLayer - bLayer;
+      if (aLayer !== bLayer) return aLayer - bLayer;
+      return aTrackId.localeCompare(bTrackId);
     });
   }
 
