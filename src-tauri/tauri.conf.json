@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "FastCat",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "identifier": "com.bozonx.fastcat",
   "build": {
     "frontendDist": "../.output/public",
@@ -13,14 +13,17 @@
     "windows": [
       {
         "title": "FastCat",
-        "width": 800,
-        "height": 600,
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1280,
+        "minHeight": 720,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "center": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost; worker-src 'self' blob:;"
     }
   },
   "bundle": {

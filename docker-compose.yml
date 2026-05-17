@@ -5,10 +5,10 @@ services:
     restart: always
     working_dir: /app
     command: >
-      sh -c " npm install && if [ \"$NUXT_PUBLIC_DEV_MODE\" = \"true\" ]; then
-        npm run dev;
+      sh -c "corepack enable && pnpm install --frozen-lockfile && if [ \"$NUXT_PUBLIC_DEV_MODE\" = \"true\" ]; then
+        pnpm dev;
       else
-        npm run prod;
+        pnpm prod;
       fi "
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
