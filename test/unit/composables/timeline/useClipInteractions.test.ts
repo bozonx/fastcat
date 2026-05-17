@@ -25,14 +25,19 @@ describe('useClipInteractions', () => {
     trimToPlayheadLeftNoRipple: vi.fn(),
     trimToPlayheadRightNoRipple: vi.fn(),
     splitClipAtPlayhead: vi.fn(),
+    splitClipAtTime: vi.fn(),
+    getPointerTimeUs: vi.fn(),
     emitSelectItem: vi.fn(),
     didStartDrag: ref(false),
+    longPressTriggered: ref(false),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     ctx.isTrimModeActive.value = false;
     ctx.didStartDrag.value = false;
+    ctx.longPressTriggered.value = false;
+    ctx.getPointerTimeUs.mockReturnValue(null);
     mockTrack.value.locked = false;
     mockItem.value.locked = false;
   });
@@ -55,6 +60,22 @@ describe('useClipInteractions', () => {
 
     expect(ctx.selectTimelineItems).toHaveBeenCalledWith(['clip-1']);
     expect(ctx.splitClipAtPlayhead).toHaveBeenCalledWith({ trackId: 'track-1', itemId: 'clip-1' });
+  });
+
+  it('splits clip in trim mode at pointer time when available', () => {
+    ctx.isTrimModeActive.value = true;
+    ctx.getPointerTimeUs.mockReturnValue(2_000_000);
+    const { onClipClick } = useClipInteractions(ctx);
+    const event = new MouseEvent('click', { button: 0 });
+
+    onClipClick(event);
+
+    expect(ctx.selectTimelineItems).toHaveBeenCalledWith(['clip-1']);
+    expect(ctx.splitClipAtTime).toHaveBeenCalledWith(
+      { trackId: 'track-1', itemId: 'clip-1' },
+      2_000_000,
+    );
+    expect(ctx.splitClipAtPlayhead).not.toHaveBeenCalled();
   });
 
   it('trims left in trim mode with Shift', () => {

@@ -19,6 +19,7 @@ interface TimelineMediaMetadata {
     width: number;
     height: number;
     fps: number;
+    rotation?: number;
     canDecode?: boolean;
   };
   audio?: {
@@ -57,6 +58,7 @@ export interface TimelineCommandServiceDeps {
       width: number;
       height: number;
       fps: number;
+      sampleRate: number;
       isAutoSettings: boolean;
     };
   };
@@ -64,9 +66,11 @@ export interface TimelineCommandServiceDeps {
     width: number;
     height: number;
     fps: number;
+    sampleRate?: number;
     isAutoSettings: boolean;
   }) => Promise<void>;
   showFpsWarning: (fileFps: number, projectFps: number) => void;
+  showAutoSettingsApplied: (settings: { width: number; height: number; fps: number }) => void;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
   defaultImageDurationUs: number;
   defaultImageSourceDurationUs: number;
@@ -312,11 +316,23 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (metadata.video) {
       const projectSettings = deps.getProjectSettings();
       if (projectSettings.project.isAutoSettings) {
+        const rotation = metadata.video.rotation ?? 0;
+        const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
+        const effectiveWidth = isRotated90 ? metadata.video.height : metadata.video.width;
+        const effectiveHeight = isRotated90 ? metadata.video.width : metadata.video.height;
+
         await deps.updateProjectSettings({
-          width: metadata.video.width,
-          height: metadata.video.height,
+          width: effectiveWidth,
+          height: effectiveHeight,
           fps: metadata.video.fps,
+          sampleRate: metadata.audio?.sampleRate ?? projectSettings.project.sampleRate,
           isAutoSettings: false,
+        });
+
+        deps.showAutoSettingsApplied({
+          width: effectiveWidth,
+          height: effectiveHeight,
+          fps: metadata.video.fps,
         });
       } else if (!areFpsClose(metadata.video.fps, projectSettings.project.fps)) {
         deps.showFpsWarning(metadata.video.fps, projectSettings.project.fps);

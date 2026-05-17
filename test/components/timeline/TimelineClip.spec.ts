@@ -37,6 +37,7 @@ const mockTimelineStore = reactive({
   trimToPlayheadLeftNoRipple: vi.fn(),
   trimToPlayheadRightNoRipple: vi.fn(),
   splitClipAtPlayhead: vi.fn(),
+  splitClipAtTime: vi.fn(),
   selectTransition: vi.fn(),
 });
 
@@ -54,6 +55,7 @@ const mockSelectionStore = reactive({
 
 const mockWorkspaceStore = reactive({
   userSettings: {
+    hotkeys: { layer1: 'Shift', layer2: 'Control' },
     timeline: {
       defaultTransitionDurationUs: 1000000,
     },
@@ -269,6 +271,37 @@ describe('TimelineClip', () => {
     // useClipInteractions should handle the click and emit selectItem
     expect(component.emitted('selectItem')).toBeTruthy();
     expect(component.emitted('selectItem')![0][1]).toBe('clip-1');
+  });
+
+  it('splits clip at clicked timeline position in trim mode', async () => {
+    mockTimelineStore.isTrimModeActive = true;
+    mockTimelineStore.timelineZoom = 50;
+
+    const component = await mountSuspended(TimelineClip, {
+      props: defaultProps,
+      global: { stubs: { UContextMenu: { template: '<div><slot /></div>' } } },
+    });
+    const clipDiv = component.find('[data-clip-id="clip-1"]');
+    const el = clipDiv.element as HTMLElement;
+    vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+      x: 100,
+      y: 0,
+      left: 100,
+      top: 0,
+      right: 150,
+      bottom: 40,
+      width: 50,
+      height: 40,
+      toJSON: () => {},
+    } as DOMRect);
+
+    await clipDiv.trigger('click', { button: 0, clientX: 120 });
+
+    expect(mockTimelineStore.splitClipAtTime).toHaveBeenCalledWith(
+      { trackId: 'track-1', itemId: 'clip-1' },
+      3_000_000,
+    );
+    expect(mockTimelineStore.splitClipAtPlayhead).not.toHaveBeenCalled();
   });
 
   it('selects clip on mobile tap before drag is allowed', async () => {

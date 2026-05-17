@@ -213,10 +213,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     await splitClipAtTime(targetOverride ?? deps.getHotkeyTargetClip(), deps.currentTime.value);
   }
 
-  async function splitClipAtTime(
-    target: { trackId: string; itemId: string } | null,
-    atUs: number,
-  ) {
+  async function splitClipAtTime(target: { trackId: string; itemId: string } | null, atUs: number) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 

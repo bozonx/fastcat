@@ -125,6 +125,13 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
         ],
       });
     },
+    showAutoSettingsApplied: (settings) => {
+      toast.add({
+        title: t('videoEditor.timeline.autoSettingsApplied'),
+        description: t('videoEditor.timeline.autoSettingsAppliedDesc', settings),
+        color: 'success',
+      });
+    },
     mediaCache: {
       hasProxy,
       ensureProxy,
