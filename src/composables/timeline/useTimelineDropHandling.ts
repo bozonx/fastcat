@@ -19,6 +19,8 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
+import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { secondsToUs } from '~/utils/time';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -107,16 +109,10 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }) {
     if (params.kind === 'file' && params.path) {
       const meta = await mediaStore.getOrFetchMetadataByPath(params.path);
-      if (meta?.duration) return Math.floor(meta.duration * 1_000_000);
+      if (meta && !meta.error && meta.duration) return secondsToUs(meta.duration);
 
-      const type = getMediaTypeFromFilename(params.path);
-      if (type === 'video' || type === 'audio') {
-        // If meta is null or has 0 duration, it might be still loading or failed.
-        // We try one more time or just use a larger fallback if it's clearly a media file.
-        // Actually, let's just return the default if it really failed,
-        // but getOrFetchMetadataByPath should have awaited the extraction.
-      }
-
+      // For images/text or unknown failures fall back to a static default so the
+      // preview ghost is still useful. Real failures will be caught at insert time.
       return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     }
     if (params.kind === 'timeline' && params.path) {
@@ -165,12 +161,16 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     durationUs: number;
     pseudo: boolean;
   }) {
-    const { trackId, startUs, durationUs, pseudo } = params;
+    const { trackId, pseudo } = params;
     const track = getTrackById(trackId);
-    if (!track) return startUs;
-    if (pseudo) return startUs;
+    if (!track) return params.startUs;
+    if (pseudo) return params.startUs;
 
-    let nextStartUs = Math.max(0, Math.round(startUs));
+    // Quantize to the same frame grid as `addClipToTrack` to prevent post-quantize
+    // overlap with neighbour clips on non-integer fps.
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase.fps);
+    let nextStartUs = quantizeTimeUsToFrames(Math.max(0, params.startUs), fps, 'round');
+    const durationUs = quantizeTimeUsToFrames(Math.max(0, params.durationUs), fps, 'round');
 
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
@@ -183,7 +183,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         continue;
       }
 
-      nextStartUs = itemEndUs;
+      nextStartUs = quantizeTimeUsToFrames(itemEndUs, fps, 'ceil');
     }
 
     return nextStartUs;
@@ -687,11 +687,22 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
       let currentStartUs = startUs;
       for (const res of results) {
-        const result = await executeMediaFileDrop(
-          { path: res.targetPath, name: res.fileName },
-          { baseTrackId: trackId, currentStartUs, pseudo: false },
-        );
-        currentStartUs = result.nextStartUs;
+        try {
+          const result = await executeMediaFileDrop(
+            { path: res.targetPath, name: res.fileName },
+            { baseTrackId: trackId, currentStartUs, pseudo: false },
+          );
+          currentStartUs = result.nextStartUs;
+        } catch (err: any) {
+          // One file failing (e.g. unsupported codec, broken metadata) must not
+          // abort placement of the remaining successfully imported files.
+          console.warn('[timeline] Failed to place file on timeline:', res.fileName, err);
+          toast.add({
+            color: 'warning',
+            title: t('common.warning'),
+            description: `${res.fileName}: ${String(err?.message ?? err)}`,
+          });
+        }
       }
 
       await timelineStore.requestTimelineSave({ immediate: true });

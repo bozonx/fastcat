@@ -78,23 +78,14 @@ export function addClipToTrack(
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
 
-  const base = {
-    id: cmd.clipId || nextItemId(track.id, 'clip'),
-    name: cmd.name,
-    trackId: cmd.trackId,
-    timelineRange: {
-      startUs: cmd.startUs,
-      durationUs: cmd.durationUs > 0 ? cmd.durationUs : Math.round(Number(cmd.durationUs ?? 0)),
-    },
-    isImage: cmd.isImage,
-  };
-
   const clipType = cmd.path.toLowerCase().endsWith('.otio') ? 'timeline' : 'media';
 
   const clip: TimelineClipItem = {
     kind: 'clip',
     clipType,
-    ...base,
+    id: cmd.clipId || nextItemId(track.id, 'clip'),
+    name: cmd.name,
+    trackId: cmd.trackId,
     source: { path: cmd.path },
     sourceDurationUs,
     isImage: cmd.isImage,

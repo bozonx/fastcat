@@ -32,7 +32,7 @@ export async function extractMetadata(
 
   if (isImage) {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    let canDisplay: boolean | undefined;
+    let canDisplay: boolean;
     let width = 0;
     let height = 0;
 
@@ -46,6 +46,11 @@ export async function extractMetadata(
       } catch {
         canDisplay = false;
       }
+    } else {
+      // Non-native formats (e.g. tiff) cannot be displayed by the renderer without
+      // raster conversion. Mark explicitly so downstream code skips them instead of
+      // assuming "unknown means OK".
+      canDisplay = false;
     }
 
     return {

@@ -123,12 +123,21 @@ export const useMediaStore = defineStore('media', () => {
       delete metadataLoadFailed.value[cacheKey];
     }
 
+    // For forceRefresh, chain after any in-flight non-force request so we don't
+    // race with it on the same OPFS cache file, but ensure a fresh extraction.
+    const previous = options?.forceRefresh ? pendingRequests.get(cacheKey) : undefined;
+
     const requestPromise = (async () => {
       try {
+        if (previous) {
+          await previous.catch(() => undefined);
+        }
         const result = await fetchMetadataInternal(file, projectRelativePath, options);
         return result;
       } finally {
-        pendingRequests.delete(cacheKey);
+        if (pendingRequests.get(cacheKey) === requestPromise) {
+          pendingRequests.delete(cacheKey);
+        }
       }
     })();
 

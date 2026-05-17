@@ -11,6 +11,7 @@ import type { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
+import { secondsToUs } from '~/utils/time';
 
 interface TimelineMediaMetadata {
   duration?: number;
@@ -24,6 +25,8 @@ interface TimelineMediaMetadata {
     sampleRate: number;
     canDecode?: boolean;
   };
+  /** True when previous metadata extraction failed and we cached the failure state. */
+  error?: boolean;
 }
 
 export interface TimelineCommandServiceDeps {
@@ -270,7 +273,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (!targetTrack) throw new Error('Track not found');
 
     const metadata = await deps.getOrFetchMetadataByPath(input.path);
-    if (!metadata) throw new Error('Failed to resolve media metadata');
+    if (!metadata || metadata.error) throw new Error('Failed to resolve media metadata');
 
     ensureTrackKindCompatibility(targetTrack, metadata);
 
@@ -280,7 +283,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
     const durationUs = isImageLike
       ? deps.defaultImageDurationUs
-      : Math.max(1, Math.round(Number(metadata.duration) * 1_000_000));
+      : Math.max(1, secondsToUs(Number(metadata.duration)));
     const sourceDurationUs = isImageLike ? deps.defaultImageSourceDurationUs : durationUs;
 
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
@@ -294,10 +297,14 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       !deps.mediaCache.hasProxy(input.path);
 
     if (shouldAutoCreateProxy) {
-      void ensureProxyCommand({
+      // Fire-and-forget: proxy creation is a background optimization. Failures must
+      // not break the import flow — surface them as console warnings only.
+      ensureProxyCommand({
         service: deps.mediaCache,
         file,
         projectRelativePath: input.path,
+      }).catch((err) => {
+        console.warn('[timeline] Auto proxy creation failed', err);
       });
     }
 

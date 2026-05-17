@@ -118,11 +118,10 @@ async function decodeToFloat32Channels(
         const sampleChannels = Math.max(1, Number(sample.numberOfChannels) || 1);
         if (numberOfChannels === undefined) {
           numberOfChannels = sampleChannels;
-        } else if (sampleChannels !== numberOfChannels) {
-          console.warn(
-            `[audio-decode.worker] Dropping sample with channel count ${sampleChannels}; expected ${numberOfChannels}.`,
-          );
-          continue;
+        } else if (sampleChannels > numberOfChannels) {
+          // Source switched to a wider layout mid-stream (rare but observed on
+          // some MKV/WebM streams). Grow the output to keep all channels.
+          numberOfChannels = sampleChannels;
         }
 
         const frames = Number(sample.numberOfFrames) || 0;
@@ -134,7 +133,10 @@ async function decodeToFloat32Channels(
           }
           const startFrame = Math.max(0, Math.round((sampleStartS - decodeStartS) * sampleRate));
           const planes: Float32Array[] = [];
-          for (let ch = 0; ch < numberOfChannels; ch += 1) {
+          // Copy only the channels the sample actually provides; the merge step
+          // below leaves missing channels as silence rather than dropping the sample.
+          const availableChannels = Math.min(numberOfChannels, sampleChannels);
+          for (let ch = 0; ch < availableChannels; ch += 1) {
             const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
             const chunk = new Float32Array(bytesNeeded / 4);
             sample.copyTo(chunk, { format: 'f32-planar', planeIndex: ch });
@@ -207,12 +209,12 @@ async function extractPeaksFromSource(
       const metaDurationS = await input.computeDuration();
       const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
       const trackSampleRate = Math.max(1, aTrack.sampleRate || 48000);
-      // Fixed binning denominator across the whole stream so bucket indices are stable
-      // regardless of sample arrival order or any tail overshoot vs. metadata duration.
-      const totalFramesEstimate = Math.max(1, Math.ceil(durationS * trackSampleRate));
+      // Initial estimate from container metadata. We grow it on overshoot so the
+      // tail of streams with inaccurate duration metadata (VBR MP3, fragmented MP4)
+      // doesn't get clamped into the last bucket — which would otherwise spike it.
+      let totalFramesEstimate = Math.max(1, Math.ceil(durationS * trackSampleRate));
       const peaks: number[][] = [];
       let resolvedChannels = 0;
-      let channelMismatchWarned = false;
 
       for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
         const sample = sampleRaw as any;
@@ -227,22 +229,24 @@ async function extractPeaksFromSource(
             for (let ch = 0; ch < resolvedChannels; ch += 1) {
               peaks.push(Array.from({ length: maxLength }, () => 0));
             }
-          } else if (numberOfChannels !== resolvedChannels) {
-            // Drop the sample (don't reset accumulated peaks) — mediabunny may emit
-            // an aberrant channel layout for a single packet on some files.
-            if (!channelMismatchWarned) {
-              console.warn(
-                `[audio-decode.worker] Dropping peak sample with channel count ${numberOfChannels}; expected ${resolvedChannels}.`,
-              );
-              channelMismatchWarned = true;
+          } else if (numberOfChannels > resolvedChannels) {
+            // Grow output to fit a wider layout that appeared mid-stream rather than
+            // dropping the sample silently.
+            for (let ch = resolvedChannels; ch < numberOfChannels; ch += 1) {
+              peaks.push(Array.from({ length: maxLength }, () => 0));
             }
-            continue;
+            resolvedChannels = numberOfChannels;
           }
 
           const timestampS = Number(sample.timestamp) || 0;
           const startFrame = Math.max(0, Math.floor(timestampS * sampleRate));
+          const lastFrame = startFrame + frames;
+          if (lastFrame > totalFramesEstimate) {
+            totalFramesEstimate = lastFrame;
+          }
 
-          for (let ch = 0; ch < resolvedChannels; ch += 1) {
+          const channelsToCopy = Math.min(resolvedChannels, numberOfChannels);
+          for (let ch = 0; ch < channelsToCopy; ch += 1) {
             const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
             const channel = new Float32Array(bytesNeeded / 4);
             sample.copyTo(channel, { format: 'f32-planar', planeIndex: ch });
