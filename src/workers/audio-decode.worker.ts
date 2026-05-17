@@ -206,33 +206,43 @@ async function extractPeaksFromSource(
     try {
       const metaDurationS = await input.computeDuration();
       const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
-      const trackSampleRate = aTrack.sampleRate;
+      const trackSampleRate = Math.max(1, aTrack.sampleRate || 48000);
+      // Fixed binning denominator across the whole stream so bucket indices are stable
+      // regardless of sample arrival order or any tail overshoot vs. metadata duration.
       const totalFramesEstimate = Math.max(1, Math.ceil(durationS * trackSampleRate));
       const peaks: number[][] = [];
-      const counts: Uint32Array[] = [];
+      let resolvedChannels = 0;
+      let channelMismatchWarned = false;
 
       for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
         const sample = sampleRaw as any;
         try {
           const frames = Number(sample.numberOfFrames) || 0;
           const numberOfChannels = Math.max(1, Number(sample.numberOfChannels) || 1);
-          const sampleRate = Math.max(1, Number(sample.sampleRate) || 48000);
+          const sampleRate = Math.max(1, Number(sample.sampleRate) || trackSampleRate);
           if (frames <= 0) continue;
 
-          if (peaks.length !== numberOfChannels) {
-            peaks.length = 0;
-            counts.length = 0;
-            for (let ch = 0; ch < numberOfChannels; ch += 1) {
+          if (resolvedChannels === 0) {
+            resolvedChannels = numberOfChannels;
+            for (let ch = 0; ch < resolvedChannels; ch += 1) {
               peaks.push(Array.from({ length: maxLength }, () => 0));
-              counts.push(new Uint32Array(maxLength));
             }
+          } else if (numberOfChannels !== resolvedChannels) {
+            // Drop the sample (don't reset accumulated peaks) — mediabunny may emit
+            // an aberrant channel layout for a single packet on some files.
+            if (!channelMismatchWarned) {
+              console.warn(
+                `[audio-decode.worker] Dropping peak sample with channel count ${numberOfChannels}; expected ${resolvedChannels}.`,
+              );
+              channelMismatchWarned = true;
+            }
+            continue;
           }
 
           const timestampS = Number(sample.timestamp) || 0;
           const startFrame = Math.max(0, Math.floor(timestampS * sampleRate));
-          const estimatedTotalFrames = Math.max(totalFramesEstimate, startFrame + frames);
 
-          for (let ch = 0; ch < numberOfChannels; ch += 1) {
+          for (let ch = 0; ch < resolvedChannels; ch += 1) {
             const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
             const channel = new Float32Array(bytesNeeded / 4);
             sample.copyTo(channel, { format: 'f32-planar', planeIndex: ch });
@@ -241,17 +251,12 @@ async function extractPeaksFromSource(
               const globalFrame = startFrame + i;
               const bucket = Math.min(
                 maxLength - 1,
-                Math.max(0, Math.floor((globalFrame / estimatedTotalFrames) * maxLength)),
+                Math.max(0, Math.floor((globalFrame / totalFramesEstimate) * maxLength)),
               );
-              const value = channel[i] ?? 0;
+              const value = Math.abs(channel[i] ?? 0);
               const current = peaks[ch]?.[bucket] ?? 0;
-              if (Math.abs(value) > Math.abs(current)) {
+              if (value > current) {
                 peaks[ch]![bucket] = value;
-              }
-              const channelCounts = counts[ch];
-              if (channelCounts) {
-                const currentCount = channelCounts[bucket] ?? 0;
-                channelCounts[bucket] = currentCount + 1;
               }
             }
           }

@@ -123,11 +123,11 @@ async function buildTimelinePeaks(params: {
             })()
           : 0;
 
+    // Fallback to clip.sourceRange end is incorrect (that's only the used range, not full source).
+    // Use itemSourceDurationUs as last resort so source-relative bucket math stays consistent.
     const sourceDurationUs = Math.max(
       1,
-      Math.round(
-        clipSourceDurationUs || clip.sourceRange.startUs + clip.sourceRange.durationUs || 0,
-      ),
+      Math.round(clipSourceDurationUs || clip.sourceRange.durationUs || 0),
     );
 
     if (clip.clipType === 'timeline') {
@@ -235,7 +235,7 @@ const extractPeaks = async () => {
       });
 
       const durationS = effectiveSourceDurationUs.value / 1_000_000;
-      const samplesPerSecond = 1000;
+      const samplesPerSecond = 200;
       const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
 
       const peaks = await buildTimelinePeaks({
@@ -264,11 +264,11 @@ const extractPeaks = async () => {
 
     engine = new AudioEngine();
 
-    // Use a fixed max length that represents a reasonable resolution (e.g., 8000 samples per second of audio max, or just a fixed large number)
-    // Actually, for a timeline, we need enough resolution for the maximum zoom level.
-    // If we assume max zoom is 1000px per second, 8000 is plenty.
+    // Resolution budget: ~200 samples per second is more than enough — even at
+    // max zoom (~1280 px/s) there is no benefit from a denser array, and a denser
+    // one bloats OPFS JSON and JSON.stringify cost for long sources.
     const durationS = effectiveSourceDurationUs.value / 1_000_000;
-    const samplesPerSecond = 1000; // Adjust based on required visual resolution
+    const samplesPerSecond = 200;
     const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
 
     const peaks = await engine.extractPeaks(fileHandle, fileUrl.value, {
@@ -471,7 +471,7 @@ function drawChunk(chunkIndex: number) {
         if (p > peak) peak = p;
       }
       peak *= gain;
-      const y = targetHeight - Math.min(1.1, peak) * targetHeight;
+      const y = targetHeight - Math.min(1, peak) * targetHeight;
       ctx.lineTo(x, y);
     }
     ctx.lineTo(targetWidth, targetHeight);
@@ -486,7 +486,7 @@ function drawChunk(chunkIndex: number) {
         if (p > peak) peak = p;
       }
       peak *= gain;
-      const y = halfH - Math.min(1.1, peak) * halfH;
+      const y = halfH - Math.min(1, peak) * halfH;
       ctx.lineTo(x, y);
     }
 
@@ -499,7 +499,7 @@ function drawChunk(chunkIndex: number) {
         if (p > peak) peak = p;
       }
       peak *= gain;
-      const y = halfH + Math.min(1.1, peak) * halfH;
+      const y = halfH + Math.min(1, peak) * halfH;
       ctx.lineTo(x, y);
     }
   }
@@ -531,6 +531,12 @@ watch(
     void redrawMountedChunks();
   },
 );
+
+// External peaks updates (e.g. cache refresh, late extraction completion) must
+// trigger a redraw — otherwise the canvas stays empty until the user pans/zooms.
+watch(audioPeaks, () => {
+  void redrawMountedChunks();
+});
 
 watch(
   [chunks],

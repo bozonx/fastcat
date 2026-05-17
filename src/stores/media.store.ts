@@ -70,6 +70,7 @@ export const useMediaStore = defineStore('media', () => {
   const metadataLoadFailed = ref<Record<string, boolean>>({});
 
   const pendingRequests = new Map<string, Promise<MediaMetadata | null>>();
+  const pendingPeakWrites = new Map<string, Promise<void>>();
 
   function resetMediaState() {
     mediaMetadata.value = {};
@@ -199,6 +200,20 @@ export const useMediaStore = defineStore('media', () => {
     }
 
     try {
+      // Drop any stale peaks cache before regenerating metadata for a changed source.
+      // Otherwise next session will load fresh metadata + outdated peaks together
+      // and the waveform will mismatch the actual audio content.
+      try {
+        const waveformsDir = await fsModule.ensureWaveformsDir();
+        if (waveformsDir) {
+          await waveformsDir.removeEntry(cacheFileName).catch(() => {
+            // No previous peaks file — ok
+          });
+        }
+      } catch {
+        // ignore
+      }
+
       const meta = await workerModule.extractMetadata(file);
 
       if (meta) {
@@ -248,29 +263,40 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: number[][]) {
-    if (mediaMetadata.value[projectRelativePath]) {
-      mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+    if (!mediaMetadata.value[projectRelativePath]) return;
 
-      // Save peaks to OPFS
-      const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
-      fsModule
-        .ensureWaveformsDir()
-        .then((waveformsDir) => {
+    mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+
+    // Serialize peaks writes per-path to avoid concurrent createWritable() races on the
+    // same OPFS entry which can yield truncated/interleaved JSON for long audio.
+    const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
+    const previous = pendingPeakWrites.get(projectRelativePath) ?? Promise.resolve();
+    const writeTask = previous
+      .catch(() => {
+        // ignore previous error — we still try to persist the latest peaks
+      })
+      .then(async () => {
+        try {
+          const waveformsDir = await fsModule.ensureWaveformsDir();
           if (!waveformsDir) return;
-          waveformsDir
-            .getFileHandle(cacheFileName, { create: true })
-            .then((peaksHandle) => {
-              (peaksHandle as any)
-                .createWritable()
-                .then((writable: any) => {
-                  writable.write(JSON.stringify(peaks)).then(() => writable.close());
-                })
-                .catch((e: Error) => console.warn('Failed to write peaks', e));
-            })
-            .catch((e) => console.warn('Failed to get peaks handle', e));
-        })
-        .catch((e) => console.warn('Failed to get waveforms dir', e));
-    }
+          const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
+          const writable = await (peaksHandle as any).createWritable();
+          try {
+            await writable.write(JSON.stringify(peaks));
+          } finally {
+            await writable.close();
+          }
+        } catch (e) {
+          console.warn('Failed to write peaks', e);
+        }
+      })
+      .finally(() => {
+        if (pendingPeakWrites.get(projectRelativePath) === writeTask) {
+          pendingPeakWrites.delete(projectRelativePath);
+        }
+      });
+
+    pendingPeakWrites.set(projectRelativePath, writeTask);
   }
 
   async function revalidateMissingMedia(usedPaths: string[]) {
