@@ -13,7 +13,7 @@ import TimelinePlayheadOverlay from '~/components/timeline/TimelinePlayheadOverl
 
 const TRACK_LABELS_WIDTH = 220;
 
-defineProps<{
+const props = defineProps<{
   kind: 'video' | 'audio';
   tracks: TimelineTrack[];
   trackHeights: Record<string, number>;
@@ -42,6 +42,17 @@ defineProps<{
   onZoomToFit?: () => void;
 }>();
 
+function onSectionDragLeave(e: DragEvent) {
+  const relatedTarget = e.relatedTarget as Node | null;
+  const sectionEl = e.currentTarget as HTMLElement;
+  // If the mouse moved to another element inside this section (e.g. track labels,
+  // another track, or empty space within the same section), keep the preview alive.
+  if (relatedTarget && sectionEl.contains(relatedTarget)) return;
+  if (props.dragPreview) {
+    emit('dragleave', e, props.dragPreview.trackId);
+  }
+}
+
 const emit = defineEmits<{
   (e: 'drop', event: DragEvent, trackId: string): void;
   (e: 'dragover', event: DragEvent, trackId: string): void;
@@ -69,6 +80,7 @@ defineExpose({
   <div
     class="flex min-h-[60px] relative"
     :class="kind === 'video' ? 'shrink-0 border-b border-ui-border' : 'flex-1'"
+    @dragleave.prevent="onSectionDragLeave"
   >
     <TimelineTrackLabels
       ref="labelsRef"
@@ -113,7 +125,6 @@ defineExpose({
           :on-zoom-to-fit="onZoomToFit"
           @drop="(ev, id) => emit('drop', ev, id)"
           @dragover="(ev, id) => emit('dragover', ev, id)"
-          @dragleave="(ev, id) => emit('dragleave', ev, id)"
           @start-move-item="(ev, p) => emit('startMoveItem', ev, p)"
           @select-item="(ev, id) => emit('selectItem', ev, id)"
           @start-trim-item="(ev, p) => emit('startTrimItem', ev, p)"

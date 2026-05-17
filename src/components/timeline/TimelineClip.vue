@@ -548,11 +548,12 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       @pointerenter="isHovered = true"
       @pointerleave="isHovered = false"
     >
-      <!-- Indicators -->
-      <div
-        v-if="
-          clipItem && typeof clipItem.speed === 'number' && clipItem.speed !== 1 && !isMediaMissing
-        "
+      <template v-if="!isMovePreviewCurrentItem">
+        <!-- Indicators -->
+        <div
+          v-if="
+            clipItem && typeof clipItem.speed === 'number' && clipItem.speed !== 1 && !isMediaMissing
+          "
         class="absolute inset-0 rounded border-2 pointer-events-none"
         :style="{ zIndex: 'var(--z-clip-speed)' }"
         :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
@@ -704,6 +705,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           :class="isMobile ? 'w-4' : 'w-4'"
           @pointerdown="onTrimHandlePointerDown($event, 'end')"
         />
+      </template>
       </template>
     </div>
   </UContextMenu>

@@ -685,7 +685,6 @@ function onTrackClick(e: MouseEvent, trackId: string) {
         @mouseenter="timelineStore.hoveredTrackId = trackViewModel.track.id"
         @mouseleave="timelineStore.hoveredTrackId = null"
         @dragover.prevent="emit('dragover', $event, trackViewModel.track.id)"
-        @dragleave.prevent="emit('dragleave', $event, trackViewModel.track.id)"
         @drop.prevent="emit('drop', $event, trackViewModel.track.id)"
         @contextmenu.prevent.stop="onTrackContextMenu($event, trackViewModel.track)"
       >
