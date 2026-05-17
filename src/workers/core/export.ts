@@ -3,7 +3,12 @@ import { VideoCompositor } from '../../utils/video-editor/VideoCompositor';
 import { safeDispose } from '../../utils/video-editor/utils';
 import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 import { buildMixedAudioTrack } from './audio';
-import { computeMaxAudioDurationUs, getClipRangesS } from './export-helpers';
+import {
+  computeExportTotalFrames,
+  computeMaxAudioDurationUs,
+  getClipRangesS,
+  getExportFrameTiming,
+} from './export-helpers';
 import { usToS } from './time';
 import { initEffects } from '../../effects';
 import { initTransitions } from '../../transitions';
@@ -291,17 +296,14 @@ export async function runExport(
   }
 
   async function encodeFrames(params: {
-    durationS: number;
+    durationUs: number;
     fps: number;
     videoSource: any;
     compositor: VideoCompositor;
     taskId?: string;
   }) {
     const fps = Math.max(1, Number(params.fps) || 30);
-    const totalFrames = Math.ceil(params.durationS * fps);
-    const dtUs = Math.floor(1_000_000 / fps);
-    const dtS = usToS(dtUs);
-    let currentTimeUs = 0;
+    const totalFrames = computeExportTotalFrames({ durationUs: params.durationUs, fps });
 
     let lastYieldAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     let lastProgressAtMs = lastYieldAtMs;
@@ -311,15 +313,19 @@ export async function runExport(
     for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
       ensureNotCancelled();
 
-      const generatedCanvas = await params.compositor.renderFrame(currentTimeUs);
+      const frame = getExportFrameTiming({
+        frameNum,
+        totalFrames,
+        durationUs: params.durationUs,
+        fps,
+      });
+      const generatedCanvas = await params.compositor.renderFrame(frame.timeUs);
       if (!generatedCanvas) {
-        console.warn(
-          `[Export] Frame ${frameNum} at ${usToS(currentTimeUs)}s render returned null — encoding blank frame`,
+        throw new Error(
+          `[Export] Frame ${frameNum} at ${frame.timestampS}s render returned null; export stopped to avoid a blank frame.`,
         );
       }
-      // Always encode the frame to maintain video timing
-      await (params.videoSource as any).add(usToS(currentTimeUs), dtS);
-      currentTimeUs += dtUs;
+      await (params.videoSource as any).add(frame.timestampS, frame.durationS);
 
       const progress = Math.min(99, Math.round(((frameNum + 1) / totalFrames) * 99));
       const nowProgressMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -470,7 +476,7 @@ export async function runExport(
         }
 
         await encodeFrames({
-          durationS,
+          durationUs: maxDurationUs,
           fps: options.fps,
           videoSource,
           compositor: localCompositor,

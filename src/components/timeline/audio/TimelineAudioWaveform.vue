@@ -108,9 +108,21 @@ async function buildTimelinePeaks(params: {
     if (!path) continue;
 
     let sourcePeaks: number[][] | null = null;
+    const clipSourceDurationUs =
+      clip.sourceDurationUs && clip.sourceDurationUs > 0
+        ? clip.sourceDurationUs
+        : clip.source?.path
+          ? (() => {
+              const metaDurationS = mediaStore.mediaMetadata[clip.source.path]?.duration;
+              return metaDurationS && metaDurationS > 0 ? Math.floor(metaDurationS * 1_000_000) : 0;
+            })()
+          : 0;
+
     const sourceDurationUs = Math.max(
       1,
-      Math.round(clip.sourceDurationUs || clip.sourceRange.durationUs || 0),
+      Math.round(
+        clipSourceDurationUs || clip.sourceRange.startUs + clip.sourceRange.durationUs || 0,
+      ),
     );
 
     if (clip.clipType === 'timeline') {
@@ -212,16 +224,13 @@ const extractPeaks = async () => {
         fps: 25,
       });
 
-      const durationS = (props.item.sourceDurationUs || 0) / 1_000_000;
+      const durationS = effectiveSourceDurationUs.value / 1_000_000;
       const samplesPerSecond = 1000;
       const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
 
       const peaks = await buildTimelinePeaks({
         doc: nestedDoc,
-        durationUs: Math.max(
-          1,
-          Math.round(props.item.sourceDurationUs || props.item.sourceRange.durationUs),
-        ),
+        durationUs: Math.max(1, Math.round(effectiveSourceDurationUs.value)),
         maxLength,
         visiting: new Set<string>([fileUrl.value]),
       });
@@ -247,7 +256,7 @@ const extractPeaks = async () => {
     // Use a fixed max length that represents a reasonable resolution (e.g., 8000 samples per second of audio max, or just a fixed large number)
     // Actually, for a timeline, we need enough resolution for the maximum zoom level.
     // If we assume max zoom is 1000px per second, 8000 is plenty.
-    const durationS = (props.item.sourceDurationUs || 0) / 1_000_000;
+    const durationS = effectiveSourceDurationUs.value / 1_000_000;
     const samplesPerSecond = 1000; // Adjust based on required visual resolution
     const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
 
@@ -308,19 +317,36 @@ const speed = computed(() => {
   return Math.max(0.001, Math.min(100, abs));
 });
 
-const trimOffsetPx = computed(() => {
-  return timeUsToPx(props.item.sourceRange.startUs / speed.value, timelineStore.timelineZoom);
+const effectiveSourceDurationUs = computed(() => {
+  const explicit = props.item.sourceDurationUs;
+  if (explicit && explicit > 0) return explicit;
+
+  if (fileUrl.value) {
+    const metaDurationS = mediaStore.mediaMetadata[fileUrl.value]?.duration;
+    if (metaDurationS && metaDurationS > 0) {
+      return Math.floor(metaDurationS * 1_000_000);
+    }
+  }
+
+  const rangeEndUs = props.item.sourceRange.startUs + props.item.sourceRange.durationUs;
+  if (rangeEndUs > 0) return rangeEndUs;
+
+  return props.item.sourceRange.durationUs || 0;
 });
 
-const durationUs = computed(
-  () => props.item.sourceDurationUs || props.item.sourceRange.durationUs || 0,
-);
+const trimOffsetPx = computed(() => {
+  return Math.round(
+    timeUsToPx(props.item.sourceRange.startUs / speed.value, timelineStore.timelineZoom),
+  );
+});
+
+const durationUs = computed(() => effectiveSourceDurationUs.value);
 
 // Chunking logic (similar to video thumbnails but for waveform rendering)
 const CHUNK_WIDTH_PX = 1000; // Fixed chunk width in pixels for canvas
 
 const totalWidthPx = computed(() => {
-  return timeUsToPx(durationUs.value / speed.value, timelineStore.timelineZoom);
+  return Math.round(timeUsToPx(durationUs.value / speed.value, timelineStore.timelineZoom));
 });
 
 const track = computed(() => {
