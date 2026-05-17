@@ -76,6 +76,10 @@ export function useTimelineWheelHandler({
 
     const target = params.event.target as HTMLElement | null;
     if (target?.closest('.timeline-labels-container')) {
+      const scrollRect = horizontalScrollEl.value?.getBoundingClientRect();
+      if (scrollRect) {
+        return Math.max(0, params.event.clientX - scrollRect.left);
+      }
       const viewportWidth = horizontalScrollEl.value?.clientWidth ?? 0;
       return viewportWidth / 2;
     }
