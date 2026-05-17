@@ -31,11 +31,15 @@ const {
   copyEntryMock,
   resolveDefaultTargetDirMock,
   crossVfsCopyMock,
+  vfsGetFileMock,
+  parseTimelineFromOtioMock,
 } = vi.hoisted(() => ({
   handleFilesMock: vi.fn(),
   copyEntryMock: vi.fn(),
   resolveDefaultTargetDirMock: vi.fn(),
   crossVfsCopyMock: vi.fn(),
+  vfsGetFileMock: vi.fn(),
+  parseTimelineFromOtioMock: vi.fn(),
 }));
 
 const dragSourceVfsMock = { id: 'workspace-vfs' } as any;
@@ -45,7 +49,7 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
     handleFiles: handleFilesMock,
     copyEntry: copyEntryMock,
     resolveDefaultTargetDir: resolveDefaultTargetDirMock,
-    vfs: { id: 'project-vfs' },
+    vfs: { id: 'project-vfs', getFile: vfsGetFileMock },
   }),
 }));
 
@@ -57,6 +61,11 @@ vi.mock('~/composables/useAppClipboard', () => ({
 
 vi.mock('~/file-manager/core/vfs/crossVfs', () => ({
   crossVfsCopy: crossVfsCopyMock,
+}));
+
+vi.mock('~/timeline/otio-serializer', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/timeline/otio-serializer')>()),
+  parseTimelineFromOtio: parseTimelineFromOtioMock,
 }));
 
 vi.stubGlobal('useToast', () => ({
@@ -77,8 +86,17 @@ describe('useTimelineDropHandling', () => {
     copyEntryMock.mockReset();
     resolveDefaultTargetDirMock.mockReset();
     crossVfsCopyMock.mockReset();
+    vfsGetFileMock.mockReset();
+    parseTimelineFromOtioMock.mockReset();
     resolveDefaultTargetDirMock.mockResolvedValue('_video');
     crossVfsCopyMock.mockResolvedValue('_video/copied.mp4');
+    parseTimelineFromOtioMock.mockReturnValue({
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'nested',
+      name: 'Nested',
+      timebase: { fps: 30 },
+      tracks: [],
+    });
 
     clearDraggedFile();
     timelineStore.timelineZoom = 50;
@@ -255,5 +273,65 @@ describe('useTimelineDropHandling', () => {
         path: '_video/copied.mp4',
       }),
     );
+  });
+
+  it('uses OTIO parsing for nested timeline drag preview duration', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const { setDraggedFile } = useDraggedFile();
+    const api = useTimelineDropHandling({ scrollEl });
+
+    vfsGetFileMock.mockResolvedValue({
+      text: vi.fn().mockResolvedValue('otio text'),
+    });
+    parseTimelineFromOtioMock.mockReturnValue({
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'nested',
+      name: 'Nested',
+      timebase: { fps: 30 },
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          name: 'Video 1',
+          items: [
+            {
+              id: 'nested-clip',
+              kind: 'clip',
+              timelineRange: { startUs: 0, durationUs: 4_000_000 },
+            },
+          ],
+        },
+      ],
+    });
+
+    setDraggedFile({
+      name: 'nested.otio',
+      kind: 'timeline',
+      path: 'timelines/nested.otio',
+    });
+
+    await api.onTrackDragOver(
+      {
+        clientX: 10,
+        shiftKey: false,
+        ctrlKey: false,
+        altKey: false,
+        metaKey: false,
+        dataTransfer: {
+          types: ['application/json'],
+        },
+      } as unknown as DragEvent,
+      'v1',
+    );
+
+    expect(parseTimelineFromOtioMock).toHaveBeenCalledWith(
+      'otio text',
+      expect.objectContaining({ name: 'nested.otio' }),
+    );
+    expect(api.dragPreview.value?.durationUs).toBe(4_000_000);
+    expect(api.dragPreview.value?.startUs).toBe(2_000_000);
   });
 });

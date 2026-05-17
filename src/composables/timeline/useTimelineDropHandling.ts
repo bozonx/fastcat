@@ -18,6 +18,7 @@ import { useTimelineTextPreset } from './useTimelineTextPreset';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { crossVfsCopy } from '~/file-manager/core/vfs/crossVfs';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
+import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -122,7 +123,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       const file = await fileManager.vfs.getFile(params.path);
       if (file) {
         try {
-          const doc = JSON.parse(await file.text());
+          const text = await file.text();
+          const doc = parseTimelineFromOtio(text, {
+            id: 'preview',
+            name: getWorkspacePathFileName(params.path),
+            fps: timelineStore.timelineDoc?.timebase.fps ?? 25,
+          });
           return selectTimelineDurationUs(doc);
         } catch {
           return 0;
@@ -564,12 +570,15 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       if (files.length > 0 && files.every(isSupportedExternalFile)) {
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-        
+
         // We can't show a full preview for OS files easily because we don't have metadata yet,
         // but we can show a ghost box with a generic label.
         const dropPositionUs = getDropPosition(e);
         if (dropPositionUs !== null) {
-          const fileLabel = files.length > 1 ? t('fastcat.timeline.importFilesCount', { count: files.length }) : (files[0]?.name ?? '');
+          const fileLabel =
+            files.length > 1
+              ? t('fastcat.timeline.importFilesCount', { count: files.length })
+              : (files[0]?.name ?? '');
           dragPreview.value = {
             trackId,
             startUs: dropPositionUs,

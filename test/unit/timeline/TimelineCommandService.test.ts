@@ -45,7 +45,7 @@ describe('TimelineCommandService', () => {
     it('adds a video clip and checks FPS', async () => {
       deps.getOrFetchMetadataByPath.mockResolvedValue({
         duration: 10,
-        video: { width: 1920, height: 1080, fps: 60 }, // Project is 30, file is 60
+        video: { width: 1920, height: 1080, fps: 60, canDecode: true }, // Project is 30, file is 60
       });
       deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
 
@@ -68,13 +68,68 @@ describe('TimelineCommandService', () => {
       expect(deps.showFpsWarning).toHaveBeenCalledWith(60, 30);
     });
 
+    it('does not warn for tiny FPS metadata drift', async () => {
+      deps.getProjectSettings.mockReturnValue({
+        project: { width: 1920, height: 1080, fps: 29.97, isAutoSettings: false },
+      });
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        duration: 10,
+        video: { width: 1920, height: 1080, fps: 29.97003, canDecode: true },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Test Clip',
+        path: 'video/test.mp4',
+      });
+
+      expect(deps.showFpsWarning).not.toHaveBeenCalled();
+    });
+
+    it('rejects media when the target track codec cannot be decoded', async () => {
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        duration: 10,
+        video: { width: 1920, height: 1080, fps: 30, canDecode: false },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
+
+      await expect(
+        service.addClipToTimelineFromPath({
+          trackId: 'v1',
+          name: 'Unsupported',
+          path: 'video/unsupported.mp4',
+        }),
+      ).rejects.toThrow('Video codec is not supported');
+
+      expect(deps.applyTimeline).not.toHaveBeenCalled();
+    });
+
+    it('rejects audio when the target track codec cannot be decoded', async () => {
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        duration: 10,
+        audio: { sampleRate: 48_000, canDecode: false },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'test.wav'));
+
+      await expect(
+        service.addClipToTimelineFromPath({
+          trackId: 'a1',
+          name: 'Unsupported',
+          path: 'audio/unsupported.wav',
+        }),
+      ).rejects.toThrow('Audio codec is not supported');
+
+      expect(deps.applyTimeline).not.toHaveBeenCalled();
+    });
+
     it('updates project settings if isAutoSettings is true', async () => {
       deps.getProjectSettings.mockReturnValue({
         project: { width: 1920, height: 1080, fps: 30, isAutoSettings: true },
       });
       deps.getOrFetchMetadataByPath.mockResolvedValue({
         duration: 10,
-        video: { width: 1280, height: 720, fps: 24 },
+        video: { width: 1280, height: 720, fps: 24, canDecode: true },
       });
       deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
 

@@ -60,6 +60,20 @@ export function addClipToTrack(
     cmd.sourceDurationUs !== undefined
       ? Math.max(0, Math.round(Number(cmd.sourceDurationUs)))
       : Math.max(0, Math.round(Number(cmd.durationUs ?? 0)));
+  const sourceRangeStartUs = Math.max(0, Math.round(Number(cmd.sourceRange?.startUs ?? 0)));
+  const requestedSourceRangeDurationUs = Math.max(
+    0,
+    Math.round(Number(cmd.sourceRange?.durationUs ?? durationUs)),
+  );
+  const maxSourceRangeDurationUs =
+    sourceDurationUs > 0
+      ? Math.max(0, sourceDurationUs - Math.min(sourceRangeStartUs, sourceDurationUs))
+      : requestedSourceRangeDurationUs;
+  const sourceRange = {
+    startUs:
+      sourceDurationUs > 0 ? Math.min(sourceRangeStartUs, sourceDurationUs) : sourceRangeStartUs,
+    durationUs: Math.min(requestedSourceRangeDurationUs, maxSourceRangeDurationUs),
+  };
   const startCandidate =
     cmd.startUs === undefined ? computeTrackEndUs(track) : Math.max(0, Number(cmd.startUs));
   const startUs = quantizeTimeUsToFrames(startCandidate, fps, 'round');
@@ -85,7 +99,7 @@ export function addClipToTrack(
     sourceDurationUs,
     isImage: cmd.isImage,
     timelineRange: { startUs, durationUs },
-    sourceRange: cmd.sourceRange ?? { startUs: 0, durationUs },
+    sourceRange,
     audioFadeInCurve: cmd.audioFadeInCurve,
     audioFadeOutCurve: cmd.audioFadeOutCurve,
   };

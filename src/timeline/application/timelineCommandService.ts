@@ -18,9 +18,11 @@ interface TimelineMediaMetadata {
     width: number;
     height: number;
     fps: number;
+    canDecode?: boolean;
   };
   audio?: {
     sampleRate: number;
+    canDecode?: boolean;
   };
 }
 
@@ -101,6 +103,11 @@ function isOtioPath(path: string) {
   return path.trim().toLowerCase().endsWith('.otio');
 }
 
+function areFpsClose(a: number, b: number) {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  return Math.abs(a - b) < 0.01;
+}
+
 export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
   async function resolveMetadataByPath(path: string): Promise<TimelineMediaMetadata> {
     const existing = deps.getMediaMetadataByPath(path);
@@ -118,6 +125,12 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const hasAudio = Boolean(metadata.audio);
     const isImageLike = !hasVideo && !hasAudio;
 
+    if (track.kind === 'video' && metadata.video?.canDecode === false) {
+      throw new Error('Video codec is not supported for preview or export');
+    }
+    if (track.kind === 'audio' && metadata.audio?.canDecode === false) {
+      throw new Error('Audio codec is not supported for preview or export');
+    }
     if (track.kind === 'video' && !hasVideo && !isImageLike) {
       throw new Error('Only video sources can be added to video tracks');
     }
@@ -150,10 +163,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
   }
 
   async function resolveNestedTimeline(path: string, name: string) {
-    console.log('DEBUG: resolveNestedTimeline path:', path);
     const file = await deps.getFileByPath(path);
     if (!file) {
-      console.log('DEBUG: getFileByPath returned null for:', path);
       throw new Error('Failed to access file');
     }
     const text = await file.text();
@@ -269,7 +280,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
     const durationUs = isImageLike
       ? deps.defaultImageDurationUs
-      : Math.floor(Number(metadata.duration) * 1_000_000);
+      : Math.max(1, Math.round(Number(metadata.duration) * 1_000_000));
     const sourceDurationUs = isImageLike ? deps.defaultImageSourceDurationUs : durationUs;
 
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
@@ -300,7 +311,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           fps: metadata.video.fps,
           isAutoSettings: false,
         });
-      } else if (metadata.video.fps !== projectSettings.project.fps) {
+      } else if (!areFpsClose(metadata.video.fps, projectSettings.project.fps)) {
         deps.showFpsWarning(metadata.video.fps, projectSettings.project.fps);
       }
     }
