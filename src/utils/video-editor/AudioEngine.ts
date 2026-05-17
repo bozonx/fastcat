@@ -35,6 +35,7 @@ export class AudioEngine {
   // 30s = up to ~6 chunks/clip in flight, ~12 MB stereo float32.
   private readonly schedulingLookaheadS = 30;
   private chunkCache = new Map<string, AudioChunk[]>();
+  private reversedBufferCache = new WeakMap<AudioBuffer, AudioBuffer>();
   private chunkDecodeInFlight = new Map<string, Promise<AudioChunk | null>>();
   private failedChunkKeys = new Set<string>();
   private chunkLruKeys: string[] = [];
@@ -575,14 +576,11 @@ export class AudioEngine {
     const clipDurationS = clip.durationUs / 1_000_000;
     const speedRaw = clip.speed;
 
-    if (typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw <= 0) {
-      return null;
-    }
-
     const clipSpeed =
       typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
-        ? Math.min(10, speedRaw)
+        ? Math.min(10, Math.abs(speedRaw))
         : 1;
+    const reversed = typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw < 0;
     const effectiveSpeed = clipSpeed * speed;
 
     if (!Number.isFinite(effectiveSpeed) || effectiveSpeed <= 0) {
@@ -595,6 +593,7 @@ export class AudioEngine {
       clip,
       previousClip,
       nextClip,
+      defaultAudioFadeCurve: clip.defaultAudioFadeCurve,
     });
 
     const audioGain = normalizeGain(clip.audioGain, 1);
@@ -627,6 +626,7 @@ export class AudioEngine {
 
     const effectiveStartS = effectiveStartUs / 1_000_000;
     const effectiveSourceStartS = effectiveSourceStartUs / 1_000_000;
+    const effectiveSourceEndS = effectiveSourceStartS + effectivePlayDurationS * clipSpeed;
     const currentClipLocalS = Math.max(0, currentTimeS - effectiveStartS);
     const remainingInClipS = Math.max(0, effectivePlayDurationS - currentClipLocalS);
 
@@ -641,8 +641,10 @@ export class AudioEngine {
       remainingInClipS,
       effectiveStartS,
       effectiveSourceStartS,
+      effectiveSourceEndS,
       clipDurationS,
       clipSpeed,
+      reversed,
       fadeInS,
       fadeOutS,
       fadeInCurve,
@@ -667,8 +669,7 @@ export class AudioEngine {
     if (!this.ctx || !this.masterGain || chunks.length === 0) return;
     if (options?.requirePlayingActive && !this.scheduler.isPlayingActive()) return;
 
-    const currentSourceTimeS =
-      window.effectiveSourceStartS + window.currentClipLocalS * window.clipSpeed;
+    const currentSourceTimeS = this.getSourceTimeForClipLocal(window, window.currentClipLocalS);
 
     let safeBufferOffsetS = currentSourceTimeS;
     let safeDurationToPlayS = window.remainingInClipS * window.clipSpeed;
@@ -681,17 +682,24 @@ export class AudioEngine {
       safeBufferOffsetS = 0;
     }
 
-    const sampleRate = Math.max(1, Math.round(chunks[0]?.buffer?.sampleRate || 48000));
+    const playbackChunks = window.reversed ? chunks.slice().reverse() : chunks;
+    const sampleRate = Math.max(1, Math.round(playbackChunks[0]?.buffer?.sampleRate || 48000));
     const epsilon = 1 / sampleRate;
 
+    const firstChunk = chunks[0];
     const lastChunk = chunks[chunks.length - 1];
+    const minSourceTimeS = firstChunk ? firstChunk.startTimeS : 0;
     const maxSourceTimeS = lastChunk ? lastChunk.startTimeS + lastChunk.durationS : 0;
 
-    if (safeBufferOffsetS >= maxSourceTimeS) {
+    if (window.reversed && safeBufferOffsetS <= minSourceTimeS) {
+      safeBufferOffsetS = minSourceTimeS + epsilon;
+    } else if (!window.reversed && safeBufferOffsetS >= maxSourceTimeS) {
       safeBufferOffsetS = Math.max(0, maxSourceTimeS - epsilon);
     }
 
-    const remainingInBufferS = Math.max(0, maxSourceTimeS - safeBufferOffsetS);
+    const remainingInBufferS = window.reversed
+      ? Math.max(0, safeBufferOffsetS - minSourceTimeS)
+      : Math.max(0, maxSourceTimeS - safeBufferOffsetS);
     safeDurationToPlayS = Math.min(
       Math.max(safeDurationToPlayS, epsilon),
       Math.max(remainingInBufferS, epsilon),
@@ -743,7 +751,14 @@ export class AudioEngine {
     if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
       const rampEndClipS = Math.min(window.fadeInS, t1);
       const rampEndAtS = startAtS + (rampEndClipS - t0);
-      gainParam.linearRampToValueAtTime?.(gainAtClipTime(rampEndClipS), rampEndAtS);
+      this.scheduleGainCurve({
+        gainParam,
+        startClipS: t0,
+        endClipS: rampEndClipS,
+        startAtS,
+        endAtS: rampEndAtS,
+        getGainAtClipTime: gainAtClipTime,
+      });
     }
 
     const outStartClipS = window.clipDurationS - window.fadeOutS;
@@ -751,7 +766,14 @@ export class AudioEngine {
       const rampStartClipS = Math.max(outStartClipS, t0);
       const rampStartAtS = startAtS + (rampStartClipS - t0);
       gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
-      gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+      this.scheduleGainCurve({
+        gainParam,
+        startClipS: rampStartClipS,
+        endClipS: t1,
+        startAtS: rampStartAtS,
+        endAtS: Math.max(rampStartAtS, endAtS),
+        getGainAtClipTime: gainAtClipTime,
+      });
     }
 
     let scheduledTimeS = startAtS;
@@ -759,11 +781,40 @@ export class AudioEngine {
     let currentOffsetS = safeBufferOffsetS;
     const chunkNodes: AudioBufferSourceNode[] = [];
 
-    for (const chunk of chunks) {
+    for (const chunk of playbackChunks) {
       if (remainingToPlayS <= 0) break;
 
       const chunkStartS = chunk.startTimeS;
       const chunkEndS = chunk.startTimeS + chunk.durationS;
+
+      if (window.reversed) {
+        if (currentOffsetS <= chunkStartS) continue;
+
+        const offsetInReversedChunkS = Math.max(0, chunkEndS - currentOffsetS);
+        const availableInChunkS = Math.max(0, currentOffsetS - chunkStartS);
+        const playDurationS = Math.min(remainingToPlayS, availableInChunkS);
+
+        if (playDurationS <= 0) continue;
+
+        const sourceNode = this.ctx.createBufferSource();
+
+        sourceNode.buffer = this.getReversedBuffer(chunk.buffer);
+        if (sourceNode.playbackRate) {
+          sourceNode.playbackRate.value = window.effectiveSpeed;
+        }
+
+        sourceNode.connect(clipInputNode);
+
+        const actualPlayDurationS = playDurationS / window.effectiveSpeed;
+        sourceNode.start(scheduledTimeS, offsetInReversedChunkS, playDurationS);
+
+        chunkNodes.push(sourceNode);
+
+        scheduledTimeS += actualPlayDurationS;
+        remainingToPlayS -= playDurationS;
+        currentOffsetS -= playDurationS;
+        continue;
+      }
 
       if (currentOffsetS >= chunkEndS) continue;
 
@@ -799,6 +850,9 @@ export class AudioEngine {
       destroyEffects();
       try {
         clipInputNode.disconnect();
+      } catch {}
+      try {
+        clipGain.disconnect();
       } catch {}
       for (const node of chunkNodes) {
         targetNodeSet.delete(node);
@@ -909,11 +963,17 @@ export class AudioEngine {
       const clipStartS = clip.startUs / 1_000_000;
       const clipLocalS = Math.max(0, timeS - clipStartS);
       const clipSpeed =
-        typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed > 0
-          ? Math.min(10, clip.speed)
+        typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed !== 0
+          ? Math.min(10, Math.abs(clip.speed))
           : 1;
-      const sourceTimeS = clip.sourceStartUs / 1_000_000 + clipLocalS * clipSpeed;
-      const chunkIndex = this.getChunkIndex(sourceTimeS);
+      const sourceStartS = clip.sourceStartUs / 1_000_000;
+      const reversed =
+        typeof clip.speed === 'number' && Number.isFinite(clip.speed) && clip.speed < 0;
+      const sourceTimeS = reversed
+        ? sourceStartS + (clip.durationUs / 1_000_000) * clipSpeed - clipLocalS * clipSpeed
+        : sourceStartS + clipLocalS * clipSpeed;
+      const chunkTimeS = reversed ? Math.max(0, sourceTimeS - 1 / 48_000) : sourceTimeS;
+      const chunkIndex = this.getChunkIndex(chunkTimeS);
       await this.ensureChunkDecoded(sourceKey, clip.fileHandle, chunkIndex);
     });
 
@@ -1066,9 +1126,11 @@ export class AudioEngine {
     );
     if (!window) return false;
 
-    const currentSourceTimeS =
-      window.effectiveSourceStartS + window.currentClipLocalS * window.clipSpeed;
-    const firstChunkIndex = this.getChunkIndex(Math.max(0, currentSourceTimeS));
+    const currentSourceTimeS = this.getSourceTimeForClipLocal(window, window.currentClipLocalS);
+    const firstChunkTimeS = window.reversed
+      ? Math.max(0, currentSourceTimeS - 1 / 48_000)
+      : currentSourceTimeS;
+    const firstChunkIndex = this.getChunkIndex(Math.max(0, firstChunkTimeS));
 
     // Decode only the first chunk before starting playback. Subsequent
     // chunks are decoded and scheduled in the background as they become
@@ -1090,8 +1152,12 @@ export class AudioEngine {
         ? audioNowS + (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
         : audioNowS;
 
-    const sourceEndS = currentSourceTimeS + window.remainingInClipS * window.clipSpeed;
-    const lastChunkIndex = this.getChunkIndex(Math.max(currentSourceTimeS, sourceEndS - 1e-6));
+    const sourceEndS = window.reversed
+      ? currentSourceTimeS - window.remainingInClipS * window.clipSpeed
+      : currentSourceTimeS + window.remainingInClipS * window.clipSpeed;
+    const lastChunkIndex = window.reversed
+      ? this.getChunkIndex(Math.max(0, sourceEndS))
+      : this.getChunkIndex(Math.max(currentSourceTimeS, sourceEndS - 1e-6));
 
     this.streamClipPlayback({
       clip,
@@ -1173,7 +1239,14 @@ export class AudioEngine {
     if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
       const rampEndClipS = Math.min(window.fadeInS, t1);
       const rampEndAtS = playStartS + (rampEndClipS - t0);
-      gainParam.linearRampToValueAtTime?.(gainAtClipTime(rampEndClipS), rampEndAtS);
+      this.scheduleGainCurve({
+        gainParam,
+        startClipS: t0,
+        endClipS: rampEndClipS,
+        startAtS: playStartS,
+        endAtS: rampEndAtS,
+        getGainAtClipTime: gainAtClipTime,
+      });
     }
 
     const outStartClipS = window.clipDurationS - window.fadeOutS;
@@ -1181,7 +1254,14 @@ export class AudioEngine {
       const rampStartClipS = Math.max(outStartClipS, t0);
       const rampStartAtS = playStartS + (rampStartClipS - t0);
       gainParam.setValueAtTime?.(gainAtClipTime(rampStartClipS), rampStartAtS);
-      gainParam.linearRampToValueAtTime?.(gainAtClipTime(t1), Math.max(rampStartAtS, endAtS));
+      this.scheduleGainCurve({
+        gainParam,
+        startClipS: rampStartClipS,
+        endClipS: t1,
+        startAtS: rampStartAtS,
+        endAtS: Math.max(rampStartAtS, endAtS),
+        getGainAtClipTime: gainAtClipTime,
+      });
     }
 
     // Streaming state shared across chunk schedules.
@@ -1204,6 +1284,9 @@ export class AudioEngine {
       destroyEffects();
       try {
         clipInputNode.disconnect();
+      } catch {}
+      try {
+        clipGain.disconnect();
       } catch {}
       for (const node of state.chunkNodes) {
         targetNodeSet.delete(node);
@@ -1231,7 +1314,7 @@ export class AudioEngine {
       const lostCtxS = ctxNow - state.scheduledCtxTimeS;
       const lostSourceS = lostCtxS * window.effectiveSpeed;
       state.scheduledCtxTimeS = ctxNow;
-      state.currentSourceTimeS += lostSourceS;
+      state.currentSourceTimeS += window.reversed ? -lostSourceS : lostSourceS;
       state.remainingToPlayS = Math.max(0, state.remainingToPlayS - lostSourceS);
     };
 
@@ -1244,6 +1327,40 @@ export class AudioEngine {
 
       const chunkStartS = chunk.startTimeS;
       const chunkEndS = chunk.startTimeS + chunk.durationS;
+      if (window.reversed) {
+        if (state.currentSourceTimeS <= chunkStartS) return;
+
+        const offsetInChunkS = Math.max(0, chunkEndS - state.currentSourceTimeS);
+        const availableInChunkS = Math.max(0, state.currentSourceTimeS - chunkStartS);
+        const playDurationS = Math.min(state.remainingToPlayS, availableInChunkS);
+        if (playDurationS <= 0) return;
+
+        const sourceNode = this.ctx.createBufferSource();
+        sourceNode.buffer = this.getReversedBuffer(chunk.buffer);
+        if (sourceNode.playbackRate) {
+          sourceNode.playbackRate.value = window.effectiveSpeed;
+        }
+        sourceNode.connect(clipInputNode);
+        sourceNode.start(state.scheduledCtxTimeS, offsetInChunkS, playDurationS);
+
+        state.chunkNodes.push(sourceNode);
+        state.scheduledTotal += 1;
+        targetNodeSet.add(sourceNode);
+        targetCleanupMap.set(sourceNode, teardown);
+
+        sourceNode.onended = () => {
+          targetNodeSet.delete(sourceNode);
+          targetCleanupMap.delete(sourceNode);
+          state.endedTotal += 1;
+          maybeTeardown();
+        };
+
+        state.scheduledCtxTimeS += playDurationS / window.effectiveSpeed;
+        state.currentSourceTimeS -= playDurationS;
+        state.remainingToPlayS -= playDurationS;
+        return;
+      }
+
       if (state.currentSourceTimeS >= chunkEndS) return;
 
       const offsetInChunkS = Math.max(0, state.currentSourceTimeS - chunkStartS);
@@ -1291,8 +1408,8 @@ export class AudioEngine {
     // out — it only tears down when the user stops, the generation flips, or
     // the clip is fully scheduled and all sources have ended (maybeTeardown).
     void (async () => {
-      let i = firstChunkIndex + 1;
-      while (i <= lastChunkIndex) {
+      let i = firstChunkIndex + (window.reversed ? -1 : 1);
+      while (window.reversed ? i >= lastChunkIndex : i <= lastChunkIndex) {
         if (state.teardownDone) return;
         if (state.remainingToPlayS <= 0) break;
 
@@ -1307,7 +1424,11 @@ export class AudioEngine {
         compensateForRealTimeGap();
         if (state.remainingToPlayS <= 0) break;
         const expectedChunkIdx = this.getChunkIndex(state.currentSourceTimeS);
-        if (expectedChunkIdx > i) {
+        if (!window.reversed && expectedChunkIdx > i) {
+          i = expectedChunkIdx;
+          continue;
+        }
+        if (window.reversed && expectedChunkIdx < i) {
           i = expectedChunkIdx;
           continue;
         }
@@ -1325,7 +1446,7 @@ export class AudioEngine {
         if (chunk) {
           scheduleSource(chunk);
         }
-        i += 1;
+        i += window.reversed ? -1 : 1;
       }
 
       state.streamingDone = true;
@@ -1379,6 +1500,74 @@ export class AudioEngine {
     this.stopNodeCollection(this.activeNodes, this.activeCleanups);
   }
 
+  private getSourceTimeForClipLocal(window: ClipPlaybackWindow, clipLocalS: number): number {
+    if (window.reversed) {
+      return window.effectiveSourceEndS - clipLocalS * window.clipSpeed;
+    }
+
+    return window.effectiveSourceStartS + clipLocalS * window.clipSpeed;
+  }
+
+  private scheduleGainCurve(params: {
+    gainParam: AudioParam & {
+      setValueCurveAtTime?: (
+        values: Float32Array,
+        startTime: number,
+        duration: number,
+      ) => AudioParam;
+      linearRampToValueAtTime?: (value: number, endTime: number) => AudioParam;
+    };
+    startClipS: number;
+    endClipS: number;
+    startAtS: number;
+    endAtS: number;
+    getGainAtClipTime: (clipTimeS: number) => number;
+  }) {
+    const durationS = params.endAtS - params.startAtS;
+    const clipDurationS = params.endClipS - params.startClipS;
+    if (durationS <= 0 || clipDurationS <= 0) return;
+
+    if (typeof params.gainParam.setValueCurveAtTime !== 'function') {
+      params.gainParam.linearRampToValueAtTime?.(
+        params.getGainAtClipTime(params.endClipS),
+        params.endAtS,
+      );
+      return;
+    }
+
+    const steps = 64;
+    const values = new Float32Array(steps);
+    for (let i = 0; i < steps; i += 1) {
+      const progress = steps <= 1 ? 1 : i / (steps - 1);
+      values[i] = params.getGainAtClipTime(params.startClipS + clipDurationS * progress);
+    }
+
+    params.gainParam.setValueCurveAtTime(values, params.startAtS, durationS);
+  }
+
+  private getReversedBuffer(buffer: AudioBuffer): AudioBuffer {
+    const cached = this.reversedBufferCache.get(buffer);
+    if (cached) return cached;
+    if (!this.ctx) return buffer;
+
+    const reversed = this.ctx.createBuffer(
+      buffer.numberOfChannels,
+      buffer.length,
+      buffer.sampleRate,
+    );
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      const source = buffer.getChannelData(channel);
+      const target = new Float32Array(source.length);
+      for (let i = 0, j = source.length - 1; i < source.length; i += 1, j -= 1) {
+        target[i] = source[j] ?? 0;
+      }
+      reversed.copyToChannel(target, channel, 0);
+    }
+
+    this.reversedBufferCache.set(buffer, reversed);
+    return reversed;
+  }
+
   destroy() {
     this.scheduler.destroy();
     this.stopAllNodes();
@@ -1392,6 +1581,7 @@ export class AudioEngine {
     this.failedChunkKeys.clear();
     this.chunkLruKeys = [];
     this.fileBlobCache.clear();
+    this.reversedBufferCache = new WeakMap<AudioBuffer, AudioBuffer>();
     this.analyserNodes.clear();
 
     if (this.decodeWorker) {

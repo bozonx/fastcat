@@ -3,7 +3,7 @@ import type { AudioClipEffect, ClipEffect } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { getAudioSourceKey } from './useMonitorCore.helpers';
 
-export interface MonitorAudioClipDescriptor extends AudioEngineClip {}
+export type MonitorAudioClipDescriptor = AudioEngineClip;
 
 function isAudioClipEffect(effect: ClipEffect<Record<string, any>>): effect is AudioClipEffect {
   return effect?.target === 'audio';
@@ -86,6 +86,12 @@ export async function mapAudioEngineClips(params: {
           audioBalance: clip.audioBalance,
           audioFadeInUs: clip.audioFadeInUs,
           audioFadeOutUs: clip.audioFadeOutUs,
+          audioFadeInCurve: clip.audioFadeInCurve,
+          audioFadeOutCurve: clip.audioFadeOutCurve,
+          audioDeclickDurationUs: clip.audioDeclickDurationUs,
+          defaultAudioFadeCurve: clip.defaultAudioFadeCurve,
+          transitionIn: clip.transitionIn,
+          transitionOut: clip.transitionOut,
           audioEffects: (clip.effects ?? []).filter(isAudioClipEffect),
         };
 

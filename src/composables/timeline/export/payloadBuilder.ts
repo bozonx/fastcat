@@ -140,10 +140,14 @@ async function buildVideoTrackTree(
         speed: (item as any).speedActive !== false ? (item as any).speed : undefined,
         audioGain: (item as any).audioGain,
         audioBalance: (item as any).audioBalance,
-        audioFadeInUs: (item as any).audioFadesActive !== false ? (item as any).audioFadeInUs : undefined,
-        audioFadeOutUs: (item as any).audioFadesActive !== false ? (item as any).audioFadeOutUs : undefined,
-        audioFadeInCurve: (item as any).audioFadesActive !== false ? (item as any).audioFadeInCurve : undefined,
-        audioFadeOutCurve: (item as any).audioFadesActive !== false ? (item as any).audioFadeOutCurve : undefined,
+        audioFadeInUs:
+          (item as any).audioFadesActive !== false ? (item as any).audioFadeInUs : undefined,
+        audioFadeOutUs:
+          (item as any).audioFadesActive !== false ? (item as any).audioFadeOutUs : undefined,
+        audioFadeInCurve:
+          (item as any).audioFadesActive !== false ? (item as any).audioFadeInCurve : undefined,
+        audioFadeOutCurve:
+          (item as any).audioFadesActive !== false ? (item as any).audioFadeOutCurve : undefined,
         audioDeclickDurationUs: params.projectStore.projectSettings.project.audioDeclickDurationUs,
         defaultAudioFadeCurve:
           params.workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
@@ -151,7 +155,8 @@ async function buildVideoTrackTree(
         blendMode: (item as any).blendModeActive !== false ? item.blendMode : undefined,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
         mask: (item as any).maskActive !== false ? clonePlain((item as any).mask) : undefined,
-        transform: (item as any).transformActive !== false ? clonePlain((item as any).transform) : undefined,
+        transform:
+          (item as any).transformActive !== false ? clonePlain((item as any).transform) : undefined,
         transitionIn: clonePlain((item as any).transitionIn),
         transitionOut: clonePlain((item as any).transitionOut),
         freezeFrameSourceUs: item.freezeFrameSourceUs,
@@ -358,17 +363,31 @@ export function trimWorkerClipToRange(
   if (overlapEndUs <= overlapStartUs) return null;
 
   const trimStartUs = overlapStartUs - clipStartUs;
+  const trimEndUs = clipEndUs - overlapEndUs;
   const trimmedDurationUs = overlapEndUs - overlapStartUs;
+  const speedRaw = Number(clip.speed);
+  const speed = Number.isFinite(speedRaw) && speedRaw !== 0 ? Math.abs(speedRaw) : 1;
+  const isReversed = Number.isFinite(speedRaw) && speedRaw < 0;
+  const sourceTrimStartUs = Math.round((isReversed ? trimEndUs : trimStartUs) * speed);
+  const sourceDurationUs = Math.round(trimmedDurationUs * speed);
 
   return {
     ...clip,
+    audioFadeInUs:
+      typeof clip.audioFadeInUs === 'number'
+        ? Math.max(0, Math.round(clip.audioFadeInUs - trimStartUs))
+        : clip.audioFadeInUs,
+    audioFadeOutUs:
+      typeof clip.audioFadeOutUs === 'number'
+        ? Math.max(0, Math.round(clip.audioFadeOutUs - trimEndUs))
+        : clip.audioFadeOutUs,
     timelineRange: {
       startUs: overlapStartUs - range.startUs,
       durationUs: trimmedDurationUs,
     },
     sourceRange: {
-      startUs: clip.sourceRange.startUs + trimStartUs,
-      durationUs: trimmedDurationUs,
+      startUs: clip.sourceRange.startUs + sourceTrimStartUs,
+      durationUs: sourceDurationUs,
     },
   };
 }
@@ -423,16 +442,21 @@ export async function toWorkerTimelineClips(
       speed: (item as any).speedActive !== false ? (item as any).speed : undefined,
       audioGain: mergeGain(parentAudioGain, (item as any).audioGain),
       audioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
-      audioFadeInUs: (item as any).audioFadesActive !== false ? (item as any).audioFadeInUs : undefined,
-      audioFadeOutUs: (item as any).audioFadesActive !== false ? (item as any).audioFadeOutUs : undefined,
-      audioFadeInCurve: (item as any).audioFadesActive !== false ? (item as any).audioFadeInCurve : undefined,
-      audioFadeOutCurve: (item as any).audioFadesActive !== false ? (item as any).audioFadeOutCurve : undefined,
+      audioFadeInUs:
+        (item as any).audioFadesActive !== false ? (item as any).audioFadeInUs : undefined,
+      audioFadeOutUs:
+        (item as any).audioFadesActive !== false ? (item as any).audioFadeOutUs : undefined,
+      audioFadeInCurve:
+        (item as any).audioFadesActive !== false ? (item as any).audioFadeInCurve : undefined,
+      audioFadeOutCurve:
+        (item as any).audioFadesActive !== false ? (item as any).audioFadeOutCurve : undefined,
       audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
       defaultAudioFadeCurve: workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
       opacity: (item as any).opacityActive !== false ? combinedOpacity : undefined,
       blendMode: (item as any).blendModeActive !== false ? combinedBlendMode : undefined,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
-      transform: (item as any).transformActive !== false ? clonePlain((item as any).transform) : undefined,
+      transform:
+        (item as any).transformActive !== false ? clonePlain((item as any).transform) : undefined,
       transitionIn: clonePlain((item as any).transitionIn),
       transitionOut: clonePlain((item as any).transitionOut),
       sourceDurationUs:

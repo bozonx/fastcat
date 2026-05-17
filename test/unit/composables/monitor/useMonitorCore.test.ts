@@ -5,6 +5,7 @@ import { mount } from '@vue/test-utils';
 import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
+import { createMockAudioItems } from '~/composables/monitor/useMonitorCore.payload';
 
 const mockClient = {
   loadTimeline: vi.fn().mockResolvedValue(0),
@@ -102,6 +103,28 @@ describe('useMonitorCore', () => {
     if (!HTMLCanvasElement.prototype.transferControlToOffscreen) {
       HTMLCanvasElement.prototype.transferControlToOffscreen = () => ({}) as OffscreenCanvas;
     }
+  });
+
+  it('preserves audio envelope fields while preparing monitor audio items', () => {
+    const [item] = createMockAudioItems([
+      createAudioClip({
+        audioFadeInCurve: 'logarithmic',
+        audioFadeOutCurve: 'linear',
+        audioDeclickDurationUs: 5000,
+        defaultAudioFadeCurve: 'logarithmic',
+        transitionIn: { type: 'dissolve', durationUs: 100_000, mode: 'adjacent' } as any,
+        transitionOut: { type: 'dissolve', durationUs: 200_000, mode: 'adjacent' } as any,
+      }),
+    ]);
+
+    expect(item).toMatchObject({
+      audioFadeInCurve: 'logarithmic',
+      audioFadeOutCurve: 'linear',
+      audioDeclickDurationUs: 5000,
+      defaultAudioFadeCurve: 'logarithmic',
+      transitionIn: { durationUs: 100_000 },
+      transitionOut: { durationUs: 200_000 },
+    });
   });
 
   afterEach(() => {

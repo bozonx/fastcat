@@ -8,6 +8,7 @@ import {
   resolveNextAvailableFilename,
   resolveExportCodecs,
   toWorkerTimelineClips,
+  trimWorkerClipToRange,
 } from '~/composables/timeline/export';
 import type { VideoCoreHostAPI } from '~/utils/video-editor/worker-client';
 import type { TimelineTrackItem } from '~/timeline/types';
@@ -161,6 +162,62 @@ describe('useTimelineExport pure functions', () => {
 
     const nested = await toWorkerTimelineClips(items, projectStoreMock, wsMock, { layer: 3 });
     expect(nested[0]?.layer).toBe(3);
+  });
+
+  it('trimWorkerClipToRange should preserve fade progress when cropping export range', () => {
+    const clipped = trimWorkerClipToRange(
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'c1',
+        layer: 0,
+        source: { path: '/audio.wav' },
+        audioFadeInUs: 300_000,
+        audioFadeOutUs: 400_000,
+        timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+        sourceRange: { startUs: 2_000_000, durationUs: 1_000_000 },
+      },
+      { startUs: 1_200_000, endUs: 1_800_000 },
+    );
+
+    expect(clipped).toMatchObject({
+      audioFadeInUs: 100_000,
+      audioFadeOutUs: 200_000,
+      timelineRange: { startUs: 0, durationUs: 600_000 },
+      sourceRange: { startUs: 2_200_000, durationUs: 600_000 },
+    });
+  });
+
+  it('trimWorkerClipToRange should scale source crop by speed and trim reversed clips from the source tail', () => {
+    const forward = trimWorkerClipToRange(
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'fast',
+        layer: 0,
+        speed: 2,
+        source: { path: '/video.mp4' },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 2_000_000, durationUs: 2_000_000 },
+      },
+      { startUs: 250_000, endUs: 750_000 },
+    );
+    expect(forward?.sourceRange).toEqual({ startUs: 2_500_000, durationUs: 1_000_000 });
+
+    const reversed = trimWorkerClipToRange(
+      {
+        kind: 'clip',
+        clipType: 'media',
+        id: 'reverse',
+        layer: 0,
+        speed: -1,
+        source: { path: '/video.mp4' },
+        timelineRange: { startUs: 0, durationUs: 1_000_000 },
+        sourceRange: { startUs: 2_000_000, durationUs: 1_000_000 },
+      },
+      { startUs: 250_000, endUs: 750_000 },
+    );
+    expect(reversed?.sourceRange).toEqual({ startUs: 2_250_000, durationUs: 500_000 });
   });
 
   it('toWorkerTimelineClips should propagate transform', async () => {

@@ -585,4 +585,41 @@ describe('useMonitorTimeline', () => {
       expect(res.rawWorkerAudioClips.value[0].id).toBe('aclip2');
     });
   });
+
+  it('updates audio layout signature when audio fade curve or transition changes', () => {
+    withMonitorTimeline((res, timelineStore) => {
+      timelineStore.timelineDoc = {
+        tracks: [
+          {
+            id: 'a1',
+            kind: 'audio',
+            items: [
+              {
+                id: 'aclip1',
+                kind: 'clip',
+                clipType: 'media',
+                source: { path: 'audio1.mp3' },
+                audioFadeInUs: 100_000,
+                audioFadeInCurve: 'linear',
+                timelineRange: { startUs: 0, durationUs: 1_000_000 },
+                sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              },
+            ],
+          },
+        ],
+      } as any;
+
+      const initial = res.audioClipLayoutSignature.value;
+      timelineStore.timelineDoc.tracks[0].items[0].audioFadeInCurve = 'logarithmic';
+      expect(res.audioClipLayoutSignature.value).not.toBe(initial);
+
+      const afterCurve = res.audioClipLayoutSignature.value;
+      timelineStore.timelineDoc.tracks[0].items[0].transitionIn = {
+        type: 'dissolve',
+        durationUs: 100_000,
+        mode: 'adjacent',
+      };
+      expect(res.audioClipLayoutSignature.value).not.toBe(afterCurve);
+    });
+  });
 });

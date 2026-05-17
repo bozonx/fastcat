@@ -5,6 +5,7 @@ import {
   buildVideoWorkerPayload,
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
+  trimWorkerClipToRange,
 } from './payloadBuilder';
 import { useTimelineExport } from './useTimelineExport';
 
@@ -17,6 +18,7 @@ export {
   buildVideoWorkerPayload,
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
+  trimWorkerClipToRange,
   useTimelineExport,
 };
 

@@ -421,6 +421,10 @@ export function useMonitorTimeline() {
         hash = mixFloat(hash, item.audioBalance ?? 0, 1000);
         hash = mixTime(hash, Math.round(Number(item.audioFadeInUs ?? 0)));
         hash = mixTime(hash, Math.round(Number(item.audioFadeOutUs ?? 0)));
+        hash = mixHash(hash, hashString(String(item.audioFadeInCurve ?? '')));
+        hash = mixHash(hash, hashString(String(item.audioFadeOutCurve ?? '')));
+        hash = mixHash(hash, hashString(JSON.stringify(item.transitionIn ?? null)));
+        hash = mixHash(hash, hashString(JSON.stringify(item.transitionOut ?? null)));
 
         const audioEffects = Array.isArray(item.effects)
           ? item.effects.filter((effect) => effect?.target === 'audio')

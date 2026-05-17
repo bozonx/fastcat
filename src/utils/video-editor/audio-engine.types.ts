@@ -8,8 +8,10 @@ export interface ClipPlaybackWindow {
   remainingInClipS: number;
   effectiveStartS: number;
   effectiveSourceStartS: number;
+  effectiveSourceEndS: number;
   clipDurationS: number;
   clipSpeed: number;
+  reversed: boolean;
   fadeInS: number;
   fadeOutS: number;
   fadeInCurve: AudioFadeCurve;
@@ -37,6 +39,7 @@ export interface AudioEngineClip {
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
   audioDeclickDurationUs?: number;
+  defaultAudioFadeCurve?: AudioFadeCurve;
   transitionIn?: AudioTransitionEnvelope | null;
   transitionOut?: AudioTransitionEnvelope | null;
   audioEffects?: AudioClipEffect[];

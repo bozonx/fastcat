@@ -77,7 +77,7 @@ export function useExportProcess(
       masterEffects: doc?.metadata?.fastcat?.masterEffects,
     });
 
-    const masterGain = timelineStore.masterGain;
+    const masterGain = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
     const audioClips = (
       await toWorkerTimelineClips(effectiveAudioItems, projectStore, workspaceStore, {
         trackKind: 'audio',

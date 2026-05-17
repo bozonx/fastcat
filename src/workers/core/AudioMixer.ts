@@ -234,6 +234,25 @@ export interface AudioMixerWriteParams {
   }) => unknown;
 }
 
+export function getStereoPanScales(audioBalance: number): {
+  leftScale: number;
+  rightScale: number;
+} {
+  const pan = Math.max(-1, Math.min(1, Number.isFinite(audioBalance) ? audioBalance : 0));
+  const cleanScale = (value: number) => (Math.abs(value) < 1e-12 ? 0 : value);
+  if (pan < 0) {
+    return {
+      leftScale: 1,
+      rightScale: cleanScale(Math.cos((-pan * Math.PI) / 2)),
+    };
+  }
+
+  return {
+    leftScale: cleanScale(Math.cos((pan * Math.PI) / 2)),
+    rightScale: 1,
+  };
+}
+
 export class AudioMixer {
   private static getAdjacentClips(audioClips: AudioClipData[], currentIndex: number) {
     const current = audioClips[currentIndex];
@@ -473,8 +492,9 @@ export class AudioMixer {
       const audioBalance = clip.audioBalance;
 
       const hasStereoPan = numberOfChannels === 2;
-      const leftScale = hasStereoPan ? Math.max(0, Math.min(1, 1 - Math.max(0, audioBalance))) : 1;
-      const rightScale = hasStereoPan ? Math.max(0, Math.min(1, 1 + Math.min(0, audioBalance))) : 1;
+      const { leftScale, rightScale } = hasStereoPan
+        ? getStereoPanScales(audioBalance)
+        : { leftScale: 1, rightScale: 1 };
 
       function gainAtClipTimeS(tClipS: number): number {
         return getGainAtClipTime({

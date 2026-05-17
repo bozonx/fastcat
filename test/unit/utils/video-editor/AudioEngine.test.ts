@@ -66,6 +66,7 @@ class WorkerMock {
 class GainNodeMock {
   gain = { value: 1 };
   connect = vi.fn();
+  disconnect = vi.fn();
 }
 
 class AudioBufferMock {
@@ -74,12 +75,18 @@ class AudioBufferMock {
   public length: number;
   public sampleRate: number;
   public copyToChannel = vi.fn();
+  private channelData: Float32Array[];
 
   constructor(numberOfChannels: number, length: number, sampleRate: number) {
     this.numberOfChannels = numberOfChannels;
     this.length = length;
     this.sampleRate = sampleRate;
     this.duration = length / sampleRate;
+    this.channelData = Array.from({ length: numberOfChannels }, () => new Float32Array(length));
+  }
+
+  getChannelData(channel: number) {
+    return this.channelData[channel] ?? new Float32Array(this.length);
   }
 }
 
@@ -287,7 +294,7 @@ describe('AudioEngine', () => {
     expect(source.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('does not schedule audio for negative-speed clips', async () => {
+  it('schedules reversed audio for negative-speed clips', async () => {
     const engine = new AudioEngine();
     await engine.init();
 
@@ -300,7 +307,8 @@ describe('AudioEngine', () => {
 
     await engine.play(0);
 
-    expect(audioContextInstance.createdSources.length).toBe(0);
+    expect(audioContextInstance.createdSources.length).toBe(1);
+    expect(audioContextInstance.createdSources[0]?.start).toHaveBeenCalledTimes(1);
   });
 
   it('retries playback after seek when playing', async () => {

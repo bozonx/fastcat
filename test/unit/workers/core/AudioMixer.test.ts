@@ -5,6 +5,7 @@ import {
   normalizeSampleChannels,
   AudioMixer,
   resampleChannelsOfflineAudioContext,
+  getStereoPanScales,
   type PreparedClip,
 } from '~/workers/core/AudioMixer';
 import { applyAudioEffectsOffline } from '~/utils/audio/apply-audio-effects-offline';
@@ -94,6 +95,22 @@ describe('AudioMixer channel normalization', () => {
       frames: 2,
     });
     expect(result).toEqual(planes);
+  });
+});
+
+describe('AudioMixer pan law', () => {
+  it('keeps center at unity and uses equal-power attenuation toward edges', () => {
+    expect(getStereoPanScales(0)).toEqual({ leftScale: 1, rightScale: 1 });
+    expect(getStereoPanScales(-1)).toMatchObject({ leftScale: 1, rightScale: 0 });
+    expect(getStereoPanScales(1)).toMatchObject({ leftScale: 0, rightScale: 1 });
+
+    const leftHalf = getStereoPanScales(-0.5);
+    expect(leftHalf.leftScale).toBe(1);
+    expect(leftHalf.rightScale).toBeCloseTo(Math.SQRT1_2);
+
+    const rightHalf = getStereoPanScales(0.5);
+    expect(rightHalf.leftScale).toBeCloseTo(Math.SQRT1_2);
+    expect(rightHalf.rightScale).toBe(1);
   });
 });
 
