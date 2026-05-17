@@ -1,11 +1,9 @@
 import type {
   TimelineDocument,
   TimelineMarker,
-  TimelineSelectionRange,
   TimelineTrack,
   TimelineTrackItem,
   ClipTransition,
-  ClipEffect,
 } from './types';
 import type {
   OtioTrack,
@@ -65,20 +63,6 @@ export function createDefaultTimelineDocument(params: {
       },
     },
   };
-}
-
-function coerceSelectionRange(raw: unknown): TimelineSelectionRange | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
-  const startUs = Number((raw as any).startUs);
-  const endUs = Number((raw as any).endUs);
-  if (!Number.isFinite(startUs) || !Number.isFinite(endUs)) return undefined;
-
-  const nextStartUs = Math.max(0, Math.round(startUs));
-  const nextEndUs = Math.max(nextStartUs, Math.round(endUs));
-
-  if (nextEndUs <= nextStartUs) return undefined;
-
-  return { startUs: nextStartUs, endUs: nextEndUs };
 }
 
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
@@ -150,43 +134,82 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
           fastcat: {
             id: item.id,
             clipType: item.clipType,
-            locked: item.locked ? true : undefined,
-            speed: item.speed,
-            audioGain: item.audioGain,
-            audioBalance: item.audioBalance,
-            audioFadeInUs: item.audioFadeInUs,
-            audioFadeOutUs: item.audioFadeOutUs,
-            audioFadeInCurve: item.audioFadeInCurve,
-            audioFadeOutCurve: item.audioFadeOutCurve,
-            audioMuted: item.audioMuted,
-            audioWaveformMode: item.audioWaveformMode,
-            showWaveform: item.showWaveform,
-            audioFromVideoDisabled:
-              item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
-            freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
-            opacity: item.opacity,
-            blendMode: item.blendMode,
-            transitionIn: item.transitionIn,
-            transitionOut: item.transitionOut,
-            linkedGroupId: item.linkedGroupId,
-            linkedVideoClipId: item.clipType === 'media' ? item.linkedVideoClipId : undefined,
-            lockToLinkedVideo: item.clipType === 'media' ? item.lockToLinkedVideo : undefined,
-            backgroundColor:
-              item.clipType === 'background' ? (item as any).backgroundColor : undefined,
-            text: item.clipType === 'text' ? (item as any).text : undefined,
-            style: item.clipType === 'text' ? (item as any).style : undefined,
-            shapeType: item.clipType === 'shape' ? (item as any).shapeType : undefined,
-            fillColor: item.clipType === 'shape' ? (item as any).fillColor : undefined,
-            strokeColor: item.clipType === 'shape' ? (item as any).strokeColor : undefined,
-            strokeWidth: item.clipType === 'shape' ? (item as any).strokeWidth : undefined,
-            shapeConfig: item.clipType === 'shape' ? (item as any).shapeConfig : undefined,
-            hudType: item.clipType === 'hud' ? (item as any).hudType : undefined,
-            background: item.clipType === 'hud' ? (item as any).background : undefined,
-            content: item.clipType === 'hud' ? (item as any).content : undefined,
-            frame: item.clipType === 'hud' ? (item as any).frame : undefined,
-            isImage: item.isImage,
+            source: {
+              durationUs: item.sourceDurationUs,
+            },
+            playback: {
+              speed: item.speed,
+              freezeFrameSourceUs: item.clipType === 'media' ? item.freezeFrameSourceUs : undefined,
+            },
+            audio: {
+              gain: item.audioGain,
+              balance: item.audioBalance,
+              fadeInUs: item.audioFadeInUs,
+              fadeOutUs: item.audioFadeOutUs,
+              fadeInCurve: item.audioFadeInCurve,
+              fadeOutCurve: item.audioFadeOutCurve,
+              muted: item.audioMuted,
+              waveformMode: item.audioWaveformMode,
+              showWaveform: item.showWaveform,
+              fromVideoDisabled:
+                item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
+            },
+            visual: {
+              opacity: item.opacity,
+              blendMode: item.blendMode,
+              showThumbnails: item.showThumbnails,
+              isImage: item.isImage,
+            },
+            flags: {
+              locked: item.locked ? true : undefined,
+              speedActive: item.speedActive,
+              transformActive: item.transformActive,
+              audioFadesActive: item.audioFadesActive,
+              opacityActive: item.opacityActive,
+              blendModeActive: item.blendModeActive,
+              maskActive: item.maskActive,
+              ignored: item.ignored,
+            },
+            links: {
+              linkedGroupId: item.linkedGroupId,
+              linkedVideoClipId: item.clipType === 'media' ? item.linkedVideoClipId : undefined,
+              lockToLinkedVideo: item.clipType === 'media' ? item.lockToLinkedVideo : undefined,
+            },
             transform: item.transform,
             mask: item.mask,
+            transitions: {
+              in: item.transitionIn,
+              out: item.transitionOut,
+            },
+            typeData: {
+              background:
+                item.clipType === 'background'
+                  ? { color: (item as any).backgroundColor }
+                  : undefined,
+              text:
+                item.clipType === 'text'
+                  ? { text: (item as any).text, style: (item as any).style }
+                  : undefined,
+              shape:
+                item.clipType === 'shape'
+                  ? {
+                      type: (item as any).shapeType,
+                      fillColor: (item as any).fillColor,
+                      strokeColor: (item as any).strokeColor,
+                      strokeWidth: (item as any).strokeWidth,
+                      config: (item as any).shapeConfig,
+                    }
+                  : undefined,
+              hud:
+                item.clipType === 'hud'
+                  ? {
+                      type: (item as any).hudType,
+                      background: (item as any).background,
+                      content: (item as any).content,
+                      frame: (item as any).frame,
+                    }
+                  : undefined,
+            },
           },
         },
       });
@@ -213,15 +236,23 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         fastcat: {
           id: t.id,
           kind: t.kind,
-          videoHidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
-          opacity: t.opacity,
-          blendMode: t.blendMode,
-          audioMuted: Boolean(t.audioMuted),
-          audioSolo: Boolean(t.audioSolo),
-          audioGain: t.audioGain,
-          audioBalance: t.audioBalance,
-          color: t.color,
-          locked: t.locked ? true : undefined,
+          video: {
+            hidden: t.kind === 'video' ? Boolean(t.videoHidden) : undefined,
+            opacity: t.opacity,
+            blendMode: t.blendMode,
+          },
+          audio: {
+            muted: Boolean(t.audioMuted),
+            solo: Boolean(t.audioSolo),
+            gain: t.audioGain,
+            balance: t.audioBalance,
+          },
+          appearance: {
+            color: t.color,
+          },
+          flags: {
+            locked: t.locked ? true : undefined,
+          },
         },
       },
     };
@@ -248,9 +279,13 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         version: 1,
         docId: doc.id,
         timebase: doc.timebase,
-        masterEffects: Array.isArray(fastcatMeta?.masterEffects)
-          ? fastcatMeta.masterEffects
-          : undefined,
+        audio: {
+          masterGain: fastcatMeta?.masterGain,
+          masterMuted: fastcatMeta?.masterMuted,
+          masterEffects: Array.isArray(fastcatMeta?.masterEffects)
+            ? fastcatMeta.masterEffects
+            : undefined,
+        },
       },
     },
   };
@@ -299,7 +334,7 @@ export function parseTimelineFromOtio(
     );
     const kind = normalizeTrackKind(trackFastCatMeta.kind) ?? trackKindFromOtioKind(otioTrack.kind);
     const name = coerceName(
-      trackFastCatMeta?.name ?? otioTrack.name,
+      otioTrack.name,
       kind === 'audio' ? `Audio ${trackIndex + 1}` : `Video ${trackIndex + 1}`,
     );
 
@@ -320,7 +355,11 @@ export function parseTimelineFromOtio(
         const transition = parseOtioTransition(child);
         if (transition) {
           const transitionMeta = safeFastCatMetadata(child.metadata);
-          const transitionEdge = transitionMeta?.edge;
+          const ownerMeta =
+            transitionMeta.owner && typeof transitionMeta.owner === 'object'
+              ? (transitionMeta.owner as Record<string, unknown>)
+              : {};
+          const transitionEdge = ownerMeta.edge;
           const prev = rawItems[rawItems.length - 1];
 
           if (transitionEdge === 'out') {
@@ -376,23 +415,21 @@ export function parseTimelineFromOtio(
 
     const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-    const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta.videoHidden) : undefined;
-    const opacity = trackFastCatMeta.opacity;
-    const blendMode = coerceBlendMode(trackFastCatMeta.blendMode);
-    const audioMuted = Boolean(trackFastCatMeta.audioMuted);
-    const audioSolo = Boolean(trackFastCatMeta.audioSolo);
-    const audioGain = trackFastCatMeta.audioGain;
-    const audioBalance = trackFastCatMeta.audioBalance;
-    const color = trackFastCatMeta.color;
-    const locked = trackFastCatMeta.locked ? true : undefined;
+    const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta.video?.hidden) : undefined;
+    const opacity = trackFastCatMeta.video?.opacity;
+    const blendMode = coerceBlendMode(trackFastCatMeta.video?.blendMode);
+    const audioMuted = Boolean(trackFastCatMeta.audio?.muted);
+    const audioSolo = Boolean(trackFastCatMeta.audio?.solo);
+    const audioGain = trackFastCatMeta.audio?.gain;
+    const audioBalance = trackFastCatMeta.audio?.balance;
+    const color = trackFastCatMeta.appearance?.color;
+    const locked = trackFastCatMeta.flags?.locked ? true : undefined;
 
     // Track effects: prefer OTIO standard, fallback to fastcat metadata.
     const effects =
       Array.isArray(otioTrack.effects) && otioTrack.effects.length > 0
         ? parseEffects(otioTrack.effects)
-        : Array.isArray(trackFastCatMeta.effects)
-          ? (trackFastCatMeta.effects as ClipEffect[])
-          : undefined;
+        : undefined;
 
     // Track-level markers (e.g. from an external OTIO).
     const trackMarkers =
@@ -451,11 +488,11 @@ export function parseTimelineFromOtio(
   const markers =
     Array.isArray(parsed.markers) && (parsed.markers as any[]).length > 0
       ? parseOtioMarkers(parsed.markers as any[])
-      : Array.isArray(fastcatMeta.markers)
-        ? parseOtioMarkers(fastcatMeta.markers)
-        : [];
+      : [];
 
-  const masterEffects = fastcatMeta.masterEffects;
+  const masterEffects = fastcatMeta.audio?.masterEffects;
+  const masterGain = fastcatMeta.audio?.masterGain;
+  const masterMuted = fastcatMeta.audio?.masterMuted;
 
   if (normalizedTracks.length === 0) {
     const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
@@ -468,6 +505,8 @@ export function parseTimelineFromOtio(
         timebase,
         markers,
         masterEffects,
+        masterGain,
+        masterMuted,
       },
     };
     return base;
@@ -486,6 +525,8 @@ export function parseTimelineFromOtio(
         timebase,
         markers,
         masterEffects,
+        masterGain,
+        masterMuted,
       },
     },
   };

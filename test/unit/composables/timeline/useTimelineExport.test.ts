@@ -476,7 +476,12 @@ describe('useTimelineExport pure functions', () => {
                   start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
                   duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
                 },
-                metadata: { fastcat: { clipType: 'media', sourceDurationUs: 1000000 } },
+                metadata: {
+                  fastcat: {
+                    clipType: 'media',
+                    source: { durationUs: 1000000 },
+                  },
+                },
               },
             ],
           },
@@ -538,7 +543,14 @@ describe('useTimelineExport pure functions', () => {
             OTIO_SCHEMA: 'Track.1',
             name: 'NestedV1',
             kind: 'Video',
-            metadata: { fastcat: { opacity: 0.4, blendMode: 'screen' } },
+            metadata: {
+              fastcat: {
+                video: {
+                  opacity: 0.4,
+                  blendMode: 'screen',
+                },
+              },
+            },
             children: [
               {
                 OTIO_SCHEMA: 'Clip.1',
@@ -552,7 +564,12 @@ describe('useTimelineExport pure functions', () => {
                   start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
                   duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
                 },
-                metadata: { fastcat: { clipType: 'media', sourceDurationUs: 1000000 } },
+                metadata: {
+                  fastcat: {
+                    clipType: 'media',
+                    source: { durationUs: 1000000 },
+                  },
+                },
               },
             ],
           },
@@ -643,11 +660,13 @@ describe('useTimelineExport pure functions', () => {
                 metadata: {
                   fastcat: {
                     clipType: 'media',
-                    sourceDurationUs: 1000000,
-                    audioGain: 2,
-                    audioBalance: 0.1,
-                    audioFadeInUs: 100000,
-                    audioFadeOutUs: 100000,
+                    source: { durationUs: 1000000 },
+                    audio: {
+                      gain: 2,
+                      balance: 0.1,
+                      fadeInUs: 100000,
+                      fadeOutUs: 100000,
+                    },
                   },
                 },
               },

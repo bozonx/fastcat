@@ -515,9 +515,9 @@ export class AudioEngine {
         this.touchLru(chunkKey);
         this.evictOldestChunksIfNeeded();
 
-        logger.info(
-          `Decoded chunk ${chunkKey}: ${numChannels}ch, ${sampleRate}Hz, ${totalFrames} frames`,
-        );
+        // logger.info(
+        //   `Decoded chunk ${chunkKey}: ${numChannels}ch, ${sampleRate}Hz, ${totalFrames} frames`,
+        // );
         return chunk;
       } catch (err) {
         const name = (err as any)?.name;
@@ -1084,10 +1084,7 @@ export class AudioEngine {
     // source nodes start together at that exact moment — that's the sync
     // point shared with the video render loop (which reads getCurrentTimeS
     // and stays at baseTimeS until kickoff is reached).
-    const audioNowS = Math.max(
-      this.ctx.currentTime,
-      this.scheduler.getPlaybackStartCtxTimeS(),
-    );
+    const audioNowS = Math.max(this.ctx.currentTime, this.scheduler.getPlaybackStartCtxTimeS());
     const playStartS =
       currentTimeS < window.effectiveStartS
         ? audioNowS + (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()

@@ -310,11 +310,17 @@ onBeforeUnmount(() => {
   visibleChunks.value.clear();
 });
 
+const isReversed = computed(() => (props.item.speed ?? 1) < 0);
+
 const speed = computed(() => {
   const s = props.item.speed || 1;
   const abs = Math.abs(s);
   // Prevent division by zero and extreme values
   return Math.max(0.001, Math.min(100, abs));
+});
+
+const clipWidthPx = computed(() => {
+  return Math.round(timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom));
 });
 
 const effectiveSourceDurationUs = computed(() => {
@@ -597,8 +603,9 @@ watch(
       v-else-if="audioPeaks"
       class="absolute inset-y-0 h-full flex"
       :style="{
-        left: `${-trimOffsetPx}px`,
+        left: `${isReversed ? trimOffsetPx + clipWidthPx - totalWidthPx : -trimOffsetPx}px`,
         width: `${totalWidthPx}px`,
+        transform: isReversed ? 'scaleX(-1)' : undefined,
       }"
     >
       <div

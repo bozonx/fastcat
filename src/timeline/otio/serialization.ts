@@ -24,12 +24,14 @@ export function serializeEffects(effects: ClipEffect[] | undefined): OtioEffect[
     enabled: e.enabled !== false,
     metadata: {
       fastcat: {
-        id: e.id,
-        type: e.type,
-        target: e.target,
-        params: Object.fromEntries(
-          Object.entries(e).filter(([k]) => !['id', 'type', 'enabled', 'target'].includes(k)),
-        ),
+        effect: {
+          id: e.id,
+          type: e.type,
+          target: e.target,
+          params: Object.fromEntries(
+            Object.entries(e).filter(([k]) => !['id', 'type', 'enabled', 'target'].includes(k)),
+          ),
+        },
       },
     },
   }));
@@ -42,21 +44,25 @@ export function parseEffects(raw: unknown[]): ClipEffect[] {
     const e = item as Record<string, unknown>;
     if (e.OTIO_SCHEMA !== 'Effect.1') continue;
     const fastcatMeta = safeFastCatMetadata(e.metadata);
-    const id = coerceId(fastcatMeta?.id ?? e.name, '');
+    const effectMeta =
+      fastcatMeta.effect && typeof fastcatMeta.effect === 'object'
+        ? (fastcatMeta.effect as Record<string, unknown>)
+        : {};
+    const id = coerceId(effectMeta.id ?? e.name, '');
     const type =
-      typeof fastcatMeta?.type === 'string'
-        ? fastcatMeta.type
+      typeof effectMeta.type === 'string'
+        ? effectMeta.type
         : typeof e.effect_name === 'string'
           ? e.effect_name
           : '';
     if (!id || !type) continue;
     const params =
-      fastcatMeta?.params && typeof fastcatMeta.params === 'object' ? fastcatMeta.params : {};
+      effectMeta.params && typeof effectMeta.params === 'object' ? effectMeta.params : {};
     result.push({
       id,
       type,
       enabled: e.enabled !== false,
-      target: fastcatMeta?.target as EffectTarget | undefined,
+      target: effectMeta.target as EffectTarget | undefined,
       ...params,
     });
   }
@@ -102,8 +108,10 @@ export function serializeMarker(marker: TimelineMarker, fps?: number): OtioMarke
     marked_range: toTimeRange({ startUs: marker.timeUs, durationUs: marker.durationUs ?? 0 }, fps),
     metadata: {
       fastcat: {
-        id: marker.id,
-        color: marker.color,
+        marker: {
+          id: marker.id,
+          color: marker.color,
+        },
       },
     },
   };
@@ -117,8 +125,12 @@ export function parseOtioMarkers(raw: unknown): TimelineMarker[] {
     const m = item as Record<string, unknown>;
     if (m.OTIO_SCHEMA !== 'Marker.2' && m.OTIO_SCHEMA !== 'Marker.1') continue;
     const fastcatMeta = safeFastCatMetadata(m.metadata);
+    const markerMeta =
+      fastcatMeta.marker && typeof fastcatMeta.marker === 'object'
+        ? (fastcatMeta.marker as Record<string, unknown>)
+        : {};
     const range = fromTimeRange(m.marked_range);
-    const id = coerceId(fastcatMeta?.id, '');
+    const id = coerceId(markerMeta.id, '');
     if (!id) continue;
     const text =
       typeof m.comment === 'string' && m.comment.length > 0
@@ -126,7 +138,7 @@ export function parseOtioMarkers(raw: unknown): TimelineMarker[] {
         : typeof m.name === 'string'
           ? m.name
           : '';
-    const color = typeof fastcatMeta?.color === 'string' ? fastcatMeta.color : undefined;
+    const color = typeof markerMeta.color === 'string' ? markerMeta.color : undefined;
     const durationUs = range.durationUs > 0 ? range.durationUs : undefined;
     result.push({ id, timeUs: Math.max(0, range.startUs), durationUs, text, color });
   }
@@ -169,14 +181,18 @@ export function buildOtioTransition(
     parameters: transition.params ?? {},
     metadata: {
       fastcat: {
-        type: transition.type,
-        durationUs: transition.durationUs,
-        mode: transition.mode,
-        curve: transition.curve,
-        params: transition.params,
-        isOverridden: transition.isOverridden,
-        ownerItemId: owner?.itemId,
-        edge: owner?.edge,
+        transition: {
+          type: transition.type,
+          durationUs: transition.durationUs,
+          mode: transition.mode,
+          curve: transition.curve,
+          params: transition.params,
+          isOverridden: transition.isOverridden,
+        },
+        owner: {
+          itemId: owner?.itemId,
+          edge: owner?.edge,
+        },
       },
     },
   };
@@ -191,23 +207,28 @@ export function parseOtioTransition(tRaw: unknown): ClipTransition | null {
   const durationUs = inUs + outUs;
   if (durationUs <= 0) return null;
   const fastcatMeta = safeFastCatMetadata(t.metadata);
+  const transitionMeta =
+    fastcatMeta.transition && typeof fastcatMeta.transition === 'object'
+      ? (fastcatMeta.transition as Record<string, unknown>)
+      : {};
   const transitionTypeStr = typeof t.transition_type === 'string' ? t.transition_type : '';
-  const typeStr = typeof fastcatMeta?.type === 'string' ? fastcatMeta.type : undefined;
+  const typeStr = typeof transitionMeta.type === 'string' ? transitionMeta.type : undefined;
   const type = typeStr ?? transitionTypeFromOtio(transitionTypeStr);
   if (!type) return null;
   return {
     type,
-    durationUs: typeof fastcatMeta?.durationUs === 'number' ? fastcatMeta.durationUs : durationUs,
-    mode: normalizeTransitionMode(fastcatMeta?.mode),
-    curve: normalizeTransitionCurve(fastcatMeta?.curve),
+    durationUs:
+      typeof transitionMeta.durationUs === 'number' ? transitionMeta.durationUs : durationUs,
+    mode: normalizeTransitionMode(transitionMeta.mode),
+    curve: normalizeTransitionCurve(transitionMeta.curve),
     params:
-      fastcatMeta?.params && typeof fastcatMeta.params === 'object'
-        ? (fastcatMeta.params as Record<string, unknown>)
+      transitionMeta.params && typeof transitionMeta.params === 'object'
+        ? (transitionMeta.params as Record<string, unknown>)
         : t.parameters && typeof t.parameters === 'object' && Object.keys(t.parameters).length > 0
           ? (t.parameters as Record<string, unknown>)
           : undefined,
     isOverridden:
-      fastcatMeta?.isOverridden !== undefined ? Boolean(fastcatMeta.isOverridden) : undefined,
+      transitionMeta.isOverridden !== undefined ? Boolean(transitionMeta.isOverridden) : undefined,
   };
 }
 

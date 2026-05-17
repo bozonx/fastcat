@@ -160,8 +160,19 @@ export function coerceTransform(raw: unknown): ClipTransform | undefined {
         }
       : undefined;
 
-  if (!scale && rotationDeg === undefined && !position && !anchor) return undefined;
-  return { scale, rotationDeg, position, anchor };
+  const cropRaw = rawObj.crop;
+  const crop =
+    cropRaw && typeof cropRaw === 'object'
+      ? {
+          top: clampNumber((cropRaw as Record<string, unknown>).top, 0, 100),
+          bottom: clampNumber((cropRaw as Record<string, unknown>).bottom, 0, 100),
+          left: clampNumber((cropRaw as Record<string, unknown>).left, 0, 100),
+          right: clampNumber((cropRaw as Record<string, unknown>).right, 0, 100),
+        }
+      : undefined;
+
+  if (!scale && rotationDeg === undefined && !position && !anchor && !crop) return undefined;
+  return { scale, rotationDeg, position, anchor, crop };
 }
 
 export function hashString(input: string): string {

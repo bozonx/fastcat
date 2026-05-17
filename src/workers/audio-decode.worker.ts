@@ -123,7 +123,8 @@ async function extractPeaksFromSource(
     try {
       const metaDurationS = await input.computeDuration();
       const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
-      const totalFramesEstimate = Math.max(1, Math.ceil(durationS * 48000));
+      const trackSampleRate = aTrack.sampleRate;
+      const totalFramesEstimate = Math.max(1, Math.ceil(durationS * trackSampleRate));
       const peaks: number[][] = [];
       const counts: Uint32Array[] = [];
 
