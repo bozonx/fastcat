@@ -327,11 +327,24 @@ export function getStereoPanMatrix(audioBalance: number): StereoPanMatrix {
   };
 }
 
-interface ProcessedClipAudio {
+interface ProcessedClipChunk {
+  startFrame: number;
   planes: Float32Array[];
   frames: number;
   gainEnvelope: Float32Array;
   audioBalance: number;
+}
+
+interface ActiveProcessedClip {
+  clip: PreparedClip;
+  iterator: AsyncIterator<ProcessedClipChunk>;
+  current: ProcessedClipChunk | null;
+  done: boolean;
+}
+
+interface PendingProcessedTail {
+  startFrame: number;
+  planes: Float32Array[];
 }
 
 const CLIP_PROCESS_BLOCK_DURATION_S = 10;
@@ -401,45 +414,13 @@ function trimOrPadPlanes(params: {
   });
 }
 
-function writeProcessedBlock(params: {
-  outputPlanes: Float32Array[];
-  blockPlanes: Float32Array[];
-  blockStartFrame: number;
-  expectedOutFrames: number;
-  overlapFrames: number;
-}) {
-  const { outputPlanes, blockPlanes, blockStartFrame, expectedOutFrames, overlapFrames } = params;
-  const frames = blockPlanes[0]?.length ?? 0;
-  if (frames <= 0) return;
-
-  const overlapLimit = Math.min(overlapFrames, frames, expectedOutFrames - blockStartFrame);
-  for (let c = 0; c < outputPlanes.length; c += 1) {
-    const output = outputPlanes[c];
-    const block = blockPlanes[c];
-    if (!output || !block) continue;
-
-    for (let i = 0; i < frames; i += 1) {
-      const dst = blockStartFrame + i;
-      if (dst >= expectedOutFrames) break;
-
-      if (blockStartFrame > 0 && i < overlapLimit && overlapLimit > 1) {
-        const progress = i / (overlapLimit - 1);
-        const previousGain = Math.cos(progress * 0.5 * Math.PI);
-        const currentGain = Math.sin(progress * 0.5 * Math.PI);
-        output[dst] = (output[dst] ?? 0) * previousGain + (block[i] ?? 0) * currentGain;
-      } else {
-        output[dst] = block[i] ?? 0;
-      }
-    }
-  }
-}
-
 function buildGainEnvelope(params: {
   frames: number;
+  startFrame: number;
   targetSampleRate: number;
   clip: PreparedClip;
 }): Float32Array {
-  const { frames, targetSampleRate, clip } = params;
+  const { frames, startFrame, targetSampleRate, clip } = params;
   const gainEnvelope = new Float32Array(frames);
   if (clip.audioFadeInS === 0 && clip.audioFadeOutS === 0) {
     gainEnvelope.fill(clip.audioGain);
@@ -448,10 +429,11 @@ function buildGainEnvelope(params: {
 
   gainEnvelope.fill(clip.audioGain);
 
-  const applyEnvelopeRange = (startFrame: number, endFrame: number) => {
-    const start = Math.max(0, Math.min(frames, startFrame));
-    const end = Math.max(start, Math.min(frames, endFrame));
+  const applyEnvelopeRange = (startFrameInClip: number, endFrameInClip: number) => {
+    const start = Math.max(0, Math.min(frames, startFrameInClip - startFrame));
+    const end = Math.max(start, Math.min(frames, endFrameInClip - startFrame));
     for (let i = start; i < end; i += 1) {
+      const frameInClip = startFrame + i;
       gainEnvelope[i] = getGainAtClipTime({
         clipDurationS: clip.playDurationS,
         fadeInS: clip.audioFadeInS,
@@ -459,7 +441,7 @@ function buildGainEnvelope(params: {
         fadeInCurve: clip.audioFadeInCurve,
         fadeOutCurve: clip.audioFadeOutCurve,
         baseGain: clip.audioGain,
-        tClipS: i / targetSampleRate,
+        tClipS: frameInClip / targetSampleRate,
       });
     }
   };
@@ -468,7 +450,7 @@ function buildGainEnvelope(params: {
     (clip.audioFadeInS > 0 && clip.audioFadeInS >= clip.playDurationS) ||
     (clip.audioFadeOutS > 0 && clip.audioFadeOutS >= clip.playDurationS)
   ) {
-    applyEnvelopeRange(0, frames);
+    applyEnvelopeRange(startFrame, startFrame + frames);
     return gainEnvelope;
   }
 
@@ -486,13 +468,59 @@ function buildGainEnvelope(params: {
 
   const clipEndFrame = Math.max(
     0,
-    Math.min(frames, Math.ceil(clip.playDurationS * targetSampleRate)),
+    Math.min(startFrame + frames, Math.ceil(clip.playDurationS * targetSampleRate)),
   );
-  if (clipEndFrame < frames) {
-    gainEnvelope.fill(0, clipEndFrame);
+  if (clipEndFrame < startFrame + frames) {
+    gainEnvelope.fill(0, Math.max(0, clipEndFrame - startFrame));
   }
 
   return gainEnvelope;
+}
+
+function slicePlanes(params: {
+  planes: Float32Array[];
+  startFrame: number;
+  frames: number;
+  channels: number;
+}): Float32Array[] {
+  const { planes, startFrame, frames, channels } = params;
+  return Array.from({ length: channels }, (_, channel) => {
+    const plane = planes[channel] ?? new Float32Array(0);
+    const out = new Float32Array(frames);
+    if (frames > 0 && startFrame < plane.length) {
+      out.set(plane.subarray(startFrame, Math.min(plane.length, startFrame + frames)));
+    }
+    return out;
+  });
+}
+
+function crossfadePendingTailIntoBlock(params: {
+  pendingTail: PendingProcessedTail | null;
+  blockPlanes: Float32Array[];
+  channels: number;
+}) {
+  const { pendingTail, blockPlanes, channels } = params;
+  if (!pendingTail) return;
+
+  const overlapFrames = Math.min(pendingTail.planes[0]?.length ?? 0, blockPlanes[0]?.length ?? 0);
+  if (overlapFrames <= 0) return;
+
+  for (let channel = 0; channel < channels; channel += 1) {
+    const pending = pendingTail.planes[channel];
+    const block = blockPlanes[channel];
+    if (!pending || !block) continue;
+
+    for (let i = 0; i < overlapFrames; i += 1) {
+      if (overlapFrames <= 1) {
+        block[i] = block[i] ?? 0;
+        continue;
+      }
+      const progress = i / (overlapFrames - 1);
+      const previousGain = Math.cos(progress * 0.5 * Math.PI);
+      const currentGain = Math.sin(progress * 0.5 * Math.PI);
+      block[i] = (pending[i] ?? 0) * previousGain + (block[i] ?? 0) * currentGain;
+    }
+  }
 }
 
 /**
@@ -599,30 +627,27 @@ async function loadClipSourcePlanes(args: {
   };
 }
 
-async function processClipAudio(args: {
+async function* processClipAudio(args: {
   clip: PreparedClip;
   targetSampleRate: number;
   numberOfChannels: number;
   reportExportWarning: (message: string) => Promise<void>;
   checkCancel?: () => boolean;
-}): Promise<ProcessedClipAudio | null> {
+}): AsyncGenerator<ProcessedClipChunk> {
   const { clip, targetSampleRate, numberOfChannels, reportExportWarning, checkCancel } = args;
   // Defense in depth: prepareClips already skips reversed clips. This guard
   // keeps writeMixedToSource correct for any caller that hands in prepared
   // clips directly (tests, future re-entry).
-  if (clip.reversed) return null;
+  if (clip.reversed) return;
   const expectedOutFrames = Math.max(0, Math.round(clip.playDurationS * targetSampleRate));
-  if (expectedOutFrames <= 0) return null;
+  if (expectedOutFrames <= 0) return;
 
-  const outputPlanes = Array.from(
-    { length: numberOfChannels },
-    () => new Float32Array(expectedOutFrames),
-  );
   const blockFrames = Math.max(1, Math.round(CLIP_PROCESS_BLOCK_DURATION_S * targetSampleRate));
   const overlapFrames = Math.min(
     blockFrames,
     Math.round(estimateClipProcessingOverlapS(clip.audioEffects) * targetSampleRate),
   );
+  let pendingTail: PendingProcessedTail | null = null;
 
   for (
     let blockStartFrame = 0;
@@ -650,19 +675,22 @@ async function processClipAudio(args: {
       reportExportWarning,
     });
 
-    if (!loaded) {
-      continue;
+    let blockPlanes: Float32Array[];
+    let blockOutputFrames: number;
+    if (loaded) {
+      blockPlanes = normalizeSampleChannels({
+        planes: loaded.planes,
+        sourceChannels: loaded.channels,
+        targetChannels: numberOfChannels,
+        frames: loaded.frames,
+      });
+      blockOutputFrames = loaded.frames;
+    } else {
+      blockPlanes = Array.from({ length: numberOfChannels }, () => new Float32Array(targetFrames));
+      blockOutputFrames = targetFrames;
     }
 
-    let blockPlanes = normalizeSampleChannels({
-      planes: loaded.planes,
-      sourceChannels: loaded.channels,
-      targetChannels: numberOfChannels,
-      frames: loaded.frames,
-    });
-    let blockOutputFrames = loaded.frames;
-
-    if (loaded.sampleRate !== targetSampleRate || clip.speed !== 1) {
+    if (loaded && (loaded.sampleRate !== targetSampleRate || clip.speed !== 1)) {
       try {
         blockPlanes = await resampleAndStretchOffline({
           planes: blockPlanes,
@@ -708,27 +736,70 @@ async function processClipAudio(args: {
       });
     }
 
-    writeProcessedBlock({
-      outputPlanes,
+    crossfadePendingTailIntoBlock({
+      pendingTail,
       blockPlanes,
-      blockStartFrame,
-      expectedOutFrames,
-      overlapFrames,
+      channels: numberOfChannels,
     });
+    pendingTail = null;
+
+    const emitFrames = Math.min(blockFrames, expectedOutFrames - blockStartFrame);
+    if (emitFrames > 0) {
+      yield {
+        startFrame: blockStartFrame,
+        planes: slicePlanes({
+          planes: blockPlanes,
+          startFrame: 0,
+          frames: emitFrames,
+          channels: numberOfChannels,
+        }),
+        frames: emitFrames,
+        gainEnvelope: buildGainEnvelope({
+          frames: emitFrames,
+          startFrame: blockStartFrame,
+          targetSampleRate,
+          clip,
+        }),
+        audioBalance: clip.audioBalance,
+      };
+    }
+
+    const tailStartInBlock = emitFrames;
+    const tailFrames = Math.min(
+      overlapFrames,
+      Math.max(0, targetFrames - tailStartInBlock),
+      Math.max(0, expectedOutFrames - blockStartFrame - emitFrames),
+    );
+    if (tailFrames > 0) {
+      pendingTail = {
+        startFrame: blockStartFrame + emitFrames,
+        planes: slicePlanes({
+          planes: blockPlanes,
+          startFrame: tailStartInBlock,
+          frames: tailFrames,
+          channels: numberOfChannels,
+        }),
+      };
+    }
   }
 
-  const gainEnvelope = buildGainEnvelope({
-    frames: expectedOutFrames,
-    targetSampleRate,
-    clip,
-  });
-
-  return {
-    planes: outputPlanes,
-    frames: expectedOutFrames,
-    gainEnvelope,
-    audioBalance: clip.audioBalance,
-  };
+  if (pendingTail) {
+    const frames = pendingTail.planes[0]?.length ?? 0;
+    if (frames > 0) {
+      yield {
+        startFrame: pendingTail.startFrame,
+        planes: pendingTail.planes,
+        frames,
+        gainEnvelope: buildGainEnvelope({
+          frames,
+          startFrame: pendingTail.startFrame,
+          targetSampleRate,
+          clip,
+        }),
+        audioBalance: clip.audioBalance,
+      };
+    }
+  }
 }
 
 interface AdjacencyMap {
@@ -958,7 +1029,7 @@ export class AudioMixer {
           audioFadeOutCurve: fadeOutCurve,
           audioEffects: (clipData.effects ?? []).filter((effect) => effect?.target === 'audio'),
         });
-      } catch (err) {
+      } catch {
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
         safeDispose(input);
       }
@@ -988,7 +1059,7 @@ export class AudioMixer {
     }
 
     const sortedClips = prepared.slice().sort((a, b) => a.clipStartS - b.clipStartS);
-    const processedByClip = new Map<PreparedClip, ProcessedClipAudio | null>();
+    const activeClips: ActiveProcessedClip[] = [];
     let nextLoadIndex = 0;
     let clippedFrames = 0;
 
@@ -998,6 +1069,82 @@ export class AudioMixer {
 
     const mixedInterleavedPool = new Float32Array(chunkFrames * numberOfChannels);
     const planarOutPool = new Float32Array(chunkFrames * numberOfChannels);
+
+    async function pullNextProcessedChunk(
+      active: ActiveProcessedClip,
+    ): Promise<ProcessedClipChunk | null> {
+      const next = await active.iterator.next();
+      if (next.done) {
+        active.done = true;
+        active.current = null;
+        return null;
+      }
+      active.current = next.value;
+      return active.current;
+    }
+
+    async function getProcessedChunkForFrame(
+      active: ActiveProcessedClip,
+      frame: number,
+    ): Promise<ProcessedClipChunk | null> {
+      while (
+        !active.done &&
+        (!active.current || active.current.startFrame + active.current.frames <= frame)
+      ) {
+        await pullNextProcessedChunk(active);
+      }
+      return active.current;
+    }
+
+    function mixProcessedChunk(params: {
+      processed: ProcessedClipChunk;
+      sourceStartFrame: number;
+      sourceEndFrame: number;
+      writeStartFrame: number;
+      mixedInterleaved: Float32Array;
+    }): number {
+      const { processed, sourceStartFrame, sourceEndFrame, writeStartFrame, mixedInterleaved } =
+        params;
+      const processedStartFrame = processed.startFrame;
+      const processedEndFrame = processedStartFrame + processed.frames;
+      const segmentStartFrame = Math.max(sourceStartFrame, processedStartFrame);
+      const segmentEndFrame = Math.min(sourceEndFrame, processedEndFrame);
+      const framesToWrite = Math.max(0, segmentEndFrame - segmentStartFrame);
+      if (framesToWrite <= 0) return segmentEndFrame;
+
+      const sourceOffsetFrame = segmentStartFrame - processedStartFrame;
+      const writeOffsetFrame = writeStartFrame + (segmentStartFrame - sourceStartFrame);
+
+      if (numberOfChannels === 2) {
+        const planeL = processed.planes[0];
+        const planeR = processed.planes[1];
+        if (!planeL || !planeR) return segmentEndFrame;
+        const { ll, lr, rl, rr } = getStereoPanMatrix(processed.audioBalance);
+        for (let i = 0; i < framesToWrite; i += 1) {
+          const srcIdx = sourceOffsetFrame + i;
+          const dstFrame = writeOffsetFrame + i;
+          const g = processed.gainEnvelope[srcIdx] ?? 0;
+          if (g === 0) continue;
+          const L = (planeL[srcIdx] ?? 0) * g;
+          const R = (planeR[srcIdx] ?? 0) * g;
+          const idxL = dstFrame * 2;
+          mixedInterleaved[idxL] = (mixedInterleaved[idxL] ?? 0) + (ll * L + lr * R);
+          mixedInterleaved[idxL + 1] = (mixedInterleaved[idxL + 1] ?? 0) + (rl * L + rr * R);
+        }
+        return segmentEndFrame;
+      }
+
+      const plane = processed.planes[0];
+      if (!plane) return segmentEndFrame;
+      for (let i = 0; i < framesToWrite; i += 1) {
+        const srcIdx = sourceOffsetFrame + i;
+        const dstFrame = writeOffsetFrame + i;
+        const v = (plane[srcIdx] ?? 0) * (processed.gainEnvelope[srcIdx] ?? 0);
+        mixedInterleaved[dstFrame] = (mixedInterleaved[dstFrame] ?? 0) + v;
+      }
+
+      return segmentEndFrame;
+    }
 
     try {
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
@@ -1013,30 +1160,26 @@ export class AudioMixer {
           const clip = sortedClips[nextLoadIndex]!;
           if (clip.clipStartS >= chunkEndS) break;
           ensureNotCancelled();
-          try {
-            const processed = await processClipAudio({
+          activeClips.push({
+            clip,
+            iterator: processClipAudio({
               clip,
               targetSampleRate: sampleRate,
               numberOfChannels,
               reportExportWarning,
               checkCancel,
-            });
-            processedByClip.set(clip, processed);
-          } catch (err: any) {
-            if (err?.name === 'AbortError') throw err;
-            await reportExportWarning('[Worker Export] Failed to decode audio clip');
-            safeDispose(clip.sink);
-            safeDispose(clip.input);
-            processedByClip.set(clip, null);
-          }
+            }),
+            current: null,
+            done: false,
+          });
           nextLoadIndex += 1;
         }
 
         const mixedInterleaved = mixedInterleavedPool.subarray(0, framesInChunk * numberOfChannels);
         mixedInterleaved.fill(0);
 
-        for (const [clip, processed] of processedByClip) {
-          if (!processed) continue;
+        for (const active of activeClips) {
+          const { clip } = active;
           ensureNotCancelled();
 
           const clipGlobalStartS = clip.clipStartS;
@@ -1056,45 +1199,41 @@ export class AudioMixer {
             0,
             Math.floor((overlapStartS - clipGlobalStartS) * sampleRate),
           );
-          const sourceFramesAvailable = Math.max(0, processed.frames - sourceStartFrame);
           const writeFramesAvailable = Math.max(0, framesInChunk - writeStartFrame);
           const overlapEndFrame = Math.floor((overlapEndS - chunkStartS) * sampleRate);
           const framesInOverlap = Math.max(0, overlapEndFrame - writeStartFrame);
-          const framesToWrite = Math.min(
-            framesInOverlap,
-            sourceFramesAvailable,
-            writeFramesAvailable,
-          );
+          const framesToWrite = Math.min(framesInOverlap, writeFramesAvailable);
           if (framesToWrite <= 0) continue;
 
-          const { gainEnvelope } = processed;
-
-          if (numberOfChannels === 2) {
-            const planeL = processed.planes[0];
-            const planeR = processed.planes[1];
-            if (!planeL || !planeR) continue;
-            const { ll, lr, rl, rr } = getStereoPanMatrix(processed.audioBalance);
-            for (let i = 0; i < framesToWrite; i += 1) {
-              const srcIdx = sourceStartFrame + i;
-              const dstFrame = writeStartFrame + i;
-              const g = gainEnvelope[srcIdx] ?? 0;
-              if (g === 0) continue;
-              const L = (planeL[srcIdx] ?? 0) * g;
-              const R = (planeR[srcIdx] ?? 0) * g;
-              const idxL = dstFrame * 2;
-              // Sum all clip contributions first, clip once at chunk end so
-              // that A=+1.5 followed by B=-1.0 still yields the correct 0.5.
-              mixedInterleaved[idxL] = (mixedInterleaved[idxL] ?? 0) + (ll * L + lr * R);
-              mixedInterleaved[idxL + 1] = (mixedInterleaved[idxL + 1] ?? 0) + (rl * L + rr * R);
+          const sourceEndFrame = sourceStartFrame + framesToWrite;
+          let sourceCursorFrame = sourceStartFrame;
+          try {
+            while (sourceCursorFrame < sourceEndFrame) {
+              const processed = await getProcessedChunkForFrame(active, sourceCursorFrame);
+              if (!processed) break;
+              if (processed.startFrame > sourceCursorFrame) {
+                sourceCursorFrame = Math.min(processed.startFrame, sourceEndFrame);
+                continue;
+              }
+              const nextCursorFrame = mixProcessedChunk({
+                processed,
+                sourceStartFrame: sourceCursorFrame,
+                sourceEndFrame,
+                writeStartFrame: writeStartFrame + (sourceCursorFrame - sourceStartFrame),
+                mixedInterleaved,
+              });
+              if (nextCursorFrame <= sourceCursorFrame) break;
+              sourceCursorFrame = nextCursorFrame;
             }
-          } else {
-            const plane = processed.planes[0];
-            if (!plane) continue;
-            for (let i = 0; i < framesToWrite; i += 1) {
-              const srcIdx = sourceStartFrame + i;
-              const dstFrame = writeStartFrame + i;
-              const v = (plane[srcIdx] ?? 0) * (gainEnvelope[srcIdx] ?? 0);
-              mixedInterleaved[dstFrame] = (mixedInterleaved[dstFrame] ?? 0) + v;
+          } catch (err: any) {
+            if (err?.name === 'AbortError') throw err;
+            await reportExportWarning('[Worker Export] Failed to decode audio clip');
+            safeDispose(clip.sink);
+            safeDispose(clip.input);
+            active.done = true;
+            active.current = null;
+            if (typeof active.iterator.return === 'function') {
+              await active.iterator.return();
             }
           }
         }
@@ -1109,14 +1248,13 @@ export class AudioMixer {
           mixedInterleaved[i] = clamped;
         }
 
-        // Drop processed clips whose end is now behind the chunk to free memory.
-        for (const [clip, processed] of processedByClip) {
-          if (!processed) {
-            processedByClip.delete(clip);
-            continue;
-          }
-          if (clip.clipStartS + clip.playDurationS <= chunkEndS) {
-            processedByClip.delete(clip);
+        for (let i = activeClips.length - 1; i >= 0; i -= 1) {
+          const active = activeClips[i]!;
+          if (active.clip.clipStartS + active.clip.playDurationS <= chunkEndS || active.done) {
+            if (typeof active.iterator.return === 'function') {
+              await active.iterator.return();
+            }
+            activeClips.splice(i, 1);
           }
         }
 
@@ -1149,6 +1287,11 @@ export class AudioMixer {
         );
       }
     } finally {
+      for (const active of activeClips) {
+        if (typeof active.iterator.return === 'function') {
+          await active.iterator.return();
+        }
+      }
       for (const clip of prepared) {
         safeDispose(clip.sink);
         safeDispose(clip.input);
