@@ -70,7 +70,7 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
       `[STT Worker] Serving local file: ${escapedCurrentModelName}/${filePath} (size: ${file.size} bytes)`,
     );
     return new Response(file);
-  } catch (_err) {
+  } catch {
     console.warn(`[STT Worker] Local file not found: ${escapedCurrentModelName}/${filePath}`);
     return new Response('Not Found', { status: 404 });
   }
@@ -131,14 +131,6 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
 }
 
 let taskQueue = Promise.resolve();
-let pendingTranscription: {
-  id: number;
-  audio: Float32Array;
-  modelName: string;
-  language?: string;
-  subtask?: string;
-} | null = null;
-
 self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTranscribeMessage>) => {
   const { type, id, data } = event.data;
 
@@ -153,8 +145,6 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
 
     taskQueue = taskQueue
       .then(async () => {
-        pendingTranscription = { id, audio, modelName, language, subtask };
-
         const durationS = audio.length / 16000;
         console.log(
           `[STT Worker] Processing ${modelName}: ${audio.length} samples (${durationS.toFixed(2)}s)`,

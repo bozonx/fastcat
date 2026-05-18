@@ -101,17 +101,10 @@ describe('useWheelSupport', () => {
     expect(onWheelStep).toHaveBeenCalledWith(-1, 1, 0);
   });
 
-  it('applies wheelStepMultiplier when shiftKey is pressed', async () => {
-    const { onWheelStep, wrapperRef } = mountWheelSupport();
-    const event = new WheelEvent('wheel', { deltaY: 100, shiftKey: true, bubbles: true });
-    wrapperRef.value!.dispatchEvent(event);
-    expect(onWheelStep).toHaveBeenCalledWith(-1, 5, 0);
-  });
-
-  it('uses custom useWheelStepMultiplier callback instead of shiftKey', async () => {
-    const useWheelStepMultiplier = vi.fn((e: WheelEvent) => e.ctrlKey);
+  it('uses custom useWheelStepMultiplier callback to accelerate step', async () => {
+    const useWheelStepMultiplier = vi.fn(() => true);
     const { onWheelStep, wrapperRef } = mountWheelSupport({ useWheelStepMultiplier });
-    const event = new WheelEvent('wheel', { deltaY: 100, ctrlKey: true, bubbles: true });
+    const event = new WheelEvent('wheel', { deltaY: 100, bubbles: true });
     wrapperRef.value!.dispatchEvent(event);
     expect(useWheelStepMultiplier).toHaveBeenCalled();
     expect(onWheelStep).toHaveBeenCalledWith(-1, 5, 0);

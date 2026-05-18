@@ -50,4 +50,17 @@ describe('ProxyStore', () => {
     expect(store.activeWorkerPaths.size).toBe(0);
     expect(store.proxyProgress.size).toBe(0);
   });
+
+  it('exposes service actions as store methods', () => {
+    const store = useProxyStore();
+    expect(typeof store.generateProxy).toBe('function');
+    expect(typeof store.generateProxiesForFolder).toBe('function');
+    expect(typeof store.cancelProxyGeneration).toBe('function');
+    expect(typeof store.deleteProxy).toBe('function');
+    expect(typeof store.renameProxy).toBe('function');
+    expect(typeof store.renameProxyDir).toBe('function');
+    expect(typeof store.checkExistingProxies).toBe('function');
+    expect(typeof store.getProxyFileHandle).toBe('function');
+    expect(typeof store.getProxyFile).toBe('function');
+  });
 });

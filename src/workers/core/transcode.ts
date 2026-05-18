@@ -284,10 +284,6 @@ export async function runTranscode(
         )
       : null;
 
-    const shouldResizeVideo =
-      Boolean(sourceWidth && sourceHeight) &&
-      (Math.round(sourceWidth) !== Math.round(options.width) ||
-        Math.round(sourceHeight) !== Math.round(options.height));
     const shouldChangeFrameRate =
       Boolean(sourceFrameRate) && Math.abs(sourceFrameRate - options.fps) > 0.01;
 
@@ -348,7 +344,6 @@ export async function runTranscode(
     await notifyPhase('encoding', taskId);
 
     let lastProgressAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const lastYieldAtMs = lastProgressAtMs;
     const progressIntervalMs = 250;
     const yieldIntervalMs = 32;
 
