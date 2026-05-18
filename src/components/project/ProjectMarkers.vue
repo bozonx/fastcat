@@ -48,7 +48,7 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
             <th class="px-4 py-2.5 whitespace-nowrap">{{ $t('common.color') }}</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-ui-border-muted/30">
+        <tbody class="divide-y divide-ui-border/50">
           <tr
             v-for="marker in sortedMarkers"
             :key="marker.id"

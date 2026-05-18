@@ -147,7 +147,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto bg-ui-bg p-3">
+    <div class="flex-1 overflow-y-auto bg-ui-bg">
       <!-- Video Effects -->
       <div v-show="activeTab === 'video'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Effects -->
@@ -219,7 +219,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
             v-if="customEffects.length === 0"
             class="text-center text-ui-text-muted py-4 italic text-xs"
           >
-            {{ t('common.noData') }}
+            {{ t('fastcat.effects.noCustomPresets') }}
           </div>
         </CollapsibleEffectGroup>
       </div>
@@ -320,7 +320,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
             v-if="customTransitions.length === 0"
             class="text-center text-ui-text-muted py-4 italic text-xs"
           >
-            {{ t('common.noData') }}
+            {{ t('fastcat.effects.noCustomPresets') }}
           </div>
         </CollapsibleEffectGroup>
       </div>
@@ -422,7 +422,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
             v-if="customAudioEffects.length === 0"
             class="text-center text-ui-text-muted py-4 italic text-xs"
           >
-            {{ t('common.noData') }}
+            {{ t('fastcat.effects.noCustomPresets') }}
           </div>
         </CollapsibleEffectGroup>
       </div>

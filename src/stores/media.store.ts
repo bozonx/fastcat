@@ -49,7 +49,11 @@ export interface MediaMetadata {
     width?: number;
     height?: number;
   };
-  audioPeaks?: number[][];
+  /** Per-channel waveform peaks. Stored as Float32Array (4 B/sample) rather
+   *  than `number[]` (~28 B/sample) so a 1-hour stereo source costs ~5.7 MB
+   *  in RAM instead of ~40 MB. Persisted to OPFS as JSON `number[][]` for
+   *  backward compatibility — convert at the boundary. */
+  audioPeaks?: Float32Array[];
   error?: boolean;
 }
 
@@ -197,7 +201,7 @@ export const useMediaStore = defineStore('media', () => {
             const peaksFile = await peaksHandle.getFile();
             const peaksText = await peaksFile.text();
             const peaksData = JSON.parse(peaksText) as number[][];
-            parsedMeta.audioPeaks = peaksData;
+            parsedMeta.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
           } catch {
             // No cached peaks
           }
@@ -271,10 +275,14 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
-  function setAudioPeaks(projectRelativePath: string, peaks: number[][]) {
+  function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
     if (!mediaMetadata.value[projectRelativePath]) return;
 
     mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+
+    // OPFS still stores peaks as JSON `number[][]` so old caches keep working.
+    // Convert once here on the write side; reads convert back to Float32Array.
+    const peaksAsJson = peaks.map((channel) => Array.from(channel));
 
     // Serialize peaks writes per-path to avoid concurrent createWritable() races on the
     // same OPFS entry which can yield truncated/interleaved JSON for long audio.
@@ -291,7 +299,7 @@ export const useMediaStore = defineStore('media', () => {
           const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
           const writable = await (peaksHandle as any).createWritable();
           try {
-            await writable.write(JSON.stringify(peaks));
+            await writable.write(JSON.stringify(peaksAsJson));
           } finally {
             await writable.close();
           }

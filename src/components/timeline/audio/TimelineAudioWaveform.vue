@@ -37,9 +37,9 @@ const fileUrl = computed(() => {
 
 const isNestedTimeline = computed(() => props.item.clipType === 'timeline');
 
-const nestedAudioPeaks = ref<number[][] | null>(null);
+const nestedAudioPeaks = ref<Float32Array[] | null>(null);
 
-const audioPeaks = computed(() => {
+const audioPeaks = computed<Float32Array[] | null>(() => {
   if (!fileUrl.value) return null;
   if (isNestedTimeline.value) return nestedAudioPeaks.value;
   const meta = mediaStore.mediaMetadata[fileUrl.value];
@@ -51,15 +51,15 @@ const isExtracting = ref(false);
 let isUnmounted = false;
 let extractCallId = 0;
 
-function makeEmptyPeaks(channelCount: number, length: number) {
-  return Array.from({ length: channelCount }, () => Array.from({ length }, () => 0));
+function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
+  return Array.from({ length: channelCount }, () => new Float32Array(length));
 }
 
 function mixPeakValue(target: number, next: number) {
   return Math.max(Math.abs(target), Math.abs(next));
 }
 
-async function ensureMediaPeaks(path: string, maxLength: number): Promise<number[][] | null> {
+async function ensureMediaPeaks(path: string, maxLength: number): Promise<Float32Array[] | null> {
   const existing = mediaStore.mediaMetadata[path]?.audioPeaks;
   if (existing && existing.length > 0) return existing;
 
@@ -92,7 +92,7 @@ async function buildTimelinePeaks(params: {
   maxLength: number;
   visiting: Set<string>;
   timelinePath?: string;
-}): Promise<number[][] | null> {
+}): Promise<Float32Array[] | null> {
   const { doc, durationUs, maxLength, visiting, timelinePath } = params;
   if (durationUs <= 0 || maxLength <= 0) return null;
 
@@ -101,7 +101,7 @@ async function buildTimelinePeaks(params: {
     videoTracks: doc.tracks.filter((track) => track.kind === 'video'),
   });
 
-  let mixedPeaks: number[][] | null = null;
+  let mixedPeaks: Float32Array[] | null = null;
 
   for (const item of effectiveItems) {
     if (item.kind !== 'clip') continue;
@@ -112,7 +112,7 @@ async function buildTimelinePeaks(params: {
       ? resolveNestedMediaPath({ nestedTimelinePath: timelinePath, mediaPath: rawPath })
       : rawPath;
 
-    let sourcePeaks: number[][] | null = null;
+    let sourcePeaks: Float32Array[] | null = null;
     const clipSourceDurationUs =
       clip.sourceDurationUs && clip.sourceDurationUs > 0
         ? clip.sourceDurationUs
@@ -162,7 +162,7 @@ async function buildTimelinePeaks(params: {
       mixedPeaks = makeEmptyPeaks(channelCount, maxLength);
     } else if (mixedPeaks.length < channelCount) {
       for (let channelIndex = mixedPeaks.length; channelIndex < channelCount; channelIndex++) {
-        mixedPeaks.push(Array.from({ length: maxLength }, () => 0));
+        mixedPeaks.push(new Float32Array(maxLength));
       }
     }
 
@@ -192,8 +192,8 @@ async function buildTimelinePeaks(params: {
       if (sourceUs === null) continue;
 
       for (let channelIndex = 0; channelIndex < mixedPeaks.length; channelIndex++) {
-        const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0] ?? [];
-        if (sourceChannel.length === 0) continue;
+        const sourceChannel = sourcePeaks[channelIndex] ?? sourcePeaks[0];
+        if (!sourceChannel || sourceChannel.length === 0) continue;
         const sourceIndex = Math.min(
           sourceChannel.length - 1,
           Math.max(0, Math.floor((sourceUs / sourceDurationUs) * sourceChannel.length)),

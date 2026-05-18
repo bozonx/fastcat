@@ -243,7 +243,7 @@ async function decodeToFloat32Channels(
 async function extractPeaksFromSource(
   source: Blob | ArrayBuffer,
   options?: { maxLength?: number; precision?: number },
-): Promise<number[][]> {
+): Promise<Float32Array[]> {
   const maxLength = options?.maxLength || 8000;
   const precision = options?.precision || 10000;
   const blob = source instanceof Blob ? source : new Blob([source]);
@@ -267,7 +267,7 @@ async function extractPeaksFromSource(
       // tail of streams with inaccurate duration metadata (VBR MP3, fragmented MP4)
       // doesn't get clamped into the last bucket — which would otherwise spike it.
       let totalFramesEstimate = Math.max(1, Math.ceil(durationS * trackSampleRate));
-      const peaks: number[][] = [];
+      const peaks: Float32Array[] = [];
       let resolvedChannels = 0;
 
       for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
@@ -281,13 +281,13 @@ async function extractPeaksFromSource(
           if (resolvedChannels === 0) {
             resolvedChannels = numberOfChannels;
             for (let ch = 0; ch < resolvedChannels; ch += 1) {
-              peaks.push(Array.from({ length: maxLength }, () => 0));
+              peaks.push(new Float32Array(maxLength));
             }
           } else if (numberOfChannels > resolvedChannels) {
             // Grow output to fit a wider layout that appeared mid-stream rather than
             // dropping the sample silently.
             for (let ch = resolvedChannels; ch < numberOfChannels; ch += 1) {
-              peaks.push(Array.from({ length: maxLength }, () => 0));
+              peaks.push(new Float32Array(maxLength));
             }
             resolvedChannels = numberOfChannels;
           }
@@ -305,6 +305,8 @@ async function extractPeaksFromSource(
             const channel = new Float32Array(bytesNeeded / 4);
             sample.copyTo(channel, { format: 'f32-planar', planeIndex: ch });
 
+            const peakChannel = peaks[ch];
+            if (!peakChannel) continue;
             for (let i = 0; i < frames && i < channel.length; i += 1) {
               const globalFrame = startFrame + i;
               const bucket = Math.min(
@@ -312,9 +314,8 @@ async function extractPeaksFromSource(
                 Math.max(0, Math.floor((globalFrame / totalFramesEstimate) * maxLength)),
               );
               const value = Math.abs(channel[i] ?? 0);
-              const current = peaks[ch]?.[bucket] ?? 0;
-              if (value > current) {
-                peaks[ch]![bucket] = value;
+              if (value > peakChannel[bucket]!) {
+                peakChannel[bucket] = value;
               }
             }
           }
@@ -327,9 +328,14 @@ async function extractPeaksFromSource(
         throw new Error('Decoded audio is empty');
       }
 
-      return peaks.map((channel) =>
-        channel.map((value) => Math.round(value * precision) / precision),
-      );
+      // Snap values to the requested precision so the JSON cache stays small
+      // and reproducible (Math.round(x * 10000) / 10000 ≈ 4 significant digits).
+      for (const channel of peaks) {
+        for (let i = 0; i < channel.length; i += 1) {
+          channel[i] = Math.round((channel[i] ?? 0) * precision) / precision;
+        }
+      }
+      return peaks;
     } finally {
       if (typeof (sink as any).close === 'function') (sink as any).close();
       if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
@@ -459,7 +465,11 @@ if (typeof self !== 'undefined')
           peaks,
         };
 
-        (self as any).postMessage(response);
+        // Transfer the underlying ArrayBuffers so the main thread gets the
+        // peaks zero-copy. After transfer this worker can't touch the data,
+        // which is fine — we're done with it.
+        const transfer = peaks.map((ch) => ch.buffer as ArrayBuffer);
+        (self as any).postMessage(response, transfer);
         return;
       }
 

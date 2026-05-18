@@ -188,7 +188,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto bg-ui-bg p-3">
+    <div class="flex-1 overflow-y-auto bg-ui-bg">
       <!-- Texts -->
       <div v-show="activeTab === 'texts'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Texts -->
@@ -302,7 +302,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
             v-if="customTexts.length === 0"
             class="text-center text-ui-text-muted py-4 italic text-xs"
           >
-            {{ t('common.noData') }}
+            {{ t('fastcat.library.noCustomPresets') }}
           </div>
         </CollapsibleEffectGroup>
       </div>
@@ -403,7 +403,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
             v-if="customShapes.length === 0"
             class="text-center text-ui-text-muted py-4 italic text-xs"
           >
-            {{ t('common.noData') }}
+            {{ t('fastcat.library.noCustomPresets') }}
           </div>
         </CollapsibleEffectGroup>
       </div>
@@ -503,7 +503,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
             v-if="customHuds.length === 0"
             class="text-center text-ui-text-muted py-4 italic text-xs"
           >
-            {{ t('common.noData') }}
+            {{ t('fastcat.library.noCustomPresets') }}
           </div>
         </CollapsibleEffectGroup>
       </div>

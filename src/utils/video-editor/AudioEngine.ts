@@ -255,7 +255,7 @@ export class AudioEngine {
     fileHandle: FileSystemFileHandle,
     sourceKey: string,
     options?: { maxLength?: number; precision?: number },
-  ): Promise<number[][] | null> {
+  ): Promise<Float32Array[] | null> {
     const task = this.withDecodeSlot(async () => {
       try {
         const file = await fileHandle.getFile();

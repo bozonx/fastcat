@@ -60,9 +60,11 @@ describe('MediaStore', () => {
       'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
     } as any;
 
-    store.setAudioPeaks('some/path.mp4', [[0.5, 0.5]]);
+    store.setAudioPeaks('some/path.mp4', [new Float32Array([0.5, 0.5])]);
 
-    expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([[0.5, 0.5]]);
+    expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([
+      new Float32Array([0.5, 0.5]),
+    ]);
   });
 
   it('returns null when file is missing', async () => {

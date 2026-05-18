@@ -22,7 +22,7 @@ export interface DecodeResponse {
     sampleRate: number;
     numberOfChannels: number;
     channelBuffers: ArrayBuffer[];
-    peaks?: number[][];
+    peaks?: Float32Array[];
     sttAudio?: Float32Array; // Single mono buffer for Whisper
     startTimeS?: number;
     actualStartTimeS?: number;

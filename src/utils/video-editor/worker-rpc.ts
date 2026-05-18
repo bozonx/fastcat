@@ -62,7 +62,9 @@ export const MediaMetadataSchema = z.object({
       bitrate: z.number().finite().nonnegative().optional(),
     })
     .optional(),
-  audioPeaks: z.array(z.array(z.number().finite())).optional(),
+  // audioPeaks are persisted to a separate OPFS file and converted to
+  // Float32Array on read (see media.store.ts). They never travel through
+  // this schema, so we don't validate them here.
 });
 
 export function parseMediaMetadata(value: unknown): MediaMetadata {
