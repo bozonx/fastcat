@@ -32,7 +32,7 @@ export default {
     "duration": "Длительность",
     "edit": "Редактировать",
     "empty": "Папка пуста",
-    "end": "Время конца",
+    "end": "Конец",
     "error": "Ошибка",
     "expand": "Развернуть",
     "export": "Экспорт",
@@ -259,6 +259,7 @@ export default {
       "dropHint": "Перетащите эффекты сюда",
       "effectsCount": "{count} эфф.",
       "empty": "Эффектов нет",
+      "noCustomPresets": "Вы пока ещё не создали свои пресеты",
       "groups": {
         "artistic": "Художественные",
         "custom": "Свои",
@@ -527,6 +528,7 @@ export default {
         "shapes": "Фигуры",
         "texts": "Тексты"
       },
+      "noCustomPresets": "Вы пока ещё не создали свои пресеты",
       "texts": {
         "default": "Стандартный",
         "selectPreset": "Выберите текстовый пресет",
@@ -593,6 +595,7 @@ export default {
       "autoDetectHint": "Разрешение и частота кадров проекта будут автоматически определены из первого видео, добавленного на таймлайн.",
       "changeWorkspace": "Сменить рабочую область",
       "newProject": "Новый проект",
+      "workspaceTitle": "Рабочая область",
       "noProjectsFound": "Проекты не найдены",
       "projectNamePlaceholder": "Название проекта",
       "searchPlaceholder": "Поиск проектов...",
@@ -1072,7 +1075,7 @@ export default {
       "mono": "Моно",
       "original": "Оригинал",
       "reverse": "Реверс",
-      "sampleRate": "Частота дискретизации",
+      "sampleRate": "Частота дискретизации аудио",
       "sound": "Звук",
       "stereo": "Стерео"
     },
@@ -1104,7 +1107,7 @@ export default {
       "exporting": "Экспорт...",
       "filename": "Имя файла",
       "filenamePlaceholder": "например, video.mp4",
-      "fps": "Кадров в секунду",
+      "fps": "FPS (Кадров в секунду)",
       "height": "Высота",
       "keyframeInterval": "Интервал ключевых кадров (GOP, сек)",
       "metadata": "Метаданные",

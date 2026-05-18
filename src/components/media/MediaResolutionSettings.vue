@@ -213,13 +213,6 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </UiFormField>
       </div>
-      <div class="text-xs text-ui-text-muted flex justify-end">
-        {{
-          localOrientation === 'portrait'
-            ? t('videoEditor.resolution.portrait')
-            : t('videoEditor.resolution.landscape')
-        }}
-      </div>
     </template>
 
     <!-- FPS -->

@@ -33,6 +33,7 @@ const props = defineProps<{
   isExternal?: boolean;
   hideFocusFrame?: boolean;
   rootSelectionEntry?: FsEntry | null;
+  hideProjectLabel?: boolean;
 }>();
 
 const instanceId = props.instanceId || 'left';
@@ -517,7 +518,7 @@ useFileManagerPanelBootstrap({
         />
 
         <span
-          v-if="!props.isExternal"
+          v-if="!props.isExternal && !props.hideProjectLabel"
           class="ml-auto text-[10px] font-bold uppercase tracking-wider text-ui-text-muted/80 px-1 select-none"
         >
           {{ t('videoEditor.fileManager.projectRoot.project') }}

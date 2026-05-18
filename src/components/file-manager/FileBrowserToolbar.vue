@@ -19,6 +19,7 @@ const props = defineProps<{
   compact?: boolean;
   hideActions?: boolean;
   hideUpload?: boolean;
+  hideViewSwitcher?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -140,7 +141,7 @@ const toolbarMenuItems = computed(() => {
   <div
     class="flex items-center gap-4 px-4 py-2 border-b border-ui-border shrink-0 bg-ui-bg-elevated/50"
   >
-    <div v-if="!isRemotePanel" class="flex items-center gap-1">
+    <div v-if="!isRemotePanel && !hideViewSwitcher" class="flex items-center gap-1">
       <UiToggleButton
         :model-value="fileManagerStore.viewMode === 'grid'"
         icon="i-heroicons-squares-2x2"

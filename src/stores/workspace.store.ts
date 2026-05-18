@@ -147,9 +147,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
     recentProjects.value.unshift(updatedProject);
 
-    // Limit to 20 projects
-    if (recentProjects.value.length > 20) {
-      recentProjects.value = recentProjects.value.slice(0, 20);
+    // Limit to 5 projects
+    if (recentProjects.value.length > 5) {
+      recentProjects.value = recentProjects.value.slice(0, 5);
     }
 
     lastProjectName.value = project.projectName;

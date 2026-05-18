@@ -32,7 +32,7 @@ export default {
     "duration": "Duration",
     "edit": "Edit",
     "empty": "Folder is empty",
-    "end": "End Time",
+    "end": "End",
     "error": "Error",
     "expand": "Expand",
     "export": "Export",
@@ -259,6 +259,7 @@ export default {
       "dropHint": "Drop effects here",
       "effectsCount": "{count} fx",
       "empty": "No effects",
+      "noCustomPresets": "You haven't created your own presets yet",
       "groups": {
         "artistic": "Artistic",
         "custom": "Custom",
@@ -527,6 +528,7 @@ export default {
         "shapes": "Shapes",
         "texts": "Texts"
       },
+      "noCustomPresets": "You haven't created your own presets yet",
       "texts": {
         "default": "Default",
         "selectPreset": "Select text preset",
@@ -593,6 +595,7 @@ export default {
       "autoDetectHint": "Project resolution and framerate will be automatically detected from the first video added to the timeline.",
       "changeWorkspace": "Change Workspace",
       "newProject": "New Project",
+      "workspaceTitle": "Workspace",
       "noProjectsFound": "No projects found",
       "projectNamePlaceholder": "Project name",
       "searchPlaceholder": "Search projects...",
@@ -1072,7 +1075,7 @@ export default {
       "mono": "Mono",
       "original": "Original",
       "reverse": "Reverse",
-      "sampleRate": "Sample Rate",
+      "sampleRate": "Audio Sample Rate",
       "sound": "Sound",
       "stereo": "Stereo"
     },
@@ -1104,7 +1107,7 @@ export default {
       "exporting": "Exporting...",
       "filename": "Output filename",
       "filenamePlaceholder": "e.g. video.mp4",
-      "fps": "FPS",
+      "fps": "FPS (Frames per second)",
       "height": "Height",
       "keyframeInterval": "Keyframe Interval (GOP Size, sec)",
       "metadata": "Metadata",
