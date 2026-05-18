@@ -663,3 +663,21 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
 export function autoAdaptClipTransitions(items: TimelineTrackItem[]): TimelineTrackItem[] {
   return autoAdaptClipEdgeDurations(items);
 }
+
+/**
+ * Applies `autoAdaptClipTransitions` only to tracks whose `items` reference
+ * has actually changed between `originalTracks` and `nextTracks`. Untouched
+ * tracks are returned as-is, avoiding O(total_items) work per command when
+ * only one or two tracks were modified.
+ */
+export function autoAdaptChangedTracks(
+  originalTracks: TimelineTrack[],
+  nextTracks: TimelineTrack[],
+): TimelineTrack[] {
+  const byId = new Map(originalTracks.map((t) => [t.id, t] as const));
+  return nextTracks.map((t) => {
+    const orig = byId.get(t.id);
+    if (orig && orig.items === t.items) return t;
+    return { ...t, items: autoAdaptClipTransitions(t.items) };
+  });
+}

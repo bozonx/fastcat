@@ -29,7 +29,7 @@ import {
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
-  autoAdaptClipTransitions,
+  autoAdaptChangedTracks,
 } from '../utils';
 
 export function overlayTrimItem(
@@ -218,7 +218,7 @@ export function overlayTrimItem(
     }
   }
 
-  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
+  nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
 }
@@ -344,7 +344,7 @@ export function overlayPlaceItem(
     }));
   }
 
-  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
+  nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
 }

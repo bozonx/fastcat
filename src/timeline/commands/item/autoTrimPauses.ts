@@ -8,7 +8,7 @@ import {
   quantizeRangeToFrames,
   usToFrame,
   frameToUs,
-  autoAdaptClipTransitions,
+  autoAdaptChangedTracks,
 } from '../utils';
 
 /**
@@ -176,7 +176,7 @@ export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand
   // Shrink fades/transitions that may now exceed the new (shorter) clip durations.
   nextDoc = {
     ...nextDoc,
-    tracks: nextDoc.tracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) })),
+    tracks: autoAdaptChangedTracks(doc.tracks, nextDoc.tracks),
   };
 
   return { next: nextDoc };

@@ -269,8 +269,21 @@ export const useTimelineStore = defineStore('timeline', () => {
     mediaMetadata,
   });
 
+  // Track only the set of media paths with known metadata. A deep watcher would
+  // refire on every nested mutation (e.g. audioPeaks updates) and trigger a full
+  // hydrateAllClips pass — which walks every clip on every track. Hydration only
+  // needs to react when a NEW path with a positive duration becomes available.
   watch(
-    () => mediaMetadata.value,
+    () => {
+      const meta = mediaMetadata.value;
+      const keys: string[] = [];
+      for (const path in meta) {
+        const d = Number(meta[path]?.duration);
+        if (Number.isFinite(d) && d > 0) keys.push(path);
+      }
+      keys.sort();
+      return keys.join('|');
+    },
     () => {
       if (timelineDoc.value) {
         const next = hydration.hydrateAllClips(timelineDoc.value);
@@ -279,7 +292,6 @@ export const useTimelineStore = defineStore('timeline', () => {
         }
       }
     },
-    { deep: true },
   );
 
   async function requestTimelineSave(options?: { immediate?: boolean }) {

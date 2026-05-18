@@ -27,7 +27,7 @@ import {
   quantizeDeltaUsToFrames,
   clampInt,
   quantizeRangeToFrames,
-  autoAdaptClipTransitions,
+  autoAdaptChangedTracks,
 } from '../utils';
 
 export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineCommandResult {
@@ -204,8 +204,8 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
     }));
   }
 
-  // Auto-adapt transitions if the new clip duration is smaller than the transition duration
-  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
+  // Auto-adapt transitions only on tracks whose items actually changed.
+  nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
 }

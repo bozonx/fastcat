@@ -27,7 +27,7 @@ import {
   findClipById,
   updateLinkedLockedAudio,
   getLinkedClipGroupItemIds,
-  autoAdaptClipTransitions,
+  autoAdaptChangedTracks,
 } from '../utils';
 
 export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): TimelineCommandResult {
@@ -343,8 +343,10 @@ export function moveItemToTrack(
     }
   }
 
-  // Auto-adapt transitions after move: shrink, remove or downgrade to 'transparent' as needed
-  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
+  // Auto-adapt transitions only on tracks that actually changed (from, to, and
+  // any linked-audio track). Mapping over every track was O(total_items) per
+  // move; for ripple operations on long timelines that compounded badly.
+  nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
 }

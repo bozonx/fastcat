@@ -75,6 +75,10 @@ export interface TimelineLifecycleModule {
 export function createTimelineLifecycleModule(
   deps: TimelineLifecycleDeps,
 ): TimelineLifecycleModule {
+  // Shallow watcher: applyTimeline/batchApplyTimeline always replaces
+  // timelineDoc.value with a new document object, so identity-level tracking
+  // is enough. A deep watcher used to fire on every micro-mutation of the
+  // doc tree, dragging O(N) work into the hot path of long timelines.
   watch(
     [() => deps.timelineDoc.value, () => deps.currentTimelinePath.value],
     ([doc, path]) => {
@@ -89,7 +93,7 @@ export function createTimelineLifecycleModule(
       ]);
       deps.timelineMediaUsageStore.setLiveUsage(path, usage.mediaPathToTimelines);
     },
-    { immediate: true, deep: true },
+    { immediate: true },
   );
 
   function resetTimelineZoom() {
@@ -142,7 +146,6 @@ export function createTimelineLifecycleModule(
     deps.selection.clearSelection();
     deps.selection.selectTrack(null);
     deps.isPlaying.value = false;
-    deps.currentTime.value = 0;
     deps.historyStore.clear('timeline');
     deps.historyDebounce.clearPendingDebouncedHistory();
 

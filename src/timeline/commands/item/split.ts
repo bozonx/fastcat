@@ -26,7 +26,7 @@ import {
   nextItemId,
   normalizeGaps,
   quantizeRangeToFrames,
-  autoAdaptClipTransitions,
+  autoAdaptChangedTracks,
 } from '../utils';
 import { cloneValue } from '~/utils/clone';
 
@@ -258,7 +258,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   }
 
   // After split clip durations may shrink — adapt transitions/fades that exceed the new size.
-  nextTracks = nextTracks.map((t) => ({ ...t, items: autoAdaptClipTransitions(t.items) }));
+  nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
 }
