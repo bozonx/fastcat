@@ -1,7 +1,6 @@
 import { ref, watch, nextTick, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
@@ -47,8 +46,7 @@ export function useFileBrowserNavigation({
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
   const projectStore = useProjectStore();
-  const uiStore = useUiStore();
-
+  const 
   const parentFolders = ref<FsEntry[]>([]);
 
   async function loadFolderContent(options: { append?: boolean } = {}) {

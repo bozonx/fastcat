@@ -21,13 +21,24 @@ vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
   createVideoCoreHostApi: (params: unknown) => params,
 }));
 
+function createMockWritable() {
+  return {
+    write: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+  };
+}
+
 function createMockDir(entries: Record<string, any> = {}) {
   const map = new Map<string, any>(Object.entries(entries));
   return {
     getFileHandle: vi.fn(async (name: string, options?: { create?: boolean }) => {
       if (map.has(name)) return map.get(name);
       if (options?.create) {
-        const handle = { getFile: vi.fn(async () => ({ size: 0 })), removeEntry: vi.fn() };
+        const handle = {
+          getFile: vi.fn(async () => ({ size: 0 })),
+          removeEntry: vi.fn(),
+          createWritable: vi.fn(async () => createMockWritable()),
+        };
         map.set(name, handle);
         return handle;
       }
@@ -62,8 +73,8 @@ function createService(overrides: Partial<Parameters<typeof createProxyService>[
   const updateTaskProgress = vi.fn();
 
   const queue = {
-    add: vi.fn(
-      (fn: () => Promise<void>, _options?: { priority: number; signal: AbortSignal }) => fn(),
+    add: vi.fn((fn: () => Promise<void>, _options?: { priority: number; signal: AbortSignal }) =>
+      fn(),
     ),
   };
 
@@ -139,21 +150,21 @@ describe('createProxyService', () => {
       mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
 
       const file = new File([], 'test.mp4');
-      await service.generateProxy(file, 'video/test.mp4');
+      await service.generateProxy(file, '_video/test.mp4');
 
       expect(mockWorkerClient.client.extractMetadata).toHaveBeenCalledWith(file);
       expect(mockWorkerClient.client.exportTimeline).toHaveBeenCalled();
-      expect(existingProxies.value.has('video/test.mp4')).toBe(true);
-      expect(activeWorkerPaths.value.has('video/test.mp4')).toBe(false);
-      expect(proxyProgress.value.has('video/test.mp4')).toBe(false);
+      expect(existingProxies.value.has('_video/test.mp4')).toBe(true);
+      expect(activeWorkerPaths.value.has('_video/test.mp4')).toBe(false);
+      expect(proxyProgress.value.has('_video/test.mp4')).toBe(false);
       expect(updateTaskStatus).toHaveBeenCalledWith(expect.any(String), 'completed');
     });
 
     it('skips if already generating for the same path', async () => {
       const { service, generatingProxies } = createService();
-      generatingProxies.value.add('video/test.mp4');
+      generatingProxies.value.add('_video/test.mp4');
 
-      await service.generateProxy(new File([], 'test.mp4'), 'video/test.mp4');
+      await service.generateProxy(new File([], 'test.mp4'), '_video/test.mp4');
 
       expect(mockWorkerClient.client.extractMetadata).not.toHaveBeenCalled();
     });
@@ -168,16 +179,16 @@ describe('createProxyService', () => {
       mockWorkerClient.client.exportTimeline.mockRejectedValue(new Error('encode failed'));
 
       await expect(
-        service.generateProxy(new File([], 'test.mp4'), 'video/test.mp4'),
+        service.generateProxy(new File([], 'test.mp4'), '_video/test.mp4'),
       ).rejects.toThrow('encode failed');
 
-      expect(existingProxies.value.has('video/test.mp4')).toBe(false);
+      expect(existingProxies.value.has('_video/test.mp4')).toBe(false);
       expect(updateTaskStatus).toHaveBeenCalledWith(
         expect.any(String),
         'failed',
         expect.stringContaining('encode failed'),
       );
-      expect(mockDir.removeEntry).toHaveBeenCalledWith('video/test.mp4.proxy.mp4');
+      expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/test.mp4.proxy.mp4');
     });
 
     it('cancels when external signal is already aborted', async () => {
@@ -190,11 +201,15 @@ describe('createProxyService', () => {
         duration: 5,
       });
 
-      await service.generateProxy(new File([], 'test.mp4'), 'video/test.mp4', {
+      await service.generateProxy(new File([], 'test.mp4'), '_video/test.mp4', {
         signal: controller.signal,
       });
 
-      expect(updateTaskStatus).toHaveBeenCalledWith(expect.any(String), 'cancelled', expect.any(String));
+      expect(updateTaskStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        'cancelled',
+        expect.any(String),
+      );
     });
 
     it('computes scale when source exceeds max pixels', async () => {
@@ -205,7 +220,7 @@ describe('createProxyService', () => {
       });
       mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
 
-      await service.generateProxy(new File([], 'test.mp4'), 'video/test.mp4');
+      await service.generateProxy(new File([], 'test.mp4'), '_video/test.mp4');
 
       const call = mockWorkerClient.client.exportTimeline.mock.calls[0];
       const options = call[1];
@@ -232,7 +247,7 @@ describe('createProxyService', () => {
       });
       mockWorkerClient.client.exportTimeline.mockResolvedValue(undefined);
 
-      await service.generateProxy(new File([], 'test.mp4'), 'video/test.mp4');
+      await service.generateProxy(new File([], 'test.mp4'), '_video/test.mp4');
 
       const call = mockWorkerClient.client.exportTimeline.mock.calls[0];
       expect(call[1].audioPassthrough).toBe(true);
@@ -243,11 +258,11 @@ describe('createProxyService', () => {
     it('aborts controller and cancels worker export when active', async () => {
       const { service, proxyAbortControllers, activeWorkerPaths, proxyTaskIds } = createService();
       const controller = new AbortController();
-      proxyAbortControllers.value.set('video/test.mp4', controller);
-      proxyTaskIds.value.set('video/test.mp4', 'task-123');
-      activeWorkerPaths.value.add('video/test.mp4');
+      proxyAbortControllers.value.set('_video/test.mp4', controller);
+      proxyTaskIds.value.set('_video/test.mp4', 'task-123');
+      activeWorkerPaths.value.add('_video/test.mp4');
 
-      await service.cancelProxyGeneration('video/test.mp4');
+      await service.cancelProxyGeneration('_video/test.mp4');
 
       expect(controller.signal.aborted).toBe(true);
       expect(mockWorkerClient.client.cancelExport).toHaveBeenCalledWith('task-123');
@@ -256,10 +271,10 @@ describe('createProxyService', () => {
     it('only aborts controller when not active in worker', async () => {
       const { service, proxyAbortControllers, proxyTaskIds } = createService();
       const controller = new AbortController();
-      proxyAbortControllers.value.set('video/test.mp4', controller);
-      proxyTaskIds.value.set('video/test.mp4', 'task-123');
+      proxyAbortControllers.value.set('_video/test.mp4', controller);
+      proxyTaskIds.value.set('_video/test.mp4', 'task-123');
 
-      await service.cancelProxyGeneration('video/test.mp4');
+      await service.cancelProxyGeneration('_video/test.mp4');
 
       expect(controller.signal.aborted).toBe(true);
       expect(mockWorkerClient.client.cancelExport).not.toHaveBeenCalled();
@@ -269,70 +284,64 @@ describe('createProxyService', () => {
   describe('checkExistingProxies', () => {
     it('adds paths with non-empty proxy files', async () => {
       const { service, existingProxies, mockDir } = createService();
-      mockDir._map.set(
-        'video/a.mp4.proxy.mp4',
-        { getFile: vi.fn(async () => ({ size: 1024 })) },
-      );
-      mockDir._map.set(
-        'video/b.mp4.proxy.mp4',
-        { getFile: vi.fn(async () => ({ size: 0 })) },
-      );
+      mockDir._map.set('_video/a.mp4.proxy.mp4', { getFile: vi.fn(async () => ({ size: 1024 })) });
+      mockDir._map.set('_video/b.mp4.proxy.mp4', { getFile: vi.fn(async () => ({ size: 0 })) });
 
-      await service.checkExistingProxies(['video/a.mp4', 'video/b.mp4', 'audio/track.mp3']);
+      await service.checkExistingProxies(['_video/a.mp4', '_video/b.mp4', '_audio/track.mp3']);
 
-      expect(existingProxies.value.has('video/a.mp4')).toBe(true);
-      expect(existingProxies.value.has('video/b.mp4')).toBe(false);
-      expect(existingProxies.value.has('audio/track.mp3')).toBe(false);
+      expect(existingProxies.value.has('_video/a.mp4')).toBe(true);
+      expect(existingProxies.value.has('_video/b.mp4')).toBe(false);
+      expect(existingProxies.value.has('_audio/track.mp3')).toBe(false);
     });
 
     it('removes paths when proxy file is missing', async () => {
       const { service, existingProxies } = createService();
-      existingProxies.value.add('video/old.mp4');
+      existingProxies.value.add('_video/old.mp4');
 
-      await service.checkExistingProxies(['video/old.mp4']);
+      await service.checkExistingProxies(['_video/old.mp4']);
 
-      expect(existingProxies.value.has('video/old.mp4')).toBe(false);
+      expect(existingProxies.value.has('_video/old.mp4')).toBe(false);
     });
   });
 
   describe('deleteProxy', () => {
     it('removes proxy file and state', async () => {
       const { service, existingProxies, mockDir } = createService();
-      existingProxies.value.add('video/test.mp4');
+      existingProxies.value.add('_video/test.mp4');
 
-      await service.deleteProxy('video/test.mp4');
+      await service.deleteProxy('_video/test.mp4');
 
-      expect(mockDir.removeEntry).toHaveBeenCalledWith('video/test.mp4.proxy.mp4');
-      expect(existingProxies.value.has('video/test.mp4')).toBe(false);
+      expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/test.mp4.proxy.mp4');
+      expect(existingProxies.value.has('_video/test.mp4')).toBe(false);
     });
 
     it('ignores NotFoundError silently', async () => {
       const { service, existingProxies } = createService();
-      existingProxies.value.add('video/missing.mp4');
+      existingProxies.value.add('_video/missing.mp4');
 
-      await service.deleteProxy('video/missing.mp4');
+      await service.deleteProxy('_video/missing.mp4');
 
-      expect(existingProxies.value.has('video/missing.mp4')).toBe(false);
+      expect(existingProxies.value.has('_video/missing.mp4')).toBe(false);
     });
   });
 
   describe('renameProxy', () => {
     it('uses native move when available', async () => {
       const { service, existingProxies, mockDir } = createService();
-      existingProxies.value.add('video/old.mp4');
+      existingProxies.value.add('_video/old.mp4');
       const handle = { move: vi.fn().mockResolvedValue(undefined) };
-      mockDir._map.set('video/old.mp4.proxy.mp4', handle);
+      mockDir._map.set('_video/old.mp4.proxy.mp4', handle);
 
-      await service.renameProxy({ oldPath: 'video/old.mp4', newPath: 'video/new.mp4' });
+      await service.renameProxy({ oldPath: '_video/old.mp4', newPath: '_video/new.mp4' });
 
-      expect(handle.move).toHaveBeenCalledWith(expect.anything(), 'video/new.mp4.proxy.mp4');
-      expect(existingProxies.value.has('video/old.mp4')).toBe(false);
-      expect(existingProxies.value.has('video/new.mp4')).toBe(true);
+      expect(handle.move).toHaveBeenCalledWith('_video/new.mp4.proxy.mp4');
+      expect(existingProxies.value.has('_video/old.mp4')).toBe(false);
+      expect(existingProxies.value.has('_video/new.mp4')).toBe(true);
     });
 
     it('falls back to copy+delete when native move is missing', async () => {
       const { service, existingProxies, mockDir } = createService();
-      existingProxies.value.add('video/old.mp4');
+      existingProxies.value.add('_video/old.mp4');
       const oldHandle = {
         getFile: vi.fn(async () => new File(['data'], 'proxy.mp4')),
         createWritable: vi.fn(async () => {
@@ -340,8 +349,7 @@ describe('createProxyService', () => {
           return {
             write: vi.fn(async (chunk: any) => {
               if (chunk instanceof Uint8Array) chunks.push(chunk);
-              else if (typeof chunk === 'string')
-                chunks.push(new TextEncoder().encode(chunk));
+              else if (typeof chunk === 'string') chunks.push(new TextEncoder().encode(chunk));
               else if (ArrayBuffer.isView(chunk))
                 chunks.push(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
             }),
@@ -357,13 +365,13 @@ describe('createProxyService', () => {
           };
         }),
       };
-      mockDir._map.set('video/old.mp4.proxy.mp4', oldHandle);
+      mockDir._map.set('_video/old.mp4.proxy.mp4', oldHandle);
 
-      await service.renameProxy({ oldPath: 'video/old.mp4', newPath: 'video/new.mp4' });
+      await service.renameProxy({ oldPath: '_video/old.mp4', newPath: '_video/new.mp4' });
 
-      expect(mockDir.removeEntry).toHaveBeenCalledWith('video/old.mp4.proxy.mp4');
-      expect(existingProxies.value.has('video/old.mp4')).toBe(false);
-      expect(existingProxies.value.has('video/new.mp4')).toBe(true);
+      expect(mockDir.removeEntry).toHaveBeenCalledWith('_video/old.mp4.proxy.mp4');
+      expect(existingProxies.value.has('_video/old.mp4')).toBe(false);
+      expect(existingProxies.value.has('_video/new.mp4')).toBe(true);
     });
   });
 
@@ -371,18 +379,18 @@ describe('createProxyService', () => {
     it('cancels active tasks and renames affected proxies', async () => {
       const { service, proxyAbortControllers, existingProxies, mockDir } = createService();
       const controller = new AbortController();
-      proxyAbortControllers.value.set('video/old/sub1.mp4', controller);
-      existingProxies.value.add('video/old/sub1.mp4');
-      existingProxies.value.add('video/old/sub2.mp4');
+      proxyAbortControllers.value.set('_video/old/sub1.mp4', controller);
+      existingProxies.value.add('_video/old/sub1.mp4');
+      existingProxies.value.add('_video/old/sub2.mp4');
       const handle = { move: vi.fn().mockResolvedValue(undefined) };
-      mockDir._map.set('video/old/sub1.mp4.proxy.mp4', handle);
-      mockDir._map.set('video/old/sub2.mp4.proxy.mp4', handle);
+      mockDir._map.set('_video/old/sub1.mp4.proxy.mp4', handle);
+      mockDir._map.set('_video/old/sub2.mp4.proxy.mp4', handle);
 
-      await service.renameProxyDir({ oldPath: 'video/old', newPath: 'video/new' });
+      await service.renameProxyDir({ oldPath: '_video/old', newPath: '_video/new' });
 
       expect(controller.signal.aborted).toBe(true);
-      expect(existingProxies.value.has('video/new/sub1.mp4')).toBe(true);
-      expect(existingProxies.value.has('video/new/sub2.mp4')).toBe(true);
+      expect(existingProxies.value.has('_video/new/sub1.mp4')).toBe(true);
+      expect(existingProxies.value.has('_video/new/sub2.mp4')).toBe(true);
     });
   });
 
@@ -436,7 +444,7 @@ describe('createProxyService', () => {
 
       const folderPromise = service.generateProxiesForFolder({
         dirHandle: dirHandle as any,
-        dirPath: 'video',
+        dirPath: '_video',
       });
 
       await vi.waitFor(() => {
@@ -449,7 +457,7 @@ describe('createProxyService', () => {
 
     it('skips non-video files and already existing proxies', async () => {
       const { service, existingProxies, queue } = createService();
-      existingProxies.value.add('video/b.mp4');
+      existingProxies.value.add('_video/b.mp4');
 
       const dirHandle = {
         async *values() {
@@ -461,7 +469,7 @@ describe('createProxyService', () => {
 
       await service.generateProxiesForFolder({
         dirHandle: dirHandle as any,
-        dirPath: 'video',
+        dirPath: '_video',
       });
 
       expect(queue.add).toHaveBeenCalledTimes(1);
