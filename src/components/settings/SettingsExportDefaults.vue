@@ -72,30 +72,30 @@ function removePreset() {
       <div class="text-sm font-medium text-ui-text">
         {{ t('videoEditor.settings.userExport') }}
       </div>
+      <UButton size="xs" color="neutral" variant="ghost" @click="addPreset">
+        {{ t('common.newPreset') }}
+      </UButton>
+    </div>
+
+    <UiFormField :label="t('videoEditor.export.presetLabel')">
       <div class="flex items-center gap-2">
-        <UButton size="xs" color="neutral" variant="ghost" @click="addPreset">
-          {{ t('common.create') }}
-        </UButton>
+        <UiSelect
+          v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
+          :items="presetOptions"
+          value-key="value"
+          label-key="label"
+          full-width
+        />
         <UButton
           size="xs"
           color="neutral"
           variant="ghost"
+          square
+          icon="i-heroicons-trash"
           :disabled="workspaceStore.userSettings.exportPresets.items.length <= 1"
           @click="removePreset"
-        >
-          {{ t('common.delete') }}
-        </UButton>
+        />
       </div>
-    </div>
-
-    <UiFormField :label="t('videoEditor.export.presetLabel')">
-      <UiSelect
-        v-model="workspaceStore.userSettings.exportPresets.selectedPresetId"
-        :items="presetOptions"
-        value-key="value"
-        label-key="label"
-        full-width
-      />
     </UiFormField>
 
     <UiFormField :label="t('common.name')">

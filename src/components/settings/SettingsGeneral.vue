@@ -122,44 +122,49 @@ function clearCache() {
       />
     </UiFormField>
 
+    <UiFormField
+      :label="t('videoEditor.settings.defaultStaticClipDuration')"
+      :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
+    >
+      <UiWheelNumberInput
+        :model-value="
+          workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000
+        "
+        :min="0.1"
+        :max="60"
+        :step="0.1"
+        :wheel-step-multiplier="10"
+        @update:model-value="
+          (v) =>
+            (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(
+              v * 1000000,
+            ))
+        "
+      />
+    </UiFormField>
+
+    <UiFormField
+      :label="t('videoEditor.settings.stopFramesQuality')"
+      :help="t('videoEditor.settings.stopFramesQualityHint')"
+    >
+      <UiWheelNumberInput
+        v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
+        :min="1"
+        :max="100"
+        :step="1"
+        :wheel-step-multiplier="10"
+      />
+    </UiFormField>
+
+    <label class="flex items-center gap-3 cursor-pointer px-1">
+      <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
+      <span class="text-ui-text">
+        {{ t('videoEditor.settings.deleteWithoutConfirmation') }}
+      </span>
+    </label>
+
     <UiAccordion :title="t('videoEditor.settings.advancedSection')">
       <div class="flex flex-col gap-6 pt-2">
-        <UiFormField
-          :label="
-            t('videoEditor.settings.defaultStaticClipDuration')
-          "
-          :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
-        >
-          <UiWheelNumberInput
-            :model-value="
-              workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000
-            "
-            :min="0.1"
-            :max="60"
-            :step="0.1"
-            :wheel-step-multiplier="10"
-            @update:model-value="
-              (v) =>
-                (workspaceStore.userSettings.timeline.defaultStaticClipDurationUs = Math.round(
-                  v * 1000000,
-                ))
-            "
-          />
-        </UiFormField>
-
-        <UiFormField
-          :label="t('videoEditor.settings.stopFramesQuality')"
-          :help="t('videoEditor.settings.stopFramesQualityHint')"
-        >
-          <UiWheelNumberInput
-            v-model="workspaceStore.userSettings.stopFrames.qualityPercent"
-            :min="1"
-            :max="100"
-            :step="1"
-            :wheel-step-multiplier="10"
-          />
-        </UiFormField>
-
         <UiFormField
           :label="t('videoEditor.settings.mediaTaskConcurrency')"
           :help="t('videoEditor.settings.mediaTaskConcurrencyHelp')"
@@ -211,13 +216,6 @@ function clearCache() {
             :wheel-step-multiplier="5"
           />
         </UiFormField>
-
-        <label class="flex items-center gap-3 cursor-pointer">
-          <UCheckbox v-model="workspaceStore.userSettings.deleteWithoutConfirmation" />
-          <span class="text-ui-text">
-            {{ t('videoEditor.settings.deleteWithoutConfirmation') }}
-          </span>
-        </label>
 
         <div class="flex items-center justify-between gap-3 pt-2">
           <div class="flex flex-col gap-0.5">

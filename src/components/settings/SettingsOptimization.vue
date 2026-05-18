@@ -122,7 +122,7 @@ function resetDefaults() {
         {{
           t(
             'videoEditor.settings.proxyCopyOpusAudio',
-            'Copy Opus audio directly without re-encoding',
+            'If the file has Opus audio codec, copy the audio track without re-encoding, as is',
           )
         }}
       </span>

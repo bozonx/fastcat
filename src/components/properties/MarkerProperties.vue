@@ -13,20 +13,6 @@ const props = defineProps<{
 
 const textareaRef = ref<any>(null);
 
-function focusInput() {
-  nextTick(() => {
-    // UTextarea is a wrapper, we need to find the native textarea
-    const el = textareaRef.value?.$el || textareaRef.value;
-    const input = el?.querySelector('textarea');
-    if (input) {
-      input.focus();
-    }
-  });
-}
-
-onMounted(focusInput);
-watch(() => props.markerId, focusInput);
-
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 

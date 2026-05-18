@@ -7,7 +7,7 @@ import {
   ensureBaseThumbnailDir,
   hashString,
 } from './base-thumbnail-generator';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 
@@ -290,7 +290,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     const totalFrames = timesS.length;
     let framesProcessed = existingUrls?.size ?? 0;
 
-    setExportHostApi(
+    setThumbnailHostApi(
       createVideoCoreHostApi({
         getCurrentProjectId: () => projectStore.currentProjectId,
         getWorkspaceHandle: () => workspaceStore.workspaceHandle,
@@ -301,7 +301,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       }),
     );
 
-    const { client } = getExportWorkerClient();
+    const { client } = getThumbnailWorkerClient();
 
     const blobs = await client.extractVideoFrameBlobs(file, {
       timesS: missingTimesS,

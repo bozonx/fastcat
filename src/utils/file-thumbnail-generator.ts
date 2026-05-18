@@ -14,7 +14,7 @@ import {
   type BaseThumbnailTask,
   hashString,
 } from './base-thumbnail-generator';
-import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
+import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 
@@ -123,7 +123,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       return;
     }
 
-    setExportHostApi(
+    setThumbnailHostApi(
       createVideoCoreHostApi({
         getCurrentProjectId: () => projectStore.currentProjectId,
         getWorkspaceHandle: () => workspaceStore.workspaceHandle,
@@ -134,7 +134,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       }),
     );
 
-    const { client } = getExportWorkerClient();
+    const { client } = getThumbnailWorkerClient();
 
     let blob: Blob | null = null;
     try {

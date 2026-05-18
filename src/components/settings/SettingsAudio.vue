@@ -48,14 +48,12 @@ function resetDefaults() {
       </UButton>
     </div>
 
-    <UiFormField
-      :label="t('videoEditor.settings.audioScrubbingTitle')"
-      :help="
-        t('videoEditor.settings.audioScrubbingHint')
-      "
-    >
-      <USwitch v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
-    </UiFormField>
+    <label class="flex items-center gap-3 cursor-pointer">
+      <UCheckbox v-model="workspaceStore.userSettings.projectDefaults.audioScrubbingEnabled" />
+      <span class="text-sm text-ui-text">
+        {{ t('videoEditor.settings.audioScrubbingHint') }}
+      </span>
+    </label>
 
     <UiFormField
       :label="t('videoEditor.settings.defaultAudioFadeCurveTitle')"

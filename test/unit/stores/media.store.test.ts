@@ -6,24 +6,79 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 vi.mock('#app-manifest', () => ({}));
 
+const { mediaFsMock, extractMetadataMock } = vi.hoisted(() => {
+  const metaFiles = new Map<string, string>();
+  const waveformFiles = new Map<string, string>();
+
+  function createFileHandle(files: Map<string, string>, name: string) {
+    return {
+      createWritable: vi.fn().mockResolvedValue({
+        write: vi.fn().mockImplementation(async (value: string) => {
+          files.set(name, String(value));
+        }),
+        close: vi.fn().mockResolvedValue(undefined),
+      }),
+      getFile: vi.fn().mockResolvedValue({
+        text: vi.fn().mockImplementation(async () => files.get(name) ?? '{}'),
+      }),
+    };
+  }
+
+  const filesMetaDir = {
+    getFileHandle: vi.fn().mockImplementation(async (name: string, options?: { create?: boolean }) => {
+      if (!metaFiles.has(name) && !options?.create) throw new Error('Not found');
+      return createFileHandle(metaFiles, name);
+    }),
+    removeEntry: vi.fn().mockImplementation(async (name: string) => {
+      metaFiles.delete(name);
+    }),
+  };
+
+  const waveformsDir = {
+    getFileHandle: vi.fn().mockImplementation(async (name: string, options?: { create?: boolean }) => {
+      if (!waveformFiles.has(name) && !options?.create) throw new Error('Not found');
+      return createFileHandle(waveformFiles, name);
+    }),
+    removeEntry: vi.fn().mockImplementation(async (name: string) => {
+      waveformFiles.delete(name);
+    }),
+  };
+
+  const workspaceHandle = {
+    getDirectoryHandle: vi.fn(),
+  };
+
+  workspaceHandle.getDirectoryHandle.mockImplementation(async (segment: string) => {
+    if (segment === 'files-meta') return filesMetaDir;
+    if (segment === 'waveforms') return waveformsDir;
+    return workspaceHandle;
+  });
+
+  return {
+    extractMetadataMock: vi.fn(),
+    mediaFsMock: {
+      metaFiles,
+      waveformFiles,
+      filesMetaDir,
+      waveformsDir,
+      workspaceHandle,
+      reset: () => {
+        metaFiles.clear();
+        waveformFiles.clear();
+        vi.clearAllMocks();
+        workspaceHandle.getDirectoryHandle.mockImplementation(async (segment: string) => {
+          if (segment === 'files-meta') return filesMetaDir;
+          if (segment === 'waveforms') return waveformsDir;
+          return workspaceHandle;
+        });
+      },
+    },
+  };
+});
+
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(() => ({
-    workspaceHandle: (() => {
-      const mockDir: any = {
-        getFileHandle: vi.fn(),
-      };
-      mockDir.getFileHandle.mockResolvedValue({
-        createWritable: vi.fn().mockResolvedValue({
-          write: vi.fn().mockResolvedValue(undefined),
-          close: vi.fn().mockResolvedValue(undefined),
-        }),
-        getFile: vi.fn().mockResolvedValue({
-          text: vi.fn().mockResolvedValue('{}'),
-        }),
-      });
-      mockDir.getDirectoryHandle = vi.fn().mockResolvedValue(mockDir);
-      return mockDir;
-    })(),
+    workspaceHandle: mediaFsMock.workspaceHandle,
     userSettings: { optimization: { proxyConcurrency: 2 } },
     resolvedStorageTopology: { tempRoot: '' },
   })),
@@ -37,10 +92,25 @@ vi.mock('~/stores/project.store', () => ({
   })),
 }));
 
+vi.mock('~/stores/media/media-worker', () => ({
+  createMediaWorkerModule: () => ({
+    extractMetadata: extractMetadataMock,
+  }),
+}));
+
 describe('MediaStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
-    vi.clearAllMocks();
+    mediaFsMock.reset();
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn(),
+      getFileByPath: vi.fn().mockResolvedValue(null),
+    } as any);
+    extractMetadataMock.mockResolvedValue({
+      source: { size: 100, lastModified: 100 },
+      duration: 10,
+    });
   });
 
   it('resets media state', () => {
@@ -65,6 +135,42 @@ describe('MediaStore', () => {
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([
       new Float32Array([0.5, 0.5]),
     ]);
+  });
+
+  it('persists audio peaks as JSON while keeping Float32Array in memory', async () => {
+    const store = useMediaStore();
+    store.mediaMetadata = {
+      'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
+    } as any;
+
+    store.setAudioPeaks('some/path.mp4', [new Float32Array([0.5, -0.25])]);
+
+    await vi.waitFor(() => {
+      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBe('[[0.5,-0.25]]');
+    });
+    expect(store.mediaMetadata['some/path.mp4'].audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+  });
+
+  it('loads cached audio peaks from JSON as Float32Array channels', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'some%2Fpath.mp4.json';
+    mediaFsMock.metaFiles.set(
+      cacheFileName,
+      JSON.stringify({
+        source: { size: 100, lastModified: 100 },
+        duration: 10,
+      }),
+    );
+    mediaFsMock.waveformFiles.set(cacheFileName, JSON.stringify([[0.5, -0.25], [1]]));
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'path.mp4' } as File,
+      'some/path.mp4',
+    );
+
+    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
+    expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1]);
   });
 
   it('returns null when file is missing', async () => {

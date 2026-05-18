@@ -1,7 +1,7 @@
 /**
  * Formats bytes to a human-readable string (e.g., 1.23 GB).
  */
-export function formatBytes(bytes: number, decimals = 2): string {
+export function formatBytes(bytes: number, decimals: number = 0): string {
   if (!+bytes) return '0 Bytes';
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;

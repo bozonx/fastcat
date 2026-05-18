@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { ref, reactive } from 'vue';
+import { reactive, toRaw } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 // Use reactive to ensure store properties remain reactive
@@ -38,10 +38,12 @@ import { useTimelineStore } from '~/stores/timeline.store';
 
 // Mock Worker
 class WorkerMock {
+  static postedMessages: any[] = [];
   onmessage: any = null;
   onerror: any = null;
   constructor(public url: string) {}
   postMessage(data: any) {
+    WorkerMock.postedMessages.push(data);
     // Synchronous for testing to avoid microtask/timer issues
     if (this.onmessage) {
       this.onmessage({
@@ -90,6 +92,7 @@ describe('Timeline Persistence and AutoSave', () => {
     mockProjectStore.currentTimelinePath = 'timelines/main.otio';
     mockProjectStore.getProjectFileHandleByRelativePath.mockResolvedValue(mockFileHandle);
     mockProjectStore.getDirectoryHandleByPath.mockResolvedValue(mockDirHandle);
+    WorkerMock.postedMessages = [];
   });
 
   afterEach(() => {
@@ -148,6 +151,22 @@ describe('Timeline Persistence and AutoSave', () => {
     expect(mockFileHandle.createWritable).toHaveBeenCalled();
     expect(timelineStore.isSavingTimeline).toBe(false);
     expect(timelineStore.isTimelineDirty).toBe(false);
+  });
+
+  it('posts the raw timeline document to the serializer worker without an intermediate clone', async () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+    const rawDoc = toRaw(timelineStore.timelineDoc);
+
+    timelineStore.markTimelineAsDirty();
+    await timelineStore.saveTimeline();
+
+    expect(WorkerMock.postedMessages[0]).toBe(rawDoc);
   });
 
   it('triggers backup after a successful save', async () => {

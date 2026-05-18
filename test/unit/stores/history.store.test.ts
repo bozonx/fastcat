@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useHistoryStore } from '~/stores/history.store';
 import type { TimelineDocument } from '~/timeline/types';
@@ -39,6 +39,24 @@ describe('HistoryStore', () => {
     expect(store.past[0]?.snapshot).toStrictEqual(doc);
     expect(store.canUndo('timeline')).toBe(true);
     expect(store.canRedo('timeline')).toBe(false);
+  });
+
+  it('clones snapshot-based entries with structuredClone', () => {
+    const store = useHistoryStore();
+    const doc = makeDoc('doc-1');
+    const structuredCloneSpy = vi.spyOn(globalThis, 'structuredClone');
+    const jsonStringifySpy = vi.spyOn(JSON, 'stringify');
+
+    store.push('timeline', 'add_clip_to_track', doc, 'Add clip');
+    doc.name = 'mutated';
+
+    expect(structuredCloneSpy).toHaveBeenCalled();
+    expect(jsonStringifySpy).not.toHaveBeenCalled();
+    expect(store.past[0]?.snapshot).not.toBe(doc);
+    expect((store.past[0]?.snapshot as TimelineDocument).name).toBe('doc-1');
+
+    structuredCloneSpy.mockRestore();
+    jsonStringifySpy.mockRestore();
   });
 
   it('push clears future (branching)', () => {

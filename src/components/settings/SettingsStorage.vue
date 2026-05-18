@@ -278,6 +278,7 @@ function resetPathDefaults() {
       </UiFormField>
 
       <UiFormField
+        v-if="!workspaceStore.isEphemeral"
         :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="
           t(
@@ -298,7 +299,7 @@ function resetPathDefaults() {
       </UiFormField>
     </div>
 
-    <div v-if="isDesktopPortableMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div v-if="isDesktopPortableMode && !workspaceStore.isEphemeral" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <UiFormField
         :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="
@@ -320,7 +321,7 @@ function resetPathDefaults() {
       </UiFormField>
     </div>
 
-    <div v-if="isBrowserWorkspaceMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div v-if="isBrowserWorkspaceMode && !workspaceStore.isEphemeral" class="grid grid-cols-1 gap-4 md:grid-cols-2">
       <UiFormField
         :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="
@@ -352,7 +353,7 @@ function resetPathDefaults() {
       :description="
         t(
           'videoEditor.settings.clearTempWorkspaceDescription',
-          'This will delete all generated proxies, thumbnails and cached data in this workspace.',
+          'Nothing will happen to your important project files. Only auto-generated and temporary files (proxies, thumbnails, cache) will be removed.',
         )
       "
       :confirm-text="t('videoEditor.settings.clearTempWorkspaceConfirm')"
@@ -374,7 +375,7 @@ function resetPathDefaults() {
           {{
             t(
               'videoEditor.settings.clearTempWorkspaceHint',
-              'Removes all files from vardata in this workspace',
+              'Nothing will happen to your important project files. Only auto-generated and temporary files will be deleted.',
             )
           }}
         </div>

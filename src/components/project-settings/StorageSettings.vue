@@ -13,6 +13,7 @@ const workspaceStore = useWorkspaceStore();
 
 const emit = defineEmits<{
   clearTemp: [];
+  clearBackups: [];
   deleteProject: [];
 }>();
 
@@ -90,20 +91,14 @@ watch(
       <!-- Project Size Info -->
       <div class="p-3 rounded border border-ui-border bg-ui-surface">
         <div class="flex items-center justify-between gap-3">
-          <div class="flex flex-col gap-1 min-w-0">
-            <div class="font-medium text-ui-text">
-              {{ t('videoEditor.projectSettings.projectStorage') }}
-            </div>
-            <div class="text-sm text-ui-text-muted">
-              {{ t('common.size') }}:
-              <span v-if="projectStats" class="text-ui-text font-medium">
-                {{ formatBytes(projectStats.size) }}
-              </span>
-              <span v-else-if="isLoadingStats" class="opacity-50">...</span>
-              <span v-else class="opacity-50">—</span>
-            </div>
-          </div>
-          <UIcon name="i-heroicons-folder" class="w-5 h-5 text-ui-text-muted shrink-0" />
+          <span class="text-sm text-ui-text-muted">
+            {{ t('videoEditor.projectSettings.projectStorage') }}
+          </span>
+          <span v-if="projectStats" class="text-sm text-ui-text font-medium">
+            {{ formatBytes(projectStats.size) }}
+          </span>
+          <span v-else-if="isLoadingStats" class="text-sm opacity-50">...</span>
+          <span v-else class="text-sm opacity-50">—</span>
         </div>
       </div>
 
