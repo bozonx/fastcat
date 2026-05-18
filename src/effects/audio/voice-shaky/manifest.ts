@@ -88,7 +88,7 @@ export const voiceShakyManifest: AudioEffectManifest<VoiceShakyParams> = {
     try {
       graph.lfo.stop();
       graph.lfo.disconnect();
-    } catch (err) {
+    } catch (_err) {
       // ignore
     }
   },

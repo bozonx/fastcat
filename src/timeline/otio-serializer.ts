@@ -98,7 +98,7 @@ function calculateTransitionOverlaps(
   const overlaps = new Map<string, { leftOverlapUs: number; rightOverlapUs: number }>();
 
   for (let i = 0; i < items.length; i++) {
-    const item = items[i];
+    const item = items[i]!;
     if (item.kind !== 'clip') continue;
 
     const prevItem = i > 0 ? items[i - 1] : null;
@@ -156,7 +156,7 @@ function serializeTrackItems(
   let cursorUs = 0;
 
   for (let i = 0; i < sortedItems.length; i++) {
-    const item = sortedItems[i];
+    const item = sortedItems[i]!;
     const startUs = Math.max(0, Math.round(item.timelineRange.startUs));
     const durationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
 
@@ -265,7 +265,7 @@ function serializeTrackItems(
       enabled: item.disabled ? false : undefined,
       media_reference: mediaReference,
       source_range: toTimeRange(adjustedSourceRange, fps),
-      effects: allEffects.length > 0 ? allEffects : undefined,
+      effects: allEffects.length > 0 ? (allEffects as any) : undefined,
       metadata: {
         fastcat: {
           id: item.id,
@@ -328,7 +328,7 @@ function serializeTrackItems(
       );
       const half = Math.round(sharedDuration / 2);
       const t1 = buildOtioTransition(
-        item.transitionOut,
+        item.transitionOut!,
         `${item.name}_transition_out`,
         fps,
         { itemId: item.id, edge: 'out' },

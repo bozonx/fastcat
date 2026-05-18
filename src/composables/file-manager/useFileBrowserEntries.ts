@@ -1,4 +1,4 @@
-import { ref, computed, watch, inject, onScopeDispose } from 'vue';
+import { ref, watch, inject, onScopeDispose } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';

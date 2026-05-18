@@ -1,5 +1,7 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
+import { useNuxtApp } from 'nuxt/app';
+import type { I18nService } from '~/services/i18n.service';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { createProxyFsModule } from '~/stores/proxy/proxyFs';
@@ -11,7 +13,7 @@ export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const backgroundTasksStore = useBackgroundTasksStore();
-  const { t } = useI18n();
+  const nuxtApp = useNuxtApp();
 
   const videoExtensions = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm']);
 
@@ -49,7 +51,10 @@ export const useProxyStore = defineStore('proxy', () => {
     getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
     getFileByPath: async (path) => await projectStore.getFileByPath(path),
     getOptimizationSettings: () => workspaceStore.userSettings.optimization,
-    getProxyTaskTitle: ({ fileName }) => t('videoEditor.backgroundTasks.proxyTitle', { fileName }),
+    getProxyTaskTitle: ({ fileName }) =>
+      (nuxtApp.$i18nService as I18nService).t('videoEditor.backgroundTasks.proxyTitle', {
+        fileName,
+      }),
     backgroundTasksStore,
   });
 

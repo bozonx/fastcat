@@ -23,6 +23,7 @@ export function isValidFsEntryName(name: string): boolean {
   const trimmed = name.trim();
   if (!trimmed) return false;
   if (trimmed === '.' || trimmed === '..') return false;
+  // eslint-disable-next-line no-control-regex -- intentional check for control characters in filenames
   if (/[<>:"/\\|?*\u0000-\u001F]/.test(trimmed)) return false;
   if (/[. ]$/.test(trimmed)) return false;
   return true;

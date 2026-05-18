@@ -1,4 +1,4 @@
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import {
   DEFAULT_VIDEO_FORMAT,
   DEFAULT_VIDEO_CODEC,

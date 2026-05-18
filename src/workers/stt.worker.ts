@@ -70,7 +70,7 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
       `[STT Worker] Serving local file: ${escapedCurrentModelName}/${filePath} (size: ${file.size} bytes)`,
     );
     return new Response(file);
-  } catch (err) {
+  } catch (_err) {
     console.warn(`[STT Worker] Local file not found: ${escapedCurrentModelName}/${filePath}`);
     return new Response('Not Found', { status: 404 });
   }

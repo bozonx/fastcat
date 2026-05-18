@@ -116,7 +116,7 @@ export const voiceRobotManifest: AudioEffectManifest<VoiceRobotParams> = {
       graph.lfo.disconnect();
       graph.delay.disconnect();
       graph.feedbackGain.disconnect();
-    } catch (err) {
+    } catch (_err) {
       // ignore
     }
   },

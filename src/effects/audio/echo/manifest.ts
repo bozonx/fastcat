@@ -97,7 +97,7 @@ export const echoManifest: AudioEffectManifest<EchoParams> = {
     try {
       graph.delay.disconnect();
       graph.feedbackGain.disconnect();
-    } catch (err) {
+    } catch (_err) {
       // ignore
     }
   },

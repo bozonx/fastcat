@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 import type { TimelineTrack, TimelineMoveItemPayload, TimelineDocument } from '~/timeline/types';
 import {

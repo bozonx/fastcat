@@ -132,6 +132,7 @@ export const useMediaStore = defineStore('media', () => {
     const previous = options?.forceRefresh ? pendingRequests.get(cacheKey) : undefined;
 
     let requestPromise!: Promise<MediaMetadata | null>;
+    // eslint-disable-next-line prefer-const
     requestPromise = (async () => {
       try {
         if (previous) {

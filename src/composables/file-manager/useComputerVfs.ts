@@ -1,4 +1,4 @@
-import { ref, computed, shallowRef } from 'vue';
+import { ref, shallowRef } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
