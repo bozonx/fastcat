@@ -11,6 +11,7 @@ defineProps<{
   compact?: boolean;
 }>();
 
+const { locale } = useI18n();
 const timelineStore = useTimelineStore();
 const historyStore = useHistoryStore();
 
@@ -28,7 +29,7 @@ const reversedPast = computed(() => [...past.value].reverse());
 const reversedFuture = computed(() => [...future.value].reverse());
 
 function formatTime(timestamp: number): string {
-  return new Intl.DateTimeFormat(navigator.language, {
+  return new Intl.DateTimeFormat(locale.value, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',

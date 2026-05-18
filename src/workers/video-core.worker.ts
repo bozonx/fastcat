@@ -111,6 +111,10 @@ async function callWorkerMethod<K extends WorkerMethod>(
       return api.extractVideoFrameBlobs(
         ...(args as Parameters<VideoCoreWorkerAPI['extractVideoFrameBlobs']>),
       ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
+    case 'releaseFrameExtractor':
+      return api.releaseFrameExtractor(
+        ...(args as Parameters<VideoCoreWorkerAPI['releaseFrameExtractor']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
     default:
       throw new Error(`Unsupported worker method: ${String(method)}`);
   }
@@ -325,6 +329,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   async cancelExport(taskId?: string) {
     if (taskId) {
       activeCancels.set(taskId, true);
+      disposeFrameExtractor(taskId);
     } else {
       cancelExportRequested = true;
     }
@@ -388,12 +393,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       quality: number;
       mimeType: string;
       taskId?: string;
+      keepAlive?: boolean;
     },
   ): Promise<(Blob | null)[]> {
-    const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
-
-    const source = new BlobSource(file);
-    const input = new Input({ source, formats: ALL_FORMATS } as any);
     const taskId = options.taskId;
     if (taskId && !activeCancels.has(taskId)) {
       activeCancels.set(taskId, false);
@@ -401,155 +403,137 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
     const isCancelled = () => (taskId ? activeCancels.get(taskId) === true : false);
 
-    try {
-      const track = await input.getPrimaryVideoTrack();
+    let state: FrameExtractorState | null = null;
+    let createdHere = false;
 
-      if (!track || !(await track.canDecode())) {
+    try {
+      state = taskId ? (frameExtractors.get(taskId) ?? null) : null;
+      if (!state) {
+        state = await createFrameExtractorState(file);
+        createdHere = true;
+        if (taskId && options.keepAlive !== false && state.sink) {
+          frameExtractors.set(taskId, state);
+          createdHere = false;
+        }
+      }
+
+      if (!state.sink) {
         return options.timesS.map(() => null);
       }
 
-      const firstTimestampS: number =
-        typeof (track as any).getFirstTimestamp === 'function'
-          ? await (track as any).getFirstTimestamp()
-          : 0;
+      const { sink, firstTimestampS } = state;
+      const results: (Blob | null)[] = [];
 
-      const sink = new VideoSampleSink(track);
+      for (const targetS of options.timesS) {
+        if (isCancelled()) {
+          throw new Error('Thumbnail extraction cancelled');
+        }
 
-      let sharedCanvas: OffscreenCanvas | null = null;
-      let sharedCtx: OffscreenCanvasRenderingContext2D | null = null;
+        const safeTimeS = Math.max(firstTimestampS, targetS);
 
-      try {
-        const results: (Blob | null)[] = [];
-
-        for (const targetS of options.timesS) {
-          if (isCancelled()) {
-            throw new Error('Thumbnail extraction cancelled');
+        let sample: any = null;
+        try {
+          sample = await (sink as any).getSample(safeTimeS);
+          if (!sample && firstTimestampS > 0) {
+            sample = await (sink as any).getSample(firstTimestampS);
           }
+          if (!sample && safeTimeS !== 0) {
+            sample = await (sink as any).getSample(1e-6);
+          }
+        } catch {
+          results.push(null);
+          continue;
+        }
 
-          const safeTimeS = Math.max(firstTimestampS, targetS);
+        if (!sample) {
+          results.push(null);
+          continue;
+        }
 
-          let sample: any = null;
-          try {
-            sample = await (sink as any).getSample(safeTimeS);
-            if (!sample && firstTimestampS > 0) {
-              sample = await (sink as any).getSample(firstTimestampS);
-            }
-            if (!sample && safeTimeS !== 0) {
-              sample = await (sink as any).getSample(1e-6);
-            }
-          } catch {
+        let blob: Blob | null = null;
+        try {
+          const isVideoFrame = typeof VideoFrame !== 'undefined' && sample instanceof VideoFrame;
+
+          const imageSource: CanvasImageSource | null = isVideoFrame
+            ? (sample as VideoFrame)
+            : typeof (sample as any).toCanvasImageSource === 'function'
+              ? (sample as any).toCanvasImageSource()
+              : null;
+
+          if (!imageSource) {
             results.push(null);
             continue;
           }
 
-          if (!sample) {
+          const rawW: number = isVideoFrame
+            ? (sample as VideoFrame).displayWidth
+            : ((imageSource as any).displayWidth ?? (imageSource as any).width ?? 0);
+          const rawH: number = isVideoFrame
+            ? (sample as VideoFrame).displayHeight
+            : ((imageSource as any).displayHeight ?? (imageSource as any).height ?? 0);
+
+          if (!rawW || !rawH) {
             results.push(null);
             continue;
           }
 
-          let blob: Blob | null = null;
-          try {
-            const isVideoFrame = typeof VideoFrame !== 'undefined' && sample instanceof VideoFrame;
-
-            const imageSource: CanvasImageSource | null = isVideoFrame
-              ? (sample as VideoFrame)
-              : typeof (sample as any).toCanvasImageSource === 'function'
-                ? (sample as any).toCanvasImageSource()
-                : null;
-
-            if (!imageSource) {
-              results.push(null);
-              continue;
-            }
-
-            const rawW: number = isVideoFrame
-              ? (sample as VideoFrame).displayWidth
-              : ((imageSource as any).displayWidth ?? (imageSource as any).width ?? 0);
-            const rawH: number = isVideoFrame
-              ? (sample as VideoFrame).displayHeight
-              : ((imageSource as any).displayHeight ?? (imageSource as any).height ?? 0);
-
-            if (!rawW || !rawH) {
-              results.push(null);
-              continue;
-            }
-
-            let targetW = rawW;
-            let targetH = rawH;
-            if (targetW > options.maxWidth || targetH > options.maxHeight) {
-              const scaleW = options.maxWidth / targetW;
-              const scaleH = options.maxHeight / targetH;
-              const scale = Math.min(scaleW, scaleH);
-              targetW = Math.round(targetW * scale);
-              targetH = Math.round(targetH * scale);
-            }
-
-            if (!sharedCanvas) {
-              sharedCanvas = new OffscreenCanvas(targetW, targetH);
-              sharedCtx = sharedCanvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null;
-            } else {
-              sharedCanvas.width = targetW;
-              sharedCanvas.height = targetH;
-            }
-
-            if (!sharedCtx) {
-              results.push(null);
-              continue;
-            }
-
-            sharedCtx.drawImage(imageSource, 0, 0, targetW, targetH);
-            blob = await sharedCanvas.convertToBlob({
-              type: options.mimeType,
-              quality: options.quality,
-            });
-          } finally {
-            if (typeof sample.close === 'function') {
-              try {
-                sample.close();
-              } catch {
-                // ignore
-              }
-            }
+          let targetW = rawW;
+          let targetH = rawH;
+          if (targetW > options.maxWidth || targetH > options.maxHeight) {
+            const scaleW = options.maxWidth / targetW;
+            const scaleH = options.maxHeight / targetH;
+            const scale = Math.min(scaleW, scaleH);
+            targetW = Math.round(targetW * scale);
+            targetH = Math.round(targetH * scale);
           }
 
-          results.push(blob);
-        }
-
-        return results;
-      } finally {
-        if (typeof (sink as any).close === 'function') {
-          try {
-            (sink as any).close();
-          } catch {
-            // ignore
+          if (!state.canvas) {
+            state.canvas = new OffscreenCanvas(targetW, targetH);
+            state.ctx = state.canvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null;
+          } else {
+            state.canvas.width = targetW;
+            state.canvas.height = targetH;
           }
-        } else if (typeof (sink as any).dispose === 'function') {
-          try {
-            (sink as any).dispose();
-          } catch {
-            // ignore
+
+          if (!state.ctx) {
+            results.push(null);
+            continue;
+          }
+
+          state.ctx.drawImage(imageSource, 0, 0, targetW, targetH);
+          blob = await state.canvas.convertToBlob({
+            type: options.mimeType,
+            quality: options.quality,
+          });
+        } finally {
+          if (typeof sample.close === 'function') {
+            try {
+              sample.close();
+            } catch {
+              // ignore
+            }
           }
         }
+
+        results.push(blob);
       }
+
+      return results;
     } finally {
-      if (taskId) {
+      if (createdHere && state) {
+        disposeFrameExtractorState(state);
+      }
+      if (taskId && options.keepAlive === false) {
+        disposeFrameExtractor(taskId);
         activeCancels.delete(taskId);
       }
-
-      if (typeof (input as any).dispose === 'function') {
-        try {
-          (input as any).dispose();
-        } catch {
-          // ignore
-        }
-      } else if (typeof (input as any).close === 'function') {
-        try {
-          (input as any).close();
-        } catch {
-          // ignore
-        }
-      }
     }
+  },
+
+  async releaseFrameExtractor(taskId: string) {
+    if (!taskId) return;
+    disposeFrameExtractor(taskId);
+    activeCancels.delete(taskId);
   },
 
   async extractAudio(sourcePath: string, targetPath: string) {
@@ -565,6 +549,82 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 };
 
 const activeCancels = new Map<string, boolean>();
+
+interface FrameExtractorState {
+  source: any;
+  input: any;
+  sink: any;
+  firstTimestampS: number;
+  canvas: OffscreenCanvas | null;
+  ctx: OffscreenCanvasRenderingContext2D | null;
+}
+
+const frameExtractors = new Map<string, FrameExtractorState>();
+
+async function createFrameExtractorState(file: File): Promise<FrameExtractorState> {
+  const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
+  const source = new BlobSource(file);
+  const input = new Input({ source, formats: ALL_FORMATS } as any);
+  const track = await input.getPrimaryVideoTrack();
+
+  if (!track || !(await track.canDecode())) {
+    return {
+      source,
+      input,
+      sink: null,
+      firstTimestampS: 0,
+      canvas: null,
+      ctx: null,
+    };
+  }
+
+  const firstTimestampS: number =
+    typeof (track as any).getFirstTimestamp === 'function'
+      ? await (track as any).getFirstTimestamp()
+      : 0;
+
+  return {
+    source,
+    input,
+    sink: new VideoSampleSink(track),
+    firstTimestampS,
+    canvas: null,
+    ctx: null,
+  };
+}
+
+function disposeFrameExtractorState(state: FrameExtractorState): void {
+  const sink = state.sink;
+  if (sink) {
+    try {
+      if (typeof sink.close === 'function') sink.close();
+      else if (typeof sink.dispose === 'function') sink.dispose();
+    } catch {
+      // ignore
+    }
+  }
+  const input = state.input;
+  if (input) {
+    try {
+      if (typeof input.dispose === 'function') input.dispose();
+      else if (typeof input.close === 'function') input.close();
+    } catch {
+      // ignore
+    }
+  }
+  state.sink = null;
+  state.input = null;
+  state.source = null;
+  state.canvas = null;
+  state.ctx = null;
+}
+
+function disposeFrameExtractor(taskId: string): void {
+  const state = frameExtractors.get(taskId);
+  if (!state) return;
+  frameExtractors.delete(taskId);
+  disposeFrameExtractorState(state);
+}
 
 let callIdCounter = 0;
 const pendingCalls = new Map<number, WorkerPendingCall>();

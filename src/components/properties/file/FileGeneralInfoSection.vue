@@ -23,7 +23,7 @@ const props = defineProps<{
   isExternal?: boolean;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 </script>
 
 <template>
@@ -86,12 +86,12 @@ const { t } = useI18n();
     <PropertyRow
       v-if="props.fileInfo.createdAt || props.fileInfo.lastModified"
       :label="t('common.created')"
-      :value="new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!).toLocaleString()"
+      :value="new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!))"
     />
     <PropertyRow
       v-if="props.fileInfo.lastModified"
       :label="t('common.updated')"
-      :value="new Date(props.fileInfo.lastModified).toLocaleString()"
+      :value="new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(props.fileInfo.lastModified))"
     />
     <PropertyRow v-if="props.isHidden" :label="t('common.hidden')" value="Yes" />
     <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">

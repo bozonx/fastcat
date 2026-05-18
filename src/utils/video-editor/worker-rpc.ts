@@ -173,8 +173,11 @@ export interface VideoCoreWorkerAPI {
       quality: number;
       mimeType: string;
       taskId?: string;
+      keepAlive?: boolean;
     },
   ): Promise<(Blob | null)[]>;
+
+  releaseFrameExtractor(taskId: string): Promise<void>;
 }
 
 export type WorkerRpcMessage = VideoCoreWorkerRpcMessage | VideoCoreHostRpcMessage;

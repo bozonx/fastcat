@@ -12,6 +12,7 @@ const props = defineProps<{
   vfs?: any; // IFileSystemAdapter is not directly imported in some components, using any for simplicity or we can import it
 }>();
 
+const { locale } = useI18n();
 const projectStore = useProjectStore();
 const focusStore = useFocusStore();
 const fm = useFileManager();
@@ -148,7 +149,7 @@ function focusPanel() {
       >
         <span v-if="isSaving">Saving...</span>
         <span v-else-if="saveError" class="text-red-400">{{ saveError }}</span>
-        <span v-else-if="lastSavedAt">Saved {{ lastSavedAt?.toLocaleTimeString?.() }}</span>
+        <span v-else-if="lastSavedAt">Saved {{ new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(lastSavedAt) }}</span>
       </div>
 
       <UButton

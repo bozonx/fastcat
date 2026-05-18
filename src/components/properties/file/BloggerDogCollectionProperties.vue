@@ -14,13 +14,13 @@ const props = defineProps<{
   deepLink?: string | null;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const itemsCount = computed(() => props.collection.itemsCount ?? 0);
 const updatedAt = computed(() => {
   const collection = props.collection as DirectoryWithMeta;
   const date = collection.meta?.updatedAt;
-  return date ? new Date(date).toLocaleString() : null;
+  return date ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(date)) : null;
 });
 
 const effectiveDeepLink = computed(() => {

@@ -66,8 +66,31 @@ async function ensureTimelineThumbnailDir(input: {
 
 class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<number, string>> {
   protected maxCacheEntries = 50;
+  /** Total cap on individual blob URLs across all clips — prevents unbounded memory on long videos. */
+  private maxTotalCachedUrls = 1500;
   private listeners = new Map<string, Map<string, ThumbnailTaskListener>>();
   private pendingRequestedTimes = new Map<string, Set<number>>();
+  private opfsCheckedTimes = new Map<string, Set<number>>();
+
+  protected override evictCacheIfNeeded() {
+    super.evictCacheIfNeeded();
+    while (this.cache.size > 0 && this.totalCachedUrlCount() > this.maxTotalCachedUrls) {
+      const oldestKey = this.cache.keys().next().value as string | undefined;
+      if (!oldestKey) break;
+      const value = this.cache.get(oldestKey);
+      if (value) this.revokeCacheValue(value);
+      this.cache.delete(oldestKey);
+      this.listeners.delete(oldestKey);
+      this.pendingRequestedTimes.delete(oldestKey);
+      this.opfsCheckedTimes.delete(oldestKey);
+    }
+  }
+
+  private totalCachedUrlCount(): number {
+    let total = 0;
+    for (const urls of this.cache.values()) total += urls.size;
+    return total;
+  }
 
   protected get taskPriority(): number {
     return MEDIA_TASK_PRIORITIES.timelineThumbnail;
@@ -185,6 +208,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     if (!id) return;
     this.listeners.delete(id);
     this.pendingRequestedTimes.delete(id);
+    this.opfsCheckedTimes.delete(id);
     if (this.activeTasks.has(id)) {
       void getThumbnailWorkerClient()
         .client.cancelExport(id)
