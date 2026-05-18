@@ -143,9 +143,7 @@ describe('MobileFileBrowserGrid', () => {
       props: defaultProps,
     });
 
-    const fileName = wrapper
-      .findAll('div')
-      .find((node) => node.text() === 'file1.txt');
+    const fileName = wrapper.findAll('div').find((node) => node.text() === 'file1.txt');
 
     expect(fileName?.classes()).toContain('text-(--color-success)!');
   });
@@ -158,7 +156,9 @@ describe('MobileFileBrowserGrid', () => {
       props: defaultProps,
     });
 
-    const entryNames = wrapper.findAll('div').filter((node) => ['folder1', 'file1.txt'].includes(node.text()));
+    const entryNames = wrapper
+      .findAll('div')
+      .filter((node) => ['folder1', 'file1.txt'].includes(node.text()));
     expect(entryNames.every((node) => node.classes().includes('text-amber-400!'))).toBe(true);
   });
 });

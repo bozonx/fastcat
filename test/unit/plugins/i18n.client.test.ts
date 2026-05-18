@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reactive, nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
+import i18nClientPlugin from '~/plugins/i18n.client';
+
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(),
 }));
-
-import i18nClientPlugin from '~/plugins/i18n.client';
 
 type WorkspaceStoreMock = {
   isInitializing: boolean;

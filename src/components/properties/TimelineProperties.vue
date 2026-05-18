@@ -354,10 +354,7 @@ const addTrackActions = computed(() => [
       />
     </template>
 
-    <PropertySection
-      v-if="!finalIsReadOnly"
-      :title="t('videoEditor.timeline.format')"
-    >
+    <PropertySection v-if="!finalIsReadOnly" :title="t('videoEditor.timeline.format')">
       <MediaResolutionSettings
         v-model:width="timelineWidth"
         v-model:height="timelineHeight"

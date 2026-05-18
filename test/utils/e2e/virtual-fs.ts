@@ -43,9 +43,7 @@ export async function writeFileToOpfs(page: Page, options: OpfsWriteFileOptions)
       const fileHandle = await dir.getFileHandle(fileName, { create: true });
       const writable = await (fileHandle as any).createWritable();
       const blob =
-        typeof fileData === 'string'
-          ? new Blob([fileData])
-          : new Blob([new Uint8Array(fileData)]);
+        typeof fileData === 'string' ? new Blob([fileData]) : new Blob([new Uint8Array(fileData)]);
 
       await writable.write(blob);
       await writable.close();

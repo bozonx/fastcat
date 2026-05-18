@@ -149,7 +149,8 @@ export function useFileManagerActions(actions: FileManagerActions) {
     actions.onAfterRename?.();
 
     // Re-select renamed entry to update UI and property panel
-    const newPath = textWrapperRenameResult?.newPath ?? (parentPath ? `${parentPath}/${trimmed}` : trimmed);
+    const newPath =
+      textWrapperRenameResult?.newPath ?? (parentPath ? `${parentPath}/${trimmed}` : trimmed);
     const newEntry = actions.findEntryByPath(newPath);
     if (newEntry) {
       actions.onFileSelect?.(newEntry);
@@ -460,8 +461,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
       if (!actions.copyEntry || !actions.moveEntry) return;
       const sourceVfs = clipboardStore.getFileManagerVfs(payload.sourceInstanceId);
-      const involvesBloggerDog =
-        actions.vfs.id === 'bloggerdog' || sourceVfs?.id === 'bloggerdog';
+      const involvesBloggerDog = actions.vfs.id === 'bloggerdog' || sourceVfs?.id === 'bloggerdog';
 
       if (
         involvesBloggerDog &&

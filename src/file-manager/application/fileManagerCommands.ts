@@ -119,11 +119,7 @@ export async function handleFilesCommand(
   const fileLoadedBytes = new Map<number, number>();
   let completedCount = 0;
 
-  function reportProgress(params: {
-    fileIndex: number;
-    file: File;
-    currentFileBytes?: number;
-  }) {
+  function reportProgress(params: { fileIndex: number; file: File; currentFileBytes?: number }) {
     if (params.currentFileBytes !== undefined) {
       fileLoadedBytes.set(params.fileIndex, params.currentFileBytes);
     }

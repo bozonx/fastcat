@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, inject, onUnmounted } from 'vue';
+import { ref, inject, onUnmounted, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -22,7 +22,6 @@ import { useFileManagerPanelActions } from '~/composables/file-manager/useFileMa
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
-import { computed } from 'vue';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -491,7 +490,6 @@ useFileManagerPanelBootstrap({
         v-if="projectStore.currentProjectName && !props.hideActions"
         class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
       >
-
         <UButton
           icon="i-heroicons-document-plus"
           variant="ghost"

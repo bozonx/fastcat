@@ -15,6 +15,6 @@ export function useTeleportTarget() {
 
   return {
     target,
-    isEmbedded
+    isEmbedded,
   };
 }

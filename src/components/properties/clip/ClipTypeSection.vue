@@ -168,10 +168,7 @@ function confirmSavePreset() {
     @save-preset="handleSavePreset"
   />
 
-  <UiModal
-    v-model:open="isSaveModalOpen"
-    :title="t('fastcat.effects.savePresetTitle')"
-  >
+  <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
     <div class="flex flex-col gap-4">
       <UiFormField :label="t('common.name')">
         <UiTextInput

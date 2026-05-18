@@ -271,10 +271,16 @@ export function useFileContextMenu(
     return items;
   }
 
-  function buildMultiSelectionItems(entry: FsEntry, selectedEntries: FsEntry[]): ContextMenuItem[][] {
+  function buildMultiSelectionItems(
+    entry: FsEntry,
+    selectedEntries: FsEntry[],
+  ): ContextMenuItem[][] {
     const items: ContextMenuItem[][] = [];
-    const isComputer = deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
-    const hasVideo = selectedEntries.some((selectedEntry) => selectedEntry.kind === 'file' && deps.isVideo(selectedEntry));
+    const isComputer =
+      deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
+    const hasVideo = selectedEntries.some(
+      (selectedEntry) => selectedEntry.kind === 'file' && deps.isVideo(selectedEntry),
+    );
     const hasProxy = selectedEntries.some(
       (selectedEntry) => selectedEntry.kind === 'file' && deps.getEntryMeta(selectedEntry).hasProxy,
     );
@@ -374,10 +380,14 @@ export function useFileContextMenu(
   function getContextMenuItems(entry: FsEntry) {
     const selectedEntries = deps.getSelectedEntries ? deps.getSelectedEntries() : [];
     const isMultiSelected = selectedEntries.length > 1;
-    const isComputer = deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
+    const isComputer =
+      deps.isExternal || deps.instanceId === 'computer' || deps.instanceId === 'sidebar';
     const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
 
-    if (isMultiSelected && selectedEntries.some((selectedEntry) => selectedEntry.source === 'remote')) {
+    if (
+      isMultiSelected &&
+      selectedEntries.some((selectedEntry) => selectedEntry.source === 'remote')
+    ) {
       const allRemote = selectedEntries.every((selectedEntry) => selectedEntry.source === 'remote');
       if (!allRemote) return [];
       return buildMultiSelectionItems(entry, selectedEntries);

@@ -148,9 +148,9 @@ describe('TimelineEditService', () => {
 
       // Subsequent clips collapsed into a single move_items command.
       // c2 is at 10s, deltaUs is 5s → c2 moves to 5s.
-      const moveItemsCmd = batch.find(
-        (cmd: TimelineCommand) => cmd.type === 'move_items',
-      ) as Extract<TimelineCommand, { type: 'move_items' }> | undefined;
+      const moveItemsCmd = batch.find((cmd: TimelineCommand) => cmd.type === 'move_items') as
+        | Extract<TimelineCommand, { type: 'move_items' }>
+        | undefined;
       expect(moveItemsCmd).toBeDefined();
       expect(moveItemsCmd!.moves).toEqual([
         expect.objectContaining({ itemId: 'c2', startUs: 5_000_000 }),

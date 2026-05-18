@@ -155,7 +155,9 @@ describe('MobileFileBrowserDrawer', () => {
       path: entry.path,
       entry,
     };
-    mockReadDirectory.mockResolvedValue([{ kind: 'file', name: 'clip.mp4', path: 'videos/clip.mp4' }]);
+    mockReadDirectory.mockResolvedValue([
+      { kind: 'file', name: 'clip.mp4', path: 'videos/clip.mp4' },
+    ]);
 
     const wrapper = await mountSuspended(MobileFileBrowserDrawer, {
       props: {

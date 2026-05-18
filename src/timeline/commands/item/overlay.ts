@@ -181,14 +181,9 @@ export function overlayTrimItem(
         updatedMoved.item.id,
         (audio) => {
           const audioSpeed =
-            typeof audio.speed === 'number' && Number.isFinite(audio.speed)
-              ? audio.speed
-              : 1;
+            typeof audio.speed === 'number' && Number.isFinite(audio.speed) ? audio.speed : 1;
           const audioAbsSpeed = Math.max(0.0001, Math.abs(audioSpeed));
-          const audioSourceLimit = Math.max(
-            0,
-            Math.round(Number(audio.sourceDurationUs ?? 0)),
-          );
+          const audioSourceLimit = Math.max(0, Math.round(Number(audio.sourceDurationUs ?? 0)));
           const nextAudioSourceStartUs = Math.max(
             0,
             Math.round(audio.sourceRange.startUs + sourceStartDeltaUs),
@@ -197,9 +192,13 @@ export function overlayTrimItem(
             0,
             Math.round(newDurationUs * audioAbsSpeed),
           );
-          const audioSourceDurationUs = audioSourceLimit > 0
-            ? Math.min(requestedAudioSourceDurationUs, Math.max(0, audioSourceLimit - nextAudioSourceStartUs))
-            : requestedAudioSourceDurationUs;
+          const audioSourceDurationUs =
+            audioSourceLimit > 0
+              ? Math.min(
+                  requestedAudioSourceDurationUs,
+                  Math.max(0, audioSourceLimit - nextAudioSourceStartUs),
+                )
+              : requestedAudioSourceDurationUs;
           return {
             ...audio,
             timelineRange: {

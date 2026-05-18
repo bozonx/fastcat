@@ -6,11 +6,11 @@ import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
-import type { FileSystemAdapter } from '~/file-manager/core/vfs/types';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
 
-export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSystemAdapter) {
+export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSystemAdapter) {
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
   const thumbnails = ref<Record<string, string>>({}); // projectRelativePath -> objectUrl

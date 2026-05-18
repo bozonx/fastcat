@@ -57,14 +57,27 @@ const { t, locale } = useI18n();
         :value="props.formatBytes(props.fileInfo.size)"
       />
       <PropertyRow
-        v-if="props.fileInfo.filesCount !== undefined && props.mediaCount === undefined && !props.pathLink && props.instanceId !== 'computer' && props.instanceId !== 'sidebar' && !props.isExternal"
+        v-if="
+          props.fileInfo.filesCount !== undefined &&
+          props.mediaCount === undefined &&
+          !props.pathLink &&
+          props.instanceId !== 'computer' &&
+          props.instanceId !== 'sidebar' &&
+          !props.isExternal
+        "
         :label="t('videoEditor.fileManager.folder.filesCount')"
         :value="props.fileInfo.filesCount"
       />
       <PropertyRow
         v-if="props.fileInfo.size === undefined"
         :label="t('common.type')"
-        :value="props.title === t('fastcat.file.bloggerDogGroup') ? t('fastcat.file.bloggerDogGroup') : props.title === t('fastcat.file.bloggerDogItem') ? t('fastcat.file.bloggerDogItem') : t('common.folder')"
+        :value="
+          props.title === t('fastcat.file.bloggerDogGroup')
+            ? t('fastcat.file.bloggerDogGroup')
+            : props.title === t('fastcat.file.bloggerDogItem')
+              ? t('fastcat.file.bloggerDogItem')
+              : t('common.folder')
+        "
       />
       <PropertyRow
         v-if="props.mediaCount !== undefined"
@@ -86,12 +99,20 @@ const { t, locale } = useI18n();
     <PropertyRow
       v-if="props.fileInfo.createdAt || props.fileInfo.lastModified"
       :label="t('common.created')"
-      :value="new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!))"
+      :value="
+        new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(
+          new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!),
+        )
+      "
     />
     <PropertyRow
       v-if="props.fileInfo.lastModified"
       :label="t('common.updated')"
-      :value="new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(props.fileInfo.lastModified))"
+      :value="
+        new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(
+          new Date(props.fileInfo.lastModified),
+        )
+      "
     />
     <PropertyRow v-if="props.isHidden" :label="t('common.hidden')" value="Yes" />
     <div v-if="$slots['after-content']" class="mt-4 pt-2 border-t border-ui-border">

@@ -628,7 +628,8 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
     });
     const fallbackOp = operation === 'cancel' ? null : operation;
     const shouldCopy =
-      resolveDropOperation(e, fallbackOp ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null)) === 'copy';
+      resolveDropOperation(e, fallbackOp ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null)) ===
+      'copy';
     let parsed: any;
     try {
       parsed = JSON.parse(internalRaw);

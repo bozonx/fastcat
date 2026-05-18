@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { createPinia, setActivePinia } from "pinia";
+import { createPinia, setActivePinia } from 'pinia';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { isFileTab, type AnyProjectTab, useProjectTabsStore } from '~/stores/project-tabs.store';

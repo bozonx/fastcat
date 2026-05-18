@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive } from 'vue';
 
+import FastcatEmbeddedLayout from '~/components/embedded/FastcatEmbeddedLayout.vue';
+
 const openProjectMock = vi.fn();
 const loadTimelineMock = vi.fn();
 
@@ -57,8 +59,6 @@ vi.mock('~/composables/editor/useProjectActions', () => ({
 vi.mock('~/utils/external-assets.service', () => ({
   loadExternalAssets: vi.fn().mockResolvedValue([]),
 }));
-
-import FastcatEmbeddedLayout from '~/components/embedded/FastcatEmbeddedLayout.vue';
 
 describe('FastcatEmbeddedLayout', () => {
   beforeEach(() => {

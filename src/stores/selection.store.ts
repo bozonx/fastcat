@@ -4,10 +4,7 @@ import type { FsEntry } from '~/types/fs';
 import { useUiStore } from './ui.store';
 
 export type SelectionSource = 'timeline' | 'fileManager' | 'project';
-export type FileManagerSelectionOrigin =
-  | 'project-manager'
-  | 'workspace-browser'
-  | 'remote-browser';
+export type FileManagerSelectionOrigin = 'project-manager' | 'workspace-browser' | 'remote-browser';
 
 export interface SelectedEntityBase {
   source: SelectionSource;

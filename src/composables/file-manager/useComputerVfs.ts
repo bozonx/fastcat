@@ -4,7 +4,6 @@ import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
 import type { IFileSystemAdapter, VfsEntry } from '~/file-manager/core/vfs/types';
 
-
 export function useComputerVfs() {
   const workspaceStore = useWorkspaceStore();
   const isTauri = workspaceStore.workspaceProviderId === 'tauri';
@@ -13,15 +12,15 @@ export function useComputerVfs() {
   const rootPath = ref('');
 
   if (isTauri) {
-    const isWindows = typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
-    
+    const isWindows =
+      typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
+
     // In Tauri, the workspace root is the path of the current workspace handle
     const workspacePath = (workspaceStore.workspaceHandle as any)?.path || '';
-    
-    vfs.value = new TauriFileSystemAdapter(workspacePath);
-    rootPath.value = ''; 
-  } else {
 
+    vfs.value = new TauriFileSystemAdapter(workspacePath);
+    rootPath.value = '';
+  } else {
     // OPFS: Root of the actual workspace (embedded-editor folder)
     vfs.value = new OpfsFileSystemAdapter(async () => {
       if (workspaceStore.workspaceHandle) {
@@ -41,4 +40,3 @@ export function useComputerVfs() {
     isTauri,
   };
 }
-

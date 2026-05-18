@@ -93,7 +93,9 @@ describe('MobileTrackPropertiesDrawer', () => {
     expect(labels).toContain('fastcat.timeline.deleteGap');
     expect(labels).toContain('fastcat.timeline.deleteTrack');
 
-    const deleteGapButton = buttons.find((button) => button.text() === 'fastcat.timeline.deleteGap');
+    const deleteGapButton = buttons.find(
+      (button) => button.text() === 'fastcat.timeline.deleteGap',
+    );
     expect(deleteGapButton).toBeDefined();
 
     await deleteGapButton!.trigger('click');

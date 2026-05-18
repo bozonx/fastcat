@@ -45,8 +45,16 @@ export function useMonitorSnapshot(input: {
     if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
     if (!input.workspaceStore.workspaceHandle) return;
 
-    const projectWidth = Number(input.timelineStore.timelineFormat?.width ?? input.projectStore.projectSettings?.project?.width ?? 1280);
-    const projectHeight = Number(input.timelineStore.timelineFormat?.height ?? input.projectStore.projectSettings?.project?.height ?? 720);
+    const projectWidth = Number(
+      input.timelineStore.timelineFormat?.width ??
+        input.projectStore.projectSettings?.project?.width ??
+        1280,
+    );
+    const projectHeight = Number(
+      input.timelineStore.timelineFormat?.height ??
+        input.projectStore.projectSettings?.project?.height ??
+        720,
+    );
     const maxSide = 1280;
 
     let targetWidth = projectWidth;
@@ -91,7 +99,10 @@ export function useMonitorSnapshot(input: {
       input.timelineStore.timelineDoc?.name ||
       'timeline';
 
-    const fps = input.timelineStore.timelineFormat?.fps ?? input.projectStore.projectSettings?.project?.fps ?? 30;
+    const fps =
+      input.timelineStore.timelineFormat?.fps ??
+      input.projectStore.projectSettings?.project?.fps ??
+      30;
     const timeUs = input.uiCurrentTimeUs.value;
 
     const qualityPercent = input.workspaceStore.userSettings.stopFrames?.qualityPercent ?? 85;
@@ -122,10 +133,18 @@ export function useMonitorSnapshot(input: {
     isSavingStopFrame.value = true;
     try {
       const exportWidth = Math.round(
-        Number(input.timelineStore.timelineFormat?.width ?? input.projectStore.projectSettings?.project?.width ?? 0),
+        Number(
+          input.timelineStore.timelineFormat?.width ??
+            input.projectStore.projectSettings?.project?.width ??
+            0,
+        ),
       );
       const exportHeight = Math.round(
-        Number(input.timelineStore.timelineFormat?.height ?? input.projectStore.projectSettings?.project?.height ?? 0),
+        Number(
+          input.timelineStore.timelineFormat?.height ??
+            input.projectStore.projectSettings?.project?.height ??
+            0,
+        ),
       );
 
       const { client } = getThumbnailWorkerClient();

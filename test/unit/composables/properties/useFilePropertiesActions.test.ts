@@ -82,7 +82,8 @@ describe('useFilePropertiesActions', () => {
     options.isRemoteMode.value = true;
     options.isPersonalLibrary.value = true;
 
-    const { directoryPrimaryActions, directorySecondaryActions } = useFilePropertiesActions(options);
+    const { directoryPrimaryActions, directorySecondaryActions } =
+      useFilePropertiesActions(options);
 
     expect(directoryPrimaryActions.value.find((action) => action.id === 'paste')?.hidden).toBe(
       false,

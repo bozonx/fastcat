@@ -334,21 +334,16 @@ function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string
   uiStore.pendingRemoteDownloadRequest = params;
 }
 
-const {
-  isRelevantDrag,
-  onRootDragEnter,
-  onRootDragOver,
-  onRootDragLeave,
-  onRootDrop,
-} = useFileDrop({
-  resolveEntryByPath: async (path: string) =>
-    props.findEntryByPath(path) ?? (await props.resolveEntryByPath?.(path)) ?? null,
-  handleFiles: props.handleFiles,
-  moveEntry: props.moveEntry,
-  copyEntry: props.copyEntry,
-  targetFileManagerInstanceId: props.instanceId ?? null,
-  vfs: props.vfs ?? useVfs(),
-});
+const { isRelevantDrag, onRootDragEnter, onRootDragOver, onRootDragLeave, onRootDrop } =
+  useFileDrop({
+    resolveEntryByPath: async (path: string) =>
+      props.findEntryByPath(path) ?? (await props.resolveEntryByPath?.(path)) ?? null,
+    handleFiles: props.handleFiles,
+    moveEntry: props.moveEntry,
+    copyEntry: props.copyEntry,
+    targetFileManagerInstanceId: props.instanceId ?? null,
+    vfs: props.vfs ?? useVfs(),
+  });
 
 const rootContextMenuItems = computed(() => {
   const rootEntry: FsEntry =
@@ -535,11 +530,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           @request-download="onRequestDownload"
         />
 
-        <div
-          class="relative"
-          :style="rootSpacerStyle"
-          @pointerdown.self="selectProjectRoot"
-        />
+        <div class="relative" :style="rootSpacerStyle" @pointerdown.self="selectProjectRoot" />
       </div>
     </UContextMenu>
   </div>

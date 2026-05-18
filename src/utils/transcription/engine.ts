@@ -1,10 +1,7 @@
-import {
-  type TranscriptionRecord,
-} from './types';
+import type { TranscriptionRecord, TranscriptionRequest, TranscriptionResult } from './types';
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
 import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
-import type { TranscriptionRequest, TranscriptionResult } from './types';
 
 export type { TranscriptionRequest, TranscriptionResult };
 
@@ -34,7 +31,6 @@ function normalizeFileType(fileType: string | undefined, file: File): string {
 
   return 'application/octet-stream';
 }
-
 
 function createRequestHeaders(params: {
   file: File | null;

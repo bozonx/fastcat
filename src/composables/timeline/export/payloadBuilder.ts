@@ -464,8 +464,9 @@ function getNestedClipWindow(params: {
   const isReversed = parentSpeedRaw < 0;
   const nestedStartUs = nestedClip.timelineRange.startUs;
   const nestedEndUs = nestedStartUs + nestedClip.timelineRange.durationUs;
-  const windowStartUs = parentItem.sourceRange.startUs;
-  const windowEndUs = windowStartUs + parentItem.sourceRange.durationUs;
+  const parentSourceRange = (parentItem as any).sourceRange;
+  const windowStartUs = parentSourceRange.startUs;
+  const windowEndUs = windowStartUs + parentSourceRange.durationUs;
   const overlapStartUs = Math.max(nestedStartUs, windowStartUs);
   const overlapEndUs = Math.min(nestedEndUs, windowEndUs);
 

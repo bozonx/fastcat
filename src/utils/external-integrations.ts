@@ -2,7 +2,11 @@ import type { ExternalIntegrationsSettings, FastCatUserSettings } from '~/utils/
 
 export type ExternalServiceKind = 'files' | 'stt';
 export type ExternalServiceSource = 'fastcat_publicador' | 'manual';
-export type FastCatIntegrationScope = 'content-library:read' | 'content-library:write' | 'stt:transcribe' | 'llm:chat';
+export type FastCatIntegrationScope =
+  | 'content-library:read'
+  | 'content-library:write'
+  | 'stt:transcribe'
+  | 'llm:chat';
 
 export interface ResolvedExternalServiceConfig {
   source: ExternalServiceSource;
@@ -162,7 +166,9 @@ export function resolveExternalServiceConfig(params: {
   // 1. STT always uses FastCat Account if enabled
   if (service === 'stt') {
     if (canUseFastCatAccount) {
-      const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(fastcatAccountApiUrl!);
+      const fastcatExternalApiBaseUrl = getFastCatPublicadorExternalApiBaseUrl(
+        fastcatAccountApiUrl!,
+      );
       return {
         source: 'fastcat_publicador',
         baseUrl: joinUrl(fastcatExternalApiBaseUrl, 'external/stt'),

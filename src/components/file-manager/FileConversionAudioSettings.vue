@@ -64,7 +64,9 @@ const sampleRateOptions = computed(() => {
   const original = originalRaw === null || originalRaw === undefined ? null : Number(originalRaw);
 
   return [
-    ...(props.allowOriginalSampleRate ? [{ value: 0, label: formatSampleRateLabel(original) }] : []),
+    ...(props.allowOriginalSampleRate
+      ? [{ value: 0, label: formatSampleRateLabel(original) }]
+      : []),
     { value: 44100, label: '44.1 kHz' },
     { value: 48000, label: '48 kHz' },
     { value: 96000, label: '96 kHz' },
@@ -74,9 +76,7 @@ const sampleRateOptions = computed(() => {
 const selectedSampleRateOption = computed({
   get: () => {
     const currentValue = Number(audioSampleRate.value);
-    return (
-      sampleRateOptions.value.find((option) => option.value === currentValue) ?? currentValue
-    );
+    return sampleRateOptions.value.find((option) => option.value === currentValue) ?? currentValue;
   },
   set: (value: unknown) => {
     if (typeof value === 'object' && value !== null && 'value' in value) {

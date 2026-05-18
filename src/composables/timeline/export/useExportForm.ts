@@ -413,8 +413,7 @@ export function useExportForm() {
       if (err instanceof Error && err.name === 'AbortError') {
         exportError.value = t('videoEditor.export.errorCancelled');
       } else {
-        exportError.value =
-          err instanceof Error ? err.message : t('videoEditor.export.error');
+        exportError.value = err instanceof Error ? err.message : t('videoEditor.export.error');
       }
     } finally {
       isExporting.value = false;
@@ -426,8 +425,7 @@ export function useExportForm() {
   function getPhaseLabel() {
     if (exportPhase.value === 'encoding') return t('videoEditor.export.phaseEncoding');
     if (exportPhase.value === 'saving') return t('videoEditor.export.phaseSaving');
-    if (exportPhase.value === 'preparing')
-      return t('videoEditor.export.phasePreparing');
+    if (exportPhase.value === 'preparing') return t('videoEditor.export.phasePreparing');
     return t('videoEditor.export.processing');
   }
 

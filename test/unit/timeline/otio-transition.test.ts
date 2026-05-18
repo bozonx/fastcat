@@ -79,7 +79,11 @@ describe('timeline/otio-serializer: transitions', () => {
   it('serializes and deserializes transitionIn and transitionOut', () => {
     const doc = makeDoc();
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const clip = parsed.tracks[0]?.items[0] as any;
     const track = parsed.tracks[0] as any;
@@ -123,7 +127,11 @@ describe('timeline/otio-serializer: transitions', () => {
   it('parses markers from Stack.markers', () => {
     const doc = makeDoc();
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const markers = parsed.metadata?.fastcat?.markers as any[];
     expect(markers).toHaveLength(2);
@@ -174,7 +182,11 @@ describe('timeline/otio-serializer: transitions', () => {
         },
       },
     };
-    const parsed = parseTimelineFromOtio(JSON.stringify(raw), { id: 'old1', name: 'Old', format: { fps: 25 } });
+    const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
+      id: 'old1',
+      name: 'Old',
+      format: { fps: 25 },
+    });
     expect(parsed.metadata?.fastcat?.markers).toEqual([]);
   });
 
@@ -301,7 +313,11 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const clip = parsed.tracks[0]?.items[0] as any;
     expect(clip.transitionIn).toMatchObject({
@@ -391,7 +407,11 @@ describe('timeline/otio-serializer: transitions', () => {
       ],
     };
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const clip = parsed.tracks[0]?.items[0] as any;
     expect(clip.transitionIn).toBeUndefined();
@@ -544,7 +564,11 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const clip = parsed.tracks[0]?.items[0] as any;
     expect(clip.effects).toHaveLength(1);
@@ -634,7 +658,11 @@ describe('timeline/otio-serializer: transitions', () => {
       metadata: { fastcat: { docId: 'ext1', timebase: { fps: 24 } } },
     };
 
-    const parsed = parseTimelineFromOtio(JSON.stringify(raw), { id: 'ext1', name: 'Ext', format: { fps: 24 } });
+    const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
+      id: 'ext1',
+      name: 'Ext',
+      format: { fps: 24 },
+    });
     const clip = parsed.tracks[0]?.items[0] as any;
 
     // 240 frames at 24fps = 10 seconds = 10_000_000 us
@@ -689,7 +717,11 @@ describe('timeline/otio-serializer: transitions', () => {
       metadata: { fastcat: { docId: 'ext1', timebase: { fps: 24 } } },
     };
 
-    const parsed = parseTimelineFromOtio(JSON.stringify(raw), { id: 'ext1', name: 'Ext', format: { fps: 24 } });
+    const parsed = parseTimelineFromOtio(JSON.stringify(raw), {
+      id: 'ext1',
+      name: 'Ext',
+      format: { fps: 24 },
+    });
     const clip = parsed.tracks[0]?.items[0] as any;
 
     expect(clip.sourceDurationUs).toBe(10_000_000);
@@ -756,7 +788,11 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
     expect(clip.clipType).toBe('timeline');
@@ -829,7 +865,11 @@ describe('timeline/otio-serializer: transitions', () => {
     const raw = JSON.parse(serialized);
     expect(raw.metadata.fastcat.document.timebase.fps).toBe(29.97);
 
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc-ntsc', name: 'NTSC', format: { fps: 29.97 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc-ntsc',
+      name: 'NTSC',
+      format: { fps: 29.97 },
+    });
     expect(parsed.timebase.fps).toBe(29.97);
   });
 
@@ -899,7 +939,11 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
     expect(clip.clipType).toBe('shape');
@@ -938,7 +982,11 @@ describe('timeline/otio-serializer: transitions', () => {
     };
 
     const serialized = serializeTimelineToOtio(doc);
-    const parsed = parseTimelineFromOtio(serialized, { id: 'doc1', name: 'Test', format: { fps: 30 } });
+    const parsed = parseTimelineFromOtio(serialized, {
+      id: 'doc1',
+      name: 'Test',
+      format: { fps: 30 },
+    });
 
     const clip = parsed.tracks[0]?.items.find((item: any) => item.kind === 'clip') as any;
     expect(clip.clipType).toBe('hud');

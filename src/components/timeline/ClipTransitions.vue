@@ -152,8 +152,7 @@ function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): 
 
   if (mode === 'adjacent') {
     const next = getNextClipForItem(track, item);
-    if (!next)
-      return t('fastcat.timeline.transition.errorNoNextClip');
+    if (!next) return t('fastcat.timeline.transition.errorNoNextClip');
     const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
     const gapUs = next.timelineRange.startUs - clipEndUs;
     if (gapUs > 1_000)

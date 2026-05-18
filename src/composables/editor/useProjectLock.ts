@@ -32,7 +32,9 @@ export function useProjectLock() {
       if (requesterTabId === tabId.value) return;
 
       if (type === 'lock:steal' && lockedProjectId.value === projectId) {
-        console.log(`[ProjectLock] Received steal request for project: ${projectId} from tab: ${requesterTabId}`);
+        console.log(
+          `[ProjectLock] Received steal request for project: ${projectId} from tab: ${requesterTabId}`,
+        );
         await releaseLock();
         isLockLost.value = true;
       }
@@ -53,7 +55,7 @@ export function useProjectLock() {
   async function acquireLock(projectId: string): Promise<boolean> {
     const lockName = getLockName(projectId);
     isLockLost.value = false;
-    
+
     console.log(`[ProjectLock] Attempting to acquire lock: ${projectId} (Tab: ${tabId.value})`);
 
     if (typeof navigator === 'undefined' || !navigator.locks) {
@@ -101,12 +103,14 @@ export function useProjectLock() {
         projectId,
         requesterTabId: tabId.value,
       });
-      
+
       // Give more time for other tab to release and browser to register it
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
     }
     const result = await acquireLock(projectId);
-    console.log(`[ProjectLock] Steal attempt result for ${projectId}: ${result ? 'SUCCESS' : 'FAILED'}`);
+    console.log(
+      `[ProjectLock] Steal attempt result for ${projectId}: ${result ? 'SUCCESS' : 'FAILED'}`,
+    );
     return result;
   }
 
@@ -133,7 +137,7 @@ export function useProjectLock() {
   if (typeof window !== 'undefined') {
     setupChannel();
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     // We can't use onUnmounted reliably in a global store that's never disposed,
     // but we can ensure we don't leak by closing the channel if we ever recreate.
   }

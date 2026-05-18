@@ -94,11 +94,7 @@ function addAudioTrack() {
 </script>
 
 <template>
-  <UiMobileDrawer
-    v-model:open="isOpenLocal"
-    :show-close="false"
-    direction="bottom"
-  >
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" direction="bottom">
     <div class="px-4 pb-8 flex flex-col gap-3">
       <!-- Paste -->
       <Transition
@@ -114,14 +110,18 @@ function addAudioTrack() {
           class="flex items-center gap-3 w-full rounded-2xl bg-blue-500/10 border border-blue-500/30 px-4 py-4 text-left transition-all active:scale-[0.98] mb-1 group"
           @click="handlePaste"
         >
-          <div class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 group-active:scale-90 transition-transform">
+          <div
+            class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 group-active:scale-90 transition-transform"
+          >
             <UIcon name="i-heroicons-clipboard-document-check" class="w-6 h-6 text-white" />
           </div>
           <div class="flex flex-col min-w-0">
             <span class="text-sm font-bold text-blue-400">
               {{ t('common.paste') }}
             </span>
-            <span class="text-[10px] text-blue-400/60 leading-tight uppercase tracking-widest font-bold">
+            <span
+              class="text-[10px] text-blue-400/60 leading-tight uppercase tracking-widest font-bold"
+            >
               {{ t('fastcat.timeline.pasteAtPlayhead') }}
             </span>
           </div>

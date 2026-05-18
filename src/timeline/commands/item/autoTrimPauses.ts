@@ -15,23 +15,32 @@ import {
  * Atomic command handler for automatic silence trimming across multiple clips.
  * It performs splits and either marks or removes silence segments.
  */
-export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand): TimelineCommandResult {
+export function autoTrimPauses(
+  doc: TimelineDocument,
+  cmd: AutoTrimPausesCommand,
+): TimelineCommandResult {
   let nextDoc = doc;
 
   for (const target of cmd.clips) {
     const track = getTrackById(nextDoc, target.trackId);
     if (!track) continue;
 
-    const originalItem = track.items.find((it) => it.id === target.itemId) as TimelineMediaClipItem | undefined;
+    const originalItem = track.items.find((it) => it.id === target.itemId) as
+      | TimelineMediaClipItem
+      | undefined;
     if (!originalItem || originalItem.kind !== 'clip') continue;
 
     // Sorting split points from RIGHT to LEFT to keep the original ID stable on the left part
     const splitPoints = target.pauses
       .flatMap((p) => [p.startUs, p.endUs])
       // Filter out points outside or exactly at boundaries
-      .filter((t) => t > originalItem.timelineRange.startUs + 10 && t < originalItem.timelineRange.startUs + originalItem.timelineRange.durationUs - 10)
+      .filter(
+        (t) =>
+          t > originalItem.timelineRange.startUs + 10 &&
+          t < originalItem.timelineRange.startUs + originalItem.timelineRange.durationUs - 10,
+      )
       .sort((a, b) => b - a);
-    
+
     // De-duplicate if any
     const uniquePoints: number[] = [];
     for (const p of splitPoints) {
@@ -42,17 +51,19 @@ export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand
 
     const isSilence = (start: number, end: number) => {
       const mid = (start + end) / 2;
-      return target.pauses.some(p => mid >= p.startUs - 100 && mid <= p.endUs + 100);
+      return target.pauses.some((p) => mid >= p.startUs - 100 && mid <= p.endUs + 100);
     };
 
-    let currentItemId = originalItem.id;
+    const currentItemId = originalItem.id;
     const itemsToMarkSilence: string[] = [];
     const itemsToDelete: string[] = [];
 
     for (const atUs of uniquePoints) {
       // Manual split logic similar to splitItem but simplified for batch
       const currentTrack = getTrackById(nextDoc, target.trackId);
-      const item = currentTrack?.items.find(it => it.id === currentItemId) as TimelineMediaClipItem | undefined;
+      const item = currentTrack?.items.find((it) => it.id === currentItemId) as
+        | TimelineMediaClipItem
+        | undefined;
       if (!item || item.kind !== 'clip') break;
 
       const fps = getDocFps(nextDoc);
@@ -118,23 +129,33 @@ export function autoTrimPauses(doc: TimelineDocument, cmd: AutoTrimPausesCommand
         else itemsToMarkSilence.push(rightItemId);
       }
 
-      const nextItems = currentTrack!.items.flatMap(it => {
+      const nextItems = currentTrack!.items.flatMap((it) => {
         if (it.id === currentItemId) return [leftPatched, rightItem];
         return [it];
       });
 
       nextDoc = {
         ...nextDoc,
-        tracks: nextDoc.tracks.map(t => t.id === target.trackId ? { ...t, items: nextItems } : t)
+        tracks: nextDoc.tracks.map((t) =>
+          t.id === target.trackId ? { ...t, items: nextItems } : t,
+        ),
       };
-      
+
       // currentItemId stays same for next split (Left part)
     }
 
     // Final check for the remaining Left part
     const finalTrack = getTrackById(nextDoc, target.trackId);
-    const finalLeft = finalTrack?.items.find(it => it.id === currentItemId) as TimelineMediaClipItem;
-    if (finalLeft && isSilence(finalLeft.timelineRange.startUs, finalLeft.timelineRange.startUs + finalLeft.timelineRange.durationUs)) {
+    const finalLeft = finalTrack?.items.find(
+      (it) => it.id === currentItemId,
+    ) as TimelineMediaClipItem;
+    if (
+      finalLeft &&
+      isSilence(
+        finalLeft.timelineRange.startUs,
+        finalLeft.timelineRange.startUs + finalLeft.timelineRange.durationUs,
+      )
+    ) {
       if (cmd.mode === 'cut') itemsToDelete.push(currentItemId);
       else itemsToMarkSilence.push(currentItemId);
     }

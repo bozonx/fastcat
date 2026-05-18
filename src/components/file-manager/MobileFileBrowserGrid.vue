@@ -276,11 +276,7 @@ onBeforeUnmount(clearLongPress);
               class="flex items-center justify-between opacity-80 text-[10px] tabular-nums mt-0.5 font-medium"
             >
               <span class="truncate pr-2 text-zinc-400">
-                {{
-                  entry.kind === 'directory'
-                    ? t('common.folder')
-                    : getFileTypeLabel(entry)
-                }}
+                {{ entry.kind === 'directory' ? t('common.folder') : getFileTypeLabel(entry) }}
               </span>
               <span class="shrink-0 text-zinc-500">
                 {{

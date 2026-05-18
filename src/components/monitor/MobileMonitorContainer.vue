@@ -182,7 +182,8 @@ const isLandscape = useMediaQuery('(orientation: landscape)');
 
 const isVerticalProject = computed(() => {
   const width = timelineStore.timelineFormat?.width ?? projectStore.projectSettings.project.width;
-  const height = timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height;
+  const height =
+    timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height;
   return width < height;
 });
 

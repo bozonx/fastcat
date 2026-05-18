@@ -29,11 +29,7 @@ import {
 } from '~/utils/bloggerdog-file-manager';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 
-type DrawerAction =
-  | FileManagerAction
-  | 'openAsPanelCut'
-  | 'openAsPanelSound'
-  | 'openAsProjectTab';
+type DrawerAction = FileManagerAction | 'openAsPanelCut' | 'openAsPanelSound' | 'openAsProjectTab';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -122,13 +118,25 @@ const isBloggerDogProject = computed(() => {
 
 const canRename = computed(() => {
   if (selectedEntriesList.value.length !== 1) return false;
-  return !isProjectRoot.value && !isCommonRoot.value && !isBdVirtual.value && !isBdProject.value && !isBdText.value;
+  return (
+    !isProjectRoot.value &&
+    !isCommonRoot.value &&
+    !isBdVirtual.value &&
+    !isBdProject.value &&
+    !isBdText.value
+  );
 });
 
 const canDelete = computed(() => {
   if (selectedEntriesList.value.length === 0) return false;
   if (selectedEntriesList.value.length > 1) return true;
-  return !isProjectRoot.value && !isCommonRoot.value && !isBdVirtual.value && !isBdProject.value && !isBdText.value;
+  return (
+    !isProjectRoot.value &&
+    !isCommonRoot.value &&
+    !isBdVirtual.value &&
+    !isBdProject.value &&
+    !isBdText.value
+  );
 });
 
 const isOtioFile = computed(() => {
@@ -147,7 +155,9 @@ const isBdGroup = computed(() =>
   selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'collection' : false,
 );
 const isBdContentItem = computed(() =>
-  selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'content-item' : false,
+  selectedFsEntry.value
+    ? getBdPayload(selectedFsEntry.value.entry)?.type === 'content-item'
+    : false,
 );
 const isBdText = computed(() =>
   selectedFsEntry.value ? isBloggerDogTextWrapper(selectedFsEntry.value.entry) : false,
@@ -238,46 +248,48 @@ const canTranscribe = computed(() => {
   return isModelReady && Boolean(workspaceStore.workspaceHandle) && Boolean(entry.path);
 });
 
-const canCopySelection = computed(() =>
-  selectedEntriesList.value.length > 0 &&
-  selectedEntriesList.value.every((entry) => {
-    const payload = getBdPayload(entry);
-    return (
-      !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
-      !(
-        entry.kind === 'directory' &&
-        (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
-          (entry.name.toLowerCase() === 'common' &&
-            (entry.path === 'common' || entry.path === '')))
-      ) &&
-      payload?.type !== 'virtual-folder' &&
-      payload?.type !== 'project' &&
-      payload?.type !== 'collection' &&
-      payload?.type !== 'content-item' &&
-      canCopyBloggerDogEntry(entry)
-    );
-  }),
+const canCopySelection = computed(
+  () =>
+    selectedEntriesList.value.length > 0 &&
+    selectedEntriesList.value.every((entry) => {
+      const payload = getBdPayload(entry);
+      return (
+        !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
+        !(
+          entry.kind === 'directory' &&
+          (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+            (entry.name.toLowerCase() === 'common' &&
+              (entry.path === 'common' || entry.path === '')))
+        ) &&
+        payload?.type !== 'virtual-folder' &&
+        payload?.type !== 'project' &&
+        payload?.type !== 'collection' &&
+        payload?.type !== 'content-item' &&
+        canCopyBloggerDogEntry(entry)
+      );
+    }),
 );
 
-const canCutSelection = computed(() =>
-  selectedEntriesList.value.length > 0 &&
-  selectedEntriesList.value.every((entry) => {
-    const payload = getBdPayload(entry);
-    return (
-      !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
-      !(
-        entry.kind === 'directory' &&
-        (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
-          (entry.name.toLowerCase() === 'common' &&
-            (entry.path === 'common' || entry.path === '')))
-      ) &&
-      payload?.type !== 'virtual-folder' &&
-      payload?.type !== 'project' &&
-      payload?.type !== 'collection' &&
-      payload?.type !== 'content-item' &&
-      canCutBloggerDogEntry(entry)
-    );
-  }),
+const canCutSelection = computed(
+  () =>
+    selectedEntriesList.value.length > 0 &&
+    selectedEntriesList.value.every((entry) => {
+      const payload = getBdPayload(entry);
+      return (
+        !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
+        !(
+          entry.kind === 'directory' &&
+          (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+            (entry.name.toLowerCase() === 'common' &&
+              (entry.path === 'common' || entry.path === '')))
+        ) &&
+        payload?.type !== 'virtual-folder' &&
+        payload?.type !== 'project' &&
+        payload?.type !== 'collection' &&
+        payload?.type !== 'content-item' &&
+        canCutBloggerDogEntry(entry)
+      );
+    }),
 );
 
 const canPasteIntoSelection = computed(() => {

@@ -30,7 +30,11 @@ vi.mock('~/effects/core/registry', async (importOriginal) => {
         return { createNode: () => new MockAudioNode(), updateNode: vi.fn() };
       }
       if (type === 'audio-disable-wet') {
-        return { disableGlobalWet: true, createNode: () => new MockAudioNode(), updateNode: vi.fn() };
+        return {
+          disableGlobalWet: true,
+          createNode: () => new MockAudioNode(),
+          updateNode: vi.fn(),
+        };
       }
       if (type === 'audio-destroyable') {
         return {

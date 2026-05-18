@@ -29,10 +29,7 @@ export async function mockTauriInternals(page: Page): Promise<void> {
  * Note: This mocks the RPC layer, not the JS module itself.
  * It is sufficient for smoke-testing Tauri-specific code paths.
  */
-export async function mockTauriPluginFs(
-  page: Page,
-  files: TauriMockFile[] = [],
-): Promise<void> {
+export async function mockTauriPluginFs(page: Page, files: TauriMockFile[] = []): Promise<void> {
   const serialized = files.map((f) => ({
     path: f.path,
     data: typeof f.data === 'string' ? f.data : Array.from(f.data),
@@ -76,7 +73,11 @@ export async function mockTauriPluginFs(
             case 'stat': {
               const data = virtualFs.get(path);
               return {
-                size: data ? (typeof data === 'string' ? new TextEncoder().encode(data).length : data.length) : 0,
+                size: data
+                  ? typeof data === 'string'
+                    ? new TextEncoder().encode(data).length
+                    : data.length
+                  : 0,
                 mtime: Date.now(),
                 isDirectory: false,
                 isFile: true,
@@ -100,7 +101,10 @@ export async function mockTauriPluginFs(
 /**
  * Mocks Tauri dialog plugin to return a fixed path.
  */
-export async function mockTauriDialog(page: Page, result: string | null = '/mock/workspace'): Promise<void> {
+export async function mockTauriDialog(
+  page: Page,
+  result: string | null = '/mock/workspace',
+): Promise<void> {
   await page.addInitScript((dialogResult) => {
     const originalInvoke = (window as any).__TAURI_INTERNALS__?.invoke;
 

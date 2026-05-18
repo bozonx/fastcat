@@ -89,7 +89,6 @@ export async function mapAudioEngineClips(params: {
           audioFadeInCurve: clip.audioFadeInCurve,
           audioFadeOutCurve: clip.audioFadeOutCurve,
           audioDeclickDurationUs: clip.audioDeclickDurationUs,
-          defaultAudioFadeCurve: clip.defaultAudioFadeCurve,
           transitionIn: clip.transitionIn,
           transitionOut: clip.transitionOut,
           audioEffects: (clip.effects ?? []).filter(isAudioClipEffect),

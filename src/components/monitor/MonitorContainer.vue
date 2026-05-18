@@ -340,12 +340,7 @@ watch(viewportRef, (vp) => {
           <!-- Left cluster: utility buttons -->
           <template v-if="effectiveFullscreen">
             <UiTooltip
-              :text="
-                getHotkeyTitle(
-                  t('fastcat.monitor.exitFullscreen'),
-                  'general.fullscreen',
-                )
-              "
+              :text="getHotkeyTitle(t('fastcat.monitor.exitFullscreen'), 'general.fullscreen')"
             >
               <UiActionButton
                 size="sm"
@@ -359,9 +354,7 @@ watch(viewportRef, (vp) => {
           </template>
           <template v-else>
             <UiTooltip
-              :text="
-                getHotkeyTitle(t('fastcat.monitor.fullscreen'), 'general.fullscreen')
-              "
+              :text="getHotkeyTitle(t('fastcat.monitor.fullscreen'), 'general.fullscreen')"
             >
               <UiActionButton
                 size="xs"
@@ -427,9 +420,7 @@ watch(viewportRef, (vp) => {
           </UiTooltip>
 
           <!-- Playback buttons — wheel on play button changes speed -->
-          <UiTooltip
-            :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'playback.toStart')"
-          >
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.rewind'), 'playback.toStart')">
             <UButton
               size="md"
               variant="ghost"

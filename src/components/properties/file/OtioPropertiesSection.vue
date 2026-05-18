@@ -23,18 +23,9 @@ const { t } = useI18n();
         :label="t('common.duration')"
         :value="props.formatDurationSeconds(props.summary.durationUs / 1000000)"
       />
-      <PropertyRow
-        :label="t('fastcat.timeline.videoTracks')"
-        :value="props.summary.videoTracks"
-      />
-      <PropertyRow
-        :label="t('fastcat.timeline.audioTracks')"
-        :value="props.summary.audioTracks"
-      />
-      <PropertyRow
-        :label="t('fastcat.timeline.clipsCount')"
-        :value="props.summary.clips"
-      />
+      <PropertyRow :label="t('fastcat.timeline.videoTracks')" :value="props.summary.videoTracks" />
+      <PropertyRow :label="t('fastcat.timeline.audioTracks')" :value="props.summary.audioTracks" />
+      <PropertyRow :label="t('fastcat.timeline.clipsCount')" :value="props.summary.clips" />
       <PropertyRow
         v-if="props.summary.version"
         :label="t('fastcat.timeline.version')"

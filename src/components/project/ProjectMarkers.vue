@@ -81,7 +81,9 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
               {{ formatMarkerTimecode(marker.timeUs) }}
             </td>
             <td class="px-3 py-2 font-mono text-[10px] text-ui-text-muted tabular-nums">
-              {{ marker.durationUs ? formatMarkerTimecode(marker.timeUs + marker.durationUs) : '—' }}
+              {{
+                marker.durationUs ? formatMarkerTimecode(marker.timeUs + marker.durationUs) : '—'
+              }}
             </td>
           </tr>
         </tbody>

@@ -7,7 +7,7 @@ const workspaceStore = useWorkspaceStore();
 
 useHead({
   htmlAttrs: { class: 'is-mobile-layout' },
-  bodyAttrs: { class: 'is-mobile-layout' }
+  bodyAttrs: { class: 'is-mobile-layout' },
 });
 
 onMounted(async () => {

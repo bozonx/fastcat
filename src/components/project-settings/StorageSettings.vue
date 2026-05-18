@@ -35,7 +35,9 @@ async function updateStats() {
 
     // 2. Calculate backup directory stats
     try {
-      const backupDir = await projectStore.getDirectoryHandleByPath('.fastcat/backups', { create: false });
+      const backupDir = await projectStore.getDirectoryHandleByPath('.fastcat/backups', {
+        create: false,
+      });
       if (backupDir) {
         backupStats.value = (await computeDirectoryStats(backupDir)) ?? null;
       } else {
@@ -164,7 +166,7 @@ watch(
           color="warning"
           variant="soft"
           icon="i-heroicons-trash"
-          :disabled="!projectStore.currentProjectId || (backupStats?.size === 0)"
+          :disabled="!projectStore.currentProjectId || backupStats?.size === 0"
           :label="t('videoEditor.projectSettings.clearTempAction')"
           @click="emit('clearBackups')"
         />

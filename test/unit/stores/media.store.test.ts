@@ -25,20 +25,24 @@ const { mediaFsMock, extractMetadataMock } = vi.hoisted(() => {
   }
 
   const filesMetaDir = {
-    getFileHandle: vi.fn().mockImplementation(async (name: string, options?: { create?: boolean }) => {
-      if (!metaFiles.has(name) && !options?.create) throw new Error('Not found');
-      return createFileHandle(metaFiles, name);
-    }),
+    getFileHandle: vi
+      .fn()
+      .mockImplementation(async (name: string, options?: { create?: boolean }) => {
+        if (!metaFiles.has(name) && !options?.create) throw new Error('Not found');
+        return createFileHandle(metaFiles, name);
+      }),
     removeEntry: vi.fn().mockImplementation(async (name: string) => {
       metaFiles.delete(name);
     }),
   };
 
   const waveformsDir = {
-    getFileHandle: vi.fn().mockImplementation(async (name: string, options?: { create?: boolean }) => {
-      if (!waveformFiles.has(name) && !options?.create) throw new Error('Not found');
-      return createFileHandle(waveformFiles, name);
-    }),
+    getFileHandle: vi
+      .fn()
+      .mockImplementation(async (name: string, options?: { create?: boolean }) => {
+        if (!waveformFiles.has(name) && !options?.create) throw new Error('Not found');
+        return createFileHandle(waveformFiles, name);
+      }),
     removeEntry: vi.fn().mockImplementation(async (name: string) => {
       waveformFiles.delete(name);
     }),
@@ -132,9 +136,7 @@ describe('MediaStore', () => {
 
     store.setAudioPeaks('some/path.mp4', [new Float32Array([0.5, 0.5])]);
 
-    expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([
-      new Float32Array([0.5, 0.5]),
-    ]);
+    expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([new Float32Array([0.5, 0.5])]);
   });
 
   it('persists audio peaks as JSON while keeping Float32Array in memory', async () => {
@@ -182,7 +184,7 @@ describe('MediaStore', () => {
 
   it('deduplicates concurrent metadata requests for the same path', async () => {
     const store = useMediaStore();
-    let callCount = 0;
+    const callCount = 0;
 
     const file = { size: 100, lastModified: 100, name: 'a.mp4' } as any;
     vi.mocked(useProjectStore).mockReturnValue({

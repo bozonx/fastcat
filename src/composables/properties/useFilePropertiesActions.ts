@@ -129,15 +129,14 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'paste',
       title: options.t('common.paste'),
       icon: 'i-heroicons-clipboard',
-      hidden:
-        options.isRemoteMode.value
-          ? !(
-              options.isBloggerDogContentItem?.value ||
-              options.isBloggerDogProject?.value ||
-              options.isBloggerDogGroup?.value ||
-              options.isPersonalLibrary?.value
-            )
-          : options.isRemoteRoot.value,
+      hidden: options.isRemoteMode.value
+        ? !(
+            options.isBloggerDogContentItem?.value ||
+            options.isBloggerDogProject?.value ||
+            options.isBloggerDogGroup?.value ||
+            options.isPersonalLibrary?.value
+          )
+        : options.isRemoteRoot.value,
       disabled: !options.hasClipboardItems.value,
       onClick: options.onPaste,
     },

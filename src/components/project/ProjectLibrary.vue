@@ -217,7 +217,11 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 </h4>
               </div>
               <UButton
-                :icon="presetsStore.defaultTextPresetId === text.type ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+                :icon="
+                  presetsStore.defaultTextPresetId === text.type
+                    ? 'i-heroicons-star-solid'
+                    : 'i-heroicons-star'
+                "
                 :color="presetsStore.defaultTextPresetId === text.type ? 'yellow' : 'neutral'"
                 variant="ghost"
                 size="xs"
@@ -225,12 +229,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 @click.stop="presetsStore.defaultTextPresetId = text.type"
               />
             </div>
-            <div
-              v-if="standardTexts.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
-            </div>
+            <EmptyState v-if="standardTexts.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -277,9 +276,15 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 />
                 <div class="flex-1 min-w-0 flex items-center justify-between">
                   <h4 class="text-sm font-medium text-ui-text truncate">{{ text.name }}</h4>
-                  <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div
+                    class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
                     <UButton
-                      :icon="presetsStore.defaultTextPresetId === text.id ? 'i-heroicons-star-solid' : 'i-heroicons-star'"
+                      :icon="
+                        presetsStore.defaultTextPresetId === text.id
+                          ? 'i-heroicons-star-solid'
+                          : 'i-heroicons-star'
+                      "
                       :color="presetsStore.defaultTextPresetId === text.id ? 'yellow' : 'neutral'"
                       variant="ghost"
                       size="xs"
@@ -298,12 +303,10 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
             </div>
           </VueDraggable>
-          <div
+          <EmptyState
             v-if="customTexts.length === 0"
-            class="text-center text-ui-text-muted py-4 italic text-xs"
-          >
-            {{ t('fastcat.library.noCustomPresets') }}
-          </div>
+            :message="t('fastcat.library.noCustomPresets')"
+          />
         </CollapsibleEffectGroup>
       </div>
 
@@ -335,12 +338,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 </h4>
               </div>
             </div>
-            <div
-              v-if="standardShapes.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
-            </div>
+            <EmptyState v-if="standardShapes.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -399,12 +397,10 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
             </div>
           </VueDraggable>
-          <div
+          <EmptyState
             v-if="customShapes.length === 0"
-            class="text-center text-ui-text-muted py-4 italic text-xs"
-          >
-            {{ t('fastcat.library.noCustomPresets') }}
-          </div>
+            :message="t('fastcat.library.noCustomPresets')"
+          />
         </CollapsibleEffectGroup>
       </div>
 
@@ -436,12 +432,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 </h4>
               </div>
             </div>
-            <div
-              v-if="standardHuds.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
-            </div>
+            <EmptyState v-if="standardHuds.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -499,12 +490,10 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
             </div>
           </VueDraggable>
-          <div
+          <EmptyState
             v-if="customHuds.length === 0"
-            class="text-center text-ui-text-muted py-4 italic text-xs"
-          >
-            {{ t('fastcat.library.noCustomPresets') }}
-          </div>
+            :message="t('fastcat.library.noCustomPresets')"
+          />
         </CollapsibleEffectGroup>
       </div>
     </div>

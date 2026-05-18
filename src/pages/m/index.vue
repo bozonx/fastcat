@@ -443,10 +443,7 @@ const formatDate = (dateStr?: string) => {
       </UiModal>
 
       <!-- Settings Drawer -->
-      <UiMobileDrawer
-        v-model:open="isSettingsOpen"
-        :title="t('videoEditor.settings.title')"
-      >
+      <UiMobileDrawer v-model:open="isSettingsOpen" :title="t('videoEditor.settings.title')">
         <MobileSettingsView hide-title />
       </UiMobileDrawer>
 

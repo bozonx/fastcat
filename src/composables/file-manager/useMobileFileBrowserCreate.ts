@@ -18,7 +18,9 @@ export function useMobileFileBrowserCreate({
   handleFiles,
   loadFolderContent,
 }: CreateDeps) {
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
   const projectStore = useProjectStore();
   const { t } = useI18n();
   const toast = useToast();

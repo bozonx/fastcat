@@ -41,13 +41,13 @@ function isWordLike(value: unknown): value is TranscriptionWord {
   if (!value || typeof value !== 'object') return false;
 
   const candidate = value as Record<string, unknown>;
-  
+
   // Handle Whisper format: { text: string, timestamp: [start, end] }
   if (Array.isArray(candidate.timestamp) && candidate.timestamp.length === 2) {
     return (
-        typeof candidate.timestamp[0] === 'number' &&
-        typeof candidate.timestamp[1] === 'number' &&
-        typeof candidate.text === 'string'
+      typeof candidate.timestamp[0] === 'number' &&
+      typeof candidate.timestamp[1] === 'number' &&
+      typeof candidate.text === 'string'
     );
   }
 
@@ -69,16 +69,16 @@ function normalizeWord(word: any): TranscriptionWord | null {
   let end: number;
 
   if (Array.isArray(word.timestamp)) {
-      // Whisper gives seconds, convert to ms with precision
-      start = word.timestamp[0] * 1000;
-      end = word.timestamp[1] * 1000;
+    // Whisper gives seconds, convert to ms with precision
+    start = word.timestamp[0] * 1000;
+    end = word.timestamp[1] * 1000;
   } else {
-      // Assume already in ms or seconds based on value magnitude 
-      // (Whisper won't have start > 1000000 normally)
-      const isLikelySeconds = word.start < 100000 && (word.end - word.start) < 60;
-      const factor = isLikelySeconds ? 1000 : 1;
-      start = word.start * factor;
-      end = word.end * factor;
+    // Assume already in ms or seconds based on value magnitude
+    // (Whisper won't have start > 1000000 normally)
+    const isLikelySeconds = word.start < 100000 && word.end - word.start < 60;
+    const factor = isLikelySeconds ? 1000 : 1;
+    start = word.start * factor;
+    end = word.end * factor;
   }
 
   if (isNaN(start) || isNaN(end)) return null;
@@ -93,11 +93,13 @@ function normalizeWord(word: any): TranscriptionWord | null {
 
 export function extractTranscriptionWords(record: TranscriptionRecord): TranscriptionWord[] {
   const response = record.response as { words?: unknown; chunks?: unknown } | null;
-  
+
   // Whisper v3 uses 'chunks', while some other providers might use 'words'
-  const rawWords = Array.isArray(response?.chunks) 
-    ? response.chunks 
-    : (Array.isArray(response?.words) ? response.words : []);
+  const rawWords = Array.isArray(response?.chunks)
+    ? response.chunks
+    : Array.isArray(response?.words)
+      ? response.words
+      : [];
 
   return rawWords
     .filter(isWordLike)

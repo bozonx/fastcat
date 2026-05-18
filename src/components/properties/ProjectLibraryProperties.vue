@@ -66,7 +66,9 @@ const mockClip = computed(() => {
 });
 
 const hudManifest = computed(() =>
-  props.itemKind === 'hud' ? getHudManifest((params.value.hudType || props.itemId) as HudType) : null,
+  props.itemKind === 'hud'
+    ? getHudManifest((params.value.hudType || props.itemId) as HudType)
+    : null,
 );
 
 const hudControlValues = computed(() => {
@@ -150,8 +152,8 @@ function handleUpdateHudControl(key: string, value: any) {
 function handleSavePreset() {
   if (!newPresetName.value.trim()) return;
 
-  const baseType = isCustom.value 
-    ? presetsStore.customPresets.find(p => p.id === props.itemId)?.baseType || props.itemId
+  const baseType = isCustom.value
+    ? presetsStore.customPresets.find((p) => p.id === props.itemId)?.baseType || props.itemId
     : props.itemId;
 
   presetsStore.saveAsPreset(props.itemKind, baseType, newPresetName.value.trim(), params.value);
@@ -177,9 +179,7 @@ const actions = computed(() => {
   }
   list.push({
     id: 'save-as-preset',
-    label: isCustom.value
-      ? t('fastcat.effects.saveAsNew')
-      : t('fastcat.effects.saveAsPreset'),
+    label: isCustom.value ? t('fastcat.effects.saveAsNew') : t('fastcat.effects.saveAsPreset'),
     icon: 'i-heroicons-bookmark',
     onClick: () => (isSaveModalOpen.value = true),
   });
@@ -190,12 +190,20 @@ const actions = computed(() => {
 <template>
   <div class="w-full flex flex-col gap-4 text-ui-text text-sm">
     <div class="flex items-center gap-2 px-1">
-      <UIcon 
-        :name="itemKind === 'text' ? 'i-heroicons-document-text' : itemKind === 'shape' ? 'i-heroicons-stop' : 'i-heroicons-photo'" 
-        class="w-6 h-6 text-primary" 
+      <UIcon
+        :name="
+          itemKind === 'text'
+            ? 'i-heroicons-document-text'
+            : itemKind === 'shape'
+              ? 'i-heroicons-stop'
+              : 'i-heroicons-photo'
+        "
+        class="w-6 h-6 text-primary"
       />
       <span class="font-medium text-base uppercase tracking-tight">
-        {{ isCustom ? presetsStore.customPresets.find(p => p.id === props.itemId)?.name : itemId }}
+        {{
+          isCustom ? presetsStore.customPresets.find((p) => p.id === props.itemId)?.name : itemId
+        }}
       </span>
     </div>
 
@@ -215,9 +223,9 @@ const actions = computed(() => {
         :presets="[]"
         :hide-presets="true"
         @update-shape-type="handleUpdateShapeType"
-        @update-fill-color="val => handleUpdateShapeParam('fillColor', val)"
-        @update-stroke-color="val => handleUpdateShapeParam('strokeColor', val)"
-        @update-stroke-width="val => handleUpdateShapeParam('strokeWidth', val)"
+        @update-fill-color="(val) => handleUpdateShapeParam('fillColor', val)"
+        @update-stroke-color="(val) => handleUpdateShapeParam('strokeColor', val)"
+        @update-stroke-width="(val) => handleUpdateShapeParam('strokeWidth', val)"
         @update-shape-config="handleUpdateShapeConfig"
       />
 
@@ -236,10 +244,7 @@ const actions = computed(() => {
       <PropertyActionList :actions="actions" :vertical="false" size="sm" />
     </div>
 
-    <UiModal
-      v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle')"
-    >
+    <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
       <div class="flex flex-col gap-4">
         <UiFormField :label="t('common.name')">
           <UiTextInput

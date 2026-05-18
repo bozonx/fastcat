@@ -459,7 +459,7 @@ export function useFileBrowserRemote({
           name: entry.name,
           path: entry.path,
           kind: 'file',
-          operation,
+          operation: operation as 'copy' | 'move',
           isExternal: true,
         };
 

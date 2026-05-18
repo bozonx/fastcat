@@ -33,7 +33,7 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
         <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
       </button>
     </template>
-    
+
     <div :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
       <UiSliderInput
         unit="%"

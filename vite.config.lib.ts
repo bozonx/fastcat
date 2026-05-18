@@ -10,11 +10,11 @@ export default defineConfig({
       template: {
         compilerOptions: {
           // Treat all tags with 'fastcat-' as custom elements
-          isCustomElement: (tag: string) => tag.includes('fastcat-')
-        }
+          isCustomElement: (tag: string) => tag.includes('fastcat-'),
+        },
       },
       // This is important for Shadow DOM support with defineCustomElement
-      customElement: true 
+      customElement: true,
     }),
     tailwindcss(),
   ],
@@ -37,7 +37,7 @@ export default defineConfig({
     rollupOptions: {
       // In Stage 2, Option A, we bundle almost everything.
       // But we might want to exclude very large binaries if they are already on CDN.
-      external: [], 
+      external: [],
       output: {
         globals: {
           vue: 'Vue',

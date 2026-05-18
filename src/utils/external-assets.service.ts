@@ -1,8 +1,4 @@
-import { 
-  VIDEO_DIR_NAME, 
-  AUDIO_DIR_NAME, 
-  IMAGES_DIR_NAME, 
-} from '~/utils/constants';
+import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
 
 export interface ExternalAsset {
   id?: string;
@@ -23,19 +19,22 @@ export interface AssetLoadResult {
  */
 export async function loadExternalAssets(params: {
   assets: ExternalAsset[];
-  getProjectFileHandle: (path: string, options: { create: boolean }) => Promise<FileSystemFileHandle | null>;
+  getProjectFileHandle: (
+    path: string,
+    options: { create: boolean },
+  ) => Promise<FileSystemFileHandle | null>;
 }): Promise<AssetLoadResult[]> {
   const promises = params.assets.map(async (asset) => {
     try {
       const response = await fetch(asset.url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
+
       const blob = await response.blob();
       const contentType = response.headers.get('Content-Type');
 
       // 1. Resolve filename
       let filename = asset.filename || asset.url.split('/').pop()?.split('?')[0];
-      
+
       // 2. Resolve content type and folder
       let resolvedType = asset.type;
       if (!resolvedType) {
@@ -51,10 +50,13 @@ export async function loadExternalAssets(params: {
         }
       }
 
-      const folder = resolvedType === 'video' ? VIDEO_DIR_NAME : 
-                     resolvedType === 'audio' ? AUDIO_DIR_NAME : 
-                     IMAGES_DIR_NAME;
-      
+      const folder =
+        resolvedType === 'video'
+          ? VIDEO_DIR_NAME
+          : resolvedType === 'audio'
+            ? AUDIO_DIR_NAME
+            : IMAGES_DIR_NAME;
+
       if (!filename) {
         filename = `asset-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${resolvedType === 'image' ? 'png' : resolvedType === 'video' ? 'mp4' : 'mp3'}`;
       }
@@ -71,7 +73,7 @@ export async function loadExternalAssets(params: {
       return {
         asset: { ...asset, id: asset.id || filename, type: resolvedType, filename },
         path: relativePath,
-        success: true
+        success: true,
       };
     } catch (e) {
       console.error(`Failed to load asset ${asset.url}:`, e);
@@ -79,7 +81,7 @@ export async function loadExternalAssets(params: {
         asset,
         path: '',
         success: false,
-        error: e instanceof Error ? e.message : String(e)
+        error: e instanceof Error ? e.message : String(e),
       };
     }
   });

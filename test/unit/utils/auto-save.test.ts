@@ -19,16 +19,21 @@ describe('auto-save', () => {
     expect(doSave).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(100);
-    
+
     // allow event loop to process queue
     await vi.runAllTimersAsync();
-    
+
     expect(doSave).toHaveBeenCalledTimes(1);
   });
 
   it('queues saves and only runs one at a time', async () => {
     let resolveSave: (v: boolean) => void = () => {};
-    const doSave = vi.fn().mockImplementation(() => new Promise((r) => { resolveSave = r; }));
+    const doSave = vi.fn().mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveSave = r;
+        }),
+    );
     const autoSave = createAutoSave({ doSave, debounceMs: 100 });
 
     // First save
@@ -43,7 +48,7 @@ describe('auto-save', () => {
     void autoSave.requestSave();
     vi.advanceTimersByTime(100);
     await vi.runAllTimersAsync();
-    
+
     // Still 1 because first is not resolved
     expect(doSave).toHaveBeenCalledTimes(1);
 
@@ -57,7 +62,12 @@ describe('auto-save', () => {
 
   it('clears queue on reset', async () => {
     let resolveSave: (v: boolean) => void = () => {};
-    const doSave = vi.fn().mockImplementation(() => new Promise((r) => { resolveSave = r; }));
+    const doSave = vi.fn().mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolveSave = r;
+        }),
+    );
     const autoSave = createAutoSave({ doSave, debounceMs: 100 });
 
     // Trigger first save
@@ -80,12 +90,12 @@ describe('auto-save', () => {
     autoSave.markDirty();
     autoSave.markDirty();
     // currentRevision is now 2, savedRevision is 0.
-    
+
     // Finish first save (which was for the OLD project)
     resolveSave(true);
     await vi.runAllTimersAsync();
 
-    // The zombie task that was in the queue for the OLD project 
+    // The zombie task that was in the queue for the OLD project
     // will now run and see that it's dirty (savedRevision=1, currentRevision=2).
     // It will call doSave()!
     expect(doSave).toHaveBeenCalledTimes(1);

@@ -314,7 +314,6 @@ const formatDate = (dateStr?: string) => {
                   </div>
                 </div>
               </div>
-
             </div>
           </section>
         </div>

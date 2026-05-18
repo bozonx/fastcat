@@ -55,9 +55,7 @@ export function useTrackContextMenu(
           },
         },
         {
-          label: track.locked
-            ? t('fastcat.track.unlock')
-            : t('fastcat.track.lock'),
+          label: track.locked ? t('fastcat.track.unlock') : t('fastcat.track.lock'),
           icon: track.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
           onSelect: () => {
             timelineStore.updateTrackProperties(track.id, { locked: !track.locked });

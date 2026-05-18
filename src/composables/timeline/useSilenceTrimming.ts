@@ -28,8 +28,8 @@ export function useSilenceTrimming() {
 
     const workspaceHandle = workspaceStore.workspaceHandle;
     if (!workspaceHandle) {
-       console.error('Workspace handle not available');
-       return;
+      console.error('Workspace handle not available');
+      return;
     }
 
     const clipsData: {
@@ -65,7 +65,7 @@ export function useSilenceTrimming() {
       // Times in source microseconds
       const firstWord = words[0]!;
       const lastWord = words[words.length - 1]!;
-      
+
       const firstWordStartUs = firstWord.start * 1000;
       const lastWordEndUs = lastWord.end * 1000;
 
@@ -75,15 +75,20 @@ export function useSilenceTrimming() {
       if (options.settings.trimStart && firstWordStartUs > item.sourceRange.startUs) {
         pauses.push({
           startUs: item.timelineRange.startUs,
-          endUs: item.timelineRange.startUs + (firstWordStartUs - item.sourceRange.startUs) / absSpeed
+          endUs:
+            item.timelineRange.startUs + (firstWordStartUs - item.sourceRange.startUs) / absSpeed,
         });
       }
 
       // 2. Identify end pause
-      if (options.settings.trimEnd && lastWordEndUs < item.sourceRange.startUs + item.sourceRange.durationUs) {
+      if (
+        options.settings.trimEnd &&
+        lastWordEndUs < item.sourceRange.startUs + item.sourceRange.durationUs
+      ) {
         pauses.push({
-          startUs: item.timelineRange.startUs + (lastWordEndUs - item.sourceRange.startUs) / absSpeed,
-          endUs: item.timelineRange.startUs + item.timelineRange.durationUs
+          startUs:
+            item.timelineRange.startUs + (lastWordEndUs - item.sourceRange.startUs) / absSpeed,
+          endUs: item.timelineRange.startUs + item.timelineRange.durationUs,
         });
       }
 
@@ -96,15 +101,18 @@ export function useSilenceTrimming() {
           const gapEndUs = nextWord.start * 1000;
 
           if (gapEndUs - gapStartUs > PAUSE_THRESHOLD_US) {
-            const t1 = item.timelineRange.startUs + (gapStartUs - item.sourceRange.startUs) / absSpeed;
-            const t2 = item.timelineRange.startUs + (gapEndUs - item.sourceRange.startUs) / absSpeed;
+            const t1 =
+              item.timelineRange.startUs + (gapStartUs - item.sourceRange.startUs) / absSpeed;
+            const t2 =
+              item.timelineRange.startUs + (gapEndUs - item.sourceRange.startUs) / absSpeed;
 
             // Only add if it's within current clip's timeline range
             const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
             const pauseStart = Math.max(item.timelineRange.startUs, t1);
             const pauseEnd = Math.min(clipEndUs, t2);
 
-            if (pauseEnd - pauseStart > 100_000) { // at least 100ms
+            if (pauseEnd - pauseStart > 100_000) {
+              // at least 100ms
               pauses.push({ startUs: pauseStart, endUs: pauseEnd });
             }
           }
@@ -115,27 +123,30 @@ export function useSilenceTrimming() {
         clipsData.push({
           trackId: track.id,
           itemId: item.id,
-          pauses
+          pauses,
         });
       }
     }
 
     if (clipsData.length > 0) {
-      timelineStore.applyTimeline({
-        type: 'auto_trim_pauses',
-        clips: clipsData,
-        mode: options.settings.mode
-      }, {
-        labelKey: 'fastcat.timeline.autoMontage.historyLabel'
-      });
+      timelineStore.applyTimeline(
+        {
+          type: 'auto_trim_pauses',
+          clips: clipsData,
+          mode: options.settings.mode,
+        },
+        {
+          labelKey: 'fastcat.timeline.autoMontage.historyLabel',
+        },
+      );
     }
 
     return {
-      missingTranscriptionCount: missingTranscriptionPaths.size
+      missingTranscriptionCount: missingTranscriptionPaths.size,
     };
   }
 
   return {
-    applySilenceTrimming
+    applySilenceTrimming,
   };
 }

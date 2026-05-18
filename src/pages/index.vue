@@ -16,8 +16,7 @@ const { isMobile } = useDevice();
 resetProjectState();
 
 onMounted(() => {
-  const alreadyLaunched =
-    readLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED) === 'true';
+  const alreadyLaunched = readLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED) === 'true';
 
   if (!alreadyLaunched) {
     writeLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED, 'true');

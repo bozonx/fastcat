@@ -120,7 +120,10 @@ const containerClasses = computed(() => {
     : props.isFullHeight
       ? 'h-[95dvh]'
       : 'max-h-[85dvh]';
-  return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`.replace(/  +/g, ' ');
+  return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`.replace(
+    /  +/g,
+    ' ',
+  );
 });
 
 const bodyClasses = computed(() => {
@@ -392,7 +395,9 @@ watch(isOpen, (val) => {
           :class="effectiveDirection === 'right' ? 'left-0 w-6' : 'right-0 w-6'"
           @click.stop="onHandleTap"
         >
-          <div class="w-1 h-12 rounded-full bg-zinc-700/60 transition-colors hover:bg-zinc-500/60" />
+          <div
+            class="w-1 h-12 rounded-full bg-zinc-700/60 transition-colors hover:bg-zinc-500/60"
+          />
         </div>
 
         <!-- Optional Toolbar (stays visible at first snap point) -->

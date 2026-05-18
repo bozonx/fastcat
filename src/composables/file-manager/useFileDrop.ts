@@ -115,10 +115,13 @@ export function useFileDrop(options: UseFileDropOptions) {
     }
 
     return params.items.every((item) =>
-      canTransferClipboardItemToOrFromBloggerDog(item as Pick<FileManagerClipboardItem, 'kind' | 'name'>, {
-        sourceIsBloggerDog: dragSourceVfs?.id === 'bloggerdog',
-        targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
-      }),
+      canTransferClipboardItemToOrFromBloggerDog(
+        item as Pick<FileManagerClipboardItem, 'kind' | 'name'>,
+        {
+          sourceIsBloggerDog: dragSourceVfs?.id === 'bloggerdog',
+          targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
+        },
+      ),
     );
   }
 

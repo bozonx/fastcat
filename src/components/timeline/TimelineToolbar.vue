@@ -40,8 +40,7 @@ const workspaceStore = useWorkspaceStore();
 const layer1Label = computed(() => {
   const key = workspaceStore.userSettings.hotkeys.layer1 || 'Shift';
   return (
-    LAYER_OPTIONS.find((o) => o.value === key)?.label ||
-    (key === 'Shift' ? 'Shift (Any)' : key)
+    LAYER_OPTIONS.find((o) => o.value === key)?.label || (key === 'Shift' ? 'Shift (Any)' : key)
   );
 });
 const { isSnapSettingsModalOpen } = storeToRefs(settingsStore);
@@ -149,19 +148,33 @@ const textPresetItems = computed(() => {
   return [...standard, ...custom];
 });
 
-const standardTextPresets = computed<Record<string, { style: TextClipStyle; text?: string }>>(() => ({
-  default: {
-    style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
-  },
-  title: {
-    style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
-    text: t('videoEditor.library.texts.title'),
-  },
-  subtitle: {
-    style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif', width: 1280 },
-    text: t('videoEditor.library.texts.subtitle'),
-  },
-}));
+const standardTextPresets = computed<Record<string, { style: TextClipStyle; text?: string }>>(
+  () => ({
+    default: {
+      style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
+    },
+    title: {
+      style: {
+        fontSize: 96,
+        fontWeight: '800',
+        color: '#ffffff',
+        fontFamily: 'sans-serif',
+        width: 1280,
+      },
+      text: t('videoEditor.library.texts.title'),
+    },
+    subtitle: {
+      style: {
+        fontSize: 48,
+        fontWeight: '400',
+        color: '#aaaaaa',
+        fontFamily: 'sans-serif',
+        width: 1280,
+      },
+      text: t('videoEditor.library.texts.subtitle'),
+    },
+  }),
+);
 
 function addTextClip(event?: MouseEvent) {
   const isShift = event?.shiftKey || false;
@@ -332,7 +345,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
             :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
             icon="i-heroicons-scissors"
-            :ariaLabel="t('fastcat.timeline.trim')"
+            :aria-label="t('fastcat.timeline.trim')"
             :items="trimMenuItems"
             button-class="hover:bg-ui-bg-hover/60"
             caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
@@ -406,11 +419,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           :text="`${t('fastcat.timeline.addText')} (${t('fastcat.timeline.dragToTimeline')}). ${t('fastcat.timeline.shiftForPresets').replace('{key}', layer1Label)}`"
         >
           <UContextMenu :items="textContextMenuItems">
-            <div
-              draggable="true"
-              @dragstart="onDragStart($event, 'text')"
-              @dragend="onDragEnd"
-            >
+            <div draggable="true" @dragstart="onDragStart($event, 'text')" @dragend="onDragEnd">
               <UButton
                 size="xs"
                 variant="ghost"

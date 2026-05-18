@@ -129,12 +129,9 @@ describe('dragOperation', () => {
   });
 
   it('detects internal file-manager drag types even when Files is present', () => {
-    expect(
-      hasInternalFileManagerDragType([
-        'Files',
-        'application/fastcat-file-manager-move',
-      ]),
-    ).toBe(true);
+    expect(hasInternalFileManagerDragType(['Files', 'application/fastcat-file-manager-move'])).toBe(
+      true,
+    );
 
     expect(hasInternalFileManagerDragType(['Files'])).toBe(false);
   });

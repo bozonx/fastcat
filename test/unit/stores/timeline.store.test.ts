@@ -103,17 +103,20 @@ describe('TimelineStore', () => {
 
   beforeEach(() => {
     setActivePinia(createPinia());
-    projectStoreMock.getFileByPath.mockImplementation(async () => ({
-      type: 'image/jpeg',
-      size: 100,
-      lastModified: 1,
-      text: async () => '{}',
-    } as any));
-    
+    projectStoreMock.getFileByPath.mockImplementation(
+      async () =>
+        ({
+          type: 'image/jpeg',
+          size: 100,
+          lastModified: 1,
+          text: async () => '{}',
+        }) as any,
+    );
+
     store = useTimelineStore();
     // Force initialization of timelineDoc and duration
     store.timelineDoc = projectStoreMock.createFallbackTimelineDoc();
-    
+
     projectStoreMock.getFileHandleByPath.mockClear();
     mediaStoreMock.getOrFetchMetadataByPath.mockClear();
     mediaStoreMock.getOrFetchMetadata.mockClear();
@@ -187,7 +190,7 @@ describe('TimelineStore', () => {
     });
     store.timelineDoc = timeline;
     store.currentTime = 3_000_000;
-    
+
     await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
 
     const clip = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
@@ -218,7 +221,9 @@ describe('TimelineStore', () => {
         {
           id: 'v1',
           kind: 'video',
-          clips: [{ id: 'c1', startUs: 1_000_000, durationUs: 5_000_000, freezeFrameSourceUs: 100 }],
+          clips: [
+            { id: 'c1', startUs: 1_000_000, durationUs: 5_000_000, freezeFrameSourceUs: 100 },
+          ],
         },
       ],
     });
@@ -288,13 +293,13 @@ describe('TimelineStore', () => {
     store.currentTime = 2_000_000;
     let clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
     await store.trimToPlayheadLeftNoRipple({ trackId: 'v1', itemId: clip.id });
-    
+
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip.timelineRange.startUs).toBe(2_000_000);
 
     store.currentTime = 8_000_000;
     await store.trimToPlayheadRightNoRipple({ trackId: 'v1', itemId: clip.id });
-    
+
     clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
     expect(clip.timelineRange.durationUs).toBe(6_000_000);
   });
@@ -302,7 +307,7 @@ describe('TimelineStore', () => {
   it('adds image source to video track', async () => {
     // Rely on effect observation instead of spy if possible, or just check result
     const initialCount = store.timelineDoc.tracks[0].items.length;
-    
+
     await store.addClipToTimelineFromPath({
       trackId: 'v1',
       name: 'image.jpg',

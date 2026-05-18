@@ -2,14 +2,19 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { transcribeAudioFile, type TranscriptionRequest, type TranscriptionResult } from './engine';
 import { saveTranscriptionSidecar } from './persistence';
 
-export interface TranscriptionTaskOptions extends Omit<TranscriptionRequest, 'onProgress' | 'signal'> {
+export interface TranscriptionTaskOptions extends Omit<
+  TranscriptionRequest,
+  'onProgress' | 'signal'
+> {
   title?: string;
 }
 
 /**
  * Runs transcription as a background task.
  */
-export async function runTranscriptionTask(options: TranscriptionTaskOptions): Promise<TranscriptionResult> {
+export async function runTranscriptionTask(
+  options: TranscriptionTaskOptions,
+): Promise<TranscriptionResult> {
   const tasksStore = useBackgroundTasksStore();
   const abortController = new AbortController();
 
@@ -37,11 +42,18 @@ export async function runTranscriptionTask(options: TranscriptionTaskOptions): P
     tasksStore.updateTaskStatus(taskId, 'completed');
     return result;
   } catch (error: any) {
-    const message = error.name === 'AbortError' || error.message === 'Transcription cancelled'
-      ? 'Cancelled'
-      : error.message || 'Transcription failed';
-    
-    tasksStore.updateTaskStatus(taskId, error.name === 'AbortError' || error.message === 'Transcription cancelled' ? 'cancelled' : 'failed', message);
+    const message =
+      error.name === 'AbortError' || error.message === 'Transcription cancelled'
+        ? 'Cancelled'
+        : error.message || 'Transcription failed';
+
+    tasksStore.updateTaskStatus(
+      taskId,
+      error.name === 'AbortError' || error.message === 'Transcription cancelled'
+        ? 'cancelled'
+        : 'failed',
+      message,
+    );
     throw error;
   }
 }

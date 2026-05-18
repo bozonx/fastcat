@@ -151,9 +151,9 @@ export async function transcribeLocally(
   onProgress?.({ status: 'initializing' });
 
   const audioDurationS = finalAudio.length / 16000;
-  
+
   // Synthetic progress estimation
-  // Whisper-tiny on modern hardware is roughly 10x-20x realtime. 
+  // Whisper-tiny on modern hardware is roughly 10x-20x realtime.
   // We use a conservative factor of 5x to avoid over-promising.
   const estimatedTimeS = Math.max(2, audioDurationS / 5);
   let startTime = Date.now();
@@ -189,7 +189,7 @@ export async function transcribeLocally(
         if (msg.data.progress >= 1) {
           onProgress?.({ status: 'transcribing', progress: 0 });
           startTime = Date.now(); // Reset start time for transcription phase
-          
+
           if (!progressInterval) {
             progressInterval = setInterval(() => {
               const elapsedS = (Date.now() - startTime) / 1000;
@@ -227,15 +227,18 @@ export async function transcribeLocally(
 
     worker.addEventListener('message', handler);
 
-    worker.postMessage({
-      type: 'transcribe',
-      id,
-      data: {
-        audio: finalAudio,
-        modelName,
-        language: input.language,
-        subtask: 'transcribe',
-      },
-    } satisfies SttWorkerMessage, [finalAudio.buffer]);
+    worker.postMessage(
+      {
+        type: 'transcribe',
+        id,
+        data: {
+          audio: finalAudio,
+          modelName,
+          language: input.language,
+          subtask: 'transcribe',
+        },
+      } satisfies SttWorkerMessage,
+      [finalAudio.buffer],
+    );
   });
 }

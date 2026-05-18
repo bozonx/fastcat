@@ -171,8 +171,7 @@ export class ClipResourceManager {
       // clip shows the previous source frame instead of becoming invisible
       // (which would leak through as a one-frame flicker in the export).
       const frameRate = Number(clip.frameRate);
-      const frameStepS =
-        Number.isFinite(frameRate) && frameRate > 0 ? 1 / frameRate : 1 / 30;
+      const frameStepS = Number.isFinite(frameRate) && frameRate > 0 ? 1 / frameRate : 1 / 30;
       const fallbackTimeS = Math.max(0, sampleTimeS - frameStepS * 0.5);
       if (fallbackTimeS < sampleTimeS) {
         const retry = await this.context.resourceManager.withVideoSampleSlot(

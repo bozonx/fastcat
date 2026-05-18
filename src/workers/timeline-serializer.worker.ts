@@ -7,6 +7,9 @@ self.addEventListener('message', (event: MessageEvent<TimelineDocument>) => {
     const serialized = serializeTimelineToOtio(doc);
     self.postMessage({ success: true, serialized });
   } catch (error) {
-    self.postMessage({ success: false, error: error instanceof Error ? error.message : String(error) });
+    self.postMessage({
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 });

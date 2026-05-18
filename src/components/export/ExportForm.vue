@@ -22,7 +22,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  exported: [data: { file: File, filename: string }];
+  exported: [data: { file: File; filename: string }];
 }>();
 
 const { t } = useI18n();
@@ -364,9 +364,7 @@ async function onConfirm() {
           "
         >
           <UCheckbox v-model="saveAsDefaults" :disabled="isExporting || !isSettingsDirty" />
-          <span class="text-ui-text text-sm">{{
-            t('videoEditor.export.saveAsDefault')
-          }}</span>
+          <span class="text-ui-text text-sm">{{ t('videoEditor.export.saveAsDefault') }}</span>
         </label>
 
         <div
@@ -420,9 +418,7 @@ async function onConfirm() {
             color="primary"
             variant="solid"
             :label="
-              isExporting
-                ? t('videoEditor.export.exporting')
-                : t('videoEditor.export.startExport')
+              isExporting ? t('videoEditor.export.exporting') : t('videoEditor.export.startExport')
             "
             :loading="isExporting"
             :disabled="isExporting || !!filenameError || !outputFilename.trim()"

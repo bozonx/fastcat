@@ -268,10 +268,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
 
     <SelectEffectModal v-model:open="isSelectModalOpen" target="audio" @select="handleAddEffect" />
 
-    <UiModal
-      v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle')"
-    >
+    <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
       <template #body>
         <div class="flex flex-col gap-4">
           <UiFormField :label="t('common.name')">

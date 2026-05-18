@@ -15,6 +15,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
     "i18n:check": "node scripts/check-i18n-locales.mjs",
     "typecheck": "nuxi typecheck",
     "test:unit": "vitest run",

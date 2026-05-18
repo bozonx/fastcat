@@ -141,7 +141,7 @@ export function useFileBrowserFileActions({
       openTranscriptionModal(entry);
       return;
     }
-    
+
     if (action === 'createSubgroup') {
       if (entry.kind === 'directory') (uiStore as any).pendingBloggerDogCreateSubgroup = entry;
       return;

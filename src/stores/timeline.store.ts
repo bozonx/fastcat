@@ -66,7 +66,6 @@ export const useTimelineStore = defineStore('timeline', () => {
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
 
-
   const historyDebounce = createTimelineHistoryDebounceModule({ historyStore });
 
   historyStore.registerStateGetter('timeline', () => timelineDoc.value);

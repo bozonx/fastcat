@@ -20,6 +20,7 @@ import {
 import type { FsEntry } from '~/types/fs';
 import type { DraggedFileData } from '~/composables/useDraggedFile';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import type { FileManagerClipboardItem } from '~/stores/clipboard.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   getDropTargetEntryPath,
@@ -186,10 +187,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     }
 
     return params.items.every((item) =>
-      canTransferClipboardItemToOrFromBloggerDog(item as Pick<FileManagerClipboardItem, 'kind' | 'name'>, {
-        sourceIsBloggerDog: params.sourceVfs?.id === 'bloggerdog',
-        targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
-      }),
+      canTransferClipboardItemToOrFromBloggerDog(
+        item as Pick<FileManagerClipboardItem, 'kind' | 'name'>,
+        {
+          sourceIsBloggerDog: params.sourceVfs?.id === 'bloggerdog',
+          targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
+        },
+      ),
     );
   }
 
@@ -307,7 +311,11 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     dragOverEntryPath.value = path;
 
     if (
-      isCancellationZone({ items: appClipboard.draggedItems, targetEntryPath: path, targetDirPath: path })
+      isCancellationZone({
+        items: appClipboard.draggedItems,
+        targetEntryPath: path,
+        targetDirPath: path,
+      })
     ) {
       appClipboard.setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(options.fileManagerInstanceId ?? null);

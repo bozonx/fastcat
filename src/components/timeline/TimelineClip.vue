@@ -563,160 +563,166 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         <!-- Indicators -->
         <div
           v-if="
-            clipItem && typeof clipItem.speed === 'number' && clipItem.speed !== 1 && !isMediaMissing
+            clipItem &&
+            typeof clipItem.speed === 'number' &&
+            clipItem.speed !== 1 &&
+            !isMediaMissing
           "
-        class="absolute inset-0 rounded border-2 pointer-events-none"
-        :style="{ zIndex: 'var(--z-clip-speed)' }"
-        :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
-      />
-      <div
-        v-if="isFreePosition"
-        class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none"
-        :style="{ zIndex: 'var(--z-clip-free-pos)' }"
-      />
-      <div
-        v-if="track.locked || (clipItem && clipItem.locked)"
-        class="absolute inset-0 rounded hatching-diagonal pointer-events-none"
-        :style="{ zIndex: 'var(--z-clip-handles)' }"
-      />
-
-      <!-- Overlays (Missing Media, Disabled, Muted) -->
-      <ClipMetadata
-        :item="item"
-        :track="track"
-        :is-media-missing="isMediaMissing"
-        :is-unsupported="isUnsupported"
-        :clip-width-px="clipWidthPx"
-      />
-
-      <!-- Sub-components for Transitions and Fades -->
-      <ClipTransitions
-        v-if="clipItem"
-        :clip="clipItem"
-        :track="track"
-        :zoom="timelineStore.timelineZoom"
-        :clip-width-px="clipWidthPx"
-        :track-height="trackHeight"
-        :selected-transition="selectedTransition"
-        :can-edit="canEditClipContent"
-        :is-mobile="isMobile"
-        @select="(e, payload) => emit('selectTransition', e, payload)"
-        @resize="
-          (e, payload) =>
-            emit('startResizeTransition', e, {
-              trackId: track.id,
-              itemId: item.id,
-              edge: payload.edge,
-              durationUs: payload.durationUs,
-            })
-        "
-        @create-transition="handleTransitionCreate"
-      />
-
-      <ClipAudioFades
-        v-if="clipItem && clipHasAudio(item, track, mediaStore.mediaMetadata)"
-        :clip="clipItem"
-        :item="item"
-        :track="track"
-        :track-height="trackHeight"
-        :zoom="timelineStore.timelineZoom"
-        :clip-width-px="clipWidthPx"
-        :can-edit="canEditClipContent"
-        :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
-        :is-resizing-volume="resizeVolume?.itemId === item.id"
-        :is-mobile="isMobile"
-        :is-hovered="isHovered"
-        :scroll-left="scrollLeft"
-        :viewport-width="viewportWidth"
-        @start-resize-fade="
-          (e, payload) =>
-            emit('startResizeFade', e, {
-              trackId: track.id,
-              itemId: item.id,
-              edge: payload.edge,
-              durationUs: payload.durationUs,
-            })
-        "
-        @start-resize-volume="
-          (e, gain) =>
-            emit('startResizeVolume', e, {
-              trackId: track.id,
-              itemId: item.id,
-              gain,
-              trackHeight,
-            })
-        "
-        @toggle-fade-curve="({ edge }) => toggleFadeCurve(edge)"
-        @reset-volume="emit('resetVolume', { trackId: track.id, itemId: item.id })"
-      />
-
-      <!-- Content Area (Thumbnails / Waveform) -->
-      <div class="flex-1 flex w-full min-h-0 relative" :style="{ zIndex: 'var(--z-clip-content)' }">
-        <TimelineClipThumbnails
-          v-if="isVideo(item, track) && clipItem?.showThumbnails !== false"
-          :item="clipItem"
-          :width="clipWidthPx"
-          :scroll-left="scrollLeft ?? 0"
-          :viewport-width="viewportWidth ?? 0"
-          :clip-start-px="timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)"
+          class="absolute inset-0 rounded border-2 pointer-events-none"
+          :style="{ zIndex: 'var(--z-clip-speed)' }"
+          :class="clipItem.speed < 0 ? 'border-fuchsia-500' : 'border-violet-400'"
         />
-        <TimelineAudioWaveform
-          v-if="
-            clipItem?.showWaveform !== false &&
-            (isAudio(item, track) ||
-              (isVideo(item, track) && clipHasAudio(item, track, mediaStore.mediaMetadata)))
-          "
-          :item="clipItem"
-        />
-
         <div
+          v-if="isFreePosition"
+          class="absolute inset-0 rounded border-2 border-yellow-400 pointer-events-none"
+          :style="{ zIndex: 'var(--z-clip-free-pos)' }"
+        />
+        <div
+          v-if="track.locked || (clipItem && clipItem.locked)"
+          class="absolute inset-0 rounded hatching-diagonal pointer-events-none"
+          :style="{ zIndex: 'var(--z-clip-handles)' }"
+        />
+
+        <!-- Overlays (Missing Media, Disabled, Muted) -->
+        <ClipMetadata
+          :item="item"
+          :track="track"
+          :is-media-missing="isMediaMissing"
+          :is-unsupported="isUnsupported"
+          :clip-width-px="clipWidthPx"
+        />
+
+        <!-- Sub-components for Transitions and Fades -->
+        <ClipTransitions
           v-if="clipItem"
-          class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 pointer-events-none"
-          :style="{ zIndex: 'var(--z-clip-name)' }"
+          :clip="clipItem"
+          :track="track"
+          :zoom="timelineStore.timelineZoom"
+          :clip-width-px="clipWidthPx"
+          :track-height="trackHeight"
+          :selected-transition="selectedTransition"
+          :can-edit="canEditClipContent"
+          :is-mobile="isMobile"
+          @select="(e, payload) => emit('selectTransition', e, payload)"
+          @resize="
+            (e, payload) =>
+              emit('startResizeTransition', e, {
+                trackId: track.id,
+                itemId: item.id,
+                edge: payload.edge,
+                durationUs: payload.durationUs,
+              })
+          "
+          @create-transition="handleTransitionCreate"
+        />
+
+        <ClipAudioFades
+          v-if="clipItem && clipHasAudio(item, track, mediaStore.mediaMetadata)"
+          :clip="clipItem"
+          :item="item"
+          :track="track"
+          :track-height="trackHeight"
+          :zoom="timelineStore.timelineZoom"
+          :clip-width-px="clipWidthPx"
+          :can-edit="canEditClipContent"
+          :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
+          :is-resizing-volume="resizeVolume?.itemId === item.id"
+          :is-mobile="isMobile"
+          :is-hovered="isHovered"
+          :scroll-left="scrollLeft"
+          :viewport-width="viewportWidth"
+          @start-resize-fade="
+            (e, payload) =>
+              emit('startResizeFade', e, {
+                trackId: track.id,
+                itemId: item.id,
+                edge: payload.edge,
+                durationUs: payload.durationUs,
+              })
+          "
+          @start-resize-volume="
+            (e, gain) =>
+              emit('startResizeVolume', e, {
+                trackId: track.id,
+                itemId: item.id,
+                gain,
+                trackHeight,
+              })
+          "
+          @toggle-fade-curve="({ edge }) => toggleFadeCurve(edge)"
+          @reset-volume="emit('resetVolume', { trackId: track.id, itemId: item.id })"
+        />
+
+        <!-- Content Area (Thumbnails / Waveform) -->
+        <div
+          class="flex-1 flex w-full min-h-0 relative"
+          :style="{ zIndex: 'var(--z-clip-content)' }"
         >
-          <span class="truncate text-2xs leading-tight opacity-70" :title="clipItem.name">{{
-            clipItem.name
-          }}</span>
+          <TimelineClipThumbnails
+            v-if="isVideo(item, track) && clipItem?.showThumbnails !== false"
+            :item="clipItem"
+            :width="clipWidthPx"
+            :scroll-left="scrollLeft ?? 0"
+            :viewport-width="viewportWidth ?? 0"
+            :clip-start-px="timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)"
+          />
+          <TimelineAudioWaveform
+            v-if="
+              clipItem?.showWaveform !== false &&
+              (isAudio(item, track) ||
+                (isVideo(item, track) && clipHasAudio(item, track, mediaStore.mediaMetadata)))
+            "
+            :item="clipItem"
+          />
+
+          <div
+            v-if="clipItem"
+            class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 pointer-events-none"
+            :style="{ zIndex: 'var(--z-clip-name)' }"
+          >
+            <span class="truncate text-2xs leading-tight opacity-70" :title="clipItem.name">{{
+              clipItem.name
+            }}</span>
+          </div>
+
+          <div
+            v-if="currentSlipPreview"
+            class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/80 px-2 py-1 text-2xs font-medium text-white shadow-lg whitespace-nowrap pointer-events-none"
+            :style="{ zIndex: 'var(--z-clip-guide)' }"
+          >
+            {{ currentSlipPreview.timecode }}
+          </div>
+
+          <div
+            v-if="transitionInOverlayGuideStyle"
+            class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-yellow-400/95 pointer-events-none"
+            :style="{ ...transitionInOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
+          />
+
+          <div
+            v-if="transitionOutOverlayGuideStyle"
+            class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-cyan-400/95 pointer-events-none"
+            :style="{ ...transitionOutOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
+          />
         </div>
 
-        <div
-          v-if="currentSlipPreview"
-          class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/80 px-2 py-1 text-2xs font-medium text-white shadow-lg whitespace-nowrap pointer-events-none"
-          :style="{ zIndex: 'var(--z-clip-guide)' }"
+        <!-- Trim Handles -->
+        <template
+          v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
         >
-          {{ currentSlipPreview.timecode }}
-        </div>
-
-        <div
-          v-if="transitionInOverlayGuideStyle"
-          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-yellow-400/95 pointer-events-none"
-          :style="{ ...transitionInOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
-        />
-
-        <div
-          v-if="transitionOutOverlayGuideStyle"
-          class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-cyan-400/95 pointer-events-none"
-          :style="{ ...transitionOutOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
-        />
-      </div>
-
-      <!-- Trim Handles -->
-      <template
-        v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
-      >
-        <div
-          class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
-          :style="{ zIndex: 'var(--z-clip-trim)' }"
-          :class="isMobile ? 'w-4' : 'w-4'"
-          @pointerdown="onTrimHandlePointerDown($event, 'start')"
-        />
-        <div
-          class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
-          :style="{ zIndex: 'var(--z-clip-trim)' }"
-          :class="isMobile ? 'w-4' : 'w-4'"
-          @pointerdown="onTrimHandlePointerDown($event, 'end')"
-        />
-      </template>
+          <div
+            class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
+            :style="{ zIndex: 'var(--z-clip-trim)' }"
+            :class="isMobile ? 'w-4' : 'w-4'"
+            @pointerdown="onTrimHandlePointerDown($event, 'start')"
+          />
+          <div
+            class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
+            :style="{ zIndex: 'var(--z-clip-trim)' }"
+            :class="isMobile ? 'w-4' : 'w-4'"
+            @pointerdown="onTrimHandlePointerDown($event, 'end')"
+          />
+        </template>
       </template>
     </div>
   </UContextMenu>

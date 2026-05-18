@@ -161,7 +161,7 @@ export function getDraggedFileManagerItems(event: DragEvent): FileManagerDragged
     const parsed: unknown = JSON.parse(internalRaw);
     return Array.isArray(parsed)
       ? (parsed as FileManagerDraggedItem[])
-      : [(parsed as FileManagerDraggedItem)];
+      : [parsed as FileManagerDraggedItem];
   } catch {
     return [];
   }

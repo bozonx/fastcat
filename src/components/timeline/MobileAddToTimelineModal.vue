@@ -217,11 +217,7 @@ async function handleAdd() {
                   {{ track.name }}
                 </p>
                 <p class="text-[10px] font-medium opacity-60 uppercase tracking-tighter">
-                  {{
-                    track.kind === 'video'
-                      ? t('common.video')
-                      : t('common.audio')
-                  }}
+                  {{ track.kind === 'video' ? t('common.video') : t('common.audio') }}
                 </p>
               </div>
             </div>

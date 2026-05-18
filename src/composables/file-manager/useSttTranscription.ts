@@ -87,11 +87,7 @@ export function useSttTranscription(
 
   async function submitTranscription(): Promise<void> {
     const entry = pendingEntry.value;
-    if (
-      !entry ||
-      entry.kind !== 'file' ||
-      !workspaceStore.workspaceHandle
-    ) {
+    if (!entry || entry.kind !== 'file' || !workspaceStore.workspaceHandle) {
       return;
     }
 
@@ -104,11 +100,14 @@ export function useSttTranscription(
       const workspacePath = entry.path;
 
       // Check if already transcribed (optional logic, but fixes 'cached' parameter mismatch)
-      const existing = await loadTranscriptionSidecar(workspaceStore.workspaceHandle!, workspacePath);
+      const existing = await loadTranscriptionSidecar(
+        workspaceStore.workspaceHandle!,
+        workspacePath,
+      );
       if (existing) {
-          modalOpen.value = false;
-          options.onSuccess?.({ mediaType, cached: true });
-          return;
+        modalOpen.value = false;
+        options.onSuccess?.({ mediaType, cached: true });
+        return;
       }
 
       let file: File | null = null;

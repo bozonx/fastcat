@@ -119,8 +119,8 @@ function createFmProps(params: {
     getFileIcon: () => 'i-heroicons-document',
     findEntryByPath: (path: string) =>
       (params.rootEntries ?? []).find((e) => e.path === path) || null,
-    resolveEntryByPath: vi.fn(async (path: string) =>
-      (params.rootEntries ?? []).find((e) => e.path === path) || null,
+    resolveEntryByPath: vi.fn(
+      async (path: string) => (params.rootEntries ?? []).find((e) => e.path === path) || null,
     ),
     mediaCache: { hasProxy: () => false },
     moveEntry: async () => {},
@@ -236,7 +236,7 @@ describe('FileManagerFiles', () => {
           UIcon: true,
           FileManagerTree: {
             template:
-              '<button data-test="tree-move" @click="$emit(\'requestMove\', { sourcePath: \'folder/clip.mp4\', targetDirPath: \'target\' })" />',
+              "<button data-test=\"tree-move\" @click=\"$emit('requestMove', { sourcePath: 'folder/clip.mp4', targetDirPath: 'target' })\" />",
           },
         },
       },

@@ -28,8 +28,12 @@ const mockState = vi.hoisted(() => ({
 }));
 
 // Link mock functions to state updates
-mockState.setCurrentDragOperation.mockImplementation((op: any) => { mockState.currentDragOperation = op; });
-mockState.setDragSourceFileManagerInstanceId.mockImplementation((id: any) => { mockState.dragSourceFileManagerInstanceId = id; });
+mockState.setCurrentDragOperation.mockImplementation((op: any) => {
+  mockState.currentDragOperation = op;
+});
+mockState.setDragSourceFileManagerInstanceId.mockImplementation((id: any) => {
+  mockState.dragSourceFileManagerInstanceId = id;
+});
 
 const selectionStoreMock = {
   selectedEntity: null as any,
@@ -104,8 +108,12 @@ vi.mock('~/stores/workspace.store', () => ({
 vi.mock('~/composables/useAppClipboard', () => ({
   useAppClipboard: () => ({
     hasFileManagerPayload: false,
-    get currentDragOperation() { return mockState.currentDragOperation; },
-    get dragSourceFileManagerInstanceId() { return mockState.dragSourceFileManagerInstanceId; },
+    get currentDragOperation() {
+      return mockState.currentDragOperation;
+    },
+    get dragSourceFileManagerInstanceId() {
+      return mockState.dragSourceFileManagerInstanceId;
+    },
     setCurrentDragOperation: mockState.setCurrentDragOperation,
     setDragSourceFileManagerInstanceId: mockState.setDragSourceFileManagerInstanceId,
     setDragTargetFileManagerInstanceId: mockState.setDragTargetFileManagerInstanceId,
@@ -176,7 +184,13 @@ describe('FileManagerTree', () => {
         path: '_video',
         expanded: true,
         children: [
-          { name: 'child.mp4', kind: 'file', path: '_video/child.mp4', parentPath: '_video', expanded: false },
+          {
+            name: 'child.mp4',
+            kind: 'file',
+            path: '_video/child.mp4',
+            parentPath: '_video',
+            expanded: false,
+          },
         ],
       },
     ];
@@ -239,7 +253,8 @@ describe('FileManagerTree', () => {
       dataTransfer: {
         types: [FILE_MANAGER_COPY_DRAG_TYPE],
         getData: vi.fn((type) => {
-          if (type === FILE_MANAGER_COPY_DRAG_TYPE) return JSON.stringify({ path: '_video', kind: 'directory' });
+          if (type === FILE_MANAGER_COPY_DRAG_TYPE)
+            return JSON.stringify({ path: '_video', kind: 'directory' });
           return '';
         }),
       },

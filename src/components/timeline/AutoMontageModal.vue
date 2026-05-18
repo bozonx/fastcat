@@ -15,12 +15,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
-  (e: 'apply', settings: {
-    trimStart: boolean;
-    trimEnd: boolean;
-    trimMiddle: boolean;
-    mode: 'cut' | 'mark';
-  }): void;
+  (
+    e: 'apply',
+    settings: {
+      trimStart: boolean;
+      trimEnd: boolean;
+      trimMiddle: boolean;
+      mode: 'cut' | 'mark';
+    },
+  ): void;
 }>();
 
 const isOpen = computed({

@@ -90,10 +90,7 @@ export function useFileManagerPanelActions({
       toast.add({
         color: 'error',
         title: t('timelineCreation.errorTitle'),
-        description:
-          e instanceof Error
-            ? e.message
-            : t('timelineCreation.failed'),
+        description: e instanceof Error ? e.message : t('timelineCreation.failed'),
       });
     }
   }

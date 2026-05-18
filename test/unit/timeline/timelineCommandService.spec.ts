@@ -53,7 +53,10 @@ describe('createTimelineCommandService', () => {
       updateTimelineFormat: vi.fn().mockResolvedValue(undefined),
       showAutoSettingsApplied: vi.fn(),
       showFpsWarning: vi.fn(),
-      mediaCache: { hasProxy: vi.fn(() => false), ensureProxy: vi.fn().mockResolvedValue(undefined) },
+      mediaCache: {
+        hasProxy: vi.fn(() => false),
+        ensureProxy: vi.fn().mockResolvedValue(undefined),
+      },
       defaultImageDurationUs: 5_000_000,
       defaultImageSourceDurationUs: 5_000_000,
       parseTimelineFromOtio: vi.fn(),

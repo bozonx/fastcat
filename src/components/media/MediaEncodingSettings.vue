@@ -173,10 +173,7 @@ watch(
       />
     </UiFormField>
 
-    <UiFormField
-      v-if="outputFormat === 'mp4'"
-      :label="t('videoEditor.export.videoCodec')"
-    >
+    <UiFormField v-if="outputFormat === 'mp4'" :label="t('videoEditor.export.videoCodec')">
       <div class="w-full">
         <UiSelect
           :model-value="
@@ -213,10 +210,7 @@ watch(
         />
       </UiFormField>
 
-      <UiFormField
-        :label="t('videoEditor.export.keyframeInterval')"
-        class="flex-1"
-      >
+      <UiFormField :label="t('videoEditor.export.keyframeInterval')" class="flex-1">
         <UiWheelNumberInput
           v-model="keyframeIntervalSec"
           :min="1"

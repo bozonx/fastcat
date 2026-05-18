@@ -50,7 +50,9 @@ async function confirmClearProjectVardata() {
 async function confirmClearBackups() {
   isClearBackupsConfirmOpen.value = false;
   try {
-    const backupDir = await projectStore.getDirectoryHandleByPath('.fastcat/backups', { create: false });
+    const backupDir = await projectStore.getDirectoryHandleByPath('.fastcat/backups', {
+      create: false,
+    });
     if (backupDir) {
       const parent = await projectStore.getDirectoryHandleByPath('.fastcat', { create: false });
       if (parent) {

@@ -37,7 +37,6 @@ export function createMockAudioItems(audioClips: WorkerTimelineClip[]): Timeline
     audioFadeInCurve: clip.audioFadeInCurve,
     audioFadeOutCurve: clip.audioFadeOutCurve,
     audioDeclickDurationUs: clip.audioDeclickDurationUs,
-    defaultAudioFadeCurve: clip.defaultAudioFadeCurve,
     transitionIn: clip.transitionIn,
     transitionOut: clip.transitionOut,
     source: clip.source,

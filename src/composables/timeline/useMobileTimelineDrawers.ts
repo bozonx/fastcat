@@ -238,7 +238,6 @@ export function useMobileTimelineDrawers() {
     }, 0);
   }
 
-
   onBeforeUnmount(() => {
     if (suppressDrawerSelectionClearResetTimer !== null) {
       clearTimeout(suppressDrawerSelectionClearResetTimer);

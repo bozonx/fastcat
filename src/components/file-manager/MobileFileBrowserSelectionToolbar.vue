@@ -31,7 +31,8 @@ const hasVideo = computed(() =>
 
 const hasProxy = computed(() =>
   props.selectedEntries.some(
-    (entry) => entry.kind === 'file' && Boolean(entry.path) && proxyStore.existingProxies.has(entry.path),
+    (entry) =>
+      entry.kind === 'file' && Boolean(entry.path) && proxyStore.existingProxies.has(entry.path),
   ),
 );
 
@@ -50,19 +51,23 @@ const canExtractAudio = computed(() =>
   }),
 );
 
-const canCopySelection = computed(() =>
-  props.selectedEntries.length > 0 &&
-  props.selectedEntries.every((entry) => canCopyBloggerDogEntry(entry)),
+const canCopySelection = computed(
+  () =>
+    props.selectedEntries.length > 0 &&
+    props.selectedEntries.every((entry) => canCopyBloggerDogEntry(entry)),
 );
 
-const canCutSelection = computed(() =>
-  props.selectedEntries.length > 0 &&
-  props.selectedEntries.every((entry) => canCutBloggerDogEntry(entry)),
+const canCutSelection = computed(
+  () =>
+    props.selectedEntries.length > 0 &&
+    props.selectedEntries.every((entry) => canCutBloggerDogEntry(entry)),
 );
 </script>
 
 <template>
-  <div class="border-t border-zinc-800 bg-zinc-900 flex flex-col z-40 shrink-0 pb-safe container-safe">
+  <div
+    class="border-t border-zinc-800 bg-zinc-900 flex flex-col z-40 shrink-0 pb-safe container-safe"
+  >
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"

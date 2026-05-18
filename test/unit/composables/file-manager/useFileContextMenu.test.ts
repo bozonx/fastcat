@@ -35,7 +35,10 @@ describe('useFileContextMenu', () => {
           hasProxy: true,
           generatingProxy: false,
         }),
-        getSelectedEntries: () => [videoEntry, { ...videoEntry, path: 'clip-2.mp4', name: 'clip-2.mp4' }],
+        getSelectedEntries: () => [
+          videoEntry,
+          { ...videoEntry, path: 'clip-2.mp4', name: 'clip-2.mp4' },
+        ],
         isExternal: true,
       },
       vi.fn(),
@@ -61,7 +64,10 @@ describe('useFileContextMenu', () => {
           hasProxy: true,
           generatingProxy: false,
         }),
-        getSelectedEntries: () => [videoEntry, { ...videoEntry, path: 'clip-2.mp4', name: 'clip-2.mp4' }],
+        getSelectedEntries: () => [
+          videoEntry,
+          { ...videoEntry, path: 'clip-2.mp4', name: 'clip-2.mp4' },
+        ],
       },
       vi.fn(),
     );

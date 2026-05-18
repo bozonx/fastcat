@@ -151,13 +151,12 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       </UButton>
     </template>
 
-    <div
+    <EmptyState
       v-if="safeEffects.length === 0"
-      class="text-xs text-ui-text-muted text-center py-2"
+      :message="safeEmptyLabel"
+      class="py-2 not-italic"
       :class="{ 'opacity-50': props.disabled }"
-    >
-      {{ safeEmptyLabel }}
-    </div>
+    />
 
     <VueDraggable
       class="space-y-2"
@@ -223,10 +222,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
 
     <SelectEffectModal v-model:open="isEffectModalOpen" @select="handleAddEffect" />
 
-    <UiModal
-      v-model:open="isSaveModalOpen"
-      :title="t('fastcat.effects.savePresetTitle')"
-    >
+    <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
       <template #body>
         <div class="flex flex-col gap-4">
           <UiFormField :label="t('common.name')">

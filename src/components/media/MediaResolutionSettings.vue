@@ -136,10 +136,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
     <!-- Preset Mode -->
     <template v-if="!localIsCustom">
       <div class="flex flex-wrap gap-2">
-        <UiFormField
-          :label="t('videoEditor.resolution.orientation')"
-          class="w-20 shrink-0"
-        >
+        <UiFormField :label="t('videoEditor.resolution.orientation')" class="w-20 shrink-0">
           <UiButtonGroup
             v-model="localOrientation"
             :options="orientationOptions as any"
@@ -149,10 +146,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </UiFormField>
 
-        <UiFormField
-          :label="t('videoEditor.resolution.aspectRatio')"
-          class="w-20 shrink-0"
-        >
+        <UiFormField :label="t('videoEditor.resolution.aspectRatio')" class="w-20 shrink-0">
           <UiSelect
             v-model="localAspectRatio"
             :items="aspectRatioOptions"
@@ -178,10 +172,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
           />
         </UiFormField>
 
-        <UiFormField
-          :label="t('videoEditor.resolution.finalResolution')"
-          class="flex-1 shrink-0"
-        >
+        <UiFormField :label="t('videoEditor.resolution.finalResolution')" class="flex-1 shrink-0">
           <div
             class="text-sm text-ui-text font-mono font-medium bg-ui-bg-accent px-3 rounded flex items-center justify-center border border-ui-border/50 h-8"
           >

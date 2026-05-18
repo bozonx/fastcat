@@ -4,6 +4,11 @@ import { setActivePinia, createPinia } from 'pinia';
 import { reactive, toRaw } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
+// We use the global mock from vitest.setup.ts for #app
+
+// Now import the store under test
+import { useTimelineStore } from '~/stores/timeline.store';
+
 // Use reactive to ensure store properties remain reactive
 const mockProjectStore = reactive({
   currentProjectName: 'test-project',
@@ -30,11 +35,6 @@ const mockWorkspaceStore = reactive({
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => mockWorkspaceStore,
 }));
-
-// We use the global mock from vitest.setup.ts for #app
-
-// Now import the store under test
-import { useTimelineStore } from '~/stores/timeline.store';
 
 // Mock Worker
 class WorkerMock {

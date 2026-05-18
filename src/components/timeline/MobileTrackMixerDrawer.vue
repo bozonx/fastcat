@@ -177,11 +177,7 @@ function confirmRename() {
 </script>
 
 <template>
-  <UiMobileDrawer
-    v-model:open="isOpenLocal"
-    :show-close="false"
-    :ui="{ body: 'no-scrollbar' }"
-  >
+  <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :ui="{ body: 'no-scrollbar' }">
     <div
       v-if="selectedTrackForProperties"
       class="flex flex-col animate-in fade-in slide-in-from-right-4 duration-200"

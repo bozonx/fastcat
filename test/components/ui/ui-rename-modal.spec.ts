@@ -71,7 +71,9 @@ describe('UiRenameModal', () => {
     const input = component.find('input');
     await input.setValue('New File Name');
 
-    const saveButton = component.findAll('button').find((btn) => btn.text().includes('common.confirm'));
+    const saveButton = component
+      .findAll('button')
+      .find((btn) => btn.text().includes('common.confirm'));
     expect(saveButton).toBeDefined();
 
     await saveButton!.trigger('click');
@@ -118,7 +120,9 @@ describe('UiRenameModal', () => {
 
     expect(component.emitted('rename')).toBeFalsy();
     // Save button should also be disabled in this state
-    const saveButton = component.findAll('button').find((btn) => btn.text().includes('common.confirm'));
+    const saveButton = component
+      .findAll('button')
+      .find((btn) => btn.text().includes('common.confirm'));
     expect(saveButton?.attributes('disabled')).toBeDefined();
   });
 
@@ -130,7 +134,9 @@ describe('UiRenameModal', () => {
       global: { stubs },
     });
 
-    const cancelButton = component.findAll('button').find((btn) => btn.text().includes('common.cancel'));
+    const cancelButton = component
+      .findAll('button')
+      .find((btn) => btn.text().includes('common.cancel'));
     expect(cancelButton).toBeDefined();
 
     await cancelButton!.trigger('click');

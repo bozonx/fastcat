@@ -2,6 +2,8 @@ import { defineComponent } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 
+import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
+
 vi.mock('~/components/ui/UiSelect.vue', () => ({
   default: defineComponent({
     name: 'UiSelect',
@@ -13,8 +15,6 @@ vi.mock('~/components/ui/UiSelect.vue', () => ({
       '<div class="ui-select-mock" :data-searchable="String(searchable)">{{ JSON.stringify(items) }}</div>',
   }),
 }));
-
-import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 
 describe('FileConversionAudioSettings', () => {
   it('disables search and shows original sample rate option in kHz', async () => {

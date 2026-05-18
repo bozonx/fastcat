@@ -79,8 +79,7 @@ export function normalizeTimelineFormat(
 export function createTimelineFormatFromProjectDefaults(project: TimelineFormatInput) {
   return normalizeTimelineFormat({
     ...project,
-    isAutoSettings:
-      typeof project.isAutoSettings === 'boolean' ? project.isAutoSettings : true,
+    isAutoSettings: typeof project.isAutoSettings === 'boolean' ? project.isAutoSettings : true,
     settingsSource: 'projectDefaults',
   });
 }

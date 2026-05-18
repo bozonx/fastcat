@@ -11,10 +11,7 @@ import {
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
-import {
-  useFileManagerStore,
-  type FileViewMode,
-} from '~/stores/file-manager.store';
+import { useFileManagerStore, type FileViewMode } from '~/stores/file-manager.store';
 
 const props = defineProps<{
   instanceId?: string;
@@ -104,7 +101,7 @@ onMounted(async () => {
   // Restore last folder from workspace state if available
   const contextId = 'editor'; // or whatever the store context is
   const lastPath = workspaceStore.workspaceState.fileBrowser.instances[contextId]?.lastPath;
-  
+
   if (lastPath) {
     try {
       // Validate the folder still exists before restoring navigation
@@ -152,9 +149,7 @@ function onSelect(entry: FsEntry) {
         :instance-id="instanceId"
         :is-external="true"
         :hide-focus-frame="props.hideFocusFrame"
-        :root-name="
-          rootSelectionEntry.name
-        "
+        :root-name="rootSelectionEntry.name"
         hide-upload
         hide-select-unused
         class="h-full"

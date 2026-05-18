@@ -60,7 +60,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
 
   const canTranscribeMedia = computed(() => {
     const entry = options.selectedFsEntry.value;
-    
+
     return (
       entry?.kind === 'file' &&
       entry?.source !== 'remote' &&
@@ -80,7 +80,10 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       return;
     }
 
-    const workspacePath = entry.path.startsWith('/') || entry.path.startsWith('projects/') || !options.currentProjectName.value
+    const workspacePath =
+      entry.path.startsWith('/') ||
+      entry.path.startsWith('projects/') ||
+      !options.currentProjectName.value
         ? entry.path
         : `projects/${options.currentProjectName.value}/${entry.path}`;
 
@@ -126,9 +129,12 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
       const file = await options.getFileByPath(selectedEntry.path);
       if (!file) throw new Error('Failed to access file');
 
-      const workspacePath = selectedEntry.path.startsWith('/') || selectedEntry.path.startsWith('projects/') || !options.currentProjectName.value
-        ? selectedEntry.path
-        : `projects/${options.currentProjectName.value}/${selectedEntry.path}`;
+      const workspacePath =
+        selectedEntry.path.startsWith('/') ||
+        selectedEntry.path.startsWith('projects/') ||
+        !options.currentProjectName.value
+          ? selectedEntry.path
+          : `projects/${options.currentProjectName.value}/${selectedEntry.path}`;
 
       isTranscriptionModalOpen.value = false;
       const result = await runTranscriptionTask({
@@ -140,7 +146,9 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         fastcatAccountApiUrl: options.fastcatAccountApiUrl.value,
         userSettings: options.userSettings.value,
         workspaceHandle: options.workspaceHandle.value,
-        title: options.t('videoEditor.backgroundTasks.transcriptionTitle', { name: selectedEntry.name }),
+        title: options.t('videoEditor.backgroundTasks.transcriptionTitle', {
+          name: selectedEntry.name,
+        }),
       } as any);
 
       latestTranscriptionText.value = extractTranscriptionText(result.record.response);
@@ -154,12 +162,15 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         description: options.t(
           'videoEditor.fileManager.audio.transcriptionFinishedDescription',
           'Transcription for {name} has been completed successfully.',
-          { name: selectedEntry.name }
+          { name: selectedEntry.name },
         ),
         color: 'success',
       });
     } catch (error: unknown) {
-      if ((error as Error).name === 'AbortError' || (error as Error).message === 'Transcription cancelled') {
+      if (
+        (error as Error).name === 'AbortError' ||
+        (error as Error).message === 'Transcription cancelled'
+      ) {
         return;
       }
       transcriptionError.value =

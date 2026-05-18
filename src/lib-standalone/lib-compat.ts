@@ -7,15 +7,15 @@ export function useNuxtApp() {
   // In a real app, these would be provided by the host or initialized in index.lib.ts
   return {
     $isEmbedded: inject('isEmbedded', false),
-    $notificationService: inject('notificationService', { 
-      add: (msg: any) => console.log('Notification:', msg) 
+    $notificationService: inject('notificationService', {
+      add: (msg: any) => console.log('Notification:', msg),
     }),
-    $i18nService: inject('i18nService', { 
-      t: (key: string, defaultValue?: string) => defaultValue || key 
-    }),
-    $i18n: inject('i18n', { 
+    $i18nService: inject('i18nService', {
       t: (key: string, defaultValue?: string) => defaultValue || key,
-      locale: { value: 'en-US' } 
+    }),
+    $i18n: inject('i18n', {
+      t: (key: string, defaultValue?: string) => defaultValue || key,
+      locale: { value: 'en-US' },
     }),
   };
 }
@@ -26,7 +26,7 @@ export function useRuntimeConfig() {
       bloggerDogApiUrl: '',
       bloggerDogUiUrl: '',
       bloggerDogToken: '',
-    }
+    },
   };
 }
 

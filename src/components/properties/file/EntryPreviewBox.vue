@@ -36,11 +36,17 @@ const props = defineProps<{
       class="flex flex-col items-center gap-3 text-ui-text-muted w-full h-full justify-center"
       :class="props.thumbnailUrl ? 'p-0' : 'p-8'"
     >
-      <div v-if="props.thumbnailUrl" class="w-full h-64 bg-black/20 flex items-center justify-center overflow-hidden">
+      <div
+        v-if="props.thumbnailUrl"
+        class="w-full h-64 bg-black/20 flex items-center justify-center overflow-hidden"
+      >
         <img :src="props.thumbnailUrl" class="max-w-full max-h-full object-contain" />
       </div>
       <UIcon v-else name="i-heroicons-folder" class="w-16 h-16" />
-      <p v-if="props.fileName && !props.thumbnailUrl" class="text-sm font-medium text-center truncate w-full px-4">
+      <p
+        v-if="props.fileName && !props.thumbnailUrl"
+        class="text-sm font-medium text-center truncate w-full px-4"
+      >
         {{ props.fileName }}
       </p>
     </div>
@@ -74,11 +80,7 @@ const props = defineProps<{
     </div>
 
     <!-- No loading state here to avoid flickering. While properties are loading, nothing should happen in the UI. -->
-    <div
-      v-else-if="!props.mediaType"
-      class="w-full h-full min-h-12"
-    ></div>
-
+    <div v-else-if="!props.mediaType" class="w-full h-full min-h-12"></div>
 
     <div
       v-else

@@ -20,7 +20,11 @@ const itemsCount = computed(() => props.collection.itemsCount ?? 0);
 const updatedAt = computed(() => {
   const collection = props.collection as DirectoryWithMeta;
   const date = collection.meta?.updatedAt;
-  return date ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(date)) : null;
+  return date
+    ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(
+        new Date(date),
+      )
+    : null;
 });
 
 const effectiveDeepLink = computed(() => {
@@ -45,10 +49,7 @@ const effectiveDeepLink = computed(() => {
         </a>
       </PropertyRow>
 
-      <PropertyRow
-        :label="t('fastcat.file.itemsCount')"
-        :value="itemsCount"
-      />
+      <PropertyRow :label="t('fastcat.file.itemsCount')" :value="itemsCount" />
 
       <PropertyRow v-if="updatedAt" :label="t('common.modified')" :value="updatedAt" />
     </template>

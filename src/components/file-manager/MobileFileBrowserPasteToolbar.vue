@@ -14,11 +14,11 @@ const clipboardStore = useClipboardStore();
 
 <template>
   <div class="border-t border-zinc-800 bg-zinc-900 z-40 container-safe pb-safe shrink-0">
-    <div class="px-4 py-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50">
+    <div
+      class="px-4 py-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50"
+    >
       {{
-        clipboardStore.clipboardPayload?.operation === 'cut'
-          ? t('common.cut')
-          : t('common.copied')
+        clipboardStore.clipboardPayload?.operation === 'cut' ? t('common.cut') : t('common.copied')
       }}: {{ clipboardStore.clipboardPayload?.items.length }}
     </div>
     <MobileDrawerToolbar>

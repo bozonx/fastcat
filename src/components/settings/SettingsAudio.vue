@@ -77,9 +77,7 @@ function resetDefaults() {
     </UiFormField>
 
     <UiFormField
-      :label="
-        t('videoEditor.settings.projectAudioDeclickTitle') + ' (ms)'
-      "
+      :label="t('videoEditor.settings.projectAudioDeclickTitle') + ' (ms)'"
       :help="
         t(
           'videoEditor.settings.projectAudioDeclickHint',

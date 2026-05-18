@@ -8,7 +8,9 @@ import { computeDirectoryStats } from '~/utils/fs';
 
 export function useMobileFileBrowserSelection() {
   const selectionStore = useSelectionStore();
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
   const projectStore = useProjectStore();
 
   const isSelectionMode = ref(false);

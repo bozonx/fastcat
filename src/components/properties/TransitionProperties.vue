@@ -62,17 +62,17 @@ defineExpose({
 </script>
 
 <template>
-    <ClipTransitionPanel
-      v-if="clip && transitionSelection.edge"
-      ref="panelRef"
-      :edge="transitionSelection.edge"
-      :track-id="transitionSelection.trackId"
-      :item-id="transitionSelection.itemId"
-      :track="track"
-      :clip="clip"
-      :transition="transitionValue"
-      :max-duration="maxDurationSec"
-      :hide-actions="hideActions"
-      @update="handleTransitionUpdate"
-    />
+  <ClipTransitionPanel
+    v-if="clip && transitionSelection.edge"
+    ref="panelRef"
+    :edge="transitionSelection.edge"
+    :track-id="transitionSelection.trackId"
+    :item-id="transitionSelection.itemId"
+    :track="track"
+    :clip="clip"
+    :transition="transitionValue"
+    :max-duration="maxDurationSec"
+    :hide-actions="hideActions"
+    @update="handleTransitionUpdate"
+  />
 </template>

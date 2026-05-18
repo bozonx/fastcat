@@ -102,11 +102,7 @@ function clearCache() {
       </label>
     </UiFormField>
 
-    <UiFormField
-      :label="
-        t('videoEditor.settings.defaultTransitionDuration')
-      "
-    >
+    <UiFormField :label="t('videoEditor.settings.defaultTransitionDuration')">
       <UiWheelNumberInput
         :model-value="workspaceStore.userSettings.timeline.defaultTransitionDurationUs / 1000000"
         :min="0.1"
@@ -127,9 +123,7 @@ function clearCache() {
       :help="t('videoEditor.settings.defaultStaticClipDurationHint')"
     >
       <UiWheelNumberInput
-        :model-value="
-          workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000
-        "
+        :model-value="workspaceStore.userSettings.timeline.defaultStaticClipDurationUs / 1000000"
         :min="0.1"
         :max="60"
         :step="0.1"

@@ -13,7 +13,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useMediaStore } from '~/stores/media.store';
-import { useI18n } from '#i18n';
+import type { useI18n } from '#i18n';
 import { useRoute, useNuxtApp } from '#app';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -70,7 +70,10 @@ import {
   type UploadResult,
   type HandleFilesDeps,
 } from '~/file-manager/application/fileManagerCommands';
-import { createTimelineFormatFromProjectDefaults, DEFAULT_TIMELINE_FORMAT } from '~/timeline/format';
+import {
+  createTimelineFormatFromProjectDefaults,
+  DEFAULT_TIMELINE_FORMAT,
+} from '~/timeline/format';
 import type { FastCatProjectSettings } from '~/utils/project-settings';
 import { useVfs } from '~/composables/useVfs';
 import { createUiActionRunner } from './useUiActionRunner';
@@ -505,7 +508,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const textWrapperRenameResult = isBloggerDogTextWrapper(target)
       ? getBloggerDogTextWrapperRenameResult(target, newName)
       : null;
-    const newPath = textWrapperRenameResult?.newPath ?? (oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '');
+    const newPath =
+      textWrapperRenameResult?.newPath ??
+      (oldPath ? (parentPath ? `${parentPath}/${newName}` : newName) : '');
 
     await runWithUiFeedback({
       action: async () => {
@@ -834,7 +839,7 @@ export function useFileManager(options?: {
         path: params.newPath,
         name: getWorkspacePathFileName(params.newPath) || uiStore.selectedFsEntry.name,
       };
-      focusStore.setTempFocus('left');
+      focusStore.setTempFocus('files-sidebar');
     }
 
     if (

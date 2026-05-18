@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
-import {
-  useFileManagerStore,
-  type FileSortField,
-} from '~/stores/file-manager.store';
+import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';

@@ -3,7 +3,9 @@ import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 
 export function useFileSorting(entries: Ref<FsEntry[]>, folderSizes?: Ref<Record<string, number>>) {
-  const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
 
   const sortedEntries = computed(() => {
     const rawEntries = toRaw(entries.value);
@@ -26,7 +28,11 @@ export function useFileSorting(entries: Ref<FsEntry[]>, folderSizes?: Ref<Record
           const ext = entry.name.split('.').pop()?.toLowerCase() || '';
           return entry.kind === 'directory' ? 'folder' : ext;
         case 'size':
-          if (entry.kind === 'directory' && entry.path && folderSizes?.value?.[entry.path] !== undefined) {
+          if (
+            entry.kind === 'directory' &&
+            entry.path &&
+            folderSizes?.value?.[entry.path] !== undefined
+          ) {
             return folderSizes.value[entry.path]!;
           }
           return entry.size ?? 0;

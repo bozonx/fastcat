@@ -70,9 +70,7 @@ export function canPasteIntoBloggerDogEntry(entry: FsEntry | null | undefined): 
 
 export function canCreateSubgroupInBloggerDogEntry(entry: FsEntry | null | undefined): boolean {
   return (
-    isBloggerDogGroup(entry) ||
-    isBloggerDogProject(entry) ||
-    isBloggerDogPersonalLibraryRoot(entry)
+    isBloggerDogGroup(entry) || isBloggerDogProject(entry) || isBloggerDogPersonalLibraryRoot(entry)
   );
 }
 
@@ -118,7 +116,9 @@ export function canTransferFsEntryToOrFromBloggerDog(
 
   if (isBloggerDogEntry(entry)) {
     if (isBloggerDogMediaEntry(entry)) return true;
-    return Boolean(params?.sourceIsBloggerDog && !params?.targetIsBloggerDog && isBloggerDogTextWrapper(entry));
+    return Boolean(
+      params?.sourceIsBloggerDog && !params?.targetIsBloggerDog && isBloggerDogTextWrapper(entry),
+    );
   }
 
   return isMediaFileName(entry.name);
@@ -136,7 +136,10 @@ export function normalizeBloggerDogTextWrapperTitle(name: string): string {
   return trimmed;
 }
 
-export function getBloggerDogTextWrapperRenameResult(entry: FsEntry, nextName: string): {
+export function getBloggerDogTextWrapperRenameResult(
+  entry: FsEntry,
+  nextName: string,
+): {
   reloadDirPath: string;
   newPath: string;
 } {

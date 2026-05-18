@@ -219,7 +219,9 @@ describe('useFileDrop', () => {
           types: ['application/fastcat-file-manager-copy'],
           getData: vi.fn((type: string) =>
             type === 'application/fastcat-file-manager-copy'
-              ? JSON.stringify([{ path: '/personal/item-1/Item.txt', kind: 'file', name: 'Item.txt' }])
+              ? JSON.stringify([
+                  { path: '/personal/item-1/Item.txt', kind: 'file', name: 'Item.txt' },
+                ])
               : '',
           ),
         },

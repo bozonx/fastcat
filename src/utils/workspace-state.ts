@@ -122,7 +122,8 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
                             : 'asc',
                         }
                       : { field: 'name', order: 'asc' },
-                  gridCardSize: typeof (val as any)?.gridCardSize === 'number' ? (val as any).gridCardSize : 80,
+                  gridCardSize:
+                    typeof (val as any)?.gridCardSize === 'number' ? (val as any).gridCardSize : 80,
                   columnWidths:
                     (val as any)?.columnWidths && typeof (val as any).columnWidths === 'object'
                       ? (val as any).columnWidths

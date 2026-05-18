@@ -39,7 +39,7 @@ async function loadContent() {
 
   isLoading.value = true;
   saveError.value = null;
-  
+
   try {
     const blob = await effectiveVfs.value.readFile(props.filePath);
     const text = await blob.text();
@@ -149,7 +149,16 @@ function focusPanel() {
       >
         <span v-if="isSaving">Saving...</span>
         <span v-else-if="saveError" class="text-red-400">{{ saveError }}</span>
-        <span v-else-if="lastSavedAt">Saved {{ new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(lastSavedAt) }}</span>
+        <span v-else-if="lastSavedAt"
+          >Saved
+          {{
+            new Intl.DateTimeFormat(locale.value, {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            }).format(lastSavedAt)
+          }}</span
+        >
       </div>
 
       <UButton

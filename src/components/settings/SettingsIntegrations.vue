@@ -4,7 +4,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
-
 import FastcatAccountSection from './integrations/FastcatAccountSection.vue';
 import BloggerDogSection from './integrations/BloggerDogSection.vue';
 import SttIntegrationSection from './integrations/SttIntegrationSection.vue';
@@ -13,7 +12,6 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const route = useRoute();
 const router = useRouter();
-
 
 const isResetConfirmOpen = ref(false);
 const showSuccessMessage = ref(false);
@@ -38,24 +36,30 @@ watch(
     if (typeof token !== 'string' || token.trim().length === 0) return;
 
     const target = (route.query.target || route.query.state) as string;
-    
+
     if (!target) {
-      console.warn('[Integrations] Received token but no target/state found in query:', route.query);
+      console.warn(
+        '[Integrations] Received token but no target/state found in query:',
+        route.query,
+      );
     }
 
-    await workspaceStore.batchUpdateUserSettings((draft) => {
-      // If we have an explicit target, use it
-      if (target === 'fastcat') {
-        draft.integrations.fastcatAccount.bearerToken = token.trim();
-        draft.integrations.fastcatAccount.enabled = true;
-      } else if (target === 'bloggerdog') {
-        draft.integrations.fastcatPublicador.bearerToken = token.trim();
-        draft.integrations.fastcatPublicador.enabled = true;
-      } 
-      // Fallback: if only one integration exists or if one is clearly "in progress" 
-      // (but we don't have that state yet). 
-      // For now, let's just log and skip if target is unknown to avoid corruption.
-    }, { immediate: true });
+    await workspaceStore.batchUpdateUserSettings(
+      (draft) => {
+        // If we have an explicit target, use it
+        if (target === 'fastcat') {
+          draft.integrations.fastcatAccount.bearerToken = token.trim();
+          draft.integrations.fastcatAccount.enabled = true;
+        } else if (target === 'bloggerdog') {
+          draft.integrations.fastcatPublicador.bearerToken = token.trim();
+          draft.integrations.fastcatPublicador.enabled = true;
+        }
+        // Fallback: if only one integration exists or if one is clearly "in progress"
+        // (but we don't have that state yet).
+        // For now, let's just log and skip if target is unknown to avoid corruption.
+      },
+      { immediate: true },
+    );
 
     // Explicitly flush to be 100% sure before showing success
     await workspaceStore.flushSettingsSaves();
@@ -81,9 +85,8 @@ watch(
         draft.fileBrowser.activeTab = 'fastcat';
       });
     }
-  }
+  },
 );
-
 </script>
 
 <template>
@@ -100,9 +103,7 @@ watch(
 
     <UiConfirmModal
       v-model:open="isResetConfirmOpen"
-      :title="
-        t('videoEditor.settings.resetIntegrationsSettingsConfirmTitle')
-      "
+      :title="t('videoEditor.settings.resetIntegrationsSettingsConfirmTitle')"
       :description="
         t(
           'videoEditor.settings.resetIntegrationsSettingsConfirmDesc',

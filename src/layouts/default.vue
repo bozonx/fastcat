@@ -76,7 +76,6 @@ onMounted(async () => {
   }
 });
 
-
 function onOverlayAutoSort(files: File[]) {
   uiStore.isGlobalDragging = false;
   handleAutoFileDrop(files);

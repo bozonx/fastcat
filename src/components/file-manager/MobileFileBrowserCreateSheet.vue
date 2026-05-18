@@ -77,9 +77,7 @@ const isOpen = computed({
             >
               <Icon name="lucide:file-text" class="w-5 h-5 text-blue-400" />
             </div>
-            <span class="text-sm font-medium text-zinc-200">{{
-              t('common.textDocument')
-            }}</span>
+            <span class="text-sm font-medium text-zinc-200">{{ t('common.textDocument') }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
 
@@ -92,9 +90,7 @@ const isOpen = computed({
             >
               <Icon name="lucide:film" class="w-5 h-5 text-orange-400" />
             </div>
-            <span class="text-sm font-medium text-zinc-200">{{
-              t('common.timeline')
-            }}</span>
+            <span class="text-sm font-medium text-zinc-200">{{ t('common.timeline') }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
         </div>

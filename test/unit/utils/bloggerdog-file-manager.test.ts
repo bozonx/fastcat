@@ -131,14 +131,17 @@ describe('bloggerdog file manager rules', () => {
       }),
     ).toBe(false);
     expect(
-      canTransferClipboardItemToOrFromBloggerDog({
-        kind: 'file',
-        name: 'audio.mp3',
-        path: 'audio.mp3',
-      }, {
-        sourceIsBloggerDog: true,
-        targetIsBloggerDog: false,
-      }),
+      canTransferClipboardItemToOrFromBloggerDog(
+        {
+          kind: 'file',
+          name: 'audio.mp3',
+          path: 'audio.mp3',
+        },
+        {
+          sourceIsBloggerDog: true,
+          targetIsBloggerDog: false,
+        },
+      ),
     ).toBe(true);
     expect(
       canTransferClipboardItemToOrFromBloggerDog(
@@ -154,14 +157,17 @@ describe('bloggerdog file manager rules', () => {
       ),
     ).toBe(true);
     expect(
-      canTransferClipboardItemToOrFromBloggerDog({
-        kind: 'directory',
-        name: 'group',
-        path: 'group',
-      }, {
-        sourceIsBloggerDog: true,
-        targetIsBloggerDog: false,
-      }),
+      canTransferClipboardItemToOrFromBloggerDog(
+        {
+          kind: 'directory',
+          name: 'group',
+          path: 'group',
+        },
+        {
+          sourceIsBloggerDog: true,
+          targetIsBloggerDog: false,
+        },
+      ),
     ).toBe(false);
   });
 });

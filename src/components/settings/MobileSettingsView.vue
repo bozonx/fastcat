@@ -26,7 +26,6 @@ const tabOptions = computed(() => {
   options.push({ value: 'app', label: t('videoEditor.settings.app') });
   return options;
 });
-
 </script>
 
 <template>
@@ -42,7 +41,10 @@ const tabOptions = computed(() => {
     </div>
 
     <!-- Project Settings -->
-    <div v-if="activeTab === 'project'" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-ui-bg animate-in fade-in duration-200">
+    <div
+      v-if="activeTab === 'project'"
+      class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-ui-bg animate-in fade-in duration-200"
+    >
       <div v-if="projectStore.projectSettings" class="space-y-8">
         <ResolutionSettings />
         <div class="h-px bg-ui-border"></div>
@@ -54,10 +56,7 @@ const tabOptions = computed(() => {
         <div class="h-px bg-ui-border"></div>
         <StorageSettings />
       </div>
-      <div
-        v-else
-        class="flex flex-col items-center justify-center py-20 text-ui-text-muted gap-3"
-      >
+      <div v-else class="flex flex-col items-center justify-center py-20 text-ui-text-muted gap-3">
         <UIcon name="lucide:folder-off" class="w-10 h-10 opacity-20" />
         <p class="text-sm">Settings not available</p>
       </div>

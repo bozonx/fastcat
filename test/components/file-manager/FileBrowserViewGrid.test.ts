@@ -164,7 +164,7 @@ describe('FileBrowserViewGrid', () => {
     await wrapper.find('span[title="test.mp4"]').trigger('click', { detail: 1 });
     vi.advanceTimersByTime(250);
 
-    expect(wrapper.emitted('fileAction')).toEqual([[ 'rename', entry ]]);
+    expect(wrapper.emitted('fileAction')).toEqual([['rename', entry]]);
   });
 
   it('does not start rename on double click on selected entry name', async () => {

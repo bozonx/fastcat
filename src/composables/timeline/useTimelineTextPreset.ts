@@ -20,11 +20,23 @@ export function useTimelineTextPreset() {
       style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
     },
     title: {
-      style: { fontSize: 96, fontWeight: '800', color: '#ffffff', fontFamily: 'sans-serif', width: 1280 },
+      style: {
+        fontSize: 96,
+        fontWeight: '800',
+        color: '#ffffff',
+        fontFamily: 'sans-serif',
+        width: 1280,
+      },
       text: t('videoEditor.library.texts.title'),
     },
     subtitle: {
-      style: { fontSize: 48, fontWeight: '400', color: '#aaaaaa', fontFamily: 'sans-serif', width: 1280 },
+      style: {
+        fontSize: 48,
+        fontWeight: '400',
+        color: '#aaaaaa',
+        fontFamily: 'sans-serif',
+        width: 1280,
+      },
       text: t('videoEditor.library.texts.subtitle'),
     },
   };

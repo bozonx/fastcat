@@ -299,7 +299,10 @@ function resetPathDefaults() {
       </UiFormField>
     </div>
 
-    <div v-if="isDesktopPortableMode && !workspaceStore.isEphemeral" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div
+      v-if="isDesktopPortableMode && !workspaceStore.isEphemeral"
+      class="grid grid-cols-1 gap-4 md:grid-cols-2"
+    >
       <UiFormField
         :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="
@@ -321,7 +324,10 @@ function resetPathDefaults() {
       </UiFormField>
     </div>
 
-    <div v-if="isBrowserWorkspaceMode && !workspaceStore.isEphemeral" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div
+      v-if="isBrowserWorkspaceMode && !workspaceStore.isEphemeral"
+      class="grid grid-cols-1 gap-4 md:grid-cols-2"
+    >
       <UiFormField
         :label="t('videoEditor.settings.ephemeralTmpRootPath')"
         :help="

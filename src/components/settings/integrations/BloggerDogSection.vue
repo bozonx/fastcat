@@ -48,7 +48,7 @@ const fastcatConnectUrl = computed(() => {
     uiUrl: bloggerDogUiUrl.value,
     name: FASTCAT_PUBLICADOR_APP_NAME,
     redirectUri: redirectUri.value,
-    scopes: resolveFastCatConnectScopes({ 
+    scopes: resolveFastCatConnectScopes({
       integrations: workspaceStore.userSettings.integrations,
       includeStt: false,
     }),
@@ -57,7 +57,7 @@ const fastcatConnectUrl = computed(() => {
 });
 
 const fastcatConnectScopesLabel = computed(() =>
-  resolveFastCatConnectScopes({ 
+  resolveFastCatConnectScopes({
     integrations: workspaceStore.userSettings.integrations,
     includeStt: false,
   }).join(', '),

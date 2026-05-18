@@ -58,16 +58,15 @@ describe('quantizeTimeUsToFrames', () => {
 
 describe('assertNoOverlap', () => {
   it('does not throw for non-overlapping clips', () => {
-    const track = makeTrack([
-      makeClip('c1', 0, 1_000_000),
-      makeClip('c2', 1_000_000, 1_000_000),
-    ]);
+    const track = makeTrack([makeClip('c1', 0, 1_000_000), makeClip('c2', 1_000_000, 1_000_000)]);
     expect(() => assertNoOverlap(track, '', 2_000_000, 1_000_000)).not.toThrow();
   });
 
   it('throws when new clip overlaps existing', () => {
     const track = makeTrack([makeClip('c1', 0, 1_000_000)]);
-    expect(() => assertNoOverlap(track, '', 500_000, 1_000_000)).toThrow('Item overlaps with another item');
+    expect(() => assertNoOverlap(track, '', 500_000, 1_000_000)).toThrow(
+      'Item overlaps with another item',
+    );
   });
 
   it('allows tiny epsilon overlap without throwing', () => {
@@ -80,6 +79,8 @@ describe('assertNoOverlap', () => {
 
   it('throws when overlap exceeds epsilon', () => {
     const track = makeTrack([makeClip('c1', 0, 1_000_000)]);
-    expect(() => assertNoOverlap(track, '', 999_998, 1_000_000)).toThrow('Item overlaps with another item');
+    expect(() => assertNoOverlap(track, '', 999_998, 1_000_000)).toThrow(
+      'Item overlaps with another item',
+    );
   });
 });

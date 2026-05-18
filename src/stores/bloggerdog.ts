@@ -115,7 +115,8 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
   function getThumbnailUrl(entry: RemoteVfsEntry): string | null {
     if (entry.type !== 'file' || !entry.media?.length || !config.value) return null;
 
-    const media = entry.media.find((candidate: RemoteVfsMedia) => candidate.thumbnailUrl) || entry.media[0];
+    const media =
+      entry.media.find((candidate: RemoteVfsMedia) => candidate.thumbnailUrl) || entry.media[0];
     if (!media) return null;
 
     return getRemoteThumbnailUrl({

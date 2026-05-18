@@ -294,7 +294,10 @@ describe('BloggerDogVfsAdapter', () => {
       item,
     });
 
-    await adapter.writeFile('/personal/item-1/example.mp4', new Blob(['ok'], { type: 'video/mp4' }));
+    await adapter.writeFile(
+      '/personal/item-1/example.mp4',
+      new Blob(['ok'], { type: 'video/mp4' }),
+    );
 
     expect(uploadFileToRemote).toHaveBeenCalledWith({
       config: {

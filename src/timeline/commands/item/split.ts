@@ -181,10 +181,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
           const audioSpeed =
             typeof it.speed === 'number' && Number.isFinite(it.speed) ? (it.speed as number) : 1;
           const audioAbsSpeed = Math.abs(audioSpeed);
-          const audioLocalCutUs = Math.max(
-            0,
-            Math.round((atUs - audioStartUs) * audioAbsSpeed),
-          );
+          const audioLocalCutUs = Math.max(0, Math.round((atUs - audioStartUs) * audioAbsSpeed));
 
           let leftAudioSourceStartUs: number;
           let leftAudioSourceDurationUs: number;

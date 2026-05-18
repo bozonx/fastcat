@@ -146,11 +146,7 @@ onBeforeUnmount(() => {
               ? 'i-heroicons-speaker-wave'
               : 'i-heroicons-speaker-wave'
         "
-        :aria-label="
-          isMuted
-            ? t('fastcat.monitor.audioUnmute')
-            : t('fastcat.monitor.audioMute')
-        "
+        :aria-label="isMuted ? t('fastcat.monitor.audioUnmute') : t('fastcat.monitor.audioMute')"
         @click="toggleMute"
       />
     </UiTooltip>
@@ -196,11 +192,7 @@ onBeforeUnmount(() => {
               ? 'i-heroicons-speaker-wave'
               : 'i-heroicons-speaker-wave'
         "
-        :aria-label="
-          isMuted
-            ? t('fastcat.monitor.audioUnmute')
-            : t('fastcat.monitor.audioMute')
-        "
+        :aria-label="isMuted ? t('fastcat.monitor.audioUnmute') : t('fastcat.monitor.audioMute')"
         class="pointer-events-none"
       />
     </div>
@@ -250,9 +242,7 @@ onBeforeUnmount(() => {
                       : 'i-heroicons-speaker-wave'
                 "
                 :aria-label="
-                  isMuted
-                    ? t('fastcat.monitor.audioUnmute')
-                    : t('fastcat.monitor.audioMute')
+                  isMuted ? t('fastcat.monitor.audioUnmute') : t('fastcat.monitor.audioMute')
                 "
                 @click="toggleMute"
               />

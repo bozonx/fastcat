@@ -40,11 +40,7 @@ const { t } = useI18n();
         v-if="props.deleteTargets.length === 1 && props.deleteTargets[0]?.path"
         class="mt-1 text-xs text-ui-text-muted break-all"
       >
-        {{
-          props.deleteTargets[0].kind === 'directory'
-            ? t('common.folder')
-            : t('common.file')
-        }}:
+        {{ props.deleteTargets[0].kind === 'directory' ? t('common.folder') : t('common.file') }}:
         {{ props.deleteTargets[0].path }}
       </div>
     </div>

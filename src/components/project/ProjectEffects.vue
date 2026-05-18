@@ -210,7 +210,10 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               />
             </div>
           </VueDraggable>
-          <EmptyState v-if="customEffects.length === 0" :message="t('fastcat.effects.noCustomPresets')" />
+          <EmptyState
+            v-if="customEffects.length === 0"
+            :message="t('fastcat.effects.noCustomPresets')"
+          />
         </CollapsibleEffectGroup>
       </div>
 
@@ -301,7 +304,10 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               </div>
             </div>
           </VueDraggable>
-          <EmptyState v-if="customTransitions.length === 0" :message="t('fastcat.effects.noCustomPresets')" />
+          <EmptyState
+            v-if="customTransitions.length === 0"
+            :message="t('fastcat.effects.noCustomPresets')"
+          />
         </CollapsibleEffectGroup>
       </div>
 
@@ -393,7 +399,10 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               />
             </div>
           </VueDraggable>
-          <EmptyState v-if="customAudioEffects.length === 0" :message="t('fastcat.effects.noCustomPresets')" />
+          <EmptyState
+            v-if="customAudioEffects.length === 0"
+            :message="t('fastcat.effects.noCustomPresets')"
+          />
         </CollapsibleEffectGroup>
       </div>
     </div>

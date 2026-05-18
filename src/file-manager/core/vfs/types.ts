@@ -97,9 +97,12 @@ export interface IFileSystemAdapter {
   /**
    * Get metadata for an entry
    */
-  getMetadata(
-    path: string,
-  ): Promise<{ size: number; lastModified: number; createdAt?: number; kind: 'file' | 'directory' } | null>;
+  getMetadata(path: string): Promise<{
+    size: number;
+    lastModified: number;
+    createdAt?: number;
+    kind: 'file' | 'directory';
+  } | null>;
 
   /**
    * Get an object URL for a file (useful for media playback)

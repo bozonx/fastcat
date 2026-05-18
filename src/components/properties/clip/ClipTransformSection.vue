@@ -123,9 +123,7 @@ function clampNumber(value: number, min: number, max: number): number {
         <!-- Anchor -->
         <div class="space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.transform.anchor')
-            }}</span>
+            <span class="text-xs text-ui-text-muted">{{ t('fastcat.clip.transform.anchor') }}</span>
             <button
               class="p-1 rounded hover:bg-ui-border-elevated text-ui-text-muted hover:text-ui-text disabled:opacity-50"
               :disabled="!isEnabled"

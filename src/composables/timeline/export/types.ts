@@ -27,8 +27,18 @@ export const ExportOptionsSchema = z.object({
   audioCodec: z.string().trim().min(1).optional(),
   audioSampleRate: z.number().finite().min(8_000).max(192_000).optional(),
   audioChannels: z.enum(['stereo', 'mono']).optional(),
-  width: z.number().int().min(2).max(16_384).refine((value) => value % 2 === 0),
-  height: z.number().int().min(2).max(16_384).refine((value) => value % 2 === 0),
+  width: z
+    .number()
+    .int()
+    .min(2)
+    .max(16_384)
+    .refine((value) => value % 2 === 0),
+  height: z
+    .number()
+    .int()
+    .min(2)
+    .max(16_384)
+    .refine((value) => value % 2 === 0),
   fps: z.number().finite().min(1).max(240),
   audioReverse: z.boolean().optional(),
   audioDurationSec: z.number().finite().positive().optional(),

@@ -5,6 +5,9 @@ import EditorDynamicPanelsView from '~/components/editor/EditorDynamicPanelsView
 import type { PanelFocusId } from '~/stores/focus.store';
 import type { DynamicPanel, PanelColumn } from '~/stores/editor-view.store';
 
+import { useFileManagerStore } from '~/stores/file-manager.store';
+import { provide } from 'vue';
+
 interface SplitResizeEvent {
   panes: Array<{ size: number }>;
 }
@@ -47,9 +50,6 @@ const emit = defineEmits<{
   topReset: [view: 'cut' | 'sound'];
   verticalReset: [colId: string, view: 'cut' | 'sound'];
 }>();
-
-import { useFileManagerStore } from '~/stores/file-manager.store';
-import { provide } from 'vue';
 
 provide('fileManagerStore', useFileManagerStore());
 </script>

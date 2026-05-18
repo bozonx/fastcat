@@ -547,9 +547,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         ),
         this.createVirtualRootEntry(
           'personal',
-          this.t
-            ? this.t('fastcat.bloggerDog.personalLibrary')
-            : 'Личная библиотека',
+          this.t ? this.t('fastcat.bloggerDog.personalLibrary') : 'Личная библиотека',
         ),
       ];
     }

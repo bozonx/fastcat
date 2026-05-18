@@ -60,11 +60,11 @@ if (colorMode.preference === 'system') {
     <BackgroundTaskToasts />
     <!-- <RemoteFileExchangeModal /> -->
     <DesktopMediaReplaceModal v-if="!isMobileLayout" />
-    <MobileMediaPickerDrawer 
-      v-if="isMobileLayout" 
-      :is-open="uiStore.isMediaReplaceModalOpen" 
+    <MobileMediaPickerDrawer
+      v-if="isMobileLayout"
+      :is-open="uiStore.isMediaReplaceModalOpen"
       :is-replace-mode="true"
-      @close="uiStore.isMediaReplaceModalOpen = false" 
+      @close="uiStore.isMediaReplaceModalOpen = false"
     />
   </UApp>
 </template>

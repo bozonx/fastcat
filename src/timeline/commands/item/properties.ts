@@ -79,7 +79,8 @@ export function updateClipProperties(
   // changes on a locked clip are a UX bug we used to tolerate silently.
   if (item.locked) {
     const onlyTogglingLock =
-      Object.keys(nextProps).length === 1 && Object.prototype.hasOwnProperty.call(nextProps, 'locked');
+      Object.keys(nextProps).length === 1 &&
+      Object.prototype.hasOwnProperty.call(nextProps, 'locked');
     if (!onlyTogglingLock) {
       assertClipNotLocked(item, 'updateProperties');
     }
@@ -241,8 +242,7 @@ export function updateClipProperties(
                 const rippledEndOfCurrent = nextClips
                   .slice(0, i)
                   .reduce(
-                    (max, c) =>
-                      Math.max(max, c.timelineRange.startUs + c.timelineRange.durationUs),
+                    (max, c) => Math.max(max, c.timelineRange.startUs + c.timelineRange.durationUs),
                     0,
                   );
                 if (rippledEndOfCurrent > lockedStartUs + 1) {

@@ -85,7 +85,7 @@ describe('TimelineToolbar', () => {
     const component = await mountSuspended(TimelineToolbar);
 
     expect(component.text()).toContain('fastcat.timeline.soloActive');
-    
+
     const buttons = component.findAll('button');
     const unsoloButton = buttons.find((b) => b.text().includes('fastcat.timeline.soloActive'));
     await unsoloButton?.trigger('click');

@@ -180,8 +180,14 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
       >
         <div class="flex items-center gap-1 p-2 border-b border-ui-border bg-ui-bg-accent/10">
           <UButton
-            :color="workspaceStore.workspaceState.fileBrowser.activeTab === 'computer' ? 'primary' : 'neutral'"
-            :variant="workspaceStore.workspaceState.fileBrowser.activeTab === 'computer' ? 'soft' : 'ghost'"
+            :color="
+              workspaceStore.workspaceState.fileBrowser.activeTab === 'computer'
+                ? 'primary'
+                : 'neutral'
+            "
+            :variant="
+              workspaceStore.workspaceState.fileBrowser.activeTab === 'computer' ? 'soft' : 'ghost'
+            "
             size="xs"
             class="flex-1 justify-center truncate"
             @click="setFilesPageActiveTab('computer')"
@@ -193,8 +199,16 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
             }}
           </UButton>
           <UButton
-            :color="workspaceStore.workspaceState.fileBrowser.activeTab === 'bloggerdog' ? 'primary' : 'neutral'"
-            :variant="workspaceStore.workspaceState.fileBrowser.activeTab === 'bloggerdog' ? 'soft' : 'ghost'"
+            :color="
+              workspaceStore.workspaceState.fileBrowser.activeTab === 'bloggerdog'
+                ? 'primary'
+                : 'neutral'
+            "
+            :variant="
+              workspaceStore.workspaceState.fileBrowser.activeTab === 'bloggerdog'
+                ? 'soft'
+                : 'ghost'
+            "
             size="xs"
             class="flex-1 justify-center truncate"
             @click="setFilesPageActiveTab('bloggerdog')"

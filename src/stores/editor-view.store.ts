@@ -175,12 +175,7 @@ export function createEditorViewModule(
 
   // Load cut panels from project UI state.
   watch(
-    () =>
-      [
-        projectIdRef.value,
-        getProjectOrientation(),
-        storedCutPanelsSnapshot.value,
-      ] as const,
+    () => [projectIdRef.value, getProjectOrientation(), storedCutPanelsSnapshot.value] as const,
     ([projectId, orientation]) => {
       if (!projectId || !orientation) return;
       if (!projectId) {

@@ -121,7 +121,11 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     return adapter.deleteEntry(mappedPath, recursive);
   }
 
-  async moveEntry(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void> {
+  async moveEntry(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
 
@@ -140,7 +144,11 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     await sourceRoute.adapter.deleteEntry(sourceRoute.mappedPath, true);
   }
 
-  async copyFile(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void> {
+  async copyFile(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
 
@@ -181,15 +189,13 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       });
 
       try {
-        await readStream.pipeThrough(progressStream, { signal: options?.signal }).pipeTo(writeStream, { signal: options?.signal });
+        await readStream
+          .pipeThrough(progressStream, { signal: options?.signal })
+          .pipeTo(writeStream, { signal: options?.signal });
         tasksStore.updateTaskStatus(taskId, 'completed');
         uiStore.notifyFileManagerUpdate();
       } catch (e: unknown) {
-        tasksStore.updateTaskStatus(
-          taskId,
-          'failed',
-          e instanceof Error ? e.message : String(e),
-        );
+        tasksStore.updateTaskStatus(taskId, 'failed', e instanceof Error ? e.message : String(e));
         throw e;
       }
     } else {
@@ -198,12 +204,20 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     }
   }
 
-  async copyDirectory(sourcePath: string, targetPath: string, options?: { signal?: AbortSignal }): Promise<void> {
+  async copyDirectory(
+    sourcePath: string,
+    targetPath: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
 
     if (sourceRoute.adapter === targetRoute.adapter) {
-      return sourceRoute.adapter.copyDirectory(sourceRoute.mappedPath, targetRoute.mappedPath, options);
+      return sourceRoute.adapter.copyDirectory(
+        sourceRoute.mappedPath,
+        targetRoute.mappedPath,
+        options,
+      );
     }
 
     await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);

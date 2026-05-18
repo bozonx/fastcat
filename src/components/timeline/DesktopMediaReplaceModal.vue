@@ -18,7 +18,7 @@ const isOpen = computed({
   get: () => uiStore.isMediaReplaceModalOpen && !isMobileLayout.value,
   set: (val) => {
     uiStore.isMediaReplaceModalOpen = val;
-  }
+  },
 });
 
 const targetType = computed(() => uiStore.mediaReplaceTarget?.expectedType);
@@ -36,9 +36,9 @@ function handleSelectFile(entry: FsEntry) {
 
   // Update clip source
   timelineStore.updateClipProperties(target.trackId, target.itemId, {
-    source: { path: entry.path }
+    source: { path: entry.path },
   });
-  
+
   uiStore.mediaReplaceTarget = null;
   uiStore.isMediaReplaceModalOpen = false;
 }
@@ -52,17 +52,12 @@ function handleSelectFile(entry: FsEntry) {
   >
     <!-- Wait, we can't easily intercept FileBrowser clicks without modifying it. -->
     <div class="h-full relative overflow-hidden bg-ui-bg">
-      <FileBrowser 
-        instance-id="replace-modal" 
-        hide-actions
-        hide-upload
-        prevent-open
-      />
+      <FileBrowser instance-id="replace-modal" hide-actions hide-upload prevent-open />
       <!-- If we can't intercept click, we can rely on context menu or file browser selection + a confirm button -->
       <div v-if="uiStore.selectedFsEntry?.kind === 'file'" class="absolute bottom-4 right-4 z-10">
-        <UButton 
-          icon="i-heroicons-check" 
-          color="primary" 
+        <UButton
+          icon="i-heroicons-check"
+          color="primary"
           size="lg"
           @click="handleSelectFile(uiStore.selectedFsEntry as FsEntry)"
         >

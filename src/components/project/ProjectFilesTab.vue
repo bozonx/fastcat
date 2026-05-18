@@ -9,7 +9,9 @@ const props = defineProps<{
   compact?: boolean;
 }>();
 
-const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) || useFileManagerStore();
+const fileManagerStore =
+  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+  useFileManagerStore();
 </script>
 
 <template>

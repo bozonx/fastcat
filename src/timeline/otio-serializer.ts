@@ -453,7 +453,10 @@ function parseDocumentMetadata(raw: unknown): {
   const rawFormat = grouped.document?.format;
   const timebase = grouped.document?.timebase ?? grouped.timebase;
   const format = rawFormat
-    ? normalizeTimelineFormat(rawFormat, { ...normalizeTimelineFormat(null), fps: timebase?.fps ?? 25 })
+    ? normalizeTimelineFormat(rawFormat, {
+        ...normalizeTimelineFormat(null),
+        fps: timebase?.fps ?? 25,
+      })
     : undefined;
   return {
     docId: coerceId(grouped.document?.docId ?? grouped.docId, ''),
@@ -502,10 +505,13 @@ export function parseTimelineFromOtio(
   const docMeta = parseDocumentMetadata((parsed.metadata as any)?.fastcat ?? {});
   const fallbackFormat = normalizeTimelineFormat(fallback.format);
   const timebase = assertTimelineTimebase(docMeta.timebase ?? { fps: fallbackFormat.fps });
-  const format = normalizeTimelineFormat(docMeta.format ?? { ...fallbackFormat, fps: timebase.fps }, {
-    ...fallbackFormat,
-    fps: timebase.fps,
-  });
+  const format = normalizeTimelineFormat(
+    docMeta.format ?? { ...fallbackFormat, fps: timebase.fps },
+    {
+      ...fallbackFormat,
+      fps: timebase.fps,
+    },
+  );
 
   const stackChildren = Array.isArray((parsed.tracks as any)?.children)
     ? (parsed.tracks as any).children

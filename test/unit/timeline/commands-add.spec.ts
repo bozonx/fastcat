@@ -9,9 +9,7 @@ function makeDoc(): TimelineDocument {
     id: 't1',
     name: 'Test',
     timebase: { fps: 30 },
-    tracks: [
-      { id: 'v1', kind: 'video', name: 'V1', items: [] },
-    ],
+    tracks: [{ id: 'v1', kind: 'video', name: 'V1', items: [] }],
   };
 }
 

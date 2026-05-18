@@ -1,9 +1,8 @@
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
 
-import type { TimelineDocument } from '~/timeline/types';
+import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
-import type { TimelineSelectionRange } from '~/timeline/types';
 
 export interface TimelinePersistenceDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -219,9 +218,7 @@ export function createTimelinePersistenceModule(
       deps.timelineZoom.value = session?.zoom ?? 50;
       deps.trackHeights.value = session?.trackHeights ? { ...session.trackHeights } : {};
       if (deps.selectionRange) {
-        deps.selectionRange.value = session?.selectionRange
-          ? { ...session.selectionRange }
-          : null;
+        deps.selectionRange.value = session?.selectionRange ? { ...session.selectionRange } : null;
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);
