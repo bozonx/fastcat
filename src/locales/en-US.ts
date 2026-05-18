@@ -1449,6 +1449,7 @@ export default {
       "metadata": "Metadata",
       "projectStorage": "Project Storage",
       "reset": "Reset to Defaults",
+      "resetSettings": "Reset settings",
       "resetConfirmDescription": "This will restore all project settings to the default values from your workspace settings.",
       "resetConfirmTitle": "Reset to defaults?",
       "resolutionAndFps": "New Timeline Defaults",

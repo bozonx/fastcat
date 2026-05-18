@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   buildVideoWorkerPayloadFromTracks,
   buildVideoWorkerPayload,
@@ -711,6 +711,90 @@ describe('useTimelineExport pure functions', () => {
       timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 },
       sourceRange: { startUs: 0, durationUs: 2_000_000 },
     });
+  });
+
+  it('toWorkerTimelineClips should stop circular nested timelines after resolving relative paths', async () => {
+    const makeNestedOtio = (targetUrl: string) =>
+      JSON.stringify({
+        OTIO_SCHEMA: 'Timeline.1',
+        name: 'nested',
+        metadata: { fastcat: { timebase: { fps: 25 } } },
+        tracks: {
+          OTIO_SCHEMA: 'Stack.1',
+          name: 'tracks',
+          children: [
+            {
+              OTIO_SCHEMA: 'Track.1',
+              name: 'V1',
+              kind: 'Video',
+              children: [
+                {
+                  OTIO_SCHEMA: 'Clip.1',
+                  name: 'Nested',
+                  media_reference: {
+                    OTIO_SCHEMA: 'ExternalReference.1',
+                    target_url: targetUrl,
+                  },
+                  source_range: {
+                    OTIO_SCHEMA: 'TimeRange.1',
+                    start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                    duration: { OTIO_SCHEMA: 'RationalTime.1', value: 1000000, rate: 1000000 },
+                  },
+                  metadata: {
+                    fastcat: {
+                      clipType: 'timeline',
+                      source: { durationUs: 1000000 },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+    const requestedPaths: string[] = [];
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      getFileByPath: async (path: string) => {
+        requestedPaths.push(path);
+        if (path === '_timelines/sub/a.otio') {
+          return { text: async () => makeNestedOtio('../root.otio') } as any;
+        }
+        if (path === '_timelines/root.otio') {
+          return { text: async () => makeNestedOtio('sub/./a.otio') } as any;
+        }
+        return null;
+      },
+    } as any;
+    const warnings: string[] = [];
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      const clips = await toWorkerTimelineClips(
+        [
+          {
+            kind: 'clip',
+            clipType: 'timeline',
+            id: 'nested-a',
+            trackId: 't1',
+            name: 'Nested A',
+            source: { path: '_timelines/sub/../sub/a.otio' },
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          } as any,
+        ],
+        projectStoreMock,
+        wsMock,
+        { layer: 1, trackKind: 'video', onWarning: (message) => warnings.push(message) },
+      );
+
+      expect(clips).toEqual([]);
+      expect(requestedPaths).toEqual(['_timelines/sub/a.otio', '_timelines/root.otio']);
+      expect(warnings[0]).toContain('Circular dependency in nested timeline');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('buildVideoWorkerPayloadFromTracks should emit explicit nested track payload items', async () => {

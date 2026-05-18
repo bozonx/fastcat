@@ -202,5 +202,45 @@ describe('TimelineCommandService', () => {
         }),
       ).rejects.toThrow('Cannot insert the currently opened timeline into itself');
     });
+
+    it('detects transitive cycles through normalized relative nested paths', async () => {
+      deps.getCurrentTimelinePath.mockReturnValue('timelines/root.otio');
+      deps.getFileByPath.mockImplementation(async (path: string) => {
+        if (path !== 'timelines/a.otio') return null;
+        return { text: async () => 'timeline-a' };
+      });
+      deps.parseTimelineFromOtio.mockReturnValue({
+        timebase: { fps: 30 },
+        tracks: [
+          {
+            id: 'v1',
+            kind: 'video',
+            items: [
+              {
+                kind: 'clip',
+                clipType: 'timeline',
+                id: 'nested-root',
+                trackId: 'v1',
+                name: 'Root',
+                source: { path: './root.otio' },
+                timelineRange: { startUs: 0, durationUs: 1_000_000 },
+                sourceRange: { startUs: 0, durationUs: 1_000_000 },
+              },
+            ],
+          },
+        ],
+      });
+
+      await expect(
+        service.addTimelineClipFromPath({
+          trackId: 'v1',
+          name: 'A',
+          path: 'timelines/./a.otio',
+        }),
+      ).rejects.toThrow('Cannot create circular nested timeline dependency');
+
+      expect(deps.getFileByPath).toHaveBeenCalledWith('timelines/a.otio');
+      expect(deps.applyTimeline).not.toHaveBeenCalled();
+    });
   });
 });

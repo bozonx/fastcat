@@ -171,12 +171,6 @@ watch(
         :options="props.formatOptions as any"
         :disabled="props.disabled"
       />
-      <div
-        v-if="codecHint"
-        class="text-xs text-ui-text-muted bg-ui-bg-accent/30 px-3 py-2 rounded border border-ui-border mt-2"
-      >
-        {{ codecHint }}
-      </div>
     </UiFormField>
 
     <UiFormField
@@ -204,20 +198,34 @@ watch(
       </div>
     </UiFormField>
 
-    <UiFormField
-      :label="t('videoEditor.export.videoBitrate')"
-      :help="
-        t('videoEditor.export.videoBitrateHelp')
-      "
-    >
-      <UiWheelNumberInput
-        v-model="bitrateMbps"
-        :min="0"
-        :step="0.1"
-        :wheel-step-multiplier="10"
-        :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
-      />
-    </UiFormField>
+    <div class="flex gap-4">
+      <UiFormField
+        :label="t('videoEditor.export.videoBitrate')"
+        :help="videoCodecHelp"
+        class="flex-1"
+      >
+        <UiWheelNumberInput
+          v-model="bitrateMbps"
+          :min="0"
+          :step="0.1"
+          :wheel-step-multiplier="10"
+          :class="{ 'ring-2 ring-error ring-inset': bitrateMbps <= 0 }"
+        />
+      </UiFormField>
+
+      <UiFormField
+        :label="t('videoEditor.export.keyframeInterval')"
+        class="flex-1"
+      >
+        <UiWheelNumberInput
+          v-model="keyframeIntervalSec"
+          :min="1"
+          :max="1000"
+          :step="1"
+          :wheel-step-multiplier="10"
+        />
+      </UiFormField>
+    </div>
 
     <UiFormField :label="t('videoEditor.export.bitrateMode')">
       <UiButtonGroup
@@ -232,18 +240,6 @@ watch(
       />
     </UiFormField>
 
-    <UiFormField
-      :label="t('videoEditor.export.keyframeInterval')"
-    >
-      <UiWheelNumberInput
-        v-model="keyframeIntervalSec"
-        :min="1"
-        :max="1000"
-        :step="1"
-        :wheel-step-multiplier="10"
-      />
-    </UiFormField>
-
     <UCheckbox
       v-if="outputFormat === 'webm'"
       v-model="exportAlpha"
@@ -255,15 +251,14 @@ watch(
 
     <div class="h-px bg-ui-border my-2"></div>
 
-    <UCheckbox
-      v-model="excludeAudio"
-      :label="t('videoEditor.export.excludeAudio')"
-      :disabled="isAudioDisabled"
-      :ui="{ label: 'text-sm text-ui-text-muted' }"
-      class="cursor-pointer"
-    />
+    <div class="flex items-center justify-between">
+      <span class="text-sm text-ui-text-muted">
+        {{ t('common.audio') }} ({{ t('videoEditor.export.codec.opus') }})
+      </span>
+      <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
+    </div>
 
-    <div v-if="!excludeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
+    <div v-if="includeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
       <UiFormField
         v-if="outputFormat === 'mp4' && !props.showAudioAdvanced"
         :label="t('videoEditor.export.audioCodec')"

@@ -14,6 +14,10 @@ import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { secondsToUs } from '~/utils/time';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat } from '~/timeline/format';
+import {
+  normalizeProjectPath,
+  resolveNestedMediaPath,
+} from '~/utils/video-editor/worker-clip-utils';
 
 interface TimelineMediaMetadata {
   duration?: number;
@@ -170,7 +174,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
   }
 
   async function resolveNestedTimeline(path: string, name: string) {
-    const file = await deps.getFileByPath(path);
+    const resolvedPath = normalizeProjectPath(path);
+    const file = await deps.getFileByPath(resolvedPath);
     if (!file) {
       throw new Error('Failed to access file');
     }
@@ -195,23 +200,29 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       visiting?: Set<string>;
     },
   ): Promise<boolean> {
-    if (path === targetPath) return true;
+    const resolvedPath = normalizeProjectPath(path);
+    const resolvedTargetPath = normalizeProjectPath(targetPath);
+
+    if (resolvedPath === resolvedTargetPath) return true;
 
     const cache = options?.cache ?? new Map<string, TimelineDocument>();
     const visiting = options?.visiting ?? new Set<string>();
 
-    if (visiting.has(path)) {
+    if (visiting.has(resolvedPath)) {
       return false;
     }
 
-    visiting.add(path);
+    visiting.add(resolvedPath);
 
     try {
-      let doc = cache.get(path);
+      let doc = cache.get(resolvedPath);
       if (!doc) {
-        const nested = await resolveNestedTimeline(path, path.split('/').pop() ?? 'nested');
+        const nested = await resolveNestedTimeline(
+          resolvedPath,
+          resolvedPath.split('/').pop() ?? 'nested',
+        );
         doc = nested.doc;
-        cache.set(path, doc);
+        cache.set(resolvedPath, doc);
       }
 
       for (const track of doc.tracks) {
@@ -220,19 +231,27 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
           const nestedPath = item.source?.path;
           if (!nestedPath) continue;
-          if (nestedPath === targetPath) return true;
-
-          const hasCycle = await nestedTimelineReferencesPath(nestedPath, targetPath, {
-            cache,
-            visiting,
+          const resolvedNestedPath = resolveNestedMediaPath({
+            nestedTimelinePath: resolvedPath,
+            mediaPath: nestedPath,
           });
+          if (resolvedNestedPath === resolvedTargetPath) return true;
+
+          const hasCycle = await nestedTimelineReferencesPath(
+            resolvedNestedPath,
+            resolvedTargetPath,
+            {
+              cache,
+              visiting,
+            },
+          );
           if (hasCycle) return true;
         }
       }
 
       return false;
     } finally {
-      visiting.delete(path);
+      visiting.delete(resolvedPath);
     }
   }
 
@@ -240,11 +259,14 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const currentTimelinePath = deps.getCurrentTimelinePath();
     if (!currentTimelinePath) return;
 
-    if (path === currentTimelinePath) {
+    const resolvedPath = normalizeProjectPath(path);
+    const resolvedCurrentTimelinePath = normalizeProjectPath(currentTimelinePath);
+
+    if (resolvedPath === resolvedCurrentTimelinePath) {
       throw new Error('Cannot insert the currently opened timeline into itself');
     }
 
-    const hasCycle = await nestedTimelineReferencesPath(path, currentTimelinePath);
+    const hasCycle = await nestedTimelineReferencesPath(resolvedPath, resolvedCurrentTimelinePath);
     if (hasCycle) {
       throw new Error('Cannot create circular nested timeline dependency');
     }

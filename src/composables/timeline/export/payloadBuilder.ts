@@ -8,6 +8,7 @@ import type {
   TimelineSelectionRange,
   TimelineBlendMode,
   ClipEffect,
+  TimelineDocument,
 } from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -16,6 +17,7 @@ import {
   clonePlain,
   mergeFadeInUs,
   mergeFadeOutUs,
+  normalizeProjectPath,
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
@@ -86,6 +88,31 @@ interface BuildVideoTrackTreeParams {
   inheritedTrackEffects?: ClipEffect[];
   fallbackFormat?: TimelineFormatInput;
   onWarning?: (message: string) => void;
+  nestedDocCache?: Map<string, TimelineDocument>;
+}
+
+async function readNestedTimelineDoc(params: {
+  path: string;
+  projectStore: ReturnType<typeof useProjectStore>;
+  fallbackFormat?: TimelineFormatInput;
+  cache?: Map<string, TimelineDocument>;
+}): Promise<TimelineDocument | null> {
+  const path = normalizeProjectPath(params.path);
+  const cached = params.cache?.get(path);
+  if (cached) return cached;
+
+  const file = await params.projectStore.getFileByPath(path);
+  if (!file) return null;
+
+  const text = await file.text();
+  const doc = parseTimelineFromOtio(text, {
+    id: 'nested',
+    name: path.split('/').pop() ?? 'nested',
+    format: params.fallbackFormat ?? params.projectStore.projectSettings.project,
+  });
+
+  params.cache?.set(path, doc);
+  return doc;
 }
 
 async function buildVideoTrackTree(
@@ -104,6 +131,7 @@ async function buildVideoTrackTree(
   const inheritedTrackEffects = params.inheritedTrackEffects ?? [];
   const visitedPaths = params.visitedPaths ?? new Set<string>();
   const nestedPathStack = params.nestedPathStack ?? [];
+  const nestedDocCache = params.nestedDocCache ?? new Map<string, TimelineDocument>();
 
   for (let index = 0; index < visibleTracks.length; index++) {
     const track = visibleTracks[index];
@@ -178,8 +206,14 @@ async function buildVideoTrackTree(
       };
 
       if (clipType === 'timeline') {
-        const path = (item as any).source?.path;
-        if (!path) continue;
+        const rawPath = (item as any).source?.path;
+        if (!rawPath) continue;
+        const path = params.nestedTimelinePath
+          ? resolveNestedMediaPath({
+              nestedTimelinePath: params.nestedTimelinePath,
+              mediaPath: rawPath,
+            })
+          : normalizeProjectPath(rawPath);
 
         if (visitedPaths.has(path)) {
           const message = `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`;
@@ -189,19 +223,18 @@ async function buildVideoTrackTree(
         }
 
         try {
-          const file = await params.projectStore.getFileByPath(path);
-          if (!file) {
+          const nestedDoc = await readNestedTimelineDoc({
+            path,
+            projectStore: params.projectStore,
+            fallbackFormat: params.fallbackFormat,
+            cache: nestedDocCache,
+          });
+          if (!nestedDoc) {
             const message = `Nested timeline file not found: ${path}`;
             console.warn(message);
             params.onWarning?.(message);
             continue;
           }
-          const text = await file.text();
-          const nestedDoc = parseTimelineFromOtio(text, {
-            id: 'nested',
-            name: 'nested',
-            format: params.fallbackFormat ?? params.projectStore.projectSettings.project,
-          });
 
           const nestedResult = await buildVideoTrackTree({
             tracks: nestedDoc.tracks,
@@ -218,6 +251,7 @@ async function buildVideoTrackTree(
               trackEffects.length > 0 ? [...itemEffects, ...trackEffects] : itemEffects,
             fallbackFormat: { fps: nestedDoc.timebase.fps },
             onWarning: params.onWarning,
+            nestedDocCache,
           });
 
           result.tracks.push(...nestedResult.tracks);
@@ -494,12 +528,15 @@ export async function toWorkerTimelineClips(
     parentAudioBalance?: number;
     fallbackFormat?: TimelineFormatInput;
     onWarning?: (message: string) => void;
+    nestedTimelinePath?: string;
+    nestedDocCache?: Map<string, TimelineDocument>;
   },
 ): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];
   const trackKind = options?.trackKind ?? 'video';
   const visitedPaths = options?.visitedPaths ?? new Set<string>();
   const nestedPathStack = options?.nestedPathStack ?? [];
+  const nestedDocCache = options?.nestedDocCache ?? new Map<string, TimelineDocument>();
 
   for (const item of items) {
     if (item.kind !== 'clip') continue;
@@ -574,8 +611,15 @@ export async function toWorkerTimelineClips(
     };
 
     if (clipType === 'media' || clipType === 'timeline') {
-      const path = (item as any).source?.path;
-      if (!path) continue;
+      const rawPath = (item as any).source?.path;
+      if (!rawPath) continue;
+      const path =
+        clipType === 'timeline' && options?.nestedTimelinePath
+          ? resolveNestedMediaPath({
+              nestedTimelinePath: options.nestedTimelinePath,
+              mediaPath: rawPath,
+            })
+          : normalizeProjectPath(rawPath);
 
       if (clipType === 'timeline') {
         if (visitedPaths.has(path)) {
@@ -586,19 +630,18 @@ export async function toWorkerTimelineClips(
         }
 
         try {
-          const file = await projectStore.getFileByPath(path);
-          if (!file) {
+          const nestedDoc = await readNestedTimelineDoc({
+            path,
+            projectStore,
+            fallbackFormat: options?.fallbackFormat,
+            cache: nestedDocCache,
+          });
+          if (!nestedDoc) {
             const message = `Nested timeline file not found: ${path}`;
             console.warn(message);
             options?.onWarning?.(message);
             continue;
           }
-          const text = await file.text();
-          const nestedDoc = parseTimelineFromOtio(text, {
-            id: 'nested',
-            name: 'nested',
-            format: options?.fallbackFormat ?? projectStore.projectSettings.project,
-          });
 
           const nextVisited = new Set(visitedPaths).add(path);
           const nextNestedPathStack = [...nestedPathStack, path];
@@ -612,9 +655,7 @@ export async function toWorkerTimelineClips(
               if (!track) continue;
               const nestedLayer = (options?.layer ?? 0) + (nestedVideoTracks.length - 1 - i);
 
-              const trackEffects = Array.isArray(track.effects)
-                ? cloneEffects(track.effects)
-                : [];
+              const trackEffects = Array.isArray(track.effects) ? cloneEffects(track.effects) : [];
               const combinedTrackEffects =
                 combinedEffects.length > 0 ? [...trackEffects, ...combinedEffects] : trackEffects;
 
@@ -632,6 +673,8 @@ export async function toWorkerTimelineClips(
                   parentEffects: combinedTrackEffects,
                   fallbackFormat: { fps: nestedDoc.timebase.fps },
                   onWarning: options?.onWarning,
+                  nestedTimelinePath: path,
+                  nestedDocCache,
                 },
               );
 
@@ -708,6 +751,8 @@ export async function toWorkerTimelineClips(
                 parentAudioGain: mergeGain(parentAudioGain, (item as any).audioGain),
                 parentAudioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
                 onWarning: options?.onWarning,
+                nestedTimelinePath: path,
+                nestedDocCache,
               },
             );
 

@@ -85,6 +85,7 @@ const tabs = computed(() => [
     label: t('fastcat.clip.tabs.audio'),
     value: 'audio',
     icon: 'i-heroicons-speaker-wave',
+    disabled: !canEditAudioGain.value,
   },
 ]);
 

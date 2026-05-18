@@ -20,6 +20,7 @@ const props = defineProps<{
   hideActions?: boolean;
   hideUpload?: boolean;
   hideViewSwitcher?: boolean;
+  hideSelectUnused?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -74,23 +75,26 @@ const toolbarMenuItems = computed(() => {
   items.push(actions);
 
   if (!props.isRemotePanel) {
-    items.push([
+    const selectionItems = [
       {
         label: t('common.selectAll'),
         icon: 'i-heroicons-check-circle',
         onSelect: () => emit('selectAll'),
       },
       {
-        label: t('common.selectUnused'),
-        icon: 'i-heroicons-circle-stack',
-        onSelect: () => emit('selectUnused'),
-      },
-      {
         label: t('common.invertSelection'),
         icon: 'i-heroicons-arrow-path-rounded-square',
         onSelect: () => emit('invertSelection'),
       },
-    ]);
+    ];
+    if (!props.hideSelectUnused) {
+      selectionItems.splice(1, 0, {
+        label: t('common.selectUnused'),
+        icon: 'i-heroicons-circle-stack',
+        onSelect: () => emit('selectUnused'),
+      });
+    }
+    items.push(selectionItems);
   }
 
   // 2. Sort Fields Section

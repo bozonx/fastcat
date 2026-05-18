@@ -80,13 +80,38 @@ export function joinPaths(left: string, right: string): string {
   return `${l}/${r}`;
 }
 
+export function normalizeProjectPath(path: string): string {
+  const raw = String(path).trim().replace(/\\/g, '/');
+  if (!raw || isProbablyUrlLike(raw)) return raw;
+
+  const isAbsolute = raw.startsWith('/');
+  const parts: string[] = [];
+
+  for (const part of raw.split('/')) {
+    const trimmed = part.trim();
+    if (!trimmed || trimmed === '.') continue;
+    if (trimmed === '..') {
+      if (parts.length > 0 && parts[parts.length - 1] !== '..') {
+        parts.pop();
+      } else if (!isAbsolute) {
+        parts.push(trimmed);
+      }
+      continue;
+    }
+    parts.push(trimmed);
+  }
+
+  const normalized = parts.join('/');
+  return isAbsolute ? `/${normalized}` : normalized;
+}
+
 export function resolveNestedMediaPath(params: {
   nestedTimelinePath: string;
   mediaPath: string;
 }): string {
   const mediaPath = String(params.mediaPath);
   if (!mediaPath) return mediaPath;
-  if (mediaPath.startsWith('/')) return mediaPath;
+  if (mediaPath.startsWith('/')) return normalizeProjectPath(mediaPath);
   if (isProbablyUrlLike(mediaPath)) return mediaPath;
   if (
     mediaPath.startsWith(`${VIDEO_DIR_NAME}/`) ||
@@ -94,9 +119,9 @@ export function resolveNestedMediaPath(params: {
     mediaPath.startsWith(`${IMAGES_DIR_NAME}/`) ||
     mediaPath.startsWith(`${TIMELINES_DIR_NAME}/`)
   ) {
-    return mediaPath;
+    return normalizeProjectPath(mediaPath);
   }
   const baseDir = getDirname(params.nestedTimelinePath);
-  if (!baseDir) return mediaPath;
-  return joinPaths(baseDir, mediaPath);
+  if (!baseDir) return normalizeProjectPath(mediaPath);
+  return normalizeProjectPath(joinPaths(baseDir, mediaPath));
 }

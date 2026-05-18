@@ -61,6 +61,7 @@ const props = defineProps<{
   hideFocusFrame?: boolean;
   hideViewSwitcher?: boolean;
   hideBreadcrumbs?: boolean;
+  hideSelectUnused?: boolean;
   rootName?: string;
   preventOpen?: boolean;
 }>();
@@ -846,6 +847,7 @@ async function onDirectoryUploadChange(e: Event) {
       :hide-actions="hideActions"
       :hide-upload="hideUpload"
       :hide-view-switcher="hideViewSwitcher"
+      :hide-select-unused="hideSelectUnused"
       @refresh="refreshFileTree"
       @open-remote="toggleBloggerDogPanel"
       @create-folder="

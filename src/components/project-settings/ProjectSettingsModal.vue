@@ -183,7 +183,7 @@ async function resetToDefaults() {
           'This will restore all project settings to the default values from your workspace settings.',
         )
       "
-      :confirm-text="t('videoEditor.projectSettings.reset')"
+      :confirm-text="t('videoEditor.projectSettings.resetSettings')"
       :cancel-text="t('common.cancel')"
       color="warning"
       icon="i-heroicons-exclamation-triangle"
@@ -227,7 +227,7 @@ async function resetToDefaults() {
         <UButton
           variant="ghost"
           color="neutral"
-          :label="t('videoEditor.projectSettings.reset')"
+          :label="t('videoEditor.projectSettings.resetSettings')"
           @click="isResetConfirmOpen = true"
         />
         <UButton

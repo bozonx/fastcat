@@ -76,6 +76,7 @@ const transitionOptions = computed(() =>
             value-key="value"
             label-key="label"
             size="xs"
+            full-width
             class="mb-2"
             :disabled="!isEnabled"
             @update:model-value="
@@ -98,6 +99,7 @@ const transitionOptions = computed(() =>
             "
             :step="0.1"
             :wheel-step-multiplier="10"
+            full-width
             :disabled="!isEnabled"
             @update:model-value="
               (v: any) => emit('updateDuration', { edge: 'in', durationSec: Number(v) })
@@ -142,6 +144,7 @@ const transitionOptions = computed(() =>
             value-key="value"
             label-key="label"
             size="xs"
+            full-width
             class="mb-2"
             :disabled="!isEnabled"
             @update:model-value="
@@ -164,6 +167,7 @@ const transitionOptions = computed(() =>
             "
             :step="0.1"
             :wheel-step-multiplier="10"
+            full-width
             :disabled="!isEnabled"
             @update:model-value="
               (v: any) => emit('updateDuration', { edge: 'out', durationSec: Number(v) })

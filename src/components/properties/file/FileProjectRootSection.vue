@@ -40,12 +40,6 @@ function openProjectSettings() {
       :value="formatBytes(props.projectStats!.size)"
     />
 
-    <PropertyRow
-      v-if="props.storageFreeBytes !== null"
-      :label="t('videoEditor.fileManager.projectRoot.freeSpace')"
-      :value="formatBytes(props.storageFreeBytes)"
-    />
-
     <PropertyRow :label="t('videoEditor.fileManager.projectRoot.parameters')">
       <div class="flex items-center gap-2">
         <span>{{ projectParams }}</span>

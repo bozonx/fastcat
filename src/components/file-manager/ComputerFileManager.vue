@@ -156,6 +156,7 @@ function onSelect(entry: FsEntry) {
           rootSelectionEntry.name
         "
         hide-upload
+        hide-select-unused
         class="h-full"
       />
     </Pane>

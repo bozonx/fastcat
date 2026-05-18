@@ -6,6 +6,7 @@ import {
   isProbablyUrlLike,
   getDirname,
   joinPaths,
+  normalizeProjectPath,
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
@@ -89,6 +90,13 @@ describe('worker-clip-utils', () => {
       expect(joinPaths('folder', '')).toBe('folder');
     });
 
+    it('normalizeProjectPath', () => {
+      expect(normalizeProjectPath(' timelines/./sub/../root.otio ')).toBe('timelines/root.otio');
+      expect(normalizeProjectPath('http://example.com/a/../b.mp4')).toBe(
+        'http://example.com/a/../b.mp4',
+      );
+    });
+
     it('resolveNestedMediaPath', () => {
       expect(
         resolveNestedMediaPath({
@@ -117,6 +125,13 @@ describe('worker-clip-utils', () => {
           mediaPath: 'clip.mp4',
         }),
       ).toBe('clip.mp4');
+
+      expect(
+        resolveNestedMediaPath({
+          nestedTimelinePath: 'timelines/sub/a.otio',
+          mediaPath: '../root.otio',
+        }),
+      ).toBe('timelines/root.otio');
     });
   });
 });

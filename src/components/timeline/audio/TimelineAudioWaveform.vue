@@ -9,7 +9,10 @@ import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { computeWaveformWindowMetrics, resolveWaveformSourceUs } from '~/utils/audio/waveform';
-import { resolveNestedMediaPath } from '~/utils/video-editor/worker-clip-utils';
+import {
+  normalizeProjectPath,
+  resolveNestedMediaPath,
+} from '~/utils/video-editor/worker-clip-utils';
 
 const props = defineProps<{
   item: TimelineClipItem;
@@ -92,9 +95,12 @@ async function buildTimelinePeaks(params: {
   maxLength: number;
   visiting: Set<string>;
   timelinePath?: string;
+  docCache?: Map<string, TimelineDocument>;
+  shouldCancel?: () => boolean;
 }): Promise<Float32Array[] | null> {
-  const { doc, durationUs, maxLength, visiting, timelinePath } = params;
+  const { doc, durationUs, maxLength, visiting, timelinePath, docCache, shouldCancel } = params;
   if (durationUs <= 0 || maxLength <= 0) return null;
+  if (shouldCancel?.()) return null;
 
   const effectiveItems = buildEffectiveAudioClipItems({
     audioTracks: doc.tracks.filter((track) => track.kind === 'audio'),
@@ -104,6 +110,7 @@ async function buildTimelinePeaks(params: {
   let mixedPeaks: Float32Array[] | null = null;
 
   for (const item of effectiveItems) {
+    if (shouldCancel?.()) return null;
     if (item.kind !== 'clip') continue;
     const clip = item as TimelineClipItem;
     const rawPath = clip.source?.path;
@@ -133,14 +140,19 @@ async function buildTimelinePeaks(params: {
     if (clip.clipType === 'timeline') {
       if (visiting.has(path)) continue;
 
-      const file = await fileManager.vfs.getFile(path);
-      if (!file) continue;
-      const text = await file.text();
-      const nestedDoc = parseTimelineFromOtio(text, {
-        id: 'nested-waveform',
-        name: clip.name,
-        format: { fps: 25 },
-      });
+      let nestedDoc = docCache?.get(path) ?? null;
+      if (!nestedDoc) {
+        const file = await fileManager.vfs.getFile(path);
+        if (!file || shouldCancel?.()) continue;
+        const text = await file.text();
+        if (shouldCancel?.()) return null;
+        nestedDoc = parseTimelineFromOtio(text, {
+          id: 'nested-waveform',
+          name: clip.name,
+          format: { fps: 25 },
+        });
+        docCache?.set(path, nestedDoc);
+      }
 
       visiting.add(path);
       sourcePeaks = await buildTimelinePeaks({
@@ -149,10 +161,14 @@ async function buildTimelinePeaks(params: {
         maxLength,
         visiting,
         timelinePath: path,
+        docCache,
+        shouldCancel,
       });
       visiting.delete(path);
     } else {
+      if (shouldCancel?.()) return null;
       sourcePeaks = await ensureMediaPeaks(path, maxLength);
+      if (shouldCancel?.()) return null;
     }
 
     if (!sourcePeaks || sourcePeaks.length === 0) continue;
@@ -214,20 +230,26 @@ const extractPeaks = async () => {
 
   const callId = ++extractCallId;
   const urlAtStart = fileUrl.value;
+  const shouldCancel = () =>
+    isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart;
   let engine: AudioEngine | null = null;
 
   try {
     isExtracting.value = true;
 
     if (isNestedTimeline.value) {
-      const file = await fileManager.vfs.getFile(fileUrl.value);
+      const normalizedTimelinePath = normalizeProjectPath(fileUrl.value);
+      const file = await fileManager.vfs.getFile(normalizedTimelinePath);
       if (!file) return;
 
-      if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+      if (shouldCancel()) {
         return;
       }
 
       const text = await file.text();
+      if (shouldCancel()) {
+        return;
+      }
       const nestedDoc = parseTimelineFromOtio(text, {
         id: 'nested-waveform-root',
         name: props.item.name,
@@ -242,11 +264,13 @@ const extractPeaks = async () => {
         doc: nestedDoc,
         durationUs: Math.max(1, Math.round(effectiveSourceDurationUs.value)),
         maxLength,
-        visiting: new Set<string>([fileUrl.value]),
-        timelinePath: fileUrl.value,
+        visiting: new Set<string>([normalizedTimelinePath]),
+        timelinePath: normalizedTimelinePath,
+        docCache: new Map<string, TimelineDocument>([[normalizedTimelinePath, nestedDoc]]),
+        shouldCancel,
       });
 
-      if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+      if (shouldCancel()) {
         return;
       }
 
@@ -258,7 +282,7 @@ const extractPeaks = async () => {
     const fileHandle = await projectStore.getFileHandleByPath(fileUrl.value);
     if (!fileHandle) return;
 
-    if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+    if (shouldCancel()) {
       return;
     }
 
@@ -276,7 +300,7 @@ const extractPeaks = async () => {
       precision: 10000,
     });
 
-    if (isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart) {
+    if (shouldCancel()) {
       return;
     }
 
