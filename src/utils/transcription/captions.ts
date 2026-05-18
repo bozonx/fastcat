@@ -13,7 +13,7 @@ export interface CaptionGenerationSettings {
   maxDurationMs: number;
   silenceGapMs: number;
   splitOnPunctuation: boolean;
-  language?: string;
+  language: string;
 }
 
 export interface CaptionChunk {
