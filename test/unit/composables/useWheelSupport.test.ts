@@ -128,9 +128,7 @@ describe('useWheelSupport', () => {
   it('ignores zero or non-finite delta', async () => {
     const { onWheelStep, wrapperRef } = mountWheelSupport();
     wrapperRef.value!.dispatchEvent(new WheelEvent('wheel', { deltaY: 0, bubbles: true }));
-    wrapperRef.value!.dispatchEvent(
-      new WheelEvent('wheel', { deltaY: Number.NaN, bubbles: true }),
-    );
+    wrapperRef.value!.dispatchEvent(new WheelEvent('wheel', { deltaY: Number.NaN, bubbles: true }));
     expect(onWheelStep).not.toHaveBeenCalled();
   });
 
