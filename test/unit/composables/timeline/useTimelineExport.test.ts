@@ -767,7 +767,6 @@ describe('useTimelineExport pure functions', () => {
         return null;
       },
     } as any;
-    const warnings: string[] = [];
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     try {
@@ -786,12 +785,14 @@ describe('useTimelineExport pure functions', () => {
         ],
         projectStoreMock,
         wsMock,
-        { layer: 1, trackKind: 'video', onWarning: (message) => warnings.push(message) },
+        { layer: 1, trackKind: 'video' },
       );
 
       expect(clips).toEqual([]);
       expect(requestedPaths).toEqual(['_timelines/sub/a.otio', '_timelines/root.otio']);
-      expect(warnings[0]).toContain('Circular dependency in nested timeline');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Circular dependency in nested timeline'),
+      );
     } finally {
       warnSpy.mockRestore();
     }

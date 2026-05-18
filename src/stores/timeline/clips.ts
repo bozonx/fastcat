@@ -54,6 +54,7 @@ export interface TimelineClipsDeps {
   deleteTrack: (trackId: string, options?: { allowNonEmpty?: boolean }) => void;
   selectTrack: (trackId: string | null) => void;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
+  ensureNoNestedTimelineCycle?: (path: string) => Promise<void>;
   defaultStaticClipDurationUs: number;
   defaultAudioFadeCurve: import('~/timeline/types').AudioFadeCurve;
 }
@@ -202,7 +203,7 @@ export interface TimelineClipsModule {
   pasteClips: (
     items: TimelineClipClipboardItem[],
     options?: { targetTrackId?: string | null; insertStartUs?: number },
-  ) => { trackId: string; itemId: string }[];
+  ) => Promise<{ trackId: string; itemId: string }[]>;
   trimItem: (params: {
     trackId: string;
     itemId: string;
@@ -475,10 +476,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     return items;
   }
 
-  function pasteClips(
+  async function pasteClips(
     items: TimelineClipClipboardItem[],
     options?: { targetTrackId?: string | null; insertStartUs?: number },
-  ): { trackId: string; itemId: string }[] {
+  ): Promise<{ trackId: string; itemId: string }[]> {
     if (items.length === 0) return [];
 
     if (!deps.timelineDoc.value) {
@@ -487,6 +488,28 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
     const doc = deps.timelineDoc.value;
     if (!doc) return [];
+
+    if (deps.ensureNoNestedTimelineCycle) {
+      const pathSafe = new Map<string, boolean>();
+      const safeItems: TimelineClipClipboardItem[] = [];
+      for (const item of items) {
+        const path = item.clip.source?.path;
+        if (item.clip.clipType === 'timeline' && path) {
+          if (!pathSafe.has(path)) {
+            try {
+              await deps.ensureNoNestedTimelineCycle(path);
+              pathSafe.set(path, true);
+            } catch {
+              pathSafe.set(path, false);
+            }
+          }
+          if (!pathSafe.get(path)) continue;
+        }
+        safeItems.push(item);
+      }
+      items = safeItems;
+      if (items.length === 0) return [];
+    }
 
     // 1. Determine the base target track
     const baseTargetTrackId = options?.targetTrackId ?? deps.resolveTargetVideoTrackIdForInsert();

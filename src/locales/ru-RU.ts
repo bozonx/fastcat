@@ -1667,6 +1667,8 @@ export default {
       "sttLocal": "Локальное (Whisper)",
       "sttLocalModel": "Модель Whisper",
       "sttModelDownloaded": "Модель загружена и готова к использованию",
+      "sttModelDownloadingInBackground": "Загрузка модели в фоновом режиме",
+      "sttModelDownloadHint": "Вы можете закрыть это окно или перейти в другую вкладку — загрузка продолжится в фоне.",
       "sttModelNotDownloaded": "Модель необходимо загрузить",
       "sttModelReady": "Готова",
       "sttTranscriptionDescription": "Настройте интеграцию и параметры распознавания речи по умолчанию.",

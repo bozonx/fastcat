@@ -49,7 +49,7 @@ const props = defineProps<{
         fileName: string;
       }) => void;
     },
-  ) => Promise<void | UploadResult[] | null>;
+  ) => Promise<unknown>;
   onCopyEntries?: (entries: FsEntry[]) => void;
   onCutEntries?: (entries: FsEntry[]) => void;
   onPasteToEntry?: (entry: FsEntry) => void;
@@ -424,7 +424,7 @@ const rootContextMenuItems = computed(() => {
       menu[0].push({
         label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
-        onSelect: async () => emit('action', rootEntry),
+        onSelect: async () => emit('action', 'paste', rootEntry),
       });
     }
   }
@@ -477,7 +477,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
 
   selectSingle(entry);
 
-  focusStore.setTempFocus('left');
+  focusStore.setTempFocus('files-sidebar');
   if (!props.isExternal && entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
     await loadTimeline(entry.path);
   }

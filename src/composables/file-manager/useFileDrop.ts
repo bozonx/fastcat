@@ -41,8 +41,8 @@ export interface UseFileDropOptions {
         fileName: string;
       }) => void;
     },
-  ) => Promise<void>;
-  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
+  ) => Promise<unknown>;
+  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   targetFileManagerInstanceId?: string | null;
   vfs: IFileSystemAdapter;

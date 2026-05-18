@@ -10,6 +10,7 @@ import {
 } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
+import type { TimelineDocument } from '~/timeline/types';
 
 import type { ExportOptions, WorkerTimelineClip } from '../types';
 import {
@@ -71,6 +72,7 @@ export function useExportProcess(
       };
 
       ensureNotCancelled();
+      const nestedDocCache = new Map<string, TimelineDocument>();
       const builtVideo = await buildVideoWorkerPayloadFromTracks({
         tracks: doc?.tracks ?? [],
         projectStore,
@@ -78,6 +80,7 @@ export function useExportProcess(
         masterEffects: doc?.metadata?.fastcat?.masterEffects,
         fallbackFormat: timelineStore.timelineFormat,
         onWarning: reportWarning,
+        nestedDocCache,
       });
 
       ensureNotCancelled();
@@ -108,6 +111,7 @@ export function useExportProcess(
             trackKind: 'audio',
             fallbackFormat: timelineStore.timelineFormat,
             onWarning: reportWarning,
+            nestedDocCache,
           })
         ).map((clip) => ({
           ...clip,

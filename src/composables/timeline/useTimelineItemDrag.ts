@@ -978,7 +978,7 @@ export function useTimelineItemDrag(
       timelineStore.timelineDoc = snapshot as any;
       timelineStore.duration = selectTimelineDurationUs(snapshot as any) as any;
       const copyClip = copiedSingleClipPayload.clip;
-      timelineStore.pasteClips(
+      void timelineStore.pasteClips(
         [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],
         {
           targetTrackId: copiedSingleClipPayload.targetTrackId,

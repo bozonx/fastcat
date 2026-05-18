@@ -132,10 +132,11 @@ export async function downloadModel(
   workspaceHandle: FileSystemDirectoryHandle | null | undefined,
   modelName: string,
   onProgress?: (progress: ModelDownloadProgress) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const dir = await getModelDir(workspaceHandle, modelName, true);
   if (!dir) throw new Error(`Failed to create directory for model: ${modelName}`);
-  
+
   const files = WHISPER_MODEL_FILES[modelName];
 
   if (!files) {
@@ -143,6 +144,10 @@ export async function downloadModel(
   }
 
   for (const fileName of files) {
+    if (signal?.aborted) {
+      throw new DOMException('Download cancelled', 'AbortError');
+    }
+
     const url = `${HF_BASE}/${modelName}/resolve/main/${fileName}`;
 
     onProgress?.({
@@ -153,7 +158,7 @@ export async function downloadModel(
       status: 'downloading',
     });
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (!response.ok) {
       throw new Error(`Failed to download ${fileName}: ${response.statusText}`);
     }
@@ -181,9 +186,13 @@ export async function downloadModel(
       let loaded = 0;
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        if (signal?.aborted) {
+          throw new DOMException('Download cancelled', 'AbortError');
+        }
+
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         await writable.write(value);
         loaded += value.length;
 

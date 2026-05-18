@@ -46,7 +46,7 @@ export interface UseClipContextMenuOptions {
   emitClipAction: (payload: import('~/timeline/types').TimelineClipActionPayload) => void;
   copySelectedClips: () => void;
   cutSelectedClips: () => void;
-  pasteClips: (insertStartUs?: number) => string[];
+  pasteClips: (insertStartUs?: number) => void;
   hasTimelineClipboard: boolean;
   t: (key: string, ...args: (string | number)[]) => string;
 }

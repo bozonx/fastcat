@@ -29,12 +29,14 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 
-function handlePaste() {
+async function handlePaste() {
   const payload = clipboardStore.clipboardPayload;
   if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
 
   const playheadUs = timelineStore.currentTime;
-  const pastedItemIds = timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+  const pastedItemIds = await timelineStore.pasteClips(payload.items, {
+    insertStartUs: playheadUs,
+  });
 
   if (pastedItemIds && pastedItemIds.length > 0) {
     if (payload.operation === 'cut') {

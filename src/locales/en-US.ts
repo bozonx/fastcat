@@ -1667,6 +1667,8 @@ export default {
       "sttLocal": "Local (Whisper)",
       "sttLocalModel": "Whisper Model",
       "sttModelDownloaded": "Model is downloaded and ready for use",
+      "sttModelDownloadingInBackground": "Downloading model in the background",
+      "sttModelDownloadHint": "You can close this window or switch to another tab — the download will continue in the background.",
       "sttModelNotDownloaded": "Model needs to be downloaded",
       "sttModelReady": "Ready",
       "sttTranscriptionDescription": "Configure speech-to-text integration and defaults.",

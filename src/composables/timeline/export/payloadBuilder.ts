@@ -29,6 +29,8 @@ import type {
   WorkerTimelineMeta,
 } from './types';
 
+const MAX_NESTED_TIMELINE_DEPTH = 32;
+
 export function buildWorkerVideoTracks(tracks: TimelineTrack[]): WorkerTrackPayloadSource[] {
   const visibleVideoTracks = tracks.filter((track) => track.kind === 'video' && !track.videoHidden);
 
@@ -216,9 +218,16 @@ async function buildVideoTrackTree(
           : normalizeProjectPath(rawPath);
 
         if (visitedPaths.has(path)) {
-          const message = `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`;
-          console.warn(message);
-          params.onWarning?.(message);
+          console.warn(
+            `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`,
+          );
+          continue;
+        }
+
+        if (nestedPathStack.length >= MAX_NESTED_TIMELINE_DEPTH) {
+          console.warn(
+            `Nested timeline depth limit reached at ${[...nestedPathStack, path].join(' -> ')}`,
+          );
           continue;
         }
 
@@ -230,9 +239,7 @@ async function buildVideoTrackTree(
             cache: nestedDocCache,
           });
           if (!nestedDoc) {
-            const message = `Nested timeline file not found: ${path}`;
-            console.warn(message);
-            params.onWarning?.(message);
+            console.warn(`Nested timeline file not found: ${path}`);
             continue;
           }
 
@@ -369,6 +376,7 @@ export async function buildVideoWorkerPayloadFromTracks(input: {
   masterEffects?: ClipEffect[];
   fallbackFormat?: TimelineFormatInput;
   onWarning?: (message: string) => void;
+  nestedDocCache?: Map<string, TimelineDocument>;
 }): Promise<BuildVideoPayloadFromTracksResult> {
   const result = await buildVideoTrackTree({
     tracks: input.tracks,
@@ -376,6 +384,7 @@ export async function buildVideoWorkerPayloadFromTracks(input: {
     workspaceStore: input.workspaceStore,
     fallbackFormat: input.fallbackFormat ?? input.projectStore.projectSettings.project,
     onWarning: input.onWarning,
+    nestedDocCache: input.nestedDocCache,
   });
 
   return {
@@ -623,9 +632,16 @@ export async function toWorkerTimelineClips(
 
       if (clipType === 'timeline') {
         if (visitedPaths.has(path)) {
-          const message = `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`;
-          console.warn(message);
-          options?.onWarning?.(message);
+          console.warn(
+            `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`,
+          );
+          continue;
+        }
+
+        if (nestedPathStack.length >= MAX_NESTED_TIMELINE_DEPTH) {
+          console.warn(
+            `Nested timeline depth limit reached at ${[...nestedPathStack, path].join(' -> ')}`,
+          );
           continue;
         }
 
@@ -637,9 +653,7 @@ export async function toWorkerTimelineClips(
             cache: nestedDocCache,
           });
           if (!nestedDoc) {
-            const message = `Nested timeline file not found: ${path}`;
-            console.warn(message);
-            options?.onWarning?.(message);
+            console.warn(`Nested timeline file not found: ${path}`);
             continue;
           }
 

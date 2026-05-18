@@ -30,7 +30,7 @@ interface TimelineStoreActions {
   pasteClips: (
     items: any[],
     options?: { insertStartUs?: number },
-  ) => { trackId: string; itemId: string }[];
+  ) => Promise<{ trackId: string; itemId: string }[]>;
 }
 
 interface ProjectStoreActions {
@@ -487,7 +487,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
     const playheadUs = timelineStore.currentTime;
-    timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+    void timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
     if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
   }
 

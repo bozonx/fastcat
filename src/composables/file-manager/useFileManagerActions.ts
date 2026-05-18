@@ -67,7 +67,7 @@ interface FileManagerActions {
         fileName: string;
       }) => void;
     },
-  ) => Promise<void>;
+  ) => Promise<unknown>;
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;
   vfs: IFileSystemAdapter;
   findEntryByPath: (path: string) => FsEntry | null;

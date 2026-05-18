@@ -248,6 +248,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     deleteTrack: (trackId, options) => tracks.deleteTrack(trackId, options),
     selectTrack: (trackId) => selection.selectTrack(trackId),
     getHotkeyTargetClip: () => selection.getHotkeyTargetClip(),
+    ensureNoNestedTimelineCycle: (path) =>
+      commands.commandService.ensureNoNestedTimelineCycle(path),
     get defaultStaticClipDurationUs() {
       return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     },

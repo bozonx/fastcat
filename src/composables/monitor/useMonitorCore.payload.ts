@@ -5,7 +5,12 @@ import {
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
-import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/types';
+import type {
+  TimelineTrack,
+  TimelineTrackItem,
+  ClipEffect,
+  TimelineDocument,
+} from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
 import type { WorkerTimelineClip } from './types';
 
@@ -55,18 +60,24 @@ export async function prepareMonitorTimelineData(params: {
   masterEffects?: ClipEffect[];
   fallbackFormat?: TimelineFormatInput;
 }): Promise<PreparedMonitorTimelineData> {
+  const nestedDocCache = new Map<string, TimelineDocument>();
   const builtVideo = await buildVideoWorkerPayloadFromTracks({
     tracks: params.tracks,
     projectStore: params.projectStore,
     workspaceStore: params.workspaceStore,
     masterEffects: params.masterEffects,
     fallbackFormat: params.fallbackFormat,
+    nestedDocCache,
   });
   const flattenedAudio = await toWorkerTimelineClips(
     createMockAudioItems(params.rawAudioClips),
     params.projectStore,
     params.workspaceStore,
-    { fallbackFormat: params.fallbackFormat },
+    {
+      trackKind: 'audio',
+      fallbackFormat: params.fallbackFormat,
+      nestedDocCache,
+    },
   );
 
   return {

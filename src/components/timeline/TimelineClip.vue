@@ -374,10 +374,9 @@ const { contextMenuItems } = useClipContextMenu({
   },
   pasteClips: (insertStartUs?: number) => {
     const payload = clipboardStore.clipboardPayload;
-    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return [];
-    const items = timelineStore.pasteClips(payload.items, { insertStartUs }) || [];
+    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
+    void timelineStore.pasteClips(payload.items, { insertStartUs });
     if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
-    return items.map((it: any) => it.itemId);
   },
   get hasTimelineClipboard() {
     return clipboardStore.hasTimelinePayload;

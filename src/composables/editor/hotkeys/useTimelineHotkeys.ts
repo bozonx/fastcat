@@ -98,7 +98,7 @@ export function useTimelineHotkeys(
       const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return false;
 
-      timelineStore.pasteClips(payload.items, {
+      void timelineStore.pasteClips(payload.items, {
         targetTrackId: timelineStore.getSelectedOrActiveTrackId(),
       });
 

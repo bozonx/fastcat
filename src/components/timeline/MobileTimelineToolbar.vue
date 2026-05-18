@@ -158,7 +158,7 @@ function handlePaste() {
   const payload = clipboardStore.clipboardPayload;
   if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
   const playheadUs = timelineStore.currentTime;
-  timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
+  void timelineStore.pasteClips(payload.items, { insertStartUs: playheadUs });
   if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 

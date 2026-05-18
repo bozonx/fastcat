@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, computed, ref, onMounted, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -9,14 +10,12 @@ import {
   resolveExternalServiceConfig,
   runExternalHealthCheck,
 } from '~/utils/external-integrations';
-import {
-  isModelDownloaded,
-  downloadModel,
-  type ModelDownloadProgress,
-} from '~/utils/transcription/model-storage';
+import { isModelDownloaded } from '~/utils/transcription/model-storage';
+import { runModelDownloadTask } from '~/utils/transcription/model-download-task';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const backgroundTasksStore = useBackgroundTasksStore();
 const runtimeConfig = useRuntimeConfig();
 
 const healthState = reactive({
@@ -99,31 +98,26 @@ function getHealthTone(status: typeof healthState.status) {
   return 'text-ui-text-muted';
 }
 
-const downloadState = reactive({
-  loading: false,
-  progress: 0,
-  file: '',
-  status: '',
+const currentModel = computed(() => workspaceStore.userSettings.integrations.stt.localModel);
+
+const activeDownloadTask = computed(() => {
+  const model = currentModel.value;
+  return backgroundTasksStore.activeTasks.find(
+    (t) => t.type === 'model-download' && t.title === model,
+  );
 });
+
+const isDownloading = computed(() => !!activeDownloadTask.value);
 
 async function startDownload() {
   if (!workspaceStore.workspaceHandle) return;
-  downloadState.loading = true;
   try {
-    await downloadModel(
-      workspaceStore.workspaceHandle,
-      workspaceStore.userSettings.integrations.stt.localModel,
-      (p: ModelDownloadProgress) => {
-        downloadState.progress = p.total > 0 ? (p.loaded / p.total) * 100 : 0;
-        downloadState.file = p.file;
-        downloadState.status = p.status;
-      },
-    );
-    await workspaceStore.checkSttModelStatus();
+    await runModelDownloadTask({
+      workspaceHandle: workspaceStore.workspaceHandle,
+      modelName: workspaceStore.userSettings.integrations.stt.localModel,
+    });
   } catch (e) {
     console.error(e);
-  } finally {
-    downloadState.loading = false;
   }
 }
 </script>
@@ -199,27 +193,33 @@ async function startDownload() {
               }}
             </div>
             <UButton
-              v-if="!workspaceStore.isSttModelDownloaded || downloadState.loading"
+              v-if="!workspaceStore.isSttModelDownloaded && !isDownloading"
               size="sm"
               color="primary"
               variant="soft"
-              :loading="downloadState.loading"
+              :loading="isDownloading"
               @click="startDownload"
             >
               {{ t('videoEditor.settings.sttDownloadModel') }}
             </UButton>
-            <div v-else class="text-xs text-success-400 flex items-center gap-1">
+            <div v-else-if="workspaceStore.isSttModelDownloaded" class="text-xs text-success-400 flex items-center gap-1">
               <UIcon name="i-heroicons-check-circle" class="w-4 h-4" />
               {{ t('videoEditor.settings.sttModelReady') }}
             </div>
           </div>
 
-          <div v-if="downloadState.loading" class="flex flex-col gap-1 mt-2">
-            <div class="flex justify-between text-[10px] text-ui-text-muted uppercase tracking-wider">
-              <span>{{ downloadState.status }}: {{ downloadState.file }}</span>
-              <span>{{ Math.round(downloadState.progress) }}%</span>
+          <div v-if="isDownloading" class="flex flex-col gap-2 mt-2">
+            <div class="flex items-center gap-1 text-xs text-ui-text-muted">
+              <UIcon name="i-heroicons-arrow-down-tray" class="w-3.5 h-3.5 animate-pulse" />
+              <span>{{ t('videoEditor.settings.sttModelDownloadingInBackground') }}</span>
             </div>
-            <UProgress :value="downloadState.progress" size="sm" color="primary" />
+            <div class="text-[10px] text-ui-text-muted leading-tight">
+              {{ t('videoEditor.settings.sttModelDownloadHint') }}
+            </div>
+            <div class="flex justify-between text-[10px] text-ui-text-muted uppercase tracking-wider">
+              <span>{{ Math.round((activeDownloadTask?.progress || 0) * 100) }}%</span>
+            </div>
+            <UProgress :value="(activeDownloadTask?.progress || 0) * 100" size="sm" color="primary" />
           </div>
         </div>
       </div>

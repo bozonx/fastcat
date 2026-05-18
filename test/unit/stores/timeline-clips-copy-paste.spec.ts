@@ -44,7 +44,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     // Paste at 10s on the same track
     store.currentTime = 10_000_000;
-    const pastedItems = store.pasteClips(copiedItems, {
+    const pastedItems = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
     });
 
@@ -105,7 +105,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     // Paste at 5s
     store.currentTime = 5_000_000;
-    const pastedItems = store.pasteClips(copiedItems, {
+    const pastedItems = await store.pasteClips(copiedItems, {
       targetTrackId: 'v3',
     });
 
@@ -135,7 +135,7 @@ describe('TimelineStore Copy/Paste', () => {
     );
   });
 
-  it('creates a new linked group on paste instead of reusing the original group id', () => {
+  it('creates a new linked group on paste instead of reusing the original group id', async () => {
     const store = useTimelineStore();
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
@@ -155,7 +155,7 @@ describe('TimelineStore Copy/Paste', () => {
     store.selectedItemIds = ['vclip', 'aclip'];
     const copiedItems = store.copySelectedClips();
 
-    const pastedItems = store.pasteClips(copiedItems, {
+    const pastedItems = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
       insertStartUs: 5_000_000,
     });
@@ -174,7 +174,7 @@ describe('TimelineStore Copy/Paste', () => {
     expect(pastedAudio.lockToLinkedVideo).toBe(true);
   });
 
-  it('drops linked video lock when pasting only linked audio', () => {
+  it('drops linked video lock when pasting only linked audio', async () => {
     const store = useTimelineStore();
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
@@ -191,7 +191,7 @@ describe('TimelineStore Copy/Paste', () => {
     store.selectedItemIds = ['aclip'];
     const copiedItems = store.copySelectedClips();
 
-    const [pasted] = store.pasteClips(copiedItems, {
+    const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'a1',
       insertStartUs: 5_000_000,
     });
@@ -204,7 +204,7 @@ describe('TimelineStore Copy/Paste', () => {
     expect(pastedAudio.lockToLinkedVideo).toBe(false);
   });
 
-  it('preserves clip active flags, mask and hud frame properties on paste', () => {
+  it('preserves clip active flags, mask and hud frame properties on paste', async () => {
     const store = useTimelineStore();
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
@@ -226,7 +226,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     store.selectedItemIds = ['clip1'];
     const copiedItems = store.copySelectedClips();
-    const [pasted] = store.pasteClips(copiedItems, {
+    const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'v1',
       insertStartUs: 5_000_000,
     });
@@ -244,7 +244,7 @@ describe('TimelineStore Copy/Paste', () => {
     expect(pastedClip.frame).toEqual({ scaleX: 1.5 });
   });
 
-  it('keeps pasted audio clips on compatible audio tracks', () => {
+  it('keeps pasted audio clips on compatible audio tracks', async () => {
     const store = useTimelineStore();
     const builder = new TimelineBuilder();
     store.timelineDoc = builder
@@ -256,7 +256,7 @@ describe('TimelineStore Copy/Paste', () => {
 
     store.selectedItemIds = ['aclip'];
     const copiedItems = store.copySelectedClips();
-    const [pasted] = store.pasteClips(copiedItems, {
+    const [pasted] = await store.pasteClips(copiedItems, {
       targetTrackId: 'v2',
       insertStartUs: 5_000_000,
     });

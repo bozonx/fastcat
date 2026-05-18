@@ -431,7 +431,7 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
   onPaste: (trackId) => {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-    timelineStore.pasteClips(payload.items, {
+    void timelineStore.pasteClips(payload.items, {
       insertStartUs: timelineStore.currentTime,
     });
     if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);

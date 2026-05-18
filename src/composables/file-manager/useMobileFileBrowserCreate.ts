@@ -7,7 +7,7 @@ interface CreateDeps {
   createFolder: (name: string, parentPath: string) => Promise<void>;
   createTimeline: (targetPath?: string) => Promise<string | null>;
   createMarkdown: (targetPath?: string) => Promise<string | null>;
-  handleFiles: (files: File[], targetPath: string) => Promise<void>;
+  handleFiles: (files: File[], targetPath: string) => Promise<unknown>;
   loadFolderContent: () => Promise<void>;
 }
 
