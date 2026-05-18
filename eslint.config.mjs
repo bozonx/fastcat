@@ -10,6 +10,7 @@ export default withNuxt(eslintPluginPrettierRecommended)
       'coverage/**',
       'node_modules/**',
       'src-tauri/**',
+      'scripts/patch_transform.js',
       '**/*.d.ts',
     ],
   })

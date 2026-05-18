@@ -139,6 +139,8 @@ export const walkieTalkieManifest: AudioEffectManifest<WalkieTalkieParams> = {
       graph.noiseGain.disconnect();
       graph.compressor.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

@@ -542,7 +542,9 @@ export class VideoCompositor {
           if (s.bitmap) {
             try {
               s.bitmap.close();
-            } catch {}
+            } catch {
+              /* no-op */
+            }
             s.bitmap = null;
           }
         };
@@ -555,7 +557,9 @@ export class VideoCompositor {
       if (clip.bitmap) {
         try {
           clip.bitmap.close();
-        } catch {}
+        } catch {
+          /* no-op */
+        }
         clip.bitmap = null;
       }
       try {
@@ -565,17 +569,23 @@ export class VideoCompositor {
         ) {
           (clip.imageSource.resource as any).update();
         }
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       if (clip.transitionFilter) {
         try {
           clip.transitionFilter.destroy();
-        } catch {}
+        } catch {
+          /* no-op */
+        }
         clip.transitionFilter = null;
       }
       if (clip.adjustmentSourceTexture) {
         try {
           clip.adjustmentSourceTexture.destroy(true);
-        } catch {}
+        } catch {
+          /* no-op */
+        }
         clip.adjustmentSourceTexture = null;
       }
     }

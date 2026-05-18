@@ -103,7 +103,9 @@ export class TimelineActiveClipProcessor {
                   if (state.lastVideoFrame) {
                     try {
                       state.lastVideoFrame.close();
-                    } catch {}
+                    } catch {
+                      /* no-op */
+                    }
                   }
                   try {
                     state.lastVideoFrame = res.sample.toVideoFrame();
@@ -116,7 +118,9 @@ export class TimelineActiveClipProcessor {
                 }
                 try {
                   res.sample.close?.();
-                } catch {}
+                } catch {
+                  /* no-op */
+                }
               }
             }),
           );
@@ -212,7 +216,9 @@ export class TimelineActiveClipProcessor {
                 if (state.lastVideoFrame) {
                   try {
                     state.lastVideoFrame.close();
-                  } catch {}
+                  } catch {
+                    /* no-op */
+                  }
                 }
                 try {
                   state.lastVideoFrame = res.sample.toVideoFrame();
@@ -223,7 +229,9 @@ export class TimelineActiveClipProcessor {
               }
               try {
                 res.sample.close?.();
-              } catch {}
+              } catch {
+                /* no-op */
+              }
             }
             return { clip, sample: { isMask: true, close: () => {} } as any };
           });

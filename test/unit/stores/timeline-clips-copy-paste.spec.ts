@@ -13,7 +13,7 @@ describe('TimelineStore Copy/Paste', () => {
     setActivePinia(createPinia());
 
     // Mock nuxtApp for i18n and notification
-    // @ts-ignore
+    // @ts-expect-error -- mocking useNuxtApp for test environment
     global.useNuxtApp = () => ({
       $notificationService: {},
       $i18nService: { t: (key: string) => key },

@@ -62,6 +62,8 @@ export const voiceUnderwaterManifest: AudioEffectManifest<VoiceUnderwaterParams>
     const filter = node as BiquadFilterNode;
     try {
       filter.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

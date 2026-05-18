@@ -81,6 +81,8 @@ export const envMuffledManifest: AudioEffectManifest<EnvMuffledParams> = {
       graph.input.disconnect();
       graph.lowpass.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

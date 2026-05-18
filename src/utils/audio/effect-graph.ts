@@ -67,10 +67,14 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
       if (isAudioEffectNodeGraph(effectNode)) {
         try {
           effectNode.input.disconnect();
-        } catch {}
+        } catch {
+          /* no-op */
+        }
         try {
           effectNode.output.disconnect();
-        } catch {}
+        } catch {
+          /* no-op */
+        }
       }
     });
 

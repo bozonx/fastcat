@@ -423,7 +423,9 @@ export class AudioEngine {
       if (id === 'master' || activeTrackIds.has(id)) continue;
       try {
         analyser.disconnect();
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       this.analyserNodes.delete(id);
     }
   }
@@ -863,15 +865,21 @@ export class AudioEngine {
       destroyEffects();
       try {
         clipInputNode.disconnect();
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       try {
         clipGain.disconnect();
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       for (const node of chunkNodes) {
         targetNodeSet.delete(node);
         try {
           node.disconnect();
-        } catch {}
+        } catch {
+          /* no-op */
+        }
       }
     };
 
@@ -1312,16 +1320,22 @@ export class AudioEngine {
       destroyEffects();
       try {
         clipInputNode.disconnect();
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       try {
         clipGain.disconnect();
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       for (const node of state.chunkNodes) {
         targetNodeSet.delete(node);
         targetCleanupMap.delete(node);
         try {
           node.disconnect();
-        } catch {}
+        } catch {
+          /* no-op */
+        }
       }
     };
 
@@ -1472,13 +1486,17 @@ export class AudioEngine {
       try {
         node.stop();
         node.disconnect();
-      } catch (e) {}
+      } catch {
+        /* no-op */
+      }
 
       const cleanup = cleanups.get(node);
       if (cleanup) {
         try {
           cleanup();
-        } catch (e) {}
+        } catch {
+          /* no-op */
+        }
         cleanups.delete(node);
       }
     }

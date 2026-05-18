@@ -6,6 +6,7 @@ import { ref } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 const { sharedVideoItems, sharedIsLoading, sharedLoadError, sharedIsLandscape } = vi.hoisted(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- require needed in vi.hoisted before module resolution
   const { ref } = require('vue');
   return {
     sharedVideoItems: ref([] as any[]),

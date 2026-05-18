@@ -389,19 +389,27 @@ export async function runTranscode(
       if (conversionProcess && typeof conversionProcess.cancel === 'function') {
         await conversionProcess.cancel();
       }
-    } catch {}
+    } catch {
+      /* no-op */
+    }
     try {
       await safeCancelOutput();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
     try {
       if (typeof (writable as any).abort === 'function') await (writable as any).abort();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
     throw e;
   } finally {
     if (input && typeof input.dispose === 'function') {
       try {
         input.dispose();
-      } catch {}
+      } catch {
+        /* no-op */
+      }
     }
   }
 }

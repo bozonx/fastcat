@@ -1,7 +1,7 @@
 import { CrossHatchFilter } from 'pixi-filters';
 import type { EffectManifest } from '../../core/registry';
 
-export const crossHatchManifest: EffectManifest<{}> = {
+export const crossHatchManifest: EffectManifest<Record<string, never>> = {
   type: 'crossHatch',
   name: 'Cross Hatch',
   nameKey: 'fastcat.effects.video.crossHatch.name',

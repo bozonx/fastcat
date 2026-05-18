@@ -307,6 +307,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     await lifecycle.saveTimeline();
   }
 
+  // eslint-disable-next-line prefer-const -- late-initialized before createTimelineLifecycleModule call
   let lifecycle!: ReturnType<typeof createTimelineLifecycleModule>;
 
   async function ensureTimelineFileHandle(options?: {
@@ -570,7 +571,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!dirHandle) return;
 
     const existingVersions: number[] = [];
-    // @ts-expect-error entries()
+    // @ts-expect-error -- entries() is not typed on FileSystemDirectoryHandle
     for await (const [name, handle] of dirHandle.entries()) {
       if (handle.kind === 'file' && name.startsWith(prefix) && name.endsWith('.otio')) {
         const vMatch = name.slice(0, -'.otio'.length).match(/_v(\d{1,3})$/);

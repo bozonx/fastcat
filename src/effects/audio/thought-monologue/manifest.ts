@@ -157,6 +157,8 @@ export const thoughtMonologueManifest: AudioEffectManifest<ThoughtMonologueParam
       graph.spaceGain.disconnect();
       graph.delayGain.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

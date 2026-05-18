@@ -135,6 +135,8 @@ export const envStadiumManifest: AudioEffectManifest<EnvStadiumParams> = {
       graph.delay.disconnect();
       graph.feedbackGain.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

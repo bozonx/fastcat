@@ -734,7 +734,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   });
 }
 
-const vfs = useVfs();
+const localVfs = useVfs();
 const runtimeConfig = useRuntimeConfig();
 
 const bloggerDogApiUrl = computed(() =>
@@ -870,7 +870,7 @@ const { getContextMenuItems } = useFileContextMenu(
             :instance-id="instanceId"
             :is-files-page="isFilesPage"
             :is-external="isExternal"
-            :vfs="vfs"
+            :vfs="localVfs"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"

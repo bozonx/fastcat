@@ -24,9 +24,10 @@ export function useFileSorting(entries: Ref<FsEntry[]>, folderSizes?: Ref<Record
       switch (field) {
         case 'name':
           return entry.name.toLowerCase();
-        case 'type':
+        case 'type': {
           const ext = entry.name.split('.').pop()?.toLowerCase() || '';
           return entry.kind === 'directory' ? 'folder' : ext;
+        }
         case 'size':
           if (
             entry.kind === 'directory' &&

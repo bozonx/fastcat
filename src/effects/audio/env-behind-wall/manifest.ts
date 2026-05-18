@@ -130,6 +130,8 @@ export const envBehindWallManifest: AudioEffectManifest<EnvBehindWallParams> = {
       graph.filter.disconnect();
       graph.reverb.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

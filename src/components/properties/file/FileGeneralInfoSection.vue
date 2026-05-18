@@ -100,18 +100,20 @@ const { t, locale } = useI18n();
       v-if="props.fileInfo.createdAt || props.fileInfo.lastModified"
       :label="t('common.created')"
       :value="
-        new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(
-          new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!),
-        )
+        new Intl.DateTimeFormat(locale as unknown as string, {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }).format(new Date(props.fileInfo.createdAt ?? props.fileInfo.lastModified!))
       "
     />
     <PropertyRow
       v-if="props.fileInfo.lastModified"
       :label="t('common.updated')"
       :value="
-        new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'short' }).format(
-          new Date(props.fileInfo.lastModified),
-        )
+        new Intl.DateTimeFormat(locale as unknown as string, {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }).format(new Date(props.fileInfo.lastModified))
       "
     />
     <PropertyRow v-if="props.isHidden" :label="t('common.hidden')" value="Yes" />

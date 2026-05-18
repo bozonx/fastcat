@@ -60,11 +60,11 @@ export function parseSvgDimensions(svgText: string): SvgDimensions {
   }
 
   // Regex fallback (non-DOM environments)
-  const width = parseSvgLengthPx(/\bwidth\s*=\s*['\"]([^'\"]+)['\"]/i.exec(svgText)?.[1]);
-  const height = parseSvgLengthPx(/\bheight\s*=\s*['\"]([^'\"]+)['\"]/i.exec(svgText)?.[1]);
+  const width = parseSvgLengthPx(/\bwidth\s*=\s*['"]([^'"]+)['"]/i.exec(svgText)?.[1]);
+  const height = parseSvgLengthPx(/\bheight\s*=\s*['"]([^'"]+)['"]/i.exec(svgText)?.[1]);
   if (width && height) return { width, height };
 
-  const viewBoxAttr = /\bviewBox\s*=\s*['\"]([^'\"]+)['\"]/i.exec(svgText)?.[1];
+  const viewBoxAttr = /\bviewBox\s*=\s*['"]([^'"]+)['"]/i.exec(svgText)?.[1];
   return parseViewBox(viewBoxAttr) ?? fallback;
 }
 

@@ -146,7 +146,11 @@ function handleSelect(type: string) {
         </div>
       </CollapsibleEffectGroup>
 
-      <UiEmptyState v-if="!groupedEffects.hasAnyEffects" :message="t('fastcat.effects.empty')" wrapper-class="py-8" />
+      <UiEmptyState
+        v-if="!groupedEffects.hasAnyEffects"
+        :message="t('fastcat.effects.empty')"
+        wrapper-class="py-8"
+      />
     </div>
     <template #footer>
       <div class="flex justify-end gap-2 w-full">

@@ -193,7 +193,7 @@ const registry = new Map<TransitionType, TransitionManifest<any>>();
 export function registerTransition<T>(manifest: TransitionManifest<T>): void {
   const existing = registry.get(manifest.type);
   if (existing && existing !== manifest) {
-    console.warn(`[Transitions] Transition type \"${manifest.type}\" is already registered.`);
+    console.warn(`[Transitions] Transition type "${manifest.type}" is already registered.`);
   }
   registry.set(manifest.type, manifest);
 }

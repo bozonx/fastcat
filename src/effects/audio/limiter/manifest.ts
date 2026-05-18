@@ -95,6 +95,8 @@ export const limiterManifest: AudioEffectManifest<LimiterParams> = {
     try {
       graph.input.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

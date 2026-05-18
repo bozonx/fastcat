@@ -93,7 +93,11 @@ const actions = computed(() => {
         :params="params"
         @update:param="handleUpdateParam"
       />
-      <UiEmptyState v-else :message="t('fastcat.transitions.noSettings')" wrapper-class="py-2 not-italic" />
+      <UiEmptyState
+        v-else
+        :message="t('fastcat.transitions.noSettings')"
+        wrapper-class="py-2 not-italic"
+      />
     </div>
 
     <PropertyActionList :actions="actions" :vertical="false" size="sm" />

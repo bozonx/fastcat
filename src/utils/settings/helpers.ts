@@ -78,6 +78,7 @@ export function createDefaultUserSettings(): FastCatUserSettings {
       selectedPresetId: exportPresets.selectedPresetId,
       items: exportPresets.items.map((preset) => ({ ...preset })),
     },
+    video: { enableFfmpeg: false },
     projectDefaults: createDefaultProjectDefaults(),
     integrations: {
       ...DEFAULT_USER_SETTINGS.integrations,

@@ -121,6 +121,8 @@ export const telephoneManifest: AudioEffectManifest<TelephoneParams> = {
       graph.peaking.disconnect();
       graph.waveshaper.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

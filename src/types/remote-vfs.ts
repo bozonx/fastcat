@@ -69,7 +69,7 @@ export interface RemoteVfsFileEntry extends RemoteVfsBaseEntry {
   media?: (RemoteVfsMedia | RemoteVfsMediaRelation)[];
 }
 
-export interface RemoteVfsContentItem extends RemoteVfsFileEntry {}
+export type RemoteVfsContentItem = RemoteVfsFileEntry;
 
 export type RemoteVfsEntry = RemoteVfsDirectoryEntry | RemoteVfsFileEntry | RemoteVfsProjectEntry;
 

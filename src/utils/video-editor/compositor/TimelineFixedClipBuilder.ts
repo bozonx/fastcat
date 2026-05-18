@@ -111,7 +111,9 @@ export class TimelineFixedClipBuilder {
         if (s.bitmap) {
           try {
             s.bitmap.close();
-          } catch {}
+          } catch {
+            /* no-op */
+          }
           s.bitmap = null;
         }
       });

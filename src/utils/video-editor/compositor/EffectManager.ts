@@ -44,7 +44,9 @@ export class EffectManager {
         clip.effectFilters.delete('__mask');
         try {
           (filter as any)?.destroy?.();
-        } catch {}
+        } catch {
+          /* no-op */
+        }
       }
       return null;
     }

@@ -248,7 +248,9 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
             await openDroppedFile({ filePath: payload.path, fileName: payload.name });
           }
         }
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       return;
     }
 
@@ -265,7 +267,9 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
           await openDroppedFile({ filePath: payload.path, fileName: payload.name });
           return;
         }
-      } catch {}
+      } catch {
+        /* no-op */
+      }
     }
 
     const fileTabRaw = event.dataTransfer?.getData('file-tab-drag');
@@ -275,7 +279,9 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
         if (payload.filePath && payload.fileName) {
           await openDroppedFile({ filePath: payload.filePath, fileName: payload.fileName });
         }
-      } catch {}
+      } catch {
+        /* no-op */
+      }
       return;
     }
 
@@ -287,7 +293,9 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
           await openDroppedFile({ filePath: payload.filePath, fileName: payload.fileName });
           projectStore.removePanel(payload.panelId);
         }
-      } catch {}
+      } catch {
+        /* no-op */
+      }
     }
   }
 

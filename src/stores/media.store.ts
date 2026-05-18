@@ -131,7 +131,8 @@ export const useMediaStore = defineStore('media', () => {
     // race with it on the same OPFS cache file, but ensure a fresh extraction.
     const previous = options?.forceRefresh ? pendingRequests.get(cacheKey) : undefined;
 
-    const requestPromise = (async () => {
+    let requestPromise!: Promise<MediaMetadata>;
+    requestPromise = (async () => {
       try {
         if (previous) {
           await previous.catch(() => undefined);

@@ -17,7 +17,7 @@ const props = defineProps<{
   locale?: string;
 }>();
 
-const { t, locale } = useI18n();
+const { t, locale: i18nLocale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
@@ -38,7 +38,7 @@ provide('teleportTarget', teleportTarget);
 watch(
   () => props.locale,
   (newLocale) => {
-    if (newLocale) locale.value = newLocale;
+    if (newLocale) i18nLocale.value = newLocale;
   },
   { immediate: true },
 );

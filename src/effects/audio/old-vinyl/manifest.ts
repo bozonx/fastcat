@@ -209,6 +209,8 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
       graph.wowOscillator.disconnect();
       graph.noiseGain.disconnect();
       graph.output.disconnect();
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   },
 };

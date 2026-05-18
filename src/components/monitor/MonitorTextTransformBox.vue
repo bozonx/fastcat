@@ -268,7 +268,9 @@ function endDrag(event?: PointerEvent) {
   if (dragSourceEl && activePointerId !== null) {
     try {
       dragSourceEl.releasePointerCapture(activePointerId);
-    } catch {}
+    } catch {
+      /* no-op */
+    }
   }
 
   if (pendingFrame !== 0) {

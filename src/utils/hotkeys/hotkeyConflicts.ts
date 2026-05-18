@@ -1,9 +1,11 @@
-import {
-  DEFAULT_HOTKEYS,
-  type HotkeyCommandDefinition,
-  type HotkeyCommandId,
-  type HotkeyGroupId,
-} from './defaultHotkeys';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyGroupId } from './defaultHotkeys';
+
+interface HotkeyCommandDefinition {
+  id: HotkeyCommandId;
+  groupId: HotkeyGroupId;
+  label: string;
+  description?: string;
+}
 
 function areGroupsOverlapping(a: HotkeyGroupId, b: HotkeyGroupId): boolean {
   if (a === b) return true;

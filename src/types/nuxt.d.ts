@@ -1,6 +1,10 @@
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
 
+declare module '#i18n' {
+  export * from 'vue-i18n';
+}
+
 declare module '#app' {
   interface NuxtApp {
     $notificationService: AppNotificationService;
