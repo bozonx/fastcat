@@ -555,6 +555,10 @@ export class AudioEngine {
           this.failedChunkKeys.add(chunkKey);
         } else {
           console.warn(`[AudioEngine] Failed to decode chunk ${chunkKey}`, err);
+          // Drop the cached blob so the next retry fetches a fresh snapshot.
+          // This fixes stale reads after the underlying OPFS/Tauri file is
+          // regenerated or modified.
+          this.fileBlobCache.delete(sourceKey);
         }
         return null;
       } finally {
