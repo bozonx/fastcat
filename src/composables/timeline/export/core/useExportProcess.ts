@@ -52,87 +52,101 @@ export function useExportProcess(
     activeExportTaskId.value = exportTaskId;
     cancelRequested.value = false;
 
-    exportPhase.value = 'preparing';
-    const doc = timelineStore.timelineDoc;
-    const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
-    const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
+    try {
+      const ensureNotCancelled = () => {
+        if (!cancelRequested.value) return;
+        const abortErr = new Error('Export was cancelled');
+        abortErr.name = 'AbortError';
+        throw abortErr;
+      };
 
-    const exportRangeUs = options.exportRangeUs;
-    const reportWarning = (message: string) => {
-      exportWarnings.value.push(message);
-    };
+      exportPhase.value = 'preparing';
+      const doc = timelineStore.timelineDoc;
+      const allVideoTracks = doc?.tracks?.filter((track) => track.kind === 'video') ?? [];
+      const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
 
-    const builtVideo = await buildVideoWorkerPayloadFromTracks({
-      tracks: doc?.tracks ?? [],
-      projectStore,
-      workspaceStore,
-      masterEffects: doc?.metadata?.fastcat?.masterEffects,
-      fallbackFormat: timelineStore.timelineFormat,
-      onWarning: reportWarning,
-    });
+      const exportRangeUs = options.exportRangeUs;
+      const reportWarning = (message: string) => {
+        exportWarnings.value.push(message);
+      };
 
-    const croppedVideoClips = exportRangeUs
-      ? builtVideo.clips
-          .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
-          .filter((clip): clip is WorkerTimelineClip => clip !== null)
-      : builtVideo.clips;
-
-    const videoPayload = buildVideoWorkerPayload({
-      clips: croppedVideoClips,
-      tracks: builtVideo.tracks,
-      masterEffects: doc?.metadata?.fastcat?.masterEffects,
-    });
-
-    const effectiveAudioItems = buildEffectiveAudioClipItems({
-      audioTracks: allAudioTracks,
-      videoTracks: allVideoTracks,
-      masterEffects: doc?.metadata?.fastcat?.masterEffects,
-    });
-
-    const masterGain = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
-    const audioClips = (
-      await toWorkerTimelineClips(effectiveAudioItems, projectStore, workspaceStore, {
-        trackKind: 'audio',
+      ensureNotCancelled();
+      const builtVideo = await buildVideoWorkerPayloadFromTracks({
+        tracks: doc?.tracks ?? [],
+        projectStore,
+        workspaceStore,
+        masterEffects: doc?.metadata?.fastcat?.masterEffects,
         fallbackFormat: timelineStore.timelineFormat,
         onWarning: reportWarning,
-      })
-    ).map((clip) => ({
-      ...clip,
-      audioGain: (clip.audioGain ?? 1) * masterGain,
-    }));
+      });
 
-    const croppedAudioClips = exportRangeUs
-      ? audioClips
-          .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
-          .filter((clip): clip is WorkerTimelineClip => clip !== null)
-      : audioClips;
+      ensureNotCancelled();
+      const croppedVideoClips = exportRangeUs
+        ? builtVideo.clips
+            .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
+            .filter((clip): clip is WorkerTimelineClip => clip !== null)
+        : builtVideo.clips;
 
-    if (!croppedVideoClips.length && !croppedAudioClips.length)
-      throw new Error('Timeline is empty');
+      const videoPayload = buildVideoWorkerPayload({
+        clips: croppedVideoClips,
+        tracks: builtVideo.tracks,
+        masterEffects: doc?.metadata?.fastcat?.masterEffects,
+      });
 
-    const { client } = getExportWorkerClient();
+      let croppedAudioClips: WorkerTimelineClip[] = [];
+      if (options.audio) {
+        const effectiveAudioItems = buildEffectiveAudioClipItems({
+          audioTracks: allAudioTracks,
+          videoTracks: allVideoTracks,
+          masterEffects: doc?.metadata?.fastcat?.masterEffects,
+        });
 
-    setExportHostApi(
-      createVideoCoreHostApi({
-        getCurrentProjectId: () => projectStore.currentProjectId,
-        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-        getFileByPath: async (path) => projectStore.getFileByPath(path),
-        onExportProgress: () => {},
-      }),
-    );
-    registerExportTaskHostApi(exportTaskId, {
-      onExportProgress: (progress) => onProgress(progress / 100),
-      onExportPhase: (phase) => {
-        exportPhase.value = phase;
-      },
-      onExportWarning: (message) => {
-        exportWarnings.value.push(message);
-      },
-    });
+        ensureNotCancelled();
+        const masterGain = timelineStore.audioMuted ? 0 : timelineStore.masterGain;
+        const audioClips = (
+          await toWorkerTimelineClips(effectiveAudioItems, projectStore, workspaceStore, {
+            trackKind: 'audio',
+            fallbackFormat: timelineStore.timelineFormat,
+            onWarning: reportWarning,
+          })
+        ).map((clip) => ({
+          ...clip,
+          audioGain: (clip.audioGain ?? 1) * masterGain,
+        }));
 
-    try {
+        croppedAudioClips = exportRangeUs
+          ? audioClips
+              .map((clip) => trimWorkerClipToRange(clip, exportRangeUs))
+              .filter((clip): clip is WorkerTimelineClip => clip !== null)
+          : audioClips;
+      }
+
+      if (!croppedVideoClips.length && !croppedAudioClips.length)
+        throw new Error('Timeline is empty');
+
+      const { client } = getExportWorkerClient();
+
+      setExportHostApi(
+        createVideoCoreHostApi({
+          getCurrentProjectId: () => projectStore.currentProjectId,
+          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path) => projectStore.getFileByPath(path),
+          onExportProgress: () => {},
+        }),
+      );
+      registerExportTaskHostApi(exportTaskId, {
+        onExportProgress: (progress) => onProgress(progress / 100),
+        onExportPhase: (phase) => {
+          exportPhase.value = phase;
+        },
+        onExportWarning: (message) => {
+          exportWarnings.value.push(message);
+        },
+      });
+
+      ensureNotCancelled();
       await client.exportTimeline(
         fileHandle,
         options,
@@ -155,6 +169,8 @@ export function useExportProcess(
     const exportTaskId = activeExportTaskId.value;
     if (!exportTaskId) return;
     cancelRequested.value = true;
+
+    if (exportPhase.value === 'preparing') return;
 
     try {
       const { client } = getExportWorkerClient();

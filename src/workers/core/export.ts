@@ -492,14 +492,14 @@ export async function runExport(
       checkCancel,
     );
 
-    const maxAudioDurationUs = computeMaxAudioDurationUs(audioClips);
+    const maxAudioDurationUs = options.audio ? computeMaxAudioDurationUs(audioClips) : 0;
 
     const maxDurationUs = Math.max(maxVideoDurationUs, maxAudioDurationUs);
 
     if (maxDurationUs <= 0) throw new Error('No clips to export');
 
     const durationS = usToS(maxDurationUs);
-    const hasAnyAudio = audioClips.length > 0;
+    const hasAnyAudio = options.audio && audioClips.length > 0;
 
     const format =
       options.format === 'webm'
@@ -629,6 +629,9 @@ export async function runExport(
         await notifyPhase('saving', taskId);
 
         await output.finalize();
+        if (hostClient) {
+          await hostClient.onExportProgress(100, taskId);
+        }
         finalized = true;
       } finally {
         if (!finalized) {

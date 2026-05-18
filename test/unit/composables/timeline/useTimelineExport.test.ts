@@ -5,6 +5,8 @@ import {
   buildVideoWorkerPayload,
   getExt,
   sanitizeBaseName,
+  normalizeExportFilename,
+  hasInvalidExportFilenameChars,
   resolveNextAvailableFilename,
   resolveExportCodecs,
   toWorkerTimelineClips,
@@ -47,6 +49,13 @@ describe('useTimelineExport pure functions', () => {
     expect(sanitizeBaseName('special!@#$%^&*()chars')).toBe('special_chars');
     expect(sanitizeBaseName('___leading_and_trailing___')).toBe('leading_and_trailing');
     expect(sanitizeBaseName('multiple___underscores')).toBe('multiple_underscores');
+  });
+
+  it('normalizes and validates export filenames', () => {
+    expect(normalizeExportFilename('  video.mp4  ')).toBe('video.mp4');
+    expect(hasInvalidExportFilenameChars('nested/video.mp4')).toBe(true);
+    expect(hasInvalidExportFilenameChars('nested\\video.mp4')).toBe(true);
+    expect(hasInvalidExportFilenameChars('video.mp4')).toBe(false);
   });
 
   it('resolveNextAvailableFilename should prefer base.ext and fallback to _001', () => {
@@ -626,6 +635,82 @@ describe('useTimelineExport pure functions', () => {
     expect(clips[0]?.clipType).toBe('media');
     expect(clips[0]?.source?.path).toBe('_timelines/media/video.mp4');
     expect(clips[0]?.trackId).toBe('t1::nested1::v1');
+  });
+
+  it('toWorkerTimelineClips should map parent nested timeline speed into child clips', async () => {
+    const nestedOtio = JSON.stringify({
+      OTIO_SCHEMA: 'Timeline.1',
+      name: 'nested',
+      metadata: { fastcat: { timebase: { fps: 25 } } },
+      tracks: {
+        OTIO_SCHEMA: 'Stack.1',
+        name: 'tracks',
+        children: [
+          {
+            OTIO_SCHEMA: 'Track.1',
+            name: 'V1',
+            kind: 'Video',
+            children: [
+              {
+                OTIO_SCHEMA: 'Clip.1',
+                name: 'Clip',
+                media_reference: {
+                  OTIO_SCHEMA: 'ExternalReference.1',
+                  target_url: 'media/video.mp4',
+                },
+                source_range: {
+                  OTIO_SCHEMA: 'TimeRange.1',
+                  start_time: { OTIO_SCHEMA: 'RationalTime.1', value: 0, rate: 1000000 },
+                  duration: { OTIO_SCHEMA: 'RationalTime.1', value: 2000000, rate: 1000000 },
+                },
+                metadata: {
+                  fastcat: {
+                    clipType: 'media',
+                    source: { durationUs: 2000000 },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const items: TimelineTrackItem[] = [
+      {
+        kind: 'clip',
+        clipType: 'timeline',
+        id: 'nested-fast',
+        trackId: 't1',
+        name: 'Nested Fast',
+        source: { path: '_timelines/nested.otio' } as any,
+        speed: 2,
+        timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 },
+        sourceRange: { startUs: 0, durationUs: 2_000_000 },
+      } as any,
+    ];
+
+    const projectStoreMock = {
+      projectSettings: { project: { audioDeclickDurationUs: 5000 } },
+      getFileByPath: async (path: string) => {
+        if (path !== '_timelines/nested.otio') return null;
+        return {
+          text: async () => nestedOtio,
+        } as any;
+      },
+    } as any;
+
+    const clips = await toWorkerTimelineClips(items, projectStoreMock, wsMock, {
+      layer: 1,
+      trackKind: 'video',
+    });
+
+    expect(clips).toHaveLength(1);
+    expect(clips[0]).toMatchObject({
+      speed: 2,
+      timelineRange: { startUs: 5_000_000, durationUs: 1_000_000 },
+      sourceRange: { startUs: 0, durationUs: 2_000_000 },
+    });
   });
 
   it('buildVideoWorkerPayloadFromTracks should emit explicit nested track payload items', async () => {

@@ -8,6 +8,7 @@ import {
   sanitizeBaseName,
   resolveExportCodecs,
   getExt,
+  normalizeExportFilename,
 } from '~/composables/timeline/export';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
@@ -291,28 +292,20 @@ export function useExportForm() {
       const exportDir = await ensureExportDir();
       const ok = await validateFilename();
       if (!ok) return;
+      const finalFilename = normalizeExportFilename(outputFilename.value);
+      outputFilename.value = finalFilename;
 
       try {
-        await exportDir.getFileHandle(outputFilename.value);
-        throw new Error('A file with this name already exists');
+        await exportDir.getFileHandle(finalFilename);
+        throw new Error(t('videoEditor.export.filenameAlreadyExists'));
       } catch (e: unknown) {
         if (e instanceof Error && e.name !== 'NotFoundError') {
           throw e;
         }
       }
 
-      let fileHandle: FileSystemFileHandle;
-      try {
-        fileHandle = await exportDir.getFileHandle(outputFilename.value, { create: true });
-      } catch (e: unknown) {
-        if (
-          e instanceof Error &&
-          (e.name === 'NotAllowedError' || e.name === 'InvalidModificationError')
-        ) {
-          throw new Error('A file with this name already exists', { cause: e });
-        }
-        throw e;
-      }
+      const tempFilename = `.${finalFilename}.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const tempFileHandle = await exportDir.getFileHandle(tempFilename, { create: true });
 
       const resolvedCodecs = resolveExportCodecs(
         outputFormat.value,
@@ -346,13 +339,34 @@ export function useExportForm() {
             },
             exportRangeUs: selectedExportRange.value?.range,
           },
-          fileHandle,
+          tempFileHandle,
           (progress) => {
             exportProgress.value = progress;
           },
         );
 
+        try {
+          await exportDir.getFileHandle(finalFilename);
+          throw new Error(t('videoEditor.export.filenameAlreadyExists'));
+        } catch (e: unknown) {
+          if (e instanceof Error && e.name !== 'NotFoundError') {
+            throw e;
+          }
+        }
+
+        const fileHandle = await exportDir.getFileHandle(finalFilename, { create: true });
+        const tempFile = await tempFileHandle.getFile();
+        const writable = await fileHandle.createWritable({ keepExistingData: false });
+        try {
+          await writable.write(tempFile);
+          await writable.close();
+        } catch (e) {
+          await writable.abort();
+          throw e;
+        }
+
         exportSuccess = true;
+        exportProgress.value = 1;
 
         if (saveAsDefaults.value) {
           try {
@@ -385,12 +399,12 @@ export function useExportForm() {
           await onSuccess(file);
         }
       } finally {
+        try {
+          await exportDir.removeEntry(tempFilename);
+        } catch (e) {
+          console.warn('Failed to clean up temporary export file', e);
+        }
         if (!exportSuccess) {
-          try {
-            await exportDir.removeEntry(outputFilename.value);
-          } catch (e) {
-            console.warn('Failed to clean up partial export file', e);
-          }
           await validateFilename();
         }
       }

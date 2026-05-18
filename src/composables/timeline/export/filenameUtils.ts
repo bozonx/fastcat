@@ -12,6 +12,14 @@ export function sanitizeBaseName(name: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
+export function normalizeExportFilename(name: string): string {
+  return name.trim();
+}
+
+export function hasInvalidExportFilenameChars(name: string): boolean {
+  return /[\\/\0-\x1f\x7f]/.test(name);
+}
+
 export function resolveNextAvailableFilename(
   existingNames: ReadonlySet<string>,
   base: string,

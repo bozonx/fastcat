@@ -100,17 +100,9 @@ export function createTimelinePersistenceModule(
       deps.isSavingTimeline.value = true;
       deps.timelineSaveError.value = null;
 
-      const docRaw = JSON.parse(JSON.stringify(toRaw(doc)));
-
-      const snapshot: TimelineDocument = {
-        ...docRaw,
-        metadata: {
-          ...(docRaw.metadata ?? {}),
-          fastcat: {
-            ...(docRaw.metadata?.fastcat ?? {}),
-          },
-        },
-      };
+      // No intermediate clone here — serializeInWorker postMessages a
+      // structuredClone already, and the serializer doesn't mutate the doc.
+      const snapshot = toRaw(doc);
 
       try {
         // Double check if context changed before writing

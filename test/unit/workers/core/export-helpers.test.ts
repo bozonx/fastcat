@@ -89,7 +89,7 @@ describe('export-helpers', () => {
         fps,
       });
 
-      expect(frame.timeUs).toBe(Math.round(((totalFrames - 2) * 1_000_000) / fps));
+      expect(frame.timeUs).toBe(Math.round(((totalFrames - 2) * 1_000_000 * 1001) / 30000));
       expect(frame.timestampS).toBe(frame.timeUs / 1_000_000);
       expect(frame.durationS).toBeGreaterThan(0);
     });

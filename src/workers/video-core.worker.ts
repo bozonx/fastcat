@@ -264,7 +264,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     taskId?: string,
   ) {
     if (taskId) {
-      activeCancels.set(taskId, false);
+      if (!activeCancels.has(taskId)) {
+        activeCancels.set(taskId, false);
+      }
     } else {
       cancelExportRequested = false;
     }

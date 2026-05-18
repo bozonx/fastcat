@@ -1,4 +1,10 @@
-import { getExt, sanitizeBaseName, resolveNextAvailableFilename } from './filenameUtils';
+import {
+  getExt,
+  sanitizeBaseName,
+  normalizeExportFilename,
+  hasInvalidExportFilenameChars,
+  resolveNextAvailableFilename,
+} from './filenameUtils';
 import { resolveExportCodecs } from './codecUtils';
 import {
   buildWorkerVideoTracks,
@@ -12,6 +18,8 @@ import { useTimelineExport } from './useTimelineExport';
 export {
   getExt,
   sanitizeBaseName,
+  normalizeExportFilename,
+  hasInvalidExportFilenameChars,
   resolveNextAvailableFilename,
   resolveExportCodecs,
   buildWorkerVideoTracks,

@@ -223,41 +223,27 @@ async function buildVideoTrackTree(
           result.tracks.push(...nestedResult.tracks);
 
           for (const nestedClip of nestedResult.clips) {
-            const nestedStartUs = nestedClip.timelineRange.startUs;
-            const nestedEndUs = nestedStartUs + nestedClip.timelineRange.durationUs;
-            const windowStartUs = item.sourceRange.startUs;
-            const windowEndUs = windowStartUs + item.sourceRange.durationUs;
-            const overlapStartUs = Math.max(nestedStartUs, windowStartUs);
-            const overlapEndUs = Math.min(nestedEndUs, windowEndUs);
-
-            if (overlapStartUs >= overlapEndUs) continue;
-
-            const visibleDurationUs = overlapEndUs - overlapStartUs;
-            const parentStartUs = item.timelineRange.startUs + (overlapStartUs - windowStartUs);
-            const sourceShiftUs = overlapStartUs - nestedStartUs;
+            const window = getNestedClipWindow({ nestedClip, parentItem: item });
+            const trimmedNestedClip = trimNestedClipToParentWindow({
+              nestedClip,
+              parentItem: item,
+            });
+            if (!window || !trimmedNestedClip) continue;
 
             result.clips.push({
-              ...nestedClip,
+              ...trimmedNestedClip,
               id: `${item.id}_nested_${nestedClip.id}`,
-              timelineRange: {
-                startUs: parentStartUs,
-                durationUs: visibleDurationUs,
-              },
-              sourceRange: {
-                startUs: nestedClip.sourceRange.startUs + sourceShiftUs,
-                durationUs: visibleDurationUs,
-              },
               audioGain: mergeGain((item as any).audioGain, nestedClip.audioGain),
               audioBalance: mergeBalance((item as any).audioBalance, nestedClip.audioBalance),
               audioFadeInUs: mergeFadeInUs({
                 childFadeInUs: nestedClip.audioFadeInUs,
                 parentFadeInUs: (item as any).audioFadeInUs,
-                parentLocalStartUs: overlapStartUs - windowStartUs,
+                parentLocalStartUs: window.parentLocalStartUs,
               }),
               audioFadeOutUs: mergeFadeOutUs({
                 childFadeOutUs: nestedClip.audioFadeOutUs,
                 parentFadeOutUs: (item as any).audioFadeOutUs,
-                parentLocalEndUs: overlapEndUs - windowStartUs,
+                parentLocalEndUs: window.parentLocalEndUs,
                 parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
               }),
               audioFadeInCurve: nestedClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
@@ -410,6 +396,88 @@ export function trimWorkerClipToRange(
   };
 }
 
+function getTimelinePlaybackSpeed(raw: unknown): number {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value === 0) return 1;
+  return value;
+}
+
+interface NestedClipWindow {
+  overlapStartUs: number;
+  overlapEndUs: number;
+  parentStartUs: number;
+  parentDurationUs: number;
+  parentLocalStartUs: number;
+  parentLocalEndUs: number;
+}
+
+function getNestedClipWindow(params: {
+  nestedClip: WorkerTimelineClip;
+  parentItem: TimelineTrackItem;
+}): NestedClipWindow | null {
+  const { nestedClip, parentItem } = params;
+  const parentSpeedRaw = getTimelinePlaybackSpeed((parentItem as any).speed);
+  const parentSpeed = Math.abs(parentSpeedRaw);
+  const isReversed = parentSpeedRaw < 0;
+  const nestedStartUs = nestedClip.timelineRange.startUs;
+  const nestedEndUs = nestedStartUs + nestedClip.timelineRange.durationUs;
+  const windowStartUs = parentItem.sourceRange.startUs;
+  const windowEndUs = windowStartUs + parentItem.sourceRange.durationUs;
+  const overlapStartUs = Math.max(nestedStartUs, windowStartUs);
+  const overlapEndUs = Math.min(nestedEndUs, windowEndUs);
+
+  if (overlapStartUs >= overlapEndUs) return null;
+
+  const visibleDurationUs = overlapEndUs - overlapStartUs;
+  const parentDurationUs = Math.max(1, Math.round(visibleDurationUs / parentSpeed));
+  const parentOffsetUs = isReversed
+    ? Math.round((windowEndUs - overlapEndUs) / parentSpeed)
+    : Math.round((overlapStartUs - windowStartUs) / parentSpeed);
+  const parentLocalStartUs = Math.max(0, parentOffsetUs);
+
+  return {
+    overlapStartUs,
+    overlapEndUs,
+    parentStartUs: parentItem.timelineRange.startUs + parentLocalStartUs,
+    parentDurationUs,
+    parentLocalStartUs,
+    parentLocalEndUs: parentLocalStartUs + parentDurationUs,
+  };
+}
+
+function mergeNestedClipSpeed(params: {
+  parentItem: TimelineTrackItem;
+  nestedClip: WorkerTimelineClip;
+}): number | undefined {
+  const parentSpeedRaw = getTimelinePlaybackSpeed((params.parentItem as any).speed);
+  const nestedSpeedRaw = getTimelinePlaybackSpeed(params.nestedClip.speed);
+  const combined = parentSpeedRaw * nestedSpeedRaw;
+  return combined === 1 && params.nestedClip.speed === undefined ? undefined : combined;
+}
+
+function trimNestedClipToParentWindow(params: {
+  nestedClip: WorkerTimelineClip;
+  parentItem: TimelineTrackItem;
+}): WorkerTimelineClip | null {
+  const window = getNestedClipWindow(params);
+  if (!window) return null;
+
+  const trimmed = trimWorkerClipToRange(params.nestedClip, {
+    startUs: window.overlapStartUs,
+    endUs: window.overlapEndUs,
+  });
+  if (!trimmed) return null;
+
+  return {
+    ...trimmed,
+    speed: mergeNestedClipSpeed(params),
+    timelineRange: {
+      startUs: window.parentStartUs,
+      durationUs: window.parentDurationUs,
+    },
+  };
+}
+
 export async function toWorkerTimelineClips(
   items: TimelineTrackItem[],
   projectStore: ReturnType<typeof useProjectStore>,
@@ -422,6 +490,8 @@ export async function toWorkerTimelineClips(
     parentOpacity?: number;
     parentBlendMode?: TimelineBlendMode;
     parentEffects?: ClipEffect[];
+    parentAudioGain?: number;
+    parentAudioBalance?: number;
     fallbackFormat?: TimelineFormatInput;
     onWarning?: (message: string) => void;
   },
@@ -446,8 +516,8 @@ export async function toWorkerTimelineClips(
     const combinedEffects =
       parentEffects.length > 0 ? [...itemEffects, ...parentEffects] : itemEffects;
 
-    const parentAudioBalance = (options as any)?.parentAudioBalance ?? 0;
-    const parentAudioGain = (options as any)?.parentAudioGain ?? 1;
+    const parentAudioBalance = options?.parentAudioBalance ?? 0;
+    const parentAudioGain = options?.parentAudioGain ?? 1;
 
     const base: WorkerTimelineClip = {
       kind: 'clip',
@@ -579,23 +649,18 @@ export async function toWorkerTimelineClips(
                       }
                     : nClip;
 
-                const nStartUs = resolvedNClip.timelineRange.startUs;
-                const nEndUs = nStartUs + resolvedNClip.timelineRange.durationUs;
+                const window = getNestedClipWindow({
+                  nestedClip: resolvedNClip,
+                  parentItem: item,
+                });
+                const trimmedNestedClip = trimNestedClipToParentWindow({
+                  nestedClip: resolvedNClip,
+                  parentItem: item,
+                });
 
-                const windowStartUs = item.sourceRange.startUs;
-                const windowEndUs = windowStartUs + item.sourceRange.durationUs;
-
-                const overlapStartUs = Math.max(nStartUs, windowStartUs);
-                const overlapEndUs = Math.min(nEndUs, windowEndUs);
-
-                if (overlapStartUs < overlapEndUs) {
-                  const visibleDurationUs = overlapEndUs - overlapStartUs;
-                  const parentStartUs =
-                    item.timelineRange.startUs + (overlapStartUs - windowStartUs);
-                  const sourceShiftUs = overlapStartUs - nStartUs;
-
+                if (window && trimmedNestedClip) {
                   clips.push({
-                    ...resolvedNClip,
+                    ...trimmedNestedClip,
                     id: `${item.id}_nested_${resolvedNClip.id}`,
                     trackId: resolvedNClip.trackId
                       ? `${item.trackId}::${item.id}::${resolvedNClip.trackId}`
@@ -606,26 +671,18 @@ export async function toWorkerTimelineClips(
                     audioFadeInUs: mergeFadeInUs({
                       childFadeInUs: resolvedNClip.audioFadeInUs,
                       parentFadeInUs: (item as any).audioFadeInUs,
-                      parentLocalStartUs: overlapStartUs - windowStartUs,
+                      parentLocalStartUs: window.parentLocalStartUs,
                     }),
                     audioFadeOutUs: mergeFadeOutUs({
                       childFadeOutUs: resolvedNClip.audioFadeOutUs,
                       parentFadeOutUs: (item as any).audioFadeOutUs,
-                      parentLocalEndUs: overlapEndUs - windowStartUs,
+                      parentLocalEndUs: window.parentLocalEndUs,
                       parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
                     }),
                     audioFadeInCurve:
                       resolvedNClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
                     audioFadeOutCurve:
                       resolvedNClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
-                    timelineRange: {
-                      startUs: parentStartUs,
-                      durationUs: visibleDurationUs,
-                    },
-                    sourceRange: {
-                      startUs: resolvedNClip.sourceRange.startUs + sourceShiftUs,
-                      durationUs: visibleDurationUs,
-                    },
                   });
                 }
               }
@@ -651,7 +708,7 @@ export async function toWorkerTimelineClips(
                 parentAudioGain: mergeGain(parentAudioGain, (item as any).audioGain),
                 parentAudioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
                 onWarning: options?.onWarning,
-              } as any,
+              },
             );
 
             for (const nClip of nestedWorkerClips) {
@@ -668,27 +725,20 @@ export async function toWorkerTimelineClips(
                     }
                   : nClip;
 
-              const nStartUs = resolvedNClip.timelineRange.startUs;
-              const nEndUs = nStartUs + resolvedNClip.timelineRange.durationUs;
+              const window = getNestedClipWindow({
+                nestedClip: resolvedNClip,
+                parentItem: item,
+              });
+              const trimmedNestedClip = trimNestedClipToParentWindow({
+                nestedClip: resolvedNClip,
+                parentItem: item,
+              });
 
-              const windowStartUs = item.sourceRange.startUs;
-              const windowEndUs = windowStartUs + item.sourceRange.durationUs;
-
-              const overlapStartUs = Math.max(nStartUs, windowStartUs);
-              const overlapEndUs = Math.min(nEndUs, windowEndUs);
-
-              if (overlapStartUs < overlapEndUs) {
-                const visibleDurationUs = overlapEndUs - overlapStartUs;
-                const parentStartUs =
-                  item.timelineRange.startUs + (overlapStartUs - windowStartUs);
-                const sourceShiftUs = overlapStartUs - nStartUs;
-
-                const parentLocalStartUs = overlapStartUs - windowStartUs;
-                const parentLocalEndUs = overlapEndUs - windowStartUs;
+              if (window && trimmedNestedClip) {
                 const parentDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
 
                 clips.push({
-                  ...resolvedNClip,
+                  ...trimmedNestedClip,
                   id: `${item.id}_nested_${resolvedNClip.id}`,
                   trackId: resolvedNClip.trackId,
                   layer: 0,
@@ -697,26 +747,18 @@ export async function toWorkerTimelineClips(
                   audioFadeInUs: mergeFadeInUs({
                     childFadeInUs: resolvedNClip.audioFadeInUs,
                     parentFadeInUs: (item as any).audioFadeInUs,
-                    parentLocalStartUs,
+                    parentLocalStartUs: window.parentLocalStartUs,
                   }),
                   audioFadeOutUs: mergeFadeOutUs({
                     childFadeOutUs: resolvedNClip.audioFadeOutUs,
                     parentFadeOutUs: (item as any).audioFadeOutUs,
-                    parentLocalEndUs,
+                    parentLocalEndUs: window.parentLocalEndUs,
                     parentDurationUs,
                   }),
                   audioFadeInCurve:
                     resolvedNClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
                   audioFadeOutCurve:
                     resolvedNClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
-                  timelineRange: {
-                    startUs: parentStartUs,
-                    durationUs: visibleDurationUs,
-                  },
-                  sourceRange: {
-                    startUs: resolvedNClip.sourceRange.startUs + sourceShiftUs,
-                    durationUs: visibleDurationUs,
-                  },
                 });
               }
             }

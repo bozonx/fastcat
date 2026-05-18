@@ -44,13 +44,13 @@ export function useExportConfig() {
   const normalizedExportWidth = computed(() => {
     const value = Number(exportWidth.value);
     if (!Number.isFinite(value) || value <= 0) return 1920;
-    return Math.round(value);
+    return Math.max(2, Math.floor(Math.round(value) / 2) * 2);
   });
 
   const normalizedExportHeight = computed(() => {
     const value = Number(exportHeight.value);
     if (!Number.isFinite(value) || value <= 0) return 1080;
-    return Math.round(value);
+    return Math.max(2, Math.floor(Math.round(value) / 2) * 2);
   });
 
   const normalizedExportFps = computed(() => {

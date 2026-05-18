@@ -1,11 +1,16 @@
 import { ref } from 'vue';
-import { resolveNextAvailableFilename } from '../filenameUtils';
+import {
+  hasInvalidExportFilenameChars,
+  normalizeExportFilename,
+  resolveNextAvailableFilename,
+} from '../filenameUtils';
 
 export function useExportFilename(
   ext: import('vue').Ref<string>,
   ensureExportDir: () => Promise<FileSystemDirectoryHandle>,
   listExportFilenames: (exportDir: FileSystemDirectoryHandle) => Promise<Set<string>>,
 ) {
+  const { t } = useI18n();
   const outputFilename = ref('');
   const filenameError = ref<string | null>(null);
 
@@ -16,22 +21,31 @@ export function useExportFilename(
   }
 
   async function validateFilename() {
-    const trimmed = outputFilename.value.trim();
-    if (!trimmed) {
-      filenameError.value = 'Filename is required';
+    const normalized = normalizeExportFilename(outputFilename.value);
+    if (outputFilename.value !== normalized) {
+      outputFilename.value = normalized;
+    }
+
+    if (!normalized) {
+      filenameError.value = t('videoEditor.export.filenameRequired');
       return false;
     }
 
-    if (!trimmed.toLowerCase().endsWith(`.${ext.value}`)) {
-      filenameError.value = `Filename must end with .${ext.value}`;
+    if (hasInvalidExportFilenameChars(normalized)) {
+      filenameError.value = t('videoEditor.export.filenameInvalidChars');
+      return false;
+    }
+
+    if (!normalized.toLowerCase().endsWith(`.${ext.value}`)) {
+      filenameError.value = t('videoEditor.export.filenameInvalidExtension', { ext: ext.value });
       return false;
     }
 
     const exportDir = await ensureExportDir();
     const names = await listExportFilenames(exportDir);
 
-    if (names.has(trimmed)) {
-      filenameError.value = 'A file with this name already exists';
+    if (names.has(normalized)) {
+      filenameError.value = t('videoEditor.export.filenameAlreadyExists');
       return false;
     }
 

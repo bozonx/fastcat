@@ -12,16 +12,27 @@ const selectedEntityMock = ref<any>(null);
 const exportTimelineToFileMock = vi.fn();
 const validateFilenameMock = vi.fn(async () => true);
 const getNextAvailableFilenameMock = vi.fn(async () => 'timeline.mp4');
+const existingFilesMock = new Set<string>();
 const ensureExportDirMock = vi.fn(async () => ({
   getFileHandle: vi.fn(async (_name: string, options?: { create?: boolean }) => {
     if (!options?.create) {
+      if (existingFilesMock.has(_name)) {
+        return {
+          getFile: vi.fn(async () => new File([''], _name)),
+        };
+      }
       const error = new Error('Not found');
       (error as Error & { name: string }).name = 'NotFoundError';
       throw error;
     }
 
     return {
-      getFile: vi.fn(async () => new File([''], 'timeline.mp4')),
+      getFile: vi.fn(async () => new File([''], _name)),
+      createWritable: vi.fn(async () => ({
+        write: vi.fn(async () => undefined),
+        close: vi.fn(async () => undefined),
+        abort: vi.fn(async () => undefined),
+      })),
     };
   }),
   removeEntry: vi.fn(async () => undefined),
@@ -97,6 +108,7 @@ vi.mock('~/stores/selection.store', () => ({
 
 vi.mock('~/composables/timeline/export', () => ({
   sanitizeBaseName: (name: string) => name.replace(/\.[^.]+$/, ''),
+  normalizeExportFilename: (name: string) => name.trim(),
   getExt: (format: string) => format,
   resolveExportCodecs: (format: string, videoCodec: string, audioCodec: string) => ({
     videoCodec,
@@ -160,6 +172,7 @@ describe('useExportForm', () => {
     validateFilenameMock.mockClear();
     getNextAvailableFilenameMock.mockClear();
     ensureExportDirMock.mockClear();
+    existingFilesMock.clear();
   });
 
   it('выбирает активный маркер-зону по умолчанию', async () => {
