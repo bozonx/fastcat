@@ -20,7 +20,6 @@ import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import UiActionButton from '~/components/ui/UiActionButton.vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 
 const props = defineProps<{

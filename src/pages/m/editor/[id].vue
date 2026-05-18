@@ -21,7 +21,6 @@ definePageMeta({
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const timelineStore = useTimelineStore();
-const uiStore = useUiStore();
 const router = useRouter();
 const { openProject, leaveProject } = useProjectActions();
 const isOpeningProject = ref(true);

@@ -5,7 +5,6 @@ import { formatBytes } from '~/utils/format';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { useProjectStore } from '~/stores/project.store';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useProxyStore } from '~/stores/proxy.store';
 import { isGeneratingProxyInDirectory } from '~/utils/fs-entry-utils';

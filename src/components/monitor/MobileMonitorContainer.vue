@@ -49,8 +49,6 @@ const {
   uiCurrentTimeUs,
 } = useMonitorRuntime();
 
-const { timelineDoc } = storeToRefs(timelineStore);
-
 const canInteractPlayback = computed(
   () => !isLoading.value && (safeDurationUs.value > 0 || videoItems.value.length > 0),
 );

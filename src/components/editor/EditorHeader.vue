@@ -9,7 +9,6 @@ import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButt
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const selectionStore = useSelectionStore();
 const { getHotkeyTitle } = useHotkeyLabel();
 
 const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);

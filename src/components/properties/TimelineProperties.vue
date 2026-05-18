@@ -60,17 +60,16 @@ const fileManager = useFileManager();
 
 const fsEntryRef = computed(() => props.fsEntry ?? null);
 
-const { timelineDocSummary, fileInfo, currentUrl, isUnknown, mediaType, textContent } =
-  useEntryPreview({
-    selectedFsEntry: fsEntryRef,
-    previewMode: ref('original'),
-    hasProxy: ref(false),
-    mediaStore,
-    proxyStore,
-    getFileByPath: (path) => fileManager.vfs.getFile(path),
-    getObjectUrlByPath: (path) => fileManager.vfs.getObjectUrl(path),
-    onResetPreviewMode: () => {},
-  });
+const { timelineDocSummary, fileInfo, currentUrl, mediaType, textContent } = useEntryPreview({
+  selectedFsEntry: fsEntryRef,
+  previewMode: ref('original'),
+  hasProxy: ref(false),
+  mediaStore,
+  proxyStore,
+  getFileByPath: (path) => fileManager.vfs.getFile(path),
+  getObjectUrlByPath: (path) => fileManager.vfs.getObjectUrl(path),
+  onResetPreviewMode: () => {},
+});
 
 const { generalInfoTitle, isHidden, selectedPath } = useFilePropertiesBasics({
   selectedFsEntry: fsEntryRef,

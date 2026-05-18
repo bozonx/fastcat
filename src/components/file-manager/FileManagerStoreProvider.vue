@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { provide } from 'vue';
-import type { FileManagerStore } from '~/stores/file-manager.store';
 
 const props = defineProps<{
   store: any;

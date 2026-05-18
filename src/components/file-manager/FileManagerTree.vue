@@ -15,7 +15,6 @@ import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useProjectStore } from '~/stores/project.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';

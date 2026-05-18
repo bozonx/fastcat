@@ -25,7 +25,6 @@ const toast = useToast();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
-const { timelineDoc } = storeToRefs(timelineStore);
 const fileManager = useFileManager();
 const { loadTimeline } = useProjectActions();
 const { getHotkeyTitle } = useHotkeyLabel();

@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
-import UiActionButton from '~/components/ui/UiActionButton.vue';
 
 defineProps<{
   isOpen: boolean;
