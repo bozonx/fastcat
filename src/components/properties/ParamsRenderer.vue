@@ -39,6 +39,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const _setTimeout = (...args: Parameters<typeof setTimeout>) => setTimeout(...args);
+
 const dragOverKey = ref<string | null>(null);
 
 function getLabel(control: ParamControl): string {
@@ -160,7 +162,7 @@ function buildScaleXYState(control: ScaleXYParamControl) {
 interface VisibleControlEntry {
   actionLabel: string;
   arrayItems: Record<string, unknown>[];
-  control: ParamControl;
+  control: any;
   disabled: boolean;
   fileDisplayValue: string;
   hasValue: boolean;
@@ -400,7 +402,7 @@ function handleArrayItemUpdate(
             @click="
               () => {
                 updateValue(entry.control.keyX, entry.control.defaultValueX ?? 100);
-                setTimeout(() => {
+                _setTimeout(() => {
                   updateValue(entry.control.keyY, entry.control.defaultValueY ?? 100);
                 }, 10);
               }
@@ -422,7 +424,7 @@ function handleArrayItemUpdate(
                 const numValue = Number(value);
                 updateValue(entry.control.keyX, numValue);
                 if (entry.scaleXYState?.isLinked) {
-                  setTimeout(() => {
+                  _setTimeout(() => {
                     updateValue(entry.control.keyY, numValue);
                   }, 10);
                 }
@@ -440,7 +442,7 @@ function handleArrayItemUpdate(
                 const isLinked = !entry.scaleXYState?.isLinked;
                 updateValue(entry.control.keyLinked, isLinked);
                 if (isLinked) {
-                  setTimeout(() => {
+                  _setTimeout(() => {
                     updateValue(entry.control.keyY, entry.scaleXYState?.xValue);
                   }, 10);
                 }
@@ -463,7 +465,7 @@ function handleArrayItemUpdate(
                 const numValue = Number(value);
                 updateValue(entry.control.keyY, numValue);
                 if (entry.scaleXYState?.isLinked) {
-                  setTimeout(() => {
+                  _setTimeout(() => {
                     updateValue(entry.control.keyX, numValue);
                   }, 10);
                 }

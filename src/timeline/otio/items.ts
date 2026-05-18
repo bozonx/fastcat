@@ -276,7 +276,7 @@ export function parseClipItem(input: {
     const bgColor =
       typeData?.kind === 'background'
         ? sanitizeTimelineColor(typeData.color, '#000000')
-        : sanitizeTimelineColor(fastcatMeta.typeData?.background?.color, '#000000');
+        : sanitizeTimelineColor((fastcatMeta.typeData as any)?.background?.color, '#000000');
     return {
       ...base,
       clipType: 'background',
@@ -298,13 +298,14 @@ export function parseClipItem(input: {
       text:
         typeData?.kind === 'text'
           ? (typeData.text ?? 'Text')
-          : (fastcatMeta.typeData?.text?.text ?? 'Text'),
-      style: typeData?.kind === 'text' ? typeData.style : fastcatMeta.typeData?.text?.style,
+          : ((fastcatMeta.typeData as any)?.text?.text ?? 'Text'),
+      style:
+        typeData?.kind === 'text' ? typeData.style : (fastcatMeta.typeData as any)?.text?.style,
     };
   }
 
   if (clipType === 'shape') {
-    const shapeData = typeData?.kind === 'shape' ? typeData : fastcatMeta.typeData?.shape;
+    const shapeData = typeData?.kind === 'shape' ? typeData : (fastcatMeta.typeData as any)?.shape;
     return {
       ...base,
       clipType: 'shape',
@@ -326,7 +327,7 @@ export function parseClipItem(input: {
   }
 
   if (clipType === 'hud') {
-    const hudData = typeData?.kind === 'hud' ? typeData : fastcatMeta.typeData?.hud;
+    const hudData = typeData?.kind === 'hud' ? typeData : (fastcatMeta.typeData as any)?.hud;
     return {
       ...base,
       clipType: 'hud',

@@ -533,7 +533,8 @@
         "subtitle": "Подзаголовок",
         "title": "Заголовок",
         "watchPresets": "Смотреть пресеты"
-      }
+      },
+      "noCustomPresets": "Нет пользовательских пресетов"
     },
     "marker": {
       "actions": "Действия",
@@ -1077,17 +1078,14 @@
       "stereo": "Стерео"
     },
     "backgroundTasks": {
-      "cancelled": "Отменено",
       "conversionTitle": "Конвертация: {fileName}",
       "copyTitle": "Копирование: {fileName}",
       "empty": "Нет фоновых задач",
       "failed": "Фоновая задача завершилась с ошибкой",
       "modelDownloadDescription": "Скачивается локальная Whisper-модель {model}. Можно закрыть настройки или перейти в другую вкладку.",
-      "modelDownloadFailed": "Не удалось скачать модель",
       "modelDownloadTitle": "Скачивание модели распознавания речи",
       "proxyTitle": "Создание прокси: {fileName}",
       "title": "Фоновые задачи",
-      "transcriptionFailed": "Ошибка транскрибации",
       "transcriptionTitle": "Транскрибация: {name}",
       "uploadFailed": "Не удалось загрузить файлы"
     },

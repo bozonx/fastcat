@@ -46,7 +46,7 @@ import { useUiStore } from './ui.store';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
-import { useNuxtApp } from '#app';
+import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
@@ -387,8 +387,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (!backupDirHandle) return;
 
       const existingBackups: { name: string; num: number; handle: FileSystemFileHandle }[] = [];
-      // @ts-expect-error entries() exists on FileSystemDirectoryHandle
-      for await (const [name, handle] of backupDirHandle.entries()) {
+      for await (const [name, handle] of (backupDirHandle as any).entries()) {
         if (
           handle.kind === 'file' &&
           name.startsWith(baseName + '__bak') &&
@@ -571,8 +570,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!dirHandle) return;
 
     const existingVersions: number[] = [];
-    // @ts-expect-error -- entries() is not typed on FileSystemDirectoryHandle
-    for await (const [name, handle] of dirHandle.entries()) {
+    for await (const [name, handle] of (dirHandle as any).entries()) {
       if (handle.kind === 'file' && name.startsWith(prefix) && name.endsWith('.otio')) {
         const vMatch = name.slice(0, -'.otio'.length).match(/_v(\d{1,3})$/);
         if (vMatch) {

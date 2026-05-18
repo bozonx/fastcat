@@ -264,6 +264,7 @@
       },
       "loadPresetPlaceholder": "Load preset...",
       "masterTitle": "Master effects",
+      "noCustomPresets": "No custom presets",
       "noSettings": "No settings available",
       "presetNamePlaceholder": "My Custom Preset",
       "presetsTitle": "Presets",
@@ -1077,17 +1078,14 @@
       "stereo": "Stereo"
     },
     "backgroundTasks": {
-      "cancelled": "Cancelled",
       "conversionTitle": "Converting: {fileName}",
       "copyTitle": "Copying: {fileName}",
       "empty": "No background tasks",
       "failed": "Background task failed",
       "modelDownloadDescription": "Downloading local Whisper model {model}. You can close settings or switch to another tab.",
-      "modelDownloadFailed": "Model download failed",
       "modelDownloadTitle": "Downloading speech recognition model",
       "proxyTitle": "Generating proxy: {fileName}",
       "title": "Background Tasks",
-      "transcriptionFailed": "Transcription failed",
       "transcriptionTitle": "Transcription: {name}",
       "uploadFailed": "Failed to upload files"
     },
@@ -1729,5 +1727,4 @@
     "cutItems": "Cut items",
     "pasteItems": "Paste items"
   }
-}
 }

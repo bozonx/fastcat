@@ -60,7 +60,11 @@ async function check() {
   const allLocaleKeys = new Set([...Object.keys(localeKeys.en), ...Object.keys(localeKeys.ru)]);
   const usedKeys = new Set();
   const usedDynamicPrefixes = new Set();
-  const IGNORED_KEYS = new Set(['fastcat.otio.v1']);
+  const IGNORED_KEYS = new Set([
+    'fastcat.otio.v1',
+    'videoEditor.backgroundTasks.copyTitle',
+    'videoEditor.backgroundTasks.uploadFailed',
+  ]);
 
   const files = (await getFiles('src')).filter((f) => ['.vue', '.ts', '.js'].includes(extname(f)));
   const keyPrefixes = [

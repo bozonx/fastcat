@@ -341,16 +341,20 @@ function onToolbarContextMenu(e: MouseEvent) {
 
         <UiTooltip :text="t('fastcat.timeline.trim')">
           <UiSplitDropdownButton
-            size="xs"
-            :variant="timelineStore.isTrimModeActive ? 'solid' : 'ghost'"
-            :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
-            icon="i-heroicons-scissors"
-            :aria-label="t('fastcat.timeline.trim')"
-            :items="(trimMenuItems as any)"
-            button-class="hover:bg-ui-bg-hover/60"
-            caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
-            caret-icon-class="size-2.5"
-            @click="toggleTrimMode"
+            v-bind="
+              {
+                size: 'xs',
+                variant: timelineStore.isTrimModeActive ? 'solid' : 'ghost',
+                color: timelineStore.isTrimModeActive ? 'primary' : 'neutral',
+                icon: 'i-heroicons-scissors',
+                'aria-label': t('fastcat.timeline.trim'),
+                items: trimMenuItems,
+                buttonClass: 'hover:bg-ui-bg-hover/60',
+                caretButtonClass: 'px-0.5 hover:bg-ui-bg-hover/60',
+                caretIconClass: 'size-2.5',
+                onClick: toggleTrimMode,
+              } as any
+            "
           />
         </UiTooltip>
 

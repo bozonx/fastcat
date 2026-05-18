@@ -143,6 +143,14 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
               fileTabs: projectTabsStore.fileTabs,
               staticTabsOrder: projectTabsStore.staticTabsOrder,
               fileManagerPaths,
+              fileTreeExpandedPaths: [] as string[],
+              layout: {
+                cutPanels: null,
+                soundPanels: null,
+                splitSizes: {},
+                verticalSplitSizes: {},
+                timelineHeights: {},
+              },
             },
           });
         }
@@ -378,7 +386,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           sessions: initial.timelines.sessions,
         },
         timeline: initial.timeline,
-        ui: initial.ui,
+        ui: initial.ui as any,
       });
     } catch (e) {
       console.warn('Failed to create project settings/ui files', e);

@@ -12,6 +12,7 @@ export interface CrossVfsCopyOptions {
 
 function sanitizeLocalEntryName(name: string): string {
   const sanitized = name
+    // eslint-disable-next-line no-control-regex -- intentional removal of control characters from filenames
     .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
     .replace(/[. ]+$/g, '')
     .trim();
