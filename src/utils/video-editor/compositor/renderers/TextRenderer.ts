@@ -66,16 +66,39 @@ export class TextRenderer {
 
     ctx.clearRect(0, 0, bgW, bgH);
 
-    // Draw background
-    if (normalizedStyle.backgroundColor) {
+    if (normalizedStyle.backgroundEnabled) {
+      ctx.save();
+      ctx.globalAlpha = normalizedStyle.backgroundAlpha;
       ctx.fillStyle = normalizedStyle.backgroundColor;
-      ctx.fillRect(0, 0, bgW, bgH);
+      this.drawRoundedRect(ctx, 0, 0, bgW, bgH, normalizedStyle.backgroundRadius * renderScale);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    const borderWidthPx = Math.round(normalizedStyle.borderWidth * renderScale);
+    if (normalizedStyle.borderEnabled && borderWidthPx > 0) {
+      ctx.save();
+      ctx.globalAlpha = normalizedStyle.borderAlpha;
+      ctx.strokeStyle = normalizedStyle.borderColor;
+      ctx.lineWidth = borderWidthPx;
+      const inset = borderWidthPx / 2;
+      this.drawRoundedRect(
+        ctx,
+        inset,
+        inset,
+        Math.max(1, bgW - borderWidthPx),
+        Math.max(1, bgH - borderWidthPx),
+        Math.max(0, normalizedStyle.backgroundRadius * renderScale - inset),
+      );
+      ctx.stroke();
+      ctx.restore();
     }
 
     // Draw text lines
     const font = `${normalizedStyle.fontWeight} ${fontSizePx}px ${normalizedStyle.fontFamily}`;
     ctx.font = font;
     ctx.fillStyle = normalizedStyle.color;
+    ctx.globalAlpha = normalizedStyle.colorAlpha;
     ctx.textBaseline = 'middle';
     ctx.textAlign = normalizedStyle.align;
 
@@ -101,6 +124,7 @@ export class TextRenderer {
         });
       }
     }
+    ctx.globalAlpha = 1;
 
     try {
       (clip.sprite.texture.source as any)?.update?.();
@@ -145,5 +169,28 @@ export class TextRenderer {
       ctx.fillText(chars[i] ?? '', x, y);
       x += (charWidths[i] ?? 0) + letterSpacingPx;
     }
+  }
+
+  private drawRoundedRect(
+    ctx: OffscreenCanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+  ): void {
+    const safeRadius = Math.min(Math.max(0, radius), width / 2, height / 2);
+
+    ctx.beginPath();
+    ctx.moveTo(x + safeRadius, y);
+    ctx.lineTo(x + width - safeRadius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+    ctx.lineTo(x + width, y + height - safeRadius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+    ctx.lineTo(x + safeRadius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+    ctx.lineTo(x, y + safeRadius);
+    ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+    ctx.closePath();
   }
 }

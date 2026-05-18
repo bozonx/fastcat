@@ -14,11 +14,19 @@ export interface NormalizedTextStyle {
   fontSize: number;
   fontWeight: string;
   color: string;
+  colorAlpha: number;
   align: 'left' | 'center' | 'right';
   verticalAlign: 'top' | 'middle' | 'bottom';
   lineHeight: number;
   letterSpacing: number;
+  backgroundEnabled: boolean;
   backgroundColor: string;
+  backgroundAlpha: number;
+  backgroundRadius: number;
+  borderEnabled: boolean;
+  borderColor: string;
+  borderAlpha: number;
+  borderWidth: number;
   padding: NormalizedTextPadding;
 }
 
@@ -109,6 +117,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         ? String(style.fontWeight)
         : '700',
     color: typeof style?.color === 'string' && style.color.length > 0 ? style.color : '#ffffff',
+    colorAlpha: clampFinite(style?.colorAlpha, 1, 0, 1),
     align:
       style?.align === 'left' || style?.align === 'center' || style?.align === 'right'
         ? style.align
@@ -121,10 +130,23 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : 'middle',
     lineHeight: clampFinite(style?.lineHeight, 1.2, 0.1, 10),
     letterSpacing: clampFinite(style?.letterSpacing, 0, -1000, 1000),
+    backgroundEnabled:
+      typeof style?.backgroundEnabled === 'boolean'
+        ? style.backgroundEnabled
+        : typeof style?.backgroundColor === 'string' && style.backgroundColor.trim().length > 0,
     backgroundColor:
       typeof style?.backgroundColor === 'string' && style.backgroundColor.trim().length > 0
         ? style.backgroundColor.trim()
-        : '',
+        : '#000000',
+    backgroundAlpha: clampFinite(style?.backgroundAlpha, 1, 0, 1),
+    backgroundRadius: clampFinite(style?.backgroundRadius, 0, 0, 10_000),
+    borderEnabled: typeof style?.borderEnabled === 'boolean' ? style.borderEnabled : false,
+    borderColor:
+      typeof style?.borderColor === 'string' && style.borderColor.trim().length > 0
+        ? style.borderColor.trim()
+        : '#ffffff',
+    borderAlpha: clampFinite(style?.borderAlpha, 1, 0, 1),
+    borderWidth: clampFinite(style?.borderWidth, 0, 0, 10_000),
     padding: normalizeTextPadding(style?.padding),
   };
 }

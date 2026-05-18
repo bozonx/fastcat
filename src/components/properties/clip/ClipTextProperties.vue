@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { TimelineTextClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 
 const props = defineProps<{
   clip: TimelineTextClipItem;
@@ -12,13 +14,47 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'updateText', val: string): void;
+  (e: 'updateText' | 'loadPreset', val: string): void;
   (e: 'updateTextStyle', patch: Record<string, unknown>): void;
-  (e: 'loadPreset', val: string): void;
   (e: 'savePreset'): void;
 }>();
 
 const { t } = useI18n();
+
+function toPercentAlpha(value: unknown) {
+  const numericValue = Number(value ?? 1);
+  if (!Number.isFinite(numericValue)) return 100;
+  return Math.round(Math.max(0, Math.min(1, numericValue)) * 100);
+}
+
+function fromPercentAlpha(value: number) {
+  return Math.max(0, Math.min(100, Number(value))) / 100;
+}
+
+function getVerticalPadding() {
+  const padding = props.clip.style?.padding;
+  if (typeof padding === 'number' && Number.isFinite(padding)) return padding;
+  if (padding && typeof padding === 'object') {
+    if ('top' in padding) return padding.top ?? 60;
+    if ('y' in padding || 'x' in padding) return ('y' in padding ? padding.y : padding.x) ?? 60;
+  }
+  return 60;
+}
+
+const textAlpha = computed({
+  get: () => toPercentAlpha(props.clip.style?.colorAlpha),
+  set: (value: number) => emit('updateTextStyle', { colorAlpha: fromPercentAlpha(value) }),
+});
+
+const backgroundAlpha = computed({
+  get: () => toPercentAlpha(props.clip.style?.backgroundAlpha),
+  set: (value: number) => emit('updateTextStyle', { backgroundAlpha: fromPercentAlpha(value) }),
+});
+
+const borderAlpha = computed({
+  get: () => toPercentAlpha(props.clip.style?.borderAlpha),
+  set: (value: number) => emit('updateTextStyle', { borderAlpha: fromPercentAlpha(value) }),
+});
 </script>
 
 <template>
@@ -128,9 +164,26 @@ const { t } = useI18n();
             @update:model-value="(v: any) => emit('updateTextStyle', { color: String(v) })"
           />
         </PropertyField>
+        <PropertyField :label="t('fastcat.textClip.textAlpha')">
+          <UiSliderInput v-model="textAlpha" :min="0" :max="100" :step="1" unit="%" :decimals="0" />
+        </PropertyField>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-xs text-ui-text-muted">{{
+          t('fastcat.textClip.backgroundEnabled')
+        }}</span>
+        <USwitch
+          :model-value="Boolean(clip.style?.backgroundEnabled ?? clip.style?.backgroundColor)"
+          size="sm"
+          @update:model-value="(v: boolean) => emit('updateTextStyle', { backgroundEnabled: v })"
+        />
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
         <PropertyField :label="t('fastcat.textClip.backgroundColor')">
           <UColorPicker
-            :model-value="String(clip.style?.backgroundColor ?? '')"
+            :model-value="String(clip.style?.backgroundColor ?? '#000000')"
             format="hex"
             size="sm"
             @update:model-value="
@@ -138,19 +191,42 @@ const { t } = useI18n();
             "
           />
         </PropertyField>
+        <PropertyField :label="t('fastcat.textClip.backgroundAlpha')">
+          <UiSliderInput
+            v-model="backgroundAlpha"
+            :min="0"
+            :max="100"
+            :step="1"
+            unit="%"
+            :decimals="0"
+          />
+        </PropertyField>
       </div>
 
-      <PropertyField :label="t('fastcat.textClip.width')">
-        <UiWheelNumberInput
-          :model-value="Number(clip.style?.width ?? 0)"
-          size="sm"
-          :step="10"
-          :min="0"
-          @update:model-value="
-            (v: any) => emit('updateTextStyle', { width: v > 0 ? Number(v) : undefined })
-          "
-        />
-      </PropertyField>
+      <div class="grid grid-cols-2 gap-2">
+        <PropertyField :label="t('fastcat.textClip.width')">
+          <UiWheelNumberInput
+            :model-value="Number(clip.style?.width ?? 0)"
+            size="sm"
+            :step="10"
+            :min="0"
+            full-width
+            @update:model-value="
+              (v: any) => emit('updateTextStyle', { width: v > 0 ? Number(v) : undefined })
+            "
+          />
+        </PropertyField>
+        <PropertyField :label="t('fastcat.textClip.verticalPadding')">
+          <UiWheelNumberInput
+            :model-value="getVerticalPadding()"
+            size="sm"
+            :step="1"
+            :min="0"
+            full-width
+            @update:model-value="(v: any) => emit('updateTextStyle', { padding: Number(v) })"
+          />
+        </PropertyField>
+      </div>
 
       <PropertyField :label="t('fastcat.textClip.align')">
         <UiSelect
@@ -203,25 +279,60 @@ const { t } = useI18n();
         </PropertyField>
       </div>
 
-      <PropertyField :label="t('fastcat.textClip.padding')">
-        <UiWheelNumberInput
-          :model-value="
-            (() => {
-              const p = clip.style?.padding;
-              if (typeof p === 'number' && Number.isFinite(p)) return p;
-              if (p && typeof p === 'object') {
-                if ('top' in p) return p.top ?? 60;
-                if ('x' in p || 'y' in p) return ('y' in p ? p.y : p.x) ?? 60;
-              }
-              return 60;
-            })()
-          "
+      <div class="grid grid-cols-2 gap-2">
+        <PropertyField :label="t('fastcat.textClip.backgroundRadius')">
+          <UiWheelNumberInput
+            :model-value="Number(clip.style?.backgroundRadius ?? 0)"
+            size="sm"
+            :step="1"
+            :min="0"
+            full-width
+            @update:model-value="
+              (v: any) => emit('updateTextStyle', { backgroundRadius: Number(v) })
+            "
+          />
+        </PropertyField>
+        <PropertyField :label="t('fastcat.textClip.borderWidth')">
+          <UiWheelNumberInput
+            :model-value="Number(clip.style?.borderWidth ?? 0)"
+            size="sm"
+            :step="1"
+            :min="0"
+            full-width
+            @update:model-value="(v: any) => emit('updateTextStyle', { borderWidth: Number(v) })"
+          />
+        </PropertyField>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.borderEnabled') }}</span>
+        <USwitch
+          :model-value="Boolean(clip.style?.borderEnabled)"
           size="sm"
-          :step="1"
-          :min="0"
-          @update:model-value="(v: any) => emit('updateTextStyle', { padding: Number(v) })"
+          @update:model-value="(v: boolean) => emit('updateTextStyle', { borderEnabled: v })"
         />
-      </PropertyField>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <PropertyField :label="t('fastcat.textClip.borderColor')">
+          <UColorPicker
+            :model-value="String(clip.style?.borderColor ?? '#ffffff')"
+            format="hex"
+            size="sm"
+            @update:model-value="(v: any) => emit('updateTextStyle', { borderColor: String(v) })"
+          />
+        </PropertyField>
+        <PropertyField :label="t('fastcat.textClip.borderAlpha')">
+          <UiSliderInput
+            v-model="borderAlpha"
+            :min="0"
+            :max="100"
+            :step="1"
+            unit="%"
+            :decimals="0"
+          />
+        </PropertyField>
+      </div>
     </div>
   </PropertySection>
 </template>

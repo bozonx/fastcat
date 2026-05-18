@@ -430,6 +430,11 @@ export function updateClipProperties(
             ? anyRaw.fontWeight
             : undefined;
         const color = typeof anyRaw.color === 'string' ? anyRaw.color : undefined;
+        const clampAlpha = (value: unknown) =>
+          typeof value === 'number' && Number.isFinite(value)
+            ? Math.max(0, Math.min(1, value))
+            : undefined;
+        const colorAlpha = clampAlpha(anyRaw.colorAlpha);
         const alignRaw = anyRaw.align;
         const align =
           alignRaw === 'left' || alignRaw === 'center' || alignRaw === 'right'
@@ -458,6 +463,24 @@ export function updateClipProperties(
 
         const backgroundColor =
           typeof anyRaw.backgroundColor === 'string' ? anyRaw.backgroundColor.trim() : undefined;
+        const backgroundEnabled =
+          typeof anyRaw.backgroundEnabled === 'boolean' ? anyRaw.backgroundEnabled : undefined;
+        const backgroundAlpha = clampAlpha(anyRaw.backgroundAlpha);
+        const backgroundRadiusRaw = anyRaw.backgroundRadius;
+        const backgroundRadius =
+          typeof backgroundRadiusRaw === 'number' && Number.isFinite(backgroundRadiusRaw)
+            ? Math.max(0, Math.min(10_000, backgroundRadiusRaw))
+            : undefined;
+        const borderEnabled =
+          typeof anyRaw.borderEnabled === 'boolean' ? anyRaw.borderEnabled : undefined;
+        const borderColor =
+          typeof anyRaw.borderColor === 'string' ? anyRaw.borderColor.trim() : undefined;
+        const borderAlpha = clampAlpha(anyRaw.borderAlpha);
+        const borderWidthRaw = anyRaw.borderWidth;
+        const borderWidth =
+          typeof borderWidthRaw === 'number' && Number.isFinite(borderWidthRaw)
+            ? Math.max(0, Math.min(10_000, borderWidthRaw))
+            : undefined;
 
         const paddingRaw = anyRaw.padding;
         const padding = (() => {
@@ -518,13 +541,21 @@ export function updateClipProperties(
           ...(fontSize !== undefined ? { fontSize } : {}),
           ...(fontWeight !== undefined ? { fontWeight } : {}),
           ...(color !== undefined ? { color } : {}),
+          ...(colorAlpha !== undefined ? { colorAlpha } : {}),
           ...(align !== undefined ? { align } : {}),
           ...(verticalAlign !== undefined ? { verticalAlign } : {}),
           ...(lineHeight !== undefined ? { lineHeight } : {}),
           ...(letterSpacing !== undefined ? { letterSpacing } : {}),
+          ...(backgroundEnabled !== undefined ? { backgroundEnabled } : {}),
           ...(backgroundColor !== undefined && backgroundColor.length > 0
             ? { backgroundColor }
             : {}),
+          ...(backgroundAlpha !== undefined ? { backgroundAlpha } : {}),
+          ...(backgroundRadius !== undefined ? { backgroundRadius } : {}),
+          ...(borderEnabled !== undefined ? { borderEnabled } : {}),
+          ...(borderColor !== undefined && borderColor.length > 0 ? { borderColor } : {}),
+          ...(borderAlpha !== undefined ? { borderAlpha } : {}),
+          ...(borderWidth !== undefined ? { borderWidth } : {}),
           ...(padding !== undefined ? { padding } : {}),
         };
 

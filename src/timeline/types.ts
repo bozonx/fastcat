@@ -48,11 +48,19 @@ export interface TextClipStyle {
   fontSize?: number;
   fontWeight?: string | number;
   color?: string;
+  colorAlpha?: number;
   align?: 'left' | 'center' | 'right';
   verticalAlign?: 'top' | 'middle' | 'bottom';
   lineHeight?: number;
   letterSpacing?: number;
+  backgroundEnabled?: boolean;
   backgroundColor?: string;
+  backgroundAlpha?: number;
+  backgroundRadius?: number;
+  borderEnabled?: boolean;
+  borderColor?: string;
+  borderAlpha?: number;
+  borderWidth?: number;
   padding?:
     | number
     | { x?: number; y?: number }

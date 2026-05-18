@@ -11,6 +11,13 @@ describe('text-layout', () => {
     expect(style.fontWeight).toBe('700');
     expect(style.align).toBe('center');
     expect(style.verticalAlign).toBe('middle');
+    expect(style.colorAlpha).toBe(1);
+    expect(style.backgroundEnabled).toBe(false);
+    expect(style.backgroundAlpha).toBe(1);
+    expect(style.backgroundRadius).toBe(0);
+    expect(style.borderEnabled).toBe(false);
+    expect(style.borderAlpha).toBe(1);
+    expect(style.borderWidth).toBe(0);
     expect(style.padding).toEqual({ top: 60, right: 60, bottom: 60, left: 60 });
   });
 
