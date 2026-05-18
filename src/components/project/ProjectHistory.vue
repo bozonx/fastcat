@@ -112,7 +112,6 @@ function handleRedo() {
           :key="`future-${entry.id}`"
           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer opacity-50 hover:opacity-100 hover:bg-zinc-800/50"
         >
-          <div class="w-2 h-2 rounded-full bg-zinc-700"></div>
           <div class="flex-1 truncate text-zinc-400">
             {{ $t(entry.labelKey) }}
           </div>
@@ -134,12 +133,6 @@ function handleRedo() {
               : 'text-zinc-300 hover:bg-zinc-800/50 cursor-pointer',
           ]"
         >
-          <div
-            class="w-2 h-2 rounded-full"
-            :class="[
-              index === 0 ? 'bg-zinc-400 shadow-[0_0_6px_rgba(148,163,184,0.4)]' : 'bg-zinc-600',
-            ]"
-          ></div>
           <div class="flex-1 truncate" :class="[index === 0 ? 'font-medium' : '']">
             {{ $t(entry.labelKey) }}
           </div>

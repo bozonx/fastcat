@@ -92,7 +92,6 @@ function jumpToState(entryId: number, isFuture: boolean) {
           class="flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all duration-200 active:bg-ui-bg-hover opacity-50"
           @click="jumpToState(entry.id, true)"
         >
-          <div class="w-2 h-2 rounded-full bg-ui-text-muted"></div>
           <div class="flex-1 truncate text-ui-text-muted">
             {{ $t(entry.labelKey) }}
           </div>
@@ -115,10 +114,6 @@ function jumpToState(entryId: number, isFuture: boolean) {
           ]"
           @click="index === 0 ? null : jumpToState(entry.id, false)"
         >
-          <div
-            class="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]"
-            :class="[index === 0 ? 'bg-primary-500' : 'bg-ui-text-muted']"
-          ></div>
           <div class="flex-1 truncate" :class="[index === 0 ? 'font-semibold' : '']">
             {{ $t(entry.labelKey) }}
           </div>
