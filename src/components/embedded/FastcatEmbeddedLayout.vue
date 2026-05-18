@@ -123,7 +123,7 @@ async function initEmbedded() {
         
         // Fetch metadata to know duration
         const metadata = await mediaStore.getOrFetchMetadataByPath(res.path);
-        const durationUs = metadata?.durationUs || 3000000; // Default to 3s for images
+        const durationUs = metadata?.duration || 3000000; // Default to 3s for images
         
         const startUs = trackOffsetsUs[trackId] || 0;
 

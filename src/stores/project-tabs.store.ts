@@ -209,6 +209,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     removeOtherFileTabs,
     removeAllFileTabs,
     hideStaticTab,
+    showStaticTab,
     staticTabsOrder,
     fileTabs,
     setTabsState,

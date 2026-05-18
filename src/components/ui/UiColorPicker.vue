@@ -19,7 +19,7 @@ const COLORS = computed(() => {
   const commonColors = TRACK_COLOR_PRESETS.slice(1); // Skip default
 
   if (props.mode === 'track') {
-    return [TRACK_COLOR_PRESETS[0], ...commonColors];
+    return [TRACK_COLOR_PRESETS[0]!, ...commonColors];
   } else {
     // For markers, we might want a different default, but let's keep it consistent
     return ['#ffffff', ...commonColors];

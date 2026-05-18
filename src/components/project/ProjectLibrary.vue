@@ -188,7 +188,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto bg-ui-bg">
+    <div class="flex-1 overflow-y-auto bg-ui-bg px-4 pt-4 pb-8">
       <!-- Texts -->
       <div v-show="activeTab === 'texts'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Texts -->

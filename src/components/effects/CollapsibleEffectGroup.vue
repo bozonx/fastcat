@@ -30,7 +30,7 @@ function toggle() {
       </span>
     </button>
 
-    <div v-show="!isCollapsed" class="pl-6 space-y-2">
+    <div v-show="!isCollapsed" class="space-y-2">
       <slot />
     </div>
   </div>

@@ -147,7 +147,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto bg-ui-bg">
+    <div class="flex-1 overflow-y-auto bg-ui-bg px-4 pt-4 pb-8">
       <!-- Video Effects -->
       <div v-show="activeTab === 'video'" class="flex flex-col gap-4 pb-4">
         <!-- Standard Effects -->

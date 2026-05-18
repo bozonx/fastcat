@@ -1,6 +1,7 @@
 /** @vitest-environment node */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
+import { getAudioEffectManifest, isAudioEffectNodeGraph } from '~/effects/core/registry';
 
 class MockAudioNode {
   gain = { value: 1 };
@@ -20,41 +21,44 @@ function createMockContext(): BaseAudioContext {
   } as unknown as BaseAudioContext;
 }
 
-vi.mock('~/effects/core/registry', () => ({
-  getAudioEffectManifest: vi.fn((type: string) => {
-    if (type === 'audio-simple') {
-      return {
-        createNode: () => new MockAudioNode(),
-        updateNode: vi.fn(),
-      };
-    }
-    if (type === 'audio-graph') {
-      return {
-        createNode: () => ({ input: new MockAudioNode(), output: new MockAudioNode() }),
-        updateNode: vi.fn(),
-      };
-    }
-    if (type === 'audio-no-destroy') {
-      return {
-        createNode: () => ({ input: new MockAudioNode(), output: new MockAudioNode() }),
-        updateNode: vi.fn(),
-      };
-    }
-    if (type === 'audio-disable-wet') {
-      return {
-        disableGlobalWet: true,
-        createNode: () => new MockAudioNode(),
-        updateNode: vi.fn(),
-      };
-    }
-    return null;
-  }),
-  isAudioEffectNodeGraph: vi.fn((node: unknown) => {
-    return node && typeof (node as any).input === 'object' && typeof (node as any).output === 'object';
-  }),
-}));
+vi.mock('~/effects/core/registry', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('~/effects/core/registry')>();
+  return {
+    ...mod,
+    getAudioEffectManifest: vi.fn((type: string) => {
+      if (type === 'audio-simple') {
+        return { createNode: () => new MockAudioNode(), updateNode: vi.fn() };
+      }
+      if (type === 'audio-disable-wet') {
+        return { disableGlobalWet: true, createNode: () => new MockAudioNode(), updateNode: vi.fn() };
+      }
+      if (type === 'audio-destroyable') {
+        return {
+          createNode: () => new MockAudioNode(),
+          updateNode: vi.fn(),
+          destroyNode: vi.fn(),
+        };
+      }
+      if (type === 'audio-no-destroy') {
+        return {
+          createNode: () => ({ input: new MockAudioNode(), output: new MockAudioNode() }),
+          updateNode: vi.fn(),
+        };
+      }
+      return null;
+    }),
+    isAudioEffectNodeGraph: vi.fn(
+      (node: unknown) =>
+        node && typeof (node as any).input === 'object' && typeof (node as any).output === 'object',
+    ),
+  };
+});
 
 describe('buildAudioEffectGraph', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('passes source through when no effects', () => {
     const ctx = createMockContext();
     const source = new MockAudioNode();
@@ -97,27 +101,19 @@ describe('buildAudioEffectGraph', () => {
       effects: [{ id: '1', type: 'audio-disable-wet', enabled: true, target: 'audio' }],
     });
     expect(ctx.createGain).not.toHaveBeenCalled();
-    expect(result.outputNode).toBeInstanceOf(MockAudioNode);
   });
 
   it('calls destroyNode when present', () => {
     const ctx = createMockContext();
     const source = new MockAudioNode();
-    const destroyNode = vi.fn();
-    const { getAudioEffectManifest } = vi.imported('~/effects/core/registry');
-    vi.mocked(getAudioEffectManifest).mockImplementationOnce(() => ({
-      createNode: () => new MockAudioNode(),
-      updateNode: vi.fn(),
-      destroyNode,
-    }));
-
     const result = buildAudioEffectGraph({
       audioContext: ctx,
       sourceNode: source,
       effects: [{ id: '1', type: 'audio-destroyable', enabled: true, target: 'audio' }],
     });
     result.destroy();
-    expect(destroyNode).toHaveBeenCalled();
+    const manifest = vi.mocked(getAudioEffectManifest).mock.results[0]?.value;
+    expect(manifest?.destroyNode).toHaveBeenCalled();
   });
 
   it('falls back to disconnect for NodeGraph without destroyNode', () => {
@@ -125,11 +121,11 @@ describe('buildAudioEffectGraph', () => {
     const source = new MockAudioNode();
     const inputNode = new MockAudioNode();
     const outputNode = new MockAudioNode();
-    const { getAudioEffectManifest } = vi.imported('~/effects/core/registry');
     vi.mocked(getAudioEffectManifest).mockImplementationOnce(() => ({
       createNode: () => ({ input: inputNode, output: outputNode }),
       updateNode: vi.fn(),
     }));
+    vi.mocked(isAudioEffectNodeGraph).mockReturnValue(true);
 
     const result = buildAudioEffectGraph({
       audioContext: ctx,

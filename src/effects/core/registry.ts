@@ -26,6 +26,7 @@ export interface BaseEffectManifest<T = Record<string, any>> {
   descriptionKey?: string;
   icon: string;
   target?: EffectTarget;
+  category?: AudioEffectCategory;
   defaultValues: T;
   controls: ParamControl[];
   settingsControls?: ParamControl[];

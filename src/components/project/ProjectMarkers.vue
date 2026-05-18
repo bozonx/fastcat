@@ -41,11 +41,11 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
           class="sticky top-0 bg-ui-bg-elevated/95 backdrop-blur-sm z-10 border-b border-ui-border-muted uppercase tracking-wider text-ui-text-muted font-semibold"
         >
           <tr>
-            <th class="px-4 py-2.5 w-24"></th>
-            <th class="px-4 py-2.5 whitespace-nowrap">{{ $t('common.name') }}</th>
-            <th class="px-4 py-2.5 whitespace-nowrap">{{ $t('common.start') }}</th>
-            <th class="px-4 py-2.5 whitespace-nowrap">{{ $t('common.end') }}</th>
-            <th class="px-4 py-2.5 whitespace-nowrap">{{ $t('common.color') }}</th>
+            <th class="px-3 py-2 w-24"></th>
+            <th class="px-3 py-2 whitespace-nowrap"></th>
+            <th class="px-3 py-2 whitespace-nowrap">{{ $t('common.text') }}</th>
+            <th class="px-3 py-2 whitespace-nowrap">{{ $t('common.start') }}</th>
+            <th class="px-3 py-2 whitespace-nowrap">{{ $t('common.end') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-ui-border/50">
@@ -61,27 +61,27 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
             }"
             @click="handleMarkerClick(marker)"
           >
-            <td class="px-4 py-2 w-24 align-middle">
+            <td class="px-3 py-1.5 w-24 align-middle">
               <MarkerThumbnail :marker-id="marker.id" :time-us="marker.timeUs" />
             </td>
-            <td class="px-4 py-3 min-w-[140px] truncate max-w-[200px]" :title="marker.text">
+            <td class="px-3 py-2">
+              <div
+                class="w-2.5 h-2.5 rounded-full border border-white/5 shadow-sm"
+                :style="{ backgroundColor: marker.color || 'var(--color-primary-500)' }"
+              ></div>
+            </td>
+            <td class="px-3 py-2 min-w-[140px] truncate max-w-[200px]" :title="marker.text">
               <div class="flex items-center gap-2 truncate">
                 <span class="truncate transition-colors group-hover:text-ui-text">
                   {{ marker.text || $t('fastcat.timeline.marker') }}
                 </span>
               </div>
             </td>
-            <td class="px-4 py-3 font-mono text-[10px] text-ui-text-muted tabular-nums">
+            <td class="px-3 py-2 font-mono text-[10px] text-ui-text-muted tabular-nums">
               {{ formatMarkerTimecode(marker.timeUs) }}
             </td>
-            <td class="px-4 py-3 font-mono text-[10px] text-ui-text-muted tabular-nums">
+            <td class="px-3 py-2 font-mono text-[10px] text-ui-text-muted tabular-nums">
               {{ marker.durationUs ? formatMarkerTimecode(marker.timeUs + marker.durationUs) : '—' }}
-            </td>
-            <td class="px-4 py-3">
-              <div
-                class="w-2.5 h-2.5 rounded-full border border-white/5 shadow-sm"
-                :style="{ backgroundColor: marker.color || 'var(--color-primary-500)' }"
-              ></div>
             </td>
           </tr>
         </tbody>

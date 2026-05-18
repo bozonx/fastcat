@@ -182,7 +182,7 @@ export function useEntryPreview(params: {
       }
 
       let nextImageDimensions: { width: number; height: number } | null = null;
-      if (resolvedMediaType === 'image') {
+      if (resolvedMediaType === 'image' && fileToPlay) {
         try {
           const bitmap = await createImageBitmap(fileToPlay);
           nextImageDimensions = { width: bitmap.width, height: bitmap.height };

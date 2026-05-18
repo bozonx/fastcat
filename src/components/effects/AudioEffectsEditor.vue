@@ -256,8 +256,8 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     <EffectSettingsModal
       v-if="settingsEffectId"
       :model-value="true"
-      :effect="activeSettingsEffect"
-      :manifest="activeSettingsManifest"
+      :effect="activeSettingsEffect ?? undefined"
+      :manifest="activeSettingsManifest ?? undefined"
       @update:model-value="
         (val) => {
           if (!val) settingsEffectId = null;
