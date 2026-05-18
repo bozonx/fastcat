@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface ThoughtMonologueParams {
   wet: number;
@@ -134,9 +135,8 @@ export const thoughtMonologueManifest: AudioEffectManifest<ThoughtMonologueParam
   updateNode(node, values) {
     const graph = node as ThoughtMonologueGraph;
 
-    const clarity =
-      typeof values.clarity === 'number' ? Math.max(0, Math.min(100, values.clarity)) : 50;
-    const space = typeof values.space === 'number' ? Math.max(0, Math.min(100, values.space)) : 60;
+    const clarity = clampAudioParam(values.clarity, 0, 100, 50);
+    const space = clampAudioParam(values.space, 0, 100, 60);
 
     // Clarity gives up to +6dB boost in presence range
     graph.peaking.gain.value = (clarity / 100) * 6;
@@ -145,5 +145,18 @@ export const thoughtMonologueManifest: AudioEffectManifest<ThoughtMonologueParam
     const spaceNorm = space / 100;
     graph.spaceGain.gain.value = spaceNorm * 0.5;
     graph.delayGain.gain.value = spaceNorm * 0.3;
+  },
+  destroyNode(node) {
+    const graph = node as ThoughtMonologueGraph;
+    try {
+      graph.input.disconnect();
+      graph.peaking.disconnect();
+      graph.delay.disconnect();
+      graph.reverb.disconnect();
+      graph.dryGain.disconnect();
+      graph.spaceGain.disconnect();
+      graph.delayGain.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

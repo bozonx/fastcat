@@ -91,7 +91,7 @@ function handleAddEffect(type: string) {
   if (!manifest) return;
 
   const newEffect: AudioClipEffect = {
-    id: `audio_effect_${Date.now()}`,
+    id: `audio_effect_${crypto.randomUUID()}`,
     type,
     enabled: true,
     target: 'audio',

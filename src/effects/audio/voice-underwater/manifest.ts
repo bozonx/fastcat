@@ -1,4 +1,5 @@
 import type { AudioEffectManifest } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface VoiceUnderwaterParams {
   wet: number;
@@ -54,9 +55,13 @@ export const voiceUnderwaterManifest: AudioEffectManifest<VoiceUnderwaterParams>
   },
   updateNode(node, values) {
     const filter = node as BiquadFilterNode;
-    filter.frequency.value =
-      typeof values.cutoff === 'number' ? Math.max(150, Math.min(1200, values.cutoff)) : 360;
-    filter.Q.value =
-      typeof values.resonance === 'number' ? Math.max(0.1, Math.min(12, values.resonance)) : 4;
+    filter.frequency.value = clampAudioParam(values.cutoff, 150, 1200, 360);
+    filter.Q.value = clampAudioParam(values.resonance, 0.1, 12, 4);
+  },
+  destroyNode(node) {
+    const filter = node as BiquadFilterNode;
+    try {
+      filter.disconnect();
+    } catch {}
   },
 };

@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectNodeGraph } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface TremoloParams {
   wet: number;
@@ -73,8 +74,8 @@ export const tremoloManifest: AudioEffectManifest<TremoloParams> = {
   },
   updateNode(node, values) {
     const graph = node as TremoloGraph;
-    const rate = typeof values.rate === 'number' ? Math.max(0.1, Math.min(20, values.rate)) : 5;
-    const depth = typeof values.depth === 'number' ? Math.max(0, Math.min(1, values.depth)) : 0.6;
+    const rate = clampAudioParam(values.rate, 0.1, 20, 5);
+    const depth = clampAudioParam(values.depth, 0, 1, 0.6);
 
     graph.lfo.type = 'sine';
     graph.lfo.frequency.value = rate;

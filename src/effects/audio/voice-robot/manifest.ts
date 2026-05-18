@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectNodeGraph } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface VoiceRobotParams {
   wet: number;
@@ -102,17 +103,11 @@ export const voiceRobotManifest: AudioEffectManifest<VoiceRobotParams> = {
   },
   updateNode(node, values) {
     const graph = node as VoiceRobotGraph;
-    graph.delay.delayTime.value =
-      typeof values.delayTime === 'number'
-        ? Math.max(0.0005, Math.min(0.02, values.delayTime))
-        : 0.004;
-    graph.feedbackGain.gain.value =
-      typeof values.feedback === 'number' ? Math.max(0, Math.min(0.9, values.feedback)) : 0.25;
+    graph.delay.delayTime.value = clampAudioParam(values.delayTime, 0.0005, 0.02, 0.004);
+    graph.feedbackGain.gain.value = clampAudioParam(values.feedback, 0, 0.9, 0.25);
     graph.lfo.type = 'triangle';
-    graph.lfo.frequency.value =
-      typeof values.rate === 'number' ? Math.max(0.1, Math.min(8, values.rate)) : 1.2;
-    graph.lfoDepth.gain.value =
-      typeof values.depth === 'number' ? Math.max(0, Math.min(0.006, values.depth)) : 0.0018;
+    graph.lfo.frequency.value = clampAudioParam(values.rate, 0.1, 8, 1.2);
+    graph.lfoDepth.gain.value = clampAudioParam(values.depth, 0, 0.006, 0.0018);
   },
   destroyNode(node) {
     const graph = node as VoiceRobotGraph;

@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectNodeGraph } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface VoiceShakyParams {
   wet: number;
@@ -74,8 +75,8 @@ export const voiceShakyManifest: AudioEffectManifest<VoiceShakyParams> = {
   },
   updateNode(node, values) {
     const graph = node as VoiceShakyGraph;
-    const rate = typeof values.rate === 'number' ? Math.max(0.1, Math.min(20, values.rate)) : 9;
-    const depth = typeof values.depth === 'number' ? Math.max(0, Math.min(1, values.depth)) : 0.75;
+    const rate = clampAudioParam(values.rate, 0.1, 20, 9);
+    const depth = clampAudioParam(values.depth, 0, 1, 0.75);
 
     graph.lfo.type = 'triangle';
     graph.lfo.frequency.value = rate;

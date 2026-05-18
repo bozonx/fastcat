@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface TelephoneParams {
   wet: number;
@@ -95,8 +96,7 @@ export const telephoneManifest: AudioEffectManifest<TelephoneParams> = {
   updateNode(node, values) {
     const graph = node as TelephoneNodeGraph;
 
-    const quality =
-      typeof values.quality === 'number' ? Math.max(0, Math.min(100, values.quality)) : 50;
+    const quality = clampAudioParam(values.quality, 0, 100, 50);
 
     // Quality affects frequency range and distortion
     // Low quality = narrower range, more distortion
@@ -111,5 +111,16 @@ export const telephoneManifest: AudioEffectManifest<TelephoneParams> = {
 
     // Resonance sharpness
     graph.peaking.Q.value = 3 - (quality / 100) * 2; // 3 to 1
+  },
+  destroyNode(node) {
+    const graph = node as TelephoneNodeGraph;
+    try {
+      graph.input.disconnect();
+      graph.highpass.disconnect();
+      graph.lowpass.disconnect();
+      graph.peaking.disconnect();
+      graph.waveshaper.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

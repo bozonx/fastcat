@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface EnvMuffledParams {
   wet: number;
@@ -63,8 +64,7 @@ export const envMuffledManifest: AudioEffectManifest<EnvMuffledParams> = {
   updateNode(node, values) {
     const graph = node as MuffledNodeGraph;
 
-    const intensity =
-      typeof values.intensity === 'number' ? Math.max(0, Math.min(100, values.intensity)) : 70;
+    const intensity = clampAudioParam(values.intensity, 0, 100, 70);
 
     // Intensity: 0 = 5000Hz (barely muffled), 100 = 300Hz (very muffled)
     const minFreq = 300;
@@ -73,5 +73,14 @@ export const envMuffledManifest: AudioEffectManifest<EnvMuffledParams> = {
     const freq = minFreq * Math.pow(maxFreq / minFreq, normIntensity);
 
     graph.lowpass.frequency.value = freq;
+    graph.input.gain.value = clampAudioParam(values.wet, 0, 1, 1);
+  },
+  destroyNode(node) {
+    const graph = node as MuffledNodeGraph;
+    try {
+      graph.input.disconnect();
+      graph.lowpass.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

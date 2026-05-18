@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface EnvStadiumParams {
   wet: number;
@@ -110,7 +111,7 @@ export const envStadiumManifest: AudioEffectManifest<EnvStadiumParams> = {
   updateNode(node, values, context) {
     const graph = node as StadiumNodeGraph;
 
-    const size = typeof values.size === 'number' ? Math.max(0, Math.min(100, values.size)) : 80;
+    const size = clampAudioParam(values.size, 0, 100, 80);
 
     // Scale delay time: 0.1s to 0.6s
     const delayTime = 0.1 + (size / 100) * 0.5;
@@ -125,5 +126,15 @@ export const envStadiumManifest: AudioEffectManifest<EnvStadiumParams> = {
     const duration = 1.0 + (size / 100) * 4.0; // 1s to 5s tail
     const decay = 8.0 - (size / 100) * 6.0; // 8 to 2
     graph.reverb.buffer = createStadiumImpulseResponse(context.audioContext, duration, decay);
+  },
+  destroyNode(node) {
+    const graph = node as StadiumNodeGraph;
+    try {
+      graph.input.disconnect();
+      graph.reverb.disconnect();
+      graph.delay.disconnect();
+      graph.feedbackGain.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

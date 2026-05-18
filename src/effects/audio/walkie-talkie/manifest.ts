@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface WalkieTalkieParams {
   wet: number;
@@ -125,8 +126,19 @@ export const walkieTalkieManifest: AudioEffectManifest<WalkieTalkieParams> = {
   },
   updateNode(node, values) {
     const graph = node as WalkieTalkieNodeGraph;
-    const noise = typeof values.noise === 'number' ? Math.max(0, Math.min(100, values.noise)) : 30;
+    const noise = clampAudioParam(values.noise, 0, 100, 30);
 
     graph.noiseGain.gain.value = (noise / 100) * 0.15;
+  },
+  destroyNode(node) {
+    const graph = node as WalkieTalkieNodeGraph;
+    try {
+      graph.input.disconnect();
+      graph.bandpass.disconnect();
+      graph.distortion.disconnect();
+      graph.noiseGain.disconnect();
+      graph.compressor.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

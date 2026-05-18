@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface EnvBehindWallParams {
   wet: number;
@@ -103,8 +104,7 @@ export const envBehindWallManifest: AudioEffectManifest<EnvBehindWallParams> = {
     const graph = node as BehindWallNodeGraph;
 
     // Muffling: 0 = 2000Hz (thin wall), 100 = 150Hz (thick wall)
-    const muffling =
-      typeof values.muffling === 'number' ? Math.max(0, Math.min(100, values.muffling)) : 80;
+    const muffling = clampAudioParam(values.muffling, 0, 100, 80);
     // Logarithmic scale for frequency
     const minFreq = 150;
     const maxFreq = 2000;
@@ -115,13 +115,21 @@ export const envBehindWallManifest: AudioEffectManifest<EnvBehindWallParams> = {
     // We only update the IR if needed, but for simplicity we can just recreate it
     // if roomSize changes significantly. For performance, we'll just set it once
     // in a real scenario, but here we can generate a new one.
-    const roomSize =
-      typeof values.roomSize === 'number' ? Math.max(0, Math.min(100, values.roomSize)) : 50;
+    const roomSize = clampAudioParam(values.roomSize, 0, 100, 50);
     const duration = 0.1 + (roomSize / 100) * 0.9; // 0.1 to 1.0 seconds
     const decay = 10 - (roomSize / 100) * 8; // 10 to 2
 
     // In a real-time system, frequently changing the convolver buffer can cause glitches.
     // For offline rendering, it's fine.
     graph.reverb.buffer = createRoomImpulseResponse(context.audioContext, duration, decay);
+  },
+  destroyNode(node) {
+    const graph = node as BehindWallNodeGraph;
+    try {
+      graph.input.disconnect();
+      graph.filter.disconnect();
+      graph.reverb.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

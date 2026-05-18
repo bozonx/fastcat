@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectNodeGraph } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface VoiceRadioParams {
   wet: number;
@@ -118,12 +119,9 @@ export const voiceRadioManifest: AudioEffectManifest<VoiceRadioParams> = {
   },
   updateNode(node, values) {
     const graph = node as VoiceRadioGraph;
-    const lowCut =
-      typeof values.lowCut === 'number' ? Math.max(200, Math.min(1200, values.lowCut)) : 500;
-    const highCut =
-      typeof values.highCut === 'number' ? Math.max(1200, Math.min(5000, values.highCut)) : 2200;
-    const distortion =
-      typeof values.distortion === 'number' ? Math.max(0, Math.min(1, values.distortion)) : 0.35;
+    const lowCut = clampAudioParam(values.lowCut, 200, 1200, 500);
+    const highCut = clampAudioParam(values.highCut, 1200, 5000, 2200);
+    const distortion = clampAudioParam(values.distortion, 0, 1, 0.35);
 
     graph.highPass.frequency.value = Math.min(lowCut, highCut - 100);
     graph.highPass.Q.value = 0.8;

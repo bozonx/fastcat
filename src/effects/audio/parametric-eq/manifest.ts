@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface ParametricEqPoint {
   id: string;
@@ -182,9 +183,9 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
 
       filter.type = point.type || 'peaking';
 
-      const freq = Math.max(20, Math.min(20000, point.frequency || 1000));
-      const q = Math.max(0.0001, Math.min(1000, point.q || 1));
-      const gain = Math.max(-40, Math.min(40, point.gain || 0));
+      const freq = clampAudioParam(point.frequency, 20, 20000, 1000);
+      const q = clampAudioParam(point.q, 0.1, 20, 1);
+      const gain = clampAudioParam(point.gain, -24, 24, 0);
 
       const time = context.audioContext.currentTime;
       // Use setTargetAtTime with a small time constant (0.02s) to prevent zipper noise when adjusting knobs

@@ -3,6 +3,7 @@ import type {
   AudioEffectContext,
   AudioEffectNodeGraph,
 } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface OldVinylParams {
   wet: number;
@@ -177,10 +178,9 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
   updateNode(node, values) {
     const graph = node as OldVinylNodeGraph;
 
-    const wear = typeof values.wear === 'number' ? Math.max(0, Math.min(100, values.wear)) : 50;
-    const noiseLevel =
-      typeof values.noiseLevel === 'number' ? Math.max(0, Math.min(100, values.noiseLevel)) : 20;
-    const wow = typeof values.wow === 'number' ? Math.max(0, Math.min(100, values.wow)) : 30;
+    const wear = clampAudioParam(values.wear, 0, 100, 50);
+    const noiseLevel = clampAudioParam(values.noiseLevel, 0, 100, 20);
+    const wow = clampAudioParam(values.wow, 0, 100, 30);
 
     // Bandpass Q tightens with wear
     graph.bandpass.Q.value = 0.5 + (wear / 100) * 1.5;
@@ -197,5 +197,18 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
     // Slight randomization of wow frequency to simulate uneven motor
     // Only applied if we could easily trigger it, but we can just set base frequency
     graph.wowOscillator.frequency.value = 0.55 + (Math.random() * 0.1 - 0.05);
+  },
+  destroyNode(node) {
+    const graph = node as OldVinylNodeGraph;
+    try {
+      graph.input.disconnect();
+      graph.bandpass.disconnect();
+      graph.waveshaper.disconnect();
+      graph.delay.disconnect();
+      graph.wowOscillator.stop();
+      graph.wowOscillator.disconnect();
+      graph.noiseGain.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

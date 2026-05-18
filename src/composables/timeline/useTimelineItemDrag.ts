@@ -1,7 +1,7 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import type { TimelineTrack, TimelineMoveItemPayload } from '~/timeline/types';
+import type { TimelineTrack, TimelineMoveItemPayload, TimelineDocument } from '~/timeline/types';
 import {
   buildMultiItemMoves,
   computeSnapTargetsUs,
@@ -41,6 +41,7 @@ import {
 import { sanitizeFps, getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
+import type { TimelineCommand } from '~/timeline/commands';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 
 export interface TimelineMovePreview {
@@ -125,8 +126,8 @@ export function useTimelineItemDrag(
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
   const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
 
-  const dragStartSnapshot = ref<import('~/timeline/types').TimelineDocument | null>(null);
-  const lastDragAppliedCmd = ref<import('~/timeline/commands').TimelineCommand | null>(null);
+  const dragStartSnapshot = ref<TimelineDocument | null>(null);
+  const lastDragAppliedCmd = ref<TimelineCommand | null>(null);
   const dragCancelRequested = ref(false);
   const dragIsFreeOverride = ref(false);
   const dragUsePseudoOverlapOverride = ref(false);
@@ -244,7 +245,7 @@ export function useTimelineItemDrag(
     if (track?.locked) return;
 
     const item = track?.items.find((it) => it.id === itemId);
-    if (item?.kind === 'clip' && Boolean((item as any).locked)) return;
+    if (item?.kind === 'clip' && Boolean(item.locked)) return;
 
     if (!timelineStore.selectedItemIds.includes(itemId)) {
       const doc = timelineStore.timelineDoc;
@@ -329,7 +330,7 @@ export function useTimelineItemDrag(
     if (track?.locked) return;
 
     const item = track?.items.find((it) => it.id === input.itemId);
-    if (item?.kind === 'clip' && Boolean((item as any).locked)) return;
+    if (item?.kind === 'clip' && Boolean(item.locked)) return;
 
     draggingMode.value = input.edge === 'start' ? 'trim_start' : 'trim_end';
     draggingTrackId.value = input.trackId;
@@ -384,9 +385,7 @@ export function useTimelineItemDrag(
         : null;
     pendingTrimCommit.value = null;
 
-    if (e.pointerType !== 'touch') {
-      (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
-    }
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
     bindDragSession();
   }
 
@@ -817,9 +816,10 @@ export function useTimelineItemDrag(
         movedItemId &&
         commit &&
         commit.moves.length === 1 &&
+        // Copy-drag currently supports only a single selected item
         timelineStore.selectedItemIds.length === 1
       ) {
-        const move = commit.moves[0];
+        const move = commit.moves[0]!;
         const track = snapshot.tracks.find((item) => item.id === move.fromTrackId) ?? null;
         const clip =
           track?.items.find((item) => item.kind === 'clip' && item.id === movedItemId) ?? null;
@@ -846,7 +846,7 @@ export function useTimelineItemDrag(
         const moves = pendingMoveCommit.value?.moves ?? [];
 
         for (const move of moves) {
-          const tr = doc.tracks.find((t) => t.id === move.fromTrackId);
+          const tr = doc.tracks.find((t) => t.id === move.toTrackId);
           const it = tr?.items.find((x) => x.id === move.itemId);
           if (!it || it.kind !== 'clip') continue;
 
@@ -856,8 +856,8 @@ export function useTimelineItemDrag(
 
           if (
             tr?.kind === 'audio' &&
-            Boolean((it as any).linkedVideoClipId) &&
-            Boolean((it as any).lockToLinkedVideo)
+            Boolean(it.linkedVideoClipId) &&
+            Boolean(it.lockToLinkedVideo)
           ) {
             timelineStore.applyTimeline(
               {
@@ -868,7 +868,7 @@ export function useTimelineItemDrag(
                   linkedVideoClipId: undefined,
                   lockToLinkedVideo: false,
                 },
-              } as any,
+              },
               { saveMode: 'none', skipHistory: true },
             );
             hasPendingTimelinePersist.value = true;
@@ -881,9 +881,9 @@ export function useTimelineItemDrag(
             if (t.kind !== 'audio') continue;
             for (const it of t.items) {
               if (it.kind !== 'clip') continue;
-              const linked = String((it as any).linkedVideoClipId ?? '');
+              const linked = it.linkedVideoClipId ?? '';
               if (!linked) continue;
-              if (!(it as any).lockToLinkedVideo) continue;
+              if (!it.lockToLinkedVideo) continue;
               if (!movedVideoIds.includes(linked)) continue;
               cmds.push({
                 type: 'update_clip_properties',
