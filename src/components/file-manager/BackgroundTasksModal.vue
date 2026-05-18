@@ -81,6 +81,9 @@ function formatTime(timestamp: number) {
               <span class="font-medium text-sm truncate">{{ task.title }}</span>
               <span class="text-xs text-ui-text-muted">{{ formatTime(task.createdAt) }}</span>
             </div>
+            <div v-if="task.description" class="text-xs text-ui-text-muted mt-1 line-clamp-1">
+              {{ task.description }}
+            </div>
             <div v-if="task.error" class="text-xs text-error-500 mt-1 line-clamp-1">
               {{ task.error }}
             </div>

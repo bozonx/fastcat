@@ -1092,6 +1092,9 @@ export default {
     },
     backgroundTasks: {
       empty: 'No background tasks',
+      modelDownloadDescription:
+        'Downloading local Whisper model {model}. You can close settings or switch to another tab.',
+      modelDownloadTitle: 'Downloading speech recognition model',
       title: 'Background Tasks',
       transcriptionTitle: 'Transcription: {name}',
     },
@@ -1195,7 +1198,7 @@ export default {
           'Send the current audio file to the configured STT service. Language is optional.',
         transcriptionLanguage: 'Language',
         transcriptionLanguageHint:
-          "Default language shown in the transcription dialog. You can change it before each transcription.",
+          'Default language shown in the transcription dialog. You can change it before each transcription.',
         transcriptionSaved: 'Transcription saved',
         transcriptionSavedDescription: 'Transcription was saved next to the source file.',
         transcriptionSavedVideoDescription:

@@ -1096,6 +1096,9 @@ export default {
     },
     backgroundTasks: {
       empty: 'Нет фоновых задач',
+      modelDownloadDescription:
+        'Скачивается локальная Whisper-модель {model}. Можно закрыть настройки или перейти в другую вкладку.',
+      modelDownloadTitle: 'Скачивание модели распознавания речи',
       title: 'Фоновые задачи',
       transcriptionTitle: 'Транскрибация: {name}',
     },

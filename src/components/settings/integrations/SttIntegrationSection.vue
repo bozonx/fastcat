@@ -1,28 +1,16 @@
 <script setup lang="ts">
-import { reactive, computed, ref, onMounted, watch } from 'vue';
+import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 
-import {
-  resolveExternalServiceConfig,
-  runExternalHealthCheck,
-} from '~/utils/external-integrations';
-import { isModelDownloaded } from '~/utils/transcription/model-storage';
 import { runModelDownloadTask } from '~/utils/transcription/model-download-task';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const backgroundTasksStore = useBackgroundTasksStore();
-const runtimeConfig = useRuntimeConfig();
-
-const healthState = reactive({
-  loading: false,
-  status: 'idle' as 'idle' | 'success' | 'error',
-  message: '',
-});
 
 const sttMode = computed({
   get: () => {
@@ -56,65 +44,27 @@ const sttModelsText = computed({
   },
 });
 
-async function runHealth() {
-  const resolved = resolveExternalServiceConfig({
-    service: 'stt',
-    integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl: '',
-    fastcatAccountApiUrl: runtimeConfig.public.fastcatAccountApiUrl as string,
-  });
-
-  if (!resolved) {
-    healthState.status = 'error';
-    healthState.message = t(
-      'videoEditor.settings.integrationHealthUnavailable',
-      'No active integration is configured for this service.',
-    );
-    return;
-  }
-
-  healthState.loading = true;
-  healthState.status = 'idle';
-  healthState.message = '';
-
-  try {
-    const result = await runExternalHealthCheck({
-      url: resolved.healthUrl,
-      bearerToken: resolved.bearerToken,
-    });
-    healthState.status = 'success';
-    healthState.message = `${t('videoEditor.settings.integrationHealthOk')} (${result.status})`;
-  } catch (error: unknown) {
-    healthState.status = 'error';
-    healthState.message = error instanceof Error ? error.message : 'Health check failed';
-  } finally {
-    healthState.loading = false;
-  }
-}
-
-function getHealthTone(status: typeof healthState.status) {
-  if (status === 'success') return 'text-success-400';
-  if (status === 'error') return 'text-error-400';
-  return 'text-ui-text-muted';
-}
-
 const currentModel = computed(() => workspaceStore.userSettings.integrations.stt.localModel);
 
 const activeDownloadTask = computed(() => {
   const model = currentModel.value;
   return backgroundTasksStore.activeTasks.find(
-    (t) => t.type === 'model-download' && t.title === model,
+    (task) => task.type === 'model-download' && (task.resourceId === model || task.title === model),
   );
 });
 
 const isDownloading = computed(() => !!activeDownloadTask.value);
 
 async function startDownload() {
-  if (!workspaceStore.workspaceHandle) return;
+  if (!workspaceStore.workspaceHandle || isDownloading.value) return;
   try {
     await runModelDownloadTask({
       workspaceHandle: workspaceStore.workspaceHandle,
       modelName: workspaceStore.userSettings.integrations.stt.localModel,
+      title: t('videoEditor.backgroundTasks.modelDownloadTitle'),
+      description: t('videoEditor.backgroundTasks.modelDownloadDescription', {
+        model: workspaceStore.userSettings.integrations.stt.localModel,
+      }),
     });
   } catch (e) {
     console.error(e);

@@ -14,6 +14,8 @@ export interface BackgroundTask {
   id: string;
   type: BackgroundTaskType;
   title: string;
+  description?: string;
+  resourceId?: string;
   status: BackgroundTaskStatus;
   progress: number; // 0 to 1
   createdAt: number;
