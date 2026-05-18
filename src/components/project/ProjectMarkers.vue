@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { formatTimecode } from '~/utils/timecode';
 import MarkerThumbnail from '~/components/project/MarkerThumbnail.vue';
@@ -11,10 +10,9 @@ defineProps<{
 }>();
 
 const timelineStore = useTimelineStore();
-const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 
-const fps = computed(() => projectStore.projectSettings.project.fps || 30);
+const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 
 const markers = computed(() => timelineStore.markers);
 

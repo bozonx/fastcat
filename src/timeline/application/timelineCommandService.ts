@@ -12,6 +12,8 @@ import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumb
 import { ensureProxyCommand } from '~/media-cache/application/proxyThumbnailCommands';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { secondsToUs } from '~/utils/time';
+import type { TimelineFormatInput } from '~/timeline/format';
+import { getTimelineFormat } from '~/timeline/format';
 
 interface TimelineMediaMetadata {
   duration?: number;
@@ -62,13 +64,7 @@ export interface TimelineCommandServiceDeps {
       isAutoSettings: boolean;
     };
   };
-  updateProjectSettings: (settings: {
-    width: number;
-    height: number;
-    fps: number;
-    sampleRate?: number;
-    isAutoSettings: boolean;
-  }) => Promise<void>;
+  updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
   showFpsWarning: (fileFps: number, projectFps: number) => void;
   showAutoSettingsApplied: (settings: { width: number; height: number; fps: number }) => void;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
@@ -169,13 +165,21 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     };
   }
 
+  function isTimelineEmpty(doc: TimelineDocument | null) {
+    return !doc?.tracks.some((track) => track.items.some((item) => item.kind === 'clip'));
+  }
+
   async function resolveNestedTimeline(path: string, name: string) {
     const file = await deps.getFileByPath(path);
     if (!file) {
       throw new Error('Failed to access file');
     }
     const text = await file.text();
-    const doc = deps.parseTimelineFromOtio(text, { id: 'nested', name, fps: 25 });
+    const doc = deps.parseTimelineFromOtio(text, {
+      id: 'nested',
+      name,
+      format: { fps: 25 },
+    });
 
     return {
       doc,
@@ -312,21 +316,22 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       });
     }
 
-    // Auto-settings and FPS warning logic
     if (metadata.video) {
-      const projectSettings = deps.getProjectSettings();
-      if (projectSettings.project.isAutoSettings) {
+      const doc = deps.getTimelineDoc();
+      const timelineFormat = getTimelineFormat(doc);
+      if (timelineFormat.isAutoSettings && isTimelineEmpty(doc)) {
         const rotation = metadata.video.rotation ?? 0;
         const isRotated90 = Math.abs(rotation) === 90 || Math.abs(rotation) === 270;
         const effectiveWidth = isRotated90 ? metadata.video.height : metadata.video.width;
         const effectiveHeight = isRotated90 ? metadata.video.width : metadata.video.height;
 
-        await deps.updateProjectSettings({
+        await deps.updateTimelineFormat({
           width: effectiveWidth,
           height: effectiveHeight,
           fps: metadata.video.fps,
-          sampleRate: metadata.audio?.sampleRate ?? projectSettings.project.sampleRate,
+          sampleRate: metadata.audio?.sampleRate ?? timelineFormat.sampleRate,
           isAutoSettings: false,
+          settingsSource: 'firstClip',
         });
 
         deps.showAutoSettingsApplied({
@@ -334,8 +339,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           height: effectiveHeight,
           fps: metadata.video.fps,
         });
-      } else if (!areFpsClose(metadata.video.fps, projectSettings.project.fps)) {
-        deps.showFpsWarning(metadata.video.fps, projectSettings.project.fps);
+      } else if (!areFpsClose(metadata.video.fps, timelineFormat.fps)) {
+        deps.showFpsWarning(metadata.video.fps, timelineFormat.fps);
       }
     }
 

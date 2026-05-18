@@ -1,10 +1,12 @@
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useProjectStore } from '~/stores/project.store';
 import {
   createTimelineCommand,
   createMarkdownCommand,
 } from '~/file-manager/application/fileManagerCommands';
+import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export interface FileBrowserCreateActionsOptions {
@@ -28,6 +30,7 @@ export function useFileBrowserCreateActions({
 }: FileBrowserCreateActionsOptions) {
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
+  const projectStore = useProjectStore();
 
   async function createTimelineInDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
@@ -37,6 +40,7 @@ export function useFileBrowserCreateActions({
       vfs: vfs as any,
       timelinesDirName: entry.path || undefined,
       existingNames,
+      format: createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project),
     });
     await reloadDirectory(entry.path || '');
     uiStore.notifyFileManagerUpdate();

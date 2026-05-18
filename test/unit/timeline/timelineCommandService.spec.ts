@@ -5,7 +5,22 @@ import { createTimelineCommandService } from '~/timeline/application/timelineCom
 describe('createTimelineCommandService', () => {
   function makeDeps(overrides?: Record<string, unknown>) {
     return {
-      getTimelineDoc: vi.fn(() => null),
+      getTimelineDoc: vi.fn(() => ({
+        timebase: { fps: 30 },
+        tracks: [{ id: 'v1', kind: 'video', name: 'V1', items: [] }],
+        metadata: {
+          fastcat: {
+            format: {
+              width: 1920,
+              height: 1080,
+              fps: 30,
+              sampleRate: 48000,
+              isAutoSettings: false,
+              settingsSource: 'manual',
+            },
+          },
+        },
+      })),
       ensureTimelineDoc: vi.fn(() => ({
         id: 'doc1',
         name: 'Test',
@@ -35,7 +50,8 @@ describe('createTimelineCommandService', () => {
       getProjectSettings: vi.fn(() => ({
         project: { width: 1920, height: 1080, fps: 30, isAutoSettings: false },
       })),
-      updateProjectSettings: vi.fn().mockResolvedValue(undefined),
+      updateTimelineFormat: vi.fn().mockResolvedValue(undefined),
+      showAutoSettingsApplied: vi.fn(),
       showFpsWarning: vi.fn(),
       mediaCache: { hasProxy: vi.fn(() => false), ensureProxy: vi.fn().mockResolvedValue(undefined) },
       defaultImageDurationUs: 5_000_000,

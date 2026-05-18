@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineHoverState } from '~/composables/timeline/useTimelineHoverState';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
@@ -9,11 +8,10 @@ import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 defineProps<{ scrollEl?: HTMLElement | null }>();
 
 const timelineStore = useTimelineStore();
-const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const { hoveredMarkerId } = useTimelineHoverState();
 
-const fps = computed(() => projectStore.projectSettings.project.fps || 30);
+const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 
 function viewportX(absolutePx: number): number {
   return Math.round(absolutePx - timelineStore.timelineScrollLeftPx);

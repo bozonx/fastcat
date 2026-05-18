@@ -6,6 +6,8 @@ import type {
   TimelineClipItem,
   TimelineRange,
   ClipTransition,
+  ClipEffect,
+  TimelineFormat,
 } from './types';
 import type {
   OtioTrack,
@@ -45,6 +47,7 @@ import {
   TimelineTrackFastCatMetaSchema,
   TimelineClipFastCatMetaSchema,
 } from './otio/schemas';
+import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -60,13 +63,14 @@ function sortTracksForOtioStack(tracks: TimelineTrack[]): TimelineTrack[] {
 export function createDefaultTimelineDocument(params: {
   id: string;
   name: string;
-  fps: number;
+  format: TimelineFormatInput;
 }): TimelineDocument {
+  const format = normalizeTimelineFormat(params.format);
   return {
     OTIO_SCHEMA: 'Timeline.1',
     id: params.id,
     name: params.name,
-    timebase: { fps: params.fps },
+    timebase: { fps: format.fps },
     tracks: [
       { id: 'v2', kind: 'video', name: 'Video 2', videoHidden: false, items: [] },
       { id: 'v1', kind: 'video', name: 'Video 1', videoHidden: false, items: [] },
@@ -77,7 +81,8 @@ export function createDefaultTimelineDocument(params: {
       fastcat: {
         version: 1,
         docId: params.id,
-        timebase: { fps: params.fps },
+        timebase: { fps: format.fps },
+        format,
       },
     },
   };
@@ -348,7 +353,8 @@ function serializeTrackItems(
 }
 
 export function serializeTimelineToOtio(doc: TimelineDocument): string {
-  const fps = doc.timebase?.fps;
+  const format = getTimelineFormat(doc);
+  const fps = format.fps;
 
   const tracks: OtioTrack[] = sortTracksForOtioStack(doc.tracks).map((t) => {
     const children = serializeTrackItems(t.items, t.id, fps);
@@ -412,7 +418,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
         version: 1,
         document: {
           docId: doc.id,
-          timebase: doc.timebase,
+          timebase: { fps },
+          format,
         },
         audio: {
           masterGain: fastcatMeta?.masterGain,
@@ -435,19 +442,26 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
 function parseDocumentMetadata(raw: unknown): {
   docId?: string;
   timebase?: { fps: number };
+  format?: TimelineFormat;
   masterGain?: number;
   masterMuted?: boolean;
-  masterEffects?: unknown[];
+  masterEffects?: ClipEffect[];
   markers?: TimelineMarker[];
   version?: number;
 } {
   const grouped = TimelineDocFastCatMetaSchema.parse(raw);
+  const rawFormat = grouped.document?.format;
+  const timebase = grouped.document?.timebase ?? grouped.timebase;
+  const format = rawFormat
+    ? normalizeTimelineFormat(rawFormat, { ...normalizeTimelineFormat(null), fps: timebase?.fps ?? 25 })
+    : undefined;
   return {
     docId: coerceId(grouped.document?.docId ?? grouped.docId, ''),
-    timebase: grouped.document?.timebase ?? grouped.timebase,
+    timebase,
+    format,
     masterGain: grouped.audio?.masterGain,
     masterMuted: grouped.audio?.masterMuted,
-    masterEffects: grouped.audio?.masterEffects,
+    masterEffects: grouped.audio?.masterEffects as ClipEffect[] | undefined,
     version: grouped.version,
   };
 }
@@ -458,7 +472,7 @@ function parseDocumentMetadata(raw: unknown): {
 
 export function parseTimelineFromOtio(
   text: string,
-  fallback: { id: string; name: string; fps: number },
+  fallback: { id: string; name: string; format: TimelineFormatInput },
 ): TimelineDocument {
   const report = new OtioValidationReport();
 
@@ -471,7 +485,7 @@ export function parseTimelineFromOtio(
     return createDefaultTimelineDocument({
       id: fallback.id,
       name: fallback.name,
-      fps: fallback.fps,
+      format: fallback.format,
     });
   }
 
@@ -481,12 +495,17 @@ export function parseTimelineFromOtio(
     return createDefaultTimelineDocument({
       id: fallback.id,
       name: fallback.name,
-      fps: fallback.fps,
+      format: fallback.format,
     });
   }
 
   const docMeta = parseDocumentMetadata((parsed.metadata as any)?.fastcat ?? {});
-  const timebase = assertTimelineTimebase(docMeta.timebase ?? { fps: fallback.fps });
+  const fallbackFormat = normalizeTimelineFormat(fallback.format);
+  const timebase = assertTimelineTimebase(docMeta.timebase ?? { fps: fallbackFormat.fps });
+  const format = normalizeTimelineFormat(docMeta.format ?? { ...fallbackFormat, fps: timebase.fps }, {
+    ...fallbackFormat,
+    fps: timebase.fps,
+  });
 
   const stackChildren = Array.isArray((parsed.tracks as any)?.children)
     ? (parsed.tracks as any).children
@@ -705,14 +724,15 @@ export function parseTimelineFromOtio(
 
   if (tracksWithValidLinks.length === 0) {
     report.warn('no_tracks', 'No valid tracks found; creating default timeline.');
-    const base = createDefaultTimelineDocument({ id: docId, name, fps: timebase.fps });
+    const base = createDefaultTimelineDocument({ id: docId, name, format });
     base.metadata = {
       ...(base.metadata ?? {}),
       fastcat: {
         ...(base.metadata?.fastcat ?? {}),
         version,
         docId,
-        timebase,
+        timebase: { fps: format.fps },
+        format,
         markers,
         masterEffects,
         masterGain,
@@ -729,13 +749,14 @@ export function parseTimelineFromOtio(
     OTIO_SCHEMA: 'Timeline.1',
     id: docId,
     name,
-    timebase,
+    timebase: { fps: format.fps },
     tracks: tracksWithValidLinks,
     metadata: {
       fastcat: {
         version,
         docId,
-        timebase,
+        timebase: { fps: format.fps },
+        format,
         markers,
         masterEffects,
         masterGain,

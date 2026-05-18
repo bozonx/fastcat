@@ -9,6 +9,7 @@ import {
   resolveExportCodecs,
   getExt,
 } from '~/composables/timeline/export';
+import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 export interface ExportRangeOption {
   id: string;
@@ -224,7 +225,10 @@ export function useExportForm() {
     excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
     audioCodec.value = projectStore.projectSettings.exportDefaults.encoding.audioCodec;
     audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
-    audioSampleRate.value = projectStore.projectSettings.project.sampleRate;
+    const format =
+      timelineStore.timelineFormat ??
+      createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
+    audioSampleRate.value = format.sampleRate;
     bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
     keyframeIntervalSec.value =
       projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
@@ -235,13 +239,13 @@ export function useExportForm() {
     metadataAuthor.value = projectStore.projectMeta?.author || '';
     metadataTags.value = projectStore.projectMeta?.tags.join(', ') || '';
 
-    exportWidth.value = projectStore.projectSettings.project.width;
-    exportHeight.value = projectStore.projectSettings.project.height;
-    exportFps.value = projectStore.projectSettings.project.fps;
-    resolutionFormat.value = projectStore.projectSettings.project.resolutionFormat;
-    orientation.value = projectStore.projectSettings.project.orientation;
-    aspectRatio.value = projectStore.projectSettings.project.aspectRatio;
-    isCustomResolution.value = projectStore.projectSettings.project.isCustomResolution;
+    exportWidth.value = format.width;
+    exportHeight.value = format.height;
+    exportFps.value = format.fps;
+    resolutionFormat.value = format.resolutionFormat;
+    orientation.value = format.orientation;
+    aspectRatio.value = format.aspectRatio;
+    isCustomResolution.value = format.isCustomResolution;
     initialSavedSettingsSnapshot.value = savedSettingsSnapshot.value;
 
     await ensureExportDir();

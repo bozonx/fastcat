@@ -89,10 +89,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
   const speedButtonLabel = computed(() => formatSpeedLabel(options.timelineStore.playbackSpeed));
 
   const previewResolutions = computed<PreviewResolutionOption[]>(() => {
-    const projectHeight = Math.max(
-      1,
-      Math.round(options.projectStore.projectSettings.project.height),
-    );
+    const projectHeight = Math.max(1, Math.round(options.timelineStore.timelineFormat.height));
 
     // Standard fractional preview resolutions (Full, 1/2, 1/4, 1/8)
     const scales = [1, 0.5, 0.25, 0.125];

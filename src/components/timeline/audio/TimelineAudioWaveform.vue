@@ -139,7 +139,7 @@ async function buildTimelinePeaks(params: {
       const nestedDoc = parseTimelineFromOtio(text, {
         id: 'nested-waveform',
         name: clip.name,
-        fps: 25,
+        format: { fps: 25 },
       });
 
       visiting.add(path);
@@ -231,7 +231,7 @@ const extractPeaks = async () => {
       const nestedDoc = parseTimelineFromOtio(text, {
         id: 'nested-waveform-root',
         name: props.item.name,
-        fps: 25,
+        format: { fps: 25 },
       });
 
       const durationS = effectiveSourceDurationUs.value / 1_000_000;

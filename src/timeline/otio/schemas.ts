@@ -332,6 +332,20 @@ export const TimelineDocFastCatMetaSchema = z
       .object({
         docId: z.string().trim().min(1).optional(),
         timebase: z.object({ fps: z.number() }).optional(),
+        format: z
+          .object({
+            width: z.number().optional(),
+            height: z.number().optional(),
+            fps: z.number().optional(),
+            resolutionFormat: z.string().optional(),
+            orientation: z.enum(['landscape', 'portrait']).optional(),
+            aspectRatio: z.string().optional(),
+            isCustomResolution: z.boolean().optional(),
+            sampleRate: z.number().optional(),
+            isAutoSettings: z.boolean().optional(),
+            settingsSource: z.enum(['projectDefaults', 'firstClip', 'manual']).optional(),
+          })
+          .optional(),
         markers: z.array(z.any()).optional(),
       })
       .optional(),

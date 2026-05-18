@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
@@ -22,9 +22,9 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
 }>();
 
-const projectStore = useProjectStore();
+const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
-const fps = computed(() => projectStore.projectSettings.project.fps || 30);
+const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 
 const isFocused = ref(false);
 const localValue = ref('');

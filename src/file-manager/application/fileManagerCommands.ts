@@ -10,6 +10,8 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
+import type { TimelineFormatInput } from '~/timeline/format';
 
 export const LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES = 100 * 1024 * 1024;
 
@@ -389,6 +391,7 @@ export async function createTimelineCommand(params: {
   timelinesDirName?: string;
   initialIndex?: number;
   existingNames?: string[];
+  format: TimelineFormatInput;
 }): Promise<string> {
   const basePath = params.timelinesDirName ?? '';
   if (basePath) {
@@ -403,18 +406,15 @@ export async function createTimelineCommand(params: {
     existingNames: params.existingNames,
     startIndex: params.initialIndex,
   });
-  const payload = {
-    OTIO_SCHEMA: 'Timeline.1',
-    name: fileName.replace('.otio', ''),
-    tracks: {
-      OTIO_SCHEMA: 'Stack.1',
-      children: [],
-      name: 'tracks',
-    },
-  };
+  const timelineName = fileName.replace('.otio', '');
+  const payload = createDefaultTimelineDocument({
+    id: timelineName,
+    name: timelineName,
+    format: params.format,
+  });
 
   const fullPath = basePath ? `${basePath}/${fileName}` : fileName;
-  await params.vfs.writeJson(fullPath, payload);
+  await params.vfs.writeJson(fullPath, JSON.parse(serializeTimelineToOtio(payload)));
 
   return fullPath;
 }

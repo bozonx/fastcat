@@ -70,6 +70,18 @@ vi.mock('~/stores/project.store', () => ({
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => ({
     timelineDoc: { metadata: { fastcat: {} } },
+    timelineFormat: {
+      sampleRate: 48000,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      resolutionFormat: '1080p',
+      orientation: 'landscape',
+      aspectRatio: '16:9',
+      isCustomResolution: false,
+      isAutoSettings: false,
+      settingsSource: 'manual',
+    },
     getSelectionRange: () => selectionRangeMock.value,
     getMarkers: () => markersMock.value,
   }),

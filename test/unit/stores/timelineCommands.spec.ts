@@ -15,7 +15,7 @@ describe('timelineCommands', () => {
   let getOrFetchMetadataByPath: ReturnType<typeof vi.fn>;
   let getUserSettings: ReturnType<typeof vi.fn>;
   let getProjectSettings: ReturnType<typeof vi.fn>;
-  let updateProjectSettings: ReturnType<typeof vi.fn>;
+  let updateTimelineFormat: ReturnType<typeof vi.fn>;
   let hasProxy: ReturnType<typeof vi.fn>;
   let ensureProxy: ReturnType<typeof vi.fn>;
   let openProjectSettings: ReturnType<typeof vi.fn>;
@@ -36,7 +36,7 @@ describe('timelineCommands', () => {
       .fn()
       .mockReturnValue({ timeline: { defaultStaticClipDurationUs: 5000000 } });
     getProjectSettings = vi.fn().mockReturnValue({});
-    updateProjectSettings = vi.fn().mockResolvedValue(undefined);
+    updateTimelineFormat = vi.fn().mockResolvedValue(undefined);
     hasProxy = vi.fn().mockReturnValue(false);
     ensureProxy = vi.fn().mockResolvedValue(undefined);
     openProjectSettings = vi.fn();
@@ -54,7 +54,7 @@ describe('timelineCommands', () => {
       getOrFetchMetadataByPath,
       getUserSettings,
       getProjectSettings,
-      updateProjectSettings,
+      updateTimelineFormat,
       hasProxy,
       ensureProxy,
       openProjectSettings,

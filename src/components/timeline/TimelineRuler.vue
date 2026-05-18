@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { watch, computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -38,7 +37,6 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 
 const timelineStore = useTimelineStore();
-const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const timelineSettingsStore = useTimelineSettingsStore();
@@ -57,7 +55,7 @@ const majorTickWidth = 1.25;
 const subTickWidth = 0.8;
 // ---------------------------------------------------------
 
-const fps = computed(() => projectStore.projectSettings.project.fps || 30);
+const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 
 function getTimeUsFromRulerClientEvent(event: MouseEvent | PointerEvent): number {

@@ -1,7 +1,9 @@
 import { ref, computed } from 'vue';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 
 export function useMonitorDisplay() {
+  const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
 
   const containerEl = ref<HTMLDivElement | null>(null);
@@ -11,13 +13,13 @@ export function useMonitorDisplay() {
   const MAX_CANVAS_DIMENSION = 7680;
 
   const exportWidth = computed(() => {
-    const value = Number(projectStore.projectSettings.project.width);
+    const value = Number(timelineStore.timelineFormat?.width ?? projectStore.projectSettings.project.width);
     if (!Number.isFinite(value) || value <= 0) return 1920;
     return Math.round(Math.min(MAX_CANVAS_DIMENSION, Math.max(MIN_CANVAS_DIMENSION, value)));
   });
 
   const exportHeight = computed(() => {
-    const value = Number(projectStore.projectSettings.project.height);
+    const value = Number(timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height);
     if (!Number.isFinite(value) || value <= 0) return 1080;
     return Math.round(Math.min(MAX_CANVAS_DIMENSION, Math.max(MIN_CANVAS_DIMENSION, value)));
   });

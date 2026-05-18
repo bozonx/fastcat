@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument } from '~/timeline/otio-serializer';
+import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 import { createDefaultProjectSettings } from '~/utils/project-settings';
 
@@ -362,13 +363,17 @@ export const useProjectStore = defineStore('project', () => {
 
   function createFallbackTimelineDoc(): TimelineDocument {
     if (!currentProjectName.value) {
-      return createDefaultTimelineDocument({ id: 'unknown', name: 'unknown', fps: 25 });
+      return createDefaultTimelineDocument({
+        id: 'unknown',
+        name: 'unknown',
+        format: createTimelineFormatFromProjectDefaults({ fps: 25 }),
+      });
     }
 
     return createDefaultTimelineDocument({
       id: createTimelineDocId(currentProjectName.value),
       name: currentProjectName.value,
-      fps: projectSettings.value.project.fps,
+      format: createTimelineFormatFromProjectDefaults(projectSettings.value.project),
     });
   }
 

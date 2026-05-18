@@ -88,6 +88,7 @@ The application will be available at `http://localhost:3000`.
 - `test/fixtures`: Mock data and files for testing.
 - Clip transforms use a shared layout helper in `src/utils/video-editor/clip-layout.ts` so monitor overlays and compositor rendering resolve the same anchor, fit and translation math.
 - Clip transform `position` values are stored in 1920x1080 design-space units and are scaled to the active preview/export resolution during layout.
+- Timeline resolution, FPS and audio sample rate are stored per `.otio` timeline in FastCat metadata; project settings provide defaults for newly created timelines.
 - Text clip style sizing (`width`, `fontSize`, `padding`, `letterSpacing`) is normalized before persistence and scaled from the same design-space baseline during rendering.
 - `src/utils/dev-logger.ts`: Dev-only logger for verbose diagnostics (disabled in production).
 - `src/workers/timeline-serializer.worker.ts`: Dedicated worker for background timeline serialization.

@@ -4,7 +4,6 @@ import { useEventListener } from '@vueuse/core';
 import type { FastCatUserSettings } from '~/utils/settings/defaults';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useProjectStore } from '~/stores/project.store';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
@@ -34,11 +33,10 @@ export function useTimelineWheelHandler({
 }: UseTimelineWheelHandlerOptions) {
   const timelineStore = useTimelineStore();
   const workspaceStore = useWorkspaceStore();
-  const projectStore = useProjectStore();
 
   const { handleZoomWheel, fitTimelineZoom } = useTimelineZoom({ scrollEl });
 
-  const fps = computed(() => projectStore.projectSettings.project.fps || 30);
+  const fps = computed(() => timelineStore.timelineFormat.fps || 30);
   const timelineMouseSettings = computed(() => workspaceStore.userSettings.mouse.timeline);
   const rulerMouseSettings = computed(() => workspaceStore.userSettings.mouse.ruler);
   const trackHeadersMouseSettings = computed(() => workspaceStore.userSettings.mouse.trackHeaders);

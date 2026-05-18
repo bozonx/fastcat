@@ -70,6 +70,7 @@ import {
   type UploadResult,
   type HandleFilesDeps,
 } from '~/file-manager/application/fileManagerCommands';
+import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import { useVfs } from '~/composables/useVfs';
 import { createUiActionRunner } from './useUiActionRunner';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
@@ -673,6 +674,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         const createdPath = await createTimelineCommand({
           vfs: deps.vfs,
           timelinesDirName: parentPath ?? TIMELINES_DIR_NAME,
+          format: createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project),
         });
         await reloadDirectory(parentPath ?? TIMELINES_DIR_NAME);
         return createdPath;
@@ -905,8 +907,8 @@ export function useFileManager(options?: {
     getProjectName: () => projectStore.currentProjectName,
     getProjectId: () => projectStore.currentProjectId,
     getProjectSize: () => ({
-      width: projectStore.projectSettings.project.width,
-      height: projectStore.projectSettings.project.height,
+      width: timelineStore.timelineFormat.width,
+      height: timelineStore.timelineFormat.height,
     }),
     onMediaImported: ({ projectRelativePath }) => {
       void mediaStore.getOrFetchMetadataByPath(projectRelativePath);

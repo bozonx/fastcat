@@ -336,7 +336,7 @@ export function useEntryPreview(params: {
             const parsedDoc = parseTimelineFromOtio(text, {
               id: entry.path ?? 'unknown',
               name: entry.name,
-              fps: 25,
+              format: { fps: 25 },
             });
             nextTimelineDocSummary = computeTimelineSummary(parsedDoc);
           } catch {

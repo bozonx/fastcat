@@ -5,6 +5,7 @@ import { createTimelineCommandService } from '~/timeline/application/timelineCom
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
+import type { TimelineFormatInput } from '~/timeline/format';
 
 export interface TimelineCommandsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -17,7 +18,7 @@ export interface TimelineCommandsDeps {
   getOrFetchMetadataByPath: (path: string) => Promise<any>;
   getUserSettings: () => any;
   getProjectSettings: () => any;
-  updateProjectSettings: (settings: any) => Promise<void>;
+  updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
   hasProxy: (path: string) => boolean;
   ensureProxy: (options: {
     file: File | FileSystemFileHandle;
@@ -85,7 +86,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     getOrFetchMetadataByPath,
     getUserSettings,
     getProjectSettings,
-    updateProjectSettings,
+    updateTimelineFormat,
     hasProxy,
     ensureProxy,
     openProjectSettings,
@@ -111,7 +112,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     fetchMediaMetadataByPath: getOrFetchMetadataByPath,
     getUserSettings,
     getProjectSettings,
-    updateProjectSettings,
+    updateTimelineFormat,
     showFpsWarning: (fileFps, projectFps) => {
       toast.add({
         title: t('videoEditor.timeline.fpsMismatch'),

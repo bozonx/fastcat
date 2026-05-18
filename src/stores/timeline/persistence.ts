@@ -3,6 +3,7 @@ import { createAutoSave } from '~/utils/auto-save';
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
 import type { TimelineDocument } from '~/timeline/types';
+import type { TimelineFormatInput } from '~/timeline/format';
 
 export interface TimelinePersistenceDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -28,7 +29,7 @@ export interface TimelinePersistenceDeps {
 
   parseTimelineFromOtio: (
     text: string,
-    options: { id: string; name: string; fps: number },
+    options: { id: string; name: string; format: TimelineFormatInput },
   ) => TimelineDocument;
   serializeTimelineToOtio: (doc: TimelineDocument) => string;
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
@@ -209,7 +210,7 @@ export function createTimelinePersistenceModule(
       const parsed = deps.parseTimelineFromOtio(text, {
         id: fallback.id,
         name: fallback.name,
-        fps: fallback.timebase.fps,
+        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
       });
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = parsed;

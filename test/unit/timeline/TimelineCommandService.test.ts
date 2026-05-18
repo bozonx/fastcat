@@ -8,7 +8,22 @@ describe('TimelineCommandService', () => {
 
   beforeEach(() => {
     deps = {
-      getTimelineDoc: vi.fn(),
+      getTimelineDoc: vi.fn(() => ({
+        timebase: { fps: 30 },
+        tracks: [{ id: 'v1', kind: 'video', items: [] }],
+        metadata: {
+          fastcat: {
+            format: {
+              width: 1920,
+              height: 1080,
+              fps: 30,
+              sampleRate: 48000,
+              isAutoSettings: false,
+              settingsSource: 'manual',
+            },
+          },
+        },
+      })),
       ensureTimelineDoc: vi.fn(),
       getCurrentTimelinePath: vi.fn(() => 'root.otio'),
       getTrackById: vi.fn((id) => ({
@@ -29,8 +44,9 @@ describe('TimelineCommandService', () => {
       getProjectSettings: vi.fn(() => ({
         project: { width: 1920, height: 1080, fps: 30, isAutoSettings: false },
       })),
-      updateProjectSettings: vi.fn(),
+      updateTimelineFormat: vi.fn(),
       showFpsWarning: vi.fn(),
+      showAutoSettingsApplied: vi.fn(),
       mediaCache: { hasProxy: vi.fn(() => false), ensureProxy: vi.fn() },
       defaultImageDurationUs: 5_000_000,
       defaultImageSourceDurationUs: 5_000_000,
@@ -69,8 +85,21 @@ describe('TimelineCommandService', () => {
     });
 
     it('does not warn for tiny FPS metadata drift', async () => {
-      deps.getProjectSettings.mockReturnValue({
-        project: { width: 1920, height: 1080, fps: 29.97, isAutoSettings: false },
+      deps.getTimelineDoc.mockReturnValue({
+        timebase: { fps: 29.97 },
+        tracks: [{ id: 'v1', kind: 'video', items: [{ kind: 'clip' }] }],
+        metadata: {
+          fastcat: {
+            format: {
+              width: 1920,
+              height: 1080,
+              fps: 29.97,
+              sampleRate: 48000,
+              isAutoSettings: false,
+              settingsSource: 'manual',
+            },
+          },
+        },
       });
       deps.getOrFetchMetadataByPath.mockResolvedValue({
         duration: 10,
@@ -123,9 +152,22 @@ describe('TimelineCommandService', () => {
       expect(deps.applyTimeline).not.toHaveBeenCalled();
     });
 
-    it('updates project settings if isAutoSettings is true', async () => {
-      deps.getProjectSettings.mockReturnValue({
-        project: { width: 1920, height: 1080, fps: 30, isAutoSettings: true },
+    it('updates timeline settings if auto settings are enabled', async () => {
+      deps.getTimelineDoc.mockReturnValue({
+        timebase: { fps: 30 },
+        tracks: [{ id: 'v1', kind: 'video', items: [] }],
+        metadata: {
+          fastcat: {
+            format: {
+              width: 1920,
+              height: 1080,
+              fps: 30,
+              sampleRate: 48000,
+              isAutoSettings: true,
+              settingsSource: 'projectDefaults',
+            },
+          },
+        },
       });
       deps.getOrFetchMetadataByPath.mockResolvedValue({
         duration: 10,
@@ -139,11 +181,13 @@ describe('TimelineCommandService', () => {
         path: 'video/test.mp4',
       });
 
-      expect(deps.updateProjectSettings).toHaveBeenCalledWith({
+      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({
         width: 1280,
         height: 720,
         fps: 24,
+        sampleRate: 48000,
         isAutoSettings: false,
+        settingsSource: 'firstClip',
       });
     });
   });

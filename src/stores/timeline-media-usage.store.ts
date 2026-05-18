@@ -169,7 +169,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
       timelineDoc: parseTimelineFromOtio(text, {
         id,
         name: nameFromPath,
-        fps: projectStore.projectSettings.project.fps,
+        format: projectStore.projectSettings.project,
       }),
     };
   }

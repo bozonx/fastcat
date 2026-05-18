@@ -20,6 +20,8 @@ export function useExportSettingsSave(
     projectStore.projectSettings.project.orientation = config.orientation.value;
     projectStore.projectSettings.project.aspectRatio = config.aspectRatio.value;
     projectStore.projectSettings.project.isCustomResolution = config.isCustomResolution.value;
+    projectStore.projectSettings.project.sampleRate = config.audioSampleRate.value;
+    projectStore.projectSettings.project.isAutoSettings = true;
     projectStore.projectSettings.exportDefaults.encoding.format = config.outputFormat.value;
     projectStore.projectSettings.exportDefaults.encoding.videoCodec = resolvedCodecs.videoCodec;
     projectStore.projectSettings.exportDefaults.encoding.bitrateMbps = config.bitrateMbps.value;

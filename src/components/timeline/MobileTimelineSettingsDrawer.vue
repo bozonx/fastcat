@@ -6,10 +6,12 @@ import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { formatDurationSeconds } from '~/utils/format';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
+import type { TimelineFormatInput } from '~/timeline/format';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -59,6 +61,55 @@ const masterGain = computed({
       gain: val,
     });
   },
+});
+
+function updateFormat(patch: TimelineFormatInput) {
+  void timelineStore.updateTimelineFormat({
+    ...timelineStore.timelineFormat,
+    ...patch,
+    isAutoSettings: false,
+    settingsSource: 'manual',
+  });
+}
+
+const timelineWidth = computed({
+  get: () => timelineStore.timelineFormat.width,
+  set: (width: number) => updateFormat({ width }),
+});
+
+const timelineHeight = computed({
+  get: () => timelineStore.timelineFormat.height,
+  set: (height: number) => updateFormat({ height }),
+});
+
+const timelineFps = computed({
+  get: () => timelineStore.timelineFormat.fps,
+  set: (fps: number) => updateFormat({ fps }),
+});
+
+const timelineResolutionFormat = computed({
+  get: () => timelineStore.timelineFormat.resolutionFormat,
+  set: (resolutionFormat: string) => updateFormat({ resolutionFormat }),
+});
+
+const timelineOrientation = computed({
+  get: () => timelineStore.timelineFormat.orientation,
+  set: (orientation: 'landscape' | 'portrait') => updateFormat({ orientation }),
+});
+
+const timelineAspectRatio = computed({
+  get: () => timelineStore.timelineFormat.aspectRatio,
+  set: (aspectRatio: string) => updateFormat({ aspectRatio }),
+});
+
+const timelineIsCustomResolution = computed({
+  get: () => timelineStore.timelineFormat.isCustomResolution,
+  set: (isCustomResolution: boolean) => updateFormat({ isCustomResolution }),
+});
+
+const timelineSampleRate = computed({
+  get: () => timelineStore.timelineFormat.sampleRate,
+  set: (sampleRate: number) => updateFormat({ sampleRate }),
 });
 
 const masterEffects = computed(() =>
@@ -169,6 +220,19 @@ const timelineActions = computed(() => [
         />
         <div class="h-px bg-ui-border/50 my-1" />
         <PropertyRow :label="t('videoEditor.fileManager.otio.clips')" :value="summary.clips" />
+      </div>
+
+      <div class="flex flex-col gap-3 rounded-2xl bg-ui-bg p-4 border border-ui-border">
+        <MediaResolutionSettings
+          v-model:width="timelineWidth"
+          v-model:height="timelineHeight"
+          v-model:fps="timelineFps"
+          v-model:resolution-format="timelineResolutionFormat"
+          v-model:orientation="timelineOrientation"
+          v-model:aspect-ratio="timelineAspectRatio"
+          v-model:is-custom-resolution="timelineIsCustomResolution"
+          v-model:sample-rate="timelineSampleRate"
+        />
       </div>
 
       <!-- Master Volume -->

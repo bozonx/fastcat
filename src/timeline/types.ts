@@ -7,6 +7,21 @@ export interface TimelineTimebase {
   fps: number;
 }
 
+export type TimelineFormatSettingsSource = 'projectDefaults' | 'firstClip' | 'manual';
+
+export interface TimelineFormat {
+  width: number;
+  height: number;
+  fps: number;
+  resolutionFormat: string;
+  orientation: 'landscape' | 'portrait';
+  aspectRatio: string;
+  isCustomResolution: boolean;
+  sampleRate: number;
+  isAutoSettings: boolean;
+  settingsSource: TimelineFormatSettingsSource;
+}
+
 export interface TimelineRange {
   startUs: number;
   durationUs: number;
@@ -384,6 +399,7 @@ export interface TimelineFastCatMetadata {
   version?: number;
   docId?: string;
   timebase?: TimelineTimebase;
+  format?: TimelineFormat;
   markers?: TimelineMarker[];
   masterEffects?: ClipEffect[];
   masterGain?: number;

@@ -36,6 +36,8 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
+import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
+import type { TimelineFormatInput } from '~/timeline/format';
 
 const props = defineProps<{
   summary?: {
@@ -192,6 +194,55 @@ const timelineZoomMultiplierInput = computed({
   },
 });
 
+function updateFormat(patch: TimelineFormatInput) {
+  void timelineStore.updateTimelineFormat({
+    ...timelineStore.timelineFormat,
+    ...patch,
+    isAutoSettings: false,
+    settingsSource: 'manual',
+  });
+}
+
+const timelineWidth = computed({
+  get: () => timelineStore.timelineFormat.width,
+  set: (width: number) => updateFormat({ width }),
+});
+
+const timelineHeight = computed({
+  get: () => timelineStore.timelineFormat.height,
+  set: (height: number) => updateFormat({ height }),
+});
+
+const timelineFps = computed({
+  get: () => timelineStore.timelineFormat.fps,
+  set: (fps: number) => updateFormat({ fps }),
+});
+
+const timelineResolutionFormat = computed({
+  get: () => timelineStore.timelineFormat.resolutionFormat,
+  set: (resolutionFormat: string) => updateFormat({ resolutionFormat }),
+});
+
+const timelineOrientation = computed({
+  get: () => timelineStore.timelineFormat.orientation,
+  set: (orientation: 'landscape' | 'portrait') => updateFormat({ orientation }),
+});
+
+const timelineAspectRatio = computed({
+  get: () => timelineStore.timelineFormat.aspectRatio,
+  set: (aspectRatio: string) => updateFormat({ aspectRatio }),
+});
+
+const timelineIsCustomResolution = computed({
+  get: () => timelineStore.timelineFormat.isCustomResolution,
+  set: (isCustomResolution: boolean) => updateFormat({ isCustomResolution }),
+});
+
+const timelineSampleRate = computed({
+  get: () => timelineStore.timelineFormat.sampleRate,
+  set: (sampleRate: number) => updateFormat({ sampleRate }),
+});
+
 function handleUpdateMasterEffects(effects: VideoClipEffect[]) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
@@ -302,6 +353,22 @@ const addTrackActions = computed(() => [
         :open-timeline-from-usage="openTimelineFromUsage"
       />
     </template>
+
+    <PropertySection
+      v-if="!finalIsReadOnly"
+      :title="t('videoEditor.timeline.format')"
+    >
+      <MediaResolutionSettings
+        v-model:width="timelineWidth"
+        v-model:height="timelineHeight"
+        v-model:fps="timelineFps"
+        v-model:resolution-format="timelineResolutionFormat"
+        v-model:orientation="timelineOrientation"
+        v-model:aspect-ratio="timelineAspectRatio"
+        v-model:is-custom-resolution="timelineIsCustomResolution"
+        v-model:sample-rate="timelineSampleRate"
+      />
+    </PropertySection>
 
     <!-- Settings (No title, includes Master Volume) -->
     <PropertySection v-if="!finalIsReadOnly">

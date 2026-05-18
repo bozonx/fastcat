@@ -33,6 +33,7 @@ import { createTimelineCommandsModule } from '~/stores/timeline/commands';
 import { createTimelineLifecycleModule } from '~/stores/timeline/lifecycle';
 
 import { getDocFps } from '~/timeline/commands/utils';
+import { getTimelineFormat, setTimelineFormat, type TimelineFormatInput } from '~/timeline/format';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -108,6 +109,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (timelineDoc.value) return getDocFps(timelineDoc.value);
     return TIMELINE_DEFAULTS.FPS;
   });
+  const timelineFormat = computed(() => getTimelineFormat(timelineDoc.value));
+
+  async function updateTimelineFormat(settings: TimelineFormatInput) {
+    if (!timelineDoc.value) {
+      timelineDoc.value = projectStore.createFallbackTimelineDoc();
+    }
+
+    timelineDoc.value = setTimelineFormat(timelineDoc.value, settings);
+    await requestTimelineSave({ immediate: true });
+  }
 
   const selectedItemIds = ref<string[]>([]);
   const selectedTrackId = ref<string | null>(null);
@@ -473,16 +484,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,
     getProjectSettings: () => projectStore.projectSettings,
-    updateProjectSettings: async (settings) => {
-      const { getResolutionPreset } = await import('~/utils/settings/helpers');
-      const preset = getResolutionPreset(settings.width, settings.height);
-
-      Object.assign(projectStore.projectSettings.project, {
-        ...settings,
-        ...preset,
-      });
-      await projectStore.saveProjectSettings();
-    },
+    updateTimelineFormat,
     hasProxy: (path: string) => proxyStore.existingProxies.has(path),
     ensureProxy: async (options: {
       file: File | FileSystemFileHandle;
@@ -613,6 +615,8 @@ export const useTimelineStore = defineStore('timeline', () => {
       scrollToPlayheadRequest.value++;
     },
     fps,
+    timelineFormat,
+    updateTimelineFormat,
     isTimelineDirty,
     isSavingTimeline,
     timelineSaveError,

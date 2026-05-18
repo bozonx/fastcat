@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useMonitorDisplay } from '~/composables/monitor/useMonitorDisplay';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -17,13 +18,14 @@ describe('useMonitorDisplay', () => {
   });
 
   function withMonitorDisplay(
-    fn: (res: ReturnType<typeof useMonitorDisplay>, projectStore: any) => void,
+    fn: (res: ReturnType<typeof useMonitorDisplay>, projectStore: any, timelineStore: any) => void,
   ) {
     const TestComp = defineComponent({
       setup() {
         const projectStore = useProjectStore();
+        const timelineStore = useTimelineStore();
         const res = useMonitorDisplay();
-        fn(res, projectStore);
+        fn(res, projectStore, timelineStore);
         return () => h('div');
       },
     });
@@ -40,9 +42,8 @@ describe('useMonitorDisplay', () => {
   });
 
   it('respects valid project settings', () => {
-    withMonitorDisplay((res, projectStore) => {
-      projectStore.projectSettings.project.width = 1280;
-      projectStore.projectSettings.project.height = 720;
+    withMonitorDisplay((res, _projectStore, timelineStore) => {
+      timelineStore.updateTimelineFormat({ width: 1280, height: 720 });
 
       const { exportWidth, exportHeight, aspectRatio } = res;
       expect(exportWidth.value).toBe(1280);
@@ -52,18 +53,16 @@ describe('useMonitorDisplay', () => {
   });
 
   it('clamps dimensions to MIN/MAX limits', () => {
-    withMonitorDisplay((res, projectStore) => {
+    withMonitorDisplay((res, _projectStore, timelineStore) => {
       // Test minimum limits
-      projectStore.projectSettings.project.width = 5;
-      projectStore.projectSettings.project.height = -10;
+      timelineStore.updateTimelineFormat({ width: 5, height: -10 });
 
       const { exportWidth, exportHeight } = res;
       expect(exportWidth.value).toBe(16); // MIN_CANVAS_DIMENSION
-      expect(exportHeight.value).toBe(1080); // defaults to 1080 if <= 0
+      expect(exportHeight.value).toBe(16); // MIN_CANVAS_DIMENSION
 
       // Test maximum limits
-      projectStore.projectSettings.project.width = 10000;
-      projectStore.projectSettings.project.height = 8000;
+      timelineStore.updateTimelineFormat({ width: 10000, height: 8000 });
 
       expect(exportWidth.value).toBe(7680); // MAX_CANVAS_DIMENSION
       expect(exportHeight.value).toBe(7680); // MAX_CANVAS_DIMENSION
@@ -71,9 +70,8 @@ describe('useMonitorDisplay', () => {
   });
 
   it('generates correct wrapper styles', () => {
-    withMonitorDisplay((res, projectStore) => {
-      projectStore.projectSettings.project.width = 1920;
-      projectStore.projectSettings.project.height = 1080;
+    withMonitorDisplay((res, projectStore, timelineStore) => {
+      timelineStore.updateTimelineFormat({ width: 1920, height: 1080 });
       projectStore.projectSettings.monitors.cut.previewResolution = 480;
 
       const { getCanvasWrapperStyle, renderWidth, renderHeight } = res;
@@ -88,9 +86,8 @@ describe('useMonitorDisplay', () => {
   });
 
   it('generates correct inner styles', () => {
-    withMonitorDisplay((res, projectStore) => {
-      projectStore.projectSettings.project.width = 1920;
-      projectStore.projectSettings.project.height = 1080;
+    withMonitorDisplay((res, projectStore, timelineStore) => {
+      timelineStore.updateTimelineFormat({ width: 1920, height: 1080 });
       projectStore.projectSettings.monitors.cut.previewResolution = 480;
 
       const { getCanvasInnerStyle, renderWidth, renderHeight } = res;
@@ -102,9 +99,8 @@ describe('useMonitorDisplay', () => {
   });
 
   it('updateCanvasDisplaySize is a no-op for fixed preview resolution sizing', () => {
-    withMonitorDisplay((res, projectStore) => {
-      projectStore.projectSettings.project.width = 1920;
-      projectStore.projectSettings.project.height = 1080;
+    withMonitorDisplay((res, projectStore, timelineStore) => {
+      timelineStore.updateTimelineFormat({ width: 1920, height: 1080 });
       projectStore.projectSettings.monitors.cut.previewResolution = 480;
 
       const { updateCanvasDisplaySize, viewportEl, renderWidth, renderHeight } = res;

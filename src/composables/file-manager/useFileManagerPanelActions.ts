@@ -5,6 +5,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useUiStore } from '~/stores/ui.store';
 import { createTimelineCommand } from '~/file-manager/application/fileManagerCommands';
+import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction as FileActionBase } from '~/composables/file-manager/useFileManagerActions';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -67,6 +68,7 @@ export function useFileManagerPanelActions({
       const createdPath = await createTimelineCommand({
         vfs,
         timelinesDirName: entry.path || undefined,
+        format: createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project),
       });
 
       await reloadDirectory(entry.path || '');

@@ -123,7 +123,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
           const doc = parseTimelineFromOtio(text, {
             id: 'preview',
             name: getWorkspacePathFileName(params.path),
-            fps: timelineStore.timelineDoc?.timebase.fps ?? 25,
+            format: timelineStore.timelineFormat,
           });
           return selectTimelineDurationUs(doc);
         } catch {

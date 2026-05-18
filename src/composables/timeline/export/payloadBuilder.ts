@@ -194,7 +194,10 @@ async function buildVideoTrackTree(
           const nestedDoc = parseTimelineFromOtio(text, {
             id: 'nested',
             name: 'nested',
-            fps: params.fallbackFps ?? params.projectStore.projectSettings.project.fps,
+            format: {
+              ...params.projectStore.projectSettings.project,
+              fps: params.fallbackFps ?? params.projectStore.projectSettings.project.fps,
+            },
           });
 
           const nestedResult = await buildVideoTrackTree({
@@ -210,7 +213,7 @@ async function buildVideoTrackTree(
             inheritedTrackBlendMode: item.blendMode ?? trackBlendMode,
             inheritedTrackEffects:
               trackEffects.length > 0 ? [...itemEffects, ...trackEffects] : itemEffects,
-            fallbackFps: nestedDoc.fps,
+            fallbackFps: nestedDoc.timebase.fps,
           });
 
           result.tracks.push(...nestedResult.tracks);
@@ -337,12 +340,13 @@ export async function buildVideoWorkerPayloadFromTracks(input: {
   projectStore: ReturnType<typeof useProjectStore>;
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
   masterEffects?: ClipEffect[];
+  fallbackFps?: number;
 }): Promise<BuildVideoPayloadFromTracksResult> {
   const result = await buildVideoTrackTree({
     tracks: input.tracks,
     projectStore: input.projectStore,
     workspaceStore: input.workspaceStore,
-    fallbackFps: input.projectStore.projectSettings.project.fps,
+    fallbackFps: input.fallbackFps ?? input.projectStore.projectSettings.project.fps,
   });
 
   return {
@@ -509,7 +513,10 @@ export async function toWorkerTimelineClips(
             const nestedDoc = parseTimelineFromOtio(text, {
               id: 'nested',
               name: 'nested',
-              fps: options?.fallbackFps ?? projectStore.projectSettings.project.fps,
+              format: {
+                ...projectStore.projectSettings.project,
+                fps: options?.fallbackFps ?? projectStore.projectSettings.project.fps,
+              },
             });
 
             const nextVisited = new Set(visitedPaths).add(path);
@@ -542,7 +549,7 @@ export async function toWorkerTimelineClips(
                     parentOpacity: combinedOpacity,
                     parentBlendMode: combinedBlendMode,
                     parentEffects: combinedTrackEffects,
-                    fallbackFps: nestedDoc.fps,
+                    fallbackFps: nestedDoc.timebase.fps,
                   },
                 );
 

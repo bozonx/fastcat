@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
@@ -14,7 +13,6 @@ const containerRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const timelineStore = useTimelineStore();
-const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 
 const width = ref(0);
@@ -101,7 +99,7 @@ onUnmounted(() => {
   }
 });
 
-const fps = computed(() => projectStore.projectSettings.project.fps || 30);
+const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
 
 watch([fps, zoom, width, height], () => {
