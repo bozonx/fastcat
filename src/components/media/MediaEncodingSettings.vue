@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
+import USwitch from '~/components/ui/USwitch.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';

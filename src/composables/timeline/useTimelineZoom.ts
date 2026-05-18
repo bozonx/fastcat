@@ -1,4 +1,4 @@
-import { onBeforeUnmount, watch, type Ref } from 'vue';
+import { nextTick, onBeforeUnmount, watch, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
   computeAnchoredScrollLeft,
@@ -18,6 +18,18 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
   let timelineZoomFrameId = 0;
   let pendingAnchor: { anchorTimeUs: number; anchorViewportX: number } | null = null;
   let isInternalZoomUpdate = false;
+  let scrollApplyTicket = 0;
+
+  async function applyScrollLeftAfterRender(nextScrollLeft: number) {
+    const ticket = ++scrollApplyTicket;
+
+    await nextTick();
+
+    if (ticket !== scrollApplyTicket || !scrollEl.value) return;
+
+    scrollEl.value.scrollLeft = nextScrollLeft;
+    timelineStore.timelineScrollLeftPx = scrollEl.value.scrollLeft;
+  }
 
   watch(
     () => timelineStore.timelineZoom,
@@ -42,7 +54,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
           anchorViewportX,
         },
       });
-      scrollEl.value.scrollLeft = nextScrollLeft;
+      void applyScrollLeftAfterRender(nextScrollLeft);
     },
   );
 
@@ -99,7 +111,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
       },
     });
 
-    scrollEl.value.scrollLeft = nextScrollLeft;
+    void applyScrollLeftAfterRender(nextScrollLeft);
     timelineZoomFrameId = 0;
     pendingAnchor = null;
   }
@@ -123,7 +135,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
     const durationUs = timelineStore.duration;
     if (durationUs <= 0) {
       timelineStore.resetTimelineZoom();
-      scrollEl.value.scrollLeft = 0;
+      void applyScrollLeftAfterRender(0);
       return;
     }
 
@@ -138,7 +150,7 @@ export function useTimelineZoom({ scrollEl }: UseTimelineZoomOptions) {
 
     isInternalZoomUpdate = true;
     timelineStore.setTimelineZoomExact(nextZoom);
-    scrollEl.value.scrollLeft = 0;
+    void applyScrollLeftAfterRender(0);
   }
 
   onBeforeUnmount(() => {
