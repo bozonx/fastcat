@@ -1,10 +1,7 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
-interface DirectoryHandleWithIteration extends FileSystemDirectoryHandle {
-  values?: () => AsyncIterable<FileSystemHandle>;
-  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
-}
+type DirectoryHandleWithIteration = FileSystemDirectoryHandle;
 
 interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
@@ -113,7 +110,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!handle) return [];
 
     const entries: VfsEntry[] = [];
-    for await (const [name, entryHandle] of (handle as DirectoryHandleWithIteration).entries?.() ??
+    for await (const [name, entryHandle] of (handle as any).entries?.() ??
       []) {
       let hasChildren: boolean | undefined;
       let hasDirectories: boolean | undefined;
@@ -123,7 +120,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         hasDirectories = false;
         try {
           for await (const [, childHandle] of (
-            entryHandle as unknown as DirectoryHandleWithIteration
+            entryHandle as any
           ).entries?.() ?? []) {
             hasChildren = true;
             if (childHandle.kind === 'directory') {

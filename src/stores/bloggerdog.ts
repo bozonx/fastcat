@@ -116,12 +116,12 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
     if (entry.type !== 'file' || !entry.media?.length || !config.value) return null;
 
     const media =
-      entry.media.find((candidate: RemoteVfsMedia) => !!candidate.thumbnailUrl) || entry.media[0];
+      entry.media.find((candidate) => !!(candidate as RemoteVfsMedia).thumbnailUrl) || entry.media[0];
     if (!media) return null;
 
     return getRemoteThumbnailUrl({
       baseUrl: config.value.baseUrl,
-      media,
+      media: media as any,
     });
   }
 

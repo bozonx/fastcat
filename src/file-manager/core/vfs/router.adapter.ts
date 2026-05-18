@@ -187,8 +187,24 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
         options?.signal?.addEventListener('abort', abort, { once: true });
       }
 
+      // The router adapter has no access to a component-scoped `useI18n`.
+      // We resolve the localized title via Nuxt app when available, falling
+      // back to a literal template (e.g. when running outside a Nuxt context
+      // such as inside unit tests).
+      let title = `Copying ${fileName}...`;
+      try {
+        const { useNuxtApp } = await import('nuxt/app');
+        const nuxtApp = useNuxtApp();
+        const translate = (nuxtApp as any)?.$i18n?.t;
+        if (typeof translate === 'function') {
+          title = translate('videoEditor.backgroundTasks.copyTitle', { fileName });
+        }
+      } catch {
+        // ignore — we already have a sensible fallback above
+      }
+
       const taskId = tasksStore.addTask({
-        title: `Copying ${fileName}...`,
+        title,
         type: 'file-operation',
         status: 'running',
         progress: 0,

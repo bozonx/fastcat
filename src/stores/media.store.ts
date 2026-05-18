@@ -132,7 +132,7 @@ export const useMediaStore = defineStore('media', () => {
     const previous = options?.forceRefresh ? pendingRequests.get(cacheKey) : undefined;
 
     // eslint-disable-next-line prefer-const -- late-initialized to avoid TDZ in IIFE
-    let requestPromise!: Promise<MediaMetadata>;
+    let requestPromise!: Promise<MediaMetadata | null>;
     requestPromise = (async () => {
       try {
         if (previous) {

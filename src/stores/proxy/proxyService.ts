@@ -5,6 +5,7 @@ import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import type { BackgroundTasksStore } from '~/stores/background-tasks.store';
 
 export interface ProxyService {
   checkExistingProxies: (paths: string[]) => Promise<void>;
@@ -35,6 +36,7 @@ export function createProxyService(params: {
   activeWorkerPaths: Ref<Set<string>>;
   proxyTaskIds: Ref<Map<string, string>>;
   taskIdToPath: Ref<Map<string, string>>;
+  bgTaskIdsByPath: Ref<Map<string, string>>;
 
   proxyQueue: Ref<PQueue>;
 
@@ -52,10 +54,16 @@ export function createProxyService(params: {
     proxyCopyOpusAudio: boolean;
   };
 
-  backgroundTasksStore: any;
+  getProxyTaskTitle: (input: { fileName: string; projectRelativePath: string }) => string;
+
+  backgroundTasksStore: Pick<
+    BackgroundTasksStore,
+    'addTask' | 'updateTaskStatus' | 'updateTaskProgress'
+  >;
 }): ProxyService {
   params.proxyTaskIds.value.clear(); // Clear old task mappings on service creation
   params.taskIdToPath.value.clear();
+  params.bgTaskIdsByPath.value.clear();
 
   setProxyHostApi(
     createVideoCoreHostApi({
@@ -70,7 +78,7 @@ export function createProxyService(params: {
           const nextProgress = new Map(params.proxyProgress.value);
           nextProgress.set(path, progress);
           params.proxyProgress.value = nextProgress;
-          const bgTaskId = (params.proxyAbortControllers.value.get(path) as any)?.bgTaskId;
+          const bgTaskId = params.bgTaskIdsByPath.value.get(path);
           if (bgTaskId) {
             params.backgroundTasksStore.updateTaskProgress(bgTaskId, progress / 100);
           }
@@ -80,7 +88,7 @@ export function createProxyService(params: {
         if (!taskId || phase !== 'saving') return;
         const path = params.taskIdToPath.value.get(taskId);
         if (!path) return;
-        const bgTaskId = (params.proxyAbortControllers.value.get(path) as any)?.bgTaskId;
+        const bgTaskId = params.bgTaskIdsByPath.value.get(path);
         if (bgTaskId) {
           params.backgroundTasksStore.updateTaskProgress(bgTaskId, 0.99);
         }
@@ -170,13 +178,19 @@ export function createProxyService(params: {
     // Add to background tasks
     const bgTaskId = params.backgroundTasksStore.addTask({
       type: 'proxy',
-      title: `Generating proxy: ${projectRelativePath.split('/').pop()}`,
+      title: params.getProxyTaskTitle({
+        fileName: projectRelativePath.split('/').pop() ?? projectRelativePath,
+        projectRelativePath,
+      }),
       status: 'pending',
       cancel: async () => {
         await cancelProxyGeneration(projectRelativePath);
       },
     });
-    (controller as any).bgTaskId = bgTaskId;
+    params.bgTaskIdsByPath.value = new Map(params.bgTaskIdsByPath.value).set(
+      projectRelativePath,
+      bgTaskId,
+    );
 
     params.proxyAbortControllers.value = new Map(params.proxyAbortControllers.value).set(
       projectRelativePath,
@@ -324,10 +338,8 @@ export function createProxyService(params: {
               }
               proxyFileHandle = null;
             }
-            if (bgTaskId) {
-              const nextStatus = (innerErr as any)?.name === 'AbortError' ? 'cancelled' : 'failed';
-              params.backgroundTasksStore.updateTaskStatus(bgTaskId, nextStatus, String(innerErr));
-            }
+            const nextStatus = (innerErr as any)?.name === 'AbortError' ? 'cancelled' : 'failed';
+            params.backgroundTasksStore.updateTaskStatus(bgTaskId, nextStatus, String(innerErr));
             throw innerErr;
           } finally {
             const nextActiveWorkerPaths = new Set(params.activeWorkerPaths.value);
@@ -363,6 +375,10 @@ export function createProxyService(params: {
             const nextAbortControllers = new Map(params.proxyAbortControllers.value);
             nextAbortControllers.delete(projectRelativePath);
             params.proxyAbortControllers.value = nextAbortControllers;
+
+            const nextBgTaskIds = new Map(params.bgTaskIdsByPath.value);
+            nextBgTaskIds.delete(projectRelativePath);
+            params.bgTaskIdsByPath.value = nextBgTaskIds;
           }
         },
         { priority: MEDIA_TASK_PRIORITIES.proxy, signal: controller.signal },
@@ -370,13 +386,14 @@ export function createProxyService(params: {
     } catch (e) {
       const isAbort = (e as any)?.name === 'AbortError';
 
-      if (bgTaskId) {
-        params.backgroundTasksStore.updateTaskStatus(
-          bgTaskId,
-          isAbort ? 'cancelled' : 'failed',
-          String(e),
-        );
-      }
+      // The inner catch already wrote a terminal status; calling updateTaskStatus
+      // here is a no-op because the store guards terminal transitions, but we
+      // still attempt it for tasks that never entered the queue body.
+      params.backgroundTasksStore.updateTaskStatus(
+        bgTaskId,
+        isAbort ? 'cancelled' : 'failed',
+        String(e),
+      );
 
       const nextGenerating = new Set(params.generatingProxies.value);
       nextGenerating.delete(projectRelativePath);
@@ -389,6 +406,11 @@ export function createProxyService(params: {
       const nextAbortControllers = new Map(params.proxyAbortControllers.value);
       nextAbortControllers.delete(projectRelativePath);
       params.proxyAbortControllers.value = nextAbortControllers;
+
+      const nextBgTaskIds = new Map(params.bgTaskIdsByPath.value);
+      nextBgTaskIds.delete(projectRelativePath);
+      params.bgTaskIdsByPath.value = nextBgTaskIds;
+
       if (isAbort) {
         return;
       }
@@ -400,10 +422,8 @@ export function createProxyService(params: {
     const controller = params.proxyAbortControllers.value.get(projectRelativePath);
     if (controller && !controller.signal.aborted) {
       controller.abort();
-      const bgTaskId = (controller as any).bgTaskId;
-      if (bgTaskId) {
-        params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
-      }
+      // The catch branch in the queue body will set the terminal status; we do
+      // not write it here to avoid double updates and overwriting error info.
     }
 
     const taskId = params.proxyTaskIds.value.get(projectRelativePath);

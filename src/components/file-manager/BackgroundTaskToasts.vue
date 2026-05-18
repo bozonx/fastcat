@@ -4,28 +4,29 @@ import { storeToRefs } from 'pinia';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 
 const backgroundTasksStore = useBackgroundTasksStore();
-const { tasks } = storeToRefs(backgroundTasksStore);
+// Watching only the `completedTasks` collection prevents this component from
+// re-running on every progress update of every running task.
+const { completedTasks } = storeToRefs(backgroundTasksStore);
 const { t } = useI18n();
 const toast = useToast();
 
 const notifiedCompletedTaskIds = new Set<string>();
 
 watch(
-  tasks,
-  (nextTasks) => {
-    const activeTaskIds = new Set(nextTasks.map((task) => task.id));
-
+  completedTasks,
+  (nextCompleted) => {
+    const completedIds = new Set(nextCompleted.map((task) => task.id));
     for (const taskId of notifiedCompletedTaskIds) {
-      if (!activeTaskIds.has(taskId)) {
+      if (!completedIds.has(taskId)) {
         notifiedCompletedTaskIds.delete(taskId);
       }
     }
 
-    for (const task of nextTasks) {
-      if (
-        (task.status !== 'completed' && task.status !== 'failed') ||
-        notifiedCompletedTaskIds.has(task.id)
-      ) {
+    for (const task of nextCompleted) {
+      if (notifiedCompletedTaskIds.has(task.id)) continue;
+      // Cancellations are user-initiated and should not raise a toast.
+      if (task.status === 'cancelled') {
+        notifiedCompletedTaskIds.add(task.id);
         continue;
       }
 
@@ -59,7 +60,6 @@ watch(
       }
     }
   },
-  { deep: true },
 );
 </script>
 

@@ -67,7 +67,7 @@ export interface UseFileBrowserRemoteOptions {
         fileName: string;
       }) => void;
     },
-  ) => Promise<void>;
+  ) => Promise<unknown>;
 }
 
 export function useFileBrowserRemote({

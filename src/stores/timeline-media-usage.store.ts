@@ -13,10 +13,7 @@ import {
   type MediaPathToTimelinesMap,
 } from '~/utils/timeline-media-usage';
 
-interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
-  values?: () => AsyncIterable<FileSystemHandle>;
-  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
-}
+type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
 
 class TimelineScanError extends Error {
   constructor(
@@ -113,8 +110,8 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
 
     const walk = async (dir: FileSystemDirectoryHandle, basePath: string) => {
       const iterator =
-        (dir as FsDirectoryHandleWithIteration).values?.() ??
-        (dir as FsDirectoryHandleWithIteration).entries?.();
+        (dir as any).values?.() ??
+        (dir as any).entries?.();
       if (!iterator) return;
 
       for await (const value of iterator) {

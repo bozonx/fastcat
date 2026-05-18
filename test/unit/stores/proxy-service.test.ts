@@ -36,6 +36,7 @@ describe('createProxyService', () => {
       activeWorkerPaths: ref(new Set<string>()),
       proxyTaskIds: ref(new Map<string, string>()),
       taskIdToPath: ref(new Map<string, string>()),
+      bgTaskIdsByPath: ref(new Map<string, string>()),
       proxyQueue: ref(queue as any),
       ensureProjectProxiesDir: vi.fn(async () => ({}) as FileSystemDirectoryHandle),
       getProxyFileName: vi.fn(async (path) => `${path}.proxy.mp4`),
@@ -48,11 +49,12 @@ describe('createProxyService', () => {
         proxyVideoCodec: 'h264',
         proxyCopyOpusAudio: false,
       }),
+      getProxyTaskTitle: ({ fileName }) => `Generating proxy: ${fileName}`,
       backgroundTasksStore: {
         addTask: vi.fn(() => 'bg-task'),
         updateTaskStatus: vi.fn(),
         updateTaskProgress: vi.fn(),
-      },
+      } as any,
     });
 
     const dirHandle = {

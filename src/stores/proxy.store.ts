@@ -11,6 +11,7 @@ export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const backgroundTasksStore = useBackgroundTasksStore();
+  const { t } = useI18n();
 
   const videoExtensions = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm']);
 
@@ -22,6 +23,7 @@ export const useProxyStore = defineStore('proxy', () => {
   const activeWorkerPaths = ref<Set<string>>(new Set());
   const proxyTaskIds = ref<Map<string, string>>(new Map());
   const taskIdToPath = ref<Map<string, string>>(new Map());
+  const bgTaskIdsByPath = ref<Map<string, string>>(new Map());
 
   const fsModule = createProxyFsModule({
     workspaceHandle: computed(() => workspaceStore.workspaceHandle),
@@ -40,12 +42,15 @@ export const useProxyStore = defineStore('proxy', () => {
     activeWorkerPaths,
     proxyTaskIds,
     taskIdToPath,
+    bgTaskIdsByPath,
     proxyQueue: queueModule.proxyQueue,
     ensureProjectProxiesDir: fsModule.ensureProjectProxiesDir,
     getProxyFileName: fsModule.getProxyFileName,
     getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
     getFileByPath: async (path) => await projectStore.getFileByPath(path),
     getOptimizationSettings: () => workspaceStore.userSettings.optimization,
+    getProxyTaskTitle: ({ fileName }) =>
+      t('videoEditor.backgroundTasks.proxyTitle', { fileName }),
     backgroundTasksStore,
   });
 

@@ -367,7 +367,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         backgroundTasksStore.updateTaskStatus(
           backgroundTaskId,
           'failed',
-          error.value || 'Failed to upload files',
+          error.value || deps.t('videoEditor.backgroundTasks.uploadFailed'),
         );
       }
     }

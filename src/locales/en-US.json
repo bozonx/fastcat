@@ -1076,12 +1076,19 @@
       "stereo": "Stereo"
     },
     "backgroundTasks": {
+      "cancelled": "Cancelled",
+      "conversionTitle": "Converting: {fileName}",
+      "copyTitle": "Copying: {fileName}",
       "empty": "No background tasks",
       "failed": "Background task failed",
       "modelDownloadDescription": "Downloading local Whisper model {model}. You can close settings or switch to another tab.",
+      "modelDownloadFailed": "Model download failed",
       "modelDownloadTitle": "Downloading speech recognition model",
+      "proxyTitle": "Generating proxy: {fileName}",
       "title": "Background Tasks",
-      "transcriptionTitle": "Transcription: {name}"
+      "transcriptionFailed": "Transcription failed",
+      "transcriptionTitle": "Transcription: {name}",
+      "uploadFailed": "Failed to upload files"
     },
     "export": {
       "audioBitrate": "Audio bitrate (kbps)",
@@ -1445,7 +1452,6 @@
       "export": "Export",
       "metadata": "Metadata",
       "projectStorage": "Project Storage",
-      "reset": "Reset to Defaults",
       "resetSettings": "Reset settings",
       "resetConfirmDescription": "This will restore all project settings to the default values from your workspace settings.",
       "resetConfirmTitle": "Reset to defaults?",

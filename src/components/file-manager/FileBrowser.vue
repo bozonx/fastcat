@@ -330,7 +330,7 @@ async function handleFiles(
       fileName: string;
     }) => void;
   },
-) {
+): Promise<unknown> {
   if (isRemoteMode.value) {
     return handleRemoteFiles(files, options?.targetDirPath);
   }

@@ -9,6 +9,13 @@ export interface TranscriptionTaskOptions extends Omit<
   title?: string;
 }
 
+function isCancellation(error: unknown, signal: AbortSignal): boolean {
+  if (signal.aborted) return true;
+  if (error instanceof DOMException && error.name === 'AbortError') return true;
+  if (error instanceof Error && error.name === 'AbortError') return true;
+  return false;
+}
+
 /**
  * Runs transcription as a background task.
  */
@@ -41,19 +48,12 @@ export async function runTranscriptionTask(
 
     tasksStore.updateTaskStatus(taskId, 'completed');
     return result;
-  } catch (error: any) {
-    const message =
-      error.name === 'AbortError' || error.message === 'Transcription cancelled'
-        ? 'Cancelled'
-        : error.message || 'Transcription failed';
+  } catch (error: unknown) {
+    const cancelled = isCancellation(error, abortController.signal);
+    const fallbackMessage = error instanceof Error ? error.message : 'Transcription failed';
+    const message = cancelled ? 'Cancelled' : fallbackMessage;
 
-    tasksStore.updateTaskStatus(
-      taskId,
-      error.name === 'AbortError' || error.message === 'Transcription cancelled'
-        ? 'cancelled'
-        : 'failed',
-      message,
-    );
+    tasksStore.updateTaskStatus(taskId, cancelled ? 'cancelled' : 'failed', message);
     throw error;
   }
 }

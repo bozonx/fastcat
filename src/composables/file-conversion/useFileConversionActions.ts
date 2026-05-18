@@ -93,6 +93,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   const fileManager = useFileManager();
   const uiStore = useUiStore();
   const backgroundTasksStore = useBackgroundTasksStore();
+  const { t } = useI18n();
 
   function getSiblingTarget(
     entryPath: string,
@@ -496,17 +497,23 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             })();
         if (!targetHandle) throw new Error('Target directory not found');
 
-        const title = `Converting: ${entry.name}`;
+        const title = t('videoEditor.backgroundTasks.conversionTitle', { fileName: entry.name });
         const controller = new AbortController();
         const bgTaskId = backgroundTasksStore.addTask({
           type: 'conversion',
           title,
           status: 'pending',
+          // The terminal status is set by the .catch handler below once the
+          // export worker actually rejects with AbortError. We only need to
+          // request cancellation here.
           cancel: async () => {
-            backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
             controller.abort();
-            const { client } = getExportWorkerClient();
-            await client.cancelExport(taskId);
+            try {
+              const { client } = getExportWorkerClient();
+              await client.cancelExport(taskId);
+            } catch (cancelErr) {
+              console.warn('cancelExport failed', cancelErr);
+            }
           },
         });
 

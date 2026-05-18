@@ -1,9 +1,6 @@
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
-export interface FsDirectoryHandleWithIteration extends FileSystemDirectoryHandle {
-  values?: () => AsyncIterable<FileSystemHandle>;
-  entries?: () => AsyncIterable<[string, FileSystemHandle]>;
-}
+export type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
 
 export async function generateUniqueFsEntryName(params: {
   vfs: IFileSystemAdapter;
