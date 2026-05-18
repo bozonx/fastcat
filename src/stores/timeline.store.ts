@@ -314,6 +314,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineZoom,
     trackHeights,
     audioMuted,
+    selectionRange,
 
     isTimelineDirty,
     isSavingTimeline,
@@ -326,6 +327,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
     ensureTimelineFileHandle,
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
+    getProjectSettings: () => projectStore.projectSettings,
 
     parseTimelineFromOtio,
     serializeTimelineToOtio,

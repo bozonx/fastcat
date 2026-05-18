@@ -1,9 +1,9 @@
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
-import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
+import type { TimelineSelectionRange } from '~/timeline/types';
 
 export interface TimelinePersistenceDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -13,6 +13,7 @@ export interface TimelinePersistenceDeps {
   timelineZoom: Ref<number>;
   trackHeights: Ref<Record<string, number>>;
   audioMuted?: Ref<boolean>;
+  selectionRange?: Ref<TimelineSelectionRange | null>;
 
   isTimelineDirty: Ref<boolean>;
   isSavingTimeline: Ref<boolean>;
@@ -26,6 +27,8 @@ export interface TimelinePersistenceDeps {
     create?: boolean;
   }) => Promise<FileSystemFileHandle | null>;
   createFallbackTimelineDoc: () => TimelineDocument;
+
+  getProjectSettings: () => { timelines?: { sessions?: Record<string, any> } } | null;
 
   parseTimelineFromOtio: (
     text: string,
@@ -97,7 +100,6 @@ export function createTimelinePersistenceModule(
       deps.isSavingTimeline.value = true;
       deps.timelineSaveError.value = null;
 
-      const suffix = getPlatformSuffix();
       const docRaw = JSON.parse(JSON.stringify(toRaw(doc)));
 
       const snapshot: TimelineDocument = {
@@ -215,14 +217,20 @@ export function createTimelinePersistenceModule(
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = parsed;
 
-      if (requestId !== loadTimelineRequestId) return;
-      deps.timelineDoc.value = parsed;
+      const path = deps.currentTimelinePath.value;
+      const settings = path ? deps.getProjectSettings() : null;
+      const session = settings?.timelines?.sessions?.[path] ?? null;
 
-      deps.currentTime.value = 0;
-      deps.masterGain.value = 1;
-      if (deps.audioMuted) deps.audioMuted.value = false;
-      deps.timelineZoom.value = 50;
-      deps.trackHeights.value = {};
+      deps.currentTime.value = session?.playheadUs ?? 0;
+      deps.masterGain.value = session?.masterGain ?? 1;
+      if (deps.audioMuted) deps.audioMuted.value = session?.masterMuted ?? false;
+      deps.timelineZoom.value = session?.zoom ?? 50;
+      deps.trackHeights.value = session?.trackHeights ? { ...session.trackHeights } : {};
+      if (deps.selectionRange) {
+        deps.selectionRange.value = session?.selectionRange
+          ? { ...session.selectionRange }
+          : null;
+      }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);
       if (requestId !== loadTimelineRequestId) return;

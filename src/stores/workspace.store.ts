@@ -17,11 +17,6 @@ import { useProxyStore } from './proxy.store';
 
 import { getErrorMessage } from '~/utils/errors';
 import { useRuntimeConfig } from '#app';
-import {
-  readLocalStorageJson,
-  readLocalStorageString,
-  STORAGE_KEYS,
-} from '~/stores/ui/uiLocalStorage';
 
 export interface RecentProject {
   projectName: string;
@@ -44,13 +39,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const error = ref<string | null>(null);
   const isInitializing = ref(true);
   const isEphemeral = ref(false);
-  const lastProjectName = ref<string | null>(
-    readLocalStorageString(STORAGE_KEYS.WORKSPACE.LAST_PROJECT),
-  );
+  const lastProjectName = ref<string | null>(null);
 
-  const recentProjects = ref<RecentProject[]>(
-    readLocalStorageJson(STORAGE_KEYS.WORKSPACE.RECENT_PROJECTS, []),
-  );
+  const recentProjects = ref<RecentProject[]>([]);
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {

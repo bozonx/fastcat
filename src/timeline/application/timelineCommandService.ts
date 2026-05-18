@@ -178,7 +178,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const doc = deps.parseTimelineFromOtio(text, {
       id: 'nested',
       name,
-      format: { fps: 25 },
+      format: deps.getProjectSettings().project,
     });
 
     return {

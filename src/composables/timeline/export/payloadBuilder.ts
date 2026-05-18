@@ -1,6 +1,7 @@
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
+import type { TimelineFormatInput } from '~/timeline/format';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -83,7 +84,7 @@ interface BuildVideoTrackTreeParams {
   inheritedTrackOpacity?: number;
   inheritedTrackBlendMode?: TimelineBlendMode;
   inheritedTrackEffects?: ClipEffect[];
-  fallbackFps?: number;
+  fallbackFormat?: TimelineFormatInput;
 }
 
 async function buildVideoTrackTree(
@@ -194,10 +195,7 @@ async function buildVideoTrackTree(
           const nestedDoc = parseTimelineFromOtio(text, {
             id: 'nested',
             name: 'nested',
-            format: {
-              ...params.projectStore.projectSettings.project,
-              fps: params.fallbackFps ?? params.projectStore.projectSettings.project.fps,
-            },
+            format: params.fallbackFormat ?? params.projectStore.projectSettings.project,
           });
 
           const nestedResult = await buildVideoTrackTree({
@@ -213,7 +211,7 @@ async function buildVideoTrackTree(
             inheritedTrackBlendMode: item.blendMode ?? trackBlendMode,
             inheritedTrackEffects:
               trackEffects.length > 0 ? [...itemEffects, ...trackEffects] : itemEffects,
-            fallbackFps: nestedDoc.timebase.fps,
+            fallbackFormat: { fps: nestedDoc.timebase.fps },
           });
 
           result.tracks.push(...nestedResult.tracks);
@@ -340,13 +338,13 @@ export async function buildVideoWorkerPayloadFromTracks(input: {
   projectStore: ReturnType<typeof useProjectStore>;
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
   masterEffects?: ClipEffect[];
-  fallbackFps?: number;
+  fallbackFormat?: TimelineFormatInput;
 }): Promise<BuildVideoPayloadFromTracksResult> {
   const result = await buildVideoTrackTree({
     tracks: input.tracks,
     projectStore: input.projectStore,
     workspaceStore: input.workspaceStore,
-    fallbackFps: input.fallbackFps ?? input.projectStore.projectSettings.project.fps,
+    fallbackFormat: input.fallbackFormat ?? input.projectStore.projectSettings.project,
   });
 
   return {
@@ -413,7 +411,7 @@ export async function toWorkerTimelineClips(
     parentOpacity?: number;
     parentBlendMode?: TimelineBlendMode;
     parentEffects?: ClipEffect[];
-    fallbackFps?: number;
+    fallbackFormat?: TimelineFormatInput;
   },
 ): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];
@@ -513,10 +511,7 @@ export async function toWorkerTimelineClips(
             const nestedDoc = parseTimelineFromOtio(text, {
               id: 'nested',
               name: 'nested',
-              format: {
-                ...projectStore.projectSettings.project,
-                fps: options?.fallbackFps ?? projectStore.projectSettings.project.fps,
-              },
+              format: options?.fallbackFormat ?? projectStore.projectSettings.project,
             });
 
             const nextVisited = new Set(visitedPaths).add(path);
@@ -549,7 +544,7 @@ export async function toWorkerTimelineClips(
                     parentOpacity: combinedOpacity,
                     parentBlendMode: combinedBlendMode,
                     parentEffects: combinedTrackEffects,
-                    fallbackFps: nestedDoc.timebase.fps,
+                    fallbackFormat: { fps: nestedDoc.timebase.fps },
                   },
                 );
 

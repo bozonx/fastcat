@@ -70,7 +70,8 @@ import {
   type UploadResult,
   type HandleFilesDeps,
 } from '~/file-manager/application/fileManagerCommands';
-import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
+import { createTimelineFormatFromProjectDefaults, DEFAULT_TIMELINE_FORMAT } from '~/timeline/format';
+import type { FastCatProjectSettings } from '~/utils/project-settings';
 import { useVfs } from '~/composables/useVfs';
 import { createUiActionRunner } from './useUiActionRunner';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
@@ -100,6 +101,7 @@ export interface FileManagerCreateDeps {
   getProjectName: () => string | null;
   getProjectId: () => string | null;
   getProjectSize: () => { width: number; height: number };
+  getProjectSettings?: () => FastCatProjectSettings;
   onMediaImported: (params: { projectRelativePath: string }) => void;
   mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
   onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
@@ -674,7 +676,9 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         const createdPath = await createTimelineCommand({
           vfs: deps.vfs,
           timelinesDirName: parentPath ?? TIMELINES_DIR_NAME,
-          format: createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project),
+          format: createTimelineFormatFromProjectDefaults(
+            deps.getProjectSettings?.().project ?? DEFAULT_TIMELINE_FORMAT,
+          ),
         });
         await reloadDirectory(parentPath ?? TIMELINES_DIR_NAME);
         return createdPath;
@@ -910,6 +914,7 @@ export function useFileManager(options?: {
       width: timelineStore.timelineFormat.width,
       height: timelineStore.timelineFormat.height,
     }),
+    getProjectSettings: () => projectStore.projectSettings,
     onMediaImported: ({ projectRelativePath }) => {
       void mediaStore.getOrFetchMetadataByPath(projectRelativePath);
     },

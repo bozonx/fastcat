@@ -57,7 +57,7 @@ export function useExportProcess(
       projectStore,
       workspaceStore,
       masterEffects: doc?.metadata?.fastcat?.masterEffects,
-      fallbackFps: timelineStore.timelineFormat.fps,
+      fallbackFormat: timelineStore.timelineFormat,
     });
 
     const croppedVideoClips = exportRangeUs
@@ -82,7 +82,7 @@ export function useExportProcess(
     const audioClips = (
       await toWorkerTimelineClips(effectiveAudioItems, projectStore, workspaceStore, {
         trackKind: 'audio',
-        fallbackFps: timelineStore.timelineFormat.fps,
+        fallbackFormat: timelineStore.timelineFormat,
       })
     ).map((clip) => ({
       ...clip,

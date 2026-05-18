@@ -2,24 +2,9 @@ export const STORAGE_KEYS = {
   APP: {
     ALREADY_LAUNCHED: 'fastcat:app:already-launched',
   },
-  WORKSPACE: {
-    LAST_PROJECT: 'fastcat:workspace:last-opened-project',
-    RECENT_PROJECTS: 'fastcat:workspace:recent-projects',
-  },
-  PRESETS: {
-    COLLAPSED: 'fastcat:presets:collapsed',
-  },
-  SETTINGS: {
-    ACTIVE_SECTION: 'fastcat:settings:active-section',
-  },
   UI: {
-    SHOW_HIDDEN_FILES: 'fastcat:ui:show-hidden-files',
     MONITOR_VOLUME: 'fastcat:ui:monitor-volume',
     MONITOR_MUTED: 'fastcat:ui:monitor-muted',
-  },
-  FILE_MANAGER: {
-    // Pattern: fastcat:file-manager-${contextId}:${prop}
-    contextKey: (contextId: string, prop: string) => `fastcat:file-manager-${contextId}:${prop}`,
   },
 } as const;
 

@@ -33,12 +33,10 @@ export interface PendingRemoteDownloadRequest {
 export const useUiStore = defineStore('ui', () => {
   const workspaceStore = useWorkspaceStore();
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
-  const showHiddenFiles = ref(
-    workspaceStore.workspaceState?.ui?.showHiddenFiles ??
-      readLocalStorageJson(STORAGE_KEYS.UI.SHOW_HIDDEN_FILES, false),
-  );
+  const showHiddenFiles = ref(workspaceStore.workspaceState?.ui?.showHiddenFiles ?? false);
   const monitorVolume = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, 1));
   const monitorMuted = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, false));
+  const fsSidebarWidth = ref(workspaceStore.workspaceState?.ui?.fsSidebarWidth ?? 0);
 
   watch(
     () => showHiddenFiles.value,
@@ -72,6 +70,25 @@ export const useUiStore = defineStore('ui', () => {
     (val) => {
       if (workspaceStore.isEphemeral) return;
       writeLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, val);
+    },
+  );
+
+  watch(
+    () => fsSidebarWidth.value,
+    (val) => {
+      if (workspaceStore.isEphemeral) return;
+      void workspaceStore.batchUpdateWorkspaceState((draft) => {
+        draft.ui.fsSidebarWidth = val;
+      });
+    },
+  );
+
+  watch(
+    () => workspaceStore.workspaceState?.ui?.fsSidebarWidth,
+    (val) => {
+      if (typeof val === 'number' && fsSidebarWidth.value !== val) {
+        fsSidebarWidth.value = val;
+      }
     },
   );
 
@@ -152,7 +169,6 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  const fsSidebarWidth = ref(0);
   const previewZoomTrigger = ref({ dir: 0, timestamp: 0 });
   const previewZoomResetTrigger = ref(0);
   const previewZoomFitTrigger = ref(0);

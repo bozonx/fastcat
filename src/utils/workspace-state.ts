@@ -7,6 +7,7 @@ export interface FileBrowserInstanceState {
     order: 'asc' | 'desc';
   };
   gridCardSize: number;
+  columnWidths: Record<string, number>;
   lastPath?: string;
 }
 
@@ -20,6 +21,7 @@ export interface WorkspaceState {
     recentSearchQueries: string[];
     pinnedItems: string[];
     showHiddenFiles: boolean;
+    fsSidebarWidth: number;
     lastProjectName: string | null;
     recentProjects: Array<{
       projectName: string;
@@ -45,6 +47,7 @@ export function createDefaultWorkspaceState(): WorkspaceState {
       recentSearchQueries: [],
       pinnedItems: [],
       showHiddenFiles: false,
+      fsSidebarWidth: 0,
       lastProjectName: null,
       recentProjects: [],
     },
@@ -85,6 +88,10 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
         typeof data.ui?.showHiddenFiles === 'boolean'
           ? data.ui.showHiddenFiles
           : defaults.ui.showHiddenFiles,
+      fsSidebarWidth:
+        typeof data.ui?.fsSidebarWidth === 'number'
+          ? data.ui.fsSidebarWidth
+          : defaults.ui.fsSidebarWidth,
       lastProjectName:
         typeof data.ui?.lastProjectName === 'string' || data.ui?.lastProjectName === null
           ? data.ui.lastProjectName
@@ -96,7 +103,35 @@ export function normalizeWorkspaceState(data: any): WorkspaceState {
     fileBrowser: {
       instances:
         data.fileBrowser?.instances && typeof data.fileBrowser.instances === 'object'
-          ? data.fileBrowser.instances
+          ? Object.fromEntries(
+              Object.entries(data.fileBrowser.instances).map(([key, val]) => [
+                key,
+                {
+                  viewMode: ['grid', 'list'].includes((val as any)?.viewMode)
+                    ? (val as any).viewMode
+                    : 'grid',
+                  sortOption:
+                    (val as any)?.sortOption &&
+                    ['name', 'type', 'size', 'modified', 'created'].includes(
+                      (val as any).sortOption.field,
+                    )
+                      ? {
+                          field: (val as any).sortOption.field,
+                          order: ['asc', 'desc'].includes((val as any).sortOption.order)
+                            ? (val as any).sortOption.order
+                            : 'asc',
+                        }
+                      : { field: 'name', order: 'asc' },
+                  gridCardSize: typeof (val as any)?.gridCardSize === 'number' ? (val as any).gridCardSize : 80,
+                  columnWidths:
+                    (val as any)?.columnWidths && typeof (val as any).columnWidths === 'object'
+                      ? (val as any).columnWidths
+                      : { name: 200, type: 100, size: 80, created: 140, modified: 140 },
+                  lastPath:
+                    typeof (val as any)?.lastPath === 'string' ? (val as any).lastPath : undefined,
+                },
+              ]),
+            )
           : defaults.fileBrowser.instances,
       activeTab: ['computer', 'bloggerdog', 'fastcat'].includes(data.fileBrowser?.activeTab)
         ? data.fileBrowser.activeTab

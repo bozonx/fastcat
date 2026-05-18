@@ -131,6 +131,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         projectStore,
         workspaceStore,
         masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
+        fallbackFormat: timelineStore.timelineFormat ?? undefined,
       });
       const flattenedClips = preparedTimeline.flattenedClips;
       const flattenedAudio = preparedTimeline.flattenedAudio;
@@ -232,6 +233,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         projectStore,
         workspaceStore,
         masterEffects: timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects,
+        fallbackFormat: timelineStore.timelineFormat ?? undefined,
       });
       const flattenedClips = preparedTimeline.flattenedClips;
       const flattenedAudio = preparedTimeline.flattenedAudio;
@@ -275,7 +277,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       }
 
       await audioEngine.init({
-        sampleRate: projectStore.projectSettings?.project?.sampleRate,
+        sampleRate: timelineStore.timelineFormat?.sampleRate ?? projectStore.projectSettings?.project?.sampleRate,
       });
 
       const audioEngineClips = await syncAudioEngineClips(audioClips);
@@ -340,8 +342,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     getMonitorVolume: () => uiStore.monitorVolume,
     getMonitorMuted: () => uiStore.monitorMuted,
     getProjectSizeKey: () => [
-      projectStore.projectSettings?.project?.width ?? 0,
-      projectStore.projectSettings?.project?.height ?? 0,
+      timelineStore.timelineFormat?.width ?? projectStore.projectSettings?.project?.width ?? 0,
+      timelineStore.timelineFormat?.height ?? projectStore.projectSettings?.project?.height ?? 0,
       projectStore.activeMonitor?.previewResolution ?? 0,
     ],
     getRenderTimeForLayoutUpdate,

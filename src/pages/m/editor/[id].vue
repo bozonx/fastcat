@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useUiStore } from '~/stores/ui.store';
 
@@ -21,6 +22,7 @@ definePageMeta({
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const route = useRoute();
 const router = useRouter();
@@ -115,7 +117,8 @@ async function handleBack() {
 const isLandscapeMode = useMediaQuery('(orientation: landscape)');
 
 const isVerticalProject = computed(() => {
-  const { width, height } = projectStore.projectSettings.project;
+  const width = timelineStore.timelineFormat?.width ?? projectStore.projectSettings.project.width;
+  const height = timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height;
   return width < height;
 });
 

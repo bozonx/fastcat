@@ -1,31 +1,26 @@
-import {
-  readLocalStorageJson,
-  writeLocalStorageJson,
-  getPlatformSuffix,
-} from '~/stores/ui/uiLocalStorage';
 import { type Ref, isRef } from 'vue';
 
 const PANEL_SIZES_PREFIX = 'fastcat:layout:split-sizes';
 
-export function getPanelSizesKey(pageKey: string, projectId: string | null): string {
+function getPanelSizesKey(pageKey: string, projectId: string | null): string {
   const id = projectId ?? 'no-project';
-  const suffix = getPlatformSuffix();
-  return `${PANEL_SIZES_PREFIX}:${pageKey}:${id}${suffix}`;
+  return `${PANEL_SIZES_PREFIX}:${pageKey}:${id}`;
 }
 
 /**
- * A composable to manage and persist splitpane sizes in local storage.
+ * A composable to manage and persist splitpane sizes via project settings storage.
  *
  * @param pageKey Unique key for the page (e.g., 'files', 'cut', 'sound'), can be a Ref
  * @param projectId Reactive ref to current project ID
  * @param defaultSizes The default sizes for the panes.
+ * @param storage Storage adapter for persisting split sizes.
  * @returns An object containing the current sizes and the onResized handler.
  */
 export function usePersistedSplitpanes(
   pageKey: string | Ref<string>,
   projectId: Ref<string | null>,
   defaultSizes: number[] | Ref<number[]>,
-  storage?: {
+  storage: {
     get: (key: string) => number[] | null | undefined;
     set: (key: string, value: number[]) => void;
   },
@@ -42,7 +37,7 @@ export function usePersistedSplitpanes(
   function loadSizes() {
     const newKey = getKey();
     key.value = newKey;
-    const stored = storage?.get(newKey) ?? readLocalStorageJson<number[] | null>(newKey, null);
+    const stored = storage.get(newKey);
     const defaults = isRef(defaultSizes) ? defaultSizes.value : defaultSizes;
 
     if (stored && Array.isArray(stored) && stored.length === defaults.length) {
@@ -70,22 +65,14 @@ export function usePersistedSplitpanes(
     if (Array.isArray(event?.panes)) {
       const newSizes = event.panes.map((p) => p.size);
       sizes.value = newSizes;
-      if (storage) {
-        storage.set(key.value, newSizes);
-      } else {
-        writeLocalStorageJson(key.value, newSizes);
-      }
+      storage.set(key.value, newSizes);
     }
   }
 
   function reset() {
     const defaults = isRef(defaultSizes) ? defaultSizes.value : defaultSizes;
     sizes.value = [...defaults];
-    if (storage) {
-      storage.set(key.value, sizes.value);
-    } else {
-      writeLocalStorageJson(key.value, sizes.value);
-    }
+    storage.set(key.value, sizes.value);
   }
 
   return {

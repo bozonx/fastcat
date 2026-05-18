@@ -113,7 +113,7 @@ export function useMonitorRuntime() {
     currentTime,
     duration,
     safeDurationUs,
-    getFps: () => projectStore.projectSettings?.project?.fps,
+    getFps: () => timelineStore.timelineFormat?.fps ?? timelineStore.fps,
     clampToTimeline,
     updateStoreTime,
     scheduleRender,

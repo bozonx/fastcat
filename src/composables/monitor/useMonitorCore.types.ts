@@ -35,6 +35,7 @@ export interface TimelineStoreState {
   masterGain: number;
   audioMuted: boolean;
   timelineDoc: TimelineDocument | null;
+  timelineFormat: { width: number; height: number; fps: number; sampleRate: number } | null;
 }
 
 export interface MonitorStoreState {

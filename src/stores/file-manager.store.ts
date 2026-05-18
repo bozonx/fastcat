@@ -3,11 +3,6 @@ import { ref, watch, computed } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import {
-  readLocalStorageJson,
-  writeLocalStorageJson,
-  STORAGE_KEYS,
-} from '~/stores/ui/uiLocalStorage';
 
 export type FileViewMode = 'grid' | 'list';
 export type FileSortField = 'name' | 'type' | 'size' | 'modified' | 'created';
@@ -41,37 +36,26 @@ function createFileManagerStoreSetup(contextId: string) {
       () => workspaceStore.workspaceState.fileBrowser.instances[contextId],
     );
 
-    const viewMode = ref<FileViewMode>(
-      workspaceInstance.value?.viewMode ??
-        readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'viewMode'), 'grid'),
-    );
+    const viewMode = ref<FileViewMode>(workspaceInstance.value?.viewMode ?? 'grid');
     const sortOption = ref<FileSortOption>(
-      workspaceInstance.value?.sortOption ??
-        readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'sortOption'), {
-          field: 'name',
-          order: 'asc',
-        }),
+      workspaceInstance.value?.sortOption ?? { field: 'name', order: 'asc' },
     );
-    const gridCardSize = ref<number>(
-      workspaceInstance.value?.gridCardSize ??
-        readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'gridCardSize'), 80),
-    );
+    const gridCardSize = ref<number>(workspaceInstance.value?.gridCardSize ?? 80);
 
-    // Keep column widths in localStorage as they are machine/resolution dependent
     const columnWidths = ref<Record<string, number>>(
-      readLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'columnWidths'), {
+      workspaceInstance.value?.columnWidths ?? {
         name: 200,
         type: 100,
         size: 80,
         created: 140,
         modified: 140,
-      }),
+      },
     );
     const selectionContext = ref<FileManagerSelectionContext>({});
 
     // Watch for internal changes and update WorkspaceState
     watch(
-      [viewMode, sortOption, gridCardSize, () => selectedFolder.value?.path],
+      [viewMode, sortOption, gridCardSize, columnWidths, () => selectedFolder.value?.path],
       () => {
         workspaceStore.batchUpdateWorkspaceState((draft) => {
           if (!draft.fileBrowser.instances[contextId]) {
@@ -79,12 +63,14 @@ function createFileManagerStoreSetup(contextId: string) {
               viewMode: viewMode.value,
               sortOption: sortOption.value,
               gridCardSize: gridCardSize.value,
+              columnWidths: columnWidths.value,
             };
           }
           const instance = draft.fileBrowser.instances[contextId]!;
           instance.viewMode = viewMode.value;
           instance.sortOption = sortOption.value;
           instance.gridCardSize = gridCardSize.value;
+          instance.columnWidths = columnWidths.value;
           if (selectedFolder.value?.path) {
             instance.lastPath = selectedFolder.value.path;
           }
@@ -100,15 +86,13 @@ function createFileManagerStoreSetup(contextId: string) {
         if (!val) return;
         if (val.viewMode !== viewMode.value) viewMode.value = val.viewMode;
         if (val.gridCardSize !== gridCardSize.value) gridCardSize.value = val.gridCardSize;
+        if (val.columnWidths && val.columnWidths !== columnWidths.value) {
+          columnWidths.value = val.columnWidths;
+        }
         // We don't force-update sortOption here to avoid infinite loops or jitter,
         // but if needed we could implement a shallow compare
       },
       { deep: true },
-    );
-
-    // Still persist columnWidths to localStorage
-    watch(columnWidths, (val) =>
-      writeLocalStorageJson(STORAGE_KEYS.FILE_MANAGER.contextKey(contextId, 'columnWidths'), val),
     );
 
     // Initial folder load from workspace
