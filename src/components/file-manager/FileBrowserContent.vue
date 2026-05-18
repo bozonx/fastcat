@@ -88,8 +88,8 @@ function emitEntryClick(event: MouseEvent, entry: FsEntry) {
   emit('entryClick', event, entry);
 }
 
-function emitEntryDoubleClick(event: MouseEvent, entry: FsEntry) {
-  emit('entryDoubleClick', event, entry);
+function emitEntryDoubleClick(entry: FsEntry) {
+  emit('entryDoubleClick', entry);
 }
 
 function emitEntryEnter(entry: FsEntry) {

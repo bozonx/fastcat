@@ -143,7 +143,7 @@ function onNameDblClick() {
           <th
             class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.name}px`, minWidth: '60px' }"
-            @click="emit('sort')"
+            @click="emit('sort', 'name')"
           >
             <div class="flex items-center gap-1">
               {{ t('common.name') }}
@@ -168,7 +168,7 @@ function onNameDblClick() {
           <th
             class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.type}px`, minWidth: '60px' }"
-            @click="emit('sort')"
+            @click="emit('sort', 'type')"
           >
             <div class="flex items-center gap-1">
               {{ t('common.type') }}
@@ -193,7 +193,7 @@ function onNameDblClick() {
           <th
             class="py-1 px-3 font-medium text-right cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.size}px`, minWidth: '60px' }"
-            @click="emit('sort')"
+            @click="emit('sort', 'size')"
           >
             <div class="flex items-center justify-end gap-1">
               {{ t('common.size') }}
@@ -218,7 +218,7 @@ function onNameDblClick() {
           <th
             class="py-1 px-3 font-medium cursor-pointer hover:text-ui-text transition-colors select-none relative"
             :style="{ width: `${fileManagerStore.columnWidths.created}px`, minWidth: '60px' }"
-            @click="emit('sort')"
+            @click="emit('sort', 'created')"
           >
             <div class="flex items-center gap-1">
               {{ t('common.created') }}
@@ -246,7 +246,7 @@ function onNameDblClick() {
               width: `${fileManagerStore.columnWidths.modified}px`,
               minWidth: '60px',
             }"
-            @click="emit('sort')"
+            @click="emit('sort', 'modified')"
           >
             <div class="flex items-center gap-1">
               {{ t('common.modified') }}
@@ -390,7 +390,7 @@ function onNameDblClick() {
                   ]"
                   :title="entry.name"
                   @click="onNameClick($event, entry)"
-                  @dblclick="onNameDblClick($event, entry)"
+                  @dblclick="onNameDblClick()"
                 >
                   {{ entry.name }}
                 </span>

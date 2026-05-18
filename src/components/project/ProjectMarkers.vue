@@ -36,16 +36,16 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
 <template>
   <div class="h-full flex flex-col bg-ui-bg-elevated overflow-hidden">
     <div class="flex-1 overflow-auto">
-      <table class="w-full text-left text-xs border-collapse">
+      <table class="w-full text-left text-xs border-collapse table-fixed">
         <thead
           class="sticky top-0 bg-ui-bg-elevated/95 backdrop-blur-sm z-10 border-b border-ui-border-muted uppercase tracking-wider text-ui-text-muted font-semibold"
         >
           <tr>
             <th class="px-3 py-2 w-24"></th>
-            <th class="px-3 py-2 whitespace-nowrap"></th>
+            <th class="px-3 py-2 w-8"></th>
             <th class="px-3 py-2 whitespace-nowrap">{{ $t('common.text') }}</th>
-            <th class="px-3 py-2 whitespace-nowrap">{{ $t('common.start') }}</th>
-            <th class="px-3 py-2 whitespace-nowrap">{{ $t('common.end') }}</th>
+            <th class="px-3 py-2 w-24 whitespace-nowrap">{{ $t('common.start') }}</th>
+            <th class="px-3 py-2 w-24 whitespace-nowrap">{{ $t('common.end') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-ui-border/50">
@@ -70,7 +70,7 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
                 :style="{ backgroundColor: marker.color || 'var(--color-primary-500)' }"
               ></div>
             </td>
-            <td class="px-3 py-2 min-w-[140px] truncate max-w-[200px]" :title="marker.text">
+            <td class="px-3 py-2 min-w-[140px] truncate" :title="marker.text">
               <div class="flex items-center gap-2 truncate">
                 <span class="truncate transition-colors group-hover:text-ui-text">
                   {{ marker.text || $t('fastcat.timeline.marker') }}

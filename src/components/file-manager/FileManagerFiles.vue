@@ -36,7 +36,7 @@ const props = defineProps<{
   findEntryByPath: (path: string) => FsEntry | null;
   resolveEntryByPath?: (path: string) => Promise<FsEntry | null>;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy'>;
-  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<void>;
+  moveEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   copyEntry: (params: { source: FsEntry; targetDirPath: string }) => Promise<unknown>;
   handleFiles: (
     files: FileList | File[],
@@ -49,7 +49,7 @@ const props = defineProps<{
         fileName: string;
       }) => void;
     },
-  ) => Promise<void>;
+  ) => Promise<void | UploadResult[] | null>;
   onCopyEntries?: (entries: FsEntry[]) => void;
   onCutEntries?: (entries: FsEntry[]) => void;
   onPasteToEntry?: (entry: FsEntry) => void;
@@ -365,18 +365,18 @@ const rootContextMenuItems = computed(() => {
         {
           label: t('videoEditor.fileManager.actions.createFolder'),
           icon: 'i-heroicons-folder-plus',
-          onSelect: async () => emit('action', rootEntry),
+          onSelect: async () => emit('action', 'createFolder', rootEntry),
         },
         {
           label: t('videoEditor.fileManager.actions.createMarkdown'),
           icon: 'i-heroicons-document-text',
-          onSelect: async () => emit('action', rootEntry),
+          onSelect: async () => emit('action', 'createMarkdown', rootEntry),
         },
         {
           label: t('common.paste'),
           icon: 'i-heroicons-clipboard',
           disabled: !clipboardStore.hasFileManagerPayload,
-          onSelect: async () => emit('action', rootEntry),
+          onSelect: async () => emit('action', 'paste', rootEntry),
         },
       ],
     ];
@@ -391,22 +391,22 @@ const rootContextMenuItems = computed(() => {
       {
         label: t('videoEditor.fileManager.actions.uploadFiles'),
         icon: 'i-heroicons-arrow-up-tray',
-        onSelect: async () => emit('action', rootEntry),
+        onSelect: async () => emit('action', 'upload', rootEntry),
       },
       {
         label: t('videoEditor.fileManager.actions.createFolder'),
         icon: 'i-heroicons-folder-plus',
-        onSelect: async () => emit('action', rootEntry),
+        onSelect: async () => emit('action', 'createFolder', rootEntry),
       },
       {
         label: t('videoEditor.fileManager.actions.createTimeline'),
         icon: 'i-heroicons-document-plus',
-        onSelect: async () => emit('action', rootEntry),
+        onSelect: async () => emit('action', 'createTimeline', rootEntry),
       },
       {
         label: t('videoEditor.fileManager.actions.createMarkdown'),
         icon: 'i-heroicons-document-text',
-        onSelect: async () => emit('action', rootEntry),
+        onSelect: async () => emit('action', 'createMarkdown', rootEntry),
       },
     ],
     [
@@ -414,7 +414,7 @@ const rootContextMenuItems = computed(() => {
         label: t('videoEditor.fileManager.actions.syncTreeTooltip'),
         icon: 'i-heroicons-arrow-path',
         disabled: props.isLoading,
-        onSelect: () => emit('action', rootEntry),
+        onSelect: () => emit('action', 'refresh', rootEntry),
       },
     ],
   ];
@@ -468,7 +468,7 @@ const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerS
 async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
   if (event && !props.isFilesPage) {
     handleSelectionClick(event, entry);
-    focusStore.setTempFocus('left');
+    focusStore.setTempFocus('files-sidebar');
     if (!props.isExternal && entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
       await loadTimeline(entry.path);
     }

@@ -292,7 +292,7 @@ function handleImageError(entry: ExtendedFsEntry) {
           }"
           :title="entry.name"
           @click="onNameClick($event, entry)"
-          @dblclick="onNameDblClick($event, entry)"
+          @dblclick="onNameDblClick()"
         >
           {{ entry.name }}
         </span>
