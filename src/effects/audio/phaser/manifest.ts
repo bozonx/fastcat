@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectNodeGraph } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface PhaserParams {
   wet: number;
@@ -124,19 +125,14 @@ export const phaserManifest: AudioEffectManifest<PhaserParams> = {
   },
   updateNode(node, values) {
     const graph = node as PhaserGraph;
-    const rate = typeof values.rate === 'number' ? Math.max(0.05, Math.min(5, values.rate)) : 0.3;
-    const depth =
-      typeof values.depth === 'number' ? Math.max(0, Math.min(2000, values.depth)) : 800;
-    const baseFrequency =
-      typeof values.baseFrequency === 'number'
-        ? Math.max(100, Math.min(2000, values.baseFrequency))
-        : 700;
+    const rate = clampAudioParam(values.rate, 0.05, 5, 0.3);
+    const depth = clampAudioParam(values.depth, 0, 2000, 800);
+    const baseFrequency = clampAudioParam(values.baseFrequency, 100, 2000, 700);
 
     graph.filters.forEach((filter) => {
       filter.frequency.value = baseFrequency;
     });
-    graph.feedbackGain.gain.value =
-      typeof values.feedback === 'number' ? Math.max(0, Math.min(0.9, values.feedback)) : 0.25;
+    graph.feedbackGain.gain.value = clampAudioParam(values.feedback, 0, 0.9, 0.25);
     graph.lfo.type = 'sine';
     graph.lfo.frequency.value = rate;
     graph.lfoDepth.gain.value = depth;

@@ -44,7 +44,6 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
 
     const effectContext = {
       audioContext,
-      sourceNode: currentNode,
     };
     const effectNode = manifest.createNode(effectContext);
 
@@ -62,6 +61,16 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
             err,
           );
         }
+        return;
+      }
+
+      if (isAudioEffectNodeGraph(effectNode)) {
+        try {
+          effectNode.input.disconnect();
+        } catch {}
+        try {
+          effectNode.output.disconnect();
+        } catch {}
       }
     });
 

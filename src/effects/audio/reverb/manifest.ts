@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectContext, AudioEffectNode } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface ReverbParams {
   wet: number;
@@ -11,12 +12,12 @@ type ReverbImpulseBuffer = NonNullable<ConvolverNode['buffer']>;
 const MAX_CACHE_SIZE = 10;
 const impulseResponseCache = new Map<string, ReverbImpulseBuffer>();
 
-function normalizeDecay(value: number | undefined): number {
-  return typeof value === 'number' ? Math.max(0.1, Math.min(10, value)) : 2.5;
+function normalizeDecay(value: unknown): number {
+  return clampAudioParam(value, 0.1, 10, 2.5);
 }
 
-function normalizePreDelay(value: number | undefined): number {
-  return typeof value === 'number' ? Math.max(0.1, Math.min(0.5, value)) : 0.01;
+function normalizePreDelay(value: unknown): number {
+  return clampAudioParam(value, 0, 0.5, 0.01);
 }
 
 function generateImpulseResponse(

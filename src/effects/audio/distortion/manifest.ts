@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectContext, AudioEffectNode } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface DistortionParams {
   wet: number;
@@ -83,8 +84,7 @@ export const distortionManifest: AudioEffectManifest<DistortionParams> = {
   },
   updateNode(node: AudioEffectNode, values: DistortionParams) {
     const shaper = node as WaveShaperNode;
-    const distortion =
-      typeof values.distortion === 'number' ? Math.max(0, Math.min(1, values.distortion)) : 0.4;
+    const distortion = clampAudioParam(values.distortion, 0, 1, 0.4);
     shaper.curve = getDistortionCurve(distortion * 400);
     const oversample: OverSampleType =
       values.oversample === '4x' ? '4x' : values.oversample === 'none' ? 'none' : '2x';

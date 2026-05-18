@@ -1,4 +1,5 @@
 import type { AudioEffectManifest } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface CompressorParams {
   wet: number;
@@ -84,15 +85,10 @@ export const compressorManifest: AudioEffectManifest<CompressorParams> = {
   },
   updateNode(node, values) {
     const compressor = node as DynamicsCompressorNode;
-    compressor.threshold.value =
-      typeof values.threshold === 'number' ? Math.max(-100, Math.min(0, values.threshold)) : -24;
-    compressor.knee.value =
-      typeof values.knee === 'number' ? Math.max(0, Math.min(40, values.knee)) : 30;
-    compressor.ratio.value =
-      typeof values.ratio === 'number' ? Math.max(1, Math.min(20, values.ratio)) : 4;
-    compressor.attack.value =
-      typeof values.attack === 'number' ? Math.max(0, Math.min(1, values.attack)) : 0.003;
-    compressor.release.value =
-      typeof values.release === 'number' ? Math.max(0, Math.min(1, values.release)) : 0.25;
+    compressor.threshold.value = clampAudioParam(values.threshold, -100, 0, -24);
+    compressor.knee.value = clampAudioParam(values.knee, 0, 40, 30);
+    compressor.ratio.value = clampAudioParam(values.ratio, 1, 20, 4);
+    compressor.attack.value = clampAudioParam(values.attack, 0, 1, 0.003);
+    compressor.release.value = clampAudioParam(values.release, 0, 1, 0.25);
   },
 };

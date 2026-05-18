@@ -1,4 +1,5 @@
 import type { AudioEffectManifest } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface LimiterParams {
   wet: number;
@@ -82,15 +83,18 @@ export const limiterManifest: AudioEffectManifest<LimiterParams> = {
   updateNode(node, values) {
     const graph = node as { input: DynamicsCompressorNode; output: GainNode };
 
-    graph.input.threshold.value =
-      typeof values.threshold === 'number' ? Math.max(-12, Math.min(0, values.threshold)) : -1;
-    graph.input.knee.value =
-      typeof values.knee === 'number' ? Math.max(0, Math.min(20, values.knee)) : 0;
+    graph.input.threshold.value = clampAudioParam(values.threshold, -12, 0, -1);
+    graph.input.knee.value = clampAudioParam(values.knee, 0, 20, 0);
     graph.input.ratio.value = 20;
     graph.input.attack.value = 0.001;
-    graph.input.release.value =
-      typeof values.release === 'number' ? Math.max(0.01, Math.min(0.5, values.release)) : 0.1;
-    graph.output.gain.value =
-      typeof values.makeupGain === 'number' ? Math.max(0.5, Math.min(2, values.makeupGain)) : 1;
+    graph.input.release.value = clampAudioParam(values.release, 0.01, 0.5, 0.1);
+    graph.output.gain.value = clampAudioParam(values.makeupGain, 0.5, 2, 1);
+  },
+  destroyNode(node) {
+    const graph = node as { input: DynamicsCompressorNode; output: GainNode };
+    try {
+      graph.input.disconnect();
+      graph.output.disconnect();
+    } catch {}
   },
 };

@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectNodeGraph } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface EchoParams {
   wet: number;
@@ -87,14 +88,9 @@ export const echoManifest: AudioEffectManifest<EchoParams> = {
   updateNode(node, values) {
     const graph = node as EchoGraph;
 
-    graph.delay.delayTime.value =
-      typeof values.delayTime === 'number' ? Math.max(0.02, Math.min(1, values.delayTime)) : 0.25;
-
-    graph.feedbackGain.gain.value =
-      typeof values.feedback === 'number' ? Math.max(0, Math.min(0.9, values.feedback)) : 0.35;
-
-    graph.toneFilter.frequency.value =
-      typeof values.tone === 'number' ? Math.max(400, Math.min(12000, values.tone)) : 6000;
+    graph.delay.delayTime.value = clampAudioParam(values.delayTime, 0.02, 1, 0.25);
+    graph.feedbackGain.gain.value = clampAudioParam(values.feedback, 0, 0.9, 0.35);
+    graph.toneFilter.frequency.value = clampAudioParam(values.tone, 400, 12000, 6000);
   },
   destroyNode(node) {
     const graph = node as EchoGraph;

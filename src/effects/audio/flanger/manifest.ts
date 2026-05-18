@@ -1,4 +1,5 @@
 import type { AudioEffectManifest, AudioEffectNodeGraph } from '../../core/registry';
+import { clampAudioParam } from '../../../utils/audio/clamp';
 
 export interface FlangerParams {
   wet: number;
@@ -101,17 +102,12 @@ export const flangerManifest: AudioEffectManifest<FlangerParams> = {
   },
   updateNode(node, values) {
     const graph = node as FlangerGraph;
-    const rate = typeof values.rate === 'number' ? Math.max(0.05, Math.min(5, values.rate)) : 0.25;
-    const depth =
-      typeof values.depth === 'number' ? Math.max(0, Math.min(0.01, values.depth)) : 0.002;
-    const delayTime =
-      typeof values.delayTime === 'number'
-        ? Math.max(0.0005, Math.min(0.01, values.delayTime))
-        : 0.003;
+    const rate = clampAudioParam(values.rate, 0.05, 5, 0.25);
+    const depth = clampAudioParam(values.depth, 0, 0.01, 0.002);
+    const delayTime = clampAudioParam(values.delayTime, 0.0005, 0.01, 0.003);
 
     graph.delay.delayTime.value = delayTime;
-    graph.feedbackGain.gain.value =
-      typeof values.feedback === 'number' ? Math.max(0, Math.min(0.9, values.feedback)) : 0.35;
+    graph.feedbackGain.gain.value = clampAudioParam(values.feedback, 0, 0.9, 0.35);
     graph.lfo.type = 'sine';
     graph.lfo.frequency.value = rate;
     graph.lfoDepth.gain.value = depth;

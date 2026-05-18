@@ -9,7 +9,6 @@ export type AudioEffectCategory = 'basic' | 'artistic' | 'voice';
 
 export interface AudioEffectContext {
   audioContext: BaseAudioContext;
-  sourceNode?: AudioNode;
 }
 
 export interface AudioEffectNodeGraph {
