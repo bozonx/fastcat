@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import type { ToolbarDragMode, ToolbarSnapMode } from '~/stores/timeline-settings.store';

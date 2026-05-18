@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';

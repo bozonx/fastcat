@@ -1,7 +1,6 @@
 import { ref, watch, inject, onScopeDispose } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
 import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
@@ -28,9 +27,7 @@ export function useFileBrowserEntries({
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
-  const uiStore = useUiStore();
   const projectStore = useProjectStore();
-
   const folderEntries = ref<FsEntry[]>([]);
   const folderSizes = ref<Record<string, number>>({});
   const folderSizesLoading = ref<Record<string, boolean>>({});

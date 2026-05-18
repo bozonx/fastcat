@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { watch } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFpsInputWithPresets from '~/components/ui/editor/UiFpsInputWithPresets.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';

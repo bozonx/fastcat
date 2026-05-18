@@ -6,10 +6,7 @@ import MobileMediaPickerDrawer from '~/components/timeline/MobileMediaPickerDraw
 import { usePresetsStore } from '~/stores/presets.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useTimelineStore } from '~/stores/timeline.store';
-
 const uiStore = useUiStore();
-const timelineStore = useTimelineStore();
 const route = useRoute();
 const isMobileLayout = computed(() => route.path === '/m' || route.path.startsWith('/m/'));
 

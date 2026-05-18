@@ -36,7 +36,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { getFileIcon } = useFileManager();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
-const projectStore = useProjectStore();
 const proxyStore = useProxyStore();
 
 const mediaUsageMap = computed(() => timelineMediaUsageStore.mediaPathToTimelines);

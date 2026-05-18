@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue';
-import { useProjectStore } from '~/stores/project.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
@@ -13,7 +12,6 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const projectStore = useProjectStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 

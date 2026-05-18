@@ -26,7 +26,6 @@ const emit = defineEmits<{
   (e: 'middleClick', event: MouseEvent): void;
 }>();
 
-const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
 const renameValue = ref(props.track.name);

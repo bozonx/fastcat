@@ -10,7 +10,6 @@ import type { TimelineMediaClipItem } from '~/timeline/types';
 export function useSilenceTrimming() {
   const timelineStore = useTimelineStore();
   const workspaceStore = useWorkspaceStore();
-  const { t } = useI18n();
 
   const PAUSE_THRESHOLD_US = 500_000; // 500ms
 

@@ -12,8 +12,6 @@ const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
-const { t } = useI18n();
-
 /** Standard color set according to requirements */
 const COLORS = computed(() => {
   const commonColors = TRACK_COLOR_PRESETS.slice(1); // Skip default

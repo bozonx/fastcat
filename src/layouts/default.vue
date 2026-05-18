@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { onMounted } from 'vue';
 import 'splitpanes/dist/splitpanes.css';
 import { storeToRefs } from 'pinia';
 
@@ -31,7 +31,6 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
-const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const focusStore = useFocusStore();
 const route = useRoute();

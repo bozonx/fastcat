@@ -208,13 +208,8 @@ describe('MediaStore', () => {
     } as any;
 
     const file = { size: 100, lastModified: 100, name: 'a.mp4' } as any;
-    vi.mocked(useProjectStore).mockReturnValue({
-      currentProjectId: 'test-project',
-      getFileHandleByPath: vi.fn(),
-      getFileByPath: vi.fn().mockResolvedValue(file),
-    } as any);
 
-    const result = await store.getOrFetchMetadataByPath('video/a.mp4');
+    const result = await store.getOrFetchMetadata(file, 'video/a.mp4');
     expect(result).toEqual({ source: { size: 100, lastModified: 100 }, duration: 42 });
   });
 

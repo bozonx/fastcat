@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
-import { useProjectStore } from '~/stores/project.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
@@ -13,7 +12,6 @@ const props = defineProps<{
 }>();
 
 const { locale } = useI18n();
-const projectStore = useProjectStore();
 const focusStore = useFocusStore();
 const fm = useFileManager();
 

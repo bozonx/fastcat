@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, provide, watch, nextTick, inject } from 'vue';
-import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useAutoScroll } from '~/composables/ui/useAutoScroll';
 import { useProjectStore } from '~/stores/project.store';
@@ -110,7 +109,6 @@ const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
-const clipboardStore = useAppClipboard();
 const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
 const fileManagerStore =

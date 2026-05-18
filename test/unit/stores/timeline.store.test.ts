@@ -3,6 +3,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { createTestTimeline } from '../utils/timeline-builder';
+import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
+
+vi.mock('~/timeline/otio-serializer', () => ({
+  parseTimelineFromOtio: vi.fn(),
+  serializeTimelineToOtio: vi.fn().mockReturnValue('{}'),
+}));
 
 const projectStoreMock = {
   currentProjectName: 'test',
@@ -316,5 +322,23 @@ describe('TimelineStore', () => {
     });
 
     expect(store.timelineDoc.tracks[0].items.length).toBeGreaterThan(initialCount);
+  });
+
+  it('falls back to default timeline when otio parse throws', async () => {
+    store.timelineDoc = null;
+
+    vi.mocked(parseTimelineFromOtio).mockImplementation(() => {
+      throw new Error('corrupted otio');
+    });
+
+    projectStoreMock.getFileHandleByPath.mockResolvedValue({
+      getFile: vi.fn().mockResolvedValue({
+        text: vi.fn().mockResolvedValue('corrupted otio'),
+      }),
+    });
+
+    await store.loadTimeline();
+    expect(store.timelineDoc).toBeDefined();
+    expect(store.timelineDoc.name).toBe('Default');
   });
 });

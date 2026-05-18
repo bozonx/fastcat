@@ -11,7 +11,6 @@ import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import { TIMELINES_DIR_NAME } from '~/utils/constants';
 import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
-import type { TimelineMarker } from '~/timeline/types';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';

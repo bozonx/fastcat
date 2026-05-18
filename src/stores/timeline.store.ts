@@ -3,7 +3,6 @@ import { ref, toRef, computed } from 'vue';
 
 import type {
   TimelineDocument,
-  TimelineMarker,
   TimelineSelectionRange,
   TimelineMediaClipItem,
   TimelineTrackItem,

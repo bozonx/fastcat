@@ -5,7 +5,6 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import UiScaleSlider from '~/components/ui/UiScaleSlider.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiAccordion from '~/components/ui/UiAccordion.vue';

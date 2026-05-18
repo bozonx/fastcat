@@ -185,7 +185,7 @@ export class VideoCompositor {
           if (clip.sprite.texture && clip.sprite.texture !== Texture.EMPTY) {
             clip.sprite.texture = Texture.EMPTY;
           }
-        } catch (_e) {
+        } catch {
           // ignore PixiJS internal errors on reset
         }
       }

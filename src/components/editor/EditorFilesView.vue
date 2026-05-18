@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, shallowRef, watch, provide, onMounted } from 'vue';
+import { computed, shallowRef, provide, onMounted } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';

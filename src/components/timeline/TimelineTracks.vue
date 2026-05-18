@@ -30,8 +30,6 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
-const { t } = useI18n();
-
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const focusStore = useFocusStore();

@@ -205,7 +205,6 @@ const {
   isTranscribing,
   isModelReady,
   pendingEntry: transcriptionEntry,
-  isTranscribableMediaFile,
   openModal: openTranscriptionModal,
   submitTranscription,
 } = useSttTranscription({

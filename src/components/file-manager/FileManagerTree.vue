@@ -160,7 +160,6 @@ const { setDraggedFile, clearDraggedFile } = useDraggedFile();
 const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
-const projectStore = useProjectStore();
 const uiStore = useUiStore();
 const appClipboard = useAppClipboard();
 
@@ -371,12 +370,6 @@ function isConvertibleMediaFile(entry: FsEntry): boolean {
   if (isFullyUnsupported(entry)) return false;
   const type = getMediaTypeFromFilename(entry.name);
   return type === 'video' || type === 'audio' || type === 'image';
-}
-
-function isTranscribableMediaFile(entry: FsEntry): boolean {
-  if (entry.kind !== 'file' || entry.source === 'remote') return false;
-  const type = getMediaTypeFromFilename(entry.name);
-  return type === 'audio' || type === 'video';
 }
 
 function onEntryClick(event: MouseEvent, entry: FsEntry) {

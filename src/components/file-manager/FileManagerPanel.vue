@@ -110,7 +110,6 @@ const {
   errorMessage: transcriptionError,
   isTranscribing,
   pendingEntry: transcriptionEntry,
-  isTranscribableMediaFile,
   openModal: openTranscriptionModal,
   submitTranscription,
 } = stt;

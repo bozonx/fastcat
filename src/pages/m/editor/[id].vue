@@ -3,7 +3,6 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
-import { useUiStore } from '~/stores/ui.store';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 import ExportForm from '~/components/export/ExportForm.vue';
@@ -19,12 +18,10 @@ definePageMeta({
   layout: 'mobile',
 });
 
-const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
-const route = useRoute();
 const router = useRouter();
 const { openProject, leaveProject } = useProjectActions();
 const isOpeningProject = ref(true);

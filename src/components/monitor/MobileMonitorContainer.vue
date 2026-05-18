@@ -9,7 +9,6 @@ import MonitorViewport from './MonitorViewport.vue';
 import MonitorTransformBox from './MonitorTransformBox.vue';
 import MobileMonitorAudioControl from './MobileMonitorAudioControl.vue';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
-import type { TimelineMarker } from '~/timeline/types';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
 
 const props = withDefaults(

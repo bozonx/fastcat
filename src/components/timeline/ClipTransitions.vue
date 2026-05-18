@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue';
+import { onBeforeUnmount } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,

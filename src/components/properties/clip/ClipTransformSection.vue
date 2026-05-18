@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ClipTransform } from '~/timeline/types';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
@@ -11,7 +10,6 @@ const { t } = useI18n();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
-const { loadTimeline } = useProjectActions();
 const { getHotkeyTitle } = useHotkeyLabel();
 
 const emit = defineEmits(['open-project-settings', 'open-editor-settings', 'open-export-modal']);
