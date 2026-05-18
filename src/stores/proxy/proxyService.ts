@@ -96,6 +96,7 @@ export function createProxyService(params: {
     dirPath: string;
   }): Promise<void> {
     params.generatingProxies.value = new Set([...params.generatingProxies.value, input.dirPath]);
+    const tasks: Promise<void>[] = [];
     try {
       for await (const handle of (input.dirHandle as any).values()) {
         const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
@@ -105,13 +106,15 @@ export function createProxyService(params: {
           if (!params.videoExtensions.has(ext)) continue;
           if (params.existingProxies.value.has(fullPath)) continue;
 
-          try {
-            await generateProxy(handle as FileSystemFileHandle, fullPath);
-          } catch (e) {
-            console.warn('Failed to generate proxy for file', fullPath, e);
-          }
+          tasks.push(
+            generateProxy(handle as FileSystemFileHandle, fullPath).catch((e) => {
+              console.warn('Failed to generate proxy for file', fullPath, e);
+            }),
+          );
         }
       }
+
+      await Promise.all(tasks);
     } finally {
       const nextGenerating = new Set(params.generatingProxies.value);
       nextGenerating.delete(input.dirPath);
@@ -362,15 +365,17 @@ export function createProxyService(params: {
             params.proxyAbortControllers.value = nextAbortControllers;
           }
         },
-        { priority: MEDIA_TASK_PRIORITIES.proxy },
+        { priority: MEDIA_TASK_PRIORITIES.proxy, signal: controller.signal },
       );
     } catch (e) {
-      if ((e as any)?.name === 'AbortError') {
-        return;
-      }
+      const isAbort = (e as any)?.name === 'AbortError';
 
       if (bgTaskId) {
-        params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', String(e));
+        params.backgroundTasksStore.updateTaskStatus(
+          bgTaskId,
+          isAbort ? 'cancelled' : 'failed',
+          String(e),
+        );
       }
 
       const nextGenerating = new Set(params.generatingProxies.value);
@@ -384,6 +389,9 @@ export function createProxyService(params: {
       const nextAbortControllers = new Map(params.proxyAbortControllers.value);
       nextAbortControllers.delete(projectRelativePath);
       params.proxyAbortControllers.value = nextAbortControllers;
+      if (isAbort) {
+        return;
+      }
       throw e;
     }
   }
@@ -392,6 +400,10 @@ export function createProxyService(params: {
     const controller = params.proxyAbortControllers.value.get(projectRelativePath);
     if (controller && !controller.signal.aborted) {
       controller.abort();
+      const bgTaskId = (controller as any).bgTaskId;
+      if (bgTaskId) {
+        params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
+      }
     }
 
     const taskId = params.proxyTaskIds.value.get(projectRelativePath);

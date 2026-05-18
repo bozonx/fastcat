@@ -22,7 +22,20 @@ watch(
     }
 
     for (const task of nextTasks) {
-      if (task.status !== 'completed' || notifiedCompletedTaskIds.has(task.id)) {
+      if (
+        (task.status !== 'completed' && task.status !== 'failed') ||
+        notifiedCompletedTaskIds.has(task.id)
+      ) {
+        continue;
+      }
+
+      if (task.status === 'failed') {
+        toast.add({
+          title: t('videoEditor.backgroundTasks.failed'),
+          description: task.error || task.title,
+          color: 'error',
+        });
+        notifiedCompletedTaskIds.add(task.id);
         continue;
       }
 

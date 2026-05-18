@@ -16,7 +16,7 @@ import { useProjectStore } from './project.store';
 import { useProxyStore } from './proxy.store';
 
 import { getErrorMessage } from '~/utils/errors';
-import { useRuntimeConfig } from '#app';
+import { useRuntimeConfig } from 'nuxt/app';
 
 export interface RecentProject {
   projectName: string;

@@ -82,10 +82,14 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
         status,
         error: error ?? task.error,
         progress: status === 'completed' ? 1 : task.progress,
+        cancel:
+          status === 'completed' || status === 'failed' || status === 'cancelled'
+            ? undefined
+            : task.cancel,
       };
     });
 
-    if (status === 'completed') {
+    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
       scheduleRemoval(id);
     } else if (status === 'running' || status === 'pending') {
       cancelRemoval(id);

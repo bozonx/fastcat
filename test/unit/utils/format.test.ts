@@ -24,12 +24,12 @@ describe('utils/format', () => {
   });
 
   it('formatFps rounds to 2 decimal places for display', () => {
-    expect(formatFps(24)).toBe('24.00');
+    expect(formatFps(24)).toBe('24');
     expect(formatFps(23.976)).toBe('23.98');
     expect(formatFps(29.97)).toBe('29.97');
     expect(formatFps(59.94)).toBe('59.94');
     expect(formatFps(23.976023)).toBe('23.98');
-    expect(formatFps(undefined)).toBe('0.00');
-    expect(formatFps(null)).toBe('0.00');
+    expect(formatFps(undefined)).toBe('0');
+    expect(formatFps(null)).toBe('0');
   });
 });

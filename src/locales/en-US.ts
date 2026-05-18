@@ -1092,6 +1092,7 @@ export default {
     },
     backgroundTasks: {
       empty: 'No background tasks',
+      failed: 'Background task failed',
       modelDownloadDescription:
         'Downloading local Whisper model {model}. You can close settings or switch to another tab.',
       modelDownloadTitle: 'Downloading speech recognition model',

@@ -1,55 +1,81 @@
 /** @vitest-environment node */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  getMediaTaskQueue,
-  addMediaTask,
-  addLatestMediaTask,
-  MEDIA_TASK_PRIORITIES,
-} from '~/utils/media-task-queue';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { ref } from 'vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const workspaceStore = vi.hoisted(() => ({
+  userSettings: {
+    optimization: {
+      mediaTaskConcurrency: 1,
+    },
+  },
+}));
 
 vi.mock('~/stores/workspace.store', () => ({
-  useWorkspaceStore: vi.fn(),
+  useWorkspaceStore: () => workspaceStore,
 }));
 
 describe('media-task-queue', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetModules();
+    workspaceStore.userSettings.optimization.mediaTaskConcurrency = 1;
   });
 
-  it('exports priorities', () => {
+  it('exports priorities', async () => {
+    const { MEDIA_TASK_PRIORITIES } = await import('~/utils/media-task-queue');
+
     expect(MEDIA_TASK_PRIORITIES.timelineThumbnailLazy).toBeDefined();
     expect(MEDIA_TASK_PRIORITIES.proxy).toBeDefined();
   });
 
-  // Note: Since getting the queue is a singleton operation that initializes watchers
-  // on a Vue store, full testing of the internal logic might require more complex mocks.
-  // Here we just test that the functions are exported and don't crash when mocked.
-  it('addMediaTask can be called (mocked store)', async () => {
-    (useWorkspaceStore as any).mockReturnValue({
-      userSettings: {
-        optimization: {
-          mediaTaskConcurrency: 4,
-        },
-      },
-    });
-
+  it('runs queued tasks', async () => {
+    const { addMediaTask } = await import('~/utils/media-task-queue');
     const task = vi.fn().mockResolvedValue('result');
-    const promise = addMediaTask(task);
 
-    // We expect the task to eventually run
-    const result = await promise;
-    expect(result).toBe('result');
+    await expect(addMediaTask(task)).resolves.toBe('result');
     expect(task).toHaveBeenCalled();
   });
 
-  it('addLatestMediaTask can be called', async () => {
-    const task = vi.fn().mockResolvedValue(undefined);
-    addLatestMediaTask({ key: 'test', task });
+  it('does not start an aborted pending task', async () => {
+    const { addMediaTask } = await import('~/utils/media-task-queue');
+    let releaseFirstTask!: () => void;
+    const controller = new AbortController();
+    const pendingTask = vi.fn().mockResolvedValue(undefined);
 
-    // allow event loop to process
-    await new Promise((r) => setTimeout(r, 0));
-    expect(task).toHaveBeenCalled();
+    const firstTask = addMediaTask(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseFirstTask = resolve;
+        }),
+    );
+    const secondTask = addMediaTask(pendingTask, { signal: controller.signal });
+
+    controller.abort();
+    releaseFirstTask();
+
+    await firstTask;
+    await expect(secondTask).rejects.toMatchObject({ name: 'AbortError' });
+    expect(pendingTask).not.toHaveBeenCalled();
+  });
+
+  it('only runs the latest keyed task', async () => {
+    const { addLatestMediaTask } = await import('~/utils/media-task-queue');
+    let releaseFirstTask!: () => void;
+    const first = vi.fn().mockResolvedValue(undefined);
+    const second = vi.fn().mockResolvedValue(undefined);
+
+    addLatestMediaTask({
+      key: 'preview',
+      task: () =>
+        new Promise<void>((resolve) => {
+          releaseFirstTask = resolve;
+        }),
+    });
+    addLatestMediaTask({ key: 'preview', task: first });
+    addLatestMediaTask({ key: 'preview', task: second });
+
+    releaseFirstTask();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledOnce();
   });
 });

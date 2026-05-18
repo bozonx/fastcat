@@ -179,7 +179,7 @@ const formatDate = (dateStr?: string) => {
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="max-w-7xl mx-auto p-8 space-y-12">
           <!-- Recent Projects Section -->
-          <section v-if="recentProjects.length > 0">
+          <section v-if="recentProjects?.length > 0">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-bold text-ui-text flex items-center gap-2">
                 <UIcon name="i-heroicons-clock" class="text-primary-400" />

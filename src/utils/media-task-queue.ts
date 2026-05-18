@@ -54,10 +54,12 @@ export function addMediaTask<T>(
   task: () => Promise<T>,
   options?: {
     priority?: number;
+    signal?: AbortSignal;
   },
 ): Promise<T> {
   return getMediaTaskQueue().value.add(task, {
     priority: options?.priority ?? 0,
+    signal: options?.signal,
   });
 }
 

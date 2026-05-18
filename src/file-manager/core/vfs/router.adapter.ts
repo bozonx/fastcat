@@ -171,12 +171,20 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       const { useUiStore } = await import('~/stores/ui.store');
       const tasksStore = useBackgroundTasksStore();
       const uiStore = useUiStore();
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      if (options?.signal?.aborted) {
+        abort();
+      } else {
+        options?.signal?.addEventListener('abort', abort, { once: true });
+      }
 
       const taskId = tasksStore.addTask({
         title: `Copying ${fileName}...`,
         type: 'file-operation',
         status: 'running',
         progress: 0,
+        cancel: abort,
       });
 
       let loaded = 0;
@@ -190,13 +198,19 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
 
       try {
         await readStream
-          .pipeThrough(progressStream, { signal: options?.signal })
-          .pipeTo(writeStream, { signal: options?.signal });
+          .pipeThrough(progressStream, { signal: controller.signal })
+          .pipeTo(writeStream, { signal: controller.signal });
         tasksStore.updateTaskStatus(taskId, 'completed');
         uiStore.notifyFileManagerUpdate();
       } catch (e: unknown) {
-        tasksStore.updateTaskStatus(taskId, 'failed', e instanceof Error ? e.message : String(e));
+        tasksStore.updateTaskStatus(
+          taskId,
+          controller.signal.aborted ? 'cancelled' : 'failed',
+          e instanceof Error ? e.message : String(e),
+        );
         throw e;
+      } finally {
+        options?.signal?.removeEventListener('abort', abort);
       }
     } else {
       // Direct pipe

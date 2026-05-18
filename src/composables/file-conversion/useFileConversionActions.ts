@@ -497,12 +497,14 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         if (!targetHandle) throw new Error('Target directory not found');
 
         const title = `Converting: ${entry.name}`;
+        const controller = new AbortController();
         const bgTaskId = backgroundTasksStore.addTask({
           type: 'conversion',
           title,
           status: 'pending',
           cancel: async () => {
             backgroundTasksStore.updateTaskStatus(bgTaskId, 'cancelled');
+            controller.abort();
             const { client } = getExportWorkerClient();
             await client.cancelExport(taskId);
           },
@@ -517,6 +519,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           taskId,
           backgroundTaskId: bgTaskId,
           isExternal: props.targetIsExternal.value,
+          signal: controller.signal,
           isCancelRequested: () => {
             const task = backgroundTasksStore.tasks.find((item) => item.id === bgTaskId);
             return task?.status === 'cancelled';

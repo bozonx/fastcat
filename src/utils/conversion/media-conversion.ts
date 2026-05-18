@@ -27,6 +27,7 @@ export async function executeMediaConversion(params: {
   backgroundTaskId: string;
   isExternal: boolean;
   isCancelRequested: () => boolean;
+  signal?: AbortSignal;
 }) {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
@@ -84,7 +85,7 @@ export async function executeMediaConversion(params: {
             : undefined;
 
       const task = backgroundTasksStore.tasks.find((t) => t.id === params.backgroundTaskId);
-      if (task?.status === 'cancelled' || params.isCancelRequested()) {
+      if (task?.status === 'cancelled' || params.isCancelRequested() || params.signal?.aborted) {
         const err = new Error('Cancelled');
         err.name = 'AbortError';
         throw err;
@@ -125,15 +126,20 @@ export async function executeMediaConversion(params: {
         const sourceFile = await getSourceFile(params.request.entry.path);
         if (!sourceFile) throw new Error('Failed to access source file');
 
+        let metadataTimeoutId: number | undefined;
         const meta = await Promise.race([
           client.extractMetadata(sourceFile),
           new Promise<never>((_, reject) => {
-            window.setTimeout(() => {
+            metadataTimeoutId = window.setTimeout(() => {
               restartExportWorker();
               reject(new Error('Metadata extraction timed out'));
             }, METADATA_TIMEOUT_MS);
           }),
-        ]);
+        ]).finally(() => {
+          if (metadataTimeoutId !== undefined) {
+            window.clearTimeout(metadataTimeoutId);
+          }
+        });
         const durationUs = Math.round((meta.duration || 0) * 1_000_000);
         if (!durationUs && params.request.type === 'video') {
           throw new Error('Invalid media duration');
@@ -184,6 +190,7 @@ export async function executeMediaConversion(params: {
     },
     {
       priority: MEDIA_TASK_PRIORITIES.conversionBackground,
+      signal: params.signal,
     },
   );
 }
