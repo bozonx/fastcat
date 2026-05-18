@@ -62,7 +62,11 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
 
   cancelTask(id: string) {
     if (!id) return;
-    this.cancelledTasks.add(id);
+    // Only mark cancelled if there is in-flight work to cancel; otherwise the
+    // marker would leak (cancelTask called for ids that never re-enter addTask).
+    if (this.queuedTasks.has(id) || this.activeTasks.has(id)) {
+      this.cancelledTasks.add(id);
+    }
     this.queuedTasks.delete(id);
   }
 
@@ -91,6 +95,7 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
         this.queuedTasks.delete(task.id);
 
         if (this.isCancelled(task.id)) {
+          this.cancelledTasks.delete(task.id);
           return;
         }
 
@@ -102,11 +107,13 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
           console.error(`Task ${task.id} failed:`, e);
         } finally {
           this.activeTasks.delete(task.id);
+          this.cancelledTasks.delete(task.id);
         }
       },
       { priority: this.taskPriority },
     ).catch((e) => {
       this.queuedTasks.delete(task.id);
+      this.cancelledTasks.delete(task.id);
       console.error(`Task ${task.id} failed:`, e);
     });
   }

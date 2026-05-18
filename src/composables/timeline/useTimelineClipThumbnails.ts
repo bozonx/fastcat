@@ -404,15 +404,11 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     }
   });
 
-  watch(
-    requestedThumbnailTimes,
-    (times) => {
-      if (times.length > 0) {
-        generate(times);
-      }
-    },
-    { deep: true },
-  );
+  watch(requestedThumbnailTimes, (times) => {
+    if (times.length > 0) {
+      generate(times);
+    }
+  });
 
   return {
     imageUrl,

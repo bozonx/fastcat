@@ -174,7 +174,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function isBloggerDogTransferAllowed(params: {
-    items: Array<{ kind?: FsEntry['kind']; name?: string }>;
+    items: Array<{ kind?: any; name?: any }>;
     targetEntry: FsEntry | null | undefined;
     sourceVfs: IFileSystemAdapter | null | undefined;
   }): boolean {
@@ -186,7 +186,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     }
 
     return params.items.every((item) =>
-      canTransferClipboardItemToOrFromBloggerDog(item, {
+      canTransferClipboardItemToOrFromBloggerDog(item as Pick<FileManagerClipboardItem, 'kind' | 'name'>, {
         sourceIsBloggerDog: params.sourceVfs?.id === 'bloggerdog',
         targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
       }),

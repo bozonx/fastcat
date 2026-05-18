@@ -43,7 +43,9 @@ async function ensureThumbnailDir(input: {
 }
 
 class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, string> {
-  protected maxCacheEntries = 200;
+  // File thumbnails are small webp images (~30-60 KB); 500 entries ≈ 15-30 MB,
+  // which is fine and keeps revocations rare so consumers don't observe broken URLs.
+  protected maxCacheEntries = 500;
   private cacheProjectIds = new Map<string, string>();
 
   protected get taskPriority(): number {
@@ -161,6 +163,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         quality: FILE_MANAGER_THUMBNAILS.QUALITY,
         mimeType: 'image/webp',
         taskId: task.id,
+        keepAlive: false,
       });
       blob = blobs[0] ?? null;
     } catch (e: any) {
@@ -288,22 +291,27 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       const prefix = `${input.markerId}_`;
       const expectedFileName = `${prefix}${input.timeUs}.webp`;
 
+      // Fast path: try the exact expected filename first to avoid scanning
+      // the whole markers directory on every lookup (slow with many markers).
       let foundHandle: FileSystemFileHandle | null = null;
-      const toDelete: string[] = [];
+      try {
+        foundHandle = await dir.getFileHandle(expectedFileName);
+      } catch (e: any) {
+        if (e?.name !== 'NotFoundError') throw e;
+      }
 
-      for await (const entry of (dir as any).values()) {
-        if (entry.kind === 'file' && entry.name.startsWith(prefix)) {
-          if (entry.name === expectedFileName) {
-            foundHandle = entry;
-          } else {
+      if (!foundHandle) {
+        // Fall back to scan (and cleanup) only when the exact file is missing —
+        // this is the case where the marker's timeUs changed since last save.
+        const toDelete: string[] = [];
+        for await (const entry of (dir as any).values()) {
+          if (entry.kind === 'file' && entry.name.startsWith(prefix)) {
             toDelete.push(entry.name);
           }
         }
-      }
-
-      // Cleanup stale files
-      for (const name of toDelete) {
-        await dir.removeEntry(name).catch(() => {});
+        for (const name of toDelete) {
+          await dir.removeEntry(name).catch(() => {});
+        }
       }
 
       if (foundHandle) {

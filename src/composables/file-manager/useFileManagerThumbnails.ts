@@ -3,6 +3,7 @@ import { safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -57,9 +58,6 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
           const type = getMediaTypeFromFilename(entry.name);
           const isTimeline = entry.name.toLowerCase().endsWith('.otio');
 
-          // Skip if already has thumbnail
-          if (thumbnails.value[path]) continue;
-
           if (projectId && workspaceHandle && (type === 'video' || isTimeline)) {
             // Timeline previews are NOT supported in external FM (without projectId context)
             // But here we have projectId, so it's likely the project FM or a compatible view.
@@ -89,6 +87,8 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: FileSyst
               },
             });
           } else if (vfs && type === 'image') {
+            // For local images we own the object URL — skip if already created.
+            if (thumbnails.value[path]) continue;
             const ext = entry.name.split('.').pop()?.toLowerCase();
             if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {
               try {

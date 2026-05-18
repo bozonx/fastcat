@@ -169,12 +169,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               @dragstart="handleDragStart($event, effect.type, 'effect')"
               @click="selectEffect(effect.type)"
             />
-            <div
-              v-if="standardEffects.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
-            </div>
+            <EmptyState v-if="standardEffects.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -215,12 +210,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               />
             </div>
           </VueDraggable>
-          <div
-            v-if="customEffects.length === 0"
-            class="text-center text-ui-text-muted py-4 italic text-xs"
-          >
-            {{ t('fastcat.effects.noCustomPresets') }}
-          </div>
+          <EmptyState v-if="customEffects.length === 0" :message="t('fastcat.effects.noCustomPresets')" />
         </CollapsibleEffectGroup>
       </div>
 
@@ -254,12 +244,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 </h4>
               </div>
             </div>
-            <div
-              v-if="standardTransitions.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
-            </div>
+            <EmptyState v-if="standardTransitions.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -316,12 +301,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               </div>
             </div>
           </VueDraggable>
-          <div
-            v-if="customTransitions.length === 0"
-            class="text-center text-ui-text-muted py-4 italic text-xs"
-          >
-            {{ t('fastcat.effects.noCustomPresets') }}
-          </div>
+          <EmptyState v-if="customTransitions.length === 0" :message="t('fastcat.effects.noCustomPresets')" />
         </CollapsibleEffectGroup>
       </div>
 
@@ -372,12 +352,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               </div>
             </div>
 
-            <div
-              v-if="standardAudioEffects.length === 0"
-              class="text-center text-ui-text-muted py-4 italic text-xs"
-            >
-              {{ t('common.noData') }}
-            </div>
+            <EmptyState v-if="standardAudioEffects.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -418,12 +393,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               />
             </div>
           </VueDraggable>
-          <div
-            v-if="customAudioEffects.length === 0"
-            class="text-center text-ui-text-muted py-4 italic text-xs"
-          >
-            {{ t('fastcat.effects.noCustomPresets') }}
-          </div>
+          <EmptyState v-if="customAudioEffects.length === 0" :message="t('fastcat.effects.noCustomPresets')" />
         </CollapsibleEffectGroup>
       </div>
     </div>
