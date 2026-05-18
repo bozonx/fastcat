@@ -10,7 +10,6 @@ import type { FsEntry } from '~/types/fs';
 import type { getBdPayload } from '~/types/bloggerdog';
 import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
-import { useMediaStore } from '~/stores/media.store';
 import { inject } from 'vue';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
@@ -66,9 +65,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const fileManagerStore =
-  (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
-  useFileManagerStore();
 const selectionStore = useSelectionStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();

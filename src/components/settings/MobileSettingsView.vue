@@ -7,7 +7,6 @@ import AdvancedSettings from '~/components/project-settings/AdvancedSettings.vue
 import MetadataSettings from '~/components/project-settings/MetadataSettings.vue';
 import StorageSettings from '~/components/project-settings/StorageSettings.vue';
 import { useProjectStore } from '~/stores/project.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const props = defineProps<{
   hideTitle?: boolean;

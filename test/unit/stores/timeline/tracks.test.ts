@@ -1,0 +1,170 @@
+/** @vitest-environment node */
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ref } from 'vue';
+import { createTimelineTracksModule } from '~/stores/timeline/tracks';
+
+const mockDoc = {
+  id: 'doc-1',
+  tracks: [
+    { id: 'v1', kind: 'video', name: 'Video 1', items: [{ id: 'c1', kind: 'clip' }], videoHidden: false, audioMuted: false, audioSolo: false, locked: false },
+    { id: 'v2', kind: 'video', name: 'Video 2', items: [], videoHidden: true, audioMuted: true, audioSolo: true, locked: true },
+    { id: 'a1', kind: 'audio', name: 'Audio 1', items: [], videoHidden: false, audioMuted: false, audioSolo: false, locked: false },
+    { id: 'a2', kind: 'audio', name: 'Audio 2', items: [{ id: 'c2', kind: 'clip' }], videoHidden: false, audioMuted: true, audioSolo: false, locked: false },
+  ],
+};
+
+function createMockDeps() {
+  const applyTimeline = vi.fn();
+  const batchApplyTimeline = vi.fn();
+  return {
+    timelineDoc: ref<any>(mockDoc),
+    selectedTrackId: ref<string | null>(null),
+    applyTimeline,
+    batchApplyTimeline,
+    requestTimelineSave: vi.fn().mockResolvedValue(undefined),
+    getSelectedOrActiveTrackId: vi.fn(),
+    selectedItemIds: ref<string[]>([]),
+  };
+}
+
+describe('TimelineTracksModule', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('addTrack delegates to applyTimeline', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.addTrack('video', 'New Video');
+    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'add_track', kind: 'video', name: 'New Video', insertBeforeId: undefined, insertAfterId: undefined });
+  });
+
+  it('resolveTargetVideoTrackIdForInsert returns selected video track', () => {
+    const deps = createMockDeps();
+    deps.selectedTrackId.value = 'v2';
+    const mod = createTimelineTracksModule(deps);
+    expect(mod.resolveTargetVideoTrackIdForInsert()).toBe('v2');
+  });
+
+  it('resolveTargetVideoTrackIdForInsert falls back to first video track', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    expect(mod.resolveTargetVideoTrackIdForInsert()).toBe('v1');
+  });
+
+  it('resolveMobileTargetTrackId uses selected item track when kind matches', () => {
+    const deps = createMockDeps();
+    deps.selectedItemIds.value = ['c2'];
+    const mod = createTimelineTracksModule(deps);
+    expect(mod.resolveMobileTargetTrackId('audio')).toBe('a2');
+  });
+
+  it('resolveMobileTargetTrackId falls back to empty track', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    expect(mod.resolveMobileTargetTrackId('audio')).toBe('a1');
+  });
+
+  it('renameTrack delegates to applyTimeline', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.renameTrack('v1', 'Renamed');
+    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'rename_track', trackId: 'v1', name: 'Renamed' });
+  });
+
+  it('toggleVideoHidden flips property', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.toggleVideoHidden('v1');
+    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({ type: 'update_track_properties', trackId: 'v1', properties: { videoHidden: true } }), { historyMode: 'debounced' });
+  });
+
+  it('toggleTrackAudioMuted flips property', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.toggleTrackAudioMuted('a1');
+    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({ type: 'update_track_properties', trackId: 'a1', properties: { audioMuted: true } }), { historyMode: 'debounced' });
+  });
+
+  it('deleteTrack delegates and clears selectedTrackId', () => {
+    const deps = createMockDeps();
+    deps.selectedTrackId.value = 'v1';
+    const mod = createTimelineTracksModule(deps);
+    mod.deleteTrack('v1');
+    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'delete_track', trackId: 'v1', allowNonEmpty: undefined });
+    expect(deps.selectedTrackId.value).toBeNull();
+  });
+
+  it('reorderTracks delegates to applyTimeline', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.reorderTracks(['v2', 'v1', 'a1', 'a2']);
+    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'reorder_tracks', trackIds: ['v2', 'v1', 'a1', 'a2'] });
+  });
+
+  it('isAnyTrackSoloed reflects doc state', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    expect(mod.isAnyTrackSoloed.value).toBe(true);
+
+    deps.timelineDoc.value = { ...mockDoc, tracks: mockDoc.tracks.map((t) => ({ ...t, audioSolo: false })) };
+    expect(mod.isAnyTrackSoloed.value).toBe(false);
+  });
+
+  it('unsoloAllTracks batches update for soloed tracks', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.unsoloAllTracks();
+    expect(deps.batchApplyTimeline).toHaveBeenCalled();
+    const cmds = deps.batchApplyTimeline.mock.calls[0][0];
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].trackId).toBe('v2');
+  });
+
+  it('unmuteAllTracks batches update for muted tracks', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.unmuteAllTracks();
+    expect(deps.batchApplyTimeline).toHaveBeenCalled();
+    const cmds = deps.batchApplyTimeline.mock.calls[0][0];
+    expect(cmds).toHaveLength(2);
+  });
+
+  it('unlockAllTracks batches update for locked tracks', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.unlockAllTracks();
+    expect(deps.batchApplyTimeline).toHaveBeenCalled();
+    const cmds = deps.batchApplyTimeline.mock.calls[0][0];
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].trackId).toBe('v2');
+  });
+
+  it('showAllTracks batches update for hidden tracks', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.showAllTracks();
+    expect(deps.batchApplyTimeline).toHaveBeenCalled();
+    const cmds = deps.batchApplyTimeline.mock.calls[0][0];
+    expect(cmds).toHaveLength(1);
+    expect(cmds[0].trackId).toBe('v2');
+  });
+
+  it('moveTrackUp swaps with previous same-kind track', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.moveTrackUp('v2');
+    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'reorder_tracks',
+      trackIds: ['v2', 'v1', 'a1', 'a2'],
+    }));
+  });
+
+  it('moveTrackDown swaps with next same-kind track', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineTracksModule(deps);
+    mod.moveTrackDown('v1');
+    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'reorder_tracks',
+      trackIds: ['v2', 'v1', 'a1', 'a2'],
+    }));
+  });
+});

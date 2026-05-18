@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';

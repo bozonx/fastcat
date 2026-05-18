@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef, provide, onMounted } from 'vue';
+import { computed, provide, onMounted } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
@@ -14,7 +14,7 @@ import FileManagerStoreProvider from '~/components/file-manager/FileManagerStore
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import type { FsEntry } from '~/types/fs';
 import type { SelectedEntity } from '~/stores/selection.store';

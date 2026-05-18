@@ -103,7 +103,6 @@ const stt = useSttTranscription({
   onError: () => {},
 });
 const {
-  sttConfig,
   modalOpen: transcriptionModalOpen,
   language: transcriptionLanguage,
   errorMessage: transcriptionError,
@@ -237,52 +236,6 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.modified'), value: 'modified' },
 ];
 
-const menuItems = computed(() => {
-  const items: any[][] = [];
-
-  const commonActions = [
-    {
-      label: t('common.refresh'),
-      icon: 'i-heroicons-arrow-path',
-      disabled: isLoading.value,
-      onSelect: () => loadProjectDirectory({ fullRefresh: true }),
-    },
-    {
-      label: uiStore.showHiddenFiles
-        ? t('videoEditor.fileManager.actions.hideHiddenFiles')
-        : t('videoEditor.fileManager.actions.showHiddenFiles'),
-      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
-      onSelect: () => {
-        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
-      },
-    },
-  ];
-  items.push(commonActions);
-
-  const fieldsGroup = sortFields.map((f) => ({
-    label: f.label,
-    icon: fileManagerStore.sortOption.field === f.value ? 'i-heroicons-check' : 'i-heroicons-stop',
-    onSelect: () => {
-      fileManagerStore.sortOption.field = f.value;
-    },
-  }));
-  items.push(fieldsGroup);
-
-  const isAsc = fileManagerStore.sortOption.order === 'asc';
-  const orderToggle = [
-    {
-      label: isAsc ? t('common.toSortDesc') : t('common.toSortAsc'),
-      icon: isAsc ? 'i-heroicons-bars-arrow-down' : 'i-heroicons-bars-arrow-up',
-      onSelect: () => {
-        fileManagerStore.sortOption.order = isAsc ? 'desc' : 'asc';
-      },
-    },
-  ];
-  items.push(orderToggle);
-
-  return items;
-});
-
 async function onCreateTimeline() {
   const createdPath = await createTimeline();
   if (!createdPath) return;
@@ -372,14 +325,6 @@ const bloggerDogApiUrl = computed(() =>
   typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
     ? runtimeConfig.public.bloggerDogApiUrl
     : '',
-);
-
-const remoteFilesConfig = computed(() =>
-  resolveExternalServiceConfig({
-    service: 'files',
-    integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl: bloggerDogApiUrl.value,
-  }),
 );
 
 async function onSubgroupCreateConfirm(name: string) {

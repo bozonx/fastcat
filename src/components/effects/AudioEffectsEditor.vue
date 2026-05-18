@@ -49,23 +49,6 @@ const activeSettingsManifest = computed(() => {
   return getAudioEffectManifest(activeSettingsEffect.value.type);
 });
 
-const availableEffects = computed(() => getAllAudioEffectManifests());
-const basicEffects = computed(() =>
-  availableEffects.value.filter(
-    (effect) => !effect.isCustom && (effect.category ?? 'basic') === 'basic',
-  ),
-);
-const nonBasicEffects = computed(() =>
-  availableEffects.value.filter(
-    (effect) => !effect.isCustom && (effect.category ?? 'basic') !== 'basic',
-  ),
-);
-const customEffects = computed(() => availableEffects.value.filter((effect) => effect.isCustom));
-
-function hasEffects(effects: AudioEffectManifest<any>[]) {
-  return effects.length > 0;
-}
-
 function onDragOver(e: DragEvent) {
   if (e.dataTransfer?.types.includes('fastcat-effect')) {
     e.preventDefault();

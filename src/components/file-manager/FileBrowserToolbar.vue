@@ -3,7 +3,6 @@ import { computed, inject } from 'vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
 import UiToggleButton from '~/components/ui/UiToggleButton.vue';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
 

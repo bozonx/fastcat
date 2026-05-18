@@ -109,7 +109,6 @@ const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const clipboardStore = useAppClipboard();
-const { currentDragOperation } = clipboardStore;
 const { loadTimeline } = useProjectActions();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -332,16 +331,15 @@ function onRequestDownload(params: { entry: RemoteFsEntry; targetDirPath: string
   uiStore.pendingRemoteDownloadRequest = params;
 }
 
-const { isRelevantDrag, onRootDragEnter, onRootDragOver, onRootDragLeave, onRootDrop } =
-  useFileDrop({
-    resolveEntryByPath: async (path: string) =>
-      props.findEntryByPath(path) ?? (await props.resolveEntryByPath?.(path)) ?? null,
-    handleFiles: props.handleFiles,
-    moveEntry: props.moveEntry,
-    copyEntry: props.copyEntry,
-    targetFileManagerInstanceId: props.instanceId ?? null,
-    vfs: props.vfs ?? useVfs(),
-  });
+const { isRelevantDrag, onRootDragOver, onRootDrop } = useFileDrop({
+  resolveEntryByPath: async (path: string) =>
+    props.findEntryByPath(path) ?? (await props.resolveEntryByPath?.(path)) ?? null,
+  handleFiles: props.handleFiles,
+  moveEntry: props.moveEntry,
+  copyEntry: props.copyEntry,
+  targetFileManagerInstanceId: props.instanceId ?? null,
+  vfs: props.vfs ?? useVfs(),
+});
 
 const rootContextMenuItems = computed(() => {
   const rootEntry: FsEntry =

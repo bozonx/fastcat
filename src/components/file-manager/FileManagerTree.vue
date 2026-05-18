@@ -16,7 +16,6 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   useClipboardPaths,
@@ -356,19 +355,6 @@ function isFullyUnsupported(entry: FsEntry): boolean {
   if (type === 'video' && meta.video?.canDecode === false) return true;
   if (type === 'audio' && meta.audio?.canDecode === false) return true;
   return false;
-}
-
-function isOpenableMediaFile(entry: FsEntry): boolean {
-  if (entry.kind !== 'file') return false;
-  if (isFullyUnsupported(entry)) return false;
-  return isOpenableProjectFileName(entry.name);
-}
-
-function isConvertibleMediaFile(entry: FsEntry): boolean {
-  if (entry.kind !== 'file') return false;
-  if (isFullyUnsupported(entry)) return false;
-  const type = getMediaTypeFromFilename(entry.name);
-  return type === 'video' || type === 'audio' || type === 'image';
 }
 
 function onEntryClick(event: MouseEvent, entry: FsEntry) {
@@ -733,16 +719,6 @@ const bloggerDogApiUrl = computed(() =>
   typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
     ? runtimeConfig.public.bloggerDogApiUrl
     : '',
-);
-
-const isRemoteAvailable = computed(() =>
-  Boolean(
-    resolveExternalServiceConfig({
-      service: 'files',
-      integrations: workspaceStore.userSettings.integrations,
-      bloggerDogApiUrl: bloggerDogApiUrl.value,
-    }),
-  ),
 );
 
 function getBdType(entry: FsEntry): string | undefined {

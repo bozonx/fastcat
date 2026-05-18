@@ -1,5 +1,4 @@
 import { ref, type Ref } from 'vue';
-import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { DRAG_DEADZONE_PX } from '~/utils/mouse';
 
 export interface UseTimelineScrollSyncOptions {

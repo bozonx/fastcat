@@ -11,7 +11,7 @@ import {
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
-import { useFileManagerStore, type FileViewMode } from '~/stores/file-manager.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 
 const props = defineProps<{
   instanceId?: string;
@@ -39,7 +39,7 @@ const rootSelectionEntry = computed<FsEntry>(() => ({
 const rootEntries = shallowRef<FsEntry[]>([]);
 const sortMode = ref<'name' | 'type'>('name');
 
-const { vfs, rootPath } = useComputerVfs();
+const { vfs } = useComputerVfs();
 
 // Initialize file manager for computer
 const fileManager = createFileManager({

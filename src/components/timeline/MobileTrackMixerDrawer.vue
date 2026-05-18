@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMediaStore } from '~/stores/media.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
