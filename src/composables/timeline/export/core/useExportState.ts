@@ -11,13 +11,14 @@ export function useExportState() {
   const activeExportTaskId = ref<string | null>(null);
 
   function resetExportState() {
-    isExporting.value = false;
     exportProgress.value = 0;
     exportError.value = null;
     exportPhase.value = null;
     exportWarnings.value = [];
     cancelRequested.value = false;
-    activeExportTaskId.value = null;
+    if (!isExporting.value) {
+      activeExportTaskId.value = null;
+    }
   }
 
   return {

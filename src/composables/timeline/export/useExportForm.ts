@@ -58,8 +58,10 @@ export function useExportForm() {
     metadataAuthor,
     metadataTags,
     videoCodecSupport,
+    audioCodecSupport,
     isLoadingCodecSupport,
     bitrateBps,
+    audioBitrateBps,
     normalizedExportWidth,
     normalizedExportHeight,
     normalizedExportFps,
@@ -71,6 +73,7 @@ export function useExportForm() {
     exportTimelineToFile,
     cancelExport,
     cancelRequested,
+    resetExportState,
   } = useTimelineExport();
 
   const initialSavedSettingsSnapshot = ref('');
@@ -207,13 +210,8 @@ export function useExportForm() {
   }
 
   async function initializeExportForm() {
-    exportError.value = null;
-    exportWarnings.value = [];
+    resetExportState();
     filenameError.value = null;
-    exportProgress.value = 0;
-    exportPhase.value = null;
-    isExporting.value = false;
-    cancelRequested.value = false;
     saveAsDefaults.value = false;
     selectedExportRangeId.value = resolveDefaultExportRangeId();
 
@@ -324,17 +322,13 @@ export function useExportForm() {
 
       let exportSuccess = false;
       try {
-        if (saveAsDefaults.value) {
-          await saveProjectSettingsAsDefault();
-        }
-
         exportPhase.value = 'encoding';
         await exportTimelineToFile(
           {
             format: outputFormat.value,
             videoCodec: resolvedCodecs.videoCodec,
             bitrate: bitrateBps.value,
-            audioBitrate: audioBitrateKbps.value * 1000,
+            audioBitrate: audioBitrateBps.value,
             audio: !excludeAudio.value,
             audioCodec: resolvedCodecs.audioCodec,
             audioSampleRate: audioSampleRate.value,
@@ -359,6 +353,14 @@ export function useExportForm() {
         );
 
         exportSuccess = true;
+
+        if (saveAsDefaults.value) {
+          try {
+            await saveProjectSettingsAsDefault();
+          } catch (e) {
+            console.warn('Failed to persist export defaults', e);
+          }
+        }
 
         if (exportWarnings.value.length > 0) {
           toast.add({
@@ -449,6 +451,7 @@ export function useExportForm() {
     normalizedExportHeight,
     normalizedExportFps,
     videoCodecSupport,
+    audioCodecSupport,
     isLoadingCodecSupport,
 
     selectedExportRangeId,

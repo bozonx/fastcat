@@ -34,6 +34,13 @@ export function useExportConfig() {
     return Math.round(clamped * 1_000_000);
   });
 
+  const audioBitrateBps = computed(() => {
+    const value = Number(audioBitrateKbps.value);
+    if (!Number.isFinite(value)) return 128_000;
+    const clamped = Math.min(512, Math.max(8, value));
+    return Math.round(clamped * 1000);
+  });
+
   const normalizedExportWidth = computed(() => {
     const value = Number(exportWidth.value);
     if (!Number.isFinite(value) || value <= 0) return 1920;
@@ -76,6 +83,7 @@ export function useExportConfig() {
     metadataTags,
     ext,
     bitrateBps,
+    audioBitrateBps,
     normalizedExportWidth,
     normalizedExportHeight,
     normalizedExportFps,

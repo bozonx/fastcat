@@ -1,4 +1,3 @@
-import { ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -6,6 +5,7 @@ import {
   getExportWorkerClient,
   registerExportTaskHostApi,
   setExportHostApi,
+  terminateExportWorker,
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
@@ -18,6 +18,9 @@ import {
   toWorkerTimelineClips,
   trimWorkerClipToRange,
 } from '../payloadBuilder';
+
+let timelineExportInFlight = false;
+const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
 
 export function useExportProcess(
   activeExportTaskId: ReturnType<
@@ -41,6 +44,10 @@ export function useExportProcess(
     fileHandle: FileSystemFileHandle,
     onProgress: (progress: number) => void,
   ): Promise<void> {
+    if (timelineExportInFlight) {
+      throw new Error('Another timeline export is already in progress');
+    }
+    timelineExportInFlight = true;
     const exportTaskId = `timeline-export-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     activeExportTaskId.value = exportTaskId;
     cancelRequested.value = false;
@@ -51,6 +58,9 @@ export function useExportProcess(
     const allAudioTracks = doc?.tracks?.filter((track) => track.kind === 'audio') ?? [];
 
     const exportRangeUs = options.exportRangeUs;
+    const reportWarning = (message: string) => {
+      exportWarnings.value.push(message);
+    };
 
     const builtVideo = await buildVideoWorkerPayloadFromTracks({
       tracks: doc?.tracks ?? [],
@@ -58,6 +68,7 @@ export function useExportProcess(
       workspaceStore,
       masterEffects: doc?.metadata?.fastcat?.masterEffects,
       fallbackFormat: timelineStore.timelineFormat,
+      onWarning: reportWarning,
     });
 
     const croppedVideoClips = exportRangeUs
@@ -83,6 +94,7 @@ export function useExportProcess(
       await toWorkerTimelineClips(effectiveAudioItems, projectStore, workspaceStore, {
         trackKind: 'audio',
         fallbackFormat: timelineStore.timelineFormat,
+        onWarning: reportWarning,
       })
     ).map((clip) => ({
       ...clip,
@@ -133,6 +145,7 @@ export function useExportProcess(
       if (activeExportTaskId.value === exportTaskId) {
         activeExportTaskId.value = null;
       }
+      timelineExportInFlight = false;
     }
   }
 
@@ -149,6 +162,15 @@ export function useExportProcess(
     } catch (e) {
       console.warn('Failed to request cooperative export cancel', e);
     }
+
+    setTimeout(() => {
+      if (!cancelRequested.value) return;
+      if (activeExportTaskId.value !== exportTaskId) return;
+      console.warn(
+        `[Export] Cooperative cancel did not complete within ${CANCEL_FORCE_TERMINATE_TIMEOUT_MS}ms; terminating export worker.`,
+      );
+      terminateExportWorker('Export cancelled (forced)');
+    }, CANCEL_FORCE_TERMINATE_TIMEOUT_MS);
   }
 
   return {

@@ -132,8 +132,10 @@ vi.mock('~/composables/timeline/export', () => ({
     metadataAuthor: ref(''),
     metadataTags: ref(''),
     videoCodecSupport: ref({}),
+    audioCodecSupport: ref({ aac: true, opus: true }),
     isLoadingCodecSupport: ref(false),
     bitrateBps: ref(8_000_000),
+    audioBitrateBps: ref(192_000),
     normalizedExportWidth: ref(1920),
     normalizedExportHeight: ref(1080),
     normalizedExportFps: ref(30),
@@ -145,6 +147,7 @@ vi.mock('~/composables/timeline/export', () => ({
     exportTimelineToFile: exportTimelineToFileMock,
     cancelExport: vi.fn(),
     cancelRequested: ref(false),
+    resetExportState: vi.fn(),
   }),
 }));
 

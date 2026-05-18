@@ -143,19 +143,33 @@ function isOpusCodec(codec: string | undefined): boolean {
   return value.startsWith('opus');
 }
 
-function isMediaClip(clip: any): clip is WorkerTimelineClip {
-  return clip.clipType === 'media';
+function buildMetadataTags(
+  metadata: NonNullable<ExportOptions['metadata']>,
+): Record<string, unknown> | null {
+  const tags: Record<string, unknown> = {};
+  const title = (metadata.title ?? '').trim();
+  const description = (metadata.description ?? '').trim();
+  const author = (metadata.author ?? '').trim();
+  const tagsStr = (metadata.tags ?? '').trim();
+
+  if (title) tags.title = title;
+  if (description) tags.description = description;
+  if (author) tags.artist = author;
+  if (tagsStr) {
+    const parsed = tagsStr
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (parsed.length > 0) tags.comment = parsed.join(', ');
+  }
+
+  return Object.keys(tags).length > 0 ? tags : null;
 }
 
 async function waitForVideoBackpressure(videoSource: any) {
   const maxQueueSize = 4;
 
   while (Number(videoSource?.encodeQueueSize ?? 0) >= maxQueueSize) {
-    if (typeof videoSource?.flush === 'function') {
-      await videoSource.flush();
-      return;
-    }
-
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
 }
@@ -405,6 +419,9 @@ export async function runExport(
     const yieldIntervalMs = 16;
     const progressIntervalMs = 250;
 
+    let emptyFrameCount = 0;
+    let firstEmptyFrameTimestampS: number | null = null;
+
     for (let frameNum = 0; frameNum < totalFrames; frameNum++) {
       ensureNotCancelled();
 
@@ -417,9 +434,10 @@ export async function runExport(
       const generatedCanvas = await params.compositor.renderFrame(frame.timeUs);
       if (!generatedCanvas) {
         fillCanvasBlack(params.compositor.canvas);
-        await reportExportWarning(
-          `[Worker Export] Frame ${frameNum} at ${frame.timestampS}s rendered empty; substituting black frame.`,
-        );
+        if (emptyFrameCount === 0) {
+          firstEmptyFrameTimestampS = frame.timestampS;
+        }
+        emptyFrameCount++;
       }
       await waitForVideoBackpressure(params.videoSource);
       await (params.videoSource as any).add(frame.timestampS, frame.durationS);
@@ -438,6 +456,12 @@ export async function runExport(
         lastYieldAtMs = nowMs;
         await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
+    }
+
+    if (emptyFrameCount > 0) {
+      await reportExportWarning(
+        `[Worker Export] ${emptyFrameCount} frame(s) rendered empty (first at ${firstEmptyFrameTimestampS?.toFixed(3) ?? '0'}s); substituted with black.`,
+      );
     }
   }
 
@@ -492,6 +516,13 @@ export async function runExport(
 
       const { output, writable } = await createOutput({ format });
 
+      if (options.metadata) {
+        const tags = buildMetadataTags(options.metadata);
+        if (tags && typeof (output as any).setMetadataTags === 'function') {
+          (output as any).setMetadataTags(tags);
+        }
+      }
+
       const fullCodecString =
         fallbackCodecString && options.videoCodec ? options.videoCodec : undefined;
       const fps = Math.max(1, Number(options.fps) || 30);
@@ -500,11 +531,18 @@ export async function runExport(
         fps,
       });
 
+      const formatSupportsAlpha = options.format === 'webm' || options.format === 'mkv';
+      if (options.exportAlpha && !formatSupportsAlpha) {
+        await reportExportWarning(
+          `[Worker Export] Alpha channel is not supported by ${options.format.toUpperCase()}; exporting without alpha.`,
+        );
+      }
+
       const videoSource = new CanvasSource(localCompositor.canvas as any, {
         codec: getBunnyVideoCodec(options.videoCodec),
         fullCodecString,
         bitrate: options.bitrate,
-        alpha: options.exportAlpha ? 'keep' : 'discard',
+        alpha: options.exportAlpha && formatSupportsAlpha ? 'keep' : 'discard',
         bitrateMode: options.bitrateMode === 'constant' ? 'constant' : 'variable',
         keyFrameInterval,
         hardwareAcceleration: preference,
@@ -570,10 +608,9 @@ export async function runExport(
         }
       }
 
-      let started = false;
+      let finalized = false;
       try {
         await output.start();
-        started = true;
 
         await writeOpusPassthroughIfNeeded({ audioPacketState });
 
@@ -592,12 +629,11 @@ export async function runExport(
         await notifyPhase('saving', taskId);
 
         await output.finalize();
-      } catch (e) {
-        if (started) {
+        finalized = true;
+      } finally {
+        if (!finalized) {
           await safeCancel({ output, writable });
         }
-        throw e;
-      } finally {
         safeDispose(audioSource);
         safeDispose(videoSource);
       }
