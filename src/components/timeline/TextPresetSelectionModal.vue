@@ -80,7 +80,7 @@ function selectPreset(id: string) {
         </div>
       </div>
 
-      <EmptyState
+      <UiEmptyState
         v-if="standardPresets.length === 0 && customPresets.length === 0"
         :message="t('common.noData')"
         wrapper-class="py-8"

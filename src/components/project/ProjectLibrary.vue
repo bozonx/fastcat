@@ -229,7 +229,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 @click.stop="presetsStore.defaultTextPresetId = text.type"
               />
             </div>
-            <EmptyState v-if="standardTexts.length === 0" :message="t('common.noData')" />
+            <UiEmptyState v-if="standardTexts.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -303,7 +303,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
             </div>
           </VueDraggable>
-          <EmptyState
+          <UiEmptyState
             v-if="customTexts.length === 0"
             :message="t('fastcat.library.noCustomPresets')"
           />
@@ -338,7 +338,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 </h4>
               </div>
             </div>
-            <EmptyState v-if="standardShapes.length === 0" :message="t('common.noData')" />
+            <UiEmptyState v-if="standardShapes.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -397,7 +397,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
             </div>
           </VueDraggable>
-          <EmptyState
+          <UiEmptyState
             v-if="customShapes.length === 0"
             :message="t('fastcat.library.noCustomPresets')"
           />
@@ -432,7 +432,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
                 </h4>
               </div>
             </div>
-            <EmptyState v-if="standardHuds.length === 0" :message="t('common.noData')" />
+            <UiEmptyState v-if="standardHuds.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -490,7 +490,7 @@ function isSelected(kind: 'text' | 'shape' | 'hud', id: string) {
               </div>
             </div>
           </VueDraggable>
-          <EmptyState
+          <UiEmptyState
             v-if="customHuds.length === 0"
             :message="t('fastcat.library.noCustomPresets')"
           />

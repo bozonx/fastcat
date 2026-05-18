@@ -151,7 +151,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
       </UButton>
     </template>
 
-    <EmptyState
+    <UiEmptyState
       v-if="safeEffects.length === 0"
       :message="safeEmptyLabel"
       wrapper-class="py-2 not-italic"

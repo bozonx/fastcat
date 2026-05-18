@@ -98,7 +98,7 @@ function handleRedo() {
     </div>
 
     <div class="flex-1 overflow-y-auto min-h-0 relative">
-      <EmptyState
+      <UiEmptyState
         v-if="history.length === 0"
         :message="$t('videoEditor.fileManager.history.empty')"
         icon="i-heroicons-arrow-uturn-left"

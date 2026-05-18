@@ -179,7 +179,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     </template>
 
     <div class="space-y-2 py-1">
-      <EmptyState
+      <UiEmptyState
         v-if="safeEffects.length === 0"
         :message="t('fastcat.effects.empty')"
         wrapper-class="py-2 not-italic"

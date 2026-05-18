@@ -91,7 +91,7 @@ const actions = computed(() => {
         :values="params"
         @update:value="handleUpdateParam"
       />
-      <EmptyState
+      <UiEmptyState
         v-if="!manifest.controls || manifest.controls.length === 0"
         :message="t('fastcat.effects.noSettings')"
         wrapper-class="py-2 not-italic"
@@ -123,5 +123,5 @@ const actions = computed(() => {
       </template>
     </UiModal>
   </div>
-  <EmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />
+  <UiEmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />
 </template>

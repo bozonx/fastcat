@@ -251,7 +251,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
       />
     </div>
 
-    <EmptyState
+    <UiEmptyState
       v-if="hotkeyGroups.length === 0"
       :message="t('common.noResults')"
       wrapper-class="px-1 py-8 text-sm not-italic"

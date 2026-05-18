@@ -93,7 +93,7 @@ const actions = computed(() => {
         :params="params"
         @update:param="handleUpdateParam"
       />
-      <EmptyState v-else :message="t('fastcat.transitions.noSettings')" wrapper-class="py-2 not-italic" />
+      <UiEmptyState v-else :message="t('fastcat.transitions.noSettings')" wrapper-class="py-2 not-italic" />
     </div>
 
     <PropertyActionList :actions="actions" :vertical="false" size="sm" />
@@ -121,5 +121,5 @@ const actions = computed(() => {
       </template>
     </UiModal>
   </div>
-  <EmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />
+  <UiEmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />
 </template>

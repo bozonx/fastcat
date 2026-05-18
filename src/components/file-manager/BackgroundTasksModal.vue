@@ -39,7 +39,7 @@ function formatTime(timestamp: number) {
     </template>
 
     <div class="flex flex-col gap-4 p-4 min-h-75 max-h-[70vh] overflow-y-auto">
-      <EmptyState
+      <UiEmptyState
         v-if="backgroundTasksStore.tasks.length === 0"
         :message="t('videoEditor.backgroundTasks.empty')"
         wrapper-class="py-8"

@@ -89,7 +89,7 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
         </tbody>
       </table>
 
-      <EmptyState
+      <UiEmptyState
         v-if="sortedMarkers.length === 0"
         :message="$t('videoEditor.fileManager.history.empty')"
         icon="i-heroicons-tag"

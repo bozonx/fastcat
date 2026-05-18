@@ -650,7 +650,7 @@ function handleArrayItemUpdate(
           </UButton>
         </div>
 
-        <EmptyState
+        <UiEmptyState
           v-if="entry.arrayItems.length === 0"
           :message="entry.control.emptyLabelKey ? t(entry.control.emptyLabelKey) : (entry.control.emptyLabel ?? 'Empty')"
           wrapper-class="py-2 border border-dashed border-ui-border rounded not-italic"

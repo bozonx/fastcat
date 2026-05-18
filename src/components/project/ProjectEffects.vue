@@ -169,7 +169,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               @dragstart="handleDragStart($event, effect.type, 'effect')"
               @click="selectEffect(effect.type)"
             />
-            <EmptyState v-if="standardEffects.length === 0" :message="t('common.noData')" />
+            <UiEmptyState v-if="standardEffects.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -210,7 +210,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               />
             </div>
           </VueDraggable>
-          <EmptyState
+          <UiEmptyState
             v-if="customEffects.length === 0"
             :message="t('fastcat.effects.noCustomPresets')"
           />
@@ -247,7 +247,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
                 </h4>
               </div>
             </div>
-            <EmptyState v-if="standardTransitions.length === 0" :message="t('common.noData')" />
+            <UiEmptyState v-if="standardTransitions.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -304,7 +304,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               </div>
             </div>
           </VueDraggable>
-          <EmptyState
+          <UiEmptyState
             v-if="customTransitions.length === 0"
             :message="t('fastcat.effects.noCustomPresets')"
           />
@@ -358,7 +358,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               </div>
             </div>
 
-            <EmptyState v-if="standardAudioEffects.length === 0" :message="t('common.noData')" />
+            <UiEmptyState v-if="standardAudioEffects.length === 0" :message="t('common.noData')" />
           </div>
         </CollapsibleEffectGroup>
 
@@ -399,7 +399,7 @@ function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
               />
             </div>
           </VueDraggable>
-          <EmptyState
+          <UiEmptyState
             v-if="customAudioEffects.length === 0"
             :message="t('fastcat.effects.noCustomPresets')"
           />
