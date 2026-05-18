@@ -241,7 +241,11 @@ export class FrameSampleOrchestrator {
         } else {
           await params.updateClipTextureFromSample(sample, clip);
         }
-        if (params.setClipSpriteVisible(clip, true)) {
+        const becameVisible = params.setClipSpriteVisible(clip, true);
+        // Mask samples ride alongside the clip's primary sample; the primary
+        // push already takes care of disposal. Skipping the duplicate keeps
+        // updatedClips clean for downstream consumers.
+        if (becameVisible && !sample.isMask) {
           params.updatedClips.push(clip);
         }
       } catch (error) {

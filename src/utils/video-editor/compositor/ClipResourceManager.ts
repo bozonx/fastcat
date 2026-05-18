@@ -382,6 +382,7 @@ export class ClipResourceManager {
     if (clip.cropMask) {
       clip.cropMask.destroy(true);
       clip.cropMask = undefined;
+      clip.cropMaskKey = undefined;
     }
     if (clip.sprite) {
       clip.sprite.destroy(true);

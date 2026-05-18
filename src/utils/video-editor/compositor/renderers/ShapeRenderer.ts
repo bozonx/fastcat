@@ -86,7 +86,7 @@ export class ShapeRenderer {
         { x: leftX, y: bottomY },
       ]);
     } else if (type === 'star') {
-      const rays = config.rays ?? 5;
+      const rays = Math.max(2, Math.round(config.rays ?? 5));
       const innerRadius = half * ((config.innerRadius ?? 40) / 100);
       const step = Math.PI / rays;
       const res = [];
@@ -97,7 +97,7 @@ export class ShapeRenderer {
       }
       drawPolygon(res);
     } else if (type === 'bang') {
-      const rays = config.rays ?? 12;
+      const rays = Math.max(2, Math.round(config.rays ?? 12));
       const innerRadius = half * ((config.innerRadius ?? 70) / 100);
       const step = Math.PI / rays;
       const res = [];

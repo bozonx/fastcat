@@ -14,7 +14,6 @@ import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 const { t, locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const isSettingsOpen = ref(false);
-const isRecentExpanded = ref(false);
 
 const {
   searchQuery,
@@ -114,26 +113,22 @@ const formatDate = (dateStr?: string) => {
       <!-- Bottom Actions -->
       <div class="mt-auto p-4 border-t border-ui-border space-y-4">
         <!-- Workspace Info -->
-        <div class="bg-ui-bg/50 rounded-xl p-3 border border-ui-border">
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <span class="text-[10px] font-bold text-ui-text-muted uppercase tracking-wider">{{
-              t('fastcat.projects.changeWorkspace')
-            }}</span>
-            <UButton
-              variant="ghost"
-              color="neutral"
-              icon="i-heroicons-arrows-right-left"
-              size="xs"
-              class="h-6 w-6 p-0"
-              @click="workspaceStore.resetWorkspace"
-            />
-          </div>
-          <div class="flex items-center gap-2 overflow-hidden">
-            <UIcon name="i-heroicons-folder" class="w-4 h-4 text-primary-400 shrink-0" />
-            <p class="text-xs font-medium text-ui-text truncate">
-              {{ workspaceStore.workspaceHandle?.name }}
-            </p>
-          </div>
+        <div class="space-y-2">
+          <span class="text-[10px] font-bold text-ui-text-muted uppercase tracking-wider block">
+            {{ t('fastcat.projects.workspaceTitle') }}
+          </span>
+          <p class="text-xs font-medium text-ui-text truncate">
+            {{ workspaceStore.workspaceHandle?.name }}
+          </p>
+          <UButton
+            variant="link"
+            color="primary"
+            size="xs"
+            class="p-0 h-auto"
+            @click="workspaceStore.resetWorkspace"
+          >
+            {{ t('fastcat.projects.changeWorkspace') }}
+          </UButton>
         </div>
 
         <div class="space-y-1">
@@ -190,36 +185,17 @@ const formatDate = (dateStr?: string) => {
                 <UIcon name="i-heroicons-clock" class="text-primary-400" />
                 {{ t('common.recent') }}
               </h2>
-              <UButton
-                variant="ghost"
-                color="neutral"
-                size="sm"
-                :icon="isRecentExpanded ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
-                :label="isRecentExpanded ? t('common.collapse') : t('common.expand')"
-                class="hover:bg-ui-bg-accent rounded-lg"
-                @click="isRecentExpanded = !isRecentExpanded"
-              />
             </div>
 
-            <div
-              class="transition-all duration-300 ease-in-out"
-              :class="
-                isRecentExpanded
-                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-                  : 'flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x'
-              "
-            >
+            <div class="flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x">
               <div
-                v-for="(project, index) in isRecentExpanded
-                  ? recentProjects
-                  : recentProjects.slice(0, 10)"
+                v-for="(project, index) in recentProjects.slice(0, 5)"
                 :key="project.projectName"
-                class="group relative bg-ui-bg-elevated rounded-2xl overflow-hidden transition-all cursor-pointer shadow-xl hover:-translate-y-1 snap-start"
+                class="group relative bg-ui-bg-elevated rounded-2xl overflow-hidden transition-all cursor-pointer shadow-xl hover:-translate-y-1 snap-start w-[320px] shrink-0"
                 :class="[
-                  index === 0 && !isRecentExpanded
+                  index === 0
                     ? 'border-2 border-selection-accent-500/60 hover:border-selection-accent-500 shadow-selection-accent-500/10'
                     : 'border border-ui-border hover:border-selection-accent-500/50 hover:shadow-selection-accent-500/5',
-                  !isRecentExpanded ? 'w-[400px] shrink-0' : 'w-full',
                 ]"
                 @click="handleOpenProject(project.projectName)"
               >
@@ -283,17 +259,6 @@ const formatDate = (dateStr?: string) => {
                     :project-relative-path="project.lastTimelinePath"
                     :project-name="project.projectName"
                   />
-                  <div
-                    class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  >
-                    <UButton
-                      size="xs"
-                      color="primary"
-                      icon="i-heroicons-arrow-right"
-                      :label="t('common.open')"
-                      class="rounded-full"
-                    />
-                  </div>
                 </div>
 
                 <div class="p-3 flex flex-col flex-1 min-h-[74px]">
@@ -320,49 +285,36 @@ const formatDate = (dateStr?: string) => {
                     <span class="text-[10px] text-ui-text-muted font-medium truncate">
                       {{ project.updatedAt ? formatDate(project.updatedAt) : '' }}
                     </span>
-                    <UButton
+                    <UDropdownMenu
                       v-if="isRenaming !== project.projectName"
-                      size="xs"
-                      variant="ghost"
-                      color="neutral"
-                      icon="lucide:edit-2"
-                      class="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      @click.stop="startRename(project.projectName)"
-                    />
+                      :items="[
+                        [
+                          {
+                            label: t('common.rename'),
+                            icon: 'i-heroicons-pencil-square',
+                            onSelect: () => startRename(project.projectName),
+                          },
+                          {
+                            label: t('common.delete'),
+                            icon: 'i-heroicons-trash',
+                            onSelect: () => workspaceStore.deleteProject(project.projectName),
+                          },
+                        ],
+                      ]"
+                    >
+                      <UButton
+                        size="xs"
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-heroicons-ellipsis-vertical"
+                        class="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        @click.stop
+                      />
+                    </UDropdownMenu>
                   </div>
                 </div>
               </div>
 
-              <!-- Create Card inside grid -->
-              <div
-                class="flex flex-col group bg-ui-bg-elevated/30 border border-dashed border-ui-border rounded-xl overflow-hidden hover:border-ui-action/50 hover:bg-ui-action/5 transition-all cursor-pointer"
-                @click="startCreateProject"
-              >
-                <div
-                  class="aspect-video relative bg-ui-bg-accent/50 flex items-center justify-center shrink-0"
-                >
-                  <div
-                    class="w-10 h-10 rounded-full bg-ui-bg-accent flex items-center justify-center group-hover:bg-ui-action/20 transition-colors"
-                  >
-                    <UIcon
-                      name="i-heroicons-plus"
-                      class="w-5 h-5 text-ui-text-muted group-hover:text-ui-action"
-                    />
-                  </div>
-                </div>
-                <div class="p-3 flex flex-col flex-1 min-h-[74px]">
-                  <h3
-                    class="text-sm font-semibold text-ui-text-muted group-hover:text-ui-action truncate"
-                  >
-                    {{ t('fastcat.projects.newProject') }}
-                  </h3>
-                  <div
-                    class="flex items-center justify-between mt-auto pt-2 border-t border-transparent h-8"
-                  >
-                    <!-- Spacer to match project card layout -->
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
         </div>

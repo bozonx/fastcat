@@ -234,6 +234,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projectsHandle.value = null;
     settingsRepo.value = null;
     projects.value = [];
+    recentProjects.value = [];
+    lastProjectName.value = null;
     error.value = null;
 
     resetSettingsState();

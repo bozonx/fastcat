@@ -202,38 +202,61 @@ export class LayoutApplier {
         sprite.mask = input.clip.cropMask;
       } else if (sprite.parent && input.clip.cropMask.parent !== sprite.parent) {
         sprite.parent.addChild(input.clip.cropMask);
+        input.clip.cropMaskKey = undefined;
       }
 
-      const mask = input.clip.cropMask as Graphics;
-      mask.clear();
+      // Crop polygon is fully determined by these inputs. Skip the
+      // clear+poly+fill rebuild when nothing relevant has changed.
+      const cropKey = [
+        crop.top ?? 0,
+        crop.bottom ?? 0,
+        crop.left ?? 0,
+        crop.right ?? 0,
+        input.targetW,
+        input.targetH,
+        input.normalizedAnchor.x,
+        input.normalizedAnchor.y,
+        input.scaleX,
+        input.scaleY,
+        sprite.rotation,
+        sprite.x,
+        sprite.y,
+      ].join('|');
 
-      const { points } = computeCropMaskPolygon({
-        crop,
-        targetW: input.targetW,
-        targetH: input.targetH,
-        anchorX: input.normalizedAnchor.x,
-        anchorY: input.normalizedAnchor.y,
-        scaleX: input.scaleX,
-        scaleY: input.scaleY,
-        rotationRad: sprite.rotation,
-        spritePosX: sprite.x,
-        spritePosY: sprite.y,
-      });
+      if (input.clip.cropMaskKey !== cropKey) {
+        const mask = input.clip.cropMask as Graphics;
+        mask.clear();
 
-      // Reset mask transform — polygon is already in world/parent coordinates
-      mask.x = 0;
-      mask.y = 0;
-      mask.rotation = 0;
-      mask.scale.set(1, 1);
-      mask.pivot.set(0, 0);
+        const { points } = computeCropMaskPolygon({
+          crop,
+          targetW: input.targetW,
+          targetH: input.targetH,
+          anchorX: input.normalizedAnchor.x,
+          anchorY: input.normalizedAnchor.y,
+          scaleX: input.scaleX,
+          scaleY: input.scaleY,
+          rotationRad: sprite.rotation,
+          spritePosX: sprite.x,
+          spritePosY: sprite.y,
+        });
 
-      mask.poly(points);
-      mask.fill(0xffffff);
+        // Reset mask transform — polygon is already in world/parent coordinates
+        mask.x = 0;
+        mask.y = 0;
+        mask.rotation = 0;
+        mask.scale.set(1, 1);
+        mask.pivot.set(0, 0);
+
+        mask.poly(points);
+        mask.fill(0xffffff);
+        input.clip.cropMaskKey = cropKey;
+      }
     } else if (input.clip.cropMask) {
       if (typeof input.clip.cropMask.destroy === 'function') {
         input.clip.cropMask.destroy();
       }
       input.clip.cropMask = undefined;
+      input.clip.cropMaskKey = undefined;
       sprite.mask = null;
     }
   }

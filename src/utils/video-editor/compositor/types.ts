@@ -87,6 +87,7 @@ export interface CompositorClip {
   transitionCombinedTexture?: RenderTexture | null;
   adjustmentSourceTexture?: RenderTexture | null;
   cropMask?: import('pixi.js').Graphics;
+  cropMaskKey?: string;
   textDirty?: boolean;
   shapeDirty?: boolean;
   hudDirty?: boolean;

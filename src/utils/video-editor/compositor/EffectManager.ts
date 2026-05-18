@@ -53,7 +53,11 @@ export class EffectManager {
 
     const maskSource = this.resolveMaskSource(clip);
 
-    if (!maskSource) return filter || null;
+    // No fresh mask source this round (e.g., a video mask whose lastVideoFrame
+    // was disposed at end of the previous frame). Skip applying the filter
+    // instead of returning a cached filter that still points at a closed
+    // VideoFrame — the cached filter will be reused as soon as a frame arrives.
+    if (!maskSource) return null;
 
     if (!filter) {
       filter = new ClipMaskFilter({

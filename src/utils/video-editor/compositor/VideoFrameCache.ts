@@ -34,10 +34,8 @@ export class VideoFrameCache {
     }
 
     this.maxVideoFrameCacheBytes = normalizedBytes;
+    // evictIfNeeded already drains the cache when the limit becomes 0.
     this.evictIfNeeded();
-    if (this.maxVideoFrameCacheBytes === 0) {
-      this.clear();
-    }
   }
 
   public get(key: string): CachedVideoFrameEntry | null {

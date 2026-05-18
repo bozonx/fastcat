@@ -105,7 +105,17 @@ export class TimelineActiveClipProcessor {
                       state.lastVideoFrame.close();
                     } catch {}
                   }
-                  state.lastVideoFrame = res.sample.toVideoFrame();
+                  try {
+                    state.lastVideoFrame = res.sample.toVideoFrame();
+                  } catch (err) {
+                    // Cache may close the frame between get() and use; drop it
+                    // for this round instead of failing the whole render.
+                    state.lastVideoFrame = null;
+                    console.warn(
+                      '[TimelineActiveClipProcessor] HUD toVideoFrame failed',
+                      err,
+                    );
+                  }
                 }
                 try {
                   res.sample.close?.();
@@ -207,7 +217,15 @@ export class TimelineActiveClipProcessor {
                     state.lastVideoFrame.close();
                   } catch {}
                 }
-                state.lastVideoFrame = res.sample.toVideoFrame();
+                try {
+                  state.lastVideoFrame = res.sample.toVideoFrame();
+                } catch (err) {
+                  state.lastVideoFrame = null;
+                  console.warn(
+                    '[TimelineActiveClipProcessor] mask toVideoFrame failed',
+                    err,
+                  );
+                }
               }
               try {
                 res.sample.close?.();

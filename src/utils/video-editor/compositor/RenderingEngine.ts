@@ -63,11 +63,18 @@ export class RenderingEngine {
       return null;
     }
 
+    // Early-exit must also respect per-clip dirty flags so that text/shape/HUD
+    // edits made while paused at the same time still trigger a redraw.
+    const hasDirtyClip = context.clips.some(
+      (clip) => clip.textDirty || clip.shapeDirty || clip.hudDirty,
+    );
+
     if (
       timeUs === context.lastRenderedTimeUs &&
       !previewEffectsChanged &&
       !context.stageSortDirty &&
-      !context.activeSortDirty
+      !context.activeSortDirty &&
+      !hasDirtyClip
     ) {
       return context.canvas;
     }
@@ -139,13 +146,12 @@ export class RenderingEngine {
     } finally {
       const clipsToClean = new Set([...processingClips, ...updatedClips]);
       for (const clip of clipsToClean) {
-        if (!clip.lastVideoFrame) {
-          continue;
+        if (clip.lastVideoFrame) {
+          safeDispose(clip.lastVideoFrame);
+          clip.lastVideoFrame = null;
         }
-
-        safeDispose(clip.lastVideoFrame);
-        clip.lastVideoFrame = null;
-
+        // Dispose the mask frame independently — a failed primary sample
+        // leaves clip.lastVideoFrame null but the mask frame may still be set.
         if (clip.maskState?.lastVideoFrame) {
           safeDispose(clip.maskState.lastVideoFrame);
           clip.maskState.lastVideoFrame = null;
