@@ -4,6 +4,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { FsEntry } from '~/types/fs';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import type { FileManagerClipboardItem } from '~/stores/clipboard.store';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
@@ -97,7 +98,7 @@ export function useFileDrop(options: UseFileDropOptions) {
   }
 
   async function isBloggerDogTransferAllowed(params: {
-    items: Array<{ kind?: FsEntry['kind']; name?: string }>;
+    items: Array<{ kind?: any; name?: any }>;
     targetDirPath?: string;
   }): Promise<boolean> {
     const involvesBloggerDog =
@@ -114,7 +115,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     }
 
     return params.items.every((item) =>
-      canTransferClipboardItemToOrFromBloggerDog(item, {
+      canTransferClipboardItemToOrFromBloggerDog(item as Pick<FileManagerClipboardItem, 'kind' | 'name'>, {
         sourceIsBloggerDog: dragSourceVfs?.id === 'bloggerdog',
         targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
       }),

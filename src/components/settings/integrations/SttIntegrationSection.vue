@@ -202,7 +202,10 @@ async function startDownload() {
             >
               {{ t('videoEditor.settings.sttDownloadModel') }}
             </UButton>
-            <div v-else-if="workspaceStore.isSttModelDownloaded" class="text-xs text-success-400 flex items-center gap-1">
+            <div
+              v-else-if="workspaceStore.isSttModelDownloaded"
+              class="text-xs text-success-400 flex items-center gap-1"
+            >
               <UIcon name="i-heroicons-check-circle" class="w-4 h-4" />
               {{ t('videoEditor.settings.sttModelReady') }}
             </div>
@@ -216,10 +219,16 @@ async function startDownload() {
             <div class="text-[10px] text-ui-text-muted leading-tight">
               {{ t('videoEditor.settings.sttModelDownloadHint') }}
             </div>
-            <div class="flex justify-between text-[10px] text-ui-text-muted uppercase tracking-wider">
+            <div
+              class="flex justify-between text-[10px] text-ui-text-muted uppercase tracking-wider"
+            >
               <span>{{ Math.round((activeDownloadTask?.progress || 0) * 100) }}%</span>
             </div>
-            <UProgress :value="(activeDownloadTask?.progress || 0) * 100" size="sm" color="primary" />
+            <UProgress
+              :value="(activeDownloadTask?.progress || 0) * 100"
+              size="sm"
+              color="primary"
+            />
           </div>
         </div>
       </div>
@@ -235,7 +244,7 @@ async function startDownload() {
             placeholder="assemblyai"
           />
         </UiFormField>
- 
+
         <UiFormField :label="t('videoEditor.settings.integrationSttModels')">
           <UiTextInput
             v-model="sttModelsText"

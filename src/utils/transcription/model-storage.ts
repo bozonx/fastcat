@@ -184,7 +184,7 @@ export async function downloadModel(
 
     try {
       let loaded = 0;
-      // eslint-disable-next-line no-constant-condition
+
       while (true) {
         if (signal?.aborted) {
           throw new DOMException('Download cancelled', 'AbortError');

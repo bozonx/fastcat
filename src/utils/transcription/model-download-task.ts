@@ -39,9 +39,7 @@ export async function runModelDownloadTask(options: ModelDownloadTaskOptions): P
     await workspaceStore.checkSttModelStatus();
   } catch (error: any) {
     const message =
-      error.name === 'AbortError'
-        ? 'Cancelled'
-        : error.message || 'Model download failed';
+      error.name === 'AbortError' ? 'Cancelled' : error.message || 'Model download failed';
 
     tasksStore.updateTaskStatus(
       taskId,
