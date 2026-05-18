@@ -13,8 +13,6 @@ import {
   type MediaPathToTimelinesMap,
 } from '~/utils/timeline-media-usage';
 
-type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
-
 class TimelineScanError extends Error {
   constructor(
     public readonly code: 'PROJECT_TOO_LARGE' | 'DIR_UNAVAILABLE' | 'UNKNOWN',

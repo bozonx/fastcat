@@ -199,7 +199,7 @@ export function useMonitorGestures(input: {
     }
   }
 
-  function onViewportDoubleClick(event: MouseEvent) {
+  function onViewportDoubleClick() {
     const settings = workspaceStore.userSettings.mouse.monitor;
     const action = settings.doubleClick;
 

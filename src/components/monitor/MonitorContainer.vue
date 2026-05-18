@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
 import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';

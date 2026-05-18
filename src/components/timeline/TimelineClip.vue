@@ -3,7 +3,6 @@ import { computed, nextTick, ref } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,
-  TimelineClipItem,
   TimelineClipActionPayload,
   TimelineMoveItemPayload,
   TimelineOpenSpeedModalPayload,

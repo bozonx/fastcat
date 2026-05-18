@@ -56,13 +56,6 @@ const fastcatConnectUrl = computed(() => {
   });
 });
 
-const fastcatConnectScopesLabel = computed(() =>
-  resolveFastCatConnectScopes({
-    integrations: workspaceStore.userSettings.integrations,
-    includeStt: false,
-  }).join(', '),
-);
-
 function disconnectFastCat() {
   workspaceStore.userSettings.integrations.fastcatPublicador.enabled = false;
   workspaceStore.userSettings.integrations.fastcatPublicador.bearerToken = '';

@@ -112,7 +112,7 @@ function resetClipIndicator(event: MouseEvent) {
   clearClipResetTimeout();
 }
 
-function startRenaming(event: MouseEvent) {
+function startRenaming() {
   if (props.isSelected) {
     timelineStore.renamingTrackId = props.track.id;
   } else {

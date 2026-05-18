@@ -4,7 +4,6 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
-import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const props = defineProps<{
   clip: any;

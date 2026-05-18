@@ -1,19 +1,7 @@
 import type { TimelineDocument, TimelineTrackItem, TimelineClipItem } from '../../types';
 import type {
-  AddClipToTrackCommand,
-  AddVirtualClipToTrackCommand,
-  RemoveItemCommand,
-  DeleteItemsCommand,
-  MoveItemCommand,
-  MoveItemsCommand,
-  TrimItemCommand,
-  SplitItemCommand,
-  MoveItemToTrackCommand,
   OverlayPlaceItemCommand,
   OverlayTrimItemCommand,
-  RenameItemCommand,
-  UpdateClipPropertiesCommand,
-  UpdateClipTransitionCommand,
   TimelineCommandResult,
 } from '../../commands';
 import {
@@ -141,7 +129,6 @@ export function overlayTrimItem(
 
   const startUs = movedNext.timelineRange.startUs;
   const durationUs = Math.max(0, movedNext.timelineRange.durationUs);
-  const endUs = startUs + durationUs;
 
   const nextItems = sliceTrackItemsForOverlay(
     track.items,
@@ -253,7 +240,6 @@ export function overlayPlaceItem(
     : startCandidate;
   const durationUs = Math.max(0, item.timelineRange.durationUs);
   const endUs = startUs + durationUs;
-
   const nextFromItemsRaw = fromTrack.items.filter((x) => x.id !== cmd.itemId);
   const isSameTrack = fromTrack.id === toTrack.id;
   const destItems: TimelineTrackItem[] = isSameTrack ? [...nextFromItemsRaw] : [...toTrack.items];

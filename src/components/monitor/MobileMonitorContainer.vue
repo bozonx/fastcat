@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch, watchEffect } from 'vue';
-import { storeToRefs } from 'pinia';
 import { useFullscreen, useMediaQuery } from '@vueuse/core';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';

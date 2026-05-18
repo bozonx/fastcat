@@ -9,7 +9,6 @@ import type { FsEntry } from '~/types/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { formatBytes } from '~/utils/format';
 import { computeDirectoryStats } from '~/utils/fs';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';

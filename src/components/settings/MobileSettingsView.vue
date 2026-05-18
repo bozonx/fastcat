@@ -15,7 +15,6 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
-const workspaceStore = useWorkspaceStore();
 const activeTab = ref(projectStore.currentProjectName ? 'project' : 'app');
 
 const tabOptions = computed(() => {

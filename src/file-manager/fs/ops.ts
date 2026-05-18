@@ -1,8 +1,6 @@
 import PQueue from 'p-queue';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
-type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
-
 function getDirectoryIterator(
   handle: FileSystemDirectoryHandle,
 ): AsyncIterable<FileSystemHandle> | AsyncIterable<[string, FileSystemHandle]> | null {

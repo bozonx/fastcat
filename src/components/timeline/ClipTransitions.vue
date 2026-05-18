@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount } from 'vue';
-import type {
-  TimelineTrack,
-  TimelineTrackItem,
-  TimelineClipItem,
-  ClipTransition,
-} from '~/timeline/types';
+import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
   getFadeLinePattern as getTransitionFadeLinePattern,

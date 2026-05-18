@@ -3,7 +3,6 @@ import { ref, computed } from 'vue';
 import type { OverlapMode, FrameSnapMode, ClipSnapMode } from '~/utils/timeline-modes';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectSettingsStore } from '~/stores/project-settings.store';
 
 export type ToolbarSnapMode = 'snap' | 'no_snap' | 'free_mode';

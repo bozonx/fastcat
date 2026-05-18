@@ -4,7 +4,6 @@ import type { ParamControl } from '~/components/properties/params';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
-import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;

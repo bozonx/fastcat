@@ -20,7 +20,6 @@ const emit = defineEmits<{
 }>();
 
 const timelineStore = useTimelineStore();
-const workspaceStore = useWorkspaceStore();
 const mediaStore = useMediaStore();
 
 const isOpenLocal = computed({

@@ -63,16 +63,6 @@ const clipTrackKind = computed(() => clipTrack.value?.kind ?? 'video');
 const isLocked = computed(() => Boolean(clip.value?.locked || clipTrack.value?.locked));
 
 const {
-  toggleAudioWaveformMode,
-  toggleShowWaveform,
-  toggleShowThumbnails,
-  handleSelectInFileManager,
-  handleOpenNestedTimeline,
-  goToLinkedAudio,
-  goToLinkedVideo,
-  linkedAudioClip,
-  linkedVideoClip,
-  handleReplaceMedia,
   handleDeleteClip,
   handleToggleDisabled,
   handleToggleLocked,

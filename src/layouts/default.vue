@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import 'splitpanes/dist/splitpanes.css';
-import { storeToRefs } from 'pinia';
 
 // Stores
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 

@@ -9,7 +9,7 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import ClipTextProperties from './clip/ClipTextProperties.vue';
 import ClipShapeProperties from './clip/ClipShapeProperties.vue';
 import ClipHudProperties from './clip/ClipHudProperties.vue';
-import type { TimelineClipItem, ShapeType, HudType } from '~/timeline/types';
+import type { ShapeType, HudType } from '~/timeline/types';
 
 const props = defineProps<{
   itemKind: 'text' | 'shape' | 'hud';

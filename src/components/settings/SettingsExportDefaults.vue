@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -16,8 +16,6 @@ import {
   createExportPresetId,
   resolveExportPreset,
 } from '~/utils/settings';
-import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-
 defineProps<{
   isActive: boolean;
 }>();

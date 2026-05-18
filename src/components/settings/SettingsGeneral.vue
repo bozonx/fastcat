@@ -14,7 +14,6 @@ import { clearUiCache } from '~/stores/ui/uiLocalStorage';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
-const settingsStore = useTimelineSettingsStore();
 
 const isResetConfirmOpen = ref(false);
 

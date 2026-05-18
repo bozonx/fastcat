@@ -5,12 +5,7 @@ import type { Filter, RenderTexture } from 'pixi.js';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
-import type {
-  TextClipStyle,
-  ClipTransform,
-  ClipTransition,
-  VideoClipEffect,
-} from '~/timeline/types';
+import type { TextClipStyle, ClipTransform, VideoClipEffect } from '~/timeline/types';
 
 // Internal modules
 import type { CompositorClip, CompositorTrack, HudMediaState } from './compositor/types';

@@ -13,8 +13,6 @@ export function useTimelineScrollSync({
   labelsScrollContainer,
   onScrollCallback,
 }: UseTimelineScrollSyncOptions) {
-  const settingsStore = useTimelineSettingsStore();
-
   const isPanning = ref(false);
   const hasPanned = ref(false);
   const panStart = ref({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });

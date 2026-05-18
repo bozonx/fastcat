@@ -7,17 +7,6 @@ import type {
   ClipAnchorPreset,
 } from '../../types';
 import type {
-  AddClipToTrackCommand,
-  AddVirtualClipToTrackCommand,
-  RemoveItemCommand,
-  DeleteItemsCommand,
-  MoveItemCommand,
-  MoveItemsCommand,
-  TrimItemCommand,
-  SplitItemCommand,
-  MoveItemToTrackCommand,
-  OverlayPlaceItemCommand,
-  OverlayTrimItemCommand,
   RenameItemCommand,
   UpdateClipPropertiesCommand,
   UpdateClipTransitionCommand,

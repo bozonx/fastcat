@@ -1,4 +1,4 @@
-import { defineStore, storeToRefs } from 'pinia';
+import { defineStore } from 'pinia';
 import { ref, computed, watch, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { ProjectUiLayoutState } from '~/utils/project-settings';

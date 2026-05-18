@@ -1,21 +1,5 @@
-import type { TimelineDocument, TimelineTrackItem, TimelineClipItem } from '../../types';
-import type {
-  AddClipToTrackCommand,
-  AddVirtualClipToTrackCommand,
-  RemoveItemCommand,
-  DeleteItemsCommand,
-  MoveItemCommand,
-  MoveItemsCommand,
-  TrimItemCommand,
-  SplitItemCommand,
-  MoveItemToTrackCommand,
-  OverlayPlaceItemCommand,
-  OverlayTrimItemCommand,
-  RenameItemCommand,
-  UpdateClipPropertiesCommand,
-  UpdateClipTransitionCommand,
-  TimelineCommandResult,
-} from '../../commands';
+import type { TimelineDocument, TimelineTrackItem } from '../../types';
+import type { RemoveItemCommand, DeleteItemsCommand, TimelineCommandResult } from '../../commands';
 import { getTrackById, normalizeGaps } from '../utils';
 
 export function removeItems(

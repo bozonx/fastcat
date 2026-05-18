@@ -8,7 +8,6 @@ import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-han
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { BloggerDogVfsAdapter } from '~/file-manager/core/vfs/bloggerdog.adapter';
 import { useBloggerDogStore } from '~/stores/bloggerdog';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import {
   WORKSPACE_COMMON_PATH_PREFIX,
   toWorkspaceCommonStoragePath,

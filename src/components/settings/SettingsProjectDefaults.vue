@@ -11,8 +11,6 @@ import {
   createProjectPresetId,
   resolveProjectPreset,
 } from '~/utils/settings';
-import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 

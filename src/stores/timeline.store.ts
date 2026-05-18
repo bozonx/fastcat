@@ -5,7 +5,6 @@ import type {
   TimelineDocument,
   TimelineSelectionRange,
   TimelineMediaClipItem,
-  TimelineTrackItem,
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
