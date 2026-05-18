@@ -27,6 +27,7 @@ import { registerMonitorCoreWatchers } from './useMonitorCore.wiring';
 
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
+  const toast = useToast();
   const uiStore = useUiStore();
   const workspaceStore = useWorkspaceStore();
   const currentProjectStore = useProjectStore();
@@ -63,6 +64,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let layoutUpdateFromQueue = false;
   const audioHandleCache = new Map<string, FileSystemFileHandle>();
   let resizeScheduled = false;
+  let workerTimelineOperation: Promise<void> = Promise.resolve();
 
   const audioEngine = new AudioEngine();
   const { client } = getPreviewWorkerClient();
@@ -143,19 +145,19 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       layoutUpdateFromQueue = true;
 
       const payload = cloneWorkerPayload(preparedTimeline.payload);
-      await ensureCompositorReady();
-      const maxDuration = await client.updateTimelineLayout(payload);
+      const maxDuration = await runWorkerTimelineOperation(async () => {
+        await ensureCompositorReady();
+        return await client.updateTimelineLayout(payload);
+      });
       timelineStore.duration = computeMonitorTimelineDuration({
         currentDurationUs: timelineStore.duration,
         maxDurationUs: maxDuration,
         audioDurationUs: preparedTimeline.audioDurationUs,
       });
       lastBuiltLayoutSignature = clipLayoutSignature.value;
-      layoutUpdateFromQueue = false;
       scheduleRender(getRenderTimeForLayoutUpdate());
     } catch (error) {
       console.error('[Monitor] Failed to update timeline layout', error);
-      const toast = useToast();
       toast.add({
         color: 'error',
         title: t('fastcat.monitor.playbackStopped'),
@@ -163,6 +165,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       });
       timelineStore.isPlaying = false;
       scheduleBuild();
+    } finally {
+      layoutUpdateFromQueue = false;
     }
 
     const audioClips = workerAudioClips.value;
@@ -210,6 +214,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     await compositorRuntime.ensureReady(options);
   }
 
+  async function runWorkerTimelineOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const nextOperation = workerTimelineOperation.catch(() => undefined).then(operation);
+    workerTimelineOperation = nextOperation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return nextOperation;
+  }
+
   async function buildTimeline() {
     if (!containerEl.value) return;
     const requestId = ++buildRequestId;
@@ -219,9 +232,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     loadError.value = null;
 
     try {
-      await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
-      forceRecreateCompositorNextBuild = false;
-
       // Invalidate audio handle cache on full rebuild
       audioHandleCache.clear();
 
@@ -246,7 +256,11 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const audioClips = flattenedAudio;
 
       if (clips.length === 0 && audioClips.length === 0) {
-        await client.clearClips();
+        await runWorkerTimelineOperation(async () => {
+          await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
+          forceRecreateCompositorNextBuild = false;
+          await client.clearClips();
+        });
         await audioEngine.loadClips([]);
         timelineStore.duration = 0;
         updateStoreTime(0);
@@ -268,16 +282,24 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       );
 
       const payload = cloneWorkerPayload(preparedTimeline.payload);
-      const maxDuration = clips.length > 0 ? await client.loadTimeline(payload, requestId) : 0;
+      const maxDuration = await runWorkerTimelineOperation(async () => {
+        await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
+        forceRecreateCompositorNextBuild = false;
+        return clips.length > 0 ? await client.loadTimeline(payload, requestId) : 0;
+      });
       if (requestId !== buildRequestId) {
         return;
       }
       if (clips.length === 0) {
-        await client.clearClips();
+        await runWorkerTimelineOperation(async () => {
+          await client.clearClips();
+        });
       }
 
       await audioEngine.init({
-        sampleRate: timelineStore.timelineFormat?.sampleRate ?? projectStore.projectSettings?.project?.sampleRate,
+        sampleRate:
+          timelineStore.timelineFormat?.sampleRate ??
+          projectStore.projectSettings?.project?.sampleRate,
       });
 
       const audioEngineClips = await syncAudioEngineClips(audioClips);
@@ -306,7 +328,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       if (requestId === buildRequestId) {
         loadError.value = e.message || t('fastcat.monitor.loadError');
       }
-      const toast = useToast();
       toast.add({
         color: 'error',
         title: t('fastcat.monitor.previewError'),
