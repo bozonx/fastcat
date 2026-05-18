@@ -21,12 +21,20 @@ const fileManagerStore = (inject('fileManagerStore', null) as ReturnType<typeof 
         :compact="compact"
         instance-id="editor-main"
         hide-focus-frame
+        hide-project-label
         class="h-full"
         @select="fileManagerStore.openFolder"
       />
     </Pane>
     <Pane size="70" min-size="20">
-      <FileBrowser :compact="compact" instance-id="editor-main" hide-focus-frame class="h-full" />
+      <FileBrowser
+        :compact="compact"
+        instance-id="editor-main"
+        hide-focus-frame
+        hide-view-switcher
+        hide-breadcrumbs
+        class="h-full"
+      />
     </Pane>
   </Splitpanes>
 </template>

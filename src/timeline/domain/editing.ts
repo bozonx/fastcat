@@ -24,6 +24,9 @@ export function buildSplitAllClipsCommands(doc: TimelineDocument, atUs: number):
     for (const it of track.items) {
       if (it.kind !== 'clip') continue;
       if (it.locked) continue;
+      const startUs = it.timelineRange.startUs;
+      const endUs = startUs + it.timelineRange.durationUs;
+      if (!(cutUs > startUs && cutUs < endUs)) continue;
       cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs: cutUs });
     }
   }
@@ -46,6 +49,9 @@ export function buildSplitSelectedClipsCommands(
       if (it.kind !== 'clip') continue;
       if (it.locked) continue;
       if (shouldUseSelection && !selected.has(it.id)) continue;
+      const startUs = it.timelineRange.startUs;
+      const endUs = startUs + it.timelineRange.durationUs;
+      if (!(cutUs > startUs && cutUs < endUs)) continue;
       cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs: cutUs });
     }
   }

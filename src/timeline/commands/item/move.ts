@@ -1,19 +1,8 @@
 import type { TimelineDocument, TimelineTrackItem, TimelineClipItem } from '../../types';
 import type {
-  AddClipToTrackCommand,
-  AddVirtualClipToTrackCommand,
-  RemoveItemCommand,
-  DeleteItemsCommand,
   MoveItemCommand,
   MoveItemsCommand,
-  TrimItemCommand,
-  SplitItemCommand,
   MoveItemToTrackCommand,
-  OverlayPlaceItemCommand,
-  OverlayTrimItemCommand,
-  RenameItemCommand,
-  UpdateClipPropertiesCommand,
-  UpdateClipTransitionCommand,
   TimelineCommandResult,
 } from '../../commands';
 import {
@@ -28,9 +17,111 @@ import {
   updateLinkedLockedAudio,
   getLinkedClipGroupItemIds,
   autoAdaptChangedTracks,
+  rangesOverlap,
+  OVERLAP_EPSILON_US,
 } from '../utils';
 
-export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): TimelineCommandResult {
+function assertTrackItemsDoNotOverlap(items: TimelineTrackItem[]) {
+  const clips = items
+    .filter((it): it is TimelineClipItem => it.kind === 'clip')
+    .slice()
+    .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+
+  for (let i = 1; i < clips.length; i++) {
+    const prev = clips[i - 1];
+    const current = clips[i];
+    if (!prev || !current) continue;
+
+    const prevStartUs = prev.timelineRange.startUs;
+    const prevEndUs = prevStartUs + prev.timelineRange.durationUs;
+    const currentStartUs = current.timelineRange.startUs;
+    const currentEndUs = currentStartUs + current.timelineRange.durationUs;
+
+    if (
+      rangesOverlap(prevStartUs, prevEndUs, currentStartUs, currentEndUs) &&
+      Math.min(prevEndUs, currentEndUs) - Math.max(prevStartUs, currentStartUs) > OVERLAP_EPSILON_US
+    ) {
+      throw new Error('Item overlaps with another item');
+    }
+  }
+}
+
+function moveItemsWithinTracks(
+  doc: TimelineDocument,
+  cmd: MoveItemsCommand,
+): TimelineCommandResult {
+  const fps = getDocFps(doc);
+  const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+  const movesByTrack = new Map<string, Map<string, number>>();
+  const seenMoveKeys = new Set<string>();
+
+  for (const move of cmd.moves) {
+    if (move.fromTrackId !== move.toTrackId) return moveItemsSequentially(doc, cmd);
+
+    const moveKey = `${move.fromTrackId}:${move.itemId}`;
+    if (seenMoveKeys.has(moveKey)) return moveItemsSequentially(doc, cmd);
+    seenMoveKeys.add(moveKey);
+
+    const startCandidate = Math.max(0, Math.round(Number(move.startUs)));
+    const startUs = shouldQuantizeToFrames
+      ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
+      : startCandidate;
+
+    let byItem = movesByTrack.get(move.fromTrackId);
+    if (!byItem) {
+      byItem = new Map<string, number>();
+      movesByTrack.set(move.fromTrackId, byItem);
+    }
+    byItem.set(move.itemId, startUs);
+  }
+
+  if (movesByTrack.size === 0) return { next: doc };
+
+  let changed = false;
+  let nextTracks = doc.tracks.map((track) => {
+    const startsByItem = movesByTrack.get(track.id);
+    if (!startsByItem) return track;
+
+    let trackChanged = false;
+    const nextItemsRaw = track.items.map((item) => {
+      const startUs = startsByItem.get(item.id);
+      if (startUs === undefined) return item;
+
+      if (!cmd.ignoreLocks) {
+        assertClipNotLocked(item, 'move');
+      }
+
+      trackChanged = true;
+      return {
+        ...item,
+        timelineRange: { ...item.timelineRange, startUs },
+      };
+    });
+
+    if (!trackChanged) return track;
+
+    nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+    assertTrackItemsDoNotOverlap(nextItemsRaw);
+    changed = true;
+
+    return {
+      ...track,
+      items: normalizeGaps(doc, track.id, nextItemsRaw, {
+        quantizeToFrames: shouldQuantizeToFrames,
+      }),
+    };
+  });
+
+  if (!changed) return { next: doc };
+
+  nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
+  return { next: { ...doc, tracks: nextTracks } };
+}
+
+function moveItemsSequentially(
+  doc: TimelineDocument,
+  cmd: MoveItemsCommand,
+): TimelineCommandResult {
   // Order moves so we never step on an item that hasn't moved yet. We compute
   // each item's current start, then apply moves in the direction of travel:
   // rightward moves go right-to-left (the rightmost item moves first), leftward
@@ -46,7 +137,9 @@ export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): Timelin
 
   const totalDelta = annotated.reduce((acc, m) => acc + m.deltaUs, 0);
   const movingRight = totalDelta >= 0;
-  annotated.sort((a, b) => (movingRight ? b.currentStartUs - a.currentStartUs : a.currentStartUs - b.currentStartUs));
+  annotated.sort((a, b) =>
+    movingRight ? b.currentStartUs - a.currentStartUs : a.currentStartUs - b.currentStartUs,
+  );
 
   let currentDoc = doc;
   for (const { move } of annotated) {
@@ -57,12 +150,17 @@ export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): Timelin
       itemId: move.itemId,
       startUs: move.startUs,
       quantizeToFrames: cmd.quantizeToFrames,
+      ignoreLocks: cmd.ignoreLocks,
       ignoreLinks: true,
     });
     currentDoc = res.next;
   }
 
   return { next: currentDoc };
+}
+
+export function moveItems(doc: TimelineDocument, cmd: MoveItemsCommand): TimelineCommandResult {
+  return moveItemsWithinTracks(doc, cmd);
 }
 
 export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineCommandResult {
@@ -112,10 +210,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
             fromTrackId: track.id,
             toTrackId: track.id,
             itemId: trackItem.id,
-            startUs: Math.max(
-              0,
-              Math.round(Number(trackItem.timelineRange.startUs)) + deltaUs,
-            ),
+            startUs: Math.max(0, Math.round(Number(trackItem.timelineRange.startUs)) + deltaUs),
           });
         }
       }

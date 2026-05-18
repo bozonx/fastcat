@@ -117,34 +117,33 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       historyDebounceMs: 100,
     };
 
-    // Phase 1: split at endUs then startUs (sequential — each split changes doc state)
-    const splitTargets: Array<{ trackId: string; itemId: string }> = [];
-    for (const track of doc.tracks) {
-      if (!trackIdSet.has(track.id)) continue;
-      if (track.locked) continue;
-      for (const it of track.items) {
-        if (it.kind !== 'clip') continue;
-        if (it.locked) continue;
-        splitTargets.push({ trackId: track.id, itemId: it.id });
+    const buildSplitCmds = (fromDoc: TimelineDocument, atUs: number): TimelineCommand[] => {
+      const cmds: TimelineCommand[] = [];
+      for (const track of fromDoc.tracks) {
+        if (!trackIdSet.has(track.id)) continue;
+        if (track.locked) continue;
+        for (const it of track.items) {
+          if (it.kind !== 'clip') continue;
+          if (it.locked) continue;
+          const itStart = it.timelineRange.startUs;
+          const itEnd = itStart + it.timelineRange.durationUs;
+          if (!(atUs > itStart && atUs < itEnd)) continue;
+          cmds.push({ type: 'split_item', trackId: track.id, itemId: it.id, atUs });
+        }
       }
-    }
+      return cmds;
+    };
 
-    const splitCmdsEnd: TimelineCommand[] = splitTargets.map((t) => ({
-      type: 'split_item',
-      trackId: t.trackId,
-      itemId: t.itemId,
-      atUs: endUs,
-    }));
+    // Phase 1: split at endUs then startUs (sequential — each split changes doc state)
+    const splitCmdsEnd = buildSplitCmds(doc, endUs);
     if (splitCmdsEnd.length > 0) {
       deps.batchApplyTimeline(splitCmdsEnd, batchOptions);
     }
 
-    const splitCmdsStart: TimelineCommand[] = splitTargets.map((t) => ({
-      type: 'split_item',
-      trackId: t.trackId,
-      itemId: t.itemId,
-      atUs: startUs,
-    }));
+    const afterSplitEnd = deps.getDoc();
+    if (!afterSplitEnd) return;
+
+    const splitCmdsStart = buildSplitCmds(afterSplitEnd, startUs);
     if (splitCmdsStart.length > 0) {
       deps.batchApplyTimeline(splitCmdsStart, batchOptions);
     }

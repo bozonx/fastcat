@@ -97,8 +97,12 @@ function handleRedo() {
     </div>
 
     <div class="flex-1 overflow-y-auto min-h-0 relative">
-      <div v-if="history.length === 0" class="absolute inset-0 flex items-center justify-center">
-        <span class="text-sm text-zinc-500">{{ $t('videoEditor.fileManager.history.empty') }}</span>
+      <div
+        v-if="history.length === 0"
+        class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-ui-text-muted opacity-40 select-none"
+      >
+        <UIcon name="i-heroicons-arrow-uturn-left" class="w-8 h-8 mb-3 opacity-20" />
+        <span class="text-sm italic">{{ $t('videoEditor.fileManager.history.empty') }}</span>
       </div>
 
       <div v-else class="py-2 px-3 space-y-1">

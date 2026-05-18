@@ -871,7 +871,7 @@ async function onDirectoryUploadChange(e: Event) {
 
     <!-- Navigation bar (Breadcrumbs) -->
     <FileBrowserBreadcrumbs
-      v-if="!(remoteModeOnly && (!isRemoteAvailable || remoteError))"
+      v-if="!hideBreadcrumbs && !(remoteModeOnly && (!isRemoteAvailable || remoteError))"
       :parent-folders="parentFolders"
       :is-at-root="isAtRoot"
       :can-navigate-back="fileManagerStore.historyStack.length > 0"
