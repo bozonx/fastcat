@@ -103,7 +103,7 @@ function handleRedo() {
         :message="$t('videoEditor.fileManager.history.empty')"
         icon="i-heroicons-arrow-uturn-left"
         icon-class="w-8 h-8 mx-auto mb-3 opacity-20"
-        class="absolute inset-0 flex flex-col items-center justify-center p-6 opacity-40 select-none"
+        wrapper-class="absolute inset-0 flex flex-col items-center justify-center p-6 opacity-40 select-none"
       />
 
       <div v-else class="py-2 px-3 space-y-1">

@@ -80,12 +80,11 @@ function selectPreset(id: string) {
         </div>
       </div>
 
-      <div
+      <EmptyState
         v-if="standardPresets.length === 0 && customPresets.length === 0"
-        class="py-8 text-center text-ui-text-muted italic"
-      >
-        {{ t('common.noData') }}
-      </div>
+        :message="t('common.noData')"
+        wrapper-class="py-8"
+      />
     </div>
   </UiModal>
 </template>

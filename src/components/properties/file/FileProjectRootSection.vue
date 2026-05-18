@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
-import { formatBytes } from '~/utils/format';
+import { formatBytes, formatFps } from '~/utils/format';
 import { useProjectSettingsStore } from '~/stores/project-settings.store';
 import { useUiStore } from '~/stores/ui.store';
 import type { DirectoryStats } from '~/utils/fs';
@@ -21,7 +21,7 @@ const uiStore = useUiStore();
 const projectParams = computed(() => {
   const p = projectSettingsStore.projectSettings.project;
   const resolution = p.isCustomResolution ? `${p.width}x${p.height}` : p.resolutionFormat;
-  return `${resolution}, ${p.fps}FPS, ${Math.round(p.sampleRate / 1000)}kHz`;
+  return `${resolution}, ${formatFps(p.fps)}FPS, ${Math.round(p.sampleRate / 1000)}kHz`;
 });
 
 function openProjectSettings() {

@@ -93,9 +93,7 @@ const actions = computed(() => {
         :params="params"
         @update:param="handleUpdateParam"
       />
-      <div v-else class="text-xs text-ui-text-muted text-center py-2">
-        {{ t('fastcat.transitions.noSettings') }}
-      </div>
+      <EmptyState v-else :message="t('fastcat.transitions.noSettings')" wrapper-class="py-2 not-italic" />
     </div>
 
     <PropertyActionList :actions="actions" :vertical="false" size="sm" />
@@ -123,7 +121,5 @@ const actions = computed(() => {
       </template>
     </UiModal>
   </div>
-  <div v-else class="text-ui-text-muted text-center text-sm p-4">
-    {{ t('common.notFound') }}
-  </div>
+  <EmptyState v-else :message="t('common.notFound')" wrapper-class="p-4 text-sm not-italic" />
 </template>

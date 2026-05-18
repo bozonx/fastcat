@@ -179,13 +179,12 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     </template>
 
     <div class="space-y-2 py-1">
-      <div
+      <EmptyState
         v-if="safeEffects.length === 0"
-        class="text-xs text-ui-text-muted text-center py-2"
+        :message="t('fastcat.effects.empty')"
+        wrapper-class="py-2 not-italic"
         :class="{ 'opacity-50': props.disabled }"
-      >
-        {{ t('fastcat.effects.empty') }}
-      </div>
+      />
 
       <VueDraggable
         class="space-y-2"

@@ -1194,6 +1194,8 @@ export default {
         transcriptionHint:
           'Send the current audio file to the configured STT service. Language is optional.',
         transcriptionLanguage: 'Language',
+        transcriptionLanguageHint:
+          "Default language shown in the transcription dialog. You can change it before each transcription.",
         transcriptionSaved: 'Transcription saved',
         transcriptionSavedDescription: 'Transcription was saved next to the source file.',
         transcriptionSavedVideoDescription:

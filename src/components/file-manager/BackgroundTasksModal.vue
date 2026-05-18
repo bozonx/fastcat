@@ -39,12 +39,11 @@ function formatTime(timestamp: number) {
     </template>
 
     <div class="flex flex-col gap-4 p-4 min-h-75 max-h-[70vh] overflow-y-auto">
-      <div
+      <EmptyState
         v-if="backgroundTasksStore.tasks.length === 0"
-        class="text-center text-ui-text-muted py-8"
-      >
-        {{ t('videoEditor.backgroundTasks.empty') }}
-      </div>
+        :message="t('videoEditor.backgroundTasks.empty')"
+        wrapper-class="py-8"
+      />
 
       <div v-else class="flex flex-col gap-2">
         <div

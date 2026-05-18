@@ -255,7 +255,10 @@ async function startDownload() {
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-        <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage')">
+        <UiFormField
+          :label="t('videoEditor.fileManager.audio.transcriptionLanguage')"
+          :description="t('videoEditor.fileManager.audio.transcriptionLanguageHint')"
+        >
           <UiTextInput
             v-model="workspaceStore.userSettings.integrations.stt.language"
             full-width

@@ -46,7 +46,7 @@ const transitionOptions = computed(() =>
             v-if="props.transitionIn"
             class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
             :disabled="!isEnabled"
-            @click="emit('selectEdge')"
+            @click="emit('selectEdge', 'in')"
           >
             IN {{ props.transitionIn.type }}
           </button>
@@ -55,7 +55,7 @@ const transitionOptions = computed(() =>
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             :disabled="!isEnabled"
-            @click="emit('selectEdge')"
+            @click="emit('selectEdge', 'in')"
           >
             IN
           </button>
@@ -65,7 +65,7 @@ const transitionOptions = computed(() =>
             variant="ghost"
             :icon="props.transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
             :disabled="!isEnabled"
-            @click="emit('toggle')"
+            @click="emit('toggle', 'in')"
           />
         </div>
 
@@ -114,7 +114,7 @@ const transitionOptions = computed(() =>
             v-if="props.transitionOut"
             class="p-0 h-auto font-mono text-2xs font-medium uppercase text-blue-500 hover:text-blue-400"
             :disabled="!isEnabled"
-            @click="emit('selectEdge')"
+            @click="emit('selectEdge', 'out')"
           >
             OUT {{ props.transitionOut.type }}
           </button>
@@ -123,7 +123,7 @@ const transitionOptions = computed(() =>
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             :disabled="!isEnabled"
-            @click="emit('selectEdge')"
+            @click="emit('selectEdge', 'out')"
           >
             OUT
           </button>
@@ -133,7 +133,7 @@ const transitionOptions = computed(() =>
             variant="ghost"
             :icon="props.transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
             :disabled="!isEnabled"
-            @click="emit('toggle')"
+            @click="emit('toggle', 'out')"
           />
         </div>
 

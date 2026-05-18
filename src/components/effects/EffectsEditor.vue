@@ -154,7 +154,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
     <EmptyState
       v-if="safeEffects.length === 0"
       :message="safeEmptyLabel"
-      class="py-2 not-italic"
+      wrapper-class="py-2 not-italic"
       :class="{ 'opacity-50': props.disabled }"
     />
 

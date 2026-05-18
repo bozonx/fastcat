@@ -22,6 +22,8 @@ const fpsPresets = [
   { label: '60', value: 60 },
 ];
 
+const displayValue = computed(() => parseFloat(props.modelValue.toFixed(2)));
+
 const fpsMenuItems = computed(() => [
   fpsPresets.map((p) => ({
     label: p.label,
@@ -39,7 +41,7 @@ function selectPreset(value: number) {
 <template>
   <div class="flex items-center gap-1">
     <UiWheelNumberInput
-      :model-value="props.modelValue"
+      :model-value="displayValue"
       :min="1"
       :max="240"
       :step="0.001"

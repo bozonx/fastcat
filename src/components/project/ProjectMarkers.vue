@@ -89,15 +89,13 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
         </tbody>
       </table>
 
-      <div
+      <EmptyState
         v-if="sortedMarkers.length === 0"
-        class="h-full flex flex-col items-center justify-center p-8 text-center text-ui-text-muted opacity-40 select-none"
-      >
-        <UIcon name="i-heroicons-tag" class="w-8 h-8 mb-3 opacity-20" />
-        <span class="text-sm italic">
-          {{ $t('videoEditor.fileManager.history.empty') }}
-        </span>
-      </div>
+        :message="$t('videoEditor.fileManager.history.empty')"
+        icon="i-heroicons-tag"
+        icon-class="w-8 h-8 mx-auto mb-3 opacity-20"
+        wrapper-class="h-full flex flex-col items-center justify-center p-8 opacity-40 select-none"
+      />
     </div>
   </div>
 </template>

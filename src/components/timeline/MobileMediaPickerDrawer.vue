@@ -116,7 +116,7 @@ async function addToTimeline() {
       if (entry && entry.path) {
         // Need to update clip properties with new path
         timelineStore.updateClipProperties(targetClip.trackId, targetClip.itemId, {
-          source: { path: entry.path, offsetUs: 0 },
+          source: { path: entry.path },
         });
         uiStore.mediaReplaceTarget = null;
         uiStore.isMediaReplaceModalOpen = false;

@@ -3,7 +3,7 @@ interface Props {
   message: string;
   icon?: string;
   iconClass?: string;
-  class?: string;
+  wrapperClass?: string;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -12,7 +12,7 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <div class="text-center text-ui-text-muted py-4 text-xs italic" :class="$props.class">
+  <div class="text-center text-ui-text-muted py-4 text-xs italic" :class="$props.wrapperClass">
     <UIcon v-if="icon" :name="icon" :class="iconClass" />
     <span>{{ message }}</span>
   </div>

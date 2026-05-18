@@ -64,7 +64,7 @@ interface SelectionStoreActions {
 }
 
 interface FocusStoreActions {
-  setTempFocus: (panel: 'left' | 'right') => void;
+  setTempFocus: (panel: 'files-sidebar' | 'files-main') => void;
 }
 
 interface FileManagerActions {
@@ -397,7 +397,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
       selectEntry: (entry) => selectionStore.selectFsEntry(entry),
       scrollToEntry: (path) => uiStore.triggerScrollToFileTreeEntry(path),
-      focusFileManager: () => focusStore.setTempFocus('left'),
+      focusFileManager: () => focusStore.setTempFocus('files-sidebar'),
     });
   }
 

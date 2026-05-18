@@ -3,6 +3,7 @@ import { computed, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveProjectPreset } from '~/utils/settings';
+import { formatFps } from '~/utils/format';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import SettingsSection from './SettingsSection.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -15,7 +16,7 @@ const workspaceStore = useWorkspaceStore();
 const resolutionSummary = computed(() => {
   const p = projectStore.projectSettings?.project;
   if (!p) return '';
-  return `${p.width}x${p.height}, ${p.fps}FPS, ${p.sampleRate / 1000}kHz`;
+  return `${p.width}x${p.height}, ${formatFps(p.fps)}FPS, ${p.sampleRate / 1000}kHz`;
 });
 
 const projectPresetOptions = computed(() =>

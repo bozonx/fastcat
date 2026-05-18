@@ -660,7 +660,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
         >
           <TimelineClipThumbnails
             v-if="isVideo(item, track) && clipItem?.showThumbnails !== false"
-            :item="clipItem"
+            :item="clipItem || undefined"
             :width="clipWidthPx"
             :scroll-left="scrollLeft ?? 0"
             :viewport-width="viewportWidth ?? 0"
@@ -672,7 +672,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
               (isAudio(item, track) ||
                 (isVideo(item, track) && clipHasAudio(item, track, mediaStore.mediaMetadata)))
             "
-            :item="clipItem"
+            :item="clipItem || undefined"
           />
 
           <div

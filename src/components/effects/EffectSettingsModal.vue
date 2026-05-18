@@ -334,9 +334,7 @@ onBeforeUnmount(() => {
         @update:value="handleUpdateValue"
       />
     </div>
-    <div v-else class="text-center text-sm text-ui-text-muted py-8">
-      {{ t('fastcat.effects.noSettings') }}
-    </div>
+    <EmptyState v-else :message="t('fastcat.effects.noSettings')" wrapper-class="py-8 text-sm not-italic" />
     <template #footer>
       <div class="flex justify-end w-full">
         <UButton color="primary" autofocus @click="handleClose">

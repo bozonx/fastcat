@@ -251,9 +251,11 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
       />
     </div>
 
-    <div v-if="hotkeyGroups.length === 0" class="px-1 py-8 text-center text-sm text-ui-text-muted">
-      {{ t('common.noResults') }}
-    </div>
+    <EmptyState
+      v-if="hotkeyGroups.length === 0"
+      :message="t('common.noResults')"
+      wrapper-class="px-1 py-8 text-sm not-italic"
+    />
 
     <div v-else class="flex flex-col gap-8">
       <SettingsHotkeysGroup

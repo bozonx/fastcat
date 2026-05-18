@@ -40,3 +40,12 @@ export function formatMegabytes(bytes: number, decimals = 2): string {
   const mb = bytes / (1024 * 1024);
   return `${mb.toFixed(decimals)} MB`;
 }
+
+/**
+ * Formats FPS to a user-friendly string rounded to 2 decimal places.
+ * The original value is preserved internally; this is for display only.
+ */
+export function formatFps(fps: number | undefined | null): string {
+  const value = typeof fps === 'number' && Number.isFinite(fps) ? fps : 0;
+  return value.toFixed(2);
+}

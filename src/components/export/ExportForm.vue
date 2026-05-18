@@ -15,6 +15,7 @@ import {
   BASE_AUDIO_CODEC_OPTIONS,
   VIDEO_FORMAT_OPTIONS,
 } from '~/utils/webcodecs';
+import { formatFps } from '~/utils/format';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 const props = defineProps<{
@@ -79,7 +80,7 @@ const {
 } = useExportForm();
 
 const resolutionSummary = computed(() => {
-  return `${exportWidth.value}x${exportHeight.value}, ${exportFps.value}FPS, ${(audioSampleRate.value || 0) / 1000}kHz`;
+  return `${exportWidth.value}x${exportHeight.value}, ${formatFps(exportFps.value)}FPS, ${(audioSampleRate.value || 0) / 1000}kHz`;
 });
 
 const encodingSummary = computed(() => {

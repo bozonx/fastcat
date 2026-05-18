@@ -1199,6 +1199,8 @@ export default {
         transcriptionHint:
           'Отправьте текущий аудиофайл в настроенный сервис STT. Язык указывать необязательно.',
         transcriptionLanguage: 'Язык',
+        transcriptionLanguageHint:
+          'Язык по умолчанию в окне транскрибации. Можно изменить перед каждой транскрибацией.',
         transcriptionSaved: 'Транскрипция сохранена',
         transcriptionSavedDescription: 'Транскрипция была сохранена рядом с исходным файлом.',
         transcriptionSavedVideoDescription:

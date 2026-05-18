@@ -30,7 +30,7 @@ const isEnabled = defineModel<boolean>('enabled', { default: true });
         class="flex items-center gap-1 text-2xs text-ui-text-muted hover:text-ui-text disabled:opacity-50"
         :title="t('common.actions.reset')"
         :disabled="!isEnabled"
-        @click="emit('updateBlendMode')"
+        @click="emit('updateBlendMode', blendMode)"
       >
         <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 block" />
       </button>
