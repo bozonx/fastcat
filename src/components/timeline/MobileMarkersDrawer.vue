@@ -5,7 +5,7 @@ import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 
-const props = defineProps<{
+defineProps<{
   isOpen: boolean;
 }>();
 

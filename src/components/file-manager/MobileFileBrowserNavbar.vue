@@ -7,7 +7,7 @@ interface Breadcrumb {
   path: string;
 }
 
-const props = defineProps<{
+defineProps<{
   isSelectionMode: boolean;
   selectedCount: number;
   totalSelectedSize: number;

@@ -5,7 +5,7 @@ import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 
-const props = defineProps<{
+defineProps<{
   compact?: boolean;
 }>();
 

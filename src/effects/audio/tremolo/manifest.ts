@@ -87,7 +87,7 @@ export const tremoloManifest: AudioEffectManifest<TremoloParams> = {
     try {
       graph.lfo.stop();
       graph.lfo.disconnect();
-    } catch (_err) {
+    } catch {
       // ignore
     }
   },

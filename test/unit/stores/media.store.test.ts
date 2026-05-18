@@ -184,7 +184,6 @@ describe('MediaStore', () => {
 
   it('deduplicates concurrent metadata requests for the same path', async () => {
     const store = useMediaStore();
-    const callCount = 0;
 
     const file = { size: 100, lastModified: 100, name: 'a.mp4' } as any;
     vi.mocked(useProjectStore).mockReturnValue({
@@ -200,5 +199,51 @@ describe('MediaStore', () => {
     const [r1, r2] = await Promise.all([p1, p2]);
     // Both should resolve to the same object reference or equal value
     expect(r1).toEqual(r2);
+  });
+
+  it('returns in-memory cached metadata when file size and lastModified match', async () => {
+    const store = useMediaStore();
+    store.mediaMetadata = {
+      'video/a.mp4': { source: { size: 100, lastModified: 100 }, duration: 42 },
+    } as any;
+
+    const file = { size: 100, lastModified: 100, name: 'a.mp4' } as any;
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn(),
+      getFileByPath: vi.fn().mockResolvedValue(file),
+    } as any);
+
+    const result = await store.getOrFetchMetadataByPath('video/a.mp4');
+    expect(result).toEqual({ source: { size: 100, lastModified: 100 }, duration: 42 });
+  });
+
+  it('removeMediaCache clears metadata and related state', async () => {
+    const store = useMediaStore();
+    store.mediaMetadata = { 'video/a.mp4': { duration: 10 } } as any;
+    store.missingPaths = { 'video/a.mp4': true } as any;
+    store.metadataLoadFailed = { 'video/a.mp4': true } as any;
+
+    await store.removeMediaCache('video/a.mp4');
+
+    expect(store.mediaMetadata['video/a.mp4']).toBeUndefined();
+    expect(store.missingPaths['video/a.mp4']).toBeUndefined();
+    expect(store.metadataLoadFailed['video/a.mp4']).toBeUndefined();
+  });
+
+  it('revalidateMissingMedia updates missingPaths based on file existence', async () => {
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn(),
+      getFileByPath: vi.fn().mockImplementation(async (path: string) => {
+        return path === 'video/exists.mp4' ? ({ size: 1 } as File) : null;
+      }),
+    } as any);
+    const store = useMediaStore();
+
+    await store.revalidateMissingMedia(['video/exists.mp4', 'video/missing.mp4']);
+
+    expect(store.missingPaths['video/exists.mp4']).toBe(false);
+    expect(store.missingPaths['video/missing.mp4']).toBe(true);
   });
 });

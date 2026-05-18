@@ -6,6 +6,19 @@ import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { createDefaultExportPresets, createDefaultProjectPresets } from '~/utils/settings';
 
+vi.mock('pinia', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('pinia')>();
+  return {
+    ...mod,
+    storeToRefs: vi.fn((store: any) => ({
+      projectSettings: ref(store.projectSettings),
+      isLoadingProjectSettings: ref(store.isLoadingProjectSettings),
+      isSavingProjectSettings: ref(store.isSavingProjectSettings),
+      activeMonitor: ref(store.activeMonitor),
+    })),
+  };
+});
+
 const mockResetMediaState = vi.fn();
 const mockResetTimelineState = vi.fn();
 const mockClearSelection = vi.fn();
@@ -47,58 +60,64 @@ vi.mock('~/composables/editor/useProjectLock', () => ({
   })),
 }));
 
-vi.mock('~/stores/project-settings.store', () => ({
-  useProjectSettingsStore: vi.fn(() => ({
-    get projectSettings() {
-      return {
-        project: { orientation: 'landscape', width: 1920, height: 1080, fps: 30 },
-        ui: { layout: null },
-        monitors: {},
-        timelines: { openPaths: [], sessions: {} },
-        timeline: {},
-      };
+vi.mock('~/stores/project-settings.store', () => {
+  const { reactive } = require('vue');
+  const state = reactive({
+    projectSettings: {
+      project: { orientation: 'landscape', width: 1920, height: 1080, fps: 30 },
+      ui: { layout: null },
+      monitors: {},
+      timelines: { openPaths: [], sessions: {} },
+      timeline: {},
     },
     isLoadingProjectSettings: false,
     isSavingProjectSettings: false,
     activeMonitor: null,
-    closeProjectSettings: mockCloseProjectSettings,
-    loadProjectSettings: mockLoadProjectSettings,
-    saveProjectSettings: mockSaveProjectSettings,
-    setContext: mockSetContext,
-    saveInitialProjectSettingsForNewProject: mockSaveInitialProjectSettingsForNewProject,
-  })),
-}));
+  });
+  return {
+    useProjectSettingsStore: vi.fn(() => ({
+      ...state,
+      $state: state,
+      closeProjectSettings: mockCloseProjectSettings,
+      loadProjectSettings: mockLoadProjectSettings,
+      saveProjectSettings: mockSaveProjectSettings,
+      setContext: mockSetContext,
+      saveInitialProjectSettingsForNewProject: mockSaveInitialProjectSettingsForNewProject,
+    })),
+  };
+});
+
+const workspaceMock = {
+  projectsHandle: null,
+  projects: [] as string[],
+  error: null as string | null,
+  lastProjectName: null,
+  userSettings: {
+    projectDefaults: { audioDeclickDurationUs: 5000, defaultAudioFadeCurve: 'logarithmic' },
+    projectPresets: createDefaultProjectPresets(),
+    exportPresets: createDefaultExportPresets(),
+    optimization: { proxyConcurrency: 2 },
+    timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
+  },
+  workspaceState: { fileBrowser: { instances: {} } },
+  batchUpdateWorkspaceState: vi.fn(),
+  loadProjects: vi.fn(),
+  updateRecentProject: vi.fn(),
+  deleteProject: vi.fn(),
+  isLoading: false,
+};
 
 vi.mock('~/stores/workspace.store', () => ({
-  useWorkspaceStore: vi.fn(() => ({
-    projectsHandle: null,
-    projects: [],
-    error: null,
-    lastProjectName: null,
-    userSettings: {
-      projectDefaults: { audioDeclickDurationUs: 5000, defaultAudioFadeCurve: 'logarithmic' },
-      projectPresets: createDefaultProjectPresets(),
-      exportPresets: createDefaultExportPresets(),
-      optimization: { proxyConcurrency: 2 },
-      timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 8 },
-    },
-    workspaceState: {
-      fileBrowser: {
-        instances: {},
-      },
-    },
-    batchUpdateWorkspaceState: vi.fn(),
-    loadProjects: vi.fn(),
-    updateRecentProject: vi.fn(),
-    deleteProject: vi.fn(),
-    isLoading: false,
-  })),
+  useWorkspaceStore: vi.fn(() => workspaceMock),
 }));
 
 describe('ProjectStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    workspaceMock.projectsHandle = null;
+    workspaceMock.projects = [];
+    workspaceMock.error = null;
   });
 
   it('initializes with empty state', () => {
@@ -142,6 +161,7 @@ describe('ProjectStore', () => {
   it('createProject sets error when project already exists', async () => {
     const store = useProjectStore();
     const workspace = useWorkspaceStore();
+    workspace.projectsHandle = {} as any;
     workspace.projects = ['ExistingProject'];
 
     await store.createProject('ExistingProject');

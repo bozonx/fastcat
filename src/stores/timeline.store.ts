@@ -15,6 +15,7 @@ import { createTimelineEditService } from '~/timeline/application/timelineEditSe
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
+import { getNextBackupName, getBackupsToDelete } from '~/utils/timeline-backup';
 
 import { createTimelinePersistenceModule } from '~/stores/timeline/persistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
@@ -386,44 +387,30 @@ export const useTimelineStore = defineStore('timeline', () => {
       });
       if (!backupDirHandle) return;
 
-      const existingBackups: { name: string; num: number; handle: FileSystemFileHandle }[] = [];
+      const existingBackupNames: string[] = [];
       for await (const [name, handle] of (backupDirHandle as any).entries()) {
         if (
           handle.kind === 'file' &&
           name.startsWith(baseName + '__bak') &&
           name.endsWith('.otio')
         ) {
-          const match = name.match(/__bak(\d{3})\.otio$/);
-          if (match) {
-            existingBackups.push({
-              name,
-              num: parseInt(match[1]!, 10),
-              handle: handle as FileSystemFileHandle,
-            });
-          }
+          existingBackupNames.push(name);
         }
       }
 
-      existingBackups.sort((a, b) => a.num - b.num);
-
-      const nextNum =
-        existingBackups.length > 0 ? existingBackups[existingBackups.length - 1]!.num + 1 : 1;
-      const nextName = `${baseName}__bak${nextNum.toString().padStart(3, '0')}.otio`;
+      const nextName = getNextBackupName(baseName, existingBackupNames);
 
       const newHandle = await backupDirHandle.getFileHandle(nextName, { create: true });
       const writable = await (newHandle as any).createWritable();
       await writable.write(serialized);
       await writable.close();
 
-      if (existingBackups.length >= backupSettings.count) {
-        const toDeleteCount = existingBackups.length - backupSettings.count + 1;
-        const toDelete = existingBackups.slice(0, toDeleteCount);
-        for (const item of toDelete) {
-          try {
-            await backupDirHandle.removeEntry(item.name);
-          } catch (e) {
-            console.warn('Failed to delete old backup', e);
-          }
+      const toDelete = getBackupsToDelete(existingBackupNames, backupSettings.count);
+      for (const name of toDelete) {
+        try {
+          await backupDirHandle.removeEntry(name);
+        } catch (e) {
+          console.warn('Failed to delete old backup', e);
         }
       }
     } catch (e) {

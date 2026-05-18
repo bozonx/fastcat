@@ -18,7 +18,7 @@ import {
 } from '~/utils/settings';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 
-const props = defineProps<{
+defineProps<{
   isActive: boolean;
 }>();
 

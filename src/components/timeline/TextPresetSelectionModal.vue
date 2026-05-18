@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { usePresetsStore } from '~/stores/presets.store';
 import UiModal from '~/components/ui/UiModal.vue';
 
-const props = defineProps<{
+defineProps<{
   trackId: string;
   itemId: string;
 }>();

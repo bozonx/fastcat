@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import UiAccordion from '~/components/ui/UiAccordion.vue';
 
-const props = defineProps<{
+defineProps<{
   title: string;
   summary?: string;
   defaultExpanded?: boolean;

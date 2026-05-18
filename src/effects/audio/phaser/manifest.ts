@@ -144,7 +144,7 @@ export const phaserManifest: AudioEffectManifest<PhaserParams> = {
       graph.lfo.disconnect();
       graph.feedbackGain.disconnect();
       graph.filters.forEach((f) => f.disconnect());
-    } catch (_err) {
+    } catch {
       // ignore
     }
   },

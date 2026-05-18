@@ -6,7 +6,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 
-const props = defineProps<{
+defineProps<{
   hideActions?: boolean;
 }>();
 

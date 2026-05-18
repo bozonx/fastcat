@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = withDefaults(
+withDefaults(
   defineProps<{
     text?: string;
     placement?: 'top' | 'bottom' | 'left' | 'right';

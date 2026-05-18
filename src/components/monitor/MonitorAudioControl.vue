@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
-const props = defineProps<{
+defineProps<{
   compact?: boolean;
 }>();
 

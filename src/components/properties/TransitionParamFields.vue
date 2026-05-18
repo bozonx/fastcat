@@ -2,7 +2,7 @@
 import type { TransitionParamField } from '~/transitions/core/registry';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 
-const props = defineProps<{
+defineProps<{
   fields: TransitionParamField[];
   params: Record<string, any>;
 }>();

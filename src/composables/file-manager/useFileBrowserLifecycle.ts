@@ -87,6 +87,7 @@ export function useFileBrowserLifecycle(params: UseFileBrowserLifecycleParams) {
 
     params.folderSizes.value = {};
     await params.loadProjectDirectory({ fullRefresh: true });
+    await params.loadFolderContent();
   }
 
   onUnmounted(() => {

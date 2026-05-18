@@ -5,7 +5,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
 
-const props = defineProps<{
+defineProps<{
   isOpen: boolean;
 }>();
 

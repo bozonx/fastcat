@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const modelValue = defineModel<string>({ default: '' });
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     placeholder?: string;
     disabled?: boolean;

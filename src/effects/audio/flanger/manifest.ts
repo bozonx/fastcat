@@ -119,7 +119,7 @@ export const flangerManifest: AudioEffectManifest<FlangerParams> = {
       graph.lfo.disconnect();
       graph.delay.disconnect();
       graph.feedbackGain.disconnect();
-    } catch (_err) {
+    } catch {
       // ignore
     }
   },
