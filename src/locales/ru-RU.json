@@ -1496,7 +1496,6 @@
       "audioDeclickDuration": "Длительность de-click",
       "audioDeclickDurationHelp": "Длительность микро-фейдов для устранения щелчков.",
       "audioScrubbingHint": "Воспроизводить звук при перемещении по таймлайну вручную.",
-      "audioScrubbingTitle": "Скраббинг аудио",
       "autoCreateProxies": "Автоматически создавать прокси при добавлении медиа на таймлайн",
       "backupCount": "Количество резервных копий",
       "backupCountHelp": "Количество хранимых резервных копий.",

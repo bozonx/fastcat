@@ -96,12 +96,8 @@ const stt = useSttTranscription({
       title: t('videoEditor.fileManager.audio.transcriptionCompleted'),
       description:
         mediaType === 'video'
-          ? t(
-              'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
-            )
-          : t(
-              'videoEditor.fileManager.audio.transcriptionSavedDescription',
-            ),
+          ? t('videoEditor.fileManager.audio.transcriptionSavedVideoDescription')
+          : t('videoEditor.fileManager.audio.transcriptionSavedDescription'),
       color: 'success',
     });
   },

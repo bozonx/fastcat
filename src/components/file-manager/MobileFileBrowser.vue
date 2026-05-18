@@ -221,16 +221,10 @@ const {
         ? t('videoEditor.fileManager.audio.transcriptionCached')
         : t('videoEditor.fileManager.audio.transcriptionCompleted'),
       description: cached
-        ? t(
-            'videoEditor.fileManager.audio.transcriptionCachedDescription',
-          )
+        ? t('videoEditor.fileManager.audio.transcriptionCachedDescription')
         : mediaType === 'video'
-          ? t(
-              'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
-            )
-          : t(
-              'videoEditor.fileManager.audio.transcriptionSavedDescription',
-            ),
+          ? t('videoEditor.fileManager.audio.transcriptionSavedVideoDescription')
+          : t('videoEditor.fileManager.audio.transcriptionSavedDescription'),
       color: 'success',
     });
   },

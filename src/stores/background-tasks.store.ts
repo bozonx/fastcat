@@ -72,9 +72,7 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
     return total / activeTasks.value.length;
   });
 
-  const sortedTasks = computed(() =>
-    [...tasks.value].sort((a, b) => b.createdAt - a.createdAt),
-  );
+  const sortedTasks = computed(() => [...tasks.value].sort((a, b) => b.createdAt - a.createdAt));
 
   function addTask(task: AddBackgroundTaskInput): string {
     const id = generateTaskId();
@@ -101,11 +99,7 @@ export const useBackgroundTasksStore = defineStore('background-tasks', () => {
     task.progress = clampProgress(progress);
   }
 
-  function updateTaskStatus(
-    id: string,
-    status: BackgroundTaskStatus,
-    error?: string,
-  ): void {
+  function updateTaskStatus(id: string, status: BackgroundTaskStatus, error?: string): void {
     const task = findTask(id);
     if (!task) return;
     // A task that already reached a terminal state must not be moved back

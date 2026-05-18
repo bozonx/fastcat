@@ -532,7 +532,8 @@
         "subtitle": "Subtitle",
         "title": "Title",
         "watchPresets": "View presets"
-      }
+      },
+      "noCustomPresets": "No custom presets"
     },
     "marker": {
       "actions": "Actions",
@@ -1728,4 +1729,5 @@
     "cutItems": "Cut items",
     "pasteItems": "Paste items"
   }
+}
 }

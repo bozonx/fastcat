@@ -109,9 +109,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
     const result: string[] = [];
 
     const walk = async (dir: FileSystemDirectoryHandle, basePath: string) => {
-      const iterator =
-        (dir as any).values?.() ??
-        (dir as any).entries?.();
+      const iterator = (dir as any).values?.() ?? (dir as any).entries?.();
       if (!iterator) return;
 
       for await (const value of iterator) {

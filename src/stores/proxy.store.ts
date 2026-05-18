@@ -49,8 +49,7 @@ export const useProxyStore = defineStore('proxy', () => {
     getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
     getFileByPath: async (path) => await projectStore.getFileByPath(path),
     getOptimizationSettings: () => workspaceStore.userSettings.optimization,
-    getProxyTaskTitle: ({ fileName }) =>
-      t('videoEditor.backgroundTasks.proxyTitle', { fileName }),
+    getProxyTaskTitle: ({ fileName }) => t('videoEditor.backgroundTasks.proxyTitle', { fileName }),
     backgroundTasksStore,
   });
 

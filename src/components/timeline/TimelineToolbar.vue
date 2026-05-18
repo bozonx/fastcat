@@ -346,7 +346,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             :color="timelineStore.isTrimModeActive ? 'primary' : 'neutral'"
             icon="i-heroicons-scissors"
             :aria-label="t('fastcat.timeline.trim')"
-            :items="trimMenuItems"
+            :items="(trimMenuItems as any)"
             button-class="hover:bg-ui-bg-hover/60"
             caret-button-class="px-0.5 hover:bg-ui-bg-hover/60"
             caret-icon-class="size-2.5"

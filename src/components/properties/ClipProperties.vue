@@ -449,8 +449,8 @@ defineExpose({
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipActionsSection
       v-if="!hideActions"
-      :common-actions="(commonActionsList as any)"
-      :other-actions="(otherActionsList as any)"
+      :common-actions="commonActionsList as any"
+      :other-actions="otherActionsList as any"
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"

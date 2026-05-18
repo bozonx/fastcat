@@ -6,11 +6,7 @@ type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
 function getDirectoryIterator(
   handle: FileSystemDirectoryHandle,
 ): AsyncIterable<FileSystemHandle> | AsyncIterable<[string, FileSystemHandle]> | null {
-  return (
-    (handle as any).values?.() ??
-    (handle as any).entries?.() ??
-    null
-  );
+  return (handle as any).values?.() ?? (handle as any).entries?.() ?? null;
 }
 
 export async function assertEntryDoesNotExist(params: {

@@ -11,7 +11,6 @@ export interface CrossVfsCopyOptions {
 }
 
 function sanitizeLocalEntryName(name: string): string {
-  // eslint-disable-next-line no-control-regex -- intentional removal of control characters from filenames
   const sanitized = name
     .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
     .replace(/[. ]+$/g, '')
@@ -104,14 +103,7 @@ export async function crossVfsCopy(options: CrossVfsCopyOptions): Promise<string
     return targetPath;
   }
 
-  await copyDirectoryRecursive(
-    sourceVfs,
-    targetVfs,
-    sourcePath,
-    targetPath,
-    0,
-    options.signal,
-  );
+  await copyDirectoryRecursive(sourceVfs, targetVfs, sourcePath, targetPath, 0, options.signal);
   return targetPath;
 }
 

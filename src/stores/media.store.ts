@@ -131,7 +131,6 @@ export const useMediaStore = defineStore('media', () => {
     // race with it on the same OPFS cache file, but ensure a fresh extraction.
     const previous = options?.forceRefresh ? pendingRequests.get(cacheKey) : undefined;
 
-    // eslint-disable-next-line prefer-const -- late-initialized to avoid TDZ in IIFE
     let requestPromise!: Promise<MediaMetadata | null>;
     requestPromise = (async () => {
       try {

@@ -12,55 +12,52 @@ const toast = useToast();
 
 const notifiedCompletedTaskIds = new Set<string>();
 
-watch(
-  completedTasks,
-  (nextCompleted) => {
-    const completedIds = new Set(nextCompleted.map((task) => task.id));
-    for (const taskId of notifiedCompletedTaskIds) {
-      if (!completedIds.has(taskId)) {
-        notifiedCompletedTaskIds.delete(taskId);
-      }
+watch(completedTasks, (nextCompleted) => {
+  const completedIds = new Set(nextCompleted.map((task) => task.id));
+  for (const taskId of notifiedCompletedTaskIds) {
+    if (!completedIds.has(taskId)) {
+      notifiedCompletedTaskIds.delete(taskId);
+    }
+  }
+
+  for (const task of nextCompleted) {
+    if (notifiedCompletedTaskIds.has(task.id)) continue;
+    // Cancellations are user-initiated and should not raise a toast.
+    if (task.status === 'cancelled') {
+      notifiedCompletedTaskIds.add(task.id);
+      continue;
     }
 
-    for (const task of nextCompleted) {
-      if (notifiedCompletedTaskIds.has(task.id)) continue;
-      // Cancellations are user-initiated and should not raise a toast.
-      if (task.status === 'cancelled') {
-        notifiedCompletedTaskIds.add(task.id);
-        continue;
-      }
-
-      if (task.status === 'failed') {
-        toast.add({
-          title: t('videoEditor.backgroundTasks.failed'),
-          description: task.error || task.title,
-          color: 'error',
-        });
-        notifiedCompletedTaskIds.add(task.id);
-        continue;
-      }
-
-      if (task.type === 'conversion') {
-        toast.add({
-          title: t('videoEditor.fileManager.convert.success'),
-          description: task.title,
-          color: 'success',
-        });
-        notifiedCompletedTaskIds.add(task.id);
-        continue;
-      }
-
-      if (task.type === 'proxy') {
-        toast.add({
-          title: t('videoEditor.fileManager.proxy.success'),
-          description: task.title,
-          color: 'success',
-        });
-        notifiedCompletedTaskIds.add(task.id);
-      }
+    if (task.status === 'failed') {
+      toast.add({
+        title: t('videoEditor.backgroundTasks.failed'),
+        description: task.error || task.title,
+        color: 'error',
+      });
+      notifiedCompletedTaskIds.add(task.id);
+      continue;
     }
-  },
-);
+
+    if (task.type === 'conversion') {
+      toast.add({
+        title: t('videoEditor.fileManager.convert.success'),
+        description: task.title,
+        color: 'success',
+      });
+      notifiedCompletedTaskIds.add(task.id);
+      continue;
+    }
+
+    if (task.type === 'proxy') {
+      toast.add({
+        title: t('videoEditor.fileManager.proxy.success'),
+        description: task.title,
+        color: 'success',
+      });
+      notifiedCompletedTaskIds.add(task.id);
+    }
+  }
+});
 </script>
 
 <template>

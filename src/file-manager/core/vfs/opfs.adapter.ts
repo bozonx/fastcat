@@ -110,8 +110,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!handle) return [];
 
     const entries: VfsEntry[] = [];
-    for await (const [name, entryHandle] of (handle as any).entries?.() ??
-      []) {
+    for await (const [name, entryHandle] of (handle as any).entries?.() ?? []) {
       let hasChildren: boolean | undefined;
       let hasDirectories: boolean | undefined;
 
@@ -119,9 +118,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         hasChildren = false;
         hasDirectories = false;
         try {
-          for await (const [, childHandle] of (
-            entryHandle as any
-          ).entries?.() ?? []) {
+          for await (const [, childHandle] of (entryHandle as any).entries?.() ?? []) {
             hasChildren = true;
             if (childHandle.kind === 'directory') {
               hasDirectories = true;

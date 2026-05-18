@@ -86,27 +86,28 @@ export function useFileBrowserEntries({
 
   async function supplementEntries(entries: FsEntry[]): Promise<ExtendedFsEntry[]> {
     return Promise.all(
-      entries.map((entry) =>
-        metadataQueue.add(async () => {
-          if (entry.kind === 'file') {
-            try {
-              const metadata = await vfs.getMetadata(entry.path);
-              if (!metadata || metadata.kind !== 'file') {
+      entries.map(
+        (entry) =>
+          metadataQueue.add(async () => {
+            if (entry.kind === 'file') {
+              try {
+                const metadata = await vfs.getMetadata(entry.path);
+                if (!metadata || metadata.kind !== 'file') {
+                  return { ...entry, size: 0, mimeType: 'unknown' };
+                }
+                return {
+                  ...entry,
+                  size: metadata.size,
+                  mimeType: getMimeTypeFromFilename(entry.name),
+                  lastModified: metadata.lastModified,
+                  created: metadata.lastModified,
+                };
+              } catch {
                 return { ...entry, size: 0, mimeType: 'unknown' };
               }
-              return {
-                ...entry,
-                size: metadata.size,
-                mimeType: getMimeTypeFromFilename(entry.name),
-                lastModified: metadata.lastModified,
-                created: metadata.lastModified,
-              };
-            } catch {
-              return { ...entry, size: 0, mimeType: 'unknown' };
             }
-          }
-          return { ...entry, size: 0, mimeType: 'folder' };
-        }) as Promise<ExtendedFsEntry>,
+            return { ...entry, size: 0, mimeType: 'folder' };
+          }) as Promise<ExtendedFsEntry>,
       ),
     );
   }
