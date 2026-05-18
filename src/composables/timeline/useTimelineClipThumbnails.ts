@@ -145,6 +145,79 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     return h * videoAspect.value;
   });
 
+  const clipWidthPx = computed(() => {
+    return Math.max(
+      1,
+      timeUsToPx(options.item.value.timelineRange.durationUs, timelineStore.timelineZoom),
+    );
+  });
+
+  const pxPerSecond = computed(() => {
+    return timeUsToPx(1_000_000, timelineStore.timelineZoom);
+  });
+
+  const thumbnailGridStepSeconds = computed(() => {
+    const pxPerSec = pxPerSecond.value;
+    const tileW = tileDisplayWidthPx.value;
+    if (!Number.isFinite(pxPerSec) || pxPerSec <= 0 || !Number.isFinite(tileW) || tileW <= 0) {
+      return intervalSeconds;
+    }
+
+    const secondsPerTile = tileW / pxPerSec;
+    const rawMultiplier = Math.max(1, Math.floor(secondsPerTile / intervalSeconds));
+    const powerOfTwoMultiplier = 2 ** Math.floor(Math.log2(rawMultiplier));
+    return intervalSeconds * Math.max(1, powerOfTwoMultiplier);
+  });
+
+  const requestedThumbnailTimes = computed(() => {
+    if (!fileUrl.value || duration.value <= 0 || isImage.value) return [];
+
+    const pxPerSec = pxPerSecond.value;
+    const clipW = clipWidthPx.value;
+    if (!Number.isFinite(pxPerSec) || pxPerSec <= 0 || !Number.isFinite(clipW) || clipW <= 0) {
+      return [];
+    }
+
+    const tileW = tileDisplayWidthPx.value;
+    const overscanPx = Math.max(options.viewportWidth.value * 0.5, tileW * 4);
+    const visibleStartLocalPx = Math.max(
+      0,
+      options.scrollLeft.value - options.clipStartPx.value - overscanPx,
+    );
+    const visibleEndLocalPx = Math.min(
+      clipW,
+      options.scrollLeft.value +
+        options.viewportWidth.value -
+        options.clipStartPx.value +
+        overscanPx,
+    );
+
+    if (visibleEndLocalPx < visibleStartLocalPx) return [];
+
+    const sourceStartSec = Math.max(
+      0,
+      options.item.value.sourceRange.startUs / 1_000_000 + visibleStartLocalPx / pxPerSec,
+    );
+    const sourceEndSec = Math.min(
+      duration.value,
+      options.item.value.sourceRange.startUs / 1_000_000 + visibleEndLocalPx / pxPerSec,
+    );
+
+    const step = thumbnailGridStepSeconds.value;
+    const times: number[] = [];
+    const first = Math.max(0, Math.floor(sourceStartSec / step) * step);
+
+    for (let time = first; time <= sourceEndSec; time += step) {
+      times.push(time);
+    }
+
+    if (times.length === 0 && sourceStartSec <= duration.value) {
+      times.push(Math.floor(sourceStartSec / intervalSeconds) * intervalSeconds);
+    }
+
+    return times;
+  });
+
   const sortedKeys = computed(() => {
     return Array.from(thumbnailsBySecond.value.keys()).sort((a, b) => a - b);
   });
@@ -268,10 +341,11 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     }
   }
 
-  const generate = () => {
+  const generate = (requestedTimesS = requestedThumbnailTimes.value) => {
     if (!fileUrl.value || duration.value <= 0 || !clipHash.value) return;
     if (!projectStore.currentProjectId) return;
     if (isImage.value) return;
+    if (requestedTimesS.length === 0 && !isNestedTimeline.value) return;
 
     isGenerating.value = true;
 
@@ -285,6 +359,8 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       projectId: projectStore.currentProjectId,
       projectRelativePath: fileUrl.value,
       duration: duration.value,
+      requestedTimesS,
+      listenerKey: options.item.value.id,
       onProgress: (progress, path, time) => {
         if (isUnmounted) return;
         const secondKey = Math.round(time);
@@ -327,6 +403,16 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       generate();
     }
   });
+
+  watch(
+    requestedThumbnailTimes,
+    (times) => {
+      if (times.length > 0) {
+        generate(times);
+      }
+    },
+    { deep: true },
+  );
 
   return {
     imageUrl,

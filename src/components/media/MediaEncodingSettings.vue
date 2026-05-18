@@ -93,14 +93,26 @@ function getEffectiveVideoCodec(): string {
   return videoCodec.value || '';
 }
 
-const codecHint = computed(() => {
+const includeAudio = computed({
+  get: () => !excludeAudio.value,
+  set: (val) => {
+    excludeAudio.value = !val;
+  },
+});
+
+const videoCodecHelp = computed(() => {
+  const help = t('videoEditor.export.videoBitrateHelp');
   if (outputFormat.value === 'webm') {
-    return t('videoEditor.export.codecHint', { video: 'VP9', audio: 'Opus' });
+    return `${help} (VP9)`;
   }
   if (outputFormat.value === 'mkv') {
-    return t('videoEditor.export.codecHint', { video: 'AV1', audio: 'Opus' });
+    return `${help} (AV1)`;
   }
-  return null;
+  const option = filteredVideoCodecOptions.value.find(
+    (o: VideoCodecOptionResolved) => o.value === videoCodec.value,
+  );
+  const label = option?.label || videoCodec.value;
+  return `${help} (${label})`;
 });
 
 watch(outputFormat, (fmt) => {

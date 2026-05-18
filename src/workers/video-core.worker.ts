@@ -387,12 +387,19 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       maxHeight: number;
       quality: number;
       mimeType: string;
+      taskId?: string;
     },
   ): Promise<(Blob | null)[]> {
     const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
 
     const source = new BlobSource(file);
     const input = new Input({ source, formats: ALL_FORMATS } as any);
+    const taskId = options.taskId;
+    if (taskId && !activeCancels.has(taskId)) {
+      activeCancels.set(taskId, false);
+    }
+
+    const isCancelled = () => (taskId ? activeCancels.get(taskId) === true : false);
 
     try {
       const track = await input.getPrimaryVideoTrack();
@@ -415,6 +422,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
         const results: (Blob | null)[] = [];
 
         for (const targetS of options.timesS) {
+          if (isCancelled()) {
+            throw new Error('Thumbnail extraction cancelled');
+          }
+
           const safeTimeS = Math.max(firstTimestampS, targetS);
 
           let sample: any = null;
@@ -521,6 +532,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
         }
       }
     } finally {
+      if (taskId) {
+        activeCancels.delete(taskId);
+      }
+
       if (typeof (input as any).dispose === 'function') {
         try {
           (input as any).dispose();

@@ -26,7 +26,7 @@ const props = withDefaults(
     disabled: false,
     block: false,
     square: false,
-    hoverClass: 'hover:bg-ui-bg-hover',
+    hoverClass: '!hover:bg-ui-bg-hover hover:text-ui-text transition-colors',
   },
 );
 

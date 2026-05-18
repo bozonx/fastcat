@@ -5,10 +5,7 @@ import {
   MARKER_THUMBNAILS,
   TIMELINE_MANAGER_THUMBNAILS,
 } from '~/utils/constants';
-import {
-  ensureResolvedProjectThumbnailsDir,
-  ensureResolvedProjectTempDir,
-} from '~/utils/storage-handles';
+import { ensureResolvedProjectThumbnailsDir } from '~/utils/storage-handles';
 import {
   BaseThumbnailGenerator,
   type BaseThumbnailTask,
@@ -47,13 +44,27 @@ async function ensureThumbnailDir(input: {
 
 class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, string> {
   protected maxCacheEntries = 200;
+  private cacheProjectIds = new Map<string, string>();
 
   protected get taskPriority(): number {
     return MEDIA_TASK_PRIORITIES.fileThumbnail;
   }
 
   protected revokeCacheValue(url: string): void {
-    // Note: URL revocation is now handled by the consumers (components)
+    URL.revokeObjectURL(url);
+  }
+
+  protected override evictCacheIfNeeded() {
+    while (this.cache.size > this.maxCacheEntries) {
+      const oldestKey = this.cache.keys().next().value as string | undefined;
+      if (!oldestKey) return;
+      const value = this.cache.get(oldestKey);
+      if (value) {
+        this.revokeCacheValue(value);
+      }
+      this.cache.delete(oldestKey);
+      this.cacheProjectIds.delete(oldestKey);
+    }
   }
 
   protected onCacheHit(task: FileThumbnailTask, url: string): void {
@@ -83,7 +94,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       const blob = new Blob([buffer], { type: file.type });
       const url = URL.createObjectURL(blob);
 
+      const previousUrl = this.cache.get(task.id);
+      if (previousUrl && previousUrl !== url) {
+        this.revokeCacheValue(previousUrl);
+      }
       this.cache.set(task.id, url);
+      this.cacheProjectIds.set(task.id, task.projectId);
       this.touchCacheEntry(task.id);
       this.evictCacheIfNeeded();
       return url;
@@ -144,6 +160,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
         quality: FILE_MANAGER_THUMBNAILS.QUALITY,
         mimeType: 'image/webp',
+        taskId: task.id,
       });
       blob = blobs[0] ?? null;
     } catch (e: any) {
@@ -170,7 +187,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const thumbUrl = URL.createObjectURL(blob);
 
+    const previousUrl = this.cache.get(task.id);
+    if (previousUrl && previousUrl !== thumbUrl) {
+      this.revokeCacheValue(previousUrl);
+    }
     this.cache.set(task.id, thumbUrl);
+    this.cacheProjectIds.set(task.id, task.projectId);
     this.touchCacheEntry(task.id);
     this.evictCacheIfNeeded();
 
@@ -204,14 +226,24 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const thumbUrl = URL.createObjectURL(input.blob);
 
+    const previousUrl = this.cache.get(hash);
+    if (previousUrl && previousUrl !== thumbUrl) {
+      this.revokeCacheValue(previousUrl);
+    }
     this.cache.set(hash, thumbUrl);
+    this.cacheProjectIds.set(hash, input.projectId);
     this.touchCacheEntry(hash);
     this.evictCacheIfNeeded();
   }
 
   async clearThumbnail(input: { projectId: string; projectRelativePath: string }) {
     const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
-    this.cache.delete(hash);
+    const cachedUrl = this.cache.get(hash);
+    if (cachedUrl) {
+      this.revokeCacheValue(cachedUrl);
+      this.cache.delete(hash);
+      this.cacheProjectIds.delete(hash);
+    }
 
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;
@@ -278,7 +310,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         const file = await foundHandle.getFile();
         const blob = new Blob([await file.arrayBuffer()], { type: 'image/webp' });
         const url = URL.createObjectURL(blob);
+        const previousUrl = this.cache.get(cacheKey);
+        if (previousUrl && previousUrl !== url) {
+          this.revokeCacheValue(previousUrl);
+        }
         this.cache.set(cacheKey, url);
+        this.cacheProjectIds.set(cacheKey, input.projectId);
         return url;
       }
     } catch (e: any) {
@@ -314,7 +351,13 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       await writable.close();
 
       const url = URL.createObjectURL(input.blob);
-      this.cache.set(`marker:${input.markerId}`, url);
+      const cacheKey = `marker:${input.markerId}`;
+      const previousUrl = this.cache.get(cacheKey);
+      if (previousUrl && previousUrl !== url) {
+        this.revokeCacheValue(previousUrl);
+      }
+      this.cache.set(cacheKey, url);
+      this.cacheProjectIds.set(cacheKey, input.projectId);
     } catch (e) {
       console.error('Failed to save marker thumbnail to OPFS', input.markerId, e);
     }
@@ -338,11 +381,11 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         await projectThumbnailsDir.removeEntry(name, { recursive: true }).catch(() => {});
       }
 
-      // Also clear project-level cache keys
-      for (const key of this.cache.keys()) {
-        if (key.startsWith(`marker:`) || key.startsWith(`file:${projectId}:`)) {
-          this.cache.delete(key);
-        }
+      for (const [key, cachedUrl] of this.cache.entries()) {
+        if (this.cacheProjectIds.get(key) !== projectId) continue;
+        this.revokeCacheValue(cachedUrl);
+        this.cache.delete(key);
+        this.cacheProjectIds.delete(key);
       }
     } catch (e: any) {
       if (e?.name !== 'NotFoundError') {

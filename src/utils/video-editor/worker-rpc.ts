@@ -172,6 +172,7 @@ export interface VideoCoreWorkerAPI {
       maxHeight: number;
       quality: number;
       mimeType: string;
+      taskId?: string;
     },
   ): Promise<(Blob | null)[]>;
 }

@@ -13,6 +13,8 @@ import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
+  requestedTimesS?: number[];
+  listenerKey?: string;
   onProgress?: (progress: number, url: string, time: number) => void;
   onComplete?: () => void;
   onError?: (err: Error) => void;
@@ -64,16 +66,15 @@ async function ensureTimelineThumbnailDir(input: {
 
 class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<number, string>> {
   protected maxCacheEntries = 50;
-  private listeners = new Map<string, Set<ThumbnailTaskListener>>();
+  private listeners = new Map<string, Map<string, ThumbnailTaskListener>>();
+  private pendingRequestedTimes = new Map<string, Set<number>>();
 
   protected get taskPriority(): number {
     return MEDIA_TASK_PRIORITIES.timelineThumbnail;
   }
 
   protected revokeCacheValue(_urls: Map<number, string>): void {
-    // Note: URL revocation is now handled by the consumers (components)
-    // to avoid UI breaking when cache evicts an actively displayed thumbnail.
-    // For now, we do nothing here.
+    _urls.forEach((url) => URL.revokeObjectURL(url));
   }
 
   protected onCacheHit(task: ThumbnailTask, urls: Map<number, string>): void {
@@ -92,8 +93,40 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     return timesS;
   }
 
-  private isCompleteCache(urls: Map<number, string>, duration: number): boolean {
-    return this.buildExpectedTimes(duration).every((time) => urls.has(Math.round(time)));
+  private normalizeRequestedTimes(task: ThumbnailTask): number[] {
+    const sourceTimes = task.requestedTimesS?.length
+      ? task.requestedTimesS
+      : this.buildExpectedTimes(task.duration);
+    const interval = TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
+    const normalized = new Set<number>();
+
+    for (const time of sourceTimes) {
+      if (!Number.isFinite(time)) continue;
+      const gridTime = Math.round(time / interval) * interval;
+      if (gridTime < 0 || gridTime > task.duration) continue;
+      normalized.add(Math.round(gridTime));
+    }
+
+    return Array.from(normalized).sort((a, b) => a - b);
+  }
+
+  private getRequestedTimes(task: ThumbnailTask): number[] {
+    const pending = this.pendingRequestedTimes.get(task.id);
+    if (pending?.size) {
+      return Array.from(pending).sort((a, b) => a - b);
+    }
+    return this.normalizeRequestedTimes(task);
+  }
+
+  private mergeRequestedTimes(task: ThumbnailTask): void {
+    const nextTimes = this.normalizeRequestedTimes(task);
+    const pending = this.pendingRequestedTimes.get(task.id) ?? new Set<number>();
+    nextTimes.forEach((time) => pending.add(time));
+    this.pendingRequestedTimes.set(task.id, pending);
+  }
+
+  private isCompleteCache(urls: Map<number, string>, task: ThumbnailTask): boolean {
+    return this.normalizeRequestedTimes(task).every((time) => urls.has(Math.round(time)));
   }
 
   private addListener(task: ThumbnailTask): ThumbnailTaskListener {
@@ -102,8 +135,10 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       onComplete: task.onComplete,
       onError: task.onError,
     };
-    const listeners = this.listeners.get(task.id) ?? new Set<ThumbnailTaskListener>();
-    listeners.add(listener);
+    const listeners = this.listeners.get(task.id) ?? new Map<string, ThumbnailTaskListener>();
+    const listenerKey =
+      task.listenerKey ?? `${Date.now()}:${Math.random().toString(36).slice(2)}:${listeners.size}`;
+    listeners.set(listenerKey, listener);
     this.listeners.set(task.id, listeners);
     return listener;
   }
@@ -111,7 +146,12 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   private removeListener(id: string, listener: ThumbnailTaskListener): void {
     const listeners = this.listeners.get(id);
     if (!listeners) return;
-    listeners.delete(listener);
+    for (const [key, currentListener] of listeners.entries()) {
+      if (currentListener === listener) {
+        listeners.delete(key);
+        break;
+      }
+    }
     if (listeners.size === 0) {
       this.listeners.delete(id);
     }
@@ -133,8 +173,10 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
   private replayCacheToTask(task: ThumbnailTask, urls: Map<number, string>): void {
     const entries = Array.from(urls.entries()).sort(([a], [b]) => a - b);
-    const totalFrames = this.buildExpectedTimes(task.duration).length;
-    entries.forEach(([time, url], index) => {
+    const requestedTimes = new Set(this.normalizeRequestedTimes(task));
+    const visibleEntries = entries.filter(([time]) => requestedTimes.has(time));
+    const totalFrames = Math.max(1, requestedTimes.size);
+    visibleEntries.forEach(([time, url], index) => {
       task.onProgress?.(Math.min(1, (index + 1) / totalFrames), url, time);
     });
   }
@@ -142,6 +184,12 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   override cancelTask(id: string) {
     if (!id) return;
     this.listeners.delete(id);
+    this.pendingRequestedTimes.delete(id);
+    if (this.activeTasks.has(id)) {
+      void getThumbnailWorkerClient()
+        .client.cancelExport(id)
+        .catch(() => {});
+    }
     super.cancelTask(id);
   }
 
@@ -150,10 +198,12 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       this.cancelledTasks.delete(task.id);
     }
 
+    this.mergeRequestedTimes(task);
+
     const cached = this.cache.get(task.id);
     if (cached) {
       this.touchCacheEntry(task.id);
-      if (this.isCompleteCache(cached, task.duration)) {
+      if (this.isCompleteCache(cached, task)) {
         this.onCacheHit(task, cached);
         return;
       }
@@ -203,7 +253,10 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     });
   }
 
-  private async loadThumbnailsFromOPFS(task: ThumbnailTask): Promise<Map<number, string> | null> {
+  private async loadThumbnailsFromOPFS(
+    task: ThumbnailTask,
+    requestedTimes: number[],
+  ): Promise<Map<number, string> | null> {
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return null;
 
@@ -214,8 +267,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
         hash: task.id,
       });
 
-      const urls = new Map<number, string>();
-      const expectedTimes = this.buildExpectedTimes(task.duration);
+      const urls = new Map<number, string>(this.cache.get(task.id) ?? []);
+      const expectedTimes = requestedTimes;
       const totalFrames = expectedTimes.length;
       let framesProcessed = 0;
 
@@ -224,6 +277,10 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
         if (this.isCancelled(task.id)) {
           return urls;
         }
+        if (urls.has(Math.round(time))) {
+          framesProcessed++;
+          continue;
+        }
         const fileName = `${Math.round(time)}.webp`;
         try {
           const fileHandle = await hashDir.getFileHandle(fileName);
@@ -231,6 +288,10 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
           const buffer = await file.arrayBuffer();
           const blob = new Blob([buffer], { type: file.type });
           const url = URL.createObjectURL(blob);
+          const previousUrl = urls.get(Math.round(time));
+          if (previousUrl && previousUrl !== url) {
+            URL.revokeObjectURL(previousUrl);
+          }
           urls.set(Math.round(time), url);
           framesProcessed++;
           if (!this.isCancelled(task.id)) {
@@ -264,17 +325,6 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   }
 
   protected async executeTask(task: ThumbnailTask): Promise<void> {
-    const existingUrls = await this.loadThumbnailsFromOPFS(task);
-    const timesS = this.buildExpectedTimes(task.duration);
-    const missingTimesS = timesS.filter((time) => !existingUrls?.has(Math.round(time)));
-
-    if (missingTimesS.length === 0) {
-      task.onComplete?.();
-      return;
-    }
-
-    if (this.isCancelled(task.id)) return;
-
     const workspaceStore = useWorkspaceStore();
     const projectStore = useProjectStore();
 
@@ -284,11 +334,6 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
     const file = await projectStore.getFileByPath(task.projectRelativePath);
     if (!file) throw new Error(`Source file not found: ${task.projectRelativePath}`);
-
-    if (missingTimesS.length === 0) return;
-
-    const totalFrames = timesS.length;
-    let framesProcessed = existingUrls?.size ?? 0;
 
     setThumbnailHostApi(
       createVideoCoreHostApi({
@@ -303,44 +348,85 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
     const { client } = getThumbnailWorkerClient();
 
-    const blobs = await client.extractVideoFrameBlobs(file, {
-      timesS: missingTimesS,
-      maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
-      maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
-      quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
-      mimeType: 'image/webp',
-    });
-
     const dir = await ensureTimelineThumbnailDir({
       projectId: task.projectId,
       workspaceStore,
       hash: task.id,
       create: true,
     });
+    const attemptedMissingTimes = new Set<number>();
 
-    for (let i = 0; i < missingTimesS.length; i++) {
-      const blob = blobs[i];
-      const currentTime = missingTimesS[i]!;
+    while (!this.isCancelled(task.id)) {
+      const requestedTimes = this.getRequestedTimes(task);
+      const existingUrls = await this.loadThumbnailsFromOPFS(task, requestedTimes);
+      const cachedUrls = this.cache.get(task.id) ?? new Map<number, string>();
+      const missingTimesS = requestedTimes.filter(
+        (time) =>
+          !attemptedMissingTimes.has(Math.round(time)) &&
+          !cachedUrls.has(Math.round(time)) &&
+          !existingUrls?.has(Math.round(time)),
+      );
 
-      if (!blob) continue;
+      if (missingTimesS.length === 0) {
+        break;
+      }
 
-      const fileName = `${Math.round(currentTime)}.webp`;
-      const fileHandle = await dir.getFileHandle(fileName, { create: true });
-      const writable = await (fileHandle as WritableFileHandle).createWritable();
-      await writable.write(blob);
-      await writable.close();
+      const totalFrames = requestedTimes.length;
+      let framesProcessed = requestedTimes.length - missingTimesS.length;
+      const chunkSize = 4;
 
-      const thumbUrl = URL.createObjectURL(blob);
+      for (let i = 0; i < missingTimesS.length && !this.isCancelled(task.id); i += chunkSize) {
+        const chunkTimes = missingTimesS.slice(i, i + chunkSize);
+        let blobs: (Blob | null)[] = [];
 
-      const urls = this.cache.get(task.id) ?? new Map<number, string>();
-      urls.set(Math.round(currentTime), thumbUrl);
-      this.cache.set(task.id, urls);
-      this.touchCacheEntry(task.id);
-      this.evictCacheIfNeeded();
+        try {
+          blobs = await client.extractVideoFrameBlobs(file, {
+            timesS: chunkTimes,
+            maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
+            maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
+            quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+            mimeType: 'image/webp',
+            taskId: task.id,
+          });
+        } catch (error) {
+          if (this.isCancelled(task.id)) {
+            return;
+          }
+          throw error;
+        }
 
-      framesProcessed++;
-      if (!this.isCancelled(task.id)) {
-        task.onProgress?.(framesProcessed / totalFrames, thumbUrl, currentTime);
+        for (let j = 0; j < chunkTimes.length; j++) {
+          const blob = blobs[j];
+          const currentTime = chunkTimes[j]!;
+
+          if (!blob) {
+            attemptedMissingTimes.add(Math.round(currentTime));
+            continue;
+          }
+
+          const fileName = `${Math.round(currentTime)}.webp`;
+          const fileHandle = await dir.getFileHandle(fileName, { create: true });
+          const writable = await (fileHandle as WritableFileHandle).createWritable();
+          await writable.write(blob);
+          await writable.close();
+
+          const thumbUrl = URL.createObjectURL(blob);
+
+          const urls = this.cache.get(task.id) ?? new Map<number, string>();
+          const previousUrl = urls.get(Math.round(currentTime));
+          if (previousUrl && previousUrl !== thumbUrl) {
+            URL.revokeObjectURL(previousUrl);
+          }
+          urls.set(Math.round(currentTime), thumbUrl);
+          this.cache.set(task.id, urls);
+          this.touchCacheEntry(task.id);
+          this.evictCacheIfNeeded();
+
+          framesProcessed++;
+          if (!this.isCancelled(task.id)) {
+            task.onProgress?.(framesProcessed / totalFrames, thumbUrl, currentTime);
+          }
+        }
       }
     }
 
@@ -350,7 +436,12 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   }
 
   async clearThumbnails(input: { projectId: string; hash: string }) {
-    this.cache.delete(input.hash);
+    const cachedUrls = this.cache.get(input.hash);
+    if (cachedUrls) {
+      this.revokeCacheValue(cachedUrls);
+      this.cache.delete(input.hash);
+    }
+    this.pendingRequestedTimes.delete(input.hash);
 
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;
