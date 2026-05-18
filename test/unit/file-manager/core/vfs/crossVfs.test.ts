@@ -7,12 +7,26 @@ describe('crossVfsCopy', () => {
   it('sanitizes invalid local filename characters when copying into project vfs', async () => {
     const sourceVfs = {
       id: 'bloggerdog',
-      readFile: vi.fn().mockResolvedValue(new Blob(['hello'], { type: 'text/plain' })),
+      readStream: vi.fn().mockResolvedValue(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('hello'));
+            controller.close();
+          },
+        }),
+      ),
     } as any;
+    const writtenChunks: Uint8Array[] = [];
     const targetVfs = {
       id: 'router',
       listEntryNames: vi.fn().mockResolvedValue([]),
-      writeFile: vi.fn().mockResolvedValue(undefined),
+      writeStream: vi.fn().mockResolvedValue(
+        new WritableStream<Uint8Array>({
+          write(chunk) {
+            writtenChunks.push(chunk);
+          },
+        }),
+      ),
     } as any;
 
     const result = await crossVfsCopy({
@@ -23,10 +37,8 @@ describe('crossVfsCopy', () => {
       targetDirPath: 'documents',
     });
 
-    expect(targetVfs.writeFile).toHaveBeenCalledWith(
-      'documents/Personal- Quick snippet.txt',
-      expect.any(Blob),
-    );
+    expect(targetVfs.writeStream).toHaveBeenCalledWith('documents/Personal- Quick snippet.txt');
+    expect(new TextDecoder().decode(writtenChunks[0])).toBe('hello');
     expect(result).toBe('documents/Personal- Quick snippet.txt');
   });
 });

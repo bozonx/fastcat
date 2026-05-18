@@ -108,4 +108,26 @@ describe('RouterFileSystemAdapter', () => {
       expect.any(String),
     );
   });
+
+  it('matches routes by full path segment boundaries', async () => {
+    const defaultAdapter = createAdapter({
+      exists: vi.fn(async () => true),
+    });
+    const routedAdapter = createAdapter({
+      id: 'routed',
+      exists: vi.fn(async () => false),
+    });
+    const router = new RouterFileSystemAdapter(defaultAdapter, [
+      {
+        prefix: '@common',
+        adapter: routedAdapter,
+        stripPrefix: (path) => path.replace(/^@common\/?/, ''),
+      },
+    ]);
+
+    await expect(router.exists('@common/file.txt')).resolves.toBe(false);
+    await expect(router.exists('@common2/file.txt')).resolves.toBe(true);
+    expect(routedAdapter.exists).toHaveBeenCalledWith('file.txt');
+    expect(defaultAdapter.exists).toHaveBeenCalledWith('@common2/file.txt');
+  });
 });

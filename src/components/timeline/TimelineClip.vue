@@ -659,8 +659,8 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           :style="{ zIndex: 'var(--z-clip-content)' }"
         >
           <TimelineClipThumbnails
-            v-if="isVideo(item, track) && clipItem?.showThumbnails !== false"
-            :item="clipItem || undefined"
+            v-if="clipItem && isVideo(item, track) && clipItem.showThumbnails !== false"
+            :item="clipItem"
             :width="clipWidthPx"
             :scroll-left="scrollLeft ?? 0"
             :viewport-width="viewportWidth ?? 0"
@@ -668,11 +668,12 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           />
           <TimelineAudioWaveform
             v-if="
-              clipItem?.showWaveform !== false &&
+              clipItem &&
+              clipItem.showWaveform !== false &&
               (isAudio(item, track) ||
                 (isVideo(item, track) && clipHasAudio(item, track, mediaStore.mediaMetadata)))
             "
-            :item="clipItem || undefined"
+            :item="clipItem"
           />
 
           <div

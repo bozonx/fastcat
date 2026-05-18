@@ -98,11 +98,9 @@ const stt = useSttTranscription({
         mediaType === 'video'
           ? t(
               'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
-              'Video audio track was transcribed and saved to vardata cache.',
             )
           : t(
               'videoEditor.fileManager.audio.transcriptionSavedDescription',
-              'Transcription was saved to vardata cache.',
             ),
       color: 'success',
     });

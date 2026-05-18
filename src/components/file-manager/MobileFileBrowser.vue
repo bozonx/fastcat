@@ -223,16 +223,13 @@ const {
       description: cached
         ? t(
             'videoEditor.fileManager.audio.transcriptionCachedDescription',
-            'Cached transcription was loaded from the file directory.',
           )
         : mediaType === 'video'
           ? t(
               'videoEditor.fileManager.audio.transcriptionSavedVideoDescription',
-              'Video audio track was transcribed and saved next to the source file.',
             )
           : t(
               'videoEditor.fileManager.audio.transcriptionSavedDescription',
-              'Transcription was saved next to the source file.',
             ),
       color: 'success',
     });

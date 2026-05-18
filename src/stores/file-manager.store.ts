@@ -71,9 +71,7 @@ function createFileManagerStoreSetup(contextId: string) {
           instance.sortOption = sortOption.value;
           instance.gridCardSize = gridCardSize.value;
           instance.columnWidths = columnWidths.value;
-          if (selectedFolder.value?.path) {
-            instance.lastPath = selectedFolder.value.path;
-          }
+          instance.lastPath = selectedFolder.value?.path;
         });
       },
       { deep: true },
@@ -89,8 +87,13 @@ function createFileManagerStoreSetup(contextId: string) {
         if (val.columnWidths && val.columnWidths !== columnWidths.value) {
           columnWidths.value = val.columnWidths;
         }
-        // We don't force-update sortOption here to avoid infinite loops or jitter,
-        // but if needed we could implement a shallow compare
+        if (
+          val.sortOption &&
+          (val.sortOption.field !== sortOption.value.field ||
+            val.sortOption.order !== sortOption.value.order)
+        ) {
+          sortOption.value = { ...val.sortOption };
+        }
       },
       { deep: true },
     );

@@ -1,4 +1,5 @@
 import type { IFileSystemAdapter } from './types';
+import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
 export interface CrossVfsCopyOptions {
   sourceVfs: IFileSystemAdapter;
@@ -6,9 +7,11 @@ export interface CrossVfsCopyOptions {
   sourcePath: string;
   sourceKind: 'file' | 'directory';
   targetDirPath: string;
+  signal?: AbortSignal;
 }
 
 function sanitizeLocalEntryName(name: string): string {
+  // eslint-disable-next-line no-control-regex -- intentional removal of control characters from filenames
   const sanitized = name
     .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
     .replace(/[. ]+$/g, '')
@@ -52,8 +55,14 @@ async function copyDirectoryRecursive(
   sourcePath: string,
   targetPath: string,
   depth: number,
+  signal?: AbortSignal,
 ): Promise<void> {
-  if (depth > 10) throw new Error('Maximum copy depth exceeded');
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
+  if (depth > MAX_COPY_DEPTH) {
+    throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
+  }
 
   await targetVfs.createDirectory(targetPath);
   const entries = await sourceVfs.readDirectory(sourcePath);
@@ -62,10 +71,18 @@ async function copyDirectoryRecursive(
     const nextTargetName = await generateUniqueName(entry.name, targetVfs, targetPath);
     const nextTargetPath = `${targetPath}/${nextTargetName}`;
     if (entry.kind === 'directory') {
-      await copyDirectoryRecursive(sourceVfs, targetVfs, entry.path, nextTargetPath, depth + 1);
+      await copyDirectoryRecursive(
+        sourceVfs,
+        targetVfs,
+        entry.path,
+        nextTargetPath,
+        depth + 1,
+        signal,
+      );
     } else {
-      const data = await sourceVfs.readFile(entry.path);
-      await targetVfs.writeFile(nextTargetPath, data);
+      const readStream = await sourceVfs.readStream(entry.path);
+      const writeStream = await targetVfs.writeStream(nextTargetPath);
+      await readStream.pipeTo(writeStream, { signal });
     }
   }
 }
@@ -78,12 +95,23 @@ export async function crossVfsCopy(options: CrossVfsCopyOptions): Promise<string
   const targetPath = targetDirPath ? `${targetDirPath}/${targetName}` : targetName;
 
   if (sourceKind === 'file') {
-    const data = await sourceVfs.readFile(sourcePath);
-    await targetVfs.writeFile(targetPath, data);
+    if (options.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
+    const readStream = await sourceVfs.readStream(sourcePath);
+    const writeStream = await targetVfs.writeStream(targetPath);
+    await readStream.pipeTo(writeStream, { signal: options.signal });
     return targetPath;
   }
 
-  await copyDirectoryRecursive(sourceVfs, targetVfs, sourcePath, targetPath, 0);
+  await copyDirectoryRecursive(
+    sourceVfs,
+    targetVfs,
+    sourcePath,
+    targetPath,
+    0,
+    options.signal,
+  );
   return targetPath;
 }
 

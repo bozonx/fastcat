@@ -203,7 +203,7 @@ describe('useClipPropertiesActions', () => {
       remotePath: undefined,
       remoteData: undefined,
     });
-    expect(focusStore.setTempFocus).toHaveBeenCalledWith('left');
+    expect(focusStore.setTempFocus).toHaveBeenCalledWith('files-sidebar');
     expect(uiStore.triggerScrollToFileTreeEntry).toHaveBeenCalledWith('media/nested/clip.mp4');
   });
 

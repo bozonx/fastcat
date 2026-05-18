@@ -25,7 +25,7 @@ export function useTimelineScrollSync({
     onScrollCallback?.(e);
   }
 
-  function onLabelsScroll(e: Event) {
+  function onLabelsScroll(_e: Event) {
     if (!scrollEl.value || !labelsScrollContainer.value) return;
     scrollEl.value.scrollTop = labelsScrollContainer.value.scrollTop;
   }

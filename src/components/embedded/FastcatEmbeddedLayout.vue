@@ -166,7 +166,7 @@ onUnmounted(async () => {
     try {
       const root = await navigator.storage.getDirectory();
       await root.removeEntry(internalWorkspaceId.value, { recursive: true });
-    } catch (e) {
+    } catch (_e) {
       // Ignore if not found or busy
     }
   }

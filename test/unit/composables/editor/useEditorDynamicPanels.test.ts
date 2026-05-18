@@ -13,6 +13,13 @@ const mockProjectStore = {
   addTextPanel: vi.fn(),
   addMediaPanel: vi.fn(),
   movePanel: vi.fn(),
+  projectSettings: {
+    ui: {
+      layout: {
+        verticalSplitSizes: {},
+      },
+    },
+  },
 };
 
 const mockFocusStore = {
@@ -237,8 +244,12 @@ describe('useEditorDynamicPanels', () => {
         view: 'cut',
       });
 
-      // Should save to mockLocalStorage
-      expect(mockLocalStorage[`fastcat-cut-vertical-splits-test-proj`]).toEqual({
+      // Should save to projectStore
+      expect(
+        mockProjectStore.projectSettings.ui.layout.verticalSplitSizes[
+          `fastcat-cut-vertical-splits-test-proj`
+        ],
+      ).toEqual({
         col1: [30, 70],
       });
 

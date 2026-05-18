@@ -270,22 +270,31 @@ class LocalStorageMock {
   }
 }
 
+// Always override localStorage/sessionStorage to avoid issues in happy-dom
+// and ensure our mock is present regardless of environment
+Object.defineProperty(globalThis, 'localStorage', {
+  value: new LocalStorageMock(),
+  writable: true,
+  configurable: true,
+});
+Object.defineProperty(globalThis, 'sessionStorage', {
+  value: new LocalStorageMock(),
+  writable: true,
+  configurable: true,
+});
+
 if (typeof window !== 'undefined') {
-  if (!window.localStorage) {
-    Object.defineProperty(window, 'localStorage', {
-      value: new LocalStorageMock(),
-      writable: true,
-    });
-  }
-  if (!window.sessionStorage) {
-    Object.defineProperty(window, 'sessionStorage', {
-      value: new LocalStorageMock(),
-      writable: true,
-    });
-  }
+  Object.defineProperty(window, 'localStorage', {
+    value: globalThis.localStorage,
+    writable: true,
+    configurable: true,
+  });
+  Object.defineProperty(window, 'sessionStorage', {
+    value: globalThis.sessionStorage,
+    writable: true,
+    configurable: true,
+  });
 } else {
-  (globalThis as any).localStorage = new LocalStorageMock();
-  (globalThis as any).sessionStorage = new LocalStorageMock();
   // Mock window for code that explicitly uses window.setTimeout etc. in node environment
   (globalThis as any).window = globalThis;
   (globalThis as any).location = {

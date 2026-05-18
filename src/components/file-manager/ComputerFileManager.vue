@@ -76,6 +76,7 @@ const fileManager = createFileManager({
   mediaStore: {
     revalidateMissingMedia: async () => {},
     removeMediaCache: async () => {},
+    resetMediaState: () => {},
   } as any,
   historyStore: {
     push: () => {},
@@ -99,7 +100,7 @@ onMounted(async () => {
   let restored = false;
 
   // Restore last folder from workspace state if available
-  const contextId = 'editor'; // or whatever the store context is
+  const contextId = instanceId === 'sidebar' ? 'computer-sidebar' : instanceId;
   const lastPath = workspaceStore.workspaceState.fileBrowser.instances[contextId]?.lastPath;
 
   if (lastPath) {

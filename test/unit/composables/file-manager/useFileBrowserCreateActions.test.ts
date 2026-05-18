@@ -54,6 +54,7 @@ describe('useFileBrowserCreateActions', () => {
       vfs: expect.anything(),
       timelinesDirName: 'dir',
       existingNames: ['existing.txt'],
+      format: expect.anything(),
     });
     expect(reloadDirectory).toHaveBeenCalledWith('dir');
     expect(uiStore.notifyFileManagerUpdate).toHaveBeenCalled();

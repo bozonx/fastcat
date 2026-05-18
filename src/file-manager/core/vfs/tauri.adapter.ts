@@ -203,6 +203,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     targetPath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
+    if (options?.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
     await this.ensureParentDirectory(targetPath);
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
@@ -217,6 +220,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     targetPath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
+    if (options?.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
     await this.ensureParentDirectory(targetPath);
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
@@ -240,6 +246,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     depth: number,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
+    if (options?.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
     if (depth > MAX_COPY_DEPTH) {
       throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
     }

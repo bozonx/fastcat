@@ -198,7 +198,7 @@ describe('fileManagerCommands', () => {
     expect(onFileDeleted).toHaveBeenCalledWith({ path: 'video/a.mp4' });
   });
 
-  it('deleteEntryCommand does not call onFileDeleted for directories', async () => {
+  it('deleteEntryCommand calls onFileDeleted for files inside directories', async () => {
     const parent = createDirHandleMock();
     const { entry } = createDirEntry({ name: 'images', path: 'images', parent });
 
@@ -206,12 +206,21 @@ describe('fileManagerCommands', () => {
     const onFileDeleted = vi.fn(async () => undefined);
     const vfs = {
       deleteEntry: vi.fn(async () => undefined),
+      readDirectory: vi.fn(async (path: string) =>
+        path === 'images'
+          ? [
+              { name: 'a.png', kind: 'file', path: 'images/a.png' },
+              { name: 'nested', kind: 'directory', path: 'images/nested' },
+            ]
+          : [{ name: 'b.png', kind: 'file', path: 'images/nested/b.png' }],
+      ),
     };
 
     await deleteEntryCommand(entry, { removeEntry, onFileDeleted, vfs: vfs as any });
 
     expect(vfs.deleteEntry).toHaveBeenCalledWith('images', true);
-    expect(onFileDeleted).not.toHaveBeenCalled();
+    expect(onFileDeleted).toHaveBeenCalledWith({ path: 'images/a.png' });
+    expect(onFileDeleted).toHaveBeenCalledWith({ path: 'images/nested/b.png' });
   });
 
   it('renameEntryCommand uses vfs.moveEntry', async () => {
@@ -232,6 +241,20 @@ describe('fileManagerCommands', () => {
     );
 
     expect(vfs.moveEntry).toHaveBeenCalledWith('files/a.txt', 'files/b.txt');
+  });
+
+  it('renameEntryCommand rejects path-like names', async () => {
+    const parent = createDirHandleMock();
+    const { entry } = createFileEntry({ name: 'a.txt', path: 'files/a.txt', parent });
+    const vfs = {
+      exists: vi.fn(async () => false),
+      moveEntry: vi.fn(async () => undefined),
+    };
+
+    await expect(
+      renameEntryCommand({ target: entry, newName: '../b.txt' }, { vfs: vfs as any }),
+    ).rejects.toThrow('Invalid file or folder name');
+    expect(vfs.moveEntry).not.toHaveBeenCalled();
   });
 
   it('moveEntryCommand calls deps.onFileMoved for files', async () => {

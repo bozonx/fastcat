@@ -7,6 +7,7 @@ import {
 } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { assertValidFsEntryName, MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
@@ -117,21 +118,23 @@ export async function handleFilesCommand(
   const totalFiles = allFiles.length;
   const totalBytes = allFiles.reduce((acc, file) => acc + file.size, 0);
   const fileLoadedBytes = new Map<number, number>();
+  let loadedBytes = 0;
   let completedCount = 0;
 
   function reportProgress(params: { fileIndex: number; file: File; currentFileBytes?: number }) {
     if (params.currentFileBytes !== undefined) {
+      const previousBytes = fileLoadedBytes.get(params.fileIndex) ?? 0;
       fileLoadedBytes.set(params.fileIndex, params.currentFileBytes);
+      loadedBytes += Math.max(0, params.currentFileBytes - previousBytes);
     }
 
-    const loadedBytes = Array.from(fileLoadedBytes.values()).reduce((acc, value) => acc + value, 0);
     deps.onProgress?.({
       currentFileIndex: completedCount,
       totalFiles,
       fileName: params.file.name,
       currentFileBytes: params.currentFileBytes,
       totalFileBytes: params.file.size,
-      loadedBytes,
+      loadedBytes: Math.min(loadedBytes, totalBytes),
       totalBytes,
     });
   }
@@ -267,6 +270,7 @@ export async function createFolderCommand(params: {
   parentPath?: string;
   vfs: IFileSystemAdapter;
 }): Promise<void> {
+  assertValidFsEntryName(params.name);
   const nextPath = params.parentPath ? `${params.parentPath}/${params.name}` : params.name;
   await params.vfs.createDirectory(nextPath);
 }
@@ -276,11 +280,42 @@ export interface DeleteEntryDeps {
   onFileDeleted?: (params: { path: string }) => Promise<void> | void;
 }
 
+async function collectDeletedFilePaths(params: {
+  vfs: IFileSystemAdapter;
+  entry: FsEntry;
+  depth?: number;
+}): Promise<string[]> {
+  const depth = params.depth ?? 0;
+  if (params.entry.kind === 'file') return params.entry.path ? [params.entry.path] : [];
+  if (!params.entry.path) return [];
+  if (depth > MAX_COPY_DEPTH) {
+    throw new Error(`Maximum delete cleanup depth exceeded (${MAX_COPY_DEPTH})`);
+  }
+
+  const entries = await params.vfs.readDirectory(params.entry.path);
+  const paths: string[] = [];
+  for (const entry of entries) {
+    if (entry.kind === 'file') {
+      paths.push(entry.path);
+      continue;
+    }
+    paths.push(
+      ...(await collectDeletedFilePaths({
+        vfs: params.vfs,
+        entry: entry as FsEntry,
+        depth: depth + 1,
+      })),
+    );
+  }
+  return paths;
+}
+
 export async function deleteEntryCommand(target: FsEntry, deps: DeleteEntryDeps): Promise<void> {
+  const deletedFilePaths = await collectDeletedFilePaths({ vfs: deps.vfs, entry: target });
   await deps.vfs.deleteEntry(target.path, true);
 
-  if (target.kind === 'file' && target.path.length > 0) {
-    await deps.onFileDeleted?.({ path: target.path });
+  for (const path of deletedFilePaths) {
+    await deps.onFileDeleted?.({ path });
   }
 }
 
@@ -295,6 +330,7 @@ export async function renameEntryCommand(
   },
   deps: RenameEntryDeps,
 ): Promise<void> {
+  assertValidFsEntryName(params.newName);
   const target = params.target;
   const parentPath = target.parentPath ?? target.path.split('/').slice(0, -1).join('/');
   const nextPath = parentPath ? `${parentPath}/${params.newName}` : params.newName;
@@ -329,6 +365,7 @@ export async function moveEntryCommand(
     dirPath: targetDirPath,
     name: params.source.name,
   });
+  assertValidFsEntryName(newName);
   const newPath = targetDirPath ? `${targetDirPath}/${newName}` : newName;
 
   await deps.vfs.moveEntry(sourcePath, newPath);
@@ -356,7 +393,9 @@ export async function copyEntryCommand(
   },
   deps: CopyEntryDeps,
 ): Promise<{ newPath: string }> {
-  if (params.abortSignal?.aborted) throw new Error('Aborted');
+  if (params.abortSignal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
 
   const sourcePath = params.source.path;
   const targetDirPath = params.targetDirPath ?? '';
@@ -369,15 +408,16 @@ export async function copyEntryCommand(
     dirPath: targetDirPath,
     name: params.source.name,
   });
+  assertValidFsEntryName(nextName);
   const newPath = targetDirPath ? `${targetDirPath}/${nextName}` : nextName;
 
   if (params.source.kind === 'file') {
-    await deps.vfs.copyFile(sourcePath, newPath);
+    await deps.vfs.copyFile(sourcePath, newPath, { signal: params.abortSignal });
     await deps.onFileCopied?.({ sourcePath, newPath });
     return { newPath };
   }
 
-  await deps.vfs.copyDirectory(sourcePath, newPath);
+  await deps.vfs.copyDirectory(sourcePath, newPath, { signal: params.abortSignal });
   await deps.onDirectoryCopied?.({ oldPath: sourcePath, newPath });
   return { newPath };
 }

@@ -6,12 +6,10 @@ vi.mock('~/utils/hotkeys/layerUtils', () => ({
   isLayer1Active: (e: Event) => (e as any).shiftKey,
 }));
 
-vi.mock('~/stores/project.store', () => ({
-  useProjectStore: vi.fn(() => ({
-    projectSettings: {
-      project: {
-        fps: 30,
-      },
+vi.mock('~/stores/timeline.store', () => ({
+  useTimelineStore: vi.fn(() => ({
+    timelineFormat: {
+      fps: 30,
     },
   })),
 }));

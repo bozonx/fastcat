@@ -60,6 +60,7 @@ async function check() {
   const allLocaleKeys = new Set([...Object.keys(localeKeys.en), ...Object.keys(localeKeys.ru)]);
   const usedKeys = new Set();
   const usedDynamicPrefixes = new Set();
+  const IGNORED_KEYS = new Set(['fastcat.otio.v1']);
 
   const files = (await getFiles('src')).filter((f) => ['.vue', '.ts', '.js'].includes(extname(f)));
   const keyPrefixes = [
@@ -117,7 +118,9 @@ async function check() {
     error = true;
   }
 
-  const missingInLocales = [...usedKeys].filter((k) => !allLocaleKeys.has(k)).sort();
+  const missingInLocales = [...usedKeys]
+    .filter((k) => !allLocaleKeys.has(k) && !IGNORED_KEYS.has(k))
+    .sort();
   if (missingInLocales.length > 0) {
     console.error('\n--- Missing in Locales ---');
     missingInLocales.forEach((k) => console.error(k));

@@ -122,7 +122,6 @@ describe('useMonitorCore', () => {
       audioFadeInCurve: 'logarithmic',
       audioFadeOutCurve: 'linear',
       audioDeclickDurationUs: 5000,
-      defaultAudioFadeCurve: 'logarithmic',
       transitionIn: { durationUs: 100_000 },
       transitionOut: { durationUs: 200_000 },
     });

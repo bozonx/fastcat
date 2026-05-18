@@ -9,6 +9,7 @@ import { useFileSorting } from '~/composables/file-manager/useFileSorting';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
+import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 
 export interface ExtendedFsEntry extends FsEntry {
@@ -34,10 +35,13 @@ export function useFileBrowserEntries({
   const folderSizes = ref<Record<string, number>>({});
   const folderSizesLoading = ref<Record<string, boolean>>({});
   const sizeCalcQueue = new PQueue({ concurrency: 5 });
+  const metadataQueue = new PQueue({ concurrency: 20 });
 
   onScopeDispose(() => {
     sizeCalcQueue.clear();
     sizeCalcQueue.pause();
+    metadataQueue.clear();
+    metadataQueue.pause();
   });
 
   async function calculateFolderSize(path: string, handle?: FileSystemDirectoryHandle) {
@@ -49,9 +53,14 @@ export function useFileBrowserEntries({
         const resolvedHandle = handle ?? (await projectStore.getDirectoryHandleByPath(path));
         if (!resolvedHandle) return;
         let totalSize = 0;
+        let visitedEntries = 0;
+        const maxEntries = 10000;
 
-        async function calc(dirHandle: FileSystemDirectoryHandle) {
+        async function calc(dirHandle: FileSystemDirectoryHandle, depth = 0) {
+          if (depth > MAX_COPY_DEPTH || visitedEntries >= maxEntries) return;
           for await (const entry of dirHandle.values()) {
+            visitedEntries++;
+            if (visitedEntries >= maxEntries) return;
             if (entry.kind === 'file') {
               try {
                 const file = await entry.getFile();
@@ -60,7 +69,7 @@ export function useFileBrowserEntries({
                 // skip
               }
             } else if (entry.kind === 'directory') {
-              await calc(entry);
+              await calc(entry, depth + 1);
             }
           }
         }
@@ -77,25 +86,28 @@ export function useFileBrowserEntries({
 
   async function supplementEntries(entries: FsEntry[]): Promise<ExtendedFsEntry[]> {
     return Promise.all(
-      entries.map(async (entry) => {
-        if (entry.kind === 'file') {
-          try {
-            const metadata = await vfs.getMetadata(entry.path);
-            if (!metadata || metadata.kind !== 'file')
+      entries.map((entry) =>
+        metadataQueue.add(async () => {
+          if (entry.kind === 'file') {
+            try {
+              const metadata = await vfs.getMetadata(entry.path);
+              if (!metadata || metadata.kind !== 'file') {
+                return { ...entry, size: 0, mimeType: 'unknown' };
+              }
+              return {
+                ...entry,
+                size: metadata.size,
+                mimeType: getMimeTypeFromFilename(entry.name),
+                lastModified: metadata.lastModified,
+                created: metadata.lastModified,
+              };
+            } catch {
               return { ...entry, size: 0, mimeType: 'unknown' };
-            return {
-              ...entry,
-              size: metadata.size,
-              mimeType: getMimeTypeFromFilename(entry.name),
-              lastModified: metadata.lastModified,
-              created: metadata.lastModified,
-            };
-          } catch {
-            return { ...entry, size: 0, mimeType: 'unknown' };
+            }
           }
-        }
-        return { ...entry, size: 0, mimeType: 'folder' };
-      }),
+          return { ...entry, size: 0, mimeType: 'folder' };
+        }) as Promise<ExtendedFsEntry>,
+      ),
     );
   }
 

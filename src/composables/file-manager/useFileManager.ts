@@ -106,6 +106,7 @@ export interface FileManagerCreateDeps {
   getProjectSize: () => { width: number; height: number };
   getProjectSettings?: () => FastCatProjectSettings;
   onMediaImported: (params: { projectRelativePath: string }) => void;
+  onFileDeleted?: (params: { path: string }) => void | Promise<void>;
   mediaCache: import('~/media-cache/application/proxyThumbnailService').ProxyThumbnailService;
   onEntryPathChanged?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
   onDirectoryMoved?: (params: { oldPath: string; newPath: string }) => void | Promise<void>;
@@ -489,6 +490,8 @@ export function createFileManager(deps: FileManagerCreateDeps) {
                 });
               }
             }
+
+            await deps.onFileDeleted?.({ path });
           },
         });
 
@@ -597,9 +600,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
             },
             onDirectoryMoved: async ({ oldPath, newPath }) => {
               await deps.onDirectoryMoved?.({ oldPath, newPath });
-              if (oldPath && newPath) {
-                await deps.mediaCache.renameProxyDir({ oldPath, newPath });
-              } else {
+              if (!oldPath || !newPath) {
                 deps.mediaCache.clearExistingProxies();
               }
             },
@@ -855,6 +856,66 @@ export function useFileManager(options?: {
     }
   }
 
+  function remapMovedDirectoryPath(path: string | undefined, oldPath: string, newPath: string) {
+    if (!path) return null;
+    if (path === oldPath) return newPath;
+    if (!path.startsWith(`${oldPath}/`)) return null;
+    return `${newPath}${path.slice(oldPath.length)}`;
+  }
+
+  function remapMovedEntry(entry: FsEntry, oldPath: string, newPath: string): FsEntry | null {
+    const nextPath = remapMovedDirectoryPath(entry.path, oldPath, newPath);
+    if (!nextPath) return null;
+    return {
+      ...entry,
+      path: nextPath,
+      parentPath: getWorkspacePathParent(nextPath) || undefined,
+      name: getWorkspacePathFileName(nextPath) || entry.name,
+    };
+  }
+
+  function updateSelectionForDirectoryMove(params: { oldPath: string; newPath: string }) {
+    const selectedUiEntry = uiStore.selectedFsEntry;
+    if (selectedUiEntry?.path) {
+      const nextPath = remapMovedDirectoryPath(
+        selectedUiEntry.path,
+        params.oldPath,
+        params.newPath,
+      );
+      if (nextPath) {
+        uiStore.selectedFsEntry = {
+          ...selectedUiEntry,
+          path: nextPath,
+          parentPath: getWorkspacePathParent(nextPath) || undefined,
+          name: getWorkspacePathFileName(nextPath) || selectedUiEntry.name,
+        };
+      }
+    }
+
+    const selected = selectionStore.selectedEntity;
+    if (!selected || selected.source !== 'fileManager') return;
+
+    if (selected.kind === 'multiple') {
+      const nextEntries = selected.entries.map(
+        (entry) => remapMovedEntry(entry, params.oldPath, params.newPath) ?? entry,
+      );
+      selectionStore.selectedEntity = {
+        ...selected,
+        entries: nextEntries,
+      };
+      return;
+    }
+
+    const nextEntry = remapMovedEntry(selected.entry, params.oldPath, params.newPath);
+    if (!nextEntry) return;
+    selectionStore.selectedEntity = {
+      ...selected,
+      path: nextEntry.path,
+      name: nextEntry.name,
+      entry: nextEntry,
+    };
+  }
+
   async function clearVectorCacheForPath(path: string) {
     const projectId = projectStore.currentProjectId;
     const workspaceHandle = workspaceStore.workspaceHandle;
@@ -923,6 +984,14 @@ export function useFileManager(options?: {
     onMediaImported: ({ projectRelativePath }) => {
       void mediaStore.getOrFetchMetadataByPath(projectRelativePath);
     },
+    onFileDeleted: async ({ path }) => {
+      if (!path.toLowerCase().endsWith('.otio')) return;
+      const { useProjectTabsStore } = await import('~/stores/project-tabs.store');
+      if (projectStore.currentTimelinePath === path) {
+        await projectStore.closeTimelineFile(path);
+      }
+      useProjectTabsStore().removeFileTabByPath(path);
+    },
     onEntryPathChanged: async ({ oldPath, newPath }) => {
       // Update media state
       await mediaStore.removeMediaCache(oldPath);
@@ -982,6 +1051,7 @@ export function useFileManager(options?: {
     },
     onDirectoryMoved: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
       mediaStore.resetMediaState();
+      updateSelectionForDirectoryMove({ oldPath, newPath });
 
       // Update Timeline References (Recursive)
       if (timelineStore.timelineDoc) {
@@ -1006,7 +1076,7 @@ export function useFileManager(options?: {
             properties: {
               source: {
                 ...clip.source,
-                path: (clip.source.path as string).replace(oldPath, newPath),
+                path: `${newPath}${(clip.source.path as string).slice(oldPath.length)}`,
               },
             },
           }));

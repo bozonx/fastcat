@@ -278,6 +278,9 @@ describe('useFileManagerActions', () => {
       id: 'project-vfs',
       readFile: vi.fn().mockResolvedValue(new Uint8Array()),
       writeFile: vi.fn().mockResolvedValue(undefined),
+      readStream: vi.fn().mockResolvedValue({
+        pipeTo: vi.fn().mockResolvedValue(undefined),
+      }),
     });
 
     const api = createComposable({
@@ -288,6 +291,7 @@ describe('useFileManagerActions', () => {
         createDirectory: vi.fn().mockResolvedValue(undefined),
         readFile: vi.fn().mockResolvedValue(new Uint8Array()),
         writeFile: vi.fn().mockResolvedValue(undefined),
+        writeStream: vi.fn().mockResolvedValue({}),
       } as unknown as IFileSystemAdapter,
       copyEntry,
       moveEntry,

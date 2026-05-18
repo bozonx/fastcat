@@ -17,6 +17,7 @@ export function normalizeExportFilename(name: string): string {
 }
 
 export function hasInvalidExportFilenameChars(name: string): boolean {
+  // eslint-disable-next-line no-control-regex -- intentional check for control characters in filenames
   return /[\\/\0-\x1f\x7f]/.test(name);
 }
 

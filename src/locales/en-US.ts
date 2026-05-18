@@ -1246,6 +1246,7 @@ export default {
       errors: {
         crossVfsFailedTitle: 'Failed to move files between file systems',
         dragDropFailedTitle: 'Drag and drop failed',
+        remoteFailed: 'Remote file operation failed',
         uploadFailedTitle: 'Upload failed',
       },
       extractAudio: {

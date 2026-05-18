@@ -47,7 +47,7 @@ const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, 
       const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
       return findDuplicateOwnerByContext({
         effective,
-        commands: DEFAULT_HOTKEYS.commands,
+        commands: DEFAULT_HOTKEYS.commands as any,
         targetCmdId,
         combo,
       });

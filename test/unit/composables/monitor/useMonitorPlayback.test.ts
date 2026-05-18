@@ -37,10 +37,10 @@ describe('useMonitorPlayback', () => {
 
   function createAudioEngineMock() {
     return {
-      play: vi.fn(),
+      play: vi.fn().mockResolvedValue(undefined),
       stop: vi.fn(),
       stopScrubPreview: vi.fn(),
-      previewScrubForward: vi.fn(),
+      previewScrubForward: vi.fn().mockResolvedValue(undefined),
       seek: vi.fn(),
       setGlobalSpeed: vi.fn(),
       getCurrentTimeUs: vi.fn(() => 0),

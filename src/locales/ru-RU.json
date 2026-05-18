@@ -14,7 +14,6 @@
     "clear": "Очистить",
     "clearSelection": "Очистить",
     "close": "Закрыть",
-    "collapse": "Свернуть",
     "color": "Цвет",
     "confirm": "Подтвердить",
     "confirmDelete": "Вы уверены, что хотите удалить это? Это действие нельзя отменить.",
@@ -35,7 +34,6 @@
     "empty": "Папка пуста",
     "end": "Время конца",
     "error": "Ошибка",
-    "expand": "Развернуть",
     "export": "Экспорт",
     "file": "Файл",
     "files": "Файлы",
@@ -64,7 +62,6 @@
     "noResults": "Нет результатов",
     "notFound": "Не найдено",
     "note": "Заметка",
-    "open": "Открыть",
     "paste": "Вставить",
     "path": "Путь",
     "position": "Позиция",
@@ -267,6 +264,7 @@
       },
       "loadPresetPlaceholder": "Загрузить пресет...",
       "masterTitle": "Мастер-эффекты",
+      "noCustomPresets": "Нет пользовательских пресетов",
       "noSettings": "Нет доступных настроек",
       "presetNamePlaceholder": "Мой пресет",
       "presetsTitle": "Пресеты",
@@ -598,7 +596,8 @@
       "projectNamePlaceholder": "Название проекта",
       "searchPlaceholder": "Поиск проектов...",
       "switchToMobile": "Переключиться на мобильный вид",
-      "title": "Проекты"
+      "title": "Проекты",
+      "workspaceTitle": "Рабочая область"
     },
     "properties": {
       "blur": "Размытие",
@@ -1096,14 +1095,12 @@
         "aac": "AAC",
         "opus": "Opus"
       },
-      "codecHint": "Видео: {video} · Аудио: {audio}",
       "convert": "Конвертировать",
       "convertFile": "Конвертация файла: {file}",
       "doNotClose": "Пожалуйста, не закрывайте это окно и не переходите на другие страницы во время экспорта.",
       "encodingSettings": "Настройки кодирования",
       "error": "Ошибка экспорта",
       "errorCancelled": "Экспорт был отменен",
-      "excludeAudio": "Без звука",
       "exportAlpha": "Экспорт альфа-канала",
       "exporting": "Экспорт...",
       "filename": "Имя файла",
@@ -1227,6 +1224,7 @@
       "errors": {
         "crossVfsFailedTitle": "Не удалось переместить файлы между файловыми системами",
         "dragDropFailedTitle": "Ошибка при перетаскивании",
+        "remoteFailed": "Ошибка удалённой операции с файлами",
         "uploadFailedTitle": "Загрузка не удалась"
       },
       "extractAudio": {
@@ -1296,7 +1294,6 @@
         "proxy": "Прокси"
       },
       "projectRoot": {
-        "freeSpace": "Свободное место",
         "parameters": "Параметры",
         "project": "Проект",
         "title": "Корень проекта"
@@ -1449,7 +1446,6 @@
       "export": "Экспорт",
       "metadata": "Метаданные",
       "projectStorage": "Файлы проекта",
-      "reset": "Сбросить по умолчанию",
       "resetSettings": "Сбросить настройки",
       "resetConfirmDescription": "Это вернет все настройки текущего проекта к значениям по умолчанию из настроек рабочей области.",
       "resetConfirmTitle": "Сбросить на настройки по умолчанию?",
@@ -1551,7 +1547,6 @@
       "integrationBreakConnection": "Разорвать связь",
       "integrationHealthMissingConfig": "Настройки интеграции отсутствуют",
       "integrationHealthOk": "Соединение установлено",
-      "integrationHealthUnavailable": "Активная интеграция для этого сервиса не настроена.",
       "integrationManualLink": "Ссылка для ручной настройки",
       "integrationStatusWaiting": "Ожидание проверки",
       "integrationSttModels": "Модели",

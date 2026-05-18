@@ -203,12 +203,17 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     targetPath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
+    if (options?.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
     const sourceFile = await this.getFile(sourcePath);
     if (!sourceFile) {
       throw new Error(`Source file not found: ${sourcePath}`);
     }
 
-    await this.writeFile(targetPath, sourceFile);
+    const readStream = sourceFile.stream();
+    const writeStream = await this.writeStream(targetPath);
+    await readStream.pipeTo(writeStream, { signal: options?.signal });
   }
 
   async copyDirectory(
@@ -225,6 +230,9 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     depth: number,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
+    if (options?.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
     if (depth > MAX_COPY_DEPTH) {
       throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
     }
@@ -260,10 +268,13 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if ((sourceHandle as ExtendedHandle).move) {
       await (sourceHandle as ExtendedHandle).move!(targetParentHandle, targetName);
     } else {
+      if (options?.signal?.aborted) {
+        throw new DOMException('The operation was aborted.', 'AbortError');
+      }
       if (sourceHandle.kind === 'directory') {
-        await this.copyDirectory(sourcePath, targetPath);
+        await this.copyDirectory(sourcePath, targetPath, options);
       } else {
-        await this.copyFile(sourcePath, targetPath);
+        await this.copyFile(sourcePath, targetPath, options);
       }
       await this.deleteEntry(sourcePath, true);
     }

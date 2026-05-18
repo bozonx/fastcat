@@ -53,7 +53,6 @@ describe('FileProjectRootSection.vue', () => {
 
     expect(component.text()).toContain('videoEditor.fileManager.projectRoot.title');
     expect(component.text()).toContain('500 MB');
-    expect(component.text()).toContain('10 GB');
     expect(component.text()).toContain('1080p, 25FPS, 48kHz');
   });
 

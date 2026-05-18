@@ -17,6 +17,14 @@ const projectStore = {
   addTextPanel: vi.fn(),
   addMediaPanel: vi.fn(),
   getDirectoryHandleByPath: vi.fn().mockResolvedValue({ kind: 'directory' }),
+  projectSettings: {
+    project: {
+      width: 1920,
+      height: 1080,
+      fps: 25,
+      sampleRate: 48000,
+    },
+  },
 };
 
 const timelineStore = {

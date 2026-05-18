@@ -28,9 +28,16 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     this.routes = this.routes.filter((r) => r.prefix !== prefix);
   }
 
+  private routeMatches(path: string, prefix: string): boolean {
+    if (path === prefix) return true;
+    const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+    return path.startsWith(`${normalizedPrefix}/`);
+  }
+
   private getRoute(path: string) {
-    for (const route of this.routes) {
-      if (path.startsWith(route.prefix) || path === route.prefix) {
+    const routes = [...this.routes].sort((a, b) => b.prefix.length - a.prefix.length);
+    for (const route of routes) {
+      if (this.routeMatches(path, route.prefix)) {
         return { adapter: route.adapter, mappedPath: route.stripPrefix(path) };
       }
     }
@@ -70,8 +77,9 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     mappedOriginalPath: string,
   ): string {
     // If the router stripped a prefix, we need to add it back
-    for (const route of this.routes) {
-      if (originalPath.startsWith(route.prefix) || originalPath === route.prefix) {
+    const routes = [...this.routes].sort((a, b) => b.prefix.length - a.prefix.length);
+    for (const route of routes) {
+      if (this.routeMatches(originalPath, route.prefix)) {
         if (mappedOriginalPath === '') {
           return mappedEntryPath ? `${route.prefix}/${mappedEntryPath}` : route.prefix;
         }
@@ -243,6 +251,9 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     depth: number,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
+    if (options?.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
     if (depth > MAX_COPY_DEPTH) {
       throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
     }

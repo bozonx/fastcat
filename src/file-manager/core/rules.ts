@@ -19,4 +19,19 @@ export function isCopyAllowed(params: { sourcePath: string; targetDirPath: strin
   return !isDescendantOrSelf(params);
 }
 
+export function isValidFsEntryName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  if (trimmed === '.' || trimmed === '..') return false;
+  if (/[<>:"/\\|?*\u0000-\u001F]/.test(trimmed)) return false;
+  if (/[. ]$/.test(trimmed)) return false;
+  return true;
+}
+
+export function assertValidFsEntryName(name: string): void {
+  if (!isValidFsEntryName(name)) {
+    throw new Error(`Invalid file or folder name: ${name}`);
+  }
+}
+
 export const MAX_COPY_DEPTH = 50;

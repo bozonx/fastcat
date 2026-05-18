@@ -1251,6 +1251,7 @@ export default {
       errors: {
         crossVfsFailedTitle: 'Не удалось переместить файлы между файловыми системами',
         dragDropFailedTitle: 'Ошибка при перетаскивании',
+        remoteFailed: 'Ошибка удалённой операции с файлами',
         uploadFailedTitle: 'Загрузка не удалась',
       },
       extractAudio: {

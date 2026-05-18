@@ -26,7 +26,7 @@ export interface HotkeyConflictsResult {
 
 export function getHotkeyConflicts(
   effective: Record<HotkeyCommandId, string[]>,
-  commands: readonly HotkeyCommandDefinition[] = DEFAULT_HOTKEYS.commands,
+  commands: readonly HotkeyCommandDefinition[] = DEFAULT_HOTKEYS.commands as unknown as HotkeyCommandDefinition[],
 ): HotkeyConflictsResult {
   const conflictsByCommand = new Map<HotkeyCommandId, Set<string>>();
 

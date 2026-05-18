@@ -499,10 +499,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
             {{
               isApiSupported
                 ? t('videoEditor.fileManager.empty')
-                : t(
-                    'videoEditor.fileManager.unsupported',
-                    'File System Access API is not supported in this browser',
-                  )
+                : t('videoEditor.fileManager.unsupported')
             }}
           </p>
         </div>

@@ -17,7 +17,7 @@ if (typeof document === 'undefined') {
             addEventListener: () => {},
             removeEventListener: () => {},
           });
-        } catch (e) {
+        } catch (_e) {
           // ignore, fall through to plain mock
         }
       }
