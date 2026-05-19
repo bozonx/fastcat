@@ -183,9 +183,6 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[STT Worker] Transcription error:`, err);
         self.postMessage({ type: 'error', id, error: message } satisfies SttWorkerResponse);
-      })
-      .finally(() => {
-        pendingTranscription = null;
       });
   }
 };

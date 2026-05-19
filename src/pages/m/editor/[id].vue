@@ -22,6 +22,7 @@ const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const timelineStore = useTimelineStore();
 const router = useRouter();
+const route = useRoute();
 const { openProject, leaveProject } = useProjectActions();
 const isOpeningProject = ref(true);
 const projectOpenError = ref<string | null>(null);

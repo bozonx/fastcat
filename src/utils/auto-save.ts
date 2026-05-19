@@ -7,7 +7,7 @@ export interface AutoSaveOptions {
    * Return `false` to indicate that the save was skipped (e.g. preconditions not met),
    * so the revision is not marked as saved.
    */
-  doSave: () => Promise<boolean | void>;
+  doSave: () => Promise<boolean | undefined>;
   /**
    * Optional error handler.
    */

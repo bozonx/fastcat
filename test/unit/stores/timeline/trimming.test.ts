@@ -21,8 +21,18 @@ const mockDoc = {
     {
       id: 'track-1',
       items: [
-        { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 }, locked: false },
-        { id: 'clip-2', kind: 'clip', timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 }, locked: true },
+        {
+          id: 'clip-1',
+          kind: 'clip',
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          locked: false,
+        },
+        {
+          id: 'clip-2',
+          kind: 'clip',
+          timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+          locked: true,
+        },
       ],
       locked: false,
     },

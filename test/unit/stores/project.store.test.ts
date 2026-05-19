@@ -61,6 +61,7 @@ vi.mock('~/composables/editor/useProjectLock', () => ({
 }));
 
 vi.mock('~/stores/project-settings.store', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { reactive } = require('vue');
   const state = reactive({
     projectSettings: {

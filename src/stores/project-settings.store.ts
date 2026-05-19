@@ -34,6 +34,42 @@ interface ProjectSettingsRepo {
   save(data: FastCatProjectSettings): Promise<void>;
 }
 
+export function applyLoadedTimelineSessionSnapshot(
+  timelines: FastCatProjectSettings['timelines'],
+  input: {
+    activeTimelinePath: string | null;
+    timelineDoc: unknown | null;
+    currentTime: number;
+    masterGain: number;
+    masterMuted: boolean;
+    zoom: number;
+    trackHeights: Record<string, number>;
+    selectionRange?: { startUs: number; endUs: number } | null;
+  },
+): FastCatProjectSettings['timelines'] {
+  if (!input.activeTimelinePath || !input.timelineDoc) {
+    return {
+      ...timelines,
+      sessions: { ...timelines.sessions },
+    };
+  }
+
+  return {
+    ...timelines,
+    sessions: {
+      ...timelines.sessions,
+      [input.activeTimelinePath]: {
+        playheadUs: input.currentTime,
+        masterGain: input.masterGain,
+        masterMuted: input.masterMuted,
+        zoom: input.zoom,
+        trackHeights: { ...input.trackHeights },
+        selectionRange: input.selectionRange ? { ...input.selectionRange } : undefined,
+      },
+    },
+  };
+}
+
 export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const workspaceStore = useWorkspaceStore();
 
@@ -94,20 +130,16 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           const projectTabsStore = useProjectTabsStore();
           const timelineStore = useTimelineStore();
 
-          const timelines = { ...projectSettings.value.timelines };
-
-          if (focusStore.activeTimelinePath) {
-            timelines.sessions[focusStore.activeTimelinePath] = {
-              playheadUs: timelineStore.currentTime,
-              masterGain: timelineStore.masterGain,
-              masterMuted: timelineStore.audioMuted ?? false,
-              zoom: timelineStore.timelineZoom,
-              trackHeights: { ...timelineStore.trackHeights },
-              selectionRange: timelineStore.selectionRange
-                ? { ...timelineStore.selectionRange }
-                : undefined,
-            };
-          }
+          const timelines = applyLoadedTimelineSessionSnapshot(projectSettings.value.timelines, {
+            activeTimelinePath: focusStore.activeTimelinePath,
+            timelineDoc: timelineStore.timelineDoc,
+            currentTime: timelineStore.currentTime,
+            masterGain: timelineStore.masterGain,
+            masterMuted: timelineStore.audioMuted ?? false,
+            zoom: timelineStore.timelineZoom,
+            trackHeights: timelineStore.trackHeights,
+            selectionRange: timelineStore.selectionRange,
+          });
 
           const fileManagerPaths: Record<string, string | null> = {};
           const fmStores = {

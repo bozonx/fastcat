@@ -1,7 +1,7 @@
 import { onScopeDispose, ref } from 'vue';
 
 export interface UseClickOrDragOptions {
-  onDragStart: (e: PointerEvent) => boolean | void;
+  onDragStart: (e: PointerEvent) => boolean | undefined;
   onShortRightClick?: (e: PointerEvent) => void;
   onLongPress?: (e: PointerEvent) => void;
 }

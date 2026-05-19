@@ -6,10 +6,46 @@ import { createTimelineTracksModule } from '~/stores/timeline/tracks';
 const mockDoc = {
   id: 'doc-1',
   tracks: [
-    { id: 'v1', kind: 'video', name: 'Video 1', items: [{ id: 'c1', kind: 'clip' }], videoHidden: false, audioMuted: false, audioSolo: false, locked: false },
-    { id: 'v2', kind: 'video', name: 'Video 2', items: [], videoHidden: true, audioMuted: true, audioSolo: true, locked: true },
-    { id: 'a1', kind: 'audio', name: 'Audio 1', items: [], videoHidden: false, audioMuted: false, audioSolo: false, locked: false },
-    { id: 'a2', kind: 'audio', name: 'Audio 2', items: [{ id: 'c2', kind: 'clip' }], videoHidden: false, audioMuted: true, audioSolo: false, locked: false },
+    {
+      id: 'v1',
+      kind: 'video',
+      name: 'Video 1',
+      items: [{ id: 'c1', kind: 'clip' }],
+      videoHidden: false,
+      audioMuted: false,
+      audioSolo: false,
+      locked: false,
+    },
+    {
+      id: 'v2',
+      kind: 'video',
+      name: 'Video 2',
+      items: [],
+      videoHidden: true,
+      audioMuted: true,
+      audioSolo: true,
+      locked: true,
+    },
+    {
+      id: 'a1',
+      kind: 'audio',
+      name: 'Audio 1',
+      items: [],
+      videoHidden: false,
+      audioMuted: false,
+      audioSolo: false,
+      locked: false,
+    },
+    {
+      id: 'a2',
+      kind: 'audio',
+      name: 'Audio 2',
+      items: [{ id: 'c2', kind: 'clip' }],
+      videoHidden: false,
+      audioMuted: true,
+      audioSolo: false,
+      locked: false,
+    },
   ],
 };
 
@@ -34,7 +70,13 @@ describe('TimelineTracksModule', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);
     mod.addTrack('video', 'New Video');
-    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'add_track', kind: 'video', name: 'New Video', insertBeforeId: undefined, insertAfterId: undefined });
+    expect(deps.applyTimeline).toHaveBeenCalledWith({
+      type: 'add_track',
+      kind: 'video',
+      name: 'New Video',
+      insertBeforeId: undefined,
+      insertAfterId: undefined,
+    });
   });
 
   it('resolveTargetVideoTrackIdForInsert returns selected video track', () => {
@@ -67,21 +109,39 @@ describe('TimelineTracksModule', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);
     mod.renameTrack('v1', 'Renamed');
-    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'rename_track', trackId: 'v1', name: 'Renamed' });
+    expect(deps.applyTimeline).toHaveBeenCalledWith({
+      type: 'rename_track',
+      trackId: 'v1',
+      name: 'Renamed',
+    });
   });
 
   it('toggleVideoHidden flips property', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);
     mod.toggleVideoHidden('v1');
-    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({ type: 'update_track_properties', trackId: 'v1', properties: { videoHidden: true } }), { historyMode: 'debounced' });
+    expect(deps.applyTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'update_track_properties',
+        trackId: 'v1',
+        properties: { videoHidden: true },
+      }),
+      { historyMode: 'debounced' },
+    );
   });
 
   it('toggleTrackAudioMuted flips property', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);
     mod.toggleTrackAudioMuted('a1');
-    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({ type: 'update_track_properties', trackId: 'a1', properties: { audioMuted: true } }), { historyMode: 'debounced' });
+    expect(deps.applyTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'update_track_properties',
+        trackId: 'a1',
+        properties: { audioMuted: true },
+      }),
+      { historyMode: 'debounced' },
+    );
   });
 
   it('deleteTrack delegates and clears selectedTrackId', () => {
@@ -89,7 +149,11 @@ describe('TimelineTracksModule', () => {
     deps.selectedTrackId.value = 'v1';
     const mod = createTimelineTracksModule(deps);
     mod.deleteTrack('v1');
-    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'delete_track', trackId: 'v1', allowNonEmpty: undefined });
+    expect(deps.applyTimeline).toHaveBeenCalledWith({
+      type: 'delete_track',
+      trackId: 'v1',
+      allowNonEmpty: undefined,
+    });
     expect(deps.selectedTrackId.value).toBeNull();
   });
 
@@ -97,7 +161,10 @@ describe('TimelineTracksModule', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);
     mod.reorderTracks(['v2', 'v1', 'a1', 'a2']);
-    expect(deps.applyTimeline).toHaveBeenCalledWith({ type: 'reorder_tracks', trackIds: ['v2', 'v1', 'a1', 'a2'] });
+    expect(deps.applyTimeline).toHaveBeenCalledWith({
+      type: 'reorder_tracks',
+      trackIds: ['v2', 'v1', 'a1', 'a2'],
+    });
   });
 
   it('isAnyTrackSoloed reflects doc state', () => {
@@ -105,7 +172,10 @@ describe('TimelineTracksModule', () => {
     const mod = createTimelineTracksModule(deps);
     expect(mod.isAnyTrackSoloed.value).toBe(true);
 
-    deps.timelineDoc.value = { ...mockDoc, tracks: mockDoc.tracks.map((t) => ({ ...t, audioSolo: false })) };
+    deps.timelineDoc.value = {
+      ...mockDoc,
+      tracks: mockDoc.tracks.map((t) => ({ ...t, audioSolo: false })),
+    };
     expect(mod.isAnyTrackSoloed.value).toBe(false);
   });
 
@@ -152,19 +222,23 @@ describe('TimelineTracksModule', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);
     mod.moveTrackUp('v2');
-    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'reorder_tracks',
-      trackIds: ['v2', 'v1', 'a1', 'a2'],
-    }));
+    expect(deps.applyTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'reorder_tracks',
+        trackIds: ['v2', 'v1', 'a1', 'a2'],
+      }),
+    );
   });
 
   it('moveTrackDown swaps with next same-kind track', () => {
     const deps = createMockDeps();
     const mod = createTimelineTracksModule(deps);
     mod.moveTrackDown('v1');
-    expect(deps.applyTimeline).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'reorder_tracks',
-      trackIds: ['v2', 'v1', 'a1', 'a2'],
-    }));
+    expect(deps.applyTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'reorder_tracks',
+        trackIds: ['v2', 'v1', 'a1', 'a2'],
+      }),
+    );
   });
 });

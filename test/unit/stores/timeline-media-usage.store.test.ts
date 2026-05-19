@@ -69,5 +69,4 @@ describe('TimelineMediaUsageStore', () => {
     expect(refs).toHaveLength(1);
     expect(refs[0].timelineName).toBe('Live');
   });
-
 });

@@ -1,7 +1,10 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useProjectSettingsStore } from '~/stores/project-settings.store';
+import {
+  applyLoadedTimelineSessionSnapshot,
+  useProjectSettingsStore,
+} from '~/stores/project-settings.store';
 
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
@@ -300,5 +303,62 @@ describe('ProjectSettingsStore', () => {
     expect(store.projectSettings.monitors.cut).toBeDefined();
     expect(store.projectSettings.version).toBe(1);
     expect(store.isLoadingProjectSettings).toBe(false);
+  });
+});
+
+describe('applyLoadedTimelineSessionSnapshot', () => {
+  it('preserves saved playhead when timeline document is not loaded yet', () => {
+    const timelines = {
+      openPaths: ['timelines/main.otio'],
+      sessions: {
+        'timelines/main.otio': {
+          playheadUs: 12_000_000,
+          masterGain: 0.75,
+          masterMuted: false,
+          zoom: 80,
+          trackHeights: { v1: 64 },
+        },
+      },
+    };
+
+    const next = applyLoadedTimelineSessionSnapshot(timelines as any, {
+      activeTimelinePath: 'timelines/main.otio',
+      timelineDoc: null,
+      currentTime: 0,
+      masterGain: 1,
+      masterMuted: false,
+      zoom: 50,
+      trackHeights: {},
+      selectionRange: null,
+    });
+
+    expect(next.sessions['timelines/main.otio']?.playheadUs).toBe(12_000_000);
+  });
+
+  it('updates saved playhead after timeline document is loaded', () => {
+    const timelines = {
+      openPaths: ['timelines/main.otio'],
+      sessions: {},
+    };
+
+    const next = applyLoadedTimelineSessionSnapshot(timelines as any, {
+      activeTimelinePath: 'timelines/main.otio',
+      timelineDoc: { tracks: [] },
+      currentTime: 8_000_000,
+      masterGain: 0.5,
+      masterMuted: true,
+      zoom: 90,
+      trackHeights: { a1: 72 },
+      selectionRange: { startUs: 1_000_000, endUs: 2_000_000 },
+    });
+
+    expect(next.sessions['timelines/main.otio']).toEqual({
+      playheadUs: 8_000_000,
+      masterGain: 0.5,
+      masterMuted: true,
+      zoom: 90,
+      trackHeights: { a1: 72 },
+      selectionRange: { startUs: 1_000_000, endUs: 2_000_000 },
+    });
   });
 });
