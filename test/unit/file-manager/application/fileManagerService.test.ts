@@ -143,7 +143,7 @@ describe('fileManagerService', () => {
     expect(updated?.children?.map((e) => e.name)).toEqual(['child.txt']);
   });
 
-  it('readDirectory reports error via onError when iteration is not available', async () => {
+  it('readDirectory propagates adapter errors so callers can preserve existing state', async () => {
     const rootEntries = ref<FsEntry[]>([]);
     const sortMode = ref<'name' | 'type'>('name');
 
@@ -166,9 +166,39 @@ describe('fileManagerService', () => {
       onError,
     });
 
-    const result = await service.readDirectory('');
+    await expect(service.readDirectory('')).rejects.toThrow('iteration is not available');
+    expect(onError).not.toHaveBeenCalled();
+  });
 
-    expect(result).toEqual([]);
+  it('loadProjectDirectory preserves existing entries and reports via onError when read fails', async () => {
+    const previousEntries: FsEntry[] = [
+      { kind: 'directory', name: 'kept', path: 'kept', expanded: true, children: [] },
+    ];
+    const rootEntries = ref<FsEntry[]>(previousEntries);
+    const sortMode = ref<'name' | 'type'>('name');
+
+    const vfs = {
+      readDirectory: vi.fn(async () => {
+        throw new Error('disk gone');
+      }),
+    } as any;
+
+    const onError = vi.fn();
+    const service = createFileManagerService({
+      rootEntries,
+      sortMode,
+      showHiddenFiles: () => true,
+      isPathExpanded: () => false,
+      setPathExpanded: vi.fn(),
+      getExpandedPaths: () => [],
+      vfs,
+      checkExistingProxies: vi.fn(async () => undefined),
+      onError,
+    });
+
+    await service.loadProjectDirectory('');
+
+    expect(rootEntries.value).toStrictEqual(previousEntries);
     expect(onError).toHaveBeenCalledWith({
       title: 'File manager error',
       message: 'Failed to read directory',

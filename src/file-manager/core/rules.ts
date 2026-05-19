@@ -64,4 +64,12 @@ export function assertValidFsEntryName(name: string): void {
   }
 }
 
-export const MAX_COPY_DEPTH = 50;
+/**
+ * Maximum traversal depth for recursive filesystem operations (copy, delete cleanup,
+ * cross-VFS copy). 50 covers any realistic project layout and stops runaway recursion
+ * from buggy adapters or symlink-style loops without artificially constraining users.
+ */
+export const MAX_TREE_TRAVERSAL_DEPTH = 50;
+
+/** @deprecated Use MAX_TREE_TRAVERSAL_DEPTH — the constant is shared by copy and other recursive operations. */
+export const MAX_COPY_DEPTH = MAX_TREE_TRAVERSAL_DEPTH;

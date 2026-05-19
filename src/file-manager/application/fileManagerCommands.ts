@@ -11,7 +11,7 @@ import {
   assertValidFsEntryName,
   isCopyAllowed,
   isMoveAllowed,
-  MAX_COPY_DEPTH,
+  MAX_TREE_TRAVERSAL_DEPTH,
 } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
@@ -174,20 +174,15 @@ export async function handleFilesCommand(
         finalRelativePathBase = params.targetDirPath;
       }
 
-      const desiredPath = finalRelativePathBase
-        ? `${finalRelativePathBase}/${file.name}`
-        : file.name;
-
-      let finalName = file.name;
-      let finalPath = desiredPath;
-      if (await deps.vfs.exists(desiredPath)) {
-        finalName = await generateUniqueEntryNameWithSuffix({
-          vfs: deps.vfs,
-          dirPath: finalRelativePathBase,
-          name: file.name,
-        });
-        finalPath = finalRelativePathBase ? `${finalRelativePathBase}/${finalName}` : finalName;
-      }
+      // Always go through the unique-name resolver: it short-circuits when
+      // the original name is free, and otherwise picks a non-conflicting
+      // suffix. This avoids a TOCTOU between an exists()-check and the write.
+      const finalName = await generateUniqueEntryNameWithSuffix({
+        vfs: deps.vfs,
+        dirPath: finalRelativePathBase,
+        name: file.name,
+      });
+      const finalPath = finalRelativePathBase ? `${finalRelativePathBase}/${finalName}` : finalName;
 
       await writeImportedFile({
         vfs: deps.vfs,
@@ -274,8 +269,8 @@ async function collectDeletedFilePaths(params: {
   const depth = params.depth ?? 0;
   if (params.entry.kind === 'file') return params.entry.path ? [params.entry.path] : [];
   if (!params.entry.path) return [];
-  if (depth > MAX_COPY_DEPTH) {
-    throw new Error(`Maximum delete cleanup depth exceeded (${MAX_COPY_DEPTH})`);
+  if (depth > MAX_TREE_TRAVERSAL_DEPTH) {
+    throw new Error(`Maximum delete cleanup depth exceeded (${MAX_TREE_TRAVERSAL_DEPTH})`);
   }
 
   const entries = await params.vfs.readDirectory(params.entry.path);

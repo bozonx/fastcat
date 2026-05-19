@@ -208,10 +208,18 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const commonMetadata = await deps.vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
     if (!commonMetadata || commonMetadata.kind !== 'directory') return entries;
 
-    const commonChildren = await service.readDirectory(WORKSPACE_COMMON_PATH_PREFIX);
+    // service.readDirectory throws on adapter errors so callers can preserve
+    // existing state. Here we fall back to the previously known children to
+    // avoid wiping out the common folder when a transient read fails.
     const previousCommonEntry = entries.find(
       (entry) => entry.path === WORKSPACE_COMMON_PATH_PREFIX,
     );
+    let commonChildren: FsEntry[];
+    try {
+      commonChildren = await service.readDirectory(WORKSPACE_COMMON_PATH_PREFIX);
+    } catch {
+      commonChildren = previousCommonEntry?.children ?? [];
+    }
     const commonEntry: FsEntry = {
       name: deps.t('videoEditor.fileManager.commonFolder'),
       kind: 'directory',

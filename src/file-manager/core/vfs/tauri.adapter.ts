@@ -96,8 +96,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   private async resolveStreamPath(path: string): Promise<string> {
     const normalizedPath = this.normalizePath(path);
     const basePath = await this.getBasePath();
-    const baseDirPath =
-      basePath === TAURI_APP_DATA_BASE_PATH ? await appDataDir() : basePath;
+    const baseDirPath = basePath === TAURI_APP_DATA_BASE_PATH ? await appDataDir() : basePath;
     return normalizedPath ? await join(baseDirPath, normalizedPath) : baseDirPath;
   }
 
