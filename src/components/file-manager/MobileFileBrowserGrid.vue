@@ -2,7 +2,7 @@
 import { ref, onBeforeUnmount } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { formatBytes } from '~/utils/format';
-import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
+import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';

@@ -188,11 +188,6 @@ const {
 
 const conversionStore = useFileConversionStore();
 const { extractAudio } = useAudioExtraction();
-const proxyStore = useProxyStore();
-
-const selectedEntry = computed(() =>
-  selectedEntries.value.length === 1 ? selectedEntries.value[0] : null,
-);
 
 const { sortedEntries } = useFileSorting(entries);
 const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);

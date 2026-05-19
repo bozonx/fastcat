@@ -154,6 +154,52 @@ function onWheel(e: WheelEvent) {
   emit('update:modelValue', nextDb);
 }
 
+function commitDb(value: number) {
+  const clamped = Math.min(maxDb, Math.max(minDb, value));
+  emit('update:modelValue', clamped);
+}
+
+function onKeydown(e: KeyboardEvent) {
+  // Fine step on Shift, large step on PageUp/PageDown.
+  const fineStep = 0.5;
+  const step = 1;
+  const largeStep = 6;
+  switch (e.key) {
+    case 'ArrowUp':
+    case 'ArrowRight':
+      e.preventDefault();
+      commitDb(props.modelValue + (e.shiftKey ? fineStep : step));
+      return;
+    case 'ArrowDown':
+    case 'ArrowLeft':
+      e.preventDefault();
+      commitDb(props.modelValue - (e.shiftKey ? fineStep : step));
+      return;
+    case 'PageUp':
+      e.preventDefault();
+      commitDb(props.modelValue + largeStep);
+      return;
+    case 'PageDown':
+      e.preventDefault();
+      commitDb(props.modelValue - largeStep);
+      return;
+    case 'Home':
+      e.preventDefault();
+      commitDb(minDb);
+      return;
+    case 'End':
+      e.preventDefault();
+      commitDb(maxDb);
+      return;
+    case 'Enter':
+    case ' ':
+      // Match the double-click reset affordance.
+      e.preventDefault();
+      commitDb(0);
+      return;
+  }
+}
+
 const containerRef = ref<HTMLElement | null>(null);
 
 onMounted(() => {
@@ -232,8 +278,15 @@ const ticks = [12, 6, 0, -6, -12, -24, -36, -48, -60];
       class="relative w-4 h-full bg-ui-bg-muted border border-ui-border rounded-sm cursor-ns-resize outline-none transition-[box-shadow,border-color]"
       :class="[isFocused ? 'ring-2 ring-primary-500/50' : '']"
       tabindex="0"
+      role="slider"
+      aria-orientation="vertical"
+      :aria-valuemin="minDb"
+      :aria-valuemax="maxDb"
+      :aria-valuenow="modelValue"
+      :aria-valuetext="`${modelValue > 0 ? '+' : ''}${modelValue.toFixed(1)} dB`"
       @pointerdown="onPointerDown"
       @dblclick="onDoubleClick"
+      @keydown="onKeydown"
       @focus="isFocused = true"
       @blur="isFocused = false"
     >

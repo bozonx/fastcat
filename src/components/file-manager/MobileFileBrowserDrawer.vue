@@ -106,16 +106,6 @@ const selectedEntriesList = computed(() => {
   return [selectedEntity.value.entry];
 });
 
-const isBloggerDogProject = computed(() => {
-  const list = selectedEntriesList.value;
-  if (list.length !== 1) return false;
-  const entry = list[0];
-  if (entry?.source !== 'remote' || entry?.kind !== 'directory') return false;
-  const path = entry.path || '';
-  const parts = path.split('/').filter(Boolean);
-  return parts.length === 2 && parts[0] === 'projects';
-});
-
 const canRename = computed(() => {
   if (selectedEntriesList.value.length !== 1) return false;
   return (

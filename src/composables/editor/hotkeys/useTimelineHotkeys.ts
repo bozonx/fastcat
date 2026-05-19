@@ -98,13 +98,18 @@ export function useTimelineHotkeys(
       const payload = clipboardStore.clipboardPayload;
       if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return false;
 
-      void timelineStore.pasteClips(payload.items, {
-        targetTrackId: timelineStore.getSelectedOrActiveTrackId(),
-      });
-
-      if (payload.operation === 'cut') {
-        clipboardStore.setClipboardPayload(null);
-      }
+      // For cut+paste, hold the clipboard until the paste resolves so a failed
+      // paste does not leave the user with deleted clips and no way to retry.
+      // Successful paste of a cut: clipboard is cleared once.
+      void timelineStore
+        .pasteClips(payload.items, {
+          targetTrackId: timelineStore.getSelectedOrActiveTrackId(),
+        })
+        .then((res) => {
+          if (payload.operation === 'cut' && res.length > 0) {
+            clipboardStore.setClipboardPayload(null);
+          }
+        });
 
       return true;
     },

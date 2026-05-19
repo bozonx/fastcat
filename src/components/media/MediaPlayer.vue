@@ -51,8 +51,6 @@ const {
   progress,
   playbackSpeed,
   togglePlay,
-  setForwardPlaybackSpeed,
-  setBackwardPlaybackSpeed,
   onTimeUpdate: playOnTimeUpdate,
   onLoadedMetadata,
   onPlay,

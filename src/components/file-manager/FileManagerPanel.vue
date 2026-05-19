@@ -321,12 +321,6 @@ function handlePendingBloggerDogCreateItem(entry: FsEntry) {
   isItemModalOpen.value = true;
 }
 
-const bloggerDogApiUrl = computed(() =>
-  typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
-    ? runtimeConfig.public.bloggerDogApiUrl
-    : '',
-);
-
 async function onSubgroupCreateConfirm(name: string) {
   const parent = pendingSubgroupParent.value;
   if (!parent) return;

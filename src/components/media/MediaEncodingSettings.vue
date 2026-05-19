@@ -82,7 +82,7 @@ const filteredVideoCodecOptions = computed(() => {
 
 const isBitrateModeTouched = ref(false);
 
-function getDefaultBitrateModeByCodec(codec: string): 'constant' | 'variable' {
+function getDefaultBitrateModeByCodec(_codec: string): 'constant' | 'variable' {
   // Requirement: default to VBR
   return 'variable';
 }

@@ -131,7 +131,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       color: 'warning',
       title: t('common.warning'),
       description: t('fastcat.timeline.noDroppableTrack', {
-        kind: t(`videoEditor.timeline.trackKind.${kind}`),
+        kind: t(kind === 'video' ? 'fastcat.timeline.trackKindVideo' : 'fastcat.timeline.trackKindAudio'),
       }),
     });
   }
@@ -338,12 +338,15 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       };
     }
 
-    const targetTrackId =
-      resolveDropTrackId({
-        inputTrackId: context.baseTrackId,
-        payloadKind: 'timeline',
-        path: item.path,
-      }) ?? context.baseTrackId;
+    const baseTrack = getTrackById(context.baseTrackId);
+    const targetTrackId = ensureDroppableTrackId({
+      baseTrackId: context.baseTrackId,
+      kind: baseTrack?.kind ?? 'video',
+    });
+    if (!targetTrackId) {
+      reportNoDroppableTrack(baseTrack?.kind ?? 'video');
+      return { nextStartUs: context.currentStartUs, added: false };
+    }
     const durationUs = await getPreviewDurationUsAsync({ kind: 'timeline', path: item.path });
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,
@@ -352,7 +355,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       pseudo: context.pseudo,
     });
 
-    const res = await (timelineStore as any).addTimelineClipToTimelineFromPath({
+    const res = await timelineStore.addTimelineClipToTimelineFromPath({
       trackId: targetTrackId,
       name: item.name || 'Timeline',
       path: item.path,
@@ -364,7 +367,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       nextStartUs: nextStartUs + (res.durationUs || 0),
       added: true,
       trackId: targetTrackId,
-      itemId: (res as any).itemId,
+      itemId: res.itemId,
     };
   }
 
@@ -379,7 +382,14 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       };
     }
 
-    const targetTrackId = getCompatibleTrackId(context.baseTrackId, 'video') ?? context.baseTrackId;
+    const targetTrackId = ensureDroppableTrackId({
+      baseTrackId: context.baseTrackId,
+      kind: 'video',
+    });
+    if (!targetTrackId) {
+      reportNoDroppableTrack('video');
+      return { nextStartUs: context.currentStartUs, added: false };
+    }
     const file = await fileManager.vfs.getFile(item.path);
     if (!file) {
       return {
@@ -425,12 +435,15 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       };
     }
 
-    const targetTrackId =
-      resolveDropTrackId({
-        inputTrackId: context.baseTrackId,
-        payloadKind: 'file',
-        path: item.path,
-      }) ?? context.baseTrackId;
+    const mediaKind = getMediaTypeFromFilename(item.name || item.path) === 'audio' ? 'audio' : 'video';
+    const targetTrackId = ensureDroppableTrackId({
+      baseTrackId: context.baseTrackId,
+      kind: mediaKind,
+    });
+    if (!targetTrackId) {
+      reportNoDroppableTrack(mediaKind);
+      return { nextStartUs: context.currentStartUs, added: false };
+    }
     const durationUs = await getPreviewDurationUsAsync({ kind: 'file', path: item.path });
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,
@@ -451,7 +464,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       nextStartUs: nextStartUs + (res.durationUs || 0),
       added: true,
       trackId: targetTrackId,
-      itemId: (res as any).itemId,
+      itemId: res.itemId,
     };
   }
 
@@ -513,7 +526,18 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       path: payload.path,
     });
 
-    if (!draggedFile.draggedFile.value) {
+    // After awaiting metadata fetch, the user may have dropped, cancelled the
+    // drag, or replaced the payload. Re-validate everything we relied on.
+    const currentPayload = draggedFile.draggedFile.value;
+    if (
+      !currentPayload ||
+      currentPayload.path !== payload.path ||
+      currentPayload.kind !== payload.kind
+    ) {
+      clearDragPreview();
+      return null;
+    }
+    if (!getTrackById(targetTrackId)) {
       clearDragPreview();
       return null;
     }
