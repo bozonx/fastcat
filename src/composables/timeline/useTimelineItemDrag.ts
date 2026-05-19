@@ -15,7 +15,11 @@ import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
-import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from '~/stores/timeline/history-labels';
+import {
+  TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY,
+  getTimelineCommandLabelKey,
+  getUpdateClipPropertiesLabelKey,
+} from '~/stores/timeline/history-labels';
 
 import {
   DEFAULT_HOTKEYS,
@@ -965,7 +969,20 @@ export function useTimelineItemDrag(
     const snapshot = cloneValue(dragStartSnapshot.value);
     const appliedCmd = lastDragAppliedCmd.value;
     if (!cancel && snapshot && appliedCmd) {
-      historyStore.push('timeline', appliedCmd.type, snapshot, TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY);
+      let labelKey: string;
+      if (appliedCmd.type === 'move_items' && appliedCmd.moves) {
+        labelKey =
+          appliedCmd.moves.length === 1
+            ? 'videoEditor.fileManager.history.entries.moveItem'
+            : 'videoEditor.fileManager.history.entries.moveItems';
+      } else if (appliedCmd.type === 'update_clip_properties') {
+        labelKey = getUpdateClipPropertiesLabelKey(appliedCmd.properties ?? {});
+      } else if (appliedCmd.type === 'trim_item' || appliedCmd.type === 'overlay_trim_item') {
+        labelKey = 'videoEditor.fileManager.history.entries.trimClip';
+      } else {
+        labelKey = getTimelineCommandLabelKey(appliedCmd.type);
+      }
+      historyStore.push('timeline', appliedCmd.type, snapshot, labelKey);
       dragStartSnapshot.value = null;
     }
 

@@ -11,7 +11,7 @@ export interface TimelineTracksDeps {
   ) => void;
   batchApplyTimeline: (
     cmds: TimelineCommand[],
-    options?: { historyMode?: 'immediate' | 'debounced' },
+    options?: { labelKey?: string },
   ) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getSelectedOrActiveTrackId: () => string | null;
@@ -289,7 +289,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { audioSolo: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unsoloAllTracks' });
     void deps.requestTimelineSave({ immediate: true });
   }
 
@@ -303,7 +303,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { audioMuted: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unmuteAllTracks' });
     void deps.requestTimelineSave({ immediate: true });
   }
 
@@ -317,7 +317,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { locked: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unlockAllTracks' });
     void deps.requestTimelineSave({ immediate: true });
   }
 
@@ -331,7 +331,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { videoHidden: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { historyMode: 'debounced' });
+    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.showAllTracks' });
     void deps.requestTimelineSave({ immediate: true });
   }
 

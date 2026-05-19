@@ -462,25 +462,18 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
 
   async function handleExtractAudio() {
     await timelineStore.applyTimeline({
-      type: 'extract_audio' as any,
-      trackId: options.clip.value.trackId,
-      itemId: options.clip.value.id,
+      type: 'extract_audio_to_track',
+      videoTrackId: options.clip.value.trackId,
+      videoItemId: options.clip.value.id,
     } as any);
   }
 
   function handleReturnAudio() {
     const clip = options.clip.value;
-    if (clip.linkedVideoClipId) {
-      timelineStore.applyTimeline({
-        type: 'return_audio' as any,
-        videoItemId: clip.linkedVideoClipId,
-      } as any);
-    } else {
-      timelineStore.applyTimeline({
-        type: 'return_audio' as any,
-        videoItemId: clip.id,
-      } as any);
-    }
+    timelineStore.applyTimeline({
+      type: 'return_audio_to_video',
+      videoItemId: clip.linkedVideoClipId || clip.id,
+    } as any);
   }
 
   function handlePaste() {

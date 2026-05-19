@@ -4,7 +4,7 @@ import { computed, ref, toRaw } from 'vue';
 import { useWorkspaceStore } from './workspace.store';
 
 export interface HistoryEntry<T = unknown> {
-  id: number;
+  id: string;
   labelKey: string;
   scope: string; // e.g. 'timeline', 'fileManager'
   commandType: string;
@@ -16,7 +16,12 @@ export interface HistoryEntry<T = unknown> {
   timestamp: number;
 }
 
-let entryIdCounter = 0;
+function generateHistoryEntryId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
 
 /** Deep plain copy. structuredClone is ~3-5x faster than JSON round-trip on
  *  large timeline documents. toRaw strips the top-level proxy; nested reactive
@@ -42,7 +47,7 @@ export const useHistoryStore = defineStore('history', () => {
   const future = ref<HistoryEntry<any>[]>([]);
 
   /** Scopes that use command-based history (store undo/redo commands instead of snapshots) */
-  const commandScopes = new Set<string>();
+  const commandScopes = new Set<string>(['fileManager']);
 
   const stateGetters = new Map<string, (entry: HistoryEntry<any>) => any>();
 
@@ -60,17 +65,20 @@ export const useHistoryStore = defineStore('history', () => {
 
   function canUndo(scope?: string) {
     if (!scope) return past.value.length > 0;
-    return past.value.filter((e) => e.scope === scope).length > 0;
+    return past.value.some((e) => e.scope === scope);
   }
 
   function canRedo(scope?: string) {
     if (!scope) return future.value.length > 0;
-    return future.value.filter((e) => e.scope === scope).length > 0;
+    return future.value.some((e) => e.scope === scope);
   }
 
   function lastEntry(scope?: string) {
-    const entries = scope ? past.value.filter((e) => e.scope === scope) : past.value;
-    return entries[entries.length - 1] ?? null;
+    if (!scope) return past.value[past.value.length - 1] ?? null;
+    for (let i = past.value.length - 1; i >= 0; i--) {
+      if (past.value[i]!.scope === scope) return past.value[i]!;
+    }
+    return null;
   }
 
   /**
@@ -79,7 +87,7 @@ export const useHistoryStore = defineStore('history', () => {
    */
   function push<T>(scope: string, commandType: string, snapshot: T, labelKey: string) {
     const entry: HistoryEntry<T> = {
-      id: ++entryIdCounter,
+      id: generateHistoryEntryId(),
       labelKey,
       scope,
       commandType,
@@ -89,8 +97,10 @@ export const useHistoryStore = defineStore('history', () => {
 
     past.value.push(entry);
 
-    if (past.value.length > maxEntries.value) {
-      past.value.splice(0, past.value.length - maxEntries.value);
+    const total = past.value.length + future.value.length;
+    if (total > maxEntries.value) {
+      const toTrim = total - maxEntries.value;
+      past.value.splice(0, toTrim);
     }
 
     // Branching: clear redo stack for this scope on new action

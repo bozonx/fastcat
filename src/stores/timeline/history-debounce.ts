@@ -2,7 +2,7 @@ import { ref, type Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { getTimelineCommandLabelKey } from './history-labels';
+import { getTimelineCommandLabelKey, getUpdateClipPropertiesLabelKey } from './history-labels';
 
 export interface TimelineHistoryDebounceDeps {
   historyStore: {
@@ -68,7 +68,14 @@ export function createTimelineHistoryDebounceModule(
     },
   ) {
     const historyMode = options?.historyMode ?? 'immediate';
-    const labelKey = options?.labelKey ?? getTimelineCommandLabelKey(cmd.type);
+    let labelKey = options?.labelKey;
+    if (!labelKey) {
+      if (cmd.type === 'update_clip_properties') {
+        labelKey = getUpdateClipPropertiesLabelKey(cmd.properties ?? {});
+      } else {
+        labelKey = getTimelineCommandLabelKey(cmd.type);
+      }
+    }
 
     if (historyMode === 'debounced') {
       const debounceMs = Math.max(0, Math.round(options?.historyDebounceMs ?? 300));

@@ -126,6 +126,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   const t = deps.t;
   const runWithUiFeedback = createUiActionRunner({ isLoading, error }, { toast: deps.toast });
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
+  let isRestoringHistory = false;
 
   const service = createFileManagerService({
     rootEntries: deps.rootEntries,
@@ -426,7 +427,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         await createFolderCommand({ name, parentPath, vfs: deps.vfs });
         const createdPath = parentPath ? `${parentPath}/${name}` : name;
 
-        if (deps.shouldRecordFileManagerHistory()) {
+        if (deps.shouldRecordFileManagerHistory() && !isRestoringHistory) {
           deps.historyStore.push(
             'fileManager',
             'createFolder',
@@ -533,7 +534,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         );
 
         if (oldPath && newPath) {
-          if (deps.shouldRecordFileManagerHistory()) {
+          if (deps.shouldRecordFileManagerHistory() && !isRestoringHistory) {
             deps.historyStore.push(
               'fileManager',
               'rename',
@@ -581,7 +582,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           {
             vfs: deps.vfs,
             onFileMoved: async ({ oldPath, newPath }) => {
-              if (deps.shouldRecordFileManagerHistory()) {
+              if (deps.shouldRecordFileManagerHistory() && !isRestoringHistory) {
                 deps.historyStore.push(
                   'fileManager',
                   'move',
@@ -773,6 +774,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     async restoreHistory(snapshot: any) {
       if (!snapshot || !snapshot.type) return;
       const op = snapshot;
+      isRestoringHistory = true;
 
       await runWithUiFeedback({
         action: async () => {
@@ -796,6 +798,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
         toastTitle: 'History error',
         ignoreError: () => false,
       });
+      isRestoringHistory = false;
     },
   };
 }

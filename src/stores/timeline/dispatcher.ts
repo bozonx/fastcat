@@ -79,7 +79,7 @@ export function createTimelineDispatcherModule(
       createdItemIds = result.createdItemIds;
     } catch (error) {
       if (error instanceof Error && error.message === 'Item overlaps with another item') {
-        // Expected behavior when validating moves/trims that result in overlap
+        console.warn('Timeline command rejected: item overlaps with another item', cmd);
         return [];
       }
       console.warn('Failed to apply timeline command:', error, cmd);
@@ -140,7 +140,9 @@ export function createTimelineDispatcherModule(
       } catch (error) {
         const overlap =
           error instanceof Error && error.message === 'Item overlaps with another item';
-        if (!overlap) {
+        if (overlap) {
+          console.warn('Timeline batch command rejected: item overlaps with another item', cmd);
+        } else {
           console.warn('Failed to apply timeline command in batch:', error, cmd);
         }
         // The batch is atomic: any failure rolls back to the document state

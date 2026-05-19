@@ -228,8 +228,11 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     if (!item || (item.kind === 'clip' && item.locked)) return;
 
     const cmds = buildSplitClipCommands(doc, atUs, target);
-    for (const cmd of cmds) {
-      deps.applyTimeline(cmd, { saveMode: 'none' });
+    if (cmds.length > 0) {
+      deps.batchApplyTimeline(cmds, {
+        saveMode: 'none',
+        labelKey: 'videoEditor.fileManager.history.entries.splitClip',
+      });
     }
     await deps.requestTimelineSave({ immediate: true });
   }
