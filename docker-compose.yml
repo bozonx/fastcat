@@ -37,4 +37,4 @@ services:
     environment:
       - CI=true
       - E2E_TEST=1
-      - E2E_PORT=3009
+      - E2E_PORT=3008

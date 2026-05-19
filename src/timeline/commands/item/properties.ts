@@ -99,9 +99,9 @@ export function updateClipProperties(
 
   function sanitizeTransform(raw: unknown): ClipTransform | undefined {
     if (!raw || typeof raw !== 'object') return undefined;
-    const anyRaw = raw as any;
+    const rawRecord = raw as Record<string, unknown>;
 
-    const scaleRaw = anyRaw.scale;
+    const scaleRaw = rawRecord.scale;
     const scale =
       scaleRaw && typeof scaleRaw === 'object'
         ? {
@@ -111,13 +111,13 @@ export function updateClipProperties(
           }
         : undefined;
 
-    const rotationDegRaw = anyRaw.rotationDeg;
+    const rotationDegRaw = rawRecord.rotationDeg;
     const rotationDeg =
       typeof rotationDegRaw === 'number' && Number.isFinite(rotationDegRaw)
         ? Math.max(-36000, Math.min(36000, rotationDegRaw))
         : undefined;
 
-    const positionRaw = anyRaw.position;
+    const positionRaw = rawRecord.position;
     const position =
       positionRaw && typeof positionRaw === 'object'
         ? {
@@ -126,7 +126,7 @@ export function updateClipProperties(
           }
         : undefined;
 
-    const anchorRaw = anyRaw.anchor;
+    const anchorRaw = rawRecord.anchor;
     const preset = anchorRaw && typeof anchorRaw === 'object' ? String(anchorRaw.preset ?? '') : '';
     const safePreset =
       preset === 'center' ||
@@ -146,7 +146,7 @@ export function updateClipProperties(
           }
         : undefined;
 
-    const cropRaw = anyRaw.crop;
+    const cropRaw = rawRecord.crop;
     const crop =
       cropRaw && typeof cropRaw === 'object'
         ? {
@@ -168,7 +168,7 @@ export function updateClipProperties(
   }
 
   if ('speed' in nextProps) {
-    const raw = (nextProps as any).speed;
+    const raw = nextProps['speed'];
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
     const speed = v === undefined ? undefined : Math.max(-10, Math.min(10, v));
     if (speed === 0) {
@@ -350,87 +350,87 @@ export function updateClipProperties(
 
   if (item.clipType === 'shape') {
     if ('shapeType' in nextProps) {
-      (nextProps as any).shapeType = nextProps.shapeType;
+      nextProps['shapeType'] = nextProps.shapeType;
     }
     if ('fillColor' in nextProps) {
-      (nextProps as any).fillColor =
+      nextProps['fillColor'] =
         typeof nextProps.fillColor === 'string' ? nextProps.fillColor : undefined;
     }
     if ('strokeColor' in nextProps) {
-      (nextProps as any).strokeColor =
+      nextProps['strokeColor'] =
         typeof nextProps.strokeColor === 'string' ? nextProps.strokeColor : undefined;
     }
     if ('strokeWidth' in nextProps) {
-      (nextProps as any).strokeWidth =
+      nextProps['strokeWidth'] =
         typeof nextProps.strokeWidth === 'number' ? nextProps.strokeWidth : undefined;
     }
     if ('shapeConfig' in nextProps) {
-      (nextProps as any).shapeConfig = nextProps.shapeConfig;
+      nextProps['shapeConfig'] = nextProps.shapeConfig;
     }
   }
 
   if (item.clipType === 'hud') {
     if ('hudType' in nextProps) {
-      (nextProps as any).hudType = nextProps.hudType;
+      nextProps['hudType'] = nextProps.hudType;
     }
     if ('background' in nextProps) {
-      (nextProps as any).background = nextProps.background;
+      nextProps['background'] = nextProps.background;
     }
     if ('content' in nextProps) {
-      (nextProps as any).content = nextProps.content;
+      nextProps['content'] = nextProps.content;
     }
     if ('frame' in nextProps) {
-      (nextProps as any).frame = nextProps.frame;
+      nextProps['frame'] = nextProps.frame;
     }
   }
 
   if ('text' in nextProps) {
     if (item.clipType !== 'text') {
-      delete (nextProps as any).text;
+      delete nextProps['text'];
     } else {
-      const raw = (nextProps as any).text;
+      const raw = nextProps['text'];
       const safe = typeof raw === 'string' ? raw : '';
-      (nextProps as any).text = safe;
+      nextProps['text'] = safe;
     }
   }
 
   if ('style' in nextProps) {
     if (item.clipType !== 'text') {
-      delete (nextProps as any).style;
+      delete nextProps['style'];
     } else {
-      const raw = (nextProps as any).style;
+      const raw = nextProps['style'];
       if (!raw || typeof raw !== 'object') {
-        delete (nextProps as any).style;
+        delete nextProps['style'];
       } else {
-        const anyRaw = raw as any;
-        const fontFamily = typeof anyRaw.fontFamily === 'string' ? anyRaw.fontFamily : undefined;
-        const widthRaw = anyRaw.width;
+        const rawRecord = raw as Record<string, unknown>;
+        const fontFamily = typeof rawRecord.fontFamily === 'string' ? rawRecord.fontFamily : undefined;
+        const widthRaw = rawRecord.width;
         const width =
           typeof widthRaw === 'number' && Number.isFinite(widthRaw) && widthRaw > 0
             ? Math.max(1, Math.min(10_000, Math.round(widthRaw)))
             : undefined;
-        const fontSizeRaw = anyRaw.fontSize;
+        const fontSizeRaw = rawRecord.fontSize;
         const fontSize =
           typeof fontSizeRaw === 'number' && Number.isFinite(fontSizeRaw)
             ? Math.max(1, Math.min(1000, Math.round(fontSizeRaw)))
             : undefined;
         const fontWeight =
-          typeof anyRaw.fontWeight === 'string' || typeof anyRaw.fontWeight === 'number'
-            ? anyRaw.fontWeight
+          typeof rawRecord.fontWeight === 'string' || typeof rawRecord.fontWeight === 'number'
+            ? rawRecord.fontWeight
             : undefined;
-        const color = typeof anyRaw.color === 'string' ? anyRaw.color : undefined;
+        const color = typeof rawRecord.color === 'string' ? rawRecord.color : undefined;
         const clampAlpha = (value: unknown) =>
           typeof value === 'number' && Number.isFinite(value)
             ? Math.max(0, Math.min(1, value))
             : undefined;
-        const colorAlpha = clampAlpha(anyRaw.colorAlpha);
-        const alignRaw = anyRaw.align;
+        const colorAlpha = clampAlpha(rawRecord.colorAlpha);
+        const alignRaw = rawRecord.align;
         const align =
           alignRaw === 'left' || alignRaw === 'center' || alignRaw === 'right'
             ? alignRaw
             : undefined;
 
-        const verticalAlignRaw = anyRaw.verticalAlign;
+        const verticalAlignRaw = rawRecord.verticalAlign;
         const verticalAlign =
           verticalAlignRaw === 'top' ||
           verticalAlignRaw === 'middle' ||
@@ -438,40 +438,40 @@ export function updateClipProperties(
             ? verticalAlignRaw
             : undefined;
 
-        const lineHeightRaw = anyRaw.lineHeight;
+        const lineHeightRaw = rawRecord.lineHeight;
         const lineHeight =
           typeof lineHeightRaw === 'number' && Number.isFinite(lineHeightRaw)
             ? Math.max(0.1, Math.min(10, lineHeightRaw))
             : undefined;
 
-        const letterSpacingRaw = anyRaw.letterSpacing;
+        const letterSpacingRaw = rawRecord.letterSpacing;
         const letterSpacing =
           typeof letterSpacingRaw === 'number' && Number.isFinite(letterSpacingRaw)
             ? Math.max(-1000, Math.min(1000, letterSpacingRaw))
             : undefined;
 
         const backgroundColor =
-          typeof anyRaw.backgroundColor === 'string' ? anyRaw.backgroundColor.trim() : undefined;
+          typeof rawRecord.backgroundColor === 'string' ? rawRecord.backgroundColor.trim() : undefined;
         const backgroundEnabled =
-          typeof anyRaw.backgroundEnabled === 'boolean' ? anyRaw.backgroundEnabled : undefined;
-        const backgroundAlpha = clampAlpha(anyRaw.backgroundAlpha);
-        const backgroundRadiusRaw = anyRaw.backgroundRadius;
+          typeof rawRecord.backgroundEnabled === 'boolean' ? rawRecord.backgroundEnabled : undefined;
+        const backgroundAlpha = clampAlpha(rawRecord.backgroundAlpha);
+        const backgroundRadiusRaw = rawRecord.backgroundRadius;
         const backgroundRadius =
           typeof backgroundRadiusRaw === 'number' && Number.isFinite(backgroundRadiusRaw)
             ? Math.max(0, Math.min(10_000, backgroundRadiusRaw))
             : undefined;
         const borderEnabled =
-          typeof anyRaw.borderEnabled === 'boolean' ? anyRaw.borderEnabled : undefined;
+          typeof rawRecord.borderEnabled === 'boolean' ? rawRecord.borderEnabled : undefined;
         const borderColor =
-          typeof anyRaw.borderColor === 'string' ? anyRaw.borderColor.trim() : undefined;
-        const borderAlpha = clampAlpha(anyRaw.borderAlpha);
-        const borderWidthRaw = anyRaw.borderWidth;
+          typeof rawRecord.borderColor === 'string' ? rawRecord.borderColor.trim() : undefined;
+        const borderAlpha = clampAlpha(rawRecord.borderAlpha);
+        const borderWidthRaw = rawRecord.borderWidth;
         const borderWidth =
           typeof borderWidthRaw === 'number' && Number.isFinite(borderWidthRaw)
             ? Math.max(0, Math.min(10_000, borderWidthRaw))
             : undefined;
 
-        const paddingRaw = anyRaw.padding;
+        const paddingRaw = rawRecord.padding;
         const padding = (() => {
           const clampPadding = (v: unknown) =>
             typeof v === 'number' && Number.isFinite(v)
@@ -484,13 +484,13 @@ export function updateClipProperties(
           }
           if (!paddingRaw || typeof paddingRaw !== 'object') return undefined;
 
-          const anyPad = paddingRaw as any;
-          const x = clampPadding(anyPad.x);
-          const y = clampPadding(anyPad.y);
-          const top = clampPadding(anyPad.top);
-          const right = clampPadding(anyPad.right);
-          const bottom = clampPadding(anyPad.bottom);
-          const left = clampPadding(anyPad.left);
+          const padRecord = paddingRaw as Record<string, unknown>;
+          const x = clampPadding(padRecord.x);
+          const y = clampPadding(padRecord.y);
+          const top = clampPadding(padRecord.top);
+          const right = clampPadding(padRecord.right);
+          const bottom = clampPadding(padRecord.bottom);
+          const left = clampPadding(padRecord.left);
 
           const fromXY =
             x !== undefined || y !== undefined
@@ -549,16 +549,16 @@ export function updateClipProperties(
         };
 
         if (Object.keys(safeStyle).length === 0) {
-          delete (nextProps as any).style;
+          delete nextProps['style'];
         } else {
-          (nextProps as any).style = safeStyle;
+          nextProps['style'] = safeStyle;
         }
       }
     }
   }
 
   if ('transform' in nextProps) {
-    const safe = sanitizeTransform((nextProps as any).transform);
+    const safe = sanitizeTransform(nextProps['transform']);
     if (safe === undefined) {
       delete nextProps.transform;
     } else {
@@ -567,44 +567,44 @@ export function updateClipProperties(
   }
 
   if ('opacity' in nextProps) {
-    const raw = (nextProps as any).opacity;
+    const raw = nextProps['opacity'];
     const safe =
       typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : undefined;
     if (safe === undefined) {
-      delete (nextProps as any).opacity;
+      delete nextProps['opacity'];
     } else {
-      (nextProps as any).opacity = safe;
+      nextProps['opacity'] = safe;
     }
   }
 
   if ('blendMode' in nextProps) {
-    const safe = sanitizeBlendMode((nextProps as any).blendMode);
+    const safe = sanitizeBlendMode(nextProps['blendMode']);
     if (safe === undefined) {
-      delete (nextProps as any).blendMode;
+      delete nextProps['blendMode'];
     } else {
-      (nextProps as any).blendMode = safe;
+      nextProps['blendMode'] = safe;
     }
   }
 
   if ('audioGain' in nextProps) {
-    const raw = (nextProps as any).audioGain;
+    const raw = nextProps['audioGain'];
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
     const gain = v === undefined ? undefined : normalizeGain(v, 1);
     if (gain === undefined) {
-      delete (nextProps as any).audioGain;
+      delete nextProps['audioGain'];
     } else {
-      (nextProps as any).audioGain = gain;
+      nextProps['audioGain'] = gain;
     }
   }
 
   if ('audioBalance' in nextProps) {
-    const raw = (nextProps as any).audioBalance;
+    const raw = nextProps['audioBalance'];
     const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
     const balance = v === undefined ? undefined : normalizeBalance(v, 0);
     if (balance === undefined) {
-      delete (nextProps as any).audioBalance;
+      delete nextProps['audioBalance'];
     } else {
-      (nextProps as any).audioBalance = balance;
+      nextProps['audioBalance'] = balance;
     }
   }
 
@@ -612,33 +612,33 @@ export function updateClipProperties(
   // Clamp to the current clip duration to avoid invalid envelopes.
   if ('audioFadeInUs' in nextProps) {
     const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-    const oppFadeUs = Math.max(0, Math.round((item as any).audioFadeOutUs ?? 0));
+    const oppFadeUs = Math.max(0, Math.round(item.audioFadeOutUs ?? 0));
     const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
-    const safe = clampAudioFadeUs((nextProps as any).audioFadeInUs, maxUs);
+    const safe = clampAudioFadeUs(nextProps['audioFadeInUs'], maxUs);
     if (safe === undefined) {
-      delete (nextProps as any).audioFadeInUs;
+      delete nextProps['audioFadeInUs'];
     } else {
-      (nextProps as any).audioFadeInUs = safe;
+      nextProps['audioFadeInUs'] = safe;
     }
   }
   if ('audioFadeOutUs' in nextProps) {
     const clipDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-    const oppFadeUs = Math.max(0, Math.round((item as any).audioFadeInUs ?? 0));
+    const oppFadeUs = Math.max(0, Math.round(item.audioFadeInUs ?? 0));
     const maxUs = Math.max(0, clipDurationUs - oppFadeUs);
-    const safe = clampAudioFadeUs((nextProps as any).audioFadeOutUs, maxUs);
+    const safe = clampAudioFadeUs(nextProps['audioFadeOutUs'], maxUs);
     if (safe === undefined) {
-      delete (nextProps as any).audioFadeOutUs;
+      delete nextProps['audioFadeOutUs'];
     } else {
-      (nextProps as any).audioFadeOutUs = safe;
+      nextProps['audioFadeOutUs'] = safe;
     }
   }
   if ('audioFadeInCurve' in nextProps) {
-    const raw = (nextProps as any).audioFadeInCurve;
-    (nextProps as any).audioFadeInCurve = raw === 'logarithmic' ? 'logarithmic' : 'linear';
+    const raw = nextProps['audioFadeInCurve'];
+    nextProps['audioFadeInCurve'] = raw === 'logarithmic' ? 'logarithmic' : 'linear';
   }
   if ('audioFadeOutCurve' in nextProps) {
-    const raw = (nextProps as any).audioFadeOutCurve;
-    (nextProps as any).audioFadeOutCurve = raw === 'logarithmic' ? 'logarithmic' : 'linear';
+    const raw = nextProps['audioFadeOutCurve'];
+    nextProps['audioFadeOutCurve'] = raw === 'logarithmic' ? 'logarithmic' : 'linear';
   }
 
   const nextTracks = doc.tracks.map((t) => {
@@ -646,7 +646,7 @@ export function updateClipProperties(
       const updatedItems = t.items.map((it) =>
         it.id === cmd.itemId && it.kind === 'clip'
           ? (() => {
-              const updated = { ...it, ...(nextProps as any) } as any;
+              const updated = { ...it, ...nextProps } as any;
               const durationUs = Math.max(0, Math.round(updated.timelineRange?.durationUs ?? 0));
               if (typeof updated.audioGain === 'number') {
                 updated.audioGain = clampNumber(updated.audioGain, 0, 10);
@@ -708,7 +708,7 @@ export function updateClipProperties(
             startUs: updated.item.sourceRange.startUs,
             durationUs: updated.item.sourceRange.durationUs,
           },
-          speed: (updated.item as any).speed,
+          speed: updated.item.speed,
         }),
       );
     }
@@ -729,15 +729,15 @@ export function updateClipProperties(
         updated.item.id,
         (a) => ({
           ...a,
-          audioGain: (updated.item as any).audioGain,
-          audioBalance: (updated.item as any).audioBalance,
-          audioFadeInUs: (updated.item as any).audioFadeInUs,
-          audioFadeOutUs: (updated.item as any).audioFadeOutUs,
-          audioFadeInCurve: (updated.item as any).audioFadeInCurve,
-          audioFadeOutCurve: (updated.item as any).audioFadeOutCurve,
-          audioMuted: (updated.item as any).audioMuted,
-          audioWaveformMode: (updated.item as any).audioWaveformMode,
-          showWaveform: (updated.item as any).showWaveform,
+          audioGain: updated.item.audioGain,
+          audioBalance: updated.item.audioBalance,
+          audioFadeInUs: updated.item.audioFadeInUs,
+          audioFadeOutUs: updated.item.audioFadeOutUs,
+          audioFadeInCurve: updated.item.audioFadeInCurve,
+          audioFadeOutCurve: updated.item.audioFadeOutCurve,
+          audioMuted: updated.item.audioMuted,
+          audioWaveformMode: updated.item.audioWaveformMode,
+          showWaveform: updated.item.showWaveform,
         }),
       );
     }
@@ -851,7 +851,7 @@ export function updateClipTransition(
   const nextTracks = doc.tracks.map((t) => {
     if (t.id !== track.id) return t;
     const nextItemsRaw = t.items.map((it) =>
-      it.id === item.id ? ({ ...it, ...(patch as any) } as TimelineTrackItem) : it,
+      it.id === item.id ? ({ ...it, ...patch } as TimelineTrackItem) : it,
     );
     nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
     const nextItems = autoAdaptClipTransitions(
