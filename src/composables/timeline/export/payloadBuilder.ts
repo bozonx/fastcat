@@ -10,6 +10,7 @@ import type {
   ClipEffect,
   TimelineDocument,
 } from '~/timeline/types';
+import { isClipItem, isSourceClipItem } from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
@@ -158,10 +159,10 @@ async function buildVideoTrackTree(
     });
 
     for (const item of track.items) {
-      if (item.kind !== 'clip') continue;
+      if (!isClipItem(item)) continue;
       if (item.disabled) continue;
 
-      const clipType = (item as any).clipType ?? 'media';
+      const clipType = item.clipType ?? 'media';
       const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
 
       const baseClip: WorkerTimelineClip = {
@@ -170,32 +171,32 @@ async function buildVideoTrackTree(
         id: item.id,
         trackId: runtimeTrackId,
         layer,
-        speed: (item as any).speedActive !== false ? (item as any).speed : undefined,
-        audioGain: (item as any).audioGain,
-        audioBalance: (item as any).audioBalance,
+        speed: item.speedActive !== false ? item.speed : undefined,
+        audioGain: item.audioGain,
+        audioBalance: item.audioBalance,
         audioFadeInUs:
-          (item as any).audioFadesActive !== false ? (item as any).audioFadeInUs : undefined,
+          item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
         audioFadeOutUs:
-          (item as any).audioFadesActive !== false ? (item as any).audioFadeOutUs : undefined,
+          item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
         audioFadeInCurve:
-          (item as any).audioFadesActive !== false ? (item as any).audioFadeInCurve : undefined,
+          item.audioFadesActive !== false ? item.audioFadeInCurve : undefined,
         audioFadeOutCurve:
-          (item as any).audioFadesActive !== false ? (item as any).audioFadeOutCurve : undefined,
+          item.audioFadesActive !== false ? item.audioFadeOutCurve : undefined,
         audioDeclickDurationUs: params.projectStore.projectSettings.project.audioDeclickDurationUs,
         defaultAudioFadeCurve:
           params.workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
-        opacity: (item as any).opacityActive !== false ? item.opacity : undefined,
-        blendMode: (item as any).blendModeActive !== false ? item.blendMode : undefined,
+        opacity: item.opacityActive !== false ? item.opacity : undefined,
+        blendMode: item.blendModeActive !== false ? item.blendMode : undefined,
         effects: itemEffects.length > 0 ? itemEffects : undefined,
-        mask: (item as any).maskActive !== false ? clonePlain((item as any).mask) : undefined,
+        mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
         transform:
-          (item as any).transformActive !== false ? clonePlain((item as any).transform) : undefined,
-        transitionIn: clonePlain((item as any).transitionIn),
-        transitionOut: clonePlain((item as any).transitionOut),
+          item.transformActive !== false ? clonePlain(item.transform) : undefined,
+        transitionIn: clonePlain(item.transitionIn),
+        transitionOut: clonePlain(item.transitionOut),
         freezeFrameSourceUs: item.freezeFrameSourceUs,
         sourceDurationUs:
-          typeof (item as any).sourceDurationUs === 'number'
-            ? (item as any).sourceDurationUs
+          typeof item.sourceDurationUs === 'number'
+            ? item.sourceDurationUs
             : undefined,
         timelineRange: {
           startUs: item.timelineRange.startUs,
@@ -274,8 +275,8 @@ async function buildVideoTrackTree(
             result.clips.push({
               ...trimmedNestedClip,
               id: `${item.id}_nested_${nestedClip.id}`,
-              audioGain: mergeGain((item as any).audioGain, nestedClip.audioGain),
-              audioBalance: mergeBalance((item as any).audioBalance, nestedClip.audioBalance),
+              audioGain: mergeGain(item.audioGain, nestedClip.audioGain),
+              audioBalance: mergeBalance(item.audioBalance, nestedClip.audioBalance),
               audioFadeInUs: mergeFadeInUs({
                 childFadeInUs: nestedClip.audioFadeInUs,
                 parentFadeInUs: (item as any).audioFadeInUs,
@@ -287,8 +288,8 @@ async function buildVideoTrackTree(
                 parentLocalEndUs: window.parentLocalEndUs,
                 parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
               }),
-              audioFadeInCurve: nestedClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
-              audioFadeOutCurve: nestedClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
+              audioFadeInCurve: nestedClip.audioFadeInCurve ?? item.audioFadeInCurve,
+              audioFadeOutCurve: nestedClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
             });
           }
         } catch (error) {
@@ -322,7 +323,7 @@ async function buildVideoTrackTree(
       if (clipType === 'background') {
         result.clips.push({
           ...baseClip,
-          backgroundColor: sanitizeTimelineColor((item as any).backgroundColor, '#000000'),
+          backgroundColor: sanitizeTimelineColor(item.backgroundColor, '#000000'),
         });
         continue;
       }
@@ -330,8 +331,8 @@ async function buildVideoTrackTree(
       if (clipType === 'text') {
         result.clips.push({
           ...baseClip,
-          text: String((item as any).text ?? ''),
-          style: clonePlain((item as any).style),
+          text: String(item.text ?? ''),
+          style: clonePlain(item.style),
         });
         continue;
       }
@@ -339,14 +340,14 @@ async function buildVideoTrackTree(
       if (clipType === 'shape') {
         result.clips.push({
           ...baseClip,
-          shapeType: (item as any).shapeType ?? 'square',
+          shapeType: item.shapeType ?? 'square',
           fillColor:
-            typeof (item as any).fillColor === 'string' ? (item as any).fillColor : undefined,
+            typeof item.fillColor === 'string' ? item.fillColor : undefined,
           strokeColor:
-            typeof (item as any).strokeColor === 'string' ? (item as any).strokeColor : undefined,
+            typeof item.strokeColor === 'string' ? item.strokeColor : undefined,
           strokeWidth:
-            typeof (item as any).strokeWidth === 'number' ? (item as any).strokeWidth : undefined,
-          shapeConfig: clonePlain((item as any).shapeConfig),
+            typeof item.strokeWidth === 'number' ? item.strokeWidth : undefined,
+          shapeConfig: clonePlain(item.shapeConfig),
         });
         continue;
       }
@@ -354,10 +355,10 @@ async function buildVideoTrackTree(
       if (clipType === 'hud') {
         result.clips.push({
           ...baseClip,
-          hudType: (item as any).hudType ?? 'media_frame',
-          background: clonePlain((item as any).background),
-          content: clonePlain((item as any).content),
-          frame: clonePlain((item as any).frame),
+          hudType: item.hudType ?? 'media_frame',
+          background: clonePlain(item.background),
+          content: clonePlain(item.content),
+          frame: clonePlain(item.frame),
         });
         continue;
       }

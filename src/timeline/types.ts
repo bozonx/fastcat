@@ -201,6 +201,20 @@ interface TimelineClipBase {
 
   speedActive?: boolean;
   audioFadesActive?: boolean;
+
+  // Optional fields from sub-types to avoid pervasive `as any` casts
+  backgroundColor?: string;
+  text?: string;
+  style?: TextClipStyle;
+  shapeType?: ShapeType;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  shapeConfig?: ShapeConfig;
+  hudType?: HudType;
+  background?: HudMediaParams;
+  content?: HudMediaParams;
+  frame?: HudMediaParams;
 }
 
 export interface TimelineMediaClipItem extends TimelineClipBase {

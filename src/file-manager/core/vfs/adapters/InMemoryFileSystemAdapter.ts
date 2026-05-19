@@ -56,8 +56,16 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
   async init(): Promise<void> {}
 
   async readDirectory(path: string): Promise<VfsEntry[]> {
-    const { node } = this.resolveNode(path);
-    if (!node || node.kind !== 'directory') throw new Error(`Directory not found: ${path}`);
+    let resolved: ReturnType<typeof this.resolveNode>;
+    try {
+      resolved = this.resolveNode(path);
+    } catch {
+      // Match other adapters: missing intermediate segments resolve as "no entries".
+      return [];
+    }
+    const { node } = resolved;
+    if (!node) return [];
+    if (node.kind !== 'directory') throw new Error(`Not a directory: ${path}`);
 
     return Array.from(node.children!.values()).map((n) => ({
       name: n.name,
@@ -105,7 +113,10 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
       copy.set(data);
       blob = new Blob([copy]);
     } else {
-      blob = new Blob([data], { type: 'text/plain' });
+      // Don't assume the string is text/plain — JSON, XML and other formats
+      // pass through here. An untyped Blob keeps consumers from making the
+      // wrong assumption based on the MIME type.
+      blob = new Blob([data]);
     }
 
     parent.children!.set(name, {
@@ -135,9 +146,14 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     } = this.resolveNode(sourcePath);
     if (!sourceNode) throw new Error(`Source not found: ${sourcePath}`);
 
-    const { parent: targetParent, name: targetName } = this.resolveNode(targetPath, {
-      createParent: true,
-    });
+    const {
+      parent: targetParent,
+      name: targetName,
+      node: existingTarget,
+    } = this.resolveNode(targetPath, { createParent: true });
+    if (existingTarget && existingTarget !== sourceNode) {
+      throw new Error(`Target already exists: ${targetPath}`);
+    }
 
     targetParent.children!.set(targetName, {
       ...sourceNode,

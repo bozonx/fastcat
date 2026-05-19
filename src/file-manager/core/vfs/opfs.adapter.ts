@@ -194,6 +194,19 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       }
       throw e;
     }
+
+    this.revokeObjectUrlsUnder(path);
+  }
+
+  private revokeObjectUrlsUnder(path: string): void {
+    if (!path) return;
+    const prefix = `${path}/`;
+    for (const [key, url] of this.objectUrlsByPath) {
+      if (key === path || key.startsWith(prefix)) {
+        URL.revokeObjectURL(url);
+        this.objectUrlsByPath.delete(key);
+      }
+    }
   }
 
   async copyFile(
@@ -264,6 +277,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       }
       await this.deleteEntry(sourcePath, true);
     }
+
+    this.revokeObjectUrlsUnder(sourcePath);
   }
 
   async exists(path: string): Promise<boolean> {

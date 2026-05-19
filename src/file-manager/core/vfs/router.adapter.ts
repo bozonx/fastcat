@@ -1,5 +1,6 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 import { copyDirectoryTree } from './copyTree';
+import { LARGE_FILE_PROGRESS_THRESHOLD_BYTES } from './constants';
 
 export interface VfsRoute {
   prefix: string;
@@ -184,8 +185,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
 
     const fileName = sourcePath.split('/').pop() || sourcePath;
 
-    if (size > 10 * 1024 * 1024) {
-      // > 10MB, show progress in background tasks
+    if (size > LARGE_FILE_PROGRESS_THRESHOLD_BYTES) {
+      // Above progress threshold: show progress and register a cancellable task.
       const { useBackgroundTasksStore } = await import('~/stores/background-tasks.store');
       const { useUiStore } = await import('~/stores/ui.store');
       const tasksStore = useBackgroundTasksStore();

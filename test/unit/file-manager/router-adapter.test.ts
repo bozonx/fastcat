@@ -25,7 +25,7 @@ vi.mock('~/stores/ui.store', () => ({
 }));
 
 function createAdapter(overrides: Partial<IFileSystemAdapter>): IFileSystemAdapter {
-  return {
+  const base: IFileSystemAdapter = {
     id: 'adapter',
     init: vi.fn(),
     readDirectory: vi.fn(),
@@ -44,13 +44,8 @@ function createAdapter(overrides: Partial<IFileSystemAdapter>): IFileSystemAdapt
     readStream: vi.fn(),
     writeStream: vi.fn(),
     writeJson: vi.fn(),
-    readJson: vi.fn(),
-    getParentPath: vi.fn(),
-    getName: vi.fn(),
-    joinPath: vi.fn(),
-    normalizePath: vi.fn(),
-    ...overrides,
-  } as IFileSystemAdapter;
+  };
+  return { ...base, ...overrides };
 }
 
 describe('RouterFileSystemAdapter', () => {

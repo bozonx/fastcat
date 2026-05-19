@@ -48,6 +48,20 @@ export interface FileManagerService {
   reloadDirectory: (path: string) => Promise<void>;
 }
 
+// Treat any letter or number from any script as alphanumeric, falling back to
+// the legacy ASCII+Cyrillic range when Unicode property escapes are unsupported.
+const ALPHANUMERIC_FIRST_CHAR_REGEX = (() => {
+  try {
+    return new RegExp('^[\\p{L}\\p{N}]', 'u');
+  } catch {
+    return /^[a-zA-Z0-9\u0400-\u04FF]/;
+  }
+})();
+
+function isFsNameAlphanumeric(name: string): boolean {
+  return ALPHANUMERIC_FIRST_CHAR_REGEX.test(name.charAt(0));
+}
+
 export function createFileManagerService(deps: FileManagerServiceDeps): FileManagerService {
   function compareEntries(a: FsEntry, b: FsEntry): number {
     // 1. Kind (directory first)
@@ -61,9 +75,8 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     }
 
     // 3. Special characters (non-alphanumeric) - ABOVE letters/numbers but BELOW hidden
-    const isAlphanumeric = (name: string) => /^[a-zA-Z0-9\u0400-\u04FF]/.test(name.charAt(0));
-    const aIsAlpha = isAlphanumeric(a.name);
-    const bIsAlpha = isAlphanumeric(b.name);
+    const aIsAlpha = isFsNameAlphanumeric(a.name);
+    const bIsAlpha = isFsNameAlphanumeric(b.name);
 
     if (aIsAlpha !== bIsAlpha) {
       return aIsAlpha ? 1 : -1; // Special comes first
@@ -73,59 +86,60 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
     return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
   }
 
+  // Throws on adapter failure; callers must decide whether to surface the error
+  // or fall back to existing state. Returning [] here would conflate a failed
+  // read with an empty directory and let mergeEntries wipe out expanded children.
   async function readDirectory(path = ''): Promise<FsEntry[]> {
-    try {
-      // By default, we skip expensive checkChildren (hasChildren/hasDirectories) to avoid O(N^2) performance hits.
-      // The tree will assume folders might have children (show chevron) until they are opened.
-      const entries = await deps.vfs.readDirectory(path, { checkChildren: false });
+    // By default, we skip expensive checkChildren (hasChildren/hasDirectories) to avoid O(N^2) performance hits.
+    // The tree will assume folders might have children (show chevron) until they are opened.
+    const entries = await deps.vfs.readDirectory(path, { checkChildren: false });
 
-      const normalizedEntries = entries
-        .filter((entry) => deps.showHiddenFiles() || !entry.name.startsWith('.'))
-        .map(
-          (entry) =>
-            ({
-              name: entry.name,
-              kind: entry.kind,
-              children: undefined,
-              expanded: deps.isPathExpanded(entry.path),
-              path: entry.path,
-              parentPath: entry.parentPath,
-              lastModified: entry.lastModified,
-              size: entry.size,
-              // If adapter didn't check children, we assume true for directories to show the chevron.
-              hasChildren: entry.kind === 'directory' ? (entry.hasChildren ?? true) : false,
-              hasDirectories: entry.kind === 'directory' ? (entry.hasDirectories ?? true) : false,
-            }) satisfies FsEntry,
-        );
+    const normalizedEntries = entries
+      .filter((entry) => deps.showHiddenFiles() || !entry.name.startsWith('.'))
+      .map(
+        (entry) =>
+          ({
+            name: entry.name,
+            kind: entry.kind,
+            children: undefined,
+            expanded: deps.isPathExpanded(entry.path),
+            path: entry.path,
+            parentPath: entry.parentPath,
+            lastModified: entry.lastModified,
+            size: entry.size,
+            // If adapter didn't check children, we assume true for directories to show the chevron.
+            hasChildren: entry.kind === 'directory' ? (entry.hasChildren ?? true) : false,
+            hasDirectories: entry.kind === 'directory' ? (entry.hasDirectories ?? true) : false,
+          }) satisfies FsEntry,
+      );
 
-      const videoPaths = normalizedEntries
-        .filter(
-          (e) =>
-            e.kind === 'file' &&
-            (e.path.startsWith(`${VIDEO_DIR_NAME}/`) ||
-              e.path.includes(`/${VIDEO_DIR_NAME}/`)),
-        )
-        .map((e) => e.path);
-      if (videoPaths.length > 0) {
-        await deps.checkExistingProxies(videoPaths);
-      }
-
-      const seenPaths = new Set<string>();
-      const uniqueEntries = normalizedEntries.filter((e) => {
-        if (seenPaths.has(e.path)) return false;
-        seenPaths.add(e.path);
-        return true;
-      });
-
-      return uniqueEntries.sort(compareEntries);
-    } catch (e) {
-      deps.onError?.({
-        title: 'File manager error',
-        message: `Failed to read directory${path ? `: ${path}` : ''}`,
-        error: e,
-      });
-      return [];
+    const videoPaths = normalizedEntries
+      .filter(
+        (e) =>
+          e.kind === 'file' &&
+          (e.path.startsWith(`${VIDEO_DIR_NAME}/`) || e.path.includes(`/${VIDEO_DIR_NAME}/`)),
+      )
+      .map((e) => e.path);
+    if (videoPaths.length > 0) {
+      await deps.checkExistingProxies(videoPaths);
     }
+
+    const seenPaths = new Set<string>();
+    const uniqueEntries = normalizedEntries.filter((e) => {
+      if (seenPaths.has(e.path)) return false;
+      seenPaths.add(e.path);
+      return true;
+    });
+
+    return uniqueEntries.sort(compareEntries);
+  }
+
+  function reportReadError(path: string, error: unknown): void {
+    deps.onError?.({
+      title: 'File manager error',
+      message: `Failed to read directory${path ? `: ${path}` : ''}`,
+      error,
+    });
   }
 
   function mergeEntries(prev: FsEntry[] | undefined, next: FsEntry[]): FsEntry[] {
@@ -201,11 +215,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
           }));
         }
       } catch (e) {
-        deps.onError?.({
-          title: 'File manager error',
-          message: `Failed to refresh directory${entry.path ? `: ${entry.path}` : ''}`,
-          error: e,
-        });
+        reportReadError(entry.path, e);
       }
 
       if (entry.children) {
@@ -235,11 +245,16 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         if (!entry.expanded) {
           await toggleDirectory(entry);
         } else if (entry.children === undefined) {
-          const children = await readDirectory(entry.path);
-          deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, entry.path, (e) => ({
-            ...e,
-            children,
-          }));
+          try {
+            const children = await readDirectory(entry.path);
+            deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, entry.path, (e) => ({
+              ...e,
+              children,
+            }));
+          } catch (e) {
+            reportReadError(entry.path, e);
+            break;
+          }
         }
 
         if (!deps.isPathExpanded(currentPath)) {
@@ -266,7 +281,14 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       autoExpandMediaDirs: shouldAutoExpandMediaDirs = true,
     } = options ?? {};
 
-    const nextRoot = await readDirectory(rootPath);
+    let nextRoot: FsEntry[];
+    try {
+      nextRoot = await readDirectory(rootPath);
+    } catch (e) {
+      // Preserve existing rootEntries on read failure; never overwrite with [].
+      reportReadError(rootPath, e);
+      return;
+    }
     deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
 
     if (shouldRefreshExpandedChildren) {
@@ -307,9 +329,13 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
 
   async function reloadDirectory(path: string) {
     if (!path) {
-      const nextRoot = await readDirectory('');
-      deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
-      deps.onDirectoryLoaded?.();
+      try {
+        const nextRoot = await readDirectory('');
+        deps.rootEntries.value = mergeEntries(deps.rootEntries.value, nextRoot);
+        deps.onDirectoryLoaded?.();
+      } catch (e) {
+        reportReadError('', e);
+      }
       return;
     }
     const entry = findEntryByPath(path);
@@ -323,11 +349,7 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       }));
       deps.onDirectoryLoaded?.();
     } catch (e) {
-      deps.onError?.({
-        title: 'File manager error',
-        message: `Failed to reload directory: ${path}`,
-        error: e,
-      });
+      reportReadError(path, e);
     }
   }
 

@@ -269,10 +269,12 @@ export function useEntryPreview(params: {
         if (entry.path && params.getDirectoryHandleByPath) {
           const handle = await params.getDirectoryHandleByPath(entry.path);
           if (handle) {
-            const stats = await computeDirectoryStats(handle, { recursiveFilesCount: false });
-            if (stats) {
+            try {
+              const stats = await computeDirectoryStats(handle, { recursiveFilesCount: false });
               size = stats.size;
               filesCount = stats.filesCount;
+            } catch {
+              // Fall back to entry metadata below if stats can't be computed.
             }
           }
         }

@@ -1,6 +1,8 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
 import { copyDirectoryTree } from './copyTree';
 
+import PQueue from 'p-queue';
+
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import {
@@ -21,6 +23,7 @@ import { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { normalizeFsPath } from '~/file-manager/core/path';
 
 const TAURI_APP_DATA_BASE_PATH = 'app-data';
+const CHECK_CHILDREN_CONCURRENCY = 8;
 
 export class TauriFileSystemAdapter implements IFileSystemAdapter {
   id = 'tauri';
@@ -131,6 +134,12 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const entries = await readDir(tauriPath, tauriOptions);
 
     const normalizedPath = this.normalizePath(path);
+    // Cap concurrency for child-check reads so listing a folder with many
+    // sub-directories doesn't fan out to N parallel readDir calls at once.
+    const queue = options?.checkChildren
+      ? new PQueue({ concurrency: CHECK_CHILDREN_CONCURRENCY })
+      : null;
+
     return await Promise.all(
       entries.map(async (entry) => {
         const name = entry.name ?? '';
@@ -139,17 +148,22 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
         let hasChildren: boolean | undefined;
         let hasDirectories: boolean | undefined;
 
-        if (entry.isDirectory && options?.checkChildren) {
-          try {
-            const { tauriPath: childTauriPath, options: childOptions } =
-              await this.getTauriFsArgs(entryPath);
-            const childEntries = await readDir(childTauriPath, childOptions);
-            hasChildren = childEntries.length > 0;
-            hasDirectories = childEntries.some((childEntry) => childEntry.isDirectory);
-          } catch {
-            hasChildren = false;
-            hasDirectories = false;
-          }
+        if (entry.isDirectory && queue) {
+          const childStats = await queue.add(async () => {
+            try {
+              const { tauriPath: childTauriPath, options: childOptions } =
+                await this.getTauriFsArgs(entryPath);
+              const childEntries = await readDir(childTauriPath, childOptions);
+              return {
+                hasChildren: childEntries.length > 0,
+                hasDirectories: childEntries.some((childEntry) => childEntry.isDirectory),
+              };
+            } catch {
+              return { hasChildren: false, hasDirectories: false };
+            }
+          });
+          hasChildren = childStats?.hasChildren ?? false;
+          hasDirectories = childStats?.hasDirectories ?? false;
         } else if (entry.isDirectory) {
           // Default to assume it might have children to show chevron,
           // avoiding the O(N^2) check unless explicitly requested.

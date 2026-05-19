@@ -40,15 +40,35 @@ export async function generateUniqueFsEntryName(params: {
 export interface DirectoryStats {
   size: number;
   filesCount: number;
+  /** True when traversal stopped because the maxEntries limit was reached. */
+  truncated?: boolean;
 }
 
+class DirectoryTooLargeError extends Error {
+  partial: DirectoryStats;
+  constructor(partial: DirectoryStats) {
+    super('Directory too large');
+    this.partial = partial;
+  }
+}
+
+/**
+ * Walks a directory tree and aggregates byte size and file count.
+ *
+ * Errors propagate to the caller — the function does not blanket-catch them so
+ * that "directory not found" and "permission denied" can be distinguished from
+ * a valid empty result. The `truncated` flag signals that traversal stopped
+ * because the maxEntries limit was reached; partial stats are still returned.
+ */
 export async function computeDirectoryStats(
   dirHandle: FileSystemDirectoryHandle,
   options?: { maxEntries?: number; recursiveFilesCount?: boolean },
-): Promise<DirectoryStats | undefined> {
+): Promise<DirectoryStats> {
   const maxEntries = options?.maxEntries ?? 25_000;
   const recursiveFilesCount = options?.recursiveFilesCount ?? true;
   let seen = 0;
+  let totalSizeAcrossWalk = 0;
+  let totalFilesAcrossWalk = 0;
 
   async function walk(handle: FileSystemDirectoryHandle, isRoot = true): Promise<DirectoryStats> {
     const iterator =
@@ -60,7 +80,11 @@ export async function computeDirectoryStats(
     let totalFiles = 0;
     for await (const value of iterator) {
       if (seen >= maxEntries) {
-        throw new Error('Directory too large');
+        throw new DirectoryTooLargeError({
+          size: totalSizeAcrossWalk,
+          filesCount: totalFilesAcrossWalk,
+          truncated: true,
+        });
       }
       seen += 1;
 
@@ -72,11 +96,14 @@ export async function computeDirectoryStats(
         try {
           const file = await (entryHandle as FileSystemFileHandle).getFile();
           totalSize += file.size;
+          totalSizeAcrossWalk += file.size;
           if (isRoot || recursiveFilesCount) {
             totalFiles += 1;
+            totalFilesAcrossWalk += 1;
           }
         } catch {
-          // ignore
+          // Individual file read failure (e.g. revoked permission) is
+          // non-fatal: we skip it and continue with the rest of the tree.
         }
       } else {
         const sub = await walk(entryHandle as FileSystemDirectoryHandle, false);
@@ -91,7 +118,10 @@ export async function computeDirectoryStats(
 
   try {
     return await walk(dirHandle);
-  } catch {
-    return undefined;
+  } catch (e) {
+    if (e instanceof DirectoryTooLargeError) {
+      return e.partial;
+    }
+    throw e;
   }
 }
