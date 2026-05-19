@@ -319,6 +319,16 @@ export interface TimelineGapItem {
 
 export type TimelineTrackItem = TimelineClipItem | TimelineGapItem;
 
+export function isClipItem(item: TimelineTrackItem): item is TimelineClipItem {
+  return item.kind === 'clip';
+}
+
+export function isSourceClipItem(
+  item: TimelineClipItem,
+): item is TimelineMediaClipItem | TimelineTimelineClipItem {
+  return item.clipType === 'media' || item.clipType === 'timeline';
+}
+
 export interface TimelineTransitionSelection {
   trackId: string;
   itemId: string;
