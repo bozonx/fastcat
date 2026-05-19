@@ -13,7 +13,6 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import {
   useFileManagerStore,
   useFilesPageFileManagerStore,
-  type FileManagerStore,
 } from '~/stores/file-manager.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
@@ -165,8 +164,6 @@ function handleCutClip() {
 }
 
 const {
-  isFreePosition,
-  hasLockedLinkedAudio,
   isLockedLinkedAudioClip,
   isInLinkedGroup,
   handleDeleteClip,

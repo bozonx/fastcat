@@ -50,6 +50,7 @@ function createMockDeps() {
     requestTimelineSave: vi.fn().mockResolvedValue(undefined),
     getHotkeyTargetClip: vi.fn().mockReturnValue({ trackId: 'track-1', itemId: 'clip-1' }),
     getSelectedOrActiveTrackId: vi.fn().mockReturnValue('track-1'),
+    onPlayheadJump: vi.fn(),
     editService: {
       rippleDeleteRange: vi.fn(),
       rippleTrimRight: vi.fn().mockResolvedValue(undefined),
@@ -68,6 +69,7 @@ describe('TimelineTrimmingModule', () => {
     const mod = createTimelineTrimmingModule(deps);
     mod.jumpToPrevClipBoundary();
     expect(deps.currentTime.value).toBe(500_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
   it('jumpToNextClipBoundary sets currentTime to boundary', () => {
@@ -75,6 +77,7 @@ describe('TimelineTrimmingModule', () => {
     const mod = createTimelineTrimmingModule(deps);
     mod.jumpToNextClipBoundary();
     expect(deps.currentTime.value).toBe(2_000_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
   it('rippleDeleteRange delegates to editService', () => {

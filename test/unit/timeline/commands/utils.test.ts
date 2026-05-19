@@ -21,16 +21,33 @@ const mockDoc: any = {
   tracks: [
     {
       id: 'track-1',
+      kind: 'video',
       items: [
         { id: 'clip-1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } },
-        { id: 'clip-2', kind: 'clip', timelineRange: { startUs: 1_000_000, durationUs: 500_000 }, linkedGroupId: 'group-1' },
+        {
+          id: 'clip-2',
+          kind: 'clip',
+          timelineRange: { startUs: 1_000_000, durationUs: 500_000 },
+          linkedGroupId: 'group-1',
+        },
       ],
     },
     {
       id: 'track-2',
+      kind: 'audio',
       items: [
-        { id: 'clip-3', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 }, linkedGroupId: 'group-1' },
-        { id: 'clip-4', kind: 'clip', timelineRange: { startUs: 2_000_000, durationUs: 500_000 }, linkedVideoClipId: 'clip-1' },
+        {
+          id: 'clip-3',
+          kind: 'clip',
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          linkedGroupId: 'group-1',
+        },
+        {
+          id: 'clip-4',
+          kind: 'clip',
+          timelineRange: { startUs: 2_000_000, durationUs: 500_000 },
+          linkedVideoClipId: 'clip-1',
+        },
       ],
     },
   ],

@@ -60,7 +60,7 @@ const fileManager = useFileManager();
 
 const fsEntryRef = computed(() => props.fsEntry ?? null);
 
-const { timelineDocSummary, fileInfo, currentUrl, mediaType, textContent } = useEntryPreview({
+const { timelineDocSummary, fileInfo, mediaType, textContent } = useEntryPreview({
   selectedFsEntry: fsEntryRef,
   previewMode: ref('original'),
   hasProxy: ref(false),

@@ -43,7 +43,6 @@ const viewportEl = ref<HTMLElement | null>(null);
 const timecodeEl = ref<HTMLElement | null>(null);
 
 const {
-  isPreviewSelected,
   zoom,
   zoomExact,
   zoomLabel,

@@ -17,8 +17,6 @@ import AdvancedSettings from './AdvancedSettings.vue';
 import MetadataSettings from './MetadataSettings.vue';
 import StorageSettings from './StorageSettings.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
-import SettingsSection from './SettingsSection.vue';
-
 const props = defineProps<{
   open: boolean;
 }>();

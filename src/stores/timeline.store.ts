@@ -216,6 +216,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     requestTimelineSave,
     getHotkeyTargetClip: () => selection.getHotkeyTargetClip(),
     getSelectedOrActiveTrackId: () => selection.getSelectedOrActiveTrackId(),
+    onPlayheadJump: () => {
+      scrollToPlayheadRequest.value++;
+    },
     editService,
   });
 
@@ -679,6 +682,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       const next = points.find((p) => p > currentTime.value + 100);
       if (next !== undefined) {
         lifecycle.setCurrentTimeUs(next);
+        scrollToPlayheadRequest.value++;
       }
     },
     goToPreviousMarker: () => {
@@ -694,6 +698,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       const prev = points.find((p) => p < currentTime.value - 100);
       if (prev !== undefined) {
         lifecycle.setCurrentTimeUs(prev);
+        scrollToPlayheadRequest.value++;
       }
     },
     addZoneMarkerAtPlayhead: markerService.addZoneMarkerAtPlayhead,

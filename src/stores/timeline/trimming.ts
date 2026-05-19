@@ -29,6 +29,7 @@ export interface TimelineTrimmingDeps {
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   getSelectedOrActiveTrackId: () => string | null;
+  onPlayheadJump?: () => void;
   editService: {
     rippleDeleteRange: (
       input: { trackIds: string[]; startUs: number; endUs: number },
@@ -197,6 +198,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     } else {
       deps.currentTime.value = prevUs;
     }
+    deps.onPlayheadJump?.();
   }
 
   function jumpToNextClipBoundary(options?: { currentTrackOnly?: boolean }) {
@@ -207,6 +209,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
       currentTrackId: deps.getSelectedOrActiveTrackId(),
     });
     deps.currentTime.value = nextUs;
+    deps.onPlayheadJump?.();
   }
 
   async function splitClipAtPlayhead(targetOverride?: { trackId: string; itemId: string } | null) {

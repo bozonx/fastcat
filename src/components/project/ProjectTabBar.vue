@@ -9,7 +9,6 @@ const emit = defineEmits<{
 
 const {
   activateProjectTab,
-  detachStaticTab,
   fileTabsModel,
   getStaticTabContextMenuItems,
   isDropTarget,

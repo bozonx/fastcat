@@ -6,23 +6,13 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
-import {
-  BASE_VIDEO_CODEC_OPTIONS,
-  checkVideoCodecSupport,
-  resolveVideoCodecOptions,
-} from '~/utils/webcodecs';
-import {
-  createDefaultExportPresets,
-  createExportPresetId,
-  resolveExportPreset,
-} from '~/utils/settings';
+import { resolveExportPreset } from '~/utils/settings';
 defineProps<{
   isActive: boolean;
 }>();
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
-const toast = useToast();
 
 const selectedPreset = computed(() =>
   resolveExportPreset(workspaceStore.userSettings.exportPresets),
