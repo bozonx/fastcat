@@ -1,4 +1,5 @@
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
+import { VfsDepthExceededError, throwIfAborted } from './errors';
 
 export interface CopyTreeEntry {
   name: string;
@@ -20,12 +21,6 @@ export interface CopyTreeOptions {
   signal?: AbortSignal;
 }
 
-function assertNotAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) {
-    throw new DOMException('The operation was aborted.', 'AbortError');
-  }
-}
-
 export async function copyDirectoryTree(
   ctx: CopyTreeContext,
   sourcePath: string,
@@ -42,9 +37,9 @@ async function copyDirectoryTreeAt(
   options: CopyTreeOptions | undefined,
   depth: number,
 ): Promise<void> {
-  assertNotAborted(options?.signal);
+  throwIfAborted(options?.signal, sourcePath);
   if (depth > MAX_COPY_DEPTH) {
-    throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
+    throw new VfsDepthExceededError(MAX_COPY_DEPTH, { path: sourcePath });
   }
 
   await ctx.createDirectory(targetPath);

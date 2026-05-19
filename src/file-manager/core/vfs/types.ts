@@ -13,127 +13,200 @@ export interface VfsEntry {
   adapterPayload?: unknown;
 }
 
+export interface VfsEntryMetadata {
+  size: number;
+  lastModified: number;
+  createdAt?: number;
+  kind: 'file' | 'directory';
+}
+
+export interface VfsReadDirectoryOptions {
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+  /**
+   * When true, the adapter checks each sub-directory and populates
+   * `hasChildren` / `hasDirectories` on returned entries.
+   *
+   * This costs one extra read per sub-directory — keep it off for big folders.
+   */
+  checkChildren?: boolean;
+  /** Abort signal — may be honored by adapters that fan out concurrent reads. */
+  signal?: AbortSignal;
+}
+
+export interface VfsOperationOptions {
+  signal?: AbortSignal;
+}
+
+/**
+ * Progress reporter that adapters can call during long-running operations.
+ *
+ * The Router uses this to surface cross-VFS copies in the UI (background-tasks
+ * store, notifications). Adapters and the core VFS layer must not import from
+ * Nuxt / Pinia / UI stores — instead, the plugin wires a reporter in.
+ */
+export interface VfsProgressReporter {
+  /**
+   * Begin tracking a long-running operation.
+   *
+   * `cancel` is invoked if the surrounding UI requests cancellation. The
+   * returned handle is then driven through `update` / `complete` / `fail` /
+   * `cancel`.
+   */
+  start(input: {
+    title: string;
+    operation: 'copy' | 'move' | 'delete' | 'other';
+    fileName?: string;
+    totalBytes?: number;
+    cancel?: () => void;
+  }): VfsProgressHandle;
+}
+
+export interface VfsProgressHandle {
+  /** Progress 0..1 (clamped by the reporter implementation). */
+  update(progress: number): void;
+  complete(): void;
+  fail(error: unknown): void;
+  cancel(): void;
+}
+
+/**
+ * Virtual filesystem adapter contract.
+ *
+ * Implementations:
+ * - `OpfsFileSystemAdapter` — browser (Origin Private File System)
+ * - `TauriFileSystemAdapter` — desktop (Tauri plugin-fs)
+ * - `BloggerDogVfsAdapter`  — remote object store
+ * - `InMemoryFileSystemAdapter` — tests / scratch
+ * - `RouterFileSystemAdapter` — composes the above by path prefix
+ *
+ * Error contract:
+ * - "not found" → `VfsNotFoundError`
+ * - name collision / wrong-kind → `VfsConflictError`
+ * - unsupported on this backend → `VfsUnsupportedError`
+ * - bad input → `VfsInvalidArgumentError`
+ * - aborted operation → `DOMException` with `name = 'AbortError'`
+ *
+ * Implementations should call `wrapPlatformError` from `./errors` to convert
+ * raw platform errors at the boundary.
+ *
+ * Path conventions:
+ * - Paths are POSIX-style, slash-separated. `/` and the empty string both
+ *   refer to the adapter root.
+ * - Adapters never traverse above their root, regardless of `..` segments
+ *   (see `normalizeFsPath`).
+ */
 export interface IFileSystemAdapter {
   id: string;
 
   /**
-   * When true, cross-adapter operations will skip sanitizing entry names
-   * (no replacement of characters illegal on local file systems).
-   * Adapters backed by APIs that accept arbitrary names (e.g. remote object stores) set this.
+   * When true, cross-adapter operations skip sanitization of entry names
+   * (no replacement of characters illegal on local filesystems).
+   * Adapters backed by APIs that accept arbitrary names (e.g. remote object
+   * stores) set this.
    */
   preservesEntryNames?: boolean;
 
-  /**
-   * Initializes the adapter (e.g. requests permissions, opens root handle)
-   */
+  /** Initialize the adapter (e.g. request permissions, open root handle). */
   init(): Promise<void>;
 
-  /**
-   * Reads a directory and returns its children entries
-   */
-  readDirectory(
-    path: string,
-    options?: {
-      sortBy?: string;
-      sortOrder?: 'asc' | 'desc';
-      limit?: number;
-      offset?: number;
-      /** If true, the adapter will check if sub-directories have children to populate hasChildren/hasDirectories. */
-      checkChildren?: boolean;
-    },
-  ): Promise<VfsEntry[]>;
+  /** Read a directory and return its child entries. */
+  readDirectory(path: string, options?: VfsReadDirectoryOptions): Promise<VfsEntry[]>;
 
-  /**
-   * Creates a directory at the given path
-   */
+  /** Create a directory at `path`. Creates intermediate directories. No-op if exists. */
   createDirectory(path: string): Promise<void>;
 
-  /**
-   * Lists entry names in a directory.
-   */
+  /** Return entry names in `path`. */
   listEntryNames(path: string): Promise<string[]>;
 
   /**
-   * Reads file contents as a Blob
+   * Read a file as a Blob.
+   *
+   * Throws `VfsNotFoundError` if the path doesn't exist.
+   * Implementations are not required to enforce the path being a file (some
+   * platforms surface that as the underlying type error).
    */
-  readFile(path: string): Promise<Blob>;
+  readFile(path: string, options?: VfsOperationOptions): Promise<Blob>;
 
   /**
-   * Writes data to a file
+   * Write a file. Creates intermediate directories.
+   *
+   * Implementations SHOULD write atomically (temp file + rename) to avoid
+   * leaving a partial file if the write is interrupted.
    */
-  writeFile(path: string, data: Blob | Uint8Array | string): Promise<void>;
+  writeFile(
+    path: string,
+    data: Blob | Uint8Array | string,
+    options?: VfsOperationOptions,
+  ): Promise<void>;
 
   /**
-   * Deletes a file or directory
-   * @param recursive if true, deletes directories with their contents
+   * Delete a file or directory.
+   *
+   * If `recursive` is true, directories are deleted along with their contents.
+   * If `recursive` is false (or omitted) and the path is a non-empty directory,
+   * implementations throw `VfsConflictError`.
+   * Missing paths resolve silently (no error).
    */
   deleteEntry(path: string, recursive?: boolean): Promise<void>;
 
-  /**
-   * Renames/moves an entry
-   */
+  /** Rename or move an entry inside the same adapter. */
   moveEntry(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void>;
 
-  /**
-   * Copies a file.
-   */
+  /** Copy a single file. Creates parent directories of the target. */
   copyFile(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void>;
 
-  /**
-   * Copies a directory recursively.
-   */
+  /** Copy a directory recursively. Creates the target directory. */
   copyDirectory(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void>;
 
-  /**
-   * Checks if an entry exists
-   */
+  /** Check if an entry exists. Returns false on missing paths (no throw). */
   exists(path: string): Promise<boolean>;
 
   /**
-   * Get metadata for an entry
+   * Return metadata, or null if the entry does not exist.
+   *
+   * For directories: `size` is 0 unless the adapter can compute it cheaply.
+   * `lastModified` should be a real mtime when available; adapters that can't
+   * provide one for directories return 0 (not `Date.now()`, which would lie).
    */
-  getMetadata(path: string): Promise<{
-    size: number;
-    lastModified: number;
-    createdAt?: number;
-    kind: 'file' | 'directory';
-  } | null>;
+  getMetadata(path: string): Promise<VfsEntryMetadata | null>;
 
   /**
-   * Get an object URL for a file (useful for media playback)
+   * Return a URL suitable for playback / `<img src>`.
+   *
+   * Implementations MUST manage the URL lifecycle (revoke previous URL for
+   * the same path on regeneration, revoke on deletion). Callers don't need
+   * to revoke the returned URL.
    */
   getObjectUrl(path: string): Promise<string>;
 
   /**
-   * Resolve a real file for a path (if supported)
-   * This is needed because some parts of the app (like media conversion) might still need File objects.
+   * Materialize a `File` object for the path, when supported.
+   * Some operations (e.g. WebCodecs decoding) still need a `File`.
+   * Returns `null` if the path is not a file or doesn't exist.
    */
   getFile(path: string): Promise<File | null>;
 
-  /**
-   * Writes JSON to a file.
-   */
-  writeJson(path: string, data: unknown): Promise<void>;
+  /** Write JSON via `writeFile`. */
+  writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void>;
 
-  /**
-   * Reads file contents as a ReadableStream
-   */
-  readStream(path: string): Promise<ReadableStream<Uint8Array>>;
+  /** Read file contents as a `ReadableStream`. */
+  readStream(path: string, options?: VfsOperationOptions): Promise<ReadableStream<Uint8Array>>;
 
-  /**
-   * Opens a WritableStream to a file
-   */
-  writeStream(path: string): Promise<WritableStream<Uint8Array>>;
+  /** Open a `WritableStream` to a file. Creates parent directories. */
+  writeStream(path: string, options?: VfsOperationOptions): Promise<WritableStream<Uint8Array>>;
 }

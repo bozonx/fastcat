@@ -201,6 +201,7 @@ interface TimelineClipBase {
 
   speedActive?: boolean;
   audioFadesActive?: boolean;
+  layer?: number;
 
   // Optional fields from sub-types to avoid pervasive `as any` casts
   backgroundColor?: string;

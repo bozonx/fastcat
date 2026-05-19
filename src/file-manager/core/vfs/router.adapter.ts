@@ -1,6 +1,13 @@
-import type { IFileSystemAdapter, VfsEntry } from './types';
+import type {
+  IFileSystemAdapter,
+  VfsEntry,
+  VfsEntryMetadata,
+  VfsOperationOptions,
+  VfsProgressReporter,
+  VfsReadDirectoryOptions,
+} from './types';
 import { copyDirectoryTree } from './copyTree';
-import { LARGE_FILE_PROGRESS_THRESHOLD_BYTES } from './constants';
+import { crossVfsCopy } from './crossVfs';
 
 export interface VfsRoute {
   prefix: string;
@@ -8,15 +15,32 @@ export interface VfsRoute {
   stripPrefix: (path: string) => string;
 }
 
+export interface RouterFileSystemAdapterOptions {
+  /**
+   * Optional reporter for surfacing large cross-adapter copies in the UI.
+   * The Router itself stays UI-agnostic: implement the reporter in the host
+   * application (Nuxt plugin, store wiring, …).
+   */
+  progressReporter?: VfsProgressReporter;
+}
+
 export class RouterFileSystemAdapter implements IFileSystemAdapter {
   id = 'router';
   private sortedRoutes: VfsRoute[];
+  private progressReporter: VfsProgressReporter | undefined;
 
   constructor(
     private defaultAdapter: IFileSystemAdapter,
     protected routes: VfsRoute[],
+    options?: RouterFileSystemAdapterOptions,
   ) {
     this.sortedRoutes = this.sortRoutes(routes);
+    this.progressReporter = options?.progressReporter;
+  }
+
+  /** Update the progress reporter after construction (useful at plugin wiring time). */
+  setProgressReporter(reporter: VfsProgressReporter | undefined): void {
+    this.progressReporter = reporter;
   }
 
   private sortRoutes(routes: VfsRoute[]): VfsRoute[] {
@@ -51,10 +75,10 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   private getRoute(path: string) {
     for (const route of this.sortedRoutes) {
       if (this.routeMatches(path, route.prefix)) {
-        return { adapter: route.adapter, mappedPath: route.stripPrefix(path) };
+        return { adapter: route.adapter, mappedPath: route.stripPrefix(path), route };
       }
     }
-    return { adapter: this.defaultAdapter, mappedPath: path };
+    return { adapter: this.defaultAdapter, mappedPath: path, route: null as VfsRoute | null };
   }
 
   async init(): Promise<void> {
@@ -64,16 +88,7 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     ]);
   }
 
-  async readDirectory(
-    path: string,
-    options?: {
-      sortBy?: string;
-      sortOrder?: 'asc' | 'desc';
-      limit?: number;
-      offset?: number;
-      checkChildren?: boolean;
-    },
-  ): Promise<VfsEntry[]> {
+  async readDirectory(path: string, options?: VfsReadDirectoryOptions): Promise<VfsEntry[]> {
     const { adapter, mappedPath } = this.getRoute(path);
     const entries = await adapter.readDirectory(mappedPath, options);
     // Map paths back to routed paths
@@ -89,19 +104,23 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     mappedEntryPath: string,
     mappedOriginalPath: string,
   ): string {
-    // If the router stripped a prefix, we need to add it back
+    // If the router stripped a prefix, we need to add it back.
     for (const route of this.sortedRoutes) {
-      if (this.routeMatches(originalPath, route.prefix)) {
-        if (mappedOriginalPath === '') {
-          return mappedEntryPath ? `${route.prefix}/${mappedEntryPath}` : route.prefix;
-        }
-        // Basic heuristic: replace mapped Original Path part with original Path
-        if (mappedEntryPath.startsWith(mappedOriginalPath)) {
-          const relative = mappedEntryPath.slice(mappedOriginalPath.length);
-          return originalPath + relative;
-        }
+      if (!this.routeMatches(originalPath, route.prefix)) continue;
+
+      if (mappedOriginalPath === '') {
+        return mappedEntryPath ? `${route.prefix}/${mappedEntryPath}` : route.prefix;
+      }
+      // The entry path is a descendant of the mapped original path. Check
+      // segment boundary (or exact equality) to avoid `foo` matching `foobar`.
+      if (mappedEntryPath === mappedOriginalPath) {
         return originalPath;
       }
+      if (mappedEntryPath.startsWith(`${mappedOriginalPath}/`)) {
+        const relative = mappedEntryPath.slice(mappedOriginalPath.length);
+        return originalPath + relative;
+      }
+      return originalPath;
     }
     return mappedEntryPath;
   }
@@ -116,24 +135,34 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     return adapter.listEntryNames(mappedPath);
   }
 
-  async readFile(path: string): Promise<Blob> {
+  async readFile(path: string, options?: VfsOperationOptions): Promise<Blob> {
     const { adapter, mappedPath } = this.getRoute(path);
-    return adapter.readFile(mappedPath);
+    return adapter.readFile(mappedPath, options);
   }
 
-  async writeFile(path: string, data: Blob | Uint8Array | string): Promise<void> {
+  async writeFile(
+    path: string,
+    data: Blob | Uint8Array | string,
+    options?: VfsOperationOptions,
+  ): Promise<void> {
     const { adapter, mappedPath } = this.getRoute(path);
-    return adapter.writeFile(mappedPath, data);
+    return adapter.writeFile(mappedPath, data, options);
   }
 
-  async readStream(path: string): Promise<ReadableStream<Uint8Array>> {
+  async readStream(
+    path: string,
+    options?: VfsOperationOptions,
+  ): Promise<ReadableStream<Uint8Array>> {
     const { adapter, mappedPath } = this.getRoute(path);
-    return adapter.readStream(mappedPath);
+    return adapter.readStream(mappedPath, options);
   }
 
-  async writeStream(path: string): Promise<WritableStream<Uint8Array>> {
+  async writeStream(
+    path: string,
+    options?: VfsOperationOptions,
+  ): Promise<WritableStream<Uint8Array>> {
     const { adapter, mappedPath } = this.getRoute(path);
-    return adapter.writeStream(mappedPath);
+    return adapter.writeStream(mappedPath, options);
   }
 
   async deleteEntry(path: string, recursive?: boolean): Promise<void> {
@@ -144,7 +173,7 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   async moveEntry(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
@@ -153,13 +182,25 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       return sourceRoute.adapter.moveEntry(sourceRoute.mappedPath, targetRoute.mappedPath, options);
     }
 
-    // Cross-adapter move
+    // Cross-adapter move: copy then delete, with sanitization handled by crossVfs.
+    const targetParts = targetPath.split('/').filter(Boolean);
+    const targetDirPath = targetParts.slice(0, -1).join('/');
     const meta = await sourceRoute.adapter.getMetadata(sourceRoute.mappedPath);
-    if (meta?.kind === 'directory') {
-      await this.copyDirectory(sourcePath, targetPath, options);
-    } else {
-      await this.copyFile(sourcePath, targetPath, options);
+    if (!meta) {
+      // Match other adapters: source missing is a not-found condition.
+      const { VfsNotFoundError } = await import('./errors');
+      throw new VfsNotFoundError(sourcePath);
     }
+
+    await crossVfsCopy({
+      sourceVfs: sourceRoute.adapter,
+      targetVfs: targetRoute.adapter,
+      sourcePath: sourceRoute.mappedPath,
+      sourceKind: meta.kind,
+      targetDirPath: this.getRoute(targetDirPath).mappedPath,
+      signal: options?.signal,
+      progressReporter: this.progressReporter,
+    });
 
     await sourceRoute.adapter.deleteEntry(sourceRoute.mappedPath, true);
   }
@@ -167,7 +208,7 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   async copyFile(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
@@ -176,88 +217,25 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       return sourceRoute.adapter.copyFile(sourceRoute.mappedPath, targetRoute.mappedPath, options);
     }
 
-    // Cross-adapter copy using streams
-    const meta = await sourceRoute.adapter.getMetadata(sourceRoute.mappedPath);
-    const size = meta?.size ?? 0;
-
-    const readStream = await sourceRoute.adapter.readStream(sourceRoute.mappedPath);
-    const writeStream = await targetRoute.adapter.writeStream(targetRoute.mappedPath);
-
-    const fileName = sourcePath.split('/').pop() || sourcePath;
-
-    if (size > LARGE_FILE_PROGRESS_THRESHOLD_BYTES) {
-      // Above progress threshold: show progress and register a cancellable task.
-      const { useBackgroundTasksStore } = await import('~/stores/background-tasks.store');
-      const { useUiStore } = await import('~/stores/ui.store');
-      const tasksStore = useBackgroundTasksStore();
-      const uiStore = useUiStore();
-      const controller = new AbortController();
-      const abort = () => controller.abort();
-      if (options?.signal?.aborted) {
-        abort();
-      } else {
-        options?.signal?.addEventListener('abort', abort, { once: true });
-      }
-
-      // The router adapter has no access to a component-scoped `useI18n`.
-      // We resolve the localized title via Nuxt app when available, falling
-      // back to a literal template (e.g. when running outside a Nuxt context
-      // such as inside unit tests).
-      let title = `Copying ${fileName}...`;
-      try {
-        const { useNuxtApp } = await import('nuxt/app');
-        const nuxtApp = useNuxtApp();
-        const translate = (nuxtApp as any)?.$i18n?.t;
-        if (typeof translate === 'function') {
-          title = translate('videoEditor.backgroundTasks.copyTitle', { fileName });
-        }
-      } catch {
-        // ignore — we already have a sensible fallback above
-      }
-
-      const taskId = tasksStore.addTask({
-        title,
-        type: 'file-operation',
-        status: 'running',
-        progress: 0,
-        cancel: abort,
-      });
-
-      let loaded = 0;
-      const progressStream = new TransformStream<Uint8Array, Uint8Array>({
-        transform(chunk, controller) {
-          loaded = Math.min(loaded + chunk.length, size);
-          tasksStore.updateTaskProgress(taskId, size > 0 ? loaded / size : 1);
-          controller.enqueue(chunk);
-        },
-      });
-
-      try {
-        await readStream
-          .pipeThrough(progressStream, { signal: controller.signal })
-          .pipeTo(writeStream, { signal: controller.signal });
-        tasksStore.updateTaskStatus(taskId, 'completed');
-        uiStore.notifyFileManagerUpdate();
-      } catch (e: unknown) {
-        tasksStore.updateTaskStatus(
-          taskId,
-          controller.signal.aborted ? 'cancelled' : 'failed',
-          e instanceof Error ? e.message : String(e),
-        );
-        throw e;
-      } finally {
-        options?.signal?.removeEventListener('abort', abort);
-      }
-    } else {
-      // Direct pipe
-      await readStream.pipeTo(writeStream, { signal: options?.signal });
-    }
+    // Cross-adapter copy via the shared crossVfs implementation.
+    // Path-sanitization and progress reporting live there, so router stays thin.
+    const targetParts = targetPath.split('/').filter(Boolean);
+    const targetDirPath = targetParts.slice(0, -1).join('/');
+    await crossVfsCopy({
+      sourceVfs: sourceRoute.adapter,
+      targetVfs: targetRoute.adapter,
+      sourcePath: sourceRoute.mappedPath,
+      sourceKind: 'file',
+      targetDirPath: this.getRoute(targetDirPath).mappedPath,
+      signal: options?.signal,
+      progressReporter: this.progressReporter,
+    });
   }
 
   async copyDirectory(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void> {
     const sourceRoute = this.getRoute(sourcePath);
     const targetRoute = this.getRoute(targetPath);
@@ -270,9 +248,12 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       );
     }
 
+    // Cross-adapter directory copy. We still go through copyDirectoryTree at
+    // the router level so the recursion stays inside the routed namespace
+    // (each entry path round-trips back to the prefixed form before recursion).
     await copyDirectoryTree(
       {
-        readDirectory: (path) => this.readDirectory(path),
+        readDirectory: (path) => this.readDirectory(path, { signal: options?.signal }),
         createDirectory: (path) => this.createDirectory(path),
         copyFile: (source, target, copyOptions) => this.copyFile(source, target, copyOptions),
       },
@@ -287,9 +268,7 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     return adapter.exists(mappedPath);
   }
 
-  async getMetadata(
-    path: string,
-  ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null> {
+  async getMetadata(path: string): Promise<VfsEntryMetadata | null> {
     const { adapter, mappedPath } = this.getRoute(path);
     return adapter.getMetadata(mappedPath);
   }
@@ -304,8 +283,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     return adapter.getFile(mappedPath);
   }
 
-  async writeJson(path: string, data: unknown): Promise<void> {
+  async writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void> {
     const { adapter, mappedPath } = this.getRoute(path);
-    return adapter.writeJson(mappedPath, data);
+    return adapter.writeJson(mappedPath, data, options);
   }
 }

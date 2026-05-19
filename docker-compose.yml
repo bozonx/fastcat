@@ -22,3 +22,19 @@ services:
       - NUXT_PUBLIC_FASTCAT_ACCOUNT_API_URL=https://user-account.fastcat.video
       - NUXT_PUBLIC_FASTCAT_ACCOUNT_UI_URL=https://user-account.fastcat.video/ui
       - PORT=3000
+
+  # Playwright e2e test runner.
+  # Image version must match the installed @playwright/test version in package.json.
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.58.2-jammy
+    container_name: fastcat-playwright
+    profiles:
+      - e2e
+    working_dir: /app
+    ipc: host
+    volumes:
+      - .:/app
+    environment:
+      - CI=true
+      - E2E_TEST=1
+      - E2E_PORT=3009

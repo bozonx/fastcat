@@ -209,7 +209,7 @@ async function buildVideoTrackTree(
       };
 
       if (clipType === 'timeline') {
-        const rawPath = (item as any).source?.path;
+        const rawPath = item.source?.path;
         if (!rawPath) continue;
         const path = params.nestedTimelinePath
           ? resolveNestedMediaPath({
@@ -279,12 +279,12 @@ async function buildVideoTrackTree(
               audioBalance: mergeBalance(item.audioBalance, nestedClip.audioBalance),
               audioFadeInUs: mergeFadeInUs({
                 childFadeInUs: nestedClip.audioFadeInUs,
-                parentFadeInUs: (item as any).audioFadeInUs,
+                parentFadeInUs: item.audioFadeInUs,
                 parentLocalStartUs: window.parentLocalStartUs,
               }),
               audioFadeOutUs: mergeFadeOutUs({
                 childFadeOutUs: nestedClip.audioFadeOutUs,
-                parentFadeOutUs: (item as any).audioFadeOutUs,
+                parentFadeOutUs: item.audioFadeOutUs,
                 parentLocalEndUs: window.parentLocalEndUs,
                 parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
               }),
@@ -303,7 +303,7 @@ async function buildVideoTrackTree(
       }
 
       if (clipType === 'media') {
-        const rawPath = (item as any).source?.path;
+        const rawPath = item.source?.path;
         if (!rawPath) continue;
 
         result.clips.push({
@@ -460,12 +460,12 @@ function getNestedClipWindow(params: {
   parentItem: TimelineTrackItem;
 }): NestedClipWindow | null {
   const { nestedClip, parentItem } = params;
-  const parentSpeedRaw = getTimelinePlaybackSpeed((parentItem as any).speed);
+  const parentSpeedRaw = getTimelinePlaybackSpeed((parentItem as import('~/timeline/types').TimelineClipItem).speed);
   const parentSpeed = Math.abs(parentSpeedRaw);
   const isReversed = parentSpeedRaw < 0;
   const nestedStartUs = nestedClip.timelineRange.startUs;
   const nestedEndUs = nestedStartUs + nestedClip.timelineRange.durationUs;
-  const parentSourceRange = (parentItem as any).sourceRange;
+  const parentSourceRange = (parentItem as import('~/timeline/types').TimelineClipItem).sourceRange;
   const windowStartUs = parentSourceRange.startUs;
   const windowEndUs = windowStartUs + parentSourceRange.durationUs;
   const overlapStartUs = Math.max(nestedStartUs, windowStartUs);
@@ -494,7 +494,7 @@ function mergeNestedClipSpeed(params: {
   parentItem: TimelineTrackItem;
   nestedClip: WorkerTimelineClip;
 }): number | undefined {
-  const parentSpeedRaw = getTimelinePlaybackSpeed((params.parentItem as any).speed);
+  const parentSpeedRaw = getTimelinePlaybackSpeed((params.parentItem as import('~/timeline/types').TimelineClipItem).speed);
   const nestedSpeedRaw = getTimelinePlaybackSpeed(params.nestedClip.speed);
   const combined = parentSpeedRaw * nestedSpeedRaw;
   return combined === 1 && params.nestedClip.speed === undefined ? undefined : combined;
@@ -550,10 +550,10 @@ export async function toWorkerTimelineClips(
   const nestedDocCache = options?.nestedDocCache ?? new Map<string, TimelineDocument>();
 
   for (const item of items) {
-    if (item.kind !== 'clip') continue;
-    if ((item as any).disabled) continue;
+    if (!isClipItem(item)) continue;
+    if (item.disabled) continue;
 
-    const clipType = (item as any).clipType ?? 'media';
+    const clipType = item.clipType ?? 'media';
     const parentOpacity = options?.parentOpacity ?? 1;
     const itemOpacity = item.opacity ?? 1;
     const combinedOpacity = parentOpacity * itemOpacity;
@@ -569,48 +569,48 @@ export async function toWorkerTimelineClips(
 
     const base: WorkerTimelineClip = {
       kind: 'clip',
-      clipType: clipType === 'timeline' ? 'media' : (clipType as any),
+      clipType: clipType === 'timeline' ? 'media' : clipType,
       id: item.id,
       trackId: item.trackId,
       layer:
         options?.layer ??
-        (typeof (item as any).layer === 'number' && Number.isFinite((item as any).layer)
-          ? Math.round((item as any).layer)
+        (typeof item.layer === 'number' && Number.isFinite(item.layer)
+          ? Math.round(item.layer)
           : 0),
-      speed: (item as any).speedActive !== false ? (item as any).speed : undefined,
-      audioGain: mergeGain(parentAudioGain, (item as any).audioGain),
-      audioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
+      speed: item.speedActive !== false ? item.speed : undefined,
+      audioGain: mergeGain(parentAudioGain, item.audioGain),
+      audioBalance: mergeBalance(parentAudioBalance, item.audioBalance),
       audioFadeInUs:
-        (item as any).audioFadesActive !== false ? (item as any).audioFadeInUs : undefined,
+        item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
       audioFadeOutUs:
-        (item as any).audioFadesActive !== false ? (item as any).audioFadeOutUs : undefined,
+        item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
       audioFadeInCurve:
-        (item as any).audioFadesActive !== false ? (item as any).audioFadeInCurve : undefined,
+        item.audioFadesActive !== false ? item.audioFadeInCurve : undefined,
       audioFadeOutCurve:
-        (item as any).audioFadesActive !== false ? (item as any).audioFadeOutCurve : undefined,
+        item.audioFadesActive !== false ? item.audioFadeOutCurve : undefined,
       audioDeclickDurationUs: projectStore.projectSettings.project.audioDeclickDurationUs,
       defaultAudioFadeCurve: workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
-      opacity: (item as any).opacityActive !== false ? combinedOpacity : undefined,
-      blendMode: (item as any).blendModeActive !== false ? combinedBlendMode : undefined,
+      opacity: item.opacityActive !== false ? combinedOpacity : undefined,
+      blendMode: item.blendModeActive !== false ? combinedBlendMode : undefined,
       effects: combinedEffects.length > 0 ? combinedEffects : undefined,
-      mask: (item as any).maskActive !== false ? clonePlain((item as any).mask) : undefined,
+      mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
       transform:
-        (item as any).transformActive !== false ? clonePlain((item as any).transform) : undefined,
-      transitionIn: clonePlain((item as any).transitionIn),
-      transitionOut: clonePlain((item as any).transitionOut),
+        item.transformActive !== false ? clonePlain(item.transform) : undefined,
+      transitionIn: clonePlain(item.transitionIn),
+      transitionOut: clonePlain(item.transitionOut),
       sourceDurationUs:
-        typeof (item as any).sourceDurationUs === 'number'
-          ? (item as any).sourceDurationUs
+        typeof item.sourceDurationUs === 'number'
+          ? item.sourceDurationUs
           : undefined,
-      shapeType: (item as any).shapeType,
-      fillColor: (item as any).fillColor,
-      strokeColor: (item as any).strokeColor,
-      strokeWidth: (item as any).strokeWidth,
-      shapeConfig: clonePlain((item as any).shapeConfig),
-      hudType: (item as any).hudType,
-      background: clonePlain((item as any).background),
-      content: clonePlain((item as any).content),
-      frame: clonePlain((item as any).frame),
+      shapeType: item.shapeType,
+      fillColor: item.fillColor,
+      strokeColor: item.strokeColor,
+      strokeWidth: item.strokeWidth,
+      shapeConfig: clonePlain(item.shapeConfig),
+      hudType: item.hudType,
+      background: clonePlain(item.background),
+      content: clonePlain(item.content),
+      frame: clonePlain(item.frame),
       timelineRange: {
         startUs: item.timelineRange.startUs,
         durationUs: item.timelineRange.durationUs,
@@ -622,7 +622,7 @@ export async function toWorkerTimelineClips(
     };
 
     if (clipType === 'media' || clipType === 'timeline') {
-      const rawPath = (item as any).source?.path;
+      const rawPath = item.source?.path;
       if (!rawPath) continue;
       const path =
         clipType === 'timeline' && options?.nestedTimelinePath
@@ -729,19 +729,19 @@ export async function toWorkerTimelineClips(
                     audioBalance: resolvedNClip.audioBalance,
                     audioFadeInUs: mergeFadeInUs({
                       childFadeInUs: resolvedNClip.audioFadeInUs,
-                      parentFadeInUs: (item as any).audioFadeInUs,
+                      parentFadeInUs: item.audioFadeInUs,
                       parentLocalStartUs: window.parentLocalStartUs,
                     }),
                     audioFadeOutUs: mergeFadeOutUs({
                       childFadeOutUs: resolvedNClip.audioFadeOutUs,
-                      parentFadeOutUs: (item as any).audioFadeOutUs,
+                      parentFadeOutUs: item.audioFadeOutUs,
                       parentLocalEndUs: window.parentLocalEndUs,
                       parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
                     }),
                     audioFadeInCurve:
-                      resolvedNClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
+                      resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
                     audioFadeOutCurve:
-                      resolvedNClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
+                      resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
                   });
                 }
               }
@@ -764,8 +764,8 @@ export async function toWorkerTimelineClips(
                 parentOpacity: combinedOpacity,
                 parentBlendMode: combinedBlendMode,
                 parentEffects: combinedEffects,
-                parentAudioGain: mergeGain(parentAudioGain, (item as any).audioGain),
-                parentAudioBalance: mergeBalance(parentAudioBalance, (item as any).audioBalance),
+                parentAudioGain: mergeGain(parentAudioGain, item.audioGain),
+                parentAudioBalance: mergeBalance(parentAudioBalance, item.audioBalance),
                 onWarning: options?.onWarning,
                 nestedTimelinePath: path,
                 nestedDocCache,
@@ -807,19 +807,19 @@ export async function toWorkerTimelineClips(
                   audioBalance: resolvedNClip.audioBalance,
                   audioFadeInUs: mergeFadeInUs({
                     childFadeInUs: resolvedNClip.audioFadeInUs,
-                    parentFadeInUs: (item as any).audioFadeInUs,
+                    parentFadeInUs: item.audioFadeInUs,
                     parentLocalStartUs: window.parentLocalStartUs,
                   }),
                   audioFadeOutUs: mergeFadeOutUs({
                     childFadeOutUs: resolvedNClip.audioFadeOutUs,
-                    parentFadeOutUs: (item as any).audioFadeOutUs,
+                    parentFadeOutUs: item.audioFadeOutUs,
                     parentLocalEndUs: window.parentLocalEndUs,
                     parentDurationUs,
                   }),
                   audioFadeInCurve:
-                    resolvedNClip.audioFadeInCurve ?? (item as any).audioFadeInCurve,
+                    resolvedNClip.audioFadeInCurve ?? item.audioFadeInCurve,
                   audioFadeOutCurve:
-                    resolvedNClip.audioFadeOutCurve ?? (item as any).audioFadeOutCurve,
+                    resolvedNClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
                 });
               }
             }
@@ -841,33 +841,33 @@ export async function toWorkerTimelineClips(
     } else if (clipType === 'background') {
       clips.push({
         ...base,
-        backgroundColor: sanitizeTimelineColor((item as any).backgroundColor, '#000000'),
+        backgroundColor: sanitizeTimelineColor(item.backgroundColor, '#000000'),
       });
     } else if (clipType === 'text') {
       clips.push({
         ...base,
-        text: String((item as any).text ?? ''),
-        style: clonePlain((item as any).style),
+        text: String(item.text ?? ''),
+        style: clonePlain(item.style),
       });
     } else if (clipType === 'shape') {
       clips.push({
         ...base,
-        shapeType: (item as any).shapeType ?? 'square',
+        shapeType: item.shapeType ?? 'square',
         fillColor:
-          typeof (item as any).fillColor === 'string' ? (item as any).fillColor : undefined,
+          typeof item.fillColor === 'string' ? item.fillColor : undefined,
         strokeColor:
-          typeof (item as any).strokeColor === 'string' ? (item as any).strokeColor : undefined,
+          typeof item.strokeColor === 'string' ? item.strokeColor : undefined,
         strokeWidth:
-          typeof (item as any).strokeWidth === 'number' ? (item as any).strokeWidth : undefined,
-        shapeConfig: clonePlain((item as any).shapeConfig),
+          typeof item.strokeWidth === 'number' ? item.strokeWidth : undefined,
+        shapeConfig: clonePlain(item.shapeConfig),
       });
     } else if (clipType === 'hud') {
       clips.push({
         ...base,
-        hudType: (item as any).hudType ?? 'media_frame',
-        background: clonePlain((item as any).background),
-        content: clonePlain((item as any).content),
-        frame: clonePlain((item as any).frame),
+        hudType: item.hudType ?? 'media_frame',
+        background: clonePlain(item.background),
+        content: clonePlain(item.content),
+        frame: clonePlain(item.frame),
       });
     } else {
       clips.push(base);

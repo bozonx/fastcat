@@ -1,6 +1,16 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { formatAudioChannels } from '~/utils/audio';
+import {
+  formatAudioChannels,
+  linearToDb,
+  dbToLinear,
+  getAudioMeterZone,
+  getAudioMeterColorClass,
+  getAudioMeterPercent,
+  isAudioClipping,
+  clipHasAudio,
+  trackHasAudio,
+} from '~/utils/audio';
 import { getGainAtClipTime, resolveEffectiveFadeDurationsSeconds } from '~/utils/audio/envelope';
 
 describe('utils/audio', () => {
@@ -10,6 +20,68 @@ describe('utils/audio', () => {
     expect(formatAudioChannels(1)).toBe('Mono');
     expect(formatAudioChannels(2)).toBe('Stereo');
     expect(formatAudioChannels(6)).toBe('6 tracks');
+  });
+
+  it('linearToDb converts linear to decibels', () => {
+    expect(linearToDb(1)).toBeCloseTo(0, 5);
+    expect(linearToDb(0.001)).toBeCloseTo(-60, 5);
+    expect(linearToDb(0)).toBe(-60);
+  });
+
+  it('dbToLinear converts decibels to linear', () => {
+    expect(dbToLinear(0)).toBeCloseTo(1, 5);
+    expect(dbToLinear(-59)).toBeCloseTo(0.001122, 5);
+    expect(dbToLinear(-60)).toBe(0);
+    expect(dbToLinear(-80)).toBe(0);
+  });
+
+  it('getAudioMeterZone returns correct zones', () => {
+    expect(getAudioMeterZone(-10)).toBe('safe');
+    expect(getAudioMeterZone(3)).toBe('warning');
+    expect(getAudioMeterZone(8)).toBe('danger');
+    expect(getAudioMeterZone(undefined)).toBe('safe');
+  });
+
+  it('getAudioMeterColorClass returns correct classes', () => {
+    expect(getAudioMeterColorClass(-10)).toBe('bg-green-500');
+    expect(getAudioMeterColorClass(3)).toBe('bg-yellow-500');
+    expect(getAudioMeterColorClass(8)).toBe('bg-red-500');
+  });
+
+  it('getAudioMeterPercent returns percentage within range', () => {
+    expect(getAudioMeterPercent(-60)).toBe(0);
+    expect(getAudioMeterPercent(12)).toBe(100);
+    expect(getAudioMeterPercent(-24)).toBeCloseTo(50, 1);
+  });
+
+  it('isAudioClipping detects clipping', () => {
+    expect(isAudioClipping(0)).toBe(true);
+    expect(isAudioClipping(-1)).toBe(false);
+    expect(isAudioClipping(undefined)).toBe(false);
+  });
+
+  it('clipHasAudio respects kind and metadata', () => {
+    const audioTrack = { kind: 'audio' as const, items: [] };
+    const videoTrack = { kind: 'video' as const, items: [] };
+    const clip = { kind: 'clip' as const, clipType: 'media' as const, source: { path: 'a.mp4' }, audioFromVideoDisabled: false };
+    const gap = { kind: 'gap' as const };
+
+    expect(clipHasAudio(gap, audioTrack, {})).toBe(false);
+    // audio track returns true even without metadata for media clips
+    expect(clipHasAudio(clip, audioTrack, {})).toBe(true);
+    // video track needs metadata or audioFromVideoDisabled=false
+    expect(clipHasAudio(clip, videoTrack, { 'a.mp4': { audio: true } as any })).toBe(true);
+    expect(clipHasAudio(clip, videoTrack, {})).toBe(false);
+  });
+
+  it('trackHasAudio checks items', () => {
+    const track = {
+      kind: 'audio' as const,
+      items: [{ kind: 'clip' as const, clipType: 'media' as const, source: { path: 'a.mp4' } }],
+    };
+    expect(trackHasAudio(track, { 'a.mp4': { audio: true } as any })).toBe(true);
+    // audio track returns true for media clips even without metadata
+    expect(trackHasAudio(track, {})).toBe(true);
   });
 
   it('uses transition duration when fade is unset and applies transition curve', () => {
