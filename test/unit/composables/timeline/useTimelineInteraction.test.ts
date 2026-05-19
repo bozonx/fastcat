@@ -12,6 +12,7 @@ import {
   useTimelineInteraction,
 } from '~/composables/timeline/useTimelineInteraction';
 import {
+  computeTimelinePlaybackAutoScrollLeft,
   computeSnappedStartUs,
   quantizeStartUsToFrames,
   pickBestSnapCandidateUs,
@@ -79,6 +80,39 @@ describe('useTimelineInteraction', () => {
     });
 
     expect(nextScrollLeft).toBe(0);
+  });
+
+  it('computeTimelinePlaybackAutoScrollLeft should not scroll inside the safe viewport area', () => {
+    const nextScrollLeft = computeTimelinePlaybackAutoScrollLeft({
+      playheadPx: 840,
+      scrollLeft: 0,
+      viewportWidth: 1000,
+      maxScrollLeft: 5000,
+    });
+
+    expect(nextScrollLeft).toBeNull();
+  });
+
+  it('computeTimelinePlaybackAutoScrollLeft should place the playhead near the left working area', () => {
+    const nextScrollLeft = computeTimelinePlaybackAutoScrollLeft({
+      playheadPx: 900,
+      scrollLeft: 0,
+      viewportWidth: 1000,
+      maxScrollLeft: 5000,
+    });
+
+    expect(nextScrollLeft).toBe(600);
+  });
+
+  it('computeTimelinePlaybackAutoScrollLeft should clamp to the available scroll range', () => {
+    const nextScrollLeft = computeTimelinePlaybackAutoScrollLeft({
+      playheadPx: 4900,
+      scrollLeft: 4000,
+      viewportWidth: 1000,
+      maxScrollLeft: 4200,
+    });
+
+    expect(nextScrollLeft).toBe(4200);
   });
 
   it('computeSnappedStartUs should always quantize to frames when frame snapping is enabled', () => {

@@ -39,6 +39,7 @@ const {
   isExporting,
   exportProgress,
   exportError,
+  exportWarnings,
   cancelRequested,
   outputFilename,
   filenameError,
@@ -373,6 +374,21 @@ async function onConfirm() {
           class="p-3 text-sm text-error-400 bg-error-400/10 rounded-md border border-error-400/20"
         >
           {{ exportError }}
+        </div>
+
+        <div
+          v-if="exportWarnings && exportWarnings.length > 0"
+          class="p-3 text-sm text-amber-300 bg-amber-400/10 rounded-md border border-amber-400/20 flex flex-col gap-1"
+        >
+          <div class="font-medium flex items-center gap-1.5">
+            <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4" />
+            {{ t('videoEditor.export.warningsTitle', { count: exportWarnings.length }) }}
+          </div>
+          <ul class="list-disc list-inside space-y-0.5">
+            <li v-for="(w, i) in exportWarnings" :key="i" class="text-xs leading-snug">
+              {{ w }}
+            </li>
+          </ul>
         </div>
       </div>
     </div>

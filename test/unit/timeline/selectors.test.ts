@@ -21,9 +21,7 @@ const mockDoc: any = {
     {
       id: 'track-2',
       kind: 'audio',
-      items: [
-        { id: 'clip-2', kind: 'clip', timelineRange: { startUs: 0, durationUs: 2_000_000 } },
-      ],
+      items: [{ id: 'clip-2', kind: 'clip', timelineRange: { startUs: 0, durationUs: 2_000_000 } }],
     },
   ],
 };

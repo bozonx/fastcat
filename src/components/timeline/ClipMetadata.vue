@@ -19,6 +19,20 @@ const clipItem = computed(() =>
 
 <template>
   <div class="absolute inset-x-0 top-0 h-full pointer-events-none rounded overflow-hidden">
+    <!-- Nested timeline badge: helps the user distinguish embedded sequences
+         from regular media. Double-click on the clip opens the nested timeline
+         (see TimelineClip.vue:278). -->
+    <div
+      v-if="clipItem && clipItem.clipType === 'timeline' && !isMediaMissing"
+      class="absolute top-1 left-1 z-20 flex items-center gap-1 px-1 py-0.5 rounded bg-sky-600/80 text-white pointer-events-none"
+      :title="t('fastcat.timeline.nestedTimelineHint')"
+    >
+      <UIcon name="i-heroicons-square-3-stack-3d" class="w-3 h-3" />
+      <span v-if="clipWidthPx > 80" class="text-[10px] font-medium leading-none">
+        {{ t('fastcat.timeline.nestedTimeline') }}
+      </span>
+    </div>
+
     <!-- Missing Media Overlay -->
     <div
       v-if="isMediaMissing"

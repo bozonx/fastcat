@@ -8,7 +8,7 @@ import type {
   TimelineTrack,
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { getDocFps, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import { getDocFps, nextItemId, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 import { cloneValue } from '~/utils/clone';
 
@@ -562,17 +562,16 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       return doc.tracks.find((track) => track.kind === sourceKind) ?? baseTargetTrack;
     }
 
+    // Use nextItemId for both clip and group IDs — it uses crypto.randomUUID
+    // when available so two paste bursts in the same track cannot collide.
     for (const item of items) {
       const clip = item.clip;
       const targetTrack = resolveCompatibleTargetTrack(item);
 
-      const newClipId = `clip_${targetTrack.id}_paste_${Math.random().toString(36).substring(2, 9)}`;
+      const newClipId = nextItemId(targetTrack.id, 'clip');
       idMap.set(clip.id, newClipId);
       if (clip.linkedGroupId && !pastedGroupIds.has(clip.linkedGroupId)) {
-        pastedGroupIds.set(
-          clip.linkedGroupId,
-          `group_paste_${Math.random().toString(36).substring(2, 9)}`,
-        );
+        pastedGroupIds.set(clip.linkedGroupId, nextItemId(targetTrack.id, 'group'));
       }
       pasteDescriptor.push({ trackId: targetTrack.id, itemId: newClipId });
     }

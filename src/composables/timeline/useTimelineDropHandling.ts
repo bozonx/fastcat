@@ -131,7 +131,9 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       color: 'warning',
       title: t('common.warning'),
       description: t('fastcat.timeline.noDroppableTrack', {
-        kind: t(kind === 'video' ? 'fastcat.timeline.trackKindVideo' : 'fastcat.timeline.trackKindAudio'),
+        kind: t(
+          kind === 'video' ? 'fastcat.timeline.trackKindVideo' : 'fastcat.timeline.trackKindAudio',
+        ),
       }),
     });
   }
@@ -177,7 +179,9 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     if (!inputTrack) return null;
 
     if (payloadKind === 'timeline') {
-      return inputTrack.locked ? getCompatibleTrackId(inputTrackId, inputTrack.kind) : inputTrack.id;
+      return inputTrack.locked
+        ? getCompatibleTrackId(inputTrackId, inputTrack.kind)
+        : inputTrack.id;
     }
 
     const mediaType = getMediaTypeFromFilename(path ?? '');
@@ -435,7 +439,8 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       };
     }
 
-    const mediaKind = getMediaTypeFromFilename(item.name || item.path) === 'audio' ? 'audio' : 'video';
+    const mediaKind =
+      getMediaTypeFromFilename(item.name || item.path) === 'audio' ? 'audio' : 'video';
     const targetTrackId = ensureDroppableTrackId({
       baseTrackId: context.baseTrackId,
       kind: mediaKind,

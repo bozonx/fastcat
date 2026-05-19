@@ -10,7 +10,11 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 
 import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
-import { timeUsToPx, pxToTimeUs } from '~/utils/timeline/geometry';
+import {
+  computeTimelinePlaybackAutoScrollLeft,
+  timeUsToPx,
+  pxToTimeUs,
+} from '~/utils/timeline/geometry';
 import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
 
 import TimelineTrackSection from '~/components/timeline/TimelineTrackSection.vue';
@@ -351,6 +355,31 @@ watch(
       if (playheadPx < el.scrollLeft || playheadPx > el.scrollLeft + vw) {
         el.scrollLeft = Math.max(0, playheadPx - vw / 2);
       }
+    });
+  },
+);
+
+watch(
+  () => [timelineStore.currentTime, timelineStore.isPlaying] as const,
+  () => {
+    if (!timelineStore.isPlaying || isPanning.value || isDraggingPlayhead.value) return;
+
+    const el = scrollEl.value;
+    if (!el) return;
+
+    const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
+    const nextScrollLeft = computeTimelinePlaybackAutoScrollLeft({
+      playheadPx,
+      scrollLeft: el.scrollLeft,
+      viewportWidth: el.clientWidth,
+      maxScrollLeft: el.scrollWidth - el.clientWidth,
+    });
+
+    if (nextScrollLeft === null || Math.abs(nextScrollLeft - el.scrollLeft) < 1) return;
+
+    el.scrollTo({
+      left: nextScrollLeft,
+      behavior: 'smooth',
     });
   },
 );

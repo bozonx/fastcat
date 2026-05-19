@@ -61,6 +61,43 @@ export function computeAnchoredScrollLeft(params: {
   return Math.max(0, nextScrollLeft);
 }
 
+export interface TimelinePlaybackAutoScrollParams {
+  playheadPx: number;
+  scrollLeft: number;
+  viewportWidth: number;
+  maxScrollLeft?: number;
+  triggerRatio?: number;
+  targetRatio?: number;
+}
+
+export function computeTimelinePlaybackAutoScrollLeft(
+  params: TimelinePlaybackAutoScrollParams,
+): number | null {
+  const triggerRatio = params.triggerRatio ?? 0.85;
+  const targetRatio = params.targetRatio ?? 0.3;
+  const playheadPx = Number.isFinite(params.playheadPx) ? params.playheadPx : 0;
+  const scrollLeft = Number.isFinite(params.scrollLeft) ? Math.max(0, params.scrollLeft) : 0;
+  const viewportWidth = Number.isFinite(params.viewportWidth)
+    ? Math.max(0, params.viewportWidth)
+    : 0;
+
+  if (viewportWidth <= 0) {
+    return null;
+  }
+
+  const triggerPx = scrollLeft + viewportWidth * triggerRatio;
+  if (playheadPx < triggerPx) {
+    return null;
+  }
+
+  const rawNextScrollLeft = playheadPx - viewportWidth * targetRatio;
+  const maxScrollLeft = Number.isFinite(params.maxScrollLeft)
+    ? Math.max(0, params.maxScrollLeft ?? 0)
+    : Number.POSITIVE_INFINITY;
+
+  return Math.min(maxScrollLeft, Math.max(0, rawNextScrollLeft));
+}
+
 /**
  * Sanitize fps preserving non-integer rates (29.97, 23.976, 59.94 …) so NTSC timebases survive.
  * Clamped to [1, 240] and quantized to 3 decimals; mirror of `sanitizeFps` in commands/utils.
