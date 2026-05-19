@@ -10,7 +10,25 @@ export interface SetupVirtualWorkspaceOptions {
 }
 
 /**
+ * Removes a single root entry from OPFS.
+ */
+export async function removeOpfsEntry(page: Page, name: string): Promise<void> {
+  await page.evaluate(async (entryName) => {
+    const root = await navigator.storage.getDirectory();
+
+    try {
+      await (root as any).removeEntry(entryName, { recursive: true });
+    } catch (error) {
+      if (!(error instanceof DOMException) || error.name !== 'NotFoundError') {
+        throw error;
+      }
+    }
+  }, name);
+}
+
+/**
  * Clears the entire Origin Private File System.
+ * Prefer `removeOpfsEntry` for parallel tests.
  */
 export async function clearOpfs(page: Page): Promise<void> {
   await page.evaluate(async () => {

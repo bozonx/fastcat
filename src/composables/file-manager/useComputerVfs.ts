@@ -2,7 +2,7 @@ import { ref, shallowRef } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
-import type { IFileSystemAdapter, VfsEntry } from '~/file-manager/core/vfs/types';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 export function useComputerVfs() {
   const workspaceStore = useWorkspaceStore();
@@ -12,9 +12,6 @@ export function useComputerVfs() {
   const rootPath = ref('');
 
   if (isTauri) {
-    const isWindows =
-      typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('win');
-
     // In Tauri, the workspace root is the path of the current workspace handle
     const workspacePath = (workspaceStore.workspaceHandle as any)?.path || '';
 

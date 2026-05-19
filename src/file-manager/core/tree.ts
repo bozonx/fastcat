@@ -1,6 +1,22 @@
 import type { FsEntry } from '~/types/fs';
 import { normalizeFsPath } from './path';
 
+const entryIndexCache = new WeakMap<FsEntry[], Map<string, FsEntry>>();
+
+function getEntryIndex(entries: FsEntry[]): Map<string, FsEntry> {
+  const cached = entryIndexCache.get(entries);
+  if (cached) return cached;
+
+  const index = new Map<string, FsEntry>();
+  for (const entry of entries) {
+    if (entry.path) {
+      index.set(entry.path, entry);
+    }
+  }
+  entryIndexCache.set(entries, index);
+  return index;
+}
+
 export function findEntryByPath(entries: FsEntry[], path: string): FsEntry | null {
   const normalized = normalizeFsPath(path);
   if (!normalized) return null;
@@ -14,7 +30,7 @@ export function findEntryByPath(entries: FsEntry[], path: string): FsEntry | nul
 
   for (let i = 0; i < parts.length; i++) {
     currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]!;
-    const found = currentList.find((e) => e.path === currentPath);
+    const found = getEntryIndex(currentList).get(currentPath);
     if (!found) return null;
 
     currentEntry = found;
@@ -39,23 +55,37 @@ export function mergeEntries(
     if (p.path) prevByPath.set(p.path, p);
   }
 
+  const nextPaths = new Set<string>();
+  for (const n of next) {
+    if (!n.path) continue;
+    if (nextPaths.has(n.path)) {
+      throw new Error(`Duplicate file manager entry path: ${n.path}`);
+    }
+    nextPaths.add(n.path);
+  }
+
   return next.map((n) => {
     if (!n.path) return { ...n };
     const p = prevByPath.get(n.path);
 
     if (p) {
       if (n.kind === 'directory') {
+        const shouldKeepChildren =
+          p.lastModified === undefined ||
+          n.lastModified === undefined ||
+          p.lastModified === n.lastModified;
+
         return {
           ...n,
           expanded: Boolean(p.expanded),
-          children: p.children,
+          children: shouldKeepChildren ? p.children : undefined,
         };
       }
 
       return {
         ...n,
         expanded: Boolean(p.expanded),
-        lastModified: p.lastModified,
+        lastModified: n.lastModified ?? p.lastModified,
       };
     }
 
@@ -83,32 +113,28 @@ export function updateEntryByPath(
     depth: number,
     currentPath: string,
   ): { next: FsEntry[]; changed: boolean } {
-    let changed = false;
     const targetPath = currentPath ? `${currentPath}/${parts[depth]}` : (parts[depth] ?? '');
+    const index = list.findIndex((entry) => entry.path === targetPath);
+    if (index === -1) return { next: list, changed: false };
 
-    const next = list.map((entry) => {
-      if (entry.path !== targetPath) return entry;
+    const entry = list[index];
+    if (!entry) return { next: list, changed: false };
 
-      if (depth === parts.length - 1) {
-        if (entry.path === normalized) {
-          changed = true;
-          return updater(entry);
-        }
-        return entry;
+    let updatedEntry: FsEntry | null = null;
+    if (depth === parts.length - 1) {
+      updatedEntry = entry.path === normalized ? updater(entry) : null;
+    } else if (entry.kind === 'directory' && Array.isArray(entry.children)) {
+      const r = walk(entry.children, depth + 1, targetPath);
+      if (r.changed) {
+        updatedEntry = { ...entry, children: r.next };
       }
+    }
 
-      if (entry.kind === 'directory' && Array.isArray(entry.children)) {
-        const r = walk(entry.children, depth + 1, targetPath);
-        if (r.changed) {
-          changed = true;
-          return { ...entry, children: r.next };
-        }
-      }
+    if (!updatedEntry) return { next: list, changed: false };
 
-      return entry;
-    });
-
-    return { next: changed ? next : list, changed };
+    const next = list.slice();
+    next[index] = updatedEntry;
+    return { next, changed: true };
   }
 
   return walk(entries, 0, '').next;

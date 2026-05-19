@@ -1,16 +1,24 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const e2ePort = Number(process.env.E2E_PORT ?? 3009);
+const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${e2ePort}`;
+const webServerCommand = process.env.CI
+  ? `E2E_TEST=1 pnpm build && E2E_TEST=1 pnpm preview --port ${e2ePort}`
+  : `E2E_TEST=1 pnpm dev --port ${e2ePort}`;
+
 export default defineConfig({
   testDir: './test/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html']],
 
   use: {
-    baseURL: 'http://localhost:3009',
+    baseURL,
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
 
     launchOptions: {
       args: [
@@ -31,11 +39,13 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'E2E_TEST=1 pnpm dev',
-    url: 'http://localhost:3009',
-    reuseExistingServer: !process.env.CI,
+    command: webServerCommand,
+    url: baseURL,
+    timeout: 120_000,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === '1',
     env: {
       E2E_TEST: '1',
+      E2E_PORT: String(e2ePort),
     },
   },
 });

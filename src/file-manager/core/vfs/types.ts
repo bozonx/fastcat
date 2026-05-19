@@ -17,6 +17,13 @@ export interface IFileSystemAdapter {
   id: string;
 
   /**
+   * When true, cross-adapter operations will skip sanitizing entry names
+   * (no replacement of characters illegal on local file systems).
+   * Adapters backed by APIs that accept arbitrary names (e.g. remote object stores) set this.
+   */
+  preservesEntryNames?: boolean;
+
+  /**
    * Initializes the adapter (e.g. requests permissions, opens root handle)
    */
   init(): Promise<void>;

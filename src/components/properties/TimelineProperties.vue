@@ -18,15 +18,11 @@ import type { FsEntry } from '~/types/fs';
 import {
   DEFAULT_TIMELINE_ZOOM_POSITION,
   formatZoomMultiplier,
-  MAX_TIMELINE_ZOOM_POSITION,
-  MIN_TIMELINE_ZOOM_POSITION,
-  TIMELINE_ZOOM_POSITIONS,
   timelineZoomPositionToScale,
   timelineZoomScaleToPosition,
 } from '~/utils/zoom';
 import { formatDurationSeconds, formatBytes } from '~/utils/format';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import { useFilePropertiesBasics } from '~/composables/properties/useFilePropertiesBasics';
 

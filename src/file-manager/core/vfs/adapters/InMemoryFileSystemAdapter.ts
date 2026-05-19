@@ -163,7 +163,22 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
-    throw new Error('Not implemented');
+    const { node: sourceNode } = this.resolveNode(sourcePath);
+    if (!sourceNode || sourceNode.kind !== 'directory') {
+      throw new Error(`Source directory not found: ${sourcePath}`);
+    }
+
+    await this.createDirectory(targetPath);
+
+    for (const child of sourceNode.children!.values()) {
+      const childSource = sourcePath ? `${sourcePath}/${child.name}` : child.name;
+      const childTarget = targetPath ? `${targetPath}/${child.name}` : child.name;
+      if (child.kind === 'directory') {
+        await this.copyDirectory(childSource, childTarget);
+      } else {
+        await this.copyFile(childSource, childTarget);
+      }
+    }
   }
 
   async exists(path: string): Promise<boolean> {

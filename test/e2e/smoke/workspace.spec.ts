@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupVirtualWorkspace, clearOpfs } from '../../utils/e2e/virtual-fs';
+import { removeOpfsEntry, setupVirtualWorkspace } from '../../utils/e2e/virtual-fs';
 
 test.describe('Smoke: Workspace Initialization', () => {
   test('OPFS is supported in the test browser', async ({ page }) => {
@@ -15,20 +15,22 @@ test.describe('Smoke: Workspace Initialization', () => {
     expect(isOpfsSupported).toBe(true);
   });
 
-  test('virtual workspace can be created in OPFS', async ({ page }) => {
-    await page.goto('/');
-    await clearOpfs(page);
-    await setupVirtualWorkspace(page, { workspaceName: 'smoke-test-ws' });
+  test('virtual workspace can be created in OPFS', async ({ page }, testInfo) => {
+    const workspaceName = `smoke-test-ws-${testInfo.workerIndex}-${testInfo.retry}`;
 
-    const handleExists = await page.evaluate(async () => {
+    await page.goto('/');
+    await removeOpfsEntry(page, workspaceName);
+    await setupVirtualWorkspace(page, { workspaceName });
+
+    const handleExists = await page.evaluate(async (name) => {
       const root = await navigator.storage.getDirectory();
       try {
-        await root.getDirectoryHandle('smoke-test-ws');
+        await root.getDirectoryHandle(name);
         return true;
       } catch {
         return false;
       }
-    });
+    }, workspaceName);
 
     expect(handleExists).toBe(true);
   });

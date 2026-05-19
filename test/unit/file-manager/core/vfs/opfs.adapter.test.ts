@@ -237,11 +237,11 @@ describe('OpfsFileSystemAdapter', () => {
       expect(textEntry?.hasDirectories).toBeUndefined();
     });
 
-    it('defaults hasChildren=true for directories without checkChildren', async () => {
+    it('leaves child flags undefined without checkChildren', async () => {
       const entries = await adapter.readDirectory('/');
       const videoEntry = entries.find((e) => e.name === 'video');
-      expect(videoEntry?.hasChildren).toBe(true);
-      expect(videoEntry?.hasDirectories).toBe(true);
+      expect(videoEntry?.hasChildren).toBeUndefined();
+      expect(videoEntry?.hasDirectories).toBeUndefined();
     });
   });
 
@@ -379,6 +379,15 @@ describe('OpfsFileSystemAdapter', () => {
     it('returns a blob URL for a file', async () => {
       const url = await adapter.getObjectUrl('text.txt');
       expect(url).toMatch(/^blob:/);
+    });
+
+    it('revokes the previous object URL for the same path', async () => {
+      const revokeSpy = vi.spyOn(URL, 'revokeObjectURL');
+
+      const firstUrl = await adapter.getObjectUrl('text.txt');
+      await adapter.getObjectUrl('text.txt');
+
+      expect(revokeSpy).toHaveBeenCalledWith(firstUrl);
     });
   });
 

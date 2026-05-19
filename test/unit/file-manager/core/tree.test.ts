@@ -75,6 +75,51 @@ describe('file-manager core tree', () => {
     expect(merged[0]?.children).toEqual([prevChild]);
   });
 
+  it('mergeEntries should discard cached directory children when mtime changes', () => {
+    const prevChild = createFile({ name: 'a.mp4', path: '_video/a.mp4' });
+    const prev: FsEntry[] = [
+      {
+        ...createDir({
+          name: '_video',
+          path: '_video',
+          expanded: true,
+          children: [prevChild],
+        }),
+        lastModified: 1,
+      },
+    ];
+    const next: FsEntry[] = [
+      {
+        ...createDir({
+          name: '_video',
+          path: '_video',
+          expanded: false,
+        }),
+        lastModified: 2,
+      },
+    ];
+
+    const merged = mergeEntries(prev, next, {
+      isPathExpanded: () => false,
+    });
+
+    expect(merged[0]?.expanded).toBe(true);
+    expect(merged[0]?.children).toBeUndefined();
+  });
+
+  it('mergeEntries should reject duplicate next paths', () => {
+    const next: FsEntry[] = [
+      createFile({ name: 'a.txt', path: 'a.txt' }),
+      createFile({ name: 'a-again.txt', path: 'a.txt' }),
+    ];
+
+    expect(() =>
+      mergeEntries([], next, {
+        isPathExpanded: () => false,
+      }),
+    ).toThrow('Duplicate file manager entry path');
+  });
+
   it('mergeEntries should apply persisted expanded state for new directories', () => {
     const prev: FsEntry[] = [];
     const next: FsEntry[] = [createDir({ name: '_video', path: '_video', expanded: false })];

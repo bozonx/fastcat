@@ -7,7 +7,12 @@ import {
 } from '~/utils/constants';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
-import { assertValidFsEntryName, MAX_COPY_DEPTH } from '~/file-manager/core/rules';
+import {
+  assertValidFsEntryName,
+  isCopyAllowed,
+  isMoveAllowed,
+  MAX_COPY_DEPTH,
+} from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
@@ -37,18 +42,28 @@ async function generateUniqueEntryNameWithSuffix(params: {
   name: string;
 }): Promise<string> {
   const { baseName, extension } = splitFileName(params.name);
-  let candidateName = params.name;
-  let candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
+  const existingNames =
+    typeof params.vfs.listEntryNames === 'function'
+      ? new Set(await params.vfs.listEntryNames(params.dirPath))
+      : null;
 
-  if (!(await params.vfs.exists(candidatePath))) {
+  async function isAvailable(candidateName: string): Promise<boolean> {
+    if (existingNames) {
+      return !existingNames.has(candidateName);
+    }
+    const candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
+    return !(await params.vfs.exists(candidatePath));
+  }
+
+  let candidateName = params.name;
+  if (await isAvailable(candidateName)) {
     return candidateName;
   }
 
   let counter = 1;
   while (counter < 10000) {
     candidateName = `${baseName} (${counter})${extension}`;
-    candidatePath = params.dirPath ? `${params.dirPath}/${candidateName}` : candidateName;
-    if (!(await params.vfs.exists(candidatePath))) {
+    if (await isAvailable(candidateName)) {
       return candidateName;
     }
     counter++;
@@ -159,53 +174,24 @@ export async function handleFilesCommand(
         finalRelativePathBase = params.targetDirPath;
       }
 
-      const targetPath = finalRelativePathBase
+      const desiredPath = finalRelativePathBase
         ? `${finalRelativePathBase}/${file.name}`
         : file.name;
 
-      if (await deps.vfs.exists(targetPath)) {
-        // Instead of throwing, we can skip or generate unique name.
-        // For timeline drop, standard behavior in many editors is to auto-rename if it's a conflict
-        // but here we just throw as before, or handle conflict.
-        // Let's stick to existing behavior for now but maybe better to auto-generate name.
-        const uniqueName = await generateUniqueEntryNameWithSuffix({
+      let finalName = file.name;
+      let finalPath = desiredPath;
+      if (await deps.vfs.exists(desiredPath)) {
+        finalName = await generateUniqueEntryNameWithSuffix({
           vfs: deps.vfs,
           dirPath: finalRelativePathBase,
           name: file.name,
         });
-        const uniquePath = finalRelativePathBase
-          ? `${finalRelativePathBase}/${uniqueName}`
-          : uniqueName;
-
-        await writeImportedFile({
-          vfs: deps.vfs,
-          targetPath: uniquePath,
-          file,
-          abortSignal: params.abortSignal,
-          onChunk: (currentFileBytes) => {
-            reportProgress({ fileIndex: index, file, currentFileBytes });
-          },
-        });
-
-        fileLoadedBytes.set(index, file.size);
-        completedCount++;
-        reportProgress({ fileIndex: index, file, currentFileBytes: file.size });
-
-        const mediaType = getMediaTypeFromFilename(file.name);
-        if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
-          deps.onMediaImported({ projectRelativePath: uniquePath, file });
-        }
-
-        return {
-          fileName: uniqueName,
-          targetPath: uniquePath,
-          targetDir: finalRelativePathBase,
-        };
+        finalPath = finalRelativePathBase ? `${finalRelativePathBase}/${finalName}` : finalName;
       }
 
       await writeImportedFile({
         vfs: deps.vfs,
-        targetPath,
+        targetPath: finalPath,
         file,
         abortSignal: params.abortSignal,
         onChunk: (currentFileBytes) => {
@@ -219,12 +205,12 @@ export async function handleFilesCommand(
 
       const mediaType = getMediaTypeFromFilename(file.name);
       if (mediaType === 'video' || mediaType === 'audio' || mediaType === 'image') {
-        deps.onMediaImported({ projectRelativePath: targetPath, file });
+        deps.onMediaImported({ projectRelativePath: finalPath, file });
       }
 
       return {
-        fileName: file.name,
-        targetPath,
+        fileName: finalName,
+        targetPath: finalPath,
         targetDir: finalRelativePathBase,
       };
     }),
@@ -311,7 +297,13 @@ async function collectDeletedFilePaths(params: {
 }
 
 export async function deleteEntryCommand(target: FsEntry, deps: DeleteEntryDeps): Promise<void> {
-  const deletedFilePaths = await collectDeletedFilePaths({ vfs: deps.vfs, entry: target });
+  let deletedFilePaths: string[] = [];
+  try {
+    deletedFilePaths = await collectDeletedFilePaths({ vfs: deps.vfs, entry: target });
+  } catch {
+    // Traversal failed (e.g. transient I/O); proceed with delete and skip per-file notifications.
+  }
+
   await deps.vfs.deleteEntry(target.path, true);
 
   for (const path of deletedFilePaths) {
@@ -360,6 +352,16 @@ export async function moveEntryCommand(
   if (!sourcePath) {
     throw new Error('Source path is required');
   }
+  if (!isMoveAllowed({ sourcePath, targetDirPath })) {
+    throw new Error(`Cannot move "${sourcePath}" into itself or its descendant`);
+  }
+  assertValidFsEntryName(params.source.name);
+
+  const sourceParentPath = params.source.parentPath ?? sourcePath.split('/').slice(0, -1).join('/');
+  if (sourceParentPath === targetDirPath) {
+    return { newPath: sourcePath };
+  }
+
   const newName = await generateUniqueEntryNameWithSuffix({
     vfs: deps.vfs,
     dirPath: targetDirPath,
@@ -402,6 +404,10 @@ export async function copyEntryCommand(
   if (!sourcePath) {
     throw new Error('Source path is required');
   }
+  if (!isCopyAllowed({ sourcePath, targetDirPath })) {
+    throw new Error(`Cannot copy "${sourcePath}" into itself or its descendant`);
+  }
+  assertValidFsEntryName(params.source.name);
 
   const nextName = await generateUniqueEntryNameWithSuffix({
     vfs: deps.vfs,
@@ -474,7 +480,7 @@ export async function createMarkdownCommand(params: {
     padWidth: 2,
   });
 
-  const fullPath = `${basePath}/${fileName}`;
+  const fullPath = basePath ? `${basePath}/${fileName}` : fileName;
   await params.vfs.writeFile(fullPath, '');
 
   return fullPath;

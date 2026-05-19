@@ -331,12 +331,13 @@ describe('fileManagerCommands', () => {
     const createdDir = createDirHandleMock();
     (targetDir.getDirectoryHandle as any).mockResolvedValueOnce(createdDir);
 
-    await moveEntryCommand(
+    const result = await moveEntryCommand(
       { source: entry, targetDirHandle: targetDir, targetDirPath: '_files' },
       { removeEntry, onDirectoryMoved, vfs: vfs as any },
     );
 
-    expect(vfs.moveEntry).toHaveBeenCalledWith('_files/dir1', '_files/dir1');
-    expect(onDirectoryMoved).toHaveBeenCalled();
+    expect(result).toEqual({ newPath: '_files/dir1' });
+    expect(vfs.moveEntry).not.toHaveBeenCalled();
+    expect(onDirectoryMoved).not.toHaveBeenCalled();
   });
 });

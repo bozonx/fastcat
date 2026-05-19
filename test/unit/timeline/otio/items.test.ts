@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { parseItemSequenceDurationUs, parseGapItem } from '~/timeline/otio/items';
 
 vi.mock('~/timeline/otio/utils', () => ({
-  fromRationalTimeUs: vi.fn((rt) => (rt?.value ?? 0)),
+  fromRationalTimeUs: vi.fn((rt) => rt?.value ?? 0),
   safeFastCatMetadata: vi.fn((meta) => meta?.fastcat ?? {}),
   resolveStableItemId: vi.fn(() => 'gap-1'),
   fromTimeRange: vi.fn((range) => ({ startUs: 0, durationUs: range?.duration?.value ?? 0 })),
@@ -16,8 +16,18 @@ describe('parseItemSequenceDurationUs', () => {
   });
 
   it('returns duration for valid clip/gap', () => {
-    expect(parseItemSequenceDurationUs({ OTIO_SCHEMA: 'Clip.1', source_range: { duration: { value: 1_000_000 } } })).toBe(1_000_000);
-    expect(parseItemSequenceDurationUs({ OTIO_SCHEMA: 'Gap.1', source_range: { duration: { value: 500_000 } } })).toBe(500_000);
+    expect(
+      parseItemSequenceDurationUs({
+        OTIO_SCHEMA: 'Clip.1',
+        source_range: { duration: { value: 1_000_000 } },
+      }),
+    ).toBe(1_000_000);
+    expect(
+      parseItemSequenceDurationUs({
+        OTIO_SCHEMA: 'Gap.1',
+        source_range: { duration: { value: 500_000 } },
+      }),
+    ).toBe(500_000);
   });
 });
 

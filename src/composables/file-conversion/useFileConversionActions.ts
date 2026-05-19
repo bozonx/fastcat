@@ -14,7 +14,6 @@ import {
   createConversionTaskId,
   isAbortError,
   removeCreatedFile,
-  resolveAudioChannelsFromMeta,
   resolveAudioOnlyFileExtension,
 } from '~/utils/conversion/helpers';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
@@ -25,7 +24,6 @@ import {
   DEFAULT_VIDEO_BITRATE_MBPS,
   DEFAULT_AUDIO_CODEC,
   DEFAULT_AUDIO_BITRATE_KBPS,
-  DEFAULT_KEYFRAME_INTERVAL_SEC,
   DEFAULT_VIDEO_WIDTH,
   DEFAULT_VIDEO_HEIGHT,
   DEFAULT_VIDEO_FPS,

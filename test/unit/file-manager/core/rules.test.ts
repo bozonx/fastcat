@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { isMoveAllowed, isCopyAllowed, MAX_COPY_DEPTH } from '~/file-manager/core/rules';
+import {
+  isMoveAllowed,
+  isCopyAllowed,
+  isValidFsEntryName,
+  MAX_COPY_DEPTH,
+} from '~/file-manager/core/rules';
 
 describe('file-manager/core/rules', () => {
   describe('isMoveAllowed', () => {
@@ -81,6 +86,19 @@ describe('file-manager/core/rules', () => {
     it('should be a positive integer', () => {
       expect(Number.isInteger(MAX_COPY_DEPTH)).toBe(true);
       expect(MAX_COPY_DEPTH).toBeGreaterThan(0);
+    });
+  });
+
+  describe('isValidFsEntryName', () => {
+    it('rejects reserved Windows device names', () => {
+      expect(isValidFsEntryName('CON')).toBe(false);
+      expect(isValidFsEntryName('con.txt')).toBe(false);
+      expect(isValidFsEntryName('LPT9')).toBe(false);
+    });
+
+    it('rejects names longer than 255 bytes', () => {
+      expect(isValidFsEntryName('a'.repeat(255))).toBe(true);
+      expect(isValidFsEntryName('a'.repeat(256))).toBe(false);
     });
   });
 });

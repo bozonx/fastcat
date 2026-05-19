@@ -10,10 +10,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import {
-  useFileManagerStore,
-  useFilesPageFileManagerStore,
-} from '~/stores/file-manager.store';
+import { useFileManagerStore, useFilesPageFileManagerStore } from '~/stores/file-manager.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   AudioClipEffect,

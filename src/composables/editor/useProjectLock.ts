@@ -41,7 +41,7 @@ export function useProjectLock() {
     };
   }
 
-  function cleanupChannel() {
+  function _cleanupChannel() {
     if (broadcastChannel) {
       broadcastChannel.close();
       broadcastChannel = null;

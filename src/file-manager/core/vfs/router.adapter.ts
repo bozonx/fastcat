@@ -1,5 +1,5 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
-import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
+import { copyDirectoryTree } from './copyTree';
 
 export interface VfsRoute {
   prefix: string;
@@ -9,11 +9,22 @@ export interface VfsRoute {
 
 export class RouterFileSystemAdapter implements IFileSystemAdapter {
   id = 'router';
+  private sortedRoutes: VfsRoute[];
 
   constructor(
     private defaultAdapter: IFileSystemAdapter,
     protected routes: VfsRoute[],
-  ) {}
+  ) {
+    this.sortedRoutes = this.sortRoutes(routes);
+  }
+
+  private sortRoutes(routes: VfsRoute[]): VfsRoute[] {
+    return [...routes].sort((a, b) => b.prefix.length - a.prefix.length);
+  }
+
+  private refreshSortedRoutes(): void {
+    this.sortedRoutes = this.sortRoutes(this.routes);
+  }
 
   registerRoute(route: VfsRoute) {
     const index = this.routes.findIndex((r) => r.prefix === route.prefix);
@@ -22,10 +33,12 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     } else {
       this.routes.push(route);
     }
+    this.refreshSortedRoutes();
   }
 
   unregisterRoute(prefix: string) {
     this.routes = this.routes.filter((r) => r.prefix !== prefix);
+    this.refreshSortedRoutes();
   }
 
   private routeMatches(path: string, prefix: string): boolean {
@@ -35,8 +48,7 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   }
 
   private getRoute(path: string) {
-    const routes = [...this.routes].sort((a, b) => b.prefix.length - a.prefix.length);
-    for (const route of routes) {
+    for (const route of this.sortedRoutes) {
       if (this.routeMatches(path, route.prefix)) {
         return { adapter: route.adapter, mappedPath: route.stripPrefix(path) };
       }
@@ -45,10 +57,10 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async init(): Promise<void> {
-    await this.defaultAdapter.init();
-    for (const route of this.routes) {
-      await route.adapter.init();
-    }
+    await Promise.all([
+      this.defaultAdapter.init(),
+      ...this.routes.map((route) => route.adapter.init()),
+    ]);
   }
 
   async readDirectory(
@@ -77,8 +89,7 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
     mappedOriginalPath: string,
   ): string {
     // If the router stripped a prefix, we need to add it back
-    const routes = [...this.routes].sort((a, b) => b.prefix.length - a.prefix.length);
-    for (const route of routes) {
+    for (const route of this.sortedRoutes) {
       if (this.routeMatches(originalPath, route.prefix)) {
         if (mappedOriginalPath === '') {
           return mappedEntryPath ? `${route.prefix}/${mappedEntryPath}` : route.prefix;
@@ -88,7 +99,7 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
           const relative = mappedEntryPath.slice(mappedOriginalPath.length);
           return originalPath + relative;
         }
-        return `${route.prefix}/${mappedEntryPath}`;
+        return originalPath;
       }
     }
     return mappedEntryPath;
@@ -214,8 +225,8 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       let loaded = 0;
       const progressStream = new TransformStream<Uint8Array, Uint8Array>({
         transform(chunk, controller) {
-          loaded += chunk.length;
-          tasksStore.updateTaskProgress(taskId, loaded / size);
+          loaded = Math.min(loaded + chunk.length, size);
+          tasksStore.updateTaskProgress(taskId, size > 0 ? loaded / size : 1);
           controller.enqueue(chunk);
         },
       });
@@ -258,32 +269,16 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       );
     }
 
-    await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);
-  }
-
-  private async copyDirectoryRecursive(
-    sourcePath: string,
-    targetPath: string,
-    depth: number,
-    options?: { signal?: AbortSignal },
-  ): Promise<void> {
-    if (options?.signal?.aborted) {
-      throw new DOMException('The operation was aborted.', 'AbortError');
-    }
-    if (depth > MAX_COPY_DEPTH) {
-      throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
-    }
-
-    await this.createDirectory(targetPath);
-    const entries = await this.readDirectory(sourcePath);
-    for (const entry of entries) {
-      const nextTargetPath = `${targetPath}/${entry.name}`;
-      if (entry.kind === 'directory') {
-        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1, options);
-      } else {
-        await this.copyFile(entry.path, nextTargetPath, options);
-      }
-    }
+    await copyDirectoryTree(
+      {
+        readDirectory: (path) => this.readDirectory(path),
+        createDirectory: (path) => this.createDirectory(path),
+        copyFile: (source, target, copyOptions) => this.copyFile(source, target, copyOptions),
+      },
+      sourcePath,
+      targetPath,
+      options,
+    );
   }
 
   async exists(path: string): Promise<boolean> {

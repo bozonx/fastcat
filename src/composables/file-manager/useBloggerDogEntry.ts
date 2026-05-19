@@ -1,6 +1,6 @@
 import { computed, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
-import type { BloggerDogEntryPayload, BdEntryType } from '~/types/bloggerdog';
+import type { BdEntryType } from '~/types/bloggerdog';
 import { getBdPayload } from '~/types/bloggerdog';
 
 export function useBloggerDogEntry(entry: Ref<FsEntry | null>) {

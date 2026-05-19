@@ -13,8 +13,6 @@ const workspaceStore = useWorkspaceStore();
 const isResetConfirmOpen = ref(false);
 
 const {
-  modifier1Name,
-  modifier2Name,
   updateLayer1,
   updateLayer2,
   defaultLabel,

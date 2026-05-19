@@ -20,28 +20,35 @@ export async function waitForExportComplete(
 ): Promise<ExportResult> {
   const { timeout = 60_000 } = options;
 
-  const exportedPromise = page.evaluate(() => {
-    return new Promise<{ file: number[]; filename: string; mimeType: string }>((resolve) => {
-      window.addEventListener(
-        'fastcat:exported',
-        (event: any) => {
-          const { file, filename } = event.detail;
-          const reader = new FileReader();
+  const exportedPromise = page.evaluate((timeoutMs) => {
+    return new Promise<{ file: number[]; filename: string; mimeType: string }>(
+      (resolve, reject) => {
+        const timerId = window.setTimeout(() => {
+          reject(new Error(`Timed out waiting for fastcat:exported after ${timeoutMs}ms`));
+        }, timeoutMs);
 
-          reader.onload = () => {
-            resolve({
-              file: Array.from(new Uint8Array(reader.result as ArrayBuffer)),
-              filename,
-              mimeType: file.type,
-            });
-          };
+        window.addEventListener(
+          'fastcat:exported',
+          (event: any) => {
+            const { file, filename } = event.detail;
+            const reader = new FileReader();
 
-          reader.readAsArrayBuffer(file);
-        },
-        { once: true },
-      );
-    });
-  });
+            reader.onload = () => {
+              window.clearTimeout(timerId);
+              resolve({
+                file: Array.from(new Uint8Array(reader.result as ArrayBuffer)),
+                filename,
+                mimeType: file.type,
+              });
+            };
+
+            reader.readAsArrayBuffer(file);
+          },
+          { once: true },
+        );
+      },
+    );
+  }, timeout);
 
   const result = await exportedPromise;
 

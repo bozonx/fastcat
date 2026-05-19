@@ -57,7 +57,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
   const projectStore = useProjectStore();
   const focusStore = useFocusStore();
   const { currentProjectId } = options;
-  const { findEntryByPath, vfs } = useFileManager();
+  const { findEntryByPath } = useFileManager();
 
   const draggingPanelId = ref<string | null>(null);
   const dragOverPanelId = ref<string | null>(null);

@@ -60,7 +60,9 @@ describe('toTimeRange', () => {
 
 describe('fromTimeRange', () => {
   it('converts otio time range back to timeline range', () => {
-    expect(fromTimeRange({ start_time: { value: 0, rate: 30 }, duration: { value: 30, rate: 30 } })).toEqual({ startUs: 0, durationUs: 1_000_000 });
+    expect(
+      fromTimeRange({ start_time: { value: 0, rate: 30 }, duration: { value: 30, rate: 30 } }),
+    ).toEqual({ startUs: 0, durationUs: 1_000_000 });
   });
 
   it('returns zero range for invalid input', () => {
@@ -163,8 +165,18 @@ describe('hashString', () => {
 describe('buildFallbackItemId', () => {
   it('generates unique ids', () => {
     const occupied = new Set<string>();
-    const id1 = buildFallbackItemId({ prefix: 'clip', trackId: 'v1', fingerprint: 'abc', occupiedIds: occupied });
-    const id2 = buildFallbackItemId({ prefix: 'clip', trackId: 'v1', fingerprint: 'abc', occupiedIds: occupied });
+    const id1 = buildFallbackItemId({
+      prefix: 'clip',
+      trackId: 'v1',
+      fingerprint: 'abc',
+      occupiedIds: occupied,
+    });
+    const id2 = buildFallbackItemId({
+      prefix: 'clip',
+      trackId: 'v1',
+      fingerprint: 'abc',
+      occupiedIds: occupied,
+    });
     expect(id1).not.toBe(id2);
     expect(occupied.has(id1)).toBe(true);
     expect(occupied.has(id2)).toBe(true);
@@ -174,13 +186,25 @@ describe('buildFallbackItemId', () => {
 describe('resolveStableItemId', () => {
   it('uses metadata id when available and not occupied', () => {
     const occupied = new Set<string>();
-    const id = resolveStableItemId({ prefix: 'clip', trackId: 'v1', fallbackFingerprint: 'abc', metadata: { id: 'meta-1' }, occupiedIds: occupied });
+    const id = resolveStableItemId({
+      prefix: 'clip',
+      trackId: 'v1',
+      fallbackFingerprint: 'abc',
+      metadata: { id: 'meta-1' },
+      occupiedIds: occupied,
+    });
     expect(id).toBe('meta-1');
   });
 
   it('falls back to buildFallbackItemId when metadata id is occupied', () => {
     const occupied = new Set<string>(['meta-1']);
-    const id = resolveStableItemId({ prefix: 'clip', trackId: 'v1', fallbackFingerprint: 'abc', metadata: { fastcat: { id: 'meta-1' } }, occupiedIds: occupied });
+    const id = resolveStableItemId({
+      prefix: 'clip',
+      trackId: 'v1',
+      fallbackFingerprint: 'abc',
+      metadata: { fastcat: { id: 'meta-1' } },
+      occupiedIds: occupied,
+    });
     expect(id).not.toBe('meta-1');
   });
 });

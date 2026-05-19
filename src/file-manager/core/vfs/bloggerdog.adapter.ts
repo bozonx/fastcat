@@ -65,6 +65,7 @@ interface ListedEntry {
 
 export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   id = 'bloggerdog';
+  preservesEntryNames = true;
 
   private idCache = new Map<string, CachedNode>();
 

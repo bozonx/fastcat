@@ -1,7 +1,5 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
-import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
-
-type DirectoryHandleWithIteration = FileSystemDirectoryHandle;
+import { copyDirectoryTree } from './copyTree';
 
 interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
@@ -20,8 +18,11 @@ function normalizeWritableData(data: Blob | Uint8Array | string): Blob | Uint8Ar
     return data;
   }
 
+  if (typeof SharedArrayBuffer === 'undefined' || !(data.buffer instanceof SharedArrayBuffer)) {
+    return data;
+  }
+
   // FileSystemWritableFileStream.write doesn't support SharedArrayBuffer.
-  // We must ensure the buffer is a regular ArrayBuffer.
   const buffer = new ArrayBuffer(data.byteLength);
   new Uint8Array(buffer).set(data);
   return new Uint8Array(buffer);
@@ -29,6 +30,7 @@ function normalizeWritableData(data: Blob | Uint8Array | string): Blob | Uint8Ar
 
 export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   id = 'opfs';
+  private objectUrlsByPath = new Map<string, string>();
 
   private async getRoot(): Promise<FileSystemDirectoryHandle | null> {
     return await this.getProjectRoot();
@@ -110,7 +112,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!handle) return [];
 
     const entries: VfsEntry[] = [];
-    for await (const [name, entryHandle] of (handle as any).entries?.() ?? []) {
+    for await (const [name, entryHandle] of handle.entries()) {
       let hasChildren: boolean | undefined;
       let hasDirectories: boolean | undefined;
 
@@ -118,7 +120,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         hasChildren = false;
         hasDirectories = false;
         try {
-          for await (const [, childHandle] of (entryHandle as any).entries?.() ?? []) {
+          for await (const [, childHandle] of entryHandle.entries()) {
             hasChildren = true;
             if (childHandle.kind === 'directory') {
               hasDirectories = true;
@@ -129,9 +131,6 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
           hasChildren = false;
           hasDirectories = false;
         }
-      } else if (entryHandle.kind === 'directory') {
-        hasChildren = true;
-        hasDirectories = true;
       }
 
       entries.push({
@@ -188,7 +187,12 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     try {
       await (parentHandle as ExtendedDirectoryHandle).removeEntry(name, { recursive });
     } catch (e: unknown) {
-      if ((e as Error).name !== 'NotFoundError') throw e;
+      const errorName = (e as Error).name;
+      if (errorName === 'NotFoundError') return;
+      if (errorName === 'InvalidModificationError') {
+        throw new Error(`Directory is not empty: ${path}`);
+      }
+      throw e;
     }
   }
 
@@ -215,33 +219,16 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     targetPath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
-    await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);
-  }
-
-  private async copyDirectoryRecursive(
-    sourcePath: string,
-    targetPath: string,
-    depth: number,
-    options?: { signal?: AbortSignal },
-  ): Promise<void> {
-    if (options?.signal?.aborted) {
-      throw new DOMException('The operation was aborted.', 'AbortError');
-    }
-    if (depth > MAX_COPY_DEPTH) {
-      throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
-    }
-
-    await this.createDirectory(targetPath);
-
-    const entries = await this.readDirectory(sourcePath);
-    for (const entry of entries) {
-      const nextTargetPath = `${targetPath}/${entry.name}`;
-      if (entry.kind === 'directory') {
-        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1, options);
-      } else {
-        await this.copyFile(entry.path, nextTargetPath, options);
-      }
-    }
+    await copyDirectoryTree(
+      {
+        readDirectory: (path) => this.readDirectory(path),
+        createDirectory: (path) => this.createDirectory(path),
+        copyFile: (source, target, copyOptions) => this.copyFile(source, target, copyOptions),
+      },
+      sourcePath,
+      targetPath,
+      options,
+    );
   }
 
   async moveEntry(
@@ -259,16 +246,21 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     const targetName = targetParts[targetParts.length - 1];
     if (!targetName) throw new Error(`Invalid target path: ${targetPath}`);
 
+    if (options?.signal?.aborted) {
+      throw new DOMException('The operation was aborted.', 'AbortError');
+    }
+
     if ((sourceHandle as ExtendedHandle).move) {
       await (sourceHandle as ExtendedHandle).move!(targetParentHandle, targetName);
     } else {
-      if (options?.signal?.aborted) {
-        throw new DOMException('The operation was aborted.', 'AbortError');
-      }
       if (sourceHandle.kind === 'directory') {
         await this.copyDirectory(sourcePath, targetPath, options);
       } else {
         await this.copyFile(sourcePath, targetPath, options);
+      }
+      const copied = await this.exists(targetPath);
+      if (!copied) {
+        throw new Error(`Move verification failed after copying to: ${targetPath}`);
       }
       await this.deleteEntry(sourcePath, true);
     }
@@ -295,7 +287,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     } else {
       return {
         size: 0,
-        lastModified: Date.now(),
+        lastModified: 0,
         kind: 'directory',
       };
     }
@@ -303,7 +295,13 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
   async getObjectUrl(path: string): Promise<string> {
     const blob = await this.readFile(path);
-    return URL.createObjectURL(blob);
+    const previousUrl = this.objectUrlsByPath.get(path);
+    if (previousUrl) {
+      URL.revokeObjectURL(previousUrl);
+    }
+    const nextUrl = URL.createObjectURL(blob);
+    this.objectUrlsByPath.set(path, nextUrl);
+    return nextUrl;
   }
 
   async getFile(path: string): Promise<File | null> {

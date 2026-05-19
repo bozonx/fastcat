@@ -99,7 +99,12 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         );
 
       const videoPaths = normalizedEntries
-        .filter((e) => e.kind === 'file' && e.path.startsWith(`${VIDEO_DIR_NAME}/`))
+        .filter(
+          (e) =>
+            e.kind === 'file' &&
+            (e.path.startsWith(`${VIDEO_DIR_NAME}/`) ||
+              e.path.includes(`/${VIDEO_DIR_NAME}/`)),
+        )
         .map((e) => e.path);
       if (videoPaths.length > 0) {
         await deps.checkExistingProxies(videoPaths);
@@ -230,14 +235,19 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
         if (!entry.expanded) {
           await toggleDirectory(entry);
         } else if (entry.children === undefined) {
-          entry.children = await readDirectory(entry.path);
+          const children = await readDirectory(entry.path);
+          deps.rootEntries.value = updateEntryByPath(deps.rootEntries.value, entry.path, (e) => ({
+            ...e,
+            children,
+          }));
         }
 
         if (!deps.isPathExpanded(currentPath)) {
           deps.setPathExpanded(currentPath, true);
         }
 
-        currentList = entry.children ?? [];
+        const refreshed = findEntryByPathCore(deps.rootEntries.value, currentPath);
+        currentList = refreshed?.children ?? [];
       }
     }
   }

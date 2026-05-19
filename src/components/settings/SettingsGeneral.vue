@@ -8,7 +8,6 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiAccordion from '~/components/ui/UiAccordion.vue';
-import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import { clearUiCache } from '~/stores/ui/uiLocalStorage';
 
 const { t } = useI18n();

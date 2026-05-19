@@ -254,6 +254,16 @@ The project uses a structured testing approach:
 - **Integration Tests** (`test/integration/`): Complex interactions between modules. Run via `pnpm test:unit`.
 - **E2E Tests** (`test/e2e/`): Full application flows in the browser. Run via `pnpm test:e2e`.
 
+Before running E2E tests for the first time, install the Playwright browser:
+
+```bash
+pnpm test:e2e:install
+```
+
+E2E tests use port `3009` by default. Override it with `E2E_PORT=3010 pnpm test:e2e`.
+Set `PLAYWRIGHT_REUSE_SERVER=1` only when you intentionally want to run against an existing local server.
+In CI, Playwright runs against `pnpm build` + `pnpm preview`.
+
 ## Embedded Editor SDK
 
 Fastcat can be integrated into other web applications as a portable video editor component using Shadow DOM for style isolation and OPFS for high-performance sandboxed storage.
@@ -273,6 +283,7 @@ pnpm build:lib
 ```
 
 The output will be located in the `dist-lib/` directory:
+
 - `fastcat-editor.es.js` — ESM module (recommended)
 - `fastcat-editor.umd.js` — UMD bundle for global use
 - `assets/` — Web Worker binaries and other assets
@@ -289,19 +300,19 @@ const editor = new FastcatEditor('#editor-container');
 
 // Assets to be preloaded into the editor's workspace.
 const assets = [
-  { 
+  {
     url: 'https://example.com/assets/intro.mp4',
-    id: 'intro-video',        // Optional: Unique ID. Auto-generated if omitted.
-    type: 'video',            // Optional: 'video', 'audio', or 'image'.
-    filename: 'intro.mp4'     // Optional: Target filename.
-  }
+    id: 'intro-video', // Optional: Unique ID. Auto-generated if omitted.
+    type: 'video', // Optional: 'video', 'audio', or 'image'.
+    filename: 'intro.mp4', // Optional: Target filename.
+  },
 ];
 
 // Start the editor
-const el = editor.init({ 
+const el = editor.init({
   assets,
-  locale: 'en-US',                // Optional: 'en-US' (default) or 'ru-RU'.
-  workspaceId: 'unique-session-id' // Optional: isolate storage. Auto-generated if omitted.
+  locale: 'en-US', // Optional: 'en-US' (default) or 'ru-RU'.
+  workspaceId: 'unique-session-id', // Optional: isolate storage. Auto-generated if omitted.
 });
 
 // Handle events
@@ -312,7 +323,7 @@ el.addEventListener('fastcat:exported', (event) => {
 });
 ```
 
-2. **Web Component**: 
+2. **Web Component**:
    Alternatively, use the `<fastcat-editor>` custom element.
 
 ```html

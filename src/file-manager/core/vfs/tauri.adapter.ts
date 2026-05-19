@@ -1,5 +1,5 @@
 import type { IFileSystemAdapter, VfsEntry } from './types';
-import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
+import { copyDirectoryTree } from './copyTree';
 
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { appDataDir, join } from '@tauri-apps/api/path';
@@ -18,6 +18,9 @@ import {
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
 import { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
+import { normalizeFsPath } from '~/file-manager/core/path';
+
+const TAURI_APP_DATA_BASE_PATH = 'app-data';
 
 export class TauriFileSystemAdapter implements IFileSystemAdapter {
   id = 'tauri';
@@ -43,7 +46,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     await mkdir(tauriPath, {
       ...options,
       recursive: true,
-    }).catch(() => undefined);
+    });
   }
 
   private async getTauriFsArgs(
@@ -52,7 +55,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const normalizedPath = this.normalizePath(path);
     const basePath = await this.getBasePath();
 
-    if (basePath === 'app-data') {
+    if (basePath === TAURI_APP_DATA_BASE_PATH) {
       return {
         tauriPath: normalizedPath,
         options: { baseDir: BaseDirectory.AppData },
@@ -68,7 +71,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   private normalizePath(path: string): string {
-    return path.replaceAll('\\', '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    return normalizeFsPath(path.replaceAll('\\', '/'));
   }
 
   private getEntryName(path: string): string {
@@ -90,7 +93,8 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   private async resolveStreamPath(path: string): Promise<string> {
     const normalizedPath = this.normalizePath(path);
     const basePath = await this.getBasePath();
-    const baseDirPath = basePath.startsWith('/') ? basePath : await appDataDir();
+    const baseDirPath =
+      basePath === TAURI_APP_DATA_BASE_PATH ? await appDataDir() : basePath;
     return normalizedPath ? await join(baseDirPath, normalizedPath) : baseDirPath;
   }
 
@@ -237,34 +241,16 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     targetPath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
-    await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);
-  }
-
-  private async copyDirectoryRecursive(
-    sourcePath: string,
-    targetPath: string,
-    depth: number,
-    options?: { signal?: AbortSignal },
-  ): Promise<void> {
-    if (options?.signal?.aborted) {
-      throw new DOMException('The operation was aborted.', 'AbortError');
-    }
-    if (depth > MAX_COPY_DEPTH) {
-      throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
-    }
-
-    await this.createDirectory(targetPath);
-
-    const entries = await this.readDirectory(sourcePath);
-    for (const entry of entries) {
-      const nextTargetPath = targetPath ? `${targetPath}/${entry.name}` : entry.name;
-
-      if (entry.kind === 'directory') {
-        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1, options);
-      } else {
-        await this.copyFile(entry.path, nextTargetPath, options);
-      }
-    }
+    await copyDirectoryTree(
+      {
+        readDirectory: (path) => this.readDirectory(path),
+        createDirectory: (path) => this.createDirectory(path),
+        copyFile: (source, target, copyOptions) => this.copyFile(source, target, copyOptions),
+      },
+      sourcePath,
+      targetPath,
+      options,
+    );
   }
 
   async exists(path: string): Promise<boolean> {
@@ -275,12 +261,17 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   async getMetadata(
     path: string,
   ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null> {
-    if (!(await this.exists(path))) {
-      return null;
-    }
-
     const { tauriPath, options } = await this.getTauriFsArgs(path);
-    const metadata = await stat(tauriPath, options);
+    let metadata: Awaited<ReturnType<typeof stat>>;
+    try {
+      metadata = await stat(tauriPath, options);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/not found|enoent/i.test(message)) {
+        return null;
+      }
+      throw error;
+    }
 
     return {
       size: metadata.size ?? 0,
@@ -291,7 +282,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
   async getObjectUrl(path: string): Promise<string> {
     const absolutePath = await this.resolveStreamPath(path);
-    return convertFileSrc(absolutePath);
+    const metadata = await this.getMetadata(path);
+    const version = metadata?.lastModified ? `?v=${metadata.lastModified}` : '';
+    return `${convertFileSrc(absolutePath)}${version}`;
   }
 
   async getFile(path: string): Promise<File | null> {

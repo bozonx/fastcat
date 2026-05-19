@@ -12,9 +12,8 @@ test.describe('Smoke: Page Loading', () => {
 
     await page.goto('/test/embedded');
     await expect(page).toHaveTitle(/FastCat/);
-
-    // Give the SPA a moment to boot.
-    await page.waitForTimeout(2000);
+    await expect(page.locator('body')).toBeVisible();
+    await page.waitForFunction(() => document.querySelector('#__nuxt')?.children.length);
 
     // We do not assert on UI readiness here because the embedded layout
     // fetches external assets over the network; in CI/headless those
