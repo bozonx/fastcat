@@ -27,7 +27,7 @@ export interface SelectedProjectLibraryItem extends SelectedEntityBase {
   kind: 'library-item';
   itemKind: 'text' | 'shape' | 'hud';
   itemId: string;
-  presetParams?: any;
+  presetParams?: Record<string, unknown>;
 }
 
 export interface SelectedTimelineClip extends SelectedEntityBase {
@@ -291,7 +291,7 @@ export const useSelectionStore = defineStore('selection', () => {
   function selectProjectLibraryItem(
     itemKind: 'text' | 'shape' | 'hud',
     itemId: string,
-    presetParams?: any,
+    presetParams?: Record<string, unknown>,
   ) {
     selectedEntity.value = {
       source: 'project',

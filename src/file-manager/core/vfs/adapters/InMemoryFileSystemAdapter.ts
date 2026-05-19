@@ -1,4 +1,10 @@
-import type { IFileSystemAdapter, VfsEntry } from '../types';
+import type { IFileSystemAdapter, VfsEntry, VfsOperationOptions } from '../types';
+import {
+  VfsConflictError,
+  VfsInvalidArgumentError,
+  VfsNotFoundError,
+  throwIfAborted,
+} from '../errors';
 
 interface InMemoryNode {
   name: string;
@@ -16,6 +22,7 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     lastModified: Date.now(),
     children: new Map(),
   };
+  private objectUrls = new Map<string, string>();
 
   private resolveNode(
     path: string,
@@ -28,14 +35,14 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
 
     const name = parts[parts.length - 1];
     if (!name) {
-      throw new Error(`Invalid path: ${path}`);
+      throw new VfsInvalidArgumentError(`Invalid path: ${path}`, { path });
     }
     let current = this.root;
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
       if (!part) {
-        throw new Error(`Invalid path segment at index ${i}: ${path}`);
+        throw new VfsInvalidArgumentError(`Invalid path segment at index ${i}: ${path}`, { path });
       }
       let next = current.children!.get(part);
       if (!next) {
@@ -43,10 +50,11 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
           next = { name: part, kind: 'directory', lastModified: Date.now(), children: new Map() };
           current.children!.set(part, next);
         } else {
-          throw new Error(`Path not found: ${path}`);
+          throw new VfsNotFoundError(path);
         }
       }
-      if (next.kind !== 'directory') throw new Error(`Not a directory: ${part}`);
+      if (next.kind !== 'directory')
+        throw new VfsConflictError(path, `Not a directory: ${part}`);
       current = next;
     }
 
@@ -55,22 +63,25 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
 
   async init(): Promise<void> {}
 
-  async readDirectory(path: string): Promise<VfsEntry[]> {
+  async readDirectory(path: string, options?: VfsOperationOptions): Promise<VfsEntry[]> {
+    throwIfAborted(options?.signal, path);
     let resolved: ReturnType<typeof this.resolveNode>;
     try {
       resolved = this.resolveNode(path);
-    } catch {
+    } catch (e) {
       // Match other adapters: missing intermediate segments resolve as "no entries".
-      return [];
+      if (e instanceof VfsNotFoundError) return [];
+      throw e;
     }
     const { node } = resolved;
     if (!node) return [];
-    if (node.kind !== 'directory') throw new Error(`Not a directory: ${path}`);
+    if (node.kind !== 'directory') throw new VfsConflictError(path, `Not a directory: ${path}`);
 
     return Array.from(node.children!.values()).map((n) => ({
       name: n.name,
       kind: n.kind,
       path: path ? `${path}/${n.name}` : n.name,
+      parentPath: path || undefined,
       lastModified: n.lastModified,
       size: n.content?.size,
     }));
@@ -80,7 +91,7 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     const { parent, node, name } = this.resolveNode(path, { createParent: true });
     if (node) {
       if (node.kind === 'directory') return;
-      throw new Error(`File already exists at path: ${path}`);
+      throw new VfsConflictError(path, `File already exists at path: ${path}`);
     }
     parent.children!.set(name, {
       name,
@@ -96,13 +107,19 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     return Array.from(node.children!.keys());
   }
 
-  async readFile(path: string): Promise<Blob> {
+  async readFile(path: string, options?: VfsOperationOptions): Promise<Blob> {
+    throwIfAborted(options?.signal, path);
     const { node } = this.resolveNode(path);
-    if (!node || node.kind !== 'file' || !node.content) throw new Error(`File not found: ${path}`);
+    if (!node || node.kind !== 'file' || !node.content) throw new VfsNotFoundError(path);
     return node.content;
   }
 
-  async writeFile(path: string, data: Blob | Uint8Array | string): Promise<void> {
+  async writeFile(
+    path: string,
+    data: Blob | Uint8Array | string,
+    options?: VfsOperationOptions,
+  ): Promise<void> {
+    throwIfAborted(options?.signal, path);
     const { parent, name } = this.resolveNode(path, { createParent: true });
 
     let blob: Blob;
@@ -119,6 +136,7 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
       blob = new Blob([data]);
     }
 
+    this.revokeObjectUrl(path);
     parent.children!.set(name, {
       name,
       kind: 'file',
@@ -128,23 +146,37 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async deleteEntry(path: string, recursive?: boolean): Promise<void> {
-    const { parent, name, node } = this.resolveNode(path);
+    let resolved: ReturnType<typeof this.resolveNode>;
+    try {
+      resolved = this.resolveNode(path);
+    } catch (e) {
+      // Missing paths resolve silently per IFileSystemAdapter contract.
+      if (e instanceof VfsNotFoundError) return;
+      throw e;
+    }
+    const { parent, name, node } = resolved;
     if (!node) return;
 
     if (node.kind === 'directory' && node.children!.size > 0 && !recursive) {
-      throw new Error(`Directory not empty: ${path}`);
+      throw new VfsConflictError(path, `Directory not empty: ${path}`);
     }
 
+    this.revokeObjectUrl(path);
     parent.children!.delete(name);
   }
 
-  async moveEntry(sourcePath: string, targetPath: string): Promise<void> {
+  async moveEntry(
+    sourcePath: string,
+    targetPath: string,
+    options?: VfsOperationOptions,
+  ): Promise<void> {
+    throwIfAborted(options?.signal, sourcePath);
     const {
       parent: sourceParent,
       name: sourceName,
       node: sourceNode,
     } = this.resolveNode(sourcePath);
-    if (!sourceNode) throw new Error(`Source not found: ${sourcePath}`);
+    if (!sourceNode) throw new VfsNotFoundError(sourcePath);
 
     const {
       parent: targetParent,
@@ -152,9 +184,10 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
       node: existingTarget,
     } = this.resolveNode(targetPath, { createParent: true });
     if (existingTarget && existingTarget !== sourceNode) {
-      throw new Error(`Target already exists: ${targetPath}`);
+      throw new VfsConflictError(targetPath, `Target already exists: ${targetPath}`);
     }
 
+    this.revokeObjectUrl(sourcePath);
     targetParent.children!.set(targetName, {
       ...sourceNode,
       name: targetName,
@@ -163,10 +196,14 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     sourceParent.children!.delete(sourceName);
   }
 
-  async copyFile(sourcePath: string, targetPath: string): Promise<void> {
+  async copyFile(
+    sourcePath: string,
+    targetPath: string,
+    options?: VfsOperationOptions,
+  ): Promise<void> {
+    throwIfAborted(options?.signal, sourcePath);
     const { node: sourceNode } = this.resolveNode(sourcePath);
-    if (!sourceNode || sourceNode.kind !== 'file')
-      throw new Error(`Source file not found: ${sourcePath}`);
+    if (!sourceNode || sourceNode.kind !== 'file') throw new VfsNotFoundError(sourcePath);
 
     const { parent: targetParent, name: targetName } = this.resolveNode(targetPath, {
       createParent: true,
@@ -178,21 +215,27 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     });
   }
 
-  async copyDirectory(sourcePath: string, targetPath: string): Promise<void> {
+  async copyDirectory(
+    sourcePath: string,
+    targetPath: string,
+    options?: VfsOperationOptions,
+  ): Promise<void> {
+    throwIfAborted(options?.signal, sourcePath);
     const { node: sourceNode } = this.resolveNode(sourcePath);
     if (!sourceNode || sourceNode.kind !== 'directory') {
-      throw new Error(`Source directory not found: ${sourcePath}`);
+      throw new VfsNotFoundError(sourcePath);
     }
 
     await this.createDirectory(targetPath);
 
     for (const child of sourceNode.children!.values()) {
+      throwIfAborted(options?.signal, sourcePath);
       const childSource = sourcePath ? `${sourcePath}/${child.name}` : child.name;
       const childTarget = targetPath ? `${targetPath}/${child.name}` : child.name;
       if (child.kind === 'directory') {
-        await this.copyDirectory(childSource, childTarget);
+        await this.copyDirectory(childSource, childTarget, options);
       } else {
-        await this.copyFile(childSource, childTarget);
+        await this.copyFile(childSource, childTarget, options);
       }
     }
   }
@@ -207,7 +250,14 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async getMetadata(path: string) {
-    const { node } = this.resolveNode(path);
+    let resolved: ReturnType<typeof this.resolveNode>;
+    try {
+      resolved = this.resolveNode(path);
+    } catch (e) {
+      if (e instanceof VfsNotFoundError) return null;
+      throw e;
+    }
+    const { node } = resolved;
     if (!node) return null;
     return {
       size: node.content?.size ?? 0,
@@ -218,25 +268,40 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
 
   async getObjectUrl(path: string): Promise<string> {
     const blob = await this.readFile(path);
-    return URL.createObjectURL(blob);
+    this.revokeObjectUrl(path);
+    const url = URL.createObjectURL(blob);
+    this.objectUrls.set(path, url);
+    return url;
+  }
+
+  private revokeObjectUrl(path: string): void {
+    const existing = this.objectUrls.get(path);
+    if (existing) {
+      URL.revokeObjectURL(existing);
+      this.objectUrls.delete(path);
+    }
   }
 
   async getFile(path: string): Promise<File | null> {
-    const blob = await this.readFile(path);
-    const { name } = this.resolveNode(path);
-    return new File([blob], name, { lastModified: Date.now() });
+    const { node, name } = this.resolveNode(path);
+    if (!node || node.kind !== 'file' || !node.content) return null;
+    return new File([node.content], name, { lastModified: node.lastModified });
   }
 
-  async writeJson(path: string, data: unknown): Promise<void> {
-    await this.writeFile(path, JSON.stringify(data));
+  async writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void> {
+    await this.writeFile(path, JSON.stringify(data), options);
   }
 
-  async readStream(path: string): Promise<ReadableStream<Uint8Array>> {
-    const blob = await this.readFile(path);
+  async readStream(path: string, options?: VfsOperationOptions): Promise<ReadableStream<Uint8Array>> {
+    const blob = await this.readFile(path, options);
     return blob.stream();
   }
 
-  async writeStream(path: string): Promise<WritableStream<Uint8Array>> {
+  async writeStream(
+    path: string,
+    options?: VfsOperationOptions,
+  ): Promise<WritableStream<Uint8Array>> {
+    throwIfAborted(options?.signal, path);
     const chunks: Uint8Array[] = [];
     return new WritableStream({
       write: (chunk) => {

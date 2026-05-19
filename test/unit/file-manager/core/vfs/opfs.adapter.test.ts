@@ -267,7 +267,11 @@ describe('OpfsFileSystemAdapter', () => {
     });
 
     it('throws when reading non-existent file', async () => {
-      await expect(adapter.readFile('missing.txt')).rejects.toThrow('File not found');
+      await expect(adapter.readFile('missing.txt')).rejects.toMatchObject({
+        name: 'VfsNotFoundError',
+        code: 'not-found',
+        path: 'missing.txt',
+      });
     });
 
     it('normalizes SharedArrayBuffer-backed Uint8Array', async () => {
@@ -418,7 +422,10 @@ describe('OpfsFileSystemAdapter', () => {
     });
 
     it('throws when source does not exist', async () => {
-      await expect(adapter.copyFile('ghost', 'dest.txt')).rejects.toThrow('Source file not found');
+      await expect(adapter.copyFile('ghost', 'dest.txt')).rejects.toMatchObject({
+        name: 'VfsNotFoundError',
+        path: 'ghost',
+      });
     });
   });
 
@@ -437,9 +444,10 @@ describe('OpfsFileSystemAdapter', () => {
         current = next;
       }
 
-      await expect(adapter.copyDirectory('dir-0', 'deep-copy')).rejects.toThrow(
-        'Maximum copy depth exceeded',
-      );
+      await expect(adapter.copyDirectory('dir-0', 'deep-copy')).rejects.toMatchObject({
+        name: 'VfsDepthExceededError',
+        code: 'depth-exceeded',
+      });
     });
 
     it('throws AbortError when signal is aborted', async () => {
@@ -477,7 +485,10 @@ describe('OpfsFileSystemAdapter', () => {
     });
 
     it('throws when source does not exist', async () => {
-      await expect(adapter.moveEntry('ghost', 'dest')).rejects.toThrow('Source not found');
+      await expect(adapter.moveEntry('ghost', 'dest')).rejects.toMatchObject({
+        name: 'VfsNotFoundError',
+        path: 'ghost',
+      });
     });
 
     it('throws AbortError on fallback when signal is aborted', async () => {

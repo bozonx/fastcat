@@ -93,7 +93,7 @@ function handleDragStart(
   event: DragEvent,
   type: string,
   category: 'shape' | 'hud' | 'text',
-  presetParams?: any,
+  presetParams?: Record<string, unknown>,
 ) {
   if (!event.dataTransfer) return;
 
@@ -111,28 +111,28 @@ function handleDragStart(
   event.dataTransfer.effectAllowed = 'copy';
 }
 
-function updateCustomTextsOrder(newCustomTexts: any[]) {
+function updateCustomTextsOrder(newCustomTexts: CustomPreset[]) {
   presetsStore.updatePresetsOrder(
     'text',
     newCustomTexts.map((s) => s.id),
   );
 }
 
-function updateCustomShapesOrder(newCustomShapes: any[]) {
+function updateCustomShapesOrder(newCustomShapes: CustomPreset[]) {
   presetsStore.updatePresetsOrder(
     'shape',
     newCustomShapes.map((s) => s.id),
   );
 }
 
-function updateCustomHudsOrder(newCustomHuds: any[]) {
+function updateCustomHudsOrder(newCustomHuds: CustomPreset[]) {
   presetsStore.updatePresetsOrder(
     'hud',
     newCustomHuds.map((h) => h.id),
   );
 }
 
-function selectItem(kind: 'text' | 'shape' | 'hud', id: string, presetParams?: any) {
+function selectItem(kind: 'text' | 'shape' | 'hud', id: string, presetParams?: Record<string, unknown>) {
   selectionStore.selectProjectLibraryItem(kind, id, presetParams);
 }
 

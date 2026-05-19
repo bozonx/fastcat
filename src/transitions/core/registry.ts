@@ -39,7 +39,7 @@ export type TransitionParamOption = ParamOption;
 
 export type TransitionParamField = ParamControl;
 
-export interface TransitionManifest<T = Record<string, any>> {
+export interface TransitionManifest<T = Record<string, unknown>> {
   type: TransitionType;
   name: string;
   nameKey?: string;
@@ -106,7 +106,7 @@ function solveCubicBezier(t: number, x1: number, y1: number, x2: number, y2: num
 export function applyTransitionCurve(
   progress: number,
   curve: TransitionCurve,
-  params?: Record<string, any>,
+  params?: Record<string, unknown>,
 ): number {
   const t = clampProgress(progress);
 
@@ -188,7 +188,7 @@ export function normalizeTransitionCurve(value: unknown): TransitionCurve {
     : DEFAULT_TRANSITION_CURVE;
 }
 
-const registry = new Map<TransitionType, TransitionManifest<any>>();
+const registry = new Map<TransitionType, TransitionManifest<Record<string, unknown>>>();
 
 export function registerTransition<T>(manifest: TransitionManifest<T>): void {
   const existing = registry.get(manifest.type);
@@ -198,11 +198,11 @@ export function registerTransition<T>(manifest: TransitionManifest<T>): void {
   registry.set(manifest.type, manifest);
 }
 
-export function getTransitionManifest(type: TransitionType): TransitionManifest<any> | undefined {
+export function getTransitionManifest(type: TransitionType): TransitionManifest<Record<string, unknown>> | undefined {
   return registry.get(type);
 }
 
-export function normalizeTransitionParams<T = Record<string, any>>(
+export function normalizeTransitionParams<T = Record<string, unknown>>(
   type: TransitionType,
   params?: Record<string, unknown>,
 ): T | Record<string, unknown> | undefined {
@@ -216,6 +216,6 @@ export function normalizeTransitionParams<T = Record<string, any>>(
   return { ...(manifest.defaultParams as Record<string, unknown>), ...(params ?? {}) };
 }
 
-export function getAllTransitionManifests(): TransitionManifest<any>[] {
+export function getAllTransitionManifests(): TransitionManifest<Record<string, unknown>>[] {
   return Array.from(registry.values());
 }

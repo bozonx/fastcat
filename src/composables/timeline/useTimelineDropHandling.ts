@@ -39,7 +39,7 @@ interface TimelineDropItem {
   name?: string;
   path?: string;
   type?: string;
-  presetParams?: Record<string, any>;
+  presetParams?: Record<string, unknown>;
   isRightClick?: boolean;
 }
 
@@ -575,7 +575,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     return type === 'video' || type === 'audio' || type === 'image';
   }
 
-  function isSupportedLibraryItem(item: any): boolean {
+  function isSupportedLibraryItem(item: TimelineDropItem): boolean {
     if (item.kind === 'file' && item.path) {
       const type = getMediaTypeFromFilename(item.name || item.path);
       return type === 'video' || type === 'audio' || type === 'image' || type === 'text';
@@ -591,14 +591,14 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       if (!targetDir) return item;
 
       const resultPath = await fileManager.copyEntry({
-        source: { path: item.path, name: item.name || '', kind: 'file' } as any,
+        source: { path: item.path, name: item.name || '', kind: 'file' },
         targetDirPath: targetDir,
         abortSignal: importAbortController?.signal ?? undefined,
       });
 
       return {
         ...item,
-        path: (resultPath as any).newPath || resultPath,
+        path: resultPath?.newPath || item.path,
         kind: 'file',
       };
     }
@@ -778,26 +778,28 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
             { baseTrackId: trackId, currentStartUs, pseudo: false },
           );
           currentStartUs = result.nextStartUs;
-        } catch (err: any) {
+        } catch (err) {
           // One file failing (e.g. unsupported codec, broken metadata) must not
           // abort placement of the remaining successfully imported files.
           console.warn('[timeline] Failed to place file on timeline:', res.fileName, err);
+          const message = err instanceof Error ? err.message : String(err);
           toast.add({
             color: 'warning',
             title: t('common.warning'),
-            description: `${res.fileName}: ${String(err?.message ?? err)}`,
+            description: `${res.fileName}: ${message}`,
           });
         }
       }
 
       await timelineStore.requestTimelineSave({ immediate: true });
       void timelineMediaUsageStore.refreshUsage();
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      const message = err instanceof Error ? err.message : String(err);
       toast.add({
         color: 'error',
         title: t('common.error'),
-        description: err.message,
+        description: message,
       });
     } finally {
       isImporting.value = false;
@@ -890,12 +892,13 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         await timelineStore.requestTimelineSave({ immediate: true });
         void timelineMediaUsageStore.refreshUsage();
       }
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      const message = err instanceof Error ? err.message : String(err);
       toast.add({
         color: 'error',
         title: t('common.error'),
-        description: String(err?.message ?? err),
+        description: message,
       });
     } finally {
       isImporting.value = false;

@@ -48,7 +48,7 @@ const nonBasicAudioEffects = computed(() =>
 );
 const transitions = computed(() => getAllTransitionManifests());
 
-function hasAudioEffects(effects: AudioEffectManifest<any>[]) {
+function hasAudioEffects(effects: AudioEffectManifest[]) {
   return effects.length > 0;
 }
 
@@ -94,12 +94,12 @@ function selectTransition(type: string) {
   selectionStore.selectProjectTransition(type);
 }
 
-function updateCustomEffectsOrder(newCustomEffects: any[]) {
+function updateCustomEffectsOrder(newCustomEffects: EffectManifest[]) {
   const orderIds = newCustomEffects.map((e) => e.type);
   presetsStore.updatePresetsOrder('effect', orderIds);
 }
 
-function updateCustomTransitionsOrder(newCustomTransitions: any[]) {
+function updateCustomTransitionsOrder(newCustomTransitions: TransitionManifest[]) {
   const orderIds = newCustomTransitions.map((t) => t.type);
   presetsStore.updatePresetsOrder('transition', orderIds);
 }

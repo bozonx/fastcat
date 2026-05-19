@@ -16,10 +16,18 @@ export interface CrossVfsCopyOptions {
 
 const MAX_UNIQUE_NAME_ATTEMPTS = 10_000;
 
+/**
+ * Replaces characters that are illegal on local filesystems (Windows is the
+ * strictest of the platforms we target). Spaces, dashes and other printable
+ * characters are preserved — over-sanitizing turns familiar filenames into
+ * unreadable strings of dashes.
+ */
 function sanitizeLocalEntryName(name: string): string {
   const sanitized = name
-    // eslint-disable-next-line no-control-regex -- intentional removal of control characters from filenames
-    .replace(/[<>:"/\\|?* -]/g, '-')
+    .replace(/[<>:"/\\|?*]/g, '-')
+    // eslint-disable-next-line no-control-regex -- strip C0 control characters
+    .replace(/[\x00-\x1f]/g, '')
+    // Windows forbids trailing spaces and dots on entry names.
     .replace(/[. ]+$/g, '')
     .trim();
 
@@ -124,6 +132,68 @@ async function copyFileAcross(
   }
 }
 
+/**
+ * Read the byte size of `path` from `vfs`, returning 0 if metadata isn't
+ * available. Used only to decide whether a copy is "large enough" to register
+ * progress UI; failures must never break the copy itself.
+ */
+async function safeReadSize(vfs: IFileSystemAdapter, path: string): Promise<number> {
+  if (typeof vfs.getMetadata !== 'function') return 0;
+  try {
+    const meta = await vfs.getMetadata(path);
+    return meta?.size ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+export interface CrossVfsExactCopyOptions {
+  sourceVfs: IFileSystemAdapter;
+  targetVfs: IFileSystemAdapter;
+  sourcePath: string;
+  /** Fully resolved target path. The caller is responsible for picking the name. */
+  targetPath: string;
+  signal?: AbortSignal;
+  progressReporter?: VfsProgressReporter;
+}
+
+/**
+ * Copies a single file between adapters to an explicit `targetPath` (no name
+ * negotiation). Intended for callers that already know exactly where the file
+ * should land — e.g. `RouterFileSystemAdapter.copyFile` which honors the
+ * caller-supplied target. For the "drop-into-folder, auto-pick name" flow,
+ * use `crossVfsCopy` instead.
+ */
+export async function crossVfsCopyFile(options: CrossVfsExactCopyOptions): Promise<void> {
+  const size = await safeReadSize(options.sourceVfs, options.sourcePath);
+  await copyFileAcross(
+    options.sourceVfs,
+    options.targetVfs,
+    options.sourcePath,
+    options.targetPath,
+    options.signal,
+    size,
+    options.progressReporter,
+  );
+}
+
+/**
+ * Copies a directory tree between adapters to an explicit `targetPath` (no
+ * top-level name negotiation). Child names are still sanitized for the target
+ * adapter so cross-platform paths land safely on local filesystems.
+ */
+export async function crossVfsCopyDirectory(options: CrossVfsExactCopyOptions): Promise<void> {
+  await copyDirectoryAcross(
+    options.sourceVfs,
+    options.targetVfs,
+    options.sourcePath,
+    options.targetPath,
+    options.signal,
+    options.progressReporter,
+    0,
+  );
+}
+
 export async function crossVfsCopy(options: CrossVfsCopyOptions): Promise<string> {
   const { sourceVfs, targetVfs, sourcePath, sourceKind, targetDirPath } = options;
 
@@ -132,14 +202,14 @@ export async function crossVfsCopy(options: CrossVfsCopyOptions): Promise<string
   const targetPath = targetDirPath ? `${targetDirPath}/${targetName}` : targetName;
 
   if (sourceKind === 'file') {
-    const meta = await sourceVfs.getMetadata(sourcePath).catch(() => null);
+    const size = await safeReadSize(sourceVfs, sourcePath);
     await copyFileAcross(
       sourceVfs,
       targetVfs,
       sourcePath,
       targetPath,
       options.signal,
-      meta?.size ?? 0,
+      size,
       options.progressReporter,
     );
     return targetPath;
@@ -193,14 +263,14 @@ async function copyDirectoryAcross(
         depth + 1,
       );
     } else {
-      const meta = await sourceVfs.getMetadata(entry.path).catch(() => null);
+      const size = (await safeReadSize(sourceVfs, entry.path)) || (entry.size ?? 0);
       await copyFileAcross(
         sourceVfs,
         targetVfs,
         entry.path,
         nextTargetPath,
         signal,
-        meta?.size ?? entry.size ?? 0,
+        size,
         reporter,
       );
     }

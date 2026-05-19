@@ -1,6 +1,9 @@
 import { defineNuxtPlugin } from 'nuxt/app';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
-import { RouterFileSystemAdapter } from '~/file-manager/core/vfs/router.adapter';
+import {
+  RouterFileSystemAdapter,
+  type VfsRoute,
+} from '~/file-manager/core/vfs/router.adapter';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
@@ -88,6 +91,80 @@ function createNuxtVfsProgressReporter(nuxtApp: unknown): VfsProgressReporter {
   };
 }
 
+/**
+ * Builds the workspace adapter set for the current platform.
+ *
+ * To add another platform-specific adapter, plug in a new branch here — the
+ * downstream route table is platform-agnostic.
+ */
+interface WorkspaceAdapters {
+  /** Adapter rooted at the active project directory. */
+  project: IFileSystemAdapter;
+  /** Adapter rooted at the workspace directory (parent of all projects + common assets). */
+  workspace: IFileSystemAdapter;
+}
+
+function createTauriWorkspaceAdapters(
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
+  projectStore: ReturnType<typeof useProjectStore>,
+): WorkspaceAdapters {
+  const handle = workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle | null;
+  const workspacePath = handle?.path;
+
+  const project = new TauriFileSystemAdapter(async () => {
+    const projectHandle = await projectStore.getProjectDirHandle();
+    const projectPath = (projectHandle as unknown as TauriDirectoryHandle | null)?.path;
+    if (projectPath) return { type: 'absolute', path: projectPath };
+    if (workspacePath) return { type: 'absolute', path: workspacePath };
+    return { type: 'app-data' };
+  });
+
+  const workspace = new TauriFileSystemAdapter(
+    workspacePath ? { type: 'absolute', path: workspacePath } : TAURI_APP_DATA_BASE_PATH,
+  );
+
+  return { project, workspace };
+}
+
+function createOpfsWorkspaceAdapters(
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
+  projectStore: ReturnType<typeof useProjectStore>,
+): WorkspaceAdapters {
+  const project = new OpfsFileSystemAdapter(() => projectStore.getProjectDirHandle());
+  const workspace = new OpfsFileSystemAdapter(async () => workspaceStore.workspaceHandle ?? null);
+  return { project, workspace };
+}
+
+/**
+ * Declarative route table. Each entry maps a path prefix to an adapter,
+ * letting us add new adapters without branching on platform.
+ */
+function buildVfsRoutes(args: {
+  workspace: IFileSystemAdapter;
+  remote: IFileSystemAdapter;
+}): VfsRoute[] {
+  const stripPrefix = (prefix: string) => (path: string) =>
+    path.startsWith(prefix) ? path.slice(prefix.length).replace(/^\/+/, '') : path;
+
+  return [
+    {
+      prefix: WORKSPACE_COMMON_PATH_PREFIX,
+      adapter: args.workspace,
+      stripPrefix: toWorkspaceCommonStoragePath,
+    },
+    {
+      prefix: '/vardata',
+      adapter: args.workspace,
+      stripPrefix: (p) => (p.startsWith('/') ? p.slice(1) : p),
+    },
+    {
+      prefix: '/remote',
+      adapter: args.remote,
+      stripPrefix: stripPrefix('/remote'),
+    },
+  ];
+}
+
 export default defineNuxtPlugin(async (nuxtApp) => {
   const translate = (key: string, def?: string) => {
     const i18n = (nuxtApp as { $i18n?: { t: (k: string) => string } }).$i18n;
@@ -95,89 +172,24 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     return i18n.t(key) || def || key;
   };
 
-  let adapter: IFileSystemAdapter;
-
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
-
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
-  const bloggerDogAdapter = new BloggerDogVfsAdapter(() => {
+  const { project, workspace } = isTauri
+    ? createTauriWorkspaceAdapters(workspaceStore, projectStore)
+    : createOpfsWorkspaceAdapters(workspaceStore, projectStore);
+
+  const remote = new BloggerDogVfsAdapter(() => {
     const bloggerDogStore = useBloggerDogStore();
     return bloggerDogStore.config;
   }, translate);
 
-  const progressReporter = createNuxtVfsProgressReporter(nuxtApp);
-
-  if (isTauri) {
-    const handle = workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle | null;
-    const workspacePath = handle?.path;
-
-    const projectAdapter = new TauriFileSystemAdapter(async () => {
-      const projectHandle = await projectStore.getProjectDirHandle();
-      const projectPath = (projectHandle as unknown as TauriDirectoryHandle | null)?.path;
-      if (projectPath) return { type: 'absolute', path: projectPath };
-      if (workspacePath) return { type: 'absolute', path: workspacePath };
-      return { type: 'app-data' };
-    });
-
-    const workspaceAdapter = new TauriFileSystemAdapter(
-      workspacePath ? { type: 'absolute', path: workspacePath } : TAURI_APP_DATA_BASE_PATH,
-    );
-
-    adapter = new RouterFileSystemAdapter(
-      projectAdapter,
-      [
-        {
-          prefix: WORKSPACE_COMMON_PATH_PREFIX,
-          adapter: workspaceAdapter,
-          stripPrefix: toWorkspaceCommonStoragePath,
-        },
-        {
-          prefix: '/vardata',
-          adapter: workspaceAdapter,
-          stripPrefix: (p) => (p.startsWith('/') ? p.slice(1) : p),
-        },
-        {
-          prefix: '/remote',
-          adapter: bloggerDogAdapter,
-          stripPrefix: (p) => (p.startsWith('/remote') ? p.slice('/remote'.length) : p),
-        },
-      ],
-      { progressReporter },
-    );
-  } else {
-    // Browser / OPFS default.
-    const projectAdapter = new OpfsFileSystemAdapter(async () => {
-      return await projectStore.getProjectDirHandle();
-    });
-
-    const workspaceAdapter = new OpfsFileSystemAdapter(async () => {
-      return workspaceStore.workspaceHandle ?? null;
-    });
-
-    adapter = new RouterFileSystemAdapter(
-      projectAdapter,
-      [
-        {
-          prefix: WORKSPACE_COMMON_PATH_PREFIX,
-          adapter: workspaceAdapter,
-          stripPrefix: toWorkspaceCommonStoragePath,
-        },
-        {
-          prefix: '/vardata',
-          adapter: workspaceAdapter,
-          stripPrefix: (p) => (p.startsWith('/') ? p.slice(1) : p),
-        },
-        {
-          prefix: '/remote',
-          adapter: bloggerDogAdapter,
-          stripPrefix: (p) => (p.startsWith('/remote') ? p.slice('/remote'.length) : p),
-        },
-      ],
-      { progressReporter },
-    );
-  }
+  const adapter = new RouterFileSystemAdapter(
+    project,
+    buildVfsRoutes({ workspace, remote }),
+    { progressReporter: createNuxtVfsProgressReporter(nuxtApp) },
+  );
 
   await adapter.init();
 

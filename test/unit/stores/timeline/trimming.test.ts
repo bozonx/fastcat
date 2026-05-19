@@ -95,11 +95,11 @@ describe('TimelineTrimmingModule', () => {
     expect(deps.editService.rippleTrimRight).toHaveBeenCalled();
   });
 
-  it('splitClipAtPlayhead applies split commands', async () => {
+  it('splitClipAtPlayhead batches split commands', async () => {
     const deps = createMockDeps();
     const mod = createTimelineTrimmingModule(deps);
     await mod.splitClipAtPlayhead();
-    expect(deps.applyTimeline).toHaveBeenCalled();
+    expect(deps.batchApplyTimeline).toHaveBeenCalled();
     expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 

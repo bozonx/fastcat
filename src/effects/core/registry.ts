@@ -18,7 +18,7 @@ export interface AudioEffectNodeGraph {
 
 export type AudioEffectNode = AudioNode | AudioEffectNodeGraph;
 
-export interface BaseEffectManifest<T = Record<string, any>> {
+export interface BaseEffectManifest<T = Record<string, unknown>> {
   type: EffectType;
   name: string;
   nameKey?: string;
@@ -34,13 +34,13 @@ export interface BaseEffectManifest<T = Record<string, any>> {
   baseType?: string;
 }
 
-export interface VideoEffectManifest<T = Record<string, any>> extends BaseEffectManifest<T> {
+export interface VideoEffectManifest<T = Record<string, unknown>> extends BaseEffectManifest<T> {
   target?: 'video';
   createFilter: () => Filter;
   updateFilter: (filter: Filter, values: T) => void;
 }
 
-export interface AudioEffectManifest<T = Record<string, any>> extends BaseEffectManifest<T> {
+export interface AudioEffectManifest<T = Record<string, unknown>> extends BaseEffectManifest<T> {
   target: 'audio';
   category?: AudioEffectCategory;
   disableGlobalWet?: boolean; // If true, effectGraph won't apply wet/dry crossfade
@@ -49,7 +49,7 @@ export interface AudioEffectManifest<T = Record<string, any>> extends BaseEffect
   destroyNode?: (node: AudioEffectNode, context: AudioEffectContext) => void;
 }
 
-export type EffectManifest<T = Record<string, any>> =
+export type EffectManifest<T = Record<string, unknown>> =
   | VideoEffectManifest<T>
   | AudioEffectManifest<T>;
 
@@ -63,7 +63,7 @@ export interface BaseClipEffect {
 export type ClipEffect<T = Record<string, any>> = BaseClipEffect & T;
 
 // Registry
-const effectsRegistry = new Map<EffectType, EffectManifest<any>>();
+const effectsRegistry = new Map<EffectType, EffectManifest<Record<string, unknown>>>();
 
 export function registerEffect<T>(manifest: EffectManifest<T>) {
   if ('createNode' in manifest || manifest.target === 'audio') {
@@ -85,7 +85,7 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
   effectsRegistry.set(manifest.type, videoManifest);
 }
 
-export function getEffectManifest(type: EffectType): EffectManifest<any> | undefined {
+export function getEffectManifest(type: EffectType): EffectManifest<Record<string, unknown>> | undefined {
   return effectsRegistry.get(type);
 }
 
@@ -109,12 +109,12 @@ export function isAudioEffectManifest<T>(
   return manifest.target === 'audio';
 }
 
-export function getVideoEffectManifest(type: EffectType): VideoEffectManifest<any> | undefined {
+export function getVideoEffectManifest(type: EffectType): VideoEffectManifest<Record<string, unknown>> | undefined {
   const manifest = effectsRegistry.get(type);
   return isVideoEffectManifest(manifest) ? manifest : undefined;
 }
 
-export function getAudioEffectManifest(type: EffectType): AudioEffectManifest<any> | undefined {
+export function getAudioEffectManifest(type: EffectType): AudioEffectManifest<Record<string, unknown>> | undefined {
   const manifest = effectsRegistry.get(type);
   return isAudioEffectManifest(manifest) ? manifest : undefined;
 }
@@ -123,7 +123,7 @@ export function isAudioEffectNodeGraph(node: AudioEffectNode): node is AudioEffe
   return 'input' in node && 'output' in node;
 }
 
-export function getAllEffectManifests(target?: EffectTarget): EffectManifest<any>[] {
+export function getAllEffectManifests(target?: EffectTarget): EffectManifest<Record<string, unknown>>[] {
   const manifests = Array.from(effectsRegistry.values());
   if (!target) {
     return manifests;
@@ -132,10 +132,10 @@ export function getAllEffectManifests(target?: EffectTarget): EffectManifest<any
   return manifests.filter((manifest) => (manifest.target ?? 'video') === target);
 }
 
-export function getAllVideoEffectManifests(): VideoEffectManifest<any>[] {
+export function getAllVideoEffectManifests(): VideoEffectManifest<Record<string, unknown>>[] {
   return getAllEffectManifests('video').filter(isVideoEffectManifest);
 }
 
-export function getAllAudioEffectManifests(): AudioEffectManifest<any>[] {
+export function getAllAudioEffectManifests(): AudioEffectManifest<Record<string, unknown>>[] {
   return getAllEffectManifests('audio').filter(isAudioEffectManifest);
 }

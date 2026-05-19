@@ -8,7 +8,7 @@ export function useNuxtApp() {
   return {
     $isEmbedded: inject('isEmbedded', false),
     $notificationService: inject('notificationService', {
-      add: (msg: any) => console.log('Notification:', msg),
+      add: (msg: unknown) => console.log('Notification:', msg),
     }),
     $i18nService: inject('i18nService', {
       t: (key: string, defaultValue?: string) => defaultValue || key,

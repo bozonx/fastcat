@@ -10,7 +10,7 @@ export interface CustomPreset {
   name: string;
   category: 'effect' | 'transition' | 'shape' | 'hud' | 'text';
   effectTarget?: 'video' | 'audio';
-  params: Record<string, any>;
+  params: Record<string, unknown>;
   order: number;
 }
 
@@ -205,7 +205,7 @@ export const usePresetsStore = defineStore('presets', () => {
     category: 'effect' | 'transition' | 'shape' | 'hud' | 'text',
     baseType: string,
     name: string,
-    params: Record<string, any>,
+    params: Record<string, unknown>,
     effectTarget?: 'video' | 'audio',
   ) {
     const newPreset: CustomPreset = {
@@ -223,7 +223,7 @@ export const usePresetsStore = defineStore('presets', () => {
     savePresets();
   }
 
-  function updatePreset(id: string, params: Record<string, any>) {
+  function updatePreset(id: string, params: Record<string, unknown>) {
     const preset = customPresets.value.find((p) => p.id === id);
     if (!preset) return;
 

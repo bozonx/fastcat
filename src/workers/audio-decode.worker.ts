@@ -469,7 +469,7 @@ if (typeof self !== 'undefined')
         // peaks zero-copy. After transfer this worker can't touch the data,
         // which is fine — we're done with it.
         const transfer = peaks.map((ch) => ch.buffer as ArrayBuffer);
-        (self as any).postMessage(response, transfer);
+        self.postMessage(response, transfer);
         return;
       }
 
@@ -485,7 +485,7 @@ if (typeof self !== 'undefined')
           channelBuffers: [],
           sttAudio: result.sttAudio,
         };
-        (self as any).postMessage(response, [result.sttAudio.buffer]);
+        self.postMessage(response, [result.sttAudio.buffer]);
         return;
       }
 
@@ -504,7 +504,7 @@ if (typeof self !== 'undefined')
           ...result,
         };
 
-        (self as any).postMessage(response, [...result.channelBuffers]);
+        self.postMessage(response, [...result.channelBuffers]);
         return;
       }
 
@@ -520,8 +520,8 @@ if (typeof self !== 'undefined')
         ...result,
       };
 
-      (self as any).postMessage(response, [...result.channelBuffers]);
-    } catch (err: any) {
+      self.postMessage(response, [...result.channelBuffers]);
+    } catch (err) {
       let errName = err?.name;
       if (err?.message === 'Input has an unsupported or unrecognizable format.') {
         errName = 'UnsupportedFormatError';
@@ -532,6 +532,6 @@ if (typeof self !== 'undefined')
         message: err?.message || String(err),
         stack: err?.stack,
       };
-      (self as any).postMessage(response);
+      self.postMessage(response);
     }
   });

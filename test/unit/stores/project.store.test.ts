@@ -24,6 +24,7 @@ const mockResetTimelineState = vi.fn();
 const mockClearSelection = vi.fn();
 const mockResetFileManagerState = vi.fn();
 const mockClearHistory = vi.fn();
+const mockClearAllHistory = vi.fn();
 const mockReleaseLock = vi.fn();
 const mockCloseProjectSettings = vi.fn();
 const mockLoadProjectSettings = vi.fn();
@@ -48,7 +49,7 @@ vi.mock('~/stores/file-manager.store', () => ({
 }));
 
 vi.mock('~/stores/history.store', () => ({
-  useHistoryStore: vi.fn(() => ({ clear: mockClearHistory })),
+  useHistoryStore: vi.fn(() => ({ clear: mockClearHistory, clearAll: mockClearAllHistory })),
 }));
 
 vi.mock('~/composables/editor/useProjectLock', () => ({
@@ -144,7 +145,7 @@ describe('ProjectStore', () => {
     expect(mockResetTimelineState).toHaveBeenCalled();
     expect(mockClearSelection).toHaveBeenCalled();
     expect(mockResetFileManagerState).toHaveBeenCalled();
-    expect(mockClearHistory).toHaveBeenCalledWith('timeline');
+    expect(mockClearAllHistory).toHaveBeenCalled();
     expect(mockReleaseLock).toHaveBeenCalled();
   });
 

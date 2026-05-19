@@ -47,3 +47,27 @@ describe('computeSvgRasterSize', () => {
     ).toEqual({ width: 1920, height: 960 });
   });
 });
+
+describe('isSvgMimeType', () => {
+  it('detects svg mime type', () => {
+    expect(isSvgMimeType('image/svg+xml')).toBe(true);
+    expect(isSvgMimeType('image/png')).toBe(false);
+    expect(isSvgMimeType(null)).toBe(false);
+  });
+});
+
+describe('isSvgFilename', () => {
+  it('detects svg filename', () => {
+    expect(isSvgFilename('icon.svg')).toBe(true);
+    expect(isSvgFilename('icon.png')).toBe(false);
+    expect(isSvgFilename(null)).toBe(false);
+  });
+});
+
+describe('isSvgFile', () => {
+  it('detects svg from file or path', () => {
+    expect(isSvgFile({ file: { name: 'icon.svg' } })).toBe(true);
+    expect(isSvgFile({ path: 'icon.svg' })).toBe(true);
+    expect(isSvgFile({})).toBe(false);
+  });
+});

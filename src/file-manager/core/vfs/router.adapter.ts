@@ -6,8 +6,8 @@ import type {
   VfsProgressReporter,
   VfsReadDirectoryOptions,
 } from './types';
-import { copyDirectoryTree } from './copyTree';
-import { crossVfsCopy } from './crossVfs';
+import { crossVfsCopyDirectory, crossVfsCopyFile } from './crossVfs';
+import { VfsNotFoundError } from './errors';
 
 export interface VfsRoute {
   prefix: string;
@@ -182,25 +182,24 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       return sourceRoute.adapter.moveEntry(sourceRoute.mappedPath, targetRoute.mappedPath, options);
     }
 
-    // Cross-adapter move: copy then delete, with sanitization handled by crossVfs.
-    const targetParts = targetPath.split('/').filter(Boolean);
-    const targetDirPath = targetParts.slice(0, -1).join('/');
+    // Cross-adapter move: copy to the exact target path then delete the source.
+    // If the source is missing, surface it as a not-found error like the
+    // single-adapter path does.
     const meta = await sourceRoute.adapter.getMetadata(sourceRoute.mappedPath);
-    if (!meta) {
-      // Match other adapters: source missing is a not-found condition.
-      const { VfsNotFoundError } = await import('./errors');
-      throw new VfsNotFoundError(sourcePath);
-    }
+    if (!meta) throw new VfsNotFoundError(sourcePath);
 
-    await crossVfsCopy({
-      sourceVfs: sourceRoute.adapter,
-      targetVfs: targetRoute.adapter,
-      sourcePath: sourceRoute.mappedPath,
-      sourceKind: meta.kind,
-      targetDirPath: this.getRoute(targetDirPath).mappedPath,
-      signal: options?.signal,
-      progressReporter: this.progressReporter,
-    });
+    if (meta.kind === 'file') {
+      await crossVfsCopyFile({
+        sourceVfs: sourceRoute.adapter,
+        targetVfs: targetRoute.adapter,
+        sourcePath: sourceRoute.mappedPath,
+        targetPath: targetRoute.mappedPath,
+        signal: options?.signal,
+        progressReporter: this.progressReporter,
+      });
+    } else {
+      await this.copyDirectory(sourcePath, targetPath, options);
+    }
 
     await sourceRoute.adapter.deleteEntry(sourceRoute.mappedPath, true);
   }
@@ -217,16 +216,14 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       return sourceRoute.adapter.copyFile(sourceRoute.mappedPath, targetRoute.mappedPath, options);
     }
 
-    // Cross-adapter copy via the shared crossVfs implementation.
-    // Path-sanitization and progress reporting live there, so router stays thin.
-    const targetParts = targetPath.split('/').filter(Boolean);
-    const targetDirPath = targetParts.slice(0, -1).join('/');
-    await crossVfsCopy({
+    // Cross-adapter copy: honor the exact target path the caller asked for.
+    // Callers that want "drop into directory, auto-pick name, sanitize" should
+    // call `crossVfsCopy` directly — see the audit notes on the two flows.
+    await crossVfsCopyFile({
       sourceVfs: sourceRoute.adapter,
       targetVfs: targetRoute.adapter,
       sourcePath: sourceRoute.mappedPath,
-      sourceKind: 'file',
-      targetDirPath: this.getRoute(targetDirPath).mappedPath,
+      targetPath: targetRoute.mappedPath,
       signal: options?.signal,
       progressReporter: this.progressReporter,
     });
@@ -248,19 +245,17 @@ export class RouterFileSystemAdapter implements IFileSystemAdapter {
       );
     }
 
-    // Cross-adapter directory copy. We still go through copyDirectoryTree at
-    // the router level so the recursion stays inside the routed namespace
-    // (each entry path round-trips back to the prefixed form before recursion).
-    await copyDirectoryTree(
-      {
-        readDirectory: (path) => this.readDirectory(path, { signal: options?.signal }),
-        createDirectory: (path) => this.createDirectory(path),
-        copyFile: (source, target, copyOptions) => this.copyFile(source, target, copyOptions),
-      },
-      sourcePath,
-      targetPath,
-      options,
-    );
+    // Cross-adapter directory copy. Delegate to crossVfs so child names are
+    // sanitized for the target adapter (a directory tree from a name-preserving
+    // remote may contain characters that local filesystems reject).
+    await crossVfsCopyDirectory({
+      sourceVfs: sourceRoute.adapter,
+      targetVfs: targetRoute.adapter,
+      sourcePath: sourceRoute.mappedPath,
+      targetPath: targetRoute.mappedPath,
+      signal: options?.signal,
+      progressReporter: this.progressReporter,
+    });
   }
 
   async exists(path: string): Promise<boolean> {

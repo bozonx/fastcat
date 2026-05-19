@@ -217,9 +217,10 @@ describe('BloggerDogVfsAdapter', () => {
       item,
     });
 
-    await expect(adapter.createDirectory('/personal/item-1/New Folder')).rejects.toThrow(
-      'Creating folders inside content items is not supported',
-    );
+    await expect(adapter.createDirectory('/personal/item-1/New Folder')).rejects.toMatchObject({
+      name: 'VfsUnsupportedError',
+      code: 'unsupported',
+    });
   });
 
   it('renames virtual txt file by renaming the content item title', async () => {

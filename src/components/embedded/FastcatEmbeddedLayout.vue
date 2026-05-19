@@ -25,7 +25,7 @@ const mediaStore = useMediaStore();
 const { openProject, loadTimeline } = useProjectActions();
 
 const emit = defineEmits<{
-  (e: 'exported', data: any): void;
+  (e: 'exported', data: unknown): void;
 }>();
 
 const isExportDrawerOpen = ref(false);
@@ -172,7 +172,7 @@ onUnmounted(async () => {
   }
 });
 
-function handleExported(data: any) {
+function handleExported(data: unknown) {
   isExportDrawerOpen.value = false;
 
   // Emit event for both Vue component and custom element consumers

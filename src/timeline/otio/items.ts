@@ -19,7 +19,7 @@ import { TimelineClipFastCatMetaSchema } from './schemas';
 // Sequence duration helper
 // ---------------------------------------------------------------------------
 
-export function parseItemSequenceDurationUs(child: any): number {
+export function parseItemSequenceDurationUs(child: unknown): number {
   if (!child || typeof child !== 'object') return 0;
   const schema = child.OTIO_SCHEMA;
   if (schema === 'Gap.1' || schema === 'Clip.1' || schema === 'Clip.2') {
