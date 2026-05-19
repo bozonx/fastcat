@@ -1,7 +1,13 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
 
-import { computeSvgRasterSize, parseSvgDimensions } from '~/utils/svg';
+import {
+  computeSvgRasterSize,
+  isSvgFile,
+  isSvgFilename,
+  isSvgMimeType,
+  parseSvgDimensions,
+} from '~/utils/svg';
 
 describe('parseSvgDimensions', () => {
   it('uses width/height when present', () => {

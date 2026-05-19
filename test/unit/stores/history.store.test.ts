@@ -134,7 +134,7 @@ describe('HistoryStore', () => {
     expect(store.canUndo('timeline')).toBe(false);
   });
 
-  it('limits history to MAX_HISTORY_SIZE (100)', () => {
+  it('limits history to maxEntries total (past + future)', () => {
     const store = useHistoryStore();
     const doc = makeDoc('doc');
 
@@ -142,7 +142,7 @@ describe('HistoryStore', () => {
       store.push('timeline', 'remove_item', doc, `Remove item ${i}`);
     }
 
-    expect(store.past.length).toBeLessThanOrEqual(100);
+    expect(store.past.length + store.future.length).toBeLessThanOrEqual(100);
   });
 
   it('lastEntry reflects the most recent past entry', () => {

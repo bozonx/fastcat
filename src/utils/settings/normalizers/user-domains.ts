@@ -18,9 +18,9 @@ export function normalizeOpenLastProjectOnStart(raw: unknown): boolean {
     .boolean()
     .catch(DEFAULT_USER_SETTINGS.openLastProjectOnStart)
     .parse(
-      (raw as any)?.openBehavior === 'show_project_picker'
+      (raw as Record<string, unknown>)?.['openBehavior'] === 'show_project_picker'
         ? false
-        : (raw as any)?.openLastProjectOnStart,
+        : (raw as Record<string, unknown>)?.['openLastProjectOnStart'],
     );
 }
 
@@ -28,7 +28,7 @@ export function normalizeDeleteWithoutConfirmation(raw: unknown): boolean {
   return z
     .boolean()
     .catch(DEFAULT_USER_SETTINGS.deleteWithoutConfirmation)
-    .parse((raw as any)?.deleteWithoutConfirmation);
+    .parse((raw as Record<string, unknown>)?.['deleteWithoutConfirmation']);
 }
 
 export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['timeline'] {
@@ -59,14 +59,14 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
     })
     .catch(DEFAULT_USER_SETTINGS.timeline);
 
-  return schema.parse((raw as any)?.timeline);
+  return schema.parse((raw as Record<string, unknown>)?.['timeline']);
 }
 
 export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['stopFrames'] {
   const qp =
-    (raw as any)?.stopFrames?.qualityPercent ??
-    (raw as any)?.stopFrameQualityPercent ??
-    (raw as any)?.stopFramesQuality;
+    (raw as Record<string, unknown>)?.['stopFrames']?.['qualityPercent'] ??
+    (raw as Record<string, unknown>)?.['stopFrameQualityPercent'] ??
+    (raw as Record<string, unknown>)?.['stopFramesQuality'];
   return z
     .object({
       qualityPercent: z.coerce
@@ -80,7 +80,7 @@ export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['
 }
 
 export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings['optimization'] {
-  const opt = (raw as any)?.optimization ?? {};
+  const opt = (raw as Record<string, unknown>)?.['optimization'] ?? {};
 
   // Custom parsing step for proxyResolution string mapping
   let proxyMaxPixels = opt.proxyMaxPixels;
@@ -175,7 +175,7 @@ export function normalizeIntegrationsSettings(raw: unknown): FastCatUserSettings
     })
     .catch(DEFAULT_USER_SETTINGS.integrations);
 
-  return schema.parse((raw as any)?.integrations ?? {});
+  return schema.parse((raw as Record<string, unknown>)?.['integrations'] ?? {});
 }
 
 export function normalizeVideoSettings(raw: unknown): FastCatUserSettings['video'] {
@@ -184,7 +184,7 @@ export function normalizeVideoSettings(raw: unknown): FastCatUserSettings['video
       enableFfmpeg: z.boolean().catch(DEFAULT_USER_SETTINGS.video.enableFfmpeg),
     })
     .catch(DEFAULT_USER_SETTINGS.video)
-    .parse((raw as any)?.video ?? {});
+    .parse((raw as Record<string, unknown>)?.['video'] ?? {});
 }
 
 export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['projectDefaults'] {
@@ -221,15 +221,15 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
 }
 
 export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse'] {
-  const rWheelEnum = z.enum(RULER_WHEEL_ACTIONS as any);
-  const clickEnum = z.enum(CLICK_ACTIONS as any);
-  const dragEnum = z.enum(TIMELINE_DRAG_ACTIONS as any);
-  const horizEnum = z.enum(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS as any);
-  const tWheelEnum = z.enum(TIMELINE_WHEEL_ACTIONS as any);
-  const thWheelEnum = z.enum(TRACK_HEADERS_WHEEL_ACTIONS as any);
-  const mWheelEnum = z.enum(MONITOR_WHEEL_ACTIONS as any);
-  const mClickEnum = z.enum(MONITOR_CLICK_ACTIONS as any);
-  const mDragEnum = z.enum(MONITOR_DRAG_ACTIONS as any);
+  const rWheelEnum = z.enum(RULER_WHEEL_ACTIONS);
+  const clickEnum = z.enum(CLICK_ACTIONS);
+  const dragEnum = z.enum(TIMELINE_DRAG_ACTIONS);
+  const horizEnum = z.enum(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS);
+  const tWheelEnum = z.enum(TIMELINE_WHEEL_ACTIONS);
+  const thWheelEnum = z.enum(TRACK_HEADERS_WHEEL_ACTIONS);
+  const mWheelEnum = z.enum(MONITOR_WHEEL_ACTIONS);
+  const mClickEnum = z.enum(MONITOR_CLICK_ACTIONS);
+  const mDragEnum = z.enum(MONITOR_DRAG_ACTIONS);
 
   const rulerWheelFallbacks = {
     wheel: DEFAULT_USER_SETTINGS.mouse.ruler.wheel,
@@ -245,52 +245,52 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           wheelShift: rWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.wheelShift),
           wheelSecondary: rWheelEnum.catch(rulerWheelFallbacks.wheelSecondary),
           wheelSecondaryShift: rWheelEnum.catch(rulerWheelFallbacks.wheelSecondaryShift),
-          click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.click as any),
-          middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleClick as any),
-          doubleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.doubleClick as any),
-          shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.shiftClick as any),
-          drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.drag as any),
-          middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleDrag as any),
-          dragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.dragShift as any),
+          click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.click),
+          middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleClick),
+          doubleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.doubleClick),
+          shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.shiftClick),
+          drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.drag),
+          middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleDrag),
+          dragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.dragShift),
           horizontalMovement: horizEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.ruler.horizontalMovement as any,
+            DEFAULT_USER_SETTINGS.mouse.ruler.horizontalMovement,
           ),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.ruler),
 
       timeline: z
         .object({
-          wheel: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheel as any),
-          wheelShift: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheelShift as any),
+          wheel: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheel),
+          wheelShift: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheelShift),
           wheelSecondary: tWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondary as any,
+            DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondary,
           ),
           wheelSecondaryShift: tWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondaryShift as any,
+            DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondaryShift,
           ),
-          click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.click as any),
-          shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.shiftClick as any),
-          drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.drag as any),
-          middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick as any),
-          middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag as any),
+          click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.click),
+          shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.shiftClick),
+          drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.drag),
+          middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick),
+          middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag),
           horizontalMovement: horizEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.timeline.horizontalMovement as any,
+            DEFAULT_USER_SETTINGS.mouse.timeline.horizontalMovement,
           ),
-          clipDragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragShift as any),
-          clipDragCtrl: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragCtrl as any),
-          clipDragRight: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragRight as any),
+          clipDragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragShift),
+          clipDragCtrl: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragCtrl),
+          clipDragRight: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.clipDragRight),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.timeline),
 
       trackHeaders: z
         .object({
-          wheel: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheel as any),
-          wheelShift: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelShift as any),
+          wheel: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheel),
+          wheelShift: thWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelShift),
           wheelSecondary: thWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondary as any,
+            DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondary,
           ),
           wheelSecondaryShift: thWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondaryShift as any,
+            DEFAULT_USER_SETTINGS.mouse.trackHeaders.wheelSecondaryShift,
           ),
           click: z.enum(['select_track', 'select_all_clips', 'none']).catch('select_track'),
           middleClick: z.enum(['select_track', 'select_all_clips', 'none']).catch('none'),
@@ -302,17 +302,17 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
 
       monitor: z
         .object({
-          wheel: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheel as any),
-          wheelShift: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheelShift as any),
+          wheel: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheel),
+          wheelShift: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheelShift),
           wheelSecondary: mWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondary as any,
+            DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondary,
           ),
           wheelSecondaryShift: mWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondaryShift as any,
+            DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondaryShift,
           ),
-          middleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleClick as any),
-          doubleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.doubleClick as any),
-          middleDrag: mDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleDrag as any),
+          middleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleClick),
+          doubleClick: mClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.doubleClick),
+          middleDrag: mDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.middleDrag),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.monitor),
     })
@@ -331,7 +331,7 @@ export function normalizeHistorySettings(raw: unknown): FastCatUserSettings['his
         .catch(DEFAULT_USER_SETTINGS.history.maxEntries),
     })
     .catch(DEFAULT_USER_SETTINGS.history)
-    .parse((raw as any)?.history ?? {});
+    .parse((raw as Record<string, unknown>)?.['history'] ?? {});
 }
 
 export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['backup'] {
@@ -345,5 +345,5 @@ export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['back
       count: z.coerce.number().min(1).max(50).catch(DEFAULT_USER_SETTINGS.backup.count),
     })
     .catch(DEFAULT_USER_SETTINGS.backup)
-    .parse((raw as any)?.backup ?? {});
+    .parse((raw as Record<string, unknown>)?.['backup'] ?? {});
 }

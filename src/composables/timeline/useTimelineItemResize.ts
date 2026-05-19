@@ -127,6 +127,7 @@ export function useTimelineItemResize(
 
     function onPointerUp() {
       if (resizeVolume.value) {
+        timelineStore.historyDebounce.flushPendingDebouncedHistory();
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeVolume.value = null;
@@ -143,6 +144,7 @@ export function useTimelineItemResize(
       });
 
       if (isCancel && resizeVolume.value) {
+        timelineStore.historyDebounce.clearPendingDebouncedHistory();
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           audioGain: resizeVolume.value.startGain,
         });
@@ -623,8 +625,11 @@ export function useTimelineItemResize(
       } = state;
 
       if (!hasMoved && !creating) {
+        timelineStore.historyDebounce.flushPendingDebouncedHistory();
         return;
       }
+
+      timelineStore.historyDebounce.flushPendingDebouncedHistory();
 
       if (shouldDelete) {
         timelineStore.updateClipTransition(
@@ -699,6 +704,7 @@ export function useTimelineItemResize(
         const state = resizeTransition.value;
         resizeTransition.value = null;
         clearSession();
+        timelineStore.historyDebounce.clearPendingDebouncedHistory();
 
         if (state.isCreating) {
           // Remove the just-created transition without recording history

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 
 defineProps<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
 const { locale } = useI18n();
 const historyStore = useHistoryStore();
 const timelineStore = useTimelineStore();
+const { restoreHistory } = useFileManager();
 
 const past = computed(() => historyStore.past);
 const future = computed(() => historyStore.future);
@@ -34,30 +36,49 @@ function formatTime(timestamp: number): string {
 }
 
 function handleUndo() {
-  timelineStore.undoTimeline();
+  const entry = historyStore.undoGlobal();
+  if (!entry) return;
+  if (entry.scope === 'timeline') {
+    timelineStore.applyRestoredSnapshot(entry.snapshot);
+  } else if (entry.scope === 'fileManager') {
+    void restoreHistory(entry.snapshot);
+  }
 }
 
 function handleRedo() {
-  timelineStore.redoTimeline();
+  const entry = historyStore.redoGlobal();
+  if (!entry) return;
+  if (entry.scope === 'timeline') {
+    timelineStore.applyRestoredSnapshot(entry.snapshot);
+  } else if (entry.scope === 'fileManager') {
+    void restoreHistory(entry.snapshot);
+  }
 }
 
-// Optional jump capability (will require store enhancement for efficiency but works for now)
-function jumpToState(entryId: number, isFuture: boolean) {
+function jumpToState(entryId: string, isFuture: boolean) {
   if (isFuture) {
-    // Redo until this ID
     const idx = future.value.findIndex((e) => e.id === entryId);
-    if (idx !== -1) {
-      for (let i = 0; i <= idx; i++) {
-        timelineStore.redoTimeline();
+    if (idx === -1) return;
+    for (let i = 0; i <= idx; i++) {
+      const entry = historyStore.redoGlobal();
+      if (!entry) break;
+      if (entry.scope === 'timeline') {
+        timelineStore.applyRestoredSnapshot(entry.snapshot);
+      } else if (entry.scope === 'fileManager') {
+        void restoreHistory(entry.snapshot);
       }
     }
   } else {
-    // Undo until this ID (last element in past is latest undo target)
-    // reversedPast[0] is the current state.
-    const idxInReversed = reversedPast.value.findIndex((e) => e.id === entryId);
-    if (idxInReversed > 0) {
-      for (let i = 0; i < idxInReversed; i++) {
-        timelineStore.undoTimeline();
+    const idxInPast = past.value.findIndex((e) => e.id === entryId);
+    if (idxInPast === -1) return;
+    const targetIndex = past.value.length - 1 - idxInPast;
+    for (let i = 0; i < targetIndex; i++) {
+      const entry = historyStore.undoGlobal();
+      if (!entry) break;
+      if (entry.scope === 'timeline') {
+        timelineStore.applyRestoredSnapshot(entry.snapshot);
+      } else if (entry.scope === 'fileManager') {
+        void restoreHistory(entry.snapshot);
       }
     }
   }

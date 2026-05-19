@@ -130,6 +130,10 @@ export function createTimelineLifecycleModule(
     deps.historyDebounce.clearPendingDebouncedHistory();
   }
 
+  // Note: Switching timelines clears the timeline history stack by design.
+  // Each timeline has its own isolated undo/redo state. Undo entries from
+  // the previously open timeline are not preserved when a new timeline loads.
+
   function markTimelineAsCleanForCurrentRevision() {
     deps.persistence.markCleanForCurrentRevision();
   }
@@ -148,6 +152,9 @@ export function createTimelineLifecycleModule(
     deps.isPlaying.value = false;
     deps.historyStore.clear('timeline');
     deps.historyDebounce.clearPendingDebouncedHistory();
+
+    // Note: loadTimeline intentionally wipes the timeline history stack.
+    // History is scoped to the currently open timeline document.
 
     await deps.persistence.loadTimeline();
 

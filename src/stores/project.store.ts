@@ -99,7 +99,7 @@ export const useProjectStore = defineStore('project', () => {
     timelineStore.resetTimelineState();
     selectionStore.clearSelection();
     fileManagerStore.resetFileManagerState();
-    historyStore.clear('timeline');
+    historyStore.clearAll();
 
     await projectLock.releaseLock();
     clearProjectMetaState();

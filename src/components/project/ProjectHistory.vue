@@ -55,6 +55,35 @@ function handleRedo() {
     void restoreHistory(entry.snapshot);
   }
 }
+
+function jumpToState(entryId: string, isFuture: boolean) {
+  if (isFuture) {
+    const idx = future.value.findIndex((e) => e.id === entryId);
+    if (idx === -1) return;
+    for (let i = 0; i <= idx; i++) {
+      const entry = historyStore.redoGlobal();
+      if (!entry) break;
+      if (entry.scope === 'timeline') {
+        timelineStore.applyRestoredSnapshot(entry.snapshot);
+      } else if (entry.scope === 'fileManager') {
+        void restoreHistory(entry.snapshot);
+      }
+    }
+  } else {
+    const idxInPast = past.value.findIndex((e) => e.id === entryId);
+    if (idxInPast === -1) return;
+    const targetIndex = past.value.length - 1 - idxInPast;
+    for (let i = 0; i < targetIndex; i++) {
+      const entry = historyStore.undoGlobal();
+      if (!entry) break;
+      if (entry.scope === 'timeline') {
+        timelineStore.applyRestoredSnapshot(entry.snapshot);
+      } else if (entry.scope === 'fileManager') {
+        void restoreHistory(entry.snapshot);
+      }
+    }
+  }
+}
 </script>
 
 <template>
@@ -99,7 +128,7 @@ function handleRedo() {
 
     <div class="flex-1 overflow-y-auto min-h-0 relative">
       <UiEmptyState
-        v-if="history.length === 0"
+        v-if="past.length === 0 && future.length === 0"
         :message="$t('videoEditor.fileManager.history.empty')"
         icon="i-heroicons-arrow-uturn-left"
         icon-class="w-8 h-8 mx-auto mb-3 opacity-20"
@@ -112,6 +141,7 @@ function handleRedo() {
           v-for="entry in reversedFuture"
           :key="`future-${entry.id}`"
           class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer opacity-50 hover:opacity-100 hover:bg-zinc-800/50"
+          @click="jumpToState(entry.id, true)"
         >
           <div class="flex-1 truncate text-zinc-400">
             {{ $t(entry.labelKey) }}
@@ -133,6 +163,7 @@ function handleRedo() {
               ? 'bg-zinc-700/30 text-zinc-200'
               : 'text-zinc-300 hover:bg-zinc-800/50 cursor-pointer',
           ]"
+          @click="index === 0 ? null : jumpToState(entry.id, false)"
         >
           <div class="flex-1 truncate" :class="[index === 0 ? 'font-medium' : '']">
             {{ $t(entry.labelKey) }}
