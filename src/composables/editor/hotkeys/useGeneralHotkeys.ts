@@ -229,6 +229,7 @@ export function useGeneralHotkeys(
     },
 
     'general.undo': () => {
+      timelineStore.historyDebounce.clearPendingDebouncedHistory();
       const entry = useHistoryStore().undoGlobal();
       if (!entry) return true;
 
@@ -241,6 +242,7 @@ export function useGeneralHotkeys(
     },
 
     'general.redo': () => {
+      timelineStore.historyDebounce.clearPendingDebouncedHistory();
       const entry = useHistoryStore().redoGlobal();
       if (!entry) return true;
 

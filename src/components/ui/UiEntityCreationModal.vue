@@ -28,10 +28,18 @@ const isMobile = computed(() => width.value < 768);
 const name = ref(props.defaultValue || '');
 const inputRef = ref<any>(null);
 
-// Reset name when opening
-watch(isOpen, (val) => {
+// Reset name when opening and focus/select the input
+watch(isOpen, async (val) => {
   if (val) {
     name.value = props.defaultValue || '';
+    await nextTick();
+    setTimeout(() => {
+      const input = inputRef.value?.$el?.querySelector('input') || inputRef.value?.input;
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 50);
   }
 });
 

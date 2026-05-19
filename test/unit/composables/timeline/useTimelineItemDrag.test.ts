@@ -347,6 +347,13 @@ describe('useTimelineItemDrag', () => {
         skipHistory: true,
       }),
     );
+    expect(historyPushMock).toHaveBeenCalledTimes(1);
+    expect(historyPushMock).toHaveBeenCalledWith(
+      'timeline',
+      'move_items',
+      expect.anything(),
+      expect.any(String),
+    );
     expect(requestTimelineSaveMock).toHaveBeenCalledWith({ immediate: true });
   });
 

@@ -67,7 +67,7 @@ export async function createAudioStreamFromFile(file: File): Promise<{
   numberOfChannels: number;
 }> {
   const source = new BlobSource(file);
-  const input = new Input({ source, formats: ALL_FORMATS } as any);
+  const input = new Input({ source, formats: ALL_FORMATS } as unknown);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -89,8 +89,8 @@ export async function createAudioStreamFromFile(file: File): Promise<{
         try {
           let headerSent = false;
 
-          for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
-            const sample = sampleRaw as any;
+          for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(0, durationS || 1e9)) {
+            const sample = sampleRaw as unknown;
             try {
               if (!headerSent) {
                 sampleRate = sample.sampleRate || 48000;
@@ -116,12 +116,12 @@ export async function createAudioStreamFromFile(file: File): Promise<{
         } catch (err) {
           controller.error(err);
         } finally {
-          if (typeof (sink as any).close === 'function') (sink as any).close();
-          if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
-          if ('dispose' in input && typeof (input as any).dispose === 'function')
-            (input as any).dispose();
-          else if ('close' in input && typeof (input as any).close === 'function')
-            (input as any).close();
+          if (typeof (sink as { close?: () => void }).close === 'function') (sink as { close?: () => void }).close();
+          if (typeof (sink as { dispose?: () => void }).dispose === 'function') (sink as { dispose?: () => void }).dispose();
+          if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
+            (input as { dispose?: () => void }).dispose();
+          else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
+            (input as { close?: () => void }).close();
         }
       },
     });
@@ -161,9 +161,9 @@ export async function createAudioStreamFromFile(file: File): Promise<{
       numberOfChannels,
     };
   } catch (err) {
-    if ('dispose' in input && typeof (input as any).dispose === 'function')
-      (input as any).dispose();
-    else if ('close' in input && typeof (input as any).close === 'function') (input as any).close();
+    if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
+      (input as { dispose?: () => void }).dispose();
+    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function') (input as { close?: () => void }).close();
     throw err;
   }
 }

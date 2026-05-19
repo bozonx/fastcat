@@ -16,6 +16,7 @@ import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
 
@@ -30,6 +31,12 @@ const workspaceStore = useWorkspaceStore();
 
 const isDeleteConfirmOpen = ref(false);
 const isGenerateCaptionsOpen = ref(false);
+const isRenameModalOpen = ref(false);
+
+function handleRenameTrack(name: string) {
+  timelineStore.renameTrack(props.track.id, name.trim());
+  isRenameModalOpen.value = false;
+}
 
 const canDeleteWithoutConfirm = computed(() => (props.track.items?.length ?? 0) === 0);
 
@@ -246,7 +253,7 @@ const clipCount = computed(
               size="sm"
               color="neutral"
               :title="t('common.rename')"
-              @click="timelineStore.renamingTrackId = props.track.id"
+              @click="isRenameModalOpen = true"
             />
           </div>
 
@@ -413,6 +420,14 @@ const clipCount = computed(
       v-if="track.kind === 'video'"
       v-model:open="isGenerateCaptionsOpen"
       :track-id="track.id"
+    />
+
+    <UiRenameModal
+      :open="isRenameModalOpen"
+      :current-name="track.name || ''"
+      :title="t('fastcat.timeline.renameTrack')"
+      @update:open="isRenameModalOpen = $event"
+      @rename="handleRenameTrack"
     />
   </div>
 </template>

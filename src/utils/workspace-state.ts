@@ -61,81 +61,89 @@ export function createDefaultWorkspaceState(): WorkspaceState {
 /**
  * Merges partial state with default state to ensure all fields are present.
  */
-export function normalizeWorkspaceState(data: any): WorkspaceState {
+export function normalizeWorkspaceState(data: unknown): WorkspaceState {
   const defaults = createDefaultWorkspaceState();
   if (!data || typeof data !== 'object') return defaults;
+  const d = data as Record<string, unknown>;
+
+  const presets = (d.presets as Record<string, unknown> | undefined) ?? {};
+  const ui = (d.ui as Record<string, unknown> | undefined) ?? {};
+  const fileBrowser = (d.fileBrowser as Record<string, unknown> | undefined) ?? {};
+  const fbInstances = fileBrowser.instances as Record<string, unknown> | undefined;
 
   return {
     presets: {
-      custom: Array.isArray(data.presets?.custom) ? data.presets.custom : defaults.presets.custom,
+      custom: Array.isArray(presets.custom) ? presets.custom : defaults.presets.custom,
       defaultTextPresetId:
-        typeof data.presets?.defaultTextPresetId === 'string'
-          ? data.presets.defaultTextPresetId
+        typeof presets.defaultTextPresetId === 'string'
+          ? presets.defaultTextPresetId
           : defaults.presets.defaultTextPresetId,
       collapsed:
-        data.presets?.collapsed && typeof data.presets.collapsed === 'object'
-          ? data.presets.collapsed
+        presets.collapsed && typeof presets.collapsed === 'object'
+          ? presets.collapsed
           : defaults.presets.collapsed,
     },
     ui: {
-      recentSearchQueries: Array.isArray(data.ui?.recentSearchQueries)
-        ? data.ui.recentSearchQueries
+      recentSearchQueries: Array.isArray(ui.recentSearchQueries)
+        ? ui.recentSearchQueries
         : defaults.ui.recentSearchQueries,
-      pinnedItems: Array.isArray(data.ui?.pinnedItems)
-        ? data.ui.pinnedItems
+      pinnedItems: Array.isArray(ui.pinnedItems)
+        ? ui.pinnedItems
         : defaults.ui.pinnedItems,
       showHiddenFiles:
-        typeof data.ui?.showHiddenFiles === 'boolean'
-          ? data.ui.showHiddenFiles
+        typeof ui.showHiddenFiles === 'boolean'
+          ? ui.showHiddenFiles
           : defaults.ui.showHiddenFiles,
       fsSidebarWidth:
-        typeof data.ui?.fsSidebarWidth === 'number'
-          ? data.ui.fsSidebarWidth
+        typeof ui.fsSidebarWidth === 'number'
+          ? ui.fsSidebarWidth
           : defaults.ui.fsSidebarWidth,
       lastProjectName:
-        typeof data.ui?.lastProjectName === 'string' || data.ui?.lastProjectName === null
-          ? data.ui.lastProjectName
+        typeof ui.lastProjectName === 'string' || ui.lastProjectName === null
+          ? ui.lastProjectName
           : defaults.ui.lastProjectName,
-      recentProjects: Array.isArray(data.ui?.recentProjects)
-        ? data.ui.recentProjects
+      recentProjects: Array.isArray(ui.recentProjects)
+        ? ui.recentProjects
         : defaults.ui.recentProjects,
     },
     fileBrowser: {
       instances:
-        data.fileBrowser?.instances && typeof data.fileBrowser.instances === 'object'
+        fbInstances && typeof fbInstances === 'object'
           ? Object.fromEntries(
-              Object.entries(data.fileBrowser.instances).map(([key, val]) => [
+              Object.entries(fbInstances).map(([key, val]) => [
                 key,
                 {
-                  viewMode: ['grid', 'list'].includes((val as any)?.viewMode)
-                    ? (val as any).viewMode
+                  viewMode: ['grid', 'list'].includes((val as Record<string, unknown>)?.viewMode as string)
+                    ? (val as Record<string, unknown>).viewMode as 'grid' | 'list'
                     : 'grid',
                   sortOption:
-                    (val as any)?.sortOption &&
+                    (val as Record<string, unknown>)?.sortOption &&
                     ['name', 'type', 'size', 'modified', 'created'].includes(
-                      (val as any).sortOption.field,
+                      ((val as Record<string, unknown>).sortOption as Record<string, unknown>)?.field as string,
                     )
                       ? {
-                          field: (val as any).sortOption.field,
-                          order: ['asc', 'desc'].includes((val as any).sortOption.order)
-                            ? (val as any).sortOption.order
+                          field: ((val as Record<string, unknown>).sortOption as Record<string, unknown>).field as 'name' | 'type' | 'size' | 'modified' | 'created',
+                          order: ['asc', 'desc'].includes(
+                            ((val as Record<string, unknown>).sortOption as Record<string, unknown>).order as string,
+                          )
+                            ? ((val as Record<string, unknown>).sortOption as Record<string, unknown>).order as 'asc' | 'desc'
                             : 'asc',
                         }
                       : { field: 'name', order: 'asc' },
                   gridCardSize:
-                    typeof (val as any)?.gridCardSize === 'number' ? (val as any).gridCardSize : 80,
+                    typeof (val as Record<string, unknown>)?.gridCardSize === 'number' ? (val as Record<string, unknown>).gridCardSize as number : 80,
                   columnWidths:
-                    (val as any)?.columnWidths && typeof (val as any).columnWidths === 'object'
-                      ? (val as any).columnWidths
+                    (val as Record<string, unknown>)?.columnWidths && typeof (val as Record<string, unknown>).columnWidths === 'object'
+                      ? (val as Record<string, unknown>).columnWidths as Record<string, number>
                       : { name: 200, type: 100, size: 80, created: 140, modified: 140 },
                   lastPath:
-                    typeof (val as any)?.lastPath === 'string' ? (val as any).lastPath : undefined,
+                    typeof (val as Record<string, unknown>)?.lastPath === 'string' ? (val as Record<string, unknown>).lastPath as string : undefined,
                 },
               ]),
             )
           : defaults.fileBrowser.instances,
-      activeTab: ['computer', 'bloggerdog', 'fastcat'].includes(data.fileBrowser?.activeTab)
-        ? data.fileBrowser.activeTab
+      activeTab: ['computer', 'bloggerdog', 'fastcat'].includes(fileBrowser.activeTab as string)
+        ? fileBrowser.activeTab as 'computer' | 'bloggerdog' | 'fastcat'
         : defaults.fileBrowser.activeTab,
     },
   };

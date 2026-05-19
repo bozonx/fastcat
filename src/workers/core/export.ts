@@ -69,7 +69,7 @@ export async function extractMetadata(
   try {
     const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
     const source = new BlobSource(file);
-    const input = new Input({ source, formats: ALL_FORMATS } as any);
+    const input = new Input({ source, formats: ALL_FORMATS } as unknown);
 
     try {
       const mimeType = typeof input.getMimeType === 'function' ? await input.getMimeType() : null;
@@ -106,7 +106,7 @@ export async function extractMetadata(
           parsedCodec: parseVideoCodec(codecParam || vTrack.codec || ''),
           fps: stats.averagePacketRate,
           bitrate: stats.averageBitrate,
-          colorSpace: colorSpace as any,
+          colorSpace: colorSpace as unknown,
           canDecode: canDecodeVideo,
         };
       }
@@ -166,7 +166,7 @@ function buildMetadataTags(
   return Object.keys(tags).length > 0 ? tags : null;
 }
 
-async function waitForVideoBackpressure(videoSource: any) {
+async function waitForVideoBackpressure(videoSource: { encodeQueueSize?: number }) {
   const maxQueueSize = 4;
 
   while (Number(videoSource?.encodeQueueSize ?? 0) >= maxQueueSize) {
@@ -184,39 +184,54 @@ function fillCanvasBlack(canvas: OffscreenCanvas | HTMLCanvasElement | undefined
   context.restore();
 }
 
+interface PassthroughClip {
+  fastcat?: Record<string, unknown>;
+  audioGain?: number;
+  audioBalance?: number;
+  audioFadeInUs?: number;
+  audioFadeOutUs?: number;
+  transitionIn?: { durationUs?: number };
+  transitionOut?: { durationUs?: number };
+  effects?: { target?: string; enabled?: boolean }[];
+  speed?: number;
+  sourcePath?: string;
+  source?: { path?: string };
+  fileHandle?: FileSystemFileHandle;
+}
+
 export function isPassthroughCompatibleClip(
-  clip: any,
+  clip: PassthroughClip,
   options: { audioSampleRate?: number; audioChannels?: 'mono' | 'stereo' },
 ): { ok: true } | { ok: false; reason: string } {
-  const fastcat = clip?.fastcat ?? {};
-  const gain = Number(clip?.audioGain ?? fastcat.audioGain ?? 1);
+  const fastcat = clip.fastcat ?? {};
+  const gain = Number(clip.audioGain ?? fastcat.audioGain ?? 1);
   if (Number.isFinite(gain) && Math.abs(gain - 1) > 1e-6) {
     return { ok: false, reason: 'clip gain is not unity' };
   }
-  const balance = Number(clip?.audioBalance ?? fastcat.audioBalance ?? 0);
+  const balance = Number(clip.audioBalance ?? fastcat.audioBalance ?? 0);
   if (Number.isFinite(balance) && Math.abs(balance) > 1e-6) {
     return { ok: false, reason: 'clip balance is not centered' };
   }
-  const fadeInUs = Number(clip?.audioFadeInUs ?? fastcat.audioFadeInUs ?? 0);
-  const fadeOutUs = Number(clip?.audioFadeOutUs ?? fastcat.audioFadeOutUs ?? 0);
+  const fadeInUs = Number(clip.audioFadeInUs ?? fastcat.audioFadeInUs ?? 0);
+  const fadeOutUs = Number(clip.audioFadeOutUs ?? fastcat.audioFadeOutUs ?? 0);
   if (fadeInUs > 0 || fadeOutUs > 0) {
     return { ok: false, reason: 'clip has fade in/out' };
   }
-  const transitionIn = clip?.transitionIn ?? fastcat.transitionIn;
-  const transitionOut = clip?.transitionOut ?? fastcat.transitionOut;
+  const transitionIn = clip.transitionIn ?? fastcat.transitionIn;
+  const transitionOut = clip.transitionOut ?? fastcat.transitionOut;
   if (
     (transitionIn?.durationUs && Number(transitionIn.durationUs) > 0) ||
     (transitionOut?.durationUs && Number(transitionOut.durationUs) > 0)
   ) {
     return { ok: false, reason: 'clip has audio transition' };
   }
-  const audioEffects = Array.isArray(clip?.effects)
-    ? clip.effects.filter((e: any) => e?.target === 'audio' && e?.enabled !== false)
+  const audioEffects = Array.isArray(clip.effects)
+    ? clip.effects.filter((e) => e?.target === 'audio' && e?.enabled !== false)
     : [];
   if (audioEffects.length > 0) {
     return { ok: false, reason: 'clip has audio effects' };
   }
-  const speedRaw = Number(clip?.speed);
+  const speedRaw = Number(clip.speed);
   if (Number.isFinite(speedRaw) && speedRaw !== 1) {
     return { ok: false, reason: 'clip has non-unit speed or reverse' };
   }
@@ -226,22 +241,22 @@ export function isPassthroughCompatibleClip(
 }
 
 async function buildPassthroughAudioTrack(params: {
-  clip: any;
+  clip: PassthroughClip;
   hostClient: VideoCoreHostAPI | null;
   reportExportWarning: (message: string) => Promise<void>;
   options: { audioSampleRate?: number; audioChannels?: 'mono' | 'stereo' };
 }) {
   const { clip, hostClient, reportExportWarning, options } = params;
-  const sourcePath = (clip as any).sourcePath || (clip as any).source?.path;
+  const sourcePath = clip.sourcePath || clip.source?.path;
   if (!sourcePath || !hostClient) return null;
 
-  const fileHandle = (clip as any).fileHandle || (await hostClient.getFileHandleByPath(sourcePath));
+  const fileHandle = clip.fileHandle || (await hostClient.getFileHandleByPath(sourcePath));
   if (!fileHandle) return null;
 
   const file = (await hostClient.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
-  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
+  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as unknown);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -253,8 +268,8 @@ async function buildPassthroughAudioTrack(params: {
 
     const requestedSampleRate = Number(options.audioSampleRate) || 48000;
     const requestedChannels = options.audioChannels === 'mono' ? 1 : 2;
-    const sourceSampleRate = Number((audioTrack as any).sampleRate) || 0;
-    const sourceChannels = Number((audioTrack as any).numberOfChannels) || 0;
+    const sourceSampleRate = Number((audioTrack as unknown as { sampleRate?: number }).sampleRate) || 0;
+    const sourceChannels = Number((audioTrack as unknown as { numberOfChannels?: number }).numberOfChannels) || 0;
     if (sourceSampleRate > 0 && sourceSampleRate !== requestedSampleRate) {
       await reportExportWarning(
         `[Worker Export] Opus passthrough disabled: source sample rate ${sourceSampleRate}Hz differs from requested ${requestedSampleRate}Hz.`,
@@ -324,8 +339,8 @@ export async function runExport(
     }
   }
 
-  async function createOutput(params: { format: any }): Promise<{ output: any; writable: any }> {
-    const writable = await (targetHandle as any).createWritable({ keepExistingData: false });
+  async function createOutput(params: { format: unknown }): Promise<{ output: { cancel?: () => Promise<void>; setMetadataTags?: (tags: Record<string, unknown>) => void }; writable: { abort?: () => Promise<void> } }> {
+    const writable = await (targetHandle as unknown as { createWritable: (opts?: { keepExistingData?: boolean }) => Promise<{ abort?: () => Promise<void> }> }).createWritable({ keepExistingData: false });
 
     const target = new StreamTarget(writable, {
       chunked: true,
@@ -335,19 +350,19 @@ export async function runExport(
     return { output, writable };
   }
 
-  async function safeCancel(params: { output: any; writable: any }) {
+  async function safeCancel(params: { output: { cancel?: () => Promise<void> }; writable: { abort?: () => Promise<void> } }) {
     const { output, writable } = params;
     try {
-      if (typeof (output as any).cancel === 'function') {
-        await (output as any).cancel();
+      if (typeof output.cancel === 'function') {
+        await output.cancel();
       }
     } catch {
       // ignore
     }
 
     try {
-      if (typeof (writable as any).abort === 'function') {
-        await (writable as any).abort();
+      if (typeof writable.abort === 'function') {
+        await writable.abort();
       }
     } catch {
       // ignore
@@ -356,11 +371,11 @@ export async function runExport(
 
   async function writeOpusPassthroughIfNeeded(params: {
     audioPacketState: {
-      audioSource: any;
-      packetSink: any;
-      decoderConfig: any;
+      audioSource: { add: (packet: unknown, opts?: { decoderConfig?: unknown }) => Promise<void> };
+      packetSink: { packets: () => AsyncIterable<unknown>; close?: () => void };
+      decoderConfig: unknown;
       ranges: { timelineStartS: number; sourceStartS: number; sourceEndS: number };
-      input: any;
+      input: unknown;
     } | null;
   }) {
     const audioPacketState = params.audioPacketState;
@@ -397,8 +412,8 @@ export async function runExport(
         );
       }
     } finally {
-      if ('close' in packetSink && typeof (packetSink as any).close === 'function') {
-        (packetSink as any).close();
+      if ('close' in packetSink && typeof packetSink.close === 'function') {
+        packetSink.close();
       }
       safeDispose(input);
     }
@@ -407,7 +422,7 @@ export async function runExport(
   async function encodeFrames(params: {
     durationUs: number;
     fps: number;
-    videoSource: any;
+    videoSource: { add: (timestampS: number, durationS: number) => Promise<void> };
     compositor: VideoCompositor;
     taskId?: string;
   }) {
@@ -440,7 +455,7 @@ export async function runExport(
         emptyFrameCount++;
       }
       await waitForVideoBackpressure(params.videoSource);
-      await (params.videoSource as any).add(frame.timestampS, frame.durationS);
+      await params.videoSource.add(frame.timestampS, frame.durationS);
 
       const progress = Math.min(99, Math.round(((frameNum + 1) / totalFrames) * 99));
       const nowProgressMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -518,8 +533,8 @@ export async function runExport(
 
       if (options.metadata) {
         const tags = buildMetadataTags(options.metadata);
-        if (tags && typeof (output as any).setMetadataTags === 'function') {
-          (output as any).setMetadataTags(tags);
+        if (tags && typeof output.setMetadataTags === 'function') {
+          output.setMetadataTags(tags);
         }
       }
 
@@ -538,7 +553,7 @@ export async function runExport(
         );
       }
 
-      const videoSource = new CanvasSource(localCompositor.canvas as any, {
+      const videoSource = new CanvasSource(localCompositor.canvas as unknown as HTMLCanvasElement, {
         codec: getBunnyVideoCodec(options.videoCodec),
         fullCodecString,
         bitrate: options.bitrate,
@@ -549,16 +564,16 @@ export async function runExport(
       });
       output.addVideoTrack(videoSource);
 
-      let audioSource: any = null;
+      let audioSource: unknown = null;
       let writeMixedAudioToSource: (() => Promise<void>) | null = null;
       let audioSampleRate = 48000;
       let audioNumberOfChannels = 2;
       let audioPacketState: {
-        audioSource: any;
-        packetSink: any;
-        decoderConfig: any;
+        audioSource: { add: (packet: unknown, opts?: { decoderConfig?: unknown }) => Promise<void> };
+        packetSink: { packets: () => AsyncIterable<unknown>; close?: () => void };
+        decoderConfig: unknown;
         ranges: { timelineStartS: number; sourceStartS: number; sourceEndS: number };
-        input: any;
+        input: unknown;
       } | null = null;
       if (options.audio && hasAnyAudio) {
         if (options.audioPassthrough && audioClips.length === 1 && audioClips[0] !== undefined) {
@@ -569,7 +584,7 @@ export async function runExport(
             );
           } else {
             audioPacketState = await buildPassthroughAudioTrack({
-              clip: audioClips[0] as any,
+              clip: audioClips[0] as PassthroughClip,
               hostClient,
               reportExportWarning,
               options,
@@ -691,7 +706,7 @@ export async function extractAudioStream(
     EncodedPacketSink,
   } = await import('mediabunny');
 
-  const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as any);
+  const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as unknown);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -700,7 +715,7 @@ export async function extractAudioStream(
     const inputCodecStr = (await audioTrack.getCodecParameterString()) || audioTrack.codec || '';
     const lowercaseCodec = inputCodecStr.toLowerCase();
 
-    let format: any;
+    let format: unknown;
     if (lowercaseCodec.startsWith('mp4a') || lowercaseCodec.includes('aac')) {
       format = new Mp4OutputFormat();
     } else if (lowercaseCodec.includes('opus')) {
@@ -709,7 +724,7 @@ export async function extractAudioStream(
       format = new MkvOutputFormat();
     }
 
-    const writable = await (targetHandle as any).createWritable({ keepExistingData: false });
+    const writable = await (targetHandle as unknown as { createWritable: (opts?: { keepExistingData?: boolean }) => Promise<{ abort?: () => Promise<void> }> }).createWritable({ keepExistingData: false });
     const target = new StreamTarget(writable, { chunked: true });
     const output = new Output({ target, format });
 
@@ -717,7 +732,7 @@ export async function extractAudioStream(
     const decoderConfig = await audioTrack.getDecoderConfig();
 
     const packetSource = new EncodedAudioPacketSource(
-      getBunnyAudioCodec((lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as any) as any,
+      getBunnyAudioCodec((lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as unknown) as unknown,
     );
     output.addAudioTrack(packetSource);
 
@@ -728,7 +743,7 @@ export async function extractAudioStream(
     for await (const packet of packetSink.packets()) {
       if (checkCancel()) {
         const err = new Error('Extraction cancelled');
-        (err as any).name = 'AbortError';
+        (err as Error).name = 'AbortError';
         throw err;
       }
       if (isFirstPacket) {
@@ -739,8 +754,8 @@ export async function extractAudioStream(
       }
     }
 
-    if (typeof (packetSource as any).close === 'function') {
-      (packetSource as any).close();
+    if (typeof (packetSource as { close?: () => void }).close === 'function') {
+      (packetSource as { close?: () => void }).close();
     }
     await output.finalize();
   } catch (err) {

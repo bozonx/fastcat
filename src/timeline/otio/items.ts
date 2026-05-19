@@ -142,7 +142,7 @@ export function parseClipItem(input: {
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);
 
-  const ref = otio.media_reference as any;
+  const ref = otio.media_reference as unknown as { OTIO_SCHEMA?: string; target_url?: string };
   const path =
     ref?.OTIO_SCHEMA === 'ExternalReference.1' && typeof ref.target_url === 'string'
       ? ref.target_url
@@ -266,7 +266,7 @@ export function parseClipItem(input: {
     showThumbnails: fastcatMeta.visual?.showThumbnails,
     transform: coerceTransform(fastcatMeta.transform),
     transformActive: fastcatMeta.flags?.transformActive,
-    mask: fastcatMeta.mask as any,
+    mask: fastcatMeta.mask as unknown,
     maskActive: fastcatMeta.flags?.maskActive,
   };
 
@@ -276,7 +276,7 @@ export function parseClipItem(input: {
     const bgColor =
       typeData?.kind === 'background'
         ? sanitizeTimelineColor(typeData.color, '#000000')
-        : sanitizeTimelineColor((fastcatMeta.typeData as any)?.background?.color, '#000000');
+        : sanitizeTimelineColor((fastcatMeta.typeData as unknown as { background?: { color?: string } })?.background?.color, '#000000');
     return {
       ...base,
       clipType: 'background',
@@ -298,21 +298,21 @@ export function parseClipItem(input: {
       text:
         typeData?.kind === 'text'
           ? (typeData.text ?? 'Text')
-          : ((fastcatMeta.typeData as any)?.text?.text ?? 'Text'),
+          : ((fastcatMeta.typeData as unknown as { text?: { text?: string } })?.text?.text ?? 'Text'),
       style:
-        typeData?.kind === 'text' ? typeData.style : (fastcatMeta.typeData as any)?.text?.style,
+        typeData?.kind === 'text' ? typeData.style : (fastcatMeta.typeData as unknown as { text?: { style?: import('~/timeline/types').TextClipStyle } })?.text?.style,
     };
   }
 
   if (clipType === 'shape') {
-    const shapeData = typeData?.kind === 'shape' ? typeData : (fastcatMeta.typeData as any)?.shape;
+    const shapeData = typeData?.kind === 'shape' ? typeData : (fastcatMeta.typeData as unknown as { shape?: unknown })?.shape;
     return {
       ...base,
       clipType: 'shape',
       sourceDurationUs,
       timelineRange: finalTimelineRange,
       sourceRange: finalSourceRange,
-      shapeType: (shapeData?.type ?? 'square') as any,
+      shapeType: (shapeData?.type ?? 'square') as string,
       fillColor:
         shapeData?.fillColor && shapeData.fillColor.trim().length > 0
           ? shapeData.fillColor
@@ -322,19 +322,19 @@ export function parseClipItem(input: {
           ? shapeData.strokeColor
           : '#000000',
       strokeWidth: shapeData?.strokeWidth ?? 0,
-      shapeConfig: shapeData?.config as any,
+      shapeConfig: shapeData?.config as unknown,
     };
   }
 
   if (clipType === 'hud') {
-    const hudData = typeData?.kind === 'hud' ? typeData : (fastcatMeta.typeData as any)?.hud;
+    const hudData = typeData?.kind === 'hud' ? typeData : (fastcatMeta.typeData as unknown as { hud?: unknown })?.hud;
     return {
       ...base,
       clipType: 'hud',
-      hudType: (hudData?.type ?? 'media_frame') as any,
-      background: hudData?.background as any,
-      content: hudData?.content as any,
-      frame: hudData?.frame as any,
+      hudType: (hudData?.type ?? 'media_frame') as string,
+      background: hudData?.background as unknown,
+      content: hudData?.content as unknown,
+      frame: hudData?.frame as unknown,
     };
   }
 
@@ -347,7 +347,7 @@ export function parseClipItem(input: {
 
 export function parseGapItem(input: {
   trackId: string;
-  otio: { source_range: any; metadata?: unknown };
+  otio: { source_range: unknown; metadata?: unknown };
   index: number;
   occupiedIds: Set<string>;
   fallbackStartUs: number;

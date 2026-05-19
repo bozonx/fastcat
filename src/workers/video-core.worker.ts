@@ -431,14 +431,14 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
         const safeTimeS = Math.max(firstTimestampS, targetS);
 
-        let sample: any = null;
+        let sample: unknown = null;
         try {
-          sample = await (sink as any).getSample(safeTimeS);
+          sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(safeTimeS);
           if (!sample && firstTimestampS > 0) {
-            sample = await (sink as any).getSample(firstTimestampS);
+            sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(firstTimestampS);
           }
           if (!sample && safeTimeS !== 0) {
-            sample = await (sink as any).getSample(1e-6);
+            sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(1e-6);
           }
         } catch {
           results.push(null);
@@ -456,8 +456,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
           const imageSource: CanvasImageSource | null = isVideoFrame
             ? (sample as VideoFrame)
-            : typeof (sample as any).toCanvasImageSource === 'function'
-              ? (sample as any).toCanvasImageSource()
+            : typeof (sample as { toCanvasImageSource?: () => CanvasImageSource }).toCanvasImageSource === 'function'
+              ? (sample as { toCanvasImageSource?: () => CanvasImageSource }).toCanvasImageSource()
               : null;
 
           if (!imageSource) {
@@ -467,10 +467,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
           const rawW: number = isVideoFrame
             ? (sample as VideoFrame).displayWidth
-            : ((imageSource as any).displayWidth ?? (imageSource as any).width ?? 0);
+            : ((imageSource as CanvasImageSource & { displayWidth?: number; width?: number }).displayWidth ?? (imageSource as CanvasImageSource & { displayWidth?: number; width?: number }).width ?? 0);
           const rawH: number = isVideoFrame
             ? (sample as VideoFrame).displayHeight
-            : ((imageSource as any).displayHeight ?? (imageSource as any).height ?? 0);
+            : ((imageSource as CanvasImageSource & { displayHeight?: number; height?: number }).displayHeight ?? (imageSource as CanvasImageSource & { displayHeight?: number; height?: number }).height ?? 0);
 
           if (!rawW || !rawH) {
             results.push(null);
@@ -551,9 +551,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 const activeCancels = new Map<string, boolean>();
 
 interface FrameExtractorState {
-  source: any;
-  input: any;
-  sink: any;
+  source: unknown;
+  input: unknown;
+  sink: { getSample: (timeS: number) => Promise<unknown>; close?: () => void; dispose?: () => void };
   firstTimestampS: number;
   canvas: OffscreenCanvas | null;
   ctx: OffscreenCanvasRenderingContext2D | null;
@@ -564,7 +564,7 @@ const frameExtractors = new Map<string, FrameExtractorState>();
 async function createFrameExtractorState(file: File): Promise<FrameExtractorState> {
   const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
   const source = new BlobSource(file);
-  const input = new Input({ source, formats: ALL_FORMATS } as any);
+  const input = new Input({ source, formats: ALL_FORMATS } as unknown);
   const track = await input.getPrimaryVideoTrack();
 
   if (!track || !(await track.canDecode())) {
@@ -579,8 +579,8 @@ async function createFrameExtractorState(file: File): Promise<FrameExtractorStat
   }
 
   const firstTimestampS: number =
-    typeof (track as any).getFirstTimestamp === 'function'
-      ? await (track as any).getFirstTimestamp()
+    typeof (track as unknown as { getFirstTimestamp?: () => Promise<number> }).getFirstTimestamp === 'function'
+      ? await (track as unknown as { getFirstTimestamp?: () => Promise<number> }).getFirstTimestamp()
       : 0;
 
   return {

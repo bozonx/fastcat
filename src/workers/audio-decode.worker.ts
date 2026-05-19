@@ -25,12 +25,12 @@ const decodeSourceCache = new Map<string, CachedDecodeSource>();
 const decodeSourceLocks = new Map<string, Promise<void>>();
 
 function disposeDecodeSource(source: CachedDecodeSource) {
-  const anySink = source.sink as any;
-  const anyInput = source.input as any;
-  if (typeof anySink.close === 'function') anySink.close();
-  if (typeof anySink.dispose === 'function') anySink.dispose();
-  if (typeof anyInput.dispose === 'function') anyInput.dispose();
-  else if (typeof anyInput.close === 'function') anyInput.close();
+  const sink = source.sink as { close?: () => void; dispose?: () => void };
+  const input = source.input as { dispose?: () => void; close?: () => void };
+  if (typeof sink.close === 'function') sink.close();
+  if (typeof sink.dispose === 'function') sink.dispose();
+  if (typeof input.dispose === 'function') input.dispose();
+  else if (typeof input.close === 'function') input.close();
 }
 
 async function getCachedDecodeSource(
@@ -47,20 +47,20 @@ async function getCachedDecodeSource(
   }
 
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as unknown);
   let aTrack: Awaited<ReturnType<InstanceType<typeof Input>['getPrimaryAudioTrack']>>;
   try {
     aTrack = await input.getPrimaryAudioTrack();
     if (!aTrack) {
       const err = new Error('No audio track');
-      (err as any).name = 'NoAudioTrackError';
+      (err as Error).name = 'NoAudioTrackError';
       throw err;
     }
     if (!(await aTrack.canDecode())) throw new Error('Audio track cannot be decoded');
   } catch (err) {
-    const anyInput = input as any;
-    if (typeof anyInput.dispose === 'function') anyInput.dispose();
-    else if (typeof anyInput.close === 'function') anyInput.close();
+    const inputDispose = input as { dispose?: () => void; close?: () => void };
+    if (typeof inputDispose.dispose === 'function') inputDispose.dispose();
+    else if (typeof inputDispose.close === 'function') inputDispose.close();
     throw err;
   }
 
@@ -157,8 +157,16 @@ async function decodeToFloat32Channels(
     const decodeStartS = rangeStartTimeS;
     const decodeEndS = rangeDurationS ? rangeStartTimeS + rangeDurationS : durationS || 1e9;
 
-    for await (const sampleRaw of (sink as any).samples(decodeStartS, decodeEndS)) {
-      const sample = sampleRaw as any;
+    for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(decodeStartS, decodeEndS)) {
+      const sample = sampleRaw as {
+        sampleRate: number;
+        numberOfChannels: number;
+        numberOfFrames: number;
+        timestamp: number;
+        allocationSize: (options: { format: 'f32-planar'; planeIndex: number }) => number;
+        copyTo: (dst: Float32Array, options: { format: 'f32-planar'; planeIndex: number }) => void;
+        close: () => void;
+      };
       try {
         sampleRate = Math.max(1, Number(sample.sampleRate) || sampleRate);
         const sampleChannels = Math.max(1, Number(sample.numberOfChannels) || 1);
@@ -247,13 +255,13 @@ async function extractPeaksFromSource(
   const maxLength = options?.maxLength || 8000;
   const precision = options?.precision || 10000;
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as unknown);
 
   try {
     const aTrack = await input.getPrimaryAudioTrack();
     if (!aTrack) {
       const err = new Error('No audio track');
-      (err as any).name = 'NoAudioTrackError';
+      (err as Error).name = 'NoAudioTrackError';
       throw err;
     }
     if (!(await aTrack.canDecode())) throw new Error('Audio track cannot be decoded');
@@ -270,8 +278,8 @@ async function extractPeaksFromSource(
       const peaks: Float32Array[] = [];
       let resolvedChannels = 0;
 
-      for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
-        const sample = sampleRaw as any;
+      for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(0, durationS || 1e9)) {
+        const sample = sampleRaw as unknown;
         try {
           const frames = Number(sample.numberOfFrames) || 0;
           const numberOfChannels = Math.max(1, Number(sample.numberOfChannels) || 1);
@@ -337,13 +345,13 @@ async function extractPeaksFromSource(
       }
       return peaks;
     } finally {
-      if (typeof (sink as any).close === 'function') (sink as any).close();
-      if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
+      if (typeof (sink as { close?: () => void }).close === 'function') (sink as { close?: () => void }).close();
+      if (typeof (sink as { dispose?: () => void }).dispose === 'function') (sink as { dispose?: () => void }).dispose();
     }
   } finally {
-    if ('dispose' in input && typeof (input as any).dispose === 'function')
-      (input as any).dispose();
-    else if ('close' in input && typeof (input as any).close === 'function') (input as any).close();
+    if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
+      (input as { dispose?: () => void }).dispose();
+    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function') (input as { close?: () => void }).close();
   }
 }
 
@@ -365,7 +373,7 @@ function resample(audio: Float32Array, currentRate: number, targetRate: number):
 
 async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16000) {
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as unknown);
 
   try {
     const aTrack = await input.getPrimaryAudioTrack();
@@ -383,8 +391,8 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
       let totalSamples = 0;
       let sourceRate = 48000;
 
-      for await (const sampleRaw of (sink as any).samples(0, durationS || 1e9)) {
-        const sample = sampleRaw as any;
+      for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(0, durationS || 1e9)) {
+        const sample = sampleRaw as unknown;
         try {
           sourceRate = sample.sampleRate || sourceRate;
           const frames = Number(sample.numberOfFrames) || 0;
@@ -429,13 +437,13 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
         sttAudio,
       };
     } finally {
-      if (typeof (sink as any).close === 'function') (sink as any).close();
-      if (typeof (sink as any).dispose === 'function') (sink as any).dispose();
+      if (typeof (sink as { close?: () => void }).close === 'function') (sink as { close?: () => void }).close();
+      if (typeof (sink as { dispose?: () => void }).dispose === 'function') (sink as { dispose?: () => void }).dispose();
     }
   } finally {
-    if ('dispose' in input && typeof (input as any).dispose === 'function')
-      (input as any).dispose();
-    else if ('close' in input && typeof (input as any).close === 'function') (input as any).close();
+    if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
+      (input as { dispose?: () => void }).dispose();
+    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function') (input as { close?: () => void }).close();
   }
 }
 

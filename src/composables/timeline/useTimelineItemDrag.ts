@@ -982,8 +982,11 @@ export function useTimelineItemDrag(
       } else {
         labelKey = getTimelineCommandLabelKey(appliedCmd.type);
       }
+      console.warn('[DRAG PUSH] cmdType:', appliedCmd.type, 'label:', labelKey, 'snapshot tracks count:', snapshot.tracks?.length, 'first clip startUs before push:', snapshot.tracks?.[0]?.items?.[0]?.timelineRange?.startUs);
       historyStore.push('timeline', appliedCmd.type, snapshot, labelKey);
       dragStartSnapshot.value = null;
+    } else {
+      console.warn('[DRAG PUSH] SKIPPED', { cancel, hasSnapshot: !!snapshot, hasAppliedCmd: !!appliedCmd });
     }
 
     if (cancel && snapshot) {

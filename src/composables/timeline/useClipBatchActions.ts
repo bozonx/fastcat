@@ -4,8 +4,8 @@ import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 
 export interface ClipBatchActionsContext {
   timelineDoc: Ref<TimelineDocument | null>;
-  mediaMetadata: Ref<Record<string, any>>;
-  batchApplyTimeline: (cmds: any[], options?: { labelKey?: string }) => void;
+  mediaMetadata: Ref<Record<string, unknown>>;
+  batchApplyTimeline: (cmds: unknown[], options?: { labelKey?: string }) => void;
   clearSelection: () => void;
 }
 
@@ -44,8 +44,8 @@ export function useClipBatchActions(
         if (it.kind !== 'clip') continue;
         if (
           track.kind === 'audio' &&
-          Boolean((it as any).linkedVideoClipId) &&
-          Boolean((it as any).lockToLinkedVideo)
+          Boolean((it as TimelineClipItem).linkedVideoClipId) &&
+          Boolean((it as TimelineClipItem).lockToLinkedVideo)
         ) {
           return true;
         }
@@ -57,9 +57,9 @@ export function useClipBatchActions(
               t.items.some(
                 (a) =>
                   a.kind === 'clip' &&
-                  Boolean((a as any).linkedVideoClipId) &&
-                  Boolean((a as any).lockToLinkedVideo) &&
-                  String((a as any).linkedVideoClipId) === videoId,
+                  Boolean((a as TimelineClipItem).linkedVideoClipId) &&
+                  Boolean((a as TimelineClipItem).lockToLinkedVideo) &&
+                  String((a as TimelineClipItem).linkedVideoClipId) === videoId,
               ),
             );
           if (hasLinkedAudio) return true;
@@ -137,7 +137,7 @@ export function useClipBatchActions(
       const isVideoWithAudio =
         track.kind === 'video' &&
         clip.clipType === 'media' &&
-        (Boolean((clip as any).linkedVideoClipId) ||
+        (Boolean((clip as TimelineClipItem).linkedVideoClipId) ||
           Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio));
 
       if (isAudioTrack || isVideoWithAudio) return clip as TimelineClipItem;
@@ -185,14 +185,14 @@ export function useClipBatchActions(
     const safeDeltaUs = Math.round(Number(deltaUs));
     if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
 
-    const cmds: any[] = [];
+    const cmds: unknown[] = [];
 
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
       if (!track || track.locked) continue;
       const clip = track.items.find((it) => it.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as any).locked) continue;
+      if ((clip as TimelineClipItem).locked) continue;
 
       cmds.push({
         type: 'move_item',
@@ -213,14 +213,14 @@ export function useClipBatchActions(
     const safeDeltaUs = Math.round(Number(deltaUs));
     if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
 
-    const cmds: any[] = [];
+    const cmds: unknown[] = [];
 
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
       if (!track || track.locked) continue;
       const clip = track.items.find((it) => it.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as any).locked) continue;
+      if ((clip as TimelineClipItem).locked) continue;
 
       cmds.push({
         type: 'trim_item',
@@ -285,11 +285,11 @@ export function useClipBatchActions(
       if (track.kind !== 'audio') continue;
       for (const it of track.items) {
         if (it.kind !== 'clip') continue;
-        const linked = String((it as any).linkedVideoClipId ?? '');
-        const isLocked = Boolean((it as any).lockToLinkedVideo);
+        const linked = String((it as TimelineClipItem).linkedVideoClipId ?? '');
+        const isLocked = Boolean((it as TimelineClipItem).lockToLinkedVideo);
 
         const shouldUnlink =
-          (selectedIds.has(it.id) && Boolean((it as any).linkedVideoClipId) && isLocked) ||
+          (selectedIds.has(it.id) && Boolean((it as TimelineClipItem).linkedVideoClipId) && isLocked) ||
           (videoIds.length > 0 && isLocked && linked && videoIds.includes(linked));
 
         if (!shouldUnlink) continue;
@@ -304,7 +304,7 @@ export function useClipBatchActions(
     }
 
     if (cmds.length === 0) return;
-    ctx.batchApplyTimeline(cmds as any, { labelKey: 'videoEditor.fileManager.history.entries.unlinkAudio' });
+    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unlinkAudio' });
   }
 
   function handleGroupSelected() {
@@ -320,7 +320,7 @@ export function useClipBatchActions(
       },
     }));
 
-    ctx.batchApplyTimeline(cmds as any, { labelKey: 'videoEditor.fileManager.history.entries.groupClips' });
+    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.groupClips' });
   }
 
   function handleUngroupSelected() {
@@ -333,7 +333,7 @@ export function useClipBatchActions(
       },
     }));
 
-    ctx.batchApplyTimeline(cmds as any, { labelKey: 'videoEditor.fileManager.history.entries.ungroupClips' });
+    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.ungroupClips' });
   }
 
   function handleDelete() {
@@ -349,7 +349,7 @@ export function useClipBatchActions(
   function toggleDisabled() {
     const nextVal = !allDisabled.value;
     const doc = ctx.timelineDoc.value;
-    const cmds: any[] = [];
+    const cmds: unknown[] = [];
     for (const { trackId, itemId } of items.value) {
       const track = doc?.tracks.find((t) => t.id === trackId);
       if (track?.kind === 'audio') continue;
@@ -368,7 +368,7 @@ export function useClipBatchActions(
   function toggleMuted() {
     const nextVal = !allMuted.value;
     const doc = ctx.timelineDoc.value;
-    const cmds: any[] = [];
+    const cmds: unknown[] = [];
     for (const { trackId, itemId } of items.value) {
       const track = doc?.tracks.find((t) => t.id === trackId);
       const clip = track?.items.find((it) => it.id === itemId);
@@ -378,7 +378,7 @@ export function useClipBatchActions(
       const isVideoWithAudio =
         track.kind === 'video' &&
         clip.clipType === 'media' &&
-        (Boolean((clip as any).linkedVideoClipId) ||
+        (Boolean((clip as TimelineClipItem).linkedVideoClipId) ||
           Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio));
 
       if (isAudioTrack || isVideoWithAudio) {
@@ -435,14 +435,14 @@ export function useClipBatchActions(
     const nextDurationUs = Math.max(1, Math.round(Number(durationUs)));
     if (!Number.isFinite(nextDurationUs)) return;
 
-    const cmds: any[] = [];
+    const cmds: unknown[] = [];
 
     for (const { trackId, itemId } of items.value) {
       const track = doc.tracks.find((t) => t.id === trackId);
       if (!track || track.locked) continue;
       const clip = track.items.find((it) => it.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as any).locked) continue;
+      if ((clip as TimelineClipItem).locked) continue;
 
       const currentDurationUs = Math.max(0, Math.round(Number(clip.timelineRange.durationUs)));
       const deltaUs = nextDurationUs - currentDurationUs;
@@ -501,7 +501,7 @@ export function useClipBatchActions(
       if (!track || track.locked) continue;
       const clip = track.items.find((it) => it.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as any).locked) continue;
+      if ((clip as TimelineClipItem).locked) continue;
 
       const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
       const durFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;

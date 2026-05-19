@@ -13,6 +13,7 @@ import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import {
@@ -82,6 +83,8 @@ const isInactiveTimeline = computed(() => {
 const finalIsReadOnly = computed(() => props.isReadOnly || isInactiveTimeline.value);
 
 const { onRename, onDelete } = useFilePropertiesHandlers({
+  // onRename is kept for potential future use but not used for the quick-action button anymore
+
   selectedFsEntry: fsEntryRef,
   mediaType: mediaType,
   textContent: textContent,
@@ -94,6 +97,15 @@ const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsa
   projectStore,
   timelineStore,
 });
+
+const isRenameModalOpen = ref(false);
+
+async function handleRenameConfirm(newName: string) {
+  const entry = props.fsEntry;
+  if (!entry) return;
+  await fileManager.renameEntry(entry, newName.trim());
+  isRenameModalOpen.value = false;
+}
 
 const fileActions = computed(() => {
   if (!props.fsEntry) return null;
@@ -109,7 +121,7 @@ const fileActions = computed(() => {
         id: 'rename',
         title: t('common.rename'),
         icon: 'i-heroicons-pencil',
-        onClick: onRename,
+        onClick: () => { isRenameModalOpen.value = true; },
       },
     ],
     secondary: [
@@ -398,6 +410,14 @@ const addTrackActions = computed(() => [
       v-if="!finalIsReadOnly"
       :effects="masterAudioEffects"
       @update:effects="handleUpdateMasterAudioEffects"
+    />
+
+    <UiRenameModal
+      v-if="fsEntry"
+      :open="isRenameModalOpen"
+      :current-name="fsEntry.name"
+      @update:open="isRenameModalOpen = $event"
+      @rename="handleRenameConfirm"
     />
   </div>
 </template>

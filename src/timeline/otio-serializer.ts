@@ -237,25 +237,25 @@ function serializeTrackItems(
     // Build discriminated typeData
     const typeData =
       item.clipType === 'background'
-        ? { kind: 'background' as const, color: (item as any).backgroundColor }
+        ? { kind: 'background' as const, color: item.backgroundColor }
         : item.clipType === 'text'
-          ? { kind: 'text' as const, text: (item as any).text, style: (item as any).style }
+          ? { kind: 'text' as const, text: item.text, style: item.style }
           : item.clipType === 'shape'
             ? {
                 kind: 'shape' as const,
-                type: (item as any).shapeType,
-                fillColor: (item as any).fillColor,
-                strokeColor: (item as any).strokeColor,
-                strokeWidth: (item as any).strokeWidth,
-                config: (item as any).shapeConfig,
+                type: item.shapeType,
+                fillColor: item.fillColor,
+                strokeColor: item.strokeColor,
+                strokeWidth: item.strokeWidth,
+                config: item.shapeConfig,
               }
             : item.clipType === 'hud'
               ? {
                   kind: 'hud' as const,
-                  type: (item as any).hudType,
-                  background: (item as any).background,
-                  content: (item as any).content,
-                  frame: (item as any).frame,
+                  type: item.hudType,
+                  background: item.background,
+                  content: item.content,
+                  frame: item.frame,
                 }
               : undefined;
 
@@ -265,7 +265,7 @@ function serializeTrackItems(
       enabled: item.disabled ? false : undefined,
       media_reference: mediaReference,
       source_range: toTimeRange(adjustedSourceRange, fps),
-      effects: allEffects.length > 0 ? (allEffects as any) : undefined,
+      effects: allEffects.length > 0 ? (allEffects as unknown[]) : undefined,
       metadata: {
         fastcat: {
           id: item.id,
@@ -493,7 +493,7 @@ export function parseTimelineFromOtio(
   }
 
   if (!parsed || parsed.OTIO_SCHEMA !== 'Timeline.1') {
-    report.warn('invalid_schema', `Expected Timeline.1, got ${(parsed as any)?.OTIO_SCHEMA}.`);
+    report.warn('invalid_schema', `Expected Timeline.1, got ${(parsed as { OTIO_SCHEMA?: string })?.OTIO_SCHEMA}.`);
     report.log();
     return createDefaultTimelineDocument({
       id: fallback.id,
@@ -502,7 +502,7 @@ export function parseTimelineFromOtio(
     });
   }
 
-  const docMeta = parseDocumentMetadata((parsed.metadata as any)?.fastcat ?? {});
+  const docMeta = parseDocumentMetadata((parsed.metadata as { fastcat?: unknown })?.fastcat ?? {});
   const fallbackFormat = normalizeTimelineFormat(fallback.format);
   const timebase = assertTimelineTimebase(docMeta.timebase ?? { fps: fallbackFormat.fps });
   const format = normalizeTimelineFormat(
@@ -513,11 +513,11 @@ export function parseTimelineFromOtio(
     },
   );
 
-  const stackChildren = Array.isArray((parsed.tracks as any)?.children)
-    ? (parsed.tracks as any).children
+  const stackChildren = Array.isArray((parsed.tracks as { children?: unknown[] })?.children)
+    ? (parsed.tracks as { children?: unknown[] }).children
     : [];
 
-  const tracks: TimelineTrack[] = stackChildren.map((otioTrack: any, trackIndex: number) => {
+  const tracks: TimelineTrack[] = stackChildren.map((otioTrack: { metadata: unknown } & Record<string, unknown>, trackIndex: number) => {
     const trackFastCatMeta = TimelineTrackFastCatMetaSchema.parse(
       safeFastCatMetadata(otioTrack.metadata),
     );
@@ -542,7 +542,7 @@ export function parseTimelineFromOtio(
     const rawItems: import('./types').TimelineTrackItem[] = [];
 
     for (let i = 0; i < children.length; i += 1) {
-      const child = children[i] as any;
+      const child = children[i] as unknown;
 
       if (child?.OTIO_SCHEMA === 'Transition.1') {
         const transition = parseOtioTransition(child);
@@ -557,7 +557,7 @@ export function parseTimelineFromOtio(
 
           if (transitionEdge === 'out') {
             if (prev && prev.kind === 'clip') {
-              (prev as any).transitionOut = transition;
+              (prev as { transitionOut?: unknown }).transitionOut = transition;
             }
             pendingTransitionIn = null;
             continue;
@@ -569,7 +569,7 @@ export function parseTimelineFromOtio(
           }
 
           if (prev && prev.kind === 'clip') {
-            (prev as any).transitionOut = transition;
+            (prev as { transitionOut?: unknown }).transitionOut = transition;
           }
           pendingTransitionIn = transition;
         } else {
@@ -639,8 +639,8 @@ export function parseTimelineFromOtio(
 
     // Track-level markers (e.g. from an external OTIO).
     const trackMarkers =
-      Array.isArray((otioTrack as any).markers) && (otioTrack as any).markers.length > 0
-        ? parseOtioMarkers((otioTrack as any).markers)
+      Array.isArray((otioTrack as { markers?: unknown[] }).markers) && (otioTrack as { markers?: unknown[] }).markers.length > 0
+        ? parseOtioMarkers((otioTrack as { markers?: unknown[] }).markers)
         : undefined;
 
     return {
@@ -704,8 +704,8 @@ export function parseTimelineFromOtio(
       );
 
       const next = { ...item };
-      delete (next as any).linkedVideoClipId;
-      delete (next as any).lockToLinkedVideo;
+      delete (next as { linkedVideoClipId?: unknown }).linkedVideoClipId;
+      delete (next as { lockToLinkedVideo?: unknown }).lockToLinkedVideo;
 
       return next;
     }),
@@ -717,11 +717,11 @@ export function parseTimelineFromOtio(
 
   // Markers: prefer standard OTIO markers on Stack, fallback to Timeline for old files.
   const markers =
-    Array.isArray((parsed.tracks as any)?.markers) &&
-    ((parsed.tracks as any).markers as any[]).length > 0
-      ? parseOtioMarkers((parsed.tracks as any).markers as any[])
-      : Array.isArray(parsed.markers) && (parsed.markers as any[]).length > 0
-        ? parseOtioMarkers(parsed.markers as any[])
+    Array.isArray((parsed.tracks as { markers?: unknown[] })?.markers) &&
+    ((parsed.tracks as { markers?: unknown[] }).markers ?? []).length > 0
+      ? parseOtioMarkers((parsed.tracks as { markers?: unknown[] }).markers as unknown[])
+      : Array.isArray(parsed.markers) && (parsed.markers as unknown[]).length > 0
+        ? parseOtioMarkers(parsed.markers as unknown[])
         : [];
 
   const masterEffects = docMeta.masterEffects;

@@ -24,6 +24,7 @@ import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePr
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
 import FileTranscriptionModal from '~/components/file-manager/modals/FileTranscriptionModal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import BloggerDogItemPropertiesSection from '~/components/properties/file/BloggerDogItemPropertiesSection.vue';
 import BloggerDogCollectionProperties from '~/components/properties/file/BloggerDogCollectionProperties.vue';
@@ -94,6 +95,14 @@ const clipboardStore = useAppClipboard();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
+const isRenameModalOpen = ref(false);
+
+async function handleRenameConfirm(newName: string) {
+  const entry = props.selectedFsEntry;
+  if (!entry) return;
+  await fileManager.renameEntry(entry, newName.trim());
+  isRenameModalOpen.value = false;
+}
 
 const remoteFilesConfig = computed(() =>
   resolveExternalServiceConfig({
@@ -555,7 +564,7 @@ const {
   createMarkdownInFolder,
   generateProxiesForSelectedFolder,
   stopProxyGenerationForSelectedFolder,
-  onRename,
+  onRename: () => { isRenameModalOpen.value = true; },
   onDelete,
   onConvert: () => emit('convert', props.selectedFsEntry),
   openTranscriptionModal,
@@ -1082,6 +1091,14 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :is-model-ready="isSttModelReady"
         :transcription-error="transcriptionError"
         @submit="submitAudioTranscription"
+      />
+
+      <UiRenameModal
+        v-if="selectedFsEntry"
+        :open="isRenameModalOpen"
+        :current-name="selectedFsEntry.name"
+        @update:open="isRenameModalOpen = $event"
+        @rename="handleRenameConfirm"
       />
     </template>
   </div>

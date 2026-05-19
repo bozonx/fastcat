@@ -167,7 +167,7 @@ export async function runTranscode(
     sourceFile instanceof File
       ? new BlobSource(sourceFile)
       : new BlobSource(await sourceFile.getFile());
-  const input = new Input({ source, formats: ALL_FORMATS } as any);
+  const input = new Input({ source, formats: ALL_FORMATS } as unknown);
 
   // 2. Setup Output
   const format =
@@ -177,7 +177,7 @@ export async function runTranscode(
         ? new MkvOutputFormat()
         : new Mp4OutputFormat();
 
-  const writable = await (targetHandle as any).createWritable({ keepExistingData: false });
+  const writable = await (targetHandle as unknown as { createWritable: (opts?: { keepExistingData?: boolean }) => Promise<{ abort?: () => Promise<void> }> }).createWritable({ keepExistingData: false });
   const target = new StreamTarget(writable, {
     chunked: true,
     chunkSize: 16 * 1024 * 1024,
@@ -188,15 +188,15 @@ export async function runTranscode(
   // to addVideoTrack before its async block resets outputTrackRotation to 0.
   // When exporting to MKV, this causes a crash since MKV doesn't support rotation metadata.
   // We intercept addVideoTrack and strip the rotation.
-  const originalAddVideoTrack = (output as any).addVideoTrack.bind(output);
-  (output as any).addVideoTrack = (source: any, metadata: any = {}) => {
-    if (metadata.rotation && !(format as any).supportsVideoRotationMetadata) {
+  const originalAddVideoTrack = (output as unknown as { addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void }).addVideoTrack.bind(output);
+  (output as unknown as { addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void }).addVideoTrack = (source, metadata = {}) => {
+    if ('rotation' in metadata && !(format as unknown as { supportsVideoRotationMetadata?: boolean }).supportsVideoRotationMetadata) {
       metadata.rotation = 0;
     }
     return originalAddVideoTrack(source, metadata);
   };
 
-  let conversionProcess: any = null;
+  let conversionProcess: { isValid: boolean; discardedTracks?: { reason: string }[] } | null = null;
   let outputCancelled = false;
 
   async function safeCancelOutput() {
@@ -204,8 +204,8 @@ export async function runTranscode(
     outputCancelled = true;
 
     try {
-      if (typeof (output as any).cancel === 'function') {
-        await (output as any).cancel();
+      if (typeof (output as { cancel?: () => Promise<void> }).cancel === 'function') {
+        await (output as { cancel?: () => Promise<void> }).cancel();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -242,12 +242,12 @@ export async function runTranscode(
     const sourceFrameRate = Number(sourceVideoTrackAny?.frameRate || 0);
 
     const supportedVideoCodecs =
-      typeof (format as any).getSupportedVideoCodecs === 'function'
-        ? (format as any).getSupportedVideoCodecs()
+      typeof (format as unknown as { getSupportedVideoCodecs?: () => string[] }).getSupportedVideoCodecs === 'function'
+        ? (format as unknown as { getSupportedVideoCodecs?: () => string[] }).getSupportedVideoCodecs()
         : undefined;
     const supportedAudioCodecs =
-      typeof (format as any).getSupportedAudioCodecs === 'function'
-        ? (format as any).getSupportedAudioCodecs()
+      typeof (format as unknown as { getSupportedAudioCodecs?: () => string[] }).getSupportedAudioCodecs === 'function'
+        ? (format as unknown as { getSupportedAudioCodecs?: () => string[] }).getSupportedAudioCodecs()
         : undefined;
 
     const preferredVideoCodec =
@@ -328,15 +328,15 @@ export async function runTranscode(
     conversionProcess = await Conversion.init({
       input,
       output,
-      video: videoConfig as any,
-      audio: audioConfig as any,
+      video: videoConfig as unknown,
+      audio: audioConfig as unknown,
       showWarnings: false,
     });
 
     if (!conversionProcess.isValid) {
       let reasons = '';
       if (conversionProcess.discardedTracks && conversionProcess.discardedTracks.length > 0) {
-        reasons = conversionProcess.discardedTracks.map((t: any) => t.reason).join(', ');
+        reasons = conversionProcess.discardedTracks.map((t: { reason: string }) => t.reason).join(', ');
       }
       throw new Error(`Conversion setup is invalid. Reasons: ${reasons}`);
     }
@@ -393,7 +393,7 @@ export async function runTranscode(
       /* no-op */
     }
     try {
-      if (typeof (writable as any).abort === 'function') await (writable as any).abort();
+      if (typeof (writable as { abort?: () => Promise<void> }).abort === 'function') await (writable as { abort?: () => Promise<void> }).abort();
     } catch {
       /* no-op */
     }

@@ -185,20 +185,19 @@ export function createTimelineDispatcherModule(
 
   function applyRestoredSnapshot(snapshot: TimelineDocument) {
     if (!snapshot) return;
+    console.warn('[APPLY RESTORED] tracks count:', snapshot.tracks?.length, 'first clip startUs:', snapshot.tracks?.[0]?.items?.[0]?.timelineRange?.startUs);
     deps.timelineDoc.value = snapshot;
     deps.duration.value = selectTimelineDurationUs(snapshot);
     deps.markTimelineAsDirty();
     void deps.requestTimelineSave();
-
-    // Clear selection if needed to avoid invalid refs?
-    // Usually undo/redo doesn't clear selection unless objects were deleted.
   }
 
   function undoTimeline() {
     if (!deps.timelineDoc.value || !deps.historyStore.canUndo('timeline')) return;
 
-    // Process any debounced actions before undoing
-    deps.historyDebounce.flushPendingDebouncedHistory();
+    // Discard any pending debounced history before undoing so the undo targets
+    // the last committed entry, not an unflushed debounced one.
+    deps.historyDebounce.clearPendingDebouncedHistory();
 
     const restored = deps.historyStore.undo('timeline', deps.timelineDoc.value);
     if (!restored) return;
@@ -208,8 +207,8 @@ export function createTimelineDispatcherModule(
   function redoTimeline() {
     if (!deps.timelineDoc.value || !deps.historyStore.canRedo('timeline')) return;
 
-    // Process any debounced actions before redoing
-    deps.historyDebounce.flushPendingDebouncedHistory();
+    // Discard any pending debounced history before redoing
+    deps.historyDebounce.clearPendingDebouncedHistory();
 
     const restored = deps.historyStore.redo('timeline', deps.timelineDoc.value);
     if (!restored) return;

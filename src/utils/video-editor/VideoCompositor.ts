@@ -150,7 +150,7 @@ export class VideoCompositor {
   }
 
   private setClipSpriteVisible(clip: CompositorClip, visible: boolean) {
-    if (!clip.sprite || (clip.sprite as any).destroyed) {
+    if (!clip.sprite || (clip.sprite as { destroyed?: boolean }).destroyed) {
       return false;
     }
 
@@ -199,7 +199,7 @@ export class VideoCompositor {
     clip: CompositorClip;
     sampleTimeS: number;
     abortSignal?: AbortSignal;
-  }): Promise<any | null> {
+  }): Promise<unknown | null> {
     return this.clipResourceManager.getVideoSampleForClip(params);
   }
 
@@ -208,22 +208,22 @@ export class VideoCompositor {
 
     return value.filter((effect): effect is VideoClipEffect => {
       if (!effect || typeof effect !== 'object') return false;
-      if (typeof (effect as any).id !== 'string' || (effect as any).id.length === 0) return false;
-      if (typeof (effect as any).type !== 'string' || (effect as any).type.length === 0)
+      if (typeof (effect as { id?: string }).id !== 'string' || (effect as { id?: string }).id.length === 0) return false;
+      if (typeof (effect as { type?: string }).type !== 'string' || (effect as { type?: string }).type.length === 0)
         return false;
 
-      return (effect as any).target !== 'audio';
+      return (effect as { target?: string }).target !== 'audio';
     });
   }
 
-  public buildTrackRuntimeList(timelineItems: any[]) {
+  public buildTrackRuntimeList(timelineItems: unknown[]) {
     return buildTrackRuntimeList(timelineItems, (value) => this.toVideoEffects(value));
   }
 
   public async applyShaderTransitions(activeClips: CompositorClip[], currentTimeUs: number) {
     if (!this.app) return;
 
-    const self = this as any;
+    const self = this as unknown;
     const stageTextureRenderer = this.stageTextureRenderer ?? {
       renderSingleClipToTexture: (clip: CompositorClip, texture: RenderTexture, clear?: boolean) =>
         self.renderSingleClipToTexture?.(clip, texture, clear),
@@ -238,7 +238,7 @@ export class VideoCompositor {
       width: this.width,
       height: this.height,
       transitionManager: this.transitionManager,
-      stageTextureRenderer: stageTextureRenderer as any,
+      stageTextureRenderer: stageTextureRenderer as unknown,
       getTrackById: (trackId) => this.trackById.get(trackId),
       getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs),
       ensureTransitionRenderTexture: (texture) =>
@@ -251,7 +251,7 @@ export class VideoCompositor {
     });
   }
 
-  private syncTrackRuntimes(timelineItems: any[]) {
+  private syncTrackRuntimes(timelineItems: unknown[]) {
     if (!this.app) return;
 
     const nextDefs = buildTrackRuntimeList(timelineItems, (value) => this.toVideoEffects(value));
@@ -274,7 +274,7 @@ export class VideoCompositor {
       track.effects = def.effects;
       track.container.alpha = def.opacity ?? 1;
       track.container.blendMode = def.blendMode ?? 'normal';
-      (track.container as any).__trackId = def.id;
+      (track.container as Record<string, unknown>).__trackId = def.id;
 
       if (track.container.parent !== this.app.stage) {
         this.app.stage.addChild(track.container);
@@ -293,7 +293,7 @@ export class VideoCompositor {
       if (track.effectFilters) {
         for (const filter of track.effectFilters.values()) {
           try {
-            (filter as any)?.destroy?.();
+            (filter as { destroy?: () => void })?.destroy?.();
           } catch {
             // ignore
           }
@@ -485,15 +485,15 @@ export class VideoCompositor {
       this.canvas.height = height;
     }
 
-    if (this.canvas && 'addEventListener' in (this.canvas as any)) {
-      (this.canvas as any).addEventListener('webglcontextlost', this.onContextLost, false);
-      (this.canvas as any).addEventListener('webglcontextrestored', this.onContextRestored, false);
+    if (this.canvas && 'addEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)) {
+      (this.canvas as HTMLCanvasElement).addEventListener('webglcontextlost', this.onContextLost, false);
+      (this.canvas as HTMLCanvasElement).addEventListener('webglcontextrestored', this.onContextRestored, false);
     }
 
     await this.app.init({
       width,
       height,
-      canvas: this.canvas as any,
+      canvas: this.canvas as unknown,
       backgroundColor: bgColor,
       preference: 'webgpu',
       clearBeforeRender: true,
@@ -528,7 +528,7 @@ export class VideoCompositor {
         clip.lastVideoFrame = null;
       }
       if (clip.hudMediaStates) {
-        const resetState = (s: any) => {
+        const resetState = (s: unknown) => {
           if (!s) return;
           if (s.lastVideoFrame) {
             safeDispose(s.lastVideoFrame);
@@ -560,9 +560,9 @@ export class VideoCompositor {
       try {
         if (
           clip.imageSource?.resource &&
-          typeof (clip.imageSource.resource as any).update === 'function'
+          typeof (clip.imageSource.resource as { update?: () => void }).update === 'function'
         ) {
-          (clip.imageSource.resource as any).update();
+          (clip.imageSource.resource as { update?: () => void }).update();
         }
       } catch {
         /* no-op */
@@ -587,7 +587,7 @@ export class VideoCompositor {
   };
 
   async loadTimeline(
-    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
+    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: unknown })[],
     deps: {
       getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
       getFileByPath?: (path: string) => Promise<File | null>;
@@ -627,7 +627,7 @@ export class VideoCompositor {
   }
 
   private async loadTimelineLocked(
-    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[],
+    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: unknown })[],
     deps: {
       getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
       getFileByPath?: (path: string) => Promise<File | null>;
@@ -645,7 +645,7 @@ export class VideoCompositor {
   ): Promise<number> {
     const isCancelled = () => abortSignal?.aborted === true || checkCancel?.() === true;
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
-    const nextMaster = meta ? (this.toVideoEffects((meta as any).masterEffects) ?? null) : null;
+    const nextMaster = meta ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null) : null;
     this.masterEffects = nextMaster;
     this.syncTrackRuntimes(timelineClips);
     this.stageSortDirty = true;
@@ -666,7 +666,7 @@ export class VideoCompositor {
         destroyClip: (clip) => this.destroyClip(clip),
         getExistingClipById: (itemId) => this.clipById.get(itemId),
         getFallbackTrackId: (clipData) =>
-          this.getTrackRuntimeForClip({ layer: Math.round(Number((clipData as any)?.layer ?? 0)) })
+          this.getTrackRuntimeForClip({ layer: Math.round(Number((clipData as { layer?: number }).layer ?? 0)) })
             ?.id ?? null,
         getTrackRuntimeForClip: (clip) => this.getTrackRuntimeForClip(clip),
         applySolidLayout: (clip) => this.layoutApplier.applySolidLayout(clip),
@@ -683,7 +683,7 @@ export class VideoCompositor {
         }
       }
       const abortErr = new Error('Timeline load request was superseded');
-      (abortErr as any).name = 'AbortError';
+      (abortErr as Error).name = 'AbortError';
       throw abortErr;
     }
     return this.applyLoadedTimeline({
@@ -693,9 +693,9 @@ export class VideoCompositor {
     });
   }
 
-  updateTimelineLayout(timelineClips: any[]): number {
+  updateTimelineLayout(timelineClips: unknown[]): number {
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
-    const nextMaster = meta ? (this.toVideoEffects((meta as any).masterEffects) ?? null) : null;
+    const nextMaster = meta ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null) : null;
     this.masterEffects = nextMaster;
 
     this.syncTrackRuntimes(timelineClips);
@@ -918,7 +918,7 @@ export class VideoCompositor {
     );
   }
 
-  private async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
+  private async updateClipTextureFromSample(sample: unknown, clip: CompositorClip) {
     await this.clipResourceManager.updateClipTextureFromSample(sample, clip);
   }
 
@@ -932,7 +932,7 @@ export class VideoCompositor {
       if (track.effectFilters) {
         for (const filter of track.effectFilters.values()) {
           try {
-            (filter as any)?.destroy?.();
+            (filter as { destroy?: () => void })?.destroy?.();
           } catch {
             // ignore
           }
@@ -970,7 +970,7 @@ export class VideoCompositor {
       this.stageTextureRenderer = null;
     }
     if (this.app) {
-      const pixiApp = this.app as any;
+      const pixiApp = this.app as unknown;
 
       // Pixi v8 ResizePlugin teardown may call an internal _cancelResize callback.
       // Guard it because some lifecycle interleavings leave it unset.
@@ -996,10 +996,10 @@ export class VideoCompositor {
       this.app = null;
     }
 
-    if (this.canvas && 'removeEventListener' in (this.canvas as any)) {
+    if (this.canvas && 'removeEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)) {
       try {
-        (this.canvas as any).removeEventListener('webglcontextlost', this.onContextLost, false);
-        (this.canvas as any).removeEventListener(
+        (this.canvas as HTMLCanvasElement).removeEventListener('webglcontextlost', this.onContextLost, false);
+        (this.canvas as HTMLCanvasElement).removeEventListener(
           'webglcontextrestored',
           this.onContextRestored,
           false,

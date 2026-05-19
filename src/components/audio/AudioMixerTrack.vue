@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue';
+import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineTrack } from '~/timeline/types';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
@@ -8,6 +8,7 @@ import { linearToDb, dbToLinear } from '~/utils/audio';
 import { getAudioEffectManifest } from '~/effects';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import TrackAudioEffectsModal from './TrackAudioEffectsModal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -46,30 +47,15 @@ function toggleSolo() {
   timelineStore.toggleTrackAudioSolo(props.track.id);
 }
 
-// Renaming
-const isRenaming = ref(false);
-const renameValue = ref('');
-const renameInput = ref<{ input: HTMLInputElement } | null>(null);
+// Rename
+const isRenameModalOpen = ref(false);
 
-function startRename() {
-  renameValue.value = trackName.value;
-  isRenaming.value = true;
-  nextTick(() => {
-    renameInput.value?.input?.focus();
-    renameInput.value?.input?.select();
-  });
-}
-
-function confirmRename() {
-  const next = renameValue.value.trim();
-  if (next && next !== trackName.value) {
-    timelineStore.renameTrack(props.track.id, next);
+function handleRenameTrack(name: string) {
+  const trimmed = name.trim();
+  if (trimmed && trimmed !== trackName.value) {
+    timelineStore.renameTrack(props.track.id, trimmed);
   }
-  isRenaming.value = false;
-}
-
-function cancelRename() {
-  isRenaming.value = false;
+  isRenameModalOpen.value = false;
 }
 
 // Effects
@@ -207,28 +193,10 @@ function handleSelectEffect(type: string) {
     <!-- Track Name -->
     <div
       class="w-full px-1 text-center py-1 mt-auto cursor-text border-t border-ui-border rounded-b-lg flex flex-col items-center overflow-hidden"
-      @click="startRename"
+      @click="isRenameModalOpen = true"
     >
-      <div
-        class="max-w-full px-1 rounded transition-colors"
-        :class="[isRenaming ? 'bg-primary-500/10' : 'hover:bg-ui-bg-elevated']"
-      >
-        <div v-if="isRenaming" class="w-full flex justify-center">
-          <UInput
-            ref="renameInput"
-            v-model="renameValue"
-            size="xs"
-            class="text-center"
-            :ui="{ base: 'font-mono text-center' }"
-            :style="{ width: `${Math.max(4, renameValue.length + 2)}ch` }"
-            @click.stop
-            @keydown.enter.stop="confirmRename"
-            @keydown.esc.stop="cancelRename"
-            @blur="confirmRename"
-          />
-        </div>
+      <div class="max-w-full px-1 rounded transition-colors hover:bg-ui-bg-elevated">
         <div
-          v-else
           class="max-w-full text-2xs font-medium text-ui-text truncate px-0.5"
           :title="trackName"
         >
@@ -248,5 +216,13 @@ function handleSelectEffect(type: string) {
     />
 
     <TrackAudioEffectsModal v-model:open="isEffectsModalOpen" :track-id="track.id" />
+
+    <UiRenameModal
+      :open="isRenameModalOpen"
+      :current-name="track.name || ''"
+      :title="t('fastcat.timeline.renameTrack')"
+      @update:open="isRenameModalOpen = $event"
+      @rename="handleRenameTrack"
+    />
   </div>
 </template>
