@@ -200,11 +200,14 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         if (clip.locked) continue;
         const clipStart = clip.timelineRange.startUs;
         if (clipStart >= endUs - EPSILON) {
+          // Clamp to startUs so a clip that straddles the right edge by a few µs
+          // (sub-frame split residue) does not overlap the pre-cut region.
+          const nextStart = Math.max(startUs, clipStart - deltaUs);
           moveCmds.push({
             type: 'move_item',
             trackId: track.id,
             itemId: clip.id,
-            startUs: Math.max(0, clipStart - deltaUs),
+            startUs: nextStart,
             // Quantize so the ripple keeps clips on frame boundaries.
             quantizeToFrames: true,
           });

@@ -68,7 +68,7 @@ describe('useProjectLock', () => {
     expect(createdChannels.length).toBeGreaterThan(0);
     const channel = createdChannels[0];
     if (channel.onmessage) {
-      channel.onmessage({
+      await channel.onmessage({
         data: { type: 'lock:steal', projectId: 'project-1', requesterTabId: 'other-tab' },
       } as MessageEvent);
     }

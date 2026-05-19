@@ -303,7 +303,6 @@ function handleArrayItemUpdate(
     <template v-for="entry in visibleControlEntries" :key="entry.key">
       <div
         v-if="entry.kind === 'row'"
-        v-memo="getMemoKey(entry)"
         class="grid gap-2"
         :class="entry.control.columns === 1 ? 'grid-cols-1' : 'grid-cols-2'"
       >
@@ -317,11 +316,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div
-        v-else-if="entry.kind === 'slider'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-1"
-      >
+      <div v-else-if="entry.kind === 'slider'" class="flex flex-col gap-1">
         <div class="flex justify-between text-xs text-ui-text-muted gap-2">
           <span>{{ entry.label }}</span>
           <span>
@@ -341,7 +336,6 @@ function handleArrayItemUpdate(
 
       <div
         v-else-if="entry.kind === 'knob'"
-        v-memo="getMemoKey(entry)"
         class="flex flex-col items-center justify-center gap-1.5 py-1"
       >
         <UiKnob
@@ -362,11 +356,7 @@ function handleArrayItemUpdate(
         </div>
       </div>
 
-      <div
-        v-else-if="entry.kind === 'number'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-0.5"
-      >
+      <div v-else-if="entry.kind === 'number'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiWheelNumberInput
           :model-value="entry.numberValue"
@@ -380,11 +370,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div
-        v-else-if="entry.kind === 'scale-xy' && entry.scaleXYState"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-2"
-      >
+      <div v-else-if="entry.kind === 'scale-xy' && entry.scaleXYState" class="flex flex-col gap-2">
         <div class="flex items-center gap-2">
           <span
             class="flex-1 text-xs text-ui-text-muted"
@@ -477,7 +463,6 @@ function handleArrayItemUpdate(
 
       <div
         v-else-if="entry.kind === 'toggle' || entry.kind === 'boolean'"
-        v-memo="getMemoKey(entry)"
         class="flex items-center justify-between gap-3"
       >
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
@@ -489,11 +474,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div
-        v-else-if="entry.kind === 'select'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-0.5"
-      >
+      <div v-else-if="entry.kind === 'select'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiSelect
           :model-value="entry.value as any"
@@ -508,11 +489,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div
-        v-else-if="entry.kind === 'button-group'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-1"
-      >
+      <div v-else-if="entry.kind === 'button-group'" class="flex flex-col gap-1">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiButtonGroup
           :model-value="entry.value"
@@ -526,11 +503,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div
-        v-else-if="entry.kind === 'color'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-0.5"
-      >
+      <div v-else-if="entry.kind === 'color'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UColorPicker
           :model-value="entry.stringValue"
@@ -543,11 +516,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div
-        v-else-if="entry.kind === 'text'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-0.5"
-      >
+      <div v-else-if="entry.kind === 'text'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UTextarea
           v-if="entry.control.multiline"
@@ -573,7 +542,7 @@ function handleArrayItemUpdate(
         />
       </div>
 
-      <div v-else-if="entry.kind === 'file'" v-memo="getMemoKey(entry)" class="flex flex-col gap-1">
+      <div v-else-if="entry.kind === 'file'" class="flex flex-col gap-1">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <div
           class="flex items-center gap-2 p-2 rounded border border-dashed transition-colors"
@@ -611,11 +580,7 @@ function handleArrayItemUpdate(
         </div>
       </div>
 
-      <div
-        v-else-if="entry.kind === 'action'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-1"
-      >
+      <div v-else-if="entry.kind === 'action'" class="flex flex-col gap-1">
         <UButton
           :icon="entry.control.icon"
           :disabled="entry.disabled"
@@ -629,11 +594,7 @@ function handleArrayItemUpdate(
         </UButton>
       </div>
 
-      <div
-        v-else-if="entry.kind === 'array'"
-        v-memo="getMemoKey(entry)"
-        class="flex flex-col gap-2"
-      >
+      <div v-else-if="entry.kind === 'array'" class="flex flex-col gap-2">
         <div class="flex items-center justify-between">
           <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
           <UButton

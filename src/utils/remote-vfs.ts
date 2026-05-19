@@ -715,7 +715,7 @@ export async function updateRemoteCollection(params: {
   title?: string;
   parentId?: string | null;
 }): Promise<void> {
-  await fetchJson<void>(joinPath(params.config.baseUrl, `collections/${params.id}`), {
+  await fetchJson(joinPath(params.config.baseUrl, `collections/${params.id}`), {
     method: 'PATCH',
     headers: createAuthorizedHeaders(params.config, {
       'Content-Type': 'application/json',
@@ -743,7 +743,7 @@ export async function deleteRemoteCollection(params: {
   config: RemoteVfsClientConfig;
   id: string;
 }): Promise<void> {
-  await fetchJson<void>(joinPath(params.config.baseUrl, `collections/${params.id}`), {
+  await fetchJson(joinPath(params.config.baseUrl, `collections/${params.id}`), {
     method: 'DELETE',
     headers: createAuthorizedHeaders(params.config),
   });
@@ -759,7 +759,7 @@ export async function updateRemoteItem(params: {
   note?: string;
   media?: Array<{ mediaId: string; order: number }>;
 }): Promise<void> {
-  await fetchJson<void>(joinPath(params.config.baseUrl, `items/${params.id}`), {
+  await fetchJson(joinPath(params.config.baseUrl, `items/${params.id}`), {
     method: 'PATCH',
     headers: createAuthorizedHeaders(params.config, {
       'Content-Type': 'application/json',
@@ -796,7 +796,7 @@ export async function renameRemoteMedia(params: {
   id: string;
   name: string;
 }): Promise<void> {
-  await fetchJson<void>(joinPath(params.config.baseUrl, `media/${params.id}`), {
+  await fetchJson(joinPath(params.config.baseUrl, `media/${params.id}`), {
     method: 'PATCH',
     headers: createAuthorizedHeaders(params.config, {
       'Content-Type': 'application/json',
@@ -809,7 +809,7 @@ export async function deleteRemoteItem(params: {
   config: RemoteVfsClientConfig;
   id: string;
 }): Promise<void> {
-  await fetchJson<void>(joinPath(params.config.baseUrl, `items/${params.id}`), {
+  await fetchJson(joinPath(params.config.baseUrl, `items/${params.id}`), {
     method: 'DELETE',
     headers: createAuthorizedHeaders(params.config),
   });
@@ -819,7 +819,7 @@ export async function deleteRemoteMedia(params: {
   config: RemoteVfsClientConfig;
   id: string;
 }): Promise<void> {
-  await fetchJson<void>(joinPath(params.config.baseUrl, `media/${params.id}`), {
+  await fetchJson(joinPath(params.config.baseUrl, `media/${params.id}`), {
     method: 'DELETE',
     headers: createAuthorizedHeaders(params.config),
   });

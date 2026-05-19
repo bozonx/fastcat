@@ -91,16 +91,49 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
   function getCompatibleTrackId(trackId: string, kind: 'video' | 'audio') {
     const track = getTrackById(trackId);
-    if (track && track.kind === kind) {
+    if (track && track.kind === kind && !track.locked) {
       return trackId;
     }
 
-    const firstCompatible = timelineStore.timelineDoc?.tracks.find((t) => t.kind === kind);
+    const firstCompatible = timelineStore.timelineDoc?.tracks.find(
+      (t) => t.kind === kind && !t.locked,
+    );
     return firstCompatible?.id ?? null;
   }
 
   function getTrackById(trackId: string) {
     return timelineStore.timelineDoc?.tracks.find((t) => t.id === trackId);
+  }
+
+  // Always return a usable, unlocked track of the given kind. If none exists,
+  // auto-create one — mirroring the behavior of MobileAddToTimelineModal. The
+  // caller never has to fall back to a possibly invalid `baseTrackId`.
+  function ensureDroppableTrackId(params: { baseTrackId: string; kind: 'video' | 'audio' }) {
+    const existing = getCompatibleTrackId(params.baseTrackId, params.kind);
+    if (existing) return existing;
+
+    const sameKindCount = (timelineStore.timelineDoc?.tracks ?? []).filter(
+      (t) => t.kind === params.kind,
+    ).length;
+    const name =
+      params.kind === 'video' ? `Video ${sameKindCount + 1}` : `Audio ${sameKindCount + 1}`;
+
+    timelineStore.addTrack(params.kind, name);
+
+    const created = (timelineStore.timelineDoc?.tracks ?? [])
+      .filter((t) => t.kind === params.kind)
+      .pop();
+    return created?.id ?? null;
+  }
+
+  function reportNoDroppableTrack(kind: 'video' | 'audio') {
+    toast.add({
+      color: 'warning',
+      title: t('common.warning'),
+      description: t('fastcat.timeline.noDroppableTrack', {
+        kind: t(`videoEditor.timeline.trackKind.${kind}`),
+      }),
+    });
   }
 
   async function getPreviewDurationUsAsync(params: {
@@ -144,7 +177,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     if (!inputTrack) return null;
 
     if (payloadKind === 'timeline') {
-      return inputTrack.id;
+      return inputTrack.locked ? getCompatibleTrackId(inputTrackId, inputTrack.kind) : inputTrack.id;
     }
 
     const mediaType = getMediaTypeFromFilename(path ?? '');
@@ -248,7 +281,14 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       };
     }
 
-    const targetTrackId = getCompatibleTrackId(context.baseTrackId, 'video') ?? context.baseTrackId;
+    const targetTrackId = ensureDroppableTrackId({
+      baseTrackId: context.baseTrackId,
+      kind: 'video',
+    });
+    if (!targetTrackId) {
+      reportNoDroppableTrack('video');
+      return { nextStartUs: context.currentStartUs, added: false };
+    }
     const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,
