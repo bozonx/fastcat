@@ -101,33 +101,33 @@ export function updateClipProperties(
     if (!raw || typeof raw !== 'object') return undefined;
     const rawRecord = raw as Record<string, unknown>;
 
-    const scaleRaw = rawRecord.scale;
+    const scaleRaw = rawRecord['scale'];
     const scale =
       scaleRaw && typeof scaleRaw === 'object'
         ? {
-            x: clampNumber(scaleRaw.x, -1000, 1000),
-            y: clampNumber(scaleRaw.y, -1000, 1000),
-            linked: scaleRaw.linked !== undefined ? Boolean(scaleRaw.linked) : undefined,
+            x: clampNumber((scaleRaw as Record<string, unknown>)['x'], -1000, 1000),
+            y: clampNumber((scaleRaw as Record<string, unknown>)['y'], -1000, 1000),
+            linked: (scaleRaw as Record<string, unknown>)['linked'] !== undefined ? Boolean((scaleRaw as Record<string, unknown>)['linked']) : undefined,
           }
         : undefined;
 
-    const rotationDegRaw = rawRecord.rotationDeg;
+    const rotationDegRaw = rawRecord['rotationDeg'];
     const rotationDeg =
       typeof rotationDegRaw === 'number' && Number.isFinite(rotationDegRaw)
         ? Math.max(-36000, Math.min(36000, rotationDegRaw))
         : undefined;
 
-    const positionRaw = rawRecord.position;
+    const positionRaw = rawRecord['position'];
     const position =
       positionRaw && typeof positionRaw === 'object'
         ? {
-            x: clampNumber(positionRaw.x, -1_000_000, 1_000_000),
-            y: clampNumber(positionRaw.y, -1_000_000, 1_000_000),
+            x: clampNumber((positionRaw as Record<string, unknown>)['x'], -1_000_000, 1_000_000),
+            y: clampNumber((positionRaw as Record<string, unknown>)['y'], -1_000_000, 1_000_000),
           }
         : undefined;
 
-    const anchorRaw = rawRecord.anchor;
-    const preset = anchorRaw && typeof anchorRaw === 'object' ? String(anchorRaw.preset ?? '') : '';
+    const anchorRaw = rawRecord['anchor'];
+    const preset = anchorRaw && typeof anchorRaw === 'object' ? String((anchorRaw as Record<string, unknown>)['preset'] ?? '') : '';
     const safePreset =
       preset === 'center' ||
       preset === 'topLeft' ||
@@ -141,19 +141,19 @@ export function updateClipProperties(
       safePreset !== undefined
         ? {
             preset: safePreset,
-            x: safePreset === 'custom' ? clampNumber(anchorRaw.x, -10, 10) : undefined,
-            y: safePreset === 'custom' ? clampNumber(anchorRaw.y, -10, 10) : undefined,
+            x: safePreset === 'custom' ? clampNumber((anchorRaw as Record<string, unknown>)['x'], -10, 10) : undefined,
+            y: safePreset === 'custom' ? clampNumber((anchorRaw as Record<string, unknown>)['y'], -10, 10) : undefined,
           }
         : undefined;
 
-    const cropRaw = rawRecord.crop;
+    const cropRaw = rawRecord['crop'];
     const crop =
       cropRaw && typeof cropRaw === 'object'
         ? {
-            top: clampNumber(cropRaw.top ?? 0, 0, 100),
-            bottom: clampNumber(cropRaw.bottom ?? 0, 0, 100),
-            left: clampNumber(cropRaw.left ?? 0, 0, 100),
-            right: clampNumber(cropRaw.right ?? 0, 0, 100),
+            top: clampNumber((cropRaw as Record<string, unknown>)['top'] ?? 0, 0, 100),
+            bottom: clampNumber((cropRaw as Record<string, unknown>)['bottom'] ?? 0, 0, 100),
+            left: clampNumber((cropRaw as Record<string, unknown>)['left'] ?? 0, 0, 100),
+            right: clampNumber((cropRaw as Record<string, unknown>)['right'] ?? 0, 0, 100),
           }
         : undefined;
 
@@ -645,39 +645,7 @@ export function updateClipProperties(
     if (t.id === track.id) {
       const updatedItems = t.items.map((it) =>
         it.id === cmd.itemId && it.kind === 'clip'
-          ? (() => {
-              const updated = { ...it, ...nextProps } as any;
-              const durationUs = Math.max(0, Math.round(updated.timelineRange?.durationUs ?? 0));
-              if (typeof updated.audioGain === 'number') {
-                updated.audioGain = clampNumber(updated.audioGain, 0, 10);
-              }
-              if (typeof updated.audioBalance === 'number') {
-                updated.audioBalance = clampNumber(updated.audioBalance, -1, 1);
-              }
-              if (typeof updated.audioFadeInUs === 'number') {
-                updated.audioFadeInUs = clampNumber(
-                  updated.audioFadeInUs,
-                  0,
-                  Math.max(0, durationUs - (Number(updated.audioFadeOutUs) || 0)),
-                );
-              }
-              if (typeof updated.audioFadeOutUs === 'number') {
-                updated.audioFadeOutUs = clampNumber(
-                  updated.audioFadeOutUs,
-                  0,
-                  Math.max(0, durationUs - (Number(updated.audioFadeInUs) || 0)),
-                );
-              }
-              if (updated.audioFadeInCurve !== undefined) {
-                updated.audioFadeInCurve =
-                  updated.audioFadeInCurve === 'logarithmic' ? 'logarithmic' : 'linear';
-              }
-              if (updated.audioFadeOutCurve !== undefined) {
-                updated.audioFadeOutCurve =
-                  updated.audioFadeOutCurve === 'logarithmic' ? 'logarithmic' : 'linear';
-              }
-              return updated;
-            })()
+          ? ({ ...it, ...nextProps } as TimelineClipItem)
           : it,
       );
       const normalized = autoAdaptClipTransitions(

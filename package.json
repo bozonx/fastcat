@@ -24,6 +24,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:docker": "docker compose --profile e2e run --rm playwright sh -c 'corepack enable && pnpm install --frozen-lockfile && pnpm test:e2e'",
     "test:e2e:docker:shell": "docker compose --profile e2e run --rm playwright sh -c 'corepack enable && bash'",
+    "test:e2e:docker:clean": "docker compose --profile e2e down -v",
     "test:watch": "vitest",
     "test:unit:coverage": "vitest run --coverage",
     "tauri": "tauri",

@@ -9,6 +9,8 @@ coverage/
 dist-lib/
 .dev-files/
 lint-results.json
+.pnpm-store/
+
 
 # Nuxt
 .nuxt

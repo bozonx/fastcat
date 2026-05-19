@@ -1,6 +1,19 @@
-import type { IFileSystemAdapter, VfsEntry } from './types';
-import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
+import type {
+  IFileSystemAdapter,
+  VfsEntry,
+  VfsEntryMetadata,
+  VfsOperationOptions,
+  VfsReadDirectoryOptions,
+} from './types';
+import { copyDirectoryTree } from './copyTree';
 import { normalizeBloggerDogTextWrapperTitle } from '~/utils/bloggerdog-file-manager';
+import {
+  VfsConflictError,
+  VfsInvalidArgumentError,
+  VfsNotFoundError,
+  VfsUnsupportedError,
+  throwIfAborted,
+} from './errors';
 import {
   createRemoteCollection,
   createRemoteMediaFsEntry,
@@ -63,11 +76,18 @@ interface ListedEntry {
   createdAt: number;
 }
 
+/** LRU cap. Keeps RAM bounded on long sessions across many folders. */
+const MAX_ID_CACHE_SIZE = 2_000;
+/** Cap on retained object URLs (thumbnails etc.). */
+const MAX_TRACKED_OBJECT_URLS = 256;
+
 export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   id = 'bloggerdog';
   preservesEntryNames = true;
 
+  // Insertion-ordered Map → cheap LRU: re-insert on access, drop oldest on overflow.
   private idCache = new Map<string, CachedNode>();
+  private objectUrlsByPath = new Map<string, string>();
 
   constructor(
     private getConfig: () => RemoteVfsClientConfig | null,
@@ -75,13 +95,13 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   ) {}
 
   async init(): Promise<void> {
-    // Lazy init
+    // Lazy init — config and identity are resolved per-call.
   }
 
   private resolveConfig(): RemoteVfsClientConfig {
     const config = this.getConfig();
     if (!config) {
-      throw new Error('BloggerDog integration is not configured');
+      throw new VfsUnsupportedError('BloggerDog integration is not configured');
     }
     return config;
   }
@@ -101,6 +121,16 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return normalized || '/';
   }
 
+  private setCache(path: string, node: CachedNode): void {
+    this.idCache.delete(path);
+    this.idCache.set(path, node);
+    while (this.idCache.size > MAX_ID_CACHE_SIZE) {
+      const oldest = this.idCache.keys().next().value;
+      if (oldest === undefined) break;
+      this.idCache.delete(oldest);
+    }
+  }
+
   private clearCache(path: string) {
     const normalizedPath = this.normalizePath(path);
     const prefix = normalizedPath === '/' ? '/' : `${normalizedPath}/`;
@@ -109,6 +139,35 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         this.idCache.delete(key);
       }
     }
+  }
+
+  private trackObjectUrl(path: string, url: string): void {
+    this.objectUrlsByPath.delete(path);
+    this.objectUrlsByPath.set(path, url);
+    while (this.objectUrlsByPath.size > MAX_TRACKED_OBJECT_URLS) {
+      const oldestKey = this.objectUrlsByPath.keys().next().value;
+      if (oldestKey === undefined) break;
+      const oldestUrl = this.objectUrlsByPath.get(oldestKey)!;
+      URL.revokeObjectURL(oldestUrl);
+      this.objectUrlsByPath.delete(oldestKey);
+    }
+  }
+
+  private revokeObjectUrl(path: string): void {
+    const url = this.objectUrlsByPath.get(path);
+    if (url) {
+      URL.revokeObjectURL(url);
+      this.objectUrlsByPath.delete(path);
+    }
+  }
+
+  /** @internal Test hook. */
+  _idCacheSize(): number {
+    return this.idCache.size;
+  }
+  /** @internal Test hook. */
+  _trackedObjectUrlCount(): number {
+    return this.objectUrlsByPath.size;
   }
 
   private toDisplayName(name: string | undefined, fallback: string): string {
@@ -125,7 +184,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       path,
       rootFolderId: id,
     };
-    this.idCache.set(path, cachedNode);
+    this.setCache(path, cachedNode);
 
     return {
       name,
@@ -139,7 +198,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
           name,
           path,
           type: 'directory',
-        } as any,
+        },
       } as BloggerDogEntryPayload,
     };
   }
@@ -151,7 +210,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       path,
       type: 'project',
     };
-    this.idCache.set(path, {
+    this.setCache(path, {
       id: project.id,
       type: 'project',
       path,
@@ -180,7 +239,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       scope: params.scope,
       projectId: params.projectId,
     };
-    this.idCache.set(params.path, {
+    this.setCache(params.path, {
       id: params.collection.id,
       type: 'directory',
       path: params.path,
@@ -212,7 +271,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       scope: params.scope,
       projectId: params.projectId,
     };
-    this.idCache.set(params.path, {
+    this.setCache(params.path, {
       id: params.item.id,
       type: 'file',
       path: params.path,
@@ -280,8 +339,11 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
     const cached = this.idCache.get(normalizedPath);
     if (!cached) {
-      throw new Error(`Path not found or not cached: ${normalizedPath}`);
+      throw new VfsNotFoundError(normalizedPath);
     }
+    // LRU bump.
+    this.idCache.delete(normalizedPath);
+    this.idCache.set(normalizedPath, cached);
     return cached;
   }
 
@@ -313,15 +375,15 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return { scope: 'personal' };
     }
 
-    throw new Error(`Unsupported remote directory context for path: ${node.path}`);
+    throw new VfsUnsupportedError(`directory context for ${node.path}`, { path: node.path });
   }
 
   private ensureSameScope(source: CachedNode, target: CachedNode) {
     if ((source.scope || 'personal') !== (target.scope || 'personal')) {
-      throw new Error('Moving between personal and project libraries is not supported');
+      throw new VfsUnsupportedError('moving between personal and project libraries');
     }
     if ((source.projectId || '') !== (target.projectId || '')) {
-      throw new Error('Moving between different projects is not supported');
+      throw new VfsUnsupportedError('moving between different projects');
     }
   }
 
@@ -474,7 +536,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         const name = getRemoteMediaDisplayName({ entry: item, media, mediaIndex: index });
         const mediaPath = `${itemPath}/${name}`;
         const mediaId = getRemoteMediaId(media);
-        this.idCache.set(mediaPath, {
+        this.setCache(mediaPath, {
           id: mediaId || media.id,
           type: 'media',
           path: mediaPath,
@@ -496,7 +558,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     // Always show text content as a .txt file, even if empty
     const textName = `${getRemoteEntryDisplayName(item)}.txt`;
     const textPath = `${itemPath}/${textName}`;
-    this.idCache.set(textPath, {
+    this.setCache(textPath, {
       id: item.id,
       type: 'media',
       path: textPath,
@@ -524,16 +586,8 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return entries;
   }
 
-  async readDirectory(
-    path: string,
-    options?: {
-      sortBy?: string;
-      sortOrder?: 'asc' | 'desc';
-      limit?: number;
-      offset?: number;
-      checkChildren?: boolean;
-    },
-  ): Promise<VfsEntry[]> {
+  async readDirectory(path: string, options?: VfsReadDirectoryOptions): Promise<VfsEntry[]> {
+    throwIfAborted(options?.signal, path);
     const normalizedPath = this.normalizePath(path);
 
     if (normalizedPath === '/') {
@@ -621,7 +675,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         projectId: cached.projectId || freshItem.projectId,
       };
 
-      this.idCache.set(normalizedPath, {
+      this.setCache(normalizedPath, {
         ...cached,
         item: refreshedItem,
       });
@@ -629,7 +683,9 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       return this.listContentItemMedia(normalizedPath, refreshedItem);
     }
 
-    throw new Error(`Unsupported remote directory: ${normalizedPath}`);
+    throw new VfsUnsupportedError(`directory listing for ${normalizedPath}`, {
+      path: normalizedPath,
+    });
   }
 
   async createDirectory(path: string): Promise<void> {
@@ -637,7 +693,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const parts = normalizedPath.split('/').filter(Boolean);
     const name = parts.pop();
     if (!name) {
-      throw new Error('Invalid directory name');
+      throw new VfsInvalidArgumentError('Invalid directory name', { path });
     }
 
     const parentPath = parts.length > 0 ? `/${parts.join('/')}` : '/';
@@ -648,11 +704,11 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       parent.rootFolderId === 'projects' ||
       parent.rootFolderId === 'virtual-all'
     ) {
-      throw new Error(`Cannot create collection in ${parentPath}`);
+      throw new VfsConflictError(parentPath, `Cannot create collection in ${parentPath}`);
     }
 
     if (parent.type === 'file') {
-      throw new Error('Creating folders inside content items is not supported');
+      throw new VfsUnsupportedError('creating folders inside content items', { path });
     }
 
     const context = this.getDirectoryContext(parent);
@@ -664,7 +720,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       parentId: parent.type === 'directory' ? parent.id : undefined,
     });
 
-    this.idCache.set(normalizedPath, {
+    this.setCache(normalizedPath, {
       id: collection.id,
       type: 'directory',
       path: normalizedPath,
@@ -685,11 +741,12 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return entries.map((entry) => entry.name);
   }
 
-  async readFile(path: string, options?: { signal?: AbortSignal }): Promise<Blob> {
+  async readFile(path: string, options?: VfsOperationOptions): Promise<Blob> {
+    throwIfAborted(options?.signal, path);
     const entry = await this.getIdForPath(path);
 
     if (entry.type !== 'media' || !entry.item) {
-      throw new Error(`Cannot download a collection or content item directly: ${path}`);
+      throw new VfsUnsupportedError(`reading a non-media entry as a file: ${path}`, { path });
     }
 
     if (entry.mediaIndex === -1) {
@@ -708,7 +765,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const requestHeaders =
       downloadUrl.startsWith(config.baseUrl) ||
       downloadUrl.startsWith(new URL(config.baseUrl).origin)
-        ? { Authorization: `Bearer ${this.resolveConfig().bearerToken}` }
+        ? { Authorization: `Bearer ${config.bearerToken}` }
         : undefined;
 
     const response = await fetch(downloadUrl, {
@@ -721,7 +778,12 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return await response.blob();
   }
 
-  async writeFile(path: string, data: Blob | Uint8Array | string): Promise<void> {
+  async writeFile(
+    path: string,
+    data: Blob | Uint8Array | string,
+    options?: VfsOperationOptions,
+  ): Promise<void> {
+    throwIfAborted(options?.signal, path);
     const normalizedPath = this.normalizePath(path);
 
     // Check if we are writing to a virtual text file of a content item
@@ -742,16 +804,16 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         text: textContent,
       });
 
-      // Update local cache
       cached.item.text = textContent;
       this.clearCache(normalizedPath);
+      this.revokeObjectUrl(normalizedPath);
       return;
     }
 
     const parts = normalizedPath.split('/').filter(Boolean);
     const name = parts.pop();
     if (!name) {
-      throw new Error('Invalid file name');
+      throw new VfsInvalidArgumentError('Invalid file name', { path });
     }
 
     const parentPath = parts.length > 0 ? `/${parts.join('/')}` : '/';
@@ -762,7 +824,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       parent.rootFolderId === 'projects' ||
       parent.rootFolderId === 'virtual-all'
     ) {
-      throw new Error(`Cannot upload into ${parentPath}`);
+      throw new VfsConflictError(parentPath, `Cannot upload into ${parentPath}`);
     }
 
     const context = this.getDirectoryContext(parent);
@@ -782,10 +844,12 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       projectId: context.projectId,
       groupId: context.groupId,
       itemId: parent.type === 'file' ? parent.id : undefined,
+      signal: options?.signal,
     });
 
     this.clearCache(parentPath);
     this.idCache.delete(normalizedPath);
+    this.revokeObjectUrl(normalizedPath);
   }
 
   async deleteEntry(path: string, _recursive?: boolean): Promise<void> {
@@ -793,8 +857,10 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     const config = this.resolveConfig();
 
     if (entry.type === 'virtual-folder' || entry.type === 'project') {
-      throw new Error('Deleting virtual folders and projects is not supported');
+      throw new VfsUnsupportedError('deleting virtual folders and projects', { path });
     }
+
+    this.revokeObjectUrl(path);
 
     if (entry.type === 'directory') {
       await deleteRemoteCollection({ config, id: entry.id });
@@ -819,20 +885,21 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
   async moveEntry(
     sourcePath: string,
     targetPath: string,
-    _options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void> {
+    throwIfAborted(options?.signal, sourcePath);
     const normalizedSource = this.normalizePath(sourcePath);
     const normalizedTarget = this.normalizePath(targetPath);
     const source = await this.getIdForPath(normalizedSource);
 
     if (source.type === 'virtual-folder' || source.type === 'project') {
-      throw new Error('Moving virtual folders and projects is not supported');
+      throw new VfsUnsupportedError('moving virtual folders and projects', { path: sourcePath });
     }
 
     const targetParts = normalizedTarget.split('/').filter(Boolean);
     const newName = targetParts.pop();
     if (!newName) {
-      throw new Error('Invalid target name');
+      throw new VfsInvalidArgumentError('Invalid target name', { path: targetPath });
     }
 
     const targetParentPath = targetParts.length > 0 ? `/${targetParts.join('/')}` : '/';
@@ -843,7 +910,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       targetParent.rootFolderId === 'projects' ||
       targetParent.rootFolderId === 'virtual-all'
     ) {
-      throw new Error(`Cannot move into ${targetParentPath}`);
+      throw new VfsConflictError(targetParentPath, `Cannot move into ${targetParentPath}`);
     }
 
     this.ensureSameScope(source, targetParent);
@@ -854,12 +921,14 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
 
     if (source.type === 'media' && source.mediaIndex === -1) {
       if (sourceParentPath !== targetParentPath) {
-        throw new Error('Moving text wrappers between content items is not supported');
+        throw new VfsUnsupportedError('moving text wrappers between content items', {
+          path: sourcePath,
+        });
       }
 
       const nextTitle = normalizeBloggerDogTextWrapperTitle(newName);
       if (!nextTitle) {
-        throw new Error('Invalid target name');
+        throw new VfsInvalidArgumentError('Invalid target name', { path: targetPath });
       }
 
       await updateRemoteItem({
@@ -875,13 +944,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     }
 
     if (source.type === 'directory') {
-      const targetParentId =
-        targetParent.type === 'directory'
-          ? targetParent.id
-          : targetParent.type === 'project' || targetParent.rootFolderId === 'personal'
-            ? null
-            : null;
-
+      const targetParentId = targetParent.type === 'directory' ? targetParent.id : null;
       await updateRemoteCollection({
         config,
         id: source.id,
@@ -889,13 +952,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
         parentId: targetParentId,
       });
     } else if (source.type === 'file') {
-      const targetGroupId =
-        targetParent.type === 'directory'
-          ? targetParent.id
-          : targetParent.type === 'project' || targetParent.rootFolderId === 'personal'
-            ? null
-            : null;
-
+      const targetGroupId = targetParent.type === 'directory' ? targetParent.id : null;
       await updateRemoteItem({
         config,
         id: source.id,
@@ -904,7 +961,7 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       });
     } else {
       if (sourceParentPath !== targetParentPath) {
-        throw new Error('Moving media between content items is not supported');
+        throw new VfsUnsupportedError('moving media between content items', { path: sourcePath });
       }
       await renameRemoteMedia({
         config,
@@ -913,47 +970,41 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
       });
     }
 
+    this.revokeObjectUrl(normalizedSource);
     this.clearCache(normalizedSource);
     this.clearCache(targetParentPath);
   }
 
+  /**
+   * Copies a single file. The implementation streams via readStream → writeStream
+   * where the target supports it; the BloggerDog write path itself requires a
+   * full multipart upload, so for now we fall back to read-into-Blob + upload.
+   */
   async copyFile(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void> {
+    throwIfAborted(options?.signal, sourcePath);
     const blob = await this.readFile(sourcePath, options);
-    await this.writeFile(targetPath, blob);
+    await this.writeFile(targetPath, blob, options);
   }
 
   async copyDirectory(
     sourcePath: string,
     targetPath: string,
-    options?: { signal?: AbortSignal },
+    options?: VfsOperationOptions,
   ): Promise<void> {
-    await this.copyDirectoryRecursive(sourcePath, targetPath, 0, options);
-  }
-
-  private async copyDirectoryRecursive(
-    sourcePath: string,
-    targetPath: string,
-    depth: number,
-    options?: { signal?: AbortSignal },
-  ): Promise<void> {
-    if (depth > MAX_COPY_DEPTH) {
-      throw new Error(`Maximum copy depth exceeded (${MAX_COPY_DEPTH})`);
-    }
-
-    await this.createDirectory(targetPath);
-    const entries = await this.readDirectory(sourcePath);
-    for (const entry of entries) {
-      const nextTargetPath = `${targetPath}/${entry.name}`;
-      if (entry.kind === 'directory') {
-        await this.copyDirectoryRecursive(entry.path, nextTargetPath, depth + 1, options);
-      } else {
-        await this.copyFile(entry.path, nextTargetPath, options);
-      }
-    }
+    await copyDirectoryTree(
+      {
+        readDirectory: (path) => this.readDirectory(path),
+        createDirectory: (path) => this.createDirectory(path),
+        copyFile: (source, target, copyOptions) => this.copyFile(source, target, copyOptions),
+      },
+      sourcePath,
+      targetPath,
+      options,
+    );
   }
 
   async exists(path: string): Promise<boolean> {
@@ -965,76 +1016,78 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     }
   }
 
-  async getMetadata(
-    path: string,
-  ): Promise<{ size: number; lastModified: number; kind: 'file' | 'directory' } | null> {
+  async getMetadata(path: string): Promise<VfsEntryMetadata | null> {
+    let entry: CachedNode;
     try {
-      const entry = await this.getIdForPath(path);
-      const now = Date.now();
-
-      if (entry.type === 'media') {
-        if (entry.mediaIndex === -1) {
-          return {
-            size: (entry.item?.text || '').length,
-            lastModified: entry.item?.updatedAt ? new Date(entry.item.updatedAt).getTime() : now,
-            kind: 'file',
-          };
-        }
-
-        return {
-          size:
-            resolveMediaObject(entry.media)?.sizeBytes ??
-            resolveMediaObject(entry.media)?.size ??
-            0,
-          lastModified: resolveMediaObject(entry.media)?.updated
-            ? new Date(resolveMediaObject(entry.media)!.updated!).getTime()
-            : now,
-          kind: 'file',
-        };
-      }
-
-      if (entry.type === 'file') {
-        const firstMedia = resolveMediaObject(entry.item?.media?.[0]);
-        return {
-          size: firstMedia?.sizeBytes ?? firstMedia?.size ?? 0,
-          lastModified: entry.item?.updatedAt ? new Date(entry.item.updatedAt).getTime() : now,
-          kind: 'directory',
-        };
-      }
-
-      if (entry.type === 'directory') {
-        return {
-          size: entry.collection?.itemsCount ?? 0,
-          lastModified: entry.collection?.updatedAt
-            ? new Date(entry.collection.updatedAt).getTime()
-            : now,
-          kind: 'directory',
-        };
-      }
-
-      return {
-        size: 0,
-        lastModified: entry.project?.updatedAt ? new Date(entry.project.updatedAt).getTime() : now,
-        kind: 'directory',
-      };
+      entry = await this.getIdForPath(path);
     } catch {
       return null;
     }
+
+    if (entry.type === 'media') {
+      if (entry.mediaIndex === -1) {
+        return {
+          size: (entry.item?.text || '').length,
+          lastModified: entry.item?.updatedAt ? new Date(entry.item.updatedAt).getTime() : 0,
+          kind: 'file',
+        };
+      }
+      const media = resolveMediaObject(entry.media);
+      return {
+        size: media?.sizeBytes ?? media?.size ?? 0,
+        lastModified: media?.updated ? new Date(media.updated).getTime() : 0,
+        kind: 'file',
+      };
+    }
+
+    if (entry.type === 'file') {
+      const firstMedia = resolveMediaObject(entry.item?.media?.[0]);
+      return {
+        size: firstMedia?.sizeBytes ?? firstMedia?.size ?? 0,
+        lastModified: entry.item?.updatedAt ? new Date(entry.item.updatedAt).getTime() : 0,
+        // Content items behave as directories in this VFS — their media list is
+        // browsed via readDirectory. Keep the kind consistent with createItemEntry.
+        kind: 'directory',
+      };
+    }
+
+    if (entry.type === 'directory') {
+      return {
+        size: entry.collection?.itemsCount ?? 0,
+        lastModified: entry.collection?.updatedAt
+          ? new Date(entry.collection.updatedAt).getTime()
+          : 0,
+        kind: 'directory',
+      };
+    }
+
+    return {
+      size: 0,
+      lastModified: entry.project?.updatedAt ? new Date(entry.project.updatedAt).getTime() : 0,
+      kind: 'directory',
+    };
   }
 
   async getObjectUrl(path: string): Promise<string> {
     const entry = await this.getIdForPath(path);
 
     if (entry.type !== 'media' || !entry.item) {
-      throw new Error(`Path is not a valid media file: ${path}`);
+      throw new VfsUnsupportedError(`object URL for non-media path: ${path}`, { path });
     }
 
-    if (entry.mediaIndex === -1) {
-      return URL.createObjectURL(new Blob([entry.item.text || ''], { type: 'text/plain' }));
+    const previous = this.objectUrlsByPath.get(path);
+    if (previous) {
+      URL.revokeObjectURL(previous);
+      this.objectUrlsByPath.delete(path);
     }
 
-    const blob = await this.readFile(path);
-    return URL.createObjectURL(blob);
+    const blob =
+      entry.mediaIndex === -1
+        ? new Blob([entry.item.text || ''], { type: 'text/plain' })
+        : await this.readFile(path);
+    const url = URL.createObjectURL(blob);
+    this.trackObjectUrl(path, url);
+    return url;
   }
 
   async getFile(path: string): Promise<File | null> {
@@ -1043,16 +1096,22 @@ export class BloggerDogVfsAdapter implements IFileSystemAdapter {
     return new File([blob], fileName, { type: blob.type });
   }
 
-  async readStream(path: string): Promise<ReadableStream<Uint8Array>> {
-    const blob = await this.readFile(path);
+  async readStream(
+    path: string,
+    options?: VfsOperationOptions,
+  ): Promise<ReadableStream<Uint8Array>> {
+    const blob = await this.readFile(path, options);
     return blob.stream();
   }
 
   async writeStream(_path: string): Promise<WritableStream<Uint8Array>> {
-    throw new Error('writeStream not supported on remote');
+    // BloggerDog requires a finalized multipart upload — implementing chunked
+    // streaming is a separate piece of work. Until that exists, callers should
+    // use writeFile with a Blob/Uint8Array instead.
+    throw new VfsUnsupportedError('writeStream on BloggerDog VFS', { path: _path });
   }
 
-  async writeJson(path: string, data: unknown): Promise<void> {
-    await this.writeFile(path, JSON.stringify(data, null, 2));
+  async writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void> {
+    await this.writeFile(path, JSON.stringify(data, null, 2), options);
   }
 }

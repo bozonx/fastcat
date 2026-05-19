@@ -10,3 +10,4 @@ dist
 .env
 .env.*
 !.env.production.example
+.pnpm-store/

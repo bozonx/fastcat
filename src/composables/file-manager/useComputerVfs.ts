@@ -4,6 +4,15 @@ import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
+/**
+ * Builds an ad-hoc adapter rooted at the *current* workspace handle/path,
+ * **without** the router or shared routes (`@common`, `/vardata`, `/remote`).
+ *
+ * This composable exists for views that want to browse only the user's
+ * workspace directly (e.g. a "Computer" panel) and should NOT be used to
+ * read or write project files — for that, use `useVfs()` so that you go
+ * through the routed default adapter wired by the Nuxt VFS plugin.
+ */
 export function useComputerVfs() {
   const workspaceStore = useWorkspaceStore();
   const isTauri = workspaceStore.workspaceProviderId === 'tauri';
@@ -12,13 +21,14 @@ export function useComputerVfs() {
   const rootPath = ref('');
 
   if (isTauri) {
-    // In Tauri, the workspace root is the path of the current workspace handle
-    const workspacePath = (workspaceStore.workspaceHandle as any)?.path || '';
-
-    vfs.value = new TauriFileSystemAdapter(workspacePath);
-    rootPath.value = '';
+    const workspacePath = (workspaceStore.workspaceHandle as unknown as { path?: string })?.path;
+    if (workspacePath) {
+      const adapter = new TauriFileSystemAdapter({ type: 'absolute', path: workspacePath });
+      // Tauri adapter needs init() to mkdir its root.
+      adapter.init().catch(() => {});
+      vfs.value = adapter;
+    }
   } else {
-    // OPFS: Root of the actual workspace (embedded-editor folder)
     vfs.value = new OpfsFileSystemAdapter(async () => {
       if (workspaceStore.workspaceHandle) {
         return workspaceStore.workspaceHandle as FileSystemDirectoryHandle;
@@ -28,7 +38,6 @@ export function useComputerVfs() {
       }
       return null;
     });
-    rootPath.value = '';
   }
 
   return {
