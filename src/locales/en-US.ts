@@ -1537,8 +1537,6 @@ export default {
       backupIntervalHelp: 'How often to create backups.',
       bloggerDogConnectAction: 'Connect to BloggerDog',
       bloggerDogIntegrationHint: 'Connect via BloggerDog for file API access.',
-      browserEphemeralTmpRootPathHelp:
-        'Leave empty to use the runtime temporary location when supported. Browser workspaces always keep rebuildable cache inside the selected workspace folder.',
       clearCacheAction: 'Clear cache',
       clearTempWorkspace: 'Clear workspace temporary files',
       clearTempWorkspaceAction: 'Clear',
@@ -1718,7 +1716,7 @@ export default {
       storageModePortable: 'Workspace portable',
       storageModeSystemDefault: 'System default',
       storagePathEnvironmentHint:
-        'Browser workspace mode stores projects, shared files and rebuildable cache inside the selected workspace folder. Only the workspace folder and ephemeral tmp override are configurable here.',
+        'Browser workspace mode stores projects, shared files and rebuildable cache inside the selected workspace folder. Only the workspace folder is configurable here.',
       sttDownloadModel: 'Download Model',
       sttFastcat: 'FASTCAT STT',
       sttLocal: 'Local (Whisper)',

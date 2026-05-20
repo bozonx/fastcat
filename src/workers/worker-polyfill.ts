@@ -1,6 +1,7 @@
 // Mock document for PixiJS DOMPipe in Web Worker
 if (typeof document === 'undefined') {
-  (globalThis as any).document = {
+  const g = globalThis as unknown as Record<string, unknown>;
+  g.document = {
     createElement: (tag: string) => {
       if (tag && tag.toLowerCase() === 'canvas' && typeof OffscreenCanvas !== 'undefined') {
         try {
@@ -37,5 +38,5 @@ if (typeof document === 'undefined') {
       removeChild: () => {},
     },
   };
-  (globalThis as any).window = globalThis;
+  g.window = globalThis;
 }

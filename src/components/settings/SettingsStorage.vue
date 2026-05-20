@@ -325,23 +325,6 @@ function resetPathDefaults() {
     </div>
 
     <div
-      v-if="isBrowserWorkspaceMode && !workspaceStore.isEphemeral"
-      class="grid grid-cols-1 gap-4 md:grid-cols-2"
-    >
-      <UiFormField
-        :label="t('videoEditor.settings.ephemeralTmpRootPath')"
-        :help="
-          t(
-            'videoEditor.settings.browserEphemeralTmpRootPathHelp',
-            'Leave empty to use the runtime temporary location when supported. Browser workspaces always keep rebuildable cache inside the selected workspace folder.',
-          )
-        "
-      >
-        <UiTextInput v-model="ephemeralTmpRootPath" full-width />
-      </UiFormField>
-    </div>
-
-    <div
       v-if="isBrowserWorkspaceMode"
       class="text-xs text-ui-text-muted rounded border border-ui-border p-3"
     >

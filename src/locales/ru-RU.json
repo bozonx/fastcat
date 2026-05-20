@@ -1530,7 +1530,6 @@
       "backupIntervalHelp": "Как часто создавать резервные копии.",
       "bloggerDogConnectAction": "Подключить через BloggerDog",
       "bloggerDogIntegrationHint": "Подключитесь через BloggerDog для доступа к API файлов.",
-      "browserEphemeralTmpRootPathHelp": "Оставьте пустым, чтобы использовать временное расположение рантайма, если оно поддерживается. В браузерном workspace-режиме пересоздаваемый кэш всегда хранится внутри выбранной папки workspace.",
       "clearCacheAction": "Очистить кэш",
       "clearTempWorkspace": "Очистить временные файлы рабочей области",
       "clearTempWorkspaceAction": "Очистить",

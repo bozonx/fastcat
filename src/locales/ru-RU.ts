@@ -1542,8 +1542,6 @@ export default {
       backupIntervalHelp: 'Как часто создавать резервные копии.',
       bloggerDogConnectAction: 'Подключить через BloggerDog',
       bloggerDogIntegrationHint: 'Подключитесь через BloggerDog для доступа к API файлов.',
-      browserEphemeralTmpRootPathHelp:
-        'Оставьте пустым, чтобы использовать временное расположение рантайма, если оно поддерживается. В браузерном workspace-режиме пересоздаваемый кэш всегда хранится внутри выбранной папки workspace.',
       clearCacheAction: 'Очистить кэш',
       clearTempWorkspace: 'Очистить временные файлы рабочей области',
       clearTempWorkspaceAction: 'Очистить',
@@ -1722,7 +1720,7 @@ export default {
       storageModePortable: 'Переносимый workspace',
       storageModeSystemDefault: 'Системный по умолчанию',
       storagePathEnvironmentHint:
-        'В браузерном workspace-режиме проекты, общие файлы и пересоздаваемый кэш хранятся внутри выбранной папки workspace. Здесь настраиваются только папка workspace и override для ephemeral tmp.',
+        'В браузерном workspace-режиме проекты, общие файлы и пересоздаваемый кэш хранятся внутри выбранной папки workspace. Здесь настраивается только папка workspace.',
       sttDownloadModel: 'Скачать модель',
       sttFastcat: 'FASTCAT STT',
       sttLocal: 'Локальное (Whisper)',
