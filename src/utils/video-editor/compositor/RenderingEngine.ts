@@ -137,7 +137,7 @@ export class RenderingEngine {
       } finally {
         for (let i = 0; i < stageChildren.length; i += 1) {
           const child = stageChildren[i];
-          if (!child || (child as any).destroyed) continue;
+          if (!child || (child as { destroyed?: boolean }).destroyed) continue;
           child.visible = previousStageVisibility[i] ?? true;
         }
       }

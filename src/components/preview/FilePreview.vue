@@ -164,7 +164,6 @@ onUnmounted(() => {
       v-model:is-modal-open="isTextModalOpen"
       :file-path="props.filePath || ''"
       :file-name="props.fileName"
-      :initial-content="props.textContent || ''"
       :focus-panel-id="props.focusPanelId"
       :vfs="props.vfs"
       class="w-full h-full"

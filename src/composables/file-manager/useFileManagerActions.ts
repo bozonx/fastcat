@@ -247,7 +247,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   }
 
   async function createMarkdownInDirectory(targetDir?: string) {
-    const dirPath = targetDir ?? DOCUMENTS_DIR_NAME;
+    const dirPath = targetDir && targetDir.trim() !== '' ? targetDir : DOCUMENTS_DIR_NAME;
     if (dirPath) {
       await actions.vfs.createDirectory(dirPath);
       actions.setFileTreePathExpanded?.(dirPath, true);

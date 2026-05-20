@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -30,6 +30,7 @@ let saveTimer: number | undefined;
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 async function loadContent() {
+  clearTimer();
   if (!props.filePath) {
     isLoading.value = false;
     return;
@@ -108,7 +109,7 @@ watch(
   { flush: 'post' },
 );
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   clearTimer();
   void saveNow();
 });

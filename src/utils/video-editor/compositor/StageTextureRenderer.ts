@@ -154,9 +154,9 @@ export class StageTextureRenderer {
     const previous = children.map((child) => child.visible);
 
     for (let i = 0; i < children.length; i++) {
-      const child = children[i] as any;
+      const child = children[i] as { visible: boolean; __trackId?: string } | undefined;
       if (!child) continue;
-      const track = this.context.getTrackById(child?.__trackId ?? '');
+      const track = this.context.getTrackById(child.__trackId ?? '');
       const childLayer = typeof track?.layer === 'number' ? track.layer : Number.POSITIVE_INFINITY;
       child.visible = childLayer < layer;
     }

@@ -708,11 +708,12 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   async function createMarkdown(parentPath?: string): Promise<string | null> {
     return await runWithUiFeedback({
       action: async () => {
+        const dirPath = parentPath && parentPath.trim() !== '' ? parentPath : DOCUMENTS_DIR_NAME;
         const createdPath = await createMarkdownCommand({
           vfs: deps.vfs,
-          dirPath: parentPath ?? DOCUMENTS_DIR_NAME,
+          dirPath,
         });
-        await reloadDirectory(parentPath ?? DOCUMENTS_DIR_NAME);
+        await reloadDirectory(dirPath);
         return createdPath;
       },
       defaultErrorMessage: 'Failed to create document',
@@ -820,9 +821,11 @@ export function useFileManager(options?: {
     return injected;
   }
 
-  const _useNuxtApp: unknown = (globalThis as { useNuxtApp?: typeof useNuxtApp }).useNuxtApp || useNuxtApp;
+  const _useNuxtApp: unknown =
+    (globalThis as { useNuxtApp?: typeof useNuxtApp }).useNuxtApp || useNuxtApp;
   const nuxtApp = _useNuxtApp();
-  const t = (nuxtApp as { $i18n?: { t: (key: string) => string } })?.$i18n?.t || ((key: string) => key);
+  const t =
+    (nuxtApp as { $i18n?: { t: (key: string) => string } })?.$i18n?.t || ((key: string) => key);
   const toast = useToast();
   const defaultVfs = useVfs();
   const vfs = options?.vfs || defaultVfs;
@@ -929,7 +932,13 @@ export function useFileManager(options?: {
     };
   }
 
-  async function syncTimelinePathsOnMove({ oldPath, newPath }: { oldPath: string; newPath: string }) {
+  async function syncTimelinePathsOnMove({
+    oldPath,
+    newPath,
+  }: {
+    oldPath: string;
+    newPath: string;
+  }) {
     const isTimelineFile = oldPath.toLowerCase().endsWith('.otio');
 
     function matchesOldPath(path: string | null | undefined): boolean {
@@ -1164,7 +1173,10 @@ export function useFileManager(options?: {
         const affectedClips: { trackId: string; itemId: string; source: unknown }[] = [];
         timelineStore.timelineDoc.tracks.forEach((track) => {
           track.items.forEach((item) => {
-            if (item.kind === 'clip' && (item as { source?: { path?: string } }).source?.path.startsWith(`${oldPath}/`)) {
+            if (
+              item.kind === 'clip' &&
+              (item as { source?: { path?: string } }).source?.path.startsWith(`${oldPath}/`)
+            ) {
               affectedClips.push({
                 trackId: track.id,
                 itemId: item.id,

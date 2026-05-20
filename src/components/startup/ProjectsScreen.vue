@@ -77,7 +77,7 @@ const formatDate = (dateStr?: string) => {
   <div class="flex h-screen bg-ui-bg overflow-hidden">
     <!-- Sidebar -->
     <div
-      class="w-64 border-r border-ui-border bg-ui-bg-elevated/50 flex flex-col shrink-0 backdrop-blur-md"
+      class="w-72 border-r border-ui-border bg-ui-bg-elevated/50 flex flex-col shrink-0 backdrop-blur-md"
     >
       <!-- Logo -->
       <div class="p-6 border-b border-ui-border">
@@ -120,18 +120,18 @@ const formatDate = (dateStr?: string) => {
           <p class="text-xs font-medium text-ui-text truncate">
             {{ workspaceStore.workspaceHandle?.name }}
           </p>
-          <UButton
-            variant="link"
-            color="primary"
-            size="xs"
-            class="p-0 h-auto"
-            @click="workspaceStore.resetWorkspace"
-          >
-            {{ t('fastcat.projects.changeWorkspace') }}
-          </UButton>
         </div>
 
         <div class="space-y-1">
+          <UButton
+            block
+            variant="ghost"
+            color="primary"
+            icon="i-heroicons-folder-open"
+            :label="t('fastcat.projects.changeWorkspace')"
+            class="justify-start px-3"
+            @click="workspaceStore.resetWorkspace"
+          />
           <UButton
             block
             variant="ghost"

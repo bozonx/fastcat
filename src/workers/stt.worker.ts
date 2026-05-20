@@ -124,7 +124,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
   transcriber = (await pipeline('automatic-speech-recognition', modelName, {
     device: 'wasm',
     quantized: true,
-  } as any)) as AutomaticSpeechRecognitionPipeline;
+  } as unknown)) as AutomaticSpeechRecognitionPipeline;
 
   console.log('[STT Worker] Pipeline initialized with WASM');
   return transcriber;
