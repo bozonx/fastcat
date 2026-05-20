@@ -114,7 +114,7 @@ export function extractAudioToTrack(
     sourceDurationUs: item.sourceDurationUs,
     timelineRange: { ...item.timelineRange },
     sourceRange: { ...item.sourceRange },
-    linkedGroupId: String((item as any).linkedGroupId ?? item.id),
+    linkedGroupId: String(item.linkedGroupId ?? item.id),
     linkedVideoClipId: item.id,
     lockToLinkedVideo: true,
     effects: audioEffectsFromVideo.length > 0 ? [...audioEffectsFromVideo] : undefined,
@@ -130,7 +130,7 @@ export function extractAudioToTrack(
           return {
             ...it,
             audioFromVideoDisabled: true,
-            linkedGroupId: String((it as any).linkedGroupId ?? it.id),
+            linkedGroupId: String(it.linkedGroupId ?? it.id),
             effects: videoOnlyEffects.length > 0 ? videoOnlyEffects : undefined,
           };
         }),
