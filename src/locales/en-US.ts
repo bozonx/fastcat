@@ -1701,7 +1701,7 @@ export default {
       resetVideoSettingsConfirmDesc:
         'This will restore all video performance settings to their default values.',
       resetVideoSettingsConfirmTitle: 'Reset video settings?',
-      selectWorkspaceFolder: 'Choose folder',
+      selectWorkspaceFolder: 'Select different workspace',
       snapThresholdDefault: 'Snap threshold (px)',
       snapToClips: 'Clips',
       snapToMarkers: 'Markers',
@@ -1758,6 +1758,7 @@ export default {
       videoFrameCacheMbHelp:
         'Maximum amount of RAM to use for decoded preview frames. Set to 0 to disable cache.',
       workspaceFolder: 'Workspace folder',
+      workspaceFolderDescription: 'All data is stored in the workspace folder: settings, projects, and temporary files.',
       workspaceFolderNotSelected: 'Workspace folder not selected',
       workspaceSection: 'App Settings',
       workspaceStorage: 'Storage',

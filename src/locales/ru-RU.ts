@@ -1704,7 +1704,7 @@ export default {
       resetVideoSettingsConfirmDesc:
         'Это вернет настройки производительности видео к значениям по умолчанию.',
       resetVideoSettingsConfirmTitle: 'Сбросить настройки видео?',
-      selectWorkspaceFolder: 'Выбрать папку',
+      selectWorkspaceFolder: 'Выбрать другой воркспейс',
       snapThresholdDefault: 'Порог привязки (px)',
       snapToClips: 'Клипам',
       snapToMarkers: 'Маркерам',
@@ -1763,6 +1763,7 @@ export default {
       videoFrameCacheMbHelp:
         'Максимальный объем оперативной памяти для декодированных кадров предпросмотра. Установите 0 для отключения кэша.',
       workspaceFolder: 'Папка workspace',
+      workspaceFolderDescription: 'Все данные хранятся в папке воркспейса: настройки, проекты и временные файлы.',
       workspaceFolderNotSelected: 'Папка workspace не выбрана',
       workspaceSection: 'Настройки приложения',
       workspaceStorage: 'Хранилище',

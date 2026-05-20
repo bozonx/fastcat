@@ -500,7 +500,7 @@ export function applyTimelineCommand(
       return autoTrimPauses(doc, cmd);
     default: {
       const _exhaustiveCheck: never = cmd;
-      throw new Error(`Unhandled timeline command type: ${(_exhaustiveCheck as any).type}`);
+      throw new Error(`Unhandled timeline command type: ${(_exhaustiveCheck as { type?: string }).type}`);
     }
   }
 }

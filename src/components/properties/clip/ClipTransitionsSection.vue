@@ -53,7 +53,7 @@ const transitionOptions = computed(() =>
           <button
             v-else
             type="button"
-            class="text-2xs font-medium text-ui-text-muted uppercase text-left"
+            class="text-2xs font-medium text-ui-text-muted w-full text-center"
             :disabled="!isEnabled"
             @click="emit('toggle', 'in')"
           >
@@ -89,7 +89,7 @@ const transitionOptions = computed(() =>
                 })
             "
           />
-          <label class="text-2xs font-medium text-ui-text-muted uppercase mb-1 block">
+          <label class="text-2xs font-medium text-ui-text-muted mb-1 block">
             {{ t('fastcat.timeline.transition.durationSec') }}
           </label>
           <UiWheelNumberInput
@@ -125,7 +125,7 @@ const transitionOptions = computed(() =>
           <button
             v-else
             type="button"
-            class="text-2xs font-medium text-ui-text-muted uppercase text-left"
+            class="text-2xs font-medium text-ui-text-muted w-full text-center"
             :disabled="!isEnabled"
             @click="emit('toggle', 'out')"
           >
@@ -161,7 +161,7 @@ const transitionOptions = computed(() =>
                 })
             "
           />
-          <label class="text-2xs font-medium text-ui-text-muted uppercase mb-1 block">
+          <label class="text-2xs font-medium text-ui-text-muted mb-1 block">
             {{ t('fastcat.timeline.transition.durationSec') }}
           </label>
           <UiWheelNumberInput

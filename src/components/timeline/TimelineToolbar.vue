@@ -131,6 +131,8 @@ function toggleTrimMode(event?: MouseEvent) {
   timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive;
 }
 
+const isSnapSettingsDisabled = computed(() => settingsStore.toolbarSnapMode !== 'snap');
+
 const textPresetItems = computed(() => {
   const standard = [
     { id: 'default', label: t('fastcat.library.texts.default') },
@@ -320,6 +322,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             color="neutral"
             icon="i-heroicons-cog-6-tooth"
             class="hover:bg-ui-bg-hover/60"
+            :disabled="isSnapSettingsDisabled"
             @click="isSnapSettingsModalOpen = true"
           />
         </UiTooltip>

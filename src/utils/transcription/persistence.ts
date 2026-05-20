@@ -19,7 +19,9 @@ export async function saveTranscriptionSidecar(
   }
 
   const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
-  const writable = await (fileHandle as any).createWritable();
+  const writable = await (
+    fileHandle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
+  ).createWritable();
   await writable.write(JSON.stringify(record, null, 2));
   await writable.close();
 }
