@@ -41,7 +41,7 @@ export class TimelineMediaClipBuilder {
   constructor(private readonly context: TimelineMediaClipBuilderContext) {}
 
   public createImageClip(params: {
-    clipData: any;
+    clipData: Record<string, unknown>;
     descriptor: TimelineImageClipDescriptor;
     bitmap: ImageBitmap | null;
     imageSource: ImageSource;
@@ -73,8 +73,8 @@ export class TimelineMediaClipBuilder {
     });
 
     if (bitmap) {
-      const frameW = Math.max(1, Math.round((bitmap as any).width ?? 1));
-      const frameH = Math.max(1, Math.round((bitmap as any).height ?? 1));
+      const frameW = Math.max(1, Math.round((bitmap as ImageBitmap).width ?? 1));
+      const frameH = Math.max(1, Math.round((bitmap as ImageBitmap).height ?? 1));
       this.context.layoutApplier.applySpriteLayout(frameW, frameH, clip);
     }
 
@@ -82,7 +82,7 @@ export class TimelineMediaClipBuilder {
   }
 
   public createVideoClip(params: {
-    clipData: any;
+    clipData: Record<string, unknown>;
     descriptor: TimelineVideoClipDescriptor;
     input: CompositorClip['input'];
     sink: CompositorClip['sink'];

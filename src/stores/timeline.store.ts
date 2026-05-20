@@ -388,7 +388,9 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (!backupDirHandle) return;
 
       const existingBackupNames: string[] = [];
-      for await (const [name, handle] of (backupDirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }).entries()) {
+      for await (const [name, handle] of (
+        backupDirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
+      ).entries()) {
         if (
           handle.kind === 'file' &&
           name.startsWith(baseName + '__bak') &&
@@ -401,7 +403,14 @@ export const useTimelineStore = defineStore('timeline', () => {
       const nextName = getNextBackupName(baseName, existingBackupNames);
 
       const newHandle = await backupDirHandle.getFileHandle(nextName, { create: true });
-      const writable = await (newHandle as unknown as { createWritable: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void> }> }).createWritable();
+      const writable = await (
+        newHandle as unknown as {
+          createWritable: () => Promise<{
+            write: (data: string) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }
+      ).createWritable();
       await writable.write(serialized);
       await writable.close();
 
@@ -471,9 +480,10 @@ export const useTimelineStore = defineStore('timeline', () => {
 
       selectionStore.selectTimelineItems(items);
     },
+    pruneSelection: selection.pruneSelectionForDoc,
   });
 
-  const { undoTimeline, redoTimeline } = dispatcher;
+  const { undoTimeline, redoTimeline, pushTimelineHistory } = dispatcher;
 
   const commands = createTimelineCommandsModule({
     timelineDoc,
@@ -482,7 +492,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     applyTimeline,
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
     getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
-    getFileByPath: (path) => (nuxtApp as { $vfs: { getFile: (p: string) => Promise<File | null> } }).$vfs.getFile(path),
+    getFileByPath: (path) =>
+      (nuxtApp as { $vfs: { getFile: (p: string) => Promise<File | null> } }).$vfs.getFile(path),
     getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,
     getProjectSettings: () => projectStore.projectSettings,
@@ -557,7 +568,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (!dirHandle) return;
 
     const existingVersions: number[] = [];
-    for await (const [name, handle] of (dirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }).entries()) {
+    for await (const [name, handle] of (
+      dirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
+    ).entries()) {
       if (handle.kind === 'file' && name.startsWith(prefix) && name.endsWith('.otio')) {
         const vMatch = name.slice(0, -'.otio'.length).match(/_v(\d{1,3})$/);
         if (vMatch) {
@@ -576,7 +589,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     try {
       const newHandle = await dirHandle.getFileHandle(nextName, { create: true });
 
-      const writable = await (newHandle as unknown as { createWritable: () => Promise<{ write: (data: string) => Promise<void>; close: () => Promise<void> }> }).createWritable();
+      const writable = await (
+        newHandle as unknown as {
+          createWritable: () => Promise<{
+            write: (data: string) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }
+      ).createWritable();
       await writable.write(snapshotSerialized);
       await writable.close();
 
@@ -721,6 +741,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     resetTimelineState: lifecycle.resetTimelineState,
     undoTimeline,
     redoTimeline,
+    pushTimelineHistory,
     applyRestoredSnapshot: dispatcher.applyRestoredSnapshot,
     selectTimelineProperties: () => selectionStore.selectTimelineProperties(),
     batchApplyTimeline,

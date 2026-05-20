@@ -125,7 +125,7 @@ watch(isBrowserFullscreen, (entering) => {
     focusStore.setMainFocus('monitor');
     // Fit to the new (larger) viewport after layout settles
     void nextTick(() => {
-      (viewportRef.value as any)?.fitMonitor?.();
+      (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
     });
   } else {
     if (projectStore.currentView === 'fullscreen') {
@@ -214,7 +214,7 @@ onMounted(() => {
   window.addEventListener('mousemove', resetIdle);
   // Synchronize timecode transition target
   if (viewportRef.value) {
-    timecodeEl.value = (viewportRef.value as any).timecodeEl;
+    timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl;
   }
 });
 
@@ -225,7 +225,7 @@ onUnmounted(() => {
 
 watch(viewportRef, (vp) => {
   if (vp) {
-    timecodeEl.value = (vp as any).timecodeEl;
+    timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl;
   }
 });
 </script>

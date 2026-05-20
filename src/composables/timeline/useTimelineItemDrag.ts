@@ -11,7 +11,6 @@ import {
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useHistoryStore } from '~/stores/history.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
@@ -76,7 +75,6 @@ export function useTimelineItemDrag(
 ) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
-  const historyStore = useHistoryStore();
   const settingsStore = useTimelineSettingsStore();
   const selectionStore = useSelectionStore();
   const workspaceStore = useWorkspaceStore();
@@ -308,7 +306,7 @@ export function useTimelineItemDrag(
       selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
-    dragStartSnapshot.value = timelineStore.timelineDoc;
+    dragStartSnapshot.value = cloneValue(timelineStore.timelineDoc);
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
 
@@ -371,7 +369,7 @@ export function useTimelineItemDrag(
       selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
-    dragStartSnapshot.value = timelineStore.timelineDoc;
+    dragStartSnapshot.value = cloneValue(timelineStore.timelineDoc);
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
     movePreview.value = [];
@@ -580,8 +578,11 @@ export function useTimelineItemDrag(
       }
 
       if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
-        timelineStore.timelineDoc = dragStartSnapshot.value as import('~/timeline/types').TimelineDocument;
-        timelineStore.duration = selectTimelineDurationUs(dragStartSnapshot.value as import('~/timeline/types').TimelineDocument);
+        timelineStore.timelineDoc =
+          dragStartSnapshot.value as import('~/timeline/types').TimelineDocument;
+        timelineStore.duration = selectTimelineDurationUs(
+          dragStartSnapshot.value as import('~/timeline/types').TimelineDocument,
+        );
         lastDragAppliedCmd.value = null;
         draggingTrackId.value = dragOriginTrackId.value ?? trackId;
       }
@@ -842,8 +843,14 @@ export function useTimelineItemDrag(
       !cancel &&
       draggingMode.value === 'move' &&
       dragIsFreeOverride.value &&
-      !dragIsCopyOverride.value
+      !dragIsCopyOverride.value &&
+      pendingMoveCommit.value &&
+      !pendingMoveCommit.value.isCollision
     ) {
+      // Unlinks must run only when the move itself will succeed. Otherwise the
+      // skipHistory unlink writes survive without a corresponding history entry
+      // (the entry is only pushed when a move actually commits below), leaving
+      // them irreversible by undo.
       const doc = timelineStore.timelineDoc;
       if (doc) {
         const movedVideoIds: string[] = [];
@@ -923,6 +930,8 @@ export function useTimelineItemDrag(
           !dragIsFreeOverride.value &&
           !dragDisableFrameSnapOverride.value;
 
+        const docBeforeApply = timelineStore.timelineDoc;
+        let appliedCmdLocal: unknown = null;
         if (overlapMode === 'pseudo') {
           const cmds = commit.moves.map((move) => ({
             type: 'overlay_place_item' as const,
@@ -933,8 +942,11 @@ export function useTimelineItemDrag(
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
           }));
-          timelineStore.batchApplyTimeline(cmds as unknown[], { saveMode: 'none', skipHistory: true });
-          lastDragAppliedCmd.value = (cmds[cmds.length - 1] ?? null) as unknown;
+          timelineStore.batchApplyTimeline(cmds as unknown[], {
+            saveMode: 'none',
+            skipHistory: true,
+          });
+          appliedCmdLocal = (cmds[cmds.length - 1] ?? null) as unknown;
         } else {
           const cmd = {
             type: 'move_items',
@@ -943,9 +955,15 @@ export function useTimelineItemDrag(
             ignoreLinks: usePseudoOverlap,
           } as const;
           timelineStore.applyTimeline(cmd as unknown, { saveMode: 'none', skipHistory: true });
-          lastDragAppliedCmd.value = cmd as unknown;
+          appliedCmdLocal = cmd as unknown;
         }
-        hasPendingTimelinePersist.value = true;
+        // Only record an applied command if the document actually changed.
+        // A click-without-drag (or drag back to original position) leaves the doc
+        // identical; recording it would clear the redo stack for no benefit.
+        if (timelineStore.timelineDoc !== docBeforeApply) {
+          lastDragAppliedCmd.value = appliedCmdLocal;
+          hasPendingTimelinePersist.value = true;
+        }
       }
     }
 
@@ -960,13 +978,16 @@ export function useTimelineItemDrag(
           deltaUs: commit.deltaUs,
           quantizeToFrames: commit.quantizeToFrames,
         } as const;
+        const docBeforeApply = timelineStore.timelineDoc;
         timelineStore.applyTimeline(cmd as unknown, { saveMode: 'none', skipHistory: true });
-        lastDragAppliedCmd.value = cmd as unknown;
-        hasPendingTimelinePersist.value = true;
+        if (timelineStore.timelineDoc !== docBeforeApply) {
+          lastDragAppliedCmd.value = cmd as unknown;
+          hasPendingTimelinePersist.value = true;
+        }
       }
     }
 
-    const snapshot = cloneValue(dragStartSnapshot.value);
+    const snapshot = dragStartSnapshot.value;
     const appliedCmd = lastDragAppliedCmd.value;
     if (!cancel && snapshot && appliedCmd) {
       let labelKey: string;
@@ -982,18 +1003,22 @@ export function useTimelineItemDrag(
       } else {
         labelKey = getTimelineCommandLabelKey(appliedCmd.type);
       }
-      historyStore.push('timeline', appliedCmd.type, snapshot, labelKey);
+      timelineStore.pushTimelineHistory(snapshot, appliedCmd.type, labelKey);
       dragStartSnapshot.value = null;
     }
 
     if (cancel && snapshot) {
       timelineStore.timelineDoc = snapshot as import('~/timeline/types').TimelineDocument;
-      timelineStore.duration = selectTimelineDurationUs(snapshot as import('~/timeline/types').TimelineDocument);
+      timelineStore.duration = selectTimelineDurationUs(
+        snapshot as import('~/timeline/types').TimelineDocument,
+      );
     }
 
     if (!cancel && shouldCopyDraggedClip && snapshot && copiedSingleClipPayload) {
       timelineStore.timelineDoc = snapshot as import('~/timeline/types').TimelineDocument;
-      timelineStore.duration = selectTimelineDurationUs(snapshot as import('~/timeline/types').TimelineDocument);
+      timelineStore.duration = selectTimelineDurationUs(
+        snapshot as import('~/timeline/types').TimelineDocument,
+      );
       const copyClip = copiedSingleClipPayload.clip;
       void timelineStore.pasteClips(
         [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],

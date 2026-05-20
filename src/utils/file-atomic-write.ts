@@ -25,18 +25,18 @@ export async function atomicWriteFile(
       return await writeDirectly(handle, content);
     }
 
-    const tempWritable = await (tempHandle as any).createWritable();
+    const tempWritable = await (tempHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
     await tempWritable.write(content);
     await tempWritable.close();
 
     const tempFile = await tempHandle.getFile();
     const finalContent = await tempFile.arrayBuffer();
 
-    const finalWritable = await (handle as any).createWritable();
+    const finalWritable = await (handle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
     await finalWritable.write(finalContent);
     await finalWritable.close();
 
-    const parent = await (handle as any).getParentDirectory?.();
+    const parent = await (handle as { getParentDirectory?: () => Promise<FileSystemDirectoryHandle> }).getParentDirectory?.();
     if (parent) {
       await parent.removeEntry(tempName, { recursive: false }).catch(() => {});
     }
@@ -46,7 +46,7 @@ export async function atomicWriteFile(
 }
 
 async function writeDirectly(handle: FileSystemFileHandle, content: string | Blob): Promise<void> {
-  const writable = await (handle as any).createWritable();
+  const writable = await (handle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
   await writable.write(content);
   await writable.close();
 }

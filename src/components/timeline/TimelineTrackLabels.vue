@@ -103,7 +103,7 @@ const selectedTrackId = computed(() => {
     if (entity.kind === 'gap') return entity.trackId;
     if (entity.kind === 'transition') return entity.trackId;
     if (entity.kind === 'clips') {
-      const clips = entity as any;
+      const clips = entity as { items?: Array<{ trackId: string }> };
       if (clips.items && clips.items.length > 0) return clips.items[0].trackId;
     }
   }
@@ -141,9 +141,9 @@ function isTrackVisuallySelected(trackId: string) {
     if (entity.kind === 'gap') return entity.trackId === trackId;
     if (entity.kind === 'transition') return entity.trackId === trackId;
     if (entity.kind === 'clips') {
-      const clips = entity as any;
+      const clips = entity as { items?: Array<{ trackId: string }> };
       if (clips.items) {
-        return clips.items.some((item: any) => item.trackId === trackId);
+        return clips.items.some((item: { trackId: string }) => item.trackId === trackId);
       }
     }
   }

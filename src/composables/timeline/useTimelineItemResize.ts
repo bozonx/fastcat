@@ -2,6 +2,7 @@ import { onBeforeUnmount, ref, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import { cloneValue } from '~/utils/clone';
 import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import type {
   TimelineTrack,
@@ -457,7 +458,9 @@ export function useTimelineItemResize(
     e.preventDefault();
 
     const isCreating = payload.durationUs === 0;
-    const docBeforeDrag = payload.docBeforeDrag ?? timelineStore.timelineDoc;
+    // Clone upfront so the snapshot remains a faithful pre-drag copy even if a
+    // future command mutates the doc in place.
+    const docBeforeDrag = payload.docBeforeDrag ?? cloneValue(timelineStore.timelineDoc);
     const deleteThresholdUs = Math.max(
       0,
       pxToDeltaUs(TRANSITION_DELETE_THRESHOLD_PX, timelineStore.timelineZoom),
@@ -629,8 +632,6 @@ export function useTimelineItemResize(
         return;
       }
 
-      timelineStore.historyDebounce.flushPendingDebouncedHistory();
-
       if (shouldDelete) {
         timelineStore.updateClipTransition(
           payload.trackId,
@@ -640,12 +641,13 @@ export function useTimelineItemResize(
         );
         // Record history only when deleting an already-existing transition (not ephemeral create)
         if (!creating && doc) {
-          timelineStore.historyStore.push(
-            'timeline',
-            'update_clip_transition',
+          timelineStore.pushTimelineHistory(
             doc,
+            'update_clip_transition',
             'videoEditor.fileManager.history.entries.updateTransition',
           );
+        } else {
+          timelineStore.historyDebounce.flushPendingDebouncedHistory();
         }
       } else {
         // Apply final duration explicitly (pending scheduleUpdate was cancelled by clearSession)
@@ -679,12 +681,13 @@ export function useTimelineItemResize(
           }
         }
         if (doc) {
-          timelineStore.historyStore.push(
-            'timeline',
-            'update_clip_transition',
+          timelineStore.pushTimelineHistory(
             doc,
+            'update_clip_transition',
             'videoEditor.fileManager.history.entries.updateTransition',
           );
+        } else {
+          timelineStore.historyDebounce.flushPendingDebouncedHistory();
         }
       }
 

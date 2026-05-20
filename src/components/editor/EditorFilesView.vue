@@ -73,7 +73,7 @@ const isBloggerDogConfigured = computed(() => {
 
 const bloggerDogVfs = computed(() => {
   if (!isBloggerDogConfigured.value) return null;
-  return (nuxtApp as any).$vfs;
+  return (nuxtApp as { $vfs?: unknown }).$vfs;
 });
 
 function openIntegrationsSettings() {
@@ -106,10 +106,10 @@ const normalizedSelectedEntity = computed(() => {
   const entity = props.selectedEntity;
   if (!entity || entity.source !== 'fileManager') return entity;
 
-  const instanceId = (entity as any).instanceId;
+  const instanceId = (entity as { instanceId?: string }).instanceId;
   if (instanceId !== 'sidebar') return entity;
 
-  if ((entity as any).entry?.source === 'remote') {
+  if ((entity as { entry?: { source?: string } }).entry?.source === 'remote') {
     return {
       ...entity,
       isExternal: true,

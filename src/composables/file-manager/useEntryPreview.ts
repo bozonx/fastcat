@@ -158,7 +158,7 @@ export function useEntryPreview(params: {
       const isVideoOrAudio = resolvedMediaType === 'video' || resolvedMediaType === 'audio';
       const isImage =
         resolvedMediaType === 'image' &&
-        (resolvedFileInfo?.metadata as any)?.image?.canDisplay !== false;
+        (resolvedFileInfo?.metadata as { image?: { canDisplay?: boolean } })?.image?.canDisplay !== false;
 
       let nextUrl: string | null = null;
 
@@ -384,7 +384,7 @@ export function useEntryPreview(params: {
           size: file.size,
           createdAt:
             entry.createdAt ||
-            (typeof (entry as any)?.createdAt === 'number' ? (entry as any).createdAt : undefined),
+            (typeof (entry as { createdAt?: unknown }).createdAt === 'number' ? (entry as { createdAt: number }).createdAt : undefined),
           lastModified: entry.lastModified || file.lastModified,
           mimeType: getMimeTypeFromFilename(file.name),
           ext: fileExt,

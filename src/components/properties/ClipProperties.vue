@@ -56,7 +56,7 @@ const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
-const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as any;
+const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as ReturnType<typeof useFileManagerStore>;
 const filesPageStore = useFilesPageFileManagerStore();
 const clipboardStore = useAppClipboard();
 
@@ -236,8 +236,8 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string) {
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { blendMode: safe });
 }
 
-function handleUpdateMask(mask: any) {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as any);
+function handleUpdateMask(mask: unknown) {
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as { mask: unknown });
 }
 
 function handleUpdateClipEffects(effects: VideoClipEffect[]) {
@@ -430,8 +430,8 @@ defineExpose({
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipActionsSection
       v-if="!hideActions"
-      :common-actions="commonActionsList as any"
-      :other-actions="otherActionsList as any"
+      :common-actions="commonActionsList as unknown[]"
+      :other-actions="otherActionsList as unknown[]"
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"

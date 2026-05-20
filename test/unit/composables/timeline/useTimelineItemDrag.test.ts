@@ -7,10 +7,19 @@ const bindSessionMock = vi.fn();
 const clearSessionMock = vi.fn();
 const scheduleUpdateMock = vi.fn((update: () => void) => update());
 const historyPushMock = vi.fn();
+const pushTimelineHistoryMock = vi.fn((preState: unknown, commandType: string, labelKey: string) => {
+  historyPushMock('timeline', commandType, preState, labelKey);
+});
 const pasteClipsMock = vi.fn();
 const requestTimelineSaveMock = vi.fn(async () => {});
-const applyTimelineMock = vi.fn();
-const batchApplyTimelineMock = vi.fn();
+// Mocks that mutate timelineStoreMock.timelineDoc so the drag flow's "did the
+// doc actually change?" guard (no-op click suppression) sees a different reference.
+const applyTimelineMock = vi.fn(() => {
+  timelineStoreMock.timelineDoc = { ...timelineStoreMock.timelineDoc };
+});
+const batchApplyTimelineMock = vi.fn(() => {
+  timelineStoreMock.timelineDoc = { ...timelineStoreMock.timelineDoc };
+});
 const selectTimelineItemsMock = vi.fn();
 const selectionSelectTimelineItemsMock = vi.fn();
 
@@ -24,6 +33,7 @@ const timelineStoreMock = {
   getSelectionRange: vi.fn(() => null),
   applyTimeline: applyTimelineMock,
   batchApplyTimeline: batchApplyTimelineMock,
+  pushTimelineHistory: pushTimelineHistoryMock,
   selectTimelineItems: selectTimelineItemsMock,
   pasteClips: pasteClipsMock,
   requestTimelineSave: requestTimelineSaveMock,

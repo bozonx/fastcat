@@ -123,23 +123,23 @@ export function updateTrackProperties(
     };
 
     if ('audioGain' in cmd.properties) {
-      const raw = (cmd.properties as any).audioGain;
+      const raw = (cmd.properties as { audioGain?: unknown }).audioGain;
       const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
       next.audioGain = v === undefined ? undefined : normalizeGain(v, 1);
     }
 
     if ('audioBalance' in cmd.properties) {
-      const raw = (cmd.properties as any).audioBalance;
+      const raw = (cmd.properties as { audioBalance?: unknown }).audioBalance;
       const v = typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
       next.audioBalance = v === undefined ? undefined : normalizeBalance(v, 0);
     }
 
     if ('opacity' in cmd.properties) {
-      next.opacity = normalizeOpacity((cmd.properties as any).opacity);
+      next.opacity = normalizeOpacity((cmd.properties as { opacity?: unknown }).opacity);
     }
 
     if ('blendMode' in cmd.properties) {
-      next.blendMode = normalizeBlendMode((cmd.properties as any).blendMode);
+      next.blendMode = normalizeBlendMode((cmd.properties as { blendMode?: unknown }).blendMode);
     }
 
     if (next.kind !== 'video') {

@@ -18,6 +18,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { pxToTimeUs, timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
+import { cloneValue } from '~/utils/clone';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import {
   getClipClass,
@@ -444,7 +445,8 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
     // Create at 0 duration so the transition length matches the mouse position from the start.
     // Capture snapshot BEFORE creating so undo restores to "no transition" state.
     // History will be recorded on drag release by startResizeTransition.
-    const docBeforeDrag = timelineStore.timelineDoc;
+    // Clone upfront so the snapshot is independent of subsequent doc mutations.
+    const docBeforeDrag = cloneValue(timelineStore.timelineDoc);
 
     const transitionPatch = {
       type: 'dissolve',

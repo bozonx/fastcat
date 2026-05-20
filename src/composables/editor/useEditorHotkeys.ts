@@ -86,7 +86,7 @@ export function useEditorHotkeys() {
 
       e.preventDefault();
       e.stopPropagation();
-      (e as any).stopImmediatePropagation?.();
+      (e as Event).stopImmediatePropagation?.();
       focusStore.handleFocusHotkey();
       suppressedKeyupCodes.add(e.code);
       return;
@@ -178,7 +178,7 @@ export function useEditorHotkeys() {
           }
           e.preventDefault();
           e.stopPropagation();
-          (e as any).stopImmediatePropagation?.();
+          (e as Event).stopImmediatePropagation?.();
           suppressedKeyupCodes.add(e.code);
           return;
         }
@@ -190,7 +190,7 @@ export function useEditorHotkeys() {
     if (suppressedKeyupCodes.has(e.code)) {
       e.preventDefault();
       e.stopPropagation();
-      (e as any).stopImmediatePropagation?.();
+      (e as Event).stopImmediatePropagation?.();
       suppressedKeyupCodes.delete(e.code);
     }
 

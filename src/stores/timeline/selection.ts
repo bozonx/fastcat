@@ -33,6 +33,8 @@ export interface TimelineSelectionModule {
     trackId?: string | null;
   }) => void;
 
+  pruneSelectionForDoc: (doc: TimelineDocument) => void;
+
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   getSelectedOrActiveTrackId: () => string | null;
 }
@@ -226,6 +228,48 @@ export function createTimelineSelectionModule(
     return null;
   }
 
+  function pruneSelectionForDoc(doc: TimelineDocument) {
+    const validItemIds = new Set<string>();
+    const validTrackIds = new Set<string>();
+    for (const track of doc.tracks) {
+      validTrackIds.add(track.id);
+      for (const item of track.items) {
+        if (item.kind === 'clip') validItemIds.add(item.id);
+      }
+    }
+
+    const currentItemIds = deps.selectedItemIds.value;
+    const filteredItemIds = currentItemIds.filter((id) => validItemIds.has(id));
+    if (filteredItemIds.length !== currentItemIds.length) {
+      if (filteredItemIds.length === 0) {
+        clearSelection();
+      } else {
+        // Rebuild as {trackId,itemId} objects so the global selection store stays in sync.
+        const objects: { trackId: string; itemId: string; kind: 'clip' }[] = [];
+        for (const id of filteredItemIds) {
+          const trackId = itemToTrackMap.value.get(id);
+          if (trackId) objects.push({ trackId, itemId: id, kind: 'clip' });
+        }
+        if (objects.length > 0) {
+          selectTimelineItems(objects);
+        } else {
+          clearSelection();
+        }
+      }
+    }
+
+    if (deps.selectedTrackId.value && !validTrackIds.has(deps.selectedTrackId.value)) {
+      deps.selectedTrackId.value = null;
+    }
+
+    if (deps.selectedTransition.value) {
+      const { trackId, itemId } = deps.selectedTransition.value;
+      if (!validTrackIds.has(trackId) || !validItemIds.has(itemId)) {
+        deps.selectedTransition.value = null;
+      }
+    }
+  }
+
   function getSelectedOrActiveTrackId(): string | null {
     const doc = deps.timelineDoc.value;
     if (!doc) return null;
@@ -249,6 +293,7 @@ export function createTimelineSelectionModule(
     selectAllClipsOnTrack,
     selectAllClips,
     selectClipsRelativeToPlayhead,
+    pruneSelectionForDoc,
     getHotkeyTargetClip,
     getSelectedOrActiveTrackId,
   };

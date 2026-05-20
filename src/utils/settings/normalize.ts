@@ -37,13 +37,13 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
         typeof input.ui === 'object' &&
         input.ui !== null &&
         'interfaceScale' in input.ui &&
-        typeof (input.ui as any).interfaceScale === 'number'
-          ? (input.ui as any).interfaceScale
+        typeof (input.ui as { interfaceScale?: unknown }).interfaceScale === 'number'
+          ? (input.ui as { interfaceScale: number }).interfaceScale
           : typeof input.ui === 'object' &&
               input.ui !== null &&
               'baseFontSize' in input.ui &&
-              typeof (input.ui as any).baseFontSize === 'number'
-            ? (input.ui as any).baseFontSize
+              typeof (input.ui as { baseFontSize?: unknown }).baseFontSize === 'number'
+            ? (input.ui as { baseFontSize: number }).baseFontSize
             : 14,
     },
     timeline: normalizeTimelineSettings(input),

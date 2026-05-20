@@ -1066,14 +1066,14 @@ export function useFileManager(options?: {
 
       // Update Timeline References (Recursive)
       if (timelineStore.timelineDoc) {
-        const affectedClips: { trackId: string; itemId: string; source: any }[] = [];
+        const affectedClips: { trackId: string; itemId: string; source: unknown }[] = [];
         timelineStore.timelineDoc.tracks.forEach((track) => {
           track.items.forEach((item) => {
-            if (item.kind === 'clip' && (item as any).source?.path.startsWith(`${oldPath}/`)) {
+            if (item.kind === 'clip' && (item as { source?: { path?: string } }).source?.path.startsWith(`${oldPath}/`)) {
               affectedClips.push({
                 trackId: track.id,
                 itemId: item.id,
-                source: (item as any).source,
+                source: (item as { source?: unknown }).source,
               });
             }
           });

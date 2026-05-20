@@ -11,7 +11,7 @@ const props = defineProps<{
   hideActions?: boolean;
 }>();
 
-const textareaRef = ref<any>(null);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -105,8 +105,8 @@ const commonActions = computed(() => [
   },
 ]);
 
-const mainActions = computed<any[]>(() => {
-  const list: any[] = [
+const mainActions = computed<unknown[]>(() => {
+  const list: unknown[] = [
     {
       id: 'convert',
       label: isZone.value

@@ -4,14 +4,14 @@ import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 
 defineProps<{
   fields: TransitionParamField[];
-  params: Record<string, any>;
+  params: Record<string, unknown>;
 }>();
 
 const emit = defineEmits<{
-  'update:param': [key: string, value: any];
+  'update:param': [key: string, value: unknown];
 }>();
 
-function updateParam(key: string, value: any) {
+function updateParam(key: string, value: unknown) {
   emit('update:param', key, value);
 }
 </script>

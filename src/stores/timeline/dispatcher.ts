@@ -25,6 +25,7 @@ export interface TimelineDispatcherDeps {
   markTimelineAsDirty: () => void;
   selectTimelineItems: (itemIds: string[]) => void;
   selectGlobalTimelineItems: (itemIds: string[], doc: TimelineDocument) => void;
+  pruneSelection?: (doc: TimelineDocument) => void;
 }
 
 export interface TimelineDispatcherModule {
@@ -46,6 +47,7 @@ export interface TimelineDispatcherModule {
       labelKey?: string;
     },
   ) => string[];
+  pushTimelineHistory: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
   undoTimeline: () => void;
   redoTimeline: () => void;
   applyRestoredSnapshot: (snapshot: TimelineDocument) => void;
@@ -183,11 +185,20 @@ export function createTimelineDispatcherModule(
     return allCreatedItemIds;
   }
 
+  function pushTimelineHistory(preState: TimelineDocument, commandType: string, labelKey: string) {
+    // Drag/resize composables commit their changes with skipHistory:true and
+    // then push a single entry at the end via this helper. Flush any pending
+    // debounced entry first so callers don't have to remember.
+    deps.historyDebounce.flushPendingDebouncedHistory();
+    deps.historyStore.push('timeline', commandType, preState, labelKey);
+  }
+
   function applyRestoredSnapshot(snapshot: TimelineDocument) {
     if (!snapshot) return;
     deps.timelineDoc.value = snapshot;
     deps.duration.value = selectTimelineDurationUs(snapshot);
     deps.markTimelineAsDirty();
+    deps.pruneSelection?.(snapshot);
     void deps.requestTimelineSave();
   }
 
@@ -217,6 +228,7 @@ export function createTimelineDispatcherModule(
   return {
     applyTimeline,
     batchApplyTimeline,
+    pushTimelineHistory,
     undoTimeline,
     redoTimeline,
     applyRestoredSnapshot,

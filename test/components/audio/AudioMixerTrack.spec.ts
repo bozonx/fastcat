@@ -25,6 +25,14 @@ vi.mock('~/components/effects/SelectEffectModal.vue', () => ({
 vi.mock('~/components/audio/TrackAudioEffectsModal.vue', () => ({
   default: { name: 'TrackAudioEffectsModal', template: '<div></div>' },
 }));
+vi.mock('~/components/ui/UiRenameModal.vue', () => ({
+  default: {
+    name: 'UiRenameModal',
+    template: '<div></div>',
+    props: ['open', 'currentName', 'title'],
+    emits: ['update:open', 'rename'],
+  },
+}));
 
 const mockTimelineStore = reactive({
   audioLevels: {},
@@ -80,23 +88,22 @@ describe('AudioMixerTrack', () => {
     expect(mockTimelineStore.toggleTrackAudioSolo).toHaveBeenCalledWith('track-1');
   });
 
-  it('allows renaming the track', async () => {
+  it('allows renaming the track via modal', async () => {
     const component = await mountSuspended(AudioMixerTrack, {
       props: { track: baseTrack },
     });
 
-    // Find the track name div
+    // Click the track name to open the rename modal
     const nameDiv = component.find('.cursor-text');
     await nameDiv.trigger('click');
 
-    // After click, input should appear
-    const input = component.find(
-      'input[type="text"]:not(.mock-pan):not(.mock-db-slider), input:not([type])',
-    );
-    expect(input.exists()).toBe(true);
+    // The modal should be open
+    expect(component.vm.isRenameModalOpen).toBe(true);
 
-    await input.setValue('New Audio Name');
-    await input.trigger('blur');
+    // Simulate modal rename confirmation
+    const modal = component.findComponent({ name: 'UiRenameModal' });
+    expect(modal.exists()).toBe(true);
+    await modal.vm.$emit('rename', 'New Audio Name');
 
     expect(mockTimelineStore.renameTrack).toHaveBeenCalledWith('track-1', 'New Audio Name');
   });

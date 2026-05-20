@@ -18,7 +18,7 @@ const presetsStore = usePresetsStore();
 
 const manifest = computed(() => getEffectManifest(props.effectType));
 
-const params = ref<Record<string, any>>({});
+const params = ref<Record<string, unknown>>({});
 const isSaveModalOpen = ref(false);
 const newPresetName = ref('');
 
@@ -35,7 +35,7 @@ watch(
   { immediate: true },
 );
 
-function handleUpdateParam(key: string, value: any) {
+function handleUpdateParam(key: string, value: unknown) {
   params.value[key] = value;
 }
 
@@ -56,7 +56,7 @@ function handleUpdatePreset() {
 }
 
 const actions = computed(() => {
-  const list: any[] = [];
+  const list: unknown[] = [];
   if (manifest.value?.isCustom) {
     list.push({
       id: 'update-preset',
