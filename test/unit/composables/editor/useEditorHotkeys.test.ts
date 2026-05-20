@@ -15,8 +15,13 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 
+const { reactive } = vi.hoisted(() => {
+  const { reactive } = require('vue');
+  return { reactive };
+});
+
 const mockWorkspaceStore = {
-  userSettings: {
+  userSettings: reactive({
     history: {
       maxEntries: 100,
     },
@@ -30,8 +35,13 @@ const mockWorkspaceStore = {
     },
     timeline: {
       defaultStaticClipDurationUs: 5000000,
+      frameSnapMode: 'frames',
+      clipSnapMode: 'clips',
+      toolbarSnapMode: 'snap',
+      toolbarDragMode: 'pseudo_overlap',
+      toolbarDragModeEnabled: false,
     },
-  },
+  }),
   workspaceState: {
     fileBrowser: {
       instances: {},

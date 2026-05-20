@@ -49,13 +49,6 @@ const defaultSettings = {
       timelineHeights: {},
     },
   },
-  timeline: {
-    frameSnapMode: 'frames' as const,
-    clipSnapMode: 'clips' as const,
-    toolbarSnapMode: 'snap' as const,
-    toolbarDragMode: 'pseudo_overlap' as const,
-    toolbarDragModeEnabled: false,
-  },
 };
 
 const workspaceMock = {
@@ -91,13 +84,6 @@ vi.mock('~/utils/project-settings', () => {
           verticalSplitSizes: {},
           timelineHeights: {},
         },
-      },
-      timeline: {
-        frameSnapMode: 'frames',
-        clipSnapMode: 'clips',
-        toolbarSnapMode: 'snap',
-        toolbarDragMode: 'pseudo_overlap',
-        toolbarDragModeEnabled: false,
       },
     })),
     normalizeProjectSettings: vi.fn((raw: any) => raw),
@@ -150,13 +136,6 @@ const timelineStoreMock = {
   trackHeights: {},
   selectionRange: null,
 };
-const timelineSettingsStoreMock = {
-  frameSnapMode: 'frames',
-  clipSnapMode: 'clips',
-  toolbarSnapMode: 'snap',
-  toolbarDragMode: 'pseudo_overlap',
-  toolbarDragModeEnabled: false,
-};
 const fileManagerStoreMock = { selectedFolder: null, openFolderByPath: vi.fn() };
 
 vi.mock('~/stores/focus.store', () => ({
@@ -171,9 +150,7 @@ vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: vi.fn(() => timelineStoreMock),
 }));
 
-vi.mock('~/stores/timeline-settings.store', () => ({
-  useTimelineSettingsStore: vi.fn(() => timelineSettingsStoreMock),
-}));
+
 
 vi.mock('~/stores/file-manager.store', () => ({
   useFileManagerStore: vi.fn(() => fileManagerStoreMock),

@@ -7,15 +7,15 @@ import { registerTransition, getTransitionManifest } from '~/transitions';
 
 const workspaceMock = {
   workspaceHandle: {} as any,
-  workspaceState: {
+  userSettings: {
     presets: {
       custom: [] as any[],
       defaultTextPresetId: '',
       collapsed: {} as Record<string, boolean>,
     },
   },
-  batchUpdateWorkspaceState: vi.fn().mockImplementation((fn: any) => {
-    fn(workspaceMock.workspaceState);
+  batchUpdateUserSettings: vi.fn().mockImplementation((fn: any) => {
+    fn(workspaceMock.userSettings);
   }),
 };
 
@@ -50,13 +50,13 @@ describe('PresetsStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
-    workspaceMock.workspaceState.presets.custom = [];
-    workspaceMock.workspaceState.presets.defaultTextPresetId = '';
-    workspaceMock.workspaceState.presets.collapsed = {};
+    workspaceMock.userSettings.presets.custom = [];
+    workspaceMock.userSettings.presets.defaultTextPresetId = '';
+    workspaceMock.userSettings.presets.collapsed = {};
   });
 
-  it('load restores presets from workspace state', () => {
-    workspaceMock.workspaceState.presets.custom = [
+  it('load restores presets from user settings', () => {
+    workspaceMock.userSettings.presets.custom = [
       {
         id: 'p1',
         baseType: 'blur',
@@ -66,8 +66,8 @@ describe('PresetsStore', () => {
         order: 0,
       },
     ];
-    workspaceMock.workspaceState.presets.defaultTextPresetId = 'p1';
-    workspaceMock.workspaceState.presets.collapsed = { effectsStandardCollapsed: true };
+    workspaceMock.userSettings.presets.defaultTextPresetId = 'p1';
+    workspaceMock.userSettings.presets.collapsed = { effectsStandardCollapsed: true };
 
     const store = usePresetsStore();
     store.load();
@@ -87,7 +87,7 @@ describe('PresetsStore', () => {
     expect(store.customPresets[0].category).toBe('effect');
     expect(store.customPresets[0].effectTarget).toBe('video');
     expect(vi.mocked(registerEffect)).toHaveBeenCalled();
-    expect(workspaceMock.batchUpdateWorkspaceState).toHaveBeenCalled();
+    expect(workspaceMock.batchUpdateUserSettings).toHaveBeenCalled();
   });
 
   it('saveAsPreset creates and registers an audio effect preset', () => {
@@ -137,6 +137,6 @@ describe('PresetsStore', () => {
     store.removePreset(id);
 
     expect(store.customPresets).toHaveLength(0);
-    expect(workspaceMock.batchUpdateWorkspaceState).toHaveBeenCalled();
+    expect(workspaceMock.batchUpdateUserSettings).toHaveBeenCalled();
   });
 });

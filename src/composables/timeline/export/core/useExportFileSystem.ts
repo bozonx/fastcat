@@ -43,9 +43,15 @@ export function useExportFileSystem() {
     return cachedExportDir;
   }
 
+  interface AsyncIterableDirectoryHandle extends FileSystemDirectoryHandle {
+    values?(): AsyncIterable<FileSystemHandle>;
+    entries?(): AsyncIterable<[string, FileSystemHandle]>;
+  }
+
   async function listExportFilenames(exportDir: FileSystemDirectoryHandle): Promise<Set<string>> {
     const names = new Set<string>();
-    const iterator = (exportDir as any).values?.() ?? (exportDir as any).entries?.();
+    const dir = exportDir as AsyncIterableDirectoryHandle;
+    const iterator = dir.values?.() ?? dir.entries?.();
     if (!iterator) return names;
 
     for await (const value of iterator) {

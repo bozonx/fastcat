@@ -18,7 +18,7 @@ const model = defineModel<boolean>('toggleValue');
     >
       <div class="flex items-center gap-2">
         <slot name="header-actions" />
-        <USwitch v-if="props.hasToggle" v-model="model" size="xs" color="error" />
+        <USwitch v-if="props.hasToggle" v-model="model" size="xs" color="error" class="scale-75 origin-right" />
       </div>
     </UiFormSectionHeader>
     <slot />

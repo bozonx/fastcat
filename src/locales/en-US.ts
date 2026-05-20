@@ -856,6 +856,8 @@ export default {
       transition: {
         actionFall: 'Falls',
         actionRise: 'Rises',
+        addInLabel: 'Add transition IN',
+        addOutLabel: 'Add transition OUT',
         anchorBottomLeft: 'Bottom Left',
         anchorBottomRight: 'Bottom Right',
         anchorCenter: 'Center',
@@ -897,6 +899,7 @@ export default {
         directionUp: 'Up',
         directionVertical: 'Vertical',
         duration: 'Duration (seconds)',
+        durationSec: 'Duration, sec',
         errorClipHeadHandleTooShort:
           'Clip head handle too short (needs {needSeconds}s, has {haveSeconds}s)',
         errorClipTailHandleTooShort:
@@ -1542,9 +1545,9 @@ export default {
       clearTempWorkspaceAction: 'Clear',
       clearTempWorkspaceConfirm: 'Clear All',
       clearTempWorkspaceDescription:
-        'Nothing will happen to your important project files. Only auto-generated and temporary files (proxies, thumbnails, cache) will be removed.',
+        'Nothing will happen to your important project files. Only auto-generated and temporary data will be removed: proxy files, thumbnails, waveforms, cache, and temporary import/export files.',
       clearTempWorkspaceHint:
-        'Nothing will happen to your important project files. Only auto-generated and temporary files will be deleted.',
+        'Nothing will happen to your important project files. Only auto-generated and temporary data will be deleted: proxy files, thumbnails, waveforms, cache, and temporary import/export files.',
       clearTempWorkspaceTitle: 'Clear temporary files',
       clearUiCache: 'Clear UI cache',
       clearUiCacheDesc: 'Resets layout, panel sizes, and other UI preferences.',

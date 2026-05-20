@@ -37,7 +37,7 @@ export function useFileBrowserCreateActions({
     const existingInFolder = await readDirectory(entry.path);
     const existingNames = existingInFolder.map((e) => e.name);
     const createdPath = await createTimelineCommand({
-      vfs: vfs as any,
+      vfs,
       timelinesDirName: entry.path || undefined,
       existingNames,
       format: createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project),

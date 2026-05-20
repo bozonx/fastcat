@@ -259,7 +259,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           // Detect format and codec from meta
           const sourceExt = entry.name.split('.').pop()?.toLowerCase();
           const sourceCodec = String(meta.video.codec || '').toLowerCase();
-          const supportedFormats: any[] = ['mp4', 'webm', 'mkv'];
+          const supportedFormats: ('mp4' | 'webm' | 'mkv')[] = ['mp4', 'webm', 'mkv'];
 
           let matched = false;
 
@@ -275,8 +275,8 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             else if (supportedCodec === 'av01') props.videoSettings.videoCodec = 'av01.0.05M.08';
 
             // If format is also supported, use it, otherwise default to mp4
-            if (sourceExt && supportedFormats.includes(sourceExt)) {
-              props.videoSettings.format = sourceExt as any;
+            if (sourceExt && supportedFormats.includes(sourceExt as 'mp4' | 'webm' | 'mkv')) {
+              props.videoSettings.format = sourceExt as 'mp4' | 'webm' | 'mkv';
             } else {
               props.videoSettings.format = 'mp4';
             }

@@ -5,14 +5,12 @@ import { createDefaultWorkspaceState, normalizeWorkspaceState } from '~/utils/wo
 describe('workspace-state', () => {
   it('creates default state', () => {
     const state = createDefaultWorkspaceState();
-    expect(state.presets.custom).toEqual([]);
     expect(state.ui.recentSearchQueries).toEqual([]);
     expect(state.fileBrowser.activeTab).toBe('computer');
   });
 
   it('returns defaults for null input', () => {
     const state = normalizeWorkspaceState(null);
-    expect(state.presets.custom).toEqual([]);
     expect(state.fileBrowser.activeTab).toBe('computer');
   });
 

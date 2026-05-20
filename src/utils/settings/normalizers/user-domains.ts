@@ -32,6 +32,18 @@ export function normalizeDeleteWithoutConfirmation(raw: unknown): boolean {
 }
 
 export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['timeline'] {
+  const input = (raw as Record<string, unknown>)?.['timeline'];
+  const snapSchema = z
+    .object({
+      timelineEdges: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.timelineEdges),
+      clips: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.clips),
+      markers: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.markers),
+      selection: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.selection),
+      playhead: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playhead),
+      playheadClick: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playheadClick),
+    })
+    .catch(DEFAULT_USER_SETTINGS.timeline.snapping);
+
   const schema = z
     .object({
       snapThresholdPx: z.coerce
@@ -46,20 +58,22 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
         .number()
         .min(0)
         .catch(DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs),
-      snapping: z
-        .object({
-          timelineEdges: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.timelineEdges),
-          clips: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.clips),
-          markers: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.markers),
-          selection: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.selection),
-          playhead: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playhead),
-          playheadClick: z.boolean().catch(DEFAULT_USER_SETTINGS.timeline.snapping.playheadClick),
-        })
-        .catch(DEFAULT_USER_SETTINGS.timeline.snapping),
+      snapping: snapSchema,
+      frameSnapMode: z.enum(['free', 'frames']).catch(DEFAULT_USER_SETTINGS.timeline.frameSnapMode),
+      clipSnapMode: z.enum(['none', 'clips']).catch(DEFAULT_USER_SETTINGS.timeline.clipSnapMode),
+      toolbarSnapMode: z
+        .enum(['snap', 'no_snap', 'free_mode'])
+        .catch(DEFAULT_USER_SETTINGS.timeline.toolbarSnapMode),
+      toolbarDragMode: z
+        .enum(['pseudo_overlap', 'copy', 'slip'])
+        .catch(DEFAULT_USER_SETTINGS.timeline.toolbarDragMode),
+      toolbarDragModeEnabled: z.coerce
+        .boolean()
+        .catch(DEFAULT_USER_SETTINGS.timeline.toolbarDragModeEnabled),
     })
     .catch(DEFAULT_USER_SETTINGS.timeline);
 
-  return schema.parse((raw as Record<string, unknown>)?.['timeline']);
+  return schema.parse(input);
 }
 
 export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['stopFrames'] {
@@ -346,4 +360,22 @@ export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['back
     })
     .catch(DEFAULT_USER_SETTINGS.backup)
     .parse((raw as Record<string, unknown>)?.['backup'] ?? {});
+}
+
+export function normalizePresetsSettings(raw: unknown): FastCatUserSettings['presets'] {
+  const input = (raw as Record<string, unknown>)?.['presets'];
+  const defaults = DEFAULT_USER_SETTINGS.presets;
+  if (!input || typeof input !== 'object') {
+    return defaults;
+  }
+  const d = input as Record<string, unknown>;
+  return {
+    custom: Array.isArray(d.custom) ? d.custom : defaults.custom,
+    defaultTextPresetId:
+      typeof d.defaultTextPresetId === 'string' ? d.defaultTextPresetId : defaults.defaultTextPresetId,
+    collapsed:
+      d.collapsed && typeof d.collapsed === 'object'
+        ? (d.collapsed as Record<string, boolean>)
+        : defaults.collapsed,
+  };
 }

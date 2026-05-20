@@ -825,14 +825,14 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     },
   ) {
     try {
-      const payload = JSON.parse(data) as any;
+      const payload = JSON.parse(data) as { isExternal?: boolean; [key: string]: unknown };
       const items = normalizeDropItems(payload);
       let currentStartUs = startUs;
       let addedCount = 0;
       const pseudo = options?.pseudo === true;
       let itemsToDrop = items;
 
-      if (payload?.isExternal) {
+      if (payload.isExternal) {
         isImporting.value = true;
         importProgress.value = 0;
         importPhase.value = t('videoEditor.fileManager.actions.importing');

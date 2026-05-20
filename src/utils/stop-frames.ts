@@ -72,7 +72,7 @@ export async function renderExportFrameBlob(params: RenderExportFrameBlobParams)
 
   ctx.imageSmoothingEnabled = true;
   try {
-    (ctx as any).imageSmoothingQuality = 'high';
+    (ctx as unknown as Record<string, unknown>).imageSmoothingQuality = 'high';
   } catch {
     // ignore if not supported
   }

@@ -89,15 +89,6 @@ export const ProjectUiSettingsSchema = z.object({
       sessions: z.record(z.string(), TimelineSessionSchema).catch({}),
     })
     .catch({ openPaths: [], sessions: {} }),
-  timeline: z
-    .object({
-      frameSnapMode: z.enum(['free', 'frames']).catch('frames'),
-      clipSnapMode: z.enum(['none', 'clips']).catch('clips'),
-      toolbarSnapMode: z.enum(['snap', 'no_snap', 'free_mode']).catch('snap'),
-      toolbarDragMode: z.enum(['pseudo_overlap', 'copy', 'slip']).catch('pseudo_overlap'),
-      toolbarDragModeEnabled: z.boolean().catch(false),
-    })
-    .optional(),
   ui: z
     .object({
       activeTabId: z.string().nullable().catch(null),

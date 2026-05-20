@@ -3,6 +3,7 @@ import type { StoragePathRegistry } from '../storage-roots';
 import type { TimelineDragAction } from '../mouse';
 import type { UserExportPresetsSettings, UserProjectPresetsSettings } from './presets';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
+import type { CustomPreset } from './presets';
 
 export interface FastCatPublicadorIntegrationSettings {
   enabled: boolean;
@@ -55,6 +56,12 @@ export interface FastCatUserSettings {
       playhead: boolean;
       playheadClick: boolean;
     };
+    /** Per-user timeline snapping and drag modes (not project-specific). */
+    frameSnapMode: 'free' | 'frames';
+    clipSnapMode: 'none' | 'clips';
+    toolbarSnapMode: 'snap' | 'no_snap' | 'free_mode';
+    toolbarDragMode: 'pseudo_overlap' | 'copy' | 'slip';
+    toolbarDragModeEnabled: boolean;
   };
   stopFrames: {
     qualityPercent: number;
@@ -100,6 +107,11 @@ export interface FastCatUserSettings {
   };
   projectPresets: UserProjectPresetsSettings;
   exportPresets: UserExportPresetsSettings;
+  presets: {
+    custom: CustomPreset[];
+    defaultTextPresetId: string;
+    collapsed: Record<string, boolean>;
+  };
   projectDefaults: {
     width: number;
     height: number;
@@ -222,6 +234,11 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       playhead: true,
       playheadClick: true,
     },
+    frameSnapMode: 'frames',
+    clipSnapMode: 'clips',
+    toolbarSnapMode: 'snap',
+    toolbarDragMode: 'pseudo_overlap',
+    toolbarDragModeEnabled: false,
   },
   stopFrames: {
     qualityPercent: 85,
@@ -243,6 +260,11 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   },
   projectPresets: createDefaultProjectPresets(),
   exportPresets: createDefaultExportPresets(),
+  presets: {
+    custom: [],
+    defaultTextPresetId: '',
+    collapsed: {},
+  },
   projectDefaults: {
     width: 1920,
     height: 1080,

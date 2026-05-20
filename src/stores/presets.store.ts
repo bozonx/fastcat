@@ -34,19 +34,19 @@ export const usePresetsStore = defineStore('presets', () => {
   const textsCustomCollapsed = ref(false);
 
   function load() {
-    // Check workspace state (primary source of truth)
-    const workspaceCustom = workspaceStore.workspaceState.presets.custom;
-    const workspaceDefaultText = workspaceStore.workspaceState.presets.defaultTextPresetId;
+    // Check user settings (primary source of truth)
+    const userCustom = workspaceStore.userSettings.presets.custom;
+    const userDefaultText = workspaceStore.userSettings.presets.defaultTextPresetId;
 
-    if (workspaceCustom.length > 0) {
-      customPresets.value = [...workspaceCustom];
+    if (userCustom.length > 0) {
+      customPresets.value = [...userCustom];
     }
 
-    if (workspaceDefaultText) {
-      defaultTextPresetId.value = workspaceDefaultText;
+    if (userDefaultText) {
+      defaultTextPresetId.value = userDefaultText;
     }
 
-    const state = workspaceStore.workspaceState.presets.collapsed;
+    const state = workspaceStore.userSettings.presets.collapsed;
     if (state && Object.keys(state).length > 0) {
       effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
       effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;
@@ -66,28 +66,26 @@ export const usePresetsStore = defineStore('presets', () => {
     customPresets.value.forEach((preset) => registerPresetManifest(preset));
   }
 
-  // Save to workspace state
+  // Save to user settings
   function savePresets() {
-    if (workspaceStore.workspaceHandle) {
-      void workspaceStore.batchUpdateWorkspaceState((draft) => {
-        draft.presets.custom = JSON.parse(JSON.stringify(customPresets.value));
-        draft.presets.defaultTextPresetId = defaultTextPresetId.value;
-        draft.presets.collapsed = {
-          effectsStandardCollapsed: effectsStandardCollapsed.value,
-          effectsCustomCollapsed: effectsCustomCollapsed.value,
-          transitionsStandardCollapsed: transitionsStandardCollapsed.value,
-          transitionsCustomCollapsed: transitionsCustomCollapsed.value,
-          audioStandardCollapsed: audioStandardCollapsed.value,
-          audioCustomCollapsed: audioCustomCollapsed.value,
-          shapesStandardCollapsed: shapesStandardCollapsed.value,
-          shapesCustomCollapsed: shapesCustomCollapsed.value,
-          hudsStandardCollapsed: hudsStandardCollapsed.value,
-          hudsCustomCollapsed: hudsCustomCollapsed.value,
-          textsStandardCollapsed: textsStandardCollapsed.value,
-          textsCustomCollapsed: textsCustomCollapsed.value,
-        };
-      });
-    }
+    void workspaceStore.batchUpdateUserSettings((draft) => {
+      draft.presets.custom = JSON.parse(JSON.stringify(customPresets.value));
+      draft.presets.defaultTextPresetId = defaultTextPresetId.value;
+      draft.presets.collapsed = {
+        effectsStandardCollapsed: effectsStandardCollapsed.value,
+        effectsCustomCollapsed: effectsCustomCollapsed.value,
+        transitionsStandardCollapsed: transitionsStandardCollapsed.value,
+        transitionsCustomCollapsed: transitionsCustomCollapsed.value,
+        audioStandardCollapsed: audioStandardCollapsed.value,
+        audioCustomCollapsed: audioCustomCollapsed.value,
+        shapesStandardCollapsed: shapesStandardCollapsed.value,
+        shapesCustomCollapsed: shapesCustomCollapsed.value,
+        hudsStandardCollapsed: hudsStandardCollapsed.value,
+        hudsCustomCollapsed: hudsCustomCollapsed.value,
+        textsStandardCollapsed: textsStandardCollapsed.value,
+        textsCustomCollapsed: textsCustomCollapsed.value,
+      };
+    });
   }
 
   watch(defaultTextPresetId, () => {
@@ -114,9 +112,9 @@ export const usePresetsStore = defineStore('presets', () => {
     },
   );
 
-  // Sync from workspace state when it loads or changes externally
+  // Sync from user settings when they load or change externally
   watch(
-    () => workspaceStore.workspaceState.presets,
+    () => workspaceStore.userSettings.presets,
     (presets) => {
       if (!presets) return;
 

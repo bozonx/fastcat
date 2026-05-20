@@ -1,5 +1,3 @@
-import type { CustomPreset } from './settings/presets';
-
 export interface FileBrowserInstanceState {
   viewMode: 'grid' | 'list';
   sortOption: {
@@ -15,11 +13,6 @@ export interface FileBrowserInstanceState {
 }
 
 export interface WorkspaceState {
-  presets: {
-    custom: CustomPreset[];
-    defaultTextPresetId: string;
-    collapsed: Record<string, boolean>;
-  };
   ui: {
     recentSearchQueries: string[];
     pinnedItems: string[];
@@ -55,11 +48,6 @@ export function createDefaultFileBrowserInstance(): FileBrowserInstanceState {
 
 export function createDefaultWorkspaceState(): WorkspaceState {
   return {
-    presets: {
-      custom: [],
-      defaultTextPresetId: '',
-      collapsed: {},
-    },
     ui: {
       recentSearchQueries: [],
       pinnedItems: [],
@@ -112,7 +100,6 @@ export function normalizeWorkspaceState(data: unknown): WorkspaceState {
   if (!data || typeof data !== 'object') return defaults;
   const d = data as Record<string, unknown>;
 
-  const presets = (d.presets as Record<string, unknown> | undefined) ?? {};
   const ui = (d.ui as Record<string, unknown> | undefined) ?? {};
   const fileBrowser = (d.fileBrowser as Record<string, unknown> | undefined) ?? {};
   const fbInstances = fileBrowser.instances as Record<string, unknown> | undefined;
@@ -121,17 +108,6 @@ export function normalizeWorkspaceState(data: unknown): WorkspaceState {
   const legacyShowHidden = typeof ui.showHiddenFiles === 'boolean' ? ui.showHiddenFiles : false;
 
   return {
-    presets: {
-      custom: Array.isArray(presets.custom) ? presets.custom : defaults.presets.custom,
-      defaultTextPresetId:
-        typeof presets.defaultTextPresetId === 'string'
-          ? presets.defaultTextPresetId
-          : defaults.presets.defaultTextPresetId,
-      collapsed:
-        presets.collapsed && typeof presets.collapsed === 'object'
-          ? (presets.collapsed as Record<string, boolean>)
-          : defaults.presets.collapsed,
-    },
     ui: {
       recentSearchQueries: Array.isArray(ui.recentSearchQueries)
         ? (ui.recentSearchQueries as string[])

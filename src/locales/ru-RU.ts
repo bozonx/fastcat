@@ -860,6 +860,8 @@ export default {
       transition: {
         actionFall: 'Падение',
         actionRise: 'Поднимается',
+        addInLabel: 'Добавить переход IN',
+        addOutLabel: 'Добавить переход OUT',
         anchorBottomLeft: 'Bottom Left',
         anchorBottomRight: 'Bottom Right',
         anchorCenter: 'Center',
@@ -901,6 +903,7 @@ export default {
         directionUp: 'Вверх',
         directionVertical: 'Вертикально',
         duration: 'Длительность (секунды)',
+        durationSec: 'Длительность, сек',
         errorClipHeadHandleTooShort:
           'Начало клипа слишком короткое для перехода (нужно {needSeconds}с, есть {haveSeconds}с)',
         errorClipTailHandleTooShort:
@@ -1547,9 +1550,9 @@ export default {
       clearTempWorkspaceAction: 'Очистить',
       clearTempWorkspaceConfirm: 'Очистить всё',
       clearTempWorkspaceDescription:
-        'Ничего не случится с важными файлами проекта. Удалятся только автосгенерированные и временные файлы (прокси, миниатюры, кэш).',
+        'Ничего не случится с важными файлами проекта. Удалятся только автосгенерированные и временные данные: прокси-файлы, миниатюры, waveform\'ы, кэш, временные файлы импорта и экспорта.',
       clearTempWorkspaceHint:
-        'Ничего не случится с важными файлами проекта. Удалятся только автосгенерированные и временные файлы.',
+        'Ничего не случится с важными файлами проекта. Удалятся только автосгенерированные и временные данные: прокси-файлы, миниатюры, waveform\'ы, кэш, временные файлы импорта и экспорта.',
       clearTempWorkspaceTitle: 'Очистка временных файлов',
       clearUiCache: 'Очистить кэш интерфейса',
       clearUiCacheDesc: 'Сбрасывает разметку, размеры панелей и другие предпочтения интерфейса.',

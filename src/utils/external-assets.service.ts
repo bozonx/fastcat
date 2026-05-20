@@ -66,7 +66,9 @@ export async function loadExternalAssets(params: {
       const handle = await params.getProjectFileHandle(relativePath, { create: true });
       if (!handle) throw new Error(`Failed to get file handle for ${relativePath}`);
 
-      const writable = await (handle as any).createWritable();
+      const writable = await (
+        handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
+      ).createWritable();
       await writable.write(blob);
       await writable.close();
 

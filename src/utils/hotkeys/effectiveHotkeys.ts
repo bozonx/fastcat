@@ -8,7 +8,7 @@ export interface HotkeysState {
 export function getEffectiveHotkeyBindings(
   state: HotkeysState,
 ): Record<HotkeyCommandId, HotkeyCombo[]> {
-  const result: Record<HotkeyCommandId, HotkeyCombo[]> = {} as any;
+  const result = {} as Record<HotkeyCommandId, HotkeyCombo[]>;
 
   const normalizeList = (list: HotkeyCombo[]) => {
     const normalized = list

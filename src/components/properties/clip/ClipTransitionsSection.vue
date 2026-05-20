@@ -55,15 +55,16 @@ const transitionOptions = computed(() =>
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             :disabled="!isEnabled"
-            @click="emit('selectEdge', 'in')"
+            @click="emit('toggle', 'in')"
           >
-            IN
+            {{ t('fastcat.timeline.transition.addInLabel') }}
           </button>
           <UButton
+            v-if="props.transitionIn"
             size="xs"
-            :color="props.transitionIn ? 'red' : 'primary'"
+            color="red"
             variant="ghost"
-            :icon="props.transitionIn ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+            icon="i-heroicons-trash"
             :disabled="!isEnabled"
             @click="emit('toggle', 'in')"
           />
@@ -88,6 +89,9 @@ const transitionOptions = computed(() =>
                 })
             "
           />
+          <label class="text-2xs font-medium text-ui-text-muted uppercase mb-1 block">
+            {{ t('fastcat.timeline.transition.durationSec') }}
+          </label>
           <UiWheelNumberInput
             :model-value="props.transitionIn.durationUs / 1_000_000"
             :min="0.1"
@@ -123,15 +127,16 @@ const transitionOptions = computed(() =>
             type="button"
             class="text-2xs font-medium text-ui-text-muted uppercase text-left"
             :disabled="!isEnabled"
-            @click="emit('selectEdge', 'out')"
+            @click="emit('toggle', 'out')"
           >
-            OUT
+            {{ t('fastcat.timeline.transition.addOutLabel') }}
           </button>
           <UButton
+            v-if="props.transitionOut"
             size="xs"
-            :color="props.transitionOut ? 'red' : 'primary'"
+            color="red"
             variant="ghost"
-            :icon="props.transitionOut ? 'i-heroicons-trash' : 'i-heroicons-plus-circle'"
+            icon="i-heroicons-trash"
             :disabled="!isEnabled"
             @click="emit('toggle', 'out')"
           />
@@ -156,6 +161,9 @@ const transitionOptions = computed(() =>
                 })
             "
           />
+          <label class="text-2xs font-medium text-ui-text-muted uppercase mb-1 block">
+            {{ t('fastcat.timeline.transition.durationSec') }}
+          </label>
           <UiWheelNumberInput
             :model-value="props.transitionOut.durationUs / 1_000_000"
             :min="0.1"

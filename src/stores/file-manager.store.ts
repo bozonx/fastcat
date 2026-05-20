@@ -53,6 +53,9 @@ function createFileManagerStoreSetup(contextId: string) {
     );
     const selectionContext = ref<FileManagerSelectionContext>({});
 
+    const externalFmIds = new Set(['computer-sidebar', 'bloggerdog-sidebar']);
+    const isExternalFm = externalFmIds.has(contextId);
+
     // Watch for internal changes and update WorkspaceState
     watch(
       [
@@ -76,7 +79,9 @@ function createFileManagerStoreSetup(contextId: string) {
           instance.columnWidths = columnWidths.value;
           instance.showHiddenFiles = showHiddenFiles.value;
           instance.treeSize = treeSize.value;
-          instance.lastPath = selectedFolder.value?.path;
+          if (isExternalFm) {
+            instance.lastPath = selectedFolder.value?.path;
+          }
         });
       },
       { deep: true },

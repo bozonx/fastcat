@@ -185,6 +185,9 @@ function resetPathDefaults() {
         <div class="text-xs text-ui-text-muted break-all">
           {{ workspaceFolderLabel }}
         </div>
+        <div class="text-xs text-ui-text-muted">
+          {{ t('videoEditor.settings.workspaceFolderDescription') }}
+        </div>
       </div>
 
       <UButton
@@ -324,25 +327,13 @@ function resetPathDefaults() {
       </UiFormField>
     </div>
 
-    <div
-      v-if="isBrowserWorkspaceMode"
-      class="text-xs text-ui-text-muted rounded border border-ui-border p-3"
-    >
-      {{
-        t(
-          'videoEditor.settings.storagePathEnvironmentHint',
-          'Browser workspace mode stores projects, shared files and rebuildable cache inside the selected workspace folder. Only the workspace folder and ephemeral tmp override are configurable here.',
-        )
-      }}
-    </div>
-
     <UiConfirmModal
       v-model:open="isClearWorkspaceVardataConfirmOpen"
       :title="t('videoEditor.settings.clearTempWorkspaceTitle')"
       :description="
         t(
           'videoEditor.settings.clearTempWorkspaceDescription',
-          'Nothing will happen to your important project files. Only auto-generated and temporary files (proxies, thumbnails, cache) will be removed.',
+          'Nothing will happen to your important project files. Only auto-generated and temporary data will be removed: proxy files, thumbnails, waveforms, cache, and temporary import/export files.',
         )
       "
       :confirm-text="t('videoEditor.settings.clearTempWorkspaceConfirm')"
@@ -364,7 +355,7 @@ function resetPathDefaults() {
           {{
             t(
               'videoEditor.settings.clearTempWorkspaceHint',
-              'Nothing will happen to your important project files. Only auto-generated and temporary files will be deleted.',
+              'Nothing will happen to your important project files. Only auto-generated and temporary data will be deleted: proxy files, thumbnails, waveforms, cache, and temporary import/export files.',
             )
           }}
         </div>

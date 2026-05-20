@@ -229,7 +229,7 @@ defineExpose({
 
 <template>
   <div
-    class="flex flex-col gap-3 p-3 bg-ui-bg-elevated border border-ui-border rounded-lg text-xs text-ui-text min-w-56 shadow-lg"
+    class="flex flex-col gap-3 p-3 bg-ui-bg-elevated border border-ui-border rounded-lg text-xs text-ui-text min-w-56 shadow-lg w-full"
   >
     <!-- Header with edge icon -->
     <div v-if="!hideActions" class="flex items-center justify-between">
@@ -269,7 +269,7 @@ defineExpose({
         v-for="manifest in manifests"
         :key="manifest.type"
         type="button"
-        class="flex items-center gap-2 px-2 py-1.5 rounded border transition-colors"
+        class="flex items-center gap-2 px-2 py-1.5 rounded border transition-colors w-full"
         :class="
           selectedType === manifest.type
             ? 'bg-primary-500/20 border-primary-500 text-primary-400'

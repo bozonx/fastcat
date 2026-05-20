@@ -22,7 +22,6 @@ import type { ProjectMeta } from '~/repositories/project-meta.repository';
 import type { EditorView } from '~/stores/editor-view.store';
 import { useFocusStore } from './focus.store';
 import { useProjectTabsStore } from './project-tabs.store';
-import { useTimelineSettingsStore } from './timeline-settings.store';
 import { useTimelineStore } from './timeline.store';
 import {
   useFileManagerStore,
@@ -200,19 +199,15 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           });
 
           const fileManagerPaths: Record<string, string | null> = {};
-          const fmStores = {
+          const internalFmStores = {
             editor: useFileManagerStore(),
             filesPage: useFilesPageFileManagerStore(),
             'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
-            'computer-sidebar': useComputerSidebarStore(),
-            'bloggerdog-sidebar': useBloggerDogSidebarStore(),
           };
 
-          for (const [key, store] of Object.entries(fmStores)) {
+          for (const [key, store] of Object.entries(internalFmStores)) {
             fileManagerPaths[key] = store.selectedFolder?.path ?? null;
           }
-
-          const timelineSettingsStore = useTimelineSettingsStore();
 
           await projectUiRepo.value.save({
             version: 1,
@@ -221,13 +216,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             timelines: {
               openPaths: timelines.openPaths,
               sessions: timelines.sessions,
-            },
-            timeline: {
-              frameSnapMode: timelineSettingsStore.frameSnapMode,
-              clipSnapMode: timelineSettingsStore.clipSnapMode,
-              toolbarSnapMode: timelineSettingsStore.toolbarSnapMode,
-              toolbarDragMode: timelineSettingsStore.toolbarDragMode,
-              toolbarDragModeEnabled: timelineSettingsStore.toolbarDragModeEnabled,
             },
             ui: {
               activeTabId: projectTabsStore.activeTabId,
@@ -400,9 +388,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
             settings.ui = { ...settings.ui, ...uiRaw.ui };
           }
 
-          if (uiRaw.timeline) {
-            settings.timeline = { ...settings.timeline, ...uiRaw.timeline };
-          }
+
         }
       }
 
@@ -416,15 +402,13 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         staticTabsOrder: settings.ui.staticTabsOrder,
       });
 
-      const fmStores = {
+      const internalFmStores = {
         editor: useFileManagerStore(),
         filesPage: useFilesPageFileManagerStore(),
         'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
-        'computer-sidebar': useComputerSidebarStore(),
-        'bloggerdog-sidebar': useBloggerDogSidebarStore(),
       };
 
-      for (const [key, store] of Object.entries(fmStores)) {
+      for (const [key, store] of Object.entries(internalFmStores)) {
         const savedPath = settings.ui.fileManagerPaths[key];
         if (savedPath && (!store.selectedFolder || store.selectedFolder.path !== savedPath)) {
           store.openFolderByPath(savedPath);
@@ -496,7 +480,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           openPaths: initial.timelines.openPaths,
           sessions: initial.timelines.sessions,
         },
-        timeline: initial.timeline,
         ui: initial.ui as any,
       });
     } catch (e) {

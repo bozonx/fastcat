@@ -109,13 +109,6 @@ export interface FastCatProjectSettings {
     fileManagerPaths: Record<string, string | null>;
     layout: ProjectUiLayoutState;
   };
-  timeline: {
-    frameSnapMode: 'free' | 'frames';
-    clipSnapMode: 'none' | 'clips';
-    toolbarSnapMode: 'snap' | 'no_snap' | 'free_mode';
-    toolbarDragMode: 'pseudo_overlap' | 'copy' | 'slip';
-    toolbarDragModeEnabled: boolean;
-  };
 }
 
 export const DEFAULT_PROJECT_MONITOR_SETTINGS: ProjectMonitorSettings = {
@@ -191,13 +184,6 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
       verticalSplitSizes: {},
       timelineHeights: {},
     },
-  },
-  timeline: {
-    frameSnapMode: 'frames',
-    clipSnapMode: 'clips',
-    toolbarSnapMode: 'snap',
-    toolbarDragMode: 'pseudo_overlap',
-    toolbarDragModeEnabled: false,
   },
 };
 
@@ -275,7 +261,6 @@ export function createDefaultProjectSettings(
         timelineHeights: {},
       },
     },
-    timeline: { ...DEFAULT_PROJECT_SETTINGS.timeline },
   };
 }
 
@@ -426,21 +411,6 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
           layout: layoutSchema.catch(defaults.ui.layout as unknown),
         })
         .catch(defaults.ui as unknown),
-      timeline: z
-        .object({
-          frameSnapMode: z.enum(['free', 'frames']).catch(defaults.timeline.frameSnapMode),
-          clipSnapMode: z.enum(['none', 'clips']).catch(defaults.timeline.clipSnapMode),
-          toolbarSnapMode: z
-            .enum(['snap', 'no_snap', 'free_mode'])
-            .catch(defaults.timeline.toolbarSnapMode),
-          toolbarDragMode: z
-            .enum(['pseudo_overlap', 'copy', 'slip'])
-            .catch(defaults.timeline.toolbarDragMode),
-          toolbarDragModeEnabled: z.coerce
-            .boolean()
-            .catch(defaults.timeline.toolbarDragModeEnabled),
-        })
-        .catch(defaults.timeline),
     })
     .catch(defaults as unknown);
 }

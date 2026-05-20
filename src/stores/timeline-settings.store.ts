@@ -3,7 +3,6 @@ import { ref, computed } from 'vue';
 import type { OverlapMode, FrameSnapMode, ClipSnapMode } from '~/utils/timeline-modes';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useProjectSettingsStore } from '~/stores/project-settings.store';
 
 export type ToolbarSnapMode = 'snap' | 'no_snap' | 'free_mode';
 export type ToolbarDragMode = 'pseudo_overlap' | 'copy' | 'slip';
@@ -11,40 +10,38 @@ export type ToolbarDragMode = 'pseudo_overlap' | 'copy' | 'slip';
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const workspaceStore = useWorkspaceStore();
 
-  const projectSettingsStore = useProjectSettingsStore();
-
   const overlapMode = ref<OverlapMode>(DEFAULT_SNAP_SETTINGS.overlapMode);
 
   const frameSnapMode = computed({
-    get: () => projectSettingsStore.projectSettings.timeline.frameSnapMode,
+    get: () => workspaceStore.userSettings.timeline.frameSnapMode,
     set: (v) => {
-      projectSettingsStore.projectSettings.timeline.frameSnapMode = v;
+      workspaceStore.userSettings.timeline.frameSnapMode = v;
     },
   });
 
   const clipSnapMode = computed({
-    get: () => projectSettingsStore.projectSettings.timeline.clipSnapMode,
+    get: () => workspaceStore.userSettings.timeline.clipSnapMode,
     set: (v) => {
-      projectSettingsStore.projectSettings.timeline.clipSnapMode = v;
+      workspaceStore.userSettings.timeline.clipSnapMode = v;
     },
   });
 
   const toolbarSnapMode = computed({
-    get: () => projectSettingsStore.projectSettings.timeline.toolbarSnapMode,
+    get: () => workspaceStore.userSettings.timeline.toolbarSnapMode,
     set: (v) => {
-      projectSettingsStore.projectSettings.timeline.toolbarSnapMode = v;
+      workspaceStore.userSettings.timeline.toolbarSnapMode = v;
     },
   });
   const toolbarDragMode = computed({
-    get: () => projectSettingsStore.projectSettings.timeline.toolbarDragMode,
+    get: () => workspaceStore.userSettings.timeline.toolbarDragMode,
     set: (v) => {
-      projectSettingsStore.projectSettings.timeline.toolbarDragMode = v;
+      workspaceStore.userSettings.timeline.toolbarDragMode = v;
     },
   });
   const toolbarDragModeEnabled = computed({
-    get: () => projectSettingsStore.projectSettings.timeline.toolbarDragModeEnabled,
+    get: () => workspaceStore.userSettings.timeline.toolbarDragModeEnabled,
     set: (v) => {
-      projectSettingsStore.projectSettings.timeline.toolbarDragModeEnabled = v;
+      workspaceStore.userSettings.timeline.toolbarDragModeEnabled = v;
     },
   });
 
