@@ -294,6 +294,18 @@ export const useMediaStore = defineStore('media', () => {
       .catch(() => {
         // ignore previous error — we still try to persist the latest peaks
       })
+      .then(async () => {
+        try {
+          const waveformsDir = await fsModule.ensureWaveformsDir();
+          if (!waveformsDir) return;
+          const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
+          const writable = await (peaksHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
+          try {
+            await writable.write(JSON.stringify(peaksAsJson));
+          } finally {
+            await writable.close();
+          }
+        } catch (e) {
           console.warn('Failed to write peaks', e);
         }
       })

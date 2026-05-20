@@ -175,7 +175,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   }
 
   function isBloggerDogTransferAllowed(params: {
-    items: Array<{ kind?: any; name?: any }>;
+    items: Array<{ kind?: unknown; name?: unknown }>;
     targetEntry: FsEntry | null | undefined;
     sourceVfs: IFileSystemAdapter | null | undefined;
   }): boolean {

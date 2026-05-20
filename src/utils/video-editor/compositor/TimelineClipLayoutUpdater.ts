@@ -5,10 +5,11 @@ import {
   resolveBlendMode,
   type CompositorClip,
 } from './types';
+import type { TextClipStyle, ShapeType } from '~/timeline/types';
 
 export interface TimelineClipLayoutUpdaterParams {
   clip: CompositorClip;
-  next: any;
+  next: Record<string, unknown>;
   fallbackTrackId?: string | null;
   toVideoEffects: (value: unknown) => CompositorClip['effects'];
   applyClipLayoutForCurrentSource: (clip: CompositorClip) => void;
@@ -26,20 +27,23 @@ export class TimelineClipLayoutUpdater {
       clearClipTransitionFilter,
     } = params;
 
-    const startUs = Math.max(0, Math.round(Number(next.timelineRange?.startUs ?? clip.startUs)));
+    const n = next as Record<string, unknown>;
+    const timelineRange = n['timelineRange'] as { startUs?: unknown; durationUs?: unknown } | undefined;
+    const sourceRange = n['sourceRange'] as { startUs?: unknown; durationUs?: unknown } | undefined;
+    const startUs = Math.max(0, Math.round(Number(timelineRange?.startUs ?? clip.startUs)));
     const timelineDurationUs = Math.max(
       0,
-      Math.round(Number(next.timelineRange?.durationUs ?? clip.durationUs)),
+      Math.round(Number(timelineRange?.durationUs ?? clip.durationUs)),
     );
     const sourceStartUs = Math.max(
       0,
-      Math.round(Number(next.sourceRange?.startUs ?? clip.sourceStartUs)),
+      Math.round(Number(sourceRange?.startUs ?? clip.sourceStartUs)),
     );
     const sourceRangeDurationUs = Math.max(
       0,
-      Math.round(Number(next.sourceRange?.durationUs ?? clip.sourceRangeDurationUs)),
+      Math.round(Number(sourceRange?.durationUs ?? clip.sourceRangeDurationUs)),
     );
-    const nextSourceDurationRaw = (next as any).sourceDurationUs;
+    const nextSourceDurationRaw = n['sourceDurationUs'];
     const sourceDurationUs = Math.max(
       0,
       Math.round(
@@ -50,14 +54,14 @@ export class TimelineClipLayoutUpdater {
         ),
       ),
     );
-    const layer = Math.round(Number(next.layer ?? clip.layer ?? 0));
-    const speedRaw = (next as any).speed;
+    const layer = Math.round(Number(n['layer'] ?? clip.layer ?? 0));
+    const speedRaw = n['speed'];
     const speed =
       typeof speedRaw === 'number' && Number.isFinite(speedRaw) && speedRaw !== 0
         ? Math.max(-10, Math.min(10, speedRaw))
         : undefined;
 
-    const freezeFrameSourceUsRaw = (next as any).freezeFrameSourceUs;
+    const freezeFrameSourceUsRaw = n['freezeFrameSourceUs'];
     const freezeFrameSourceUs =
       typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
         ? Math.max(0, Math.round(freezeFrameSourceUsRaw))
@@ -73,27 +77,28 @@ export class TimelineClipLayoutUpdater {
     clip.freezeFrameSourceUs = freezeFrameSourceUs;
     clip.layer = layer;
     clip.trackId =
-      typeof next.trackId === 'string' && next.trackId.length > 0
-        ? next.trackId
+      typeof n['trackId'] === 'string' && (n['trackId'] as string).length > 0
+        ? (n['trackId'] as string)
         : (fallbackTrackId ?? undefined);
-    clip.opacity = next.opacity;
-    clip.blendMode = resolveBlendMode((next as any).blendMode);
-    clip.effects = toVideoEffects(next.effects);
-    clip.transform = (next as any).transform;
-    clip.mask = next.mask;
+    clip.opacity = n['opacity'] as number | undefined;
+    clip.blendMode = resolveBlendMode(n['blendMode']);
+    clip.effects = toVideoEffects(n['effects']);
+    clip.transform = n['transform'] as CompositorClip['transform'];
+    clip.mask = n['mask'] as CompositorClip['mask'];
     applyClipLayoutForCurrentSource(clip);
 
     const prevTransitionInType = clip.transitionIn?.type ?? null;
-    const nextTransitionInType = (next as any).transitionIn?.type ?? null;
-    clip.transitionIn = (next as any).transitionIn;
-    clip.transitionOut = (next as any).transitionOut;
+    const nextTransitionIn = n['transitionIn'] as { type?: string } | undefined;
+    const nextTransitionInType = nextTransitionIn?.type ?? null;
+    clip.transitionIn = n['transitionIn'] as CompositorClip['transitionIn'];
+    clip.transitionOut = n['transitionOut'] as CompositorClip['transitionOut'];
     if (prevTransitionInType !== nextTransitionInType) {
       clearClipTransitionFilter(clip);
     }
 
     if (clip.clipKind === 'text') {
-      const nextText = String((next as any).text ?? '');
-      const nextStyle = (next as any).style;
+      const nextText = String(n['text'] ?? '');
+      const nextStyle = n['style'] as TextClipStyle | undefined;
       const styleChanged = !areTextClipStylesEqual(clip.style, nextStyle);
 
       clip.textDirty = clip.text !== nextText || styleChanged || clip.textDirty === true;
@@ -102,24 +107,24 @@ export class TimelineClipLayoutUpdater {
     }
 
     if (clip.clipKind === 'shape') {
-      const nextType = (next as any).shapeType ?? 'square';
-      const nextFill = String((next as any).fillColor ?? '#ffffff');
-      const nextStroke = String((next as any).strokeColor ?? '#000000');
-      const nextStrokeWidth = Number((next as any).strokeWidth ?? 0);
-      const nextConfig = (next as any).shapeConfig;
+      const nextType = (n['shapeType'] as string) ?? 'square';
+      const nextFill = String(n['fillColor'] ?? '#ffffff');
+      const nextStroke = String(n['strokeColor'] ?? '#000000');
+      const nextStrokeWidth = Number(n['strokeWidth'] ?? 0);
+      const nextConfig = n['shapeConfig'];
 
       if (
         clip.shapeType !== nextType ||
         clip.fillColor !== nextFill ||
         clip.strokeColor !== nextStroke ||
         clip.strokeWidth !== nextStrokeWidth ||
-        !areShapeConfigsEqual(clip.shapeConfig as any, nextConfig as any) ||
+        !areShapeConfigsEqual(clip.shapeConfig as Record<string, unknown>, nextConfig as Record<string, unknown>) ||
         clip.shapeDirty === true
       ) {
         clip.shapeDirty = true;
       }
 
-      clip.shapeType = nextType;
+      clip.shapeType = nextType as ShapeType;
       clip.fillColor = nextFill;
       clip.strokeColor = nextStroke;
       clip.strokeWidth = nextStrokeWidth;
@@ -127,10 +132,10 @@ export class TimelineClipLayoutUpdater {
     }
 
     if (clip.clipKind === 'hud') {
-      const nextBg = (next as any).background;
-      const nextContent = (next as any).content;
-      const nextFrame = (next as any).frame;
-      const nextHudType = (next as any).hudType ?? 'media_frame';
+      const nextBg = n['background'];
+      const nextContent = n['content'];
+      const nextFrame = n['frame'];
+      const nextHudType = (n['hudType'] as string) ?? 'media_frame';
 
       const hudChanged =
         clip.hudType !== nextHudType ||
@@ -139,7 +144,7 @@ export class TimelineClipLayoutUpdater {
         JSON.stringify(clip.frame) !== JSON.stringify(nextFrame);
 
       if (hudChanged || clip.hudDirty === true) {
-        clip.hudType = nextHudType;
+        clip.hudType = nextHudType as typeof clip.hudType;
         clip.background = nextBg ? JSON.parse(JSON.stringify(nextBg)) : undefined;
         clip.content = nextContent ? JSON.parse(JSON.stringify(nextContent)) : undefined;
         clip.frame = nextFrame ? JSON.parse(JSON.stringify(nextFrame)) : undefined;
@@ -149,10 +154,12 @@ export class TimelineClipLayoutUpdater {
 
     if (clip.clipKind === 'solid') {
       clip.backgroundColor = sanitizeTimelineColor(
-        (next as any).backgroundColor,
+        n['backgroundColor'],
         clip.backgroundColor ?? '#000000',
       );
-      clip.sprite.tint = parseHexColor(clip.backgroundColor);
+      if (clip.sprite) {
+        clip.sprite.tint = parseHexColor(clip.backgroundColor);
+      }
     }
 
     if (!clip.effectFilters) {

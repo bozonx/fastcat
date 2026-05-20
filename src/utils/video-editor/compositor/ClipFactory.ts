@@ -41,7 +41,7 @@ export class ClipFactory {
     sprite.width = 1;
     sprite.height = 1;
     sprite.visible = false;
-    (sprite as any).__clipId = params.itemId;
+    (sprite as { __clipId?: string }).__clipId = params.itemId;
 
     const clip: CompositorClip = {
       itemId: params.itemId,
@@ -58,7 +58,7 @@ export class ClipFactory {
       clipType: params.clipType,
       clipKind: 'solid',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -84,7 +84,7 @@ export class ClipFactory {
   ): CompositorClip {
     const sprite = new Sprite(Texture.EMPTY);
     sprite.visible = false;
-    (sprite as any).__clipId = params.itemId;
+    (sprite as { __clipId?: string }).__clipId = params.itemId;
 
     return {
       itemId: params.itemId,
@@ -101,7 +101,7 @@ export class ClipFactory {
       clipType: 'text',
       clipKind: 'text',
       sourceKind: 'canvas',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -131,7 +131,7 @@ export class ClipFactory {
   ): CompositorClip {
     const sprite = new Graphics();
     sprite.visible = false;
-    (sprite as any).__clipId = params.itemId;
+    (sprite as { __clipId?: string }).__clipId = params.itemId;
 
     const clip: CompositorClip = {
       itemId: params.itemId,
@@ -148,7 +148,7 @@ export class ClipFactory {
       clipType: 'shape',
       clipKind: 'shape',
       sourceKind: 'graphics',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -179,7 +179,7 @@ export class ClipFactory {
     sprite.width = this.context.width;
     sprite.height = this.context.height;
     sprite.visible = false;
-    (sprite as any).__clipId = params.itemId;
+    (sprite as { __clipId?: string }).__clipId = params.itemId;
 
     return {
       itemId: params.itemId,
@@ -196,7 +196,7 @@ export class ClipFactory {
       clipType: 'adjustment',
       clipKind: 'adjustment',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -222,7 +222,7 @@ export class ClipFactory {
     sprite.width = this.context.width;
     sprite.height = this.context.height;
     sprite.visible = false;
-    (sprite as any).__clipId = params.itemId;
+    (sprite as { __clipId?: string }).__clipId = params.itemId;
 
     const clip: CompositorClip = {
       itemId: params.itemId,
@@ -239,7 +239,7 @@ export class ClipFactory {
       clipType: 'hud',
       clipKind: 'hud',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
       lastVideoFrame: null,
       canvas: new OffscreenCanvas(this.context.width, this.context.height),
       ctx: null,
@@ -264,8 +264,8 @@ export class ClipFactory {
     const ctx = clip.canvas?.getContext('2d');
     if (ctx) {
       clip.ctx = ctx as OffscreenCanvasRenderingContext2D;
-      const canvasSource = new CanvasSource({ resource: clip.canvas as any });
-      sprite.texture.source = canvasSource as any;
+      const canvasSource = new CanvasSource({ resource: clip.canvas as unknown as HTMLCanvasElement });
+      sprite.texture.source = canvasSource;
     }
 
     return clip;
@@ -284,7 +284,7 @@ export class ClipFactory {
     sprite.width = 1;
     sprite.height = 1;
     sprite.visible = false;
-    (sprite as any).__clipId = params.itemId;
+    (sprite as { __clipId?: string }).__clipId = params.itemId;
 
     return {
       itemId: params.itemId,
@@ -336,7 +336,7 @@ export class ClipFactory {
     sprite.width = 1;
     sprite.height = 1;
     sprite.visible = false;
-    (sprite as any).__clipId = params.itemId;
+    (sprite as { __clipId?: string }).__clipId = params.itemId;
 
     return {
       itemId: params.itemId,
@@ -381,11 +381,12 @@ export class ClipFactory {
     trackRuntime: CompositorTrack | null;
     stage: Container;
   }) {
+    if (!params.clip.sprite) return;
     if (params.trackRuntime) {
-      params.trackRuntime.container.addChild(params.clip.sprite as any);
+      params.trackRuntime.container.addChild(params.clip.sprite);
       return;
     }
 
-    params.stage.addChild(params.clip.sprite as any);
+    params.stage.addChild(params.clip.sprite);
   }
 }

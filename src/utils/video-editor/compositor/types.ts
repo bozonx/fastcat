@@ -1,4 +1,4 @@
-import type { Filter, Sprite, ImageSource, RenderTexture, Container } from 'pixi.js';
+import type { Filter, Sprite, Graphics, ImageSource, RenderTexture, Container } from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import type {
   TextClipStyle,
@@ -24,7 +24,7 @@ export interface HudMediaState {
   clipKind: 'video' | 'image' | 'solid';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap';
   imageSource: ImageSource;
-  sprite: Sprite;
+  sprite: Sprite | Graphics | null;
   lastVideoFrame: VideoFrame | null;
   bitmap: ImageBitmap | null;
 }
@@ -50,7 +50,7 @@ export interface CompositorClip {
   speed?: number;
 
   freezeFrameSourceUs?: number;
-  sprite: import('pixi.js').DisplayObject;
+  sprite: Sprite | Graphics | null;
   clipType?: 'background' | 'adjustment' | 'media' | 'text' | 'shape' | 'hud';
   clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap' | 'graphics';

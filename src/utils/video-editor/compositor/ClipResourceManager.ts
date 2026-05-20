@@ -1,4 +1,4 @@
-import { RenderTexture } from 'pixi.js';
+import { Graphics, ImageSource, RenderTexture, Sprite } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';
@@ -23,7 +23,7 @@ export interface ClipResourceManagerContext {
 }
 
 export class ClipResourceManager {
-  private readonly inFlightSamples = new Map<string, Promise<any | null>>();
+  private readonly inFlightSamples = new Map<string, Promise<unknown | null>>();
 
   constructor(private readonly context: ClipResourceManagerContext) {}
 
@@ -35,8 +35,8 @@ export class ClipResourceManager {
   public ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
     const valid =
       texture &&
-      !(texture as any).destroyed &&
-      typeof (texture as any).uid === 'number' &&
+      !(texture as { destroyed?: boolean }).destroyed &&
+      typeof (texture as { uid?: number }).uid === 'number' &&
       texture.width === this.context.width &&
       texture.height === this.context.height;
 
@@ -61,8 +61,8 @@ export class ClipResourceManager {
   public ensureTransitionRenderTexture(texture: RenderTexture | null): RenderTexture {
     const valid =
       texture &&
-      !(texture as any).destroyed &&
-      typeof (texture as any).uid === 'number' &&
+      !(texture as { destroyed?: boolean }).destroyed &&
+      typeof (texture as { uid?: number }).uid === 'number' &&
       texture.width === this.context.width &&
       texture.height === this.context.height;
 
@@ -87,8 +87,8 @@ export class ClipResourceManager {
   public ensureCombinedTransitionTexture(texture: RenderTexture | null): RenderTexture {
     const valid =
       texture &&
-      !(texture as any).destroyed &&
-      typeof (texture as any).uid === 'number' &&
+      !(texture as { destroyed?: boolean }).destroyed &&
+      typeof (texture as { uid?: number }).uid === 'number' &&
       texture.width === this.context.width * 2 &&
       texture.height === this.context.height;
 
@@ -114,7 +114,7 @@ export class ClipResourceManager {
     clip: CompositorClip;
     sampleTimeS: number;
     abortSignal?: AbortSignal;
-  }): Promise<any | null> {
+  }): Promise<unknown | null> {
     const { clip, sampleTimeS, abortSignal } = params;
     const frameIndex = computeFrameIndex(clip, sampleTimeS);
     const cacheKey = buildVideoFrameCacheKey(clip, frameIndex);
@@ -123,7 +123,7 @@ export class ClipResourceManager {
     if (cached) {
       return {
         toVideoFrame: () => {
-          if ((cached.frame as any).closed) {
+          if ((cached.frame as { closed?: boolean }).closed) {
             throw new Error('Cached VideoFrame is closed');
           }
           return cached.frame.clone();
@@ -158,14 +158,15 @@ export class ClipResourceManager {
     frameIndex: number,
     cacheKey: string,
     abortSignal?: AbortSignal,
-  ): Promise<any | null> {
+  ): Promise<unknown | null> {
     let sample = await this.context.resourceManager.withVideoSampleSlot(
-      () => getVideoSampleWithZeroFallback(clip.sink as any, sampleTimeS, clip.firstTimestampS),
+      () => getVideoSampleWithZeroFallback(clip.sink as unknown as import('mediabunny').VideoSampleSink, sampleTimeS, clip.firstTimestampS),
       abortSignal,
     );
-    let sampleValue = sample as any;
+    let sampleValue = sample as unknown;
 
-    if (!sampleValue || typeof sampleValue.toVideoFrame !== 'function') {
+    const sampleObj = sampleValue as { toVideoFrame?: () => VideoFrame };
+    if (!sampleValue || typeof sampleObj.toVideoFrame !== 'function') {
       // The decoder occasionally returns null for a midstream timestamp even
       // though neighbouring frames decode fine. Retry slightly earlier so the
       // clip shows the previous source frame instead of becoming invisible
@@ -176,29 +177,31 @@ export class ClipResourceManager {
       if (fallbackTimeS < sampleTimeS) {
         const retry = await this.context.resourceManager.withVideoSampleSlot(
           () =>
-            getVideoSampleWithZeroFallback(clip.sink as any, fallbackTimeS, clip.firstTimestampS),
+            getVideoSampleWithZeroFallback(clip.sink as unknown as import('mediabunny').VideoSampleSink, fallbackTimeS, clip.firstTimestampS),
           abortSignal,
         );
-        if (retry && typeof (retry as any).toVideoFrame === 'function') {
+        const retryObj = retry as { toVideoFrame?: () => VideoFrame } | null;
+        if (retry && typeof retryObj?.toVideoFrame === 'function') {
           sample = retry;
-          sampleValue = retry as any;
+          sampleValue = retry as unknown;
         }
       }
     }
 
-    if (!sampleValue || typeof sampleValue.toVideoFrame !== 'function') {
+    const sampleObj2 = sampleValue as { toVideoFrame?: () => VideoFrame };
+    if (!sampleValue || typeof sampleObj2.toVideoFrame !== 'function') {
       return sample;
     }
 
     try {
-      const frame = sampleValue.toVideoFrame() as VideoFrame;
+      const frame = sampleObj2.toVideoFrame() as VideoFrame;
       const width = Math.max(
         1,
-        Math.round(Number((frame as any).displayWidth ?? (frame as any).codedWidth) || 1),
+        Math.round(Number((frame as { displayWidth?: unknown }).displayWidth ?? (frame as { codedWidth?: unknown }).codedWidth) || 1),
       );
       const height = Math.max(
         1,
-        Math.round(Number((frame as any).displayHeight ?? (frame as any).codedHeight) || 1),
+        Math.round(Number((frame as { displayHeight?: unknown }).displayHeight ?? (frame as { codedHeight?: unknown }).codedHeight) || 1),
       );
       const sizeBytes = estimateVideoFrameSizeBytes(frame, width, height);
 
@@ -214,16 +217,17 @@ export class ClipResourceManager {
 
       return {
         toVideoFrame: () => {
-          if ((frame as any).closed) {
+          if ((frame as { closed?: boolean }).closed) {
             throw new Error('VideoFrame is closed');
           }
           return frame.clone();
         },
       };
     } finally {
-      if (typeof sampleValue?.close === 'function') {
+      const closer = sampleValue as { close?: () => void };
+      if (typeof closer?.close === 'function') {
         try {
-          sampleValue.close();
+          closer.close();
         } catch {
           // ignore
         }
@@ -231,28 +235,29 @@ export class ClipResourceManager {
     }
   }
 
-  public async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
+  public async updateClipTextureFromSample(sample: unknown, clip: CompositorClip) {
     try {
-      if (typeof sample?.toVideoFrame === 'function') {
+      const sampleObj = sample as { toVideoFrame?: () => VideoFrame };
+      if (typeof sampleObj?.toVideoFrame === 'function') {
         if (clip.lastVideoFrame) {
           safeDispose(clip.lastVideoFrame);
           clip.lastVideoFrame = null;
         }
 
-        const frame = sample.toVideoFrame() as VideoFrame;
+        const frame = sampleObj.toVideoFrame() as VideoFrame;
 
         try {
           const frameW = Math.max(
             1,
-            Math.round((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1),
+            Math.round(Number((frame as { displayWidth?: unknown }).displayWidth ?? (frame as { codedWidth?: unknown }).codedWidth ?? 1)),
           );
           const frameH = Math.max(
             1,
-            Math.round((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1),
+            Math.round(Number((frame as { displayHeight?: unknown }).displayHeight ?? (frame as { codedHeight?: unknown }).codedHeight ?? 1)),
           );
 
-          if (clip.sourceKind !== 'videoFrame') {
-            clip.sprite.texture.source = clip.imageSource as any;
+          if (clip.sourceKind !== 'videoFrame' && clip.sprite) {
+            (clip.sprite as Sprite).texture.source = clip.imageSource;
             clip.sourceKind = 'videoFrame';
           }
 
@@ -260,7 +265,7 @@ export class ClipResourceManager {
             clip.imageSource.resize(frameW, frameH);
           }
 
-          (clip.imageSource as any).resource = frame as any;
+          (clip.imageSource as { resource?: unknown }).resource = frame as unknown;
           clip.imageSource.update();
           clip.lastVideoFrame = frame;
 
@@ -350,7 +355,7 @@ export class ClipResourceManager {
     if (clip.effectFilters) {
       for (const filter of clip.effectFilters.values()) {
         try {
-          (filter as any)?.destroy?.();
+          (filter as { destroy?: () => void })?.destroy?.();
         } catch {
           // ignore
         }

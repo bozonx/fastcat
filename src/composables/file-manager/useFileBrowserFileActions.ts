@@ -143,12 +143,12 @@ export function useFileBrowserFileActions({
     }
 
     if (action === 'createSubgroup') {
-      if (entry.kind === 'directory') (uiStore as any).pendingBloggerDogCreateSubgroup = entry;
+      if (entry.kind === 'directory') uiStore.pendingBloggerDogCreateSubgroup = entry;
       return;
     }
 
     if (action === 'createContentItem') {
-      if (entry.kind === 'directory') (uiStore as any).pendingBloggerDogCreateItem = entry;
+      if (entry.kind === 'directory') uiStore.pendingBloggerDogCreateItem = entry;
       return;
     }
 
