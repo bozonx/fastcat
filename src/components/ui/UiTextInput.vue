@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 interface UiTextInputProps {
   modelValue: string;
@@ -34,16 +34,21 @@ const emit = defineEmits<{
   (e: 'focus' | 'blur', event: FocusEvent): void;
 }>();
 
-const inputRef = ref<HTMLElement | null>(null);
+const uInputRef = ref<InstanceType<typeof UInput> | null>(null);
+
+const inputElement = computed<HTMLInputElement | null>(() => {
+  const el = uInputRef.value?.$el as HTMLElement | undefined;
+  return el?.querySelector('input') ?? null;
+});
 
 defineExpose({
-  input: inputRef,
+  input: inputElement,
 });
 </script>
 
 <template>
   <UInput
-    ref="inputRef"
+    ref="uInputRef"
     :model-value="props.modelValue"
     :type="type"
     :placeholder="placeholder"
