@@ -179,7 +179,10 @@ const isFormValid = computed(() => {
             <label class="text-xs text-ui-text-muted font-medium">
               {{ t('videoEditor.export.outputFormat') }}
             </label>
-            <UiButtonGroup v-model="audio.onlyFormat" :options="audioFormatOptions as { value: string; label: string }[]" />
+            <UiButtonGroup
+              v-model="audio.onlyFormat"
+              :options="audioFormatOptions as { value: string; label: string }[]"
+            />
           </div>
 
           <FileConversionAudioSettings

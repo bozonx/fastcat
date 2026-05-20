@@ -58,10 +58,13 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
       (t: import('~/timeline/types').TimelineTrack) => t.id === clip.value.trackId,
     );
     const liveClip = liveTrack?.items?.find(
-      (it: import('~/timeline/types').TimelineTrackItem) => it.kind === 'clip' && it.id === clip.value.id,
+      (it: import('~/timeline/types').TimelineTrackItem) =>
+        it.kind === 'clip' && it.id === clip.value.id,
     );
     const layerSource = liveClip ?? clip.value;
-    const current = JSON.parse(JSON.stringify((layerSource as Record<string, unknown>)[layer] ?? {}));
+    const current = JSON.parse(
+      JSON.stringify((layerSource as Record<string, unknown>)[layer] ?? {}),
+    );
 
     let target = current;
     for (let i = 1; i < keys.length - 1; i++) {

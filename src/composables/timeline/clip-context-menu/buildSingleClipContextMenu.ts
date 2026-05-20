@@ -171,9 +171,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   });
 
   const canExtract =
-    track.kind === 'video' &&
-    clipItem.clipType === 'media' &&
-    !clipItem.audioFromVideoDisabled;
+    track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.audioFromVideoDisabled;
   if (canExtract) {
     mainGroup.push({
       label: options.t('fastcat.timeline.extractAudio'),

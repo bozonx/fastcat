@@ -198,7 +198,9 @@ export function registerTransition<T>(manifest: TransitionManifest<T>): void {
   registry.set(manifest.type, manifest);
 }
 
-export function getTransitionManifest(type: TransitionType): TransitionManifest<Record<string, unknown>> | undefined {
+export function getTransitionManifest(
+  type: TransitionType,
+): TransitionManifest<Record<string, unknown>> | undefined {
   return registry.get(type);
 }
 

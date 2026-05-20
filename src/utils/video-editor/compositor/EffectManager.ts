@@ -91,11 +91,23 @@ export class EffectManager {
 
       const frameWidth = Math.max(
         1,
-        Math.round(Number((frame as { displayWidth?: number; codedWidth?: number }).displayWidth ?? (frame as { displayWidth?: number; codedWidth?: number }).codedWidth ?? 1)),
+        Math.round(
+          Number(
+            (frame as { displayWidth?: number; codedWidth?: number }).displayWidth ??
+              (frame as { displayWidth?: number; codedWidth?: number }).codedWidth ??
+              1,
+          ),
+        ),
       );
       const frameHeight = Math.max(
         1,
-        Math.round(Number((frame as { displayHeight?: number; codedHeight?: number }).displayHeight ?? (frame as { displayHeight?: number; codedHeight?: number }).codedHeight ?? 1)),
+        Math.round(
+          Number(
+            (frame as { displayHeight?: number; codedHeight?: number }).displayHeight ??
+              (frame as { displayHeight?: number; codedHeight?: number }).codedHeight ??
+              1,
+          ),
+        ),
       );
 
       if (

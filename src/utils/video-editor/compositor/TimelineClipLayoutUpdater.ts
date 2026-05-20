@@ -28,7 +28,9 @@ export class TimelineClipLayoutUpdater {
     } = params;
 
     const n = next as Record<string, unknown>;
-    const timelineRange = n['timelineRange'] as { startUs?: unknown; durationUs?: unknown } | undefined;
+    const timelineRange = n['timelineRange'] as
+      | { startUs?: unknown; durationUs?: unknown }
+      | undefined;
     const sourceRange = n['sourceRange'] as { startUs?: unknown; durationUs?: unknown } | undefined;
     const startUs = Math.max(0, Math.round(Number(timelineRange?.startUs ?? clip.startUs)));
     const timelineDurationUs = Math.max(
@@ -119,7 +121,10 @@ export class TimelineClipLayoutUpdater {
         clip.fillColor !== nextFill ||
         clip.strokeColor !== nextStroke ||
         clip.strokeWidth !== nextStrokeWidth ||
-        !areShapeConfigsEqual(clip.shapeConfig as Record<string, unknown>, nextConfig as Record<string, unknown>) ||
+        !areShapeConfigsEqual(
+          clip.shapeConfig as Record<string, unknown>,
+          nextConfig as Record<string, unknown>,
+        ) ||
         clip.shapeDirty === true
       ) {
         clip.shapeDirty = true;

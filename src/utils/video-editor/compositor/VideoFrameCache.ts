@@ -190,7 +190,13 @@ export function estimateVideoFrameSizeBytes(
   width: number,
   height: number,
 ): number {
-  const codedWidth = Math.max(1, Math.round(Number((frame as { codedWidth?: unknown }).codedWidth) || width || 1));
-  const codedHeight = Math.max(1, Math.round(Number((frame as { codedHeight?: unknown }).codedHeight) || height || 1));
+  const codedWidth = Math.max(
+    1,
+    Math.round(Number((frame as { codedWidth?: unknown }).codedWidth) || width || 1),
+  );
+  const codedHeight = Math.max(
+    1,
+    Math.round(Number((frame as { codedHeight?: unknown }).codedHeight) || height || 1),
+  );
   return codedWidth * codedHeight * 4;
 }

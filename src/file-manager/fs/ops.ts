@@ -4,7 +4,11 @@ import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 function getDirectoryIterator(
   handle: FileSystemDirectoryHandle,
 ): AsyncIterable<FileSystemHandle> | AsyncIterable<[string, FileSystemHandle]> | null {
-  return (handle as { values?: () => AsyncIterable<FileSystemHandle> }).values?.() ?? (handle as { entries?: () => AsyncIterable<[string, FileSystemHandle]> }).entries?.() ?? null;
+  return (
+    (handle as { values?: () => AsyncIterable<FileSystemHandle> }).values?.() ??
+    (handle as { entries?: () => AsyncIterable<[string, FileSystemHandle]> }).entries?.() ??
+    null
+  );
 }
 
 export async function assertEntryDoesNotExist(params: {

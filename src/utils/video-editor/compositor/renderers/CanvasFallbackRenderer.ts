@@ -115,8 +115,14 @@ export class CanvasFallbackRenderer {
       canvas.width = targetW;
       canvas.height = targetH;
       try {
-        if (typeof (clip.sprite.texture.source as { resize?: (w: number, h: number) => void }).resize === 'function') {
-          (clip.sprite.texture.source as { resize: (w: number, h: number) => void }).resize(targetW, targetH);
+        if (
+          typeof (clip.sprite.texture.source as { resize?: (w: number, h: number) => void })
+            .resize === 'function'
+        ) {
+          (clip.sprite.texture.source as { resize: (w: number, h: number) => void }).resize(
+            targetW,
+            targetH,
+          );
         }
       } catch {
         // ignore
@@ -146,7 +152,9 @@ export class CanvasFallbackRenderer {
     };
 
     const drawLayer = (
-      state: { lastVideoFrame?: VideoFrame | ImageBitmap | null; bitmap?: ImageBitmap | null } | undefined,
+      state:
+        | { lastVideoFrame?: VideoFrame | ImageBitmap | null; bitmap?: ImageBitmap | null }
+        | undefined,
       params: import('../../../../timeline/types').HudMediaParams | undefined,
       defaultScale: number = 1,
     ) => {

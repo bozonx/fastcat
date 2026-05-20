@@ -1,10 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import {
-  getBackupNumber,
-  getNextBackupName,
-  getBackupsToDelete,
-} from '~/utils/timeline-backup';
+import { getBackupNumber, getNextBackupName, getBackupsToDelete } from '~/utils/timeline-backup';
 
 describe('timeline-backup', () => {
   it('extracts backup number from filename', () => {
@@ -14,18 +10,12 @@ describe('timeline-backup', () => {
   });
 
   it('generates next backup name', () => {
-    const next = getNextBackupName('timeline', [
-      'timeline__bak001.otio',
-      'timeline__bak003.otio',
-    ]);
+    const next = getNextBackupName('timeline', ['timeline__bak001.otio', 'timeline__bak003.otio']);
     expect(next).toBe('timeline__bak004.otio');
   });
 
   it('returns empty array when backups are below max count', () => {
-    const toDelete = getBackupsToDelete(
-      ['timeline__bak001.otio', 'timeline__bak002.otio'],
-      5,
-    );
+    const toDelete = getBackupsToDelete(['timeline__bak001.otio', 'timeline__bak002.otio'], 5);
     expect(toDelete).toEqual([]);
   });
 

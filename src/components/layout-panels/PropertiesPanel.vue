@@ -245,19 +245,19 @@ const isExternal = computed(() => {
   const entity = activeEntity.value;
   if (!entity || entity.source !== 'fileManager') return false;
 
-  const fmEntity = entity as { origin?: string; isExternal?: boolean; instanceId?: string; entry?: { source?: string } };
-  if (
-    fmEntity.origin === 'workspace-browser' ||
-    fmEntity.origin === 'remote-browser'
-  ) {
+  const fmEntity = entity as {
+    origin?: string;
+    isExternal?: boolean;
+    instanceId?: string;
+    entry?: { source?: string };
+  };
+  if (fmEntity.origin === 'workspace-browser' || fmEntity.origin === 'remote-browser') {
     return true;
   }
 
   // Check explicit flag or instance ID
   const isExt =
-    fmEntity.isExternal ||
-    fmEntity.instanceId === 'computer' ||
-    fmEntity.instanceId === 'sidebar';
+    fmEntity.isExternal || fmEntity.instanceId === 'computer' || fmEntity.instanceId === 'sidebar';
   if (isExt) return true;
 
   // Check if it's from a remote VFS (always external for project purposes)

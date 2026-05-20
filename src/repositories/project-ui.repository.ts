@@ -5,10 +5,7 @@ import {
   type DirectoryHandleLike,
 } from './app-fs.repository';
 
-import type {
-  MonitorViewSettings,
-  ProjectMonitorSettings,
-} from '~/utils/project-settings';
+import type { MonitorViewSettings, ProjectMonitorSettings } from '~/utils/project-settings';
 
 import { z } from 'zod';
 

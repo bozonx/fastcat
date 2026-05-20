@@ -177,7 +177,13 @@ export async function runTranscode(
         ? new MkvOutputFormat()
         : new Mp4OutputFormat();
 
-  const writable = await (targetHandle as unknown as { createWritable: (opts?: { keepExistingData?: boolean }) => Promise<{ abort?: () => Promise<void> }> }).createWritable({ keepExistingData: false });
+  const writable = await (
+    targetHandle as unknown as {
+      createWritable: (opts?: {
+        keepExistingData?: boolean;
+      }) => Promise<{ abort?: () => Promise<void> }>;
+    }
+  ).createWritable({ keepExistingData: false });
   const target = new StreamTarget(writable, {
     chunked: true,
     chunkSize: 16 * 1024 * 1024,
@@ -188,9 +194,21 @@ export async function runTranscode(
   // to addVideoTrack before its async block resets outputTrackRotation to 0.
   // When exporting to MKV, this causes a crash since MKV doesn't support rotation metadata.
   // We intercept addVideoTrack and strip the rotation.
-  const originalAddVideoTrack = (output as unknown as { addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void }).addVideoTrack.bind(output);
-  (output as unknown as { addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void }).addVideoTrack = (source, metadata = {}) => {
-    if ('rotation' in metadata && !(format as unknown as { supportsVideoRotationMetadata?: boolean }).supportsVideoRotationMetadata) {
+  const originalAddVideoTrack = (
+    output as unknown as {
+      addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void;
+    }
+  ).addVideoTrack.bind(output);
+  (
+    output as unknown as {
+      addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void;
+    }
+  ).addVideoTrack = (source, metadata = {}) => {
+    if (
+      'rotation' in metadata &&
+      !(format as unknown as { supportsVideoRotationMetadata?: boolean })
+        .supportsVideoRotationMetadata
+    ) {
       metadata.rotation = 0;
     }
     return originalAddVideoTrack(source, metadata);
@@ -242,12 +260,18 @@ export async function runTranscode(
     const sourceFrameRate = Number(sourceVideoTrackAny?.frameRate || 0);
 
     const supportedVideoCodecs =
-      typeof (format as unknown as { getSupportedVideoCodecs?: () => string[] }).getSupportedVideoCodecs === 'function'
-        ? (format as unknown as { getSupportedVideoCodecs?: () => string[] }).getSupportedVideoCodecs()
+      typeof (format as unknown as { getSupportedVideoCodecs?: () => string[] })
+        .getSupportedVideoCodecs === 'function'
+        ? (
+            format as unknown as { getSupportedVideoCodecs?: () => string[] }
+          ).getSupportedVideoCodecs()
         : undefined;
     const supportedAudioCodecs =
-      typeof (format as unknown as { getSupportedAudioCodecs?: () => string[] }).getSupportedAudioCodecs === 'function'
-        ? (format as unknown as { getSupportedAudioCodecs?: () => string[] }).getSupportedAudioCodecs()
+      typeof (format as unknown as { getSupportedAudioCodecs?: () => string[] })
+        .getSupportedAudioCodecs === 'function'
+        ? (
+            format as unknown as { getSupportedAudioCodecs?: () => string[] }
+          ).getSupportedAudioCodecs()
         : undefined;
 
     const preferredVideoCodec =
@@ -336,7 +360,9 @@ export async function runTranscode(
     if (!conversionProcess.isValid) {
       let reasons = '';
       if (conversionProcess.discardedTracks && conversionProcess.discardedTracks.length > 0) {
-        reasons = conversionProcess.discardedTracks.map((t: { reason: string }) => t.reason).join(', ');
+        reasons = conversionProcess.discardedTracks
+          .map((t: { reason: string }) => t.reason)
+          .join(', ');
       }
       throw new Error(`Conversion setup is invalid. Reasons: ${reasons}`);
     }
@@ -393,7 +419,8 @@ export async function runTranscode(
       /* no-op */
     }
     try {
-      if (typeof (writable as { abort?: () => Promise<void> }).abort === 'function') await (writable as { abort?: () => Promise<void> }).abort();
+      if (typeof (writable as { abort?: () => Promise<void> }).abort === 'function')
+        await (writable as { abort?: () => Promise<void> }).abort();
     } catch {
       /* no-op */
     }

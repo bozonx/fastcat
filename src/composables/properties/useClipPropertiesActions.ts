@@ -17,8 +17,14 @@ interface TimelineStoreActions {
   selectedItemIds: string[];
   fps: number;
   currentTime: number;
-  applyTimeline: (cmd: TimelineCommand, options?: { labelKey?: string }) => string[] | Promise<string[]>;
-  batchApplyTimeline: (cmds: TimelineCommand[], options?: { labelKey?: string }) => string[] | Promise<string[]>;
+  applyTimeline: (
+    cmd: TimelineCommand,
+    options?: { labelKey?: string },
+  ) => string[] | Promise<string[]>;
+  batchApplyTimeline: (
+    cmds: TimelineCommand[],
+    options?: { labelKey?: string },
+  ) => string[] | Promise<string[]>;
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
   updateClipProperties: (trackId: string, itemId: string, patch: Record<string, unknown>) => void;

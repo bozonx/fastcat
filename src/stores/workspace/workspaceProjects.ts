@@ -164,9 +164,7 @@ export function createWorkspaceProjectsModule(params: {
         params.lastProjectName.value = newName;
       }
 
-      const recentIndex = params.recentProjects.value.findIndex(
-        (p) => p.projectName === oldName,
-      );
+      const recentIndex = params.recentProjects.value.findIndex((p) => p.projectName === oldName);
       if (recentIndex !== -1) {
         params.recentProjects.value[recentIndex] = {
           ...params.recentProjects.value[recentIndex],

@@ -246,9 +246,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       this.revokeObjectUrlsUnder(path);
     } catch (e) {
       if (tempHandle) {
-        await (parentHandle as ExtendedDirectoryHandle)
-          .removeEntry(tempName)
-          .catch(() => {});
+        await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
       }
       throw wrapPlatformError(e, path);
     }
@@ -503,11 +501,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     ).createWritable()) as unknown as WritableStream<Uint8Array>;
   }
 
-  async writeJson(
-    path: string,
-    data: unknown,
-    options?: VfsOperationOptions,
-  ): Promise<void> {
+  async writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void> {
     await this.writeFile(path, `${JSON.stringify(data, null, 2)}\n`, options);
   }
 }

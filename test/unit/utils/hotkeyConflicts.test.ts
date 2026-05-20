@@ -61,10 +61,12 @@ describe('hotkeyConflicts', () => {
 
     const conflicts = getHotkeyConflicts(effective, commands);
 
-    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.navigateBack', combo: 'Backspace' }))
-      .toBe(false);
-    expect(isHotkeyConflicting({ conflicts, cmdId: 'timeline.rippleDelete', combo: 'Backspace' }))
-      .toBe(false);
+    expect(
+      isHotkeyConflicting({ conflicts, cmdId: 'general.navigateBack', combo: 'Backspace' }),
+    ).toBe(false);
+    expect(
+      isHotkeyConflicting({ conflicts, cmdId: 'timeline.rippleDelete', combo: 'Backspace' }),
+    ).toBe(false);
   });
 
   it('treats same combo inside file manager as conflict', () => {
@@ -75,10 +77,12 @@ describe('hotkeyConflicts', () => {
 
     const conflicts = getHotkeyConflicts(effective, commands);
 
-    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.navigateBack', combo: 'Backspace' }))
-      .toBe(true);
-    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.navigateUp', combo: 'Backspace' }))
-      .toBe(true);
+    expect(
+      isHotkeyConflicting({ conflicts, cmdId: 'general.navigateBack', combo: 'Backspace' }),
+    ).toBe(true);
+    expect(
+      isHotkeyConflicting({ conflicts, cmdId: 'general.navigateUp', combo: 'Backspace' }),
+    ).toBe(true);
   });
 
   it('findDuplicateOwnerByContext ignores timeline vs playback duplicates', () => {

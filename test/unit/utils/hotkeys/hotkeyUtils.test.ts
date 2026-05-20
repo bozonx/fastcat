@@ -9,20 +9,40 @@ import {
 
 describe('stringifyHotkey', () => {
   it('builds combo string from normalized hotkey', () => {
-    expect(stringifyHotkey({ ctrl: true, meta: false, shift: true, alt: false, key: 'a' })).toBe('Ctrl+Shift+A');
-    expect(stringifyHotkey({ ctrl: false, meta: false, shift: false, alt: false, key: 'Enter' })).toBe('Enter');
+    expect(stringifyHotkey({ ctrl: true, meta: false, shift: true, alt: false, key: 'a' })).toBe(
+      'Ctrl+Shift+A',
+    );
+    expect(
+      stringifyHotkey({ ctrl: false, meta: false, shift: false, alt: false, key: 'Enter' }),
+    ).toBe('Enter');
   });
 
   it('normalizes key labels', () => {
-    expect(stringifyHotkey({ ctrl: false, meta: false, shift: false, alt: false, key: ' ' })).toBe('Space');
-    expect(stringifyHotkey({ ctrl: false, meta: false, shift: false, alt: false, key: 'esc' })).toBe('Escape');
+    expect(stringifyHotkey({ ctrl: false, meta: false, shift: false, alt: false, key: ' ' })).toBe(
+      'Space',
+    );
+    expect(
+      stringifyHotkey({ ctrl: false, meta: false, shift: false, alt: false, key: 'esc' }),
+    ).toBe('Escape');
   });
 });
 
 describe('parseHotkeyCombo', () => {
   it('parses combo string into normalized hotkey', () => {
-    expect(parseHotkeyCombo('Ctrl+Shift+A')).toEqual({ ctrl: true, meta: false, shift: true, alt: false, key: 'A' });
-    expect(parseHotkeyCombo('Enter')).toEqual({ ctrl: false, meta: false, shift: false, alt: false, key: 'Enter' });
+    expect(parseHotkeyCombo('Ctrl+Shift+A')).toEqual({
+      ctrl: true,
+      meta: false,
+      shift: true,
+      alt: false,
+      key: 'A',
+    });
+    expect(parseHotkeyCombo('Enter')).toEqual({
+      ctrl: false,
+      meta: false,
+      shift: false,
+      alt: false,
+      key: 'Enter',
+    });
   });
 
   it('returns null for invalid combos', () => {

@@ -85,7 +85,8 @@ const intrinsicDimensions = computed(() => {
 });
 
 const safeTransform = computed(() => {
-  const tr: Partial<ClipTransform> = (clipData.value as { transform?: ClipTransform })?.transform || {};
+  const tr: Partial<ClipTransform> =
+    (clipData.value as { transform?: ClipTransform })?.transform || {};
   const scaleX = typeof tr.scale?.x === 'number' && Number.isFinite(tr.scale?.x) ? tr.scale.x : 1;
   const scaleY = typeof tr.scale?.y === 'number' && Number.isFinite(tr.scale?.y) ? tr.scale.y : 1;
   const rotationDeg =
@@ -123,7 +124,9 @@ const sourceRotation = computed(() => {
 const layout = computed(() => {
   const d = intrinsicDimensions.value;
   if (!d) return null;
-  const transform = (clipData.value as { transform?: ClipTransform })?.transform as ClipTransform | undefined;
+  const transform = (clipData.value as { transform?: ClipTransform })?.transform as
+    | ClipTransform
+    | undefined;
   const boxLayout = computeClipBoxLayout({
     frameWidth: d.w,
     frameHeight: d.h,
@@ -203,7 +206,9 @@ function scheduleTransformUpdate(patch: Partial<ClipTransform>) {
   if (!selectedClipId.value || !selectedTrackId.value) return;
 
   const current =
-    pendingTransform ?? ((clipData.value as { transform?: ClipTransform })?.transform as ClipTransform | undefined) ?? {};
+    pendingTransform ??
+    ((clipData.value as { transform?: ClipTransform })?.transform as ClipTransform | undefined) ??
+    {};
   const next: ClipTransform = {
     ...current,
     ...patch,
@@ -388,7 +393,9 @@ function onPointerMove(e: PointerEvent) {
     const startAngle = Math.atan2(dragStartPos.y - centerY, dragStartPos.x - centerX);
     const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
     const rotationDelta = ((currentAngle - startAngle) * 180) / Math.PI;
-    scheduleTransformUpdate({ rotationDeg: dragStartTransform.rotationDeg + rotationDelta - sourceRotation.value });
+    scheduleTransformUpdate({
+      rotationDeg: dragStartTransform.rotationDeg + rotationDelta - sourceRotation.value,
+    });
   } else if (dragType.startsWith('scale')) {
     const rad = (-dragStartTransform.rotationDeg * Math.PI) / 180;
     const ldx = dx * Math.cos(rad) - dy * Math.sin(rad);

@@ -53,8 +53,7 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
           throw new VfsNotFoundError(path);
         }
       }
-      if (next.kind !== 'directory')
-        throw new VfsConflictError(path, `Not a directory: ${part}`);
+      if (next.kind !== 'directory') throw new VfsConflictError(path, `Not a directory: ${part}`);
       current = next;
     }
 
@@ -292,7 +291,10 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     await this.writeFile(path, JSON.stringify(data), options);
   }
 
-  async readStream(path: string, options?: VfsOperationOptions): Promise<ReadableStream<Uint8Array>> {
+  async readStream(
+    path: string,
+    options?: VfsOperationOptions,
+  ): Promise<ReadableStream<Uint8Array>> {
     const blob = await this.readFile(path, options);
     return blob.stream();
   }

@@ -83,7 +83,11 @@ export class MediaClipLoader {
 
       const sink = new mediabunny.VideoSampleSink(track);
       const firstTimestampS = await track.getFirstTimestamp();
-      const trackAny = track as { getFrameRate?: () => Promise<number>; frameRate?: number; fps?: number };
+      const trackAny = track as {
+        getFrameRate?: () => Promise<number>;
+        frameRate?: number;
+        fps?: number;
+      };
       const frameRateRaw =
         typeof trackAny.getFrameRate === 'function'
           ? await trackAny.getFrameRate()
@@ -110,7 +114,9 @@ export class MediaClipLoader {
           requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
         durationUs,
         endUs,
-        imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
+        imageSource: new ImageSource({
+          resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
+        }),
         sourceRotation: Number.isFinite(sourceRotation) ? sourceRotation : undefined,
       };
     } catch (error) {

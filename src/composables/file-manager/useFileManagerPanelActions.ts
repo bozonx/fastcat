@@ -158,7 +158,14 @@ export function useFileManagerPanelActions({
       if (mediaType === 'text') {
         projectStore.addTextPanel(entry.path || '', entry.name, undefined, undefined, view);
       } else if (['video', 'audio', 'image'].includes(mediaType)) {
-        projectStore.addMediaPanel(entry, mediaType as 'video' | 'audio' | 'image', entry.name, undefined, undefined, view);
+        projectStore.addMediaPanel(
+          entry,
+          mediaType as 'video' | 'audio' | 'image',
+          entry.name,
+          undefined,
+          undefined,
+          view,
+        );
       }
     } else if (action === 'openAsProjectTab') {
       if (entry.kind !== 'file' || !entry.path || !isOpenableProjectFileName(entry.name)) return;

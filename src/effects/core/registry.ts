@@ -85,7 +85,9 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
   effectsRegistry.set(manifest.type, videoManifest);
 }
 
-export function getEffectManifest(type: EffectType): EffectManifest<Record<string, unknown>> | undefined {
+export function getEffectManifest(
+  type: EffectType,
+): EffectManifest<Record<string, unknown>> | undefined {
   return effectsRegistry.get(type);
 }
 
@@ -109,12 +111,16 @@ export function isAudioEffectManifest<T>(
   return manifest.target === 'audio';
 }
 
-export function getVideoEffectManifest(type: EffectType): VideoEffectManifest<Record<string, unknown>> | undefined {
+export function getVideoEffectManifest(
+  type: EffectType,
+): VideoEffectManifest<Record<string, unknown>> | undefined {
   const manifest = effectsRegistry.get(type);
   return isVideoEffectManifest(manifest) ? manifest : undefined;
 }
 
-export function getAudioEffectManifest(type: EffectType): AudioEffectManifest<Record<string, unknown>> | undefined {
+export function getAudioEffectManifest(
+  type: EffectType,
+): AudioEffectManifest<Record<string, unknown>> | undefined {
   const manifest = effectsRegistry.get(type);
   return isAudioEffectManifest(manifest) ? manifest : undefined;
 }
@@ -123,7 +129,9 @@ export function isAudioEffectNodeGraph(node: AudioEffectNode): node is AudioEffe
   return 'input' in node && 'output' in node;
 }
 
-export function getAllEffectManifests(target?: EffectTarget): EffectManifest<Record<string, unknown>>[] {
+export function getAllEffectManifests(
+  target?: EffectTarget,
+): EffectManifest<Record<string, unknown>>[] {
   const manifests = Array.from(effectsRegistry.values());
   if (!target) {
     return manifests;

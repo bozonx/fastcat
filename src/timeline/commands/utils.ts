@@ -110,13 +110,16 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
     for (const track of doc.tracks) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (String((item as TimelineClipItem).linkedGroupId ?? '').trim() !== linkedGroupId) continue;
+        if (String((item as TimelineClipItem).linkedGroupId ?? '').trim() !== linkedGroupId)
+          continue;
         result.add(item.id);
       }
     }
   }
 
-  const originLinkedVideoId = String((origin.item as TimelineClipItem).linkedVideoClipId ?? '').trim();
+  const originLinkedVideoId = String(
+    (origin.item as TimelineClipItem).linkedVideoClipId ?? '',
+  ).trim();
   if (originLinkedVideoId) {
     result.add(originLinkedVideoId);
   }

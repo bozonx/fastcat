@@ -1,9 +1,6 @@
 import { defineNuxtPlugin } from 'nuxt/app';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
-import {
-  RouterFileSystemAdapter,
-  type VfsRoute,
-} from '~/file-manager/core/vfs/router.adapter';
+import { RouterFileSystemAdapter, type VfsRoute } from '~/file-manager/core/vfs/router.adapter';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
@@ -185,11 +182,9 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     return bloggerDogStore.config;
   }, translate);
 
-  const adapter = new RouterFileSystemAdapter(
-    project,
-    buildVfsRoutes({ workspace, remote }),
-    { progressReporter: createNuxtVfsProgressReporter(nuxtApp) },
-  );
+  const adapter = new RouterFileSystemAdapter(project, buildVfsRoutes({ workspace, remote }), {
+    progressReporter: createNuxtVfsProgressReporter(nuxtApp),
+  });
 
   await adapter.init();
 

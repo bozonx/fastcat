@@ -42,7 +42,9 @@ function createFileManagerStoreSetup(contextId: string) {
     const sortOption = ref<FileSortOption>(
       workspaceInstance.value?.sortOption ?? { ...defaults.sortOption },
     );
-    const gridCardSize = ref<number>(workspaceInstance.value?.gridCardSize ?? defaults.gridCardSize);
+    const gridCardSize = ref<number>(
+      workspaceInstance.value?.gridCardSize ?? defaults.gridCardSize,
+    );
     const showHiddenFiles = ref<boolean>(
       workspaceInstance.value?.showHiddenFiles ?? defaults.showHiddenFiles,
     );
@@ -97,7 +99,10 @@ function createFileManagerStoreSetup(contextId: string) {
         if (val.columnWidths && val.columnWidths !== columnWidths.value) {
           columnWidths.value = val.columnWidths;
         }
-        if (typeof val.showHiddenFiles === 'boolean' && val.showHiddenFiles !== showHiddenFiles.value) {
+        if (
+          typeof val.showHiddenFiles === 'boolean' &&
+          val.showHiddenFiles !== showHiddenFiles.value
+        ) {
           showHiddenFiles.value = val.showHiddenFiles;
         }
         if (val.treeSize !== treeSize.value) {

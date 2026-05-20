@@ -268,8 +268,10 @@ async function buildPassthroughAudioTrack(params: {
 
     const requestedSampleRate = Number(options.audioSampleRate) || 48000;
     const requestedChannels = options.audioChannels === 'mono' ? 1 : 2;
-    const sourceSampleRate = Number((audioTrack as unknown as { sampleRate?: number }).sampleRate) || 0;
-    const sourceChannels = Number((audioTrack as unknown as { numberOfChannels?: number }).numberOfChannels) || 0;
+    const sourceSampleRate =
+      Number((audioTrack as unknown as { sampleRate?: number }).sampleRate) || 0;
+    const sourceChannels =
+      Number((audioTrack as unknown as { numberOfChannels?: number }).numberOfChannels) || 0;
     if (sourceSampleRate > 0 && sourceSampleRate !== requestedSampleRate) {
       await reportExportWarning(
         `[Worker Export] Opus passthrough disabled: source sample rate ${sourceSampleRate}Hz differs from requested ${requestedSampleRate}Hz.`,
@@ -339,8 +341,20 @@ export async function runExport(
     }
   }
 
-  async function createOutput(params: { format: unknown }): Promise<{ output: { cancel?: () => Promise<void>; setMetadataTags?: (tags: Record<string, unknown>) => void }; writable: { abort?: () => Promise<void> } }> {
-    const writable = await (targetHandle as unknown as { createWritable: (opts?: { keepExistingData?: boolean }) => Promise<{ abort?: () => Promise<void> }> }).createWritable({ keepExistingData: false });
+  async function createOutput(params: { format: unknown }): Promise<{
+    output: {
+      cancel?: () => Promise<void>;
+      setMetadataTags?: (tags: Record<string, unknown>) => void;
+    };
+    writable: { abort?: () => Promise<void> };
+  }> {
+    const writable = await (
+      targetHandle as unknown as {
+        createWritable: (opts?: {
+          keepExistingData?: boolean;
+        }) => Promise<{ abort?: () => Promise<void> }>;
+      }
+    ).createWritable({ keepExistingData: false });
 
     const target = new StreamTarget(writable, {
       chunked: true,
@@ -350,7 +364,10 @@ export async function runExport(
     return { output, writable };
   }
 
-  async function safeCancel(params: { output: { cancel?: () => Promise<void> }; writable: { abort?: () => Promise<void> } }) {
+  async function safeCancel(params: {
+    output: { cancel?: () => Promise<void> };
+    writable: { abort?: () => Promise<void> };
+  }) {
     const { output, writable } = params;
     try {
       if (typeof output.cancel === 'function') {
@@ -569,7 +586,9 @@ export async function runExport(
       let audioSampleRate = 48000;
       let audioNumberOfChannels = 2;
       let audioPacketState: {
-        audioSource: { add: (packet: unknown, opts?: { decoderConfig?: unknown }) => Promise<void> };
+        audioSource: {
+          add: (packet: unknown, opts?: { decoderConfig?: unknown }) => Promise<void>;
+        };
         packetSink: { packets: () => AsyncIterable<unknown>; close?: () => void };
         decoderConfig: unknown;
         ranges: { timelineStartS: number; sourceStartS: number; sourceEndS: number };
@@ -724,7 +743,13 @@ export async function extractAudioStream(
       format = new MkvOutputFormat();
     }
 
-    const writable = await (targetHandle as unknown as { createWritable: (opts?: { keepExistingData?: boolean }) => Promise<{ abort?: () => Promise<void> }> }).createWritable({ keepExistingData: false });
+    const writable = await (
+      targetHandle as unknown as {
+        createWritable: (opts?: {
+          keepExistingData?: boolean;
+        }) => Promise<{ abort?: () => Promise<void> }>;
+      }
+    ).createWritable({ keepExistingData: false });
     const target = new StreamTarget(writable, { chunked: true });
     const output = new Output({ target, format });
 
@@ -732,7 +757,9 @@ export async function extractAudioStream(
     const decoderConfig = await audioTrack.getDecoderConfig();
 
     const packetSource = new EncodedAudioPacketSource(
-      getBunnyAudioCodec((lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as unknown) as unknown,
+      getBunnyAudioCodec(
+        (lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as unknown,
+      ) as unknown,
     );
     output.addAudioTrack(packetSource);
 

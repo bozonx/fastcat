@@ -150,8 +150,6 @@ vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: vi.fn(() => timelineStoreMock),
 }));
 
-
-
 vi.mock('~/stores/file-manager.store', () => ({
   useFileManagerStore: vi.fn(() => fileManagerStoreMock),
   useFilesPageFileManagerStore: vi.fn(() => fileManagerStoreMock),

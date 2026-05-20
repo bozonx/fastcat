@@ -185,8 +185,9 @@ function addTextClip(event?: MouseEvent) {
     // Create clip without any preset style — preset will be applied after selection
     const clipIds = timelineStore.addTextClipAtPlayhead();
     if (clipIds.length > 0) {
-      const trackId = timelineStore.timelineDoc?.tracks.find((t: { items: Array<{ id: string }> }) =>
-        t.items.some((it: { id: string }) => it.id === clipIds[0]),
+      const trackId = timelineStore.timelineDoc?.tracks.find(
+        (t: { items: Array<{ id: string }> }) =>
+          t.items.some((it: { id: string }) => it.id === clipIds[0]),
       )?.id;
       if (trackId && clipIds[0]) {
         showPresetModal(trackId, clipIds[0]);

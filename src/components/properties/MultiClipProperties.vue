@@ -186,7 +186,10 @@ const {
   updateAudioFadeOutSec,
   updateAudioGain,
 } = useClipAudio({
-  clip: computed(() => (firstWaveformClip.value || props.items[0]) as import('~/timeline/types').TimelineClipItem),
+  clip: computed(
+    () =>
+      (firstWaveformClip.value || props.items[0]) as import('~/timeline/types').TimelineClipItem,
+  ),
   tracks: computed(() => timelineStore.timelineDoc?.tracks),
   mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
   updateAudio: (patch) => {

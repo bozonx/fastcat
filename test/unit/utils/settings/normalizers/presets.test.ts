@@ -4,10 +4,7 @@ import {
   normalizeProjectPresetItem,
   normalizeExportPresetItem,
 } from '~/utils/settings/normalizers/presets';
-import {
-  createDefaultProjectPresets,
-  createDefaultExportPresets,
-} from '~/utils/settings/presets';
+import { createDefaultProjectPresets, createDefaultExportPresets } from '~/utils/settings/presets';
 
 describe('normalizeProjectPresetItem', () => {
   it('returns fallback for empty input', () => {

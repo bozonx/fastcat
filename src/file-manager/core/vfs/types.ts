@@ -153,18 +153,10 @@ export interface IFileSystemAdapter {
   deleteEntry(path: string, recursive?: boolean): Promise<void>;
 
   /** Rename or move an entry inside the same adapter. */
-  moveEntry(
-    sourcePath: string,
-    targetPath: string,
-    options?: VfsOperationOptions,
-  ): Promise<void>;
+  moveEntry(sourcePath: string, targetPath: string, options?: VfsOperationOptions): Promise<void>;
 
   /** Copy a single file. Creates parent directories of the target. */
-  copyFile(
-    sourcePath: string,
-    targetPath: string,
-    options?: VfsOperationOptions,
-  ): Promise<void>;
+  copyFile(sourcePath: string, targetPath: string, options?: VfsOperationOptions): Promise<void>;
 
   /** Copy a directory recursively. Creates the target directory. */
   copyDirectory(

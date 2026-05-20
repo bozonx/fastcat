@@ -351,7 +351,10 @@ export class TimelineLoadOrchestrator {
       }
       return { sequentialTimeUs };
     } catch (err) {
-      if (err instanceof Error && err.message !== 'Input has an unsupported or unrecognizable format.') {
+      if (
+        err instanceof Error &&
+        err.message !== 'Input has an unsupported or unrecognizable format.'
+      ) {
         console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
       }
       return {

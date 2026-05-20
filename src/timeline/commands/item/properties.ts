@@ -114,7 +114,10 @@ export function updateClipProperties(
         ? {
             x: clampNumber((scaleRaw as Record<string, unknown>)['x'], -1000, 1000),
             y: clampNumber((scaleRaw as Record<string, unknown>)['y'], -1000, 1000),
-            linked: (scaleRaw as Record<string, unknown>)['linked'] !== undefined ? Boolean((scaleRaw as Record<string, unknown>)['linked']) : undefined,
+            linked:
+              (scaleRaw as Record<string, unknown>)['linked'] !== undefined
+                ? Boolean((scaleRaw as Record<string, unknown>)['linked'])
+                : undefined,
           }
         : undefined;
 
@@ -134,7 +137,10 @@ export function updateClipProperties(
         : undefined;
 
     const anchorRaw = rawRecord['anchor'];
-    const preset = anchorRaw && typeof anchorRaw === 'object' ? String((anchorRaw as Record<string, unknown>)['preset'] ?? '') : '';
+    const preset =
+      anchorRaw && typeof anchorRaw === 'object'
+        ? String((anchorRaw as Record<string, unknown>)['preset'] ?? '')
+        : '';
     const safePreset =
       preset === 'center' ||
       preset === 'topLeft' ||
@@ -148,8 +154,14 @@ export function updateClipProperties(
       safePreset !== undefined
         ? {
             preset: safePreset,
-            x: safePreset === 'custom' ? clampNumber((anchorRaw as Record<string, unknown>)['x'], -10, 10) : undefined,
-            y: safePreset === 'custom' ? clampNumber((anchorRaw as Record<string, unknown>)['y'], -10, 10) : undefined,
+            x:
+              safePreset === 'custom'
+                ? clampNumber((anchorRaw as Record<string, unknown>)['x'], -10, 10)
+                : undefined,
+            y:
+              safePreset === 'custom'
+                ? clampNumber((anchorRaw as Record<string, unknown>)['y'], -10, 10)
+                : undefined,
           }
         : undefined;
 
@@ -410,7 +422,8 @@ export function updateClipProperties(
         delete nextProps['style'];
       } else {
         const rawRecord = raw as Record<string, unknown>;
-        const fontFamily = typeof rawRecord.fontFamily === 'string' ? rawRecord.fontFamily : undefined;
+        const fontFamily =
+          typeof rawRecord.fontFamily === 'string' ? rawRecord.fontFamily : undefined;
         const widthRaw = rawRecord.width;
         const width =
           typeof widthRaw === 'number' && Number.isFinite(widthRaw) && widthRaw > 0
@@ -458,9 +471,13 @@ export function updateClipProperties(
             : undefined;
 
         const backgroundColor =
-          typeof rawRecord.backgroundColor === 'string' ? rawRecord.backgroundColor.trim() : undefined;
+          typeof rawRecord.backgroundColor === 'string'
+            ? rawRecord.backgroundColor.trim()
+            : undefined;
         const backgroundEnabled =
-          typeof rawRecord.backgroundEnabled === 'boolean' ? rawRecord.backgroundEnabled : undefined;
+          typeof rawRecord.backgroundEnabled === 'boolean'
+            ? rawRecord.backgroundEnabled
+            : undefined;
         const backgroundAlpha = clampAlpha(rawRecord.backgroundAlpha);
         const backgroundRadiusRaw = rawRecord.backgroundRadius;
         const backgroundRadius =

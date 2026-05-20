@@ -139,7 +139,8 @@ export class StageTextureRenderer {
       }
 
       for (let i = 0; i < containerChildren.length; i++) {
-        (containerChildren[i] as import('pixi.js').DisplayObject).visible = containerPrev[i] ?? true;
+        (containerChildren[i] as import('pixi.js').DisplayObject).visible =
+          containerPrev[i] ?? true;
       }
       for (let i = 0; i < stageChildren.length; i++) {
         const child = stageChildren[i];

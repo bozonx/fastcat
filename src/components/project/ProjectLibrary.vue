@@ -132,7 +132,11 @@ function updateCustomHudsOrder(newCustomHuds: CustomPreset[]) {
   );
 }
 
-function selectItem(kind: 'text' | 'shape' | 'hud', id: string, presetParams?: Record<string, unknown>) {
+function selectItem(
+  kind: 'text' | 'shape' | 'hud',
+  id: string,
+  presetParams?: Record<string, unknown>,
+) {
   selectionStore.selectProjectLibraryItem(kind, id, presetParams);
 }
 

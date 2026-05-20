@@ -223,7 +223,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
         typeof val === 'string'
           ? val
           : val && typeof val === 'object' && typeof (val as { value?: string }).value === 'string'
-            ? ((val as { value: string }).value)
+            ? (val as { value: string }).value
             : null;
 
       if (

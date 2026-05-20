@@ -137,7 +137,15 @@ async function callHostMethod(hostApi: VideoCoreHostAPI, message: unknown) {
     case 'getFileByPath':
       return (await hostApi.getFileByPath?.(args[0] as string)) ?? null;
     case 'ensureVectorImageRaster':
-      return await hostApi.ensureVectorImageRaster(args[0] as { projectId: string; projectRelativePath: string; width: number; height: number; sourceFileHandle: FileSystemFileHandle });
+      return await hostApi.ensureVectorImageRaster(
+        args[0] as {
+          projectId: string;
+          projectRelativePath: string;
+          width: number;
+          height: number;
+          sourceFileHandle: FileSystemFileHandle;
+        },
+      );
     case 'onExportProgress':
       return hostApi.onExportProgress(args[0] as number, taskId);
     case 'onExportPhase':

@@ -261,7 +261,12 @@ export class TimelineClipLoader {
       reusable.strokeColor = String(clipData.strokeColor ?? reusable.strokeColor ?? '#000000');
       reusable.strokeWidth = Number(clipData.strokeWidth ?? reusable.strokeWidth ?? 0);
       const nextConfig = clipData.shapeConfig;
-      if (!areShapeConfigsEqual(reusable.shapeConfig as Record<string, unknown>, nextConfig as Record<string, unknown>)) {
+      if (
+        !areShapeConfigsEqual(
+          reusable.shapeConfig as Record<string, unknown>,
+          nextConfig as Record<string, unknown>,
+        )
+      ) {
         reusable.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
       }
       reusable.shapeDirty = true;

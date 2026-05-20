@@ -106,7 +106,11 @@ export function createProxyService(params: {
     params.generatingProxies.value = new Set([...params.generatingProxies.value, input.dirPath]);
     const tasks: Promise<void>[] = [];
     try {
-      for await (const handle of (input.dirHandle as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }).values()) {
+      for await (const handle of (
+        input.dirHandle as unknown as {
+          values: () => AsyncIterable<{ kind: string; name: string }>;
+        }
+      ).values()) {
         const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
 
         if (handle.kind === 'file') {
@@ -497,7 +501,14 @@ export function createProxyService(params: {
       } else {
         // Fallback: copy and delete if move is not supported (unlikely in modern Chrome)
         const newHandle = await dir.getFileHandle(newFilename, { create: true });
-        const writable = await (newHandle as unknown as { createWritable: () => Promise<{ write: (data: File) => Promise<void>; close: () => Promise<void> }> }).createWritable();
+        const writable = await (
+          newHandle as unknown as {
+            createWritable: () => Promise<{
+              write: (data: File) => Promise<void>;
+              close: () => Promise<void>;
+            }>;
+          }
+        ).createWritable();
         await writable.write(await handle.getFile());
         await writable.close();
         await dir.removeEntry(oldFilename);

@@ -9,10 +9,7 @@ export interface TimelineTracksDeps {
     cmd: TimelineCommand,
     options?: { historyMode?: 'immediate' | 'debounced' },
   ) => void;
-  batchApplyTimeline: (
-    cmds: TimelineCommand[],
-    options?: { labelKey?: string },
-  ) => void;
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: { labelKey?: string }) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getSelectedOrActiveTrackId: () => string | null;
   selectedItemIds: Ref<string[]>;
@@ -289,7 +286,9 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { audioSolo: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unsoloAllTracks' });
+    deps.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.unsoloAllTracks',
+    });
     void deps.requestTimelineSave({ immediate: true });
   }
 
@@ -303,7 +302,9 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { audioMuted: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unmuteAllTracks' });
+    deps.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.unmuteAllTracks',
+    });
     void deps.requestTimelineSave({ immediate: true });
   }
 
@@ -317,7 +318,9 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { locked: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unlockAllTracks' });
+    deps.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.unlockAllTracks',
+    });
     void deps.requestTimelineSave({ immediate: true });
   }
 
@@ -331,7 +334,9 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       properties: { videoHidden: false },
     }));
 
-    deps.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.showAllTracks' });
+    deps.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.showAllTracks',
+    });
     void deps.requestTimelineSave({ immediate: true });
   }
 

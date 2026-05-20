@@ -22,7 +22,10 @@ export interface TimelineSelectionRangeDeps {
 export interface TimelineSelectionRangeModule {
   getSelectionRange: () => TimelineSelectionRange | null;
   setPreviewSelectionRange: (range: TimelineSelectionRange | null) => void;
-  updateSelectionRange: (range: TimelineSelectionRange | null, options?: TimelineApplyOptions) => void;
+  updateSelectionRange: (
+    range: TimelineSelectionRange | null,
+    options?: TimelineApplyOptions,
+  ) => void;
   createSelectionRangeAtPlayhead: (durationUs?: number) => void;
   createSelectionRange: (input: TimelineSelectionRange) => void;
   removeSelectionRange: (options?: TimelineApplyOptions) => void;
@@ -70,7 +73,10 @@ export function createTimelineSelectionRangeModule(
     previewRange.value = range;
   }
 
-  function updateSelectionRange(range: TimelineSelectionRange | null, _options?: TimelineApplyOptions) {
+  function updateSelectionRange(
+    range: TimelineSelectionRange | null,
+    _options?: TimelineApplyOptions,
+  ) {
     previewRange.value = null;
 
     if (!range) {

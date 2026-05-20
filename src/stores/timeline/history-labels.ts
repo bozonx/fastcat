@@ -67,7 +67,6 @@ export function getUpdateClipPropertiesLabelKey(properties: Record<string, unkno
 
 export function getTimelineCommandLabelKey(type: TimelineCommand['type']): string {
   return (
-    TIMELINE_COMMAND_LABEL_KEYS[type] ||
-    `videoEditor.fileManager.history.entries.${String(type)}`
+    TIMELINE_COMMAND_LABEL_KEYS[type] || `videoEditor.fileManager.history.entries.${String(type)}`
   );
 }

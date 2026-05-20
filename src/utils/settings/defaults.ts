@@ -1,9 +1,12 @@
 import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import type { StoragePathRegistry } from '../storage-roots';
 import type { TimelineDragAction } from '../mouse';
-import type { UserExportPresetsSettings, UserProjectPresetsSettings } from './presets';
+import type {
+  UserExportPresetsSettings,
+  UserProjectPresetsSettings,
+  CustomPreset,
+} from './presets';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
-import type { CustomPreset } from './presets';
 
 export interface FastCatPublicadorIntegrationSettings {
   enabled: boolean;

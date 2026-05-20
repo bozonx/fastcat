@@ -1,4 +1,5 @@
-import { Graphics, ImageSource, RenderTexture, Sprite } from 'pixi.js';
+import type { Sprite } from 'pixi.js';
+import { Graphics, ImageSource, RenderTexture } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';
@@ -160,7 +161,12 @@ export class ClipResourceManager {
     abortSignal?: AbortSignal,
   ): Promise<unknown | null> {
     let sample = await this.context.resourceManager.withVideoSampleSlot(
-      () => getVideoSampleWithZeroFallback(clip.sink as unknown as import('mediabunny').VideoSampleSink, sampleTimeS, clip.firstTimestampS),
+      () =>
+        getVideoSampleWithZeroFallback(
+          clip.sink as unknown as import('mediabunny').VideoSampleSink,
+          sampleTimeS,
+          clip.firstTimestampS,
+        ),
       abortSignal,
     );
     let sampleValue = sample as unknown;
@@ -177,7 +183,11 @@ export class ClipResourceManager {
       if (fallbackTimeS < sampleTimeS) {
         const retry = await this.context.resourceManager.withVideoSampleSlot(
           () =>
-            getVideoSampleWithZeroFallback(clip.sink as unknown as import('mediabunny').VideoSampleSink, fallbackTimeS, clip.firstTimestampS),
+            getVideoSampleWithZeroFallback(
+              clip.sink as unknown as import('mediabunny').VideoSampleSink,
+              fallbackTimeS,
+              clip.firstTimestampS,
+            ),
           abortSignal,
         );
         const retryObj = retry as { toVideoFrame?: () => VideoFrame } | null;

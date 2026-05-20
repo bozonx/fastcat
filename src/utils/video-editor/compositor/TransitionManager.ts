@@ -175,7 +175,12 @@ export class TransitionManager {
         const params = normalizeTransitionParams(clip.transitionIn.type, clip.transitionIn.params);
         opacity = Math.min(
           opacity,
-          baseOpacity * manifest.computeInOpacity(rawProgress, (params as Record<string, unknown>) ?? {}, curve),
+          baseOpacity *
+            manifest.computeInOpacity(
+              rawProgress,
+              (params as Record<string, unknown>) ?? {},
+              curve,
+            ),
         );
       }
     }
@@ -191,7 +196,12 @@ export class TransitionManager {
         );
         opacity = Math.min(
           opacity,
-          baseOpacity * manifest.computeOutOpacity(rawProgress, (params as Record<string, unknown>) ?? {}, curve),
+          baseOpacity *
+            manifest.computeOutOpacity(
+              rawProgress,
+              (params as Record<string, unknown>) ?? {},
+              curve,
+            ),
         );
       }
     }
@@ -199,7 +209,10 @@ export class TransitionManager {
     return Math.max(0, Math.min(1, opacity));
   }
 
-  public ensureUsableTransitionFilter(clip: CompositorClip, manifest: import('~/transitions/core/types').TransitionManifest): Filter | null {
+  public ensureUsableTransitionFilter(
+    clip: CompositorClip,
+    manifest: import('~/transitions/core/types').TransitionManifest,
+  ): Filter | null {
     const currentFilter = clip.transitionFilter;
     if (this.isTransitionFilterUsable(currentFilter)) {
       return currentFilter;
@@ -214,7 +227,10 @@ export class TransitionManager {
     return candidate.resources != null && Object.keys(candidate.resources).length > 0;
   }
 
-  private recreateTransitionFilter(clip: CompositorClip, manifest: import('~/transitions/core/types').TransitionManifest): Filter | null {
+  private recreateTransitionFilter(
+    clip: CompositorClip,
+    manifest: import('~/transitions/core/types').TransitionManifest,
+  ): Filter | null {
     if (clip.transitionFilter) {
       try {
         clip.transitionFilter.destroy();

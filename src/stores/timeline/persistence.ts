@@ -67,7 +67,11 @@ function describeObjectShape(obj: object): string {
   return `ctor=${ctor} proto=${protoName} keys=[${ownKeys.join(',')}]`;
 }
 
-function findNonCloneablePath(value: unknown, seen = new WeakSet<object>(), path = '$'): string | null {
+function findNonCloneablePath(
+  value: unknown,
+  seen = new WeakSet<object>(),
+  path = '$',
+): string | null {
   if (value === null || value === undefined) return null;
   const t = typeof value;
   if (t === 'string' || t === 'number' || t === 'boolean' || t === 'bigint') return null;

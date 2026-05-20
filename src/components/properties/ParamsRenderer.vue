@@ -271,14 +271,18 @@ function getMemoKey(entry: VisibleControlEntry): unknown[] {
 
 function handleArrayAdd(control: ParamControl) {
   if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as unknown[])] : [];
+  const current = Array.isArray(getValue(control.key))
+    ? [...(getValue(control.key) as unknown[])]
+    : [];
   current.push({ ...control.defaultItem });
   updateValue(control.key, current);
 }
 
 function handleArrayRemove(control: ParamControl, index: number) {
   if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as unknown[])] : [];
+  const current = Array.isArray(getValue(control.key))
+    ? [...(getValue(control.key) as unknown[])]
+    : [];
   current.splice(index, 1);
   updateValue(control.key, current);
 }
@@ -290,7 +294,9 @@ function handleArrayItemUpdate(
   value: unknown,
 ) {
   if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as unknown[])] : [];
+  const current = Array.isArray(getValue(control.key))
+    ? [...(getValue(control.key) as unknown[])]
+    : [];
   if (current[index]) {
     current[index] = { ...current[index], [itemKey]: value };
     updateValue(control.key, current);

@@ -1,6 +1,10 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import { getHotkeyConflicts, isHotkeyConflicting, findDuplicateOwnerByContext } from '~/utils/hotkeys/hotkeyConflicts';
+import {
+  getHotkeyConflicts,
+  isHotkeyConflicting,
+  findDuplicateOwnerByContext,
+} from '~/utils/hotkeys/hotkeyConflicts';
 
 const mockCommands = [
   { id: 'play', groupId: 'general', label: 'Play' },
@@ -46,12 +50,16 @@ describe('getHotkeyConflicts', () => {
 describe('isHotkeyConflicting', () => {
   it('returns true for conflicting combo', () => {
     const conflicts = { conflictsByCommand: new Map([['play', new Set(['Space'])]]) };
-    expect(isHotkeyConflicting({ conflicts: conflicts as any, cmdId: 'play', combo: 'Space' })).toBe(true);
+    expect(
+      isHotkeyConflicting({ conflicts: conflicts as any, cmdId: 'play', combo: 'Space' }),
+    ).toBe(true);
   });
 
   it('returns false for non-conflicting combo', () => {
     const conflicts = { conflictsByCommand: new Map() };
-    expect(isHotkeyConflicting({ conflicts: conflicts as any, cmdId: 'play', combo: 'Space' })).toBe(false);
+    expect(
+      isHotkeyConflicting({ conflicts: conflicts as any, cmdId: 'play', combo: 'Space' }),
+    ).toBe(false);
   });
 });
 
@@ -61,7 +69,12 @@ describe('findDuplicateOwnerByContext', () => {
       play: ['Space'],
       pause: ['Space'],
     };
-    const result = findDuplicateOwnerByContext({ effective, commands: mockCommands, targetCmdId: 'play', combo: 'Space' });
+    const result = findDuplicateOwnerByContext({
+      effective,
+      commands: mockCommands,
+      targetCmdId: 'play',
+      combo: 'Space',
+    });
     expect(result).toBe('pause');
   });
 
@@ -70,7 +83,12 @@ describe('findDuplicateOwnerByContext', () => {
       play: ['Space'],
       pause: ['Enter'],
     };
-    const result = findDuplicateOwnerByContext({ effective, commands: mockCommands, targetCmdId: 'play', combo: 'Space' });
+    const result = findDuplicateOwnerByContext({
+      effective,
+      commands: mockCommands,
+      targetCmdId: 'play',
+      combo: 'Space',
+    });
     expect(result).toBeNull();
   });
 });

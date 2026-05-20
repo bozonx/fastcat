@@ -63,7 +63,12 @@ describe('utils/audio', () => {
   it('clipHasAudio respects kind and metadata', () => {
     const audioTrack = { kind: 'audio' as const, items: [] };
     const videoTrack = { kind: 'video' as const, items: [] };
-    const clip = { kind: 'clip' as const, clipType: 'media' as const, source: { path: 'a.mp4' }, audioFromVideoDisabled: false };
+    const clip = {
+      kind: 'clip' as const,
+      clipType: 'media' as const,
+      source: { path: 'a.mp4' },
+      audioFromVideoDisabled: false,
+    };
     const gap = { kind: 'gap' as const };
 
     expect(clipHasAudio(gap, audioTrack, {})).toBe(false);

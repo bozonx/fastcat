@@ -266,9 +266,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.drag),
           middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleDrag),
           dragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.dragShift),
-          horizontalMovement: horizEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.ruler.horizontalMovement,
-          ),
+          horizontalMovement: horizEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.horizontalMovement),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.ruler),
 
@@ -276,9 +274,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
         .object({
           wheel: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheel),
           wheelShift: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheelShift),
-          wheelSecondary: tWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondary,
-          ),
+          wheelSecondary: tWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondary),
           wheelSecondaryShift: tWheelEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondaryShift,
           ),
@@ -318,9 +314,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
         .object({
           wheel: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheel),
           wheelShift: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheelShift),
-          wheelSecondary: mWheelEnum.catch(
-            DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondary,
-          ),
+          wheelSecondary: mWheelEnum.catch(DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondary),
           wheelSecondaryShift: mWheelEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.monitor.wheelSecondaryShift,
           ),
@@ -372,7 +366,9 @@ export function normalizePresetsSettings(raw: unknown): FastCatUserSettings['pre
   return {
     custom: Array.isArray(d.custom) ? d.custom : defaults.custom,
     defaultTextPresetId:
-      typeof d.defaultTextPresetId === 'string' ? d.defaultTextPresetId : defaults.defaultTextPresetId,
+      typeof d.defaultTextPresetId === 'string'
+        ? d.defaultTextPresetId
+        : defaults.defaultTextPresetId,
     collapsed:
       d.collapsed && typeof d.collapsed === 'object'
         ? (d.collapsed as Record<string, boolean>)

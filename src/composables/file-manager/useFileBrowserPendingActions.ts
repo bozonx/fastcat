@@ -67,7 +67,8 @@ export function useFileBrowserPendingActions({
       const inCurrentFolder = folderEntries.value.some((e) => e.path === entry.path);
       const selected = selectionStore.selectedEntity;
       const isSelected =
-        selected?.source === 'fileManager' && (selected as { entry?: { path?: string } }).entry?.path === entry.path;
+        selected?.source === 'fileManager' &&
+        (selected as { entry?: { path?: string } }).entry?.path === entry.path;
 
       if (!inCurrentFolder && !isSelected) return;
       if (isSelected && !matchesInstance(selected)) return;
@@ -125,7 +126,8 @@ export function useFileBrowserPendingActions({
   );
 
   watch(
-    () => (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup,
+    () =>
+      (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup,
     (entry) => {
       if (!entry) return;
       if (!focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) {

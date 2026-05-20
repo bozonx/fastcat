@@ -184,7 +184,14 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const fileName = `${task.id}.webp`;
     const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    const writable = await (fileHandle as unknown as { createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }).createWritable();
+    const writable = await (
+      fileHandle as unknown as {
+        createWritable: () => Promise<{
+          write: (data: Blob) => Promise<void>;
+          close: () => Promise<void>;
+        }>;
+      }
+    ).createWritable();
     await writable.write(blob);
     await writable.close();
 
@@ -223,7 +230,14 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const fileName = `${hash}.webp`;
     const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    const writable = await (fileHandle as unknown as { createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }).createWritable();
+    const writable = await (
+      fileHandle as unknown as {
+        createWritable: () => Promise<{
+          write: (data: Blob) => Promise<void>;
+          close: () => Promise<void>;
+        }>;
+      }
+    ).createWritable();
     await writable.write(input.blob);
     await writable.close();
 
@@ -304,7 +318,9 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         // Fall back to scan (and cleanup) only when the exact file is missing —
         // this is the case where the marker's timeUs changed since last save.
         const toDelete: string[] = [];
-        for await (const entry of (dir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }).values()) {
+        for await (const entry of (
+          dir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }
+        ).values()) {
           if (entry.kind === 'file' && entry.name.startsWith(prefix)) {
             toDelete.push(entry.name);
           }
@@ -354,7 +370,14 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
       const fileName = `${input.markerId}_${input.timeUs}.webp`;
       const fileHandle = await dir.getFileHandle(fileName, { create: true });
-      const writable = await (fileHandle as unknown as { createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }).createWritable();
+      const writable = await (
+        fileHandle as unknown as {
+          createWritable: () => Promise<{
+            write: (data: Blob) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }
+      ).createWritable();
       await writable.write(input.blob);
       await writable.close();
 
@@ -385,7 +408,9 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       // Browser FileSystemDirectoryHandle doesn't support recursive delete of the handle itself
       // if we don't have its parent handle.
       // But we can iterate and delete children.
-      for await (const name of (projectThumbnailsDir as unknown as { keys: () => AsyncIterable<string> }).keys()) {
+      for await (const name of (
+        projectThumbnailsDir as unknown as { keys: () => AsyncIterable<string> }
+      ).keys()) {
         await projectThumbnailsDir.removeEntry(name, { recursive: true }).catch(() => {});
       }
 

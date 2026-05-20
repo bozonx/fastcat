@@ -132,11 +132,14 @@ export function useFileManagerPanelPendingActions({
   );
 
   watch(
-    () => (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup,
+    () =>
+      (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup,
     (entry) => {
       if (!entry || !isFocusedOrSelected()) return;
       handlePendingBloggerDogCreateSubgroup(entry);
-      (uiStore as { pendingBloggerDogCreateSubgroup?: unknown | null }).pendingBloggerDogCreateSubgroup = null;
+      (
+        uiStore as { pendingBloggerDogCreateSubgroup?: unknown | null }
+      ).pendingBloggerDogCreateSubgroup = null;
     },
   );
 
@@ -145,7 +148,8 @@ export function useFileManagerPanelPendingActions({
     (entry) => {
       if (!entry || !isFocusedOrSelected()) return;
       handlePendingBloggerDogCreateItem(entry);
-      (uiStore as { pendingBloggerDogCreateItem?: unknown | null }).pendingBloggerDogCreateItem = null;
+      (uiStore as { pendingBloggerDogCreateItem?: unknown | null }).pendingBloggerDogCreateItem =
+        null;
     },
   );
 }

@@ -51,7 +51,10 @@ vi.mock('~/file-manager/core/path', () => ({
   normalizeFsPath: vi.fn((p: string) => {
     // Collapse repeated slashes and strip leading/trailing slash without
     // crossing the root, matching the production behavior we depend on.
-    const cleaned = p.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\/+|\/+$/g, '');
+    const cleaned = p
+      .replace(/\\/g, '/')
+      .replace(/\/+/g, '/')
+      .replace(/^\/+|\/+$/g, '');
     return cleaned;
   }),
 }));
@@ -114,7 +117,9 @@ describe('TauriFileSystemAdapter', () => {
     });
 
     it('returns an empty array when the directory is missing', async () => {
-      vi.mocked(readDir).mockRejectedValue(Object.assign(new Error('os error 2'), { code: 'ENOENT' }));
+      vi.mocked(readDir).mockRejectedValue(
+        Object.assign(new Error('os error 2'), { code: 'ENOENT' }),
+      );
       const adapter = new TauriFileSystemAdapter('/root');
       expect(await adapter.readDirectory('missing')).toEqual([]);
     });
@@ -209,7 +214,9 @@ describe('TauriFileSystemAdapter', () => {
 
     it('falls back to copy+delete on EXDEV for files', async () => {
       const adapter = new TauriFileSystemAdapter('/root');
-      vi.mocked(rename).mockRejectedValue(Object.assign(new Error('cross-device'), { code: 'EXDEV' }));
+      vi.mocked(rename).mockRejectedValue(
+        Object.assign(new Error('cross-device'), { code: 'EXDEV' }),
+      );
       vi.mocked(stat).mockResolvedValue({
         size: 10,
         mtime: 0,
@@ -226,7 +233,9 @@ describe('TauriFileSystemAdapter', () => {
 
     it('falls back to copyDirectory+delete on EXDEV for directories', async () => {
       const adapter = new TauriFileSystemAdapter('/root');
-      vi.mocked(rename).mockRejectedValue(Object.assign(new Error('cross-device'), { code: 'EXDEV' }));
+      vi.mocked(rename).mockRejectedValue(
+        Object.assign(new Error('cross-device'), { code: 'EXDEV' }),
+      );
       vi.mocked(stat).mockResolvedValue({
         size: 0,
         mtime: 0,
@@ -277,7 +286,10 @@ describe('TauriFileSystemAdapter', () => {
       const adapter = new TauriFileSystemAdapter('/root');
       vi.mocked(remove).mockResolvedValue();
       await adapter.deleteEntry('a.txt');
-      expect(remove).toHaveBeenCalledWith('/root/a.txt', { baseDir: undefined, recursive: undefined });
+      expect(remove).toHaveBeenCalledWith('/root/a.txt', {
+        baseDir: undefined,
+        recursive: undefined,
+      });
 
       vi.mocked(remove).mockRejectedValueOnce(Object.assign(new Error('os error 2')));
       await expect(adapter.deleteEntry('ghost')).resolves.toBeUndefined();

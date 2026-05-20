@@ -29,7 +29,9 @@ describe('getEffectiveHotkeyBindings', () => {
   });
 
   it('normalizes and deduplicates combos', () => {
-    const result = getEffectiveHotkeyBindings({ bindings: { play: ['shift+space', 'Shift+Space'] } });
+    const result = getEffectiveHotkeyBindings({
+      bindings: { play: ['shift+space', 'Shift+Space'] },
+    });
     expect(result.play).toEqual(['Shift+Space']);
   });
 });

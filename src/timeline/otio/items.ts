@@ -277,7 +277,11 @@ export function parseClipItem(input: {
     const bgColor =
       typeData?.kind === 'background'
         ? sanitizeTimelineColor(typeData.color, '#000000')
-        : sanitizeTimelineColor((fastcatMeta.typeData as unknown as { background?: { color?: string } })?.background?.color, '#000000');
+        : sanitizeTimelineColor(
+            (fastcatMeta.typeData as unknown as { background?: { color?: string } })?.background
+              ?.color,
+            '#000000',
+          );
     return {
       ...base,
       clipType: 'background',
@@ -299,14 +303,24 @@ export function parseClipItem(input: {
       text:
         typeData?.kind === 'text'
           ? (typeData.text ?? 'Text')
-          : ((fastcatMeta.typeData as unknown as { text?: { text?: string } })?.text?.text ?? 'Text'),
+          : ((fastcatMeta.typeData as unknown as { text?: { text?: string } })?.text?.text ??
+            'Text'),
       style:
-        typeData?.kind === 'text' ? typeData.style : (fastcatMeta.typeData as unknown as { text?: { style?: import('~/timeline/types').TextClipStyle } })?.text?.style,
+        typeData?.kind === 'text'
+          ? typeData.style
+          : (
+              fastcatMeta.typeData as unknown as {
+                text?: { style?: import('~/timeline/types').TextClipStyle };
+              }
+            )?.text?.style,
     };
   }
 
   if (clipType === 'shape') {
-    const shapeData = typeData?.kind === 'shape' ? typeData : (fastcatMeta.typeData as unknown as { shape?: unknown })?.shape;
+    const shapeData =
+      typeData?.kind === 'shape'
+        ? typeData
+        : (fastcatMeta.typeData as unknown as { shape?: unknown })?.shape;
     return {
       ...base,
       clipType: 'shape',
@@ -328,7 +342,10 @@ export function parseClipItem(input: {
   }
 
   if (clipType === 'hud') {
-    const hudData = typeData?.kind === 'hud' ? typeData : (fastcatMeta.typeData as unknown as { hud?: unknown })?.hud;
+    const hudData =
+      typeData?.kind === 'hud'
+        ? typeData
+        : (fastcatMeta.typeData as unknown as { hud?: unknown })?.hud;
     return {
       ...base,
       clipType: 'hud',

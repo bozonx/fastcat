@@ -131,7 +131,10 @@ export class FrameSampleOrchestrator {
       const shadowAlpha = manifest
         ? manifest.computeOutOpacity(
             rawProgress,
-            (normalizeTransitionParams(transition.type, transition.params) as Record<string, unknown>) ?? {},
+            (normalizeTransitionParams(transition.type, transition.params) as Record<
+              string,
+              unknown
+            >) ?? {},
             transition.curve ?? DEFAULT_TRANSITION_CURVE,
           )
         : 1 - rawProgress;

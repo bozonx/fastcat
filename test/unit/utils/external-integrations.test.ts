@@ -26,7 +26,9 @@ describe('external-integrations URL helpers', () => {
   });
 
   it('getFastCatPublicadorExternalApiBaseUrl appends api/v1', () => {
-    expect(getFastCatPublicadorExternalApiBaseUrl('https://example.com')).toBe('https://example.com/api/v1');
+    expect(getFastCatPublicadorExternalApiBaseUrl('https://example.com')).toBe(
+      'https://example.com/api/v1',
+    );
   });
 
   it('getFastCatPublicadorConnectUrl builds connect URL with query params', () => {
@@ -49,14 +51,24 @@ describe('external-integrations URL helpers', () => {
   });
 
   it('getManualServiceHealthUrl handles various base URLs', () => {
-    expect(getManualServiceHealthUrl('https://example.com')).toBe('https://example.com/api/v1/health');
-    expect(getManualServiceHealthUrl('https://example.com/api/v1')).toBe('https://example.com/api/v1/health');
-    expect(getManualServiceHealthUrl('https://example.com/health')).toBe('https://example.com/health');
+    expect(getManualServiceHealthUrl('https://example.com')).toBe(
+      'https://example.com/api/v1/health',
+    );
+    expect(getManualServiceHealthUrl('https://example.com/api/v1')).toBe(
+      'https://example.com/api/v1/health',
+    );
+    expect(getManualServiceHealthUrl('https://example.com/health')).toBe(
+      'https://example.com/health',
+    );
   });
 
   it('getManualSttStreamUrl handles various base URLs', () => {
-    expect(getManualSttStreamUrl('https://example.com')).toBe('https://example.com/api/v1/transcribe/stream');
-    expect(getManualSttStreamUrl('https://example.com/api/v1/stt')).toBe('https://example.com/api/v1/transcribe/stream');
+    expect(getManualSttStreamUrl('https://example.com')).toBe(
+      'https://example.com/api/v1/transcribe/stream',
+    );
+    expect(getManualSttStreamUrl('https://example.com/api/v1/stt')).toBe(
+      'https://example.com/api/v1/transcribe/stream',
+    );
   });
 });
 
@@ -107,7 +119,12 @@ describe('resolveExternalServiceConfig', () => {
       integrations: {
         fastcatAccount: { enabled: false, bearerToken: '' },
         fastcatPublicador: { enabled: true, bearerToken: 'token' },
-        manualFilesApi: { enabled: true, baseUrl: 'https://manual.example.com', bearerToken: 'mtoken', overrideFastCat: true },
+        manualFilesApi: {
+          enabled: true,
+          baseUrl: 'https://manual.example.com',
+          bearerToken: 'mtoken',
+          overrideFastCat: true,
+        },
       },
       bloggerDogApiUrl: 'https://bd.example.com',
     });

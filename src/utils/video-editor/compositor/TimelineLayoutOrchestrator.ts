@@ -12,7 +12,10 @@ export interface TimelineLayoutOrchestratorParams {
   clipLayoutUpdater: TimelineClipLayoutUpdater;
   trackRebinder: TimelineTrackRebinder;
   updateLifecycle: TimelineUpdateLifecycle;
-  getFallbackTrackId: (params: { clip: CompositorClip; next: Record<string, unknown> }) => string | null | undefined;
+  getFallbackTrackId: (params: {
+    clip: CompositorClip;
+    next: Record<string, unknown>;
+  }) => string | null | undefined;
   getTrackRuntimeForClip: (clip: CompositorClip) => CompositorTrack | null;
   toVideoEffects: (value: unknown) => CompositorClip['effects'];
   applyClipLayoutForCurrentSource: (clip: CompositorClip) => void;

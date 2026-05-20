@@ -20,10 +20,7 @@ export class VideoRenderer {
       const frameW = frame.displayWidth;
       const frameH = frame.displayHeight;
 
-      if (
-        sprite.texture.source.width !== frameW ||
-        sprite.texture.source.height !== frameH
-      ) {
+      if (sprite.texture.source.width !== frameW || sprite.texture.source.height !== frameH) {
         if (typeof sprite.texture.source.resize === 'function') {
           sprite.texture.source.resize(frameW, frameH);
         }
@@ -35,16 +32,26 @@ export class VideoRenderer {
     }
 
     // Fallback to canvas
-    const sampleObj = sample as { draw?: () => void; toCanvasImageSource?: () => CanvasImageSource };
-    if (typeof sampleObj.draw === 'function' || typeof sampleObj.toCanvasImageSource === 'function') {
+    const sampleObj = sample as {
+      draw?: () => void;
+      toCanvasImageSource?: () => CanvasImageSource;
+    };
+    if (
+      typeof sampleObj.draw === 'function' ||
+      typeof sampleObj.toCanvasImageSource === 'function'
+    ) {
       const imageSource: CanvasImageSource =
-        typeof sampleObj.toCanvasImageSource === 'function' ? sampleObj.toCanvasImageSource() : (sample as CanvasImageSource);
-      const imgAny = imageSource as { displayWidth?: number; width?: number; displayHeight?: number; height?: number };
+        typeof sampleObj.toCanvasImageSource === 'function'
+          ? sampleObj.toCanvasImageSource()
+          : (sample as CanvasImageSource);
+      const imgAny = imageSource as {
+        displayWidth?: number;
+        width?: number;
+        displayHeight?: number;
+        height?: number;
+      };
       const frameW = Math.max(1, Math.round(imgAny.displayWidth ?? imgAny.width ?? 1));
-      const frameH = Math.max(
-        1,
-        Math.round(imgAny.displayHeight ?? imgAny.height ?? 1),
-      );
+      const frameH = Math.max(1, Math.round(imgAny.displayHeight ?? imgAny.height ?? 1));
 
       this.ensureCanvasFallback(clip);
       const { ctx, canvas } = clip;

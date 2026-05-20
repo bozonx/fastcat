@@ -68,9 +68,10 @@ function normalizeInstance(raw: unknown, legacyShowHidden: boolean): FileBrowser
     sortRaw && ['name', 'type', 'size', 'modified', 'created'].includes(sortRaw.field as string)
       ? (sortRaw.field as FileBrowserInstanceState['sortOption']['field'])
       : 'name';
-  const order = sortRaw && ['asc', 'desc'].includes(sortRaw.order as string)
-    ? (sortRaw.order as 'asc' | 'desc')
-    : 'asc';
+  const order =
+    sortRaw && ['asc', 'desc'].includes(sortRaw.order as string)
+      ? (sortRaw.order as 'asc' | 'desc')
+      : 'asc';
 
   return {
     viewMode: ['grid', 'list'].includes(val.viewMode as string)

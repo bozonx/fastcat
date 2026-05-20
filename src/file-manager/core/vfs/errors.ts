@@ -21,11 +21,7 @@ export class VfsError extends Error {
   readonly path?: string;
   override readonly cause?: unknown;
 
-  constructor(
-    code: VfsErrorCode,
-    message: string,
-    options?: { path?: string; cause?: unknown },
-  ) {
+  constructor(code: VfsErrorCode, message: string, options?: { path?: string; cause?: unknown }) {
     super(message);
     this.name = 'VfsError';
     this.code = code;

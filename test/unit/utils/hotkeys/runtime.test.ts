@@ -101,19 +101,47 @@ describe('getFocusAwareHotkeyOrder', () => {
 
 describe('canExecuteHotkeyCommand', () => {
   it('blocks commands when modal is open', () => {
-    expect(canExecuteHotkeyCommand({ cmdId: 'play', hasBlockingModalState: true, isEditableEventTarget: false, isEditableActiveElement: false })).toBe(false);
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'play',
+        hasBlockingModalState: true,
+        isEditableEventTarget: false,
+        isEditableActiveElement: false,
+      }),
+    ).toBe(false);
   });
 
   it('allows commands that allowWhenModalOpen', () => {
-    expect(canExecuteHotkeyCommand({ cmdId: 'general.zoomIn', hasBlockingModalState: true, isEditableEventTarget: false, isEditableActiveElement: false })).toBe(true);
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'general.zoomIn',
+        hasBlockingModalState: true,
+        isEditableEventTarget: false,
+        isEditableActiveElement: false,
+      }),
+    ).toBe(true);
   });
 
   it('blocks commands in editable by default', () => {
-    expect(canExecuteHotkeyCommand({ cmdId: 'play', hasBlockingModalState: false, isEditableEventTarget: true, isEditableActiveElement: false })).toBe(false);
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'play',
+        hasBlockingModalState: false,
+        isEditableEventTarget: true,
+        isEditableActiveElement: false,
+      }),
+    ).toBe(false);
   });
 
   it('allows commands in editable when policy permits', () => {
-    expect(canExecuteHotkeyCommand({ cmdId: 'general.deselect', hasBlockingModalState: false, isEditableEventTarget: true, isEditableActiveElement: false })).toBe(true);
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'general.deselect',
+        hasBlockingModalState: false,
+        isEditableEventTarget: true,
+        isEditableActiveElement: false,
+      }),
+    ).toBe(true);
   });
 });
 

@@ -564,7 +564,9 @@ const {
   createMarkdownInFolder,
   generateProxiesForSelectedFolder,
   stopProxyGenerationForSelectedFolder,
-  onRename: () => { isRenameModalOpen.value = true; },
+  onRename: () => {
+    isRenameModalOpen.value = true;
+  },
   onDelete,
   onConvert: () => emit('convert', props.selectedFsEntry),
   openTranscriptionModal,
@@ -589,7 +591,8 @@ const {
   createSubgroup: () => {
     const entry = props.selectedFsEntry;
     if (!entry || entry.kind !== 'directory') return;
-    (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup = entry;
+    (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup =
+      entry;
   },
   createContentItem: () => {
     const entry = props.selectedFsEntry;
@@ -1010,7 +1013,9 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         :media-count="remoteMediaCount"
         :instance-id="props.instanceId"
         :is-external="isExternalContext"
-        :hide-header="(props.selectedFsEntry as { mimeType?: string })?.mimeType === 'application/octet-stream'"
+        :hide-header="
+          (props.selectedFsEntry as { mimeType?: string })?.mimeType === 'application/octet-stream'
+        "
       >
         <template v-if="mediaType === 'text' && lineCount !== null">
           <PropertyRow :label="t('fastcat.file.lineCount')" :value="lineCount" />

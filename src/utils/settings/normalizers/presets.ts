@@ -36,7 +36,7 @@ export function normalizeProjectPresetItem(
       height: z.coerce.number().int().min(1).catch(fallback.height),
       fps: z.coerce.number().min(1).max(240).catch(fallback.fps),
       resolutionFormat: z.string().catch(''),
-      orientation: z.enum(['landscape', 'portrait']).catch('landscape' as 'landscape'),
+      orientation: z.enum(['landscape', 'portrait']).catch('landscape' as const),
       aspectRatio: z.string().catch(''),
       isCustomResolution: z.coerce.boolean().catch(false),
       sampleRate: z.coerce.number().min(8000).max(192000).catch(fallback.sampleRate),
@@ -80,7 +80,9 @@ export function normalizeExportPresetItem(
       excludeAudio: z.boolean().catch(fallback.excludeAudio),
       audioCodec: z.enum(['aac', 'opus']).catch(fallback.audioCodec as 'aac' | 'opus'),
       audioBitrateKbps: z.coerce.number().min(32).max(1024).catch(fallback.audioBitrateKbps),
-      bitrateMode: z.enum(['constant', 'variable']).catch(fallback.bitrateMode as 'constant' | 'variable'),
+      bitrateMode: z
+        .enum(['constant', 'variable'])
+        .catch(fallback.bitrateMode as 'constant' | 'variable'),
       keyframeIntervalSec: z.coerce.number().min(1).max(60).catch(fallback.keyframeIntervalSec),
       exportAlpha: z.boolean().catch(fallback.exportAlpha),
     })

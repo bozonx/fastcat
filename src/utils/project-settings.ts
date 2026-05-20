@@ -416,9 +416,12 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
 }
 
 /** Picks project-wide monitor fields from a legacy per-monitor object. */
-function pickProjectMonitorFields(source: Record<string, unknown>): Partial<ProjectMonitorSettings> {
+function pickProjectMonitorFields(
+  source: Record<string, unknown>,
+): Partial<ProjectMonitorSettings> {
   const out: Partial<ProjectMonitorSettings> = {};
-  if (typeof source.previewResolution === 'number') out.previewResolution = source.previewResolution;
+  if (typeof source.previewResolution === 'number')
+    out.previewResolution = source.previewResolution;
   if (typeof source.useProxy === 'boolean') out.useProxy = source.useProxy;
   if (typeof source.previewEffectsEnabled === 'boolean')
     out.previewEffectsEnabled = source.previewEffectsEnabled;

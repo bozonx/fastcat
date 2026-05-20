@@ -53,7 +53,8 @@ const measureContext =
   typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
 
 const safeTransform = computed(() => {
-  const transform: Partial<ClipTransform> = (clipData.value as { transform?: ClipTransform })?.transform ?? {};
+  const transform: Partial<ClipTransform> =
+    (clipData.value as { transform?: ClipTransform })?.transform ?? {};
   return {
     scaleX:
       typeof transform.scale?.x === 'number' && Number.isFinite(transform.scale.x)
@@ -89,7 +90,9 @@ const clipLayout = computed(() => {
     frameHeight: props.renderHeight,
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
-    transform: (clipData.value as { transform?: ClipTransform }).transform as ClipTransform | undefined,
+    transform: (clipData.value as { transform?: ClipTransform }).transform as
+      | ClipTransform
+      | undefined,
   });
 });
 
@@ -142,7 +145,10 @@ const layout = computed(() => {
 
 const mode = ref<'text' | 'rotate'>('text');
 
-function buildNextTransform(current: ClipTransform | undefined, patch: Partial<ClipTransform>): ClipTransform {
+function buildNextTransform(
+  current: ClipTransform | undefined,
+  patch: Partial<ClipTransform>,
+): ClipTransform {
   return {
     ...current,
     ...patch,
@@ -161,7 +167,10 @@ function buildNextTransform(current: ClipTransform | undefined, patch: Partial<C
   };
 }
 
-function buildNextStyle(current: TextClipStyle | undefined, patch: Partial<TextClipStyle>): TextClipStyle {
+function buildNextStyle(
+  current: TextClipStyle | undefined,
+  patch: Partial<TextClipStyle>,
+): TextClipStyle {
   return {
     ...(current ?? {}),
     ...patch,

@@ -146,10 +146,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         return true;
       },
       has(_t, prop) {
-        return (
-          typeof prop === 'string' &&
-          (prop in viewRef || prop in projectRef)
-        );
+        return typeof prop === 'string' && (prop in viewRef || prop in projectRef);
       },
       ownKeys() {
         return [...Object.keys(viewRef), ...Object.keys(projectRef)];
@@ -348,7 +345,9 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
               : undefined;
             if (!firstMonitor) return settings.monitor;
             const lift: Partial<typeof settings.monitor> = {};
-            for (const key of Object.keys(settings.monitor) as Array<keyof typeof settings.monitor>) {
+            for (const key of Object.keys(settings.monitor) as Array<
+              keyof typeof settings.monitor
+            >) {
               const v = firstMonitor[key as string];
               if (v !== undefined) (lift as Record<string, unknown>)[key as string] = v;
             }
@@ -387,8 +386,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           if (uiRaw.ui) {
             settings.ui = { ...settings.ui, ...uiRaw.ui };
           }
-
-
         }
       }
 

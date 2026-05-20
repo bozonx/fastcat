@@ -86,7 +86,10 @@ describe('InMemoryFileSystemAdapter', () => {
       await vfs.writeFile('a.txt', '');
       await vfs.createDirectory('sub');
       const entries = await vfs.readDirectory('');
-      expect(entries.map((e) => `${e.kind}:${e.name}`).sort()).toEqual(['directory:sub', 'file:a.txt']);
+      expect(entries.map((e) => `${e.kind}:${e.name}`).sort()).toEqual([
+        'directory:sub',
+        'file:a.txt',
+      ]);
     });
 
     it('returns empty for unknown nested path', async () => {

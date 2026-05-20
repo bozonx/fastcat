@@ -89,7 +89,9 @@ export async function createAudioStreamFromFile(file: File): Promise<{
         try {
           let headerSent = false;
 
-          for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(0, durationS || 1e9)) {
+          for await (const sampleRaw of (
+            sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
+          ).samples(0, durationS || 1e9)) {
             const sample = sampleRaw as unknown;
             try {
               if (!headerSent) {
@@ -116,11 +118,19 @@ export async function createAudioStreamFromFile(file: File): Promise<{
         } catch (err) {
           controller.error(err);
         } finally {
-          if (typeof (sink as { close?: () => void }).close === 'function') (sink as { close?: () => void }).close();
-          if (typeof (sink as { dispose?: () => void }).dispose === 'function') (sink as { dispose?: () => void }).dispose();
-          if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
+          if (typeof (sink as { close?: () => void }).close === 'function')
+            (sink as { close?: () => void }).close();
+          if (typeof (sink as { dispose?: () => void }).dispose === 'function')
+            (sink as { dispose?: () => void }).dispose();
+          if (
+            'dispose' in input &&
+            typeof (input as { dispose?: () => void }).dispose === 'function'
+          )
             (input as { dispose?: () => void }).dispose();
-          else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
+          else if (
+            'close' in input &&
+            typeof (input as { close?: () => void }).close === 'function'
+          )
             (input as { close?: () => void }).close();
         }
       },
@@ -163,7 +173,8 @@ export async function createAudioStreamFromFile(file: File): Promise<{
   } catch (err) {
     if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
       (input as { dispose?: () => void }).dispose();
-    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function') (input as { close?: () => void }).close();
+    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
+      (input as { close?: () => void }).close();
     throw err;
   }
 }

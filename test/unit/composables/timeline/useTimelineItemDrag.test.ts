@@ -7,9 +7,11 @@ const bindSessionMock = vi.fn();
 const clearSessionMock = vi.fn();
 const scheduleUpdateMock = vi.fn((update: () => void) => update());
 const historyPushMock = vi.fn();
-const pushTimelineHistoryMock = vi.fn((preState: unknown, commandType: string, labelKey: string) => {
-  historyPushMock('timeline', commandType, preState, labelKey);
-});
+const pushTimelineHistoryMock = vi.fn(
+  (preState: unknown, commandType: string, labelKey: string) => {
+    historyPushMock('timeline', commandType, preState, labelKey);
+  },
+);
 const pasteClipsMock = vi.fn();
 const requestTimelineSaveMock = vi.fn(async () => {});
 // Mocks that mutate timelineStoreMock.timelineDoc so the drag flow's "did the

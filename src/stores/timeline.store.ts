@@ -33,10 +33,7 @@ import { createTimelineLifecycleModule } from '~/stores/timeline/lifecycle';
 
 import { getDocFps } from '~/timeline/commands/utils';
 import { getTimelineFormat, setTimelineFormat, type TimelineFormatInput } from '~/timeline/format';
-import {
-  findNextMarkerTime,
-  findPreviousMarkerTime,
-} from '~/utils/timeline/marker-navigation';
+import { findNextMarkerTime, findPreviousMarkerTime } from '~/utils/timeline/marker-navigation';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -699,11 +696,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       }
     },
     goToPreviousMarker: () => {
-      const prev = findPreviousMarkerTime(
-        markerService.getMarkers(),
-        currentTime.value,
-        fps.value,
-      );
+      const prev = findPreviousMarkerTime(markerService.getMarkers(), currentTime.value, fps.value);
       if (prev !== undefined) {
         lifecycle.setCurrentTimeUs(prev);
         scrollToPlayheadRequest.value++;

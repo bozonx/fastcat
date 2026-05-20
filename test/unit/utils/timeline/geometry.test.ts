@@ -126,11 +126,15 @@ describe('sanitizeSnapTargetsUs', () => {
 
 describe('pickBestSnapCandidateUs', () => {
   it('picks closest target within threshold', () => {
-    expect(pickBestSnapCandidateUs({ rawUs: 105, thresholdUs: 10, targetsUs: [100, 120] })).toEqual({ snappedUs: 100, distUs: 5 });
+    expect(pickBestSnapCandidateUs({ rawUs: 105, thresholdUs: 10, targetsUs: [100, 120] })).toEqual(
+      { snappedUs: 100, distUs: 5 },
+    );
   });
 
   it('returns raw value when no target is within threshold', () => {
-    expect(pickBestSnapCandidateUs({ rawUs: 150, thresholdUs: 10, targetsUs: [100, 200] })).toEqual({ snappedUs: 150, distUs: 10 });
+    expect(pickBestSnapCandidateUs({ rawUs: 150, thresholdUs: 10, targetsUs: [100, 200] })).toEqual(
+      { snappedUs: 150, distUs: 10 },
+    );
   });
 });
 

@@ -56,7 +56,9 @@ const fileManager = useFileManager();
 const uiStore = useUiStore();
 const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
-const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as ReturnType<typeof useFileManagerStore>;
+const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as ReturnType<
+  typeof useFileManagerStore
+>;
 const filesPageStore = useFilesPageFileManagerStore();
 const clipboardStore = useAppClipboard();
 
@@ -237,7 +239,9 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string) {
 }
 
 function handleUpdateMask(mask: unknown) {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as { mask: unknown });
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as {
+    mask: unknown;
+  });
 }
 
 function handleUpdateClipEffects(effects: VideoClipEffect[]) {

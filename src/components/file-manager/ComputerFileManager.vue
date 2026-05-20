@@ -4,7 +4,7 @@ import { Pane, Splitpanes } from 'splitpanes';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useComputerSidebarStore } from '~/stores/file-manager.store';
+import { useComputerSidebarStore, useFileManagerStore } from '~/stores/file-manager.store';
 import {
   createFileManager,
   FILE_MANAGER_INJECTION_KEY,
@@ -12,7 +12,6 @@ import {
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
-import { useFileManagerStore } from '~/stores/file-manager.store';
 
 const props = defineProps<{
   instanceId?: string;
@@ -143,10 +142,7 @@ function onResized(event: { panes: Array<{ size: number }> }) {
 </script>
 
 <template>
-  <Splitpanes
-    class="h-full w-full editor-splitpanes computer-file-manager"
-    @resized="onResized"
-  >
+  <Splitpanes class="h-full w-full editor-splitpanes computer-file-manager" @resized="onResized">
     <Pane :size="treeSize" min-size="10" class="border-r border-ui-border">
       <FileManagerPanel
         folders-only

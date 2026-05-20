@@ -104,7 +104,9 @@ export async function resampleChannelsOfflineAudioContext(params: {
   const { planes, sourceSampleRate, targetSampleRate, sourceFrames, targetFrames, channels } =
     params;
   const OfflineCtx =
-    globalThis.OfflineAudioContext || (globalThis as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext;
+    globalThis.OfflineAudioContext ||
+    (globalThis as { webkitOfflineAudioContext?: typeof OfflineAudioContext })
+      .webkitOfflineAudioContext;
   if (!OfflineCtx) {
     throw new Error('OfflineAudioContext not supported');
   }
@@ -151,7 +153,9 @@ export async function resampleAndStretchOffline(params: {
     playbackRate,
   } = params;
   const OfflineCtx =
-    globalThis.OfflineAudioContext || (globalThis as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext;
+    globalThis.OfflineAudioContext ||
+    (globalThis as { webkitOfflineAudioContext?: typeof OfflineAudioContext })
+      .webkitOfflineAudioContext;
   if (!OfflineCtx) {
     throw new Error('OfflineAudioContext not supported');
   }

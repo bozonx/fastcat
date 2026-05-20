@@ -181,10 +181,7 @@ onBeforeUnmount(() => {
           class="min-w-[20px] flex items-center overflow-hidden rounded px-0.5 hover:bg-ui-bg-accent/30"
           @click.stop="startRenaming"
         >
-          <span
-            class="truncate block text-[10px] font-medium leading-tight"
-            :title="track.name"
-          >
+          <span class="truncate block text-[10px] font-medium leading-tight" :title="track.name">
             {{ track.name }}
           </span>
         </div>

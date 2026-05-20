@@ -272,7 +272,10 @@ function handleRenameTrack(name: string) {
 
             <span
               class="text-xs font-medium text-zinc-200 truncate w-full text-center px-1 cursor-text"
-              @dblclick="trackToRename = track; isRenameModalOpen = true"
+              @dblclick="
+                trackToRename = track;
+                isRenameModalOpen = true;
+              "
             >
               {{ track.name || track.id }}
             </span>

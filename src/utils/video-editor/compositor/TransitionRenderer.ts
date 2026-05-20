@@ -12,7 +12,10 @@ export interface TransitionRendererParams {
   transitionManager: TransitionManager;
   stageTextureRenderer: StageTextureRenderer;
   getTrackById: (trackId: string) => CompositorTrack | undefined;
-  getActiveTransitionState: (clip: CompositorClip, timeUs: number) => { opacity: number; progress: number; mode?: string } | null;
+  getActiveTransitionState: (
+    clip: CompositorClip,
+    timeUs: number,
+  ) => { opacity: number; progress: number; mode?: string } | null;
   ensureTransitionRenderTexture: (texture: RenderTexture | null) => RenderTexture;
   findPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
   findNextClipOnLayer: (clip: CompositorClip) => CompositorClip | null;

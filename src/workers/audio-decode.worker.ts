@@ -157,7 +157,9 @@ async function decodeToFloat32Channels(
     const decodeStartS = rangeStartTimeS;
     const decodeEndS = rangeDurationS ? rangeStartTimeS + rangeDurationS : durationS || 1e9;
 
-    for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(decodeStartS, decodeEndS)) {
+    for await (const sampleRaw of (
+      sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
+    ).samples(decodeStartS, decodeEndS)) {
       const sample = sampleRaw as {
         sampleRate: number;
         numberOfChannels: number;
@@ -278,7 +280,9 @@ async function extractPeaksFromSource(
       const peaks: Float32Array[] = [];
       let resolvedChannels = 0;
 
-      for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(0, durationS || 1e9)) {
+      for await (const sampleRaw of (
+        sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
+      ).samples(0, durationS || 1e9)) {
         const sample = sampleRaw as unknown;
         try {
           const frames = Number(sample.numberOfFrames) || 0;
@@ -345,13 +349,16 @@ async function extractPeaksFromSource(
       }
       return peaks;
     } finally {
-      if (typeof (sink as { close?: () => void }).close === 'function') (sink as { close?: () => void }).close();
-      if (typeof (sink as { dispose?: () => void }).dispose === 'function') (sink as { dispose?: () => void }).dispose();
+      if (typeof (sink as { close?: () => void }).close === 'function')
+        (sink as { close?: () => void }).close();
+      if (typeof (sink as { dispose?: () => void }).dispose === 'function')
+        (sink as { dispose?: () => void }).dispose();
     }
   } finally {
     if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
       (input as { dispose?: () => void }).dispose();
-    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function') (input as { close?: () => void }).close();
+    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
+      (input as { close?: () => void }).close();
   }
 }
 
@@ -391,7 +398,9 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
       let totalSamples = 0;
       let sourceRate = 48000;
 
-      for await (const sampleRaw of (sink as { samples: (...args: number[]) => AsyncIterable<unknown> }).samples(0, durationS || 1e9)) {
+      for await (const sampleRaw of (
+        sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
+      ).samples(0, durationS || 1e9)) {
         const sample = sampleRaw as unknown;
         try {
           sourceRate = sample.sampleRate || sourceRate;
@@ -437,13 +446,16 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
         sttAudio,
       };
     } finally {
-      if (typeof (sink as { close?: () => void }).close === 'function') (sink as { close?: () => void }).close();
-      if (typeof (sink as { dispose?: () => void }).dispose === 'function') (sink as { dispose?: () => void }).dispose();
+      if (typeof (sink as { close?: () => void }).close === 'function')
+        (sink as { close?: () => void }).close();
+      if (typeof (sink as { dispose?: () => void }).dispose === 'function')
+        (sink as { dispose?: () => void }).dispose();
     }
   } finally {
     if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
       (input as { dispose?: () => void }).dispose();
-    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function') (input as { close?: () => void }).close();
+    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
+      (input as { close?: () => void }).close();
   }
 }
 

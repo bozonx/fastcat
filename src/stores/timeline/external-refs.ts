@@ -16,7 +16,11 @@ export interface TimelineExternalRefsModule {
  * created from the pre-hydration state. Computed getters always read from
  * the current store proxy, maintaining reactivity across hydration.
  */
-function createStoreRef<T>(store: Record<string, unknown>, key: string, fallback: T): WritableComputedRef<T> {
+function createStoreRef<T>(
+  store: Record<string, unknown>,
+  key: string,
+  fallback: T,
+): WritableComputedRef<T> {
   return computed({
     get: () => (store && key in store ? store[key] : fallback),
     set: (v: T) => {

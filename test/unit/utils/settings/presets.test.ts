@@ -34,12 +34,18 @@ describe('resolveProjectPreset', () => {
   });
 
   it('returns preset matching selectedPresetId', () => {
-    const preset = resolveProjectPreset({ selectedPresetId: 'fhd-30-desktop', items: createDefaultProjectPresets().items });
+    const preset = resolveProjectPreset({
+      selectedPresetId: 'fhd-30-desktop',
+      items: createDefaultProjectPresets().items,
+    });
     expect(preset.id).toBe('fhd-30-desktop');
   });
 
   it('falls back to first preset if id not found', () => {
-    const preset = resolveProjectPreset({ selectedPresetId: 'unknown', items: createDefaultProjectPresets().items });
+    const preset = resolveProjectPreset({
+      selectedPresetId: 'unknown',
+      items: createDefaultProjectPresets().items,
+    });
     expect(preset.id).toBe('fhd-25-desktop');
   });
 });
@@ -70,7 +76,10 @@ describe('resolveExportPreset', () => {
   });
 
   it('returns preset matching selectedPresetId', () => {
-    const preset = resolveExportPreset({ selectedPresetId: 'social', items: createDefaultExportPresets().items });
+    const preset = resolveExportPreset({
+      selectedPresetId: 'social',
+      items: createDefaultExportPresets().items,
+    });
     expect(preset.id).toBe('social');
   });
 });

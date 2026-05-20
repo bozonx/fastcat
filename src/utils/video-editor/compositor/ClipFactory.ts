@@ -59,7 +59,9 @@ export class ClipFactory {
       clipType: params.clipType,
       clipKind: 'solid',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
+      imageSource: new ImageSource({
+        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
+      }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -103,7 +105,9 @@ export class ClipFactory {
       clipType: 'text',
       clipKind: 'text',
       sourceKind: 'canvas',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
+      imageSource: new ImageSource({
+        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
+      }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -151,7 +155,9 @@ export class ClipFactory {
       clipType: 'shape',
       clipKind: 'shape',
       sourceKind: 'graphics',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
+      imageSource: new ImageSource({
+        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
+      }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -200,7 +206,9 @@ export class ClipFactory {
       clipType: 'adjustment',
       clipKind: 'adjustment',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
+      imageSource: new ImageSource({
+        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
+      }),
       lastVideoFrame: null,
       canvas: null,
       ctx: null,
@@ -244,7 +252,9 @@ export class ClipFactory {
       clipType: 'hud',
       clipKind: 'hud',
       sourceKind: 'bitmap',
-      imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
+      imageSource: new ImageSource({
+        resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement,
+      }),
       lastVideoFrame: null,
       canvas: new OffscreenCanvas(this.context.width, this.context.height),
       ctx: null,
@@ -270,7 +280,9 @@ export class ClipFactory {
     const ctx = clip.canvas?.getContext('2d');
     if (ctx) {
       clip.ctx = ctx as OffscreenCanvasRenderingContext2D;
-      const canvasSource = new CanvasSource({ resource: clip.canvas as unknown as HTMLCanvasElement });
+      const canvasSource = new CanvasSource({
+        resource: clip.canvas as unknown as HTMLCanvasElement,
+      });
       sprite.texture.source = canvasSource;
     }
 

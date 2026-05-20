@@ -208,8 +208,15 @@ export class VideoCompositor {
 
     return value.filter((effect): effect is VideoClipEffect => {
       if (!effect || typeof effect !== 'object') return false;
-      if (typeof (effect as { id?: string }).id !== 'string' || (effect as { id?: string }).id.length === 0) return false;
-      if (typeof (effect as { type?: string }).type !== 'string' || (effect as { type?: string }).type.length === 0)
+      if (
+        typeof (effect as { id?: string }).id !== 'string' ||
+        (effect as { id?: string }).id.length === 0
+      )
+        return false;
+      if (
+        typeof (effect as { type?: string }).type !== 'string' ||
+        (effect as { type?: string }).type.length === 0
+      )
         return false;
 
       return (effect as { target?: string }).target !== 'audio';
@@ -486,8 +493,16 @@ export class VideoCompositor {
     }
 
     if (this.canvas && 'addEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)) {
-      (this.canvas as HTMLCanvasElement).addEventListener('webglcontextlost', this.onContextLost, false);
-      (this.canvas as HTMLCanvasElement).addEventListener('webglcontextrestored', this.onContextRestored, false);
+      (this.canvas as HTMLCanvasElement).addEventListener(
+        'webglcontextlost',
+        this.onContextLost,
+        false,
+      );
+      (this.canvas as HTMLCanvasElement).addEventListener(
+        'webglcontextrestored',
+        this.onContextRestored,
+        false,
+      );
     }
 
     await this.app.init({
@@ -645,7 +660,9 @@ export class VideoCompositor {
   ): Promise<number> {
     const isCancelled = () => abortSignal?.aborted === true || checkCancel?.() === true;
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
-    const nextMaster = meta ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null) : null;
+    const nextMaster = meta
+      ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null)
+      : null;
     this.masterEffects = nextMaster;
     this.syncTrackRuntimes(timelineClips);
     this.stageSortDirty = true;
@@ -666,8 +683,9 @@ export class VideoCompositor {
         destroyClip: (clip) => this.destroyClip(clip),
         getExistingClipById: (itemId) => this.clipById.get(itemId),
         getFallbackTrackId: (clipData) =>
-          this.getTrackRuntimeForClip({ layer: Math.round(Number((clipData as { layer?: number }).layer ?? 0)) })
-            ?.id ?? null,
+          this.getTrackRuntimeForClip({
+            layer: Math.round(Number((clipData as { layer?: number }).layer ?? 0)),
+          })?.id ?? null,
         getTrackRuntimeForClip: (clip) => this.getTrackRuntimeForClip(clip),
         applySolidLayout: (clip) => this.layoutApplier.applySolidLayout(clip),
         replaceExistingClip: (params) => this.replaceExistingClip(params),
@@ -695,7 +713,9 @@ export class VideoCompositor {
 
   updateTimelineLayout(timelineClips: unknown[]): number {
     const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
-    const nextMaster = meta ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null) : null;
+    const nextMaster = meta
+      ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null)
+      : null;
     this.masterEffects = nextMaster;
 
     this.syncTrackRuntimes(timelineClips);
@@ -996,9 +1016,16 @@ export class VideoCompositor {
       this.app = null;
     }
 
-    if (this.canvas && 'removeEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)) {
+    if (
+      this.canvas &&
+      'removeEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)
+    ) {
       try {
-        (this.canvas as HTMLCanvasElement).removeEventListener('webglcontextlost', this.onContextLost, false);
+        (this.canvas as HTMLCanvasElement).removeEventListener(
+          'webglcontextlost',
+          this.onContextLost,
+          false,
+        );
         (this.canvas as HTMLCanvasElement).removeEventListener(
           'webglcontextrestored',
           this.onContextRestored,

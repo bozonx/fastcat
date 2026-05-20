@@ -243,7 +243,9 @@ export function useClipBatchActions(
       itemId,
       properties: { locked: nextVal },
     }));
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.toggleLock' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.toggleLock',
+    });
   }
 
   function toggleSolo() {
@@ -256,7 +258,9 @@ export function useClipBatchActions(
       trackId,
       properties: { audioSolo: nextVal },
     }));
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.toggleSolo' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.toggleSolo',
+    });
   }
 
   function handleUnlinkSelected() {
@@ -289,7 +293,9 @@ export function useClipBatchActions(
         const isLocked = Boolean((it as TimelineClipItem).lockToLinkedVideo);
 
         const shouldUnlink =
-          (selectedIds.has(it.id) && Boolean((it as TimelineClipItem).linkedVideoClipId) && isLocked) ||
+          (selectedIds.has(it.id) &&
+            Boolean((it as TimelineClipItem).linkedVideoClipId) &&
+            isLocked) ||
           (videoIds.length > 0 && isLocked && linked && videoIds.includes(linked));
 
         if (!shouldUnlink) continue;
@@ -304,7 +310,9 @@ export function useClipBatchActions(
     }
 
     if (cmds.length === 0) return;
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.unlinkAudio' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.unlinkAudio',
+    });
   }
 
   function handleGroupSelected() {
@@ -320,7 +328,9 @@ export function useClipBatchActions(
       },
     }));
 
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.groupClips' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.groupClips',
+    });
   }
 
   function handleUngroupSelected() {
@@ -333,7 +343,9 @@ export function useClipBatchActions(
       },
     }));
 
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.ungroupClips' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.ungroupClips',
+    });
   }
 
   function handleDelete() {
@@ -342,7 +354,9 @@ export function useClipBatchActions(
       trackId,
       itemIds: [itemId],
     }));
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.deleteItems' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
+    });
     ctx.clearSelection();
   }
 
@@ -361,7 +375,9 @@ export function useClipBatchActions(
       });
     }
     if (cmds.length > 0) {
-      ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.toggleDisabled' });
+      ctx.batchApplyTimeline(cmds, {
+        labelKey: 'videoEditor.fileManager.history.entries.toggleDisabled',
+      });
     }
   }
 
@@ -391,7 +407,9 @@ export function useClipBatchActions(
       }
     }
     if (cmds.length > 0) {
-      ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.toggleMute' });
+      ctx.batchApplyTimeline(cmds, {
+        labelKey: 'videoEditor.fileManager.history.entries.toggleMute',
+      });
     }
   }
 
@@ -403,7 +421,9 @@ export function useClipBatchActions(
       itemId,
       properties: { showWaveform: nextVal },
     }));
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.toggleWaveform' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.toggleWaveform',
+    });
   }
 
   function toggleWaveformMode() {
@@ -414,7 +434,9 @@ export function useClipBatchActions(
       itemId,
       properties: { audioWaveformMode: nextVal },
     }));
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.toggleWaveformMode' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.toggleWaveformMode',
+    });
   }
 
   function toggleShowThumbnails() {
@@ -425,7 +447,9 @@ export function useClipBatchActions(
       itemId,
       properties: { showThumbnails: nextVal },
     }));
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.toggleThumbnails' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.toggleThumbnails',
+    });
   }
 
   function handleSetUniformDuration(durationUs: number) {
@@ -458,7 +482,9 @@ export function useClipBatchActions(
     }
 
     if (cmds.length === 0) return;
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.updateClip' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.updateClip',
+    });
   }
 
   function handleBatchUpdateProperties(
@@ -479,7 +505,9 @@ export function useClipBatchActions(
         properties: props,
       };
     });
-    ctx.batchApplyTimeline(cmds, { labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties' });
+    ctx.batchApplyTimeline(cmds, {
+      labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
+    });
   }
 
   function handleQuantizeSelected() {
