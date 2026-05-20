@@ -8,7 +8,7 @@ interface BaseParamControl {
   key?: string;
   label?: string;
   labelKey?: string;
-  showIf?: (values: Record<string, any>) => boolean;
+  showIf?: (values: Record<string, unknown>) => boolean;
   disabled?: boolean;
 }
 
@@ -89,7 +89,7 @@ export interface ArrayParamControl extends BaseParamControl {
   kind: 'array';
   key: string;
   itemTemplate: ParamControl[];
-  defaultItem: Record<string, any>;
+  defaultItem: Record<string, unknown>;
   addLabel?: string;
   addLabelKey?: string;
   emptyLabel?: string;

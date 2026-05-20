@@ -282,7 +282,7 @@ export function useTimelineHotkeys(
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
           timelineStore.moveSelectedClips(-fps);
         },
       });
@@ -295,7 +295,7 @@ export function useTimelineHotkeys(
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
           timelineStore.moveSelectedClips(fps);
         },
       });

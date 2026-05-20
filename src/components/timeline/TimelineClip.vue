@@ -141,7 +141,7 @@ function onContextMenu(e: MouseEvent) {
     if (props.isMobile && !longPressTriggered.value && !didStartDrag.value) {
       longPressTriggered.value = true;
       emit('clipAction', {
-        action: 'longPress' as any,
+        action: 'longPress' as string,
         trackId: props.track.id,
         itemId: props.item.id,
       });
@@ -187,7 +187,7 @@ const {
   onLongPress: () => {
     if (props.isMobile) {
       emit('clipAction', {
-        action: 'longPress' as any,
+        action: 'longPress' as string,
         trackId: props.track.id,
         itemId: props.item.id,
       });

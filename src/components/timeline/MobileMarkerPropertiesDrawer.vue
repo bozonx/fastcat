@@ -63,8 +63,8 @@ function handleCreateSelectionRange() {
   timelineStore.createSelectionRangeFromMarker(marker.value.id);
 }
 
-const mainActions = computed<any[]>(() => {
-  const list: any[] = [];
+const mainActions = computed<unknown[]>(() => {
+  const list: unknown[] = [];
   if (!marker.value) return list;
 
   list.push({

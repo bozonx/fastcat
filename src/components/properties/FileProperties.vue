@@ -589,12 +589,12 @@ const {
   createSubgroup: () => {
     const entry = props.selectedFsEntry;
     if (!entry || entry.kind !== 'directory') return;
-    (uiStore as any).pendingBloggerDogCreateSubgroup = entry;
+    (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup = entry;
   },
   createContentItem: () => {
     const entry = props.selectedFsEntry;
     if (!entry || entry.kind !== 'directory') return;
-    (uiStore as any).pendingBloggerDogCreateItem = entry;
+    (uiStore as { pendingBloggerDogCreateItem?: unknown }).pendingBloggerDogCreateItem = entry;
   },
   onCopy,
   onCut,
@@ -1003,14 +1003,14 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           selectedFsEntry.kind === 'file'
         "
         :title="generalInfoTitle"
-        :file-info="fileInfo || (selectedFsEntry as any)"
+        :file-info="fileInfo || (selectedFsEntry as Record<string, unknown>)"
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
         :media-count="remoteMediaCount"
         :instance-id="props.instanceId"
         :is-external="isExternalContext"
-        :hide-header="(props.selectedFsEntry as any)?.mimeType === 'application/octet-stream'"
+        :hide-header="(props.selectedFsEntry as { mimeType?: string })?.mimeType === 'application/octet-stream'"
       >
         <template v-if="mediaType === 'text' && lineCount !== null">
           <PropertyRow :label="t('fastcat.file.lineCount')" :value="lineCount" />
@@ -1038,7 +1038,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isBloggerDogGroup
         "
         :title="generalInfoTitle"
-        :file-info="fileInfo || (selectedFsEntry as any)"
+        :file-info="fileInfo || (selectedFsEntry as Record<string, unknown>)"
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"

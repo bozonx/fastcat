@@ -103,7 +103,7 @@ export function usePlaybackHotkeys(
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
           timelineStore.seekFrames(fps);
         },
       });
@@ -116,7 +116,7 @@ export function usePlaybackHotkeys(
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as any));
+          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
           timelineStore.seekFrames(-fps);
         },
       });

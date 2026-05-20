@@ -149,7 +149,7 @@ const {
       kind: 'directory',
       name: path.split('/').pop() || '',
       source: 'remote',
-    }) as any,
+    }) as FsEntry,
   remoteCurrentFolder: ref(null),
   loadFolderContent,
   loadParentFolders: async () => {},
@@ -342,7 +342,7 @@ async function onRenameConfirm(newName: string) {
       description: t('common.saveSuccess'),
       color: 'success',
     });
-  } catch (err: any) {
+  } catch (err) {
     toast.add({
       title: t('common.error'),
       description: String(err?.message || err),
