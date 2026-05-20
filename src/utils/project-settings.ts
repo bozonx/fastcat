@@ -10,17 +10,29 @@ interface ProjectSettingsUserDefaultsInput {
   exportPresets: FastCatUserSettings['exportPresets'];
 }
 
-export interface MonitorSettings {
-  previewResolution: number;
-  useProxy: boolean;
-  previewEffectsEnabled: boolean;
+/** Per-editor-view monitor state (pan & zoom of the preview viewport). */
+export interface MonitorViewSettings {
   panX: number;
   panY: number;
   zoom: number;
+}
+
+/** Project-wide monitor settings, shared between all editor views (cut/sound/export). */
+export interface ProjectMonitorSettings {
+  previewResolution: number;
+  useProxy: boolean;
+  previewEffectsEnabled: boolean;
   showGrid: boolean;
   showTimecode: boolean;
   toolbarPosition: 'top' | 'bottom' | 'left' | 'right';
 }
+
+/**
+ * Combined monitor settings shape — kept as a facade for consumers that access
+ * a single object. Per-view fields (pan/zoom) live in {@link MonitorViewSettings},
+ * the rest in {@link ProjectMonitorSettings}.
+ */
+export interface MonitorSettings extends MonitorViewSettings, ProjectMonitorSettings {}
 
 export interface TimelineSessionState {
   playheadUs: number;
@@ -79,7 +91,10 @@ export interface FastCatProjectSettings {
       exportAlpha: boolean;
     };
   };
-  monitors: Record<string, MonitorSettings>;
+  /** Project-wide monitor settings (effects, proxy, resolution, grid, timecode, toolbar position). */
+  monitor: ProjectMonitorSettings;
+  /** Per-view monitor pan/zoom (keys: `cut`, `sound`, `export`, plus `*-mobile` for platform). */
+  monitors: Record<string, MonitorViewSettings>;
   timelines: {
     openPaths: string[];
     sessions: Record<string, TimelineSessionState>;
@@ -103,16 +118,25 @@ export interface FastCatProjectSettings {
   };
 }
 
-export const DEFAULT_MONITOR_SETTINGS: MonitorSettings = {
+export const DEFAULT_PROJECT_MONITOR_SETTINGS: ProjectMonitorSettings = {
   previewResolution: 0.5,
   useProxy: true,
   previewEffectsEnabled: true,
-  panX: 0,
-  panY: 0,
-  zoom: 1,
   showGrid: false,
   showTimecode: true,
   toolbarPosition: 'bottom',
+};
+
+export const DEFAULT_MONITOR_VIEW_SETTINGS: MonitorViewSettings = {
+  panX: 0,
+  panY: 0,
+  zoom: 1,
+};
+
+/** @deprecated Use {@link DEFAULT_PROJECT_MONITOR_SETTINGS} / {@link DEFAULT_MONITOR_VIEW_SETTINGS}. */
+export const DEFAULT_MONITOR_SETTINGS: MonitorSettings = {
+  ...DEFAULT_PROJECT_MONITOR_SETTINGS,
+  ...DEFAULT_MONITOR_VIEW_SETTINGS,
 };
 
 export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
@@ -142,10 +166,11 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
       exportAlpha: false,
     },
   },
+  monitor: { ...DEFAULT_PROJECT_MONITOR_SETTINGS },
   monitors: {
-    cut: { ...DEFAULT_MONITOR_SETTINGS },
-    sound: { ...DEFAULT_MONITOR_SETTINGS },
-    export: { ...DEFAULT_MONITOR_SETTINGS },
+    cut: { ...DEFAULT_MONITOR_VIEW_SETTINGS },
+    sound: { ...DEFAULT_MONITOR_VIEW_SETTINGS },
+    export: { ...DEFAULT_MONITOR_VIEW_SETTINGS },
   },
   timelines: {
     openPaths: [],
@@ -221,14 +246,14 @@ export function createDefaultProjectSettings(
   userSettings: ProjectSettingsUserDefaultsInput,
 ): FastCatProjectSettings {
   const base = getProjectSettingsFromUserDefaults(userSettings);
-  const monitorBase = { ...DEFAULT_MONITOR_SETTINGS };
   return {
     ...base,
     version: 1,
+    monitor: { ...DEFAULT_PROJECT_MONITOR_SETTINGS },
     monitors: {
-      cut: { ...monitorBase },
-      sound: { ...monitorBase },
-      export: { ...monitorBase },
+      cut: { ...DEFAULT_MONITOR_VIEW_SETTINGS },
+      sound: { ...DEFAULT_MONITOR_VIEW_SETTINGS },
+      export: { ...DEFAULT_MONITOR_VIEW_SETTINGS },
     },
     timelines: {
       openPaths: [],
@@ -255,16 +280,23 @@ export function createDefaultProjectSettings(
 }
 
 function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
-  const dm = defaults.monitors.cut ?? DEFAULT_MONITOR_SETTINGS;
-  const monitorSchema = z.object({
+  const dm = defaults.monitor;
+  const dv = defaults.monitors.cut ?? DEFAULT_MONITOR_VIEW_SETTINGS;
+  // Per-view shape kept lenient: legacy fields (resolution/effects/proxy/etc) are
+  // accepted and stripped during normalization to populate the project-wide block.
+  const monitorViewSchema = z
+    .object({
+      panX: z.coerce.number().catch(dv.panX),
+      panY: z.coerce.number().catch(dv.panY),
+      zoom: z.coerce.number().min(0.05).max(20).catch(dv.zoom),
+    })
+    .passthrough();
+  const projectMonitorSchema = z.object({
     previewResolution: z.coerce.number().min(0.01).max(4320).catch(dm.previewResolution),
     useProxy: z.coerce.boolean().catch(dm.useProxy),
     previewEffectsEnabled: z.coerce.boolean().catch(dm.previewEffectsEnabled),
-    panX: z.coerce.number().catch(dm.panX),
-    panY: z.coerce.number().catch(dm.panY),
-    zoom: z.coerce.number().min(0.05).max(20).catch(dm.zoom),
     showGrid: z.coerce.boolean().catch(dm.showGrid),
-    showTimecode: z.coerce.boolean().catch(dm.showTimecode ?? true),
+    showTimecode: z.coerce.boolean().catch(dm.showTimecode),
     toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch(dm.toolbarPosition),
   });
 
@@ -372,7 +404,8 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             .catch(defaults.exportDefaults.encoding),
         })
         .catch(defaults.exportDefaults),
-      monitors: z.record(z.string(), monitorSchema).catch({}),
+      monitor: projectMonitorSchema.catch(defaults.monitor),
+      monitors: z.record(z.string(), monitorViewSchema).catch({}),
       timelines: z
         .object({
           openPaths: z.array(z.string()).catch([]),
@@ -412,6 +445,24 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     .catch(defaults as unknown);
 }
 
+/** Picks project-wide monitor fields from a legacy per-monitor object. */
+function pickProjectMonitorFields(source: Record<string, unknown>): Partial<ProjectMonitorSettings> {
+  const out: Partial<ProjectMonitorSettings> = {};
+  if (typeof source.previewResolution === 'number') out.previewResolution = source.previewResolution;
+  if (typeof source.useProxy === 'boolean') out.useProxy = source.useProxy;
+  if (typeof source.previewEffectsEnabled === 'boolean')
+    out.previewEffectsEnabled = source.previewEffectsEnabled;
+  if (typeof source.showGrid === 'boolean') out.showGrid = source.showGrid;
+  if (typeof source.showTimecode === 'boolean') out.showTimecode = source.showTimecode;
+  if (
+    typeof source.toolbarPosition === 'string' &&
+    ['top', 'bottom', 'left', 'right'].includes(source.toolbarPosition)
+  ) {
+    out.toolbarPosition = source.toolbarPosition as ProjectMonitorSettings['toolbarPosition'];
+  }
+  return out;
+}
+
 export function normalizeProjectSettings(
   raw: unknown,
   userSettings: ProjectSettingsUserDefaultsInput,
@@ -424,6 +475,23 @@ export function normalizeProjectSettings(
 
   const input = raw as Record<string, unknown>;
 
+  // Legacy migration: project-wide monitor settings used to live inside each
+  // per-view entry of `monitors`. Promote them to the top-level `monitor` block
+  // when missing, preferring `monitors.cut` as the source of truth.
+  const inputMonitors = (input.monitors as Record<string, unknown> | undefined) ?? {};
+  const legacySource =
+    (inputMonitors.cut as Record<string, unknown> | undefined) ??
+    (inputMonitors.sound as Record<string, unknown> | undefined) ??
+    (inputMonitors.export as Record<string, unknown> | undefined) ??
+    {};
+  const migratedProjectMonitor = {
+    ...defaults.monitor,
+    ...pickProjectMonitorFields(legacySource),
+    ...(input.monitor && typeof input.monitor === 'object'
+      ? pickProjectMonitorFields(input.monitor as Record<string, unknown>)
+      : {}),
+  };
+
   const mappedInput: Record<string, unknown> = {
     ...input,
     project: typeof input.project === 'object' ? input.project : {},
@@ -431,27 +499,32 @@ export function normalizeProjectSettings(
       encoding:
         typeof input.exportDefaults?.encoding === 'object' ? input.exportDefaults.encoding : {},
     },
+    monitor: migratedProjectMonitor,
+    monitors: inputMonitors,
   };
-
-  mappedInput.monitors = mappedInput.monitors ?? {};
 
   const schema = createProjectSettingsSchema(defaults);
   const parsed = schema.parse(mappedInput);
 
-  const mergedMonitors: Record<string, MonitorSettings> = {};
+  const mergedMonitors: Record<string, MonitorViewSettings> = {};
   for (const view of ['cut', 'sound', 'export'] as const) {
-    const base = defaults.monitors[view] ?? DEFAULT_MONITOR_SETTINGS;
+    const base = defaults.monitors[view] ?? DEFAULT_MONITOR_VIEW_SETTINGS;
+    const patch = (parsed.monitors[view] ?? {}) as Partial<MonitorViewSettings>;
     mergedMonitors[view] = {
-      ...base,
-      ...(parsed.monitors[view] ?? {}),
-    } as MonitorSettings;
+      panX: typeof patch.panX === 'number' ? patch.panX : base.panX,
+      panY: typeof patch.panY === 'number' ? patch.panY : base.panY,
+      zoom: typeof patch.zoom === 'number' ? patch.zoom : base.zoom,
+    };
   }
   for (const key of Object.keys(parsed.monitors)) {
     if (key === 'cut' || key === 'sound' || key === 'export') continue;
-    const patch = parsed.monitors[key];
-    if (!patch) continue;
-    mergedMonitors[key] = { ...(defaults.monitors.cut ?? DEFAULT_MONITOR_SETTINGS), ...patch };
+    const patch = (parsed.monitors[key] ?? {}) as Partial<MonitorViewSettings>;
+    mergedMonitors[key] = {
+      panX: typeof patch.panX === 'number' ? patch.panX : DEFAULT_MONITOR_VIEW_SETTINGS.panX,
+      panY: typeof patch.panY === 'number' ? patch.panY : DEFAULT_MONITOR_VIEW_SETTINGS.panY,
+      zoom: typeof patch.zoom === 'number' ? patch.zoom : DEFAULT_MONITOR_VIEW_SETTINGS.zoom,
+    };
   }
 
-  return { ...parsed, monitors: mergedMonitors };
+  return { ...parsed, monitor: parsed.monitor, monitors: mergedMonitors };
 }

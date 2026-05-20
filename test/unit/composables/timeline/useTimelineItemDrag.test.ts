@@ -326,6 +326,10 @@ describe('useTimelineItemDrag', () => {
       },
     ]);
 
+    requestTimelineSaveMock.mockImplementationOnce(async () => {
+      expect(movePreview.value).toEqual([]);
+    });
+
     handlers.onPointerUp({
       button: 0,
       clientX: 120,

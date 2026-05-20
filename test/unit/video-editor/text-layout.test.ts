@@ -66,4 +66,27 @@ describe('text-layout', () => {
     expect(metrics.backgroundX).toBe(0);
     expect(metrics.backgroundY).toBe(0);
   });
+
+  it('expands text frame metrics for an outer border', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'text',
+      style: {
+        fontSize: 40,
+        padding: 10,
+        borderEnabled: true,
+        borderWidth: 4,
+        verticalAlign: 'top',
+        align: 'left',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text) => text.length * 10,
+    });
+
+    expect(metrics.backgroundX).toBe(-4);
+    expect(metrics.backgroundY).toBe(-4);
+    expect(metrics.backgroundWidth).toBe(68);
+    expect(metrics.backgroundHeight).toBe(76);
+    expect(metrics.textStartX).toBe(10);
+  });
 });

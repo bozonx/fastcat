@@ -93,7 +93,6 @@ onMounted(() => {
 const DEFAULT_TREE_REL_SIZE = 30;
 const treeRelSize = computed(() => mainStore.treeSize ?? DEFAULT_TREE_REL_SIZE);
 const listRelSize = computed(() => 100 - treeRelSize.value);
-const browserTotalSize = computed(() => (props.sizes?.[0] ?? 0) + (props.sizes?.[1] ?? 0));
 
 const normalizedSelectedEntity = computed(() => {
   const entity = props.selectedEntity;
@@ -126,33 +125,12 @@ function onOuterResized(_event: { panes: Array<{ size: number }> }) {
 }
 
 function onMainResized(event: { panes: Array<{ size: number }> }) {
-  const browserSize = event.panes[0]?.size ?? 0;
-  const propertiesSize = event.panes[1]?.size ?? 0;
-
-  const currentBrowserTotalRaw = (props.sizes?.[0] ?? 0) + (props.sizes?.[1] ?? 0);
-  const treeRatio =
-    currentBrowserTotalRaw === 0 ? 0.3 : (props.sizes?.[0] ?? 0) / currentBrowserTotalRaw;
-  const listRatio = 1 - treeRatio;
-
-  const newSizes = [browserSize * treeRatio, browserSize * listRatio, propertiesSize];
-
-  emit('resized', { panes: newSizes.map((s) => ({ size: s ?? 0 })) });
+  emit('resized', event);
 }
 
 function onBrowserResized(event: { panes: Array<{ size: number }> }) {
-  const treeRel = event.panes[0]?.size ?? 0;
-  const listRel = event.panes[1]?.size ?? 0;
-
-  const browserTotal = browserTotalSize.value;
-  const newSizes = [
-    (treeRel / 100) * browserTotal,
-    (listRel / 100) * browserTotal,
-    props.sizes?.[2] ?? 0,
-  ];
-
-  emit('resized', {
-    panes: newSizes.map((s) => ({ size: Number(s ?? 0) })),
-  });
+  const treeRel = event.panes[0]?.size;
+  if (typeof treeRel === 'number') mainStore.setTreeSize(treeRel);
 }
 </script>
 
@@ -269,7 +247,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
     <Pane :size="75">
       <Splitpanes class="editor-splitpanes h-full" @resized="onMainResized">
         <!-- File Manager (Tree + Browser) -->
-        <Pane :size="(sizes?.[0] ?? 0) + (sizes?.[1] ?? 0)" min-size="20">
+        <Pane :size="sizes?.[0] ?? 80" min-size="20">
           <Splitpanes
             class="editor-splitpanes h-full w-full relative panel-focus-frame"
             :class="{
@@ -295,7 +273,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
         </Pane>
 
         <!-- Properties -->
-        <Pane :size="sizes[2]" min-size="10">
+        <Pane :size="sizes?.[1] ?? 20" min-size="10">
           <PropertiesPanel
             :entity="normalizedSelectedEntity"
             focus-id="dynamic:properties:files-main"

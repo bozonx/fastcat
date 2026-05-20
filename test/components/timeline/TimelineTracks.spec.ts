@@ -8,7 +8,7 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
     template:
-      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode"><slot /></div>',
+      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode"><slot /></div>',
     props: ['item', 'track'],
   },
 }));
@@ -383,6 +383,48 @@ describe('TimelineTracks', () => {
     expect(clip.attributes('data-show-waveform')).toBe('false');
     expect(clip.attributes('data-show-thumbnails')).toBe('false');
     expect(clip.attributes('data-waveform-mode')).toBe('full');
+  });
+
+  it('updates clip timeline geometry without waiting for a later track rerender', async () => {
+    const tracks = [
+      {
+        id: 'track-1',
+        kind: 'video',
+        items: [
+          {
+            id: 'clip-1',
+            kind: 'clip',
+            timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          },
+        ],
+      },
+    ];
+
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks,
+        trackHeights: { 'track-1': 50 },
+      },
+    });
+
+    await component.setProps({
+      tracks: [
+        {
+          ...tracks[0],
+          items: [
+            {
+              ...tracks[0]!.items[0],
+              timelineRange: { startUs: 2_000_000, durationUs: 3_000_000 },
+            },
+          ],
+        },
+      ],
+    });
+
+    const clip = component.find('.mock-timeline-clip');
+    expect(clip.attributes('data-start-us')).toBe('2000000');
+    expect(clip.attributes('data-duration-us')).toBe('3000000');
   });
 
   it('updates clip state props such as locked without waiting for a later track rerender', async () => {

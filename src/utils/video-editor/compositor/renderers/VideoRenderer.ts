@@ -39,10 +39,11 @@ export class VideoRenderer {
     if (typeof sampleObj.draw === 'function' || typeof sampleObj.toCanvasImageSource === 'function') {
       const imageSource: CanvasImageSource =
         typeof sampleObj.toCanvasImageSource === 'function' ? sampleObj.toCanvasImageSource() : (sample as CanvasImageSource);
-      const frameW = Math.max(1, Math.round(imageSource?.displayWidth ?? imageSource?.width ?? 1));
+      const imgAny = imageSource as { displayWidth?: number; width?: number; displayHeight?: number; height?: number };
+      const frameW = Math.max(1, Math.round(imgAny.displayWidth ?? imgAny.width ?? 1));
       const frameH = Math.max(
         1,
-        Math.round(imageSource?.displayHeight ?? imageSource?.height ?? 1),
+        Math.round(imgAny.displayHeight ?? imgAny.height ?? 1),
       );
 
       this.ensureCanvasFallback(clip);

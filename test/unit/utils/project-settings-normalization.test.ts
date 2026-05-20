@@ -59,7 +59,7 @@ describe('project settings normalization', () => {
 
     expect(normalized.project.sampleRate).toBe(48000);
     expect(normalized.exportDefaults.encoding.keyframeIntervalSec).toBe(2);
-    expect(normalized.monitors.cut.previewResolution).toBe(0.5);
-    expect(normalized.monitors.cut.previewEffectsEnabled).toBe(false);
+    expect(normalized.monitor.previewResolution).toBe(0.5);
+    expect(normalized.monitor.previewEffectsEnabled).toBe(false);
   });
 });

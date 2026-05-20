@@ -5,17 +5,27 @@ import {
   type DirectoryHandleLike,
 } from './app-fs.repository';
 
-import type { MonitorSettings } from '~/utils/project-settings';
+import type {
+  MonitorViewSettings,
+  ProjectMonitorSettings,
+} from '~/utils/project-settings';
 
 import { z } from 'zod';
 
-const MonitorSettingsSchema = z.object({
+// Per-view monitor (pan/zoom). Allows passthrough of legacy fields so they can
+// be migrated upward into the project-wide block by `normalizeProjectSettings`.
+const MonitorViewSchema = z
+  .object({
+    panX: z.coerce.number().catch(0),
+    panY: z.coerce.number().catch(0),
+    zoom: z.coerce.number().min(0.05).max(20).catch(1),
+  })
+  .passthrough();
+
+const ProjectMonitorSchema = z.object({
   previewResolution: z.coerce.number().min(0.01).max(4320).catch(0.5),
   useProxy: z.coerce.boolean().catch(true),
   previewEffectsEnabled: z.coerce.boolean().catch(true),
-  panX: z.coerce.number().catch(0),
-  panY: z.coerce.number().catch(0),
-  zoom: z.coerce.number().min(0.05).max(20).catch(1),
   showGrid: z.coerce.boolean().catch(false),
   showTimecode: z.coerce.boolean().catch(true),
   toolbarPosition: z.enum(['top', 'bottom', 'left', 'right']).catch('bottom'),
@@ -71,7 +81,8 @@ const ProjectUiLayoutSchema = z.object({
 
 export const ProjectUiSettingsSchema = z.object({
   version: z.coerce.number().catch(1),
-  monitors: z.record(z.string(), MonitorSettingsSchema).catch({}),
+  monitor: ProjectMonitorSchema.optional(),
+  monitors: z.record(z.string(), MonitorViewSchema).catch({}),
   timelines: z
     .object({
       openPaths: z.array(z.string()).catch([]),

@@ -279,6 +279,10 @@ export function computeTextLayoutMetrics(input: {
 
   const backgroundX = textBlockLeftPx - paddingPx.left;
   const backgroundY = textBlockTopPx - paddingPx.top;
+  const borderWidthPx =
+    normalizedStyle.borderEnabled && normalizedStyle.borderWidth > 0
+      ? Math.round(normalizedStyle.borderWidth * renderScale)
+      : 0;
   const backgroundWidth =
     explicitWidthPx !== undefined
       ? explicitWidthPx
@@ -306,10 +310,10 @@ export function computeTextLayoutMetrics(input: {
     textBlockHeightPx,
     textBlockLeftPx,
     textBlockTopPx,
-    backgroundX,
-    backgroundY,
-    backgroundWidth,
-    backgroundHeight,
+    backgroundX: backgroundX - borderWidthPx,
+    backgroundY: backgroundY - borderWidthPx,
+    backgroundWidth: backgroundWidth + borderWidthPx * 2,
+    backgroundHeight: backgroundHeight + borderWidthPx * 2,
     textStartX,
     yOffsetPx,
     paddingPx,

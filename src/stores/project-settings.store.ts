@@ -5,8 +5,11 @@ import { createAutoSave } from '~/utils/auto-save';
 import {
   createDefaultProjectSettings,
   normalizeProjectSettings,
-  DEFAULT_MONITOR_SETTINGS,
+  DEFAULT_MONITOR_VIEW_SETTINGS,
   type FastCatProjectSettings,
+  type MonitorSettings,
+  type MonitorViewSettings,
+  type ProjectMonitorSettings,
 } from '~/utils/project-settings';
 import { createProjectSettingsRepository } from '~/repositories/project-settings.repository';
 import {
@@ -91,7 +94,16 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   const getCurrentEditorView = ref<(() => EditorView) | null>(null);
   const getLastViewBeforeFullscreen = ref<(() => EditorView | null) | null>(null);
 
-  const activeMonitor = computed(() => {
+  const PROJECT_MONITOR_KEYS = new Set<keyof ProjectMonitorSettings>([
+    'previewResolution',
+    'useProxy',
+    'previewEffectsEnabled',
+    'showGrid',
+    'showTimecode',
+    'toolbarPosition',
+  ]);
+
+  const activeMonitorView = computed<MonitorViewSettings>(() => {
     const view = getCurrentEditorView.value?.() ?? 'cut';
     const lastViewBeforeFullscreen = getLastViewBeforeFullscreen.value?.() ?? null;
     const targetView = view === 'fullscreen' ? lastViewBeforeFullscreen || 'cut' : view;
@@ -105,6 +117,52 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       projectSettings.value.monitors[safeView] ??
       projectSettings.value.monitors.cut
     );
+  });
+
+  /**
+   * Facade for legacy consumers that access a single monitor object.
+   * Per-view fields (pan/zoom) route to `monitors[view]`, project-wide fields
+   * route to `monitor`.
+   */
+  const activeMonitor = computed<MonitorSettings>(() => {
+    const viewRef = activeMonitorView.value;
+    const projectRef = projectSettings.value.monitor;
+    return new Proxy({} as MonitorSettings, {
+      get(_t, prop: string | symbol) {
+        if (typeof prop !== 'string') return undefined;
+        if (prop in viewRef) return (viewRef as unknown as Record<string, unknown>)[prop];
+        if (prop in projectRef) return (projectRef as unknown as Record<string, unknown>)[prop];
+        return undefined;
+      },
+      set(_t, prop: string | symbol, value) {
+        if (typeof prop !== 'string') return false;
+        if (PROJECT_MONITOR_KEYS.has(prop as keyof ProjectMonitorSettings)) {
+          (projectRef as unknown as Record<string, unknown>)[prop] = value;
+          return true;
+        }
+        if (prop === 'panX' || prop === 'panY' || prop === 'zoom') {
+          (viewRef as unknown as Record<string, unknown>)[prop] = value;
+          return true;
+        }
+        return true;
+      },
+      has(_t, prop) {
+        return (
+          typeof prop === 'string' &&
+          (prop in viewRef || prop in projectRef)
+        );
+      },
+      ownKeys() {
+        return [...Object.keys(viewRef), ...Object.keys(projectRef)];
+      },
+      getOwnPropertyDescriptor(_t, prop) {
+        if (typeof prop !== 'string') return undefined;
+        if (prop in viewRef || prop in projectRef) {
+          return { configurable: true, enumerable: true, writable: true, value: undefined };
+        }
+        return undefined;
+      },
+    });
   });
 
   const autoSave = createAutoSave({
@@ -158,6 +216,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
           await projectUiRepo.value.save({
             version: 1,
+            monitor: projectSettings.value.monitor,
             monitors: projectSettings.value.monitors,
             timelines: {
               openPaths: timelines.openPaths,
@@ -292,13 +351,34 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         const repo = projectUiRepo.value as ProjectUiRepository;
         const uiRaw = await repo.load();
         if (uiRaw) {
+          // Legacy migration: lift project-wide fields out of per-monitor entries
+          // into the shared `monitor` block when `monitor` is missing.
+          const inheritedProjectMonitor = (() => {
+            if (uiRaw.monitor) return { ...settings.monitor, ...uiRaw.monitor };
+            const firstMonitor = (uiRaw.monitors as Record<string, unknown> | undefined)
+              ? (Object.values(uiRaw.monitors) as Array<Record<string, unknown> | undefined>)[0]
+              : undefined;
+            if (!firstMonitor) return settings.monitor;
+            const lift: Partial<typeof settings.monitor> = {};
+            for (const key of Object.keys(settings.monitor) as Array<keyof typeof settings.monitor>) {
+              const v = firstMonitor[key as string];
+              if (v !== undefined) (lift as Record<string, unknown>)[key as string] = v;
+            }
+            return { ...settings.monitor, ...lift };
+          })();
+          settings.monitor = inheritedProjectMonitor;
+
           if (uiRaw.monitors) {
-            const next = { ...settings.monitors };
+            const next: Record<string, MonitorViewSettings> = { ...settings.monitors };
             for (const key of Object.keys(uiRaw.monitors)) {
-              const patch = uiRaw.monitors[key];
+              const patch = uiRaw.monitors[key] as Record<string, unknown> | undefined;
               if (!patch || typeof patch !== 'object') continue;
-              const base = next[key] ?? settings.monitors.cut;
-              next[key] = { ...base, ...patch };
+              const base = next[key] ?? settings.monitors.cut ?? DEFAULT_MONITOR_VIEW_SETTINGS;
+              next[key] = {
+                panX: typeof patch.panX === 'number' ? patch.panX : base.panX,
+                panY: typeof patch.panY === 'number' ? patch.panY : base.panY,
+                zoom: typeof patch.zoom === 'number' ? patch.zoom : base.zoom,
+              };
             }
             settings.monitors = next;
           }
@@ -453,11 +533,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         const base =
           projectSettings.value.monitors[safeView] ??
           projectSettings.value.monitors.cut ??
-          DEFAULT_MONITOR_SETTINGS;
-        projectSettings.value.monitors[key] = {
-          ...DEFAULT_MONITOR_SETTINGS,
-          ...base,
-        };
+          DEFAULT_MONITOR_VIEW_SETTINGS;
+        projectSettings.value.monitors[key] = { ...base };
       }
     },
     { immediate: true },
@@ -475,5 +552,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     requestProjectSettingsSave,
     saveInitialProjectSettingsForNewProject,
     activeMonitor,
+    activeMonitorView,
   };
 });

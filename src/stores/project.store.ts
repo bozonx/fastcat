@@ -37,8 +37,13 @@ export const useProjectStore = defineStore('project', () => {
   const projectSettingsStore = useProjectSettingsStore();
   const projectLock = useProjectLock();
 
-  const { projectSettings, isLoadingProjectSettings, isSavingProjectSettings, activeMonitor } =
-    storeToRefs(projectSettingsStore);
+  const {
+    projectSettings,
+    isLoadingProjectSettings,
+    isSavingProjectSettings,
+    activeMonitor,
+    activeMonitorView,
+  } = storeToRefs(projectSettingsStore);
 
   const currentProjectName = ref<string | null>(null);
   const currentProjectId = ref<string | null>(null);
@@ -417,6 +422,7 @@ export const useProjectStore = defineStore('project', () => {
     saveProjectMeta: metaModule.saveProjectMeta,
     loadProjectMeta: metaModule.loadProjectMeta,
     activeMonitor,
+    activeMonitorView,
     ...editorViewModule,
   };
 });

@@ -6,7 +6,6 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
-import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 
 const props = defineProps<{
@@ -22,16 +21,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-
-function toPercentAlpha(value: unknown) {
-  const numericValue = Number(value ?? 1);
-  if (!Number.isFinite(numericValue)) return 100;
-  return Math.round(Math.max(0, Math.min(1, numericValue)) * 100);
-}
-
-function fromPercentAlpha(value: number) {
-  return Math.max(0, Math.min(100, Number(value))) / 100;
-}
 
 function getVerticalPadding() {
   const padding = props.clip.style?.padding;
@@ -49,11 +38,6 @@ const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: strin
     label: t(opt.labelKey),
   })),
 );
-
-const borderAlpha = computed({
-  get: () => toPercentAlpha(props.clip.style?.borderAlpha),
-  set: (value: number) => emit('updateTextStyle', { borderAlpha: fromPercentAlpha(value) }),
-});
 </script>
 
 <template>
@@ -162,7 +146,9 @@ const borderAlpha = computed({
           :blend-mode-options="blendModeOptions"
           @update:color="(v: string) => emit('updateTextStyle', { color: v })"
           @update:alpha="(v: number) => emit('updateTextStyle', { colorAlpha: v })"
-          @update:blend-mode="(v: TimelineBlendMode) => emit('updateTextStyle', { colorBlendMode: v })"
+          @update:blend-mode="
+            (v: TimelineBlendMode) => emit('updateTextStyle', { colorBlendMode: v })
+          "
         />
       </PropertyField>
 
@@ -185,7 +171,9 @@ const borderAlpha = computed({
           :blend-mode-options="blendModeOptions"
           @update:color="(v: string) => emit('updateTextStyle', { backgroundColor: v })"
           @update:alpha="(v: number) => emit('updateTextStyle', { backgroundAlpha: v })"
-          @update:blend-mode="(v: TimelineBlendMode) => emit('updateTextStyle', { backgroundBlendMode: v })"
+          @update:blend-mode="
+            (v: TimelineBlendMode) => emit('updateTextStyle', { backgroundBlendMode: v })
+          "
         />
       </PropertyField>
 
@@ -299,26 +287,15 @@ const borderAlpha = computed({
         />
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
-        <PropertyField :label="t('fastcat.textClip.borderColor')">
-          <UColorPicker
-            :model-value="String(clip.style?.borderColor ?? '#ffffff')"
-            format="hex"
-            size="sm"
-            @update:model-value="(v: any) => emit('updateTextStyle', { borderColor: String(v) })"
-          />
-        </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.borderAlpha')">
-          <UiSliderInput
-            v-model="borderAlpha"
-            :min="0"
-            :max="100"
-            :step="1"
-            unit="%"
-            :decimals="0"
-          />
-        </PropertyField>
-      </div>
+      <PropertyField :label="t('fastcat.textClip.borderColor')">
+        <UiColorBlendPicker
+          :color="String(clip.style?.borderColor ?? '#ffffff')"
+          :alpha="Number(clip.style?.borderAlpha ?? 1)"
+          :show-blend-mode="false"
+          @update:color="(v: string) => emit('updateTextStyle', { borderColor: v })"
+          @update:alpha="(v: number) => emit('updateTextStyle', { borderAlpha: v })"
+        />
+      </PropertyField>
     </div>
   </PropertySection>
 </template>

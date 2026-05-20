@@ -53,11 +53,23 @@ export const TextClipStyleSchema = z.object({
   fontSize: z.number().optional(),
   fontWeight: z.union([z.string(), z.number()]).optional(),
   color: z.string().optional(),
+  colorAlpha: z.number().optional(),
+  colorBlendMode: z.enum(['normal', 'add', 'multiply', 'screen', 'darken', 'lighten']).optional(),
   align: z.enum(['left', 'center', 'right']).optional(),
   verticalAlign: z.enum(['top', 'middle', 'bottom']).optional(),
   lineHeight: z.number().optional(),
   letterSpacing: z.number().optional(),
+  backgroundEnabled: z.boolean().optional(),
   backgroundColor: z.string().optional(),
+  backgroundAlpha: z.number().optional(),
+  backgroundRadius: z.number().optional(),
+  backgroundBlendMode: z
+    .enum(['normal', 'add', 'multiply', 'screen', 'darken', 'lighten'])
+    .optional(),
+  borderEnabled: z.boolean().optional(),
+  borderColor: z.string().optional(),
+  borderAlpha: z.number().optional(),
+  borderWidth: z.number().optional(),
   padding: z.any().optional(),
 });
 

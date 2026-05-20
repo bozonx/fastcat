@@ -1030,10 +1030,8 @@ export function useTimelineItemDrag(
       hasPendingTimelinePersist.value = true;
     }
 
-    if (!cancel && hasPendingTimelinePersist.value) {
-      void timelineStore.requestTimelineSave({ immediate: true });
-      hasPendingTimelinePersist.value = false;
-    }
+    const shouldPersistTimeline = !cancel && hasPendingTimelinePersist.value;
+    hasPendingTimelinePersist.value = false;
 
     draggingMode.value = null;
     draggingItemId.value = null;
@@ -1056,6 +1054,10 @@ export function useTimelineItemDrag(
     dragIsCopyOverride.value = false;
     dragToggleSnapOverride.value = false;
     dragIsMobileTouch.value = false;
+
+    if (shouldPersistTimeline) {
+      void timelineStore.requestTimelineSave({ immediate: true });
+    }
   }
 
   onBeforeUnmount(() => {

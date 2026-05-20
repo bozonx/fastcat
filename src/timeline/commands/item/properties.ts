@@ -460,6 +460,19 @@ export function updateClipProperties(
           typeof backgroundRadiusRaw === 'number' && Number.isFinite(backgroundRadiusRaw)
             ? Math.max(0, Math.min(10_000, backgroundRadiusRaw))
             : undefined;
+        const isBlendMode = (value: unknown) =>
+          value === 'normal' ||
+          value === 'add' ||
+          value === 'multiply' ||
+          value === 'screen' ||
+          value === 'darken' ||
+          value === 'lighten';
+        const colorBlendMode = isBlendMode(rawRecord.colorBlendMode)
+          ? rawRecord.colorBlendMode
+          : undefined;
+        const backgroundBlendMode = isBlendMode(rawRecord.backgroundBlendMode)
+          ? rawRecord.backgroundBlendMode
+          : undefined;
         const borderEnabled =
           typeof rawRecord.borderEnabled === 'boolean' ? rawRecord.borderEnabled : undefined;
         const borderColor =
@@ -541,6 +554,8 @@ export function updateClipProperties(
             : {}),
           ...(backgroundAlpha !== undefined ? { backgroundAlpha } : {}),
           ...(backgroundRadius !== undefined ? { backgroundRadius } : {}),
+          ...(colorBlendMode !== undefined ? { colorBlendMode } : {}),
+          ...(backgroundBlendMode !== undefined ? { backgroundBlendMode } : {}),
           ...(borderEnabled !== undefined ? { borderEnabled } : {}),
           ...(borderColor !== undefined && borderColor.length > 0 ? { borderColor } : {}),
           ...(borderAlpha !== undefined ? { borderAlpha } : {}),

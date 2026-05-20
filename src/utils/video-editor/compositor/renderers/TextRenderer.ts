@@ -46,7 +46,7 @@ export class TextRenderer {
     });
 
     const { renderScale, fontSizePx, lineHeightPx, letterSpacingPx, lines } = layout;
-    const { style: normalizedStyle, paddingPx } = layout;
+    const { style: normalizedStyle } = layout;
 
     const bgW = Math.max(1, Math.ceil(layout.backgroundWidth));
     const bgH = Math.max(1, Math.ceil(layout.backgroundHeight));
@@ -56,8 +56,14 @@ export class TextRenderer {
       canvas.width = bgW;
       canvas.height = bgH;
       try {
-        if (typeof (clip.sprite.texture.source as { resize?: (w: number, h: number) => void }).resize === 'function') {
-          (clip.sprite.texture.source as { resize: (w: number, h: number) => void }).resize(bgW, bgH);
+        if (
+          typeof (clip.sprite.texture.source as { resize?: (w: number, h: number) => void })
+            .resize === 'function'
+        ) {
+          (clip.sprite.texture.source as { resize: (w: number, h: number) => void }).resize(
+            bgW,
+            bgH,
+          );
         }
       } catch {
         // ignore
@@ -66,17 +72,33 @@ export class TextRenderer {
 
     ctx.clearRect(0, 0, bgW, bgH);
 
+    const borderWidthPx =
+      normalizedStyle.borderEnabled && normalizedStyle.borderWidth > 0
+        ? Math.round(normalizedStyle.borderWidth * renderScale)
+        : 0;
+    const frameX = borderWidthPx;
+    const frameY = borderWidthPx;
+    const frameW = Math.max(1, bgW - borderWidthPx * 2);
+    const frameH = Math.max(1, bgH - borderWidthPx * 2);
+
     if (normalizedStyle.backgroundEnabled) {
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundAlpha;
       ctx.fillStyle = normalizedStyle.backgroundColor;
-      ctx.globalCompositeOperation = normalizedStyle.backgroundBlendMode as GlobalCompositeOperation;
-      this.drawRoundedRect(ctx, 0, 0, bgW, bgH, normalizedStyle.backgroundRadius * renderScale);
+      ctx.globalCompositeOperation =
+        normalizedStyle.backgroundBlendMode as GlobalCompositeOperation;
+      this.drawRoundedRect(
+        ctx,
+        frameX,
+        frameY,
+        frameW,
+        frameH,
+        normalizedStyle.backgroundRadius * renderScale,
+      );
       ctx.fill();
       ctx.restore();
     }
 
-    const borderWidthPx = Math.round(normalizedStyle.borderWidth * renderScale);
     if (normalizedStyle.borderEnabled && borderWidthPx > 0) {
       ctx.save();
       ctx.globalAlpha = normalizedStyle.borderAlpha;
@@ -89,7 +111,7 @@ export class TextRenderer {
         inset,
         Math.max(1, bgW - borderWidthPx),
         Math.max(1, bgH - borderWidthPx),
-        Math.max(0, normalizedStyle.backgroundRadius * renderScale - inset),
+        Math.max(0, normalizedStyle.backgroundRadius * renderScale + inset),
       );
       ctx.stroke();
       ctx.restore();
@@ -106,11 +128,12 @@ export class TextRenderer {
 
     // textStartX is relative to the compositor canvas; convert to local canvas coords
     const localTextStartX = layout.textStartX - layout.backgroundX;
+    const localTextTopPx = layout.textBlockTopPx - layout.backgroundY;
     const yOffsetPx = layout.yOffsetPx;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
-      const lineY = paddingPx.top + i * lineHeightPx + lineHeightPx / 2 + yOffsetPx;
+      const lineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2 + yOffsetPx;
 
       if (letterSpacingPx === 0) {
         ctx.fillText(line, localTextStartX, lineY);

@@ -93,7 +93,7 @@ export function createTimelineLifecycleModule(
       ]);
       deps.timelineMediaUsageStore.setLiveUsage(path, usage.mediaPathToTimelines);
     },
-    { immediate: true },
+    { immediate: true, flush: 'post' },
   );
 
   function resetTimelineZoom() {

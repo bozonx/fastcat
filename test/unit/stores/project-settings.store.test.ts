@@ -8,44 +8,30 @@ import {
 
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
+const defaultProjectMonitor = {
+  previewResolution: 0.5,
+  useProxy: true,
+  previewEffectsEnabled: true,
+  showGrid: false,
+  showTimecode: true,
+  toolbarPosition: 'bottom' as const,
+};
+
+const defaultMonitorView = {
+  panX: 0,
+  panY: 0,
+  zoom: 1,
+};
+
 const defaultSettings = {
   version: 1,
   project: { width: 1920, height: 1080, fps: 30 },
   exportDefaults: { encoding: { format: 'mp4' } },
+  monitor: { ...defaultProjectMonitor },
   monitors: {
-    cut: {
-      previewResolution: 0.5,
-      useProxy: true,
-      previewEffectsEnabled: true,
-      panX: 0,
-      panY: 0,
-      zoom: 1,
-      showGrid: false,
-      showTimecode: true,
-      toolbarPosition: 'bottom' as const,
-    },
-    sound: {
-      previewResolution: 0.5,
-      useProxy: true,
-      previewEffectsEnabled: true,
-      panX: 0,
-      panY: 0,
-      zoom: 1,
-      showGrid: false,
-      showTimecode: true,
-      toolbarPosition: 'bottom' as const,
-    },
-    export: {
-      previewResolution: 0.5,
-      useProxy: true,
-      previewEffectsEnabled: true,
-      panX: 0,
-      panY: 0,
-      zoom: 1,
-      showGrid: false,
-      showTimecode: true,
-      toolbarPosition: 'bottom' as const,
-    },
+    cut: { ...defaultMonitorView },
+    sound: { ...defaultMonitorView },
+    export: { ...defaultMonitorView },
   },
   timelines: { openPaths: [], sessions: {} },
   transitions: { defaultDurationUs: 2_000_000 },
@@ -54,7 +40,6 @@ const defaultSettings = {
     fileTabs: [],
     staticTabsOrder: [],
     fileManagerPaths: {},
-    fileTreeExpandedPaths: [],
     layout: {
       cutPanels: null,
       soundPanels: null,
@@ -82,23 +67,15 @@ vi.mock('~/stores/workspace.store', () => ({
 }));
 
 vi.mock('~/utils/project-settings', () => {
-  const dm = {
-    previewResolution: 0.5,
-    useProxy: true,
-    previewEffectsEnabled: true,
-    panX: 0,
-    panY: 0,
-    zoom: 1,
-    showGrid: false,
-    showTimecode: true,
-    toolbarPosition: 'bottom',
-  };
+  const dpm = { ...defaultProjectMonitor };
+  const dmv = { ...defaultMonitorView };
   return {
     createDefaultProjectSettings: vi.fn(() => ({
       version: 1,
       project: { width: 1920, height: 1080, fps: 30 },
       exportDefaults: { encoding: { format: 'mp4' } },
-      monitors: { cut: { ...dm }, sound: { ...dm }, export: { ...dm } },
+      monitor: { ...dpm },
+      monitors: { cut: { ...dmv }, sound: { ...dmv }, export: { ...dmv } },
       timelines: { openPaths: [], sessions: {} },
       transitions: { defaultDurationUs: 2_000_000 },
       ui: {
@@ -106,7 +83,6 @@ vi.mock('~/utils/project-settings', () => {
         fileTabs: [],
         staticTabsOrder: [],
         fileManagerPaths: {},
-        fileTreeExpandedPaths: [],
         layout: {
           cutPanels: null,
           soundPanels: null,
@@ -124,7 +100,9 @@ vi.mock('~/utils/project-settings', () => {
       },
     })),
     normalizeProjectSettings: vi.fn((raw: any) => raw),
-    DEFAULT_MONITOR_SETTINGS: { ...dm },
+    DEFAULT_PROJECT_MONITOR_SETTINGS: { ...dpm },
+    DEFAULT_MONITOR_VIEW_SETTINGS: { ...dmv },
+    DEFAULT_MONITOR_SETTINGS: { ...dpm, ...dmv },
   };
 });
 
@@ -223,7 +201,8 @@ describe('ProjectSettingsStore', () => {
     });
 
     const monitor = store.activeMonitor;
-    expect(monitor).toEqual(defaultSettings.monitors.cut);
+    // Proxy merges project-wide and per-view fields
+    expect({ ...monitor }).toEqual({ ...defaultMonitorView, ...defaultProjectMonitor });
   });
 
   it('activeMonitor uses platform-specific monitor when available', () => {
@@ -231,7 +210,7 @@ describe('ProjectSettingsStore', () => {
 
     const store = useProjectSettingsStore();
     store.projectSettings.monitors['cut-mobile'] = {
-      ...defaultSettings.monitors.cut,
+      ...defaultMonitorView,
       zoom: 2,
     };
 
@@ -280,7 +259,10 @@ describe('ProjectSettingsStore', () => {
     });
 
     // Context getters are stored as refs; activeMonitor uses them
-    expect(store.activeMonitor).toEqual(defaultSettings.monitors.cut);
+    expect({ ...store.activeMonitor }).toEqual({
+      ...defaultMonitorView,
+      ...defaultProjectMonitor,
+    });
   });
 
   it('loadProjectSettings falls back to defaults when repo returns null', async () => {
