@@ -8,8 +8,6 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
-import { TIMELINES_DIR_NAME } from '~/utils/constants';
-import { serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
@@ -91,6 +89,9 @@ const emit = defineEmits<{
 }>();
 
 const effectiveFullscreen = computed(() => props.isFullscreen || isBrowserFullscreen.value);
+const monitorMenuPortal = computed(() =>
+  effectiveFullscreen.value ? (panelRef.value ?? false) : true,
+);
 
 // Saved panel zoom/pan before entering fullscreen so we can restore it on exit
 const savedPanelViewport = ref<{ zoom: number; panX: number; panY: number } | null>(null);
@@ -158,7 +159,6 @@ const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 const {
   canInteractPlayback,
   contextMenuItems,
-  createMarkerAtPlayhead,
   handleBoundaryWheel,
   handleEndBoundaryWheel,
   handleSpeedWheel,
@@ -233,7 +233,7 @@ watch(viewportRef, (vp) => {
 <template>
   <div class="h-full">
     <!-- panelRef is always rendered unconditionally so useFullscreen keeps a stable DOM target -->
-    <UContextMenu :items="contextMenuItems">
+    <UContextMenu :items="contextMenuItems" :portal="monitorMenuPortal">
       <div
         ref="panelRef"
         class="panel-focus-frame flex h-full min-w-0 min-h-0 transition-colors duration-300 relative select-none"
@@ -496,7 +496,7 @@ watch(viewportRef, (vp) => {
           />
 
           <!-- "More" dropdown duplicates the context menu items for discoverability -->
-          <UDropdownMenu :items="contextMenuItems">
+          <UDropdownMenu :items="contextMenuItems" :portal="monitorMenuPortal">
             <UButton
               size="xs"
               color="neutral"

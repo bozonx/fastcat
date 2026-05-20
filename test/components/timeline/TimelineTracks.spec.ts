@@ -8,8 +8,8 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
     template:
-      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode"><slot /></div>',
-    props: ['item', 'track'],
+      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)"><slot /></div>',
+    props: ['item', 'track', 'isMovePreviewCurrentItem', 'slipPreview'],
   },
 }));
 vi.mock('~/components/timeline/TimelineGap.vue', () => ({
@@ -335,6 +335,38 @@ describe('TimelineTracks', () => {
 
     expect(renderedClipIds).toContain('preview-clip-1');
     expect(renderedClipIds).toContain('preview-clip-2');
+  });
+
+  it('keeps the original clip visible for slip preview instead of rendering a move ghost', async () => {
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        draggingMode: 'slip',
+        movePreview: [
+          {
+            itemId: 'clip-1',
+            trackId: 'track-1',
+            startUs: 500000,
+            isCollision: false,
+          },
+        ],
+        slipPreview: {
+          itemId: 'clip-1',
+          trackId: 'track-1',
+          deltaUs: 500000,
+          timecode: '+00-00-00-15',
+        },
+      },
+    });
+
+    const renderedClipIds = component
+      .findAll('.mock-timeline-clip')
+      .map((clip) => clip.attributes('data-item-id'));
+    const clip = component.find('[data-item-id="clip-1"]');
+
+    expect(renderedClipIds).not.toContain('preview-clip-1');
+    expect(clip.attributes('data-is-move-preview')).toBe('false');
+    expect(clip.attributes('data-has-slip-preview')).toBe('true');
   });
 
   it('updates clip presentation props without waiting for a later track rerender', async () => {

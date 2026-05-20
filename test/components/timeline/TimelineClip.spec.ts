@@ -136,6 +136,8 @@ describe('TimelineClip', () => {
     source: { path: 'file.mp4' },
     timelineRange: { startUs: 1000000, durationUs: 5000000 },
     mediaRange: { startUs: 0, durationUs: 5000000 },
+    sourceRange: { startUs: 0, durationUs: 5000000 },
+    sourceDurationUs: 10000000,
     name: 'Test Clip',
     locked: false,
     disabled: false,
@@ -380,6 +382,39 @@ describe('TimelineClip', () => {
 
     const speedIndicator = component.find('.border-violet-400');
     expect(speedIndicator.exists()).toBe(true);
+  });
+
+  it('renders slip overlay with offset and source range position', async () => {
+    const component = await mountSuspended(TimelineClip, {
+      props: {
+        ...defaultProps,
+        item: {
+          ...baseItem,
+          sourceRange: { startUs: 2_000_000, durationUs: 5_000_000 },
+          sourceDurationUs: 10_000_000,
+        },
+        slipPreview: {
+          itemId: 'clip-1',
+          trackId: 'track-1',
+          deltaUs: 2_000_000,
+          timecode: '+00-00-02-00',
+        },
+      },
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div><slot /></div>' },
+        },
+      },
+    });
+
+    const overlay = component.find('[data-slip-overlay]');
+    const timecode = component.find('[data-slip-timecode]');
+    const sourceRange = component.find('[data-slip-source-range]');
+
+    expect(overlay.exists()).toBe(true);
+    expect(timecode.text()).toContain('+00-00-02-00');
+    expect(sourceRange.attributes('style')).toContain('left: 20%');
+    expect(sourceRange.attributes('style')).toContain('width: 50%');
   });
 
   it('displays missing media state', async () => {

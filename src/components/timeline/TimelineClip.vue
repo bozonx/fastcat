@@ -74,6 +74,14 @@ interface Props {
   viewportWidth?: number;
 }
 
+interface SlipOverlayView {
+  rangeStyle: Record<string, string>;
+  deltaClass: string;
+  direction: string;
+  timecode: string;
+  hasSourceRange: boolean;
+}
+
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
@@ -117,6 +125,32 @@ const clipLeftPx = computed(() =>
 const currentSlipPreview = computed(() => {
   if (!props.slipPreview || props.slipPreview.itemId !== props.item.id) return null;
   return props.slipPreview;
+});
+const slipOverlay = computed<SlipOverlayView | null>(() => {
+  const preview = currentSlipPreview.value;
+  const clip = clipItem.value;
+  if (!preview || !clip) return null;
+
+  const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
+  const sourceRangeStartUs = Math.max(0, Math.round(Number(clip.sourceRange?.startUs ?? 0)));
+  const sourceRangeDurationUs = Math.max(
+    0,
+    Math.round(Number(clip.sourceRange?.durationUs ?? clip.timelineRange.durationUs ?? 0)),
+  );
+  const hasSourceRange = sourceDurationUs > 0 && sourceDurationUs > sourceRangeDurationUs;
+  const startPercent = hasSourceRange ? (sourceRangeStartUs / sourceDurationUs) * 100 : 0;
+  const widthPercent = hasSourceRange ? (sourceRangeDurationUs / sourceDurationUs) * 100 : 100;
+
+  return {
+    rangeStyle: {
+      left: `${Math.min(100, Math.max(0, startPercent))}%`,
+      width: `${Math.min(100, Math.max(0, widthPercent))}%`,
+    },
+    deltaClass: preview.deltaUs === 0 ? 'text-white' : 'text-cyan-100',
+    direction: preview.deltaUs < 0 ? '<' : preview.deltaUs > 0 ? '>' : '',
+    timecode: preview.timecode,
+    hasSourceRange,
+  };
 });
 
 function toggleFadeCurve(edge: 'in' | 'out') {
@@ -690,11 +724,37 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           </div>
 
           <div
-            v-if="currentSlipPreview"
-            class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/80 px-2 py-1 text-2xs font-medium text-white shadow-lg whitespace-nowrap pointer-events-none"
+            v-if="slipOverlay"
+            class="absolute inset-0 rounded bg-cyan-950/35 ring-1 ring-cyan-300/70 pointer-events-none overflow-hidden"
             :style="{ zIndex: 'var(--z-clip-guide)' }"
+            :title="t('fastcat.timeline.slipMode')"
+            data-slip-overlay
           >
-            {{ currentSlipPreview.timecode }}
+            <div
+              class="absolute inset-x-1.5 top-1 h-1.5 rounded-full bg-black/45 ring-1 ring-white/15"
+            >
+              <div
+                v-if="slipOverlay.hasSourceRange"
+                class="absolute top-0 bottom-0 min-w-2 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,0.75)]"
+                :style="slipOverlay.rangeStyle"
+                data-slip-source-range
+              />
+              <div v-else class="absolute inset-0 rounded-full bg-cyan-300/85" />
+            </div>
+            <div
+              class="absolute left-1/2 top-1/2 flex max-w-[calc(100%-8px)] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border border-cyan-200/35 bg-black/85 px-2 py-1 text-2xs font-semibold tabular-nums text-white shadow-lg whitespace-nowrap"
+              :class="slipOverlay.deltaClass"
+              data-slip-timecode
+            >
+              <span v-if="slipOverlay.direction" class="text-cyan-300">{{
+                slipOverlay.direction
+              }}</span>
+              <span>{{ slipOverlay.timecode }}</span>
+            </div>
+            <div class="absolute inset-x-1.5 bottom-1 flex justify-between">
+              <span class="h-2 w-px rounded-full bg-cyan-200/80" />
+              <span class="h-2 w-px rounded-full bg-cyan-200/80" />
+            </div>
           </div>
 
           <div

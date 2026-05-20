@@ -176,4 +176,54 @@ describe('MonitorContainer', () => {
     await fullscreenBtn.trigger('click');
     expect(mockEnterFullscreen).toHaveBeenCalled();
   });
+
+  it('renders monitor menus inside the fullscreen panel', async () => {
+    const contextMenuStub = {
+      name: 'UContextMenu',
+      props: ['items', 'portal'],
+      template: '<div data-context-menu><slot /></div>',
+    };
+    const dropdownMenuStub = {
+      name: 'UDropdownMenu',
+      props: ['items', 'portal'],
+      template: '<div data-dropdown-menu><slot /></div>',
+    };
+
+    const wrapper = mount(MonitorContainer, {
+      props: {
+        isFullscreen: true,
+      },
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: true,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: {
+            template:
+              '<button class="test-btn" @click="$emit(\'click\', $event)"><slot /></button>',
+          },
+          UiActionButton: {
+            template:
+              '<button class="fullscreen-btn" @click="$emit(\'click\', $event)"><slot /></button>',
+          },
+          UiToggleButton: true,
+          UDropdownMenu: dropdownMenuStub,
+          UContextMenu: contextMenuStub,
+          UiSelect: true,
+          UiCompactSelect: true,
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    const panel = wrapper.find('.panel-focus-frame').element;
+
+    expect(wrapper.findComponent(contextMenuStub).props('portal')).toBe(panel);
+    expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(panel);
+  });
 });

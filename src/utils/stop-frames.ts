@@ -11,11 +11,29 @@ function sanitizeBaseName(name: string): string {
 export interface FormatStopFrameTimecodeParams {
   timeUs: number;
   fps: number;
+  frameDigits?: number;
+}
+
+function formatFrameNumber(frame: number, frameDigits: number): string {
+  const safeFrame = Math.max(0, frame);
+  if (frameDigits <= 0) return String(Math.round(safeFrame)).padStart(2, '0');
+
+  const rounded = safeFrame.toFixed(frameDigits).replace(/\.0+$/, '');
+  const [whole, fraction] = rounded.split('.');
+  return `${String(whole).padStart(2, '0')}${fraction ? `.${fraction}` : ''}`;
 }
 
 export function formatStopFrameTimecode(params: FormatStopFrameTimecodeParams): string {
   const fps = sanitizeFps(params.fps);
-  const frames = usToFrame(params.timeUs, fps, 'round');
+  const frameDigits = Math.max(0, Math.min(3, Math.round(Number(params.frameDigits ?? 0))));
+  const frameScale = 10 ** frameDigits;
+  const frames =
+    frameDigits > 0
+      ? Math.max(
+          0,
+          Math.round(((Math.max(0, params.timeUs) * fps) / 1e6) * frameScale) / frameScale,
+        )
+      : usToFrame(params.timeUs, fps, 'round');
 
   const framesPerHour = fps * 3600;
   const framesPerMinute = fps * 60;
@@ -25,7 +43,7 @@ export function formatStopFrameTimecode(params: FormatStopFrameTimecodeParams): 
   const ss = Math.floor((frames % framesPerMinute) / fps);
   const ff = frames % fps;
 
-  return `${String(hh).padStart(2, '0')}-${String(mm).padStart(2, '0')}-${String(ss).padStart(2, '0')}-${String(ff).padStart(2, '0')}`;
+  return `${String(hh).padStart(2, '0')}-${String(mm).padStart(2, '0')}-${String(ss).padStart(2, '0')}-${formatFrameNumber(ff, frameDigits)}`;
 }
 
 export interface BuildStopFrameBaseNameParams {

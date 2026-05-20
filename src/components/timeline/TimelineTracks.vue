@@ -474,8 +474,12 @@ const activeTrackContextMenuItems = computed(() => {
   return getTrackContextMenuItems(activeTrackForContextMenu.value, props.tracks);
 });
 
+const activeMovePreviews = computed(() =>
+  props.draggingMode === 'slip' ? [] : (props.movePreview ?? []),
+);
+
 const movePreviewItemsByTrack = computed(() => {
-  const previews = props.movePreview ?? [];
+  const previews = activeMovePreviews.value;
   const itemMap = new Map<string, TimelineTrackItem>();
 
   for (const track of props.tracks) {
@@ -501,12 +505,12 @@ const movePreviewItemsByTrack = computed(() => {
   return result;
 });
 const movePreviewIds = computed(
-  () => new Set((props.movePreview ?? []).map((preview) => preview.itemId)),
+  () => new Set(activeMovePreviews.value.map((preview) => preview.itemId)),
 );
 const movePreviewMemoByTrack = computed(() => {
   const result: Record<string, string> = {};
 
-  for (const preview of props.movePreview ?? []) {
+  for (const preview of activeMovePreviews.value) {
     if (!result[preview.trackId]) {
       result[preview.trackId] = '';
     }

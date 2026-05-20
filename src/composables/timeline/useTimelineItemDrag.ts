@@ -472,7 +472,11 @@ export function useTimelineItemDrag(
         itemId,
         trackId,
         deltaUs,
-        timecode: `${deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({ timeUs: Math.abs(deltaUs), fps })}`,
+        timecode: `${deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
+          timeUs: Math.abs(deltaUs),
+          fps,
+          frameDigits: 1,
+        })}`,
       };
 
       const cmd = {
