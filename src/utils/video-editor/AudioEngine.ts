@@ -94,8 +94,8 @@ export class AudioEngine {
 
       if (!data.ok) {
         const err = new Error(data.error?.message || 'Audio decode failed');
-        if (data.error?.name) (err as any).name = data.error.name;
-        if (data.error?.stack) (err as any).stack = data.error.stack;
+        if (data.error?.name) (err as Error).name = data.error.name;
+        if (data.error?.stack) (err as Error).stack = data.error.stack;
         pending.reject(err);
         return;
       }
@@ -549,7 +549,7 @@ export class AudioEngine {
         // );
         return chunk;
       } catch (err) {
-        const name = (err as any)?.name;
+        const name = (err as Error)?.name;
         // Only permanent failures should block retries. Transient errors
         // (e.g. blob read interrupted) deserve another shot the next time the
         // chunk is requested.
@@ -787,7 +787,7 @@ export class AudioEngine {
 
     const t0 = window.currentClipLocalS;
     const t1 = window.currentClipLocalS + window.remainingInClipS;
-    const gainParam: any = clipGain.gain;
+    const gainParam: AudioParam = clipGain.gain;
 
     gainParam.cancelScheduledValues?.(this.ctx.currentTime);
     gainParam.setValueAtTime?.(gainAtClipTime(t0), startAtS);
@@ -1267,7 +1267,7 @@ export class AudioEngine {
 
     const t0 = window.currentClipLocalS;
     const t1 = window.currentClipLocalS + window.remainingInClipS;
-    const gainParam: any = clipGain.gain;
+    const gainParam: AudioParam = clipGain.gain;
 
     gainParam.cancelScheduledValues?.(this.ctx.currentTime);
     gainParam.setValueAtTime?.(gainAtClipTime(t0), playStartS);

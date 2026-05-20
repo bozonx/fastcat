@@ -104,9 +104,9 @@ function handleSavePreset() {
 
   const baseType = manifest.baseType || manifest.type;
   const paramsToSave = { ...effect };
-  delete (paramsToSave as any).id;
-  delete (paramsToSave as any).type;
-  delete (paramsToSave as any).enabled;
+  delete (paramsToSave as Record<string, unknown>).id;
+  delete (paramsToSave as Record<string, unknown>).type;
+  delete (paramsToSave as Record<string, unknown>).enabled;
 
   presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), paramsToSave);
 
@@ -120,7 +120,7 @@ function openSaveModal(effectId: string) {
   isSaveModalOpen.value = true;
 }
 
-function handleUpdateEffectValue(effectId: string, key: string, value: any) {
+function handleUpdateEffectValue(effectId: string, key: string, value: unknown) {
   handleUpdateEffect(effectId, { [key]: value } as Partial<VideoClipEffect>);
 }
 
@@ -212,7 +212,7 @@ function onUpdateOrder(newEffects: VideoClipEffect[]) {
           <ParamsRenderer
             v-if="manifest?.controls"
             :controls="manifest?.controls ?? []"
-            :values="effect as any"
+            :values="effect as Record<string, unknown>"
             :disabled="props.disabled || !effect.enabled"
             @update:value="(key, value) => handleUpdateEffectValue(effect.id, key, value)"
           />

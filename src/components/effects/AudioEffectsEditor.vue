@@ -106,10 +106,10 @@ function handleSavePreset() {
 
   const baseType = manifest.baseType || manifest.type;
   const paramsToSave = { ...effect };
-  delete (paramsToSave as any).id;
-  delete (paramsToSave as any).type;
-  delete (paramsToSave as any).enabled;
-  delete (paramsToSave as any).target;
+  delete (paramsToSave as Record<string, unknown>).id;
+  delete (paramsToSave as Record<string, unknown>).type;
+  delete (paramsToSave as Record<string, unknown>).enabled;
+  delete (paramsToSave as Record<string, unknown>).target;
 
   presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), paramsToSave, 'audio');
 
@@ -222,12 +222,12 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
             <ParamsRenderer
               v-if="manifest?.controls"
               :controls="manifest?.controls ?? []"
-              :values="effect as any"
+              :values="effect as Record<string, unknown>"
               :disabled="props.disabled || !effect.enabled"
               @update:value="
-                (key: any, value: any) => handleUpdateEffectValue(effect.id, key, value)
+                (key: string, value: unknown) => handleUpdateEffectValue(effect.id, key, value)
               "
-              @action="(action: any, key: any) => handleAction(effect.id, action, key)"
+              @action="(action: string, key: string) => handleAction(effect.id, action, key)"
             />
           </div>
         </div>

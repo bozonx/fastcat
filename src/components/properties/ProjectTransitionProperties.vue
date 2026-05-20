@@ -18,7 +18,7 @@ const presetsStore = usePresetsStore();
 
 const manifest = computed(() => getTransitionManifest(props.transitionType));
 
-const params = ref<Record<string, any>>({});
+const params = ref<Record<string, unknown>>({});
 const isSaveModalOpen = ref(false);
 const newPresetName = ref('');
 
@@ -27,7 +27,7 @@ watch(
   (type) => {
     const man = getTransitionManifest(type);
     if (man) {
-      params.value = normalizeTransitionParams(type) as Record<string, any>;
+      params.value = normalizeTransitionParams(type) as Record<string, unknown>;
     } else {
       params.value = {};
     }
@@ -35,7 +35,7 @@ watch(
   { immediate: true },
 );
 
-function handleUpdateParam(key: string, value: any) {
+function handleUpdateParam(key: string, value: unknown) {
   params.value = {
     ...params.value,
     [key]: value,
@@ -58,7 +58,7 @@ function handleUpdatePreset() {
 }
 
 const actions = computed(() => {
-  const list: any[] = [];
+  const list: unknown[] = [];
   if (manifest.value?.isCustom) {
     list.push({
       id: 'update-preset',

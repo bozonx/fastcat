@@ -14,7 +14,7 @@ interface UseImageExifInfoOptions {
 export function useImageExifInfo(options: UseImageExifInfoOptions) {
   const imageResolution = computed(() => {
     if (options.mediaType.value !== 'image') return null;
-    const exif = options.exifData.value as any;
+    const exif = options.exifData.value as Record<string, unknown>;
     const width =
       exif?.ExifImageWidth ??
       exif?.ImageWidth ??
@@ -36,7 +36,7 @@ export function useImageExifInfo(options: UseImageExifInfoOptions) {
 
   const imageCreateDate = computed(() => {
     if (options.mediaType.value !== 'image') return null;
-    const exif = options.exifData.value as any;
+    const exif = options.exifData.value as Record<string, unknown>;
     if (!exif) return null;
 
     const date: unknown = exif.CreateDate ?? exif.DateTimeOriginal ?? exif.ModifyDate ?? null;
@@ -48,14 +48,14 @@ export function useImageExifInfo(options: UseImageExifInfoOptions) {
 
   const imageCameraMake = computed(() => {
     if (options.mediaType.value !== 'image') return null;
-    const exif = options.exifData.value as any;
+    const exif = options.exifData.value as Record<string, unknown>;
     if (!exif) return null;
     return typeof exif.Make === 'string' && exif.Make.trim().length > 0 ? exif.Make : null;
   });
 
   const imageLocationLink = computed(() => {
     if (options.mediaType.value !== 'image') return null;
-    const exif = options.exifData.value as any;
+    const exif = options.exifData.value as Record<string, unknown>;
     if (!exif) return null;
 
     const lat = exif.latitude ?? exif.Latitude ?? exif.GPSLatitude ?? null;

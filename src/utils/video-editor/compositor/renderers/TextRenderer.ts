@@ -17,8 +17,8 @@ export class TextRenderer {
     clip.canvas = canvas;
     clip.ctx = ctx as OffscreenCanvasRenderingContext2D;
 
-    const canvasSource = new CanvasSource({ resource: canvas as any });
-    clip.sprite.texture.source = canvasSource as any;
+    const canvasSource = new CanvasSource({ resource: canvas as unknown });
+    clip.sprite.texture.source = canvasSource as unknown;
     clip.sourceKind = 'canvas';
     return true;
   }
@@ -56,8 +56,8 @@ export class TextRenderer {
       canvas.width = bgW;
       canvas.height = bgH;
       try {
-        if (typeof (clip.sprite.texture.source as any)?.resize === 'function') {
-          (clip.sprite.texture.source as any).resize(bgW, bgH);
+        if (typeof (clip.sprite.texture.source as { resize?: (w: number, h: number) => void }).resize === 'function') {
+          (clip.sprite.texture.source as { resize: (w: number, h: number) => void }).resize(bgW, bgH);
         }
       } catch {
         // ignore
@@ -127,7 +127,7 @@ export class TextRenderer {
     ctx.globalAlpha = 1;
 
     try {
-      (clip.sprite.texture.source as any)?.update?.();
+      (clip.sprite.texture.source as { update?: () => void }).update?.();
     } catch {
       // ignore
     }

@@ -7,7 +7,7 @@ import type {
 } from '../commands';
 
 function getMarkers(doc: TimelineDocument): TimelineMarker[] {
-  const raw = (doc as any)?.metadata?.fastcat?.markers;
+  const raw = (doc as { metadata?: { fastcat?: { markers?: unknown } } })?.metadata?.fastcat?.markers;
   return Array.isArray(raw) ? (raw as TimelineMarker[]) : [];
 }
 
@@ -37,7 +37,7 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
     timeUs: Math.max(0, Math.round(cmd.timeUs)),
     durationUs: cmd.durationUs !== undefined ? Math.max(0, Math.round(cmd.durationUs)) : undefined,
     text: typeof cmd.text === 'string' ? cmd.text : '',
-    color: typeof (cmd as any).color === 'string' ? String((cmd as any).color) : '#eab308',
+    color: typeof (cmd as { color?: string }).color === 'string' ? String((cmd as { color: string }).color) : '#eab308',
   };
 
   const next = [...markers, marker].sort((a, b) => a.timeUs - b.timeUs);
@@ -66,7 +66,7 @@ export function updateMarker(
           : Math.max(0, Math.round(Number(cmd.durationUs)))
         : prev.durationUs,
     text: cmd.text !== undefined ? String(cmd.text) : prev.text,
-    color: cmd.color !== undefined ? String(cmd.color) : (prev as any).color,
+    color: cmd.color !== undefined ? String(cmd.color) : (prev as { color?: string }).color,
   };
 
   const nextMarkers = [...markers];

@@ -210,18 +210,18 @@ export function useFileBrowserRemote({
       remoteError.value = null;
 
       // Update total items count from VFS response (if available)
-      if (typeof (items as any).total === 'number') {
-        remoteTotalItems.value = (items as any).total;
+      if (typeof (items as { total?: number }).total === 'number') {
+        remoteTotalItems.value = (items as { total?: number }).total;
       } else if (!options.append) {
         // Fallback for folders that don't support pagination or virtual root folders
         remoteTotalItems.value = items.length;
       }
 
-      const newEntries = items.map((entry: any) => {
-        const bdPayload = entry.adapterPayload;
+      const newEntries = items.map((entry: unknown) => {
+        const bdPayload = (entry as { adapterPayload?: { thumbnailUrl?: string } }).adapterPayload;
         const thumbnailUrl = bdPayload?.thumbnailUrl;
 
-        const extendedEntry: any = {
+        const extendedEntry: Record<string, unknown> = {
           ...entry,
           source: 'remote',
           remotePath: entry.path,
@@ -232,7 +232,7 @@ export function useFileBrowserRemote({
         if (thumbnailUrl) {
           extendedEntry.objectUrl = getRemoteThumbnailUrl({
             baseUrl: remoteFilesConfig.value!.baseUrl,
-            media: { thumbnailUrl } as any,
+            media: { thumbnailUrl } as { thumbnailUrl?: string },
           });
         }
 

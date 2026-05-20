@@ -2,7 +2,7 @@ import { computed, ref, watch, type Ref } from 'vue';
 import { computeDirectoryStats, type DirectoryStats } from '~/utils/fs';
 
 interface UseFileStorageInfoOptions {
-  selectedFsEntry: Ref<any>;
+  selectedFsEntry: Ref<unknown>;
   currentProjectName: Ref<string | null | undefined>;
   getDirectoryHandleByPath?: (path: string) => Promise<FileSystemDirectoryHandle | null>;
 }
@@ -25,10 +25,10 @@ export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
       projectStats.value = null;
       if (!isRoot) return;
 
-      const estimateFn = (navigator as any)?.storage?.estimate as undefined | (() => Promise<any>);
+      const estimateFn = (navigator as { storage?: { estimate?: () => Promise<unknown> } }).storage?.estimate;
       if (typeof estimateFn === 'function') {
         try {
-          const res = await estimateFn.call((navigator as any).storage);
+          const res = await estimateFn.call((navigator as { storage?: { estimate?: () => Promise<unknown> } }).storage);
           if (res && typeof res === 'object') {
             const quota = typeof res.quota === 'number' ? res.quota : undefined;
             const usage = typeof res.usage === 'number' ? res.usage : undefined;

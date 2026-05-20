@@ -81,7 +81,7 @@ export function buildMultiSelectionContextMenu(
           const track = state.doc.tracks.find((candidateTrack) => candidateTrack.id === trackId);
           const clip = track?.items.find((candidateItem) => candidateItem.id === itemId);
           if (!clip || clip.kind !== 'clip') continue;
-          if ((clip as any).locked) continue;
+          if ((clip as TimelineClipItem).locked) continue;
           if (!isClipFreePosition(clip, state.doc)) continue;
 
           cmds.push({
@@ -91,7 +91,7 @@ export function buildMultiSelectionContextMenu(
             edge: 'end',
             deltaUs: 0,
             quantizeToFrames: true,
-          } as any);
+          });
         }
 
         if (cmds.length === 0) return;
@@ -116,8 +116,8 @@ export function buildMultiSelectionContextMenu(
           for (const item of track.items) {
             if (item.kind !== 'clip') continue;
 
-            const linked = String((item as any).linkedVideoClipId ?? '');
-            const isLocked = Boolean((item as any).lockToLinkedVideo);
+            const linked = String((item as TimelineClipItem).linkedVideoClipId ?? '');
+            const isLocked = Boolean((item as TimelineClipItem).lockToLinkedVideo);
             const shouldUnlink =
               (state.selectedIds.has(item.id) && linked && isLocked) ||
               (state.selectedVideoIds.length > 0 &&
@@ -135,7 +135,7 @@ export function buildMultiSelectionContextMenu(
                 linkedVideoClipId: undefined,
                 lockToLinkedVideo: false,
               },
-            } as any);
+            });
           }
         }
 

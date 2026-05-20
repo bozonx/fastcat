@@ -12,7 +12,7 @@ export type TimelineClipType = 'background' | 'adjustment' | 'media' | 'text' | 
 
 export interface TimelineClipLoaderInput {
   index: number;
-  clipData: any;
+  clipData: Record<string, unknown>;
   sequentialTimeUs: number;
   fallbackTrackId?: string | null;
 }
@@ -38,7 +38,7 @@ export interface TimelineClipDescriptor {
 }
 
 export interface UpdateReusableClipContext {
-  clipData: any;
+  clipData: Record<string, unknown>;
   descriptor: TimelineClipDescriptor;
   reusable: CompositorClip;
   toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined;
@@ -159,7 +159,7 @@ export class TimelineClipLoader {
       const prevFrame = reusable.frame?.source?.path ?? '';
       const prevMaskPath = reusable.mask?.source?.path ?? '';
       return (
-        (reusable as any).clipType === descriptor.clipType &&
+        (reusable as { clipType: string }).clipType === descriptor.clipType &&
         prevBg === descriptor.hudBackgroundPath &&
         prevContent === descriptor.hudContentPath &&
         prevFrame === (descriptor.hudFramePath ?? '') &&
@@ -172,7 +172,7 @@ export class TimelineClipLoader {
     return Boolean(
       reusable.sourcePath === descriptor.sourcePath &&
       prevMaskPath === descriptor.maskPath &&
-      (reusable as any).clipType === descriptor.clipType,
+      (reusable as { clipType: string }).clipType === descriptor.clipType,
     );
   }
 
@@ -261,7 +261,7 @@ export class TimelineClipLoader {
       reusable.strokeColor = String(clipData.strokeColor ?? reusable.strokeColor ?? '#000000');
       reusable.strokeWidth = Number(clipData.strokeWidth ?? reusable.strokeWidth ?? 0);
       const nextConfig = clipData.shapeConfig;
-      if (!areShapeConfigsEqual(reusable.shapeConfig as any, nextConfig)) {
+      if (!areShapeConfigsEqual(reusable.shapeConfig as Record<string, unknown>, nextConfig as Record<string, unknown>)) {
         reusable.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
       }
       reusable.shapeDirty = true;

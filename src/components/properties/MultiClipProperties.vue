@@ -222,7 +222,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
   const current =
     edge === 'in' ? firstVideoClip.value.transitionIn : firstVideoClip.value.transitionOut;
 
-  const cmds: any[] = [];
+  const cmds: unknown[] = [];
 
   if (current) {
     for (const { trackId, itemId } of props.items) {
@@ -279,7 +279,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
 function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: any[] = [];
+  const cmds: unknown[] = [];
   const durationUs = Math.round(durationSec * 1_000_000);
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
@@ -305,7 +305,7 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
 function handleBatchUpdateTransitionType(edge: 'in' | 'out', type: string) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: any[] = [];
+  const cmds: unknown[] = [];
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
     if (!track || track.kind === 'audio') continue;
@@ -368,7 +368,7 @@ function handleBatchTransform(next: ClipTransform) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
 
-  const cmds: any[] = [];
+  const cmds: unknown[] = [];
 
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
@@ -422,7 +422,7 @@ function handleBatchTransform(next: ClipTransform) {
 function handleBatchUpdateSpeed(speed: number) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: any[] = [];
+  const cmds: unknown[] = [];
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
     if (!track || track.kind !== 'video') continue;
@@ -439,7 +439,7 @@ function handleBatchUpdateSpeed(speed: number) {
 function handleBatchToggleReversed() {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: any[] = [];
+  const cmds: unknown[] = [];
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
     if (!track || track.kind !== 'video') continue;

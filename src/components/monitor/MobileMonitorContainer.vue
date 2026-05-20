@@ -160,7 +160,7 @@ function handleViewportClick(e: MouseEvent) {
   if (viewportTapTimer !== null) {
     clearTimeout(viewportTapTimer);
     viewportTapTimer = null;
-    (viewportRef.value as any)?.fitMonitor?.();
+    (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
   } else {
     viewportTapTimer = setTimeout(() => {
       viewportTapTimer = null;
@@ -170,7 +170,7 @@ function handleViewportClick(e: MouseEvent) {
 
 watch(isFullscreen, () => {
   void nextTick(() => {
-    (viewportRef.value as any)?.fitMonitor?.();
+    (viewportRef.value as { fitMonitor?: () => void })?.fitMonitor?.();
   });
 });
 
@@ -234,13 +234,13 @@ const isReadonly = computed(
 
 onMounted(() => {
   if (viewportRef.value) {
-    timecodeEl.value = (viewportRef.value as any).timecodeEl;
+    timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl;
   }
 });
 
 watch(viewportRef, (vp) => {
   if (vp) {
-    timecodeEl.value = (vp as any).timecodeEl;
+    timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl;
   }
 });
 

@@ -13,7 +13,7 @@ function clampNumber(value: unknown, min: number, max: number): number {
 }
 
 function getSafeTransform(clip: TimelineClipItem): ClipTransform {
-  const tr = (clip as any).transform ?? {};
+  const tr = (clip as { transform?: ClipTransform }).transform ?? {};
   const scaleRaw = tr.scale ?? {};
   const scaleX = typeof scaleRaw.x === 'number' && Number.isFinite(scaleRaw.x) ? scaleRaw.x : 1;
   const scaleY = typeof scaleRaw.y === 'number' && Number.isFinite(scaleRaw.y) ? scaleRaw.y : 1;
@@ -222,8 +222,8 @@ export function useClipTransform(options: UseClipTransformOptions) {
       const preset =
         typeof val === 'string'
           ? val
-          : val && typeof val === 'object' && typeof (val as any).value === 'string'
-            ? ((val as any).value as string)
+          : val && typeof val === 'object' && typeof (val as { value?: string }).value === 'string'
+            ? ((val as { value: string }).value)
             : null;
 
       if (
@@ -239,7 +239,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       if (preset === 'custom') {
         updateSelectedClipTransform({ anchor: { preset: 'custom', x: 0.5, y: 0.5 } });
       } else {
-        updateSelectedClipTransform({ anchor: { preset: preset as any } });
+        updateSelectedClipTransform({ anchor: { preset: preset as string } });
       }
     },
   });

@@ -37,7 +37,7 @@ export function useFileManagerPanelPendingActions({
     if (focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return true;
     const selected = selectionStore.selectedEntity;
     if (selected?.source !== 'fileManager') return false;
-    const selectedInstanceId = (selected as any).instanceId;
+    const selectedInstanceId = (selected as { instanceId?: string }).instanceId;
     if (selectedInstanceId) return selectedInstanceId === instanceId;
     return true;
   };
@@ -132,20 +132,20 @@ export function useFileManagerPanelPendingActions({
   );
 
   watch(
-    () => (uiStore as any).pendingBloggerDogCreateSubgroup,
+    () => (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup,
     (entry) => {
       if (!entry || !isFocusedOrSelected()) return;
       handlePendingBloggerDogCreateSubgroup(entry);
-      (uiStore as any).pendingBloggerDogCreateSubgroup = null;
+      (uiStore as { pendingBloggerDogCreateSubgroup?: unknown | null }).pendingBloggerDogCreateSubgroup = null;
     },
   );
 
   watch(
-    () => (uiStore as any).pendingBloggerDogCreateItem,
+    () => (uiStore as { pendingBloggerDogCreateItem?: unknown }).pendingBloggerDogCreateItem,
     (entry) => {
       if (!entry || !isFocusedOrSelected()) return;
       handlePendingBloggerDogCreateItem(entry);
-      (uiStore as any).pendingBloggerDogCreateItem = null;
+      (uiStore as { pendingBloggerDogCreateItem?: unknown | null }).pendingBloggerDogCreateItem = null;
     },
   );
 }
