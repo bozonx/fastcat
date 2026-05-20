@@ -35,8 +35,11 @@ export const usePresetsStore = defineStore('presets', () => {
 
   function load() {
     // Check user settings (primary source of truth)
-    const userCustom = workspaceStore.userSettings.presets.custom;
-    const userDefaultText = workspaceStore.userSettings.presets.defaultTextPresetId;
+    const presets = workspaceStore.userSettings.presets;
+    if (!presets) return;
+
+    const userCustom = presets.custom;
+    const userDefaultText = presets.defaultTextPresetId;
 
     if (userCustom.length > 0) {
       customPresets.value = [...userCustom];
@@ -46,7 +49,7 @@ export const usePresetsStore = defineStore('presets', () => {
       defaultTextPresetId.value = userDefaultText;
     }
 
-    const state = workspaceStore.userSettings.presets.collapsed;
+    const state = presets.collapsed;
     if (state && Object.keys(state).length > 0) {
       effectsStandardCollapsed.value = !!state.effectsStandardCollapsed;
       effectsCustomCollapsed.value = !!state.effectsCustomCollapsed;

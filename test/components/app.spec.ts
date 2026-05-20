@@ -30,13 +30,7 @@ vi.mock('~/stores/project-settings.store', () => ({
         export: { orientation: 'landscape' },
       },
       timelines: { openPaths: [], sessions: {} },
-      timeline: {
-        frameSnapMode: 'frames',
-        clipSnapMode: 'clips',
-        toolbarSnapMode: 'snap',
-        toolbarDragMode: 'pseudo_overlap',
-        toolbarDragModeEnabled: false,
-      },
+
       transitions: { defaultDurationUs: 2000000 },
       ui: { activeTabId: null, fileTabs: [], staticTabsOrder: [], fileManagerPaths: {} },
     },
@@ -64,14 +58,15 @@ vi.mock('~/stores/workspace.store', () => ({
       optimization: { autoCreateProxies: false },
       timeline: { defaultStaticClipDurationUs: 5000000, snapThresholdPx: 10 },
       projectPresets: { items: [] },
+      presets: {
+        custom: [],
+        defaultTextPresetId: '',
+        collapsed: {},
+      },
     },
     workspaceState: {
       fileBrowser: {
         instances: {},
-      },
-      presets: {
-        custom: [],
-        defaultText: '',
       },
     },
     projects: [],
