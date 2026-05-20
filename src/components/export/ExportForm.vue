@@ -349,6 +349,9 @@ async function onConfirm() {
               :disabled="isExporting"
               class="w-full"
               :rows="3"
+              autoresize
+              :maxrows="10"
+              :ui="{ base: 'overflow-y-auto' }"
             />
           </UiFormField>
 

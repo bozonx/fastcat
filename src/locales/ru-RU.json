@@ -1690,7 +1690,7 @@
       "storageModeHelp": "Выберите системные папки ОС или переносимое хранение внутри рабочей области.",
       "storageModePortable": "Переносимый workspace",
       "storageModeSystemDefault": "Системный по умолчанию",
-      "storagePathEnvironmentHint": "В браузерном workspace-режиме проекты, общие файлы и пересоздаваемый кэш хранятся внутри выбранной папки workspace. Здесь настраиваются только папка workspace и override для ephemeral tmp.",
+      "storagePathEnvironmentHint": "В браузерном workspace-режиме проекты, общие файлы и пересоздаваемый кэш хранятся внутри выбранной папки workspace. Здесь настраивается только папка workspace.",
       "sttDownloadModel": "Скачать модель",
       "sttFastcat": "FASTCAT STT",
       "sttLocal": "Локальное (Whisper)",
