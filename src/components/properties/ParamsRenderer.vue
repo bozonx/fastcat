@@ -113,7 +113,7 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
   if (!raw) {
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
-      const file = files[0] as any;
+      const file = files[0] as File & { path?: string };
       if (file && file.path) {
         updateValue(control.key, file.path);
       }
@@ -162,7 +162,7 @@ function buildScaleXYState(control: ScaleXYParamControl) {
 interface VisibleControlEntry {
   actionLabel: string;
   arrayItems: Record<string, unknown>[];
-  control: any;
+  control: ParamControl;
   disabled: boolean;
   fileDisplayValue: string;
   hasValue: boolean;
@@ -271,14 +271,14 @@ function getMemoKey(entry: VisibleControlEntry): unknown[] {
 
 function handleArrayAdd(control: ParamControl) {
   if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as any[])] : [];
+  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as unknown[])] : [];
   current.push({ ...control.defaultItem });
   updateValue(control.key, current);
 }
 
 function handleArrayRemove(control: ParamControl, index: number) {
   if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as any[])] : [];
+  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as unknown[])] : [];
   current.splice(index, 1);
   updateValue(control.key, current);
 }
@@ -290,7 +290,7 @@ function handleArrayItemUpdate(
   value: unknown,
 ) {
   if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as any[])] : [];
+  const current = Array.isArray(getValue(control.key)) ? [...(getValue(control.key) as unknown[])] : [];
   if (current[index]) {
     current[index] = { ...current[index], [itemKey]: value };
     updateValue(control.key, current);
@@ -477,7 +477,7 @@ function handleArrayItemUpdate(
       <div v-else-if="entry.kind === 'select'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
         <UiSelect
-          :model-value="entry.value as any"
+          :model-value="entry.value as string"
           :items="entry.selectItems"
           value-key="value"
           label-key="label"

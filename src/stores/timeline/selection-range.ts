@@ -14,17 +14,17 @@ export interface TimelineSelectionRangeDeps {
   clearSelection: () => void;
   markerService: ReturnType<typeof createTimelineMarkerService>;
   trimming: ReturnType<typeof createTimelineTrimmingModule>;
-  applyTimeline: (cmd: TimelineCommand, options?: any) => void;
+  applyTimeline: (cmd: TimelineCommand, options?: unknown) => void;
   defaultStaticClipDurationUs: number;
 }
 
 export interface TimelineSelectionRangeModule {
   getSelectionRange: () => TimelineSelectionRange | null;
   setPreviewSelectionRange: (range: TimelineSelectionRange | null) => void;
-  updateSelectionRange: (range: TimelineSelectionRange | null, options?: any) => void;
+  updateSelectionRange: (range: TimelineSelectionRange | null, options?: unknown) => void;
   createSelectionRangeAtPlayhead: (durationUs?: number) => void;
   createSelectionRange: (input: TimelineSelectionRange) => void;
-  removeSelectionRange: (options?: any) => void;
+  removeSelectionRange: (options?: unknown) => void;
   convertMarkerToSelectionRange: (markerId: string) => void;
   createSelectionRangeFromMarker: (markerId: string) => void;
   isSelectionRangeSelected: () => boolean;
@@ -69,7 +69,7 @@ export function createTimelineSelectionRangeModule(
     previewRange.value = range;
   }
 
-  function updateSelectionRange(range: TimelineSelectionRange | null, _options?: any) {
+  function updateSelectionRange(range: TimelineSelectionRange | null, _options?: unknown) {
     previewRange.value = null;
 
     if (!range) {
@@ -101,7 +101,7 @@ export function createTimelineSelectionRangeModule(
     selectTimelineSelectionRange();
   }
 
-  function removeSelectionRange(options?: any) {
+  function removeSelectionRange(options?: unknown) {
     updateSelectionRange(null, options);
     if (checkSelectionRangeSelected()) {
       clearSelection();

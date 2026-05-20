@@ -85,7 +85,7 @@ const clipboardCopyPaths = useClipboardCopyPaths();
 
 const ctx = inject<TreeContext>('fileManagerTreeCtx', {
   getFileIcon: () => 'i-heroicons-document',
-  selectedPath: ref(null) as any,
+  selectedPath: ref(null) as import('vue').Ref<string | null>,
   getEntryMeta: () => ({ hasProxy: false, generatingProxy: false }),
   getFileCompatibilityStatus: () => 'ok',
 });
@@ -608,7 +608,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
     const shouldCopy =
       resolveDropOperation(e, fallbackOp ?? (copyRaw ? 'copy' : moveRaw ? 'move' : null)) ===
       'copy';
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(internalRaw);
     } catch {
@@ -747,13 +747,13 @@ const isBloggerDogContentItem = (entry: FsEntry) => {
 
 const isBloggerDogMediaFile = (entry: FsEntry) => {
   if (entry.source !== 'remote') return false;
-  const payload = entry.adapterPayload as any;
+  const payload = entry.adapterPayload as { type?: string; mediaId?: string };
   return payload?.type === 'media' && !!payload?.mediaId;
 };
 
 const isBloggerDogTextWrapper = (entry: FsEntry) => {
   if (entry.source !== 'remote') return false;
-  const payload = entry.adapterPayload as any;
+  const payload = entry.adapterPayload as { type?: string; mediaId?: string };
   return payload?.type === 'media' && !payload?.mediaId;
 };
 
@@ -791,7 +791,7 @@ const { getContextMenuItems } = useFileContextMenu(
     },
   },
   (action, entry) => {
-    emit('action', action as any, entry as any);
+    emit('action', action, entry);
   },
 );
 </script>

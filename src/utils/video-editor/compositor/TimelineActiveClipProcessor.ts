@@ -2,7 +2,7 @@ import type { CompositorClip } from './types';
 
 export interface ActiveClipSampleRequest {
   clip: CompositorClip;
-  request: Promise<{ clip: CompositorClip; sample: any | null }>;
+  request: Promise<{ clip: CompositorClip; sample: unknown | null }>;
 }
 
 export interface TimelineActiveClipProcessorParams {
@@ -18,11 +18,11 @@ export interface TimelineActiveClipProcessorParams {
   createPrimaryVideoSampleRequest: (
     clip: CompositorClip,
     sampleTimeS: number,
-  ) => Promise<{ clip: CompositorClip; sample: any | null }>;
+  ) => Promise<{ clip: CompositorClip; sample: unknown | null }>;
 }
 
 export interface TimelineActiveClipProcessorResult {
-  sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>>;
+  sampleRequests: Array<Promise<{ clip: CompositorClip; sample: unknown | null }>>;
 }
 
 const MIN_VIDEO_SAMPLE_END_GUARD_US = 1_000;
@@ -42,7 +42,7 @@ function clampToLastReadableSourceUs(durationUs: number, frameRate?: number): nu
 export class TimelineActiveClipProcessor {
   public process(params: TimelineActiveClipProcessorParams): TimelineActiveClipProcessorResult {
     const { activeClips, timeUs, width, height } = params;
-    const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
+    const sampleRequests: Array<Promise<{ clip: CompositorClip; sample: unknown | null }>> = [];
 
     for (const clip of activeClips) {
       params.syncTransitionFilter(clip, timeUs);
@@ -135,7 +135,7 @@ export class TimelineActiveClipProcessor {
             Promise.all(statePromises).then(() => {
               params.drawHudClip(clip, timeUs);
               // Return a special object that tells applySampleResults not to hide the clip
-              return { clip, sample: { isHud: true, close: () => {} } as any };
+              return { clip, sample: { isHud: true, close: () => {} } as unknown };
             }),
           );
         } else if (dirty) {
@@ -233,7 +233,7 @@ export class TimelineActiveClipProcessor {
                 /* no-op */
               }
             }
-            return { clip, sample: { isMask: true, close: () => {} } as any };
+            return { clip, sample: { isMask: true, close: () => {} } as unknown };
           });
         sampleRequests.push(maskPromise);
       }

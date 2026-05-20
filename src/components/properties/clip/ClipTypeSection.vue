@@ -102,23 +102,23 @@ function confirmSavePreset() {
 
   if (props.clip.clipType === 'text') {
     presetsStore.saveAsPreset('text', 'custom', name, {
-      style: (props.clip as any).style || {},
-      text: (props.clip as any).text,
+      style: props.clip.style || {},
+      text: props.clip.text,
     });
   } else if (props.clip.clipType === 'shape') {
-    presetsStore.saveAsPreset('shape', (props.clip as any).shapeType, name, {
-      shapeType: (props.clip as any).shapeType,
-      fillColor: (props.clip as any).fillColor,
-      strokeColor: (props.clip as any).strokeColor,
-      strokeWidth: (props.clip as any).strokeWidth,
-      shapeConfig: (props.clip as any).shapeConfig,
+    presetsStore.saveAsPreset('shape', props.clip.shapeType, name, {
+      shapeType: props.clip.shapeType,
+      fillColor: props.clip.fillColor,
+      strokeColor: props.clip.strokeColor,
+      strokeWidth: props.clip.strokeWidth,
+      shapeConfig: props.clip.shapeConfig,
     });
   } else if (props.clip.clipType === 'hud') {
-    presetsStore.saveAsPreset('hud', (props.clip as any).hudType, name, {
-      hudType: (props.clip as any).hudType,
-      background: (props.clip as any).background,
-      content: (props.clip as any).content,
-      frame: (props.clip as any).frame,
+    presetsStore.saveAsPreset('hud', props.clip.hudType, name, {
+      hudType: props.clip.hudType,
+      background: props.clip.background,
+      content: props.clip.content,
+      frame: props.clip.frame,
     });
   }
 

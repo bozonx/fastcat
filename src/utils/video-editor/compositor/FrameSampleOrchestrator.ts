@@ -24,9 +24,9 @@ export interface FrameSampleOrchestratorParams {
     clip: CompositorClip;
     sampleTimeS: number;
     abortSignal?: AbortSignal;
-  }) => Promise<any | null>;
+  }) => Promise<unknown | null>;
   getPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
-  updateClipTextureFromSample: (sample: any, clip: CompositorClip) => Promise<void>;
+  updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
   setClipSpriteVisible: (clip: CompositorClip, visible: boolean) => boolean;
 }
 
@@ -106,8 +106,8 @@ export class FrameSampleOrchestrator {
 
   private buildBlendShadowRequests(
     params: FrameSampleOrchestratorParams,
-  ): Array<Promise<{ clip: CompositorClip; sample: any | null }>> {
-    const requests: Array<Promise<{ clip: CompositorClip; sample: any | null }>> = [];
+  ): Array<Promise<{ clip: CompositorClip; sample: unknown | null }>> {
+    const requests: Array<Promise<{ clip: CompositorClip; sample: unknown | null }>> = [];
 
     for (const clip of params.activeClips) {
       const transition = clip.transitionIn;
@@ -131,7 +131,7 @@ export class FrameSampleOrchestrator {
       const shadowAlpha = manifest
         ? manifest.computeOutOpacity(
             rawProgress,
-            (normalizeTransitionParams(transition.type, transition.params) as any) ?? {},
+            (normalizeTransitionParams(transition.type, transition.params) as Record<string, unknown>) ?? {},
             transition.curve ?? DEFAULT_TRANSITION_CURVE,
           )
         : 1 - rawProgress;
@@ -207,8 +207,8 @@ export class FrameSampleOrchestrator {
       clip: CompositorClip;
       sampleTimeS: number;
       abortSignal?: AbortSignal;
-    }) => Promise<any | null>;
-  }): Promise<{ clip: CompositorClip; sample: any | null }> {
+    }) => Promise<unknown | null>;
+  }): Promise<{ clip: CompositorClip; sample: unknown | null }> {
     const abortController = params.createAbortController(params.key);
 
     return params
@@ -222,9 +222,9 @@ export class FrameSampleOrchestrator {
   }
 
   private async applySampleResults(params: {
-    samples: Array<{ clip: CompositorClip; sample: any | null }>;
+    samples: Array<{ clip: CompositorClip; sample: unknown | null }>;
     updatedClips: CompositorClip[];
-    updateClipTextureFromSample: (sample: any, clip: CompositorClip) => Promise<void>;
+    updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
     setClipSpriteVisible: (clip: CompositorClip, visible: boolean) => boolean;
     onError: (error: unknown) => void;
   }) {

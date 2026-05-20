@@ -11,9 +11,9 @@ export interface StageManagerParams {
 export class StageManager {
   public sortStage(params: StageManagerParams) {
     this.sortTrackContainerChildren(params.tracks, params.getClipById);
-    params.app.stage.children.sort((a: any, b: any) => {
-      const aTrackId = String((a as any).__trackId ?? '');
-      const bTrackId = String((b as any).__trackId ?? '');
+    params.app.stage.children.sort((a: import('pixi.js').DisplayObject, b: import('pixi.js').DisplayObject) => {
+      const aTrackId = String((a as { __trackId?: string }).__trackId ?? '');
+      const bTrackId = String((b as { __trackId?: string }).__trackId ?? '');
       const aTrack = params.getTrackById(aTrackId);
       const bTrack = params.getTrackById(bTrackId);
       const aLayer = typeof aTrack?.layer === 'number' ? aTrack.layer : 0;
@@ -28,9 +28,9 @@ export class StageManager {
     getClipById: (clipId: string) => CompositorClip | undefined,
   ) {
     for (const track of tracks) {
-      track.container.children.sort((a: any, b: any) => {
-        const aClip = getClipById((a as any)?.__clipId ?? '');
-        const bClip = getClipById((b as any)?.__clipId ?? '');
+      track.container.children.sort((a: import('pixi.js').DisplayObject, b: import('pixi.js').DisplayObject) => {
+        const aClip = getClipById((a as { __clipId?: string }).__clipId ?? '');
+        const bClip = getClipById((b as { __clipId?: string }).__clipId ?? '');
 
         const aStartUs = aClip?.startUs ?? 0;
         const bStartUs = bClip?.startUs ?? 0;
@@ -44,13 +44,13 @@ export class StageManager {
           return aEndUs - bEndUs;
         }
 
-        const aOrder = typeof (a as any)?.__clipOrder === 'number' ? (a as any).__clipOrder : 0;
-        const bOrder = typeof (b as any)?.__clipOrder === 'number' ? (b as any).__clipOrder : 0;
+        const aOrder = typeof (a as { __clipOrder?: number }).__clipOrder === 'number' ? (a as { __clipOrder?: number }).__clipOrder : 0;
+        const bOrder = typeof (b as { __clipOrder?: number }).__clipOrder === 'number' ? (b as { __clipOrder?: number }).__clipOrder : 0;
         if (aOrder !== bOrder) {
           return aOrder - bOrder;
         }
 
-        return String((a as any)?.__clipId ?? '').localeCompare(String((b as any)?.__clipId ?? ''));
+        return String((a as { __clipId?: string }).__clipId ?? '').localeCompare(String((b as { __clipId?: string }).__clipId ?? ''));
       });
     }
   }

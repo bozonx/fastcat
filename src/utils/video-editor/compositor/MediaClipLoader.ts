@@ -2,10 +2,10 @@ import { ImageSource } from 'pixi.js';
 import { safeDispose } from '../utils';
 
 export interface MediaClipLoaderMediabunny {
-  Input: new (params: any) => any;
-  BlobSource: new (file: File) => any;
-  VideoSampleSink: new (track: any) => any;
-  ALL_FORMATS: any;
+  Input: new (params: unknown) => unknown;
+  BlobSource: new (file: File) => unknown;
+  VideoSampleSink: new (track: unknown) => unknown;
+  ALL_FORMATS: unknown;
 }
 
 export interface LoadVideoRuntimeParams {
@@ -20,8 +20,8 @@ export interface LoadVideoRuntimeParams {
 }
 
 export interface LoadedVideoRuntime {
-  input: any;
-  sink: any;
+  input: unknown;
+  sink: unknown;
   firstTimestampS?: number;
   frameRate?: number;
   sourceDurationUs: number;
@@ -47,7 +47,7 @@ export class MediaClipLoader {
     } = params;
     if (abortSignal?.aborted) {
       const abortErr = new Error('Video runtime load was aborted');
-      (abortErr as any).name = 'AbortError';
+      (abortErr as Error).name = 'AbortError';
       throw abortErr;
     }
 
@@ -55,13 +55,13 @@ export class MediaClipLoader {
     const input = new mediabunny.Input({
       source,
       formats: mediabunny.ALL_FORMATS,
-    } as any);
+    } as unknown);
     try {
       const track = await input.getPrimaryVideoTrack();
 
       if (abortSignal?.aborted) {
         const abortErr = new Error('Video runtime load was aborted');
-        (abortErr as any).name = 'AbortError';
+        (abortErr as Error).name = 'AbortError';
         throw abortErr;
       }
 
@@ -72,7 +72,7 @@ export class MediaClipLoader {
 
       const sink = new mediabunny.VideoSampleSink(track);
       const firstTimestampS = await track.getFirstTimestamp();
-      const trackAny = track as any;
+      const trackAny = track as { getFrameRate?: () => Promise<number> };
       const frameRateRaw =
         typeof trackAny.getFrameRate === 'function'
           ? await trackAny.getFrameRate()
@@ -98,7 +98,7 @@ export class MediaClipLoader {
           requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
         durationUs,
         endUs,
-        imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as any }),
+        imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown }),
       };
     } catch (error) {
       safeDispose(input);

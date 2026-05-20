@@ -181,13 +181,13 @@ const {
   updateAudioFadeOutSec,
   updateAudioGain,
 } = useClipAudio({
-  clip: computed(() => (firstWaveformClip.value || props.items[0]) as any),
+  clip: computed(() => (firstWaveformClip.value || props.items[0]) as import('~/timeline/types').TimelineClipItem),
   tracks: computed(() => timelineStore.timelineDoc?.tracks),
   mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
   updateAudio: (patch) => {
     const doc = timelineStore.timelineDoc;
     if (!doc) return;
-    const cmds: any[] = [];
+    const cmds: unknown[] = [];
     for (const { trackId, itemId } of props.items) {
       const track = doc.tracks.find((t) => t.id === trackId);
       const clip = track?.items.find((it) => it.id === itemId);
@@ -197,7 +197,7 @@ const {
       const isVideoWithAudio =
         track.kind === 'video' &&
         clip.clipType === 'media' &&
-        (Boolean((clip as any).linkedVideoClipId) ||
+        (Boolean(clip.linkedVideoClipId) ||
           Boolean(mediaStore.mediaMetadata[clip.source?.path ?? '']?.audio));
 
       if (isAudioTrack || isVideoWithAudio) {
@@ -287,7 +287,7 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
     const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
     if (!clip || clip.kind !== 'clip') continue;
 
-    const current = edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut;
+    const current = edge === 'in' ? clip.transitionIn : clip.transitionOut;
     if (!current) continue;
 
     cmds.push({
@@ -312,7 +312,7 @@ function handleBatchUpdateTransitionType(edge: 'in' | 'out', type: string) {
     const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
     if (!clip || clip.kind !== 'clip') continue;
 
-    const current = edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut;
+    const current = edge === 'in' ? clip.transitionIn : clip.transitionOut;
     if (!current) continue;
 
     cmds.push({
@@ -643,8 +643,8 @@ const otherActions = computed(() => {
     <ClipTransitionsSection
       v-if="hasVideoOrImage && firstVideoClip"
       :is-video-track="true"
-      :transition-in="(firstVideoClip as any).transitionIn ?? null"
-      :transition-out="(firstVideoClip as any).transitionOut ?? null"
+      :transition-in="firstVideoClip.transitionIn ?? null"
+      :transition-out="firstVideoClip.transitionOut ?? null"
       :clip-duration-us="firstVideoClip.timelineRange.durationUs"
       @select-edge="handleBatchSelectTransitionEdge"
       @toggle="handleBatchToggleTransition"

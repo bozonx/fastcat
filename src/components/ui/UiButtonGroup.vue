@@ -1,7 +1,7 @@
 <script setup lang="ts">
 interface Option {
   label?: string;
-  value: any;
+  value: unknown;
   icon?: string;
   disabled?: boolean;
   title?: string;
@@ -19,7 +19,7 @@ const props = withDefaults(
     disabled?: boolean;
     orientation?: 'horizontal' | 'vertical';
     fluid?: boolean;
-    ui?: any;
+    ui?: Record<string, unknown>;
   }>(),
   {
     size: 'sm',
@@ -34,10 +34,10 @@ const props = withDefaults(
   },
 );
 
-const modelValue = defineModel<any>({ required: true });
+const modelValue = defineModel<unknown>({ required: true });
 
 const emit = defineEmits<{
-  change: [value: any];
+  change: [value: unknown];
 }>();
 
 function select(option: Option) {
@@ -46,7 +46,7 @@ function select(option: Option) {
   emit('change', option.value);
 }
 
-function isSelected(value: any) {
+function isSelected(value: unknown) {
   return modelValue.value === value;
 }
 </script>

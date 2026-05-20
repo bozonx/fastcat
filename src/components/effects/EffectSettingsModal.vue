@@ -7,13 +7,13 @@ import UiModal from '~/components/ui/UiModal.vue';
 
 const props = defineProps<{
   modelValue: boolean;
-  effect?: Record<string, any>;
-  manifest?: EffectManifest<any>;
+  effect?: Record<string, unknown>;
+  manifest?: EffectManifest;
 }>();
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
-  'update:effect': [updates: Record<string, any>];
+  'update:effect': [updates: Record<string, unknown>];
 }>();
 
 const { t } = useI18n();
@@ -240,7 +240,7 @@ function scheduleEqVisualizationDraw() {
   });
 }
 
-function handleUpdateValue(key: string, value: any) {
+function handleUpdateValue(key: string, value: unknown) {
   // Support nested paths for array updates like "points.0.gain"
   const keys = key.split('.');
 
@@ -252,12 +252,12 @@ function handleUpdateValue(key: string, value: any) {
   // Create a deep copy of the property
   const rootKey = keys[0];
   if (!rootKey) return;
-  const updates: Record<string, any> = {
+  const updates: Record<string, unknown> = {
     [rootKey]: JSON.parse(JSON.stringify(effectValues.value[rootKey] ?? {})),
   };
 
   // Traverse and set
-  let current: any = updates[rootKey];
+  let current: Record<string, unknown> = updates[rootKey] as Record<string, unknown>;
   for (let i = 1; i < keys.length - 1; i++) {
     const k = keys[i];
     if (k && current[k] === undefined) {

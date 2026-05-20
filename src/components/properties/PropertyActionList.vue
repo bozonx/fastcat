@@ -88,7 +88,7 @@ const justifyClass = computed(() => {
       :loading="action.loading"
       :title="action.title || action.label"
       :size="size"
-      class="transition-all duration-200"
+      class="transition-all duration-200 hover:bg-ui-bg-hover hover:text-ui-text"
       :class="[vertical ? 'w-full' : '', !action.label && !vertical ? 'px-2' : '', justifyClass]"
       @click="action.onClick"
     >

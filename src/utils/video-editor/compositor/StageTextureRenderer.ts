@@ -58,8 +58,8 @@ export class StageTextureRenderer {
     let sprite = clip.transitionSprite ?? null;
     if (!sprite) {
       sprite = new Sprite(Texture.EMPTY);
-      (sprite as any).__clipId = clip.itemId;
-      (sprite as any).__clipOrder = 1;
+      (sprite as { __clipId?: string }).__clipId = clip.itemId;
+      (sprite as { __clipOrder?: number }).__clipOrder = 1;
       sprite.visible = false;
       clip.transitionSprite = sprite;
     }
@@ -109,7 +109,7 @@ export class StageTextureRenderer {
     const stagePrev = stageChildren.map((child) => child.visible);
 
     for (let i = 0; i < stageChildren.length; i++) {
-      const child = stageChildren[i] as any;
+      const child = stageChildren[i] as import('pixi.js').DisplayObject;
       if (!child) continue;
       const track = this.context.getTrackById(child?.__trackId ?? '');
       child.visible = track?.id === clip.trackId;
@@ -119,7 +119,7 @@ export class StageTextureRenderer {
     const containerChildren = trackContainer ? [...trackContainer.children] : [];
     const containerPrev = containerChildren.map((c) => c.visible);
     for (const c of containerChildren) {
-      (c as any).visible = c === clip.sprite;
+      (c as import('pixi.js').DisplayObject).visible = c === clip.sprite;
     }
 
     const previousClipVisible = clip.sprite?.visible;
@@ -139,7 +139,7 @@ export class StageTextureRenderer {
       }
 
       for (let i = 0; i < containerChildren.length; i++) {
-        (containerChildren[i] as any).visible = containerPrev[i] ?? true;
+        (containerChildren[i] as import('pixi.js').DisplayObject).visible = containerPrev[i] ?? true;
       }
       for (let i = 0; i < stageChildren.length; i++) {
         const child = stageChildren[i];

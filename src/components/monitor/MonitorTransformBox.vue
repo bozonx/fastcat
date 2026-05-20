@@ -58,7 +58,7 @@ const intrinsicDimensions = computed(() => {
   }
 
   if (type === 'shape') {
-    const strokeWidth = (clipData.value as any)?.strokeWidth ?? 0;
+    const strokeWidth = (clipData.value as { strokeWidth?: number })?.strokeWidth ?? 0;
     const size = Math.min(props.renderWidth, props.renderHeight) * 0.8;
     const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
     const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
@@ -81,7 +81,7 @@ const intrinsicDimensions = computed(() => {
 });
 
 const safeTransform = computed(() => {
-  const tr: Partial<ClipTransform> = (clipData.value as any)?.transform || {};
+  const tr: Partial<ClipTransform> = (clipData.value as { transform?: ClipTransform })?.transform || {};
   const scaleX = typeof tr.scale?.x === 'number' && Number.isFinite(tr.scale?.x) ? tr.scale.x : 1;
   const scaleY = typeof tr.scale?.y === 'number' && Number.isFinite(tr.scale?.y) ? tr.scale.y : 1;
   const rotationDeg =
@@ -107,7 +107,7 @@ const safeTransform = computed(() => {
 const layout = computed(() => {
   const d = intrinsicDimensions.value;
   if (!d) return null;
-  const transform = (clipData.value as any)?.transform as ClipTransform | undefined;
+  const transform = (clipData.value as { transform?: ClipTransform })?.transform as ClipTransform | undefined;
   const boxLayout = computeClipBoxLayout({
     frameWidth: d.w,
     frameHeight: d.h,
@@ -144,7 +144,7 @@ const mode = ref<'scale' | 'rotate'>('scale');
 
 function updateTransform(patch: Partial<ClipTransform>) {
   if (!selectedClipId.value || !selectedTrackId.value) return;
-  const current = (clipData.value as any)?.transform || {};
+  const current = (clipData.value as { transform?: ClipTransform })?.transform || {};
 
   const next: ClipTransform = {
     ...current,
@@ -183,7 +183,7 @@ function scheduleTransformUpdate(patch: Partial<ClipTransform>) {
   if (!selectedClipId.value || !selectedTrackId.value) return;
 
   const current =
-    pendingTransform ?? ((clipData.value as any)?.transform as ClipTransform | undefined) ?? {};
+    pendingTransform ?? ((clipData.value as { transform?: ClipTransform })?.transform as ClipTransform | undefined) ?? {};
   const next: ClipTransform = {
     ...current,
     ...patch,

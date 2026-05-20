@@ -84,7 +84,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
   console.log(`[STT Worker] Initializing pipeline for ${modelName}...`);
 
   if (isWebGpuAvailable === null) {
-    const gpu = (self.navigator as any).gpu;
+    const gpu = (self.navigator as { gpu?: unknown }).gpu;
     if (!gpu) {
       isWebGpuAvailable = false;
     } else {
@@ -106,7 +106,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
       transcriber = (await pipeline('automatic-speech-recognition', modelName, {
         device: 'webgpu',
         quantized: true,
-      } as any)) as AutomaticSpeechRecognitionPipeline;
+      } as unknown)) as AutomaticSpeechRecognitionPipeline;
 
       console.log('[STT Worker] Pipeline initialized with WebGPU');
       return transcriber;
@@ -172,10 +172,10 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
               data: output,
             } satisfies SttWorkerResponse);
           },
-        } as any);
+        } as unknown);
 
         console.log(
-          `[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as any).chunks) ? (result as any).chunks.length : 'N/A'}`,
+          `[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as { chunks?: unknown[] }).chunks) ? (result as { chunks?: unknown[] }).chunks.length : 'N/A'}',
         );
         self.postMessage({ type: 'result', id, data: result } satisfies SttWorkerResponse);
       })

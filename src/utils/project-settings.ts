@@ -89,7 +89,7 @@ export interface FastCatProjectSettings {
   };
   ui: {
     activeTabId: string | null;
-    fileTabs: any[]; // ProjectFileTab[]
+    fileTabs: import('~/types/project').ProjectFileTab[];
     staticTabsOrder: string[];
     fileManagerPaths: Record<string, string | null>;
     fileTreeExpandedPaths: string[];
@@ -390,13 +390,13 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
       ui: z
         .object({
           activeTabId: z.string().nullable().catch(null),
-          fileTabs: z.array(z.any()).catch([]),
+          fileTabs: z.array(z.unknown()).catch([]),
           staticTabsOrder: z.array(z.string()).catch([]),
           fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
           fileTreeExpandedPaths: z.array(z.string()).catch([]),
-          layout: layoutSchema.catch(defaults.ui.layout as any),
+          layout: layoutSchema.catch(defaults.ui.layout as unknown),
         })
-        .catch(defaults.ui as any),
+        .catch(defaults.ui as unknown),
       timeline: z
         .object({
           frameSnapMode: z.enum(['free', 'frames']).catch(defaults.timeline.frameSnapMode),
@@ -413,7 +413,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
         })
         .catch(defaults.timeline),
     })
-    .catch(defaults as any);
+    .catch(defaults as unknown);
 }
 
 export function normalizeProjectSettings(
@@ -426,9 +426,9 @@ export function normalizeProjectSettings(
     return defaults;
   }
 
-  const input = raw as Record<string, any>;
+  const input = raw as Record<string, unknown>;
 
-  const mappedInput: Record<string, any> = {
+  const mappedInput: Record<string, unknown> = {
     ...input,
     project: typeof input.project === 'object' ? input.project : {},
     exportDefaults: {
