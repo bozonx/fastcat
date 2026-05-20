@@ -74,7 +74,8 @@ describe('videoDiagnostics', () => {
       },
       secureContext: true,
       selectedVideoCodec: 'avc1.640032',
-      userAgent: 'Test Runtime',
+      userAgent:
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
     });
 
     expect(snapshot.summary.tone).toBe('success');
@@ -155,13 +156,17 @@ describe('videoDiagnostics', () => {
       },
       secureContext: true,
       selectedVideoCodec: 'avc1.640032',
-      userAgent: 'Test Runtime',
+      userAgent:
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
     });
 
     expect(snapshot.summary.tone).toBe('danger');
     expect(snapshot.sections[0]?.status.tone).toBe('danger');
     expect(snapshot.sections[2]?.status.tone).toBe('danger');
     expect(snapshot.sections[3]?.status.label).toContain('requestAdapter returned null');
+    expect(
+      snapshot.sections[3]?.items.find((item) => item.label === 'Linux Chromium hint')?.value,
+    ).toContain('chrome://flags/#enable-vulkan');
     expect(
       snapshot.sections[0]?.items.find((item) => item.label === 'Compositor path')?.value,
     ).toBe('Limited or fallback-only');

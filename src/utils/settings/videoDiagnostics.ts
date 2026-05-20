@@ -183,6 +183,22 @@ function formatCodecDiagnostics(result: VideoCodecDiagnosticsResult) {
   ].join(' | ');
 }
 
+function shouldSuggestLinuxChromiumVulkan(params: {
+  adapterRequestStatus: string;
+  apiAvailable: boolean;
+  userAgent: string | null;
+}) {
+  const userAgent = params.userAgent ?? '';
+
+  return (
+    params.apiAvailable &&
+    params.adapterRequestStatus === 'requestAdapter returned null' &&
+    /\bLinux\b/i.test(userAgent) &&
+    /\bChrome\//i.test(userAgent) &&
+    !/\bEdg\//i.test(userAgent)
+  );
+}
+
 function buildStatus(label: string, tone: VideoDiagnosticsStatus['tone']): VideoDiagnosticsStatus {
   return { label, tone };
 }
@@ -536,6 +552,11 @@ export function createVideoDiagnosticsSnapshot(params: {
   const importStatus = importReady
     ? buildStatus('Import and frame preparation APIs are available', 'success')
     : buildStatus('Some import or frame preparation APIs are unavailable', 'warning');
+  const suggestLinuxChromiumVulkan = shouldSuggestLinuxChromiumVulkan({
+    adapterRequestStatus: params.webGpuInfo.adapterRequestStatus,
+    apiAvailable: params.webGpuInfo.apiAvailable,
+    userAgent: params.userAgent,
+  });
 
   const sections: VideoDiagnosticsSection[] = [
     {
@@ -724,6 +745,14 @@ export function createVideoDiagnosticsSnapshot(params: {
           label: 'Adapter request',
           value: params.webGpuInfo.adapterRequestStatus,
         },
+        ...(suggestLinuxChromiumVulkan
+          ? [
+              {
+                label: 'Linux Chromium hint',
+                value: 'Enable chrome://flags/#enable-vulkan, then restart Chromium/Chrome.',
+              },
+            ]
+          : []),
         {
           label: 'Adapter request error',
           value: params.webGpuInfo.adapterRequestError ?? 'None',

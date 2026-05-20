@@ -89,6 +89,8 @@ export function useFileBrowserPendingActions({
       }
       try {
         await createTimelineInDirectory(entry);
+      } catch (e) {
+        console.warn('Failed to create timeline in directory', entry.path, e);
       } finally {
         uiStore.pendingFsEntryCreateTimeline = null;
       }

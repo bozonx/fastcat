@@ -78,6 +78,11 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: 'static',
+    output: process.env.E2E_OUTPUT_DIR
+      ? {
+          dir: process.env.E2E_OUTPUT_DIR,
+        }
+      : undefined,
   },
 
   app: {
