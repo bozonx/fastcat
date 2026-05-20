@@ -15,6 +15,7 @@ export interface NormalizedTextStyle {
   fontWeight: string;
   color: string;
   colorAlpha: number;
+  colorBlendMode: string;
   align: 'left' | 'center' | 'right';
   verticalAlign: 'top' | 'middle' | 'bottom';
   lineHeight: number;
@@ -23,11 +24,21 @@ export interface NormalizedTextStyle {
   backgroundColor: string;
   backgroundAlpha: number;
   backgroundRadius: number;
+  backgroundBlendMode: string;
   borderEnabled: boolean;
   borderColor: string;
   borderAlpha: number;
   borderWidth: number;
   padding: NormalizedTextPadding;
+}
+
+export function mapBlendModeToComposite(mode: unknown): string {
+  if (mode === 'add') return 'lighter';
+  if (mode === 'multiply') return 'multiply';
+  if (mode === 'screen') return 'screen';
+  if (mode === 'darken') return 'darken';
+  if (mode === 'lighten') return 'lighten';
+  return 'source-over';
 }
 
 export interface TextLayoutMetrics {
@@ -118,6 +129,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '700',
     color: typeof style?.color === 'string' && style.color.length > 0 ? style.color : '#ffffff',
     colorAlpha: clampFinite(style?.colorAlpha, 1, 0, 1),
+    colorBlendMode: mapBlendModeToComposite(style?.colorBlendMode),
     align:
       style?.align === 'left' || style?.align === 'center' || style?.align === 'right'
         ? style.align
@@ -140,6 +152,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '#000000',
     backgroundAlpha: clampFinite(style?.backgroundAlpha, 1, 0, 1),
     backgroundRadius: clampFinite(style?.backgroundRadius, 0, 0, 10_000),
+    backgroundBlendMode: mapBlendModeToComposite(style?.backgroundBlendMode),
     borderEnabled: typeof style?.borderEnabled === 'boolean' ? style.borderEnabled : false,
     borderColor:
       typeof style?.borderColor === 'string' && style.borderColor.trim().length > 0

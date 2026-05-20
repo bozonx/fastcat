@@ -1,12 +1,16 @@
+import { Sprite } from 'pixi.js';
 import type { CompositorClip } from '../types';
 import { safeDispose } from '../../utils';
 
 export class VideoRenderer {
-  public async updateClipTextureFromSample(sample: any, clip: CompositorClip) {
+  public async updateClipTextureFromSample(sample: unknown, clip: CompositorClip) {
     if (clip.lastVideoFrame) {
       safeDispose(clip.lastVideoFrame);
       clip.lastVideoFrame = null;
     }
+
+    const sprite = clip.sprite;
+    if (!sprite || !(sprite instanceof Sprite)) return false;
 
     const isVideoFrame = typeof VideoFrame !== 'undefined' && sample instanceof VideoFrame;
 
@@ -17,23 +21,24 @@ export class VideoRenderer {
       const frameH = frame.displayHeight;
 
       if (
-        clip.sprite.texture.source.width !== frameW ||
-        clip.sprite.texture.source.height !== frameH
+        sprite.texture.source.width !== frameW ||
+        sprite.texture.source.height !== frameH
       ) {
-        if (typeof clip.sprite.texture.source.resize === 'function') {
-          clip.sprite.texture.source.resize(frameW, frameH);
+        if (typeof sprite.texture.source.resize === 'function') {
+          sprite.texture.source.resize(frameW, frameH);
         }
       }
 
-      (clip.sprite.texture.source as any).resource = frame;
-      clip.sprite.texture.source.update();
+      (sprite.texture.source as unknown as { resource: unknown }).resource = frame;
+      sprite.texture.source.update();
       return true;
     }
 
     // Fallback to canvas
-    if (typeof sample.draw === 'function' || typeof sample.toCanvasImageSource === 'function') {
-      const imageSource =
-        typeof sample.toCanvasImageSource === 'function' ? sample.toCanvasImageSource() : sample;
+    const sampleObj = sample as { draw?: () => void; toCanvasImageSource?: () => CanvasImageSource };
+    if (typeof sampleObj.draw === 'function' || typeof sampleObj.toCanvasImageSource === 'function') {
+      const imageSource: CanvasImageSource =
+        typeof sampleObj.toCanvasImageSource === 'function' ? sampleObj.toCanvasImageSource() : (sample as CanvasImageSource);
       const frameW = Math.max(1, Math.round(imageSource?.displayWidth ?? imageSource?.width ?? 1));
       const frameH = Math.max(
         1,
@@ -47,14 +52,14 @@ export class VideoRenderer {
       if (canvas.width !== frameW || canvas.height !== frameH) {
         canvas.width = frameW;
         canvas.height = frameH;
-        if (typeof clip.sprite.texture.source.resize === 'function') {
-          clip.sprite.texture.source.resize(frameW, frameH);
+        if (typeof sprite.texture.source.resize === 'function') {
+          sprite.texture.source.resize(frameW, frameH);
         }
       }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(imageSource, 0, 0, frameW, frameH);
-      clip.sprite.texture.source.update();
+      ctx.drawImage(imageSource as CanvasImageSource, 0, 0, frameW, frameH);
+      sprite.texture.source.update();
       return true;
     }
 

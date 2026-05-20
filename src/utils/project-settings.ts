@@ -92,7 +92,6 @@ export interface FastCatProjectSettings {
     fileTabs: import('~/types/project').ProjectFileTab[];
     staticTabsOrder: string[];
     fileManagerPaths: Record<string, string | null>;
-    fileTreeExpandedPaths: string[];
     layout: ProjectUiLayoutState;
   };
   timeline: {
@@ -160,7 +159,6 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     fileTabs: [],
     staticTabsOrder: [],
     fileManagerPaths: {},
-    fileTreeExpandedPaths: [],
     layout: {
       cutPanels: null,
       soundPanels: null,
@@ -244,7 +242,6 @@ export function createDefaultProjectSettings(
       fileTabs: [],
       staticTabsOrder: [],
       fileManagerPaths: {},
-      fileTreeExpandedPaths: [],
       layout: {
         cutPanels: null,
         soundPanels: null,
@@ -393,7 +390,6 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
           fileTabs: z.array(z.unknown()).catch([]),
           staticTabsOrder: z.array(z.string()).catch([]),
           fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
-          fileTreeExpandedPaths: z.array(z.string()).catch([]),
           layout: layoutSchema.catch(defaults.ui.layout as unknown),
         })
         .catch(defaults.ui as unknown),

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { TimelineTextClipItem } from '~/timeline/types';
+import type { TimelineTextClipItem, TimelineBlendMode } from '~/timeline/types';
+import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
+import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 
 const props = defineProps<{
   clip: TimelineTextClipItem;
@@ -41,15 +43,12 @@ function getVerticalPadding() {
   return 60;
 }
 
-const textAlpha = computed({
-  get: () => toPercentAlpha(props.clip.style?.colorAlpha),
-  set: (value: number) => emit('updateTextStyle', { colorAlpha: fromPercentAlpha(value) }),
-});
-
-const backgroundAlpha = computed({
-  get: () => toPercentAlpha(props.clip.style?.backgroundAlpha),
-  set: (value: number) => emit('updateTextStyle', { backgroundAlpha: fromPercentAlpha(value) }),
-});
+const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
+  RAW_BLEND_MODE_OPTIONS.map((opt) => ({
+    value: opt.value as TimelineBlendMode,
+    label: t(opt.labelKey),
+  })),
+);
 
 const borderAlpha = computed({
   get: () => toPercentAlpha(props.clip.style?.borderAlpha),
@@ -155,19 +154,17 @@ const borderAlpha = computed({
         </PropertyField>
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
-        <PropertyField :label="t('common.color')">
-          <UColorPicker
-            :model-value="String(clip.style?.color ?? '#ffffff')"
-            format="hex"
-            size="sm"
-            @update:model-value="(v: any) => emit('updateTextStyle', { color: String(v) })"
-          />
-        </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.textAlpha')">
-          <UiSliderInput v-model="textAlpha" :min="0" :max="100" :step="1" unit="%" :decimals="0" />
-        </PropertyField>
-      </div>
+      <PropertyField :label="t('common.color')">
+        <UiColorBlendPicker
+          :color="String(clip.style?.color ?? '#ffffff')"
+          :alpha="Number(clip.style?.colorAlpha ?? 1)"
+          :blend-mode="(clip.style?.colorBlendMode as TimelineBlendMode) ?? 'normal'"
+          :blend-mode-options="blendModeOptions"
+          @update:color="(v: string) => emit('updateTextStyle', { color: v })"
+          @update:alpha="(v: number) => emit('updateTextStyle', { colorAlpha: v })"
+          @update:blend-mode="(v: TimelineBlendMode) => emit('updateTextStyle', { colorBlendMode: v })"
+        />
+      </PropertyField>
 
       <div class="flex items-center justify-between gap-3">
         <span class="text-xs text-ui-text-muted">{{
@@ -180,28 +177,17 @@ const borderAlpha = computed({
         />
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
-        <PropertyField :label="t('fastcat.textClip.backgroundColor')">
-          <UColorPicker
-            :model-value="String(clip.style?.backgroundColor ?? '#000000')"
-            format="hex"
-            size="sm"
-            @update:model-value="
-              (v: any) => emit('updateTextStyle', { backgroundColor: String(v) })
-            "
-          />
-        </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.backgroundAlpha')">
-          <UiSliderInput
-            v-model="backgroundAlpha"
-            :min="0"
-            :max="100"
-            :step="1"
-            unit="%"
-            :decimals="0"
-          />
-        </PropertyField>
-      </div>
+      <PropertyField :label="t('fastcat.textClip.backgroundColor')">
+        <UiColorBlendPicker
+          :color="String(clip.style?.backgroundColor ?? '#000000')"
+          :alpha="Number(clip.style?.backgroundAlpha ?? 1)"
+          :blend-mode="(clip.style?.backgroundBlendMode as TimelineBlendMode) ?? 'normal'"
+          :blend-mode-options="blendModeOptions"
+          @update:color="(v: string) => emit('updateTextStyle', { backgroundColor: v })"
+          @update:alpha="(v: number) => emit('updateTextStyle', { backgroundAlpha: v })"
+          @update:blend-mode="(v: TimelineBlendMode) => emit('updateTextStyle', { backgroundBlendMode: v })"
+        />
+      </PropertyField>
 
       <div class="grid grid-cols-2 gap-2">
         <PropertyField :label="t('fastcat.textClip.width')">

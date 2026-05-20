@@ -175,7 +175,6 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
               fileTabs: projectTabsStore.fileTabs,
               staticTabsOrder: projectTabsStore.staticTabsOrder,
               fileManagerPaths,
-              fileTreeExpandedPaths: [] as string[],
               layout: {
                 cutPanels: null,
                 soundPanels: null,

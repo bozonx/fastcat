@@ -15,6 +15,8 @@ describe('text-layout', () => {
     expect(style.backgroundEnabled).toBe(false);
     expect(style.backgroundAlpha).toBe(1);
     expect(style.backgroundRadius).toBe(0);
+    expect(style.colorBlendMode).toBe('source-over');
+    expect(style.backgroundBlendMode).toBe('source-over');
     expect(style.borderEnabled).toBe(false);
     expect(style.borderAlpha).toBe(1);
     expect(style.borderWidth).toBe(0);

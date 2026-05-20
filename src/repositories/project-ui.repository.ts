@@ -93,7 +93,6 @@ export const ProjectUiSettingsSchema = z.object({
       fileTabs: z.array(ProjectFileTabSchema).catch([]),
       staticTabsOrder: z.array(z.string()).catch([]),
       fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
-      fileTreeExpandedPaths: z.array(z.string()).catch([]),
       layout: ProjectUiLayoutSchema.catch({
         cutPanels: null,
         soundPanels: null,
@@ -107,7 +106,6 @@ export const ProjectUiSettingsSchema = z.object({
       fileTabs: [],
       staticTabsOrder: [],
       fileManagerPaths: {},
-      fileTreeExpandedPaths: [],
       layout: {
         cutPanels: null,
         soundPanels: null,

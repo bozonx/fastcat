@@ -16,6 +16,7 @@ import {
   pxToTimeUs,
 } from '~/utils/timeline/geometry';
 import { isLayer1Pressed } from '~/utils/hotkeys/layerUtils';
+import { TIMELINE_TRACK_LABELS_WIDTH as TRACK_LABELS_WIDTH } from '~/utils/constants';
 
 import TimelineTrackSection from '~/components/timeline/TimelineTrackSection.vue';
 import TimelineToolbar from '~/components/timeline/TimelineToolbar.vue';
@@ -55,7 +56,6 @@ const rulerContainerRef = ref<HTMLElement | null>(null);
 const videoSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(null);
 const audioSectionRef = ref<InstanceType<typeof TimelineTrackSection> | null>(null);
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
-const TRACK_LABELS_WIDTH = 220;
 
 // --- Derived scroll elements (from TimelineTrackSection via defineExpose) ---
 // Vue unwraps refs exposed via defineExpose, so .scrollEl is HTMLElement | null directly

@@ -40,6 +40,8 @@ export const FILE_MANAGER_THUMBNAILS = {
 
 export const FILE_MANAGER_ROOT_SPACER_HEIGHT = '6rem';
 
+export const TIMELINE_TRACK_LABELS_WIDTH = 220;
+
 export const TIMELINE_MANAGER_THUMBNAILS = {
   DIR_NAME: 'timelines',
   MAX_SIZE: 1280,

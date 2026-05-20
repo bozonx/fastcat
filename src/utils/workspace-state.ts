@@ -20,8 +20,6 @@ export interface WorkspaceState {
   ui: {
     recentSearchQueries: string[];
     pinnedItems: string[];
-    showHiddenFiles: boolean;
-    fsSidebarWidth: number;
     lastProjectName: string | null;
     recentProjects: Array<{
       projectName: string;
@@ -46,8 +44,6 @@ export function createDefaultWorkspaceState(): WorkspaceState {
     ui: {
       recentSearchQueries: [],
       pinnedItems: [],
-      showHiddenFiles: false,
-      fsSidebarWidth: 0,
       lastProjectName: null,
       recentProjects: [],
     },

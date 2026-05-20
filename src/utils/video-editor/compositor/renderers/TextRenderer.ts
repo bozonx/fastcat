@@ -70,6 +70,7 @@ export class TextRenderer {
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundAlpha;
       ctx.fillStyle = normalizedStyle.backgroundColor;
+      ctx.globalCompositeOperation = normalizedStyle.backgroundBlendMode as GlobalCompositeOperation;
       this.drawRoundedRect(ctx, 0, 0, bgW, bgH, normalizedStyle.backgroundRadius * renderScale);
       ctx.fill();
       ctx.restore();
@@ -99,6 +100,7 @@ export class TextRenderer {
     ctx.font = font;
     ctx.fillStyle = normalizedStyle.color;
     ctx.globalAlpha = normalizedStyle.colorAlpha;
+    ctx.globalCompositeOperation = normalizedStyle.colorBlendMode as GlobalCompositeOperation;
     ctx.textBaseline = 'middle';
     ctx.textAlign = normalizedStyle.align;
 

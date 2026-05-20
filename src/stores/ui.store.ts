@@ -137,14 +137,6 @@ export const useUiStore = defineStore('ui', () => {
   const projectStore = useProjectStore();
   const fileTreeModule = createUiFileTreePersistenceModule({
     fileTreeExpandedPaths,
-    loadExpandedPaths: (projectId) =>
-      projectId === projectStore.currentProjectId
-        ? projectStore.projectSettings.ui.fileTreeExpandedPaths
-        : null,
-    saveExpandedPaths: (projectId, paths) => {
-      if (projectId !== projectStore.currentProjectId) return;
-      projectStore.projectSettings.ui.fileTreeExpandedPaths = paths;
-    },
   });
   const {
     restoreFileTreeStateOnce: _restore,

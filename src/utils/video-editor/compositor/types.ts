@@ -158,11 +158,21 @@ export function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): bo
     a.fontSize === b.fontSize &&
     a.fontWeight === b.fontWeight &&
     a.color === b.color &&
+    a.colorAlpha === b.colorAlpha &&
+    a.colorBlendMode === b.colorBlendMode &&
     a.align === b.align &&
     a.verticalAlign === b.verticalAlign &&
     a.lineHeight === b.lineHeight &&
     a.letterSpacing === b.letterSpacing &&
+    a.backgroundEnabled === b.backgroundEnabled &&
     a.backgroundColor === b.backgroundColor &&
+    a.backgroundAlpha === b.backgroundAlpha &&
+    a.backgroundRadius === b.backgroundRadius &&
+    a.backgroundBlendMode === b.backgroundBlendMode &&
+    a.borderEnabled === b.borderEnabled &&
+    a.borderColor === b.borderColor &&
+    a.borderAlpha === b.borderAlpha &&
+    a.borderWidth === b.borderWidth &&
     arePaddingValuesEqual(a.padding, b.padding)
   );
 }
