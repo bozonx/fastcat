@@ -368,9 +368,6 @@ export function updateClipProperties(
   }
 
   if (item.clipType === 'shape') {
-    if ('shapeType' in nextProps) {
-      nextProps['shapeType'] = nextProps.shapeType;
-    }
     if ('fillColor' in nextProps) {
       nextProps['fillColor'] =
         typeof nextProps.fillColor === 'string' ? nextProps.fillColor : undefined;
@@ -383,25 +380,8 @@ export function updateClipProperties(
       nextProps['strokeWidth'] =
         typeof nextProps.strokeWidth === 'number' ? nextProps.strokeWidth : undefined;
     }
-    if ('shapeConfig' in nextProps) {
-      nextProps['shapeConfig'] = nextProps.shapeConfig;
-    }
   }
 
-  if (item.clipType === 'hud') {
-    if ('hudType' in nextProps) {
-      nextProps['hudType'] = nextProps.hudType;
-    }
-    if ('background' in nextProps) {
-      nextProps['background'] = nextProps.background;
-    }
-    if ('content' in nextProps) {
-      nextProps['content'] = nextProps.content;
-    }
-    if ('frame' in nextProps) {
-      nextProps['frame'] = nextProps.frame;
-    }
-  }
 
   if ('text' in nextProps) {
     if (item.clipType !== 'text') {

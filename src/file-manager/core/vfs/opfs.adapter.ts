@@ -225,13 +225,15 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       return;
     }
 
+    const normalizedData = normalizeWritableData(data);
+
     const tempName = this.createTempName(fileName);
     let tempHandle: FileSystemFileHandle | null = null;
     try {
       tempHandle = await parentHandle.getFileHandle(tempName, { create: true });
       const writable = await (tempHandle as ExtendedFileHandle).createWritable();
       try {
-        await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
+        await writable.write(normalizedData as FileSystemWriteChunkType);
         await writable.close();
       } catch (e) {
         try {
@@ -245,6 +247,38 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       await (tempHandle as ExtendedHandle).move!(parentHandle, fileName);
       this.revokeObjectUrlsUnder(path);
     } catch (e) {
+      const isLocked =
+        (e as Error).name === 'NoModificationAllowedError' ||
+        (e as Error).message?.toLowerCase().includes('locked');
+
+      if (isLocked) {
+        // Destination is locked (another context has the file open).
+        // Fall back to a direct overwrite — non-atomic, but the best we can do.
+        try {
+          const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+          const writable = await (fileHandle as ExtendedFileHandle).createWritable();
+          try {
+            await writable.write(normalizedData as FileSystemWriteChunkType);
+            await writable.close();
+          } catch (writeErr) {
+            try {
+              await writable.close();
+            } catch {
+              /* ignore */
+            }
+            throw writeErr;
+          }
+          this.revokeObjectUrlsUnder(path);
+        } catch (fallbackErr) {
+          throw wrapPlatformError(fallbackErr, path);
+        } finally {
+          if (tempHandle) {
+            await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
+          }
+        }
+        return;
+      }
+
       if (tempHandle) {
         await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
       }

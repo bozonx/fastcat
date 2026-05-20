@@ -1,7 +1,7 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, reactive } from 'vue';
 import { mount, type VueWrapper } from '@vue/test-utils';
 
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
@@ -15,10 +15,6 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 
-const { reactive } = vi.hoisted(() => {
-  const { reactive } = require('vue');
-  return { reactive };
-});
 
 const mockWorkspaceStore = {
   userSettings: reactive({

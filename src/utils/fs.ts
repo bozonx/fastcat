@@ -34,6 +34,14 @@ export async function generateUniqueFsEntryName(params: {
     }
   }
 
+  // Verify against the filesystem as a safety net in case existingNames was stale.
+  let verifyPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
+  while (await params.vfs.exists(verifyPath)) {
+    fileName = `${params.baseName}${String(index).padStart(padWidth, '0')}${params.extension}`;
+    index++;
+    verifyPath = params.dirPath ? `${params.dirPath}/${fileName}` : fileName;
+  }
+
   return fileName;
 }
 

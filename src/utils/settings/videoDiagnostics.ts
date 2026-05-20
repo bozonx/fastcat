@@ -36,6 +36,8 @@ interface BrowserLike {
   AudioEncoder?: {
     isConfigSupported?: (config: Record<string, unknown>) => Promise<{ supported?: boolean }>;
   };
+  crossOriginIsolated?: boolean;
+  isSecureContext?: boolean;
   VideoDecoder?: {
     isConfigSupported?: (config: Record<string, unknown>) => Promise<{ supported?: boolean }>;
   };
@@ -53,6 +55,7 @@ interface NavigatorLike {
   mediaCapabilities?: {
     encodingInfo?: (config: Record<string, unknown>) => Promise<MediaCapabilitiesInfoLike>;
   };
+  userAgent?: string;
 }
 
 interface GPUAdapterLike {
@@ -72,6 +75,23 @@ interface GPUAdapterLike {
 
 interface GPUDeviceLike {
   destroy?: () => void;
+}
+
+interface WebGpuInfo {
+  adapterAvailable: boolean;
+  adapterRequestError: string | null;
+  adapterRequestStatus: string;
+  apiAvailable: boolean;
+  architecture: string | null;
+  description: string | null;
+  device: string | null;
+  deviceAvailable: boolean;
+  deviceRequestError: string | null;
+  deviceRequestStatus: string;
+  featureCount: number | null;
+  maxBufferSize: number | null;
+  maxTextureDimension2D: number | null;
+  vendor: string | null;
 }
 
 interface MediaCapabilitiesInfoLike {
@@ -139,6 +159,11 @@ function formatApiAvailability(value: boolean | null) {
 
 function buildStatus(label: string, tone: VideoDiagnosticsStatus['tone']): VideoDiagnosticsStatus {
   return { label, tone };
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name;
+  return String(error);
 }
 
 async function getVideoEncoderSupport(
@@ -318,56 +343,75 @@ function getOffscreenWebGlInfo(browser: BrowserLike): WebGlInfo {
   }
 }
 
-async function getWebGpuInfo(navigatorObject: NavigatorLike) {
+function createUnavailableWebGpuInfo(params: {
+  adapterRequestError?: string | null;
+  adapterRequestStatus: string;
+  apiAvailable: boolean;
+}): WebGpuInfo {
+  return {
+    adapterAvailable: false,
+    adapterRequestError: params.adapterRequestError ?? null,
+    adapterRequestStatus: params.adapterRequestStatus,
+    apiAvailable: params.apiAvailable,
+    architecture: null,
+    description: null,
+    device: null,
+    deviceAvailable: false,
+    deviceRequestError: null,
+    deviceRequestStatus: params.apiAvailable ? 'Not requested' : 'Unavailable',
+    featureCount: null,
+    maxBufferSize: null,
+    maxTextureDimension2D: null,
+    vendor: null,
+  };
+}
+
+async function getWebGpuInfo(navigatorObject: NavigatorLike): Promise<WebGpuInfo> {
   if (!navigatorObject.gpu?.requestAdapter) {
-    return {
-      adapterAvailable: false,
-      architecture: null,
-      description: null,
-      device: null,
-      deviceAvailable: false,
-      featureCount: null,
-      maxBufferSize: null,
-      maxTextureDimension2D: null,
-      vendor: null,
-    };
+    return createUnavailableWebGpuInfo({
+      adapterRequestStatus: 'WebGPU API unavailable',
+      apiAvailable: false,
+    });
   }
 
   try {
     const adapter = await navigatorObject.gpu.requestAdapter();
     if (!adapter) {
-      return {
-        adapterAvailable: false,
-        architecture: null,
-        description: null,
-        device: null,
-        deviceAvailable: false,
-        featureCount: null,
-        maxBufferSize: null,
-        maxTextureDimension2D: null,
-        vendor: null,
-      };
+      return createUnavailableWebGpuInfo({
+        adapterRequestStatus: 'requestAdapter returned null',
+        apiAvailable: true,
+      });
     }
 
     const features = adapter.features ? Array.from(adapter.features) : [];
     let deviceAvailable = false;
+    let deviceRequestError: string | null = null;
+    let deviceRequestStatus = 'requestDevice unavailable';
 
     if (typeof adapter.requestDevice === 'function') {
       try {
         const device = (await adapter.requestDevice()) as GPUDeviceLike;
         deviceAvailable = true;
+        deviceRequestStatus = 'Available';
         device.destroy?.();
-      } catch {
+      } catch (error) {
         deviceAvailable = false;
+        deviceRequestError = getErrorMessage(error);
+        deviceRequestStatus = 'requestDevice failed';
       }
     }
 
     return {
       adapterAvailable: true,
+      adapterRequestError: null,
+      adapterRequestStatus: 'Available',
+      apiAvailable: true,
       architecture: adapter.info?.architecture || null,
       description: adapter.info?.description || null,
       device: adapter.info?.device || null,
       deviceAvailable,
+      deviceRequestError,
+      deviceRequestStatus,
       featureCount: features.length,
       maxBufferSize:
         typeof adapter.limits?.maxBufferSize === 'number' ? adapter.limits.maxBufferSize : null,
@@ -377,23 +421,18 @@ async function getWebGpuInfo(navigatorObject: NavigatorLike) {
           : null,
       vendor: adapter.info?.vendor || null,
     };
-  } catch {
-    return {
-      adapterAvailable: false,
-      architecture: null,
-      description: null,
-      device: null,
-      deviceAvailable: false,
-      featureCount: null,
-      maxBufferSize: null,
-      maxTextureDimension2D: null,
-      vendor: null,
-    };
+  } catch (error) {
+    return createUnavailableWebGpuInfo({
+      adapterRequestError: getErrorMessage(error),
+      adapterRequestStatus: 'requestAdapter failed',
+      apiAvailable: true,
+    });
   }
 }
 
 export function createVideoDiagnosticsSnapshot(params: {
   audioEncoderSupported: boolean | null;
+  crossOriginIsolated: boolean | null;
   createImageBitmapSupported: boolean | null;
   encodingInfo: MediaCapabilitiesInfoLike | null;
   mediaCapabilitiesEncodingSupported: boolean | null;
@@ -405,6 +444,8 @@ export function createVideoDiagnosticsSnapshot(params: {
   videoEncoderSoftwareSupported: boolean | null;
   webGlInfo: WebGlInfo;
   webGpuInfo: Awaited<ReturnType<typeof getWebGpuInfo>>;
+  secureContext: boolean | null;
+  userAgent: string | null;
 }): VideoDiagnosticsSnapshot {
   const compositorReady =
     (params.webGlInfo.supported === true || params.offscreenWebGlInfo.supported === true) &&
@@ -594,11 +635,39 @@ export function createVideoDiagnosticsSnapshot(params: {
     },
     {
       description:
-        'WebGPU information is diagnostic only right now. The current compositor code uses WebGPU (with WebGL fallback).',
+        'WebGPU adapter detection depends on the current browser or WebView, OS graphics stack, driver allowlist and secure-context policy. WebGL can still use the GPU when this adapter is unavailable.',
       items: [
+        {
+          label: 'WebGPU API',
+          value: formatApiAvailability(params.webGpuInfo.apiAvailable),
+        },
+        {
+          label: 'Secure context',
+          value: formatBoolean(params.secureContext),
+        },
+        {
+          label: 'Cross-origin isolated',
+          value: formatBoolean(params.crossOriginIsolated),
+        },
+        {
+          label: 'Adapter request',
+          value: params.webGpuInfo.adapterRequestStatus,
+        },
+        {
+          label: 'Adapter request error',
+          value: params.webGpuInfo.adapterRequestError ?? 'None',
+        },
         {
           label: 'Adapter available',
           value: formatBoolean(params.webGpuInfo.adapterAvailable),
+        },
+        {
+          label: 'Device request',
+          value: params.webGpuInfo.deviceRequestStatus,
+        },
+        {
+          label: 'Device request error',
+          value: params.webGpuInfo.deviceRequestError ?? 'None',
         },
         {
           label: 'Vendor',
@@ -628,10 +697,16 @@ export function createVideoDiagnosticsSnapshot(params: {
           label: 'Max buffer size',
           value: formatNumber(params.webGpuInfo.maxBufferSize),
         },
+        {
+          label: 'Runtime',
+          value: params.userAgent ?? 'Unavailable',
+        },
       ],
       status: params.webGpuInfo.adapterAvailable
         ? buildStatus('Detected and requested first by Pixi when available', 'neutral')
-        : buildStatus('No WebGPU adapter detected', 'warning'),
+        : params.webGpuInfo.apiAvailable
+          ? buildStatus(params.webGpuInfo.adapterRequestStatus, 'warning')
+          : buildStatus('WebGPU API unavailable in this runtime', 'warning'),
       title: 'WebGPU diagnostics',
     },
   ];
@@ -656,6 +731,10 @@ export async function gatherVideoDiagnostics(
   const navigatorObject =
     options.navigatorObject ?? (globalThis.navigator as unknown as NavigatorLike);
   const offscreenCanvasSupported = typeof browser.OffscreenCanvas !== 'undefined';
+  const secureContext =
+    typeof browser.isSecureContext === 'boolean' ? browser.isSecureContext : null;
+  const crossOriginIsolated =
+    typeof browser.crossOriginIsolated === 'boolean' ? browser.crossOriginIsolated : null;
   const createImageBitmapSupported = typeof browser.createImageBitmap === 'function';
   const mediaCapabilitiesEncodingSupported =
     typeof navigatorObject.mediaCapabilities?.encodingInfo === 'function';
@@ -690,6 +769,7 @@ export async function gatherVideoDiagnostics(
 
   return createVideoDiagnosticsSnapshot({
     audioEncoderSupported,
+    crossOriginIsolated,
     createImageBitmapSupported,
     encodingInfo,
     mediaCapabilitiesEncodingSupported,
@@ -701,5 +781,7 @@ export async function gatherVideoDiagnostics(
     videoEncoderSoftwareSupported,
     webGlInfo,
     webGpuInfo,
+    secureContext,
+    userAgent: navigatorObject.userAgent ?? null,
   });
 }

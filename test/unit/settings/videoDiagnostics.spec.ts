@@ -7,6 +7,7 @@ describe('videoDiagnostics', () => {
   it('builds a healthy summary when compositor and WebCodecs paths are available', () => {
     const snapshot = createVideoDiagnosticsSnapshot({
       audioEncoderSupported: true,
+      crossOriginIsolated: false,
       createImageBitmapSupported: true,
       encodingInfo: {
         powerEfficient: true,
@@ -41,15 +42,22 @@ describe('videoDiagnostics', () => {
       },
       webGpuInfo: {
         adapterAvailable: true,
+        adapterRequestError: null,
+        adapterRequestStatus: 'Available',
+        apiAvailable: true,
         architecture: 'test-arch',
         description: 'Test GPU',
         device: 'Test Device',
         deviceAvailable: true,
+        deviceRequestError: null,
+        deviceRequestStatus: 'Available',
         featureCount: 12,
         maxBufferSize: 1024,
         maxTextureDimension2D: 8192,
         vendor: 'Test Vendor',
       },
+      secureContext: true,
+      userAgent: 'Test Runtime',
     });
 
     expect(snapshot.summary.tone).toBe('success');
@@ -70,6 +78,7 @@ describe('videoDiagnostics', () => {
   it('reports limited capabilities when WebGL and WebCodecs are unavailable', () => {
     const snapshot = createVideoDiagnosticsSnapshot({
       audioEncoderSupported: false,
+      crossOriginIsolated: false,
       createImageBitmapSupported: false,
       encodingInfo: null,
       mediaCapabilitiesEncodingSupported: false,
@@ -100,21 +109,28 @@ describe('videoDiagnostics', () => {
       },
       webGpuInfo: {
         adapterAvailable: false,
+        adapterRequestError: null,
+        adapterRequestStatus: 'requestAdapter returned null',
+        apiAvailable: true,
         architecture: null,
         description: null,
         device: null,
         deviceAvailable: false,
+        deviceRequestError: null,
+        deviceRequestStatus: 'Not requested',
         featureCount: null,
         maxBufferSize: null,
         maxTextureDimension2D: null,
         vendor: null,
       },
+      secureContext: true,
+      userAgent: 'Test Runtime',
     });
 
     expect(snapshot.summary.tone).toBe('danger');
     expect(snapshot.sections[0]?.status.tone).toBe('danger');
     expect(snapshot.sections[2]?.status.tone).toBe('danger');
-    expect(snapshot.sections[3]?.status.label).toContain('No WebGPU adapter');
+    expect(snapshot.sections[3]?.status.label).toContain('requestAdapter returned null');
     expect(
       snapshot.sections[0]?.items.find((item) => item.label === 'Compositor path')?.value,
     ).toBe('Limited or fallback-only');
