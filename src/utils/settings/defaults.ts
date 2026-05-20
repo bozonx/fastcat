@@ -30,10 +30,6 @@ export interface SttIntegrationSettings {
   includeWords: boolean;
 }
 
-export interface VideoSettings {
-  enableFfmpeg: boolean;
-}
-
 export interface ExternalIntegrationsSettings {
   fastcatAccount: FastCatPublicadorIntegrationSettings;
   fastcatPublicador: FastCatPublicadorIntegrationSettings;
@@ -129,7 +125,6 @@ export interface FastCatUserSettings {
     audioScrubbingEnabled: boolean;
   };
   integrations: ExternalIntegrationsSettings;
-  video: VideoSettings;
   mouse: {
     ruler: {
       wheel: string;
@@ -305,9 +300,6 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       formatText: false,
       includeWords: true,
     },
-  },
-  video: {
-    enableFfmpeg: false,
   },
   mouse: {
     ruler: {

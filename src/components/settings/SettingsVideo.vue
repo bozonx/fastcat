@@ -70,7 +70,8 @@ onMounted(async () => {
 });
 
 function resetDefaults() {
-  workspaceStore.userSettings.video = { ...DEFAULT_USER_SETTINGS.video };
+  workspaceStore.userSettings.optimization.videoFrameCacheMb =
+    DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb;
   isResetConfirmOpen.value = false;
 }
 </script>

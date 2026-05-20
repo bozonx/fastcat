@@ -192,15 +192,6 @@ export function normalizeIntegrationsSettings(raw: unknown): FastCatUserSettings
   return schema.parse((raw as Record<string, unknown>)?.['integrations'] ?? {});
 }
 
-export function normalizeVideoSettings(raw: unknown): FastCatUserSettings['video'] {
-  return z
-    .object({
-      enableFfmpeg: z.boolean().catch(DEFAULT_USER_SETTINGS.video.enableFfmpeg),
-    })
-    .catch(DEFAULT_USER_SETTINGS.video)
-    .parse((raw as Record<string, unknown>)?.['video'] ?? {});
-}
-
 export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['projectDefaults'] {
   const schema = z
     .object({

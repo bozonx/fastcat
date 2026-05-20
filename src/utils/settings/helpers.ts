@@ -4,7 +4,6 @@ import {
   type FastCatAppSettings,
   type FastCatUserSettings,
   type FastCatWorkspaceSettings,
-  DEFAULT_WORKSPACE_SETTINGS,
 } from './defaults';
 import { createDefaultExportPresets, createDefaultProjectPresets } from './presets';
 
@@ -78,7 +77,6 @@ export function createDefaultUserSettings(): FastCatUserSettings {
       selectedPresetId: exportPresets.selectedPresetId,
       items: exportPresets.items.map((preset) => ({ ...preset })),
     },
-    video: { enableFfmpeg: false },
     projectDefaults: createDefaultProjectDefaults(),
     integrations: {
       ...DEFAULT_USER_SETTINGS.integrations,

@@ -9,6 +9,11 @@ export interface SetupVirtualWorkspaceOptions {
   workspaceName?: string;
 }
 
+export interface OpfsEntryInfo {
+  name: string;
+  kind: FileSystemHandleKind;
+}
+
 /**
  * Removes a single root entry from OPFS.
  */
@@ -24,6 +29,70 @@ export async function removeOpfsEntry(page: Page, name: string): Promise<void> {
       }
     }
   }, name);
+}
+
+/**
+ * Checks whether an OPFS entry exists.
+ */
+export async function opfsEntryExists(page: Page, path: string): Promise<boolean> {
+  return await page.evaluate(async (entryPath) => {
+    const root = await navigator.storage.getDirectory();
+    const parts = entryPath.split('/').filter(Boolean);
+    if (parts.length === 0) return true;
+
+    let dir = root;
+    for (let i = 0; i < parts.length; i++) {
+      const name = parts[i];
+      const isLast = i === parts.length - 1;
+
+      try {
+        if (isLast) {
+          try {
+            await dir.getDirectoryHandle(name);
+            return true;
+          } catch (error) {
+            if (!(error instanceof DOMException) || error.name !== 'TypeMismatchError') {
+              throw error;
+            }
+          }
+
+          await dir.getFileHandle(name);
+          return true;
+        }
+
+        dir = await dir.getDirectoryHandle(name);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
+          return false;
+        }
+        throw error;
+      }
+    }
+
+    return false;
+  }, path);
+}
+
+/**
+ * Lists a directory in OPFS.
+ */
+export async function listOpfsDirectory(page: Page, path: string): Promise<OpfsEntryInfo[]> {
+  return await page.evaluate(async (dirPath) => {
+    const root = await navigator.storage.getDirectory();
+    const parts = dirPath.split('/').filter(Boolean);
+    let dir = root;
+
+    for (const part of parts) {
+      dir = await dir.getDirectoryHandle(part);
+    }
+
+    const entries: Array<{ name: string; kind: FileSystemHandleKind }> = [];
+    for await (const [name, handle] of dir.entries()) {
+      entries.push({ name, kind: handle.kind });
+    }
+
+    return entries;
+  }, path);
 }
 
 /**
@@ -104,6 +173,14 @@ export async function readFileFromOpfs(page: Page, path: string): Promise<Uint8A
   }, path);
 
   return new Uint8Array(array);
+}
+
+/**
+ * Reads a UTF-8 text file from OPFS.
+ */
+export async function readTextFileFromOpfs(page: Page, path: string): Promise<string> {
+  const bytes = await readFileFromOpfs(page, path);
+  return new TextDecoder().decode(bytes);
 }
 
 /**
