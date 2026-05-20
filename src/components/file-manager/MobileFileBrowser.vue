@@ -226,7 +226,7 @@ const {
     toast.add({
       title: t('videoEditor.fileManager.audio.transcriptionFailed'),
       description: message,
-      color: 'danger',
+      color: 'error',
     });
   },
 });

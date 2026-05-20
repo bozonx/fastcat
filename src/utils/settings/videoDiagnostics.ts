@@ -1,3 +1,5 @@
+import { BASE_VIDEO_CODEC_OPTIONS } from '~/utils/webcodecs';
+
 export interface VideoDiagnosticsProbeOptions {
   audioCodec: string;
   audioBitrate: number;
@@ -128,6 +130,14 @@ interface WebGlInfo {
   version: string | null;
 }
 
+interface VideoCodecDiagnosticsResult {
+  decodeSupported: boolean | null;
+  hardwareEncodeSupported: boolean | null;
+  label: string;
+  softwareEncodeSupported: boolean | null;
+  value: string;
+}
+
 interface GatherVideoDiagnosticsOptions {
   browser?: BrowserLike;
   createCanvas?: () => CanvasLike;
@@ -155,6 +165,22 @@ function formatApiAvailability(value: boolean | null) {
     true: 'Available',
     unknown: 'Unknown',
   });
+}
+
+function formatCodecSupport(value: boolean | null) {
+  return formatBoolean(value, {
+    false: 'No',
+    true: 'Yes',
+    unknown: 'Unknown',
+  });
+}
+
+function formatCodecDiagnostics(result: VideoCodecDiagnosticsResult) {
+  return [
+    `HW encode: ${formatCodecSupport(result.hardwareEncodeSupported)}`,
+    `SW encode: ${formatCodecSupport(result.softwareEncodeSupported)}`,
+    `Decode: ${formatCodecSupport(result.decodeSupported)}`,
+  ].join(' | ');
 }
 
 function buildStatus(label: string, tone: VideoDiagnosticsStatus['tone']): VideoDiagnosticsStatus {
@@ -226,6 +252,35 @@ async function getVideoDecoderSupport(
   } catch {
     return false;
   }
+}
+
+async function getVideoCodecDiagnostics(
+  browser: BrowserLike,
+  probe: VideoDiagnosticsProbeOptions,
+): Promise<VideoCodecDiagnosticsResult[]> {
+  return Promise.all(
+    BASE_VIDEO_CODEC_OPTIONS.map(async (codec) => {
+      const codecProbe = {
+        ...probe,
+        videoCodec: codec.value,
+      };
+      const [hardwareEncodeSupported, softwareEncodeSupported, decodeSupported] = await Promise.all(
+        [
+          getVideoEncoderSupport(browser, codecProbe, 'prefer-hardware'),
+          getVideoEncoderSupport(browser, codecProbe, 'prefer-software'),
+          getVideoDecoderSupport(browser, codecProbe),
+        ],
+      );
+
+      return {
+        decodeSupported,
+        hardwareEncodeSupported,
+        label: codec.label,
+        softwareEncodeSupported,
+        value: codec.value,
+      };
+    }),
+  );
 }
 
 async function getEncodingInfo(
@@ -442,9 +497,11 @@ export function createVideoDiagnosticsSnapshot(params: {
   videoDecoderSupported: boolean | null;
   videoEncoderHardwareSupported: boolean | null;
   videoEncoderSoftwareSupported: boolean | null;
+  videoCodecDiagnostics: VideoCodecDiagnosticsResult[];
   webGlInfo: WebGlInfo;
   webGpuInfo: Awaited<ReturnType<typeof getWebGpuInfo>>;
   secureContext: boolean | null;
+  selectedVideoCodec: string;
   userAgent: string | null;
 }): VideoDiagnosticsSnapshot {
   const compositorReady =
@@ -577,6 +634,10 @@ export function createVideoDiagnosticsSnapshot(params: {
           label: 'OffscreenCanvas 2D context',
           value: formatBoolean(params.offscreenCanvas2dSupported),
         },
+        ...params.videoCodecDiagnostics.map((codec) => ({
+          label: `${codec.label} decode (${codec.value})`,
+          value: formatCodecSupport(codec.decodeSupported),
+        })),
       ],
       status: importStatus,
       title: 'Import and decode path',
@@ -585,6 +646,12 @@ export function createVideoDiagnosticsSnapshot(params: {
       description:
         'These capabilities affect Mediabunny CanvasSource exports, browser-side encoding and hardware acceleration hints.',
       items: [
+        {
+          label: 'Selected video codec',
+          value:
+            params.videoCodecDiagnostics.find((codec) => codec.value === params.selectedVideoCodec)
+              ?.label ?? params.selectedVideoCodec,
+        },
         {
           label: 'VideoEncoder API',
           value:
@@ -629,6 +696,10 @@ export function createVideoDiagnosticsSnapshot(params: {
           label: 'MediaCapabilities power efficient',
           value: formatBoolean(params.encodingInfo?.powerEfficient ?? null),
         },
+        ...params.videoCodecDiagnostics.map((codec) => ({
+          label: `${codec.label} (${codec.value})`,
+          value: formatCodecDiagnostics(codec),
+        })),
       ],
       status: webCodecsStatus,
       title: 'WebCodecs export path',
@@ -755,12 +826,14 @@ export async function gatherVideoDiagnostics(
     videoDecoderSupported,
     audioEncoderSupported,
     encodingInfo,
+    videoCodecDiagnostics,
   ] = await Promise.all([
     getVideoEncoderSupport(browser, options.probe, 'prefer-hardware'),
     getVideoEncoderSupport(browser, options.probe, 'prefer-software'),
     getVideoDecoderSupport(browser, options.probe),
     getAudioEncoderSupport(browser, options.probe),
     getEncodingInfo(navigatorObject, options.probe),
+    getVideoCodecDiagnostics(browser, options.probe),
   ]);
 
   const webGlInfo = getWebGlInfo(options.createCanvas);
@@ -779,9 +852,11 @@ export async function gatherVideoDiagnostics(
     videoDecoderSupported,
     videoEncoderHardwareSupported,
     videoEncoderSoftwareSupported,
+    videoCodecDiagnostics,
     webGlInfo,
     webGpuInfo,
     secureContext,
+    selectedVideoCodec: options.probe.videoCodec,
     userAgent: navigatorObject.userAgent ?? null,
   });
 }

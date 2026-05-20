@@ -1,16 +1,12 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { reactive } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 
 // Mock localStorage via @vueuse/core if needed, but here useLocalStorage might just work with mocked window.localStorage from vitest.setup.ts
 // However, workspace.store and timeline.store need mocks.
-
-const { reactive } = vi.hoisted(() => {
-  const { reactive } = require('vue');
-  return { reactive };
-});
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => ({

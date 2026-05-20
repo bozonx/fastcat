@@ -15,7 +15,6 @@ import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
 
-
 const mockWorkspaceStore = {
   userSettings: reactive({
     history: {

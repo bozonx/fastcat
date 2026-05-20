@@ -382,7 +382,6 @@ export function updateClipProperties(
     }
   }
 
-
   if ('text' in nextProps) {
     if (item.clipType !== 'text') {
       delete nextProps['text'];

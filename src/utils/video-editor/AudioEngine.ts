@@ -75,8 +75,6 @@ export class AudioEngine {
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
 
-  constructor() {}
-
   private ensureDecodeWorker() {
     if (this.decodeWorker) return this.decodeWorker;
 

@@ -30,6 +30,22 @@ describe('videoDiagnostics', () => {
       videoDecoderSupported: true,
       videoEncoderHardwareSupported: true,
       videoEncoderSoftwareSupported: true,
+      videoCodecDiagnostics: [
+        {
+          decodeSupported: true,
+          hardwareEncodeSupported: true,
+          label: 'H.264 (High)',
+          softwareEncodeSupported: true,
+          value: 'avc1.640032',
+        },
+        {
+          decodeSupported: true,
+          hardwareEncodeSupported: false,
+          label: 'VP9',
+          softwareEncodeSupported: true,
+          value: 'vp09.00.10.08',
+        },
+      ],
       webGlInfo: {
         context: 'webgl2',
         maxRenderbufferSize: 16384,
@@ -57,6 +73,7 @@ describe('videoDiagnostics', () => {
         vendor: 'Test Vendor',
       },
       secureContext: true,
+      selectedVideoCodec: 'avc1.640032',
       userAgent: 'Test Runtime',
     });
 
@@ -73,6 +90,10 @@ describe('videoDiagnostics', () => {
     expect(
       snapshot.sections[0]?.items.find((item) => item.label === 'Compositor path')?.value,
     ).toBe('Pixi GPU renderer (WebGPU preferred, WebGL fallback)');
+    expect(
+      snapshot.sections[2]?.items.find((item) => item.label === 'H.264 (High) (avc1.640032)')
+        ?.value,
+    ).toBe('HW encode: Yes | SW encode: Yes | Decode: Yes');
   });
 
   it('reports limited capabilities when WebGL and WebCodecs are unavailable', () => {
@@ -97,6 +118,15 @@ describe('videoDiagnostics', () => {
       videoDecoderSupported: false,
       videoEncoderHardwareSupported: false,
       videoEncoderSoftwareSupported: false,
+      videoCodecDiagnostics: [
+        {
+          decodeSupported: false,
+          hardwareEncodeSupported: false,
+          label: 'H.264 (High)',
+          softwareEncodeSupported: false,
+          value: 'avc1.640032',
+        },
+      ],
       webGlInfo: {
         context: null,
         maxRenderbufferSize: null,
@@ -124,6 +154,7 @@ describe('videoDiagnostics', () => {
         vendor: null,
       },
       secureContext: true,
+      selectedVideoCodec: 'avc1.640032',
       userAgent: 'Test Runtime',
     });
 
