@@ -17,17 +17,21 @@ const isSettingsOpen = ref(false);
 
 const {
   searchQuery,
-  isRenaming,
   renameValue,
   isCreateModalOpen,
   projectCreationSettings,
   filteredProjects,
+  isRenameModalOpen,
+  isDeleteModalOpen,
   createNewProject,
   startCreateProject,
   applyProjectCreationPreset,
   handleOpenProject,
   renameProject,
   startRename,
+  startDelete,
+  confirmDelete,
+  closeDeleteModal,
 } = useProjectManagement();
 
 const projectPresetOptions = computed(() =>
@@ -249,9 +253,7 @@ const formatDate = (dateStr?: string) => {
                 v-for="project in smartSortedProjects"
                 :key="project.projectName"
                 class="flex flex-col group bg-ui-bg-elevated/50 border border-ui-border rounded-xl overflow-hidden hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer"
-                @click="
-                  isRenaming === project.projectName ? null : handleOpenProject(project.projectName)
-                "
+                @click="handleOpenProject(project.projectName)"
               >
                 <div class="aspect-video relative shrink-0">
                   <ProjectThumbnail
@@ -262,18 +264,7 @@ const formatDate = (dateStr?: string) => {
                 </div>
 
                 <div class="p-3 flex flex-col flex-1 min-h-[74px]">
-                  <div v-if="isRenaming === project.projectName" class="mb-2">
-                    <UiTextInput
-                      v-model="renameValue"
-                      size="sm"
-                      autofocus
-                      @keyup.enter="renameProject(project.projectName)"
-                      @keyup.esc="isRenaming = null"
-                      @click.stop
-                    />
-                  </div>
                   <h3
-                    v-else
                     class="text-sm font-semibold text-ui-text truncate group-hover:text-primary-400 transition-colors mb-1"
                   >
                     {{ project.projectName }}
@@ -286,7 +277,6 @@ const formatDate = (dateStr?: string) => {
                       {{ project.updatedAt ? formatDate(project.updatedAt) : '' }}
                     </span>
                     <UDropdownMenu
-                      v-if="isRenaming !== project.projectName"
                       :items="[
                         [
                           {
@@ -297,7 +287,7 @@ const formatDate = (dateStr?: string) => {
                           {
                             label: t('common.delete'),
                             icon: 'i-heroicons-trash',
-                            onSelect: () => workspaceStore.deleteProject(project.projectName),
+                            onSelect: () => startDelete(project.projectName),
                           },
                         ],
                       ]"
@@ -411,6 +401,64 @@ const formatDate = (dateStr?: string) => {
           :loading="workspaceStore.isLoading"
           :label="t('common.create')"
           @click="createNewProject"
+        />
+      </div>
+    </template>
+  </UiModal>
+
+  <!-- Rename Project Modal -->
+  <UiModal
+    v-model:open="isRenameModalOpen"
+    :title="t('common.rename')"
+    :ui="{ content: 'sm:max-w-lg' }"
+  >
+    <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+      <UiTextInput
+        v-model="renameValue"
+        :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+        autofocus
+        @keyup.enter="renameProject"
+      />
+    </UiFormField>
+
+    <template #footer>
+      <div class="flex justify-end gap-3 w-full">
+        <UButton
+          variant="ghost"
+          color="neutral"
+          :label="t('common.cancel')"
+          @click="isRenameModalOpen = false"
+        />
+        <UButton
+          color="primary"
+          :disabled="!renameValue.trim()"
+          :label="t('common.rename')"
+          @click="renameProject"
+        />
+      </div>
+    </template>
+  </UiModal>
+
+  <!-- Delete Project Confirmation Modal -->
+  <UiModal
+    v-model:open="isDeleteModalOpen"
+    :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
+    :description="t('videoEditor.projectSettings.deleteProjectConfirmDescription')"
+    :ui="{ content: 'sm:max-w-md' }"
+  >
+    <template #footer>
+      <div class="flex justify-end gap-3 w-full">
+        <UButton
+          variant="ghost"
+          color="neutral"
+          :label="t('common.cancel')"
+          @click="closeDeleteModal"
+        />
+        <UButton
+          color="error"
+          :label="t('videoEditor.projectSettings.deleteProjectAction')"
+          :loading="workspaceStore.isLoading"
+          @click="confirmDelete"
         />
       </div>
     </template>

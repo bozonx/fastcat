@@ -28,7 +28,7 @@ const duration = computed(() => {
 const isMetaExpanded = ref(false);
 const rawMetaYaml = computed(() => {
   if (!props.item.meta) return null;
-  const { duration, updatedAt, note, ...rest } = props.item.meta as any;
+  const { duration, updatedAt, note, ...rest } = props.item.meta as Record<string, unknown>;
   if (Object.keys(rest).length === 0) return null;
   try {
     return yaml.dump(rest, { indent: 2 });

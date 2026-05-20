@@ -28,7 +28,7 @@ const masterEffects = computed(
 function handleUpdateEffects(effects: AudioClipEffect[]) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects: effects as any,
+    effects,
   });
 }
 </script>

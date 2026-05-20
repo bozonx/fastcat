@@ -58,7 +58,7 @@ function handleSelectEffect(type: string) {
   const currentEffects = timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? [];
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects: [...currentEffects, newEffect] as any,
+    effects: [...currentEffects, newEffect as import('~/timeline/types').ClipEffect],
   });
 
   isSelectEffectModalOpen.value = false;

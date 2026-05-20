@@ -47,7 +47,7 @@ function onDragStart(e: DragEvent) {
         <UButton
           v-if="showAction"
           :icon="actionIcon || 'i-heroicons-trash'"
-          :color="(actionColor as any) || 'red'"
+          :color="actionColor || 'red'"
           variant="ghost"
           size="xs"
           class="opacity-0 group-hover:opacity-100 transition-opacity"

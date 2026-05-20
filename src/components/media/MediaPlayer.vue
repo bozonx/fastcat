@@ -6,7 +6,7 @@ import { useMediaPlayerPlayback } from '~/composables/preview/useMediaPlayerPlay
 import { formatTime } from '~/utils/time';
 import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 interface MediaPlaybackTransferState {
@@ -235,7 +235,7 @@ function shouldHandlePreviewEvent() {
   if (props.isModal) return true;
   if (!playerRootEl.value) return false;
   if (!props.focusPanelId) return focusStore.canUsePreviewHotkeys;
-  return focusStore.isPanelFocused(props.focusPanelId as any);
+  return focusStore.isPanelFocused(props.focusPanelId as PanelFocusId);
 }
 
 watch(

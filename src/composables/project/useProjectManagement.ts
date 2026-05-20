@@ -58,11 +58,16 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const router = useRouter();
 
   const searchQuery = ref('');
-  const isRenaming = ref<string | null>(null);
   const renameValue = ref('');
 
   const isCreateModalOpen = ref(false);
   const projectCreationSettings = ref(createProjectCreationState(workspaceStore));
+
+  const isRenameModalOpen = ref(false);
+  const renameTargetProject = ref<string | null>(null);
+
+  const isDeleteModalOpen = ref(false);
+  const deleteTargetProject = ref<string | null>(null);
 
   const filteredProjects = computed(() => {
     if (!searchQuery.value.trim()) {
@@ -124,36 +129,73 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     }
   }
 
-  async function renameProject(oldName: string) {
-    if (!renameValue.value.trim() || renameValue.value === oldName) {
-      isRenaming.value = null;
+  async function renameProject() {
+    const oldName = renameTargetProject.value;
+    if (!oldName || !renameValue.value.trim() || renameValue.value === oldName) {
+      closeRenameModal();
       return;
     }
     try {
       await workspaceStore.renameProject(oldName, renameValue.value.trim());
-      isRenaming.value = null;
+      closeRenameModal();
     } catch (e) {
       console.error('Failed to rename project', e);
     }
   }
 
   function startRename(project: string) {
-    isRenaming.value = project;
+    renameTargetProject.value = project;
     renameValue.value = project;
+    isRenameModalOpen.value = true;
+  }
+
+  function closeRenameModal() {
+    isRenameModalOpen.value = false;
+    renameTargetProject.value = null;
+    renameValue.value = '';
+  }
+
+  function startDelete(project: string) {
+    deleteTargetProject.value = project;
+    isDeleteModalOpen.value = true;
+  }
+
+  async function confirmDelete() {
+    const name = deleteTargetProject.value;
+    if (!name) return;
+    try {
+      await workspaceStore.deleteProject(name);
+    } catch (e) {
+      console.error('Failed to delete project', e);
+    } finally {
+      closeDeleteModal();
+    }
+  }
+
+  function closeDeleteModal() {
+    isDeleteModalOpen.value = false;
+    deleteTargetProject.value = null;
   }
 
   return {
     searchQuery,
-    isRenaming,
     renameValue,
     isCreateModalOpen,
     projectCreationSettings,
     filteredProjects,
+    isRenameModalOpen,
+    renameTargetProject,
+    isDeleteModalOpen,
+    deleteTargetProject,
     createNewProject,
     startCreateProject,
     applyProjectCreationPreset,
     handleOpenProject,
     renameProject,
     startRename,
+    closeRenameModal,
+    startDelete,
+    confirmDelete,
+    closeDeleteModal,
   };
 }

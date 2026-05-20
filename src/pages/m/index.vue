@@ -30,17 +30,21 @@ resetProjectState();
 
 const {
   searchQuery,
-  isRenaming,
   renameValue,
   isCreateModalOpen,
   projectCreationSettings,
   filteredProjects,
+  isRenameModalOpen,
+  isDeleteModalOpen,
   createNewProject,
   startCreateProject,
   applyProjectCreationPreset,
   handleOpenProject,
   renameProject,
   startRename,
+  startDelete,
+  confirmDelete,
+  closeDeleteModal,
 } = useProjectManagement({ isMobile: true });
 
 const isSettingsOpen = ref(false);
@@ -206,11 +210,7 @@ const formatDate = (dateStr?: string) => {
                   v-for="project in smartSortedProjects"
                   :key="project.projectName"
                   class="group bg-zinc-900/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-zinc-800 transition-all shadow-sm h-20"
-                  @click="
-                    isRenaming === project.projectName
-                      ? null
-                      : handleOpenProject(project.projectName)
-                  "
+                  @click="handleOpenProject(project.projectName)"
                 >
                   <div class="w-20 h-full relative shrink-0">
                     <ProjectThumbnail
@@ -223,68 +223,37 @@ const formatDate = (dateStr?: string) => {
                   </div>
 
                   <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
-                    <div
-                      v-if="isRenaming === project.projectName"
-                      class="flex items-center gap-2 w-full pr-1"
-                    >
-                      <UInput
-                        v-model="renameValue"
-                        size="md"
-                        class="flex-1 min-w-0"
-                        autofocus
-                        variant="none"
-                        :ui="{
-                          base: 'h-11 px-4 bg-zinc-900 border border-white/10 rounded-2xl focus:border-primary-500/50 transition-all font-bold text-sm text-white focus:ring-0',
-                        }"
-                        @keyup.enter="renameProject(project.projectName)"
-                        @keyup.esc="isRenaming = null"
-                        @click.stop
-                      />
-                      <div class="flex items-center gap-1.5 shrink-0">
-                        <UButton
-                          size="md"
-                          variant="solid"
-                          color="primary"
-                          icon="i-heroicons-check-20-solid"
-                          class="rounded-2xl w-11 h-11 p-0 bg-ui-action! text-white shadow-lg shadow-ui-action/20 border-none active:scale-95 transition-all flex items-center justify-center"
-                          @click.stop="renameProject(project.projectName)"
-                        />
-                        <UButton
-                          size="md"
-                          variant="solid"
-                          color="neutral"
-                          icon="i-heroicons-x-mark-20-solid"
-                          class="rounded-2xl w-11 h-11 p-0 bg-white/5 border border-white/5 text-zinc-400 hover:text-white active:scale-90 transition-all flex items-center justify-center"
-                          @click.stop="isRenaming = null"
-                        />
-                      </div>
+                    <div class="flex flex-col min-w-0">
+                      <span
+                        class="font-bold text-zinc-100 truncate text-sm tracking-tight leading-tight"
+                        >{{ project.projectName }}</span
+                      >
+                      <span
+                        class="text-[10px] text-zinc-500 font-medium flex items-center gap-1 mt-1"
+                      >
+                        <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                        {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
+                      </span>
                     </div>
 
-                    <template v-else>
-                      <div class="flex flex-col min-w-0">
-                        <span
-                          class="font-bold text-zinc-100 truncate text-sm tracking-tight leading-tight"
-                          >{{ project.projectName }}</span
-                        >
-                        <span
-                          class="text-[10px] text-zinc-500 font-medium flex items-center gap-1 mt-1"
-                        >
-                          <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                          {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
-                        </span>
-                      </div>
-
-                      <div class="flex items-center gap-2 shrink-0">
-                        <UButton
-                          size="sm"
-                          variant="ghost"
-                          color="neutral"
-                          icon="lucide:edit-2"
-                          class="rounded-full w-9 h-9 p-0 text-zinc-600 active:text-white active:bg-white/5 transition-colors"
-                          @click.stop="startRename(project.projectName)"
-                        />
-                      </div>
-                    </template>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <UButton
+                        size="sm"
+                        variant="ghost"
+                        color="neutral"
+                        icon="lucide:edit-2"
+                        class="rounded-full w-9 h-9 p-0 text-zinc-600 active:text-white active:bg-white/5 transition-colors"
+                        @click.stop="startRename(project.projectName)"
+                      />
+                      <UButton
+                        size="sm"
+                        variant="ghost"
+                        color="neutral"
+                        icon="i-heroicons-trash"
+                        class="rounded-full w-9 h-9 p-0 text-zinc-600 active:text-white active:bg-white/5 transition-colors"
+                        @click.stop="startDelete(project.projectName)"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -446,6 +415,82 @@ const formatDate = (dateStr?: string) => {
       <UiMobileDrawer v-model:open="isSettingsOpen" :title="t('videoEditor.settings.title')">
         <MobileSettingsView hide-title />
       </UiMobileDrawer>
+
+      <!-- Rename Project Modal (iOS Style Sheet) -->
+      <UiModal
+        v-model:open="isRenameModalOpen"
+        :title="t('common.rename')"
+        :ui="{
+          content:
+            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[40vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
+          body: 'pb-12 pt-8 px-6',
+          header: 'pt-6 px-6 border-none',
+        }"
+      >
+        <div class="space-y-8">
+          <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+            <UInput
+              v-model="renameValue"
+              :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+              variant="none"
+              class="bg-zinc-900/50 border border-white/5 rounded-3xl h-16 text-xl font-bold px-6 focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700"
+              autofocus
+              @keyup.enter="renameProject"
+            />
+          </UiFormField>
+        </div>
+
+        <template #footer>
+          <div class="flex gap-4 w-full pb-safe mt-4">
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="flex-1 h-16 rounded-[1.5rem] font-bold text-zinc-500 active:bg-white/5"
+              :label="t('common.cancel')"
+              @click="isRenameModalOpen = false"
+            />
+            <UButton
+              color="primary"
+              class="flex-2 h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-primary-500/20 active:scale-95 transition-transform"
+              :disabled="!renameValue.trim()"
+              :label="t('common.rename')"
+              @click="renameProject"
+            />
+          </div>
+        </template>
+      </UiModal>
+
+      <!-- Delete Project Confirmation Modal (iOS Style Sheet) -->
+      <UiModal
+        v-model:open="isDeleteModalOpen"
+        :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
+        :description="t('videoEditor.projectSettings.deleteProjectConfirmDescription')"
+        :ui="{
+          content:
+            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[35vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
+          body: 'pb-12 pt-8 px-6',
+          header: 'pt-6 px-6 border-none',
+        }"
+      >
+        <template #footer>
+          <div class="flex gap-4 w-full pb-safe mt-4">
+            <UButton
+              variant="ghost"
+              color="neutral"
+              class="flex-1 h-16 rounded-[1.5rem] font-bold text-zinc-500 active:bg-white/5"
+              :label="t('common.cancel')"
+              @click="closeDeleteModal"
+            />
+            <UButton
+              color="error"
+              class="flex-2 h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-red-500/20 active:scale-95 transition-transform"
+              :label="t('videoEditor.projectSettings.deleteProjectAction')"
+              :loading="workspaceStore.isLoading"
+              @click="confirmDelete"
+            />
+          </div>
+        </template>
+      </UiModal>
 
       <!-- FAB -->
       <Teleport :to="teleportTarget">

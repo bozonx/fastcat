@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useImagePanZoom } from '~/composables/preview/useImagePanZoom';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -72,7 +72,7 @@ function onClick(e: MouseEvent) {
 function shouldHandlePreviewZoom() {
   if (props.isModal) return true;
   if (!props.focusPanelId) return focusStore.canUsePreviewHotkeys;
-  return focusStore.isPanelFocused(props.focusPanelId as any);
+  return focusStore.isPanelFocused(props.focusPanelId as PanelFocusId);
 }
 
 watch(

@@ -88,7 +88,7 @@ function handleSelectEffect(type: string) {
 
   const currentEffects = props.track.effects ?? [];
   timelineStore.updateTrackProperties(props.track.id, {
-    effects: [...currentEffects, newEffect] as any,
+    effects: [...currentEffects, newEffect as import('~/timeline/types').ClipEffect],
   });
 
   isSelectEffectModalOpen.value = false;
