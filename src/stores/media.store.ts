@@ -72,6 +72,7 @@ export const useMediaStore = defineStore('media', () => {
   const mediaMetadata = ref<Record<string, MediaMetadata>>({});
   const missingPaths = ref<Record<string, boolean>>({});
   const metadataLoadFailed = ref<Record<string, boolean>>({});
+  const metadataLoading = ref<Record<string, boolean>>({});
 
   const pendingRequests = new Map<string, Promise<MediaMetadata | null>>();
   const pendingPeakWrites = new Map<string, Promise<void>>();
@@ -80,6 +81,7 @@ export const useMediaStore = defineStore('media', () => {
     mediaMetadata.value = {};
     missingPaths.value = {};
     metadataLoadFailed.value = {};
+    metadataLoading.value = {};
   }
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
@@ -111,11 +113,10 @@ export const useMediaStore = defineStore('media', () => {
       if (mediaMetadata.value[cacheKey]) {
         const cached = mediaMetadata.value[cacheKey]!;
         if (cached.source.size === file.size && cached.source.lastModified === file.lastModified) {
-          // If it previously failed (error: true), we might want to retry if it's being requested again.
-          // To prevent infinite retry loops in a single render cycle, we check if there's a pending request.
-          if (!cached.error) {
-            return cached;
+          if (cached.error) {
+            metadataLoadFailed.value[cacheKey] = true;
           }
+          return cached;
         }
       }
 
@@ -131,6 +132,8 @@ export const useMediaStore = defineStore('media', () => {
     // race with it on the same OPFS cache file, but ensure a fresh extraction.
     const previous = options?.forceRefresh ? pendingRequests.get(cacheKey) : undefined;
 
+    metadataLoading.value[cacheKey] = true;
+
     let requestPromise!: Promise<MediaMetadata | null>;
     // eslint-disable-next-line prefer-const
     requestPromise = (async () => {
@@ -144,6 +147,7 @@ export const useMediaStore = defineStore('media', () => {
         if (pendingRequests.get(cacheKey) === requestPromise) {
           pendingRequests.delete(cacheKey);
         }
+        delete metadataLoading.value[cacheKey];
       }
     })();
 
@@ -236,7 +240,9 @@ export const useMediaStore = defineStore('media', () => {
 
         if (metaDir) {
           const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
+          const writable = await (
+            cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
+          ).createWritable();
           // We don't want to save large peaks array inside main metadata json
           const metaToSave = { ...meta };
           delete metaToSave.audioPeaks;
@@ -265,7 +271,9 @@ export const useMediaStore = defineStore('media', () => {
       if (metaDir) {
         try {
           const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
+          const writable = await (
+            cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
+          ).createWritable();
           await writable.write(JSON.stringify(errorMeta, null, 2));
           await writable.close();
         } catch {
@@ -299,7 +307,9 @@ export const useMediaStore = defineStore('media', () => {
           const waveformsDir = await fsModule.ensureWaveformsDir();
           if (!waveformsDir) return;
           const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (peaksHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
+          const writable = await (
+            peaksHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
+          ).createWritable();
           try {
             await writable.write(JSON.stringify(peaksAsJson));
           } finally {
@@ -335,6 +345,7 @@ export const useMediaStore = defineStore('media', () => {
     delete mediaMetadata.value[projectRelativePath];
     delete missingPaths.value[projectRelativePath];
     delete metadataLoadFailed.value[projectRelativePath];
+    delete metadataLoading.value[projectRelativePath];
     await fsModule.removeCacheFiles(projectRelativePath);
   }
 
@@ -342,6 +353,7 @@ export const useMediaStore = defineStore('media', () => {
     mediaMetadata,
     missingPaths,
     metadataLoadFailed,
+    metadataLoading,
     getOrFetchMetadataByPath,
     getOrFetchMetadata,
     resetMediaState,

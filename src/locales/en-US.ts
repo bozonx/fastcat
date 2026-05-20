@@ -238,13 +238,6 @@ export default {
         cropTop: 'Top',
         flipHorizontal: 'Flip Horizontal',
         flipVertical: 'Flip Vertical',
-        fitMode: 'Fit',
-        fitModeOptions: {
-          fill: 'Fill',
-          fit: 'Fit',
-          original: 'Original',
-          stretch: 'Stretch',
-        },
         position: 'Position (px)',
         reflect: 'Reflect',
         resetAll: 'Reset All',
@@ -1229,6 +1222,7 @@ export default {
       commonFolder: 'Shared Files',
       compatibility: {
         audioCodecUnsupported: 'Audio codec not supported',
+        checking: 'Checking file',
         corrupt: 'Corrupt file',
         corruptTitle: 'This file is corrupt or unsupported',
         formatUnsupported: 'File format is not recognized or not supported',

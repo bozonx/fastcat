@@ -3,7 +3,12 @@ import { useMediaStore } from '~/stores/media.store';
 import { BROWSER_NATIVE_IMAGE_EXTENSIONS, getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 
-export type FileCompatibilityStatus = 'ok' | 'fully_unsupported' | 'audio_unsupported' | 'corrupt';
+export type FileCompatibilityStatus =
+  | 'ok'
+  | 'checking'
+  | 'fully_unsupported'
+  | 'audio_unsupported'
+  | 'corrupt';
 
 export interface FileCompatibility {
   status: FileCompatibilityStatus;
@@ -15,10 +20,11 @@ function computeStatus(
   mediaType: 'video' | 'audio' | 'image',
   mediaMetadata: Record<string, any>,
   metadataLoadFailed: Record<string, boolean>,
+  metadataLoading: Record<string, boolean>,
 ): FileCompatibilityStatus {
   const meta = mediaMetadata[path];
   if (meta?.error || metadataLoadFailed[path]) return 'corrupt';
-  if (!meta) return 'ok';
+  if (!meta || metadataLoading[path]) return 'checking';
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
@@ -64,11 +70,10 @@ export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
         mediaType,
         mediaStore.mediaMetadata,
         mediaStore.metadataLoadFailed,
+        mediaStore.metadataLoading,
       );
 
-      if (status !== 'ok') {
-        result[entry.path] = { status };
-      }
+      result[entry.path] = { status };
     }
 
     return result;
@@ -85,7 +90,11 @@ export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
         if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
 
         const path = entry.path;
-        if (!mediaStore.mediaMetadata[path] && !mediaStore.metadataLoadFailed[path]) {
+        if (
+          !mediaStore.mediaMetadata[path] &&
+          !mediaStore.metadataLoadFailed[path] &&
+          !mediaStore.metadataLoading[path]
+        ) {
           void mediaStore.getOrFetchMetadataByPath(path);
         }
       }

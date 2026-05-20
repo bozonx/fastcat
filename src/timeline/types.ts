@@ -124,8 +124,6 @@ export interface ClipTransform {
 
 export type ClipSourceOrientation = 'auto' | '0' | '90' | '180' | '270';
 
-export type ClipFitMode = 'fit' | 'fill' | 'stretch' | 'original';
-
 export interface ClipTransition {
   type: string;
   durationUs: number;
@@ -205,7 +203,6 @@ interface TimelineClipBase {
   transform?: ClipTransform;
   transformActive?: boolean;
   sourceOrientation?: ClipSourceOrientation;
-  fitMode?: ClipFitMode;
 
   speedActive?: boolean;
   audioFadesActive?: boolean;

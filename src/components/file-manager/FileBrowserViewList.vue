@@ -111,6 +111,10 @@ function getCompatibilityStatus(entry: FsEntry) {
   return props.fileCompatibility[entry.path]?.status ?? 'ok';
 }
 
+function isCheckingCompatibility(entry: FsEntry) {
+  return getCompatibilityStatus(entry) === 'checking';
+}
+
 let renameTimer: ReturnType<typeof setTimeout> | null = null;
 
 function onNameClick(event: MouseEvent, entry: FsEntry) {
@@ -295,7 +299,7 @@ function onNameDblClick() {
                   dragOverEntryPath === (entry.path ?? null) &&
                   props.currentDragOperation === 'copy',
               }"
-              :draggable="true"
+              :draggable="!isCheckingCompatibility(entry)"
               tabindex="0"
               @dragstart="emit('entryDragStart', $event, entry)"
               @dragend="emit('entryDragEnd')"
@@ -321,6 +325,12 @@ function onNameDblClick() {
                     :progress="proxyStore.proxyProgress.get(entry.path || '') ?? 0"
                     size="sm"
                   />
+                  <UiProgressSpinner
+                    v-else-if="isCheckingCompatibility(entry)"
+                    :progress="25"
+                    size="sm"
+                    class="animate-spin"
+                  />
                   <img
                     v-else-if="
                       (entry.kind === 'file' || getBdType(entry) === 'content-item') &&
@@ -333,7 +343,7 @@ function onNameDblClick() {
                       getBdThumbnail(entry)
                     "
                     :alt="entry.name"
-                    class="w-4 h-4 object-cover rounded-sm"
+                    class="w-4 h-4 object-contain rounded-sm"
                     @error="handleImageError(entry)"
                   />
                   <UIcon
@@ -355,7 +365,10 @@ function onNameDblClick() {
                       isGeneratingProxyInDirectory(entry)
                         ? 'text-amber-400/90'
                         : '',
-                      getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
+                      getCompatibilityStatus(entry) !== 'ok' &&
+                      getCompatibilityStatus(entry) !== 'checking'
+                        ? 'text-red-400!'
+                        : '',
                     ]"
                   />
                 </div>
@@ -381,7 +394,10 @@ function onNameDblClick() {
                     isGeneratingProxyInDirectory(entry)
                       ? 'text-amber-400!'
                       : '',
-                    getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
+                    getCompatibilityStatus(entry) !== 'ok' &&
+                    getCompatibilityStatus(entry) !== 'checking'
+                      ? 'text-red-400!'
+                      : '',
                     isSelected(entry)
                       ? 'hover:border-(--selection-accent-500)/50 border-(--selection-accent-500)/35 cursor-text'
                       : '',

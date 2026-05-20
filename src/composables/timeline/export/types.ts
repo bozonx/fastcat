@@ -4,7 +4,6 @@ import type {
   TimelineSelectionRange,
   TimelineBlendMode,
   ClipSourceOrientation,
-  ClipFitMode,
 } from '~/timeline/types';
 
 import { z } from 'zod';
@@ -88,7 +87,6 @@ export interface WorkerTimelineClip {
   mask?: import('~/timeline/types').ClipMask;
   transform?: ClipTransform;
   sourceOrientation?: ClipSourceOrientation;
-  fitMode?: ClipFitMode;
   transitionIn?: import('~/timeline/types').ClipTransition;
   transitionOut?: import('~/timeline/types').ClipTransition;
   sourceDurationUs?: number;

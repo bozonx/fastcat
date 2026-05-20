@@ -21,6 +21,27 @@ export interface ThumbnailTile {
 /** Fallback aspect ratio (16:9) when video metadata is not yet available. */
 const DEFAULT_THUMB_ASPECT = 16 / 9;
 
+export interface ThumbnailVideoAspectInput {
+  displayWidth: number;
+  displayHeight: number;
+  rotation?: number;
+}
+
+export function resolveVisualVideoAspect(
+  video: ThumbnailVideoAspectInput | null | undefined,
+  fallback = DEFAULT_THUMB_ASPECT,
+): number {
+  if (!video || video.displayWidth <= 0 || video.displayHeight <= 0) {
+    return fallback;
+  }
+
+  const normalizedRotation = ((Math.round(video.rotation ?? 0) % 360) + 360) % 360;
+  const isQuarterTurn = normalizedRotation === 90 || normalizedRotation === 270;
+  const visualWidth = isQuarterTurn ? video.displayHeight : video.displayWidth;
+  const visualHeight = isQuarterTurn ? video.displayWidth : video.displayHeight;
+  return visualWidth / visualHeight;
+}
+
 export interface UseTimelineClipThumbnailsOptions {
   item: Ref<TimelineClipItem>;
   /** Absolute scroll position of the timeline viewport (px). */
@@ -125,11 +146,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     const url = fileUrl.value;
     if (!url) return DEFAULT_THUMB_ASPECT;
     const meta = mediaStore.mediaMetadata[url];
-    const v = meta?.video;
-    if (v && v.displayWidth > 0 && v.displayHeight > 0) {
-      return v.displayWidth / v.displayHeight;
-    }
-    return DEFAULT_THUMB_ASPECT;
+    return resolveVisualVideoAspect(meta?.video);
   });
 
   /**

@@ -26,7 +26,6 @@ import type {
   TimelineClipItem,
   ClipTransform,
   ClipSourceOrientation,
-  ClipFitMode,
 } from '~/timeline/types';
 
 const props = defineProps<{
@@ -446,10 +445,6 @@ function handleBatchUpdateSourceOrientation(sourceOrientation: ClipSourceOrienta
   handleBatchUpdateProperties({ sourceOrientation });
 }
 
-function handleBatchUpdateFitMode(fitMode: ClipFitMode) {
-  handleBatchUpdateProperties({ fitMode });
-}
-
 function handleBatchToggleReversed() {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
@@ -733,7 +728,6 @@ const otherActions = computed(() => {
       :media-meta="mediaMeta"
       @update-transform="handleBatchTransform"
       @update-source-orientation="handleBatchUpdateSourceOrientation"
-      @update-fit-mode="handleBatchUpdateFitMode"
       @toggle-reversed="handleBatchToggleReversed"
       @update-speed="handleBatchUpdateSpeed"
     />

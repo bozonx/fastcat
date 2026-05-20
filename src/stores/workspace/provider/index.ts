@@ -16,7 +16,9 @@ export function createWorkspaceProvider(): WorkspaceProvider {
         : null;
 
     // In Tauri, we save the string path, so we need to override the type
-    return new TauriWorkspaceProvider(storage as any);
+    return new TauriWorkspaceProvider(
+      storage as import('~/repositories/workspace-handle.repository').WorkspaceHandleStorage<string>,
+    );
   }
 
   const storage =
@@ -24,7 +26,7 @@ export function createWorkspaceProvider(): WorkspaceProvider {
       ? createIndexedDbWorkspaceHandleStorage({ indexedDB: window.indexedDB })
       : null;
 
-  return new WebWorkspaceProvider(storage as any);
+  return new WebWorkspaceProvider(storage);
 }
 
 export * from './types';

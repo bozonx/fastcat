@@ -43,8 +43,6 @@ export const ClipTransformSchema = z.object({
 
 export const ClipSourceOrientationSchema = z.enum(['auto', '0', '90', '180', '270']);
 
-export const ClipFitModeSchema = z.enum(['fit', 'fill', 'stretch', 'original']);
-
 export const ClipMaskSchema = z.object({
   source: z.object({ path: z.string() }).optional(),
   mode: z.enum(['alpha', 'luma']).optional(),
@@ -275,7 +273,6 @@ export const TimelineClipFastCatMetaSchema = z
         showThumbnails: z.boolean().optional(),
         isImage: z.boolean().optional(),
         sourceOrientation: ClipSourceOrientationSchema.optional(),
-        fitMode: ClipFitModeSchema.optional(),
       })
       .optional(),
     flags: z

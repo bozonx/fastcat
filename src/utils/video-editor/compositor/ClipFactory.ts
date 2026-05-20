@@ -18,7 +18,6 @@ export interface CreateClipBaseParams {
   effects?: CompositorClip['effects'];
   transform?: CompositorClip['transform'];
   sourceOrientation?: CompositorClip['sourceOrientation'];
-  fitMode?: CompositorClip['fitMode'];
   transitionIn?: CompositorClip['transitionIn'];
   transitionOut?: CompositorClip['transitionOut'];
   mask?: CompositorClip['mask'];
@@ -71,7 +70,6 @@ export class ClipFactory {
       effects: params.effects,
       transform: params.transform,
       sourceOrientation: params.sourceOrientation,
-      fitMode: params.fitMode,
       mask: params.mask,
     };
 
@@ -117,7 +115,6 @@ export class ClipFactory {
       effects: params.effects,
       transform: params.transform,
       sourceOrientation: params.sourceOrientation,
-      fitMode: params.fitMode,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       mask: params.mask,
@@ -168,7 +165,6 @@ export class ClipFactory {
       effects: params.effects,
       transform: params.transform,
       sourceOrientation: params.sourceOrientation,
-      fitMode: params.fitMode,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       mask: params.mask,
@@ -214,7 +210,6 @@ export class ClipFactory {
       effects: params.effects,
       transform: params.transform,
       sourceOrientation: params.sourceOrientation,
-      fitMode: params.fitMode,
       mask: params.mask,
       adjustmentSourceTexture: null,
     };
@@ -263,7 +258,6 @@ export class ClipFactory {
       effects: params.effects,
       transform: params.transform,
       sourceOrientation: params.sourceOrientation,
-      fitMode: params.fitMode,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       transitionFilter: null,
@@ -326,7 +320,6 @@ export class ClipFactory {
       effects: params.effects,
       transform: params.transform,
       sourceOrientation: params.sourceOrientation,
-      fitMode: params.fitMode,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       mask: params.mask,
@@ -386,7 +379,6 @@ export class ClipFactory {
       effects: params.effects,
       transform: params.transform,
       sourceOrientation: params.sourceOrientation,
-      fitMode: params.fitMode,
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       mask: params.mask,

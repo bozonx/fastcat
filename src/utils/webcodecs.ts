@@ -59,7 +59,8 @@ export async function checkVideoCodecSupport(
     bitrate = 5_000_000,
   }: CheckVideoCodecSupportOptions = {},
 ): Promise<Record<string, boolean>> {
-  const encoder = (globalThis as any).VideoEncoder;
+  const g = globalThis as unknown as { VideoEncoder?: typeof VideoEncoder };
+  const encoder = g.VideoEncoder;
   if (!encoder?.isConfigSupported) return {};
 
   const entries = await Promise.all(
@@ -95,7 +96,8 @@ export async function checkAudioCodecSupport(
     bitrate = 128_000,
   }: CheckAudioCodecSupportOptions = {},
 ): Promise<Record<string, boolean>> {
-  const encoder = (globalThis as any).AudioEncoder;
+  const g = globalThis as unknown as { AudioEncoder?: typeof AudioEncoder };
+  const encoder = g.AudioEncoder;
   if (!encoder?.isConfigSupported) return {};
 
   const entries = await Promise.all(

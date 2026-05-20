@@ -19,6 +19,7 @@ export interface FileBrowserInteractionOptions {
   preventOpen?: boolean;
   instanceId?: string;
   isExternal?: boolean;
+  canInteractWithEntry?: (entry: FsEntry) => boolean;
 }
 
 export function useFileBrowserInteraction({
@@ -32,6 +33,7 @@ export function useFileBrowserInteraction({
   preventOpen,
   instanceId,
   isExternal,
+  canInteractWithEntry,
 }: FileBrowserInteractionOptions) {
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -56,6 +58,8 @@ export function useFileBrowserInteraction({
   }
 
   function handleEntryDoubleClick(entry: FsEntry) {
+    if (entry.kind === 'file' && canInteractWithEntry && !canInteractWithEntry(entry)) return;
+
     if (isRemoteMode.value) {
       if (entry.kind === 'directory') {
         if (remoteCurrentFolder.value) {
@@ -94,6 +98,8 @@ export function useFileBrowserInteraction({
   }
 
   function handleEntryEnter(entry: FsEntry) {
+    if (entry.kind === 'file' && canInteractWithEntry && !canInteractWithEntry(entry)) return;
+
     if (!isRemoteMode.value) {
       selectSingle(entry);
     } else {

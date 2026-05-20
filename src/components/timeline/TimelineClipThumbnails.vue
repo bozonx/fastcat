@@ -55,7 +55,7 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
         v-memo="[tile.key, tile.url, tile.leftPx, tile.widthPx]"
         :src="tile.url"
         :alt="t('fastcat.timeline.clipThumbnail')"
-        class="absolute top-0 h-full object-cover object-center"
+        class="absolute top-0 h-full object-contain object-center"
         :style="{
           left: `${tile.leftPx}px`,
           width: `${tile.widthPx}px`,
@@ -69,7 +69,7 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
         v-if="imageUrl"
         :src="imageUrl"
         :alt="t('fastcat.timeline.clipThumbnail')"
-        class="h-full w-full object-cover object-center"
+        class="h-full w-full object-contain object-center"
       />
     </div>
   </div>

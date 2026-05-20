@@ -48,7 +48,6 @@ export function createMockAudioItems(audioClips: WorkerTimelineClip[]): Timeline
     effects: clip.effects,
     transform: clip.transform,
     sourceOrientation: clip.sourceOrientation,
-    fitMode: clip.fitMode,
     name: clip.id,
   })) as TimelineTrackItem[];
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ClipFitMode, ClipSourceOrientation, ClipTransform } from '~/timeline/types';
+import type { ClipSourceOrientation, ClipTransform } from '~/timeline/types';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -17,7 +17,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   updateTransform: [next: ClipTransform];
   updateSourceOrientation: [next: ClipSourceOrientation];
-  updateFitMode: [next: ClipFitMode];
   toggleReversed: [];
 }>();
 
@@ -76,21 +75,9 @@ const sourceOrientationOptions = computed<Array<{ value: ClipSourceOrientation; 
   ],
 );
 
-const fitModeOptions = computed<Array<{ value: ClipFitMode; label: string }>>(() => [
-  { value: 'fit', label: t('fastcat.clip.transform.fitModeOptions.fit') },
-  { value: 'fill', label: t('fastcat.clip.transform.fitModeOptions.fill') },
-  { value: 'stretch', label: t('fastcat.clip.transform.fitModeOptions.stretch') },
-  { value: 'original', label: t('fastcat.clip.transform.fitModeOptions.original') },
-]);
-
 const sourceOrientation = computed({
   get: () => props.clip.sourceOrientation ?? 'auto',
   set: (val: ClipSourceOrientation) => emit('updateSourceOrientation', val),
-});
-
-const fitMode = computed({
-  get: () => props.clip.fitMode ?? 'fit',
-  set: (val: ClipFitMode) => emit('updateFitMode', val),
 });
 
 const cropTopPx = computed({
@@ -190,35 +177,19 @@ function clampNumber(value: number, min: number, max: number): number {
         </div>
 
         <!-- Reflect -->
-        <div v-if="canEditSourceLayout" class="grid grid-cols-2 gap-2">
-          <div class="space-y-1">
-            <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.transform.sourceOrientation')
-            }}</span>
-            <UiSelect
-              v-model="sourceOrientation"
-              :items="sourceOrientationOptions"
-              value-key="value"
-              label-key="label"
-              size="sm"
-              full-width
-              :disabled="!isEnabled"
-            />
-          </div>
-          <div class="space-y-1">
-            <span class="text-xs text-ui-text-muted">{{
-              t('fastcat.clip.transform.fitMode')
-            }}</span>
-            <UiSelect
-              v-model="fitMode"
-              :items="fitModeOptions"
-              value-key="value"
-              label-key="label"
-              size="sm"
-              full-width
-              :disabled="!isEnabled"
-            />
-          </div>
+        <div v-if="canEditSourceLayout" class="space-y-1">
+          <span class="text-xs text-ui-text-muted">{{
+            t('fastcat.clip.transform.sourceOrientation')
+          }}</span>
+          <UiSelect
+            v-model="sourceOrientation"
+            :items="sourceOrientationOptions"
+            value-key="value"
+            label-key="label"
+            size="sm"
+            full-width
+            :disabled="!isEnabled"
+          />
         </div>
 
         <div class="flex items-center gap-2">

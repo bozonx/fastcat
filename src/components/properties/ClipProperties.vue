@@ -509,9 +509,6 @@ defineExpose({
           (sourceOrientation) =>
             timelineStore.updateClipProperties(clip.trackId, clip.id, { sourceOrientation })
         "
-        @update-fit-mode="
-          (fitMode) => timelineStore.updateClipProperties(clip.trackId, clip.id, { fitMode })
-        "
         @toggle-reversed="toggleReversed"
       />
 

@@ -122,10 +122,14 @@ describe('MediaStore', () => {
     store.mediaMetadata = {
       'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
     } as any;
+    store.metadataLoadFailed = { 'some/path.mp4': true } as any;
+    store.metadataLoading = { 'some/path.mp4': true } as any;
 
     store.resetMediaState();
 
     expect(store.mediaMetadata).toEqual({});
+    expect(store.metadataLoadFailed).toEqual({});
+    expect(store.metadataLoading).toEqual({});
   });
 
   it('sets audio peaks', () => {
@@ -213,17 +217,59 @@ describe('MediaStore', () => {
     expect(result).toEqual({ source: { size: 100, lastModified: 100 }, duration: 42 });
   });
 
+  it('returns cached failed metadata without refetching until force refresh', async () => {
+    const store = useMediaStore();
+    const errorMeta = {
+      source: { size: 100, lastModified: 100 },
+      duration: 0,
+      error: true,
+    };
+    store.mediaMetadata = { 'video/a.mp4': errorMeta } as any;
+
+    const file = { size: 100, lastModified: 100, name: 'a.mp4' } as any;
+
+    const result = await store.getOrFetchMetadata(file, 'video/a.mp4');
+
+    expect(result).toEqual(errorMeta);
+    expect(store.metadataLoadFailed['video/a.mp4']).toBe(true);
+    expect(extractMetadataMock).not.toHaveBeenCalled();
+  });
+
+  it('restores failed metadata state from OPFS cache', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'video%2Fa.mp4.json';
+    mediaFsMock.metaFiles.set(
+      cacheFileName,
+      JSON.stringify({
+        source: { size: 100, lastModified: 100 },
+        duration: 0,
+        error: true,
+      }),
+    );
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'a.mp4' } as File,
+      'video/a.mp4',
+    );
+
+    expect(result?.error).toBe(true);
+    expect(store.metadataLoadFailed['video/a.mp4']).toBe(true);
+    expect(extractMetadataMock).not.toHaveBeenCalled();
+  });
+
   it('removeMediaCache clears metadata and related state', async () => {
     const store = useMediaStore();
     store.mediaMetadata = { 'video/a.mp4': { duration: 10 } } as any;
     store.missingPaths = { 'video/a.mp4': true } as any;
     store.metadataLoadFailed = { 'video/a.mp4': true } as any;
+    store.metadataLoading = { 'video/a.mp4': true } as any;
 
     await store.removeMediaCache('video/a.mp4');
 
     expect(store.mediaMetadata['video/a.mp4']).toBeUndefined();
     expect(store.missingPaths['video/a.mp4']).toBeUndefined();
     expect(store.metadataLoadFailed['video/a.mp4']).toBeUndefined();
+    expect(store.metadataLoading['video/a.mp4']).toBeUndefined();
   });
 
   it('revalidateMissingMedia updates missingPaths based on file existence', async () => {

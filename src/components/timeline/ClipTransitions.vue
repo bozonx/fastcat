@@ -17,6 +17,7 @@ const { t } = useI18n();
 const TRANSITION_CREATE_HANDLE_WIDTH_PX = 7;
 const TRANSITION_CREATE_HANDLE_HEIGHT_PX = 9;
 const TRANSITION_CREATE_HANDLE_BOTTOM_PX = -4;
+const TRANSITION_CREATE_HANDLE_OUTSET_PX = 2;
 const MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX = 24;
 
 const props = defineProps<{
@@ -226,7 +227,7 @@ function canShowCreateTransitionHandle() {
 function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, string> {
   return {
     bottom: `${TRANSITION_CREATE_HANDLE_BOTTOM_PX}px`,
-    [edge === 'in' ? 'left' : 'right']: `-${TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
+    [edge === 'in' ? 'left' : 'right']: `-${TRANSITION_CREATE_HANDLE_OUTSET_PX}px`,
     width: `${TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
     height: `${TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
     zIndex: 'var(--z-clip-handles)',
@@ -492,7 +493,7 @@ onBeforeUnmount(() => {
       :style="getCreateTransitionHandleStyle('in')"
       :class="[
         canShowCreateTransitionHandle()
-          ? 'cursor-grab active:cursor-grabbing opacity-0 group-hover/clip:opacity-100'
+          ? 'cursor-pointer opacity-0 group-hover/clip:opacity-100'
           : 'hidden pointer-events-none',
       ]"
       data-testid="transition-create-in"
@@ -514,7 +515,7 @@ onBeforeUnmount(() => {
       :style="getCreateTransitionHandleStyle('out')"
       :class="[
         canShowCreateTransitionHandle()
-          ? 'cursor-grab active:cursor-grabbing opacity-0 group-hover/clip:opacity-100'
+          ? 'cursor-pointer opacity-0 group-hover/clip:opacity-100'
           : 'hidden pointer-events-none',
       ]"
       data-testid="transition-create-out"

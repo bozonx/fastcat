@@ -1,6 +1,9 @@
 /** @vitest-environment node */
 import { describe, it, expect } from 'vitest';
-import type { ThumbnailTile } from '~/composables/timeline/useTimelineClipThumbnails';
+import {
+  resolveVisualVideoAspect,
+  type ThumbnailTile,
+} from '~/composables/timeline/useTimelineClipThumbnails';
 
 describe('ThumbnailTile interface', () => {
   it('has expected shape', () => {
@@ -54,5 +57,19 @@ describe('ThumbnailTile interface', () => {
 
     expect(sorted.map((t) => t.key)).toEqual([0, 1, 2]);
     expect(sorted.map((t) => t.leftPx)).toEqual([40, 120, 200]);
+  });
+});
+
+describe('resolveVisualVideoAspect', () => {
+  it('keeps landscape aspect without rotation', () => {
+    expect(
+      resolveVisualVideoAspect({ displayWidth: 1920, displayHeight: 1080, rotation: 0 }),
+    ).toBeCloseTo(16 / 9, 5);
+  });
+
+  it('swaps dimensions for vertical video stored with quarter-turn rotation metadata', () => {
+    expect(
+      resolveVisualVideoAspect({ displayWidth: 1920, displayHeight: 1080, rotation: 90 }),
+    ).toBeCloseTo(9 / 16, 5);
   });
 });

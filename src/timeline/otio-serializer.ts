@@ -293,7 +293,6 @@ function serializeTrackItems(
             blendMode: item.blendMode,
             isImage: item.isImage,
             sourceOrientation: item.sourceOrientation,
-            fitMode: item.fitMode,
           },
           flags: {
             locked: item.locked ? true : undefined,

@@ -6,7 +6,6 @@ import type {
   ClipTransform,
   ClipAnchorPreset,
   ClipSourceOrientation,
-  ClipFitMode,
 } from '../../types';
 import type {
   RenameItemCommand,
@@ -95,12 +94,6 @@ export function updateClipProperties(
 
   function sanitizeSourceOrientation(value: unknown): ClipSourceOrientation | undefined {
     return value === 'auto' || value === '0' || value === '90' || value === '180' || value === '270'
-      ? value
-      : undefined;
-  }
-
-  function sanitizeFitMode(value: unknown): ClipFitMode | undefined {
-    return value === 'fit' || value === 'fill' || value === 'stretch' || value === 'original'
       ? value
       : undefined;
   }
@@ -621,15 +614,6 @@ export function updateClipProperties(
       delete nextProps['sourceOrientation'];
     } else {
       nextProps['sourceOrientation'] = safe;
-    }
-  }
-
-  if ('fitMode' in nextProps) {
-    const safe = sanitizeFitMode(nextProps['fitMode']);
-    if (safe === undefined) {
-      delete nextProps['fitMode'];
-    } else {
-      nextProps['fitMode'] = safe;
     }
   }
 

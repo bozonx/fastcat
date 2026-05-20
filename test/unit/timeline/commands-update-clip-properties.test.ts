@@ -75,7 +75,7 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.blendMode).toBe('screen');
   });
 
-  it('updates source orientation and fit mode for a clip', () => {
+  it('updates source orientation for a clip', () => {
     const doc = makeDoc({
       id: 'v1',
       kind: 'video',
@@ -99,12 +99,11 @@ describe('timeline/commands update_clip_properties', () => {
       type: 'update_clip_properties',
       trackId: 'v1',
       itemId: 'c1',
-      properties: { sourceOrientation: '90', fitMode: 'fill' },
+      properties: { sourceOrientation: '90' },
     }).next;
 
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(clip.sourceOrientation).toBe('90');
-    expect(clip.fitMode).toBe('fill');
   });
 
   it('updates transform for a clip and normalizes values', () => {

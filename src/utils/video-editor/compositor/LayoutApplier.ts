@@ -23,7 +23,6 @@ export class LayoutApplier {
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
       transform: clip.transform,
-      fitMode: clip.fitMode,
     });
 
     this.applyTransformLayout({
@@ -105,7 +104,6 @@ export class LayoutApplier {
       frameHeight: frameH,
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
-      fitMode: clip.fitMode,
       fitRotationDeg: sourceRotation,
       transform: {
         ...(clip.transform ?? {}),

@@ -1,4 +1,4 @@
-import type { ClipAnchor, ClipFitMode, ClipTransform } from '~/timeline/types';
+import type { ClipAnchor, ClipTransform } from '~/timeline/types';
 
 export const TRANSFORM_DESIGN_BASE = {
   width: 1920,
@@ -11,7 +11,6 @@ export interface ClipBoxLayoutInput {
   canvasWidth: number;
   canvasHeight: number;
   transform?: ClipTransform;
-  fitMode?: ClipFitMode;
   fitRotationDeg?: number;
 }
 
@@ -153,28 +152,12 @@ export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
   const safeCanvasWidth = Math.max(1, input.canvasWidth);
   const safeCanvasHeight = Math.max(1, input.canvasHeight);
 
-  const fitMode = input.fitMode ?? 'fit';
   const rotatedFit = isQuarterTurn(clampFinite(input.fitRotationDeg, 0));
   const fitFrameWidth = rotatedFit ? safeFrameHeight : safeFrameWidth;
   const fitFrameHeight = rotatedFit ? safeFrameWidth : safeFrameHeight;
   const fitScale = Math.min(safeCanvasWidth / fitFrameWidth, safeCanvasHeight / fitFrameHeight);
-  const fillScale = Math.max(safeCanvasWidth / fitFrameWidth, safeCanvasHeight / fitFrameHeight);
-  const targetWidth =
-    fitMode === 'stretch'
-      ? rotatedFit
-        ? safeCanvasHeight
-        : safeCanvasWidth
-      : fitMode === 'original'
-        ? safeFrameWidth
-        : safeFrameWidth * (fitMode === 'fill' ? fillScale : fitScale);
-  const targetHeight =
-    fitMode === 'stretch'
-      ? rotatedFit
-        ? safeCanvasWidth
-        : safeCanvasHeight
-      : fitMode === 'original'
-        ? safeFrameHeight
-        : safeFrameHeight * (fitMode === 'fill' ? fillScale : fitScale);
+  const targetWidth = safeFrameWidth * fitScale;
+  const targetHeight = safeFrameHeight * fitScale;
   const baseX = (safeCanvasWidth - targetWidth) / 2;
   const baseY = (safeCanvasHeight - targetHeight) / 2;
 

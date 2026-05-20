@@ -77,6 +77,10 @@ function getCompatibilityStatus(entry: FsEntry) {
   return props.fileCompatibility[entry.path]?.status ?? 'ok';
 }
 
+function isCheckingCompatibility(entry: FsEntry) {
+  return getCompatibilityStatus(entry) === 'checking';
+}
+
 function isCutEntry(entry: FsEntry): boolean {
   return entry.path ? clipboardPaths.value.has(entry.path) : false;
 }
@@ -151,7 +155,7 @@ function handleImageError(entry: ExtendedFsEntry) {
             dragOverEntryPath === (entry.path ?? null) && props.currentDragOperation === 'copy',
         }"
         :style="{ width: `${props.currentGridCardSize}px` }"
-        :draggable="true"
+        :draggable="!isCheckingCompatibility(entry)"
         tabindex="0"
         @dragstart="emit('entryDragStart', $event, entry)"
         @dragend="emit('entryDragEnd')"
@@ -169,9 +173,16 @@ function handleImageError(entry: ExtendedFsEntry) {
             'bg-ui-bg!': entry.path && entry.path === projectStore.currentTimelinePath,
           }"
         >
+          <div
+            v-if="entry.kind === 'file' && isCheckingCompatibility(entry)"
+            class="w-full h-full flex items-center justify-center text-ui-text-muted"
+            :title="t('videoEditor.fileManager.compatibility.checking')"
+          >
+            <UiProgressSpinner :progress="25" size="md" class="animate-spin" />
+          </div>
           <!-- Fully unsupported / Corrupt: red placeholder instead of thumbnail -->
           <div
-            v-if="
+            v-else-if="
               entry.kind === 'file' &&
               (getCompatibilityStatus(entry) === 'fully_unsupported' ||
                 getCompatibilityStatus(entry) === 'corrupt')
@@ -266,7 +277,9 @@ function handleImageError(entry: ExtendedFsEntry) {
             isGeneratingProxyInDirectory(entry)
               ? 'text-amber-400!'
               : '',
-            getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
+            getCompatibilityStatus(entry) !== 'ok' && getCompatibilityStatus(entry) !== 'checking'
+              ? 'text-red-400!'
+              : '',
             {
               'text-xs':
                 currentGridSizeName.toLowerCase() === 'xs' ||

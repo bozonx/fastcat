@@ -44,8 +44,8 @@ describe('ClipTransitions', () => {
     expect(handles[0].attributes('style')).toContain('width: 7px');
     expect(handles[0].attributes('style')).toContain('height: 9px');
     expect(handles[0].attributes('style')).toContain('bottom: -4px');
-    expect(handles[0].attributes('style')).toContain('left: -7px');
-    expect(handles[1].attributes('style')).toContain('right: -7px');
+    expect(handles[0].attributes('style')).toContain('left: -2px');
+    expect(handles[1].attributes('style')).toContain('right: -2px');
   });
 
   it('hides transition create handles on short tracks', async () => {

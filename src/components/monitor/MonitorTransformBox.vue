@@ -4,7 +4,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
-import type { ClipFitMode, ClipSourceOrientation, ClipTransform } from '~/timeline/types';
+import type { ClipSourceOrientation, ClipTransform } from '~/timeline/types';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
@@ -120,10 +120,6 @@ const sourceRotation = computed(() => {
   return meta?.video?.rotation ?? 0;
 });
 
-const fitMode = computed(() => {
-  return ((clipData.value as { fitMode?: ClipFitMode } | null)?.fitMode ?? 'fit') as ClipFitMode;
-});
-
 const layout = computed(() => {
   const d = intrinsicDimensions.value;
   if (!d) return null;
@@ -133,7 +129,6 @@ const layout = computed(() => {
     frameHeight: d.h,
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
-    fitMode: fitMode.value,
     fitRotationDeg: sourceRotation.value,
     transform: {
       ...(transform ?? {}),

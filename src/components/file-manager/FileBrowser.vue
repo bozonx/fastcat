@@ -222,7 +222,9 @@ const bulkSelection = useFileBrowserBulkSelection({
 
 // --- Remote ---
 // Forward declaration for DnD wrappers
-let remoteApi: { performRemoteDownload: (params: { entry: FsEntry; targetDirPath: string }) => Promise<void> } | null = null;
+let remoteApi: {
+  performRemoteDownload: (params: { entry: FsEntry; targetDirPath: string }) => Promise<void>;
+} | null = null;
 
 async function handleCrossVfsCopyEntry(params: { source: FsEntry; targetDirPath: string }) {
   if (params.source.source === 'remote') {
@@ -566,7 +568,19 @@ const { onFileAction } = useFileBrowserFileActions({
 });
 
 function isVideo(entry: FsEntry): boolean {
-  return entry.kind === 'file' && getMediaTypeFromFilename(entry.name) === 'video';
+  return (
+    entry.kind === 'file' && canUseFile(entry) && getMediaTypeFromFilename(entry.name) === 'video'
+  );
+}
+
+function getFileStatus(entry: FsEntry) {
+  if (entry.kind !== 'file' || !entry.path) return 'ok';
+  return fileCompatibility.value[entry.path]?.status ?? 'ok';
+}
+
+function canUseFile(entry: FsEntry): boolean {
+  const status = getFileStatus(entry);
+  return status !== 'checking' && status !== 'fully_unsupported' && status !== 'corrupt';
 }
 
 function isDirectoryGeneratingProxy(entry: FsEntry): boolean {
@@ -580,14 +594,12 @@ const { getContextMenuItems } = useFileContextMenu(
     folderHasVideos,
     isOpenableMediaFile: (entry: FsEntry) => {
       if (entry.kind !== 'file' || !entry.path) return false;
-      const status = fileCompatibility.value[entry.path]?.status;
-      if (status === 'fully_unsupported' || status === 'corrupt') return false;
+      if (!canUseFile(entry)) return false;
       return isOpenableProjectFileName(entry.name);
     },
     isConvertibleMediaFile: (entry: FsEntry) => {
       if (entry.kind !== 'file' || !entry.path) return false;
-      const status = fileCompatibility.value[entry.path]?.status;
-      if (status === 'fully_unsupported' || status === 'corrupt') return false;
+      if (!canUseFile(entry)) return false;
       const type = getMediaTypeFromFilename(entry.name);
       return type === 'video' || type === 'audio' || type === 'image';
     },
@@ -796,6 +808,7 @@ const { handleEntryClick, handleEntryDoubleClick, handleEntryEnter, handleSort, 
     preventOpen: props.preventOpen,
     instanceId,
     isExternal: isExternal.value,
+    canInteractWithEntry: canUseFile,
   });
 
 async function onDirectoryUploadChange(e: Event) {

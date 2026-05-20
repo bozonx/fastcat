@@ -63,7 +63,6 @@ describe('MonitorTransformBox', () => {
     rawWorkerTimelineClips.value[0] = {
       ...rawWorkerTimelineClips.value[0],
       sourceOrientation: 'auto',
-      fitMode: 'fit',
     };
 
     const mediaStore = useMediaStore();

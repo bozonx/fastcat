@@ -77,7 +77,6 @@ export function createBaseWorkerClip(params: {
     mask: params.item.mask ? cloneMonitorValue(params.item.mask) : undefined,
     transform: params.item.transform,
     sourceOrientation: params.item.sourceOrientation,
-    fitMode: params.item.fitMode,
     transitionIn: sanitizeMonitorTransition(params.item.transitionIn),
     transitionOut: sanitizeMonitorTransition(params.item.transitionOut),
     sourceDurationUs:

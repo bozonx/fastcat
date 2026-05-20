@@ -122,7 +122,11 @@ watch(
       if (entry.kind !== 'file' || !entry.path) continue;
       const mediaType = getMediaTypeFromFilename(entry.name);
       if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
-      if (!mediaStore.mediaMetadata[entry.path] && !mediaStore.metadataLoadFailed[entry.path]) {
+      if (
+        !mediaStore.mediaMetadata[entry.path] &&
+        !mediaStore.metadataLoadFailed[entry.path] &&
+        !mediaStore.metadataLoading[entry.path]
+      ) {
         void mediaStore.getOrFetchMetadataByPath(entry.path);
       }
     }
@@ -256,10 +260,10 @@ function getFileCompatibilityStatus(entry: FsEntry): FileCompatibilityStatus {
 
   const path = entry.path;
 
-  if (mediaStore.metadataLoadFailed[path]) return 'fully_unsupported';
+  if (mediaStore.metadataLoadFailed[path]) return 'corrupt';
 
   const meta = mediaStore.mediaMetadata[path];
-  if (!meta) return 'ok';
+  if (!meta || mediaStore.metadataLoading[path]) return 'checking';
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';

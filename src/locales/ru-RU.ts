@@ -239,13 +239,6 @@ export default {
         cropTop: 'Сверху',
         flipHorizontal: 'Отразить по горизонтали',
         flipVertical: 'Отразить по вертикали',
-        fitMode: 'Вписывание',
-        fitModeOptions: {
-          fill: 'Заполнить',
-          fit: 'Вписать',
-          original: 'Оригинал',
-          stretch: 'Растянуть',
-        },
         position: 'Позиция (px)',
         reflect: 'Отражение',
         resetAll: 'Сбросить всё',
@@ -1234,6 +1227,7 @@ export default {
       commonFolder: 'Общие файлы',
       compatibility: {
         audioCodecUnsupported: 'Аудио кодек не поддерживается',
+        checking: 'Проверка файла',
         corrupt: 'Файл испорчен',
         corruptTitle: 'Этот файл поврежден или не поддерживается',
         formatUnsupported: 'Формат файла не распознан или не поддерживается',

@@ -192,7 +192,6 @@ async function buildVideoTrackTree(
         transform:
           item.transformActive !== false ? clonePlain(item.transform) : undefined,
         sourceOrientation: item.sourceOrientation,
-        fitMode: item.fitMode,
         transitionIn: clonePlain(item.transitionIn),
         transitionOut: clonePlain(item.transitionOut),
         freezeFrameSourceUs: item.freezeFrameSourceUs,
@@ -599,7 +598,6 @@ export async function toWorkerTimelineClips(
       transform:
         item.transformActive !== false ? clonePlain(item.transform) : undefined,
       sourceOrientation: item.sourceOrientation,
-      fitMode: item.fitMode,
       transitionIn: clonePlain(item.transitionIn),
       transitionOut: clonePlain(item.transitionOut),
       sourceDurationUs:

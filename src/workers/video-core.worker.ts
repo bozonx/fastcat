@@ -433,12 +433,18 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
         let sample: unknown = null;
         try {
-          sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(safeTimeS);
+          sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(
+            safeTimeS,
+          );
           if (!sample && firstTimestampS > 0) {
-            sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(firstTimestampS);
+            sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(
+              firstTimestampS,
+            );
           }
           if (!sample && safeTimeS !== 0) {
-            sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(1e-6);
+            sample = await (sink as { getSample: (timeS: number) => Promise<unknown> }).getSample(
+              1e-6,
+            );
           }
         } catch {
           results.push(null);
@@ -456,7 +462,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
           const imageSource: CanvasImageSource | null = isVideoFrame
             ? (sample as VideoFrame)
-            : typeof (sample as { toCanvasImageSource?: () => CanvasImageSource }).toCanvasImageSource === 'function'
+            : typeof (sample as { toCanvasImageSource?: () => CanvasImageSource })
+                  .toCanvasImageSource === 'function'
               ? (sample as { toCanvasImageSource?: () => CanvasImageSource }).toCanvasImageSource()
               : null;
 
@@ -467,18 +474,31 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
           const rawW: number = isVideoFrame
             ? (sample as VideoFrame).displayWidth
-            : ((imageSource as CanvasImageSource & { displayWidth?: number; width?: number }).displayWidth ?? (imageSource as CanvasImageSource & { displayWidth?: number; width?: number }).width ?? 0);
+            : ((imageSource as CanvasImageSource & { displayWidth?: number; width?: number })
+                .displayWidth ??
+              (imageSource as CanvasImageSource & { displayWidth?: number; width?: number })
+                .width ??
+              0);
           const rawH: number = isVideoFrame
             ? (sample as VideoFrame).displayHeight
-            : ((imageSource as CanvasImageSource & { displayHeight?: number; height?: number }).displayHeight ?? (imageSource as CanvasImageSource & { displayHeight?: number; height?: number }).height ?? 0);
+            : ((imageSource as CanvasImageSource & { displayHeight?: number; height?: number })
+                .displayHeight ??
+              (imageSource as CanvasImageSource & { displayHeight?: number; height?: number })
+                .height ??
+              0);
 
           if (!rawW || !rawH) {
             results.push(null);
             continue;
           }
 
-          let targetW = rawW;
-          let targetH = rawH;
+          const rotation = normalizeRotation(state.rotation);
+          const isQuarterTurn = rotation === 90 || rotation === 270;
+          const visualW = isQuarterTurn ? rawH : rawW;
+          const visualH = isQuarterTurn ? rawW : rawH;
+
+          let targetW = visualW;
+          let targetH = visualH;
           if (targetW > options.maxWidth || targetH > options.maxHeight) {
             const scaleW = options.maxWidth / targetW;
             const scaleH = options.maxHeight / targetH;
@@ -500,7 +520,13 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
             continue;
           }
 
-          state.ctx.drawImage(imageSource, 0, 0, targetW, targetH);
+          drawRotatedThumbnailFrame({
+            ctx: state.ctx,
+            imageSource,
+            rotation,
+            targetW,
+            targetH,
+          });
           blob = await state.canvas.convertToBlob({
             type: options.mimeType,
             quality: options.quality,
@@ -553,8 +579,13 @@ const activeCancels = new Map<string, boolean>();
 interface FrameExtractorState {
   source: unknown;
   input: unknown;
-  sink: { getSample: (timeS: number) => Promise<unknown>; close?: () => void; dispose?: () => void };
+  sink: {
+    getSample: (timeS: number) => Promise<unknown>;
+    close?: () => void;
+    dispose?: () => void;
+  } | null;
   firstTimestampS: number;
+  rotation: number;
   canvas: OffscreenCanvas | null;
   ctx: OffscreenCanvasRenderingContext2D | null;
 }
@@ -573,14 +604,18 @@ async function createFrameExtractorState(file: File): Promise<FrameExtractorStat
       input,
       sink: null,
       firstTimestampS: 0,
+      rotation: 0,
       canvas: null,
       ctx: null,
     };
   }
 
   const firstTimestampS: number =
-    typeof (track as unknown as { getFirstTimestamp?: () => Promise<number> }).getFirstTimestamp === 'function'
-      ? await (track as unknown as { getFirstTimestamp?: () => Promise<number> }).getFirstTimestamp()
+    typeof (track as unknown as { getFirstTimestamp?: () => Promise<number> }).getFirstTimestamp ===
+    'function'
+      ? await (
+          track as unknown as { getFirstTimestamp?: () => Promise<number> }
+        ).getFirstTimestamp()
       : 0;
 
   return {
@@ -588,9 +623,49 @@ async function createFrameExtractorState(file: File): Promise<FrameExtractorStat
     input,
     sink: new VideoSampleSink(track),
     firstTimestampS,
+    rotation: Number((track as { rotation?: unknown }).rotation) || 0,
     canvas: null,
     ctx: null,
   };
+}
+
+function normalizeRotation(rotation: number): 0 | 90 | 180 | 270 {
+  const normalized = ((Math.round(rotation) % 360) + 360) % 360;
+  if (normalized >= 45 && normalized < 135) return 90;
+  if (normalized >= 135 && normalized < 225) return 180;
+  if (normalized >= 225 && normalized < 315) return 270;
+  return 0;
+}
+
+function drawRotatedThumbnailFrame(input: {
+  ctx: OffscreenCanvasRenderingContext2D;
+  imageSource: CanvasImageSource;
+  rotation: 0 | 90 | 180 | 270;
+  targetW: number;
+  targetH: number;
+}): void {
+  const { ctx, imageSource, rotation, targetW, targetH } = input;
+
+  ctx.save();
+  ctx.clearRect(0, 0, targetW, targetH);
+
+  if (rotation === 90) {
+    ctx.translate(targetW, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(imageSource, 0, 0, targetH, targetW);
+  } else if (rotation === 180) {
+    ctx.translate(targetW, targetH);
+    ctx.rotate(Math.PI);
+    ctx.drawImage(imageSource, 0, 0, targetW, targetH);
+  } else if (rotation === 270) {
+    ctx.translate(0, targetH);
+    ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(imageSource, 0, 0, targetH, targetW);
+  } else {
+    ctx.drawImage(imageSource, 0, 0, targetW, targetH);
+  }
+
+  ctx.restore();
 }
 
 function disposeFrameExtractorState(state: FrameExtractorState): void {

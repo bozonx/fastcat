@@ -201,32 +201,4 @@ describe('LayoutApplier', () => {
     expect(sprite.rotation).toBeCloseTo(0);
   });
 
-  it('uses fill mode to cover the canvas', () => {
-    const sprite = createMockSprite();
-    const clip = {
-      itemId: 'clip-6',
-      layer: 1,
-      startUs: 0,
-      endUs: 1_000_000,
-      durationUs: 1_000_000,
-      sourceStartUs: 0,
-      sourceRangeDurationUs: 1_000_000,
-      sourceDurationUs: 1_000_000,
-      sprite,
-      clipKind: 'video' as const,
-      clipType: 'media' as const,
-      sourceKind: 'videoFrame' as const,
-      imageSource: { width: 1080, height: 1920, resize: () => {}, update: () => {}, resource: null } as any,
-      lastVideoFrame: null,
-      canvas: null,
-      ctx: null,
-      bitmap: null,
-      fitMode: 'fill',
-    };
-
-    applier.applySpriteLayout(1080, 1920, clip as any);
-
-    expect(sprite.width).toBeCloseTo(1920);
-    expect(sprite.height).toBeCloseTo(3413.333);
-  });
 });

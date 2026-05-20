@@ -168,7 +168,7 @@ export const colorMatrixManifest: EffectManifest<ColorMatrixParams> = {
       m[9] = (m[9] || 0) / 255;
       m[14] = (m[14] || 0) / 255;
       m[19] = (m[19] || 0) / 255;
-      f.matrix = m as any;
+      f.matrix = m;
     }
   },
 };

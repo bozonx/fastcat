@@ -116,6 +116,8 @@ function handleClick(entry: FsEntry) {
 
   if (props.isSelectionMode) {
     emit('toggleSelection', entry);
+  } else if (isCheckingCompatibility(entry)) {
+    return;
   } else {
     emit('entryClick', entry);
   }
@@ -142,10 +144,14 @@ function getCompatibilityStatus(entry: FsEntry) {
   return props.fileCompatibility[entry.path]?.status ?? 'ok';
 }
 
+function isCheckingCompatibility(entry: FsEntry) {
+  return getCompatibilityStatus(entry) === 'checking';
+}
+
 function getThumbnail(entry: FsEntry) {
   if (entry.kind === 'directory') return null;
   const status = getCompatibilityStatus(entry);
-  if (status === 'fully_unsupported' || status === 'corrupt') return null;
+  if (status === 'checking' || status === 'fully_unsupported' || status === 'corrupt') return null;
   return (entry as ExtendedFsEntry).objectUrl || (entry.path ? props.thumbnails[entry.path] : null);
 }
 
@@ -196,8 +202,16 @@ onBeforeUnmount(clearLongPress);
           <div
             class="relative flex-1 w-full bg-zinc-950 flex items-center justify-center overflow-hidden"
           >
+            <template v-if="isCheckingCompatibility(entry)">
+              <div
+                class="w-full h-full flex items-center justify-center text-zinc-400"
+                :title="t('videoEditor.fileManager.compatibility.checking')"
+              >
+                <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin" />
+              </div>
+            </template>
             <template
-              v-if="
+              v-else-if="
                 getCompatibilityStatus(entry) === 'fully_unsupported' ||
                 getCompatibilityStatus(entry) === 'corrupt'
               "
@@ -216,7 +230,7 @@ onBeforeUnmount(clearLongPress);
             <template v-else-if="getThumbnail(entry)">
               <img
                 :src="getThumbnail(entry)!"
-                class="w-full h-full object-cover transition-transform duration-300"
+                class="w-full h-full object-contain transition-transform duration-300"
                 :class="{ 'scale-110 blur-[1px] opacity-70': isSelected(entry) && isSelectionMode }"
                 loading="lazy"
                 @error="handleImageError(entry)"
@@ -265,7 +279,10 @@ onBeforeUnmount(clearLongPress);
                   : '',
                 hasProxy(entry) && !isGeneratingProxy(entry) ? 'text-(--color-success)!' : '',
                 isGeneratingProxy(entry) ? 'text-amber-400!' : '',
-                getCompatibilityStatus(entry) !== 'ok' ? 'text-red-400!' : '',
+                getCompatibilityStatus(entry) !== 'ok' &&
+                getCompatibilityStatus(entry) !== 'checking'
+                  ? 'text-red-400!'
+                  : '',
               ]"
             >
               {{ entry.name }}

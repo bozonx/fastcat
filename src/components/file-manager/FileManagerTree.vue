@@ -320,7 +320,7 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     meta.generatingProxy || generatingDir ? 'text-amber-400!' : '',
     isCut ? 'opacity-40 line-through decoration-dotted' : '',
     isCopy ? 'text-primary-300!' : '',
-    compatibilityStatus !== 'ok' ? 'text-red-400!' : '',
+    compatibilityStatus !== 'ok' && compatibilityStatus !== 'checking' ? 'text-red-400!' : '',
   ]
     .filter(Boolean)
     .join(' ');

@@ -313,7 +313,6 @@ export function useMonitorTimeline() {
         hash = mixFloat(hash, item.opacity ?? 1, 1000);
         hash = mixHash(hash, hashString(String(item.blendMode ?? 'normal')));
         hash = mixHash(hash, hashString(String(item.sourceOrientation ?? 'auto')));
-        hash = mixHash(hash, hashString(String(item.fitMode ?? 'fit')));
         hash = mixFloat(hash, getItemSpeed(item) ?? 1, 1000);
 
         const clipEffects = Array.isArray(item.effects) ? item.effects : null;
