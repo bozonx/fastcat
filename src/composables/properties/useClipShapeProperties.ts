@@ -1,9 +1,10 @@
 import type { Ref } from 'vue';
-import type { TimelineClipItem, ShapeType, ShapeConfig } from '~/timeline/types';
+import type { TimelineClipItem, ShapeType, ShapeConfig, TimelineShapeClipItem } from '~/timeline/types';
+import type { TimelineClipsModule } from '~/stores/timeline/clips';
 
 interface UseClipShapePropertiesOptions {
   clip: Ref<TimelineClipItem>;
-  timelineStore: any;
+  timelineStore: TimelineClipsModule;
 }
 
 export function useClipShapeProperties(options: UseClipShapePropertiesOptions) {
@@ -43,7 +44,7 @@ export function useClipShapeProperties(options: UseClipShapePropertiesOptions) {
       (clip.value as import('~/timeline/types').TimelineShapeClipItem).shapeConfig || {};
     timelineStore.updateClipProperties(clip.value.trackId, clip.value.id, {
       shapeConfig: { ...currentConfig, ...configUpdate },
-    } as any);
+    });
   }
 
   return {

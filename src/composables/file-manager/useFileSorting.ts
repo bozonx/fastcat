@@ -15,7 +15,7 @@ export function useFileSorting(entries: Ref<FsEntry[]>, folderSizes?: Ref<Record
     const { field, order } = fileManagerStore.sortOption;
     const modifier = order === 'asc' ? 1 : -1;
 
-    const compare = (a: any, b: any) => {
+    const compare = (a: string | number, b: string | number) => {
       if (a === b) return 0;
       return a > b ? modifier : -modifier;
     };

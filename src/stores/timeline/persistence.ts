@@ -59,6 +59,14 @@ function describeNonCloneable(value: unknown): string {
   return ctor;
 }
 
+function describeObjectShape(obj: object): string {
+  const ownKeys = Reflect.ownKeys(obj).map((k) => (typeof k === 'symbol' ? k.toString() : k));
+  const proto = Object.getPrototypeOf(obj);
+  const protoName = proto === null ? 'null' : (proto.constructor?.name ?? 'Object');
+  const ctor = (obj as { constructor?: { name?: string } }).constructor?.name ?? 'Object';
+  return `ctor=${ctor} proto=${protoName} keys=[${ownKeys.join(',')}]`;
+}
+
 function findNonCloneablePath(value: unknown, seen = new WeakSet<object>(), path = '$'): string | null {
   if (value === null || value === undefined) return null;
   const t = typeof value;
@@ -82,24 +90,26 @@ function findNonCloneablePath(value: unknown, seen = new WeakSet<object>(), path
       const childPath = findNonCloneablePath(obj[i], seen, `${path}[${i}]`);
       if (childPath) return childPath;
     }
-    return `${path} <Array ${describeNonCloneable(obj)}>`;
+    return `${path} <Array ${describeNonCloneable(obj)}> shape: ${describeObjectShape(obj)}`;
   }
 
   const proto = Object.getPrototypeOf(obj);
   const isPlain = proto === Object.prototype || proto === null;
   if (!isPlain) {
-    return `${path} <${describeNonCloneable(obj)}>`;
+    return `${path} <${describeNonCloneable(obj)}> shape: ${describeObjectShape(obj)}`;
   }
 
-  for (const key of Object.keys(obj as Record<string, unknown>)) {
-    const childPath = findNonCloneablePath(
-      (obj as Record<string, unknown>)[key],
-      seen,
-      `${path}.${key}`,
-    );
+  for (const key of Reflect.ownKeys(obj)) {
+    let child: unknown;
+    try {
+      child = (obj as Record<PropertyKey, unknown>)[key];
+    } catch (e) {
+      return `${path}.${String(key)} (getter threw: ${(e as Error)?.message ?? e})`;
+    }
+    const childPath = findNonCloneablePath(child, seen, `${path}.${String(key)}`);
     if (childPath) return childPath;
   }
-  return `${path} <${describeNonCloneable(obj)}>`;
+  return `${path} <${describeNonCloneable(obj)}> shape: ${describeObjectShape(obj)}`;
 }
 
 function serializeInWorker(doc: TimelineDocument): Promise<string> {
@@ -125,8 +135,10 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
     try {
       worker.postMessage(toRaw(doc));
     } catch (e) {
-      const path = findNonCloneablePath(toRaw(doc));
+      const raw = toRaw(doc);
+      const path = findNonCloneablePath(raw);
       console.error('[timeline persistence] non-cloneable value in TimelineDocument at', path, e);
+      console.error('[timeline persistence] raw doc snapshot:', raw);
       worker.terminate();
       reject(e instanceof Error ? e : new Error(String(e)));
     }

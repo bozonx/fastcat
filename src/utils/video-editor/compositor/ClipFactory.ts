@@ -329,6 +329,7 @@ export class ClipFactory {
       frameRate?: number;
       freezeFrameSourceUs?: number;
       imageSource: ImageSource;
+      sourceRotation?: number;
     },
   ): CompositorClip {
     const texture = new Texture({ source: params.imageSource });
@@ -373,6 +374,7 @@ export class ClipFactory {
       transitionIn: params.transitionIn,
       transitionOut: params.transitionOut,
       mask: params.mask,
+      sourceRotation: params.sourceRotation,
     };
   }
 

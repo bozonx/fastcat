@@ -90,6 +90,7 @@ export class TimelineMediaClipBuilder {
     frameRate?: number;
     imageSource: ImageSource;
     toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined;
+    sourceRotation?: number;
   }): CompositorClip {
     const {
       clipData,
@@ -100,6 +101,7 @@ export class TimelineMediaClipBuilder {
       frameRate,
       imageSource,
       toVideoEffects,
+      sourceRotation,
     } = params;
 
     return this.context.clipFactory.createVideoClip({
@@ -128,6 +130,7 @@ export class TimelineMediaClipBuilder {
       transitionIn: clipData.transitionIn,
       transitionOut: clipData.transitionOut,
       mask: clipData.mask,
+      sourceRotation,
     });
   }
 }

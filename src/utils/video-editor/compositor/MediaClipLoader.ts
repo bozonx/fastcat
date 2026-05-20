@@ -1,8 +1,18 @@
 import { ImageSource } from 'pixi.js';
 import { safeDispose } from '../utils';
 
+interface MediabunnyTrack {
+  canDecode(): Promise<boolean>;
+  getFirstTimestamp(): Promise<number>;
+  computeDuration(): Promise<number>;
+  getFrameRate?(): Promise<number>;
+  rotation?: unknown;
+  frameRate?: number;
+  fps?: number;
+}
+
 export interface MediaClipLoaderMediabunny {
-  Input: new (params: unknown) => unknown;
+  Input: new (params: unknown) => { getPrimaryVideoTrack(): Promise<MediabunnyTrack | null> };
   BlobSource: new (file: File) => unknown;
   VideoSampleSink: new (track: unknown) => unknown;
   ALL_FORMATS: unknown;

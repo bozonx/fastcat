@@ -475,19 +475,6 @@ defineExpose({
         "
       />
 
-      <ClipTransformSection
-        v-model:enabled="isTransformEnabled"
-        :clip="clip"
-        :track-kind="clipTrackKind"
-        :can-edit-reversed="canEditReversed"
-        :is-reversed="isReversed"
-        :media-meta="mediaMeta"
-        @update-transform="
-          (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
-        "
-        @toggle-reversed="toggleReversed"
-      />
-
       <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />
     </div>
 
@@ -506,6 +493,19 @@ defineExpose({
         :clip-type="clip.clipType"
         :opacity="clip.opacity ?? 1"
         @update-opacity="handleUpdateOpacity"
+      />
+
+      <ClipTransformSection
+        v-model:enabled="isTransformEnabled"
+        :clip="clip"
+        :track-kind="clipTrackKind"
+        :can-edit-reversed="canEditReversed"
+        :is-reversed="isReversed"
+        :media-meta="mediaMeta"
+        @update-transform="
+          (next) => timelineStore.updateClipProperties(clip.trackId, clip.id, { transform: next })
+        "
+        @toggle-reversed="toggleReversed"
       />
 
       <ClipMaskSection

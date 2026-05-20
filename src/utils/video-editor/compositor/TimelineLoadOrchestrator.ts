@@ -334,6 +334,7 @@ export class TimelineLoadOrchestrator {
         firstTimestampS: loadedVideo.firstTimestampS,
         frameRate: loadedVideo.frameRate,
         imageSource: loadedVideo.imageSource,
+        sourceRotation: loadedVideo.sourceRotation,
         toVideoEffects: callbacks.toVideoEffects,
       });
       callbacks.registerLoadedClip({
