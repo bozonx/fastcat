@@ -1207,6 +1207,7 @@ export default {
         title: 'Действия',
         transcribe: 'Транскрибировать',
         uploadFiles: 'Загрузить файлы',
+        uploadToThisFolder: 'Загрузить в эту папку',
       },
       audio: {
         sound: 'Звук',
@@ -1493,7 +1494,7 @@ export default {
       deleteProjectConfirmTitle: 'Удалить проект?',
       export: 'Экспорт',
       metadata: 'Метаданные',
-      projectStorage: 'Файлы проекта',
+      projectStorage: 'Размер файлов проекта',
       resetSettings: 'Сбросить настройки',
       resetConfirmDescription:
         'Это вернет все настройки текущего проекта к значениям по умолчанию из настроек рабочей области.',

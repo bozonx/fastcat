@@ -160,26 +160,18 @@ const toolbarMenuItems = computed(() => {
         no-toggle
         @click="fileManagerStore.setViewMode('list')"
       />
+    </div>
 
-      <div class="w-px h-4 bg-ui-border mx-2"></div>
+    <div v-if="!isRemotePanel && !hideActions" class="flex items-center gap-1">
+      <div v-if="!hideViewSwitcher" class="w-px h-4 bg-ui-border mx-2"></div>
 
       <UiActionButton
-        v-if="!hideActions"
         icon="i-heroicons-folder-plus"
         variant="ghost"
         color="neutral"
         size="sm"
         :title="t('videoEditor.fileManager.actions.createFolder')"
         @click="emit('createFolder')"
-      />
-      <UiActionButton
-        v-if="!hideActions && !hideUpload"
-        icon="i-heroicons-arrow-up-tray"
-        variant="ghost"
-        color="neutral"
-        size="sm"
-        :title="t('videoEditor.fileManager.actions.uploadFiles')"
-        @click="emit('upload')"
       />
     </div>
 

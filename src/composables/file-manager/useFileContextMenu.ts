@@ -415,7 +415,7 @@ export function useFileContextMenu(
       if (!isComputer) {
         dirItems.push(
           {
-            label: t('videoEditor.fileManager.actions.uploadFiles'),
+            label: t('videoEditor.fileManager.actions.uploadToThisFolder'),
             icon: 'i-heroicons-arrow-up-tray',
             onSelect: () => onAction('upload', entry),
           },

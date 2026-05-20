@@ -106,8 +106,13 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
 
     const result: string[] = [];
 
+    interface AsyncIterableDir extends FileSystemDirectoryHandle {
+      values?(): AsyncIterable<FileSystemHandle>;
+      entries?(): AsyncIterable<[string, FileSystemHandle]>;
+    }
     const walk = async (dir: FileSystemDirectoryHandle, basePath: string) => {
-      const iterator = (dir as any).values?.() ?? (dir as any).entries?.();
+      const d = dir as AsyncIterableDir;
+      const iterator = d.values?.() ?? d.entries?.();
       if (!iterator) return;
 
       for await (const value of iterator) {

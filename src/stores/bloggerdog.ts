@@ -122,7 +122,7 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
 
     return getRemoteThumbnailUrl({
       baseUrl: config.value.baseUrl,
-      media: media as any,
+      media,
     });
   }
 

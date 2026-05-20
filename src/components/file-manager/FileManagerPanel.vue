@@ -17,6 +17,7 @@ import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFile
 
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -183,7 +184,7 @@ const rootContextMenuItems = computed(() => {
   const menu: unknown[][] = [
     [
       {
-        label: t('videoEditor.fileManager.actions.uploadFiles'),
+        label: t('videoEditor.fileManager.actions.uploadToThisFolder'),
         icon: 'i-heroicons-arrow-up-tray',
         onSelect: () => onFileAction('upload', rootEntry),
       },
@@ -257,8 +258,8 @@ async function onCreateTimeline() {
 async function onCreateMarkdown() {
   await onFileAction('createMarkdown', {
     kind: 'directory',
-    name: '/',
-    path: '',
+    name: DOCUMENTS_DIR_NAME,
+    path: DOCUMENTS_DIR_NAME,
     parentPath: '',
     lastModified: 0,
     size: 0,

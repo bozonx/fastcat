@@ -21,7 +21,7 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { useVfs } from '~/composables/useVfs';
 import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
-import { FILE_MANAGER_ROOT_SPACER_HEIGHT } from '~/utils/constants';
+import { FILE_MANAGER_ROOT_SPACER_HEIGHT, DOCUMENTS_DIR_NAME } from '~/utils/constants';
 
 const props = defineProps<{
   editingEntryPath?: string | null;
@@ -384,7 +384,7 @@ const rootContextMenuItems = computed(() => {
   const menu: Record<string, unknown>[][] = [
     [
       {
-        label: t('videoEditor.fileManager.actions.uploadFiles'),
+        label: t('videoEditor.fileManager.actions.uploadToThisFolder'),
         icon: 'i-heroicons-arrow-up-tray',
         onSelect: async () => emit('action', 'upload', rootEntry),
       },
@@ -401,7 +401,13 @@ const rootContextMenuItems = computed(() => {
       {
         label: t('videoEditor.fileManager.actions.createMarkdown'),
         icon: 'i-heroicons-document-text',
-        onSelect: async () => emit('action', 'createMarkdown', rootEntry),
+        onSelect: async () =>
+          emit('action', 'createMarkdown', {
+            kind: 'directory',
+            name: DOCUMENTS_DIR_NAME,
+            path: DOCUMENTS_DIR_NAME,
+            source: 'local',
+          } as FsEntry),
       },
     ],
     [

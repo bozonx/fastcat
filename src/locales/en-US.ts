@@ -1202,6 +1202,7 @@ export default {
         title: 'Actions',
         transcribe: 'Transcribe',
         uploadFiles: 'Upload files',
+        uploadToThisFolder: 'Upload to this folder',
       },
       audio: {
         sound: 'Sound',

@@ -18,7 +18,7 @@ import type { useI18n } from 'vue-i18n';
 import { useRoute, useNuxtApp } from 'nuxt/app';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, type MainPanelFocus } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import {
   VIDEO_DIR_NAME,
@@ -929,6 +929,97 @@ export function useFileManager(options?: {
     };
   }
 
+  async function syncTimelinePathsOnMove({ oldPath, newPath }: { oldPath: string; newPath: string }) {
+    const isTimelineFile = oldPath.toLowerCase().endsWith('.otio');
+
+    function matchesOldPath(path: string | null | undefined): boolean {
+      if (!path) return false;
+      if (isTimelineFile) return path === oldPath;
+      return path === oldPath || path.startsWith(`${oldPath}/`);
+    }
+
+    function remapPath(path: string): string {
+      if (isTimelineFile) return newPath;
+      if (path === oldPath) return newPath;
+      return `${newPath}${path.slice(oldPath.length)}`;
+    }
+
+    const { useProjectTabsStore } = await import('~/stores/project-tabs.store');
+    const projectTabsStore = useProjectTabsStore();
+
+    // 1. Update current timeline
+    if (matchesOldPath(projectStore.currentTimelinePath)) {
+      const nextPath = remapPath(projectStore.currentTimelinePath!);
+      projectStore.currentTimelinePath = nextPath;
+      projectStore.currentFileName = nextPath.split('/').pop() ?? nextPath;
+    }
+
+    // 2. Update open paths
+    const timelines = projectStore.projectSettings.timelines;
+    const openPaths = timelines.openPaths;
+    let openPathsChanged = false;
+    for (let i = 0; i < openPaths.length; i++) {
+      const path = openPaths[i];
+      if (path && matchesOldPath(path)) {
+        openPaths[i] = remapPath(path);
+        openPathsChanged = true;
+      }
+    }
+    if (openPathsChanged) {
+      timelines.openPaths = [...openPaths];
+    }
+
+    // 3. Update sessions
+    const sessions = timelines.sessions;
+    const newSessions: Record<string, unknown> = {};
+    let sessionsChanged = false;
+    for (const [path, session] of Object.entries(sessions)) {
+      if (matchesOldPath(path)) {
+        newSessions[remapPath(path)] = session;
+        sessionsChanged = true;
+      } else {
+        newSessions[path] = session;
+      }
+    }
+    if (sessionsChanged) {
+      timelines.sessions = newSessions;
+    }
+
+    // 4. Update focus store
+    if (matchesOldPath(focusStore.activeTimelinePath)) {
+      focusStore.setActiveTimelinePath(remapPath(focusStore.activeTimelinePath!));
+    }
+
+    // 5. Update mainFocusByTimeline
+    const mainFocusByTimeline = focusStore.mainFocusByTimeline;
+    const newFocusByTimeline: Record<string, MainPanelFocus> = {};
+    let focusChanged = false;
+    for (const [path, focus] of Object.entries(mainFocusByTimeline)) {
+      if (matchesOldPath(path)) {
+        newFocusByTimeline[remapPath(path)] = focus as MainPanelFocus;
+        focusChanged = true;
+      } else {
+        newFocusByTimeline[path] = focus as MainPanelFocus;
+      }
+    }
+    if (focusChanged) {
+      focusStore.mainFocusByTimeline = newFocusByTimeline;
+    }
+
+    // 6. Update file tabs
+    const fileTabs = projectTabsStore.fileTabs;
+    let tabsChanged = false;
+    for (const tab of fileTabs) {
+      if (matchesOldPath(tab.filePath)) {
+        tab.filePath = remapPath(tab.filePath);
+        tabsChanged = true;
+      }
+    }
+    if (tabsChanged) {
+      projectTabsStore.fileTabs = [...fileTabs];
+    }
+  }
+
   async function clearVectorCacheForPath(path: string) {
     const projectId = projectStore.currentProjectId;
     const workspaceHandle = workspaceStore.workspaceHandle;
@@ -1012,6 +1103,7 @@ export function useFileManager(options?: {
       await clearVectorCacheForPath(oldPath);
       await clearVectorCacheForPath(newPath);
       updateSelectionPath({ oldPath, newPath });
+      await syncTimelinePathsOnMove({ oldPath, newPath });
 
       // Update Timeline References
       if (timelineStore.timelineDoc) {
@@ -1065,6 +1157,7 @@ export function useFileManager(options?: {
     onDirectoryMoved: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
       mediaStore.resetMediaState();
       updateSelectionForDirectoryMove({ oldPath, newPath });
+      await syncTimelinePathsOnMove({ oldPath, newPath });
 
       // Update Timeline References (Recursive)
       if (timelineStore.timelineDoc) {
