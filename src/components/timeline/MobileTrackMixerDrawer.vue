@@ -120,7 +120,7 @@ function handleSelectEffect(type: string) {
 
   const currentEffects = track.effects ?? [];
   timelineStore.updateTrackProperties(trackId, {
-    effects: [...currentEffects, newEffect] as any,
+    effects: [...currentEffects, newEffect as import('~/timeline/types').ClipEffect],
   });
 
   isSelectEffectModalOpen.value = false;

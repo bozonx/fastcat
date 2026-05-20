@@ -50,7 +50,7 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
 });
 
 const trackContextMenuItems = computed(() => {
-  const tracks = (timelineStore.timelineDoc?.tracks as any[]) || [];
+  const tracks = timelineStore.timelineDoc?.tracks ?? [];
   const track = tracks.find((t) => t.id === props.trackId);
   if (!track) return [];
   return getTrackContextMenuItems(track, tracks);

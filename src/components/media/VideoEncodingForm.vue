@@ -116,7 +116,7 @@ function applyPreset(presetId: string) {
       v-model:audio-bitrate-kbps="audioBitrateKbps"
       v-model:audio-channels="audioChannels"
       v-model:audio-sample-rate="audioSampleRate"
-      v-model:preset="preset as any"
+      v-model:preset="preset"
       v-model:bitrate-mode="bitrateMode"
       v-model:keyframe-interval-sec="keyframeIntervalSec"
       v-model:export-alpha="exportAlpha"

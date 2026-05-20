@@ -291,7 +291,7 @@ function resetPathDefaults() {
         "
       >
         <div class="flex gap-2">
-          <UInput v-model="ephemeralTmpRootPath" class="w-full" />
+          <UiTextInput v-model="ephemeralTmpRootPath" full-width />
           <UButton
             color="neutral"
             variant="soft"
@@ -316,7 +316,7 @@ function resetPathDefaults() {
         "
       >
         <div class="flex gap-2">
-          <UInput v-model="ephemeralTmpRootPath" class="w-full" />
+          <UiTextInput v-model="ephemeralTmpRootPath" full-width />
           <UButton
             color="neutral"
             variant="soft"

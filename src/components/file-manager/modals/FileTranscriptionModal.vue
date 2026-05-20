@@ -46,11 +46,11 @@ const emit = defineEmits<{
       </div>
 
       <UiFormField :label="t('videoEditor.fileManager.audio.transcriptionLanguage')">
-        <UInput
+        <UiTextInput
           v-model="transcriptionLanguage"
           :disabled="props.isTranscribing"
           placeholder="en"
-          class="w-full"
+          full-width
           :ui="{ base: 'transition-colors' }"
         >
           <template #trailing>
@@ -64,7 +64,7 @@ const emit = defineEmits<{
               @click="transcriptionLanguage = ''"
             />
           </template>
-        </UInput>
+        </UiTextInput>
       </UiFormField>
 
       <div v-if="props.transcriptionError" class="text-sm text-error-400">

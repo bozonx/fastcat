@@ -57,7 +57,7 @@ const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, 
       const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
       return findDuplicateOwnerByContext({
         effective,
-        commands: DEFAULT_HOTKEYS.commands as any,
+        commands: DEFAULT_HOTKEYS.commands,
         targetCmdId,
         combo,
       });
@@ -251,10 +251,6 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
         }}
       </div>
     </div>
-
-    <p class="px-1 text-xs text-ui-text-muted leading-relaxed">
-      {{ t('videoEditor.settings.hotkeysLayersHint') }}
-    </p>
 
     <div class="px-1">
       <UiSearchInput

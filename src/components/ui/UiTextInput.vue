@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref } from 'vue';
 
 interface UiTextInputProps {
   modelValue: string;
@@ -10,6 +10,8 @@ interface UiTextInputProps {
   fullWidth?: boolean;
   type?: 'text' | 'password' | 'email' | 'url' | 'search';
   autofocus?: boolean;
+  variant?: 'outline' | 'soft' | 'subtle' | 'ghost' | 'none';
+  autocomplete?: string;
   ui?: { base?: string };
 }
 
@@ -21,32 +23,45 @@ const props = withDefaults(defineProps<UiTextInputProps>(), {
   fullWidth: false,
   type: 'text',
   autofocus: false,
+  variant: 'outline',
+  autocomplete: undefined,
   ui: undefined,
 });
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
+  (e: 'keyup' | 'keydown', event: KeyboardEvent): void;
+  (e: 'focus' | 'blur', event: FocusEvent): void;
 }>();
 
-const value = computed({
-  get: () => props.modelValue,
-  set: (val: string) => emit('update:modelValue', val),
+const inputRef = ref<HTMLElement | null>(null);
+
+defineExpose({
+  input: inputRef,
 });
 </script>
 
 <template>
   <UInput
-    v-model="value"
+    ref="inputRef"
+    :model-value="props.modelValue"
     :type="type"
     :placeholder="placeholder"
     :disabled="disabled"
     :size="size"
     :autofocus="autofocus"
+    :variant="variant"
+    :autocomplete="autocomplete"
     :class="[fullWidth ? 'w-full' : 'w-auto max-w-80', mono ? 'font-mono' : '']"
     :ui="{
       base: 'transition-colors',
       ...ui,
     }"
+    @update:model-value="(val: string) => emit('update:modelValue', val)"
+    @keyup="(e: KeyboardEvent) => emit('keyup', e)"
+    @keydown="(e: KeyboardEvent) => emit('keydown', e)"
+    @focus="(e: FocusEvent) => emit('focus', e)"
+    @blur="(e: FocusEvent) => emit('blur', e)"
   >
     <template v-for="(_, slot) in $slots" #[slot]="scope">
       <slot :name="slot" v-bind="scope || {}" />

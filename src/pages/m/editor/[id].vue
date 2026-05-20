@@ -85,7 +85,7 @@ type TabId = 'files' | 'edit' | 'export' | 'settings';
 const activeTab = computed<TabId>({
   get: () => (viewToTabMap[projectStore.currentView as string] ?? 'edit') as TabId,
   set: (tab: TabId) => {
-    projectStore.setView(tabToViewMap[tab] as any);
+    projectStore.setView(tabToViewMap[tab]);
   },
 });
 

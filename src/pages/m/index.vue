@@ -314,11 +314,14 @@ const formatDate = (dateStr?: string) => {
       >
         <div class="space-y-8">
           <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
-            <UInput
+            <UiTextInput
               v-model="projectCreationSettings.name"
               :placeholder="t('fastcat.projects.projectNamePlaceholder')"
               variant="none"
-              class="bg-zinc-900/50 border border-white/5 rounded-3xl h-16 text-xl font-bold px-6 focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700"
+              full-width
+              :ui="{
+                base: 'h-16 text-xl font-bold px-6 bg-zinc-900/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700',
+              }"
               autofocus
               @keyup.enter="createNewProject"
             />
@@ -429,11 +432,14 @@ const formatDate = (dateStr?: string) => {
       >
         <div class="space-y-8">
           <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
-            <UInput
+            <UiTextInput
               v-model="renameValue"
               :placeholder="t('fastcat.projects.projectNamePlaceholder')"
               variant="none"
-              class="bg-zinc-900/50 border border-white/5 rounded-3xl h-16 text-xl font-bold px-6 focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700"
+              full-width
+              :ui="{
+                base: 'h-16 text-xl font-bold px-6 bg-zinc-900/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700',
+              }"
               autofocus
               @keyup.enter="renameProject"
             />

@@ -13,6 +13,20 @@ const workspaceStore = useWorkspaceStore();
 
 const isResetConfirmOpen = ref(false);
 
+const proxyMaxPixelsOptions = computed(() => {
+  const defaultValue = DEFAULT_USER_SETTINGS.optimization.proxyMaxPixels;
+  return [
+    { label: '3.0 MP (1080p+)', value: 3_000_000 },
+    { label: '1.5 MP (720p+)', value: 1_500_000 },
+    { label: '0.7 MP (480p+)', value: 700_000 },
+    { label: '0.4 MP (360p+)', value: 400_000 },
+    { label: '0.2 MP (240p+)', value: 200_000 },
+  ].map((item) => ({
+    ...item,
+    label: item.value === defaultValue ? `${item.label} (${t('common.default')})` : item.label,
+  }));
+});
+
 function resetDefaults() {
   workspaceStore.userSettings.optimization = { ...DEFAULT_USER_SETTINGS.optimization };
   isResetConfirmOpen.value = false;
@@ -67,13 +81,7 @@ function resetDefaults() {
       <UiFormField :label="t('videoEditor.settings.proxyMaxPixels')">
         <UiSelect
           v-model="workspaceStore.userSettings.optimization.proxyMaxPixels"
-          :items="[
-            { label: '3.0 MP (1080p+)', value: 3_000_000 },
-            { label: '1.5 MP (720p+)', value: 1_500_000 },
-            { label: '0.7 MP (480p+)', value: 700_000 },
-            { label: '0.4 MP (360p+)', value: 400_000 },
-            { label: '0.2 MP (240p+)', value: 200_000 },
-          ]"
+          :items="proxyMaxPixelsOptions"
           value-key="value"
           label-key="label"
           full-width

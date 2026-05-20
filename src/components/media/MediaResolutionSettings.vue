@@ -139,7 +139,7 @@ watch([localWidth, localHeight, localIsCustom], ([w, h, isCustom]) => {
         <UiFormField :label="t('videoEditor.resolution.orientation')" class="w-20 shrink-0">
           <UiButtonGroup
             v-model="localOrientation"
-            :options="orientationOptions as any"
+            :options="orientationOptions"
             :disabled="disabled"
             :ui="{ base: 'px-2' }"
             class="w-full h-8"

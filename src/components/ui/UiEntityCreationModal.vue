@@ -65,10 +65,10 @@ function handleCancel() {
     <div class="py-2 px-1">
       <form @submit.prevent="handleConfirm">
         <UiFormField :label="label || t('common.name')">
-          <UInput
+          <UiTextInput
             ref="inputRef"
             v-model="name"
-            class="w-full"
+            full-width
             data-primary-focus="true"
             :placeholder="placeholder || t('common.namePlaceholder')"
             :disabled="loading"

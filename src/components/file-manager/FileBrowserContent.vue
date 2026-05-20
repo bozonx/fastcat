@@ -6,10 +6,18 @@ import type { FsEntry } from '~/types/fs';
 import FileBrowserViewGrid from '~/components/file-manager/FileBrowserViewGrid.vue';
 import FileBrowserViewList from '~/components/file-manager/FileBrowserViewList.vue';
 
+interface ContextMenuItem {
+  label?: string;
+  icon?: string;
+  color?: string;
+  click?: () => void;
+  children?: ContextMenuItem[];
+}
+
 interface FileBrowserContentProps {
   setRootContainerRef: VNodeRef;
   marqueeStyle: Record<string, string> | null;
-  emptySpaceContextMenuItems: unknown[];
+  emptySpaceContextMenuItems: ContextMenuItem[] | ContextMenuItem[][];
   isRemoteMode: boolean;
   remoteError: string | null;
   folderEntriesLength: number;
@@ -135,7 +143,7 @@ function emitResizeStart(event: MouseEvent, column: string) {
       class="absolute border border-primary-400 bg-primary-400/15 rounded-sm pointer-events-none"
       :style="props.marqueeStyle"
     />
-    <UContextMenu :items="props.emptySpaceContextMenuItems as any" class="min-h-full">
+    <UContextMenu :items="props.emptySpaceContextMenuItems" class="min-h-full">
       <div class="min-h-full flex flex-col" @click.self="emit('containerClick')">
         <div
           v-if="props.isRemoteMode && props.remoteError"

@@ -253,7 +253,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
       <template #body>
         <div class="flex flex-col gap-4">
           <UiFormField :label="t('common.name')">
-            <UInput
+            <UiTextInput
               v-model="newPresetName"
               :placeholder="t('fastcat.effects.presetNamePlaceholder')"
               autofocus
