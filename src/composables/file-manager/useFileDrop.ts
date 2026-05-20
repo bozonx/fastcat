@@ -98,7 +98,7 @@ export function useFileDrop(options: UseFileDropOptions) {
   }
 
   async function isBloggerDogTransferAllowed(params: {
-    items: Array<{ kind?: any; name?: any }>;
+    items: Array<{ kind?: unknown; name?: unknown }>;
     targetDirPath?: string;
   }): Promise<boolean> {
     const involvesBloggerDog =

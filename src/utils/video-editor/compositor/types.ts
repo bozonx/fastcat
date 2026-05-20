@@ -98,6 +98,8 @@ export interface CompositorClip {
   };
   mask?: ClipMask;
   maskState?: HudMediaState | null;
+  /** Intrinsic video rotation from source metadata (e.g. 90 for phone vertical video). Applied automatically by LayoutApplier. */
+  sourceRotation?: number;
 }
 
 export interface CompositorTrack {

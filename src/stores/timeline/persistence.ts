@@ -52,6 +52,56 @@ export interface TimelinePersistenceModule {
   saveTimeline: () => Promise<void>;
 }
 
+function describeNonCloneable(value: unknown): string {
+  if (value === null) return 'null';
+  if (typeof value !== 'object') return typeof value;
+  const ctor = (value as object).constructor?.name ?? 'Object';
+  return ctor;
+}
+
+function findNonCloneablePath(value: unknown, seen = new WeakSet<object>(), path = '$'): string | null {
+  if (value === null || value === undefined) return null;
+  const t = typeof value;
+  if (t === 'string' || t === 'number' || t === 'boolean' || t === 'bigint') return null;
+  if (t === 'function' || t === 'symbol') return `${path} (${t})`;
+  if (t !== 'object') return null;
+
+  const obj = value as object;
+  if (seen.has(obj)) return null;
+  seen.add(obj);
+
+  try {
+    structuredClone(obj);
+    return null;
+  } catch {
+    // continue narrowing
+  }
+
+  if (Array.isArray(obj)) {
+    for (let i = 0; i < obj.length; i++) {
+      const childPath = findNonCloneablePath(obj[i], seen, `${path}[${i}]`);
+      if (childPath) return childPath;
+    }
+    return `${path} <Array ${describeNonCloneable(obj)}>`;
+  }
+
+  const proto = Object.getPrototypeOf(obj);
+  const isPlain = proto === Object.prototype || proto === null;
+  if (!isPlain) {
+    return `${path} <${describeNonCloneable(obj)}>`;
+  }
+
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    const childPath = findNonCloneablePath(
+      (obj as Record<string, unknown>)[key],
+      seen,
+      `${path}.${key}`,
+    );
+    if (childPath) return childPath;
+  }
+  return `${path} <${describeNonCloneable(obj)}>`;
+}
+
 function serializeInWorker(doc: TimelineDocument): Promise<string> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
@@ -72,7 +122,14 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
       reject(e);
       worker.terminate();
     };
-    worker.postMessage(toRaw(doc));
+    try {
+      worker.postMessage(toRaw(doc));
+    } catch (e) {
+      const path = findNonCloneablePath(toRaw(doc));
+      console.error('[timeline persistence] non-cloneable value in TimelineDocument at', path, e);
+      worker.terminate();
+      reject(e instanceof Error ? e : new Error(String(e)));
+    }
   });
 }
 

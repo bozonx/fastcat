@@ -29,6 +29,7 @@ export interface LoadedVideoRuntime {
   durationUs: number;
   endUs: number;
   imageSource: ImageSource;
+  sourceRotation?: number;
 }
 
 export class MediaClipLoader {
@@ -55,7 +56,7 @@ export class MediaClipLoader {
     const input = new mediabunny.Input({
       source,
       formats: mediabunny.ALL_FORMATS,
-    } as unknown);
+    });
     try {
       const track = await input.getPrimaryVideoTrack();
 
@@ -72,12 +73,13 @@ export class MediaClipLoader {
 
       const sink = new mediabunny.VideoSampleSink(track);
       const firstTimestampS = await track.getFirstTimestamp();
-      const trackAny = track as { getFrameRate?: () => Promise<number> };
+      const trackAny = track as { getFrameRate?: () => Promise<number>; frameRate?: number; fps?: number };
       const frameRateRaw =
         typeof trackAny.getFrameRate === 'function'
           ? await trackAny.getFrameRate()
           : (trackAny.frameRate ?? trackAny.fps);
       const frameRate = Number(frameRateRaw);
+      const sourceRotation = Number((track as { rotation?: unknown }).rotation);
       const mediaDurationUs = Math.max(0, Math.round((await track.computeDuration()) * 1_000_000));
       const maxSourceTailUs = Math.max(0, mediaDurationUs - sourceStartUs);
       const sourceDurationUs =
@@ -98,7 +100,8 @@ export class MediaClipLoader {
           requestedSourceRangeDurationUs > 0 ? requestedSourceRangeDurationUs : durationUs,
         durationUs,
         endUs,
-        imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown }),
+        imageSource: new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown as HTMLCanvasElement }),
+        sourceRotation: Number.isFinite(sourceRotation) ? sourceRotation : undefined,
       };
     } catch (error) {
       safeDispose(input);

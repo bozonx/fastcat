@@ -25,4 +25,10 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toBeDefined();
     expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toContain('G');
   });
+
+  it('has binding for general.delete including X', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.delete']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.delete']).toContain('Delete');
+    expect(DEFAULT_HOTKEYS.bindings['general.delete']).toContain('X');
+  });
 });

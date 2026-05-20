@@ -284,7 +284,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.copy': [`${Mod}+C`],
     'general.cut': [`${Mod}+X`],
     'general.paste': [`${Mod}+V`],
-    'general.delete': ['Delete'],
+    'general.delete': ['Delete', 'X'],
     'general.rename': ['F2'],
     'general.undo': [`${Mod}+Z`],
     'general.redo': [`${Mod}+Y`, `${Mod}+Shift+Z`],
