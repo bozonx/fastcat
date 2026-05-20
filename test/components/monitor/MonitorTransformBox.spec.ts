@@ -5,23 +5,26 @@ import MonitorTransformBox from '~/components/monitor/MonitorTransformBox.vue';
 import { ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useMediaStore } from '~/stores/media.store';
+
+const rawWorkerTimelineClips = ref([
+  {
+    id: 'clip-1',
+    clipType: 'media',
+    source: { path: 'test.mp4' },
+    transform: {
+      position: { x: 0, y: 0 },
+      scale: { x: 1, y: 1, linked: true },
+      rotationDeg: 0,
+      anchor: { preset: 'center', x: 0.5, y: 0.5 },
+    },
+  },
+]);
 
 // Mock useMonitorTimeline
 vi.mock('~/composables/monitor/useMonitorTimeline', () => ({
   useMonitorTimeline: () => ({
-    rawWorkerTimelineClips: ref([
-      {
-        id: 'clip-1',
-        clipType: 'media',
-        source: { path: 'test.mp4' },
-        transform: {
-          position: { x: 0, y: 0 },
-          scale: { x: 1, y: 1, linked: true },
-          rotationDeg: 0,
-          anchor: { preset: 'center', x: 0.5, y: 0.5 },
-        },
-      },
-    ]),
+    rawWorkerTimelineClips,
   }),
 }));
 
@@ -29,6 +32,17 @@ describe('MonitorTransformBox', () => {
   let pinia: any;
 
   beforeEach(() => {
+    rawWorkerTimelineClips.value[0] = {
+      id: 'clip-1',
+      clipType: 'media',
+      source: { path: 'test.mp4' },
+      transform: {
+        position: { x: 0, y: 0 },
+        scale: { x: 1, y: 1, linked: true },
+        rotationDeg: 0,
+        anchor: { preset: 'center', x: 0.5, y: 0.5 },
+      },
+    };
     pinia = createTestingPinia({
       createSpy: vi.fn,
       stubActions: false,
@@ -43,6 +57,40 @@ describe('MonitorTransformBox', () => {
         },
       },
     });
+  });
+
+  it('renders a vertical transform box for a landscape-coded video with 90 degree rotation', () => {
+    rawWorkerTimelineClips.value[0] = {
+      ...rawWorkerTimelineClips.value[0],
+      sourceOrientation: 'auto',
+      fitMode: 'fit',
+    };
+
+    const mediaStore = useMediaStore();
+    mediaStore.mediaMetadata['test.mp4'] = {
+      video: {
+        width: 1920,
+        height: 1080,
+        displayWidth: 1080,
+        displayHeight: 1920,
+        rotation: 90,
+      },
+    };
+
+    const wrapper = mount(MonitorTransformBox, {
+      props: {
+        renderWidth: 1080,
+        renderHeight: 1920,
+      },
+      global: {
+        plugins: [pinia],
+      },
+    });
+
+    const rect = wrapper.get('rect');
+    expect(Number(rect.attributes('width'))).toBeCloseTo(1920);
+    expect(Number(rect.attributes('height'))).toBeCloseTo(1080);
+    expect(wrapper.findAll('g')[1]?.attributes('transform')).toContain('rotate(90');
   });
 
   it('renders transform box for selected clip', () => {

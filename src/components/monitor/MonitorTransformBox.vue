@@ -4,7 +4,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
-import type { ClipTransform } from '~/timeline/types';
+import type { ClipFitMode, ClipSourceOrientation, ClipTransform } from '~/timeline/types';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
@@ -72,8 +72,8 @@ const intrinsicDimensions = computed(() => {
   if (!meta) return { w: props.renderWidth, h: props.renderHeight };
 
   if (meta.video) {
-    const w = meta.video.displayWidth || meta.video.width || props.renderWidth;
-    const h = meta.video.displayHeight || meta.video.height || props.renderHeight;
+    const w = meta.video.width || meta.video.displayWidth || props.renderWidth;
+    const h = meta.video.height || meta.video.displayHeight || props.renderHeight;
     return { w, h };
   }
 
@@ -110,9 +110,18 @@ const safeTransform = computed(() => {
 
 const sourceRotation = computed(() => {
   const sourcePath = clipData.value?.source?.path;
+  const sourceOrientation = (clipData.value as { sourceOrientation?: ClipSourceOrientation } | null)
+    ?.sourceOrientation;
+  if (sourceOrientation && sourceOrientation !== 'auto') {
+    return Number(sourceOrientation);
+  }
   if (!sourcePath) return 0;
   const meta = mediaStore.mediaMetadata[sourcePath];
   return meta?.video?.rotation ?? 0;
+});
+
+const fitMode = computed(() => {
+  return ((clipData.value as { fitMode?: ClipFitMode } | null)?.fitMode ?? 'fit') as ClipFitMode;
 });
 
 const layout = computed(() => {
@@ -124,6 +133,8 @@ const layout = computed(() => {
     frameHeight: d.h,
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
+    fitMode: fitMode.value,
+    fitRotationDeg: sourceRotation.value,
     transform: {
       ...(transform ?? {}),
       rotationDeg: (transform?.rotationDeg ?? 0) + sourceRotation.value,

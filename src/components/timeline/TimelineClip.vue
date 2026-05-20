@@ -104,6 +104,7 @@ const workspaceStore = useWorkspaceStore();
 const clipboardStore = useAppClipboard();
 
 const isHovered = ref(false);
+const isTransitionCreateHandleActive = ref(false);
 
 const clipWidthPx = computed(() =>
   Math.round(
@@ -615,6 +616,7 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
               })
           "
           @create-transition="handleTransitionCreate"
+          @create-transition-handle-active="isTransitionCreateHandleActive = $event"
         />
 
         <ClipAudioFades
@@ -713,15 +715,21 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
           v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
         >
           <div
-            class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
+            class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim"
             :style="{ zIndex: 'var(--z-clip-trim)' }"
-            :class="isMobile ? 'w-4' : 'w-4'"
+            :class="[
+              isMobile ? 'w-4' : 'w-4',
+              isTransitionCreateHandleActive ? '' : 'hover:bg-white/30',
+            ]"
             @pointerdown="onTrimHandlePointerDown($event, 'start')"
           />
           <div
-            class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 hover:bg-white/30 transition-colors group/trim"
+            class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim"
             :style="{ zIndex: 'var(--z-clip-trim)' }"
-            :class="isMobile ? 'w-4' : 'w-4'"
+            :class="[
+              isMobile ? 'w-4' : 'w-4',
+              isTransitionCreateHandleActive ? '' : 'hover:bg-white/30',
+            ]"
             @pointerdown="onTrimHandlePointerDown($event, 'end')"
           />
         </template>

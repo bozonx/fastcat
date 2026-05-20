@@ -178,7 +178,7 @@ function normalizeFallingCardParams(params?: Record<string, unknown>): FallingCa
 }
 
 export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams> = {
-  type: 'falling-card' as any,
+  type: 'falling-card',
   name: 'Falling Card',
   nameKey: 'fastcat.transitions.falling-card.name',
   icon: 'i-heroicons-square-3-stack-3d',
@@ -255,7 +255,11 @@ export const fallingCardTransitionManifest: TransitionManifest<FallingCardParams
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    interface FallingCardResources {
+      fallingCardUniforms?: { uniforms?: Record<string, unknown> };
+      uFromTexture?: unknown;
+    }
+    const resources = (filter as { resources?: FallingCardResources }).resources;
     const uniforms = resources?.fallingCardUniforms?.uniforms;
     if (!uniforms) return;
     const progress = applyTransitionCurve(context.progress, context.curve);

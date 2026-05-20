@@ -167,7 +167,7 @@ function normalizeCubeParams(params?: Record<string, unknown>): CubeParams {
 }
 
 export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
-  type: 'cube' as any,
+  type: 'cube',
   name: 'Cube',
   nameKey: 'fastcat.transitions.cube.name',
   icon: 'i-heroicons-cube',
@@ -229,7 +229,11 @@ export const cubeTransitionManifest: TransitionManifest<CubeParams> = {
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    interface CubeResources {
+      cubeUniforms?: { uniforms?: Record<string, unknown> };
+      uFromTexture?: unknown;
+    }
+    const resources = (filter as { resources?: CubeResources }).resources;
     const uniforms = resources?.cubeUniforms?.uniforms;
     if (!uniforms) return;
     const progress = applyTransitionCurve(context.progress, context.curve);

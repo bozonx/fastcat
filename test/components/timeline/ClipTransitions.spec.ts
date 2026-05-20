@@ -39,9 +39,26 @@ describe('ClipTransitions', () => {
       props: defaultProps,
     });
 
-    const handles = component.findAll('.cursor-ew-resize');
-    // They are hidden by default via opacity-0 in CSS, but present in DOM
+    const handles = component.findAll('[data-testid^="transition-create-"]');
     expect(handles.length).toBe(2);
+    expect(handles[0].attributes('style')).toContain('width: 7px');
+    expect(handles[0].attributes('style')).toContain('height: 9px');
+    expect(handles[0].attributes('style')).toContain('bottom: -4px');
+    expect(handles[0].attributes('style')).toContain('left: -7px');
+    expect(handles[1].attributes('style')).toContain('right: -7px');
+  });
+
+  it('hides transition create handles on short tracks', async () => {
+    const component = await mountSuspended(ClipTransitions, {
+      props: {
+        ...defaultProps,
+        trackHeight: 20,
+      },
+    });
+
+    const handles = component.findAll('[data-testid^="transition-create-"]');
+    expect(handles.length).toBe(2);
+    expect(handles.every((handle) => handle.classes().includes('hidden'))).toBe(true);
   });
 
   it('renders transition in when present', async () => {
@@ -94,15 +111,13 @@ describe('ClipTransitions', () => {
       props: defaultProps,
     });
 
-    // Find the INNER div that has the @pointerdown listener
-    const handle = component.find('.cursor-ew-resize div');
+    const handle = component.find('[data-testid="transition-create-in"]');
     expect(handle.exists()).toBe(true);
 
-    // Simulating pointerdown
     await handle.trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
 
     // Find and call pointerup listener manually
-    const pointerUpCall = addEventListenerSpy.mock.calls.find((c) => c[0] === 'pointerup');
+    const pointerUpCall = addEventListenerSpy.mock.calls.filter((c) => c[0] === 'pointerup').at(-1);
     expect(pointerUpCall).toBeTruthy();
     const listener = pointerUpCall![1] as any;
 

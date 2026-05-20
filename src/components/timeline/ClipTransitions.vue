@@ -14,6 +14,11 @@ import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions
 
 const { t } = useI18n();
 
+const TRANSITION_CREATE_HANDLE_WIDTH_PX = 7;
+const TRANSITION_CREATE_HANDLE_HEIGHT_PX = 9;
+const TRANSITION_CREATE_HANDLE_BOTTOM_PX = -4;
+const MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX = 24;
+
 const props = defineProps<{
   clip: TimelineClipItem;
   track: TimelineTrack;
@@ -37,6 +42,7 @@ const emit = defineEmits<{
     event: PointerEvent,
     payload: { edge: 'in' | 'out'; drag: boolean },
   ): void;
+  (e: 'createTransitionHandleActive', active: boolean): void;
 }>();
 
 function transitionUsToPx(us: number) {
@@ -209,14 +215,66 @@ function getTransitionSvgFill(edge: 'in' | 'out', hasProblem: boolean) {
   return 'var(--clip-lower-tri)';
 }
 
+function canShowCreateTransitionHandle() {
+  return (
+    !props.isMobile &&
+    props.clipWidthPx >= 30 &&
+    props.trackHeight >= MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX
+  );
+}
+
+function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, string> {
+  return {
+    bottom: `${TRANSITION_CREATE_HANDLE_BOTTOM_PX}px`,
+    [edge === 'in' ? 'left' : 'right']: `-${TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
+    width: `${TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
+    height: `${TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
+    zIndex: 'var(--z-clip-handles)',
+  };
+}
+
 // Active pointer-drag cleanup, so unmounting mid-drag doesn't leak window listeners.
 let activeCleanup: (() => void) | null = null;
+let releaseHandleActiveCleanup: (() => void) | null = null;
+let isPointerDownOnCreateHandle = false;
+
+function setCreateTransitionHandleActive(active: boolean) {
+  emit('createTransitionHandleActive', active);
+}
+
+function cleanupReleaseHandleActive() {
+  if (releaseHandleActiveCleanup) {
+    releaseHandleActiveCleanup();
+    releaseHandleActiveCleanup = null;
+  }
+}
+
+function bindReleaseHandleActive() {
+  cleanupReleaseHandleActive();
+
+  const release = () => {
+    isPointerDownOnCreateHandle = false;
+    cleanupReleaseHandleActive();
+    setCreateTransitionHandleActive(false);
+  };
+
+  releaseHandleActiveCleanup = () => {
+    window.removeEventListener('pointerup', release);
+    window.removeEventListener('pointercancel', release);
+  };
+
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+}
 
 function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') {
   if (props.isMobile) return;
   if (!props.canEdit || props.clip.locked || props.track.locked) return;
   e.stopPropagation();
   e.preventDefault();
+  isPointerDownOnCreateHandle = true;
+  setCreateTransitionHandleActive(true);
+  bindReleaseHandleActive();
 
   // If a previous drag is still pending, drop its listeners first.
   if (activeCleanup) activeCleanup();
@@ -259,6 +317,9 @@ onBeforeUnmount(() => {
     activeCleanup();
     activeCleanup = null;
   }
+  isPointerDownOnCreateHandle = false;
+  setCreateTransitionHandleActive(false);
+  cleanupReleaseHandleActive();
 });
 </script>
 
@@ -427,22 +488,21 @@ onBeforeUnmount(() => {
     <!-- Create Transition In Handle -->
     <div
       v-if="!clip.transitionIn && canEdit && !clip.locked && !track.locked"
-      class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
-      :style="{
-        top: '50%',
-        left: '-8px',
-        transform: 'translateY(-50%)',
-        zIndex: 'var(--z-clip-handles)',
-      }"
+      class="absolute transition-opacity pointer-events-auto"
+      :style="getCreateTransitionHandleStyle('in')"
       :class="[
-        clipWidthPx >= 30 && trackHeight >= 40 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-        isMobile ? 'hidden pointer-events-none' : 'opacity-0 group-hover/clip:opacity-100',
+        canShowCreateTransitionHandle()
+          ? 'cursor-grab active:cursor-grabbing opacity-0 group-hover/clip:opacity-100'
+          : 'hidden pointer-events-none',
       ]"
+      data-testid="transition-create-in"
+      @pointerenter="setCreateTransitionHandleActive(true)"
+      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleActive(false)"
       @pointerdown.stop="handleTransitionCreatePointerDown($event, 'in')"
       @click.stop
     >
       <div
-        class="w-[9px] h-[12px] bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
+        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 hover:scale-125 transition-[background-color,transform]"
         style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
       ></div>
     </div>
@@ -450,22 +510,21 @@ onBeforeUnmount(() => {
     <!-- Create Transition Out Handle -->
     <div
       v-if="!clip.transitionOut && canEdit && !clip.locked && !track.locked"
-      class="absolute w-5 h-8 transition-opacity flex items-center justify-center pointer-events-auto"
-      :style="{
-        top: '50%',
-        right: '-8px',
-        transform: 'translateY(-50%)',
-        zIndex: 'var(--z-clip-handles)',
-      }"
+      class="absolute transition-opacity pointer-events-auto"
+      :style="getCreateTransitionHandleStyle('out')"
       :class="[
-        clipWidthPx >= 30 && trackHeight >= 40 ? 'cursor-ew-resize' : 'hidden pointer-events-none',
-        isMobile ? 'hidden pointer-events-none' : 'opacity-0 group-hover/clip:opacity-100',
+        canShowCreateTransitionHandle()
+          ? 'cursor-grab active:cursor-grabbing opacity-0 group-hover/clip:opacity-100'
+          : 'hidden pointer-events-none',
       ]"
+      data-testid="transition-create-out"
+      @pointerenter="setCreateTransitionHandleActive(true)"
+      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleActive(false)"
       @pointerdown.stop="handleTransitionCreatePointerDown($event, 'out')"
       @click.stop
     >
       <div
-        class="w-[9px] h-[12px] bg-white border border-black/30 hover:bg-yellow-400 transition-colors"
+        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 hover:scale-125 transition-[background-color,transform]"
         style="clip-path: polygon(0 50%, 100% 0, 100% 100%)"
       ></div>
     </div>
