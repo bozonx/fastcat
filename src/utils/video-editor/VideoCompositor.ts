@@ -43,6 +43,10 @@ import { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
 import { StageManager } from './compositor/StageManager';
 import { TransitionRenderer } from './compositor/TransitionRenderer';
 
+export interface VideoCompositorInitOptions {
+  rendererPreference?: 'webgl' | 'webgpu';
+}
+
 export class VideoCompositor {
   public app: Application | null = null;
   public canvas: OffscreenCanvas | HTMLCanvasElement | null = null;
@@ -410,6 +414,7 @@ export class VideoCompositor {
     bgColor = '#000',
     offscreen = true,
     externalCanvas?: OffscreenCanvas | HTMLCanvasElement,
+    options: VideoCompositorInitOptions = {},
   ): Promise<void> {
     if (this.app) {
       try {
@@ -510,7 +515,7 @@ export class VideoCompositor {
       height,
       canvas: this.canvas as unknown,
       backgroundColor: bgColor,
-      preference: 'webgpu',
+      preference: options.rendererPreference ?? 'webgl',
       clearBeforeRender: true,
     });
 

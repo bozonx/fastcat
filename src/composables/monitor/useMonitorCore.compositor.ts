@@ -63,7 +63,13 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
     const offscreen = nextCanvasEl.transferControlToOffscreen();
     await options.client.destroyCompositor();
-    await options.client.initCompositor(offscreen, targetWidth, targetHeight, '#000');
+    await options.client.initCompositor(
+      offscreen,
+      targetWidth,
+      targetHeight,
+      '#000',
+      options.getPreviewRenderOptions().previewRenderer,
+    );
 
     if (options.isUnmounted()) {
       pendingCanvasEl = null;

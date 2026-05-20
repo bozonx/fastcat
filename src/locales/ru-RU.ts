@@ -1687,6 +1687,9 @@ export default {
       proxyInfo:
         'Прокси-файлы используются для улучшения производительности воспроизведения в редакторе. Они генерируются в формате MP4 (H264 или AV1) с аудиокодеком Opus.',
       proxyMaxPixels: 'Макс. разрешение',
+      previewRenderer: 'Рендерер предпросмотра',
+      previewRendererHelp:
+        'WebGL — стабильный вариант по умолчанию. WebGPU может быть быстрее на некоторых системах, но может мерцать с Chromium Vulkan на Linux.',
       proxyVideoBitrate: 'Битрейт видео (Мбит/с)',
       proxyVideoCodec: 'Кодек',
       resetAudioSettingsConfirmDesc: 'Это вернет все настройки аудио к значениям по умолчанию.',

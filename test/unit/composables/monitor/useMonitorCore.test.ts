@@ -32,7 +32,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => ({
     userSettings: {
-      optimization: { videoFrameCacheMb: 256 },
+      optimization: { previewRenderer: 'webgl', videoFrameCacheMb: 256 },
       projectDefaults: { audioDeclickDurationUs: 5000 },
       timeline: { defaultStaticClipDurationUs: 5000000 },
     },
@@ -426,7 +426,13 @@ describe('useMonitorCore', () => {
     await nextTick();
     await vi.advanceTimersByTimeAsync(150); // wait for BUILD_DEBOUNCE_MS
 
-    expect(mockClient.initCompositor).toHaveBeenCalled();
+    expect(mockClient.initCompositor).toHaveBeenCalledWith(
+      expect.anything(),
+      640,
+      360,
+      '#000',
+      'webgl',
+    );
     wrapper.unmount();
   });
 

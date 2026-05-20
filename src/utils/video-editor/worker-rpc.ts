@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
+  previewRenderer?: 'webgl' | 'webgpu';
   videoFrameCacheMb?: number;
 }
 
@@ -21,6 +22,7 @@ export interface WorkerRpcErrorShape {
 
 export const PreviewRenderOptionsSchema = z.object({
   previewEffectsEnabled: z.boolean().optional(),
+  previewRenderer: z.enum(['webgl', 'webgpu']).optional(),
   videoFrameCacheMb: z.number().finite().nonnegative().optional(),
 });
 
@@ -126,6 +128,7 @@ export interface VideoCoreWorkerAPI {
     width: number,
     height: number,
     bgColor: string,
+    rendererPreference?: 'webgl' | 'webgpu',
   ): Promise<void>;
   loadTimeline(clips: WorkerVideoPayloadItem[], requestId?: number): Promise<number>;
   updateTimelineLayout(clips: WorkerVideoPayloadItem[]): Promise<number>;

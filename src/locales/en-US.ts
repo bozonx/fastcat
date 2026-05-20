@@ -1681,6 +1681,9 @@ export default {
       proxyInfo:
         'Proxy files are used to improve playback performance. They are generated in MP4 format (H264 or AV1) with Opus audio codec.',
       proxyMaxPixels: 'Max resolution',
+      previewRenderer: 'Preview renderer',
+      previewRendererHelp:
+        'WebGL is the stable default. WebGPU can be faster on some systems, but may flicker with Chromium Vulkan on Linux.',
       proxyVideoBitrate: 'Video bitrate (Mbps)',
       proxyVideoCodec: 'Codec',
       resetAudioSettingsConfirmDesc:

@@ -19,10 +19,12 @@ export function computeAudioDurationUs(clips: WorkerTimelineClip[]): number {
 
 export function createPreviewRenderOptions(params: {
   previewEffectsEnabled: boolean;
+  previewRenderer: 'webgl' | 'webgpu';
   videoFrameCacheMb: number;
 }): PreviewRenderOptions {
   return {
     previewEffectsEnabled: params.previewEffectsEnabled,
+    previewRenderer: params.previewRenderer,
     videoFrameCacheMb: params.videoFrameCacheMb,
   };
 }

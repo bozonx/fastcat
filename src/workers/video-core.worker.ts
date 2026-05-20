@@ -161,15 +161,24 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     width: number,
     height: number,
     bgColor: string,
+    rendererPreference?: 'webgl' | 'webgpu',
   ): Promise<void>;
 } = {
   async extractMetadata(file: File | FileSystemFileHandle): Promise<MediaMetadata> {
     return parseMediaMetadata(await extractMetadata(file));
   },
 
-  async initCompositor(canvas: OffscreenCanvas, width: number, height: number, bgColor: string) {
+  async initCompositor(
+    canvas: OffscreenCanvas,
+    width: number,
+    height: number,
+    bgColor: string,
+    rendererPreference: 'webgl' | 'webgpu' = 'webgl',
+  ) {
     const nextCompositor = new VideoCompositor();
-    await nextCompositor.init(width, height, bgColor, true, canvas);
+    await nextCompositor.init(width, height, bgColor, true, canvas, {
+      rendererPreference,
+    });
 
     if (compositor) {
       compositor.destroy();

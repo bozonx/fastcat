@@ -10,6 +10,7 @@ import {
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -72,6 +73,8 @@ onMounted(async () => {
 function resetDefaults() {
   workspaceStore.userSettings.optimization.videoFrameCacheMb =
     DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb;
+  workspaceStore.userSettings.optimization.previewRenderer =
+    DEFAULT_USER_SETTINGS.optimization.previewRenderer;
   isResetConfirmOpen.value = false;
 }
 </script>
@@ -111,6 +114,26 @@ function resetDefaults() {
       </div>
 
       <div class="flex flex-col gap-4">
+        <UiFormField
+          :label="t('videoEditor.settings.previewRenderer')"
+          :help="
+            t(
+              'videoEditor.settings.previewRendererHelp',
+              'WebGL is the stable default. WebGPU can be faster on some systems, but may flicker with Chromium Vulkan on Linux.',
+            )
+          "
+        >
+          <UiButtonGroup
+            v-model="workspaceStore.userSettings.optimization.previewRenderer"
+            :options="[
+              { label: 'WebGL', value: 'webgl' },
+              { label: 'WebGPU', value: 'webgpu' },
+            ]"
+            class="max-w-xs"
+            fluid
+          />
+        </UiFormField>
+
         <UiFormField
           :label="t('videoEditor.settings.videoFrameCacheMb')"
           :help="

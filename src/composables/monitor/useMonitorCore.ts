@@ -100,6 +100,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   function getPreviewRenderOptions() {
     return createPreviewRenderOptions({
       previewEffectsEnabled: previewEffectsEnabled.value,
+      previewRenderer: workspaceStore.userSettings.optimization.previewRenderer,
       videoFrameCacheMb: workspaceStore.userSettings.optimization.videoFrameCacheMb,
     });
   }
