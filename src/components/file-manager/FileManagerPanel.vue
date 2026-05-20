@@ -144,7 +144,7 @@ const {
   moveEntry,
   instanceId,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
-  setFileTreePathExpanded: (path, expanded) => uiStore.setFileTreePathExpanded(path, expanded),
+  setFileTreePathExpanded: (path, expanded) => fileManager.setFileTreePathExpanded(path, expanded),
   onFileSelect: (entry) => emit('select', entry),
 });
 

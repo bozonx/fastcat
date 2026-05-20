@@ -1750,7 +1750,8 @@ export default {
       userVideo: 'Video',
       video: {
         accelerationDiagnostics: 'Acceleration diagnostics',
-        accelerationDiagnosticsHelp: 'Check hardware acceleration status.',
+        accelerationDiagnosticsHelp:
+          'Checks Pixi preview compositing, media import/decode APIs, WebCodecs export support, and WebGPU adapter details.',
         loadingDiagnostics: 'Loading diagnostics',
         performance: 'Performance',
         unavailableDiagnostics: 'Diagnostics unavailable',

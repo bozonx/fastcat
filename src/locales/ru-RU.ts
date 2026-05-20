@@ -1755,7 +1755,8 @@ export default {
       userVideo: 'Видео',
       video: {
         accelerationDiagnostics: 'Диагностика ускорения',
-        accelerationDiagnosticsHelp: 'Проверить статус аппаратного ускорения.',
+        accelerationDiagnosticsHelp:
+          'Проверяет композитинг предпросмотра Pixi, API импорта и декодирования, поддержку экспорта WebCodecs и данные адаптера WebGPU.',
         loadingDiagnostics: 'Диагностика загрузки',
         performance: 'Производительность',
         unavailableDiagnostics: 'Диагностика недоступна',

@@ -544,7 +544,7 @@ const {
   instanceId,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
   setFileTreePathExpanded: (path, expanded) => {
-    uiStore.setFileTreePathExpanded(path, expanded);
+    fileManager.setFileTreePathExpanded(path, expanded);
   },
   onFileSelect: (entry) => setSelectedFsEntry(entry),
   onAfterRename: () => {

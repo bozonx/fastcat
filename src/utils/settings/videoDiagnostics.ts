@@ -36,10 +36,14 @@ interface BrowserLike {
   AudioEncoder?: {
     isConfigSupported?: (config: Record<string, unknown>) => Promise<{ supported?: boolean }>;
   };
+  VideoDecoder?: {
+    isConfigSupported?: (config: Record<string, unknown>) => Promise<{ supported?: boolean }>;
+  };
   OffscreenCanvas?: new (width: number, height: number) => OffscreenCanvas;
   VideoEncoder?: {
     isConfigSupported?: (config: Record<string, unknown>) => Promise<{ supported?: boolean }>;
   };
+  createImageBitmap?: (image: Blob) => Promise<ImageBitmap>;
 }
 
 interface NavigatorLike {
@@ -63,6 +67,11 @@ interface GPUAdapterLike {
     maxTextureDimension2D?: number;
     maxBufferSize?: number;
   };
+  requestDevice?: () => Promise<unknown>;
+}
+
+interface GPUDeviceLike {
+  destroy?: () => void;
 }
 
 interface MediaCapabilitiesInfoLike {
@@ -73,6 +82,7 @@ interface MediaCapabilitiesInfoLike {
 
 interface WebGlRenderingContextLike {
   MAX_TEXTURE_SIZE?: number;
+  MAX_RENDERBUFFER_SIZE?: number;
   RENDERER?: number;
   SHADING_LANGUAGE_VERSION?: number;
   VENDOR?: number;
@@ -85,6 +95,17 @@ interface WebGlRenderingContextLike {
 
 interface CanvasLike {
   getContext: (name: string) => unknown;
+}
+
+interface WebGlInfo {
+  context: string | null;
+  maxRenderbufferSize: number | null;
+  maxTextureSize: number | null;
+  renderer: string | null;
+  shadingLanguageVersion: string | null;
+  supported: boolean | null;
+  vendor: string | null;
+  version: string | null;
 }
 
 interface GatherVideoDiagnosticsOptions {
@@ -106,6 +127,14 @@ function formatBoolean(
 function formatNumber(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'Unknown';
   return new Intl.NumberFormat('en-US').format(value);
+}
+
+function formatApiAvailability(value: boolean | null) {
+  return formatBoolean(value, {
+    false: 'Unavailable',
+    true: 'Available',
+    unknown: 'Unknown',
+  });
 }
 
 function buildStatus(label: string, tone: VideoDiagnosticsStatus['tone']): VideoDiagnosticsStatus {
@@ -155,6 +184,25 @@ async function getAudioEncoderSupport(
   }
 }
 
+async function getVideoDecoderSupport(
+  browser: BrowserLike,
+  probe: VideoDiagnosticsProbeOptions,
+): Promise<boolean | null> {
+  if (!browser.VideoDecoder?.isConfigSupported) return null;
+
+  try {
+    const result = await browser.VideoDecoder.isConfigSupported({
+      codec: probe.videoCodec,
+      codedHeight: probe.height,
+      codedWidth: probe.width,
+    });
+
+    return result?.supported === true;
+  } catch {
+    return false;
+  }
+}
+
 async function getEncodingInfo(
   navigatorObject: NavigatorLike,
   probe: VideoDiagnosticsProbeOptions,
@@ -181,77 +229,92 @@ async function getEncodingInfo(
   }
 }
 
-function getWebGlInfo(createCanvas?: GatherVideoDiagnosticsOptions['createCanvas']) {
+function createUnavailableWebGlInfo(supported: boolean | null): WebGlInfo {
+  return {
+    context: null,
+    maxRenderbufferSize: null,
+    maxTextureSize: null,
+    renderer: null,
+    shadingLanguageVersion: null,
+    supported,
+    vendor: null,
+    version: null,
+  };
+}
+
+function readWebGlInfoFromCanvas(canvas: CanvasLike): WebGlInfo {
+  const contextNames = ['webgl2', 'webgl', 'experimental-webgl'] as const;
+  let context: WebGlRenderingContextLike | null = null;
+  let contextName: string | null = null;
+
+  for (const name of contextNames) {
+    context = canvas.getContext(name) as WebGlRenderingContextLike | null;
+    if (context) {
+      contextName = name;
+      break;
+    }
+  }
+
+  if (!context) return createUnavailableWebGlInfo(false);
+
+  const extension = context.getExtension?.('WEBGL_debug_renderer_info') ?? null;
+  const renderer = extension?.UNMASKED_RENDERER_WEBGL
+    ? context.getParameter(extension.UNMASKED_RENDERER_WEBGL)
+    : context.RENDERER !== undefined
+      ? context.getParameter(context.RENDERER)
+      : null;
+  const vendor = extension?.UNMASKED_VENDOR_WEBGL
+    ? context.getParameter(extension.UNMASKED_VENDOR_WEBGL)
+    : context.VENDOR !== undefined
+      ? context.getParameter(context.VENDOR)
+      : null;
+  const version = context.VERSION !== undefined ? context.getParameter(context.VERSION) : null;
+  const shadingLanguageVersion =
+    context.SHADING_LANGUAGE_VERSION !== undefined
+      ? context.getParameter(context.SHADING_LANGUAGE_VERSION)
+      : null;
+  const maxTextureSize =
+    context.MAX_TEXTURE_SIZE !== undefined ? context.getParameter(context.MAX_TEXTURE_SIZE) : null;
+  const maxRenderbufferSize =
+    context.MAX_RENDERBUFFER_SIZE !== undefined
+      ? context.getParameter(context.MAX_RENDERBUFFER_SIZE)
+      : null;
+
+  return {
+    context: contextName,
+    maxRenderbufferSize: typeof maxRenderbufferSize === 'number' ? maxRenderbufferSize : null,
+    maxTextureSize: typeof maxTextureSize === 'number' ? maxTextureSize : null,
+    renderer: typeof renderer === 'string' && renderer.length > 0 ? renderer : null,
+    shadingLanguageVersion:
+      typeof shadingLanguageVersion === 'string' && shadingLanguageVersion.length > 0
+        ? shadingLanguageVersion
+        : null,
+    supported: true,
+    vendor: typeof vendor === 'string' && vendor.length > 0 ? vendor : null,
+    version: typeof version === 'string' && version.length > 0 ? version : null,
+  };
+}
+
+function getWebGlInfo(createCanvas?: GatherVideoDiagnosticsOptions['createCanvas']): WebGlInfo {
   if (!createCanvas) {
-    return {
-      maxTextureSize: null,
-      renderer: null,
-      shadingLanguageVersion: null,
-      supported: null,
-      vendor: null,
-      version: null,
-    };
+    return createUnavailableWebGlInfo(null);
   }
 
   try {
-    const canvas = createCanvas();
-    const context =
-      (canvas.getContext('webgl2') as WebGlRenderingContextLike | null) ??
-      (canvas.getContext('webgl') as WebGlRenderingContextLike | null) ??
-      (canvas.getContext('experimental-webgl') as WebGlRenderingContextLike | null);
-
-    if (!context) {
-      return {
-        maxTextureSize: null,
-        renderer: null,
-        shadingLanguageVersion: null,
-        supported: false,
-        vendor: null,
-        version: null,
-      };
-    }
-
-    const extension = context.getExtension?.('WEBGL_debug_renderer_info') ?? null;
-    const renderer = extension?.UNMASKED_RENDERER_WEBGL
-      ? context.getParameter(extension.UNMASKED_RENDERER_WEBGL)
-      : context.RENDERER !== undefined
-        ? context.getParameter(context.RENDERER)
-        : null;
-    const vendor = extension?.UNMASKED_VENDOR_WEBGL
-      ? context.getParameter(extension.UNMASKED_VENDOR_WEBGL)
-      : context.VENDOR !== undefined
-        ? context.getParameter(context.VENDOR)
-        : null;
-    const version = context.VERSION !== undefined ? context.getParameter(context.VERSION) : null;
-    const shadingLanguageVersion =
-      context.SHADING_LANGUAGE_VERSION !== undefined
-        ? context.getParameter(context.SHADING_LANGUAGE_VERSION)
-        : null;
-    const maxTextureSize =
-      context.MAX_TEXTURE_SIZE !== undefined
-        ? context.getParameter(context.MAX_TEXTURE_SIZE)
-        : null;
-
-    return {
-      maxTextureSize: typeof maxTextureSize === 'number' ? maxTextureSize : null,
-      renderer: typeof renderer === 'string' && renderer.length > 0 ? renderer : null,
-      shadingLanguageVersion:
-        typeof shadingLanguageVersion === 'string' && shadingLanguageVersion.length > 0
-          ? shadingLanguageVersion
-          : null,
-      supported: true,
-      vendor: typeof vendor === 'string' && vendor.length > 0 ? vendor : null,
-      version: typeof version === 'string' && version.length > 0 ? version : null,
-    };
+    return readWebGlInfoFromCanvas(createCanvas());
   } catch {
-    return {
-      maxTextureSize: null,
-      renderer: null,
-      shadingLanguageVersion: null,
-      supported: false,
-      vendor: null,
-      version: null,
-    };
+    return createUnavailableWebGlInfo(false);
+  }
+}
+
+function getOffscreenWebGlInfo(browser: BrowserLike): WebGlInfo {
+  if (typeof browser.OffscreenCanvas === 'undefined') return createUnavailableWebGlInfo(null);
+
+  try {
+    const canvas = new browser.OffscreenCanvas(1, 1);
+    return readWebGlInfoFromCanvas(canvas as unknown as CanvasLike);
+  } catch {
+    return createUnavailableWebGlInfo(false);
   }
 }
 
@@ -262,6 +325,7 @@ async function getWebGpuInfo(navigatorObject: NavigatorLike) {
       architecture: null,
       description: null,
       device: null,
+      deviceAvailable: false,
       featureCount: null,
       maxBufferSize: null,
       maxTextureDimension2D: null,
@@ -277,6 +341,7 @@ async function getWebGpuInfo(navigatorObject: NavigatorLike) {
         architecture: null,
         description: null,
         device: null,
+        deviceAvailable: false,
         featureCount: null,
         maxBufferSize: null,
         maxTextureDimension2D: null,
@@ -285,12 +350,24 @@ async function getWebGpuInfo(navigatorObject: NavigatorLike) {
     }
 
     const features = adapter.features ? Array.from(adapter.features) : [];
+    let deviceAvailable = false;
+
+    if (typeof adapter.requestDevice === 'function') {
+      try {
+        const device = (await adapter.requestDevice()) as GPUDeviceLike;
+        deviceAvailable = true;
+        device.destroy?.();
+      } catch {
+        deviceAvailable = false;
+      }
+    }
 
     return {
       adapterAvailable: true,
       architecture: adapter.info?.architecture || null,
       description: adapter.info?.description || null,
       device: adapter.info?.device || null,
+      deviceAvailable,
       featureCount: features.length,
       maxBufferSize:
         typeof adapter.limits?.maxBufferSize === 'number' ? adapter.limits.maxBufferSize : null,
@@ -306,6 +383,7 @@ async function getWebGpuInfo(navigatorObject: NavigatorLike) {
       architecture: null,
       description: null,
       device: null,
+      deviceAvailable: false,
       featureCount: null,
       maxBufferSize: null,
       maxTextureDimension2D: null,
@@ -316,20 +394,29 @@ async function getWebGpuInfo(navigatorObject: NavigatorLike) {
 
 export function createVideoDiagnosticsSnapshot(params: {
   audioEncoderSupported: boolean | null;
+  createImageBitmapSupported: boolean | null;
   encodingInfo: MediaCapabilitiesInfoLike | null;
+  mediaCapabilitiesEncodingSupported: boolean | null;
   offscreenCanvas2dSupported: boolean | null;
   offscreenCanvasSupported: boolean | null;
+  offscreenWebGlInfo: WebGlInfo;
+  videoDecoderSupported: boolean | null;
   videoEncoderHardwareSupported: boolean | null;
   videoEncoderSoftwareSupported: boolean | null;
-  webGlInfo: ReturnType<typeof getWebGlInfo>;
+  webGlInfo: WebGlInfo;
   webGpuInfo: Awaited<ReturnType<typeof getWebGpuInfo>>;
 }): VideoDiagnosticsSnapshot {
   const compositorReady =
-    params.webGlInfo.supported === true && params.offscreenCanvasSupported !== false;
+    (params.webGlInfo.supported === true || params.offscreenWebGlInfo.supported === true) &&
+    params.offscreenCanvasSupported !== false;
+  const webGpuReady =
+    params.webGpuInfo.adapterAvailable === true && params.webGpuInfo.deviceAvailable !== false;
 
   const compositorStatus = compositorReady
-    ? buildStatus('Ready for GPU preview compositor', 'success')
-    : params.webGlInfo.supported === false
+    ? webGpuReady
+      ? buildStatus('Ready for Pixi GPU compositor with WebGPU available', 'success')
+      : buildStatus('Ready for Pixi GPU compositor using WebGL fallback', 'success')
+    : params.webGlInfo.supported === false && params.offscreenWebGlInfo.supported === false
       ? buildStatus('Preview compositor is limited: WebGL is unavailable', 'danger')
       : buildStatus('Preview compositor availability is partially unknown', 'warning');
 
@@ -343,18 +430,51 @@ export function createVideoDiagnosticsSnapshot(params: {
       ? buildStatus('WebCodecs encoding is not supported for the current codec', 'danger')
       : buildStatus('WebCodecs support could not be fully verified', 'warning');
 
+  const importReady =
+    params.videoDecoderSupported !== false &&
+    params.createImageBitmapSupported !== false &&
+    params.offscreenCanvas2dSupported !== false;
+
+  const importStatus = importReady
+    ? buildStatus('Import and frame preparation APIs are available', 'success')
+    : buildStatus('Some import or frame preparation APIs are unavailable', 'warning');
+
   const sections: VideoDiagnosticsSection[] = [
     {
       description:
-        'These capabilities affect preview rendering in the monitor and timeline compositor.',
+        'These capabilities affect preview rendering in the monitor and timeline compositor. Pixi is initialized with WebGPU preference and may fall back to WebGL.',
       items: [
         {
           label: 'Compositor path',
-          value: compositorReady ? 'Pixi renderer on WebGPU' : 'Limited or fallback-only',
+          value: compositorReady
+            ? webGpuReady
+              ? 'Pixi GPU renderer (WebGPU preferred, WebGL fallback)'
+              : 'Pixi GPU renderer (WebGL fallback)'
+            : 'Limited or fallback-only',
+        },
+        {
+          label: 'WebGPU adapter',
+          value: formatBoolean(params.webGpuInfo.adapterAvailable),
+        },
+        {
+          label: 'WebGPU device request',
+          value: formatBoolean(params.webGpuInfo.deviceAvailable ?? null),
         },
         {
           label: 'WebGL available',
           value: formatBoolean(params.webGlInfo.supported),
+        },
+        {
+          label: 'WebGL context',
+          value: params.webGlInfo.context ?? 'Unavailable',
+        },
+        {
+          label: 'OffscreenCanvas WebGL',
+          value: formatBoolean(params.offscreenWebGlInfo.supported),
+        },
+        {
+          label: 'OffscreenCanvas WebGL context',
+          value: params.offscreenWebGlInfo.context ?? 'Unavailable',
         },
         {
           label: 'OffscreenCanvas available',
@@ -384,13 +504,45 @@ export function createVideoDiagnosticsSnapshot(params: {
           label: 'Max texture size',
           value: formatNumber(params.webGlInfo.maxTextureSize),
         },
+        {
+          label: 'Max renderbuffer size',
+          value: formatNumber(params.webGlInfo.maxRenderbufferSize),
+        },
       ],
       status: compositorStatus,
       title: 'Preview compositor',
     },
     {
       description:
-        'These capabilities affect browser-side encoding and hardware acceleration in WebCodecs export paths.',
+        'These APIs affect media metadata extraction, image import, video decoding and frame preparation before compositing.',
+      items: [
+        {
+          label: 'VideoDecoder API',
+          value: formatApiAvailability(params.videoDecoderSupported),
+        },
+        {
+          label: 'Selected video decoder config',
+          value: formatBoolean(params.videoDecoderSupported, {
+            false: 'Unsupported',
+            true: 'Supported',
+            unknown: 'Unknown',
+          }),
+        },
+        {
+          label: 'createImageBitmap API',
+          value: formatApiAvailability(params.createImageBitmapSupported),
+        },
+        {
+          label: 'OffscreenCanvas 2D context',
+          value: formatBoolean(params.offscreenCanvas2dSupported),
+        },
+      ],
+      status: importStatus,
+      title: 'Import and decode path',
+    },
+    {
+      description:
+        'These capabilities affect Mediabunny CanvasSource exports, browser-side encoding and hardware acceleration hints.',
       items: [
         {
           label: 'VideoEncoder API',
@@ -402,22 +554,30 @@ export function createVideoDiagnosticsSnapshot(params: {
         },
         {
           label: 'AudioEncoder API',
+          value: formatApiAvailability(params.audioEncoderSupported),
+        },
+        {
+          label: 'Selected video hardware encode',
+          value: formatBoolean(params.videoEncoderHardwareSupported),
+        },
+        {
+          label: 'Selected video software encode',
+          value: formatBoolean(params.videoEncoderSoftwareSupported),
+        },
+        {
+          label: 'Selected audio encode',
           value: formatBoolean(params.audioEncoderSupported, {
-            false: 'Unavailable or unsupported',
-            true: 'Available',
+            false: 'Unsupported',
+            true: 'Supported',
             unknown: 'Unknown',
           }),
         },
         {
-          label: 'Hardware encode support',
-          value: formatBoolean(params.videoEncoderHardwareSupported),
+          label: 'MediaCapabilities encoding API',
+          value: formatApiAvailability(params.mediaCapabilitiesEncodingSupported),
         },
         {
-          label: 'Software encode support',
-          value: formatBoolean(params.videoEncoderSoftwareSupported),
-        },
-        {
-          label: 'MediaCapabilities supported',
+          label: 'MediaCapabilities selected config',
           value: formatBoolean(params.encodingInfo?.supported ?? null),
         },
         {
@@ -470,16 +630,16 @@ export function createVideoDiagnosticsSnapshot(params: {
         },
       ],
       status: params.webGpuInfo.adapterAvailable
-        ? buildStatus('Detected, but not used by the current compositor path', 'neutral')
+        ? buildStatus('Detected and requested first by Pixi when available', 'neutral')
         : buildStatus('No WebGPU adapter detected', 'warning'),
       title: 'WebGPU diagnostics',
     },
   ];
 
   const summary =
-    compositorReady && webCodecsReady
+    compositorReady && webCodecsReady && importReady
       ? buildStatus('Hardware-accelerated browser media path looks healthy', 'success')
-      : compositorReady || webCodecsReady
+      : compositorReady || webCodecsReady || importReady
         ? buildStatus('Some acceleration paths are available, but not all', 'warning')
         : buildStatus('Browser acceleration capabilities are limited', 'danger');
 
@@ -496,6 +656,9 @@ export async function gatherVideoDiagnostics(
   const navigatorObject =
     options.navigatorObject ?? (globalThis.navigator as unknown as NavigatorLike);
   const offscreenCanvasSupported = typeof browser.OffscreenCanvas !== 'undefined';
+  const createImageBitmapSupported = typeof browser.createImageBitmap === 'function';
+  const mediaCapabilitiesEncodingSupported =
+    typeof navigatorObject.mediaCapabilities?.encodingInfo === 'function';
 
   let offscreenCanvas2dSupported: boolean | null = null;
   if (offscreenCanvasSupported) {
@@ -510,23 +673,30 @@ export async function gatherVideoDiagnostics(
   const [
     videoEncoderHardwareSupported,
     videoEncoderSoftwareSupported,
+    videoDecoderSupported,
     audioEncoderSupported,
     encodingInfo,
   ] = await Promise.all([
     getVideoEncoderSupport(browser, options.probe, 'prefer-hardware'),
     getVideoEncoderSupport(browser, options.probe, 'prefer-software'),
+    getVideoDecoderSupport(browser, options.probe),
     getAudioEncoderSupport(browser, options.probe),
     getEncodingInfo(navigatorObject, options.probe),
   ]);
 
   const webGlInfo = getWebGlInfo(options.createCanvas);
+  const offscreenWebGlInfo = getOffscreenWebGlInfo(browser);
   const webGpuInfo = await getWebGpuInfo(navigatorObject);
 
   return createVideoDiagnosticsSnapshot({
     audioEncoderSupported,
+    createImageBitmapSupported,
     encodingInfo,
+    mediaCapabilitiesEncodingSupported,
     offscreenCanvas2dSupported,
     offscreenCanvasSupported,
+    offscreenWebGlInfo,
+    videoDecoderSupported,
     videoEncoderHardwareSupported,
     videoEncoderSoftwareSupported,
     webGlInfo,

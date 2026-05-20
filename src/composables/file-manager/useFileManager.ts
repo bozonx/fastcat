@@ -770,6 +770,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     readDirectory: service.readDirectory,
     vfs: deps.vfs,
     reloadDirectory,
+    setFileTreePathExpanded: deps.setFileTreePathExpanded,
     resolveDefaultTargetDir: async (params: { file: File } | { name: string }) =>
       await resolveDefaultTargetDir(params),
     runWithUiFeedback,

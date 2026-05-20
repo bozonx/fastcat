@@ -192,7 +192,7 @@ export function useMonitorSnapshot(input: {
       await writable.close();
 
       toast.add({
-        color: 'primary',
+        color: 'success',
         title: 'Snapshot created',
         description: `Saved to ${IMAGES_DIR_NAME}/stop_frames/${filename}`,
       });

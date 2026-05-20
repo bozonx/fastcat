@@ -143,7 +143,7 @@ function resetDefaults() {
           {{
             t(
               'videoEditor.settings.video.accelerationDiagnosticsHelp',
-              'The current app uses WebGPU for preview compositing and WebCodecs for browser-side encoding when available.',
+              'The current app uses Pixi with WebGPU preference and WebGL fallback for preview compositing, plus WebCodecs/Mediabunny for browser-side import and export paths.',
             )
           }}
         </div>
