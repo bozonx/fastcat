@@ -33,6 +33,10 @@ import { createTimelineLifecycleModule } from '~/stores/timeline/lifecycle';
 
 import { getDocFps } from '~/timeline/commands/utils';
 import { getTimelineFormat, setTimelineFormat, type TimelineFormatInput } from '~/timeline/format';
+import {
+  findNextMarkerTime,
+  findPreviousMarkerTime,
+} from '~/utils/timeline/marker-navigation';
 
 import { useProjectStore } from './project.store';
 import { useMediaStore } from './media.store';
@@ -688,32 +692,18 @@ export const useTimelineStore = defineStore('timeline', () => {
       return createdMarker;
     },
     goToNextMarker: () => {
-      const markers = markerService.getMarkers();
-      const points = markers
-        .flatMap((m) => {
-          const pts = [m.timeUs];
-          if (m.durationUs) pts.push(m.timeUs + m.durationUs);
-          return pts;
-        })
-        .sort((a, b) => a - b);
-
-      const next = points.find((p) => p > currentTime.value + 100);
+      const next = findNextMarkerTime(markerService.getMarkers(), currentTime.value, fps.value);
       if (next !== undefined) {
         lifecycle.setCurrentTimeUs(next);
         scrollToPlayheadRequest.value++;
       }
     },
     goToPreviousMarker: () => {
-      const markers = markerService.getMarkers();
-      const points = markers
-        .flatMap((m) => {
-          const pts = [m.timeUs];
-          if (m.durationUs) pts.push(m.timeUs + m.durationUs);
-          return pts;
-        })
-        .sort((a, b) => b - a);
-
-      const prev = points.find((p) => p < currentTime.value - 100);
+      const prev = findPreviousMarkerTime(
+        markerService.getMarkers(),
+        currentTime.value,
+        fps.value,
+      );
       if (prev !== undefined) {
         lifecycle.setCurrentTimeUs(prev);
         scrollToPlayheadRequest.value++;

@@ -1,9 +1,10 @@
 import type { Ref } from 'vue';
-import type { TimelineClipItem, TextClipStyle } from '~/timeline/types';
+import type { TimelineClipItem, TextClipStyle, TimelineTextClipItem } from '~/timeline/types';
+import type { TimelineClipsModule } from '~/stores/timeline/clips';
 
 interface UseClipTextPropertiesOptions {
   clip: Ref<TimelineClipItem>;
-  timelineStore: any;
+  timelineStore: TimelineClipsModule;
 }
 
 export function useClipTextProperties(options: UseClipTextPropertiesOptions) {
@@ -18,7 +19,7 @@ export function useClipTextProperties(options: UseClipTextPropertiesOptions) {
 
   function handleUpdateTextStyle(patch: Partial<TextClipStyle>) {
     if (clip.value.clipType !== 'text') return;
-    const curr = ((clip.value as any).style ?? {}) as TextClipStyle;
+    const curr = ((clip.value as TimelineTextClipItem).style ?? {}) as TextClipStyle;
     timelineStore.updateClipProperties(clip.value.trackId, clip.value.id, {
       style: {
         ...curr,

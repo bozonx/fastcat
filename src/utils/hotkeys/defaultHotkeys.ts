@@ -12,6 +12,8 @@ export type HotkeyCommandId =
   | 'general.redo'
   | 'general.mute'
   | 'general.addMarker'
+  | 'general.prevMarker'
+  | 'general.nextMarker'
   | 'general.volumeUp'
   | 'general.volumeDown'
   | 'general.fullscreen'
@@ -127,6 +129,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
     { id: 'general.mute', groupId: 'general', title: 'Mute / Unmute' },
     { id: 'general.addMarker', groupId: 'general', title: 'Add marker' },
+    { id: 'general.prevMarker', groupId: 'general', title: 'Previous marker' },
+    { id: 'general.nextMarker', groupId: 'general', title: 'Next marker' },
     { id: 'general.volumeUp', groupId: 'general', title: 'Volume up' },
     { id: 'general.volumeDown', groupId: 'general', title: 'Volume down' },
     { id: 'general.fullscreen', groupId: 'general', title: 'Toggle fullscreen' },
@@ -290,6 +294,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.redo': [`${Mod}+Y`, `${Mod}+Shift+Z`],
     'general.mute': ['M'],
     'general.addMarker': ['K'],
+    'general.prevMarker': ['['],
+    'general.nextMarker': [']'],
     'general.volumeUp': ['='],
     'general.volumeDown': ['-'],
     'general.fullscreen': [`${Mod}+F`],

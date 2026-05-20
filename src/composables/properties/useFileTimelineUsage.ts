@@ -1,8 +1,6 @@
 import { computed, type Ref } from 'vue';
-
-interface TimelineMediaUsageStoreLike {
-  mediaPathToTimelines: Record<string, any[]>;
-}
+import type { FsEntry } from '~/types/fs';
+import type { MediaPathToTimelinesMap } from '~/utils/timeline-media-usage';
 
 interface ProjectStoreLike {
   openTimelineFile: (path: string) => Promise<void>;
@@ -14,8 +12,8 @@ interface TimelineStoreLike {
 }
 
 interface UseFileTimelineUsageOptions {
-  selectedFsEntry: Ref<any>;
-  timelineMediaUsageStore: TimelineMediaUsageStoreLike;
+  selectedFsEntry: Ref<FsEntry | null>;
+  timelineMediaUsageStore: { mediaPathToTimelines: MediaPathToTimelinesMap };
   projectStore: ProjectStoreLike;
   timelineStore: TimelineStoreLike;
 }

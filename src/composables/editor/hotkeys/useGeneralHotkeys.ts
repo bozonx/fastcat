@@ -371,6 +371,16 @@ export function useGeneralHotkeys(
       return true;
     },
 
+    'general.prevMarker': () => {
+      timelineStore.goToPreviousMarker();
+      return true;
+    },
+
+    'general.nextMarker': () => {
+      timelineStore.goToNextMarker();
+      return true;
+    },
+
     'general.volumeUp': (e) => {
       startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
       return true;

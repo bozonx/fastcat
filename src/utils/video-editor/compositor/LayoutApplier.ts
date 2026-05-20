@@ -95,13 +95,10 @@ export class LayoutApplier {
 
   public applySpriteLayout(frameW: number, frameH: number, clip: CompositorClip) {
     const sourceRotation = clip.sourceRotation ?? 0;
-    const isRotated90 = Math.abs(sourceRotation) === 90 || Math.abs(sourceRotation) === 270;
-    const effectiveFrameW = isRotated90 ? frameH : frameW;
-    const effectiveFrameH = isRotated90 ? frameW : frameH;
 
     const layout = computeClipBoxLayout({
-      frameWidth: effectiveFrameW,
-      frameHeight: effectiveFrameH,
+      frameWidth: frameW,
+      frameHeight: frameH,
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
       transform: {

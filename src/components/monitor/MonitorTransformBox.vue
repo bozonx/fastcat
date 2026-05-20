@@ -72,9 +72,13 @@ const intrinsicDimensions = computed(() => {
   if (!meta) return { w: props.renderWidth, h: props.renderHeight };
 
   if (meta.video) {
-    const w = meta.video.width || props.renderWidth;
-    const h = meta.video.height || props.renderHeight;
+    const w = meta.video.displayWidth || meta.video.width || props.renderWidth;
+    const h = meta.video.displayHeight || meta.video.height || props.renderHeight;
     return { w, h };
+  }
+
+  if (meta.image?.width && meta.image?.height) {
+    return { w: meta.image.width, h: meta.image.height };
   }
 
   return { w: props.renderWidth, h: props.renderHeight };
@@ -104,6 +108,13 @@ const safeTransform = computed(() => {
   };
 });
 
+const sourceRotation = computed(() => {
+  const sourcePath = clipData.value?.source?.path;
+  if (!sourcePath) return 0;
+  const meta = mediaStore.mediaMetadata[sourcePath];
+  return meta?.video?.rotation ?? 0;
+});
+
 const layout = computed(() => {
   const d = intrinsicDimensions.value;
   if (!d) return null;
@@ -113,7 +124,10 @@ const layout = computed(() => {
     frameHeight: d.h,
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
-    transform,
+    transform: {
+      ...(transform ?? {}),
+      rotationDeg: (transform?.rotationDeg ?? 0) + sourceRotation.value,
+    },
   });
 
   // For shape clips, the layout in compositor handles centering via baseX/baseY, but

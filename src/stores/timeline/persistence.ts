@@ -112,6 +112,24 @@ function findNonCloneablePath(value: unknown, seen = new WeakSet<object>(), path
   return `${path} <${describeNonCloneable(obj)}> shape: ${describeObjectShape(obj)}`;
 }
 
+// `toRaw` only unwraps the outermost reactive proxy. Vue lazily wraps nested
+// objects on first access, and commands that build new doc state via
+// `{ ...doc, ... }` end up storing those nested Proxies back into the target.
+// `structuredClone` (used by `postMessage`) refuses to clone Proxy objects, so
+// any save would throw `DataCloneError`. We deep-unwrap before posting.
+function deepToRaw<T>(value: T): T {
+  if (value === null || typeof value !== 'object') return value;
+  const raw = toRaw(value as object) as Record<PropertyKey, unknown>;
+  if (Array.isArray(raw)) {
+    return raw.map((item) => deepToRaw(item)) as unknown as T;
+  }
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(raw)) {
+    out[key] = deepToRaw(raw[key]);
+  }
+  return out as T;
+}
+
 function serializeInWorker(doc: TimelineDocument): Promise<string> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
@@ -133,9 +151,9 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
       worker.terminate();
     };
     try {
-      worker.postMessage(toRaw(doc));
+      worker.postMessage(deepToRaw(doc));
     } catch (e) {
-      const raw = toRaw(doc);
+      const raw = deepToRaw(doc);
       const path = findNonCloneablePath(raw);
       console.error('[timeline persistence] non-cloneable value in TimelineDocument at', path, e);
       console.error('[timeline persistence] raw doc snapshot:', raw);

@@ -18,10 +18,7 @@ interface UseClipTransitionsOptions {
 }
 
 function getClipTransition(clip: TimelineClipItem, edge: 'in' | 'out') {
-  return (edge === 'in' ? (clip as any).transitionIn : (clip as any).transitionOut) as
-    | import('~/timeline/types').ClipTransition
-    | null
-    | undefined;
+  return edge === 'in' ? clip.transitionIn : clip.transitionOut;
 }
 
 export function useClipTransitions(options: UseClipTransitionsOptions) {

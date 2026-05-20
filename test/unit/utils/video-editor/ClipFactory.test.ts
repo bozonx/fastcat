@@ -162,6 +162,20 @@ describe('ClipFactory', () => {
     expect(clip.sourcePath).toBe('video.mp4');
   });
 
+  it('propagates sourceRotation for vertical video', () => {
+    const clip = factory.createVideoClip({
+      ...baseParams,
+      sourcePath: 'video.mp4',
+      fileHandle: {} as any,
+      input: {} as any,
+      sink: {} as any,
+      imageSource: {} as any,
+      sourceRotation: 90,
+    });
+
+    expect(clip.sourceRotation).toBe(90);
+  });
+
   it('creates an image clip with media clipType so it can be reused', () => {
     const clip = factory.createImageClip({
       ...baseParams,

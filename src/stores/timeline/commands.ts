@@ -7,11 +7,19 @@ import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import type { TimelineFormatInput } from '~/timeline/format';
 
+export interface TimelineApplyOptions {
+  saveMode?: 'debounced' | 'immediate' | 'none';
+  skipHistory?: boolean;
+  historyMode?: 'immediate' | 'debounced';
+  historyDebounceMs?: number;
+  labelKey?: string;
+}
+
 export interface TimelineCommandsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTimelinePath: Ref<string | null>;
   mediaMetadata: Ref<Record<string, unknown>>;
-  applyTimeline: (cmd: TimelineCommand, options?: unknown) => string[];
+  applyTimeline: (cmd: TimelineCommand, options?: TimelineApplyOptions) => string[];
   createFallbackTimelineDoc: () => TimelineDocument;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
