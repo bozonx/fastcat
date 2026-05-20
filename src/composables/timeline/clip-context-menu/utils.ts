@@ -5,7 +5,7 @@ import type { MultiSelectionItemRef, MultiSelectionState } from './types';
 export function isClipFreePosition(clip: TimelineClipItem, doc: TimelineDocument | null): boolean {
   if (!doc) return false;
 
-  const fps = sanitizeFps((doc as any)?.timebase?.fps);
+  const fps = sanitizeFps((doc as { timebase?: { fps?: number } }).timebase?.fps);
   const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
   const durFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
   const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
@@ -65,8 +65,8 @@ export function collectMultiSelectionState(
 
         if (
           track.kind === 'audio' &&
-          Boolean((item as any).linkedVideoClipId) &&
-          Boolean((item as any).lockToLinkedVideo)
+          Boolean(item.linkedVideoClipId) &&
+          Boolean(item.lockToLinkedVideo)
         ) {
           return true;
         }
@@ -80,9 +80,9 @@ export function collectMultiSelectionState(
             audioTrack.items.some(
               (audioItem) =>
                 audioItem.kind === 'clip' &&
-                Boolean((audioItem as any).linkedVideoClipId) &&
-                Boolean((audioItem as any).lockToLinkedVideo) &&
-                String((audioItem as any).linkedVideoClipId) === videoId,
+                Boolean(audioItem.linkedVideoClipId) &&
+                Boolean(audioItem.lockToLinkedVideo) &&
+                String(audioItem.linkedVideoClipId) === videoId,
             ),
           );
 
@@ -114,7 +114,7 @@ export function collectMultiSelectionState(
         track.kind === 'audio' ||
         (track.kind === 'video' &&
           clip.clipType === 'media' &&
-          (clip.linkedVideoClipId || (clip.source as any)?.hasAudio));
+          (clip.linkedVideoClipId || (clip.source as { hasAudio?: boolean }).hasAudio));
       if (hasAudio) hasAudioOrVideoWithAudio = true;
 
       if (!clip.audioMuted) allMuted = false;

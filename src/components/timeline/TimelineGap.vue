@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { TimelineTrackItem } from '~/timeline/types';
+import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
@@ -28,7 +28,7 @@ function onPaste() {
 }
 
 const isTrackRenameModalOpen = ref(false);
-const trackToRename = ref<any>(null);
+const trackToRename = ref<TimelineTrack | null>(null);
 
 function handleRenameTrack(name: string) {
   if (trackToRename.value) {

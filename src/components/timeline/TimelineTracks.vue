@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, toRefs } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -31,6 +32,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
+const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const focusStore = useFocusStore();

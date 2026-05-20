@@ -12,7 +12,7 @@ export interface TransitionRendererParams {
   transitionManager: TransitionManager;
   stageTextureRenderer: StageTextureRenderer;
   getTrackById: (trackId: string) => CompositorTrack | undefined;
-  getActiveTransitionState: (clip: CompositorClip, timeUs: number) => any;
+  getActiveTransitionState: (clip: CompositorClip, timeUs: number) => { opacity: number; progress: number; mode?: string } | null;
   ensureTransitionRenderTexture: (texture: RenderTexture | null) => RenderTexture;
   findPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
   findNextClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
@@ -21,8 +21,8 @@ export interface TransitionRendererParams {
     clip: CompositorClip;
     sampleTimeS: number;
     abortSignal?: AbortSignal;
-  }) => Promise<any | null>;
-  updateClipTextureFromSample: (sample: any, clip: CompositorClip) => Promise<void>;
+  }) => Promise<unknown | null>;
+  updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
 }
 
 export class TransitionRenderer {
@@ -184,7 +184,7 @@ export class TransitionRenderer {
       if (mode === 'background') {
         const children = params.app.stage.children;
         for (let i = 0; i < children.length; i += 1) {
-          const child = children[i] as any;
+          const child = children[i] as import('pixi.js').DisplayObject;
           if (!child || child === transitionSprite) {
             continue;
           }
@@ -223,8 +223,8 @@ export class TransitionRenderer {
         clip: CompositorClip;
         sampleTimeS: number;
         abortSignal?: AbortSignal;
-      }) => Promise<any | null>;
-      updateClipTextureFromSample: (sample: any, clip: CompositorClip) => Promise<void>;
+      }) => Promise<unknown | null>;
+      updateClipTextureFromSample: (sample: unknown, clip: CompositorClip) => Promise<void>;
     },
   ): Promise<boolean> {
     if (
@@ -300,7 +300,7 @@ export class TransitionRenderer {
       if (clip.lastVideoFrame) {
         try {
           await params.updateClipTextureFromSample(
-            { frame: clip.lastVideoFrame, close: () => {} } as any,
+            { frame: clip.lastVideoFrame, close: () => {} } as unknown,
             clip,
           );
           if (clip.sprite) {
@@ -326,9 +326,9 @@ export class TransitionRenderer {
     } catch {
       return false;
     } finally {
-      if (typeof (sample as any).close === 'function') {
+      if (typeof (sample as { close?: () => void }).close === 'function') {
         try {
-          (sample as any).close();
+          (sample as { close?: () => void }).close();
         } catch (error) {
           console.error(
             '[VideoCompositor] Failed to close VideoSample in renderClipToTextureForTransition',

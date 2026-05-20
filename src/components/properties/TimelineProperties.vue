@@ -119,7 +119,9 @@ const timelineQuickActions = computed(() => {
       id: 'rename',
       title: t('common.rename'),
       icon: 'i-heroicons-pencil',
-      onClick: () => { isRenameModalOpen.value = true; },
+      onClick: () => {
+        isRenameModalOpen.value = true;
+      },
     },
   ];
 });

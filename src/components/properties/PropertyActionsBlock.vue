@@ -14,7 +14,7 @@ export interface PropertyActionItem {
   onClick: () => void;
 }
 
-const props = defineProps<{
+defineProps<{
   quickActions?: PropertyActionItem[];
   additionalActions?: PropertyActionItem[];
 }>();

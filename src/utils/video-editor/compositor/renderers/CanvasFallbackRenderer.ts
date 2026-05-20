@@ -24,19 +24,19 @@ export class CanvasFallbackRenderer {
     }
     clip.canvas = clipCanvas;
     clip.ctx = clipCtx;
-    const canvasSource = new CanvasSource({ resource: clipCanvas as any });
-    clip.sprite.texture.source = canvasSource as any;
+    const canvasSource = new CanvasSource({ resource: clipCanvas as unknown });
+    clip.sprite.texture.source = canvasSource as unknown;
     clip.sourceKind = 'canvas';
   }
 
-  public async drawSampleToCanvas(sample: any, clip: CompositorClip) {
+  public async drawSampleToCanvas(sample: unknown, clip: CompositorClip) {
     if (!clip.sprite) return;
     this.ensureCanvasFallback(clip);
     const ctx = clip.ctx;
     const canvas = clip.canvas;
     if (!ctx || !canvas) return;
 
-    let imageSource: any;
+    let imageSource: unknown;
     try {
       imageSource =
         typeof sample.toCanvasImageSource === 'function' ? sample.toCanvasImageSource() : sample;
@@ -115,8 +115,8 @@ export class CanvasFallbackRenderer {
       canvas.width = targetW;
       canvas.height = targetH;
       try {
-        if (typeof (clip.sprite.texture.source as any)?.resize === 'function') {
-          (clip.sprite.texture.source as any).resize(targetW, targetH);
+        if (typeof (clip.sprite.texture.source as { resize?: (w: number, h: number) => void }).resize === 'function') {
+          (clip.sprite.texture.source as { resize: (w: number, h: number) => void }).resize(targetW, targetH);
         }
       } catch {
         // ignore
@@ -146,7 +146,7 @@ export class CanvasFallbackRenderer {
     };
 
     const drawLayer = (
-      state: any,
+      state: { lastVideoFrame?: VideoFrame | ImageBitmap | null; bitmap?: ImageBitmap | null } | undefined,
       params: import('../../../../timeline/types').HudMediaParams | undefined,
       defaultScale: number = 1,
     ) => {
@@ -198,7 +198,7 @@ export class CanvasFallbackRenderer {
     drawLayer(clip.hudMediaStates?.frame, clip.frame, 1.0);
 
     try {
-      (clip.sprite.texture.source as any)?.update?.();
+      (clip.sprite.texture.source as { update?: () => void })?.update?.();
     } catch {
       // ignore
     }

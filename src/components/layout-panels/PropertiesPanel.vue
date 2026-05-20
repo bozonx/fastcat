@@ -245,22 +245,23 @@ const isExternal = computed(() => {
   const entity = activeEntity.value;
   if (!entity || entity.source !== 'fileManager') return false;
 
+  const fmEntity = entity as { origin?: string; isExternal?: boolean; instanceId?: string; entry?: { source?: string } };
   if (
-    (entity as any).origin === 'workspace-browser' ||
-    (entity as any).origin === 'remote-browser'
+    fmEntity.origin === 'workspace-browser' ||
+    fmEntity.origin === 'remote-browser'
   ) {
     return true;
   }
 
   // Check explicit flag or instance ID
   const isExt =
-    (entity as any).isExternal ||
-    (entity as any).instanceId === 'computer' ||
-    (entity as any).instanceId === 'sidebar';
+    fmEntity.isExternal ||
+    fmEntity.instanceId === 'computer' ||
+    fmEntity.instanceId === 'sidebar';
   if (isExt) return true;
 
   // Check if it's from a remote VFS (always external for project purposes)
-  if (entity.kind !== 'multiple' && (entity as any).entry?.source === 'remote') return true;
+  if (entity.kind !== 'multiple' && fmEntity.entry?.source === 'remote') return true;
 
   return false;
 });
@@ -268,17 +269,13 @@ const isExternal = computed(() => {
 const selectedFileManagerInstanceId = computed(() => {
   const entity = activeEntity.value;
   if (!entity || entity.source !== 'fileManager') return undefined;
-  return (entity as any).instanceId as string | undefined;
+  return (entity as { instanceId?: string }).instanceId;
 });
 
 const selectedFileManagerOrigin = computed(() => {
   const entity = activeEntity.value;
   if (!entity || entity.source !== 'fileManager') return undefined;
-  return (entity as any).origin as
-    | 'project-manager'
-    | 'workspace-browser'
-    | 'remote-browser'
-    | undefined;
+  return (entity as { origin?: 'project-manager' | 'workspace-browser' | 'remote-browser' }).origin;
 });
 
 const hasProxy = computed(() => {

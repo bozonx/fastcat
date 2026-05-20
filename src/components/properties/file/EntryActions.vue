@@ -35,8 +35,5 @@ const mappedPrimary = computed(() =>
 </script>
 
 <template>
-  <PropertyActionsBlock
-    :quick-actions="mappedPrimary"
-    :additional-actions="secondaryActions"
-  />
+  <PropertyActionsBlock :quick-actions="mappedPrimary" :additional-actions="secondaryActions" />
 </template>

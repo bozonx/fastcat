@@ -10,14 +10,14 @@ import type { TimelineFormatInput } from '~/timeline/format';
 export interface TimelineCommandsDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTimelinePath: Ref<string | null>;
-  mediaMetadata: Ref<Record<string, any>>;
-  applyTimeline: (cmd: TimelineCommand, options?: any) => string[];
+  mediaMetadata: Ref<Record<string, unknown>>;
+  applyTimeline: (cmd: TimelineCommand, options?: unknown) => string[];
   createFallbackTimelineDoc: () => TimelineDocument;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
-  getOrFetchMetadataByPath: (path: string) => Promise<any>;
-  getUserSettings: () => any;
-  getProjectSettings: () => any;
+  getOrFetchMetadataByPath: (path: string) => Promise<unknown>;
+  getUserSettings: () => unknown;
+  getProjectSettings: () => unknown;
   updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
   hasProxy: (path: string) => boolean;
   ensureProxy: (options: {
@@ -25,8 +25,8 @@ export interface TimelineCommandsDeps {
     projectRelativePath: string;
   }) => Promise<void>;
   openProjectSettings: () => void;
-  toast: any;
-  t: any;
+  toast: { add: (opts: unknown) => void };
+  t: (key: string) => string;
 }
 
 export interface TimelineCommandsModule {

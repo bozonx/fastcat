@@ -87,7 +87,7 @@ function createCurvePoints(
   curve: TransitionCurve,
   width: number,
   height: number,
-  params?: Record<string, any>,
+  params?: Record<string, unknown>,
 ): TransitionPreviewPoint[] {
   const steps = 18;
   const points: TransitionPreviewPoint[] = [];
@@ -113,7 +113,7 @@ export function getTransitionCurveSinglePath(
   width: number,
   height: number,
   curve: TransitionCurve,
-  params?: Record<string, any>,
+  params?: Record<string, unknown>,
 ): string {
   const points = createCurvePoints(curve, width, height, params);
   return buildPathFromPoints(points);
@@ -124,7 +124,7 @@ export function getTransitionSolidPath(
   height: number,
   curve: TransitionCurve,
   edge: 'in' | 'out',
-  params?: Record<string, any>,
+  params?: Record<string, unknown>,
 ): string {
   const halfHeight = height / 2;
   const points = createCurvePoints(curve, width, halfHeight, params);
@@ -166,7 +166,7 @@ export function getFadeLinePattern(
   edge: 'in' | 'out',
   curve: TransitionCurve,
   width = 100,
-  params?: Record<string, any>,
+  params?: Record<string, unknown>,
 ): FadePatternLine[] {
   const count = 28;
   const sampleSteps = 256;
@@ -306,23 +306,23 @@ export function getOverlayGuideOffsetPx(
 
 export function isVideo(item: TimelineTrackItem, track: TimelineTrack): item is TimelineClipItem {
   if (item.kind !== 'clip') return false;
-  const clipType = (item as any).clipType;
+  const clipType = (item as import('~/timeline/types').TimelineClipItem).clipType;
   return (clipType === 'media' || clipType === 'timeline') && track.kind === 'video';
 }
 
 export function isAudio(item: TimelineTrackItem, track: TimelineTrack): item is TimelineClipItem {
   if (item.kind !== 'clip') return false;
-  const clipType = (item as any).clipType;
+  const clipType = (item as import('~/timeline/types').TimelineClipItem).clipType;
   return (clipType === 'media' || clipType === 'timeline') && track.kind === 'audio';
 }
 
 export function clipHasAudio(
   item: TimelineTrackItem,
   track: TimelineTrack,
-  mediaMetadata: Record<string, any>,
+  mediaMetadata: Record<string, unknown>,
 ): boolean {
   if (item.kind !== 'clip') return false;
-  const clip = item as any;
+  const clip = item as import('~/timeline/types').TimelineClipItem;
   if (clip.clipType === 'timeline') return true;
   if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';

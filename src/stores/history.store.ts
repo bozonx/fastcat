@@ -42,16 +42,16 @@ export const useHistoryStore = defineStore('history', () => {
   const maxEntries = computed(() => workspaceStore.userSettings.history.maxEntries);
 
   /** Past states: index 0 is the oldest, last is the most recent undo target */
-  const past = ref<HistoryEntry<any>[]>([]);
+  const past = ref<HistoryEntry<unknown>[]>([]);
   /** Future states available for redo, index 0 is the next redo */
-  const future = ref<HistoryEntry<any>[]>([]);
+  const future = ref<HistoryEntry<unknown>[]>([]);
 
   /** Scopes that use command-based history (store undo/redo commands instead of snapshots) */
   const commandScopes = new Set<string>(['fileManager']);
 
-  const stateGetters = new Map<string, (entry: HistoryEntry<any>) => any>();
+  const stateGetters = new Map<string, (entry: HistoryEntry<unknown>) => unknown>();
 
-  function registerStateGetter(scope: string, getter: (entry: HistoryEntry<any>) => any) {
+  function registerStateGetter(scope: string, getter: (entry: HistoryEntry<unknown>) => unknown) {
     stateGetters.set(scope, getter);
   }
 
@@ -164,7 +164,7 @@ export const useHistoryStore = defineStore('history', () => {
     return entry.snapshot as T;
   }
 
-  function undoGlobal(): HistoryEntry<any> | null {
+  function undoGlobal(): HistoryEntry<unknown> | null {
     const entry = past.value[past.value.length - 1];
     if (!entry) return null;
 
@@ -192,7 +192,7 @@ export const useHistoryStore = defineStore('history', () => {
     }
   }
 
-  function redoGlobal(): HistoryEntry<any> | null {
+  function redoGlobal(): HistoryEntry<unknown> | null {
     const entry = future.value[0];
     if (!entry) return null;
 

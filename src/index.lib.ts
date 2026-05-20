@@ -42,7 +42,7 @@ const FastcatElement = defineCustomElement({
     // Provide Nuxt-like services that are expected by components via useNuxtApp()
     provide('isEmbedded', true);
     provide('notificationService', {
-      add: (msg: any) => console.log('[Embedded Editor] Notification:', msg),
+      add: (msg: unknown) => console.log('[Embedded Editor] Notification:', msg),
     });
     provide('i18nService', {
       t: (key: string, defaultValue?: string) => i18n.global.t(key) || defaultValue || key,
@@ -51,10 +51,10 @@ const FastcatElement = defineCustomElement({
 
     return () =>
       h(FastcatEmbeddedLayout, {
-        assets: props.assets as any,
+        assets: props.assets as unknown[],
         workspaceId: props.workspaceId,
         locale: props.locale,
-        onExported: (data: any) => emit('fastcat:exported', data),
+        onExported: (data: unknown) => emit('fastcat:exported', data),
       });
   },
   // Inject our global Tailwind CSS into the Shadow DOM
@@ -74,19 +74,19 @@ export class FastcatEditor {
 
   constructor(private container: HTMLElement | string) {}
 
-  public init(options: { assets: any[]; workspaceId?: string; locale?: string }) {
+  public init(options: { assets: unknown[]; workspaceId?: string; locale?: string }) {
     const target =
       typeof this.container === 'string' ? document.querySelector(this.container) : this.container;
 
     if (!target) throw new Error(`Container ${this.container} not found`);
 
     this.element = document.createElement('fastcat-editor');
-    (this.element as any).assets = options.assets;
+    (this.element as HTMLElement & { assets?: unknown[] }).assets = options.assets;
     if (options.workspaceId) {
-      (this.element as any).workspaceId = options.workspaceId;
+      (this.element as HTMLElement & { workspaceId?: string }).workspaceId = options.workspaceId;
     }
     if (options.locale) {
-      (this.element as any).locale = options.locale;
+      (this.element as HTMLElement & { locale?: string }).locale = options.locale;
     }
 
     target.appendChild(this.element);

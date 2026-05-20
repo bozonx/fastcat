@@ -43,7 +43,7 @@ export class EffectManager {
         const filter = clip.effectFilters.get('__mask');
         clip.effectFilters.delete('__mask');
         try {
-          (filter as any)?.destroy?.();
+          (filter as { destroy?: () => void })?.destroy?.();
         } catch {
           /* no-op */
         }
@@ -91,11 +91,11 @@ export class EffectManager {
 
       const frameWidth = Math.max(
         1,
-        Math.round(Number((frame as any).displayWidth ?? (frame as any).codedWidth ?? 1)),
+        Math.round(Number((frame as { displayWidth?: number; codedWidth?: number }).displayWidth ?? (frame as { displayWidth?: number; codedWidth?: number }).codedWidth ?? 1)),
       );
       const frameHeight = Math.max(
         1,
-        Math.round(Number((frame as any).displayHeight ?? (frame as any).codedHeight ?? 1)),
+        Math.round(Number((frame as { displayHeight?: number; codedHeight?: number }).displayHeight ?? (frame as { displayHeight?: number; codedHeight?: number }).codedHeight ?? 1)),
       );
 
       if (
@@ -105,7 +105,7 @@ export class EffectManager {
         maskState.imageSource.resize(frameWidth, frameHeight);
       }
 
-      (maskState.imageSource as any).resource = frame as any;
+      (maskState.imageSource as { resource?: unknown }).resource = frame as unknown;
       maskState.imageSource.update();
     }
 
@@ -193,7 +193,7 @@ export class EffectManager {
       if (seenIds.has(id)) continue;
       filtersMap.delete(id);
       try {
-        (filter as any)?.destroy?.();
+        (filter as { destroy?: () => void })?.destroy?.();
       } catch {
         // ignore
       }

@@ -604,10 +604,7 @@ const otherActions = computed(() => {
           {{ selectedCountLabel }}
         </span>
 
-        <PropertyActionsBlock
-          :quick-actions="commonActions"
-          :additional-actions="otherActions"
-        />
+        <PropertyActionsBlock :quick-actions="commonActions" :additional-actions="otherActions" />
       </div>
     </PropertySection>
 

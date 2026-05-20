@@ -35,7 +35,7 @@ export interface TimelineLoadOrchestratorCallbacks {
   abortSignal?: AbortSignal;
   destroyClip: (clip: CompositorClip) => void;
   getExistingClipById: (itemId: string) => CompositorClip | undefined;
-  getFallbackTrackId: (clipData: any) => string | null;
+  getFallbackTrackId: (clipData: { layer?: number }) => string | null;
   getTrackRuntimeForClip: (
     clip: Pick<CompositorClip, 'trackId' | 'layer'>,
   ) => CompositorTrack | null;
@@ -58,7 +58,7 @@ export interface TimelineLoadOrchestratorCallbacks {
 }
 
 export interface TimelineLoadOrchestratorParams {
-  timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: any })[];
+  timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: unknown })[];
   deps: TimelineLoadOrchestratorDeps;
   mediabunny: MediaClipLoaderMediabunny;
   callbacks: TimelineLoadOrchestratorCallbacks;
@@ -89,7 +89,7 @@ export class TimelineLoadOrchestrator {
           }
         }
         const abortErr = new Error('Export was cancelled during timeline load');
-        (abortErr as any).name = 'AbortError';
+        (abortErr as Error).name = 'AbortError';
         throw abortErr;
       }
 
@@ -125,7 +125,7 @@ export class TimelineLoadOrchestrator {
 
   private async processDescriptor(params: {
     descriptor: TimelineClipDescriptor;
-    clipData: any;
+    clipData: { layer?: number };
     deps: TimelineLoadOrchestratorDeps;
     mediabunny: MediaClipLoaderMediabunny;
     callbacks: TimelineLoadOrchestratorCallbacks;
@@ -255,13 +255,13 @@ export class TimelineLoadOrchestrator {
       });
       sequentialTimeUs = fixedDuration.sequentialTimeUs;
 
-      const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
+      const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown });
       let bitmap: ImageBitmap | null = null;
       const loadedImage = await this.context.rasterImageLoader.load({ sourcePath, deps });
       if (loadedImage) {
         bitmap = loadedImage.bitmap;
         imageSource.resize(loadedImage.width, loadedImage.height);
-        (imageSource as any).resource = bitmap as any;
+        (imageSource as { resource?: unknown }).resource = bitmap as unknown;
         imageSource.update();
       }
       const compositorClip = this.context.timelineMediaClipBuilder.createImageClip({
@@ -349,8 +349,8 @@ export class TimelineLoadOrchestrator {
         });
       }
       return { sequentialTimeUs };
-    } catch (err: any) {
-      if (err?.message !== 'Input has an unsupported or unrecognizable format.') {
+    } catch (err) {
+      if (err instanceof Error && err.message !== 'Input has an unsupported or unrecognizable format.') {
         console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
       }
       return {

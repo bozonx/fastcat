@@ -152,16 +152,6 @@ const trackColor = computed({
   set: (val: string) => timelineStore.updateTrackProperties(props.track.id, { color: val }),
 });
 
-const isLocked = computed({
-  get: () => props.track.locked ?? false,
-  set: (val: boolean) => timelineStore.updateTrackProperties(props.track.id, { locked: val }),
-});
-
-const isSolo = computed({
-  get: () => props.track.audioSolo ?? false,
-  set: (val: boolean) => timelineStore.updateTrackProperties(props.track.id, { audioSolo: val }),
-});
-
 const sameKindTracks = computed(() =>
   (timelineStore.timelineDoc?.tracks ?? []).filter((track) => track.kind === props.track.kind),
 );
@@ -246,7 +236,9 @@ const trackQuickActions = computed(() => {
       icon: 'i-heroicons-pencil',
       color: 'neutral' as const,
       variant: 'ghost' as const,
-      onClick: () => { isRenameModalOpen.value = true; },
+      onClick: () => {
+        isRenameModalOpen.value = true;
+      },
     },
   ];
 
@@ -303,10 +295,7 @@ const clipCount = computed(
 <template>
   <div class="w-full flex flex-col gap-2">
     <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions')">
-      <PropertyActionsBlock
-        :quick-actions="trackQuickActions"
-        :additional-actions="extraActions"
-      />
+      <PropertyActionsBlock :quick-actions="trackQuickActions" :additional-actions="extraActions" />
     </PropertySection>
 
     <PropertySection>

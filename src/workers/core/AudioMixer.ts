@@ -104,7 +104,7 @@ export async function resampleChannelsOfflineAudioContext(params: {
   const { planes, sourceSampleRate, targetSampleRate, sourceFrames, targetFrames, channels } =
     params;
   const OfflineCtx =
-    globalThis.OfflineAudioContext || (globalThis as any).webkitOfflineAudioContext;
+    globalThis.OfflineAudioContext || (globalThis as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext;
   if (!OfflineCtx) {
     throw new Error('OfflineAudioContext not supported');
   }
@@ -151,7 +151,7 @@ export async function resampleAndStretchOffline(params: {
     playbackRate,
   } = params;
   const OfflineCtx =
-    globalThis.OfflineAudioContext || (globalThis as any).webkitOfflineAudioContext;
+    globalThis.OfflineAudioContext || (globalThis as { webkitOfflineAudioContext?: typeof OfflineAudioContext }).webkitOfflineAudioContext;
   if (!OfflineCtx) {
     throw new Error('OfflineAudioContext not supported');
   }
@@ -266,10 +266,10 @@ export interface AudioMixerPrepareParams {
   reportExportWarning: (message: string) => Promise<void>;
   checkCancel?: () => boolean;
   mediabunny: {
-    AudioSampleSink: new (...args: any[]) => MediabunnyAudioSampleSink;
-    Input: new (...args: any[]) => MediabunnyInput;
-    BlobSource: new (...args: any[]) => unknown;
-    ALL_FORMATS: any;
+    AudioSampleSink: new (...args: unknown[]) => MediabunnyAudioSampleSink;
+    Input: new (...args: unknown[]) => MediabunnyInput;
+    BlobSource: new (...args: unknown[]) => unknown;
+    ALL_FORMATS: unknown;
   };
 }
 
@@ -555,7 +555,7 @@ async function loadClipSourcePlanes(args: {
   for await (const sampleRaw of sink.samples(sinkStartS, sinkEndS)) {
     if (checkCancel?.()) {
       const abortErr = new Error('Export was cancelled');
-      (abortErr as any).name = 'AbortError';
+      (abortErr as Error).name = 'AbortError';
       throw abortErr;
     }
     const sample = sampleRaw as MediabunnyAudioSample;
@@ -659,7 +659,7 @@ async function* processClipAudio(args: {
   ) {
     if (checkCancel?.()) {
       const abortErr = new Error('Export was cancelled');
-      (abortErr as any).name = 'AbortError';
+      (abortErr as Error).name = 'AbortError';
       throw abortErr;
     }
 
@@ -813,7 +813,7 @@ interface AdjacencyMap {
 function buildAdjacencyMap(audioClips: AudioClipData[]): AdjacencyMap {
   const byTrack = new Map<unknown, AudioClipData[]>();
   for (const clip of audioClips) {
-    const trackId = (clip as any).trackId;
+    const trackId = (clip as { trackId: string }).trackId;
     let list = byTrack.get(trackId);
     if (!list) {
       list = [];
@@ -852,7 +852,7 @@ export class AudioMixer {
     for (const clipData of audioClips) {
       if (checkCancel?.()) {
         const abortErr = new Error('Export was cancelled');
-        (abortErr as any).name = 'AbortError';
+        (abortErr as Error).name = 'AbortError';
         throw abortErr;
       }
 
@@ -878,7 +878,7 @@ export class AudioMixer {
       const sourceDurationUs = clipData.sourceDurationUs ?? clipData.sourceRange?.durationUs ?? 0;
       const durationUs = clipData.durationUs ?? clipData.timelineRange?.durationUs ?? 0;
 
-      const speedRaw = Number((clipData as any).speed);
+      const speedRaw = Number(clipData.speed);
       const speed =
         Number.isFinite(speedRaw) && speedRaw !== 0
           ? Math.max(0.0001, Math.min(10, Math.abs(speedRaw)))
@@ -984,7 +984,7 @@ export class AudioMixer {
         0,
       );
 
-      const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
+      const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as unknown);
       try {
         const aTrack = await input.getPrimaryAudioTrack();
         if (!aTrack) {
@@ -999,7 +999,7 @@ export class AudioMixer {
         const sink = new AudioSampleSink(aTrack);
 
         const offsetS = Math.max(0, effectiveOffsetS);
-        const trackDurationS = (aTrack as any).duration;
+        const trackDurationS = (aTrack as { duration?: number }).duration;
         const sourceWindowBaseS = playDurationS * speed + extraSourceTailS;
         const maxPlayableS = Math.max(
           0,
@@ -1057,7 +1057,7 @@ export class AudioMixer {
     function ensureNotCancelled() {
       if (!checkCancel?.()) return;
       const abortErr = new Error('Export was cancelled');
-      (abortErr as any).name = 'AbortError';
+      (abortErr as Error).name = 'AbortError';
       throw abortErr;
     }
 
@@ -1228,8 +1228,8 @@ export class AudioMixer {
               if (nextCursorFrame <= sourceCursorFrame) break;
               sourceCursorFrame = nextCursorFrame;
             }
-          } catch (err: any) {
-            if (err?.name === 'AbortError') throw err;
+          } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') throw err;
             await reportExportWarning('[Worker Export] Failed to decode audio clip');
             safeDispose(clip.sink);
             safeDispose(clip.input);
@@ -1283,7 +1283,7 @@ export class AudioMixer {
         });
 
         try {
-          await (audioSource as any).add(audioSample);
+          await (audioSource as { add: (sample: unknown) => Promise<void> }).add(audioSample);
         } finally {
           safeDispose(audioSample);
         }

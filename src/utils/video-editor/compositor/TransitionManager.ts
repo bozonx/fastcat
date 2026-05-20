@@ -175,7 +175,7 @@ export class TransitionManager {
         const params = normalizeTransitionParams(clip.transitionIn.type, clip.transitionIn.params);
         opacity = Math.min(
           opacity,
-          baseOpacity * manifest.computeInOpacity(rawProgress, (params as any) ?? {}, curve),
+          baseOpacity * manifest.computeInOpacity(rawProgress, (params as Record<string, unknown>) ?? {}, curve),
         );
       }
     }
@@ -191,7 +191,7 @@ export class TransitionManager {
         );
         opacity = Math.min(
           opacity,
-          baseOpacity * manifest.computeOutOpacity(rawProgress, (params as any) ?? {}, curve),
+          baseOpacity * manifest.computeOutOpacity(rawProgress, (params as Record<string, unknown>) ?? {}, curve),
         );
       }
     }
@@ -199,7 +199,7 @@ export class TransitionManager {
     return Math.max(0, Math.min(1, opacity));
   }
 
-  public ensureUsableTransitionFilter(clip: CompositorClip, manifest: any): Filter | null {
+  public ensureUsableTransitionFilter(clip: CompositorClip, manifest: import('~/transitions/core/types').TransitionManifest): Filter | null {
     const currentFilter = clip.transitionFilter;
     if (this.isTransitionFilterUsable(currentFilter)) {
       return currentFilter;
@@ -209,12 +209,12 @@ export class TransitionManager {
 
   private isTransitionFilterUsable(filter: Filter | null | undefined): filter is Filter {
     if (!filter) return false;
-    const candidate = filter as any;
+    const candidate = filter as { destroyed?: boolean; resources?: Record<string, unknown> };
     if (candidate.destroyed) return false;
     return candidate.resources != null && Object.keys(candidate.resources).length > 0;
   }
 
-  private recreateTransitionFilter(clip: CompositorClip, manifest: any): Filter | null {
+  private recreateTransitionFilter(clip: CompositorClip, manifest: import('~/transitions/core/types').TransitionManifest): Filter | null {
     if (clip.transitionFilter) {
       try {
         clip.transitionFilter.destroy();
@@ -246,9 +246,9 @@ export class TransitionManager {
 
   public updateTransitionFilterSafely(
     clip: CompositorClip,
-    manifest: any,
+    manifest: import('~/transitions/core/types').TransitionManifest,
     filter: Filter,
-    context: any,
+    context: unknown,
   ): Filter | null {
     const applyUpdate = (candidate: Filter) => {
       manifest.updateFilter?.(candidate, context);
