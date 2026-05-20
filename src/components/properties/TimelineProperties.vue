@@ -133,11 +133,11 @@ const timelineAdditionalActions = computed(() => {
       id: 'createOtioVersion',
       label: t('fastcat.timeline.createVersion'),
       icon: 'i-heroicons-document-duplicate',
-      onClick: async () => {
+      onClick: () => {
         if (isInactiveTimeline.value) {
           uiStore.pendingOtioCreateVersion = props.fsEntry!;
         } else {
-          await timelineStore.duplicateCurrentTimeline();
+          void timelineStore.duplicateCurrentTimeline();
         }
       },
     });

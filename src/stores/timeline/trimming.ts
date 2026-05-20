@@ -1,6 +1,7 @@
 import type { Ref } from 'vue';
 import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
+import type { TimelineApplyOptions } from './commands';
 import { calculateNextClipBoundary, calculatePrevClipBoundary } from '~/timeline/domain/navigation';
 import {
   buildSplitClipCommands,
@@ -33,7 +34,7 @@ export interface TimelineTrimmingDeps {
   editService: {
     rippleDeleteRange: (
       input: { trackIds: string[]; startUs: number; endUs: number },
-      options?: unknown,
+      options?: TimelineApplyOptions,
     ) => void;
     rippleTrimRight: () => Promise<void>;
     rippleTrimLeft: () => Promise<void>;
@@ -51,7 +52,7 @@ export interface TimelineTrimmingModule {
   ) => Promise<void>;
   rippleDeleteRange: (
     input: { trackIds: string[]; startUs: number; endUs: number },
-    options?: unknown,
+    options?: TimelineApplyOptions,
   ) => void;
   rippleTrimRight: () => Promise<void>;
   rippleTrimLeft: () => Promise<void>;
@@ -165,7 +166,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
 
   function rippleDeleteRange(
     input: { trackIds: string[]; startUs: number; endUs: number },
-    options?: unknown,
+    options?: TimelineApplyOptions,
   ) {
     deps.editService.rippleDeleteRange(input, options);
   }

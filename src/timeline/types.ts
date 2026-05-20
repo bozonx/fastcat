@@ -57,6 +57,8 @@ export interface TextClipStyle {
   backgroundColor?: string;
   backgroundAlpha?: number;
   backgroundRadius?: number;
+  colorBlendMode?: TimelineBlendMode;
+  backgroundBlendMode?: TimelineBlendMode;
   borderEnabled?: boolean;
   borderColor?: string;
   borderAlpha?: number;

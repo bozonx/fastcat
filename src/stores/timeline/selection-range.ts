@@ -4,6 +4,7 @@ import type { createTimelineMarkerService } from '~/timeline/application/timelin
 import type { createTimelineTrimmingModule } from './trimming';
 import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
+import type { TimelineApplyOptions } from './commands';
 
 export interface TimelineSelectionRangeDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -14,17 +15,17 @@ export interface TimelineSelectionRangeDeps {
   clearSelection: () => void;
   markerService: ReturnType<typeof createTimelineMarkerService>;
   trimming: ReturnType<typeof createTimelineTrimmingModule>;
-  applyTimeline: (cmd: TimelineCommand, options?: unknown) => void;
+  applyTimeline: (cmd: TimelineCommand, options?: TimelineApplyOptions) => void;
   defaultStaticClipDurationUs: number;
 }
 
 export interface TimelineSelectionRangeModule {
   getSelectionRange: () => TimelineSelectionRange | null;
   setPreviewSelectionRange: (range: TimelineSelectionRange | null) => void;
-  updateSelectionRange: (range: TimelineSelectionRange | null, options?: unknown) => void;
+  updateSelectionRange: (range: TimelineSelectionRange | null, options?: TimelineApplyOptions) => void;
   createSelectionRangeAtPlayhead: (durationUs?: number) => void;
   createSelectionRange: (input: TimelineSelectionRange) => void;
-  removeSelectionRange: (options?: unknown) => void;
+  removeSelectionRange: (options?: TimelineApplyOptions) => void;
   convertMarkerToSelectionRange: (markerId: string) => void;
   createSelectionRangeFromMarker: (markerId: string) => void;
   isSelectionRangeSelected: () => boolean;
@@ -69,7 +70,7 @@ export function createTimelineSelectionRangeModule(
     previewRange.value = range;
   }
 
-  function updateSelectionRange(range: TimelineSelectionRange | null, _options?: unknown) {
+  function updateSelectionRange(range: TimelineSelectionRange | null, _options?: TimelineApplyOptions) {
     previewRange.value = null;
 
     if (!range) {
@@ -101,7 +102,7 @@ export function createTimelineSelectionRangeModule(
     selectTimelineSelectionRange();
   }
 
-  function removeSelectionRange(options?: unknown) {
+  function removeSelectionRange(options?: TimelineApplyOptions) {
     updateSelectionRange(null, options);
     if (checkSelectionRangeSelected()) {
       clearSelection();
@@ -163,7 +164,7 @@ export function createTimelineSelectionRangeModule(
     if (!range || !doc) return;
 
     const options = {
-      historyMode: 'debounced',
+      historyMode: 'debounced' as const,
       historyDebounceMs: 100,
       labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
     };

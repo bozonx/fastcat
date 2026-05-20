@@ -31,7 +31,7 @@ export interface VideoCoreHostAPI {
 type WorkerChannel = 'preview' | 'export' | 'proxy' | 'thumbnail';
 
 type PendingCall = {
-  resolve: (value: any) => void;
+  resolve: (value: unknown) => void;
   reject: (reason?: unknown) => void;
   timeoutId?: number;
 };
@@ -121,28 +121,31 @@ function toError(error: WorkerRpcErrorShape | unknown): Error {
   return nextError;
 }
 
-async function callHostMethod(hostApi: VideoCoreHostAPI, message: any) {
-  if (message.type !== 'rpc-call') {
+async function callHostMethod(hostApi: VideoCoreHostAPI, message: unknown) {
+  const msg = message as Record<string, unknown>;
+  if (msg.type !== 'rpc-call') {
     return undefined;
   }
+  const args = (msg.args as unknown[] | undefined) ?? [];
+  const taskId = msg.taskId as string | undefined;
 
-  switch (message.method) {
+  switch (msg.method) {
     case 'getCurrentProjectId':
       return await hostApi.getCurrentProjectId();
     case 'getFileHandleByPath':
-      return await hostApi.getFileHandleByPath(message.args[0]);
+      return await hostApi.getFileHandleByPath(args[0] as string);
     case 'getFileByPath':
-      return (await hostApi.getFileByPath?.(message.args[0])) ?? null;
+      return (await hostApi.getFileByPath?.(args[0] as string)) ?? null;
     case 'ensureVectorImageRaster':
-      return await hostApi.ensureVectorImageRaster(message.args[0]);
+      return await hostApi.ensureVectorImageRaster(args[0] as { projectId: string; projectRelativePath: string; width: number; height: number; sourceFileHandle: FileSystemFileHandle });
     case 'onExportProgress':
-      return hostApi.onExportProgress(message.args[0], message.taskId);
+      return hostApi.onExportProgress(args[0] as number, taskId);
     case 'onExportPhase':
-      return hostApi.onExportPhase?.(message.args[0], message.taskId);
+      return hostApi.onExportPhase?.(args[0] as 'encoding' | 'saving', taskId);
     case 'onExportWarning':
-      return hostApi.onExportWarning?.(message.args[0], message.taskId);
+      return hostApi.onExportWarning?.(args[0] as string, taskId);
     default:
-      throw new Error(`Method ${String(message.method)} not found on Host API`);
+      throw new Error(`Method ${String(msg.method)} not found on Host API`);
   }
 }
 

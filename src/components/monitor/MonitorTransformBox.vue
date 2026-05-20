@@ -302,7 +302,7 @@ function onPointerDown(e: PointerEvent, type: string) {
   dragStartTransform = {
     posX: t.posX,
     posY: t.posY,
-    rotationDeg: t.rotationDeg,
+    rotationDeg: layout.value.rotationDeg,
     scaleX: t.scaleX,
     scaleY: t.scaleY,
     ax: layout.value.ax,
@@ -329,7 +329,7 @@ function onWindowKeyDown(e: KeyboardEvent) {
     // Revert to start transform
     updateTransform({
       position: { x: dragStartTransform.posX, y: dragStartTransform.posY },
-      rotationDeg: dragStartTransform.rotationDeg,
+      rotationDeg: dragStartTransform.rotationDeg - sourceRotation.value,
       scale: { x: dragStartTransform.scaleX, y: dragStartTransform.scaleY, linked: true },
     });
     endDrag();
@@ -382,7 +382,7 @@ function onPointerMove(e: PointerEvent) {
     const startAngle = Math.atan2(dragStartPos.y - centerY, dragStartPos.x - centerX);
     const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
     const rotationDelta = ((currentAngle - startAngle) * 180) / Math.PI;
-    scheduleTransformUpdate({ rotationDeg: dragStartTransform.rotationDeg + rotationDelta });
+    scheduleTransformUpdate({ rotationDeg: dragStartTransform.rotationDeg + rotationDelta - sourceRotation.value });
   } else if (dragType.startsWith('scale')) {
     const rad = (-dragStartTransform.rotationDeg * Math.PI) / 180;
     const ldx = dx * Math.cos(rad) - dy * Math.sin(rad);
