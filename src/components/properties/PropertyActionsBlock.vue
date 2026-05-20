@@ -1,0 +1,39 @@
+<script setup lang="ts">
+import PropertyActionList from './PropertyActionList.vue';
+
+export interface PropertyActionItem {
+  id: string;
+  label?: string;
+  title?: string;
+  icon?: string;
+  color?: 'neutral' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'danger';
+  variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
+  disabled?: boolean;
+  loading?: boolean;
+  hidden?: boolean;
+  onClick: () => void;
+}
+
+const props = defineProps<{
+  quickActions?: PropertyActionItem[];
+  additionalActions?: PropertyActionItem[];
+}>();
+</script>
+
+<template>
+  <div class="flex flex-col w-full gap-2">
+    <PropertyActionList
+      v-if="quickActions && quickActions.length > 0"
+      :actions="quickActions"
+      :vertical="false"
+      variant="ghost"
+      size="sm"
+    />
+    <PropertyActionList
+      v-if="additionalActions && additionalActions.length > 0"
+      :actions="additionalActions"
+      justify="start"
+      size="sm"
+    />
+  </div>
+</template>

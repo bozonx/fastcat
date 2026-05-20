@@ -4,7 +4,7 @@ import { getHudManifest } from '~/hud/registry';
 
 interface UseClipHudPropertiesOptions {
   clip: Ref<TimelineClipItem>;
-  timelineStore: any;
+  timelineStore: { timelineDoc?: import('~/timeline/types').TimelineDocument };
 }
 
 export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
@@ -14,8 +14,8 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
     clip.value.clipType === 'hud' ? getHudManifest(clip.value.hudType) : undefined,
   );
 
-  function flattenObject(ob: any, prefix = ''): Record<string, any> {
-    const result: Record<string, any> = {};
+  function flattenObject(ob: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
     for (const i in ob) {
       if (!Object.prototype.hasOwnProperty.call(ob, i)) continue;
       if (typeof ob[i] === 'object' && ob[i] !== null && !Array.isArray(ob[i])) {
@@ -31,7 +31,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
     return result;
   }
 
-  const hudControlValues = computed<Record<string, any>>(() => {
+  const hudControlValues = computed<Record<string, unknown>>(() => {
     if (clip.value.clipType !== 'hud') return {};
     return {
       hudType: clip.value.hudType,
@@ -41,7 +41,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
     };
   });
 
-  function handleUpdateHudControl(key: string, value: any) {
+  function handleUpdateHudControl(key: string, value: unknown) {
     if (clip.value.clipType !== 'hud') return;
 
     const keys = key.split('.');
@@ -55,13 +55,13 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
     // clip.value is a Vue prop that updates asynchronously through re-renders,
     // so rapid successive calls within the same tick would read stale data.
     const liveTrack = timelineStore.timelineDoc?.tracks?.find(
-      (t: any) => t.id === clip.value.trackId,
+      (t: import('~/timeline/types').TimelineTrack) => t.id === clip.value.trackId,
     );
     const liveClip = liveTrack?.items?.find(
-      (it: any) => it.kind === 'clip' && it.id === clip.value.id,
+      (it: import('~/timeline/types').TimelineTrackItem) => it.kind === 'clip' && it.id === clip.value.id,
     );
     const layerSource = liveClip ?? clip.value;
-    const current = JSON.parse(JSON.stringify((layerSource as any)[layer] ?? {}));
+    const current = JSON.parse(JSON.stringify((layerSource as Record<string, unknown>)[layer] ?? {}));
 
     let target = current;
     for (let i = 1; i < keys.length - 1; i++) {

@@ -53,7 +53,7 @@ const measureContext =
   typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
 
 const safeTransform = computed(() => {
-  const transform: Partial<ClipTransform> = (clipData.value as any)?.transform ?? {};
+  const transform: Partial<ClipTransform> = (clipData.value as { transform?: ClipTransform })?.transform ?? {};
   return {
     scaleX:
       typeof transform.scale?.x === 'number' && Number.isFinite(transform.scale.x)
@@ -89,7 +89,7 @@ const clipLayout = computed(() => {
     frameHeight: props.renderHeight,
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
-    transform: (clipData.value as any).transform as ClipTransform | undefined,
+    transform: (clipData.value as { transform?: ClipTransform }).transform as ClipTransform | undefined,
   });
 });
 
@@ -97,8 +97,8 @@ const textMetrics = computed(() => {
   if (!clipData.value || !measureContext) return null;
 
   return computeTextLayoutMetrics({
-    text: String((clipData.value as any).text ?? ''),
-    style: (clipData.value as any).style,
+    text: String((clipData.value as { text?: string }).text ?? ''),
+    style: (clipData.value as { style?: TextClipStyle }).style,
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
     measureText: (text, font) => {
@@ -142,7 +142,7 @@ const layout = computed(() => {
 
 const mode = ref<'text' | 'rotate'>('text');
 
-function buildNextTransform(current: any, patch: Partial<ClipTransform>): ClipTransform {
+function buildNextTransform(current: ClipTransform | undefined, patch: Partial<ClipTransform>): ClipTransform {
   return {
     ...current,
     ...patch,
@@ -161,7 +161,7 @@ function buildNextTransform(current: any, patch: Partial<ClipTransform>): ClipTr
   };
 }
 
-function buildNextStyle(current: any, patch: Partial<TextClipStyle>): TextClipStyle {
+function buildNextStyle(current: TextClipStyle | undefined, patch: Partial<TextClipStyle>): TextClipStyle {
   return {
     ...(current ?? {}),
     ...patch,
@@ -174,8 +174,8 @@ function updateClip(params: {
 }) {
   if (!selectedClipId.value || !selectedTrackId.value || !clipData.value) return;
 
-  const currentTransform = (clipData.value as any).transform ?? {};
-  const currentStyle = (clipData.value as any).style ?? {};
+  const currentTransform = (clipData.value as { transform?: ClipTransform }).transform ?? {};
+  const currentStyle = (clipData.value as { style?: TextClipStyle }).style ?? {};
   const nextTransform = params.transform
     ? buildNextTransform(currentTransform, params.transform)
     : currentTransform;
@@ -215,15 +215,15 @@ function scheduleClipUpdate(params: {
       ...(pendingTransformPatch ?? {}),
       ...params.transform,
       scale: {
-        ...((pendingTransformPatch?.scale as any) ?? {}),
+        ...((pendingTransformPatch?.scale as Record<string, number> | undefined) ?? {}),
         ...(params.transform.scale ?? {}),
       },
       position: {
-        ...((pendingTransformPatch?.position as any) ?? {}),
+        ...((pendingTransformPatch?.position as Record<string, number> | undefined) ?? {}),
         ...(params.transform.position ?? {}),
       },
       anchor: {
-        ...((pendingTransformPatch?.anchor as any) ?? {}),
+        ...((pendingTransformPatch?.anchor as Record<string, number> | undefined) ?? {}),
         ...(params.transform.anchor ?? {}),
       },
     };

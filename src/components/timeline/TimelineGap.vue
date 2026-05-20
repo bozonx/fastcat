@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { TimelineTrackItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -9,6 +9,7 @@ import { timeUsToPx } from '~/utils/timeline/geometry';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
@@ -26,8 +27,26 @@ function onPaste() {
   if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
 }
 
+const isTrackRenameModalOpen = ref(false);
+const trackToRename = ref<any>(null);
+
+function handleRenameTrack(name: string) {
+  if (trackToRename.value) {
+    const trimmed = name.trim();
+    if (trimmed && trimmed !== trackToRename.value.name) {
+      timelineStore.renameTrack(trackToRename.value.id, trimmed);
+    }
+  }
+  isTrackRenameModalOpen.value = false;
+  trackToRename.value = null;
+}
+
 const { getTrackContextMenuItems } = useTrackContextMenu({
   onRequestDelete: (track) => timelineStore.deleteTrack(track.id, { allowNonEmpty: true }),
+  onRequestRename: (track) => {
+    trackToRename.value = track;
+    isTrackRenameModalOpen.value = true;
+  },
 });
 
 const trackContextMenuItems = computed(() => {
@@ -171,4 +190,12 @@ function onClick(e: MouseEvent) {
       @contextmenu.prevent.stop
     />
   </UContextMenu>
+
+  <UiRenameModal
+    :open="isTrackRenameModalOpen"
+    :current-name="trackToRename?.name || ''"
+    :title="t('fastcat.timeline.renameTrack')"
+    @update:open="isTrackRenameModalOpen = $event"
+    @rename="handleRenameTrack"
+  />
 </template>

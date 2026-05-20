@@ -8,11 +8,10 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
-import EntryActions from '~/components/properties/file/EntryActions.vue';
+import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
@@ -107,34 +106,37 @@ async function handleRenameConfirm(newName: string) {
   isRenameModalOpen.value = false;
 }
 
-const fileActions = computed(() => {
-  if (!props.fsEntry) return null;
-  return {
-    primary: [
-      {
-        id: 'delete',
-        title: t('common.delete'),
-        icon: 'i-heroicons-trash',
-        onClick: onDelete,
+const timelineQuickActions = computed(() => {
+  if (!props.fsEntry) return [];
+  return [
+    {
+      id: 'delete',
+      title: t('common.delete'),
+      icon: 'i-heroicons-trash',
+      onClick: onDelete,
+    },
+    {
+      id: 'rename',
+      title: t('common.rename'),
+      icon: 'i-heroicons-pencil',
+      onClick: () => { isRenameModalOpen.value = true; },
+    },
+  ];
+});
+
+const timelineAdditionalActions = computed(() => {
+  const list = [...addTrackActions.value];
+  if (props.fsEntry) {
+    list.unshift({
+      id: 'createOtioVersion',
+      label: t('fastcat.timeline.createVersion'),
+      icon: 'i-heroicons-document-duplicate',
+      onClick: () => {
+        uiStore.pendingOtioCreateVersion = props.fsEntry!;
       },
-      {
-        id: 'rename',
-        title: t('common.rename'),
-        icon: 'i-heroicons-pencil',
-        onClick: () => { isRenameModalOpen.value = true; },
-      },
-    ],
-    secondary: [
-      {
-        id: 'createOtioVersion',
-        label: t('fastcat.timeline.createVersion'),
-        icon: 'i-heroicons-document-duplicate',
-        onClick: () => {
-          uiStore.pendingOtioCreateVersion = props.fsEntry!;
-        },
-      },
-    ],
-  };
+    });
+  }
+  return list;
 });
 
 const computedSummary = computed(() => {
@@ -296,24 +298,13 @@ const addTrackActions = computed(() => [
   <div class="w-full flex flex-col gap-3">
     <!-- Actions (merge file and timeline actions) -->
     <PropertySection
-      v-if="fileActions || !finalIsReadOnly"
+      v-if="timelineQuickActions.length > 0 || timelineAdditionalActions.length > 0"
       :title="t('videoEditor.fileManager.actions.title')"
     >
-      <div class="flex flex-col gap-2">
-        <EntryActions
-          v-if="fileActions"
-          :primary-actions="fileActions.primary"
-          :secondary-actions="fileActions.secondary"
-        />
-        <div v-if="!finalIsReadOnly" class="mt-1 pt-1">
-          <PropertyActionList
-            :actions="addTrackActions"
-            :vertical="false"
-            justify="start"
-            size="xs"
-          />
-        </div>
-      </div>
+      <PropertyActionsBlock
+        :quick-actions="timelineQuickActions"
+        :additional-actions="timelineAdditionalActions"
+      />
     </PropertySection>
 
     <!-- Info Section -->

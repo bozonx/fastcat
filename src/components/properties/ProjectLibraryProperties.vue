@@ -14,13 +14,13 @@ import type { ShapeType, HudType } from '~/timeline/types';
 const props = defineProps<{
   itemKind: 'text' | 'shape' | 'hud';
   itemId: string;
-  presetParams?: any;
+  presetParams?: Record<string, unknown>;
 }>();
 
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
 
-const params = ref<Record<string, any>>({});
+const params = ref<Record<string, unknown>>({});
 const isSaveModalOpen = ref(false);
 const newPresetName = ref('');
 
@@ -33,7 +33,7 @@ const mockClip = computed(() => {
     trackId: 'mock',
     name: 'Mock',
     kind: 'clip' as const,
-    clipType: props.itemKind as any,
+    clipType: props.itemKind as string,
     timelineRange: { startUs: 0, durationUs: 5000000 },
     sourceRange: { startUs: 0, durationUs: 5000000 },
   };
@@ -62,7 +62,7 @@ const mockClip = computed(() => {
       frame: params.value.frame ?? {},
     };
   }
-  return base as any;
+  return base as import('~/timeline/types').TimelineClipItem;
 });
 
 const hudManifest = computed(() =>
@@ -82,8 +82,8 @@ const hudControlValues = computed(() => {
   };
 });
 
-function flattenObject(ob: any, prefix = ''): Record<string, any> {
-  const result: Record<string, any> = {};
+function flattenObject(ob: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
   for (const i in ob) {
     if (!Object.prototype.hasOwnProperty.call(ob, i)) continue;
     if (typeof ob[i] === 'object' && ob[i] !== null && !Array.isArray(ob[i])) {
@@ -115,7 +115,7 @@ function handleUpdateText(val: string) {
   params.value.text = val;
 }
 
-function handleUpdateTextStyle(patch: Record<string, any>) {
+function handleUpdateTextStyle(patch: Record<string, unknown>) {
   params.value.style = { ...(params.value.style || {}), ...patch };
 }
 
@@ -123,15 +123,15 @@ function handleUpdateShapeType(val: ShapeType) {
   params.value.shapeType = val;
 }
 
-function handleUpdateShapeParam(key: string, val: any) {
+function handleUpdateShapeParam(key: string, val: unknown) {
   params.value[key] = val;
 }
 
-function handleUpdateShapeConfig(patch: Record<string, any>) {
+function handleUpdateShapeConfig(patch: Record<string, unknown>) {
   params.value.shapeConfig = { ...(params.value.shapeConfig || {}), ...patch };
 }
 
-function handleUpdateHudControl(key: string, value: any) {
+function handleUpdateHudControl(key: string, value: unknown) {
   const keys = key.split('.');
   const layer = keys[0] as 'background' | 'content' | 'frame';
   if (!params.value[layer]) params.value[layer] = {};
@@ -168,7 +168,7 @@ function handleUpdatePreset() {
 }
 
 const actions = computed(() => {
-  const list: any[] = [];
+  const list: unknown[] = [];
   if (isCustom.value) {
     list.push({
       id: 'update-preset',
@@ -210,7 +210,7 @@ const actions = computed(() => {
     <div class="flex flex-col gap-2">
       <ClipTextProperties
         v-if="itemKind === 'text'"
-        :clip="mockClip as any"
+        :clip="mockClip as import('~/timeline/types').TimelineClipItem"
         :presets="[]"
         :hide-presets="true"
         @update-text="handleUpdateText"
@@ -219,7 +219,7 @@ const actions = computed(() => {
 
       <ClipShapeProperties
         v-else-if="itemKind === 'shape'"
-        :clip="mockClip as any"
+        :clip="mockClip as import('~/timeline/types').TimelineClipItem"
         :presets="[]"
         :hide-presets="true"
         @update-shape-type="handleUpdateShapeType"
@@ -231,7 +231,7 @@ const actions = computed(() => {
 
       <ClipHudProperties
         v-else-if="itemKind === 'hud'"
-        :clip="mockClip as any"
+        :clip="mockClip as import('~/timeline/types').TimelineClipItem"
         :hud-manifest="hudManifest"
         :hud-control-values="hudControlValues"
         :presets="[]"

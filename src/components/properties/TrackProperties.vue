@@ -12,7 +12,7 @@ import type {
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
@@ -230,6 +230,71 @@ const extraActions = computed(() => {
   return list;
 });
 
+const trackQuickActions = computed(() => {
+  const actions = [
+    {
+      id: 'delete',
+      title: t('common.delete'),
+      icon: 'i-heroicons-trash',
+      color: 'neutral' as const,
+      variant: 'ghost' as const,
+      onClick: requestDeleteTrack,
+    },
+    {
+      id: 'rename',
+      title: t('common.rename'),
+      icon: 'i-heroicons-pencil',
+      color: 'neutral' as const,
+      variant: 'ghost' as const,
+      onClick: () => { isRenameModalOpen.value = true; },
+    },
+  ];
+
+  if (props.track.kind === 'video') {
+    const hidden = props.track.videoHidden || false;
+    actions.push({
+      id: 'toggle-video-hidden',
+      title: hidden ? 'Show Track' : 'Hide Track',
+      icon: hidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      color: hidden ? ('primary' as const) : ('neutral' as const),
+      variant: hidden ? ('solid' as const) : ('ghost' as const),
+      onClick: () => timelineStore.updateTrackProperties(props.track.id, { videoHidden: !hidden }),
+    });
+  }
+
+  const muted = props.track.audioMuted || false;
+  actions.push({
+    id: 'toggle-muted',
+    title: muted ? 'Unmute Track' : 'Mute Track',
+    icon: muted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave',
+    color: muted ? ('error' as const) : ('neutral' as const),
+    variant: muted ? ('solid' as const) : ('ghost' as const),
+    onClick: () => timelineStore.updateTrackProperties(props.track.id, { audioMuted: !muted }),
+  });
+
+  const solo = props.track.audioSolo || false;
+  actions.push({
+    id: 'toggle-solo',
+    title: solo ? 'Unsolo Track' : 'Solo Track',
+    icon: 'i-heroicons-musical-note',
+    color: solo ? ('success' as const) : ('neutral' as const),
+    variant: solo ? ('solid' as const) : ('ghost' as const),
+    onClick: () => timelineStore.updateTrackProperties(props.track.id, { audioSolo: !solo }),
+  });
+
+  const locked = props.track.locked || false;
+  actions.push({
+    id: 'toggle-locked',
+    title: locked ? 'Unlock Track' : 'Lock Track',
+    icon: locked ? 'i-heroicons-lock-closed' : 'i-heroicons-lock-open',
+    color: locked ? ('primary' as const) : ('neutral' as const),
+    variant: locked ? ('solid' as const) : ('ghost' as const),
+    onClick: () => timelineStore.updateTrackProperties(props.track.id, { locked: !locked }),
+  });
+
+  return actions;
+});
+
 const clipCount = computed(
   () => (props.track.items ?? []).filter((item) => item.kind === 'clip').length,
 );
@@ -238,86 +303,10 @@ const clipCount = computed(
 <template>
   <div class="w-full flex flex-col gap-2">
     <PropertySection v-if="!hideActions" :title="t('fastcat.track.actions')">
-      <div class="flex flex-col w-full gap-3">
-        <div class="flex items-center gap-1.5 py-1">
-          <div class="flex items-center gap-1">
-            <UiActionButton
-              icon="i-heroicons-trash"
-              size="sm"
-              color="neutral"
-              :title="t('common.delete')"
-              @click="requestDeleteTrack"
-            />
-            <UiActionButton
-              icon="i-heroicons-pencil"
-              size="sm"
-              color="neutral"
-              :title="t('common.rename')"
-              @click="isRenameModalOpen = true"
-            />
-          </div>
-
-          <div class="h-4 w-px bg-ui-border mx-1 opacity-50" />
-
-          <UiToggleButton
-            v-if="track.kind === 'video'"
-            :model-value="props.track.videoHidden || false"
-            icon="i-heroicons-eye"
-            active-icon="i-heroicons-eye-slash"
-            inactive-color="neutral"
-            active-color="primary"
-            :active-bg="'#ffffff'"
-            :active-text="'#000000'"
-            title="Toggle visibility"
-            @click="
-              timelineStore.updateTrackProperties(props.track.id, {
-                videoHidden: !props.track.videoHidden,
-              })
-            "
-          />
-          <UiToggleButton
-            :model-value="props.track.audioMuted || false"
-            icon="i-heroicons-speaker-wave"
-            active-icon="i-heroicons-speaker-x-mark"
-            inactive-color="neutral"
-            active-color="error"
-            :active-bg="'#ef4444'"
-            :active-text="'#000000'"
-            title="Toggle mute"
-            @click="
-              timelineStore.updateTrackProperties(props.track.id, {
-                audioMuted: !props.track.audioMuted,
-              })
-            "
-          />
-          <UiToggleButton
-            v-if="track.kind === 'audio' || track.kind === 'video'"
-            :model-value="isSolo"
-            icon="i-heroicons-musical-note"
-            inactive-color="neutral"
-            active-color="warning"
-            :active-bg="'#fbbf24'"
-            :active-text="'#000000'"
-            title="Toggle solo"
-            @click="isSolo = !isSolo"
-          />
-          <UiToggleButton
-            :model-value="isLocked"
-            icon="i-heroicons-lock-open"
-            active-icon="i-heroicons-lock-closed"
-            inactive-color="neutral"
-            active-color="primary"
-            :active-bg="'#3b82f6'"
-            :active-text="'#ffffff'"
-            title="Toggle lock"
-            @click="isLocked = !isLocked"
-          />
-        </div>
-
-        <div v-if="extraActions.length > 0" class="pt-1">
-          <PropertyActionList :actions="extraActions" justify="start" size="sm" />
-        </div>
-      </div>
+      <PropertyActionsBlock
+        :quick-actions="trackQuickActions"
+        :additional-actions="extraActions"
+      />
     </PropertySection>
 
     <PropertySection>

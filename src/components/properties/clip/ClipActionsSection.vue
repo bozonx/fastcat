@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 
 interface ActionItem {
   id: string;
@@ -50,17 +50,9 @@ const augmentedCommonActions = computed(() => {
 
 <template>
   <PropertySection :title="t('fastcat.clip.actions')">
-    <div class="flex flex-col w-full px-3 pb-3">
-      <PropertyActionList
-        :actions="augmentedCommonActions"
-        :vertical="false"
-        justify="start"
-        variant="soft"
-        size="sm"
-        class="mb-2"
-      />
-
-      <PropertyActionList :actions="otherActions" justify="start" size="sm" />
-    </div>
+    <PropertyActionsBlock
+      :quick-actions="augmentedCommonActions"
+      :additional-actions="otherActions"
+    />
   </PropertySection>
 </template>

@@ -152,7 +152,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     onDirectoryCopied: (params) => deps.onDirectoryCopied?.(params),
     onError: (params: { title?: string; message: string; error?: unknown }) => {
       const description = params.error
-        ? `${params.message}: ${String((params.error as any)?.message ?? params.error)}`
+        ? `${params.message}: ${String((params.error as Error)?.message ?? params.error)}`
         : params.message;
       deps.toast.add({
         color: 'error',
@@ -771,7 +771,7 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     resolveDefaultTargetDir: async (params: { file: File } | { name: string }) =>
       await resolveDefaultTargetDir(params),
     runWithUiFeedback,
-    async restoreHistory(snapshot: any) {
+    async restoreHistory(snapshot: unknown) {
       if (!snapshot || !snapshot.type) return;
       const op = snapshot;
       isRestoringHistory = true;
@@ -819,9 +819,9 @@ export function useFileManager(options?: {
     return injected;
   }
 
-  const _useNuxtApp: any = (globalThis as any).useNuxtApp || useNuxtApp;
+  const _useNuxtApp: unknown = (globalThis as { useNuxtApp?: typeof useNuxtApp }).useNuxtApp || useNuxtApp;
   const nuxtApp = _useNuxtApp();
-  const t = (nuxtApp as any)?.$i18n?.t || ((key: string) => key);
+  const t = (nuxtApp as { $i18n?: { t: (key: string) => string } })?.$i18n?.t || ((key: string) => key);
   const toast = useToast();
   const defaultVfs = useVfs();
   const vfs = options?.vfs || defaultVfs;
@@ -1013,14 +1013,14 @@ export function useFileManager(options?: {
 
       // Update Timeline References
       if (timelineStore.timelineDoc) {
-        const affectedClips: { trackId: string; itemId: string; source: any }[] = [];
+        const affectedClips: { trackId: string; itemId: string; source: { path: string } }[] = [];
         timelineStore.timelineDoc.tracks.forEach((track) => {
           track.items.forEach((item) => {
-            if (item.kind === 'clip' && (item as any).source?.path === oldPath) {
+            if (item.kind === 'clip' && (item as TimelineClipItem).source?.path === oldPath) {
               affectedClips.push({
                 trackId: track.id,
                 itemId: item.id,
-                source: (item as any).source,
+                source: (item as TimelineClipItem).source,
               });
             }
           });

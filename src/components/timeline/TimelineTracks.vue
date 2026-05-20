@@ -24,6 +24,7 @@ import AutoMontageModal from './AutoMontageModal.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import { useSilenceTrimming } from '~/composables/timeline/useSilenceTrimming';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
@@ -423,9 +424,27 @@ const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } =
     onZoomToFit: () => props.onZoomToFit?.(),
   });
 
+const isTrackRenameModalOpen = ref(false);
+const trackToRename = ref<TimelineTrack | null>(null);
+
+function handleRenameTrack(name: string) {
+  if (trackToRename.value) {
+    const trimmed = name.trim();
+    if (trimmed && trimmed !== trackToRename.value.name) {
+      timelineStore.renameTrack(trackToRename.value.id, trimmed);
+    }
+  }
+  isTrackRenameModalOpen.value = false;
+  trackToRename.value = null;
+}
+
 const clipboardStore = useAppClipboard();
 const { getTrackContextMenuItems } = useTrackContextMenu({
   onRequestDelete: (track) => timelineStore.deleteTrack(track.id, { allowNonEmpty: true }),
+  onRequestRename: (track) => {
+    trackToRename.value = track;
+    isTrackRenameModalOpen.value = true;
+  },
   onPaste: (trackId) => {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
@@ -811,6 +830,14 @@ function onTrackClick(e: MouseEvent, trackId: string) {
       <div class="h-16 shrink-0" />
     </div>
   </UContextMenu>
+
+  <UiRenameModal
+    :open="isTrackRenameModalOpen"
+    :current-name="trackToRename?.name || ''"
+    :title="t('fastcat.timeline.renameTrack')"
+    @update:open="isTrackRenameModalOpen = $event"
+    @rename="handleRenameTrack"
+  />
 </template>
 
 <style scoped>

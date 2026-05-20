@@ -104,19 +104,19 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
   if (!origin) return [itemId];
 
   const result = new Set<string>([origin.item.id]);
-  const linkedGroupId = String((origin.item as any).linkedGroupId ?? '').trim();
+  const linkedGroupId = String((origin.item as TimelineClipItem).linkedGroupId ?? '').trim();
 
   if (linkedGroupId) {
     for (const track of doc.tracks) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (String((item as any).linkedGroupId ?? '').trim() !== linkedGroupId) continue;
+        if (String((item as TimelineClipItem).linkedGroupId ?? '').trim() !== linkedGroupId) continue;
         result.add(item.id);
       }
     }
   }
 
-  const originLinkedVideoId = String((origin.item as any).linkedVideoClipId ?? '').trim();
+  const originLinkedVideoId = String((origin.item as TimelineClipItem).linkedVideoClipId ?? '').trim();
   if (originLinkedVideoId) {
     result.add(originLinkedVideoId);
   }
@@ -124,7 +124,7 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
   for (const track of doc.tracks) {
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
-      const linkedVideoId = String((item as any).linkedVideoClipId ?? '').trim();
+      const linkedVideoId = String((item as TimelineClipItem).linkedVideoClipId ?? '').trim();
       if (!linkedVideoId) continue;
       if (
         linkedVideoId === origin.item.id ||
@@ -624,20 +624,20 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
 
     const normalizedFades = normalizeOpposingEdgeDurations({
       clipDurationUs,
-      startDurationUs: (it as any).audioFadeInUs,
-      endDurationUs: (it as any).audioFadeOutUs,
+      startDurationUs: (it as TimelineClipItem).audioFadeInUs,
+      endDurationUs: (it as TimelineClipItem).audioFadeOutUs,
     });
 
     const audioFadeInUs = normalizedFades.startDurationUs;
     const audioFadeOutUs = normalizedFades.endDurationUs;
-    const hadAudioFadeInUs = typeof (it as any).audioFadeInUs === 'number';
-    const hadAudioFadeOutUs = typeof (it as any).audioFadeOutUs === 'number';
+    const hadAudioFadeInUs = typeof (it as TimelineClipItem).audioFadeInUs === 'number';
+    const hadAudioFadeOutUs = typeof (it as TimelineClipItem).audioFadeOutUs === 'number';
 
     if (
       transitionIn !== it.transitionIn ||
       transitionOut !== it.transitionOut ||
-      (hadAudioFadeInUs && audioFadeInUs !== (it as any).audioFadeInUs) ||
-      (hadAudioFadeOutUs && audioFadeOutUs !== (it as any).audioFadeOutUs)
+      (hadAudioFadeInUs && audioFadeInUs !== (it as TimelineClipItem).audioFadeInUs) ||
+      (hadAudioFadeOutUs && audioFadeOutUs !== (it as TimelineClipItem).audioFadeOutUs)
     ) {
       return {
         ...it,

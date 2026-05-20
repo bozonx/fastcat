@@ -7,6 +7,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 export function useTrackContextMenu(
   options: {
     onRequestDelete?: (track: TimelineTrack) => void;
+    onRequestRename?: (track: TimelineTrack) => void;
     onPaste?: (trackId: string) => void;
   } = {},
 ) {
@@ -51,7 +52,7 @@ export function useTrackContextMenu(
           label: t('fastcat.timeline.renameTrack'),
           icon: 'i-heroicons-pencil',
           onSelect: () => {
-            timelineStore.renamingTrackId = track.id;
+            options.onRequestRename?.(track);
           },
         },
         {

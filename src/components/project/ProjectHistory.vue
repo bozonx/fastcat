@@ -37,6 +37,7 @@ function formatTime(timestamp: number): string {
 }
 
 function handleUndo() {
+  timelineStore.historyDebounce.clearPendingDebouncedHistory();
   const entry = historyStore.undoGlobal();
   if (!entry) return;
   if (entry.scope === 'timeline') {
@@ -47,6 +48,7 @@ function handleUndo() {
 }
 
 function handleRedo() {
+  timelineStore.historyDebounce.clearPendingDebouncedHistory();
   const entry = historyStore.redoGlobal();
   if (!entry) return;
   if (entry.scope === 'timeline') {
@@ -61,6 +63,7 @@ function jumpToState(entryId: string, isFuture: boolean) {
     const idx = future.value.findIndex((e) => e.id === entryId);
     if (idx === -1) return;
     for (let i = 0; i <= idx; i++) {
+      timelineStore.historyDebounce.clearPendingDebouncedHistory();
       const entry = historyStore.redoGlobal();
       if (!entry) break;
       if (entry.scope === 'timeline') {
@@ -74,6 +77,7 @@ function jumpToState(entryId: string, isFuture: boolean) {
     if (idxInPast === -1) return;
     const targetIndex = past.value.length - 1 - idxInPast;
     for (let i = 0; i < targetIndex; i++) {
+      timelineStore.historyDebounce.clearPendingDebouncedHistory();
       const entry = historyStore.undoGlobal();
       if (!entry) break;
       if (entry.scope === 'timeline') {

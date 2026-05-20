@@ -106,7 +106,7 @@ export function createProxyService(params: {
     params.generatingProxies.value = new Set([...params.generatingProxies.value, input.dirPath]);
     const tasks: Promise<void>[] = [];
     try {
-      for await (const handle of (input.dirHandle as any).values()) {
+      for await (const handle of (input.dirHandle as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }).values()) {
         const fullPath = input.dirPath ? `${input.dirPath}/${handle.name}` : handle.name;
 
         if (handle.kind === 'file') {
@@ -217,7 +217,7 @@ export function createProxyService(params: {
           try {
             if (controller.signal.aborted) {
               const abortErr = new Error('Proxy generation cancelled');
-              (abortErr as any).name = 'AbortError';
+              (abortErr as Error).name = 'AbortError';
               throw abortErr;
             }
 
@@ -280,7 +280,7 @@ export function createProxyService(params: {
                 timelineRange: { startUs: 0, durationUs },
                 sourceRange: { startUs: 0, durationUs },
               },
-            ] as any;
+            ] as unknown[];
 
             const audioClips = meta.audio
               ? ([
@@ -292,7 +292,7 @@ export function createProxyService(params: {
                     timelineRange: { startUs: 0, durationUs },
                     sourceRange: { startUs: 0, durationUs },
                   },
-                ] as any)
+                ] as unknown[])
               : [];
 
             const isOpusAudio =
@@ -338,7 +338,7 @@ export function createProxyService(params: {
               }
               proxyFileHandle = null;
             }
-            const nextStatus = (innerErr as any)?.name === 'AbortError' ? 'cancelled' : 'failed';
+            const nextStatus = (innerErr as Error)?.name === 'AbortError' ? 'cancelled' : 'failed';
             params.backgroundTasksStore.updateTaskStatus(bgTaskId, nextStatus, String(innerErr));
             throw innerErr;
           } finally {
@@ -384,7 +384,7 @@ export function createProxyService(params: {
         { priority: MEDIA_TASK_PRIORITIES.proxy, signal: controller.signal },
       );
     } catch (e) {
-      const isAbort = (e as any)?.name === 'AbortError';
+      const isAbort = (e as Error)?.name === 'AbortError';
 
       // The inner catch already wrote a terminal status; calling updateTaskStatus
       // here is a no-op because the store guards terminal transitions, but we
@@ -492,12 +492,12 @@ export function createProxyService(params: {
       const newFilename = await params.getProxyFileName(input.newPath);
 
       const handle = await dir.getFileHandle(oldFilename);
-      if ((handle as any).move) {
-        await (handle as any).move(newFilename);
+      if ((handle as unknown as { move?: (name: string) => Promise<void> }).move) {
+        await (handle as unknown as { move: (name: string) => Promise<void> }).move(newFilename);
       } else {
         // Fallback: copy and delete if move is not supported (unlikely in modern Chrome)
         const newHandle = await dir.getFileHandle(newFilename, { create: true });
-        const writable = await (newHandle as any).createWritable();
+        const writable = await (newHandle as unknown as { createWritable: () => Promise<{ write: (data: File) => Promise<void>; close: () => Promise<void> }> }).createWritable();
         await writable.write(await handle.getFile());
         await writable.close();
         await dir.removeEntry(oldFilename);

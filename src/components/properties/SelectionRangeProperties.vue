@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 
 defineProps<{
@@ -89,18 +89,10 @@ const mainActions = computed(() => [
 <template>
   <div v-if="selectionRange" class="w-full flex flex-col gap-2 text-ui-text">
     <PropertySection v-if="!hideActions" :title="t('fastcat.selectionRange.actions')">
-      <div class="flex flex-col w-full">
-        <PropertyActionList
-          :actions="commonActions"
-          :vertical="false"
-          justify="start"
-          variant="ghost"
-          size="xs"
-          class="mb-2"
-        />
-
-        <PropertyActionList :actions="mainActions" justify="start" size="xs" />
-      </div>
+      <PropertyActionsBlock
+        :quick-actions="commonActions"
+        :additional-actions="mainActions"
+      />
     </PropertySection>
 
     <PropertySection :title="t('fastcat.selectionRange.info')">

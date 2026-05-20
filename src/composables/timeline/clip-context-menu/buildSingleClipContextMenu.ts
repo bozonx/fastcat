@@ -18,21 +18,21 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       .filter(
         (candidateItem): candidateItem is TimelineClipItem =>
           candidateItem.kind === 'clip' &&
-          Boolean((candidateItem as any).linkedVideoClipId) &&
-          Boolean((candidateItem as any).lockToLinkedVideo),
+          Boolean(candidateItem.linkedVideoClipId) &&
+          Boolean(candidateItem.lockToLinkedVideo),
       ) ?? [];
 
   const linkedAudioForThisVideo =
     track.kind === 'video'
       ? lockedLinkedAudioClips.filter(
-          (audioClip) => String((audioClip as any).linkedVideoClipId) === clipItem.id,
+          (audioClip) => String(audioClip.linkedVideoClipId) === clipItem.id,
         )
       : [];
 
   const isLockedAudioClip =
     track.kind === 'audio' &&
-    Boolean((clipItem as any).linkedVideoClipId) &&
-    Boolean((clipItem as any).lockToLinkedVideo);
+    Boolean(clipItem.linkedVideoClipId) &&
+    Boolean(clipItem.lockToLinkedVideo);
 
   mainGroup.push({
     label: clipItem.disabled
@@ -84,14 +84,14 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       label: options.t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onSelect: async () => {
-        options.applyTimelineCommand({
-          type: 'trim_item',
+        options.emitClipAction({
+          action: 'trim_item',
           trackId: track.id,
           itemId: clipItem.id,
           edge: 'end',
           deltaUs: 0,
           quantizeToFrames: true,
-        } as any);
+        });
         await options.requestTimelineSave({ immediate: true });
       },
     });
@@ -105,7 +105,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
         options.updateClipProperties(track.id, clipItem.id, {
           linkedVideoClipId: undefined,
           lockToLinkedVideo: false,
-        } as any);
+        });
         await options.requestTimelineSave({ immediate: true });
       },
     });
@@ -121,9 +121,9 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
           properties: {
             linkedVideoClipId: undefined,
             lockToLinkedVideo: false,
-          } as any,
+          },
         }));
-        options.batchApplyTimeline(cmds as any);
+        options.batchApplyTimeline(cmds);
         await options.requestTimelineSave({ immediate: true });
       },
     });
@@ -173,7 +173,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const canExtract =
     track.kind === 'video' &&
     clipItem.clipType === 'media' &&
-    !(clipItem as any).audioFromVideoDisabled;
+    !clipItem.audioFromVideoDisabled;
   if (canExtract) {
     mainGroup.push({
       label: options.t('fastcat.timeline.extractAudio'),

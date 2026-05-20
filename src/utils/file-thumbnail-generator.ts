@@ -105,8 +105,8 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       this.touchCacheEntry(task.id);
       this.evictCacheIfNeeded();
       return url;
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') {
+    } catch (e) {
+      if (e instanceof Error && e.name !== 'NotFoundError') {
         console.warn('Failed to load file thumbnail from OPFS', task.id, e);
       }
       return null;
@@ -166,7 +166,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         keepAlive: false,
       });
       blob = blobs[0] ?? null;
-    } catch (e: any) {
+    } catch (e) {
       if (!this.isCancelled(task.id)) {
         task.onError?.(e instanceof Error ? e : new Error(String(e)));
       }
@@ -184,7 +184,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const fileName = `${task.id}.webp`;
     const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    const writable = await (fileHandle as any).createWritable();
+    const writable = await (fileHandle as unknown as { createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }).createWritable();
     await writable.write(blob);
     await writable.close();
 
@@ -223,7 +223,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const fileName = `${hash}.webp`;
     const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    const writable = await (fileHandle as any).createWritable();
+    const writable = await (fileHandle as unknown as { createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }).createWritable();
     await writable.write(input.blob);
     await writable.close();
 
@@ -264,8 +264,8 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       });
 
       await dir.removeEntry(`${hash}.webp`);
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') {
+    } catch (e) {
+      if (e instanceof Error && e.name !== 'NotFoundError') {
         console.warn('Failed to clear file thumbnail for', hash, e);
       }
     }
@@ -296,15 +296,15 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       let foundHandle: FileSystemFileHandle | null = null;
       try {
         foundHandle = await dir.getFileHandle(expectedFileName);
-      } catch (e: any) {
-        if (e?.name !== 'NotFoundError') throw e;
+      } catch (e) {
+        if (e instanceof Error && e.name !== 'NotFoundError') throw e;
       }
 
       if (!foundHandle) {
         // Fall back to scan (and cleanup) only when the exact file is missing —
         // this is the case where the marker's timeUs changed since last save.
         const toDelete: string[] = [];
-        for await (const entry of (dir as any).values()) {
+        for await (const entry of (dir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }).values()) {
           if (entry.kind === 'file' && entry.name.startsWith(prefix)) {
             toDelete.push(entry.name);
           }
@@ -326,8 +326,8 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         this.cacheProjectIds.set(cacheKey, input.projectId);
         return url;
       }
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') {
+    } catch (e) {
+      if (e instanceof Error && e.name !== 'NotFoundError') {
         console.warn('Failed to get marker thumbnail from OPFS', input.markerId, e);
       }
     }
@@ -354,7 +354,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
       const fileName = `${input.markerId}_${input.timeUs}.webp`;
       const fileHandle = await dir.getFileHandle(fileName, { create: true });
-      const writable = await (fileHandle as any).createWritable();
+      const writable = await (fileHandle as unknown as { createWritable: () => Promise<{ write: (data: Blob) => Promise<void>; close: () => Promise<void> }> }).createWritable();
       await writable.write(input.blob);
       await writable.close();
 
@@ -385,7 +385,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       // Browser FileSystemDirectoryHandle doesn't support recursive delete of the handle itself
       // if we don't have its parent handle.
       // But we can iterate and delete children.
-      for await (const name of (projectThumbnailsDir as any).keys()) {
+      for await (const name of (projectThumbnailsDir as unknown as { keys: () => AsyncIterable<string> }).keys()) {
         await projectThumbnailsDir.removeEntry(name, { recursive: true }).catch(() => {});
       }
 
@@ -395,8 +395,8 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         this.cache.delete(key);
         this.cacheProjectIds.delete(key);
       }
-    } catch (e: any) {
-      if (e?.name !== 'NotFoundError') {
+    } catch (e) {
+      if (e instanceof Error && e.name !== 'NotFoundError') {
         console.warn('Failed to clear all file thumbnails for project', projectId, e);
       }
     }

@@ -17,18 +17,18 @@ interface TimelineStoreActions {
   selectedItemIds: string[];
   fps: number;
   currentTime: number;
-  applyTimeline: (cmd: TimelineCommand, options?: any) => string[] | Promise<string[]>;
-  batchApplyTimeline: (cmds: TimelineCommand[], options?: any) => string[] | Promise<string[]>;
+  applyTimeline: (cmd: TimelineCommand, options?: { labelKey?: string }) => string[] | Promise<string[]>;
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: { labelKey?: string }) => string[] | Promise<string[]>;
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
-  updateClipProperties: (trackId: string, itemId: string, patch: Record<string, any>) => any;
+  updateClipProperties: (trackId: string, itemId: string, patch: Record<string, unknown>) => void;
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
-  updateTrackProperties: (trackId: string, patch: Record<string, any>) => any;
+  updateTrackProperties: (trackId: string, patch: Record<string, unknown>) => void;
   deleteFirstSelectedItem: () => void;
   rippleDeleteFirstSelectedItem: () => void;
   pasteClips: (
-    items: any[],
+    items: unknown[],
     options?: { insertStartUs?: number },
   ) => Promise<{ trackId: string; itemId: string }[]>;
 }
@@ -206,7 +206,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     return (
       options.trackKind.value === 'video' &&
       options.clip.value.clipType === 'media' &&
-      !(options.clip.value as any).audioFromVideoDisabled
+      !options.clip.value.audioFromVideoDisabled
     );
   });
 
@@ -418,7 +418,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     uiStore.mediaReplaceTarget = {
       trackId: clip.trackId,
       itemId: clip.id,
-      expectedType: (clip as any).isImage ? 'image' : 'video',
+      expectedType: clip.isImage ? 'image' : 'video',
     };
     uiStore.isMediaReplaceModalOpen = true;
   }
@@ -465,7 +465,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       type: 'extract_audio_to_track',
       videoTrackId: options.clip.value.trackId,
       videoItemId: options.clip.value.id,
-    } as any);
+    });
   }
 
   function handleReturnAudio() {
@@ -473,7 +473,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     timelineStore.applyTimeline({
       type: 'return_audio_to_video',
       videoItemId: clip.linkedVideoClipId || clip.id,
-    } as any);
+    });
   }
 
   function handlePaste() {
@@ -485,7 +485,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   }
 
   const otherActionsList = computed(() => {
-    const list: any[] = [];
+    const list: { label: string; icon: string; onSelect: () => void }[] = [];
     const clip = options.clip.value;
 
     if (isFreePosition.value) {
@@ -647,7 +647,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         id: 'delete',
         label: t('common.delete'),
         icon: 'i-heroicons-trash',
-        color: 'danger',
         onClick: handleDeleteClip,
       },
       {
@@ -681,6 +680,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
           : t('fastcat.timeline.disableClip'),
         icon: options.clip.value.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
         color: options.clip.value.disabled ? 'warning' : 'neutral',
+        variant: options.clip.value.disabled ? 'solid' : 'ghost',
         onClick: handleToggleDisabled,
       },
     ];
@@ -694,7 +694,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         icon: options.clip.value.audioMuted
           ? 'i-heroicons-speaker-wave'
           : 'i-heroicons-speaker-x-mark',
-        color: options.clip.value.audioMuted ? 'warning' : 'neutral',
+        color: options.clip.value.audioMuted ? 'error' : 'neutral',
+        variant: options.clip.value.audioMuted ? 'solid' : 'ghost',
         onClick: handleToggleMuted,
       });
 
@@ -702,7 +703,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         id: 'toggle-solo',
         label: isSoloed.value ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo'),
         icon: isSoloed.value ? 'i-heroicons-star-solid' : 'i-heroicons-star',
-        color: isSoloed.value ? 'primary' : 'neutral',
+        color: isSoloed.value ? 'success' : 'neutral',
+        variant: isSoloed.value ? 'solid' : 'ghost',
         onClick: toggleSolo,
       });
     }
@@ -713,7 +715,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         ? t('fastcat.timeline.unlockClip')
         : t('fastcat.timeline.lockClip'),
       icon: options.clip.value.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
-      color: options.clip.value.locked ? 'secondary' : 'neutral',
+      color: options.clip.value.locked ? 'primary' : 'neutral',
+      variant: options.clip.value.locked ? 'solid' : 'ghost',
       onClick: handleToggleLocked,
     });
 

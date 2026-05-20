@@ -168,8 +168,6 @@ export const useHistoryStore = defineStore('history', () => {
     const entry = past.value[past.value.length - 1];
     if (!entry) return null;
 
-    console.warn('[UNDO GLOBAL] entry scope:', entry.scope, 'cmdType:', entry.commandType, 'label:', entry.labelKey, 'past count:', past.value.length);
-
     const scope = entry.scope;
     try {
       const currentDoc = stateGetters.get(scope)?.(entry);

@@ -10,6 +10,7 @@ import { trackHasAudio } from '~/utils/audio';
 
 import TimelineTrackLabelItem from '~/components/timeline/TimelineTrackLabelItem.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
 
@@ -169,8 +170,26 @@ function onMiddleClickTrack(trackId: string) {
   }
 }
 
+const isTrackRenameModalOpen = ref(false);
+const trackToRename = ref<TimelineTrack | null>(null);
+
+function handleRenameTrack(name: string) {
+  if (trackToRename.value) {
+    const trimmed = name.trim();
+    if (trimmed && trimmed !== trackToRename.value.name) {
+      timelineStore.renameTrack(trackToRename.value.id, trimmed);
+    }
+  }
+  isTrackRenameModalOpen.value = false;
+  trackToRename.value = null;
+}
+
 const { getTrackContextMenuItems } = useTrackContextMenu({
   onRequestDelete: (track) => requestDeleteTrack(track),
+  onRequestRename: (track) => {
+    trackToRename.value = track;
+    isTrackRenameModalOpen.value = true;
+  },
 });
 
 const trackContextMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
@@ -219,18 +238,16 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
             :is-selected="isTrackVisuallySelected(track.id)"
             :is-directly-selected="isTrackDirectlySelected(track.id)"
             :is-hovered="timelineStore.hoveredTrackId === track.id"
-            :is-renaming="timelineStore.renamingTrackId === track.id"
             :has-audio="trackHasAudio(track, mediaStore.mediaMetadata)"
             :level-db="timelineStore.audioLevels?.[track.id]?.peakDb"
             @select="onSelectTrack(track.id)"
             @middle-click="onMiddleClickTrack(track.id)"
-            @rename="
-              (name: string) => {
-                timelineStore.renameTrack(track.id, name);
-                timelineStore.renamingTrackId = null;
+            @request-rename="
+              () => {
+                trackToRename = track;
+                isTrackRenameModalOpen = true;
               }
             "
-            @cancel-rename="timelineStore.renamingTrackId = null"
             @resize-start="(e: MouseEvent) => onResizeStart(track.id, e)"
             @mouseenter="timelineStore.hoveredTrackId = track.id"
             @mouseleave="timelineStore.hoveredTrackId = null"
@@ -256,6 +273,14 @@ const { emptyAreaContextMenuItems: propertiesContextMenuItems } = useTimelineEmp
       icon="i-heroicons-exclamation-triangle"
       :confirm-text="t('common.delete')"
       @confirm="confirmDelete"
+    />
+
+    <UiRenameModal
+      :open="isTrackRenameModalOpen"
+      :current-name="trackToRename?.name || ''"
+      :title="t('fastcat.timeline.renameTrack')"
+      @update:open="isTrackRenameModalOpen = $event"
+      @rename="handleRenameTrack"
     />
   </UContextMenu>
 </template>

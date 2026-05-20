@@ -3,7 +3,7 @@ import { computed, toRef } from 'vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -482,12 +482,16 @@ const commonActions = computed(() => {
         ? t('fastcat.timeline.enableClips')
         : t('fastcat.timeline.disableClips'),
       icon: allDisabled.value ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+      color: allDisabled.value ? 'warning' : 'neutral',
+      variant: allDisabled.value ? 'solid' : 'ghost',
       onClick: toggleDisabled,
     },
     {
       id: 'toggle-locked',
       title: allLocked.value ? t('fastcat.timeline.unlockClips') : t('fastcat.timeline.lockClips'),
       icon: allLocked.value ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+      color: allLocked.value ? 'primary' : 'neutral',
+      variant: allLocked.value ? 'solid' : 'ghost',
       onClick: toggleLocked,
     },
   ];
@@ -497,6 +501,8 @@ const commonActions = computed(() => {
       id: 'toggle-muted',
       title: allMuted.value ? t('fastcat.timeline.unmuteClips') : t('fastcat.timeline.muteClips'),
       icon: allMuted.value ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+      color: allMuted.value ? 'error' : 'neutral',
+      variant: allMuted.value ? 'solid' : 'ghost',
       onClick: toggleMuted,
     });
   }
@@ -593,21 +599,15 @@ const otherActions = computed(() => {
   <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="flex flex-col gap-2 w-full text-ui-text">
     <PropertySection :title="t('fastcat.clip.actions')">
-      <div class="flex flex-col w-full px-3 pb-3">
+      <div class="flex flex-col w-full">
         <span class="text-sm text-ui-text-muted mb-2">
           {{ selectedCountLabel }}
         </span>
 
-        <PropertyActionList
-          :actions="commonActions"
-          :vertical="false"
-          justify="start"
-          variant="ghost"
-          size="xs"
-          class="mb-2"
+        <PropertyActionsBlock
+          :quick-actions="commonActions"
+          :additional-actions="otherActions"
         />
-
-        <PropertyActionList :actions="otherActions" justify="start" size="xs" />
       </div>
     </PropertySection>
 

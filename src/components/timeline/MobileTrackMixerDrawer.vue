@@ -8,6 +8,7 @@ import { linearToDb, dbToLinear, trackHasAudio } from '~/utils/audio';
 import DbSlider from '~/components/audio/DbSlider.vue';
 import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import TrackAudioEffectsModal from '~/components/audio/TrackAudioEffectsModal.vue';
+import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import { getAudioEffectManifest } from '~/effects';
 
 const props = defineProps<{
@@ -153,23 +154,18 @@ function addAudioTrack() {
   timelineStore.addTrack('audio', `Audio ${audioCount + 1}`);
 }
 
-const renamingTrackId = ref<string | null>(null);
-const renameValue = ref('');
+const isRenameModalOpen = ref(false);
+const trackToRename = ref<TimelineTrack | null>(null);
 
-function startRename(track: TimelineTrack) {
-  renamingTrackId.value = track.id;
-  renameValue.value = track.name || track.id;
-}
-
-function confirmRename() {
-  if (renamingTrackId.value) {
-    const next = renameValue.value.trim();
-    const track = tracks.value.find((t) => t.id === renamingTrackId.value);
-    if (track && next && next !== track.name) {
-      timelineStore.renameTrack(renamingTrackId.value, next);
+function handleRenameTrack(name: string) {
+  if (trackToRename.value) {
+    const trimmed = name.trim();
+    if (trimmed && trimmed !== trackToRename.value.name) {
+      timelineStore.renameTrack(trackToRename.value.id, trimmed);
     }
   }
-  renamingTrackId.value = null;
+  isRenameModalOpen.value = false;
+  trackToRename.value = null;
 }
 </script>
 
@@ -274,20 +270,9 @@ function confirmRename() {
               }}
             </div>
 
-            <div v-if="renamingTrackId === track.id" class="w-full">
-              <input
-                v-model="renameValue"
-                class="w-full bg-zinc-950 border border-primary-500 text-zinc-100 rounded px-1 py-0.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary-500 text-center"
-                autofocus
-                @blur="confirmRename"
-                @keydown.enter="confirmRename"
-                @keydown.esc="renamingTrackId = null"
-              />
-            </div>
             <span
-              v-else
               class="text-xs font-medium text-zinc-200 truncate w-full text-center px-1 cursor-text"
-              @dblclick="startRename(track)"
+              @dblclick="trackToRename = track; isRenameModalOpen = true"
             >
               {{ track.name || track.id }}
             </span>
@@ -381,6 +366,14 @@ function confirmRename() {
       v-if="selectedTrackForEffects"
       v-model:open="isEffectsModalOpen"
       :track-id="selectedTrackForEffects.id"
+    />
+
+    <UiRenameModal
+      :open="isRenameModalOpen"
+      :current-name="trackToRename?.name || ''"
+      :title="t('fastcat.timeline.renameTrack')"
+      @update:open="isRenameModalOpen = $event"
+      @rename="handleRenameTrack"
     />
   </UiMobileDrawer>
 </template>

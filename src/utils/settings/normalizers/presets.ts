@@ -20,7 +20,7 @@ export function getProjectInput(raw: Record<string, unknown>): Record<string, un
 export function getExportEncodingInput(raw: Record<string, unknown>): Record<string, unknown> {
   const exportDefaults =
     raw.exportDefaults && typeof raw.exportDefaults === 'object' ? raw.exportDefaults : {};
-  const enc = (exportDefaults as any).encoding ?? {};
+  const enc = (exportDefaults as Record<string, unknown>).encoding ?? {};
   return typeof enc === 'object' && enc !== null ? (enc as Record<string, unknown>) : {};
 }
 
@@ -36,7 +36,7 @@ export function normalizeProjectPresetItem(
       height: z.coerce.number().int().min(1).catch(fallback.height),
       fps: z.coerce.number().min(1).max(240).catch(fallback.fps),
       resolutionFormat: z.string().catch(''),
-      orientation: z.enum(['landscape', 'portrait']).catch('landscape' as any),
+      orientation: z.enum(['landscape', 'portrait']).catch('landscape' as 'landscape'),
       aspectRatio: z.string().catch(''),
       isCustomResolution: z.coerce.boolean().catch(false),
       sampleRate: z.coerce.number().min(8000).max(192000).catch(fallback.sampleRate),
@@ -74,13 +74,13 @@ export function normalizeExportPresetItem(
     .object({
       id: z.string().trim().min(1).catch(fallback.id),
       name: z.string().trim().min(1).catch(fallback.name),
-      format: z.enum(['mp4', 'webm', 'mkv']).catch(fallback.format as any),
+      format: z.enum(['mp4', 'webm', 'mkv']).catch(fallback.format as 'mp4' | 'webm' | 'mkv'),
       videoCodec: z.string().trim().min(1).catch(fallback.videoCodec),
       bitrateMbps: z.coerce.number().min(0.2).max(200).catch(fallback.bitrateMbps),
       excludeAudio: z.boolean().catch(fallback.excludeAudio),
-      audioCodec: z.enum(['aac', 'opus']).catch(fallback.audioCodec as any),
+      audioCodec: z.enum(['aac', 'opus']).catch(fallback.audioCodec as 'aac' | 'opus'),
       audioBitrateKbps: z.coerce.number().min(32).max(1024).catch(fallback.audioBitrateKbps),
-      bitrateMode: z.enum(['constant', 'variable']).catch(fallback.bitrateMode as any),
+      bitrateMode: z.enum(['constant', 'variable']).catch(fallback.bitrateMode as 'constant' | 'variable'),
       keyframeIntervalSec: z.coerce.number().min(1).max(60).catch(fallback.keyframeIntervalSec),
       exportAlpha: z.boolean().catch(fallback.exportAlpha),
     })
@@ -119,25 +119,25 @@ export function normalizeUserPresets(input: Record<string, unknown>) {
 
   const rawProjectPresets =
     input.projectPresets && typeof input.projectPresets === 'object'
-      ? (input.projectPresets as any)
+      ? (input.projectPresets as Record<string, unknown>)
       : {};
   const rawProjectPresetItems = Array.isArray(rawProjectPresets.items)
     ? rawProjectPresets.items
     : null;
   const projectPresetFallbacks = defaultProjectPresets.items;
-  const normalizedProjectPresetItems = rawProjectPresetItems?.map((item: any, index: number) =>
+  const normalizedProjectPresetItems = rawProjectPresetItems?.map((item: unknown, index: number) =>
     normalizeProjectPresetItem(item, projectPresetFallbacks[index] ?? projectPresetFallbacks[0]!),
   ) ?? [legacyProjectPreset, ...projectPresetFallbacks.slice(1).map((preset) => ({ ...preset }))];
 
   const rawExportPresets =
     input.exportPresets && typeof input.exportPresets === 'object'
-      ? (input.exportPresets as any)
+      ? (input.exportPresets as Record<string, unknown>)
       : {};
   const rawExportPresetItems = Array.isArray(rawExportPresets.items)
     ? rawExportPresets.items
     : null;
   const exportPresetFallbacks = defaultExportPresets.items;
-  const normalizedExportPresetItems = rawExportPresetItems?.map((item: any, index: number) =>
+  const normalizedExportPresetItems = rawExportPresetItems?.map((item: unknown, index: number) =>
     normalizeExportPresetItem(item, exportPresetFallbacks[index] ?? exportPresetFallbacks[0]!),
   ) ?? [legacyExportPreset, ...exportPresetFallbacks.slice(1).map((preset) => ({ ...preset }))];
 
@@ -145,14 +145,14 @@ export function normalizeUserPresets(input: Record<string, unknown>) {
     selectedPresetId:
       typeof rawProjectPresets.selectedPresetId === 'string' &&
       normalizedProjectPresetItems.some(
-        (preset: any) => preset.id === rawProjectPresets.selectedPresetId,
+        (preset: { id: string }) => preset.id === rawProjectPresets.selectedPresetId,
       )
         ? rawProjectPresets.selectedPresetId
         : normalizedProjectPresetItems[0]!.id,
     lastUsedPresetId:
       typeof rawProjectPresets.lastUsedPresetId === 'string' &&
       normalizedProjectPresetItems.some(
-        (preset: any) => preset.id === rawProjectPresets.lastUsedPresetId,
+        (preset: { id: string }) => preset.id === rawProjectPresets.lastUsedPresetId,
       )
         ? rawProjectPresets.lastUsedPresetId
         : normalizedProjectPresetItems[0]!.id,
@@ -163,7 +163,7 @@ export function normalizeUserPresets(input: Record<string, unknown>) {
     selectedPresetId:
       typeof rawExportPresets.selectedPresetId === 'string' &&
       normalizedExportPresetItems.some(
-        (preset: any) => preset.id === rawExportPresets.selectedPresetId,
+        (preset: { id: string }) => preset.id === rawExportPresets.selectedPresetId,
       )
         ? rawExportPresets.selectedPresetId
         : normalizedExportPresetItems[0]!.id,

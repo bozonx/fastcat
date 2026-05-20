@@ -185,7 +185,6 @@ export function createTimelineDispatcherModule(
 
   function applyRestoredSnapshot(snapshot: TimelineDocument) {
     if (!snapshot) return;
-    console.warn('[APPLY RESTORED] tracks count:', snapshot.tracks?.length, 'first clip startUs:', snapshot.tracks?.[0]?.items?.[0]?.timelineRange?.startUs);
     deps.timelineDoc.value = snapshot;
     deps.duration.value = selectTimelineDurationUs(snapshot);
     deps.markTimelineAsDirty();

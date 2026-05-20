@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getAudioMeterColorClass, getAudioMeterPercent, isAudioClipping } from '~/utils/audio';
@@ -11,7 +11,6 @@ const props = defineProps<{
   /** True only when the track header itself is selected, not just a clip/gap/transition on it. */
   isDirectlySelected: boolean;
   isHovered: boolean;
-  isRenaming: boolean;
   hasAudio?: boolean;
   levelDb?: number;
   trackNumber: number;
@@ -19,8 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'select'): void;
-  (e: 'rename', name: string): void;
-  (e: 'cancelRename'): void;
+  (e: 'request-rename'): void;
   (e: 'resizeStart', event: MouseEvent): void;
   (e: 'contextMenu'): void;
   (e: 'middleClick', event: MouseEvent): void;
@@ -28,8 +26,6 @@ const emit = defineEmits<{
 
 const timelineStore = useTimelineStore();
 
-const renameValue = ref(props.track.name);
-const renameInput = ref<HTMLInputElement | null>(null);
 const hasClipped = ref(false);
 let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let clipResetDeadlineMs = 0;
@@ -60,40 +56,6 @@ function scheduleClipReset() {
 const levelPercent = computed(() => getAudioMeterPercent(props.levelDb, -60, 12));
 const levelColorClass = computed(() => getAudioMeterColorClass(props.levelDb));
 
-function handleOutsideClick(event: MouseEvent) {
-  if (props.isRenaming && renameInput.value) {
-    const inputEl = renameInput.value;
-    if (inputEl && !inputEl.contains(event.target as Node)) {
-      confirmRename();
-    }
-  }
-}
-
-watch(
-  () => props.isRenaming,
-  async (val) => {
-    if (val) {
-      renameValue.value = props.track.name;
-      await nextTick();
-      const input = renameInput.value;
-      if (input) {
-        input.focus();
-        input.select();
-        // Ensure selection happens after focus events settle
-        setTimeout(() => {
-          input.focus();
-          input.select();
-        }, 50);
-      }
-      // Listen for outside clicks to handle blur correctly when clicking non-focusable areas
-      window.addEventListener('mousedown', handleOutsideClick);
-    } else {
-      window.removeEventListener('mousedown', handleOutsideClick);
-    }
-  },
-  { immediate: true },
-);
-
 watch(
   () => props.levelDb,
   (value) => {
@@ -114,18 +76,9 @@ function resetClipIndicator(event: MouseEvent) {
 
 function startRenaming() {
   if (props.isSelected) {
-    timelineStore.renamingTrackId = props.track.id;
+    emit('request-rename');
   } else {
     emit('select');
-  }
-}
-
-function confirmRename() {
-  const next = renameValue.value.trim();
-  if (next && next !== props.track.name) {
-    emit('rename', next);
-  } else {
-    emit('cancelRename');
   }
 }
 
@@ -150,7 +103,6 @@ function toggleTrackLock(e: MouseEvent) {
 }
 
 onBeforeUnmount(() => {
-  window.removeEventListener('mousedown', handleOutsideClick);
   clearClipResetTimeout();
   clipResetDeadlineMs = 0;
 });
@@ -223,30 +175,13 @@ onBeforeUnmount(() => {
           {{ track.kind === 'video' ? 'V' : 'A' }}{{ trackNumber }}
         </div>
 
-        <!-- Truncated Name / Rename Input in first row when height is small -->
+        <!-- Truncated Name in first row when height is small -->
         <div
           v-if="height < 52"
-          class="min-w-[20px] flex items-center overflow-hidden"
-          :class="[
-            isRenaming
-              ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1'
-              : 'rounded px-0.5 hover:bg-ui-bg-accent/30',
-          ]"
+          class="min-w-[20px] flex items-center overflow-hidden rounded px-0.5 hover:bg-ui-bg-accent/30"
           @click.stop="startRenaming"
         >
-          <input
-            v-if="isRenaming"
-            ref="renameInput"
-            v-model="renameValue"
-            class="min-w-[20px] w-fit bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-3 font-medium select-text text-ui-text focus:outline-none"
-            :style="{ width: `${Math.max(20, renameValue.length * 6)}px` }"
-            @click.stop
-            @keydown.enter.stop="confirmRename"
-            @keydown.esc.stop="emit('cancelRename')"
-            @blur="confirmRename"
-          />
           <span
-            v-else
             class="truncate block text-[10px] font-medium leading-tight"
             :title="track.name"
           >
@@ -317,25 +252,10 @@ onBeforeUnmount(() => {
       <!-- Row 2: Multi-line Name / Description (when height >= 52) -->
       <div v-if="height >= 52" class="mt-1 flex-1 min-w-0 overflow-hidden relative">
         <div
-          class="w-full h-full"
-          :class="[
-            isRenaming
-              ? 'bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1 py-0.5'
-              : 'px-0.5 pt-0.5 hover:bg-ui-bg-accent/30 rounded',
-          ]"
+          class="w-full h-full px-0.5 pt-0.5 hover:bg-ui-bg-accent/30 rounded"
           @click.stop="startRenaming"
         >
-          <textarea
-            v-if="isRenaming"
-            ref="renameInput"
-            v-model="renameValue"
-            class="w-full h-full bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-tight font-medium resize-none select-text text-ui-text focus:outline-none"
-            @click.stop
-            @keydown.esc.stop="emit('cancelRename')"
-            @blur="confirmRename"
-          />
           <span
-            v-else
             class="text-[10px] text-ui-text-muted leading-tight wrap-break-word block whitespace-pre-wrap"
           >
             {{ track.name }}
