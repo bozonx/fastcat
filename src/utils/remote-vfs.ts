@@ -195,7 +195,7 @@ function getRemoteEntryUpdatedAt(entry: RemoteVfsEntry): number | undefined {
   return (
     parseRemoteDate(entry.updated) ??
     parseRemoteDate(entry.updatedAt) ??
-    parseRemoteDate((entry.meta as any)?.updatedAt ?? (entry.meta as any)?.date) ??
+    parseRemoteDate((entry.meta as { updatedAt?: string })?.updatedAt ?? (entry.meta as { date?: string })?.date) ??
     getRemoteEntryCreatedAt(entry)
   );
 }
@@ -208,7 +208,7 @@ function getRemoteEntryCreatedAt(entry: RemoteVfsEntry): number | undefined {
   return (
     parseRemoteDate(entry.created) ??
     parseRemoteDate(entry.createdAt) ??
-    parseRemoteDate((entry.meta as any)?.createdAt)
+    parseRemoteDate((entry.meta as { createdAt?: string })?.createdAt)
   );
 }
 

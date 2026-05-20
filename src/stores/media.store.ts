@@ -236,7 +236,7 @@ export const useMediaStore = defineStore('media', () => {
 
         if (metaDir) {
           const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (cacheHandle as any).createWritable();
+          const writable = await (cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
           // We don't want to save large peaks array inside main metadata json
           const metaToSave = { ...meta };
           delete metaToSave.audioPeaks;
@@ -265,7 +265,7 @@ export const useMediaStore = defineStore('media', () => {
       if (metaDir) {
         try {
           const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (cacheHandle as any).createWritable();
+          const writable = await (cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }).createWritable();
           await writable.write(JSON.stringify(errorMeta, null, 2));
           await writable.close();
         } catch {
@@ -294,18 +294,6 @@ export const useMediaStore = defineStore('media', () => {
       .catch(() => {
         // ignore previous error — we still try to persist the latest peaks
       })
-      .then(async () => {
-        try {
-          const waveformsDir = await fsModule.ensureWaveformsDir();
-          if (!waveformsDir) return;
-          const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (peaksHandle as any).createWritable();
-          try {
-            await writable.write(JSON.stringify(peaksAsJson));
-          } finally {
-            await writable.close();
-          }
-        } catch (e) {
           console.warn('Failed to write peaks', e);
         }
       })

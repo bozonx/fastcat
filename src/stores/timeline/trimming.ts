@@ -33,7 +33,7 @@ export interface TimelineTrimmingDeps {
   editService: {
     rippleDeleteRange: (
       input: { trackIds: string[]; startUs: number; endUs: number },
-      options?: any,
+      options?: unknown,
     ) => void;
     rippleTrimRight: () => Promise<void>;
     rippleTrimLeft: () => Promise<void>;
@@ -51,7 +51,7 @@ export interface TimelineTrimmingModule {
   ) => Promise<void>;
   rippleDeleteRange: (
     input: { trackIds: string[]; startUs: number; endUs: number },
-    options?: any,
+    options?: unknown,
   ) => void;
   rippleTrimRight: () => Promise<void>;
   rippleTrimLeft: () => Promise<void>;
@@ -165,7 +165,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
 
   function rippleDeleteRange(
     input: { trackIds: string[]; startUs: number; endUs: number },
-    options?: any,
+    options?: unknown,
   ) {
     deps.editService.rippleDeleteRange(input, options);
   }

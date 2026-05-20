@@ -222,13 +222,13 @@ const bulkSelection = useFileBrowserBulkSelection({
 
 // --- Remote ---
 // Forward declaration for DnD wrappers
-let remoteApi: any = null;
+let remoteApi: { performRemoteDownload: (params: { entry: FsEntry; targetDirPath: string }) => Promise<void> } | null = null;
 
 async function handleCrossVfsCopyEntry(params: { source: FsEntry; targetDirPath: string }) {
   if (params.source.source === 'remote') {
     if (!remoteApi) return;
     return await remoteApi.performRemoteDownload({
-      entry: params.source as any,
+      entry: params.source as FsEntry,
       targetDirPath: params.targetDirPath,
     });
   }

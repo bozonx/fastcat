@@ -8,11 +8,11 @@ import type {
 
 export interface TimelineLayoutOrchestratorParams {
   clips: CompositorClip[];
-  timelineClips: any[];
+  timelineClips: Record<string, unknown>[];
   clipLayoutUpdater: TimelineClipLayoutUpdater;
   trackRebinder: TimelineTrackRebinder;
   updateLifecycle: TimelineUpdateLifecycle;
-  getFallbackTrackId: (params: { clip: CompositorClip; next: any }) => string | null | undefined;
+  getFallbackTrackId: (params: { clip: CompositorClip; next: Record<string, unknown> }) => string | null | undefined;
   getTrackRuntimeForClip: (clip: CompositorClip) => CompositorTrack | null;
   toVideoEffects: (value: unknown) => CompositorClip['effects'];
   applyClipLayoutForCurrentSource: (clip: CompositorClip) => void;
@@ -21,7 +21,7 @@ export interface TimelineLayoutOrchestratorParams {
 
 export class TimelineLayoutOrchestrator {
   public apply(params: TimelineLayoutOrchestratorParams): TimelineUpdateLifecycleResult {
-    const byId = new Map<string, any>();
+    const byId = new Map<string, Record<string, unknown>>();
     for (const clipData of params.timelineClips) {
       if (clipData?.kind !== 'clip') {
         continue;

@@ -351,7 +351,7 @@ const rootContextMenuItems = computed(() => {
     } as FsEntry);
 
   if (props.isExternal) {
-    const menu: Record<string, any>[][] = [
+    const menu: Record<string, unknown>[][] = [
       [
         {
           label: t('videoEditor.fileManager.actions.createFolder'),
@@ -377,7 +377,7 @@ const rootContextMenuItems = computed(() => {
 
   if (!projectStore.currentProjectName) return [];
 
-  const menu: Record<string, any>[][] = [
+  const menu: Record<string, unknown>[][] = [
     [
       {
         label: t('videoEditor.fileManager.actions.uploadFiles'),
@@ -516,7 +516,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           @toggle="emit('toggle', $event)"
           @select="onEntrySelect"
           @focus="onEntryFocus"
-          @action="(action, entry) => emit('action', action as any, entry)"
+          @action="(action, entry) => emit('action', action as string, entry)"
           @request-move="onRequestMove"
           @request-copy="onRequestCopy"
           @request-upload="onRequestUpload"

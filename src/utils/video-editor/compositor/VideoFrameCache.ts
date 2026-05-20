@@ -42,7 +42,7 @@ export class VideoFrameCache {
     const entry = this.videoFrameCache.get(key);
     if (!entry) return null;
 
-    const closed = !!(entry.frame as any).closed;
+    const closed = !!(entry.frame as { closed?: boolean }).closed;
     if (closed) {
       this.videoFrameCache.delete(key);
       this.videoFrameCacheSizeBytes -= entry.sizeBytes;
@@ -190,7 +190,7 @@ export function estimateVideoFrameSizeBytes(
   width: number,
   height: number,
 ): number {
-  const codedWidth = Math.max(1, Math.round(Number((frame as any).codedWidth) || width || 1));
-  const codedHeight = Math.max(1, Math.round(Number((frame as any).codedHeight) || height || 1));
+  const codedWidth = Math.max(1, Math.round(Number((frame as { codedWidth?: unknown }).codedWidth) || width || 1));
+  const codedHeight = Math.max(1, Math.round(Number((frame as { codedHeight?: unknown }).codedHeight) || height || 1));
   return codedWidth * codedHeight * 4;
 }

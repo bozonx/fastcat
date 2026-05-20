@@ -16,8 +16,8 @@ import type {
 export interface HudMediaState {
   sourcePath?: string;
   fileHandle?: FileSystemFileHandle;
-  input?: any;
-  sink?: any;
+  input?: unknown;
+  sink?: unknown;
   firstTimestampS?: number;
   frameRate?: number;
   sourceDurationUs: number;
@@ -50,7 +50,7 @@ export interface CompositorClip {
   speed?: number;
 
   freezeFrameSourceUs?: number;
-  sprite: any; // Sprite | Graphics | Text
+  sprite: import('pixi.js').DisplayObject;
   clipType?: 'background' | 'adjustment' | 'media' | 'text' | 'shape' | 'hud';
   clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
   sourceKind: 'videoFrame' | 'canvas' | 'bitmap' | 'graphics';

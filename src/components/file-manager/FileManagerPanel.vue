@@ -152,7 +152,7 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   loadProjectDirectory,
   reloadDirectory,
   findEntryByPath,
-  onFileActionBase: onFileActionBase as any,
+  onFileActionBase: onFileActionBase as (action: string, entry: FsEntry) => void,
   openTranscriptionModal,
   extractAudio: (entry) => extractAudio(entry, { instanceId, isExternal: props.isExternal }),
   addFileTab,
@@ -180,7 +180,7 @@ const rootEntry: FsEntry = {
 const rootContextMenuItems = computed(() => {
   if (!projectStore.currentProjectName || props.hideActions) return [];
 
-  const menu: any[][] = [
+  const menu: unknown[][] = [
     [
       {
         label: t('videoEditor.fileManager.actions.uploadFiles'),

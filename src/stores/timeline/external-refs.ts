@@ -16,7 +16,7 @@ export interface TimelineExternalRefsModule {
  * created from the pre-hydration state. Computed getters always read from
  * the current store proxy, maintaining reactivity across hydration.
  */
-function createStoreRef<T>(store: any, key: string, fallback: T): WritableComputedRef<T> {
+function createStoreRef<T>(store: Record<string, unknown>, key: string, fallback: T): WritableComputedRef<T> {
   return computed({
     get: () => (store && key in store ? store[key] : fallback),
     set: (v: T) => {
@@ -31,8 +31,8 @@ export function createTimelineExternalRefsModule(deps: {
   projectStore: unknown;
   mediaStore: unknown;
 }): TimelineExternalRefsModule {
-  const projectStore = deps.projectStore as any;
-  const mediaStore = deps.mediaStore as any;
+  const projectStore = deps.projectStore as Record<string, unknown>;
+  const mediaStore = deps.mediaStore as Record<string, unknown>;
 
   return {
     currentProjectName: createStoreRef<string | null>(projectStore, 'currentProjectName', null),

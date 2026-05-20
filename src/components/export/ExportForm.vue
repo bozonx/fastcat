@@ -125,10 +125,10 @@ watch(
 );
 
 watch(outputFormat, (fmt) => {
-  handleOutputFormatChange(fmt as any);
+  handleOutputFormatChange(fmt as string);
 
   if (projectStore.currentView !== 'export') return;
-  handleFilenameExtUpdate(fmt as any);
+  handleFilenameExtUpdate(fmt as string);
 });
 
 watch(outputFilename, async () => {
