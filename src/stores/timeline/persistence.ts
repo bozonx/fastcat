@@ -218,7 +218,9 @@ export function createTimelinePersistenceModule(
           throw new Error('Refusing to save: Invalid timeline JSON structure');
         }
 
-        const writable = await (handle as any).createWritable();
+        const writable = await (
+          handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
+        ).createWritable();
         await writable.write(serialized);
         await writable.close();
 

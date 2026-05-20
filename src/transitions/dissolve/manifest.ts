@@ -72,7 +72,10 @@ export const dissolveManifest: TransitionManifest<DissolveParams> = {
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    const f = filter as Filter & {
+      resources?: Record<string, { uniforms?: Record<string, unknown> }>;
+    };
+    const resources = f.resources;
     const uniforms = resources?.dissolveUniforms?.uniforms;
     if (!uniforms) return;
 

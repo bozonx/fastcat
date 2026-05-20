@@ -298,7 +298,10 @@ export const blindsManifest: TransitionManifest<BlindsParams> = {
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    const f = filter as Filter & {
+      resources?: Record<string, { uniforms?: Record<string, unknown> }>;
+    };
+    const resources = f.resources;
     const uniforms = resources?.blindsUniforms?.uniforms;
     if (!uniforms) return;
 

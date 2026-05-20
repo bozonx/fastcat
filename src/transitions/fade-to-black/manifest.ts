@@ -95,7 +95,10 @@ export const fadeToBlackManifest: TransitionManifest<FadeToBlackParams> = {
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    const f = filter as Filter & {
+      resources?: Record<string, { uniforms?: Record<string, unknown> }>;
+    };
+    const resources = f.resources;
     const uniforms = resources?.fadeToBlackUniforms?.uniforms;
     if (!uniforms) return;
     const params = normalizeFadeToBlackParams(context.params);

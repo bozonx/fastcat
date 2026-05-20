@@ -602,7 +602,10 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         commands.push({
           type: 'add_virtual_clip_to_track',
           trackId,
-          clipType: clip.clipType as any,
+          clipType: clip.clipType as Extract<
+            import('~/timeline/types').TimelineClipType,
+            'adjustment' | 'background' | 'text' | 'shape' | 'hud'
+          >,
           name: clip.name,
           durationUs: clip.timelineRange.durationUs,
           startUs: nextStartUs,

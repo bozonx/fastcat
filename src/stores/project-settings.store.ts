@@ -480,7 +480,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           openPaths: initial.timelines.openPaths,
           sessions: initial.timelines.sessions,
         },
-        ui: initial.ui as any,
+        ui: initial.ui as ProjectUiLayoutState,
       });
     } catch (e) {
       console.warn('Failed to create project settings/ui files', e);

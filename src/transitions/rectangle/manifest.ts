@@ -247,7 +247,10 @@ export const rectangleManifest: TransitionManifest<RectangleParams> = {
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    const f = filter as Filter & {
+      resources?: Record<string, { uniforms?: Record<string, unknown> }>;
+    };
+    const resources = f.resources;
     const uniforms = resources?.rectangleUniforms?.uniforms;
     if (!uniforms) return;
     const progress = applyTransitionCurve(context.progress, context.curve);
