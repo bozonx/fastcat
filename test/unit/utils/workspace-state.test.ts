@@ -18,12 +18,24 @@ describe('workspace-state', () => {
 
   it('preserves partial valid data', () => {
     const state = normalizeWorkspaceState({
-      ui: { showHiddenFiles: true, recentProjects: [{ projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' }] },
+      ui: { recentProjects: [{ projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' }] },
       fileBrowser: { activeTab: 'bloggerdog' },
     });
-    expect(state.ui.showHiddenFiles).toBe(true);
     expect(state.ui.recentProjects).toHaveLength(1);
     expect(state.fileBrowser.activeTab).toBe('bloggerdog');
+  });
+
+  it('migrates legacy global showHiddenFiles to per-instance defaults', () => {
+    const state = normalizeWorkspaceState({
+      ui: { showHiddenFiles: true },
+      fileBrowser: {
+        instances: {
+          main: { viewMode: 'list' },
+        },
+      },
+    });
+    // Legacy global flag is propagated to instances that lack their own value.
+    expect(state.fileBrowser.instances.main.showHiddenFiles).toBe(true);
   });
 
   it('normalizes file browser instances', () => {

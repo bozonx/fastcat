@@ -11,7 +11,10 @@ import type { HotkeyCommandDefinition, HotkeyCommandId } from '~/utils/hotkeys/d
 
 const commands: readonly HotkeyCommandDefinition[] = [
   { id: 'general.focus', groupId: 'general', title: 'Focus' },
+  { id: 'general.navigateBack', groupId: 'fileManager', title: 'Navigate back' },
+  { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
   { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split' },
+  { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
   { id: 'playback.toggle', groupId: 'playback', title: 'Play/Pause' },
 ];
 
@@ -48,6 +51,34 @@ describe('hotkeyConflicts', () => {
     expect(
       isHotkeyConflicting({ conflicts, cmdId: 'timeline.splitAtPlayhead', combo: 'Space' }),
     ).toBe(true);
+  });
+
+  it('does not treat same combo in file manager and timeline as conflict', () => {
+    const effective = makeEffective({
+      'general.navigateBack': ['Backspace'],
+      'timeline.rippleDelete': ['Backspace'],
+    });
+
+    const conflicts = getHotkeyConflicts(effective, commands);
+
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.navigateBack', combo: 'Backspace' }))
+      .toBe(false);
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'timeline.rippleDelete', combo: 'Backspace' }))
+      .toBe(false);
+  });
+
+  it('treats same combo inside file manager as conflict', () => {
+    const effective = makeEffective({
+      'general.navigateBack': ['Backspace'],
+      'general.navigateUp': ['Backspace'],
+    });
+
+    const conflicts = getHotkeyConflicts(effective, commands);
+
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.navigateBack', combo: 'Backspace' }))
+      .toBe(true);
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.navigateUp', combo: 'Backspace' }))
+      .toBe(true);
   });
 
   it('findDuplicateOwnerByContext ignores timeline vs playback duplicates', () => {
@@ -89,5 +120,21 @@ describe('hotkeyConflicts', () => {
         combo: 'Space',
       }),
     ).toBe('general.focus');
+  });
+
+  it('findDuplicateOwnerByContext ignores file manager vs timeline duplicates', () => {
+    const effective = makeEffective({
+      'general.navigateBack': ['Backspace'],
+      'timeline.rippleDelete': ['Backspace'],
+    });
+
+    expect(
+      findDuplicateOwnerByContext({
+        effective,
+        commands,
+        targetCmdId: 'timeline.rippleDelete',
+        combo: 'Backspace',
+      }),
+    ).toBeNull();
   });
 });

@@ -1588,6 +1588,7 @@ export default {
       hotkeysDuplicateTitle: 'Дубликат горячей клавиши',
       hotkeysDuplicateWarning: 'Эта горячая клавиша уже назначена.',
       hotkeysGroupGeneral: 'Общие',
+      hotkeysGroupFileManager: 'Файловый менеджер',
       hotkeysGroupPlayback: 'Воспроизведение',
       hotkeysGroupTimeline: 'Таймлайн',
       hotkeysLayer1: 'Модификатор 1 (для действий мыши и хоткеев)',

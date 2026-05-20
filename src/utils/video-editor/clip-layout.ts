@@ -12,6 +12,7 @@ export interface ClipBoxLayoutInput {
   canvasHeight: number;
   transform?: ClipTransform;
   fitMode?: ClipFitMode;
+  fitRotationDeg?: number;
 }
 
 export interface ClipBoxLayout {
@@ -34,6 +35,11 @@ export interface ClipBoxLayout {
 
 function clampFinite(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function isQuarterTurn(rotationDeg: number): boolean {
+  const normalized = ((Math.round(rotationDeg) % 360) + 360) % 360;
+  return normalized === 90 || normalized === 270;
 }
 
 export function resolveNormalizedAnchor(anchor?: ClipAnchor): { x: number; y: number } {
@@ -148,17 +154,24 @@ export function computeClipBoxLayout(input: ClipBoxLayoutInput): ClipBoxLayout {
   const safeCanvasHeight = Math.max(1, input.canvasHeight);
 
   const fitMode = input.fitMode ?? 'fit';
-  const fitScale = Math.min(safeCanvasWidth / safeFrameWidth, safeCanvasHeight / safeFrameHeight);
-  const fillScale = Math.max(safeCanvasWidth / safeFrameWidth, safeCanvasHeight / safeFrameHeight);
+  const rotatedFit = isQuarterTurn(clampFinite(input.fitRotationDeg, 0));
+  const fitFrameWidth = rotatedFit ? safeFrameHeight : safeFrameWidth;
+  const fitFrameHeight = rotatedFit ? safeFrameWidth : safeFrameHeight;
+  const fitScale = Math.min(safeCanvasWidth / fitFrameWidth, safeCanvasHeight / fitFrameHeight);
+  const fillScale = Math.max(safeCanvasWidth / fitFrameWidth, safeCanvasHeight / fitFrameHeight);
   const targetWidth =
     fitMode === 'stretch'
-      ? safeCanvasWidth
+      ? rotatedFit
+        ? safeCanvasHeight
+        : safeCanvasWidth
       : fitMode === 'original'
         ? safeFrameWidth
         : safeFrameWidth * (fitMode === 'fill' ? fillScale : fitScale);
   const targetHeight =
     fitMode === 'stretch'
-      ? safeCanvasHeight
+      ? rotatedFit
+        ? safeCanvasWidth
+        : safeCanvasHeight
       : fitMode === 'original'
         ? safeFrameHeight
         : safeFrameHeight * (fitMode === 'fill' ? fillScale : fitScale);

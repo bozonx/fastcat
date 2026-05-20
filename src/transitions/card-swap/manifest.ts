@@ -298,7 +298,7 @@ function normalizeCardSwapParams(params?: Record<string, unknown>): CardSwapPara
 }
 
 export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
-  type: 'card-swap' as any,
+  type: 'card-swap',
   name: 'Card Swap',
   nameKey: 'fastcat.transitions.card-swap.name',
   icon: 'i-heroicons-arrow-path-rounded-square',
@@ -409,7 +409,11 @@ export const cardSwapTransitionManifest: TransitionManifest<CardSwapParams> = {
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    interface CardSwapResources {
+      cardSwapUniforms?: { uniforms?: Record<string, unknown> };
+      uFromTexture?: unknown;
+    }
+    const resources = (filter as { resources?: CardSwapResources }).resources;
     const uniforms = resources?.cardSwapUniforms?.uniforms;
     if (!uniforms) return;
     const progress = applyTransitionCurve(context.progress, context.curve);

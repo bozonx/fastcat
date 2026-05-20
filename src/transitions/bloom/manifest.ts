@@ -142,7 +142,7 @@ function normalizeBloomParams(params?: Record<string, unknown>): BloomParams {
 }
 
 export const bloomManifest: TransitionManifest<BloomParams> = {
-  type: 'bloom' as any,
+  type: 'bloom',
   name: 'Bloom',
   nameKey: 'fastcat.transitions.bloom.name',
   icon: 'i-heroicons-sparkles',
@@ -191,7 +191,11 @@ export const bloomManifest: TransitionManifest<BloomParams> = {
       },
     }),
   updateFilter: (filter, context) => {
-    const resources = (filter as any).resources;
+    interface BloomResources {
+      bloomUniforms?: { uniforms?: Record<string, unknown> };
+      uFromTexture?: unknown;
+    }
+    const resources = (filter as { resources?: BloomResources }).resources;
     const uniforms = resources?.bloomUniforms?.uniforms;
     if (!uniforms) return;
 

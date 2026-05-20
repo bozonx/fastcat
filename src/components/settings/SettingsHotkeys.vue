@@ -4,7 +4,11 @@ import { computed, ref } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
-import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import {
+  DEFAULT_HOTKEYS,
+  type HotkeyCommandId,
+  type HotkeyGroupId,
+} from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
   findDuplicateOwnerByContext,
@@ -28,6 +32,12 @@ const isResetCommandConfirmOpen = ref(false);
 
 const searchQuery = ref('');
 const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
+const hotkeyGroupOrder: readonly HotkeyGroupId[] = [
+  'general',
+  'fileManager',
+  'timeline',
+  'playback',
+];
 
 const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, finishCapture } =
   useHotkeyCapture({
@@ -62,6 +72,7 @@ function getCommandTitle(cmdId: HotkeyCommandId): string {
 function getCommandGroupTitle(groupId: string): string {
   const titles: Record<string, string> = {
     general: t('videoEditor.settings.hotkeysGroupGeneral'),
+    fileManager: t('videoEditor.settings.hotkeysGroupFileManager'),
     playback: t('videoEditor.settings.hotkeysGroupPlayback'),
     timeline: t('videoEditor.settings.hotkeysGroupTimeline'),
   };
@@ -147,7 +158,9 @@ function confirmReplaceDuplicate() {
 
 const hotkeyGroups = computed(() => {
   const query = normalizedQuery.value;
-  const groupIds = Array.from(new Set(DEFAULT_HOTKEYS.commands.map((c) => c.groupId)));
+  const groupIds = hotkeyGroupOrder.filter((groupId) =>
+    DEFAULT_HOTKEYS.commands.some((command) => command.groupId === groupId),
+  );
   return groupIds
     .map((groupId) => ({
       id: groupId,

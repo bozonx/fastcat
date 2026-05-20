@@ -1,4 +1,4 @@
-import type { TimelineDocument, TimelineTrackItem } from '../../types';
+import type { TimelineDocument, TimelineTrackItem, TimelineClipItem } from '../../types';
 import type { RemoveItemCommand, DeleteItemsCommand, TimelineCommandResult } from '../../commands';
 import { getTrackById, normalizeGaps } from '../utils';
 
@@ -97,13 +97,15 @@ export function removeItems(
         }
         if (orphanedAudioFromVideoRemoval.has(it.id)) {
           changed = true;
-          const { linkedVideoClipId: _v, lockToLinkedVideo: _l, ...rest } = it as any;
+          const clipIt = it as TimelineClipItem;
+          const { linkedVideoClipId: _v, lockToLinkedVideo: _l, ...rest } = clipIt;
           items.push(rest as TimelineTrackItem);
           continue;
         }
         if (videoLosingLockedAudio.has(it.id)) {
           changed = true;
-          const { lockToLinkedVideo: _l, ...rest } = it as any;
+          const clipIt = it as TimelineClipItem;
+          const { lockToLinkedVideo: _l, ...rest } = clipIt;
           items.push(rest as TimelineTrackItem);
           continue;
         }

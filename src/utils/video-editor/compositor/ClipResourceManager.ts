@@ -197,11 +197,21 @@ export class ClipResourceManager {
       const frame = sampleObj2.toVideoFrame() as VideoFrame;
       const width = Math.max(
         1,
-        Math.round(Number((frame as { displayWidth?: unknown }).displayWidth ?? (frame as { codedWidth?: unknown }).codedWidth) || 1),
+        Math.round(
+          Number(
+            (frame as { codedWidth?: unknown }).codedWidth ??
+              (frame as { displayWidth?: unknown }).displayWidth,
+          ) || 1,
+        ),
       );
       const height = Math.max(
         1,
-        Math.round(Number((frame as { displayHeight?: unknown }).displayHeight ?? (frame as { codedHeight?: unknown }).codedHeight) || 1),
+        Math.round(
+          Number(
+            (frame as { codedHeight?: unknown }).codedHeight ??
+              (frame as { displayHeight?: unknown }).displayHeight,
+          ) || 1,
+        ),
       );
       const sizeBytes = estimateVideoFrameSizeBytes(frame, width, height);
 
@@ -249,11 +259,23 @@ export class ClipResourceManager {
         try {
           const frameW = Math.max(
             1,
-            Math.round(Number((frame as { displayWidth?: unknown }).displayWidth ?? (frame as { codedWidth?: unknown }).codedWidth ?? 1)),
+            Math.round(
+              Number(
+                (frame as { codedWidth?: unknown }).codedWidth ??
+                  (frame as { displayWidth?: unknown }).displayWidth ??
+                  1,
+              ),
+            ),
           );
           const frameH = Math.max(
             1,
-            Math.round(Number((frame as { displayHeight?: unknown }).displayHeight ?? (frame as { codedHeight?: unknown }).codedHeight ?? 1)),
+            Math.round(
+              Number(
+                (frame as { codedHeight?: unknown }).codedHeight ??
+                  (frame as { displayHeight?: unknown }).displayHeight ??
+                  1,
+              ),
+            ),
           );
 
           if (clip.sourceKind !== 'videoFrame' && clip.sprite) {

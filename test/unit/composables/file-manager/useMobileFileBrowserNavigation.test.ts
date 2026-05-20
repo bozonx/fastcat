@@ -17,6 +17,7 @@ vi.mock('vue', async () => {
 
 const mockFileManagerStore = reactive({
   selectedFolder: null as any,
+  showHiddenFiles: false,
   openFolder: vi.fn((f) => {
     mockFileManagerStore.selectedFolder = f;
   }),
@@ -56,6 +57,7 @@ describe('useMobileFileBrowserNavigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFileManagerStore.selectedFolder = null;
+    mockFileManagerStore.showHiddenFiles = false;
     mockProjectStore.currentProjectName = 'TestProject';
     mockUiStore.showHiddenFiles = false;
   });
@@ -115,7 +117,7 @@ describe('useMobileFileBrowserNavigation', () => {
 
   it('shows hidden files when enabled', async () => {
     mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
-    mockUiStore.showHiddenFiles = true;
+    mockFileManagerStore.showHiddenFiles = true;
     mockReadDirectory.mockResolvedValue([
       { name: 'visible.txt', kind: 'file', path: 'visible.txt' },
       { name: '.hidden', kind: 'file', path: '.hidden' },

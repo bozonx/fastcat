@@ -1,4 +1,4 @@
-export type HotkeyGroupId = 'general' | 'playback' | 'timeline';
+export type HotkeyGroupId = 'general' | 'fileManager' | 'playback' | 'timeline';
 
 export type HotkeyCommandId =
   | 'general.focus'
@@ -111,6 +111,13 @@ export interface HotkeyCommand {
   title: string;
 }
 
+export interface HotkeyCommandDefinition {
+  id: HotkeyCommandId;
+  groupId: HotkeyGroupId;
+  title: string;
+  description?: string;
+}
+
 export interface HotkeyRegistry {
   commands: HotkeyCommand[];
   bindings: Partial<Record<HotkeyCommandId, HotkeyCombo[]>>;
@@ -155,12 +162,24 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.snapshot', groupId: 'general', title: 'Create snapshot from monitor' },
     { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
     { id: 'timeline.duplicate', groupId: 'timeline', title: 'Duplicate timeline / Create version' },
-    { id: 'general.navigateBack', groupId: 'general', title: 'Navigate back (file manager)' },
-    { id: 'general.navigateUp', groupId: 'general', title: 'Navigate up (file manager)' },
-    { id: 'general.navigateSelectionUp', groupId: 'general', title: 'Navigate selection up' },
-    { id: 'general.navigateSelectionDown', groupId: 'general', title: 'Navigate selection down' },
-    { id: 'general.navigateSelectionLeft', groupId: 'general', title: 'Navigate selection left' },
-    { id: 'general.navigateSelectionRight', groupId: 'general', title: 'Navigate selection right' },
+    { id: 'general.navigateBack', groupId: 'fileManager', title: 'Navigate back' },
+    { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
+    { id: 'general.navigateSelectionUp', groupId: 'fileManager', title: 'Navigate selection up' },
+    {
+      id: 'general.navigateSelectionDown',
+      groupId: 'fileManager',
+      title: 'Navigate selection down',
+    },
+    {
+      id: 'general.navigateSelectionLeft',
+      groupId: 'fileManager',
+      title: 'Navigate selection left',
+    },
+    {
+      id: 'general.navigateSelectionRight',
+      groupId: 'fileManager',
+      title: 'Navigate selection right',
+    },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     {

@@ -106,6 +106,7 @@ export class LayoutApplier {
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
       fitMode: clip.fitMode,
+      fitRotationDeg: sourceRotation,
       transform: {
         ...(clip.transform ?? {}),
         rotationDeg: (clip.transform?.rotationDeg ?? 0) + sourceRotation,

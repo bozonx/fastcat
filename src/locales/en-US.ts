@@ -1583,6 +1583,7 @@ export default {
       hotkeysDuplicateTitle: 'Duplicate hotkey',
       hotkeysDuplicateWarning: 'This hotkey is already assigned.',
       hotkeysGroupGeneral: 'General',
+      hotkeysGroupFileManager: 'File manager',
       hotkeysGroupPlayback: 'Playback',
       hotkeysGroupTimeline: 'Timeline',
       hotkeysLayer1: 'Modifier 1 (for mouse actions and hotkeys)',
