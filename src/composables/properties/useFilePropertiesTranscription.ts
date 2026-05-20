@@ -17,7 +17,7 @@ interface UseFilePropertiesTranscriptionOptions {
   getFileByPath: (path: string) => Promise<File | null | undefined>;
   isSttModelDownloaded: Ref<boolean>;
   toast: { add: (payload: { title: string; description?: string; color?: string }) => void };
-  t: (key: string, ...args: any[]) => string;
+  t: (key: string, ...args: unknown[]) => string;
 }
 
 function extractTranscriptionText(payload: unknown): string {
@@ -31,7 +31,7 @@ function extractTranscriptionText(payload: unknown): string {
     }
   }
 
-  const result = (data as any).result;
+  const result = (data as { result?: unknown }).result;
   if (result && typeof result === 'object') {
     return extractTranscriptionText(result);
   }
@@ -149,7 +149,7 @@ export function useFilePropertiesTranscription(options: UseFilePropertiesTranscr
         title: options.t('videoEditor.backgroundTasks.transcriptionTitle', {
           name: selectedEntry.name,
         }),
-      } as any);
+      });
 
       latestTranscriptionText.value = extractTranscriptionText(result.record.response);
       latestTranscriptionWasCached.value = false; // Fresh result

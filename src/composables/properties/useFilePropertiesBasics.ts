@@ -2,8 +2,8 @@ import { computed, type Ref } from 'vue';
 import { getBdPayload } from '~/types/bloggerdog';
 
 interface UseFilePropertiesBasicsOptions {
-  selectedFsEntry: Ref<any>;
-  fileInfo: Ref<any>;
+  selectedFsEntry: Ref<unknown>;
+  fileInfo: Ref<unknown>;
   isOtio: Ref<boolean>;
   mediaType: Ref<string | null | undefined>;
 }
@@ -100,7 +100,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     return info.mimeType ?? t('common.file');
   });
 
-  const mediaMeta = computed(() => options.fileInfo.value?.metadata as any);
+  const mediaMeta = computed(() => options.fileInfo.value?.metadata as Record<string, unknown>);
 
   const isVideoOrAudio = computed(() => {
     return options.mediaType.value === 'video' || options.mediaType.value === 'audio';
