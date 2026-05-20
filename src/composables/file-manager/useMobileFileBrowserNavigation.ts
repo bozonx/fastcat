@@ -75,7 +75,7 @@ export function useMobileFileBrowserNavigation({
       }
 
       const filteredContent = content.filter(
-        (e) => uiStore.showHiddenFiles || !e.name.startsWith('.'),
+        (e) => fileManagerStore.showHiddenFiles || !e.name.startsWith('.'),
       );
 
       entries.value = await Promise.all(
@@ -150,7 +150,7 @@ export function useMobileFileBrowserNavigation({
   );
 
   watch(
-    () => uiStore.showHiddenFiles,
+    () => fileManagerStore.showHiddenFiles,
     () => {
       void loadFolderContent();
     },

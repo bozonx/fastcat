@@ -90,17 +90,10 @@ onMounted(() => {
   }
 });
 
+const DEFAULT_TREE_REL_SIZE = 30;
+const treeRelSize = computed(() => mainStore.treeSize ?? DEFAULT_TREE_REL_SIZE);
+const listRelSize = computed(() => 100 - treeRelSize.value);
 const browserTotalSize = computed(() => (props.sizes?.[0] ?? 0) + (props.sizes?.[1] ?? 0));
-const treeRelSize = computed(() => {
-  const total = browserTotalSize.value;
-  if (total === 0) return 30;
-  return ((props.sizes?.[0] ?? 0) / total) * 100;
-});
-const listRelSize = computed(() => {
-  const total = browserTotalSize.value;
-  if (total === 0) return 70;
-  return ((props.sizes?.[1] ?? 0) / total) * 100;
-});
 
 const normalizedSelectedEntity = computed(() => {
   const entity = props.selectedEntity;

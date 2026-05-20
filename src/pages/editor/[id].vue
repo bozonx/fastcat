@@ -143,7 +143,7 @@ const {
 } = usePersistedSplitpanes(
   'editor-files-top',
   currentProjectId,
-  [20, 60, 20],
+  [80, 20],
   projectSplitSizesStorage,
 );
 

@@ -8,6 +8,9 @@ export interface FileBrowserInstanceState {
   };
   gridCardSize: number;
   columnWidths: Record<string, number>;
+  showHiddenFiles: boolean;
+  /** Relative tree-pane size (0..100). When undefined, the component uses its default. */
+  treeSize?: number;
   lastPath?: string;
 }
 
@@ -34,6 +37,22 @@ export interface WorkspaceState {
   };
 }
 
+export const DEFAULT_FILE_BROWSER_INSTANCE: FileBrowserInstanceState = {
+  viewMode: 'grid',
+  sortOption: { field: 'name', order: 'asc' },
+  gridCardSize: 80,
+  columnWidths: { name: 200, type: 100, size: 80, created: 140, modified: 140 },
+  showHiddenFiles: false,
+};
+
+export function createDefaultFileBrowserInstance(): FileBrowserInstanceState {
+  return {
+    ...DEFAULT_FILE_BROWSER_INSTANCE,
+    sortOption: { ...DEFAULT_FILE_BROWSER_INSTANCE.sortOption },
+    columnWidths: { ...DEFAULT_FILE_BROWSER_INSTANCE.columnWidths },
+  };
+}
+
 export function createDefaultWorkspaceState(): WorkspaceState {
   return {
     presets: {
@@ -54,6 +73,37 @@ export function createDefaultWorkspaceState(): WorkspaceState {
   };
 }
 
+function normalizeInstance(raw: unknown, legacyShowHidden: boolean): FileBrowserInstanceState {
+  const val = (raw ?? {}) as Record<string, unknown>;
+  const sortRaw = val.sortOption as Record<string, unknown> | undefined;
+  const field =
+    sortRaw && ['name', 'type', 'size', 'modified', 'created'].includes(sortRaw.field as string)
+      ? (sortRaw.field as FileBrowserInstanceState['sortOption']['field'])
+      : 'name';
+  const order = sortRaw && ['asc', 'desc'].includes(sortRaw.order as string)
+    ? (sortRaw.order as 'asc' | 'desc')
+    : 'asc';
+
+  return {
+    viewMode: ['grid', 'list'].includes(val.viewMode as string)
+      ? (val.viewMode as 'grid' | 'list')
+      : 'grid',
+    sortOption: { field, order },
+    gridCardSize: typeof val.gridCardSize === 'number' ? val.gridCardSize : 80,
+    columnWidths:
+      val.columnWidths && typeof val.columnWidths === 'object'
+        ? (val.columnWidths as Record<string, number>)
+        : { ...DEFAULT_FILE_BROWSER_INSTANCE.columnWidths },
+    showHiddenFiles:
+      typeof val.showHiddenFiles === 'boolean' ? val.showHiddenFiles : legacyShowHidden,
+    treeSize:
+      typeof val.treeSize === 'number' && val.treeSize > 0 && val.treeSize < 100
+        ? val.treeSize
+        : undefined,
+    lastPath: typeof val.lastPath === 'string' ? val.lastPath : undefined,
+  };
+}
+
 /**
  * Merges partial state with default state to ensure all fields are present.
  */
@@ -67,6 +117,9 @@ export function normalizeWorkspaceState(data: unknown): WorkspaceState {
   const fileBrowser = (d.fileBrowser as Record<string, unknown> | undefined) ?? {};
   const fbInstances = fileBrowser.instances as Record<string, unknown> | undefined;
 
+  // Legacy global flag — propagate to per-instance entries that lack their own value.
+  const legacyShowHidden = typeof ui.showHiddenFiles === 'boolean' ? ui.showHiddenFiles : false;
+
   return {
     presets: {
       custom: Array.isArray(presets.custom) ? presets.custom : defaults.presets.custom,
@@ -76,30 +129,22 @@ export function normalizeWorkspaceState(data: unknown): WorkspaceState {
           : defaults.presets.defaultTextPresetId,
       collapsed:
         presets.collapsed && typeof presets.collapsed === 'object'
-          ? presets.collapsed
+          ? (presets.collapsed as Record<string, boolean>)
           : defaults.presets.collapsed,
     },
     ui: {
       recentSearchQueries: Array.isArray(ui.recentSearchQueries)
-        ? ui.recentSearchQueries
+        ? (ui.recentSearchQueries as string[])
         : defaults.ui.recentSearchQueries,
       pinnedItems: Array.isArray(ui.pinnedItems)
-        ? ui.pinnedItems
+        ? (ui.pinnedItems as string[])
         : defaults.ui.pinnedItems,
-      showHiddenFiles:
-        typeof ui.showHiddenFiles === 'boolean'
-          ? ui.showHiddenFiles
-          : defaults.ui.showHiddenFiles,
-      fsSidebarWidth:
-        typeof ui.fsSidebarWidth === 'number'
-          ? ui.fsSidebarWidth
-          : defaults.ui.fsSidebarWidth,
       lastProjectName:
         typeof ui.lastProjectName === 'string' || ui.lastProjectName === null
-          ? ui.lastProjectName
+          ? (ui.lastProjectName as string | null)
           : defaults.ui.lastProjectName,
       recentProjects: Array.isArray(ui.recentProjects)
-        ? ui.recentProjects
+        ? (ui.recentProjects as WorkspaceState['ui']['recentProjects'])
         : defaults.ui.recentProjects,
     },
     fileBrowser: {
@@ -108,38 +153,12 @@ export function normalizeWorkspaceState(data: unknown): WorkspaceState {
           ? Object.fromEntries(
               Object.entries(fbInstances).map(([key, val]) => [
                 key,
-                {
-                  viewMode: ['grid', 'list'].includes((val as Record<string, unknown>)?.viewMode as string)
-                    ? (val as Record<string, unknown>).viewMode as 'grid' | 'list'
-                    : 'grid',
-                  sortOption:
-                    (val as Record<string, unknown>)?.sortOption &&
-                    ['name', 'type', 'size', 'modified', 'created'].includes(
-                      ((val as Record<string, unknown>).sortOption as Record<string, unknown>)?.field as string,
-                    )
-                      ? {
-                          field: ((val as Record<string, unknown>).sortOption as Record<string, unknown>).field as 'name' | 'type' | 'size' | 'modified' | 'created',
-                          order: ['asc', 'desc'].includes(
-                            ((val as Record<string, unknown>).sortOption as Record<string, unknown>).order as string,
-                          )
-                            ? ((val as Record<string, unknown>).sortOption as Record<string, unknown>).order as 'asc' | 'desc'
-                            : 'asc',
-                        }
-                      : { field: 'name', order: 'asc' },
-                  gridCardSize:
-                    typeof (val as Record<string, unknown>)?.gridCardSize === 'number' ? (val as Record<string, unknown>).gridCardSize as number : 80,
-                  columnWidths:
-                    (val as Record<string, unknown>)?.columnWidths && typeof (val as Record<string, unknown>).columnWidths === 'object'
-                      ? (val as Record<string, unknown>).columnWidths as Record<string, number>
-                      : { name: 200, type: 100, size: 80, created: 140, modified: 140 },
-                  lastPath:
-                    typeof (val as Record<string, unknown>)?.lastPath === 'string' ? (val as Record<string, unknown>).lastPath as string : undefined,
-                },
+                normalizeInstance(val, legacyShowHidden),
               ]),
             )
           : defaults.fileBrowser.instances,
       activeTab: ['computer', 'bloggerdog', 'fastcat'].includes(fileBrowser.activeTab as string)
-        ? fileBrowser.activeTab as 'computer' | 'bloggerdog' | 'fastcat'
+        ? (fileBrowser.activeTab as 'computer' | 'bloggerdog' | 'fastcat')
         : defaults.fileBrowser.activeTab,
     },
   };

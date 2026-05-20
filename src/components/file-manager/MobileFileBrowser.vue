@@ -517,10 +517,12 @@ const menuItems = computed(() => [
   ],
   [
     {
-      label: uiStore.showHiddenFiles ? t('common.hideHiddenFiles') : t('common.showHiddenFiles'),
-      icon: uiStore.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
+      label: fileManagerStore.showHiddenFiles
+        ? t('common.hideHiddenFiles')
+        : t('common.showHiddenFiles'),
+      icon: fileManagerStore.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
       onSelect: () => {
-        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
+        fileManagerStore.setShowHiddenFiles(!fileManagerStore.showHiddenFiles);
       },
     },
   ],

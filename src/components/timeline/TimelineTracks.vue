@@ -99,6 +99,10 @@ function buildClipRenderMemo(item: TimelineTrackItem): string {
   const clip = item as TimelineClipItem;
   return [
     clip.id,
+    clip.timelineRange.startUs,
+    clip.timelineRange.durationUs,
+    clip.sourceRange?.startUs ?? '',
+    clip.sourceRange?.durationUs ?? '',
     clip.name,
     clip.locked ? 1 : 0,
     clip.disabled ? 1 : 0,

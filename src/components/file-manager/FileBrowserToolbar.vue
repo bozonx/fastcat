@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue';
 import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
-import { useUiStore } from '~/stores/ui.store';
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiToggleButton from '~/components/ui/UiToggleButton.vue';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
@@ -34,7 +33,6 @@ const { t } = useI18n();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
-const uiStore = useUiStore();
 
 const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.name'), value: 'name' },
@@ -58,12 +56,12 @@ const toolbarMenuItems = computed(() => {
 
   if (!props.isRemotePanel) {
     actions.push({
-      label: uiStore.showHiddenFiles
+      label: fileManagerStore.showHiddenFiles
         ? t('videoEditor.fileManager.actions.hideHiddenFiles')
         : t('videoEditor.fileManager.actions.showHiddenFiles'),
-      icon: uiStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      icon: fileManagerStore.showHiddenFiles ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onSelect: () => {
-        uiStore.showHiddenFiles = !uiStore.showHiddenFiles;
+        fileManagerStore.setShowHiddenFiles(!fileManagerStore.showHiddenFiles);
       },
     });
   }

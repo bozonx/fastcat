@@ -84,7 +84,7 @@ export function useFileBrowserNavigation({
       }
 
       const filteredEntries = entries.filter(
-        (e) => uiStore.showHiddenFiles || !e.name.startsWith('.'),
+        (e) => fileManagerStore.showHiddenFiles || !e.name.startsWith('.'),
       );
       folderEntries.value = await supplementEntries(filteredEntries);
     } catch (error) {
@@ -270,7 +270,7 @@ export function useFileBrowserNavigation({
 
   // Reload on hidden files toggle
   watch(
-    () => uiStore.showHiddenFiles,
+    () => fileManagerStore.showHiddenFiles,
     async () => {
       await loadFolderContent();
     },

@@ -4,6 +4,7 @@ import { Pane, Splitpanes } from 'splitpanes';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useComputerSidebarStore } from '~/stores/file-manager.store';
 import {
   createFileManager,
   FILE_MANAGER_INJECTION_KEY,
@@ -127,11 +128,26 @@ function onSelect(entry: FsEntry) {
   fileManagerStore.openFolder(entry);
   selectionStore.selectFsEntry(entry, instanceId, true);
 }
+
+// Tree size lives in the dedicated computer-sidebar store regardless of
+// the locally injected fileManagerStore (which may be project-scoped).
+const computerSidebarStore = useComputerSidebarStore();
+const DEFAULT_TREE_SIZE = 30;
+const treeSize = computed(() => computerSidebarStore.treeSize ?? DEFAULT_TREE_SIZE);
+const listSize = computed(() => 100 - treeSize.value);
+
+function onResized(event: { panes: Array<{ size: number }> }) {
+  const next = event.panes[0]?.size;
+  if (typeof next === 'number') computerSidebarStore.setTreeSize(next);
+}
 </script>
 
 <template>
-  <Splitpanes class="h-full w-full editor-splitpanes computer-file-manager">
-    <Pane size="30" min-size="10" class="border-r border-ui-border">
+  <Splitpanes
+    class="h-full w-full editor-splitpanes computer-file-manager"
+    @resized="onResized"
+  >
+    <Pane :size="treeSize" min-size="10" class="border-r border-ui-border">
       <FileManagerPanel
         folders-only
         compact
@@ -144,7 +160,7 @@ function onSelect(entry: FsEntry) {
         @select="onSelect"
       />
     </Pane>
-    <Pane size="70">
+    <Pane :size="listSize">
       <FileBrowser
         :vfs="vfs!"
         :instance-id="instanceId"

@@ -33,29 +33,8 @@ export interface PendingRemoteDownloadRequest {
 export const useUiStore = defineStore('ui', () => {
   const workspaceStore = useWorkspaceStore();
   const selectedFsEntry = ref<FsEntrySelection | null>(null);
-  const showHiddenFiles = ref(workspaceStore.workspaceState?.ui?.showHiddenFiles ?? false);
   const monitorVolume = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_VOLUME, 1));
   const monitorMuted = ref(readLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, false));
-  const fsSidebarWidth = ref(workspaceStore.workspaceState?.ui?.fsSidebarWidth ?? 0);
-
-  watch(
-    () => showHiddenFiles.value,
-    (val) => {
-      if (workspaceStore.isEphemeral) return;
-      if (workspaceStore.workspaceState?.ui?.showHiddenFiles === val) return;
-      void workspaceStore.batchUpdateWorkspaceState((draft) => {
-        draft.ui.showHiddenFiles = val;
-      });
-    },
-  );
-
-  watch(
-    () => workspaceStore.workspaceState?.ui?.showHiddenFiles,
-    (val) => {
-      if (typeof val !== 'boolean') return;
-      if (showHiddenFiles.value !== val) showHiddenFiles.value = val;
-    },
-  );
 
   watch(
     () => monitorVolume.value,
@@ -70,25 +49,6 @@ export const useUiStore = defineStore('ui', () => {
     (val) => {
       if (workspaceStore.isEphemeral) return;
       writeLocalStorageJson(STORAGE_KEYS.UI.MONITOR_MUTED, val);
-    },
-  );
-
-  watch(
-    () => fsSidebarWidth.value,
-    (val) => {
-      if (workspaceStore.isEphemeral) return;
-      void workspaceStore.batchUpdateWorkspaceState((draft) => {
-        draft.ui.fsSidebarWidth = val;
-      });
-    },
-  );
-
-  watch(
-    () => workspaceStore.workspaceState?.ui?.fsSidebarWidth,
-    (val) => {
-      if (typeof val === 'number' && fsSidebarWidth.value !== val) {
-        fsSidebarWidth.value = val;
-      }
     },
   );
 
@@ -186,10 +146,6 @@ export const useUiStore = defineStore('ui', () => {
     dir: 'up',
     timestamp: 0,
   });
-
-  function setFsSidebarWidth(width: number) {
-    fsSidebarWidth.value = width;
-  }
 
   function triggerPreviewZoom(dir: 1 | -1) {
     previewZoomTrigger.value = { dir, timestamp: Date.now() };
@@ -293,9 +249,6 @@ export const useUiStore = defineStore('ui', () => {
     remoteExchangeModalOpen,
     remoteExchangeLocalEntry,
 
-    fsSidebarWidth,
-    setFsSidebarWidth,
-
     previewZoomTrigger,
     previewZoomResetTrigger,
     previewZoomFitTrigger,
@@ -321,7 +274,6 @@ export const useUiStore = defineStore('ui', () => {
     togglePreviewFullscreen,
     timelineSaveTrigger,
 
-    showHiddenFiles,
     fileManagerUpdateCounter,
     notifyFileManagerUpdate,
     notifyTimelineSave,

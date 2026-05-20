@@ -12,6 +12,7 @@ import {
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useMediaStore } from '~/stores/media.store';
 import type { useI18n } from 'vue-i18n';
 import { useRoute, useNuxtApp } from 'nuxt/app';
@@ -842,7 +843,8 @@ export function useFileManager(options?: {
   const route = useRoute();
 
   const isApiSupported = computed(() => workspaceStore.isApiSupported);
-  const showHiddenFiles = computed(() => uiStore.showHiddenFiles);
+  const fileManagerStore = useFileManagerStore();
+  const showHiddenFiles = computed(() => fileManagerStore.showHiddenFiles);
 
   function updateSelectionPath(params: { oldPath: string; newPath: string }) {
     if (uiStore.selectedFsEntry?.path === params.oldPath) {
