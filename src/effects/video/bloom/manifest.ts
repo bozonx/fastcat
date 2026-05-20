@@ -39,7 +39,8 @@ export const bloomManifest: EffectManifest<BloomParams> = {
   ],
   createFilter: () => new BloomFilter({ strength: 2, quality: 4 }),
   updateFilter: (filter, values) => {
-    const f = filter as BloomFilter & {
+    const f = filter as unknown as {
+      strength: number;
       _blurXFilter?: { quality: number };
       _blurYFilter?: { quality: number };
     };
