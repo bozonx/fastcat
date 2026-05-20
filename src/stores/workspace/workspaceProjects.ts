@@ -1,5 +1,6 @@
 import type { Ref } from 'vue';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import type { RecentProject } from '~/stores/workspace.store';
 import { getErrorMessage } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { toStoragePathSegments } from '~/utils/storage-topology';
@@ -24,6 +25,7 @@ export function createWorkspaceProjectsModule(params: {
   projects: Ref<string[]>;
   error: Ref<string | null>;
   lastProjectName: Ref<string | null>;
+  recentProjects: Ref<RecentProject[]>;
   resolvedStorageTopology: Ref<ResolvedStorageTopology>;
 }): WorkspaceProjectsModule {
   const workspaceTopology = getWorkspaceStorageTopology();
@@ -120,6 +122,10 @@ export function createWorkspaceProjectsModule(params: {
       if (params.lastProjectName.value === name) {
         params.lastProjectName.value = null;
       }
+
+      params.recentProjects.value = params.recentProjects.value.filter(
+        (p) => p.projectName !== name,
+      );
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
         console.warn('Failed to delete project', name, e);
@@ -156,6 +162,16 @@ export function createWorkspaceProjectsModule(params: {
 
       if (params.lastProjectName.value === oldName) {
         params.lastProjectName.value = newName;
+      }
+
+      const recentIndex = params.recentProjects.value.findIndex(
+        (p) => p.projectName === oldName,
+      );
+      if (recentIndex !== -1) {
+        params.recentProjects.value[recentIndex] = {
+          ...params.recentProjects.value[recentIndex],
+          projectName: newName,
+        };
       }
     } catch (e: unknown) {
       params.error.value = getErrorMessage(e, 'Failed to rename project');

@@ -609,7 +609,7 @@ export default {
       noProjectsFound: 'Проекты не найдены',
       projectNamePlaceholder: 'Название проекта',
       searchPlaceholder: 'Поиск проектов...',
-      switchToMobile: 'Переключиться на мобильный вид',
+      switchToMobile: 'Мобильная версия',
       title: 'Проекты',
       workspaceTitle: 'Рабочая область',
     },

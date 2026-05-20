@@ -70,4 +70,97 @@ describe('WorkspaceStore', () => {
     });
     expect(store.workspaceHandle).toStrictEqual(mockDirectoryHandle);
   });
+
+  describe('updateRecentProject', () => {
+    it('adds project to the top and limits to 5', () => {
+      const store = useWorkspaceStore();
+      for (let i = 1; i <= 6; i++) {
+        store.updateRecentProject({ projectName: `project-${i}`, projectId: `id-${i}` });
+      }
+      expect(store.recentProjects).toHaveLength(5);
+      expect(store.recentProjects[0].projectName).toBe('project-6');
+      expect(store.recentProjects[4].projectName).toBe('project-2');
+    });
+
+    it('moves existing project to the top and updates timestamp', () => {
+      vi.useFakeTimers();
+      const store = useWorkspaceStore();
+      store.updateRecentProject({ projectName: 'a', projectId: 'id-a' });
+      const firstDate = store.recentProjects[0].updatedAt;
+
+      vi.advanceTimersByTime(1000);
+      store.updateRecentProject({ projectName: 'b', projectId: 'id-b' });
+      vi.advanceTimersByTime(1000);
+      store.updateRecentProject({ projectName: 'a', projectId: 'id-a' });
+
+      expect(store.recentProjects[0].projectName).toBe('a');
+      expect(store.recentProjects[1].projectName).toBe('b');
+      expect(store.recentProjects[0].updatedAt).not.toBe(firstDate);
+      vi.useRealTimers();
+    });
+
+    it('sets lastProjectName', () => {
+      const store = useWorkspaceStore();
+      store.updateRecentProject({ projectName: 'my-project', projectId: 'id-1' });
+      expect(store.lastProjectName).toBe('my-project');
+    });
+
+    it('syncs to workspaceState.ui.recentProjects', async () => {
+      const store = useWorkspaceStore();
+      store.updateRecentProject({ projectName: 'sync-test', projectId: 'id-1' });
+      await nextTick();
+      expect(store.workspaceState.ui.recentProjects).toHaveLength(1);
+      expect(store.workspaceState.ui.recentProjects[0].projectName).toBe('sync-test');
+    });
+  });
+
+  describe('deleteProject', () => {
+    it('removes project from recentProjects', async () => {
+      const store = useWorkspaceStore();
+      store.recentProjects = [
+        { projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' },
+        { projectName: 'p2', projectId: 'id2', updatedAt: '2024-01-02' },
+      ];
+      store.projects = ['p1', 'p2'];
+      store.lastProjectName = 'p1';
+
+      const mockProjectsHandle = {
+        removeEntry: vi.fn().mockResolvedValue(undefined),
+        values: vi.fn().mockReturnValue([]),
+      };
+      store.projectsHandle = mockProjectsHandle as any;
+      store.workspaceHandle = { name: 'root' } as any;
+
+      await store.deleteProject('p1');
+
+      expect(store.recentProjects).toHaveLength(1);
+      expect(store.recentProjects[0].projectName).toBe('p2');
+      expect(store.lastProjectName).toBeNull();
+    });
+  });
+
+  describe('renameProject', () => {
+    it('updates project name in recentProjects', async () => {
+      const store = useWorkspaceStore();
+      store.recentProjects = [
+        { projectName: 'old-name', projectId: 'id1', updatedAt: '2024-01-01' },
+      ];
+      store.projects = ['old-name'];
+      store.lastProjectName = 'old-name';
+
+      const mockOldHandle = {
+        move: vi.fn().mockResolvedValue(undefined),
+      };
+      const mockProjectsHandle = {
+        getDirectoryHandle: vi.fn().mockResolvedValue(mockOldHandle),
+        values: vi.fn().mockReturnValue([]),
+      };
+      store.projectsHandle = mockProjectsHandle as any;
+
+      await store.renameProject('old-name', 'new-name');
+
+      expect(store.recentProjects[0].projectName).toBe('new-name');
+      expect(store.lastProjectName).toBe('new-name');
+    });
+  });
 });

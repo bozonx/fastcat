@@ -107,6 +107,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projects,
     error,
     lastProjectName,
+    recentProjects,
     resolvedStorageTopology,
   });
   const { loadProjects, clearVardata, clearProjectVardata, deleteProject, renameProject } =
@@ -221,9 +222,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     loadAppSettingsFromDisk,
     loadWorkspaceSettingsFromDisk,
     loadUserSettingsFromDisk,
+    loadWorkspaceStateFromDisk,
     saveAppSettingsToDisk,
     saveWorkspaceSettingsToDisk,
     saveUserSettingsToDisk,
+    saveWorkspaceStateToDisk,
     resetSettingsState,
   });
 

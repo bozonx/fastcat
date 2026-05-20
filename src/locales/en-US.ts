@@ -607,7 +607,7 @@ export default {
       noProjectsFound: 'No projects found',
       projectNamePlaceholder: 'Project name',
       searchPlaceholder: 'Search projects...',
-      switchToMobile: 'Switch to mobile view',
+      switchToMobile: 'Mobile version',
       title: 'Projects',
       workspaceTitle: 'Workspace',
     },

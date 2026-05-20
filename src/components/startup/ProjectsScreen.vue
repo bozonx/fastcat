@@ -77,7 +77,7 @@ const formatDate = (dateStr?: string) => {
   <div class="flex h-screen bg-ui-bg overflow-hidden">
     <!-- Sidebar -->
     <div
-      class="w-72 border-r border-ui-border bg-ui-bg-elevated/50 flex flex-col shrink-0 backdrop-blur-md"
+      class="w-80 border-r border-ui-border bg-ui-bg-elevated/50 flex flex-col shrink-0 backdrop-blur-md"
     >
       <!-- Logo -->
       <div class="p-6 border-b border-ui-border">
