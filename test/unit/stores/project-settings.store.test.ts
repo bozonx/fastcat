@@ -8,20 +8,21 @@ import {
 
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 
-const defaultProjectMonitor = {
-  previewResolution: 0.5,
-  useProxy: true,
-  previewEffectsEnabled: true,
-  showGrid: false,
-  showTimecode: true,
-  toolbarPosition: 'bottom' as const,
-};
-
-const defaultMonitorView = {
-  panX: 0,
-  panY: 0,
-  zoom: 1,
-};
+const { defaultProjectMonitor, defaultMonitorView } = vi.hoisted(() => ({
+  defaultProjectMonitor: {
+    previewResolution: 0.5,
+    useProxy: true,
+    previewEffectsEnabled: true,
+    showGrid: false,
+    showTimecode: true,
+    toolbarPosition: 'bottom' as const,
+  },
+  defaultMonitorView: {
+    panX: 0,
+    panY: 0,
+    zoom: 1,
+  },
+}));
 
 const defaultSettings = {
   version: 1,

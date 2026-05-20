@@ -61,7 +61,7 @@ const modalUi = computed(() => {
     title: `text-base font-semibold text-ui-text truncate ${userUi.title || ''}`,
     description: `mt-1 text-sm text-ui-text-muted ${userUi.description || ''}`,
     close: `-mr-2 ml-4 ${userUi.close || ''}`,
-  } as Record<string, unknown>;
+  } as Record<string, string | undefined>;
 });
 
 const modalContent = {
@@ -117,9 +117,9 @@ function handleClose() {
     :dismissible="!props.preventClose"
     :title="props.title"
     :description="props.description"
-    :aria-describedby="!props.description ? (null as any) : undefined"
+    :aria-describedby="props.description ? undefined : undefined"
     :close="props.closeButton"
-    :ui="modalUi as any"
+    :ui="modalUi"
     @after:enter="handleAfterEnter"
   >
     <template v-if="$slots.header" #header>

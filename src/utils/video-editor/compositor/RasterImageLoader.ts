@@ -75,8 +75,8 @@ export class RasterImageLoader {
     }
 
     const bitmap = await createImageBitmap(imageFile);
-    const width = Math.max(1, Math.round((bitmap as any).width ?? 1));
-    const height = Math.max(1, Math.round((bitmap as any).height ?? 1));
+    const width = Math.max(1, Math.round(bitmap.width ?? 1));
+    const height = Math.max(1, Math.round(bitmap.height ?? 1));
 
     return {
       bitmap,

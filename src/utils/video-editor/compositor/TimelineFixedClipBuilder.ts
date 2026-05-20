@@ -49,6 +49,8 @@ export class TimelineFixedClipBuilder {
       blendMode: resolveBlendMode(clipData.blendMode),
       effects: toVideoEffects(clipData.effects),
       transform: clipData.transform,
+      sourceOrientation: clipData.sourceOrientation,
+      fitMode: clipData.fitMode,
       transitionIn: clipData.transitionIn,
       transitionOut: clipData.transitionOut,
       mask: clipData.mask,

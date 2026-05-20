@@ -236,12 +236,27 @@
         "cropTop": "Сверху",
         "flipHorizontal": "Отразить по горизонтали",
         "flipVertical": "Отразить по вертикали",
+        "fitMode": "Вписывание",
+        "fitModeOptions": {
+          "fill": "Заполнить",
+          "fit": "Вписать",
+          "original": "Оригинал",
+          "stretch": "Растянуть"
+        },
         "position": "Позиция (px)",
         "reflect": "Отражение",
         "resetAll": "Сбросить всё",
         "rotation": "Поворот (градусы)",
         "scale": "Масштаб (%)",
         "scaleX": "Масштаб X (%)",
+        "sourceOrientation": "Ориентация источника",
+        "sourceOrientationOptions": {
+          "auto": "Авто",
+          "deg0": "0°",
+          "deg90": "90°",
+          "deg180": "180°",
+          "deg270": "270°"
+        },
         "title": "Трансформация"
       }
     },

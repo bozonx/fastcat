@@ -168,7 +168,7 @@ watch(
     <UiFormField :label="t('videoEditor.export.outputFormat')">
       <UiButtonGroup
         v-model="outputFormat"
-        :options="props.formatOptions as any"
+        :options="props.formatOptions"
         :disabled="props.disabled"
       />
     </UiFormField>
@@ -177,9 +177,9 @@ watch(
       <div class="w-full">
         <UiSelect
           :model-value="
-            (filteredVideoCodecOptions.find(
+            filteredVideoCodecOptions.find(
               (o: VideoCodecOptionResolved) => o.value === videoCodec,
-            ) || videoCodec) as any
+            ) || videoCodec
           "
           :items="filteredVideoCodecOptions"
           value-key="value"

@@ -264,6 +264,8 @@ export function parseClipItem(input: {
     lockToLinkedVideo: fastcatMeta.links?.lockToLinkedVideo,
     isImage: fastcatMeta.visual?.isImage,
     showThumbnails: fastcatMeta.visual?.showThumbnails,
+    sourceOrientation: fastcatMeta.visual?.sourceOrientation,
+    fitMode: fastcatMeta.visual?.fitMode,
     transform: coerceTransform(fastcatMeta.transform),
     transformActive: fastcatMeta.flags?.transformActive,
     mask: fastcatMeta.mask as unknown,

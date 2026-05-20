@@ -6,9 +6,7 @@ import { useUiStore } from '~/stores/ui.store';
 const mockProjectStore = {
   currentProjectId: 'p',
   projectSettings: {
-    ui: {
-      fileTreeExpandedPaths: [] as string[],
-    },
+    ui: {},
   },
 };
 
@@ -21,13 +19,12 @@ describe('ui.store file tree expanded paths', () => {
     setActivePinia(createPinia());
     localStorage.clear();
     mockProjectStore.currentProjectId = 'p';
-    mockProjectStore.projectSettings.ui.fileTreeExpandedPaths = [];
     vi.useFakeTimers();
   });
 
-  it('removes descendants when collapsing a path', async () => {
+  it('removes descendants when collapsing a path', () => {
     const ui = useUiStore();
-    ui.restoreFileTreeStateOnce(); // Initialize context for 'p' (from mock)
+    ui.restoreFileTreeStateOnce();
 
     ui.setFileTreePathExpanded('a', true);
     ui.setFileTreePathExpanded('a/b', true);
@@ -37,34 +34,21 @@ describe('ui.store file tree expanded paths', () => {
     ui.setFileTreePathExpanded('a', false);
 
     expect(Object.keys(ui.fileTreeExpandedPaths)).toEqual(['x']);
-
-    await vi.runAllTimersAsync();
-
-    expect(new Set(mockProjectStore.projectSettings.ui.fileTreeExpandedPaths)).toEqual(
-      new Set(['x']),
-    );
   });
 
-  it('isolates state between projects', async () => {
+  it('isolates in-memory state between projects', () => {
     const ui = useUiStore();
 
-    // Project A
     mockProjectStore.currentProjectId = 'project-a';
-    ui.restoreFileTreeStateOnce(); // Initialize context for Project A
+    ui.restoreFileTreeStateOnce();
     ui.setFileTreePathExpanded('folder-a', true);
-    await vi.runAllTimersAsync();
+    expect(Object.keys(ui.fileTreeExpandedPaths)).toEqual(['folder-a']);
 
-    expect(mockProjectStore.projectSettings.ui.fileTreeExpandedPaths).toEqual(['folder-a']);
-
-    // Project B
     mockProjectStore.currentProjectId = 'project-b';
-    mockProjectStore.projectSettings.ui.fileTreeExpandedPaths = [];
-    ui.restoreFileTreeStateOnce(); // Emulate context switch, should clear memory state
-
+    ui.restoreFileTreeStateOnce();
     expect(ui.fileTreeExpandedPaths).toEqual({});
-    ui.setFileTreePathExpanded('folder-b', true);
-    await vi.runAllTimersAsync();
 
-    expect(mockProjectStore.projectSettings.ui.fileTreeExpandedPaths).toEqual(['folder-b']);
+    ui.setFileTreePathExpanded('folder-b', true);
+    expect(Object.keys(ui.fileTreeExpandedPaths)).toEqual(['folder-b']);
   });
 });

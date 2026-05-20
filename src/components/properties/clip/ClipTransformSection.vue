@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ClipTransform } from '~/timeline/types';
+import type { ClipFitMode, ClipSourceOrientation, ClipTransform } from '~/timeline/types';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -16,6 +16,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   updateTransform: [next: ClipTransform];
+  updateSourceOrientation: [next: ClipSourceOrientation];
+  updateFitMode: [next: ClipFitMode];
   toggleReversed: [];
 }>();
 
@@ -62,6 +64,34 @@ const mediaWidth = computed(
 const mediaHeight = computed(
   () => props.mediaMeta?.video?.displayHeight ?? props.mediaMeta?.image?.height ?? 1080,
 );
+const canEditSourceLayout = computed(() => props.clip.clipType === 'media');
+
+const sourceOrientationOptions = computed<Array<{ value: ClipSourceOrientation; label: string }>>(
+  () => [
+    { value: 'auto', label: t('fastcat.clip.transform.sourceOrientationOptions.auto') },
+    { value: '0', label: t('fastcat.clip.transform.sourceOrientationOptions.deg0') },
+    { value: '90', label: t('fastcat.clip.transform.sourceOrientationOptions.deg90') },
+    { value: '180', label: t('fastcat.clip.transform.sourceOrientationOptions.deg180') },
+    { value: '270', label: t('fastcat.clip.transform.sourceOrientationOptions.deg270') },
+  ],
+);
+
+const fitModeOptions = computed<Array<{ value: ClipFitMode; label: string }>>(() => [
+  { value: 'fit', label: t('fastcat.clip.transform.fitModeOptions.fit') },
+  { value: 'fill', label: t('fastcat.clip.transform.fitModeOptions.fill') },
+  { value: 'stretch', label: t('fastcat.clip.transform.fitModeOptions.stretch') },
+  { value: 'original', label: t('fastcat.clip.transform.fitModeOptions.original') },
+]);
+
+const sourceOrientation = computed({
+  get: () => props.clip.sourceOrientation ?? 'auto',
+  set: (val: ClipSourceOrientation) => emit('updateSourceOrientation', val),
+});
+
+const fitMode = computed({
+  get: () => props.clip.fitMode ?? 'fit',
+  set: (val: ClipFitMode) => emit('updateFitMode', val),
+});
 
 const cropTopPx = computed({
   get: () => Math.round(((transformCropTop.value || 0) / 100) * mediaHeight.value),
@@ -160,6 +190,37 @@ function clampNumber(value: number, min: number, max: number): number {
         </div>
 
         <!-- Reflect -->
+        <div v-if="canEditSourceLayout" class="grid grid-cols-2 gap-2">
+          <div class="space-y-1">
+            <span class="text-xs text-ui-text-muted">{{
+              t('fastcat.clip.transform.sourceOrientation')
+            }}</span>
+            <UiSelect
+              v-model="sourceOrientation"
+              :items="sourceOrientationOptions"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              full-width
+              :disabled="!isEnabled"
+            />
+          </div>
+          <div class="space-y-1">
+            <span class="text-xs text-ui-text-muted">{{
+              t('fastcat.clip.transform.fitMode')
+            }}</span>
+            <UiSelect
+              v-model="fitMode"
+              :items="fitModeOptions"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              full-width
+              :disabled="!isEnabled"
+            />
+          </div>
+        </div>
+
         <div class="flex items-center gap-2">
           <span class="text-xs text-ui-text-muted mr-1">{{
             t('fastcat.clip.transform.reflect')

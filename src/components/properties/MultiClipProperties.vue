@@ -21,7 +21,13 @@ import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
-import type { TimelineBlendMode, TimelineClipItem, ClipTransform } from '~/timeline/types';
+import type {
+  TimelineBlendMode,
+  TimelineClipItem,
+  ClipTransform,
+  ClipSourceOrientation,
+  ClipFitMode,
+} from '~/timeline/types';
 
 const props = defineProps<{
   items: { trackId: string; itemId: string }[];
@@ -436,6 +442,14 @@ function handleBatchUpdateSpeed(speed: number) {
   if (cmds.length > 0) timelineStore.batchApplyTimeline(cmds);
 }
 
+function handleBatchUpdateSourceOrientation(sourceOrientation: ClipSourceOrientation) {
+  handleBatchUpdateProperties({ sourceOrientation });
+}
+
+function handleBatchUpdateFitMode(fitMode: ClipFitMode) {
+  handleBatchUpdateProperties({ fitMode });
+}
+
 function handleBatchToggleReversed() {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
@@ -718,6 +732,8 @@ const otherActions = computed(() => {
       :is-reversed="typeof firstVideoClip.speed === 'number' && firstVideoClip.speed < 0"
       :media-meta="mediaMeta"
       @update-transform="handleBatchTransform"
+      @update-source-orientation="handleBatchUpdateSourceOrientation"
+      @update-fit-mode="handleBatchUpdateFitMode"
       @toggle-reversed="handleBatchToggleReversed"
       @update-speed="handleBatchUpdateSpeed"
     />

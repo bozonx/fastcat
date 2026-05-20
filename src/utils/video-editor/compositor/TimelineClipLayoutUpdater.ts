@@ -84,6 +84,8 @@ export class TimelineClipLayoutUpdater {
     clip.blendMode = resolveBlendMode(n['blendMode']);
     clip.effects = toVideoEffects(n['effects']);
     clip.transform = n['transform'] as CompositorClip['transform'];
+    clip.sourceOrientation = n['sourceOrientation'] as CompositorClip['sourceOrientation'];
+    clip.fitMode = n['fitMode'] as CompositorClip['fitMode'];
     clip.mask = n['mask'] as CompositorClip['mask'];
     applyClipLayoutForCurrentSource(clip);
 

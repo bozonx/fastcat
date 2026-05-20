@@ -190,6 +190,45 @@ describe('TimelineCommandService', () => {
         settingsSource: 'firstClip',
       });
     });
+
+    it('uses effective portrait dimensions for the first rotated video', async () => {
+      deps.getTimelineDoc.mockReturnValue({
+        timebase: { fps: 30 },
+        tracks: [{ id: 'v1', kind: 'video', items: [] }],
+        metadata: {
+          fastcat: {
+            format: {
+              width: 1920,
+              height: 1080,
+              fps: 30,
+              sampleRate: 48000,
+              isAutoSettings: true,
+              settingsSource: 'projectDefaults',
+            },
+          },
+        },
+      });
+      deps.getOrFetchMetadataByPath.mockResolvedValue({
+        duration: 10,
+        video: { width: 1920, height: 1080, rotation: 90, fps: 30, canDecode: true },
+      });
+      deps.getFileByPath.mockResolvedValue(new File([], 'vertical.mp4'));
+
+      await service.addClipToTimelineFromPath({
+        trackId: 'v1',
+        name: 'Vertical Clip',
+        path: 'video/vertical.mp4',
+      });
+
+      expect(deps.updateTimelineFormat).toHaveBeenCalledWith({
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        sampleRate: 48000,
+        isAutoSettings: false,
+        settingsSource: 'firstClip',
+      });
+    });
   });
 
   describe('circular dependencies', () => {

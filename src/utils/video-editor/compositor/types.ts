@@ -3,6 +3,8 @@ import type { Input, VideoSampleSink } from 'mediabunny';
 import type {
   TextClipStyle,
   ClipTransform,
+  ClipSourceOrientation,
+  ClipFitMode,
   ClipTransition,
   TimelineBlendMode,
   ShapeType,
@@ -75,6 +77,8 @@ export interface CompositorClip {
   blendMode?: TimelineBlendMode;
   effects?: VideoClipEffect[];
   transform?: ClipTransform;
+  sourceOrientation?: ClipSourceOrientation;
+  fitMode?: ClipFitMode;
   effectFilters?: Map<string, Filter>;
   transitionIn?: ClipTransition;
   transitionOut?: ClipTransition;

@@ -23,6 +23,7 @@ export class LayoutApplier {
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
       transform: clip.transform,
+      fitMode: clip.fitMode,
     });
 
     this.applyTransformLayout({
@@ -94,13 +95,17 @@ export class LayoutApplier {
   }
 
   public applySpriteLayout(frameW: number, frameH: number, clip: CompositorClip) {
-    const sourceRotation = clip.sourceRotation ?? 0;
+    const sourceRotation =
+      clip.sourceOrientation && clip.sourceOrientation !== 'auto'
+        ? Number(clip.sourceOrientation)
+        : (clip.sourceRotation ?? 0);
 
     const layout = computeClipBoxLayout({
       frameWidth: frameW,
       frameHeight: frameH,
       canvasWidth: this.context.width,
       canvasHeight: this.context.height,
+      fitMode: clip.fitMode,
       transform: {
         ...(clip.transform ?? {}),
         rotationDeg: (clip.transform?.rotationDeg ?? 0) + sourceRotation,

@@ -191,6 +191,8 @@ async function buildVideoTrackTree(
         mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
         transform:
           item.transformActive !== false ? clonePlain(item.transform) : undefined,
+        sourceOrientation: item.sourceOrientation,
+        fitMode: item.fitMode,
         transitionIn: clonePlain(item.transitionIn),
         transitionOut: clonePlain(item.transitionOut),
         freezeFrameSourceUs: item.freezeFrameSourceUs,
@@ -596,6 +598,8 @@ export async function toWorkerTimelineClips(
       mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
       transform:
         item.transformActive !== false ? clonePlain(item.transform) : undefined,
+      sourceOrientation: item.sourceOrientation,
+      fitMode: item.fitMode,
       transitionIn: clonePlain(item.transitionIn),
       transitionOut: clonePlain(item.transitionOut),
       sourceDurationUs:

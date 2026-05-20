@@ -740,7 +740,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
               ...previewItem,
               id: 'preview-' + previewItem.id,
               timelineRange: { ...previewItem.timelineRange, startUs: preview.startUs },
-            } as any
+            } as TimelineTrackItem
           "
           :track-height="trackViewModel.height"
           :can-edit-clip-content="false"
@@ -764,7 +764,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
                 startUs: trimPreview.startUs,
                 durationUs: trimPreview.durationUs,
               },
-            } as any
+            } as TimelineTrackItem
           "
           :track-height="trackViewModel.height"
           :can-edit-clip-content="false"
@@ -812,7 +812,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
               (p) => {
                 if (p.action === 'openAutoMontage') {
                   openAutoMontage(p);
-                } else if (p.action === ('longPress' as any)) {
+                } else if (p.action === 'longPress') {
                   emit('long-press-item', p.itemId);
                 } else {
                   emit('clipAction', p);

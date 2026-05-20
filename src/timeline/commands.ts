@@ -197,6 +197,8 @@ export interface UpdateClipPropertiesCommand {
       | 'speedActive'
       | 'transform'
       | 'transformActive'
+      | 'sourceOrientation'
+      | 'fitMode'
       | 'audioGain'
       | 'audioBalance'
       | 'audioFadeInUs'
