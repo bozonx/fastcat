@@ -15,7 +15,6 @@ import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
   useClipboardPaths,
@@ -25,7 +24,6 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
   getMediaTypeFromFilename,
-  isOpenableProjectFileName,
   VIDEO_EXTENSIONS,
   AUDIO_EXTENSIONS,
   BROWSER_NATIVE_IMAGE_EXTENSIONS,
@@ -35,7 +33,6 @@ import {
 } from '~/utils/media-types';
 import type { FileCompatibilityStatus } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
-import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserRemote';
 import { isRemoteFsEntry, type RemoteFsEntry } from '~/utils/remote-vfs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
@@ -331,11 +328,6 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
 
   return { selected, isDot, isCommonRoot, isCut, isCopy, iconClass, nameClass, meta, showChevron };
-}
-
-function isVideo(entry: FsEntry): boolean {
-  if (entry.kind !== 'file') return false;
-  return getMediaTypeFromFilename(entry.name) === 'video';
 }
 
 function isFullyUnsupported(entry: FsEntry): boolean {
@@ -714,12 +706,6 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 
 const localVfs = useVfs();
 const runtimeConfig = useRuntimeConfig();
-
-const bloggerDogApiUrl = computed(() =>
-  typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
-    ? runtimeConfig.public.bloggerDogApiUrl
-    : '',
-);
 
 function getBdType(entry: FsEntry): string | undefined {
   return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;

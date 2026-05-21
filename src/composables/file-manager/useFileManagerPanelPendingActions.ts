@@ -94,10 +94,12 @@ export function useFileManagerPanelPendingActions({
       const entry = value;
       if (!entry || entry.kind !== 'directory') return;
       if (!isFocusedOrSelected()) return;
+      if (uiStore.pendingFsEntryCreateTimeline !== value) return;
+      uiStore.pendingFsEntryCreateTimeline = null;
       try {
         await createTimelineInDirectory(entry);
-      } finally {
-        uiStore.pendingFsEntryCreateTimeline = null;
+      } catch (e) {
+        console.warn('Failed to create timeline in directory', entry.path, e);
       }
     },
   );
@@ -108,10 +110,12 @@ export function useFileManagerPanelPendingActions({
       const entry = value;
       if (!entry || entry.kind !== 'directory') return;
       if (!isFocusedOrSelected()) return;
+      if (uiStore.pendingFsEntryCreateMarkdown !== value) return;
+      uiStore.pendingFsEntryCreateMarkdown = null;
       try {
         await createMarkdownInDirectory(entry);
-      } finally {
-        uiStore.pendingFsEntryCreateMarkdown = null;
+      } catch (e) {
+        console.warn('Failed to create markdown in directory', entry.path, e);
       }
     },
   );
@@ -122,10 +126,12 @@ export function useFileManagerPanelPendingActions({
       const entry = value;
       if (!entry || entry.kind !== 'file') return;
       if (!isFocusedOrSelected()) return;
+      if (uiStore.pendingOtioCreateVersion !== value) return;
+      uiStore.pendingOtioCreateVersion = null;
       try {
         await createOtioVersion(entry);
-      } finally {
-        uiStore.pendingOtioCreateVersion = null;
+      } catch (e) {
+        console.warn('Failed to create OTIO version', entry.path, e);
       }
     },
   );

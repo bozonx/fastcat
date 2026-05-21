@@ -87,12 +87,12 @@ export function useFileBrowserPendingActions({
       if (!matchesInstance(selected)) {
         return;
       }
+      if (uiStore.pendingFsEntryCreateTimeline !== value) return;
+      uiStore.pendingFsEntryCreateTimeline = null;
       try {
         await createTimelineInDirectory(entry);
       } catch (e) {
         console.warn('Failed to create timeline in directory', entry.path, e);
-      } finally {
-        uiStore.pendingFsEntryCreateTimeline = null;
       }
     },
   );
@@ -107,10 +107,12 @@ export function useFileBrowserPendingActions({
       if (!matchesInstance(selected)) {
         return;
       }
+      if (uiStore.pendingFsEntryCreateMarkdown !== value) return;
+      uiStore.pendingFsEntryCreateMarkdown = null;
       try {
         await createMarkdownInDirectory(entry);
-      } finally {
-        uiStore.pendingFsEntryCreateMarkdown = null;
+      } catch (e) {
+        console.warn('Failed to create markdown in directory', entry.path, e);
       }
     },
   );

@@ -26,6 +26,14 @@ vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => focusStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => selectionStore }));
 
+function createDeferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 describe('useFileBrowserPendingActions', () => {
   let scope: EffectScope;
 
@@ -128,5 +136,23 @@ describe('useFileBrowserPendingActions', () => {
 
     expect(handlePendingRemoteDownloadRequest).toHaveBeenCalledTimes(1);
     expect(uiStore.pendingRemoteDownloadRequest).toBeNull();
+  });
+
+  it('claims pending timeline creation before awaiting the create action', async () => {
+    const deferred = createDeferred();
+    const createTimelineInDirectory = vi.fn(() => deferred.promise);
+
+    mountComposable({ createTimelineInDirectory });
+
+    const entry = { kind: 'directory', name: 'dir', path: 'dir' };
+    selectionStore.selectedEntity = { source: 'fileManager', instanceId: 'main' };
+    uiStore.pendingFsEntryCreateTimeline = entry;
+    await nextTick();
+
+    expect(createTimelineInDirectory).toHaveBeenCalledWith(entry);
+    expect(uiStore.pendingFsEntryCreateTimeline).toBeNull();
+
+    deferred.resolve();
+    await deferred.promise;
   });
 });

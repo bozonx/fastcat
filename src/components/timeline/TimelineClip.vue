@@ -17,7 +17,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
-import { pxToTimeUs, timeUsToPx, sanitizeFps } from '~/utils/timeline/geometry';
+import { pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { cloneValue } from '~/utils/clone';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
 import {
@@ -27,7 +27,6 @@ import {
   isAudio,
   clipHasAudio,
 } from '~/utils/timeline/clip';
-import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
@@ -317,7 +316,7 @@ function onClipDblClick() {
   }
 }
 
-const { isDraggingOver, handleDragEnter, handleDragLeave, handleDragOver, handleDrop } =
+const { isDraggingOver, handleDragLeave, handleDrop } =
   useClipDrop({
     track: computed(() => props.track),
     clipItem,

@@ -26,6 +26,14 @@ vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => focusStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => selectionStore }));
 
+function createDeferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 describe('useFileManagerPanelPendingActions', () => {
   let scope: EffectScope;
 
@@ -90,6 +98,22 @@ describe('useFileManagerPanelPendingActions', () => {
 
     expect(createTimelineInDirectory).toHaveBeenCalledWith(entry);
     expect(uiStore.pendingFsEntryCreateTimeline).toBeNull();
+  });
+
+  it('claims pending timeline creation before awaiting the create action', async () => {
+    const deferred = createDeferred();
+    const createTimelineInDirectory = vi.fn(() => deferred.promise);
+    mountComposable({ createTimelineInDirectory });
+
+    const entry = { kind: 'directory', name: 'dir', path: 'dir' };
+    uiStore.pendingFsEntryCreateTimeline = entry;
+    await nextTick();
+
+    expect(createTimelineInDirectory).toHaveBeenCalledWith(entry);
+    expect(uiStore.pendingFsEntryCreateTimeline).toBeNull();
+
+    deferred.resolve();
+    await deferred.promise;
   });
 
   it('ignores create timeline if entry is not directory', async () => {
