@@ -51,6 +51,7 @@ export const ClipMaskSchema = z.object({
 
 export const TextClipStyleSchema = z.object({
   width: z.number().optional(),
+  height: z.number().optional(),
   fontFamily: z.string().optional(),
   fontSize: z.number().optional(),
   fontWeight: z.union([z.string(), z.number()]).optional(),

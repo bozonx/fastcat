@@ -219,6 +219,7 @@ export default {
       tabs: {
         audio: 'Audio',
         clip: 'Clip',
+        text: 'Text',
         video: 'Video',
       },
       transform: {
@@ -661,6 +662,7 @@ export default {
     },
     textClip: {
       align: 'Align',
+      autoHeight: 'Auto',
       backgroundBlock: 'Background',
       backgroundAlpha: 'Background alpha',
       backgroundColor: 'Background',
@@ -676,6 +678,9 @@ export default {
       fontFamily: 'Font family',
       fontSize: 'Font size',
       fontWeight: 'Font weight',
+      height: 'Block height',
+      heightMode: 'Height',
+      horizontalPadding: 'Horizontal padding',
       hue: 'Hue',
       letterSpacing: 'Letter spacing',
       lineHeight: 'Line height',
@@ -987,6 +992,7 @@ export default {
         sourceBackgroundShort: 'Background',
         sourceTransparent: 'Only the current clip transparency without other sources',
         sourceTransparentShort: 'Transparency',
+        goToClip: 'To clip',
         title: 'Transition',
         wipeEdgeModeBlur: 'Without gap (blur edge)',
         wipeEdgeModeGap: 'With gap',

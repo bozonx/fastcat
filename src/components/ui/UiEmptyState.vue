@@ -7,7 +7,9 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
+  icon: undefined,
   iconClass: 'w-6 h-6 mx-auto mb-2 opacity-40',
+  wrapperClass: undefined,
 });
 </script>
 

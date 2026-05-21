@@ -74,6 +74,15 @@ const tabs = computed(() => [
     value: 'clip',
     icon: 'i-heroicons-film',
   },
+  ...(props.clip.clipType === 'text'
+    ? [
+        {
+          label: t('fastcat.clip.tabs.text'),
+          value: 'text',
+          icon: 'i-heroicons-bars-3-bottom-left',
+        },
+      ]
+    : []),
   {
     label: t('fastcat.clip.tabs.video'),
     value: 'video',
@@ -417,6 +426,15 @@ const { selectTransitionEdge, toggleTransition, updateTransitionDuration, update
   });
 
 watch(
+  () => props.clip.clipType,
+  (clipType) => {
+    if (activeTab.value === 'text' && clipType !== 'text') {
+      activeTab.value = 'clip';
+    }
+  },
+);
+
+watch(
   () => uiStore.scrollToEffectsTrigger,
   () => {
     if (!effectsSectionRef.value) return;
@@ -459,6 +477,7 @@ defineExpose({
         :clip="clip"
         :hud-manifest="hudManifest"
         :hud-control-values="hudControlValues"
+        :hide-text-properties="true"
         @update-background-color="handleUpdateBackgroundColor"
         @update-text="handleUpdateText"
         @update-text-style="handleUpdateTextStyle"
@@ -480,6 +499,24 @@ defineExpose({
       />
 
       <ClipInfoSection :clip="clip" :media-meta="mediaMeta" :show-info="false" />
+    </div>
+
+    <!-- Tab: Text -->
+    <div v-else-if="activeTab === 'text' && clip.clipType === 'text'" class="flex flex-col gap-2">
+      <ClipTypeSection
+        :clip="clip"
+        :hud-manifest="hudManifest"
+        :hud-control-values="hudControlValues"
+        @update-background-color="handleUpdateBackgroundColor"
+        @update-text="handleUpdateText"
+        @update-text-style="handleUpdateTextStyle"
+        @update-shape-type="handleUpdateShapeType"
+        @update-fill-color="handleUpdateFillColor"
+        @update-stroke-color="handleUpdateStrokeColor"
+        @update-stroke-width="handleUpdateStrokeWidth"
+        @update-shape-config="handleUpdateShapeConfig"
+        @update-hud-control="handleUpdateHudControl"
+      />
     </div>
 
     <!-- Tab: Video -->

@@ -156,6 +156,7 @@ export function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): bo
 
   return (
     a.width === b.width &&
+    a.height === b.height &&
     a.fontFamily === b.fontFamily &&
     a.fontSize === b.fontSize &&
     a.fontWeight === b.fontWeight &&

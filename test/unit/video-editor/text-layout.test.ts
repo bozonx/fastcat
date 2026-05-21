@@ -7,6 +7,7 @@ describe('text-layout', () => {
     const style = normalizeTextClipStyle();
 
     expect(style.fontFamily).toBe('sans-serif');
+    expect(style.height).toBeUndefined();
     expect(style.fontSize).toBe(64);
     expect(style.fontWeight).toBe('700');
     expect(style.align).toBe('center');
@@ -94,5 +95,25 @@ describe('text-layout', () => {
     expect(metrics.backgroundWidth).toBe(68);
     expect(metrics.backgroundHeight).toBe(76);
     expect(metrics.textStartX).toBe(940);
+  });
+
+  it('uses manual height and vertical alignment inside the text frame', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'text',
+      style: {
+        fontSize: 40,
+        height: 200,
+        padding: { x: 10, y: 20 },
+        verticalAlign: 'bottom',
+        align: 'left',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text) => text.length * 10,
+    });
+
+    expect(metrics.frameHeight).toBe(200);
+    expect(metrics.backgroundHeight).toBe(200);
+    expect(metrics.textBlockTopPx).toBe(572);
   });
 });

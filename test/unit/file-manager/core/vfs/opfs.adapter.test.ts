@@ -285,6 +285,31 @@ describe('OpfsFileSystemAdapter', () => {
       const arrayBuffer = await blob.arrayBuffer();
       expect(new Uint8Array(arrayBuffer)).toEqual(new Uint8Array([10, 20, 30, 40]));
     });
+
+    it('requests read-write permission before opening a writable stream', async () => {
+      const queryPermission = vi.fn(async () => 'prompt' as PermissionState);
+      const requestPermission = vi.fn(async () => 'granted' as PermissionState);
+      Object.assign(root, { queryPermission, requestPermission });
+
+      await adapter.writeFile('permitted.txt', 'ok');
+
+      expect(queryPermission).toHaveBeenCalledWith({ mode: 'readwrite' });
+      expect(requestPermission).toHaveBeenCalledWith({ mode: 'readwrite' });
+      expect(await (await adapter.readFile('permitted.txt')).text()).toBe('ok');
+    });
+
+    it('throws a permission error when read-write permission is denied', async () => {
+      Object.assign(root, {
+        queryPermission: vi.fn(async () => 'prompt' as PermissionState),
+        requestPermission: vi.fn(async () => 'denied' as PermissionState),
+      });
+
+      await expect(adapter.writeFile('denied.txt', 'nope')).rejects.toMatchObject({
+        name: 'VfsPermissionError',
+        code: 'permission',
+        path: 'denied.txt',
+      });
+    });
   });
 
   describe('createDirectory', () => {

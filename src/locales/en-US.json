@@ -217,6 +217,7 @@
       "tabs": {
         "audio": "Audio",
         "clip": "Clip",
+        "text": "Text",
         "video": "Video"
       },
       "transform": {
@@ -658,6 +659,7 @@
     },
     "textClip": {
       "align": "Align",
+      "autoHeight": "Auto",
       "backgroundBlock": "Background",
       "backgroundAlpha": "Background alpha",
       "backgroundColor": "Background",
@@ -673,6 +675,9 @@
       "fontFamily": "Font family",
       "fontSize": "Font size",
       "fontWeight": "Font weight",
+      "height": "Block height",
+      "heightMode": "Height",
+      "horizontalPadding": "Horizontal padding",
       "hue": "Hue",
       "letterSpacing": "Letter spacing",
       "lineHeight": "Line height",
@@ -977,6 +982,7 @@
         "sourceBackgroundShort": "Background",
         "sourceTransparent": "Only the current clip transparency without other sources",
         "sourceTransparentShort": "Transparency",
+        "goToClip": "To clip",
         "title": "Transition",
         "wipeEdgeModeBlur": "Without gap (blur edge)",
         "wipeEdgeModeGap": "With gap"

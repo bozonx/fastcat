@@ -10,6 +10,7 @@ export interface NormalizedTextPadding {
 
 export interface NormalizedTextStyle {
   width?: number;
+  height?: number;
   fontFamily: string;
   fontSize: number;
   fontWeight: string;
@@ -134,6 +135,10 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
       typeof style?.width === 'number' && Number.isFinite(style.width) && style.width > 0
         ? style.width
         : undefined,
+    height:
+      typeof style?.height === 'number' && Number.isFinite(style.height) && style.height > 0
+        ? style.height
+        : undefined,
     fontFamily:
       typeof style?.fontFamily === 'string' && style.fontFamily.length > 0
         ? style.fontFamily
@@ -225,6 +230,10 @@ export function computeTextLayoutMetrics(input: {
     normalizedStyle.width !== undefined
       ? Math.max(1, Math.round(normalizedStyle.width * renderScale))
       : undefined;
+  const explicitHeightPx =
+    normalizedStyle.height !== undefined
+      ? Math.max(1, Math.round(normalizedStyle.height * renderScale))
+      : undefined;
   const contentWidthPx =
     explicitWidthPx !== undefined
       ? Math.max(1, explicitWidthPx - paddingPx.left - paddingPx.right)
@@ -298,7 +307,9 @@ export function computeTextLayoutMetrics(input: {
 
   const frameContentWidthPx = contentWidthPx ?? textBlockWidthPx;
   const frameWidthPx = frameContentWidthPx + paddingPx.left + paddingPx.right;
-  const frameHeightPx = textBlockHeightPx + paddingPx.top + paddingPx.bottom;
+  const autoFrameHeightPx = textBlockHeightPx + paddingPx.top + paddingPx.bottom;
+  const frameHeightPx =
+    explicitHeightPx !== undefined ? Math.max(explicitHeightPx, 1) : autoFrameHeightPx;
   const frameLeftPx = (safeCanvasWidth - frameWidthPx) / 2;
   const frameTopPx = (safeCanvasHeight - frameHeightPx) / 2;
 
@@ -310,7 +321,14 @@ export function computeTextLayoutMetrics(input: {
     textBlockLeftPx = contentLeftPx + (frameContentWidthPx - textBlockWidthPx) / 2;
   }
 
-  const textBlockTopPx = frameTopPx + paddingPx.top;
+  const contentTopPx = frameTopPx + paddingPx.top;
+  const contentHeightPx = Math.max(1, frameHeightPx - paddingPx.top - paddingPx.bottom);
+  let textBlockTopPx = contentTopPx;
+  if (explicitHeightPx !== undefined && normalizedStyle.verticalAlign === 'bottom') {
+    textBlockTopPx = contentTopPx + contentHeightPx - textBlockHeightPx;
+  } else if (explicitHeightPx !== undefined && normalizedStyle.verticalAlign === 'middle') {
+    textBlockTopPx = contentTopPx + (contentHeightPx - textBlockHeightPx) / 2;
+  }
 
   const borderWidthPx =
     normalizedStyle.borderEnabled && normalizedStyle.borderWidth > 0

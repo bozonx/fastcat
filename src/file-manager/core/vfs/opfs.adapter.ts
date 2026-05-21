@@ -10,6 +10,7 @@ import {
   VfsConflictError,
   VfsInvalidArgumentError,
   VfsNotFoundError,
+  VfsPermissionError,
   throwIfAborted,
   wrapPlatformError,
 } from './errors';
@@ -24,6 +25,11 @@ interface ExtendedFileHandle extends FileSystemFileHandle {
 
 interface ExtendedHandle extends FileSystemHandle {
   move?(parent: FileSystemDirectoryHandle, name: string): Promise<void>;
+}
+
+interface PermissionAwareHandle extends FileSystemHandle {
+  queryPermission?(options?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>;
+  requestPermission?(options?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>;
 }
 
 /**
@@ -122,6 +128,25 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     })) as FileSystemDirectoryHandle | null;
   }
 
+  private async ensureReadWritePermission(handle: FileSystemHandle, path: string): Promise<void> {
+    const permissionHandle = handle as PermissionAwareHandle;
+    if (
+      typeof permissionHandle.queryPermission !== 'function' &&
+      typeof permissionHandle.requestPermission !== 'function'
+    ) {
+      return;
+    }
+
+    const options = { mode: 'readwrite' as const };
+    const current = await permissionHandle.queryPermission?.(options);
+    if (current === 'granted') return;
+
+    const next = await permissionHandle.requestPermission?.(options);
+    if (next !== 'granted') {
+      throw new VfsPermissionError(path);
+    }
+  }
+
   async readDirectory(path: string, options?: VfsReadDirectoryOptions): Promise<VfsEntry[]> {
     throwIfAborted(options?.signal, path);
     const handle = (await this.getHandleByPath(path, {
@@ -205,6 +230,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     throwIfAborted(options?.signal, path);
     const parentHandle = await this.getParentDirHandle(path, { create: true });
     if (!parentHandle) throw new VfsNotFoundError(path);
+    await this.ensureReadWritePermission(parentHandle, path);
 
     const parts = path.split('/').filter(Boolean);
     const fileName = parts[parts.length - 1];
@@ -215,6 +241,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     if (!supportsAtomicMove) {
       try {
         const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+        await this.ensureReadWritePermission(fileHandle, path);
         const writable = await (fileHandle as ExtendedFileHandle).createWritable();
         await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
         await writable.close();
@@ -231,6 +258,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     let tempHandle: FileSystemFileHandle | null = null;
     try {
       tempHandle = await parentHandle.getFileHandle(tempName, { create: true });
+      await this.ensureReadWritePermission(tempHandle, path);
       const writable = await (tempHandle as ExtendedFileHandle).createWritable();
       try {
         await writable.write(normalizedData as FileSystemWriteChunkType);
@@ -256,6 +284,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         // Fall back to a direct overwrite — non-atomic, but the best we can do.
         try {
           const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+          await this.ensureReadWritePermission(fileHandle, path);
           const writable = await (fileHandle as ExtendedFileHandle).createWritable();
           try {
             await writable.write(normalizedData as FileSystemWriteChunkType);
@@ -524,12 +553,14 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     throwIfAborted(options?.signal, path);
     const parentHandle = await this.getParentDirHandle(path, { create: true });
     if (!parentHandle) throw new VfsNotFoundError(path);
+    await this.ensureReadWritePermission(parentHandle, path);
 
     const parts = path.split('/').filter(Boolean);
     const fileName = parts[parts.length - 1];
     if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
 
     const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+    await this.ensureReadWritePermission(fileHandle, path);
     return (await (
       fileHandle as ExtendedFileHandle
     ).createWritable()) as unknown as WritableStream<Uint8Array>;

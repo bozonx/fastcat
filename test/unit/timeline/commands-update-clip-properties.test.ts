@@ -425,6 +425,7 @@ describe('timeline/commands update_clip_properties', () => {
       properties: {
         style: {
           width: 333.8,
+          height: 222.2,
           fontSize: 12.4,
           verticalAlign: 'bottom',
           lineHeight: 2,
@@ -461,6 +462,7 @@ describe('timeline/commands update_clip_properties', () => {
     const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
     expect(clip.style).toEqual({
       width: 334,
+      height: 222,
       fontSize: 12,
       verticalAlign: 'bottom',
       lineHeight: 2,

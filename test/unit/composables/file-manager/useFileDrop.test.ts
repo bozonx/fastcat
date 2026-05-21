@@ -43,9 +43,15 @@ vi.mock('~/stores/ui.store', () => ({
 
 vi.mock('~/composables/useAppClipboard', () => ({
   useAppClipboard: () => ({
-    dragSourceFileManagerInstanceId: dragSourceFileManagerInstanceIdMock,
-    dragSourceVfs: dragSourceVfsMock,
-    currentDragOperation: currentDragOperationMock,
+    get dragSourceFileManagerInstanceId() {
+      return dragSourceFileManagerInstanceIdMock;
+    },
+    get dragSourceVfs() {
+      return dragSourceVfsMock;
+    },
+    get currentDragOperation() {
+      return currentDragOperationMock;
+    },
     setCurrentDragOperation: setCurrentDragOperationMock,
     setDragTargetFileManagerInstanceId: setDragTargetFileManagerInstanceIdMock,
   }),
@@ -194,6 +200,47 @@ describe('useFileDrop', () => {
       }),
     );
     expect(crossVfsMoveMock).not.toHaveBeenCalled();
+  });
+
+  it('reads the drag source at drop time for cross-file-manager root drops', async () => {
+    const { onRootDrop } = useFileDrop({
+      resolveEntryByPath: vi.fn(),
+      handleFiles: vi.fn(),
+      moveEntry: vi.fn(),
+      copyEntry: vi.fn(),
+      targetFileManagerInstanceId: 'main',
+      vfs: { id: 'target' } as any,
+    });
+
+    dragSourceFileManagerInstanceIdMock = 'computer';
+    dragSourceVfsMock = { id: 'computer-vfs' };
+    currentDragOperationMock = 'copy';
+
+    await onRootDrop(
+      {
+        stopPropagation: vi.fn(),
+        shiftKey: false,
+        dataTransfer: {
+          files: [],
+          types: ['application/fastcat-file-manager-copy'],
+          getData: vi.fn((type: string) =>
+            type === 'application/fastcat-file-manager-copy'
+              ? JSON.stringify([{ path: 'workspace/clip.mp4', kind: 'file' }])
+              : '',
+          ),
+        },
+      } as unknown as DragEvent,
+      '_video',
+    );
+
+    expect(crossVfsCopyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceVfs: { id: 'computer-vfs' },
+        targetVfs: { id: 'target' },
+        sourcePath: 'workspace/clip.mp4',
+        targetDirPath: '_video',
+      }),
+    );
   });
 
   it('allows copying BloggerDog virtual txt file into project file manager', async () => {

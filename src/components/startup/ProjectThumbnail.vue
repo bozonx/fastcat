@@ -11,6 +11,9 @@ const props = withDefaults(
   }>(),
   {
     variant: 'desktop',
+    projectId: undefined,
+    projectRelativePath: undefined,
+    projectName: undefined,
   },
 );
 

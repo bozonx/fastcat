@@ -23,14 +23,32 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-function getVerticalPadding() {
+function getPaddingAxis(axis: 'x' | 'y') {
   const padding = props.clip.style?.padding;
   if (typeof padding === 'number' && Number.isFinite(padding)) return padding;
   if (padding && typeof padding === 'object') {
-    if ('top' in padding) return padding.top ?? 60;
-    if ('y' in padding || 'x' in padding) return ('y' in padding ? padding.y : padding.x) ?? 60;
+    if (axis === 'x') {
+      if ('left' in padding || 'right' in padding) return padding.left ?? padding.right ?? 60;
+      if ('x' in padding || 'y' in padding) return padding.x ?? padding.y ?? 60;
+    }
+    if ('top' in padding || 'bottom' in padding) return padding.top ?? padding.bottom ?? 60;
+    if ('y' in padding || 'x' in padding) return padding.y ?? padding.x ?? 60;
   }
   return 60;
+}
+
+function updatePaddingAxis(axis: 'x' | 'y', value: number) {
+  const safe = Math.max(0, Number(value));
+  const currentX = getPaddingAxis('x');
+  const currentY = getPaddingAxis('y');
+  emit('updateTextStyle', {
+    padding: {
+      top: axis === 'y' ? safe : currentY,
+      right: axis === 'x' ? safe : currentX,
+      bottom: axis === 'y' ? safe : currentY,
+      left: axis === 'x' ? safe : currentX,
+    },
+  });
 }
 
 const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
@@ -60,10 +78,25 @@ const backgroundShadowEnabled = computed({
   set: (value: boolean) => emit('updateTextStyle', { backgroundShadowEnabled: value }),
 });
 
+const isAutoHeight = computed({
+  get: () => !(typeof props.clip.style?.height === 'number' && props.clip.style.height > 0),
+  set: (value: boolean) => {
+    emit('updateTextStyle', {
+      height: value ? undefined : Number(props.clip.style?.height ?? 240),
+    });
+  },
+});
+
 const alignOptions = [
   { value: 'left', label: 'Left' },
   { value: 'center', label: 'Center' },
   { value: 'right', label: 'Right' },
+];
+
+const verticalAlignOptions = [
+  { value: 'top', label: 'Top' },
+  { value: 'middle', label: 'Middle' },
+  { value: 'bottom', label: 'Bottom' },
 ];
 
 const fontFamilyOptions = [
@@ -215,14 +248,56 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               "
             />
           </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.verticalPadding')">
+          <PropertyField :label="t('fastcat.textClip.heightMode')">
+            <div class="h-8 flex items-center justify-between gap-2">
+              <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoHeight') }}</span>
+              <USwitch v-model="isAutoHeight" size="sm" color="error" />
+            </div>
+          </PropertyField>
+        </div>
+
+        <div v-if="!isAutoHeight" class="grid grid-cols-2 gap-2">
+          <PropertyField :label="t('fastcat.textClip.height')">
             <UiWheelNumberInput
-              :model-value="getVerticalPadding()"
+              :model-value="Number(clip.style?.height ?? 240)"
+              size="sm"
+              :step="10"
+              :min="1"
+              full-width
+              @update:model-value="(v: any) => emit('updateTextStyle', { height: Number(v) })"
+            />
+          </PropertyField>
+          <PropertyField :label="t('fastcat.textClip.verticalAlign')">
+            <UiSelect
+              :model-value="String(clip.style?.verticalAlign ?? 'middle')"
+              :items="verticalAlignOptions"
+              value-key="value"
+              label-key="label"
+              size="sm"
+              @update:model-value="(v: unknown) => emit('updateTextStyle', { verticalAlign: v })"
+            />
+          </PropertyField>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <PropertyField :label="t('fastcat.textClip.horizontalPadding')">
+            <UiWheelNumberInput
+              :model-value="getPaddingAxis('x')"
               size="sm"
               :step="1"
               :min="0"
               full-width
-              @update:model-value="(v: any) => emit('updateTextStyle', { padding: Number(v) })"
+              @update:model-value="(v: any) => updatePaddingAxis('x', Number(v))"
+            />
+          </PropertyField>
+          <PropertyField :label="t('fastcat.textClip.verticalPadding')">
+            <UiWheelNumberInput
+              :model-value="getPaddingAxis('y')"
+              size="sm"
+              :step="1"
+              :min="0"
+              full-width
+              @update:model-value="(v: any) => updatePaddingAxis('y', Number(v))"
             />
           </PropertyField>
         </div>

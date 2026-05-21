@@ -15,6 +15,7 @@ const props = defineProps<{
   clip: TimelineClipItem;
   hudManifest: { controls: ParamControl[] } | null | undefined;
   hudControlValues: Record<string, unknown>;
+  hideTextProperties?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -135,7 +136,7 @@ function confirmSavePreset() {
   />
 
   <ClipTextProperties
-    v-else-if="props.clip.clipType === 'text'"
+    v-else-if="props.clip.clipType === 'text' && !props.hideTextProperties"
     :clip="props.clip as TimelineTextClipItem"
     :presets="textPresets"
     @update-text="emit('updateText', $event)"

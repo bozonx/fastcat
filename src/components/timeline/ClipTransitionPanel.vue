@@ -17,6 +17,7 @@ import {
   getNextClipForItem,
 } from '~/utils/timeline/clip';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 interface CurveOption {
   value: TransitionCurve;
@@ -51,6 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const presetsStore = usePresetsStore();
+const selectionStore = useSelectionStore();
 const isSaveModalOpen = ref(false);
 const newPresetName = ref('');
 
@@ -208,6 +210,10 @@ const visibleParamFields = computed<TransitionParamField[]>(() => {
   });
 });
 
+function handleGoToClip() {
+  selectionStore.selectTimelineItem(props.trackId, props.itemId, 'clip');
+}
+
 function handleSavePreset() {
   if (!selectedManifest.value || !newPresetName.value.trim() || !props.transition) return;
 
@@ -238,6 +244,14 @@ defineExpose({
         <span>{{ edge === 'in' ? 'IN' : 'OUT' }} {{ t('fastcat.timeline.transition.title') }}</span>
       </div>
       <div class="flex items-center gap-1">
+        <UButton
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          icon="i-heroicons-arrow-uturn-left"
+          :title="t('fastcat.timeline.transition.goToClip')"
+          @click="handleGoToClip"
+        />
         <UButton
           v-if="transition"
           color="primary"

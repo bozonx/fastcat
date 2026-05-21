@@ -52,12 +52,6 @@ export interface UseFileDropOptions {
 export function useFileDrop(options: UseFileDropOptions) {
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
-  const {
-    dragSourceFileManagerInstanceId,
-    dragSourceVfs,
-    currentDragOperation,
-    setCurrentDragOperation,
-  } = useAppClipboard();
   const appClipboard = useAppClipboard();
   const isRootDropOver = ref(false);
   let rootDragEnterCount = 0;
@@ -68,7 +62,7 @@ export function useFileDrop(options: UseFileDropOptions) {
 
   function resolveOperation(e: DragEvent): 'copy' | 'move' {
     return resolveFileManagerDragOperation({
-      dragSourceFileManagerInstanceId,
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(e),
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
     });
@@ -79,10 +73,10 @@ export function useFileDrop(options: UseFileDropOptions) {
     fallbackRawOperation: 'copy' | 'move' | null,
   ): 'copy' | 'move' {
     return resolveFileManagerDropOperation({
-      dragSourceFileManagerInstanceId,
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(e),
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
-      currentDragOperation,
+      currentDragOperation: appClipboard.currentDragOperation,
       fallbackRawOperation,
     });
   }
@@ -102,7 +96,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     targetDirPath?: string;
   }): Promise<boolean> {
     const involvesBloggerDog =
-      options.vfs?.id === 'bloggerdog' || dragSourceVfs?.id === 'bloggerdog';
+      options.vfs?.id === 'bloggerdog' || appClipboard.dragSourceVfs?.id === 'bloggerdog';
     if (!involvesBloggerDog) return true;
 
     if (options.vfs?.id === 'bloggerdog' && params.targetDirPath) {
@@ -118,7 +112,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       canTransferClipboardItemToOrFromBloggerDog(
         item as Pick<FileManagerClipboardItem, 'kind' | 'name'>,
         {
-          sourceIsBloggerDog: dragSourceVfs?.id === 'bloggerdog',
+          sourceIsBloggerDog: appClipboard.dragSourceVfs?.id === 'bloggerdog',
           targetIsBloggerDog: options.vfs?.id === 'bloggerdog',
         },
       ),
@@ -138,7 +132,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       targetFileManagerInstanceId: targetInstanceId,
     });
 
-    setCurrentDragOperation(operation);
+    appClipboard.setCurrentDragOperation(operation);
     syncFileManagerDragCursor({ isDragging: true, operation });
   }
 
@@ -169,7 +163,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       !hasInternalFileManagerDragType(e.dataTransfer?.types) &&
       e.dataTransfer?.types.includes('Files')
     ) {
-      setCurrentDragOperation('copy');
+      appClipboard.setCurrentDragOperation('copy');
       appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
       e.dataTransfer!.dropEffect = 'copy';
       syncFileManagerDragCursor({ isDragging: true, operation: 'copy' });
@@ -177,7 +171,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     }
 
     if (isFileManagerDropCancellationTarget({ event: e, targetDirPath: undefined })) {
-      setCurrentDragOperation('cancel');
+      appClipboard.setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
       e.dataTransfer!.dropEffect = 'none';
       syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
@@ -189,7 +183,7 @@ export function useFileDrop(options: UseFileDropOptions) {
         items: appClipboard.draggedItems,
       }))
     ) {
-      setCurrentDragOperation('cancel');
+      appClipboard.setCurrentDragOperation('cancel');
       appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
       e.dataTransfer!.dropEffect = 'none';
       syncFileManagerDragCursor({ isDragging: true, operation: 'cancel' });
@@ -197,7 +191,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     }
 
     const operation = resolveOperation(e);
-    setCurrentDragOperation(operation);
+    appClipboard.setCurrentDragOperation(operation);
     appClipboard.setDragTargetFileManagerInstanceId(options.targetFileManagerInstanceId ?? null);
     e.dataTransfer!.dropEffect = operation === 'copy' ? 'copy' : 'move';
     syncFileManagerDragCursor({ isDragging: true, operation });
@@ -209,7 +203,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (rootDragEnterCount <= 0) {
       rootDragEnterCount = 0;
       isRootDropOver.value = false;
-      setCurrentDragOperation(null);
+      appClipboard.setCurrentDragOperation(null);
       appClipboard.setDragTargetFileManagerInstanceId(null);
       resetFileManagerDragCursor();
     }
@@ -219,7 +213,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     e.stopPropagation();
     rootDragEnterCount = 0;
     isRootDropOver.value = false;
-    setCurrentDragOperation(null);
+    appClipboard.setCurrentDragOperation(null);
     appClipboard.setDragTargetFileManagerInstanceId(null);
     resetFileManagerDragCursor();
 
@@ -238,7 +232,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (!internalRaw) return;
 
     const isCrossManagerDrag = isCrossFileManagerDrag({
-      dragSourceFileManagerInstanceId,
+      dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
     });
     const shouldCopy =
@@ -265,7 +259,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       return;
     }
 
-    if (isCrossManagerDrag && dragSourceVfs) {
+    if (isCrossManagerDrag && appClipboard.dragSourceVfs) {
       try {
         for (const item of itemsToMove) {
           const sourcePath = typeof item?.path === 'string' ? item.path : '';
@@ -274,7 +268,7 @@ export function useFileDrop(options: UseFileDropOptions) {
           const sourceKind = item?.kind === 'directory' ? 'directory' : 'file';
           if (shouldCopy) {
             await crossVfsCopy({
-              sourceVfs: dragSourceVfs,
+              sourceVfs: appClipboard.dragSourceVfs,
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,
@@ -282,7 +276,7 @@ export function useFileDrop(options: UseFileDropOptions) {
             });
           } else {
             await crossVfsMove({
-              sourceVfs: dragSourceVfs,
+              sourceVfs: appClipboard.dragSourceVfs,
               targetVfs: options.vfs,
               sourcePath,
               sourceKind,

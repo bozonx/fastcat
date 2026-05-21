@@ -220,6 +220,7 @@ export default {
       tabs: {
         audio: 'Аудио',
         clip: 'Клип',
+        text: 'Текст',
         video: 'Видео',
       },
       transform: {
@@ -663,6 +664,7 @@ export default {
     },
     textClip: {
       align: 'Выравнивание',
+      autoHeight: 'Авто',
       backgroundBlock: 'Фон',
       backgroundAlpha: 'Прозрачность фона',
       backgroundColor: 'Фон',
@@ -678,6 +680,9 @@ export default {
       fontFamily: 'Шрифт',
       fontSize: 'Размер шрифта',
       fontWeight: 'Начертание',
+      height: 'Высота блока',
+      heightMode: 'Высота',
+      horizontalPadding: 'Горизонтальные отступы',
       hue: 'Оттенок',
       letterSpacing: 'Межбуквенный интервал',
       lineHeight: 'Высота строки',
@@ -991,6 +996,7 @@ export default {
         sourceBackgroundShort: 'Фон',
         sourceTransparent: 'Только прозрачность самого клипа без участия других источников',
         sourceTransparentShort: 'Прозрачность',
+        goToClip: 'К клипу',
         title: 'Переход',
         wipeEdgeModeBlur: 'Без зазора (размытие края)',
         wipeEdgeModeGap: 'С зазором',

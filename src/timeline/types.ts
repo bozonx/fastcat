@@ -44,6 +44,7 @@ export type TimelineBlendMode = 'normal' | 'add' | 'multiply' | 'screen' | 'dark
 
 export interface TextClipStyle {
   width?: number;
+  height?: number;
   fontFamily?: string;
   fontSize?: number;
   fontWeight?: string | number;
