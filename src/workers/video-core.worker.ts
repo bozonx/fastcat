@@ -63,6 +63,10 @@ async function callWorkerMethod<K extends WorkerMethod>(
   args: Parameters<VideoCoreWorkerAPI[K]>,
 ): Promise<Awaited<ReturnType<VideoCoreWorkerAPI[K]>>> {
   switch (method) {
+    case 'setPixiRendererPreference':
+      return api.setPixiRendererPreference(
+        ...(args as Parameters<VideoCoreWorkerAPI['setPixiRendererPreference']>),
+      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
     case 'extractMetadata':
       return parseMediaMetadata(await extractMetadata(args[0] as File)) as Awaited<
         ReturnType<VideoCoreWorkerAPI[K]>
