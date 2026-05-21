@@ -89,7 +89,7 @@ export function createUiFileTreePersistenceModule(deps: {
     const prefix = `${path}/`;
     for (const key of Object.keys(next)) {
       if (key === path || key.startsWith(prefix)) {
-        delete next[key];
+        Reflect.deleteProperty(next, key);
       }
     }
 

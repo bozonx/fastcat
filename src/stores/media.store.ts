@@ -125,7 +125,7 @@ export const useMediaStore = defineStore('media', () => {
       }
     } else {
       // If forceRefresh is true, we clear the failure state for this path
-      delete metadataLoadFailed.value[cacheKey];
+      Reflect.deleteProperty(metadataLoadFailed.value, cacheKey);
     }
 
     // For forceRefresh, chain after any in-flight non-force request so we don't
@@ -147,7 +147,7 @@ export const useMediaStore = defineStore('media', () => {
         if (pendingRequests.get(cacheKey) === requestPromise) {
           pendingRequests.delete(cacheKey);
         }
-        delete metadataLoading.value[cacheKey];
+        Reflect.deleteProperty(metadataLoading.value, cacheKey);
       }
     })();
 
@@ -342,10 +342,10 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   async function removeMediaCache(projectRelativePath: string) {
-    delete mediaMetadata.value[projectRelativePath];
-    delete missingPaths.value[projectRelativePath];
-    delete metadataLoadFailed.value[projectRelativePath];
-    delete metadataLoading.value[projectRelativePath];
+    Reflect.deleteProperty(mediaMetadata.value, projectRelativePath);
+    Reflect.deleteProperty(missingPaths.value, projectRelativePath);
+    Reflect.deleteProperty(metadataLoadFailed.value, projectRelativePath);
+    Reflect.deleteProperty(metadataLoading.value, projectRelativePath);
     await fsModule.removeCacheFiles(projectRelativePath);
   }
 

@@ -17,9 +17,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'back'): void;
-  (e: 'cancel-selection'): void;
-  (e: 'navigate-root'): void;
+  (e: 'back' | 'cancel-selection' | 'navigate-root'): void;
   (e: 'navigate-breadcrumb', name: string, path: string): void;
 }>();
 

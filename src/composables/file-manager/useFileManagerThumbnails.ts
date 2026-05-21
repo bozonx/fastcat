@@ -47,7 +47,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
             safeRevokeObjectURL(activeImageUrls.get(path)!);
             activeImageUrls.delete(path);
           }
-          delete thumbnails.value[path];
+          Reflect.deleteProperty(thumbnails.value, path);
         }
       });
 

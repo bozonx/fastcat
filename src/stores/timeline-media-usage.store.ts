@@ -75,7 +75,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
     for (const mediaPath in combined) {
       const refs = combined[mediaPath];
       if (!refs || refs.length === 0) {
-        delete combined[mediaPath];
+        Reflect.deleteProperty(combined, mediaPath);
       }
     }
 

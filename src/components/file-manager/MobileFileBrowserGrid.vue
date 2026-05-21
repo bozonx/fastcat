@@ -26,10 +26,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'entryClick', entry: FsEntry): void;
-  (e: 'entryPrimaryAction', entry: FsEntry): void;
-  (e: 'longPress', entry: FsEntry): void;
-  (e: 'toggleSelection', entry: FsEntry): void;
+  (e: 'entryClick' | 'entryPrimaryAction' | 'longPress' | 'toggleSelection', entry: FsEntry): void;
 }>();
 
 const { t } = useI18n();

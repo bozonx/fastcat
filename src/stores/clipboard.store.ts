@@ -111,7 +111,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
     }
 
     if (current.count <= 1) {
-      delete nextRegistry[instanceId];
+      Reflect.deleteProperty(nextRegistry, instanceId);
     } else {
       nextRegistry[instanceId] = {
         ...current,

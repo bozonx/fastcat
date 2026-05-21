@@ -451,12 +451,12 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
   function resetVerticalSizes(colId: string, view: 'cut' | 'sound' = 'cut') {
     if (view === 'cut') {
-      delete verticalSplitSizes.value[colId];
+      Reflect.deleteProperty(verticalSplitSizes.value, colId);
       projectStore.projectSettings.ui.layout.verticalSplitSizes[verticalSplitSizesKey.value] = {
         ...verticalSplitSizes.value,
       };
     } else {
-      delete soundVerticalSplitSizes.value[colId];
+      Reflect.deleteProperty(soundVerticalSplitSizes.value, colId);
       projectStore.projectSettings.ui.layout.verticalSplitSizes[soundVerticalSplitSizesKey.value] =
         {
           ...soundVerticalSplitSizes.value,

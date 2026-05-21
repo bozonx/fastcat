@@ -120,7 +120,7 @@ function confirmResetCommandHotkeys() {
   if (!cmdId) return;
   void workspaceStore.batchUpdateUserSettings(
     (draft) => {
-      delete draft.hotkeys.bindings[cmdId];
+      Reflect.deleteProperty(draft.hotkeys.bindings, cmdId);
     },
     { immediate: true },
   );
