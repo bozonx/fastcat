@@ -6,6 +6,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
 
 const props = defineProps<{
@@ -73,7 +74,7 @@ const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: strin
           />
         </div>
       </div>
-      <UTextarea
+      <UiTextarea
         :model-value="clip.text"
         size="sm"
         :rows="4"

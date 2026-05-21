@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import UiTextarea from '~/components/ui/UiTextarea.vue';
+
 const props = defineProps<{
   latestTranscriptionCacheKey: string;
   latestTranscriptionWasCached: boolean;
@@ -20,7 +22,7 @@ const { t } = useI18n();
       </span>
     </div>
 
-    <UTextarea
+    <UiTextarea
       v-if="props.latestTranscriptionText"
       :model-value="props.latestTranscriptionText"
       :rows="8"

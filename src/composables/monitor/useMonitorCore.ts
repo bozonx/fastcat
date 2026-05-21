@@ -2,7 +2,11 @@ import { useResizeObserver } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { getPreviewWorkerClient, setPreviewHostApi } from '~/utils/video-editor/worker-client';
+import {
+  broadcastPixiRendererPreference,
+  getPreviewWorkerClient,
+  setPreviewHostApi,
+} from '~/utils/video-editor/worker-client';
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs } from '~/utils/monitor-time';
@@ -97,10 +101,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return projectStore.activeMonitor?.previewEffectsEnabled !== false;
   });
 
+  const pixiRenderer = computed(() => {
+    return workspaceStore.userSettings.optimization.pixiRenderer;
+  });
+
   function getPreviewRenderOptions() {
     return createPreviewRenderOptions({
       previewEffectsEnabled: previewEffectsEnabled.value,
-      previewRenderer: workspaceStore.userSettings.optimization.previewRenderer,
+      pixiRenderer: workspaceStore.userSettings.optimization.pixiRenderer,
       videoFrameCacheMb: workspaceStore.userSettings.optimization.videoFrameCacheMb,
     });
   }
@@ -353,6 +361,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     existingProxies: proxyStore.existingProxies,
     useProxyInMonitor,
     previewEffectsEnabled,
+    pixiRenderer,
     isLoading,
     getIsUnmounted: () => isUnmounted,
     getIsCompositorReady: compositorRuntime.isReady,
@@ -397,6 +406,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       updateCanvasDisplaySize,
       scheduleBuild,
     });
+    void broadcastPixiRendererPreference(workspaceStore.userSettings.optimization.pixiRenderer);
   });
 
   onBeforeUnmount(async () => {

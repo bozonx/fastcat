@@ -318,6 +318,7 @@ export async function runExport(
   reportExportWarning: (msg: string, taskId?: string) => Promise<void>,
   checkCancel: () => boolean,
   taskId?: string,
+  rendererPreference: 'webgl' | 'webgpu' = 'webgl',
 ) {
   initEffects();
   initTransitions();
@@ -498,7 +499,9 @@ export async function runExport(
   }
 
   const localCompositor = new VideoCompositor();
-  await localCompositor.init(options.width, options.height, '#000', true);
+  await localCompositor.init(options.width, options.height, '#000', true, undefined, {
+    rendererPreference,
+  });
 
   try {
     const maxVideoDurationUs = await localCompositor.loadTimeline(

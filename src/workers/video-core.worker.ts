@@ -28,6 +28,7 @@ let hostClient: VideoCoreHostAPI | null = null;
 let compositor: VideoCompositor | null = null;
 let cancelExportRequested = false;
 let latestLoadTimelineRequestId = 0;
+let pixiRendererPreference: 'webgl' | 'webgpu' = 'webgl';
 
 let renderInFlight = false;
 let latestRenderTimeUs: number | null = null;
@@ -164,6 +165,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     rendererPreference?: 'webgl' | 'webgpu',
   ): Promise<void>;
 } = {
+  async setPixiRendererPreference(preference: 'webgl' | 'webgpu') {
+    pixiRendererPreference = preference;
+  },
+
   async extractMetadata(file: File | FileSystemFileHandle): Promise<MediaMetadata> {
     return parseMediaMetadata(await extractMetadata(file));
   },
@@ -175,6 +180,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     bgColor: string,
     rendererPreference: 'webgl' | 'webgpu' = 'webgl',
   ) {
+    pixiRendererPreference = rendererPreference;
     const nextCompositor = new VideoCompositor();
     await nextCompositor.init(width, height, bgColor, true, canvas, {
       rendererPreference,
@@ -297,6 +303,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
           return cancelExportRequested;
         },
         taskId,
+        pixiRendererPreference,
       );
     } finally {
       if (taskId) {
@@ -352,7 +359,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     quality: number,
   ) {
     const localCompositor = new VideoCompositor();
-    await localCompositor.init(width, height, '#000', true);
+    await localCompositor.init(width, height, '#000', true, undefined, {
+      rendererPreference: pixiRendererPreference,
+    });
 
     try {
       await localCompositor.loadTimeline(

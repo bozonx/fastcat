@@ -561,7 +561,7 @@ export function createVideoDiagnosticsSnapshot(params: {
   const sections: VideoDiagnosticsSection[] = [
     {
       description:
-        'These capabilities affect preview rendering in the monitor and timeline compositor. Pixi is initialized with WebGPU preference and may fall back to WebGL.',
+        'These capabilities affect compositing across preview and export. Pixi is initialized with the selected renderer preference and may fall back automatically if unavailable.',
       items: [
         {
           label: 'Compositor path',

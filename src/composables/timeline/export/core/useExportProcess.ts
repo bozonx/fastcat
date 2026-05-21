@@ -2,6 +2,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
+  broadcastPixiRendererPreference,
   getExportWorkerClient,
   registerExportTaskHostApi,
   setExportHostApi,
@@ -129,6 +130,7 @@ export function useExportProcess(
         throw new Error('Timeline is empty');
 
       const { client } = getExportWorkerClient();
+      await broadcastPixiRendererPreference(workspaceStore.userSettings.optimization.pixiRenderer);
 
       setExportHostApi(
         createVideoCoreHostApi({

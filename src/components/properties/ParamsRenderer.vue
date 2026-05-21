@@ -6,6 +6,7 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiKnob from '~/components/ui/editor/UiKnob.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 import type {
   ButtonGroupParamControl,
   FileParamControl,
@@ -524,7 +525,7 @@ function handleArrayItemUpdate(
 
       <div v-else-if="entry.kind === 'text'" class="flex flex-col gap-0.5">
         <span class="text-xs text-ui-text-muted">{{ entry.label }}</span>
-        <UTextarea
+        <UiTextarea
           v-if="entry.control.multiline"
           :model-value="entry.stringValue"
           :rows="entry.control.rows ?? 4"
@@ -532,7 +533,7 @@ function handleArrayItemUpdate(
           :size="size"
           :disabled="entry.disabled"
           @update:model-value="
-            (value: string | number) => updateValue(entry.control.key, String(value ?? ''))
+            (value: string) => updateValue(entry.control.key, String(value ?? ''))
           "
         />
         <UiTextInput

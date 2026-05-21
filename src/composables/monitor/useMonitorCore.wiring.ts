@@ -20,6 +20,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   existingProxies: Ref<Set<string>>;
   useProxyInMonitor: Ref<boolean>;
   previewEffectsEnabled: Ref<boolean>;
+  pixiRenderer: Ref<'webgl' | 'webgpu'>;
   isLoading: Ref<boolean>;
   getIsUnmounted: () => boolean;
   getIsCompositorReady: () => boolean;
@@ -100,6 +101,15 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
     () => {
       if (options.getIsUnmounted()) return;
       options.scheduleRender(options.getRenderTimeForLayoutUpdate());
+    },
+  );
+
+  watch(
+    () => options.pixiRenderer.value,
+    () => {
+      if (options.getIsUnmounted()) return;
+      options.invalidateCompositor();
+      options.scheduleBuild();
     },
   );
 

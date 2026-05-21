@@ -68,7 +68,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
       targetWidth,
       targetHeight,
       '#000',
-      options.getPreviewRenderOptions().previewRenderer,
+      options.getPreviewRenderOptions().pixiRenderer,
     );
 
     if (options.isUnmounted()) {

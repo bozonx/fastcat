@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -20,11 +21,12 @@ const content = defineModel<string>('content', { default: '' });
 <template>
   <UiModal v-model:open="isOpen" :title="props.fileName" :ui="{ content: 'max-w-4xl h-[80vh]' }">
     <div class="flex flex-col h-full min-h-0 pt-2">
-      <textarea
+      <UiTextarea
         v-model="content"
-        class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4 rounded border border-ui-border"
-        spellcheck="false"
+        class="flex-1 resize-none font-mono"
+        :spellcheck="false"
         data-primary-focus="true"
+        full-width
       />
     </div>
   </UiModal>

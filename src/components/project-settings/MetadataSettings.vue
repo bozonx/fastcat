@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 const { t } = useI18n();
@@ -63,7 +64,7 @@ const metaDescription = computed({
     </div>
 
     <UiFormField :label="t('videoEditor.export.metadataDescription')">
-      <UTextarea v-model="metaDescription" :rows="2" class="w-full" />
+      <UiTextarea v-model="metaDescription" :rows="2" full-width />
     </UiFormField>
   </div>
 </template>

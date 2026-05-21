@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 export interface PreviewRenderOptions {
   previewEffectsEnabled?: boolean;
-  previewRenderer?: 'webgl' | 'webgpu';
+  pixiRenderer?: 'webgl' | 'webgpu';
   videoFrameCacheMb?: number;
 }
 
@@ -22,7 +22,7 @@ export interface WorkerRpcErrorShape {
 
 export const PreviewRenderOptionsSchema = z.object({
   previewEffectsEnabled: z.boolean().optional(),
-  previewRenderer: z.enum(['webgl', 'webgpu']).optional(),
+  pixiRenderer: z.enum(['webgl', 'webgpu']).optional(),
   videoFrameCacheMb: z.number().finite().nonnegative().optional(),
 });
 
@@ -121,6 +121,8 @@ export type VideoCoreHostRpcMessage = RpcMessageForApi<VideoCoreHostAPI>;
 export interface VideoCoreWorkerAPI {
   // Metadata
   extractMetadata(file: File | FileSystemFileHandle): Promise<MediaMetadata>;
+
+  setPixiRendererPreference(preference: 'webgl' | 'webgpu'): Promise<void>;
 
   // initCompositor is implemented manually in the client proxy
   initCompositor(

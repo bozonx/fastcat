@@ -7,6 +7,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 
@@ -187,33 +188,32 @@ async function onConfirm() {
           </div>
 
           <div class="flex flex-col gap-2">
-            <label
+            <URadio
               v-for="option in exportRangeOptions"
               :key="option.id"
-              class="flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors"
+              v-model="selectedExportRangeId"
+              :value="option.id"
+              :disabled="isExporting"
+              :ui="{
+                wrapper: 'flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors cursor-pointer',
+              }"
               :class="
                 selectedExportRangeId === option.id
                   ? 'bg-violet-500/10 border-violet-400/30'
                   : 'hover:bg-white/5'
               "
             >
-              <input
-                v-model="selectedExportRangeId"
-                type="radio"
-                name="export-range"
-                :value="option.id"
-                :disabled="isExporting"
-                class="mt-1 h-4 w-4 shrink-0 accent-violet-400"
-              />
-              <div class="min-w-0">
-                <div class="font-medium text-ui-text">
-                  {{ option.label }}
+              <template #label>
+                <div class="min-w-0">
+                  <div class="font-medium text-ui-text">
+                    {{ option.label }}
+                  </div>
+                  <div v-if="option.description" class="text-sm text-ui-text-muted truncate">
+                    {{ option.description }}
+                  </div>
                 </div>
-                <div v-if="option.description" class="text-sm text-ui-text-muted truncate">
-                  {{ option.description }}
-                </div>
-              </div>
-            </label>
+              </template>
+            </URadio>
           </div>
         </div>
 
@@ -344,14 +344,13 @@ async function onConfirm() {
           </div>
 
           <UiFormField :label="t('videoEditor.export.metadataDescription')">
-            <UTextarea
+            <UiTextarea
               v-model="metadataDescription"
               :disabled="isExporting"
-              class="w-full"
               :rows="3"
               autoresize
               :maxrows="10"
-              :ui="{ base: 'overflow-y-auto' }"
+              full-width
             />
           </UiFormField>
 

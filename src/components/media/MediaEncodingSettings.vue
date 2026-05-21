@@ -2,9 +2,11 @@
 import { computed, watch, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import type { VideoCodecOptionResolved } from '~/utils/webcodecs';
 
@@ -311,12 +313,12 @@ watch(
       </UiFormField>
 
       <UiFormField :label="t('videoEditor.export.metadataDescription')">
-        <UTextarea
+        <UiTextarea
           v-model="metadataDescription"
           size="sm"
           :disabled="props.disabled"
-          class="w-full"
           :rows="3"
+          full-width
         />
       </UiFormField>
 

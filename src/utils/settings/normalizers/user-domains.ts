@@ -130,9 +130,9 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
         .min(1)
         .max(16)
         .catch(DEFAULT_USER_SETTINGS.optimization.mediaTaskConcurrency),
-      previewRenderer: z
+      pixiRenderer: z
         .enum(['webgl', 'webgpu'])
-        .catch(DEFAULT_USER_SETTINGS.optimization.previewRenderer),
+        .catch(DEFAULT_USER_SETTINGS.optimization.pixiRenderer),
       videoFrameCacheMb: z.coerce
         .number()
         .min(0)

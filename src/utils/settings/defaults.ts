@@ -102,7 +102,7 @@ export interface FastCatUserSettings {
     proxyCopyOpusAudio: boolean;
     autoCreateProxies: boolean;
     mediaTaskConcurrency: number;
-    previewRenderer: 'webgl' | 'webgpu';
+    pixiRenderer: 'webgl' | 'webgpu';
     videoFrameCacheMb: number;
   };
   projectPresets: UserProjectPresetsSettings;
@@ -255,7 +255,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     proxyCopyOpusAudio: true,
     autoCreateProxies: false,
     mediaTaskConcurrency: 2,
-    previewRenderer: 'webgl',
+    pixiRenderer: 'webgl',
     videoFrameCacheMb: 256,
   },
   projectPresets: createDefaultProjectPresets(),

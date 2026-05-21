@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { resolveExportPreset, resolveProjectPreset } from '~/utils/settings';
@@ -7,6 +8,7 @@ import {
   type VideoDiagnosticsSnapshot,
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
+import { broadcastPixiRendererPreference } from '~/utils/video-editor/worker-client';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
@@ -73,10 +75,17 @@ onMounted(async () => {
 function resetDefaults() {
   workspaceStore.userSettings.optimization.videoFrameCacheMb =
     DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb;
-  workspaceStore.userSettings.optimization.previewRenderer =
-    DEFAULT_USER_SETTINGS.optimization.previewRenderer;
+  workspaceStore.userSettings.optimization.pixiRenderer =
+    DEFAULT_USER_SETTINGS.optimization.pixiRenderer;
   isResetConfirmOpen.value = false;
 }
+
+watch(
+  () => workspaceStore.userSettings.optimization.pixiRenderer,
+  async (preference) => {
+    await broadcastPixiRendererPreference(preference);
+  },
+);
 </script>
 
 <template>
@@ -115,16 +124,16 @@ function resetDefaults() {
 
       <div class="flex flex-col gap-4">
         <UiFormField
-          :label="t('videoEditor.settings.previewRenderer')"
+          :label="t('videoEditor.settings.pixiRenderer')"
           :help="
             t(
-              'videoEditor.settings.previewRendererHelp',
-              'WebGL is the stable default. WebGPU can be faster on some systems, but may flicker with Chromium Vulkan on Linux.',
+              'videoEditor.settings.pixiRendererHelp',
+              'Preferred Pixi renderer. Pixi will automatically fall back to an available backend if the selected one is unsupported.',
             )
           "
         >
           <UiButtonGroup
-            v-model="workspaceStore.userSettings.optimization.previewRenderer"
+            v-model="workspaceStore.userSettings.optimization.pixiRenderer"
             :options="[
               { label: 'WebGL', value: 'webgl' },
               { label: 'WebGPU', value: 'webgpu' },
@@ -167,7 +176,7 @@ function resetDefaults() {
           {{
             t(
               'videoEditor.settings.video.accelerationDiagnosticsHelp',
-              'The current app uses Pixi with WebGPU preference and WebGL fallback for preview compositing, plus WebCodecs/Mediabunny for browser-side import and export paths.',
+              'The app uses Pixi.js for compositing across preview and export. The renderer preference above controls which backend Pixi tries first; it may fall back automatically if unavailable.',
             )
           }}
         </div>

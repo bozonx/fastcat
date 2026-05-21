@@ -431,6 +431,21 @@ export function restartThumbnailWorker() {
   return getThumbnailWorkerClient();
 }
 
+export async function broadcastPixiRendererPreference(preference: 'webgl' | 'webgpu') {
+  const channels: WorkerChannel[] = ['preview', 'export', 'proxy', 'thumbnail'];
+  for (const channel of channels) {
+    const state = channelStates[channel];
+    if (state.workerInstance) {
+      try {
+        const { client } = createChannelClient(channel);
+        await client.setPixiRendererPreference(preference);
+      } catch {
+        // Worker may be terminating or not ready; ignore
+      }
+    }
+  }
+}
+
 export function getPreviewWorkerClient(): { client: VideoCoreWorkerAPI; worker: Worker } {
   return createChannelClient('preview');
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 
@@ -125,13 +126,14 @@ function focusPanel() {
     class="flex flex-col h-full w-full bg-ui-bg relative group/text-editor"
     @pointerdown.capture="focusPanel"
   >
-    <textarea
+    <UiTextarea
       v-if="!isLoading"
       ref="textareaRef"
       v-model="content"
-      class="flex-1 w-full resize-none font-mono text-sm text-ui-text bg-ui-bg focus:outline-none p-4"
-      spellcheck="false"
+      class="flex-1 resize-none font-mono"
+      :spellcheck="false"
       data-primary-focus="true"
+      full-width
       @focus="focusPanel"
     />
     <div v-else class="flex-1 flex items-center justify-center text-ui-text-muted text-sm">

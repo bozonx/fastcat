@@ -149,7 +149,7 @@ function cancel() {
   <input
     ref="inputRef"
     v-model="currentName"
-    class="bg-ui-bg-elevated border rounded px-1 min-w-10 max-w-full text-sm font-mono outline-none transition-shadow"
+    class="bg-ui-bg-elevated border rounded px-1 min-w-10 max-w-full text-sm font-mono transition-colors transition-shadow"
     :class="[isInvalid ? 'border-red-500 ring-1 ring-red-500' : 'border-primary-500']"
     :style="{ width: `${Math.max(4, currentName.length + 2)}ch` }"
     @keydown.enter.stop="finish"

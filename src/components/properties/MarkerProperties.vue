@@ -5,6 +5,7 @@ import type { TimelineMarker } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
+import UiTextarea from '~/components/ui/UiTextarea.vue';
 
 const props = defineProps<{
   markerId: string;
@@ -147,7 +148,7 @@ const mainActions = computed<unknown[]>(() => {
     <PropertySection :title="t('fastcat.marker.info')">
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('fastcat.marker.text') }}</span>
-        <UTextarea
+        <UiTextarea
           ref="textareaRef"
           :model-value="marker.text"
           size="sm"
