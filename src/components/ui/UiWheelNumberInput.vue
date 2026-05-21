@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<UiWheelNumberInputProps>(), {
   size: 'sm',
   disabled: false,
   fullWidth: false,
+  defaultValue: undefined,
 });
 
 const emit = defineEmits<{

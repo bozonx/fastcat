@@ -453,6 +453,7 @@ describe('timeline/commands update_clip_properties', () => {
           borderColor: '  #abcdef  ',
           borderAlpha: 0.4,
           borderWidth: 3,
+          paddingLinked: false,
           padding: { x: 10, y: 20 },
           unknown: 'x',
         } as any,
@@ -490,6 +491,7 @@ describe('timeline/commands update_clip_properties', () => {
       borderColor: '#abcdef',
       borderAlpha: 0.4,
       borderWidth: 3,
+      paddingLinked: false,
       padding: { top: 20, right: 10, bottom: 20, left: 10 },
     });
   });

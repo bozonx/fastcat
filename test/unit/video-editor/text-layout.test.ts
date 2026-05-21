@@ -30,6 +30,12 @@ describe('text-layout', () => {
     expect(style.padding).toEqual({ top: 60, right: 60, bottom: 60, left: 60 });
   });
 
+  it('links padding by default using horizontal padding for every side', () => {
+    const style = normalizeTextClipStyle({ padding: { x: 12, y: 30 } });
+
+    expect(style.padding).toEqual({ top: 12, right: 12, bottom: 12, left: 12 });
+  });
+
   it('wraps text when explicit width is provided', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'one two three four',
@@ -58,6 +64,7 @@ describe('text-layout', () => {
       style: {
         fontSize: 40,
         padding: { x: 20, y: 10 },
+        paddingLinked: false,
         align: 'left',
         verticalAlign: 'top',
       },
@@ -104,6 +111,7 @@ describe('text-layout', () => {
         fontSize: 40,
         height: 200,
         padding: { x: 10, y: 20 },
+        paddingLinked: false,
         verticalAlign: 'bottom',
         align: 'left',
       },

@@ -63,7 +63,7 @@ export class AudioEngine {
 
   private decodeWorker: Worker | null = null;
   private decodeCallId = 0;
-  private decodePending = new Map<number, { resolve: Function; reject: Function }>();
+  private decodePending = new Map<number, { resolve: (value: DecodeResponse['result']) => void; reject: (reason?: unknown) => void }>();
   private decodeQueue: Array<() => void> = [];
   private decodeInFlightCount = 0;
   private readonly maxDecodeConcurrency = 2;

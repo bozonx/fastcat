@@ -845,6 +845,7 @@ function buildAdjacencyMap(audioClips: AudioClipData[]): AdjacencyMap {
   return { prev, next };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class AudioMixer {
   static async prepareClips(params: AudioMixerPrepareParams): Promise<PreparedClip[]> {
     const { audioClips, hostClient, reportExportWarning, checkCancel } = params;

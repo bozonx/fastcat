@@ -76,21 +76,44 @@ export class TextRenderer {
     const frameW = Math.max(1, layout.frameWidth);
     const frameH = Math.max(1, layout.frameHeight);
 
+    if (normalizedStyle.backgroundEnabled && normalizedStyle.backgroundShadowEnabled) {
+      ctx.save();
+      ctx.globalAlpha = normalizedStyle.backgroundShadowAlpha;
+      ctx.fillStyle = normalizedStyle.backgroundShadowColor;
+      ctx.shadowColor = this.toCanvasShadowColor(normalizedStyle.backgroundShadowColor, 1);
+      ctx.shadowBlur = normalizedStyle.backgroundShadowBlur * renderScale;
+      ctx.shadowOffsetX = normalizedStyle.backgroundShadowOffsetX * renderScale;
+      ctx.shadowOffsetY = normalizedStyle.backgroundShadowOffsetY * renderScale;
+      this.drawRoundedRect(
+        ctx,
+        frameX,
+        frameY,
+        frameW,
+        frameH,
+        normalizedStyle.backgroundRadius * renderScale,
+      );
+      ctx.fill();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.shadowColor = 'transparent';
+      ctx.globalAlpha = 1;
+      this.drawRoundedRect(
+        ctx,
+        frameX,
+        frameY,
+        frameW,
+        frameH,
+        normalizedStyle.backgroundRadius * renderScale,
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+
     if (normalizedStyle.backgroundEnabled) {
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundAlpha;
       ctx.fillStyle = normalizedStyle.backgroundColor;
       ctx.globalCompositeOperation =
         normalizedStyle.backgroundBlendMode as GlobalCompositeOperation;
-      if (normalizedStyle.backgroundShadowEnabled) {
-        ctx.shadowColor = this.toCanvasShadowColor(
-          normalizedStyle.backgroundShadowColor,
-          normalizedStyle.backgroundShadowAlpha,
-        );
-        ctx.shadowBlur = normalizedStyle.backgroundShadowBlur * renderScale;
-        ctx.shadowOffsetX = normalizedStyle.backgroundShadowOffsetX * renderScale;
-        ctx.shadowOffsetY = normalizedStyle.backgroundShadowOffsetY * renderScale;
-      }
       this.drawRoundedRect(
         ctx,
         frameX,
@@ -124,44 +147,67 @@ export class TextRenderer {
     // Draw text lines
     const font = `${normalizedStyle.fontWeight} ${fontSizePx}px ${normalizedStyle.fontFamily}`;
     ctx.font = font;
-    ctx.fillStyle = normalizedStyle.color;
-    ctx.globalAlpha = normalizedStyle.colorAlpha;
-    ctx.globalCompositeOperation = normalizedStyle.colorBlendMode as GlobalCompositeOperation;
-    if (normalizedStyle.textShadowEnabled) {
-      ctx.shadowColor = this.toCanvasShadowColor(
-        normalizedStyle.textShadowColor,
-        normalizedStyle.textShadowAlpha,
-      );
-      ctx.shadowBlur = normalizedStyle.textShadowBlur * renderScale;
-      ctx.shadowOffsetX = normalizedStyle.textShadowOffsetX * renderScale;
-      ctx.shadowOffsetY = normalizedStyle.textShadowOffsetY * renderScale;
-    }
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = normalizedStyle.align;
 
     // textStartX is relative to the compositor canvas; convert to local canvas coords
     const localTextStartX = layout.textStartX - layout.backgroundX;
     const localTextTopPx = layout.textBlockTopPx - layout.backgroundY;
     const yOffsetPx = layout.yOffsetPx;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i] ?? '';
-      const lineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2 + yOffsetPx;
-
-      if (letterSpacingPx === 0) {
-        ctx.fillText(line, localTextStartX, lineY);
-      } else {
-        this.drawLineWithLetterSpacing({
-          ctx,
-          line,
-          startX: layout.textStartX - layout.backgroundX,
-          y: lineY,
-          align: normalizedStyle.align,
-          letterSpacingPx,
-          renderScale,
-        });
-      }
+    if (normalizedStyle.textShadowEnabled) {
+      ctx.save();
+      ctx.font = font;
+      ctx.fillStyle = normalizedStyle.textShadowColor;
+      ctx.globalAlpha = normalizedStyle.textShadowAlpha;
+      ctx.shadowColor = this.toCanvasShadowColor(normalizedStyle.textShadowColor, 1);
+      ctx.shadowBlur = normalizedStyle.textShadowBlur * renderScale;
+      ctx.shadowOffsetX = normalizedStyle.textShadowOffsetX * renderScale;
+      ctx.shadowOffsetY = normalizedStyle.textShadowOffsetY * renderScale;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = normalizedStyle.align;
+      this.drawTextLines({
+        ctx,
+        lines,
+        localTextStartX,
+        localTextTopPx,
+        lineHeightPx,
+        yOffsetPx,
+        letterSpacingPx,
+        align: normalizedStyle.align,
+        renderScale,
+      });
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.shadowColor = 'transparent';
+      ctx.globalAlpha = 1;
+      this.drawTextLines({
+        ctx,
+        lines,
+        localTextStartX,
+        localTextTopPx,
+        lineHeightPx,
+        yOffsetPx,
+        letterSpacingPx,
+        align: normalizedStyle.align,
+        renderScale,
+      });
+      ctx.restore();
     }
+
+    ctx.fillStyle = normalizedStyle.color;
+    ctx.globalAlpha = normalizedStyle.colorAlpha;
+    ctx.globalCompositeOperation = normalizedStyle.colorBlendMode as GlobalCompositeOperation;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = normalizedStyle.align;
+    this.drawTextLines({
+      ctx,
+      lines,
+      localTextStartX,
+      localTextTopPx,
+      lineHeightPx,
+      yOffsetPx,
+      letterSpacingPx,
+      align: normalizedStyle.align,
+      renderScale,
+    });
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     ctx.shadowColor = 'transparent';
@@ -182,6 +228,49 @@ export class TextRenderer {
     return (clip.sprite as { texture?: { source?: unknown } } | null)?.texture?.source as
       | { resize?: (width: number, height: number) => void; update?: () => void }
       | undefined;
+  }
+
+  private drawTextLines(params: {
+    ctx: OffscreenCanvasRenderingContext2D;
+    lines: string[];
+    localTextStartX: number;
+    localTextTopPx: number;
+    lineHeightPx: number;
+    yOffsetPx: number;
+    letterSpacingPx: number;
+    align: 'left' | 'center' | 'right';
+    renderScale: number;
+  }): void {
+    const {
+      ctx,
+      lines,
+      localTextStartX,
+      localTextTopPx,
+      lineHeightPx,
+      yOffsetPx,
+      letterSpacingPx,
+      align,
+      renderScale,
+    } = params;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? '';
+      const lineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2 + yOffsetPx;
+
+      if (letterSpacingPx === 0) {
+        ctx.fillText(line, localTextStartX, lineY);
+      } else {
+        this.drawLineWithLetterSpacing({
+          ctx,
+          line,
+          startX: localTextStartX,
+          y: lineY,
+          align,
+          letterSpacingPx,
+          renderScale,
+        });
+      }
+    }
   }
 
   private drawLineWithLetterSpacing(params: {

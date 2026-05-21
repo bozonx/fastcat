@@ -85,6 +85,7 @@ export const TextClipStyleSchema = z.object({
   borderColor: z.string().optional(),
   borderAlpha: z.number().optional(),
   borderWidth: z.number().optional(),
+  paddingLinked: z.boolean().optional(),
   padding: z.any().optional(),
 });
 

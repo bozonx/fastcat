@@ -130,6 +130,17 @@ export function normalizeTextPadding(padding: TextClipStyle['padding']): Normali
 }
 
 export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextStyle {
+  const rawPadding = normalizeTextPadding(style?.padding);
+  const padding =
+    style?.paddingLinked === false
+      ? rawPadding
+      : {
+          top: rawPadding.left,
+          right: rawPadding.left,
+          bottom: rawPadding.left,
+          left: rawPadding.left,
+        };
+
   return {
     width:
       typeof style?.width === 'number' && Number.isFinite(style.width) && style.width > 0
@@ -202,7 +213,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '#ffffff',
     borderAlpha: clampFinite(style?.borderAlpha, 1, 0, 1),
     borderWidth: clampFinite(style?.borderWidth, 0, 0, 10_000),
-    padding: normalizeTextPadding(style?.padding),
+    padding,
   };
 }
 

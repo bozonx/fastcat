@@ -68,6 +68,11 @@ const isUiRenameModalOpen = ref(false);
 
 const activeTab = ref('clip');
 
+const showAudioTab = computed(() => {
+  const clipType = props.clip.clipType;
+  return clipType === 'media' || clipType === 'timeline';
+});
+
 const tabs = computed(() => [
   {
     label: t('fastcat.clip.tabs.clip'),
@@ -88,12 +93,16 @@ const tabs = computed(() => [
     value: 'video',
     icon: 'i-heroicons-sparkles',
   },
-  {
-    label: t('fastcat.clip.tabs.audio'),
-    value: 'audio',
-    icon: 'i-heroicons-speaker-wave',
-    disabled: !canEditAudioGain.value,
-  },
+  ...(showAudioTab.value
+    ? [
+        {
+          label: t('fastcat.clip.tabs.audio'),
+          value: 'audio',
+          icon: 'i-heroicons-speaker-wave',
+          disabled: !canEditAudioGain.value,
+        },
+      ]
+    : []),
 ]);
 
 const isOpacityEnabled = computed({
@@ -433,6 +442,12 @@ watch(
     }
   },
 );
+
+watch(tabs, (newTabs) => {
+  if (!newTabs.some((t) => t.value === activeTab.value)) {
+    activeTab.value = 'clip';
+  }
+});
 
 watch(
   () => uiStore.scrollToEffectsTrigger,

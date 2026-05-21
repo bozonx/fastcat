@@ -41,12 +41,15 @@ function updatePaddingAxis(axis: 'x' | 'y', value: number) {
   const safe = Math.max(0, Number(value));
   const currentX = getPaddingAxis('x');
   const currentY = getPaddingAxis('y');
+  const nextX = axis === 'x' ? safe : currentX;
+  const nextY = paddingLinked.value ? nextX : axis === 'y' ? safe : currentY;
+
   emit('updateTextStyle', {
     padding: {
-      top: axis === 'y' ? safe : currentY,
-      right: axis === 'x' ? safe : currentX,
-      bottom: axis === 'y' ? safe : currentY,
-      left: axis === 'x' ? safe : currentX,
+      top: nextY,
+      right: nextX,
+      bottom: nextY,
+      left: nextX,
     },
   });
 }
@@ -76,6 +79,18 @@ const textShadowEnabled = computed({
 const backgroundShadowEnabled = computed({
   get: () => Boolean(props.clip.style?.backgroundShadowEnabled),
   set: (value: boolean) => emit('updateTextStyle', { backgroundShadowEnabled: value }),
+});
+
+const paddingLinked = computed({
+  get: () => props.clip.style?.paddingLinked !== false,
+  set: (value: boolean) => {
+    const patch: Record<string, unknown> = { paddingLinked: value };
+    if (value) {
+      const x = getPaddingAxis('x');
+      patch.padding = { top: x, right: x, bottom: x, left: x };
+    }
+    emit('updateTextStyle', patch);
+  },
 });
 
 const isAutoHeight = computed({
@@ -174,7 +189,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
         </PropertyField>
 
         <div class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.fontSize')">
+          <PropertyField :label="t('fastcat.textClip.fontSizePx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.fontSize ?? 64)"
               size="sm"
@@ -224,7 +239,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               @update:model-value="(v: unknown) => emit('updateTextStyle', { align: v })"
             />
           </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.lineHeight')">
+          <PropertyField :label="t('fastcat.textClip.lineHeightMultiplier')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.lineHeight ?? 1.2)"
               size="sm"
@@ -236,7 +251,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
         </div>
 
         <div class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.width')">
+          <PropertyField :label="t('fastcat.textClip.widthPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.width ?? 0)"
               size="sm"
@@ -257,7 +272,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
         </div>
 
         <div v-if="!isAutoHeight" class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.height')">
+          <PropertyField :label="t('fastcat.textClip.heightPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.height ?? 240)"
               size="sm"
@@ -279,8 +294,8 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           </PropertyField>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.horizontalPadding')">
+        <div class="grid grid-cols-[minmax(0,1fr)_2rem_minmax(0,1fr)] gap-2 items-end">
+          <PropertyField :label="t('fastcat.textClip.horizontalPaddingPx')">
             <UiWheelNumberInput
               :model-value="getPaddingAxis('x')"
               size="sm"
@@ -290,19 +305,31 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               @update:model-value="(v: any) => updatePaddingAxis('x', Number(v))"
             />
           </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.verticalPadding')">
+          <div class="h-8 flex items-center justify-center">
+            <UButton
+              :icon="paddingLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
+              variant="ghost"
+              size="xs"
+              color="white"
+              square
+              :title="t('fastcat.textClip.paddingLink')"
+              @click="paddingLinked = !paddingLinked"
+            />
+          </div>
+          <PropertyField :label="t('fastcat.textClip.verticalPaddingPx')">
             <UiWheelNumberInput
-              :model-value="getPaddingAxis('y')"
+              :model-value="paddingLinked ? getPaddingAxis('x') : getPaddingAxis('y')"
               size="sm"
               :step="1"
               :min="0"
               full-width
+              :disabled="paddingLinked"
               @update:model-value="(v: any) => updatePaddingAxis('y', Number(v))"
             />
           </PropertyField>
         </div>
 
-        <PropertyField :label="t('fastcat.textClip.letterSpacing')">
+        <PropertyField :label="t('fastcat.textClip.letterSpacingPx')">
           <UiWheelNumberInput
             :model-value="Number(clip.style?.letterSpacing ?? 0)"
             size="sm"
@@ -330,7 +357,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           />
         </PropertyField>
         <div class="grid grid-cols-3 gap-2">
-          <PropertyField :label="t('fastcat.textClip.shadowBlur')">
+          <PropertyField :label="t('fastcat.textClip.shadowBlurPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.textShadowBlur ?? 8)"
               size="sm"
@@ -342,7 +369,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               "
             />
           </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.shadowOffsetX')">
+          <PropertyField :label="t('fastcat.textClip.shadowOffsetXPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.textShadowOffsetX ?? 0)"
               size="sm"
@@ -353,7 +380,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               "
             />
           </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.shadowOffsetY')">
+          <PropertyField :label="t('fastcat.textClip.shadowOffsetYPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.textShadowOffsetY ?? 4)"
               size="sm"
@@ -387,7 +414,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             "
           />
         </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.backgroundRadius')">
+        <PropertyField :label="t('fastcat.textClip.backgroundRadiusPx')">
           <UiWheelNumberInput
             :model-value="Number(clip.style?.backgroundRadius ?? 0)"
             size="sm"
@@ -419,7 +446,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           />
         </PropertyField>
         <div class="grid grid-cols-3 gap-2">
-          <PropertyField :label="t('fastcat.textClip.shadowBlur')">
+          <PropertyField :label="t('fastcat.textClip.shadowBlurPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.backgroundShadowBlur ?? 12)"
               size="sm"
@@ -431,7 +458,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               "
             />
           </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.shadowOffsetX')">
+          <PropertyField :label="t('fastcat.textClip.shadowOffsetXPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.backgroundShadowOffsetX ?? 0)"
               size="sm"
@@ -442,7 +469,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               "
             />
           </PropertyField>
-          <PropertyField :label="t('fastcat.textClip.shadowOffsetY')">
+          <PropertyField :label="t('fastcat.textClip.shadowOffsetYPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.backgroundShadowOffsetY ?? 6)"
               size="sm"
@@ -472,7 +499,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             @update:alpha="(v: number) => emit('updateTextStyle', { borderAlpha: v })"
           />
         </PropertyField>
-        <PropertyField :label="t('fastcat.textClip.borderWidth')">
+        <PropertyField :label="t('fastcat.textClip.borderWidthPx')">
           <UiWheelNumberInput
             :model-value="Number(clip.style?.borderWidth ?? 2)"
             size="sm"

@@ -527,6 +527,8 @@ export function updateClipProperties(
           typeof borderWidthRaw === 'number' && Number.isFinite(borderWidthRaw)
             ? Math.max(0, Math.min(10_000, borderWidthRaw))
             : undefined;
+        const paddingLinked =
+          typeof rawRecord.paddingLinked === 'boolean' ? rawRecord.paddingLinked : undefined;
 
         const paddingRaw = rawRecord.padding;
         const padding = (() => {
@@ -621,6 +623,7 @@ export function updateClipProperties(
           ...(borderColor !== undefined && borderColor.length > 0 ? { borderColor } : {}),
           ...(borderAlpha !== undefined ? { borderAlpha } : {}),
           ...(borderWidth !== undefined ? { borderWidth } : {}),
+          ...(paddingLinked !== undefined ? { paddingLinked } : {}),
           ...(padding !== undefined ? { padding } : {}),
         };
 

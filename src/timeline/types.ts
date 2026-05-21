@@ -76,6 +76,7 @@ export interface TextClipStyle {
   borderColor?: string;
   borderAlpha?: number;
   borderWidth?: number;
+  paddingLinked?: boolean;
   padding?:
     | number
     | { x?: number; y?: number }
