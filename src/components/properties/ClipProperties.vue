@@ -10,7 +10,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFileManagerStore, useFilesPageFileManagerStore } from '~/stores/file-manager.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
 import type {
   AudioClipEffect,
@@ -25,7 +25,6 @@ import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue'
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import ClipActionsSection from '~/components/properties/clip/ClipActionsSection.vue';
 import ClipInfoSection from '~/components/properties/clip/ClipInfoSection.vue';
-import ClipEffectsSection from '~/components/properties/clip/ClipEffectsSection.vue';
 import ClipBlendingModeSection from '~/components/properties/clip/ClipBlendingModeSection.vue';
 import ClipOpacitySection from '~/components/properties/clip/ClipOpacitySection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
@@ -59,7 +58,6 @@ const focusStore = useFocusStore();
 const fileManagerStore = inject('fileManagerStore', useFileManagerStore()) as ReturnType<
   typeof useFileManagerStore
 >;
-const filesPageStore = useFilesPageFileManagerStore();
 const clipboardStore = useAppClipboard();
 
 const { isMobile } = useDevice();
@@ -181,11 +179,7 @@ function handleCutClip() {
 }
 
 const {
-  isLockedLinkedAudioClip,
-  isInLinkedGroup,
   handleDeleteClip,
-  isSoloed,
-  toggleSolo,
   otherActionsList,
   commonActionsList,
 } = useClipPropertiesActions({
@@ -283,24 +277,6 @@ function handleUpdateBackgroundColor(val: string) {
   const safe = val.trim().length > 0 ? val.trim() : '#000000';
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
     backgroundColor: safe,
-  });
-}
-
-function handleToggleDisabled() {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    disabled: !props.clip.disabled,
-  });
-}
-
-function handleToggleLocked() {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    locked: !props.clip.locked,
-  });
-}
-
-function handleToggleMuted() {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    audioMuted: !props.clip.audioMuted,
   });
 }
 

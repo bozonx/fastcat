@@ -195,7 +195,8 @@ async function onConfirm() {
               :value="option.id"
               :disabled="isExporting"
               :ui="{
-                wrapper: 'flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors cursor-pointer',
+                wrapper:
+                  'flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors cursor-pointer',
               }"
               :class="
                 selectedExportRangeId === option.id

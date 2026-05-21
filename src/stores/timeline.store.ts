@@ -4,11 +4,8 @@ import { ref, toRef, computed } from 'vue';
 import type {
   TimelineDocument,
   TimelineSelectionRange,
-  TimelineMediaClipItem,
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { applyTimelineCommand } from '~/timeline/commands';
-import { createTimelineCommandService } from '~/timeline/application/timelineCommandService';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
@@ -43,7 +40,6 @@ import { useProxyStore } from './proxy.store';
 import { useSelectionStore } from './selection.store';
 import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
-import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
 import { useNuxtApp } from 'nuxt/app';
@@ -77,7 +73,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
 
   const DEFAULT_IMAGE_DURATION_US = 5_000_000;
-  const DEFAULT_IMAGE_SOURCE_DURATION_US = DEFAULT_IMAGE_DURATION_US;
 
   const timelineDoc = ref<TimelineDocument | null>(null);
 
@@ -303,10 +298,6 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   async function loadTimeline() {
     await lifecycle.loadTimeline();
-  }
-
-  async function saveTimeline() {
-    await lifecycle.saveTimeline();
   }
 
   // eslint-disable-next-line prefer-const -- late-initialized before createTimelineLifecycleModule call

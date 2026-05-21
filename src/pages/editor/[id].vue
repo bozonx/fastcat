@@ -20,9 +20,8 @@ import {
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
+import EditorTimeline from '~/components/layout-panels/EditorTimeline.vue';
 
-import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
-import Timeline from '~/components/layout-panels/Timeline.vue';
 import { useFocusStore, isFileManagerPanelFocus } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
@@ -420,7 +419,7 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
         <!-- Bottom Panel: Timeline (always visible, height varies) -->
         <Pane :size="projectStore.timelineHeight" min-size="5">
           <div class="h-full min-h-0 overflow-hidden text-clip">
-            <Timeline class="h-full" />
+            <EditorTimeline class="h-full" />
           </div>
         </Pane>
       </Splitpanes>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, watchEffect } from 'vue';
+import { computed, ref, nextTick, watch } from 'vue';
 import { useFullscreen, useMediaQuery } from '@vueuse/core';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
@@ -63,8 +63,6 @@ const { showGrid, toggleGrid, getGridLines } = useMonitorGrid({ projectStore });
 
 const {
   contextMenuItems,
-  toggleProxyUsage,
-  togglePreviewEffects,
   resetZoom,
   onPlaybackSpeedChange,
   selectedPlaybackSpeedOption,

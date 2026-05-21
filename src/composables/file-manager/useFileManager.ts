@@ -3,7 +3,6 @@ import {
   shallowRef,
   computed,
   toRaw,
-  markRaw,
   watch,
   type Ref,
   inject,
@@ -29,9 +28,6 @@ import {
 import {
   getWorkspacePathFileName,
   getWorkspacePathParent,
-  isWorkspaceCommonPath,
-  stripWorkspaceCommonPathPrefix,
-  WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
@@ -1064,7 +1060,7 @@ export function useFileManager(options?: {
         projectRelativePath,
       });
     },
-    clearWaveforms: async ({ projectId, projectRelativePath }) => {
+    clearWaveforms: async ({ projectId: _projectId, projectRelativePath }) => {
       await mediaStore.removeMediaCache(projectRelativePath);
     },
   });
@@ -1209,7 +1205,7 @@ export function useFileManager(options?: {
         api.mediaCache.clearExistingProxies();
       }
     },
-    onDirectoryCopied: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
+    onDirectoryCopied: async ({ oldPath: _oldPath, newPath: _newPath }: { oldPath: string; newPath: string }) => {
       mediaStore.resetMediaState();
     },
     onDirectoryLoaded: () => {

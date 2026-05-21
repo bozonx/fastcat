@@ -49,4 +49,10 @@ export default withNuxt(eslintPluginPrettierRecommended)
       'no-unsafe-finally': 'off',
       'no-console': 'off',
     },
+  })
+  .append({
+    files: ['src/pages/**/*.vue', 'src/layouts/**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
   });
