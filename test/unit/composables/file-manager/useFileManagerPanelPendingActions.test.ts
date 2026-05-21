@@ -104,6 +104,7 @@ describe('useFileManagerPanelPendingActions', () => {
 
   it('routes pending paste through the shared handler and clears state', async () => {
     const onPasteTarget = vi.fn().mockResolvedValue(undefined);
+    focusStore.isPanelFocused.mockImplementation((id: string) => id === 'files-sidebar');
     mountComposable({ onPasteTarget });
 
     const entry = { kind: 'directory', name: 'assets', path: 'assets' };
@@ -113,5 +114,26 @@ describe('useFileManagerPanelPendingActions', () => {
 
     expect(onPasteTarget).toHaveBeenCalledWith(entry);
     expect(uiStore.pendingFsEntryPaste).toBeNull();
+  });
+
+  it('does not handle pending paste while the main browser for the same instance is focused', async () => {
+    const onPasteTarget = vi.fn().mockResolvedValue(undefined);
+    focusStore.isPanelFocused.mockImplementation(
+      (id: string) => id === 'dynamic:file-manager:test',
+    );
+    selectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'directory',
+      instanceId: 'test',
+    };
+    mountComposable({ onPasteTarget });
+
+    const entry = { kind: 'directory', name: 'assets', path: 'assets' };
+    uiStore.pendingFsEntryPaste = entry;
+    await nextTick();
+    await Promise.resolve();
+
+    expect(onPasteTarget).not.toHaveBeenCalled();
+    expect(uiStore.pendingFsEntryPaste).toStrictEqual(entry);
   });
 });

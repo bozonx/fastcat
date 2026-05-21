@@ -398,6 +398,8 @@ export interface TimelineResizeFadePayload {
   itemId: string;
   edge: 'in' | 'out';
   durationUs: number;
+  /** Pointer X where the gesture started. Used when resize starts after a drag threshold. */
+  pointerStartClientX?: number;
   /** Pre-drag document snapshot for correct undo history. Pass when creation and drag start together. */
   docBeforeDrag?: TimelineDocument | null;
 }

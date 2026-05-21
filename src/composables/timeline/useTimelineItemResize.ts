@@ -470,7 +470,7 @@ export function useTimelineItemResize(
       trackId: payload.trackId,
       itemId: payload.itemId,
       edge: payload.edge,
-      startX: e.clientX,
+      startX: payload.pointerStartClientX ?? e.clientX,
       startDurationUs: payload.durationUs,
       lastDurationUs: payload.durationUs,
       shouldDelete: payload.durationUs < deleteThresholdUs,
@@ -757,6 +757,13 @@ export function useTimelineItemResize(
       onPointerUp,
       onKeyDown,
     });
+
+    if (
+      typeof payload.pointerStartClientX === 'number' &&
+      payload.pointerStartClientX !== e.clientX
+    ) {
+      onPointerMove(e);
+    }
   }
 
   onBeforeUnmount(() => {

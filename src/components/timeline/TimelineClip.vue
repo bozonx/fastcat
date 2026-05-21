@@ -462,7 +462,10 @@ function getClipPointerTimeUs(e: MouseEvent): number | null {
   return props.item.timelineRange.startUs + pxToTimeUs(localX, timelineStore.timelineZoom);
 }
 
-function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; drag: boolean }) {
+function handleTransitionCreate(
+  e: PointerEvent,
+  payload: { edge: 'in' | 'out'; drag: boolean; pointerStartClientX?: number },
+) {
   if (!clipItem.value || !props.canEditClipContent) return;
 
   const defaultUs = Math.max(
@@ -514,16 +517,14 @@ function handleTransitionCreate(e: PointerEvent, payload: { edge: 'in' | 'out'; 
       preventDefault: () => {},
     } as PointerEvent;
 
-    // Defer starting drag to give Vue time to render the transition element
-    window.setTimeout(() => {
-      emit('startResizeTransition', pointerEventSnapshot, {
-        trackId: props.track.id,
-        itemId: props.item.id,
-        edge: payload.edge,
-        durationUs: 0,
-        docBeforeDrag,
-      });
-    }, 0);
+    emit('startResizeTransition', pointerEventSnapshot, {
+      trackId: props.track.id,
+      itemId: props.item.id,
+      edge: payload.edge,
+      durationUs: 0,
+      pointerStartClientX: payload.pointerStartClientX,
+      docBeforeDrag,
+    });
   } else {
     const transitionPatch = {
       type: 'dissolve',

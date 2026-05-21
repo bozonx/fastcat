@@ -47,6 +47,9 @@ vi.mock('~/stores/workspace.store', () => ({
       hotkeys: {
         layer1: 'Shift',
       },
+      timeline: {
+        defaultStaticClipDurationUs: 5_000_000,
+      },
     },
     workspaceState: {
       fileBrowser: {

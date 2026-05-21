@@ -42,6 +42,19 @@ export function useFileManagerPanelPendingActions({
     return true;
   };
 
+  const isSidebarPasteTarget = () => {
+    if (focusStore.isPanelFocused('files-sidebar') || focusStore.isPanelFocused('project')) {
+      return true;
+    }
+    if (focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}:sidebar`)) {
+      return true;
+    }
+    if (focusStore.isPanelFocused(`dynamic:fileManager:${instanceId}:sidebar`)) {
+      return true;
+    }
+    return false;
+  };
+
   watch(
     () => uiStore.pendingFsEntryDelete,
     (value) => {
@@ -122,7 +135,7 @@ export function useFileManagerPanelPendingActions({
     async (value) => {
       const entry = value;
       if (!entry || entry.kind !== 'directory') return;
-      if (!isFocusedOrSelected()) return;
+      if (!isSidebarPasteTarget()) return;
       try {
         await onPasteTarget(entry);
       } finally {

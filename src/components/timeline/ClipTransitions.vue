@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
@@ -14,8 +14,10 @@ import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions
 
 const { t } = useI18n();
 
-const TRANSITION_CREATE_HANDLE_WIDTH_PX = 7;
-const TRANSITION_CREATE_HANDLE_HEIGHT_PX = 9;
+const TRANSITION_CREATE_HANDLE_WIDTH_PX = 9;
+const TRANSITION_CREATE_HANDLE_HEIGHT_PX = 11;
+const TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX = 13;
+const TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX = 16;
 const TRANSITION_CREATE_HANDLE_BOTTOM_PX = -4;
 const TRANSITION_CREATE_HANDLE_OUTSET_PX = 2;
 const MIN_TRANSITION_CREATE_HANDLE_TRACK_HEIGHT_PX = 24;
@@ -41,7 +43,7 @@ const emit = defineEmits<{
   (
     e: 'createTransition',
     event: PointerEvent,
-    payload: { edge: 'in' | 'out'; drag: boolean },
+    payload: { edge: 'in' | 'out'; drag: boolean; pointerStartClientX?: number },
   ): void;
   (e: 'createTransitionHandleActive', active: boolean): void;
 }>();
@@ -225,11 +227,13 @@ function canShowCreateTransitionHandle() {
 }
 
 function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, string> {
+  const isHovered = hoveredCreateHandleEdge.value === edge;
+
   return {
     bottom: `${TRANSITION_CREATE_HANDLE_BOTTOM_PX}px`,
     [edge === 'in' ? 'left' : 'right']: `-${TRANSITION_CREATE_HANDLE_OUTSET_PX}px`,
-    width: `${TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
-    height: `${TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
+    width: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_WIDTH_PX : TRANSITION_CREATE_HANDLE_WIDTH_PX}px`,
+    height: `${isHovered ? TRANSITION_CREATE_HANDLE_HOVER_HEIGHT_PX : TRANSITION_CREATE_HANDLE_HEIGHT_PX}px`,
     zIndex: 'var(--z-clip-handles)',
   };
 }
@@ -238,9 +242,15 @@ function getCreateTransitionHandleStyle(edge: 'in' | 'out'): Record<string, stri
 let activeCleanup: (() => void) | null = null;
 let releaseHandleActiveCleanup: (() => void) | null = null;
 let isPointerDownOnCreateHandle = false;
+const hoveredCreateHandleEdge = ref<'in' | 'out' | null>(null);
 
 function setCreateTransitionHandleActive(active: boolean) {
   emit('createTransitionHandleActive', active);
+}
+
+function setCreateTransitionHandleHover(edge: 'in' | 'out' | null) {
+  hoveredCreateHandleEdge.value = edge;
+  setCreateTransitionHandleActive(edge !== null);
 }
 
 function cleanupReleaseHandleActive() {
@@ -255,6 +265,7 @@ function bindReleaseHandleActive() {
 
   const release = () => {
     isPointerDownOnCreateHandle = false;
+    hoveredCreateHandleEdge.value = null;
     cleanupReleaseHandleActive();
     setCreateTransitionHandleActive(false);
   };
@@ -289,7 +300,7 @@ function handleTransitionCreatePointerDown(e: PointerEvent, edge: 'in' | 'out') 
     if (Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3) {
       isDragging = true;
       cleanup();
-      emit('createTransition', e, { edge, drag: true });
+      emit('createTransition', moveEvent, { edge, drag: true, pointerStartClientX: startX });
     }
   };
 
@@ -319,6 +330,7 @@ onBeforeUnmount(() => {
     activeCleanup = null;
   }
   isPointerDownOnCreateHandle = false;
+  hoveredCreateHandleEdge.value = null;
   setCreateTransitionHandleActive(false);
   cleanupReleaseHandleActive();
 });
@@ -489,7 +501,7 @@ onBeforeUnmount(() => {
     <!-- Create Transition In Handle -->
     <div
       v-if="!clip.transitionIn && canEdit && !clip.locked && !track.locked"
-      class="absolute transition-opacity pointer-events-auto"
+      class="absolute transition-[opacity,width,height] pointer-events-auto"
       :style="getCreateTransitionHandleStyle('in')"
       :class="[
         canShowCreateTransitionHandle()
@@ -497,13 +509,13 @@ onBeforeUnmount(() => {
           : 'hidden pointer-events-none',
       ]"
       data-testid="transition-create-in"
-      @pointerenter="setCreateTransitionHandleActive(true)"
-      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleActive(false)"
+      @pointerenter="setCreateTransitionHandleHover('in')"
+      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleHover(null)"
       @pointerdown.stop="handleTransitionCreatePointerDown($event, 'in')"
       @click.stop
     >
       <div
-        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 hover:scale-125 transition-[background-color,transform]"
+        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 transition-colors"
         style="clip-path: polygon(0 0, 100% 50%, 0 100%)"
       ></div>
     </div>
@@ -511,7 +523,7 @@ onBeforeUnmount(() => {
     <!-- Create Transition Out Handle -->
     <div
       v-if="!clip.transitionOut && canEdit && !clip.locked && !track.locked"
-      class="absolute transition-opacity pointer-events-auto"
+      class="absolute transition-[opacity,width,height] pointer-events-auto"
       :style="getCreateTransitionHandleStyle('out')"
       :class="[
         canShowCreateTransitionHandle()
@@ -519,13 +531,13 @@ onBeforeUnmount(() => {
           : 'hidden pointer-events-none',
       ]"
       data-testid="transition-create-out"
-      @pointerenter="setCreateTransitionHandleActive(true)"
-      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleActive(false)"
+      @pointerenter="setCreateTransitionHandleHover('out')"
+      @pointerleave="!isPointerDownOnCreateHandle && setCreateTransitionHandleHover(null)"
       @pointerdown.stop="handleTransitionCreatePointerDown($event, 'out')"
       @click.stop
     >
       <div
-        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 hover:scale-125 transition-[background-color,transform]"
+        class="w-full h-full origin-bottom bg-white border border-black/30 shadow-sm hover:bg-yellow-400 transition-colors"
         style="clip-path: polygon(0 50%, 100% 0, 100% 100%)"
       ></div>
     </div>

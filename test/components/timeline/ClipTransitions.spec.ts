@@ -41,11 +41,23 @@ describe('ClipTransitions', () => {
 
     const handles = component.findAll('[data-testid^="transition-create-"]');
     expect(handles.length).toBe(2);
-    expect(handles[0].attributes('style')).toContain('width: 7px');
-    expect(handles[0].attributes('style')).toContain('height: 9px');
+    expect(handles[0].attributes('style')).toContain('width: 9px');
+    expect(handles[0].attributes('style')).toContain('height: 11px');
     expect(handles[0].attributes('style')).toContain('bottom: -4px');
     expect(handles[0].attributes('style')).toContain('left: -2px');
     expect(handles[1].attributes('style')).toContain('right: -2px');
+  });
+
+  it('expands transition create handle hit area on hover', async () => {
+    const component = await mountSuspended(ClipTransitions, {
+      props: defaultProps,
+    });
+
+    const handle = component.find('[data-testid="transition-create-in"]');
+    await handle.trigger('pointerenter');
+
+    expect(handle.attributes('style')).toContain('width: 13px');
+    expect(handle.attributes('style')).toContain('height: 16px');
   });
 
   it('hides transition create handles on short tracks', async () => {
@@ -127,6 +139,33 @@ describe('ClipTransitions', () => {
     expect(component.emitted('createTransition')![0][1]).toEqual({
       edge: 'in',
       drag: false,
+    });
+
+    addEventListenerSpy.mockRestore();
+  });
+
+  it('emits createTransition with drag start position when handle is dragged', async () => {
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    const component = await mountSuspended(ClipTransitions, {
+      props: defaultProps,
+    });
+
+    const handle = component.find('[data-testid="transition-create-in"]');
+    await handle.trigger('pointerdown', { clientX: 100, clientY: 100, button: 0 });
+
+    const pointerMoveCall = addEventListenerSpy.mock.calls
+      .filter((call) => call[0] === 'pointermove')
+      .at(-1);
+    expect(pointerMoveCall).toBeTruthy();
+
+    const listener = pointerMoveCall![1] as any;
+    listener(new (window as any).PointerEvent('pointermove', { clientX: 114, clientY: 100 }));
+
+    expect(component.emitted('createTransition')).toBeTruthy();
+    expect(component.emitted('createTransition')![0][1]).toEqual({
+      edge: 'in',
+      drag: true,
+      pointerStartClientX: 100,
     });
 
     addEventListenerSpy.mockRestore();
