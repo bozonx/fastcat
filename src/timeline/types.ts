@@ -49,6 +49,12 @@ export interface TextClipStyle {
   fontWeight?: string | number;
   color?: string;
   colorAlpha?: number;
+  textShadowEnabled?: boolean;
+  textShadowColor?: string;
+  textShadowAlpha?: number;
+  textShadowBlur?: number;
+  textShadowOffsetX?: number;
+  textShadowOffsetY?: number;
   align?: 'left' | 'center' | 'right';
   verticalAlign?: 'top' | 'middle' | 'bottom';
   lineHeight?: number;
@@ -57,6 +63,12 @@ export interface TextClipStyle {
   backgroundColor?: string;
   backgroundAlpha?: number;
   backgroundRadius?: number;
+  backgroundShadowEnabled?: boolean;
+  backgroundShadowColor?: string;
+  backgroundShadowAlpha?: number;
+  backgroundShadowBlur?: number;
+  backgroundShadowOffsetX?: number;
+  backgroundShadowOffsetY?: number;
   colorBlendMode?: TimelineBlendMode;
   backgroundBlendMode?: TimelineBlendMode;
   borderEnabled?: boolean;

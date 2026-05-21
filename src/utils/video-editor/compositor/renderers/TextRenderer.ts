@@ -56,14 +56,9 @@ export class TextRenderer {
       canvas.width = bgW;
       canvas.height = bgH;
       try {
-        if (
-          typeof (clip.sprite.texture.source as { resize?: (w: number, h: number) => void })
-            .resize === 'function'
-        ) {
-          (clip.sprite.texture.source as { resize: (w: number, h: number) => void }).resize(
-            bgW,
-            bgH,
-          );
+        const textureSource = this.getTextureSource(clip);
+        if (typeof textureSource?.resize === 'function') {
+          textureSource.resize(bgW, bgH);
         }
       } catch {
         // ignore
@@ -76,10 +71,10 @@ export class TextRenderer {
       normalizedStyle.borderEnabled && normalizedStyle.borderWidth > 0
         ? Math.round(normalizedStyle.borderWidth * renderScale)
         : 0;
-    const frameX = borderWidthPx;
-    const frameY = borderWidthPx;
-    const frameW = Math.max(1, bgW - borderWidthPx * 2);
-    const frameH = Math.max(1, bgH - borderWidthPx * 2);
+    const frameX = layout.frameX;
+    const frameY = layout.frameY;
+    const frameW = Math.max(1, layout.frameWidth);
+    const frameH = Math.max(1, layout.frameHeight);
 
     if (normalizedStyle.backgroundEnabled) {
       ctx.save();
@@ -87,6 +82,15 @@ export class TextRenderer {
       ctx.fillStyle = normalizedStyle.backgroundColor;
       ctx.globalCompositeOperation =
         normalizedStyle.backgroundBlendMode as GlobalCompositeOperation;
+      if (normalizedStyle.backgroundShadowEnabled) {
+        ctx.shadowColor = this.toCanvasShadowColor(
+          normalizedStyle.backgroundShadowColor,
+          normalizedStyle.backgroundShadowAlpha,
+        );
+        ctx.shadowBlur = normalizedStyle.backgroundShadowBlur * renderScale;
+        ctx.shadowOffsetX = normalizedStyle.backgroundShadowOffsetX * renderScale;
+        ctx.shadowOffsetY = normalizedStyle.backgroundShadowOffsetY * renderScale;
+      }
       this.drawRoundedRect(
         ctx,
         frameX,
@@ -107,10 +111,10 @@ export class TextRenderer {
       const inset = borderWidthPx / 2;
       this.drawRoundedRect(
         ctx,
-        inset,
-        inset,
-        Math.max(1, bgW - borderWidthPx),
-        Math.max(1, bgH - borderWidthPx),
+        frameX - inset,
+        frameY - inset,
+        Math.max(1, frameW + borderWidthPx),
+        Math.max(1, frameH + borderWidthPx),
         Math.max(0, normalizedStyle.backgroundRadius * renderScale + inset),
       );
       ctx.stroke();
@@ -123,6 +127,15 @@ export class TextRenderer {
     ctx.fillStyle = normalizedStyle.color;
     ctx.globalAlpha = normalizedStyle.colorAlpha;
     ctx.globalCompositeOperation = normalizedStyle.colorBlendMode as GlobalCompositeOperation;
+    if (normalizedStyle.textShadowEnabled) {
+      ctx.shadowColor = this.toCanvasShadowColor(
+        normalizedStyle.textShadowColor,
+        normalizedStyle.textShadowAlpha,
+      );
+      ctx.shadowBlur = normalizedStyle.textShadowBlur * renderScale;
+      ctx.shadowOffsetX = normalizedStyle.textShadowOffsetX * renderScale;
+      ctx.shadowOffsetY = normalizedStyle.textShadowOffsetY * renderScale;
+    }
     ctx.textBaseline = 'middle';
     ctx.textAlign = normalizedStyle.align;
 
@@ -150,12 +163,25 @@ export class TextRenderer {
       }
     }
     ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 
     try {
-      (clip.sprite.texture.source as { update?: () => void }).update?.();
+      this.getTextureSource(clip)?.update?.();
     } catch {
       // ignore
     }
+  }
+
+  private getTextureSource(
+    clip: CompositorClip,
+  ): { resize?: (width: number, height: number) => void; update?: () => void } | undefined {
+    return (clip.sprite as { texture?: { source?: unknown } } | null)?.texture?.source as
+      | { resize?: (width: number, height: number) => void; update?: () => void }
+      | undefined;
   }
 
   private drawLineWithLetterSpacing(params: {
@@ -217,5 +243,25 @@ export class TextRenderer {
     ctx.lineTo(x, y + safeRadius);
     ctx.quadraticCurveTo(x, y, x + safeRadius, y);
     ctx.closePath();
+  }
+
+  private toCanvasShadowColor(color: string, alpha: number): string {
+    const trimmed = color.trim();
+    const match = trimmed.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (!match) return trimmed;
+
+    const hex = match[1]!;
+    const full =
+      hex.length === 3
+        ? hex
+            .split('')
+            .map((char) => `${char}${char}`)
+            .join('')
+        : hex;
+    const value = Number.parseInt(full, 16);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
   }
 }

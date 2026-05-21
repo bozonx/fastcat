@@ -22,8 +22,10 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'update:color', val: string): void;
   (e: 'update:alpha', val: number): void;
-  (e: 'update:blendMode', val: TimelineBlendMode): void;
+  (e: 'update:blend-mode', val: TimelineBlendMode): void;
 }>();
+
+const { t } = useI18n();
 
 const alphaPercent = computed({
   get: () => Math.round(Math.max(0, Math.min(1, props.alpha)) * 100),
@@ -52,7 +54,7 @@ const blendModeValue = computed({
       val === 'lighten'
         ? val
         : 'normal';
-    emit('update:blendMode', safe as TimelineBlendMode);
+    emit('update:blend-mode', safe as TimelineBlendMode);
   },
 });
 
@@ -73,33 +75,56 @@ function commitColorText() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
-    <div class="flex items-center gap-2">
-      <UColorPicker
-        :model-value="props.color"
-        format="hex"
-        size="sm"
-        @update:model-value="onColorPickerUpdate"
-      />
-      <UiTextInput
-        v-model="colorText"
-        placeholder="#ffffff"
-        size="xs"
-        full-width
-        mono
-        @blur="commitColorText"
-        @keydown.enter="commitColorText"
-      />
+  <div class="grid grid-cols-2 gap-3">
+    <div class="flex flex-col gap-1.5 min-w-0">
+      <span class="text-2xs font-bold uppercase text-ui-text-muted">{{
+        t('fastcat.textClip.colorPicker')
+      }}</span>
+      <div class="min-w-0">
+        <UColorPicker
+          :model-value="props.color"
+          format="hex"
+          size="sm"
+          @update:model-value="onColorPickerUpdate"
+        />
+      </div>
+      <span class="text-2xs font-bold uppercase text-ui-text-muted">{{
+        t('fastcat.textClip.hue')
+      }}</span>
     </div>
-    <UiSliderInput v-model="alphaPercent" :min="0" :max="100" :step="1" unit="%" :decimals="0" />
-    <UiSelect
-      v-if="props.showBlendMode"
-      v-model="blendModeValue"
-      :items="props.blendModeOptions"
-      value-key="value"
-      label-key="label"
-      size="xs"
-      full-width
-    />
+    <div class="flex flex-col gap-2 min-w-0">
+      <UiSliderInput
+        v-model="alphaPercent"
+        :label="t('fastcat.textClip.opacity')"
+        :min="0"
+        :max="100"
+        :step="1"
+        unit="%"
+        :decimals="0"
+      />
+      <div class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.webColor') }}</span>
+        <UiTextInput
+          v-model="colorText"
+          placeholder="#ffffff"
+          size="xs"
+          full-width
+          mono
+          @blur="commitColorText"
+          @keydown.enter="commitColorText"
+        />
+      </div>
+      <div v-if="props.showBlendMode" class="flex flex-col gap-0.5">
+        <span class="text-xs text-ui-text-muted">{{ t('fastcat.clip.blendMode.title') }}</span>
+        <UiSelect
+          v-model="blendModeValue"
+          :items="props.blendModeOptions"
+          value-key="value"
+          label-key="label"
+          size="xs"
+          full-width
+        />
+      </div>
+    </div>
   </div>
 </template>

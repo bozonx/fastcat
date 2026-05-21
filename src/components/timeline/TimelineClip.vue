@@ -39,6 +39,7 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
@@ -489,7 +490,7 @@ function handleTransitionCreate(
     const transitionPatch = {
       type: 'dissolve',
       durationUs: 0,
-      mode: 'adjacent' as const,
+      mode: DEFAULT_TRANSITION_MODE,
       curve: 'linear' as const,
     };
 
@@ -529,7 +530,7 @@ function handleTransitionCreate(
     const transitionPatch = {
       type: 'dissolve',
       durationUs: defaultDurationUs,
-      mode: 'adjacent' as const,
+      mode: DEFAULT_TRANSITION_MODE,
       curve: 'linear' as const,
     };
 

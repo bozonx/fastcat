@@ -392,25 +392,6 @@ export function useTimelineItemResize(
       });
     }
 
-    if (mode === 'background' || mode === 'transparent') {
-      if (input.edge === 'in') {
-        limitByHandle =
-          clip.clipType === 'media' || clip.clipType === 'timeline'
-            ? Math.max(0, Math.round(Number(clip.sourceRange?.startUs ?? 0)))
-            : Number.POSITIVE_INFINITY;
-      } else {
-        const clipSourceEnd =
-          (clip.sourceRange?.startUs ?? 0) + (clip.sourceRange?.durationUs ?? 0);
-        const clipMaxEnd =
-          (clip.clipType === 'media' || clip.clipType === 'timeline') && !clip.isImage
-            ? (clipFields.sourceDurationUs ?? clipSourceEnd)
-            : Number.POSITIVE_INFINITY;
-        limitByHandle = Number.isFinite(clipMaxEnd)
-          ? Math.max(0, Math.round(Number(clipMaxEnd)) - Math.round(clipSourceEnd))
-          : Number.POSITIVE_INFINITY;
-      }
-    }
-
     return Math.min(maxWithinClip, limitByHandle);
   }
 
@@ -490,7 +471,7 @@ export function useTimelineItemResize(
         resizeTransition.value.startX +
         (currentScrollLeft - resizeTransition.value.startScrollLeft);
       const sign = payload.edge === 'in' ? 1 : -1;
-      const deltaPx = dx * sign;
+      const deltaPx = resizeTransition.value.isCreating ? Math.abs(dx) : dx * sign;
       const deltaUs = pxToDeltaUs(deltaPx, timelineStore.timelineZoom);
 
       const tracks = tracksRef();

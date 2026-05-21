@@ -17,6 +17,12 @@ describe('text-layout', () => {
     expect(style.backgroundRadius).toBe(0);
     expect(style.colorBlendMode).toBe('source-over');
     expect(style.backgroundBlendMode).toBe('source-over');
+    expect(style.textShadowEnabled).toBe(false);
+    expect(style.textShadowAlpha).toBe(1);
+    expect(style.textShadowBlur).toBe(0);
+    expect(style.backgroundShadowEnabled).toBe(false);
+    expect(style.backgroundShadowAlpha).toBe(1);
+    expect(style.backgroundShadowBlur).toBe(0);
     expect(style.borderEnabled).toBe(false);
     expect(style.borderAlpha).toBe(1);
     expect(style.borderWidth).toBe(0);
@@ -63,8 +69,8 @@ describe('text-layout', () => {
     expect(metrics.maxLineWidthPx).toBe(110);
     expect(metrics.textBlockWidthPx).toBe(110);
     expect(metrics.backgroundWidth).toBe(150);
-    expect(metrics.backgroundX).toBe(0);
-    expect(metrics.backgroundY).toBe(0);
+    expect(metrics.backgroundX).toBe(885);
+    expect(metrics.backgroundY).toBe(482);
   });
 
   it('expands text frame metrics for an outer border', () => {
@@ -83,10 +89,10 @@ describe('text-layout', () => {
       measureText: (text) => text.length * 10,
     });
 
-    expect(metrics.backgroundX).toBe(-4);
-    expect(metrics.backgroundY).toBe(-4);
+    expect(metrics.backgroundX).toBe(926);
+    expect(metrics.backgroundY).toBe(502);
     expect(metrics.backgroundWidth).toBe(68);
     expect(metrics.backgroundHeight).toBe(76);
-    expect(metrics.textStartX).toBe(10);
+    expect(metrics.textStartX).toBe(940);
   });
 });

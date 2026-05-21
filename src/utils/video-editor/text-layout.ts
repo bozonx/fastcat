@@ -16,6 +16,12 @@ export interface NormalizedTextStyle {
   color: string;
   colorAlpha: number;
   colorBlendMode: string;
+  textShadowEnabled: boolean;
+  textShadowColor: string;
+  textShadowAlpha: number;
+  textShadowBlur: number;
+  textShadowOffsetX: number;
+  textShadowOffsetY: number;
   align: 'left' | 'center' | 'right';
   verticalAlign: 'top' | 'middle' | 'bottom';
   lineHeight: number;
@@ -25,6 +31,12 @@ export interface NormalizedTextStyle {
   backgroundAlpha: number;
   backgroundRadius: number;
   backgroundBlendMode: string;
+  backgroundShadowEnabled: boolean;
+  backgroundShadowColor: string;
+  backgroundShadowAlpha: number;
+  backgroundShadowBlur: number;
+  backgroundShadowOffsetX: number;
+  backgroundShadowOffsetY: number;
   borderEnabled: boolean;
   borderColor: string;
   borderAlpha: number;
@@ -59,6 +71,10 @@ export interface TextLayoutMetrics {
   backgroundY: number;
   backgroundWidth: number;
   backgroundHeight: number;
+  frameX: number;
+  frameY: number;
+  frameWidth: number;
+  frameHeight: number;
   textStartX: number;
   yOffsetPx: number;
   paddingPx: NormalizedTextPadding;
@@ -130,6 +146,16 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
     color: typeof style?.color === 'string' && style.color.length > 0 ? style.color : '#ffffff',
     colorAlpha: clampFinite(style?.colorAlpha, 1, 0, 1),
     colorBlendMode: mapBlendModeToComposite(style?.colorBlendMode),
+    textShadowEnabled:
+      typeof style?.textShadowEnabled === 'boolean' ? style.textShadowEnabled : false,
+    textShadowColor:
+      typeof style?.textShadowColor === 'string' && style.textShadowColor.trim().length > 0
+        ? style.textShadowColor.trim()
+        : '#000000',
+    textShadowAlpha: clampFinite(style?.textShadowAlpha, 1, 0, 1),
+    textShadowBlur: clampFinite(style?.textShadowBlur, 0, 0, 10_000),
+    textShadowOffsetX: clampFinite(style?.textShadowOffsetX, 0, -10_000, 10_000),
+    textShadowOffsetY: clampFinite(style?.textShadowOffsetY, 0, -10_000, 10_000),
     align:
       style?.align === 'left' || style?.align === 'center' || style?.align === 'right'
         ? style.align
@@ -153,6 +179,17 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
     backgroundAlpha: clampFinite(style?.backgroundAlpha, 1, 0, 1),
     backgroundRadius: clampFinite(style?.backgroundRadius, 0, 0, 10_000),
     backgroundBlendMode: mapBlendModeToComposite(style?.backgroundBlendMode),
+    backgroundShadowEnabled:
+      typeof style?.backgroundShadowEnabled === 'boolean' ? style.backgroundShadowEnabled : false,
+    backgroundShadowColor:
+      typeof style?.backgroundShadowColor === 'string' &&
+      style.backgroundShadowColor.trim().length > 0
+        ? style.backgroundShadowColor.trim()
+        : '#000000',
+    backgroundShadowAlpha: clampFinite(style?.backgroundShadowAlpha, 1, 0, 1),
+    backgroundShadowBlur: clampFinite(style?.backgroundShadowBlur, 0, 0, 10_000),
+    backgroundShadowOffsetX: clampFinite(style?.backgroundShadowOffsetX, 0, -10_000, 10_000),
+    backgroundShadowOffsetY: clampFinite(style?.backgroundShadowOffsetY, 0, -10_000, 10_000),
     borderEnabled: typeof style?.borderEnabled === 'boolean' ? style.borderEnabled : false,
     borderColor:
       typeof style?.borderColor === 'string' && style.borderColor.trim().length > 0
@@ -256,44 +293,79 @@ export function computeTextLayoutMetrics(input: {
     }
   }
 
-  const textBlockWidthPx = contentWidthPx !== undefined ? contentWidthPx : maxLineWidthPx;
+  const textBlockWidthPx = maxLineWidthPx;
   const textBlockHeightPx = lines.length * lineHeightPx;
 
-  let textBlockLeftPx = 0;
-  if (normalizedStyle.align === 'left') {
-    textBlockLeftPx = paddingPx.left;
-  } else if (normalizedStyle.align === 'right') {
-    textBlockLeftPx = safeCanvasWidth - paddingPx.right - textBlockWidthPx;
-  } else {
-    textBlockLeftPx = (safeCanvasWidth - textBlockWidthPx) / 2;
+  const frameContentWidthPx = contentWidthPx ?? textBlockWidthPx;
+  const frameWidthPx = frameContentWidthPx + paddingPx.left + paddingPx.right;
+  const frameHeightPx = textBlockHeightPx + paddingPx.top + paddingPx.bottom;
+  const frameLeftPx = (safeCanvasWidth - frameWidthPx) / 2;
+  const frameTopPx = (safeCanvasHeight - frameHeightPx) / 2;
+
+  const contentLeftPx = frameLeftPx + paddingPx.left;
+  let textBlockLeftPx = contentLeftPx;
+  if (normalizedStyle.align === 'right') {
+    textBlockLeftPx = contentLeftPx + frameContentWidthPx - textBlockWidthPx;
+  } else if (normalizedStyle.align === 'center') {
+    textBlockLeftPx = contentLeftPx + (frameContentWidthPx - textBlockWidthPx) / 2;
   }
 
-  let textBlockTopPx = 0;
-  if (normalizedStyle.verticalAlign === 'top') {
-    textBlockTopPx = paddingPx.top;
-  } else if (normalizedStyle.verticalAlign === 'bottom') {
-    textBlockTopPx = safeCanvasHeight - paddingPx.bottom - textBlockHeightPx;
-  } else {
-    textBlockTopPx = (safeCanvasHeight - textBlockHeightPx) / 2;
-  }
+  const textBlockTopPx = frameTopPx + paddingPx.top;
 
-  const backgroundX = textBlockLeftPx - paddingPx.left;
-  const backgroundY = textBlockTopPx - paddingPx.top;
   const borderWidthPx =
     normalizedStyle.borderEnabled && normalizedStyle.borderWidth > 0
       ? Math.round(normalizedStyle.borderWidth * renderScale)
       : 0;
-  const backgroundWidth =
-    explicitWidthPx !== undefined
-      ? explicitWidthPx
-      : textBlockWidthPx + paddingPx.left + paddingPx.right;
-  const backgroundHeight = textBlockHeightPx + paddingPx.top + paddingPx.bottom;
+  const baseBackgroundX = frameLeftPx;
+  const baseBackgroundY = frameTopPx;
+  const backgroundShadowBlurPx = normalizedStyle.backgroundShadowEnabled
+    ? Math.round(normalizedStyle.backgroundShadowBlur * renderScale)
+    : 0;
+  const backgroundShadowOffsetXPx = normalizedStyle.backgroundShadowEnabled
+    ? Math.round(normalizedStyle.backgroundShadowOffsetX * renderScale)
+    : 0;
+  const backgroundShadowOffsetYPx = normalizedStyle.backgroundShadowEnabled
+    ? Math.round(normalizedStyle.backgroundShadowOffsetY * renderScale)
+    : 0;
+  const textShadowBlurPx = normalizedStyle.textShadowEnabled
+    ? Math.round(normalizedStyle.textShadowBlur * renderScale)
+    : 0;
+  const textShadowOffsetXPx = normalizedStyle.textShadowEnabled
+    ? Math.round(normalizedStyle.textShadowOffsetX * renderScale)
+    : 0;
+  const textShadowOffsetYPx = normalizedStyle.textShadowEnabled
+    ? Math.round(normalizedStyle.textShadowOffsetY * renderScale)
+    : 0;
+  const shadowLeft = Math.max(
+    0,
+    backgroundShadowBlurPx - backgroundShadowOffsetXPx,
+    textShadowBlurPx - textShadowOffsetXPx,
+  );
+  const shadowRight = Math.max(
+    0,
+    backgroundShadowBlurPx + backgroundShadowOffsetXPx,
+    textShadowBlurPx + textShadowOffsetXPx,
+  );
+  const shadowTop = Math.max(
+    0,
+    backgroundShadowBlurPx - backgroundShadowOffsetYPx,
+    textShadowBlurPx - textShadowOffsetYPx,
+  );
+  const shadowBottom = Math.max(
+    0,
+    backgroundShadowBlurPx + backgroundShadowOffsetYPx,
+    textShadowBlurPx + textShadowOffsetYPx,
+  );
+  const backgroundX = baseBackgroundX - borderWidthPx - shadowLeft;
+  const backgroundY = baseBackgroundY - borderWidthPx - shadowTop;
+  const backgroundWidth = frameWidthPx + borderWidthPx * 2 + shadowLeft + shadowRight;
+  const backgroundHeight = frameHeightPx + borderWidthPx * 2 + shadowTop + shadowBottom;
   const textStartX =
     normalizedStyle.align === 'left'
-      ? textBlockLeftPx
+      ? contentLeftPx
       : normalizedStyle.align === 'right'
-        ? textBlockLeftPx + textBlockWidthPx
-        : textBlockLeftPx + textBlockWidthPx / 2;
+        ? contentLeftPx + frameContentWidthPx
+        : contentLeftPx + frameContentWidthPx / 2;
   const yOffsetPx = (lineHeightPx - fontSizePx) / 2;
 
   return {
@@ -310,10 +382,14 @@ export function computeTextLayoutMetrics(input: {
     textBlockHeightPx,
     textBlockLeftPx,
     textBlockTopPx,
-    backgroundX: backgroundX - borderWidthPx,
-    backgroundY: backgroundY - borderWidthPx,
-    backgroundWidth: backgroundWidth + borderWidthPx * 2,
-    backgroundHeight: backgroundHeight + borderWidthPx * 2,
+    backgroundX,
+    backgroundY,
+    backgroundWidth,
+    backgroundHeight,
+    frameX: baseBackgroundX - backgroundX,
+    frameY: baseBackgroundY - backgroundY,
+    frameWidth: frameWidthPx,
+    frameHeight: frameHeightPx,
     textStartX,
     yOffsetPx,
     paddingPx,

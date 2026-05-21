@@ -422,7 +422,23 @@ export function updateClipProperties(
           typeof value === 'number' && Number.isFinite(value)
             ? Math.max(0, Math.min(1, value))
             : undefined;
+        const clampRange = (value: unknown, min: number, max: number) =>
+          typeof value === 'number' && Number.isFinite(value)
+            ? Math.max(min, Math.min(max, value))
+            : undefined;
         const colorAlpha = clampAlpha(rawRecord.colorAlpha);
+        const textShadowEnabled =
+          typeof rawRecord.textShadowEnabled === 'boolean'
+            ? rawRecord.textShadowEnabled
+            : undefined;
+        const textShadowColor =
+          typeof rawRecord.textShadowColor === 'string'
+            ? rawRecord.textShadowColor.trim()
+            : undefined;
+        const textShadowAlpha = clampAlpha(rawRecord.textShadowAlpha);
+        const textShadowBlur = clampRange(rawRecord.textShadowBlur, 0, 10_000);
+        const textShadowOffsetX = clampRange(rawRecord.textShadowOffsetX, -10_000, 10_000);
+        const textShadowOffsetY = clampRange(rawRecord.textShadowOffsetY, -10_000, 10_000);
         const alignRaw = rawRecord.align;
         const align =
           alignRaw === 'left' || alignRaw === 'center' || alignRaw === 'right'
@@ -463,6 +479,26 @@ export function updateClipProperties(
           typeof backgroundRadiusRaw === 'number' && Number.isFinite(backgroundRadiusRaw)
             ? Math.max(0, Math.min(10_000, backgroundRadiusRaw))
             : undefined;
+        const backgroundShadowEnabled =
+          typeof rawRecord.backgroundShadowEnabled === 'boolean'
+            ? rawRecord.backgroundShadowEnabled
+            : undefined;
+        const backgroundShadowColor =
+          typeof rawRecord.backgroundShadowColor === 'string'
+            ? rawRecord.backgroundShadowColor.trim()
+            : undefined;
+        const backgroundShadowAlpha = clampAlpha(rawRecord.backgroundShadowAlpha);
+        const backgroundShadowBlur = clampRange(rawRecord.backgroundShadowBlur, 0, 10_000);
+        const backgroundShadowOffsetX = clampRange(
+          rawRecord.backgroundShadowOffsetX,
+          -10_000,
+          10_000,
+        );
+        const backgroundShadowOffsetY = clampRange(
+          rawRecord.backgroundShadowOffsetY,
+          -10_000,
+          10_000,
+        );
         const isBlendMode = (value: unknown) =>
           value === 'normal' ||
           value === 'add' ||
@@ -547,6 +583,14 @@ export function updateClipProperties(
           ...(fontWeight !== undefined ? { fontWeight } : {}),
           ...(color !== undefined ? { color } : {}),
           ...(colorAlpha !== undefined ? { colorAlpha } : {}),
+          ...(textShadowEnabled !== undefined ? { textShadowEnabled } : {}),
+          ...(textShadowColor !== undefined && textShadowColor.length > 0
+            ? { textShadowColor }
+            : {}),
+          ...(textShadowAlpha !== undefined ? { textShadowAlpha } : {}),
+          ...(textShadowBlur !== undefined ? { textShadowBlur } : {}),
+          ...(textShadowOffsetX !== undefined ? { textShadowOffsetX } : {}),
+          ...(textShadowOffsetY !== undefined ? { textShadowOffsetY } : {}),
           ...(align !== undefined ? { align } : {}),
           ...(verticalAlign !== undefined ? { verticalAlign } : {}),
           ...(lineHeight !== undefined ? { lineHeight } : {}),
@@ -559,6 +603,14 @@ export function updateClipProperties(
           ...(backgroundRadius !== undefined ? { backgroundRadius } : {}),
           ...(colorBlendMode !== undefined ? { colorBlendMode } : {}),
           ...(backgroundBlendMode !== undefined ? { backgroundBlendMode } : {}),
+          ...(backgroundShadowEnabled !== undefined ? { backgroundShadowEnabled } : {}),
+          ...(backgroundShadowColor !== undefined && backgroundShadowColor.length > 0
+            ? { backgroundShadowColor }
+            : {}),
+          ...(backgroundShadowAlpha !== undefined ? { backgroundShadowAlpha } : {}),
+          ...(backgroundShadowBlur !== undefined ? { backgroundShadowBlur } : {}),
+          ...(backgroundShadowOffsetX !== undefined ? { backgroundShadowOffsetX } : {}),
+          ...(backgroundShadowOffsetY !== undefined ? { backgroundShadowOffsetY } : {}),
           ...(borderEnabled !== undefined ? { borderEnabled } : {}),
           ...(borderColor !== undefined && borderColor.length > 0 ? { borderColor } : {}),
           ...(borderAlpha !== undefined ? { borderAlpha } : {}),
