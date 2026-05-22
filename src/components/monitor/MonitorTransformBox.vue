@@ -14,8 +14,6 @@ import {
   createHotkeyLookup,
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
-import { cloneValue } from '~/utils/clone';
-
 const props = defineProps<{
   renderWidth: number;
   renderHeight: number;

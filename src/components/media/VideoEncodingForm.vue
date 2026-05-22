@@ -7,8 +7,6 @@ import MediaEncodingSettings, {
 } from '~/components/media/MediaEncodingSettings.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
-import { resolveExportPreset } from '~/utils/settings/presets';
-
 interface Props {
   disabled?: boolean;
   showMetadata?: boolean;

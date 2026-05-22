@@ -23,8 +23,6 @@ const { restoreHistory } = useFileManager();
 const canUndo = computed(() => historyStore.canUndo());
 const canRedo = computed(() => historyStore.canRedo());
 
-const history = computed(() => [...future.value, ...past.value]);
-
 const reversedPast = computed(() => [...past.value].reverse());
 const reversedFuture = computed(() => [...future.value].reverse());
 

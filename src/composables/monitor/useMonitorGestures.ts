@@ -99,13 +99,6 @@ export function useMonitorGestures(input: {
     zoom.value = stepMonitorZoom(zoom.value, dir > 0 ? 1 : -1);
   }
 
-  function onCustomZoomReset(e: Event) {
-    const detail = (e as CustomEvent).detail;
-    if (detail?.target !== 'monitor') return;
-
-    resetZoom();
-  }
-
   function onPreviewPointerDown(event: PointerEvent) {
     if (event.button !== 0) return;
     isPreviewSelected.value = true;
