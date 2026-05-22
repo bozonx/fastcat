@@ -73,7 +73,7 @@ const hudManifest = computed(() =>
 
 const hudControlValues = computed(() => {
   if (props.itemKind !== 'hud') return {};
-  const clip = mockClip.value;
+  const clip = mockClip.value as import('~/timeline/types').TimelineHudClipItem;
   return {
     hudType: clip.hudType,
     ...flattenObject({ background: clip.background || {} }),
@@ -87,7 +87,7 @@ function flattenObject(ob: Record<string, unknown>, prefix = ''): Record<string,
   for (const i in ob) {
     if (!Object.prototype.hasOwnProperty.call(ob, i)) continue;
     if (typeof ob[i] === 'object' && ob[i] !== null && !Array.isArray(ob[i])) {
-      const flatObject = flattenObject(ob[i], prefix + i + '.');
+      const flatObject = flattenObject(ob[i] as Record<string, unknown>, prefix + i + '.');
       for (const x in flatObject) {
         if (!Object.prototype.hasOwnProperty.call(flatObject, x)) continue;
         result[x] = flatObject[x];
@@ -136,12 +136,12 @@ function handleUpdateHudControl(key: string, value: unknown) {
   const layer = keys[0] as 'background' | 'content' | 'frame';
   if (!params.value[layer]) params.value[layer] = {};
 
-  let target = params.value[layer];
+  let target = params.value[layer] as Record<string, unknown>;
   for (let i = 1; i < keys.length - 1; i++) {
     const k = keys[i];
     if (k === undefined) continue;
     if (!target[k]) target[k] = {};
-    target = target[k];
+    target = target[k] as Record<string, unknown>;
   }
   const lastKey = keys[keys.length - 1];
   if (lastKey !== undefined) {
@@ -168,7 +168,7 @@ function handleUpdatePreset() {
 }
 
 const actions = computed(() => {
-  const list: unknown[] = [];
+  const list: { id: string; label: string; icon: string; onClick: () => void }[] = [];
   if (isCustom.value) {
     list.push({
       id: 'update-preset',
@@ -210,7 +210,7 @@ const actions = computed(() => {
     <div class="flex flex-col gap-2">
       <ClipTextProperties
         v-if="itemKind === 'text'"
-        :clip="mockClip as import('~/timeline/types').TimelineClipItem"
+        :clip="mockClip as import('~/timeline/types').TimelineTextClipItem"
         :presets="[]"
         :hide-presets="true"
         @update-text="handleUpdateText"
@@ -219,7 +219,7 @@ const actions = computed(() => {
 
       <ClipShapeProperties
         v-else-if="itemKind === 'shape'"
-        :clip="mockClip as import('~/timeline/types').TimelineClipItem"
+        :clip="mockClip as import('~/timeline/types').TimelineShapeClipItem"
         :presets="[]"
         :hide-presets="true"
         @update-shape-type="handleUpdateShapeType"
@@ -231,7 +231,7 @@ const actions = computed(() => {
 
       <ClipHudProperties
         v-else-if="itemKind === 'hud'"
-        :clip="mockClip as import('~/timeline/types').TimelineClipItem"
+        :clip="mockClip as import('~/timeline/types').TimelineHudClipItem"
         :hud-manifest="hudManifest"
         :hud-control-values="hudControlValues"
         :presets="[]"

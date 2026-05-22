@@ -64,6 +64,7 @@ const props = defineProps<{
     startUs: number;
     durationUs: number;
     edge: 'start' | 'end';
+    deltaUs: number;
   } | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
@@ -469,6 +470,17 @@ function onTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
   trackContextMenuRef.value?.open(e);
 }
 
+function handleTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
+  const target = e.target as HTMLElement | null;
+  if (target?.closest('[data-clip-id], [data-gap-id]')) {
+    e.stopPropagation();
+    return;
+  }
+  e.preventDefault();
+  e.stopPropagation();
+  onTrackContextMenu(e, track);
+}
+
 const activeTrackContextMenuItems = computed(() => {
   if (!activeTrackForContextMenu.value) return [];
   return getTrackContextMenuItems(activeTrackForContextMenu.value, props.tracks);
@@ -713,7 +725,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
         @mouseleave="timelineStore.hoveredTrackId = null"
         @dragover.prevent="emit('dragover', $event, trackViewModel.track.id)"
         @drop.prevent="emit('drop', $event, trackViewModel.track.id)"
-        @contextmenu.prevent.stop="onTrackContextMenu($event, trackViewModel.track)"
+        @contextmenu="handleTrackContextMenu($event, trackViewModel.track)"
       >
         <!-- Drop Previews inside track -->
         <div
@@ -775,6 +787,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           :is-dragging-current-item="false"
           :is-move-preview-current-item="false"
           :is-trim-preview-current-item="false"
+          :trim-preview="null"
           :selected-transition="null"
           :resize-volume="null"
         />
@@ -804,6 +817,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
             :scroll-left="scrollLeft"
             :viewport-width="viewportWidth"
             :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
+            :trim-preview="trimPreview?.itemId === item.id ? trimPreview : null"
             :is-mobile="isMobile"
             @select-item="(ev, id) => emit('selectItem', ev, id)"
             @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"

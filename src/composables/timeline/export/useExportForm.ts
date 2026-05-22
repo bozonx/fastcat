@@ -11,6 +11,8 @@ import {
   normalizeExportFilename,
 } from '~/composables/timeline/export';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
+import { save } from '@tauri-apps/plugin-dialog';
+import { copyFile } from '@tauri-apps/plugin-fs';
 
 export interface ExportRangeOption {
   id: string;
@@ -28,6 +30,8 @@ export function useExportForm() {
 
   const selectedExportRangeId = ref('timeline');
   const saveAsDefaults = ref(false);
+  const customExportPath = ref<string | null>(null);
+  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
   const {
     isExporting,
@@ -214,6 +218,7 @@ export function useExportForm() {
     resetExportState();
     filenameError.value = null;
     saveAsDefaults.value = false;
+    customExportPath.value = null;
     selectedExportRangeId.value = resolveDefaultExportRangeId();
 
     await loadCodecSupport();
@@ -398,6 +403,17 @@ export function useExportForm() {
           const file = await fileHandle.getFile();
           await onSuccess(file);
         }
+
+        if (isTauri && customExportPath.value) {
+          const tauriFileHandle = fileHandle as unknown as { path?: string };
+          if (tauriFileHandle.path) {
+            try {
+              await copyFile(tauriFileHandle.path, customExportPath.value);
+            } catch (e) {
+              console.warn('Failed to copy exported file to custom location', e);
+            }
+          }
+        }
       } finally {
         try {
           await exportDir.removeEntry(tempFilename);
@@ -419,6 +435,21 @@ export function useExportForm() {
       isExporting.value = false;
       exportPhase.value = null;
       cancelRequested.value = false;
+    }
+  }
+
+  async function pickTauriExportPath() {
+    if (!isTauri) return;
+    try {
+      const path = await save({
+        defaultPath: outputFilename.value,
+        filters: [{ name: 'Video', extensions: [outputFormat.value] }],
+      });
+      if (path) {
+        customExportPath.value = path;
+      }
+    } catch (e) {
+      console.warn('Failed to pick export location', e);
     }
   }
 
@@ -472,8 +503,11 @@ export function useExportForm() {
     exportRangeOptions,
     hasSelectableExportRanges,
     isSettingsDirty,
+    customExportPath,
+    isTauri,
 
     initializeExportForm,
+    pickTauriExportPath,
     handleOutputFormatChange,
     handleFilenameExtUpdate,
     handleStartExport,

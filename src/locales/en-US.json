@@ -856,6 +856,7 @@
       "showTrack": "Show",
       "showWaveform": "Show waveform",
       "slipMode": "Slip content",
+      "trimOverlayMode": "Trim clip",
       "snapMode": "Snap Mode",
       "snapModeFramesDescription": "Snap to frame boundaries only",
       "snapModeFreeDescription": "No snapping (sub-frame precision)",

@@ -62,6 +62,7 @@ export interface TimelineTrimPreview {
   startUs: number;
   durationUs: number;
   edge: 'start' | 'end';
+  deltaUs: number;
 }
 
 export function useTimelineItemDrag(
@@ -378,6 +379,7 @@ export function useTimelineItemDrag(
             startUs: currentItem.timelineRange.startUs,
             durationUs: currentItem.timelineRange.durationUs,
             edge: input.edge,
+            deltaUs: 0,
           }
         : null;
     pendingTrimCommit.value = null;
@@ -724,6 +726,9 @@ export function useTimelineItemDrag(
       snappedEdgeUs = quantizeStartUsToFrames(baseUs, fps);
     }
 
+    // Re-clamp after snap/frame snap to enforce media boundaries
+    snappedEdgeUs = Math.max(minEdgeUs, Math.min(maxEdgeUs, snappedEdgeUs));
+
     const desiredDeltaUs =
       mode === 'trim_start' ? snappedEdgeUs - anchorStartUs : snappedEdgeUs - anchorEndUs;
     const desiredQuantizedDeltaUs = enableFrameSnap
@@ -747,6 +752,7 @@ export function useTimelineItemDrag(
       startUs: Math.max(0, Math.round(nextStartUs)),
       durationUs: Math.max(0, Math.round(nextDurationUs)),
       edge: cmdEdge,
+      deltaUs: desiredQuantizedDeltaUs,
     };
     pendingTrimCommit.value = {
       trackId,

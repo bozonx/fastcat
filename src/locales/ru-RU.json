@@ -856,6 +856,7 @@
       "showTrack": "Показать",
       "showWaveform": "Показать вейвформу",
       "slipMode": "Прокрутка содержимого",
+      "trimOverlayMode": "Обрезка клипа",
       "snapMode": "Режим привязки",
       "snapModeFramesDescription": "Привязка только к границам кадров",
       "snapModeFreeDescription": "Свободное перемещение (без привязки)",

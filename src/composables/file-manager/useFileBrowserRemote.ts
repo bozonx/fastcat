@@ -211,28 +211,31 @@ export function useFileBrowserRemote({
 
       // Update total items count from VFS response (if available)
       if (typeof (items as { total?: number }).total === 'number') {
-        remoteTotalItems.value = (items as { total?: number }).total;
+        remoteTotalItems.value = (items as { total?: number }).total ?? 0;
       } else if (!options.append) {
         // Fallback for folders that don't support pagination or virtual root folders
         remoteTotalItems.value = items.length;
       }
 
-      const newEntries = items.map((entry: unknown) => {
-        const bdPayload = (entry as { adapterPayload?: { thumbnailUrl?: string } }).adapterPayload;
-        const thumbnailUrl = bdPayload?.thumbnailUrl;
+      const newEntries = items.map((entryRaw: unknown) => {
+        const entry = entryRaw as Record<string, unknown>;
+        const bdPayloadRaw = entry.adapterPayload as { thumbnailUrl?: string } | undefined;
+        const bdPayload = bdPayloadRaw as Record<string, unknown> | undefined;
+        const thumbnailUrl = bdPayload?.thumbnailUrl as string | undefined;
 
         const extendedEntry: Record<string, unknown> = {
           ...entry,
           source: 'remote',
           remotePath: entry.path,
-          remoteId: bdPayload?.remoteData?.id || entry.id || entry.path,
-          adapterPayload: bdPayload,
+          remoteId:
+            (bdPayload?.remoteData as Record<string, unknown>)?.id || entry.id || entry.path,
+          adapterPayload: bdPayloadRaw,
         };
 
         if (thumbnailUrl) {
           extendedEntry.objectUrl = getRemoteThumbnailUrl({
             baseUrl: remoteFilesConfig.value!.baseUrl,
-            media: { thumbnailUrl } as { thumbnailUrl?: string },
+            media: { thumbnailUrl } as import('~/types/remote-vfs').RemoteVfsMedia,
           });
         }
 
@@ -240,10 +243,13 @@ export function useFileBrowserRemote({
       });
 
       if (options.append) {
-        folderEntries.value = [...folderEntries.value, ...newEntries];
+        folderEntries.value = [
+          ...folderEntries.value,
+          ...(newEntries as unknown as import('~/types/fs').FsEntry[]),
+        ];
         remoteCurrentOffset.value += items.length;
       } else {
-        folderEntries.value = newEntries;
+        folderEntries.value = newEntries as unknown as import('~/types/fs').FsEntry[];
         remoteCurrentOffset.value = items.length;
       }
     } catch (error) {

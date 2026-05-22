@@ -5,6 +5,7 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
@@ -200,11 +201,15 @@ watch(
     </UiFormField>
 
     <div class="flex gap-4">
-      <UiFormField
-        :label="t('videoEditor.export.videoBitrate')"
-        :help="videoCodecHelp"
-        class="flex-1"
-      >
+      <UiFormField class="flex-1">
+        <template #label>
+          <div class="flex items-center gap-1">
+            {{ t('videoEditor.export.videoBitrate') }}
+            <UiTooltip :text="videoCodecHelp">
+              <UIcon name="i-heroicons-information-circle" class="h-4 w-4 text-ui-text-muted" />
+            </UiTooltip>
+          </div>
+        </template>
         <UiWheelNumberInput
           v-model="bitrateMbps"
           :min="0"

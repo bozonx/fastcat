@@ -1175,7 +1175,7 @@ export default {
       filenameInvalidExtension: 'Filename must end with .{ext}',
       filenamePlaceholder: 'e.g. video.mp4',
       filenameRequired: 'Filename is required',
-      fps: 'FPS',
+      fps: 'FPS (frames per second)',
       height: 'Height',
       keyframeInterval: 'Keyframe Interval (GOP Size, sec)',
       metadata: 'Metadata',

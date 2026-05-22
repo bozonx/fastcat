@@ -331,16 +331,20 @@ const isFormatUnsupported = computed(() =>
   Boolean(metadataCacheKey.value && mediaStore.metadataLoadFailed[metadataCacheKey.value]),
 );
 
-const isVideoCodecUnsupported = computed(() => mediaMeta.value?.video?.canDecode === false);
+const isVideoCodecUnsupported = computed(
+  () => (mediaMeta.value?.video as Record<string, unknown>)?.canDecode === false,
+);
 
-const isAudioCodecUnsupported = computed(() => mediaMeta.value?.audio?.canDecode === false);
+const isAudioCodecUnsupported = computed(
+  () => (mediaMeta.value?.audio as Record<string, unknown>)?.canDecode === false,
+);
 
 const isImageUnsupported = computed(() => {
   if (mediaType.value !== 'image') return false;
   const ext = props.selectedFsEntry?.name.split('.').pop()?.toLowerCase() ?? '';
   if (
     BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) &&
-    mediaMeta.value?.image?.canDisplay === false
+    (mediaMeta.value?.image as Record<string, unknown>)?.canDisplay === false
   ) {
     return true;
   }
@@ -350,6 +354,16 @@ const isImageUnsupported = computed(() => {
 const isMediaFullyUnsupported = computed(
   () => isFormatUnsupported.value || isVideoCodecUnsupported.value || isImageUnsupported.value,
 );
+
+const videoCodecLabel = computed(() => {
+  const v = mediaMeta.value?.video as Record<string, unknown> | undefined;
+  return String(v?.parsedCodec || v?.codec || '');
+});
+
+const audioCodecLabel = computed(() => {
+  const a = mediaMeta.value?.audio as Record<string, unknown> | undefined;
+  return String(a?.parsedCodec || a?.codec || '');
+});
 
 const showPreviewSection = computed(() => {
   if (fileInfo.value?.kind === 'directory' || isRemoteRoot.value) return false;
@@ -725,14 +739,14 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         </li>
         <li v-if="isVideoCodecUnsupported">
           {{ t('videoEditor.fileManager.compatibility.videoCodecUnsupported') }}
-          <span v-if="mediaMeta?.video" class="opacity-60">
-            ({{ mediaMeta.video.parsedCodec || mediaMeta.video.codec }})
+          <span v-if="videoCodecLabel" class="opacity-60">
+            ({{ videoCodecLabel }})
           </span>
         </li>
         <li v-if="isAudioCodecUnsupported">
           {{ t('videoEditor.fileManager.compatibility.audioCodecUnsupported') }}
-          <span v-if="mediaMeta?.audio" class="opacity-60">
-            ({{ mediaMeta.audio.parsedCodec || mediaMeta.audio.codec }})
+          <span v-if="audioCodecLabel" class="opacity-60">
+            ({{ audioCodecLabel }})
           </span>
         </li>
       </ul>
@@ -784,7 +798,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
           (isVideoFile || mediaType === 'audio')
         "
-        :media-meta="mediaMeta"
+        :media-meta="mediaMeta as unknown as import('~/stores/media.store').MediaMetadata"
         :format-duration-seconds="formatDurationSeconds"
         :format-bitrate="formatBitrate"
         :latest-transcription-cache-key="latestTranscriptionCacheKey"
@@ -1005,7 +1019,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           selectedFsEntry.kind === 'file'
         "
         :title="generalInfoTitle"
-        :file-info="fileInfo || (selectedFsEntry as Record<string, unknown>)"
+        :file-info="(fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo"
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
@@ -1042,7 +1056,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isBloggerDogGroup
         "
         :title="generalInfoTitle"
-        :file-info="fileInfo || (selectedFsEntry as Record<string, unknown>)"
+        :file-info="(fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo"
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"

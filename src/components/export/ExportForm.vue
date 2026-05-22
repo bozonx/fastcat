@@ -71,8 +71,11 @@ const {
   exportRangeOptions,
   hasSelectableExportRanges,
   isSettingsDirty,
+  customExportPath,
+  isTauri,
 
   initializeExportForm,
+  pickTauriExportPath,
   handleOutputFormatChange,
   handleFilenameExtUpdate,
   handleStartExport,
@@ -230,8 +233,32 @@ async function onConfirm() {
               :placeholder="t('videoEditor.export.filenamePlaceholder')"
             />
           </UiFormField>
-          <div class="text-sm text-ui-text-muted flex items-center gap-1.5 mt-1">
-            <UIcon name="i-heroicons-information-circle" class="w-4 h-4 shrink-0" />
+          <div v-if="isTauri" class="mt-1">
+            <div v-if="!customExportPath" class="flex items-center gap-1.5">
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                :label="t('videoEditor.export.chooseLocation')"
+                :disabled="isExporting"
+                @click="pickTauriExportPath"
+              />
+            </div>
+            <div v-else class="flex items-center gap-1.5 text-sm text-ui-text-muted">
+              <UIcon name="i-heroicons-check-circle" class="h-4 w-4 shrink-0 text-success" />
+              <span class="truncate leading-relaxed">{{ customExportPath }}</span>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                icon="i-heroicons-x-mark"
+                :disabled="isExporting"
+                @click="customExportPath = null"
+              />
+            </div>
+          </div>
+          <div v-else class="text-sm text-ui-text-muted flex items-center gap-1.5 mt-1">
+            <UIcon name="i-heroicons-information-circle" class="h-4 w-4 shrink-0" />
             <span class="leading-relaxed">
               {{ t('videoEditor.export.saveLocationNote') }}
             </span>
