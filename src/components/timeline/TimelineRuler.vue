@@ -24,6 +24,7 @@ const { t } = useI18n();
 
 const props = defineProps<{
   scrollEl: HTMLElement | null;
+  scrollLeft?: number;
   isMobile?: boolean;
 }>();
 
@@ -43,7 +44,7 @@ const timelineSettingsStore = useTimelineSettingsStore();
 
 const width = ref(0);
 const height = ref(0);
-const scrollLeft = ref(0);
+const scrollLeft = computed(() => props.scrollLeft ?? timelineStore.timelineScrollLeftPx);
 
 const markers = computed(() => timelineStore.markers);
 const selectionRange = computed(() => timelineStore.selectionRange);

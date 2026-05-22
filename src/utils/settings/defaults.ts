@@ -190,7 +190,9 @@ export interface FastCatUserSettings {
     maxEntries: number;
   };
   backup: {
-    intervalMinutes: number;
+    /** Whether a backup version is written on every explicit (manual) save. */
+    enabled: boolean;
+    /** How many backup versions of explicit saves to keep (rotation). */
     count: number;
   };
   autosave: {
@@ -345,7 +347,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     maxEntries: 100,
   },
   backup: {
-    intervalMinutes: 5,
+    enabled: true,
     count: 5,
   },
   autosave: {

@@ -97,6 +97,7 @@ defineExpose({
       <TimelineGrid
         class="absolute inset-0 pointer-events-none z-0"
         :scroll-el="horizontalScrollEl"
+        :scroll-left="scrollLeft"
       />
       <div
         ref="scrollEl"
@@ -133,6 +134,7 @@ defineExpose({
       <TimelinePlayheadOverlay
         class="absolute inset-0 pointer-events-none z-20"
         :scroll-el="horizontalScrollEl"
+        :scroll-left="scrollLeft"
       />
     </div>
   </div>

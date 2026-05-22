@@ -319,100 +319,112 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
     timelineHeights: z.record(z.string(), z.coerce.number()).catch({}),
   });
 
-  return z
-    .object({
-      version: z.coerce.number().catch(1),
-      project: z
-        .object({
-          width: z.coerce.number().int().min(1).catch(defaults.project.width),
-          height: z.coerce.number().int().min(1).catch(defaults.project.height),
-          fps: z.coerce.number().min(1).max(240).catch(defaults.project.fps),
-          resolutionFormat: z.string().catch(defaults.project.resolutionFormat),
-          orientation: z.enum(['landscape', 'portrait']).catch(defaults.project.orientation),
-          aspectRatio: z.string().catch(defaults.project.aspectRatio),
-          isCustomResolution: z.coerce.boolean().catch(defaults.project.isCustomResolution),
-          sampleRate: z.coerce.number().min(8000).max(192000).catch(defaults.project.sampleRate),
-          audioDeclickDurationUs: z.coerce
-            .number()
-            .min(0)
-            .max(1_000_000)
-            .catch(defaults.project.audioDeclickDurationUs),
-          isAutoSettings: z.coerce.boolean().catch(defaults.project.isAutoSettings),
-        })
-        .transform((val) => {
-          const isWidthHeightCustom =
-            val.width !== defaults.project.width || val.height !== defaults.project.height;
-          if (!isWidthHeightCustom) {
-            return val;
-          }
+  return (
+    z
+      .object({
+        version: z.coerce.number().catch(1),
+        project: z
+          .object({
+            width: z.coerce.number().int().min(1).catch(defaults.project.width),
+            height: z.coerce.number().int().min(1).catch(defaults.project.height),
+            fps: z.coerce.number().min(1).max(240).catch(defaults.project.fps),
+            resolutionFormat: z.string().catch(defaults.project.resolutionFormat),
+            orientation: z.enum(['landscape', 'portrait']).catch(defaults.project.orientation),
+            aspectRatio: z.string().catch(defaults.project.aspectRatio),
+            isCustomResolution: z.coerce.boolean().catch(defaults.project.isCustomResolution),
+            sampleRate: z.coerce.number().min(8000).max(192000).catch(defaults.project.sampleRate),
+            audioDeclickDurationUs: z.coerce
+              .number()
+              .min(0)
+              .max(1_000_000)
+              .catch(defaults.project.audioDeclickDurationUs),
+            isAutoSettings: z.coerce.boolean().catch(defaults.project.isAutoSettings),
+          })
+          .transform((val) => {
+            const isWidthHeightCustom =
+              val.width !== defaults.project.width || val.height !== defaults.project.height;
+            if (!isWidthHeightCustom) {
+              return val;
+            }
 
-          const preset = getResolutionPreset(val.width, val.height);
-          return {
-            ...val,
-            resolutionFormat: preset.resolutionFormat,
-            orientation: preset.orientation as 'landscape' | 'portrait',
-            aspectRatio: preset.aspectRatio,
-            isCustomResolution: preset.isCustomResolution,
-          };
-        })
-        .catch(defaults.project),
-      exportDefaults: z
-        .object({
-          encoding: z
-            .object({
-              format: z.enum(['mp4', 'webm', 'mkv']).catch(defaults.exportDefaults.encoding.format),
-              videoCodec: z.string().min(1).catch(defaults.exportDefaults.encoding.videoCodec),
-              bitrateMbps: z.coerce
-                .number()
-                .min(0.2)
-                .max(200)
-                .catch(defaults.exportDefaults.encoding.bitrateMbps),
-              excludeAudio: z.coerce.boolean().catch(defaults.exportDefaults.encoding.excludeAudio),
-              audioCodec: z
-                .enum(['aac', 'opus'])
-                .catch(defaults.exportDefaults.encoding.audioCodec),
-              audioBitrateKbps: z.coerce
-                .number()
-                .min(32)
-                .max(1024)
-                .catch(defaults.exportDefaults.encoding.audioBitrateKbps),
-              bitrateMode: z
-                .enum(['constant', 'variable'])
-                .catch(defaults.exportDefaults.encoding.bitrateMode),
-              keyframeIntervalSec: z.coerce
-                .number()
-                .min(1)
-                .max(60)
-                .catch(defaults.exportDefaults.encoding.keyframeIntervalSec),
-              exportAlpha: z.coerce.boolean().catch(defaults.exportDefaults.encoding.exportAlpha),
-            })
-            .catch(defaults.exportDefaults.encoding),
-        })
-        .catch(defaults.exportDefaults),
-      monitor: projectMonitorSchema.catch(defaults.monitor),
-      monitors: z.record(z.string(), monitorViewSchema).catch({}),
-      timelines: z
-        .object({
-          openPaths: z.array(z.string()).catch([]),
-          sessions: z.record(z.string(), sessionSchema).catch({}),
-        })
-        .catch(defaults.timelines),
-      transitions: z
-        .object({
-          defaultDurationUs: z.coerce.number().min(1).catch(defaults.transitions.defaultDurationUs),
-        })
-        .catch(defaults.transitions),
-      ui: z
-        .object({
-          activeTabId: z.string().nullable().catch(null),
-          fileTabs: z.array(z.unknown()).catch([]),
-          staticTabsOrder: z.array(z.string()).catch([]),
-          fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
-          layout: layoutSchema.catch(defaults.ui.layout as unknown),
-        })
-        .catch(defaults.ui as unknown),
-    })
-    .catch(defaults as unknown);
+            const preset = getResolutionPreset(val.width, val.height);
+            return {
+              ...val,
+              resolutionFormat: preset.resolutionFormat,
+              orientation: preset.orientation as 'landscape' | 'portrait',
+              aspectRatio: preset.aspectRatio,
+              isCustomResolution: preset.isCustomResolution,
+            };
+          })
+          .catch(defaults.project),
+        exportDefaults: z
+          .object({
+            encoding: z
+              .object({
+                format: z
+                  .enum(['mp4', 'webm', 'mkv'])
+                  .catch(defaults.exportDefaults.encoding.format),
+                videoCodec: z.string().min(1).catch(defaults.exportDefaults.encoding.videoCodec),
+                bitrateMbps: z.coerce
+                  .number()
+                  .min(0.2)
+                  .max(200)
+                  .catch(defaults.exportDefaults.encoding.bitrateMbps),
+                excludeAudio: z.coerce
+                  .boolean()
+                  .catch(defaults.exportDefaults.encoding.excludeAudio),
+                audioCodec: z
+                  .enum(['aac', 'opus'])
+                  .catch(defaults.exportDefaults.encoding.audioCodec),
+                audioBitrateKbps: z.coerce
+                  .number()
+                  .min(32)
+                  .max(1024)
+                  .catch(defaults.exportDefaults.encoding.audioBitrateKbps),
+                bitrateMode: z
+                  .enum(['constant', 'variable'])
+                  .catch(defaults.exportDefaults.encoding.bitrateMode),
+                keyframeIntervalSec: z.coerce
+                  .number()
+                  .min(1)
+                  .max(60)
+                  .catch(defaults.exportDefaults.encoding.keyframeIntervalSec),
+                exportAlpha: z.coerce.boolean().catch(defaults.exportDefaults.encoding.exportAlpha),
+              })
+              .catch(defaults.exportDefaults.encoding),
+          })
+          .catch(defaults.exportDefaults),
+        monitor: projectMonitorSchema.catch(defaults.monitor),
+        monitors: z.record(z.string(), monitorViewSchema).catch({}),
+        timelines: z
+          .object({
+            openPaths: z.array(z.string()).catch([]),
+            sessions: z.record(z.string(), sessionSchema).catch({}),
+          })
+          .catch(defaults.timelines),
+        transitions: z
+          .object({
+            defaultDurationUs: z.coerce
+              .number()
+              .min(1)
+              .catch(defaults.transitions.defaultDurationUs),
+          })
+          .catch(defaults.transitions),
+        ui: z
+          .object({
+            activeTabId: z.string().nullable().catch(null),
+            fileTabs: z.array(z.unknown()).catch([]),
+            staticTabsOrder: z.array(z.string()).catch([]),
+            fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            layout: layoutSchema.catch(defaults.ui.layout as any),
+          })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .catch(defaults.ui as any),
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .catch(defaults as any)
+  );
 }
 
 /** Picks project-wide monitor fields from a legacy per-monitor object. */
@@ -470,7 +482,9 @@ export function normalizeProjectSettings(
     project: typeof input.project === 'object' ? input.project : {},
     exportDefaults: {
       encoding:
-        typeof input.exportDefaults?.encoding === 'object' ? input.exportDefaults.encoding : {},
+        typeof (input.exportDefaults as Record<string, unknown>)?.encoding === 'object'
+          ? (input.exportDefaults as Record<string, unknown>).encoding
+          : {},
     },
     monitor: migratedProjectMonitor,
     monitors: inputMonitors,

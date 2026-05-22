@@ -267,7 +267,9 @@ onBeforeUnmount(clearLongPress);
           </div>
 
           <!-- Name & Size -->
-          <div class="px-2.5 py-2 bg-ui-bg-elevated/90 backdrop-blur-sm border-t border-ui-border/50">
+          <div
+            class="px-2.5 py-2 bg-ui-bg-elevated/90 backdrop-blur-sm border-t border-ui-border/50"
+          >
             <div
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
               :class="[

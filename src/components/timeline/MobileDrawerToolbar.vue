@@ -60,7 +60,7 @@ onUnmounted(() => {
       :class="[
         showLeftShadow ? 'opacity-100' : 'opacity-0',
         props.variant === 'drawer'
-          ? 'bg-linear-to-r from-zinc-900 to-transparent'
+          ? 'bg-linear-to-r from-ui-bg-elevated to-transparent'
           : 'bg-linear-to-r from-ui-bg-elevated to-transparent',
       ]"
     />
@@ -81,7 +81,7 @@ onUnmounted(() => {
       :class="[
         showRightShadow ? 'opacity-100' : 'opacity-0',
         props.variant === 'drawer'
-          ? 'bg-linear-to-l from-zinc-900 to-transparent'
+          ? 'bg-linear-to-l from-ui-bg-elevated to-transparent'
           : 'bg-linear-to-l from-ui-bg-elevated to-transparent',
       ]"
     />

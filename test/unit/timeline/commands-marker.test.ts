@@ -24,14 +24,15 @@ describe('markerHandlers', () => {
       const result = addMarker(doc, {
         type: 'add_marker',
         id: 'm1',
-        timeUs: 1000,
+        // Frame-aligned at 30fps (markers always snap to the frame grid).
+        timeUs: 1_000_000,
         text: 'hello',
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers).toHaveLength(1);
       expect(markers[0]!.id).toBe('m1');
-      expect(markers[0]!.timeUs).toBe(1000);
+      expect(markers[0]!.timeUs).toBe(1_000_000);
     });
 
     it('sorts markers by timeUs', () => {
@@ -67,11 +68,11 @@ describe('markerHandlers', () => {
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'm1',
-        timeUs: 3000,
+        timeUs: 3_000_000,
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
-      expect(markers[0]!.timeUs).toBe(3000);
+      expect(markers[0]!.timeUs).toBe(3_000_000);
     });
 
     it('updates marker durationUs', () => {
@@ -79,11 +80,11 @@ describe('markerHandlers', () => {
       const result = updateMarker(doc, {
         type: 'update_marker',
         id: 'm1',
-        durationUs: 500,
+        durationUs: 500_000,
       });
       const markers =
         (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
-      expect(markers[0]!.durationUs).toBe(500);
+      expect(markers[0]!.durationUs).toBe(500_000);
     });
 
     it('updates marker text', () => {

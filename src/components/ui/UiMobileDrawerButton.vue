@@ -21,7 +21,7 @@ const emit = defineEmits<{
 
 const variantClasses = computed(() => {
   if (props.disabled)
-    return 'opacity-40 pointer-events-none bg-zinc-800/40 border border-zinc-700/50 text-zinc-400';
+    return 'opacity-40 pointer-events-none bg-ui-bg-muted/40 border border-ui-border/50 text-ui-text-muted';
 
   switch (props.variant) {
     case 'danger':
@@ -33,7 +33,7 @@ const variantClasses = computed(() => {
     default:
       return props.active
         ? 'text-primary-400 bg-primary-400/10 border border-primary-400/30'
-        : 'text-zinc-200 bg-zinc-800/40 border border-zinc-700/50 active:bg-zinc-800/60';
+        : 'text-ui-text bg-ui-bg-muted/40 border border-ui-border/50 active:bg-ui-bg-muted/60';
   }
 });
 </script>

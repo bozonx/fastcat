@@ -5,8 +5,9 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { useResizeObserver } from '@vueuse/core';
 
-defineProps<{
+const props = defineProps<{
   scrollEl?: HTMLElement | null;
+  scrollLeft?: number;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -17,7 +18,7 @@ const workspaceStore = useWorkspaceStore();
 
 const width = ref(0);
 const height = ref(0);
-const scrollLeft = computed(() => timelineStore.timelineScrollLeftPx);
+const scrollLeft = computed(() => props.scrollLeft ?? timelineStore.timelineScrollLeftPx);
 const renderStartPx = ref(0);
 const renderWidthPx = ref(0);
 

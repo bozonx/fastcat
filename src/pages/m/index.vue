@@ -165,7 +165,7 @@ const formatDate = (dateStr?: string) => {
                   @click="handleOpenProject(project.projectName)"
                 >
                   <div
-                    class="aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-zinc-900"
+                    class="aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-ui-bg-elevated"
                   >
                     <ProjectThumbnail
                       :project-id="project.projectId"

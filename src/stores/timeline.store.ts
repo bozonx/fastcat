@@ -406,12 +406,11 @@ export const useTimelineStore = defineStore('timeline', () => {
   // Backups are a history of EXPLICIT saves (for rollback), so one is taken on
   // every manual save — `handleBackup` is only wired into `onSaveSuccess`, which
   // fires from `saveTimeline`, never from the periodic crash-recovery autosave.
-  // `backup.intervalMinutes <= 0` acts as the kill switch; any positive value
-  // just means "backups enabled" (the value itself no longer throttles).
+  // `backup.enabled` is the on/off toggle; `backup.count` controls rotation.
   async function handleBackup(serialized: string) {
     if (!currentTimelinePath.value) return;
     const backupSettings = workspaceStore.userSettings.backup;
-    if (!backupSettings || backupSettings.intervalMinutes <= 0) return;
+    if (!backupSettings || !backupSettings.enabled) return;
 
     try {
       const pathParts = currentTimelinePath.value.split('/');

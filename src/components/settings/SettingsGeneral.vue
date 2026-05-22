@@ -196,19 +196,14 @@ function clearCache() {
         </UiFormField>
 
         <UiFormField
-          :label="t('videoEditor.settings.backupInterval')"
-          :help="t('videoEditor.settings.backupIntervalHelp')"
+          :label="t('videoEditor.settings.backupEnabled')"
+          :help="t('videoEditor.settings.backupEnabledHelp')"
         >
-          <UiWheelNumberInput
-            v-model="workspaceStore.userSettings.backup.intervalMinutes"
-            :min="0"
-            :max="120"
-            :step="1"
-            :wheel-step-multiplier="5"
-          />
+          <UCheckbox v-model="workspaceStore.userSettings.backup.enabled" />
         </UiFormField>
 
         <UiFormField
+          v-if="workspaceStore.userSettings.backup.enabled"
           :label="t('videoEditor.settings.backupCount')"
           :help="t('videoEditor.settings.backupCountHelp')"
         >

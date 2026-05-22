@@ -341,17 +341,24 @@ export function normalizeHistorySettings(raw: unknown): FastCatUserSettings['his
 }
 
 export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['backup'] {
+  const input = ((raw as Record<string, unknown>)?.['backup'] ?? {}) as Record<string, unknown>;
+  // Migrate the legacy `intervalMinutes` field (where `<= 0` meant disabled) to
+  // the `enabled` toggle when an explicit `enabled` value is not present.
+  const legacyInterval = input['intervalMinutes'];
+  const enabled =
+    typeof input['enabled'] === 'boolean'
+      ? (input['enabled'] as boolean)
+      : legacyInterval !== undefined
+        ? Number(legacyInterval) > 0
+        : DEFAULT_USER_SETTINGS.backup.enabled;
+
   return z
     .object({
-      intervalMinutes: z.coerce
-        .number()
-        .min(0)
-        .max(120)
-        .catch(DEFAULT_USER_SETTINGS.backup.intervalMinutes),
+      enabled: z.boolean().catch(DEFAULT_USER_SETTINGS.backup.enabled),
       count: z.coerce.number().min(1).max(50).catch(DEFAULT_USER_SETTINGS.backup.count),
     })
     .catch(DEFAULT_USER_SETTINGS.backup)
-    .parse((raw as Record<string, unknown>)?.['backup'] ?? {});
+    .parse({ enabled, count: input['count'] });
 }
 
 export function normalizeAutosaveSettings(raw: unknown): FastCatUserSettings['autosave'] {

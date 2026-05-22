@@ -1,6 +1,5 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { formatRulerTime } from './useTimelineRulerPresentation';
 
@@ -21,7 +20,6 @@ interface TimelineRulerDrawOptions {
 }
 
 export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
-  const timelineStore = useTimelineStore();
   const renderStartPx = ref(0);
   const renderWidthPx = ref(0);
   let drawRafId: number | null = null;
@@ -57,9 +55,8 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
   }
 
   watch(
-    () => timelineStore.timelineScrollLeftPx,
+    () => options.scrollLeft.value,
     (nextScrollLeft) => {
-      options.scrollLeft.value = nextScrollLeft;
       if (shouldRedrawForScroll(nextScrollLeft)) {
         scheduleDraw();
       }

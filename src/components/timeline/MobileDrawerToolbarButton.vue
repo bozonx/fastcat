@@ -26,7 +26,7 @@ defineEmits<{ click: [] }>();
             ? 'text-white bg-blue-500 border-none shadow-lg shadow-blue-500/20'
             : active
               ? 'text-blue-400 bg-blue-400/15 border border-blue-500/30'
-              : 'text-zinc-200 bg-zinc-800/50',
+              : 'text-ui-text bg-ui-bg-muted/50',
       disabled ? 'opacity-40 pointer-events-none' : 'active:scale-95',
     ]"
     :disabled="disabled"

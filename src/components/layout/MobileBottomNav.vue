@@ -63,10 +63,7 @@ async function handleItemClick(itemId: string) {
 </script>
 
 <template>
-  <nav
-    v-if="showNav"
-    class="shrink-0 border-t border-ui-border bg-ui-bg/95 pb-safe backdrop-blur"
-  >
+  <nav v-if="showNav" class="shrink-0 border-t border-ui-border bg-ui-bg/95 pb-safe backdrop-blur">
     <div class="grid h-16 grid-cols-5 items-center gap-1 px-1">
       <button
         v-for="item in navItems"

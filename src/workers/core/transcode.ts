@@ -167,6 +167,7 @@ export async function runTranscode(
     sourceFile instanceof File
       ? new BlobSource(sourceFile)
       : new BlobSource(await sourceFile.getFile());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source, formats: ALL_FORMATS } as any);
 
   // 2. Setup Output
@@ -259,7 +260,8 @@ export async function runTranscode(
                 preferredVideoCodec,
                 ...supportedVideoCodecs.filter((codec: string) => codec !== preferredVideoCodec),
               ]
-            : supportedVideoCodecs) as any,
+            : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              supportedVideoCodecs) as any,
           {
             width: options.width,
             height: options.height,
@@ -275,7 +277,8 @@ export async function runTranscode(
                 preferredAudioCodec,
                 ...supportedAudioCodecs.filter((codec: string) => codec !== preferredAudioCodec),
               ]
-            : supportedAudioCodecs) as any,
+            : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              supportedAudioCodecs) as any,
           {
             sampleRate: options.audioSampleRate,
           },

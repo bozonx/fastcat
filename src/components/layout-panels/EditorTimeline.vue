@@ -569,6 +569,7 @@ function onDragVirtualEnd() {
           <TimelineRuler
             class="absolute inset-0 h-full border-b border-ui-border bg-ui-bg-elevated cursor-pointer"
             :scroll-el="masterScrollEl"
+            :scroll-left="scrollLeftRef"
             @pointerdown="onTimeRulerPointerDown"
             @start-playhead-drag="startPlayheadDrag"
             @start-pan="startPan"
