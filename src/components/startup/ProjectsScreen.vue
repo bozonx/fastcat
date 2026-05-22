@@ -41,27 +41,45 @@ const projectPresetOptions = computed(() =>
   })),
 );
 
-// Список последних проектов для Hero-секции
-const recentProjects = computed(() => workspaceStore.recentProjects);
+type SortBy = 'date' | 'name';
+type SortOrder = 'asc' | 'desc';
 
-// Умная сортировка: сначала недавние (по дате), потом остальные (по алфавиту)
-const smartSortedProjects = computed(() => {
-  const recentNames = recentProjects.value.map((p: { projectName: string }) => p.projectName);
-  const others = filteredProjects.value
-    .filter((p: string) => !recentNames.includes(p))
-    .sort((a: string, b: string) => a.localeCompare(b));
+const sortBy = ref<SortBy>('date');
+const sortOrder = ref<SortOrder>('desc');
 
-  return [
-    ...recentProjects.value.filter((p: { projectName: string }) =>
-      filteredProjects.value.includes(p.projectName),
-    ),
-    ...others.map((p: string) => ({
-      projectName: p,
-      projectId: undefined,
-      lastTimelinePath: undefined,
-      updatedAt: undefined,
-    })),
-  ];
+const allProjects = computed(() => {
+  const recentMap = new Map(
+    workspaceStore.recentProjects.map((p) => [p.projectName, p]),
+  );
+  return filteredProjects.value.map((name) => {
+    const recent = recentMap.get(name);
+    return {
+      projectName: name,
+      projectId: recent?.projectId,
+      lastTimelinePath: recent?.lastTimelinePath,
+      updatedAt: recent?.updatedAt,
+    };
+  });
+});
+
+const sortedProjects = computed(() => {
+  const projects = [...allProjects.value];
+  const multiplier = sortOrder.value === 'asc' ? 1 : -1;
+
+  if (sortBy.value === 'name') {
+    projects.sort((a, b) => multiplier * a.projectName.localeCompare(b.projectName));
+  } else {
+    projects.sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      if (dateA === dateB) {
+        return multiplier * a.projectName.localeCompare(b.projectName);
+      }
+      return multiplier * (dateA - dateB);
+    });
+  }
+
+  return projects;
 });
 
 const formatDate = (dateStr?: string) => {
@@ -182,75 +200,57 @@ const formatDate = (dateStr?: string) => {
       <!-- Content Area -->
       <div class="flex-1 overflow-y-auto custom-scrollbar">
         <div class="max-w-7xl mx-auto p-8 space-y-12">
-          <!-- Recent Projects Section -->
-          <section v-if="recentProjects?.length > 0">
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-lg font-bold text-ui-text flex items-center gap-2">
-                <UIcon name="i-heroicons-clock" class="text-primary-400" />
-                {{ t('common.recent') }}
-              </h2>
-            </div>
-
-            <div class="flex gap-6 overflow-x-auto pb-4 custom-scrollbar snap-x">
-              <div
-                v-for="(project, index) in recentProjects.slice(0, 5)"
-                :key="project.projectName"
-                class="group relative bg-ui-bg-elevated rounded-2xl overflow-hidden transition-all cursor-pointer shadow-xl hover:-translate-y-1 snap-start w-[320px] shrink-0"
-                :class="[
-                  index === 0
-                    ? 'border-2 border-selection-accent-500/60 hover:border-selection-accent-500 shadow-selection-accent-500/10'
-                    : 'border border-ui-border hover:border-selection-accent-500/50 hover:shadow-selection-accent-500/5',
-                ]"
-                @click="handleOpenProject(project.projectName)"
-              >
-                <div class="aspect-video relative overflow-hidden">
-                  <ProjectThumbnail
-                    :project-id="project.projectId"
-                    :project-relative-path="project.lastTimelinePath"
-                    :project-name="project.projectName"
-                  />
-                  <div
-                    class="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity"
-                  />
-                  <div class="absolute bottom-4 left-4 right-4">
-                    <h3 class="text-white font-bold text-lg truncate mb-1">
-                      {{ project.projectName }}
-                    </h3>
-                    <p class="text-white/60 text-xs flex items-center gap-1.5">
-                      <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5" />
-                      {{ formatDate(project.updatedAt) }}
-                    </p>
-                  </div>
-                  <div
-                    class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100"
-                  >
-                    <div
-                      class="w-12 h-12 rounded-full bg-primary-500 flex items-center justify-center shadow-2xl"
-                    >
-                      <UIcon name="i-heroicons-play-solid" class="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <!-- All Projects Grid -->
+          <!-- Projects Grid -->
           <section>
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-lg font-bold text-ui-text flex items-center gap-2">
                 <UIcon name="lucide:box" class="text-primary-400" />
                 {{ t('fastcat.projects.title') }}
                 <span class="text-ui-text-muted font-normal text-sm ml-2"
-                  >({{ smartSortedProjects.length }})</span
+                  >({{ sortedProjects.length }})</span
                 >
               </h2>
+
+              <div class="flex items-center gap-1">
+                <UTooltip :text="t('common.updated')">
+                  <UButton
+                    variant="ghost"
+                    size="xs"
+                    color="neutral"
+                    :class="{ 'bg-ui-bg-elevated text-primary-400': sortBy === 'date' }"
+                    icon="i-heroicons-calendar"
+                    @click="sortBy = 'date'"
+                  />
+                </UTooltip>
+                <UTooltip :text="t('common.name')">
+                  <UButton
+                    variant="ghost"
+                    size="xs"
+                    color="neutral"
+                    :class="{ 'bg-ui-bg-elevated text-primary-400': sortBy === 'name' }"
+                    icon="i-heroicons-bars-3-bottom-left"
+                    @click="sortBy = 'name'"
+                  />
+                </UTooltip>
+                <div class="w-px h-4 bg-ui-border mx-1" />
+                <UTooltip
+                  :text="sortOrder === 'asc' ? t('common.sortOrder.asc') : t('common.sortOrder.desc')"
+                >
+                  <UButton
+                    variant="ghost"
+                    size="xs"
+                    color="neutral"
+                    :icon="sortOrder === 'asc' ? 'i-heroicons-arrow-up' : 'i-heroicons-arrow-down'"
+                    @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
+                  />
+                </UTooltip>
+              </div>
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               <!-- Projects -->
               <div
-                v-for="project in smartSortedProjects"
+                v-for="project in sortedProjects"
                 :key="project.projectName"
                 class="flex flex-col group bg-ui-bg-elevated/50 border border-ui-border rounded-xl overflow-hidden hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer"
                 @click="handleOpenProject(project.projectName)"

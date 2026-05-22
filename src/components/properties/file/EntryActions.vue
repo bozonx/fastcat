@@ -15,7 +15,7 @@ interface SecondaryAction {
   id: string;
   label: string;
   icon?: string;
-  color?: string;
+  color?: 'neutral' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'danger';
   disabled?: boolean;
   hidden?: boolean;
   onClick: () => void;

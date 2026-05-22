@@ -16,7 +16,7 @@ const props = defineProps<{
   fileName?: string;
   thumbnailUrl?: string | null;
   focusPanelId?: PanelFocusId;
-  vfs?: any;
+  vfs?: IFileSystemAdapter;
 }>();
 </script>
 

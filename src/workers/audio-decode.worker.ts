@@ -47,7 +47,7 @@ async function getCachedDecodeSource(
   }
 
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
   let aTrack: Awaited<ReturnType<InstanceType<typeof Input>['getPrimaryAudioTrack']>>;
   try {
     aTrack = await input.getPrimaryAudioTrack();
@@ -257,7 +257,7 @@ async function extractPeaksFromSource(
   const maxLength = options?.maxLength || 8000;
   const precision = options?.precision || 10000;
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
 
   try {
     const aTrack = await input.getPrimaryAudioTrack();
@@ -283,7 +283,15 @@ async function extractPeaksFromSource(
       for await (const sampleRaw of (
         sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
       ).samples(0, durationS || 1e9)) {
-        const sample = sampleRaw as unknown;
+        const sample = sampleRaw as {
+          numberOfFrames?: number;
+          numberOfChannels?: number;
+          sampleRate?: number;
+          timestamp?: number;
+          allocationSize?: (opts: { format: string; planeIndex: number }) => number;
+          copyTo?: (dst: ArrayBufferView, opts: { format: string; planeIndex: number }) => void;
+          close?: () => void;
+        };
         try {
           const frames = Number(sample.numberOfFrames) || 0;
           const numberOfChannels = Math.max(1, Number(sample.numberOfChannels) || 1);
@@ -313,9 +321,9 @@ async function extractPeaksFromSource(
 
           const channelsToCopy = Math.min(resolvedChannels, numberOfChannels);
           for (let ch = 0; ch < channelsToCopy; ch += 1) {
-            const bytesNeeded = sample.allocationSize({ format: 'f32-planar', planeIndex: ch });
+            const bytesNeeded = sample.allocationSize!({ format: 'f32-planar', planeIndex: ch });
             const channel = new Float32Array(bytesNeeded / 4);
-            sample.copyTo(channel, { format: 'f32-planar', planeIndex: ch });
+            sample.copyTo!(channel, { format: 'f32-planar', planeIndex: ch });
 
             const peakChannel = peaks[ch];
             if (!peakChannel) continue;
@@ -349,16 +357,12 @@ async function extractPeaksFromSource(
       }
       return peaks;
     } finally {
-      if (typeof (sink as { close?: () => void }).close === 'function')
-        (sink as { close?: () => void }).close();
-      if (typeof (sink as { dispose?: () => void }).dispose === 'function')
-        (sink as { dispose?: () => void }).dispose();
+      (sink as { close?: () => void }).close?.();
+      (sink as { dispose?: () => void }).dispose?.();
     }
   } finally {
-    if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
-      (input as { dispose?: () => void }).dispose();
-    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
-      (input as { close?: () => void }).close();
+    (input as { dispose?: () => void }).dispose?.();
+    (input as { close?: () => void }).close?.();
   }
 }
 
@@ -380,7 +384,7 @@ function resample(audio: Float32Array, currentRate: number, targetRate: number):
 
 async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16000) {
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS } as any);
 
   try {
     const aTrack = await input.getPrimaryAudioTrack();
@@ -401,7 +405,13 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
       for await (const sampleRaw of (
         sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
       ).samples(0, durationS || 1e9)) {
-        const sample = sampleRaw as unknown;
+        const sample = sampleRaw as {
+          sampleRate?: number;
+          numberOfFrames?: number;
+          numberOfChannels?: number;
+          copyTo?: (dst: ArrayBufferView, opts: { format: string; planeIndex: number }) => void;
+          close?: () => void;
+        };
         try {
           sourceRate = sample.sampleRate || sourceRate;
           const frames = Number(sample.numberOfFrames) || 0;
@@ -414,7 +424,7 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
 
           const equalPowerGain = 1 / Math.sqrt(channels);
           for (let ch = 0; ch < channels; ch += 1) {
-            sample.copyTo(channelBuffer, { format: 'f32-planar', planeIndex: ch });
+            sample.copyTo!(channelBuffer, { format: 'f32-planar', planeIndex: ch });
             for (let i = 0; i < frames; i += 1) {
               monoChunk[i] = (monoChunk[i] ?? 0) + (channelBuffer[i] ?? 0) * equalPowerGain;
             }
@@ -446,16 +456,12 @@ async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16
         sttAudio,
       };
     } finally {
-      if (typeof (sink as { close?: () => void }).close === 'function')
-        (sink as { close?: () => void }).close();
-      if (typeof (sink as { dispose?: () => void }).dispose === 'function')
-        (sink as { dispose?: () => void }).dispose();
+      (sink as { close?: () => void }).close?.();
+      (sink as { dispose?: () => void }).dispose?.();
     }
   } finally {
-    if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
-      (input as { dispose?: () => void }).dispose();
-    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
-      (input as { close?: () => void }).close();
+    (input as { dispose?: () => void }).dispose?.();
+    (input as { close?: () => void }).close?.();
   }
 }
 
@@ -541,16 +547,17 @@ if (typeof self !== 'undefined')
       };
 
       self.postMessage(response, [...result.channelBuffers]);
-    } catch (err) {
-      let errName = err?.name;
-      if (err?.message === 'Input has an unsupported or unrecognizable format.') {
+    } catch (rawErr) {
+      const err = rawErr as Record<string, unknown>;
+      let errName = err.name;
+      if (err.message === 'Input has an unsupported or unrecognizable format.') {
         errName = 'UnsupportedFormatError';
       }
       response.ok = false;
       response.error = {
-        name: errName,
-        message: err?.message || String(err),
-        stack: err?.stack,
+        name: errName as string | undefined,
+        message: (err.message || String(err)) as string,
+        stack: err.stack as string | undefined,
       };
       self.postMessage(response);
     }

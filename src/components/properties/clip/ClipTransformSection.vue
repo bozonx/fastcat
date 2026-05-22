@@ -57,7 +57,7 @@ const {
   updateTransform: (next) => emit('updateTransform', next),
 });
 
-const mediaMetaObj = computed(() => props.mediaMeta as Record<string, unknown> | undefined);
+const mediaMetaObj = computed(() => (props.mediaMeta as unknown) as Record<string, unknown> | undefined);
 const mediaWidth = computed(
   () =>
     Number((mediaMetaObj.value?.video as Record<string, unknown> | undefined)?.displayWidth) ||

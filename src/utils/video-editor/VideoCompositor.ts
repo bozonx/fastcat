@@ -255,7 +255,7 @@ export class VideoCompositor {
       transitionManager: this.transitionManager,
       stageTextureRenderer: stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,
       getTrackById: (trackId) => this.trackById.get(trackId),
-      getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs),
+      getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs) as { opacity: number; progress: number; mode?: string } | null,
       ensureTransitionRenderTexture: (texture) =>
         this.clipResourceManager.ensureTransitionRenderTexture(texture),
       findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
