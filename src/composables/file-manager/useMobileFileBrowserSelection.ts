@@ -104,15 +104,6 @@ export function useMobileFileBrowserSelection() {
     }
   }
 
-  function isSelected(entry: FsEntry) {
-    const selected = selectionStore.selectedEntity;
-    if (!selected || selected.source !== 'fileManager') return false;
-    if (selected.kind === 'multiple') {
-      return selected.entries.some((e) => e.path === entry.path);
-    }
-    return selected.path === entry.path;
-  }
-
   // Reset selection when closing the drawer while not in selection mode
   watch(isDrawerOpen, (val) => {
     if (!val && !isSelectionMode.value) {

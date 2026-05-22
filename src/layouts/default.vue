@@ -6,17 +6,14 @@ import 'splitpanes/dist/splitpanes.css';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore } from '~/stores/focus.store';
 
 // Composables
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
-import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useGlobalDragAndDrop } from '~/composables/editor/useGlobalDragAndDrop';
 
 // Components
 import LoadingScreen from '~/components/startup/LoadingScreen.vue';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
-import ProjectsScreen from '~/components/startup/ProjectsScreen.vue';
 import EditorHeader from '~/components/editor/EditorHeader.vue';
 import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
 import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
@@ -30,7 +27,6 @@ const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
-const focusStore = useFocusStore();
 const route = useRoute();
 
 const {
@@ -51,7 +47,6 @@ const fileManager = useFileManager();
 const isStartingUp = ref(true);
 
 // Initialize Actions and Hotkeys
-const { openProject } = useProjectActions();
 useEditorHotkeys();
 
 // Initialization

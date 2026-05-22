@@ -1,4 +1,4 @@
-import { computed, type Ref, inject } from 'vue';
+import { computed, type Ref } from 'vue';
 import type {
   TimelineClipItem,
   TrackKind,

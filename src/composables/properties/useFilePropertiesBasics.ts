@@ -33,7 +33,6 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
   const isBloggerDogGroup = computed(() => bd.value?.type === 'collection');
   const isBloggerDogContentItem = computed(() => bd.value?.type === 'content-item');
   const isBloggerDogMedia = computed(() => bd.value?.type === 'media');
-  const isBloggerDogVirtualFolder = computed(() => bd.value?.type === 'virtual-folder');
 
   const runtimeConfig = useRuntimeConfig();
   const bloggerDogDeepLink = computed(() => {

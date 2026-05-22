@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { BdPagination } from '~/types/bloggerdog';
 import type {
-  RemoteVfsDirectoryEntry,
   RemoteVfsEntry,
   RemoteVfsFileEntry,
   RemoteVfsMedia,

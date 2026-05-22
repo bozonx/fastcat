@@ -239,7 +239,6 @@ export function overlayPlaceItem(
     ? quantizeTimeUsToFrames(startCandidate, fps, 'round')
     : startCandidate;
   const durationUs = Math.max(0, item.timelineRange.durationUs);
-  const endUs = startUs + durationUs;
   const nextFromItemsRaw = fromTrack.items.filter((x) => x.id !== cmd.itemId);
   const isSameTrack = fromTrack.id === toTrack.id;
   const destItems: TimelineTrackItem[] = isSameTrack ? [...nextFromItemsRaw] : [...toTrack.items];

@@ -1,7 +1,6 @@
 import type {
   ClipTransform,
   ClipEffect,
-  TimelineSelectionRange,
   TimelineBlendMode,
   ClipSourceOrientation,
 } from '~/timeline/types';

@@ -22,11 +22,6 @@ const isOpenLocal = computed({
   },
 });
 
-const drawerTitle = computed(() => {
-  if (props.type === 'text') return t('fastcat.timeline.text');
-  if (props.type === 'shape') return t('fastcat.timeline.shape');
-  return t('fastcat.timeline.hud');
-});
 
 interface PresetItem {
   id: string;

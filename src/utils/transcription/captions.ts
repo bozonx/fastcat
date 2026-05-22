@@ -135,23 +135,6 @@ function shouldSplitAtWord(params: {
   return false;
 }
 
-function wordsToChunk(words: TranscriptionWord[]): CaptionChunk | null {
-  const first = words[0];
-  const last = words[words.length - 1];
-  if (!first || !last) return null;
-
-  return {
-    startMs: first.start,
-    endMs: last.end,
-    text: words
-      .map((word) => word.text)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim(),
-    words: [...words],
-  };
-}
-
 function timelineWordsToChunk(words: TimelineCaptionWord[]): CaptionChunk | null {
   const first = words[0];
   const last = words[words.length - 1];

@@ -95,21 +95,6 @@ function confirmDelete() {
   }
 }
 
-const selectedTrackId = computed(() => {
-  const entity = selectionStore.selectedEntity;
-  if (entity?.source === 'timeline') {
-    if (entity.kind === 'track') return entity.trackId;
-    if (entity.kind === 'clip') return entity.trackId;
-    if (entity.kind === 'gap') return entity.trackId;
-    if (entity.kind === 'transition') return entity.trackId;
-    if (entity.kind === 'clips') {
-      const clips = entity as { items?: Array<{ trackId: string }> };
-      if (clips.items && clips.items.length > 0) return clips.items[0].trackId;
-    }
-  }
-  return null;
-});
-
 const trackNumbers = computed<Record<string, number>>(() => {
   const numbers: Record<string, number> = {};
   let remainingVideoTracks = props.tracks.filter((track) => track.kind === 'video').length;

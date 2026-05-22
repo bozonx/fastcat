@@ -255,7 +255,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     proxyStore.generatingProxies.clear();
     proxyStore.existingProxies.clear();
     proxyStore.proxyProgress.clear();
-    for (const [key, controller] of proxyStore.proxyAbortControllers.entries()) {
+    for (const [_key, controller] of proxyStore.proxyAbortControllers.entries()) {
       controller.abort();
     }
     proxyStore.proxyAbortControllers.clear();

@@ -137,7 +137,6 @@ export function parseClipItem(input: {
     fallbackStartUs,
     transitionIn,
     transitionOut,
-    report,
   } = input;
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);

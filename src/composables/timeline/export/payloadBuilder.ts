@@ -10,7 +10,7 @@ import type {
   ClipEffect,
   TimelineDocument,
 } from '~/timeline/types';
-import { isClipItem, isSourceClipItem } from '~/timeline/types';
+import { isClipItem } from '~/timeline/types';
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {

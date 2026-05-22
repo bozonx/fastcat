@@ -5,8 +5,6 @@ import {
   type DirectoryHandleLike,
 } from './app-fs.repository';
 
-import type { ProjectMonitorSettings } from '~/utils/project-settings';
-
 import { z } from 'zod';
 
 // Per-view monitor (pan/zoom). Allows passthrough of legacy fields so they can

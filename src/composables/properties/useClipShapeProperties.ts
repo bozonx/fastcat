@@ -3,7 +3,6 @@ import type {
   TimelineClipItem,
   ShapeType,
   ShapeConfig,
-  TimelineShapeClipItem,
 } from '~/timeline/types';
 import type { TimelineClipsModule } from '~/stores/timeline/clips';
 

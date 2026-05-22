@@ -27,12 +27,6 @@ interface UseProjectTabsOptions {
   onStaticTabDragStart?: (event: DragEvent, tabId: string) => void;
 }
 
-interface FileMovePayload {
-  path: string;
-  name: string;
-  kind: string;
-}
-
 interface JsonFilePayload {
   path?: string;
   name?: string;

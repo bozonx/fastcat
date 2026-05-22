@@ -16,8 +16,6 @@ export type PanelFocusId =
   | `dynamic:${string}`;
 export type AnyPanelFocus = PanelFocusId;
 
-const MAIN_PANEL_IDS: MainPanelFocus[] = ['monitor', 'timeline'];
-
 function isMainPanelFocus(panelId: string | null | undefined): panelId is MainPanelFocus {
   return panelId === 'monitor' || panelId === 'timeline';
 }

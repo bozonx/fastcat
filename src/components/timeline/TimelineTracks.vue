@@ -451,7 +451,7 @@ const { getTrackContextMenuItems } = useTrackContextMenu({
     trackToRename.value = track;
     isTrackRenameModalOpen.value = true;
   },
-  onPaste: (trackId) => {
+  onPaste: (_trackId) => {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
     void timelineStore.pasteClips(payload.items, {

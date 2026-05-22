@@ -1,5 +1,5 @@
 import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
-import { PROJECTS_ROOT_DIR_NAME, THUMBNAILS_ROOT_DIR_NAME } from './storage-roots';
+import { THUMBNAILS_ROOT_DIR_NAME } from './storage-roots';
 import { toStoragePathSegments, type ResolvedStorageTopology } from './storage-topology';
 
 function trimPath(path: string | undefined | null): string {

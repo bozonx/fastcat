@@ -42,7 +42,6 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
       // 1. Cleanup thumbnails for entries no longer in currentEntries
       Object.keys(thumbnails.value).forEach((path) => {
         if (!validPaths.has(path)) {
-          const url = thumbnails.value[path];
           if (activeImageUrls.has(path)) {
             safeRevokeObjectURL(activeImageUrls.get(path)!);
             activeImageUrls.delete(path);

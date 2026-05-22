@@ -79,17 +79,6 @@ async function ensureVectorImageCacheRoot(input: {
   throw new Error('Vector image cache requires resolved storage topology');
 }
 
-async function getDirectory(
-  root: FileSystemDirectoryHandle,
-  segments: string[],
-): Promise<FileSystemDirectoryHandle> {
-  let dir = root;
-  for (const segment of segments) {
-    dir = await dir.getDirectoryHandle(segment);
-  }
-  return dir;
-}
-
 export async function ensureVectorImageRaster(
   params: EnsureVectorImageRasterParams,
 ): Promise<FileSystemFileHandle> {

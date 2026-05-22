@@ -45,7 +45,6 @@ export function useFileBrowserNavigation({
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
-  const projectStore = useProjectStore();
   const uiStore = useUiStore();
   const parentFolders = ref<FsEntry[]>([]);
 

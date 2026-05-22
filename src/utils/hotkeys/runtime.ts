@@ -2,7 +2,6 @@ import type { AnyPanelFocus } from '~/stores/focus.store';
 import type { HotkeyCommandId, HotkeyCombo } from './defaultHotkeys';
 import { DEFAULT_HOTKEYS } from './defaultHotkeys';
 import { hotkeyFromKeyboardEvent } from './hotkeyUtils';
-import { getEffectiveHotkeyBindings } from './effectiveHotkeys';
 import type { FastCatUserSettings } from '../settings/defaults';
 
 export interface HotkeyCommandPolicy {

@@ -16,7 +16,6 @@ export interface EnsureMonitorCompositorReadyOptions {
 
 export function createMonitorCompositorRuntime(options: CreateMonitorCompositorRuntimeOptions) {
   let canvasEl: HTMLCanvasElement | null = null;
-  let pendingCanvasEl: HTMLCanvasElement | null = null;
   let compositorReady = false;
   let compositorWidth = 0;
   let compositorHeight = 0;
@@ -59,8 +58,6 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
     nextCanvasEl.style.width = `${targetWidth}px`;
     nextCanvasEl.style.height = `${targetHeight}px`;
     nextCanvasEl.style.display = 'block';
-    pendingCanvasEl = nextCanvasEl;
-
     const offscreen = nextCanvasEl.transferControlToOffscreen();
     await options.client.destroyCompositor();
     await options.client.initCompositor(
@@ -72,13 +69,11 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
     );
 
     if (options.isUnmounted()) {
-      pendingCanvasEl = null;
       return;
     }
 
     const container = options.containerEl.value;
     if (!container) {
-      pendingCanvasEl = null;
       return;
     }
 
@@ -89,7 +84,6 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
     }
 
     canvasEl = nextCanvasEl;
-    pendingCanvasEl = null;
     compositorReady = true;
     compositorWidth = targetWidth;
     compositorHeight = targetHeight;
@@ -127,7 +121,6 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
   async function destroy() {
     clearPendingRender();
-    pendingCanvasEl = null;
     await options.client.destroyCompositor();
   }
 

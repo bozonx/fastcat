@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
@@ -11,7 +10,6 @@ import MobileTimeline from '~/components/timeline/MobileTimeline.vue';
 import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
-import { useFileManagerStore } from '~/stores/file-manager.store';
 import { until, useMediaQuery } from '@vueuse/core';
 
 definePageMeta({
@@ -20,7 +18,6 @@ definePageMeta({
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
-const timelineStore = useTimelineStore();
 const router = useRouter();
 const route = useRoute();
 const { openProject, leaveProject } = useProjectActions();
@@ -89,22 +86,6 @@ const activeTab = computed<TabId>({
   },
 });
 
-const currentViewLabel = computed(() => {
-  if (activeTab.value === 'files') return 'Project files';
-  if (activeTab.value === 'export') return 'Export';
-  return 'Edit timeline';
-});
-
-const fileManagerStore = useFileManagerStore();
-
-function handleTabClick(tabId: TabId) {
-  if (activeTab.value === tabId && tabId === 'files') {
-    fileManagerStore.selectedFolder = null;
-  } else {
-    activeTab.value = tabId;
-  }
-}
-
 const showBottomNav = computed(() => !isOpeningProject.value && !projectOpenError.value);
 
 async function handleBack() {
@@ -112,13 +93,6 @@ async function handleBack() {
 }
 
 const isLandscapeMode = useMediaQuery('(orientation: landscape)');
-
-const isVerticalProject = computed(() => {
-  const width = timelineStore.timelineFormat?.width ?? projectStore.projectSettings.project.width;
-  const height =
-    timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height;
-  return width < height;
-});
 
 // Persisted panel sizes (percent of container)
 const portraitMonitorHeight = computed({

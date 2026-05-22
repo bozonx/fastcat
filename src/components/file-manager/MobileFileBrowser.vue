@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue';
-import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -37,7 +37,6 @@ import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileB
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
-import { useProxyStore } from '~/stores/proxy.store';
 
 type MobileDrawerAction =
   | FileManagerAction

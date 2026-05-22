@@ -240,16 +240,6 @@ export async function runTranscode(
       ? await input.getPrimaryAudioTrack().catch(() => null)
       : null;
 
-    const sourceDecoderConfig =
-      sourceVideoTrack && typeof sourceVideoTrack.getDecoderConfig === 'function'
-        ? await sourceVideoTrack.getDecoderConfig().catch(() => null)
-        : null;
-    const sourceDecoderConfigAny = sourceDecoderConfig as {
-      codedWidth?: number;
-      codedHeight?: number;
-      displayWidth?: number;
-      displayHeight?: number;
-    } | null;
     const sourceVideoTrackAny = sourceVideoTrack as { frameRate?: number } | null;
     const sourceFrameRate = Number(sourceVideoTrackAny?.frameRate || 0);
 

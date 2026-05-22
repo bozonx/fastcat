@@ -319,7 +319,6 @@ export function useEntryPreview(params: {
         if (!file) return;
         if (requestId !== loadRequestId) return;
 
-        const textExtensions = TEXT_EXTENSIONS;
         let nextTextContent = '';
         let nextLineCount: number | null = null;
         let nextTimelineDocSummary: {

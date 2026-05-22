@@ -79,10 +79,6 @@ export function useClipAudio(options: UseClipAudioOptions) {
     options.updateAudio({ audioBalance: safe });
   }
 
-  const clipDurationSec = computed(() => {
-    return Math.max(0, Number(options.clip.value.timelineRange?.durationUs ?? 0) / 1_000_000);
-  });
-
   const audioFadeInSec = computed(() => {
     const v = options.clip.value.audioFadeInUs;
     const safe = typeof v === 'number' && Number.isFinite(v) ? v : 0;

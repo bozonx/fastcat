@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { clamp } from '../../utils/math';
 import { useWheelSupport } from '../../composables/useWheelSupport';
 import { useWorkspaceStore } from '../../stores/workspace.store';
 import { isLayer1Active } from '../../utils/hotkeys/layerUtils';

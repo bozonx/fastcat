@@ -116,15 +116,6 @@ export function useGeneralHotkeys(
     }
   }
 
-  function startVolumeHotkeyHold(params: { step: number; keyCode: string }) {
-    volumeHoldRunner.startHold({
-      keyCode: params.keyCode,
-      action: () => {
-        timelineStore.setAudioVolume(timelineStore.audioVolume + params.step);
-      },
-    });
-  }
-
   function startZoomHotkeyHold(params: { direction: 1 | -1; keyCode: string }) {
     zoomHoldRunner.startHold({
       keyCode: params.keyCode,

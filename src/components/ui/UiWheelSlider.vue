@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { clamp } from '../../utils/math';
 import { useWheelSupport } from '../../composables/useWheelSupport';
 import { useWorkspaceStore } from '../../stores/workspace.store';

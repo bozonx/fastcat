@@ -69,8 +69,6 @@ export const useTimelineStore = defineStore('timeline', () => {
       mediaStore,
     });
 
-  const DEFAULT_IMAGE_DURATION_US = 5_000_000;
-
   const timelineDoc = ref<TimelineDocument | null>(null);
 
   const isTimelineDirty = ref(false);

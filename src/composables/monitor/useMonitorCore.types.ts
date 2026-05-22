@@ -1,6 +1,5 @@
 import type { Ref } from 'vue';
 import type { useProjectStore } from '~/stores/project.store';
-import type { FastCatProjectSettings } from '~/utils/project-settings';
 import type { TimelineDocument } from '~/timeline/types';
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 import type { WorkerTimelineClip } from './types';

@@ -23,10 +23,8 @@ import {
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import FileManagerTreeRow from '~/components/file-manager/FileManagerTreeRow.vue';
 import {
-  getMediaTypeFromFilename,
   VIDEO_EXTENSIONS,
   AUDIO_EXTENSIONS,
-  BROWSER_NATIVE_IMAGE_EXTENSIONS,
   IMAGE_EXTENSIONS,
   TEXT_EXTENSIONS,
   TIMELINE_EXTENSIONS,
@@ -328,25 +326,6 @@ function getEntryViewModel(entry: FsEntry): EntryViewModel {
     (!props.foldersOnly || !entry.children || entry.children.some((c) => c.kind === 'directory'));
 
   return { selected, isDot, isCommonRoot, isCut, isCopy, iconClass, nameClass, meta, showChevron };
-}
-
-function isFullyUnsupported(entry: FsEntry): boolean {
-  if (entry.kind !== 'file' || !entry.path) return false;
-  const mediaStore = useMediaStore();
-  if (mediaStore.metadataLoadFailed[entry.path]) return true;
-  const meta = mediaStore.mediaMetadata[entry.path];
-  if (!meta) return false;
-  if (meta.error) return true;
-  const type = getMediaTypeFromFilename(entry.name);
-  if (type === 'image') {
-    const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && meta.image?.canDisplay === false) {
-      return true;
-    }
-  }
-  if (type === 'video' && meta.video?.canDecode === false) return true;
-  if (type === 'audio' && meta.audio?.canDecode === false) return true;
-  return false;
 }
 
 function onEntryClick(event: MouseEvent, entry: FsEntry) {
@@ -705,7 +684,6 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
 }
 
 const localVfs = useVfs();
-const runtimeConfig = useRuntimeConfig();
 
 function getBdType(entry: FsEntry): string | undefined {
   return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;

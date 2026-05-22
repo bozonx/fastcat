@@ -788,40 +788,6 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     });
   }
 
-  function addClipToTrackFromPath(
-    input: {
-      trackId: string;
-      name: string;
-      path: string;
-      startUs?: number;
-      pseudo?: boolean;
-    },
-    options?: {
-      skipHistory?: boolean;
-      saveMode?: 'none' | 'debounced' | 'immediate';
-      historyMode?: 'immediate' | 'debounced';
-      historyDebounceMs?: number;
-      labelKey?: string;
-    },
-  ) {
-    if (!deps.timelineDoc.value) {
-      deps.timelineDoc.value = deps.createFallbackTimelineDoc();
-    }
-
-    deps.applyTimeline(
-      {
-        type: 'add_clip_to_track',
-        trackId: input.trackId,
-        name: input.name,
-        path: input.path,
-        startUs: input.startUs ?? 0,
-        durationUs: 0,
-        pseudo: input.pseudo,
-      },
-      options,
-    );
-  }
-
   function addVirtualClipToTrack(
     input: {
       trackId: string;
