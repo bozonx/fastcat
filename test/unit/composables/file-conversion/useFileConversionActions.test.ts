@@ -116,7 +116,7 @@ describe('useFileConversionActions', () => {
         onlyCodec: 'opus',
         onlyBitrateKbps: 128,
         channels: 'stereo',
-        sampleRate: 0,
+        sampleRate: 'original',
         reverse: false,
         originalSampleRate: null,
       } as any,
@@ -280,7 +280,7 @@ describe('useFileConversionActions', () => {
     await openConversionModal({ name: 'clip.mp4', path: '/clip.mp4', kind: 'file' } as any);
 
     expect(props.audioSettings.originalSampleRate).toBe(48000);
-    expect(props.audioSettings.sampleRate).toBe(0);
+    expect(props.audioSettings.sampleRate).toBe('original');
   });
 
   it('defaults audio conversion sample rate to original option', async () => {
@@ -304,7 +304,7 @@ describe('useFileConversionActions', () => {
     await openConversionModal({ name: 'track.mp3', path: '/track.mp3', kind: 'file' } as any);
 
     expect(props.audioSettings.originalSampleRate).toBe(48000);
-    expect(props.audioSettings.sampleRate).toBe(0);
+    expect(props.audioSettings.sampleRate).toBe('original');
   });
 
   it('uses VFS to read image metadata when opening conversion modal', async () => {

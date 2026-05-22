@@ -12,8 +12,6 @@ const props = defineProps<{
   hideActions?: boolean;
 }>();
 
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
-
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
@@ -149,7 +147,6 @@ const mainActions = computed<unknown[]>(() => {
       <div class="flex flex-col gap-0.5 mt-2">
         <span class="text-xs text-ui-text-muted">{{ t('fastcat.marker.text') }}</span>
         <UiTextarea
-          ref="textareaRef"
           :model-value="marker.text"
           size="sm"
           :rows="4"

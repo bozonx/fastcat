@@ -121,8 +121,6 @@ export function useTimelineMarquee(
 
     const onMove = (ev: PointerEvent) => {
       const cur = getPointerCoords(ev);
-      const scrollDelta = getScrollLeft() - startScrollLeft.value;
-      const adjustedCur = { x: cur.x, y: cur.y }; // coords already includes scroll via rect.left
 
       if (
         !didMove &&

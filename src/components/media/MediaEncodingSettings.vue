@@ -54,7 +54,7 @@ const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
 const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<number>('audioChannels', { default: 2 });
-const audioSampleRate = defineModel<number>('audioSampleRate', { default: 0 });
+const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', { default: 'original' });
 const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', {
   default: 'custom',
 });

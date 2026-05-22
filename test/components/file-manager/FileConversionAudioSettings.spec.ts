@@ -22,7 +22,7 @@ describe('FileConversionAudioSettings', () => {
       props: {
         audioBitrateKbps: 128,
         audioChannels: 2,
-        audioSampleRate: 0,
+        audioSampleRate: 'original',
         originalSampleRate: 44100,
         originalChannels: 2,
         allowOriginalSampleRate: true,
@@ -41,7 +41,7 @@ describe('FileConversionAudioSettings', () => {
 
     expect(select.attributes('data-searchable')).toBe('false');
     expect(items[0]).toEqual({
-      value: 0,
+      value: 'original',
       label: 'videoEditor.audio.original (44.1 kHz)',
     });
   });
