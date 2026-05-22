@@ -102,9 +102,10 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       label: options.t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onSelect: async () => {
-        options.updateClipProperties(track.id, clipItem.id, {
-          linkedVideoClipId: undefined,
-          lockToLinkedVideo: false,
+        options.applyTimelineCommand({
+          type: 'unlink_audio_from_video',
+          audioTrackId: track.id,
+          audioItemId: clipItem.id,
         });
         await options.requestTimelineSave({ immediate: true });
       },
@@ -114,16 +115,10 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       label: options.t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onSelect: async () => {
-        const cmds = linkedAudioForThisVideo.map((audioClip) => ({
-          type: 'update_clip_properties' as const,
-          trackId: audioClip.trackId,
-          itemId: audioClip.id,
-          properties: {
-            linkedVideoClipId: undefined,
-            lockToLinkedVideo: false,
-          },
-        }));
-        options.batchApplyTimeline(cmds);
+        options.applyTimelineCommand({
+          type: 'unlink_audio_from_video',
+          videoItemId: clipItem.id,
+        });
         await options.requestTimelineSave({ immediate: true });
       },
     });

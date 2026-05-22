@@ -5,8 +5,7 @@
  * Additional SVG elements (grid, transform handles, etc.) should be added inside the svg-overlay slot.
  * Canvas content is placed via the default slot inside the canvas wrapper.
  */
-import { toRef, ref, watchEffect } from 'vue';
-import { storeToRefs } from 'pinia';
+import { toRef, ref, computed } from 'vue';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import { useProjectStore } from '~/stores/project.store';
@@ -37,8 +36,6 @@ const props = withDefaults(
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const { showTimecode } = useMonitorSettings();
-const { timelineDoc } = storeToRefs(timelineStore);
-
 const viewportEl = ref<HTMLElement | null>(null);
 const timecodeEl = ref<HTMLElement | null>(null);
 
@@ -64,19 +61,14 @@ const {
   renderHeight: toRef(props, 'renderHeight'),
 });
 
-const activeMarkers = ref<TimelineMarker[]>([]);
-
-watchEffect(() => {
+const activeMarkers = computed<TimelineMarker[]>(() => {
   const time = props.uiCurrentTimeUs;
-  const markers = timelineDoc.value?.metadata?.fastcat?.markers;
-  const filtered = Array.isArray(markers)
-    ? (markers as TimelineMarker[]).filter((m) => {
-        if (!m.text.trim()) return false;
-        if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
-        return Math.abs(time - m.timeUs) < 1000;
-      })
-    : [];
-  activeMarkers.value = filtered;
+  const markers = timelineStore.markers;
+  return markers.filter((m) => {
+    if (!m.text.trim()) return false;
+    if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
+    return Math.abs(time - m.timeUs) < 1000;
+  });
 });
 
 defineExpose({

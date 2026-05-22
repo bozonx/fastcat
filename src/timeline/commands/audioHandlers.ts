@@ -2,6 +2,7 @@ import type { TimelineDocument, TimelineClipItem, TimelineTrack } from '../types
 import type {
   ExtractAudioToTrackCommand,
   ReturnAudioToVideoCommand,
+  UnlinkAudioFromVideoCommand,
   TimelineCommandResult,
 } from '../commands';
 import {
@@ -11,7 +12,30 @@ import {
   rangesOverlap,
   nextTrackId,
   normalizeGaps,
+  assertNoOverlap,
 } from './utils';
+
+function findLockedLinkedAudioClips(
+  doc: TimelineDocument,
+  input: { videoItemId?: string; audioTrackId?: string; audioItemId?: string },
+): TimelineClipItem[] {
+  const result: TimelineClipItem[] = [];
+
+  for (const track of doc.tracks) {
+    if (track.kind !== 'audio') continue;
+    if (input.audioTrackId && track.id !== input.audioTrackId) continue;
+
+    for (const item of track.items) {
+      if (item.kind !== 'clip') continue;
+      if (!item.linkedVideoClipId || !item.lockToLinkedVideo) continue;
+      if (input.audioItemId && item.id !== input.audioItemId) continue;
+      if (input.videoItemId && item.linkedVideoClipId !== input.videoItemId) continue;
+      result.push(item);
+    }
+  }
+
+  return result;
+}
 
 export function extractAudioToTrack(
   doc: TimelineDocument,
@@ -103,6 +127,9 @@ export function extractAudioToTrack(
 
   const targetAudioTrackIndex = nextTracks.findIndex((t) => t.id === targetAudioTrackId);
   if (targetAudioTrackIndex === -1) throw new Error('Audio track not found');
+  const targetAudioTrack = nextTracks[targetAudioTrackIndex];
+  if (!targetAudioTrack) throw new Error('Audio track not found');
+  assertNoOverlap(targetAudioTrack, '', startUs, durationUs);
 
   const audioClip: TimelineClipItem = {
     kind: 'clip',
@@ -181,8 +208,22 @@ export function returnAudioToVideo(
           if (it.kind !== 'clip' || it.id !== cmd.videoItemId) return it;
           const existingVideoEffects = (it.effects ?? []).filter((e) => e?.target !== 'audio');
           const mergedEffects = [...existingVideoEffects, ...audioEffectsToReturn];
+          const audioProperties = linkedAudio
+            ? {
+                audioGain: linkedAudio.audioGain,
+                audioBalance: linkedAudio.audioBalance,
+                audioFadeInUs: linkedAudio.audioFadeInUs,
+                audioFadeOutUs: linkedAudio.audioFadeOutUs,
+                audioFadeInCurve: linkedAudio.audioFadeInCurve,
+                audioFadeOutCurve: linkedAudio.audioFadeOutCurve,
+                audioMuted: linkedAudio.audioMuted,
+                audioWaveformMode: linkedAudio.audioWaveformMode,
+                showWaveform: linkedAudio.showWaveform,
+              }
+            : {};
           return {
             ...it,
+            ...audioProperties,
             audioFromVideoDisabled: false,
             effects: mergedEffects.length > 0 ? mergedEffects : undefined,
           };
@@ -191,6 +232,64 @@ export function returnAudioToVideo(
     }
     return t;
   });
+
+  return { next: { ...doc, tracks: nextTracks } };
+}
+
+export function unlinkAudioFromVideo(
+  doc: TimelineDocument,
+  cmd: UnlinkAudioFromVideoCommand,
+): TimelineCommandResult {
+  if (!cmd.videoItemId && !cmd.audioItemId) return { next: doc };
+
+  const linkedAudioClips = findLockedLinkedAudioClips(doc, cmd);
+  if (linkedAudioClips.length === 0) return { next: doc };
+
+  const linkedAudioIds = new Set(linkedAudioClips.map((clip) => clip.id));
+  const extractionGroupIdsByVideoId = new Map<string, Set<string>>();
+
+  for (const audioClip of linkedAudioClips) {
+    const videoId = audioClip.linkedVideoClipId;
+    if (!videoId) continue;
+    let groupIds = extractionGroupIdsByVideoId.get(videoId);
+    if (!groupIds) {
+      groupIds = new Set<string>();
+      extractionGroupIdsByVideoId.set(videoId, groupIds);
+    }
+    if (audioClip.linkedGroupId) {
+      groupIds.add(audioClip.linkedGroupId);
+    }
+  }
+
+  const nextTracks = doc.tracks.map((track) => ({
+    ...track,
+    items: track.items.map((item) => {
+      if (item.kind !== 'clip') return item;
+
+      if (track.kind === 'audio' && linkedAudioIds.has(item.id)) {
+        return {
+          ...item,
+          linkedVideoClipId: undefined,
+          lockToLinkedVideo: false,
+          linkedGroupId: undefined,
+        };
+      }
+
+      if (track.kind === 'video') {
+        const groupIds = extractionGroupIdsByVideoId.get(item.id);
+        if (!groupIds) return item;
+        if (!item.linkedGroupId) return item;
+        if (item.linkedGroupId !== item.id) return item;
+        if (!groupIds.has(item.linkedGroupId)) return item;
+        return {
+          ...item,
+          linkedGroupId: undefined,
+        };
+      }
+
+      return item;
+    }),
+  }));
 
   return { next: { ...doc, tracks: nextTracks } };
 }

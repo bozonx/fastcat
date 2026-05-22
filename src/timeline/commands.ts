@@ -14,7 +14,11 @@ import type {
   ClipEffect,
   TimelineFastCatMetadata,
 } from './types';
-import { extractAudioToTrack, returnAudioToVideo } from './commands/audioHandlers';
+import {
+  extractAudioToTrack,
+  returnAudioToVideo,
+  unlinkAudioFromVideo,
+} from './commands/audioHandlers';
 import {
   addTrack,
   renameTrack,
@@ -168,6 +172,13 @@ export interface ExtractAudioToTrackCommand {
 export interface ReturnAudioToVideoCommand {
   type: 'return_audio_to_video';
   videoItemId: string;
+}
+
+export interface UnlinkAudioFromVideoCommand {
+  type: 'unlink_audio_from_video';
+  videoItemId?: string;
+  audioTrackId?: string;
+  audioItemId?: string;
 }
 
 export interface RenameItemCommand {
@@ -362,6 +373,7 @@ export type TimelineCommand =
   | MoveItemsCommand
   | ExtractAudioToTrackCommand
   | ReturnAudioToVideoCommand
+  | UnlinkAudioFromVideoCommand
   | RenameItemCommand
   | UpdateClipPropertiesCommand
   | UpdateTrackPropertiesCommand
@@ -407,6 +419,8 @@ export function applyTimelineCommand(
       return extractAudioToTrack(doc, cmd);
     case 'return_audio_to_video':
       return returnAudioToVideo(doc, cmd);
+    case 'unlink_audio_from_video':
+      return unlinkAudioFromVideo(doc, cmd);
     case 'add_track':
       return addTrack(doc, cmd);
     case 'rename_track':

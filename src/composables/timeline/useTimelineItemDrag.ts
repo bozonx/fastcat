@@ -876,13 +876,9 @@ export function useTimelineItemDrag(
           ) {
             timelineStore.applyTimeline(
               {
-                type: 'update_clip_properties',
-                trackId: tr.id,
-                itemId: it.id,
-                properties: {
-                  linkedVideoClipId: undefined,
-                  lockToLinkedVideo: false,
-                },
+                type: 'unlink_audio_from_video',
+                audioTrackId: tr.id,
+                audioItemId: it.id,
               },
               { saveMode: 'none', skipHistory: true },
             );
@@ -901,13 +897,9 @@ export function useTimelineItemDrag(
               if (!it.lockToLinkedVideo) continue;
               if (!movedVideoIds.includes(linked)) continue;
               cmds.push({
-                type: 'update_clip_properties',
-                trackId: t.id,
-                itemId: it.id,
-                properties: {
-                  linkedVideoClipId: undefined,
-                  lockToLinkedVideo: false,
-                },
+                type: 'unlink_audio_from_video',
+                audioTrackId: t.id,
+                audioItemId: it.id,
               });
             }
           }

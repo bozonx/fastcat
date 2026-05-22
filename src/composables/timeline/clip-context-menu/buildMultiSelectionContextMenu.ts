@@ -1,4 +1,4 @@
-import type { TimelineCommand, UpdateClipPropertiesCommand } from '~/timeline/commands';
+import type { TimelineCommand } from '~/timeline/commands';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { collectMultiSelectionState, isClipFreePosition } from './utils';
 
@@ -109,7 +109,7 @@ export function buildMultiSelectionContextMenu(
       onSelect: async () => {
         if (!state.doc) return;
 
-        const cmds: UpdateClipPropertiesCommand[] = [];
+        const cmds: TimelineCommand[] = [];
         for (const track of state.doc.tracks) {
           if (track.kind !== 'audio') continue;
 
@@ -128,13 +128,9 @@ export function buildMultiSelectionContextMenu(
             if (!shouldUnlink) continue;
 
             cmds.push({
-              type: 'update_clip_properties',
-              trackId: track.id,
-              itemId: item.id,
-              properties: {
-                linkedVideoClipId: undefined,
-                lockToLinkedVideo: false,
-              },
+              type: 'unlink_audio_from_video',
+              audioTrackId: track.id,
+              audioItemId: item.id,
             });
           }
         }

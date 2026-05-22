@@ -279,10 +279,9 @@ export function useClipBatchActions(
     }
 
     const cmds: Array<{
-      type: 'update_clip_properties';
-      trackId: string;
-      itemId: string;
-      properties: { linkedVideoClipId: undefined; lockToLinkedVideo: false };
+      type: 'unlink_audio_from_video';
+      audioTrackId: string;
+      audioItemId: string;
     }> = [];
 
     for (const track of doc.tracks) {
@@ -301,10 +300,9 @@ export function useClipBatchActions(
         if (!shouldUnlink) continue;
 
         cmds.push({
-          type: 'update_clip_properties',
-          trackId: track.id,
-          itemId: it.id,
-          properties: { linkedVideoClipId: undefined, lockToLinkedVideo: false },
+          type: 'unlink_audio_from_video',
+          audioTrackId: track.id,
+          audioItemId: it.id,
         });
       }
     }

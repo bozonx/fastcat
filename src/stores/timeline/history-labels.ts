@@ -25,6 +25,7 @@ export const TIMELINE_COMMAND_LABEL_KEYS: Record<TimelineCommand['type'], string
   update_track_properties: 'videoEditor.fileManager.history.entries.updateTrack',
   extract_audio_to_track: 'videoEditor.fileManager.history.entries.extractAudio',
   return_audio_to_video: 'videoEditor.fileManager.history.entries.returnAudio',
+  unlink_audio_from_video: 'videoEditor.fileManager.history.entries.unlinkAudio',
   update_master_gain: 'videoEditor.fileManager.history.entries.updateMasterGain',
   update_master_muted: 'videoEditor.fileManager.history.entries.toggleMute',
   update_master_effects: 'videoEditor.fileManager.history.entries.updateEffects',

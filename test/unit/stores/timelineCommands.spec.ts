@@ -80,4 +80,14 @@ describe('timelineCommands', () => {
       videoItemId: 'clip1',
     });
   });
+
+  it('unlinks audio from video applies correct command', () => {
+    commands.unlinkAudioFromVideo({ audioTrackId: 'a1', audioItemId: 'clip-a1' });
+    expect(applyTimeline).toHaveBeenCalledWith({
+      type: 'unlink_audio_from_video',
+      audioTrackId: 'a1',
+      audioItemId: 'clip-a1',
+      videoItemId: undefined,
+    });
+  });
 });

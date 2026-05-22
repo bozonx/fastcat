@@ -37,6 +37,7 @@ function createOptions(clip: TimelineClipItem) {
       appliedCommands.push(command);
     }),
     updateClipProperties: vi.fn(),
+    unlinkAudioFromVideo: vi.fn(),
     batchApplyTimeline: vi.fn(),
     loadTimeline: vi.fn(),
     loadTimelineMetadata: vi.fn(),

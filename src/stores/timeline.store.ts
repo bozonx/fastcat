@@ -1,10 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, toRef, computed } from 'vue';
 
-import type {
-  TimelineDocument,
-  TimelineSelectionRange,
-} from '~/timeline/types';
+import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
@@ -710,6 +707,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     moveItemToTrack: commands.moveItemToTrack,
     extractAudioToTrack: commands.extractAudioToTrack,
     returnAudioToVideo: commands.returnAudioToVideo,
+    unlinkAudioFromVideo: commands.unlinkAudioFromVideo,
     markTimelineAsDirty: lifecycle.markTimelineAsDirty,
     markTimelineAsCleanForCurrentRevision: lifecycle.markTimelineAsCleanForCurrentRevision,
     resetTimelineState: lifecycle.resetTimelineState,

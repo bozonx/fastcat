@@ -48,6 +48,11 @@ export interface TimelineCommandsModule {
   }) => Promise<void>;
   extractAudioToTrack: (input: { videoTrackId: string; videoItemId: string }) => Promise<void>;
   returnAudioToVideo: (input: { videoItemId: string }) => void;
+  unlinkAudioFromVideo: (input: {
+    videoItemId?: string;
+    audioTrackId?: string;
+    audioItemId?: string;
+  }) => void;
   addClipToTimelineFromPath: (
     input: {
       trackId: string;
@@ -175,6 +180,19 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     applyTimeline({ type: 'return_audio_to_video', videoItemId: input.videoItemId });
   }
 
+  function unlinkAudioFromVideo(input: {
+    videoItemId?: string;
+    audioTrackId?: string;
+    audioItemId?: string;
+  }) {
+    applyTimeline({
+      type: 'unlink_audio_from_video',
+      videoItemId: input.videoItemId,
+      audioTrackId: input.audioTrackId,
+      audioItemId: input.audioItemId,
+    });
+  }
+
   async function addClipToTimelineFromPath(
     input: {
       trackId: string;
@@ -222,6 +240,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     moveItemToTrack,
     extractAudioToTrack,
     returnAudioToVideo,
+    unlinkAudioFromVideo,
     addClipToTimelineFromPath,
     addTimelineClipToTimelineFromPath,
   };

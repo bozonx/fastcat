@@ -28,6 +28,11 @@ interface TimelineStoreActions {
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
   updateClipProperties: (trackId: string, itemId: string, patch: Record<string, unknown>) => void;
+  unlinkAudioFromVideo: (input: {
+    videoItemId?: string;
+    audioTrackId?: string;
+    audioItemId?: string;
+  }) => void;
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
   updateTrackProperties: (trackId: string, patch: Record<string, unknown>) => void;
@@ -265,35 +270,15 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     if (!doc) return;
 
     if (isLockedLinkedAudioClip.value) {
-      timelineStore.updateClipProperties(options.clip.value.trackId, options.clip.value.id, {
-        linkedVideoClipId: undefined,
-        lockToLinkedVideo: false,
+      timelineStore.unlinkAudioFromVideo({
+        audioTrackId: options.clip.value.trackId,
+        audioItemId: options.clip.value.id,
       });
       return;
     }
 
     if (options.trackKind.value === 'video') {
-      const cmds = doc.tracks
-        .filter((t: TimelineTrack) => t.kind === 'audio')
-        .flatMap((t: TimelineTrack) => t.items)
-        .filter(
-          (it): it is TimelineClipItem =>
-            it.kind === 'clip' &&
-            Boolean((it as TimelineClipItem).linkedVideoClipId) &&
-            Boolean((it as TimelineClipItem).lockToLinkedVideo) &&
-            String((it as TimelineClipItem).linkedVideoClipId) === options.clip.value.id,
-        )
-        .map((a: TimelineClipItem) => ({
-          type: 'update_clip_properties' as const,
-          trackId: a.trackId,
-          itemId: a.id,
-          properties: {
-            linkedVideoClipId: undefined,
-            lockToLinkedVideo: false,
-          },
-        }));
-      if (cmds.length === 0) return;
-      timelineStore.batchApplyTimeline(cmds);
+      timelineStore.unlinkAudioFromVideo({ videoItemId: options.clip.value.id });
     }
   }
 

@@ -147,4 +147,173 @@ describe('timeline/commands audio effects transfer', () => {
     ]);
     expect(audioTrack?.items).toHaveLength(0);
   });
+
+  it('returns audio clip properties back to video clip', () => {
+    let doc = makeDoc();
+
+    doc = applyTimelineCommand(doc, {
+      type: 'extract_audio_to_track',
+      videoTrackId: 'v1',
+      videoItemId: 'clip-1',
+      audioTrackId: 'a1',
+    }).next;
+
+    const audioClip = doc.tracks
+      .find((track) => track.id === 'a1')
+      ?.items.find((item) => item.kind === 'clip');
+    expect(audioClip).toBeDefined();
+
+    doc = applyTimelineCommand(doc, {
+      type: 'update_clip_properties',
+      trackId: 'a1',
+      itemId: audioClip!.id,
+      properties: {
+        audioGain: 0.45,
+        audioBalance: -0.25,
+        audioFadeInUs: 100_000,
+        audioFadeOutUs: 200_000,
+        audioFadeInCurve: 'logarithmic',
+        audioFadeOutCurve: 'linear',
+        audioMuted: true,
+        audioWaveformMode: 'half',
+        showWaveform: false,
+      },
+    }).next;
+
+    const next = applyTimelineCommand(doc, {
+      type: 'return_audio_to_video',
+      videoItemId: 'clip-1',
+    }).next;
+
+    const videoClip = next.tracks
+      .find((track) => track.id === 'v1')
+      ?.items.find((item) => item.kind === 'clip');
+
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.audioGain : undefined).toBe(0.45);
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.audioBalance : undefined).toBe(-0.25);
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.audioFadeInUs : undefined).toBe(
+      100_000,
+    );
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.audioFadeOutUs : undefined).toBe(
+      200_000,
+    );
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.audioFadeInCurve : undefined).toBe(
+      'logarithmic',
+    );
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.audioMuted : undefined).toBe(true);
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.audioWaveformMode : undefined).toBe(
+      'half',
+    );
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.showWaveform : undefined).toBe(false);
+  });
+
+  it('fully unlinks extracted audio from the extraction-created group', () => {
+    let doc = makeDoc();
+
+    doc = applyTimelineCommand(doc, {
+      type: 'extract_audio_to_track',
+      videoTrackId: 'v1',
+      videoItemId: 'clip-1',
+      audioTrackId: 'a1',
+    }).next;
+
+    const audioClip = doc.tracks
+      .find((track) => track.id === 'a1')
+      ?.items.find((item) => item.kind === 'clip');
+
+    const next = applyTimelineCommand(doc, {
+      type: 'unlink_audio_from_video',
+      audioTrackId: 'a1',
+      audioItemId: audioClip!.id,
+    }).next;
+
+    const videoClip = next.tracks
+      .find((track) => track.id === 'v1')
+      ?.items.find((item) => item.kind === 'clip');
+    const unlinkedAudioClip = next.tracks
+      .find((track) => track.id === 'a1')
+      ?.items.find((item) => item.kind === 'clip');
+
+    expect(videoClip && videoClip.kind === 'clip' ? videoClip.linkedGroupId : undefined).toBe(
+      undefined,
+    );
+    expect(
+      unlinkedAudioClip && unlinkedAudioClip.kind === 'clip'
+        ? unlinkedAudioClip.linkedVideoClipId
+        : undefined,
+    ).toBe(undefined);
+    expect(
+      unlinkedAudioClip && unlinkedAudioClip.kind === 'clip'
+        ? unlinkedAudioClip.lockToLinkedVideo
+        : undefined,
+    ).toBe(false);
+    expect(
+      unlinkedAudioClip && unlinkedAudioClip.kind === 'clip'
+        ? unlinkedAudioClip.linkedGroupId
+        : undefined,
+    ).toBe(undefined);
+  });
+
+  it('keeps a pre-existing video group when unlinking extracted audio', () => {
+    let doc = makeDoc();
+    const videoClip = doc.tracks[0].items[0];
+    if (videoClip?.kind === 'clip') {
+      videoClip.linkedGroupId = 'manual-group';
+    }
+
+    doc = applyTimelineCommand(doc, {
+      type: 'extract_audio_to_track',
+      videoTrackId: 'v1',
+      videoItemId: 'clip-1',
+      audioTrackId: 'a1',
+    }).next;
+
+    const audioClip = doc.tracks
+      .find((track) => track.id === 'a1')
+      ?.items.find((item) => item.kind === 'clip');
+
+    const next = applyTimelineCommand(doc, {
+      type: 'unlink_audio_from_video',
+      videoItemId: 'clip-1',
+    }).next;
+
+    const nextVideoClip = next.tracks
+      .find((track) => track.id === 'v1')
+      ?.items.find((item) => item.kind === 'clip');
+    const nextAudioClip = next.tracks
+      .find((track) => track.id === 'a1')
+      ?.items.find((item) => item.id === audioClip!.id);
+
+    expect(nextVideoClip && nextVideoClip.kind === 'clip' ? nextVideoClip.linkedGroupId : '').toBe(
+      'manual-group',
+    );
+    expect(nextAudioClip && nextAudioClip.kind === 'clip' ? nextAudioClip.linkedGroupId : '').toBe(
+      undefined,
+    );
+  });
+
+  it('rejects extracting audio to an explicitly occupied audio track', () => {
+    const doc = makeDoc();
+    const audioTrack = doc.tracks.find((track) => track.id === 'a1');
+    audioTrack?.items.push({
+      kind: 'clip',
+      clipType: 'media',
+      id: 'existing-audio',
+      trackId: 'a1',
+      name: 'Existing audio',
+      source: { path: 'audio.wav' },
+      sourceDurationUs: 10_000_000,
+      timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
+      sourceRange: { startUs: 0, durationUs: 2_000_000 },
+    });
+
+    expect(() =>
+      applyTimelineCommand(doc, {
+        type: 'extract_audio_to_track',
+        videoTrackId: 'v1',
+        videoItemId: 'clip-1',
+        audioTrackId: 'a1',
+      }),
+    ).toThrow('Item overlaps with another item');
+  });
 });
