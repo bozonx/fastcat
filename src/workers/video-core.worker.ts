@@ -19,6 +19,7 @@ import { normalizeRpcError } from './core/utils';
 import { extractMetadata, runExport, extractAudioStream } from './core/export';
 import { runTranscode } from './core/transcode';
 import { VIDEO_CORE_LIMITS } from '../utils/constants';
+import { loadFonts } from '../utils/video-editor/load-fonts';
 
 DOMAdapter.set(WebWorkerAdapter);
 initEffects();
@@ -184,6 +185,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     bgColor: string,
     rendererPreference: 'webgl' | 'webgpu' = 'webgl',
   ) {
+    await loadFonts();
     pixiRendererPreference = rendererPreference;
     const nextCompositor = new VideoCompositor();
     await nextCompositor.init(width, height, bgColor, true, canvas, {
@@ -209,7 +211,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       Number.isFinite(requestId) &&
       requestId !== latestLoadTimelineRequestId;
     return compositor.loadTimeline(
-      clips,
+      clips as any,
       {
         getFileHandleByPath: async (path: string) => {
           if (!hostClient) return null;
@@ -236,7 +238,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
   ) {
     if (!compositor) throw new Error('Compositor not initialized');
-    return compositor.updateTimelineLayout(clips);
+    return compositor.updateTimelineLayout(clips as any);
   },
 
   async renderFrame(timeUs: number, options?: PreviewRenderOptions) {
@@ -362,6 +364,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     timelineClips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
     quality: number,
   ) {
+    await loadFonts();
     const localCompositor = new VideoCompositor();
     await localCompositor.init(width, height, '#000', true, undefined, {
       rendererPreference: pixiRendererPreference,
@@ -369,7 +372,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
     try {
       await localCompositor.loadTimeline(
-        timelineClips,
+        timelineClips as any,
         {
           getFileHandleByPath: async (path) => {
             if (!hostClient) return null;
@@ -486,7 +489,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
             ? (sample as VideoFrame)
             : typeof (sample as { toCanvasImageSource?: () => CanvasImageSource })
                   .toCanvasImageSource === 'function'
-              ? (sample as { toCanvasImageSource?: () => CanvasImageSource }).toCanvasImageSource()
+              ? ((sample as { toCanvasImageSource?: () => CanvasImageSource }).toCanvasImageSource?.() ?? null)
               : null;
 
           if (!imageSource) {
@@ -554,9 +557,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
             quality: options.quality,
           });
         } finally {
-          if (typeof sample.close === 'function') {
+          const closeFn = (sample as any).close;
+          if (typeof closeFn === 'function') {
             try {
-              sample.close();
+              closeFn.call(sample);
             } catch {
               // ignore
             }
@@ -617,7 +621,7 @@ const frameExtractors = new Map<string, FrameExtractorState>();
 async function createFrameExtractorState(file: File): Promise<FrameExtractorState> {
   const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
   const source = new BlobSource(file);
-  const input = new Input({ source, formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source, formats: ALL_FORMATS } as any);
   const track = await input.getPrimaryVideoTrack();
 
   if (!track || !(await track.canDecode())) {
@@ -637,7 +641,7 @@ async function createFrameExtractorState(file: File): Promise<FrameExtractorStat
     'function'
       ? await (
           track as unknown as { getFirstTimestamp?: () => Promise<number> }
-        ).getFirstTimestamp()
+        ).getFirstTimestamp?.() ?? 0
       : 0;
 
   return {
@@ -703,8 +707,9 @@ function disposeFrameExtractorState(state: FrameExtractorState): void {
   const input = state.input;
   if (input) {
     try {
-      if (typeof input.dispose === 'function') input.dispose();
-      else if (typeof input.close === 'function') input.close();
+      const inp = input as any;
+      if (typeof inp.dispose === 'function') inp.dispose();
+      else if (typeof inp.close === 'function') inp.close();
     } catch {
       // ignore
     }

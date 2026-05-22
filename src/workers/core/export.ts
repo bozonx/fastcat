@@ -1,5 +1,6 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { VideoCompositor } from '../../utils/video-editor/VideoCompositor';
+import { loadFonts } from '../../utils/video-editor/load-fonts';
 import { safeDispose } from '../../utils/video-editor/utils';
 import { parseVideoCodec, parseAudioCodec, getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 import { buildMixedAudioTrack } from './audio';
@@ -262,7 +263,7 @@ async function buildPassthroughAudioTrack(params: {
   const file = (await hostClient.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
-  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -363,11 +364,11 @@ export async function runExport(
       }
     ).createWritable({ keepExistingData: false });
 
-    const target = new StreamTarget(writable, {
+    const target = new StreamTarget(writable as any, {
       chunked: true,
       chunkSize: 16 * 1024 * 1024,
     });
-    const output = new Output({ target, format: params.format });
+    const output = new Output({ target, format: params.format as any });
     return { output, writable };
   }
 
@@ -426,7 +427,7 @@ export async function runExport(
         if (packetStart < ranges.sourceStartS) continue;
 
         const adjustedTimestamp = packetStart - ranges.sourceStartS + ranges.timelineStartS;
-        const adjustedPacket = packet.clone({ timestamp: adjustedTimestamp });
+        const adjustedPacket = (packet as { clone?: (opts: { timestamp: number }) => unknown }).clone?.({ timestamp: adjustedTimestamp });
         if (isFirstPacket) {
           await audioPacketState.audioSource.add(adjustedPacket, { decoderConfig });
           isFirstPacket = false;
@@ -483,7 +484,7 @@ export async function runExport(
         }
         emptyFrameCount++;
       }
-      await waitForVideoBackpressure(params.videoSource);
+      await waitForVideoBackpressure(params.videoSource as any);
       await params.videoSource.add(frame.timestampS, frame.durationS);
 
       const progress = Math.min(99, Math.round(((frameNum + 1) / totalFrames) * 99));
@@ -509,6 +510,7 @@ export async function runExport(
     }
   }
 
+  await loadFonts();
   const localCompositor = new VideoCompositor();
   await localCompositor.init(options.width, options.height, '#000', true, undefined, {
     rendererPreference,
@@ -516,7 +518,7 @@ export async function runExport(
 
   try {
     const maxVideoDurationUs = await localCompositor.loadTimeline(
-      timelineClips,
+      timelineClips as any,
       {
         getFileHandleByPath: async (path) => {
           if (!hostClient) return null;
@@ -593,19 +595,11 @@ export async function runExport(
         keyFrameInterval,
         hardwareAcceleration: preference,
       });
-      output.addVideoTrack(videoSource);
+      (output as any).addVideoTrack(videoSource);
 
       let audioSource: unknown = null;
       let writeMixedAudioToSource: (() => Promise<void>) | null = null;
-      let audioPacketState: {
-        audioSource: {
-          add: (packet: unknown, opts?: { decoderConfig?: unknown }) => Promise<void>;
-        };
-        packetSink: { packets: () => AsyncIterable<unknown>; close?: () => void };
-        decoderConfig: unknown;
-        ranges: { timelineStartS: number; sourceStartS: number; sourceEndS: number };
-        input: unknown;
-      } | null = null;
+      let audioPacketState: any = null;
       if (options.audio && hasAnyAudio) {
         if (options.audioPassthrough && audioClips.length === 1 && audioClips[0] !== undefined) {
           const compat = isPassthroughCompatibleClip(audioClips[0], options);
@@ -622,7 +616,7 @@ export async function runExport(
             });
             if (audioPacketState) {
               audioSource = audioPacketState.audioSource;
-              output.addAudioTrack(audioSource);
+              (output as any).addAudioTrack(audioSource);
             } else {
               await reportExportWarning(
                 '[Worker Export] Opus audio passthrough not available; falling back to re-encode.',
@@ -643,7 +637,7 @@ export async function runExport(
           if (audioTrack) {
             audioSource = audioTrack.audioSource;
             writeMixedAudioToSource = audioTrack.writeMixedToSource;
-            output.addAudioTrack(audioSource);
+            (output as any).addAudioTrack(audioSource);
           } else {
             await reportExportWarning(
               '[Worker Export] No decodable audio track found; exporting without audio.',
@@ -654,7 +648,7 @@ export async function runExport(
 
       let finalized = false;
       try {
-        await output.start();
+        await (output as any).start();
 
         await writeOpusPassthroughIfNeeded({ audioPacketState });
 
@@ -672,7 +666,7 @@ export async function runExport(
 
         await notifyPhase('saving', taskId);
 
-        await output.finalize();
+        await (output as any).finalize();
         if (hostClient) {
           await hostClient.onExportProgress(100, taskId);
         }
@@ -735,7 +729,7 @@ export async function extractAudioStream(
     EncodedPacketSink,
   } = await import('mediabunny');
 
-  const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as any);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -760,20 +754,20 @@ export async function extractAudioStream(
         }) => Promise<{ abort?: () => Promise<void> }>;
       }
     ).createWritable({ keepExistingData: false });
-    const target = new StreamTarget(writable, { chunked: true });
-    const output = new Output({ target, format });
+    const target = new StreamTarget(writable as any, { chunked: true });
+    const output = new Output({ target, format: format as any });
 
     // Fallback if missing decoderConfig in audioTrack extraction
     const decoderConfig = await audioTrack.getDecoderConfig();
 
     const packetSource = new EncodedAudioPacketSource(
       getBunnyAudioCodec(
-        (lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as unknown,
-      ) as unknown,
+        (lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as any,
+      ) as any,
     );
-    output.addAudioTrack(packetSource);
+    (output as any).addAudioTrack(packetSource);
 
-    await output.start();
+    await (output as any).start();
     const packetSink = new EncodedPacketSink(audioTrack);
 
     let isFirstPacket = true;
@@ -791,10 +785,11 @@ export async function extractAudioStream(
       }
     }
 
-    if (typeof (packetSource as { close?: () => void }).close === 'function') {
-      (packetSource as { close?: () => void }).close();
+    const closeFn = (packetSource as { close?: () => void }).close;
+    if (typeof closeFn === 'function') {
+      closeFn.call(packetSource);
     }
-    await output.finalize();
+    await (output as any).finalize();
   } catch (err) {
     console.error('[Worker Export] Failed to extract audio:', err);
     throw err;

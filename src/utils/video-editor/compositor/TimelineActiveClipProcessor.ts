@@ -99,7 +99,8 @@ export class TimelineActiveClipProcessor {
           statePromises.push(
             params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then((res) => {
               if (res.sample) {
-                if (typeof res.sample.toVideoFrame === 'function') {
+                const sampleAny = res.sample as any;
+                if (typeof sampleAny.toVideoFrame === 'function') {
                   if (state.lastVideoFrame) {
                     try {
                       state.lastVideoFrame.close();
@@ -108,7 +109,7 @@ export class TimelineActiveClipProcessor {
                     }
                   }
                   try {
-                    state.lastVideoFrame = res.sample.toVideoFrame();
+                    state.lastVideoFrame = sampleAny.toVideoFrame();
                   } catch (err) {
                     // Cache may close the frame between get() and use; drop it
                     // for this round instead of failing the whole render.
@@ -117,7 +118,7 @@ export class TimelineActiveClipProcessor {
                   }
                 }
                 try {
-                  res.sample.close?.();
+                  sampleAny.close?.();
                 } catch {
                   /* no-op */
                 }
@@ -212,7 +213,8 @@ export class TimelineActiveClipProcessor {
           .then((res) => {
             if (res.sample) {
               const state = clip.maskState!;
-              if (typeof res.sample.toVideoFrame === 'function') {
+              const sampleAny = res.sample as any;
+              if (typeof sampleAny.toVideoFrame === 'function') {
                 if (state.lastVideoFrame) {
                   try {
                     state.lastVideoFrame.close();
@@ -221,14 +223,14 @@ export class TimelineActiveClipProcessor {
                   }
                 }
                 try {
-                  state.lastVideoFrame = res.sample.toVideoFrame();
+                  state.lastVideoFrame = sampleAny.toVideoFrame();
                 } catch (err) {
                   state.lastVideoFrame = null;
                   console.warn('[TimelineActiveClipProcessor] mask toVideoFrame failed', err);
                 }
               }
               try {
-                res.sample.close?.();
+                sampleAny.close?.();
               } catch {
                 /* no-op */
               }

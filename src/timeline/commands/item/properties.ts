@@ -403,11 +403,13 @@ export function updateClipProperties(
         const fontFamily =
           typeof rawRecord.fontFamily === 'string' ? rawRecord.fontFamily : undefined;
         const widthRaw = rawRecord.width;
+        const hasWidth = 'width' in rawRecord;
         const width =
           typeof widthRaw === 'number' && Number.isFinite(widthRaw) && widthRaw > 0
             ? Math.max(1, Math.min(10_000, Math.round(widthRaw)))
             : undefined;
         const heightRaw = rawRecord.height;
+        const hasHeight = 'height' in rawRecord;
         const height =
           typeof heightRaw === 'number' && Number.isFinite(heightRaw) && heightRaw > 0
             ? Math.max(1, Math.min(10_000, Math.round(heightRaw)))
@@ -573,8 +575,8 @@ export function updateClipProperties(
 
         const safeStyle = {
           ...(fontFamily !== undefined ? { fontFamily } : {}),
-          ...(width !== undefined ? { width } : {}),
-          ...(height !== undefined ? { height } : {}),
+          ...(hasWidth ? { width } : {}),
+          ...(hasHeight ? { height } : {}),
           ...(fontSize !== undefined ? { fontSize } : {}),
           ...(fontWeight !== undefined ? { fontWeight } : {}),
           ...(color !== undefined ? { color } : {}),

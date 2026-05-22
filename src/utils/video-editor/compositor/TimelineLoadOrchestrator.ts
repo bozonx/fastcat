@@ -95,9 +95,9 @@ export class TimelineLoadOrchestrator {
 
       const descriptor = this.context.timelineClipLoader.describe({
         index,
-        clipData,
+        clipData: clipData as Record<string, unknown>,
         sequentialTimeUs,
-        fallbackTrackId: callbacks.getFallbackTrackId(clipData),
+        fallbackTrackId: callbacks.getFallbackTrackId(clipData as Record<string, unknown>),
       });
       if (!descriptor) {
         continue;
@@ -105,7 +105,7 @@ export class TimelineLoadOrchestrator {
 
       const processed = await this.processDescriptor({
         descriptor,
-        clipData,
+        clipData: clipData as Record<string, unknown>,
         deps,
         mediabunny,
         callbacks,
@@ -154,7 +154,7 @@ export class TimelineLoadOrchestrator {
     const reusable = callbacks.getExistingClipById(itemId);
     if (reusable && this.context.timelineClipLoader.isReusableClipMatch({ reusable, descriptor })) {
       const updated = await this.context.timelineClipLoader.updateReusableClip({
-        clipData,
+        clipData: clipData as Record<string, unknown>,
         descriptor,
         reusable,
         toVideoEffects: callbacks.toVideoEffects,
@@ -193,7 +193,7 @@ export class TimelineLoadOrchestrator {
 
       callbacks.replaceExistingClip({ reusable, itemId });
       const compositorClip = this.context.timelineFixedClipBuilder.build({
-        clipData,
+        clipData: clipData as Record<string, unknown>,
         descriptor: {
           clipType,
           itemId,
@@ -255,7 +255,7 @@ export class TimelineLoadOrchestrator {
       });
       sequentialTimeUs = fixedDuration.sequentialTimeUs;
 
-      const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as unknown });
+      const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
       let bitmap: ImageBitmap | null = null;
       const loadedImage = await this.context.rasterImageLoader.load({ sourcePath, deps });
       if (loadedImage) {
@@ -265,7 +265,7 @@ export class TimelineLoadOrchestrator {
         imageSource.update();
       }
       const compositorClip = this.context.timelineMediaClipBuilder.createImageClip({
-        clipData,
+        clipData: clipData as Record<string, unknown>,
         descriptor: {
           itemId,
           trackId,
@@ -313,7 +313,7 @@ export class TimelineLoadOrchestrator {
 
       sequentialTimeUs = Math.max(sequentialTimeUs, loadedVideo.endUs);
       const compositorClip = this.context.timelineMediaClipBuilder.createVideoClip({
-        clipData,
+        clipData: clipData as Record<string, unknown>,
         descriptor: {
           itemId,
           trackId,
@@ -329,8 +329,8 @@ export class TimelineLoadOrchestrator {
           speed,
           freezeFrameSourceUs,
         },
-        input: loadedVideo.input,
-        sink: loadedVideo.sink,
+        input: loadedVideo.input as any,
+        sink: loadedVideo.sink as any,
         firstTimestampS: loadedVideo.firstTimestampS,
         frameRate: loadedVideo.frameRate,
         imageSource: loadedVideo.imageSource,
