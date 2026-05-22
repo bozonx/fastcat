@@ -373,7 +373,7 @@ function handleRenameTrack(name: string) {
 
     <UiRenameModal
       :open="isRenameModalOpen"
-      :current-name="trackToRename?.name || ''"
+      :initial-name="trackToRename?.name || ''"
       :title="t('fastcat.timeline.renameTrack')"
       @update:open="isRenameModalOpen = $event"
       @rename="handleRenameTrack"

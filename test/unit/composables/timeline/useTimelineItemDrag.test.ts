@@ -421,6 +421,7 @@ describe('useTimelineItemDrag', () => {
       startUs: 1_400_000,
       durationUs: 4_600_000,
       edge: 'start',
+      deltaUs: 400_000,
     });
 
     handlers.onPointerUp({

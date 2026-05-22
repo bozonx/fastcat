@@ -661,7 +661,7 @@ const menuItems = computed(() => [
     />
 
     <!-- Add to Timeline Modal (Global) -->
-    <TimelineMobileAddToTimelineModal
+    <MobileAddToTimelineModal
       v-model:open="isAddToTimelineModalOpen"
       :entries="addToTimelineEntries"
       @added="onAddedToTimeline"

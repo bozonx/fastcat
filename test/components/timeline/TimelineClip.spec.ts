@@ -417,6 +417,41 @@ describe('TimelineClip', () => {
     expect(sourceRange.attributes('style')).toContain('width: 50%');
   });
 
+  it('renders trim overlay with source range and timecode', async () => {
+    const component = await mountSuspended(TimelineClip, {
+      props: {
+        ...defaultProps,
+        item: {
+          ...baseItem,
+          sourceRange: { startUs: 1_000_000, durationUs: 5_000_000 },
+          sourceDurationUs: 10_000_000,
+        },
+        trimPreview: {
+          itemId: 'clip-1',
+          trackId: 'track-1',
+          startUs: 1_000_000,
+          durationUs: 4_000_000,
+          edge: 'start',
+          deltaUs: 1_000_000,
+        },
+      },
+      global: {
+        stubs: {
+          UContextMenu: { template: '<div><slot /></div>' },
+        },
+      },
+    });
+
+    const overlay = component.find('[data-trim-overlay]');
+    const timecode = component.find('[data-trim-timecode]');
+    const sourceRange = component.find('[data-trim-source-range]');
+
+    expect(overlay.exists()).toBe(true);
+    expect(timecode.text()).toContain('+00-00-01-00');
+    expect(sourceRange.attributes('style')).toContain('left: 10%');
+    expect(sourceRange.attributes('style')).toContain('width: 50%');
+  });
+
   it('displays missing media state', async () => {
     mockMediaStore.missingPaths = { 'file.mp4': true };
 

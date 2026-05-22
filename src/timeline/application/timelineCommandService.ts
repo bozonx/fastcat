@@ -19,7 +19,7 @@ import {
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
 
-interface TimelineMediaMetadata {
+export interface TimelineMediaMetadata {
   duration?: number;
   video?: {
     width: number;

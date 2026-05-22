@@ -156,29 +156,24 @@ async function handleAdd() {
 <template>
   <UiMobileDrawer v-model:open="isOpen" :title="t('common.addToTimeline')">
     <div class="px-4 pt-2 pb-8 space-y-6">
-      <div class="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-inner">
-        <p class="text-xs font-medium text-zinc-500 uppercase tracking-widest">
+      <div class="p-4 rounded-2xl bg-ui-bg-elevated border border-ui-border shadow-inner">
+        <p class="text-xs font-medium text-ui-text-muted uppercase tracking-widest">
           {{ t('mobileFiles.insertAfter') }}
         </p>
         <p class="text-2xl font-mono font-bold text-primary-400 mt-1">
           {{ currentTimeLabel }}
         </p>
-        <p class="text-[10px] text-zinc-500 mt-2 leading-relaxed">
-          {{
-            t(
-              'mobileFiles.addToTimelineDisclaimer',
-              'Выбранные файлы будут добавлены на таймлайн начиная с этой позиции.',
-            )
-          }}
+        <p class="text-[10px] text-ui-text-muted mt-2 leading-relaxed">
+          {{ t('mobileFiles.addToTimelineDisclaimer') }}
         </p>
       </div>
 
       <div class="space-y-3">
         <div class="flex items-center justify-between px-1">
-          <p class="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+          <p class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
             {{ t('mobileFiles.chooseTargetTrack') }}
           </p>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 font-medium">
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-ui-bg-muted text-ui-text-muted font-medium">
             {{ entries.length }} {{ t('common.items') }}
           </span>
         </div>
@@ -191,7 +186,7 @@ async function handleAdd() {
             :class="[
               selectedTrackId === track.id
                 ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10'
-                : 'border-zinc-800/50 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/60',
+                : 'border-ui-border/50 bg-ui-bg-elevated/40 text-ui-text-muted hover:border-ui-border hover:bg-ui-bg-elevated/60',
             ]"
             @click="selectedTrackId = track.id"
           >
@@ -201,7 +196,7 @@ async function handleAdd() {
                 :class="
                   selectedTrackId === track.id
                     ? 'bg-primary-500/20 text-primary-400'
-                    : 'bg-zinc-800 text-zinc-500 shadow-sm'
+                    : 'bg-ui-bg-muted text-ui-text-muted shadow-sm'
                 "
               >
                 <Icon
@@ -212,7 +207,7 @@ async function handleAdd() {
               <div>
                 <p
                   class="font-bold text-sm"
-                  :class="selectedTrackId === track.id ? 'text-white' : 'text-zinc-200'"
+                  :class="selectedTrackId === track.id ? 'text-white' : 'text-ui-text'"
                 >
                   {{ track.name }}
                 </p>
@@ -226,7 +221,7 @@ async function handleAdd() {
               :class="
                 selectedTrackId === track.id
                   ? 'bg-primary-500 scale-100'
-                  : 'bg-zinc-800 scale-75 opacity-0'
+                  : 'bg-ui-bg-muted scale-75 opacity-0'
               "
             >
               <Icon name="lucide:check" class="w-4 h-4 text-white" />
@@ -238,7 +233,7 @@ async function handleAdd() {
             :class="[
               selectedTrackId === 'new'
                 ? 'border-primary-500 bg-primary-500/10 scale-[1.02] z-10'
-                : 'border-zinc-800/50 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-900/60',
+                : 'border-ui-border/50 bg-ui-bg-elevated/40 text-ui-text-muted hover:border-ui-border hover:bg-ui-bg-elevated/60',
             ]"
             @click="selectedTrackId = 'new'"
           >
@@ -248,7 +243,7 @@ async function handleAdd() {
                 :class="
                   selectedTrackId === 'new'
                     ? 'bg-primary-500/20 text-primary-400'
-                    : 'bg-zinc-800 text-zinc-500 shadow-sm'
+                    : 'bg-ui-bg-muted text-ui-text-muted shadow-sm'
                 "
               >
                 <Icon name="lucide:plus-circle" class="w-5 h-5" />
@@ -256,7 +251,7 @@ async function handleAdd() {
               <div>
                 <p
                   class="font-bold text-sm"
-                  :class="selectedTrackId === 'new' ? 'text-white' : 'text-zinc-200'"
+                  :class="selectedTrackId === 'new' ? 'text-white' : 'text-ui-text'"
                 >
                   {{ t('mobileFiles.createNewTrack') }}
                 </p>
@@ -270,7 +265,7 @@ async function handleAdd() {
               :class="
                 selectedTrackId === 'new'
                   ? 'bg-primary-500 scale-100'
-                  : 'bg-zinc-800 scale-75 opacity-0'
+                  : 'bg-ui-bg-muted scale-75 opacity-0'
               "
             >
               <Icon name="lucide:check" class="w-4 h-4 text-white" />

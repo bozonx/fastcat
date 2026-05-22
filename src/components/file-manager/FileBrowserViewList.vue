@@ -37,6 +37,7 @@ const props = defineProps<{
   folderSizes: Record<string, number>;
   editingEntryPath: string | null;
   folderEntriesNames: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getContextMenuItems: (entry: FsEntry) => any[];
   isGeneratingProxyInDirectory: (entry: FsEntry) => boolean;
   videoThumbnails?: Record<string, string>;

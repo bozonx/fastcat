@@ -67,7 +67,7 @@ export async function createAudioStreamFromFile(file: File): Promise<{
   numberOfChannels: number;
 }> {
   const source = new BlobSource(file);
-  const input = new Input({ source, formats: ALL_FORMATS } as any);
+  const input = new Input({ source, formats: ALL_FORMATS });
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();

@@ -146,7 +146,7 @@ function onEnd(event: TouchEvent) {
 
 <template>
   <div
-    class="fixed bottom-0 left-0 right-0 z-60 bg-zinc-950/95 backdrop-blur border-t border-zinc-900 px-2 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl slide-up outline outline-white/5"
+    class="fixed bottom-0 left-0 right-0 z-60 bg-ui-bg/95 backdrop-blur border-t border-ui-border px-2 pt-3 pb-safe select-none shadow-2xl rounded-t-2xl slide-up outline outline-white/5"
   >
     <div class="flex items-center gap-1 mb-3 px-1">
       <UButton
@@ -161,11 +161,11 @@ function onEnd(event: TouchEvent) {
       <div v-if="timeData" class="flex-1 flex justify-between items-center px-2">
         <div class="flex flex-col items-center">
           <span
-            class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter"
+            class="text-[7px] text-ui-text-muted uppercase font-black leading-none mb-1 tracking-tighter"
           >
             {{ t('fastcat.timeline.start') }}
           </span>
-          <span class="text-[10px] font-mono font-bold text-zinc-400 tabular-nums leading-none">
+          <span class="text-[10px] font-mono font-bold text-ui-text-muted tabular-nums leading-none">
             {{ timeData.start }}
           </span>
         </div>
@@ -174,7 +174,7 @@ function onEnd(event: TouchEvent) {
 
         <div class="flex flex-col items-center">
           <span
-            class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter"
+            class="text-[7px] text-ui-text-muted uppercase font-black leading-none mb-1 tracking-tighter"
           >
             {{ t('fastcat.timeline.duration') }}
           </span>
@@ -187,11 +187,11 @@ function onEnd(event: TouchEvent) {
 
         <div class="flex flex-col items-center">
           <span
-            class="text-[7px] text-zinc-500 uppercase font-black leading-none mb-1 tracking-tighter"
+            class="text-[7px] text-ui-text-muted uppercase font-black leading-none mb-1 tracking-tighter"
           >
             {{ t('fastcat.timeline.end') }}
           </span>
-          <span class="text-[10px] font-mono font-bold text-zinc-400 tabular-nums leading-none">
+          <span class="text-[10px] font-mono font-bold text-ui-text-muted tabular-nums leading-none">
             {{ timeData.end }}
           </span>
         </div>
@@ -208,7 +208,7 @@ function onEnd(event: TouchEvent) {
     </div>
 
     <div
-      class="flex h-20 bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden divide-x divide-zinc-800 shadow-inner mb-2"
+      class="flex h-20 bg-ui-bg-elevated/60 rounded-xl border border-ui-border/80 overflow-hidden divide-x divide-ui-border shadow-inner mb-2"
     >
       <div
         class="flex-1 flex flex-col items-center justify-center touch-none active:bg-blue-500/10 transition-colors"
@@ -220,16 +220,16 @@ function onEnd(event: TouchEvent) {
         <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimStart') }}
         </span>
-        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50 shadow-sm">
+        <div class="bg-ui-bg-muted p-1.5 rounded-lg border border-ui-border/50 shadow-sm">
           <UIcon
             name="i-heroicons-arrow-left"
             class="w-5 h-5 block"
-            :class="activeEdge === 'start' ? 'text-blue-400 scale-110' : 'text-zinc-500'"
+            :class="activeEdge === 'start' ? 'text-blue-400 scale-110' : 'text-ui-text-muted'"
           />
         </div>
       </div>
 
-      <div class="w-px h-10 self-center bg-zinc-800/20"></div>
+      <div class="w-px h-10 self-center bg-ui-border/20"></div>
 
       <div
         class="flex-1 flex flex-col items-center justify-center touch-none active:bg-blue-500/10 transition-colors"
@@ -241,18 +241,18 @@ function onEnd(event: TouchEvent) {
         <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
           {{ t('fastcat.timeline.trimEnd') }}
         </span>
-        <div class="bg-zinc-800 p-1.5 rounded-lg border border-zinc-700/50 shadow-sm">
+        <div class="bg-ui-bg-muted p-1.5 rounded-lg border border-ui-border/50 shadow-sm">
           <UIcon
             name="i-heroicons-arrow-right"
             class="w-5 h-5 block"
-            :class="activeEdge === 'end' ? 'text-blue-400 scale-110' : 'text-zinc-500'"
+            :class="activeEdge === 'end' ? 'text-blue-400 scale-110' : 'text-ui-text-muted'"
           />
         </div>
       </div>
     </div>
 
     <div v-if="currentClipAndTrack" class="px-2 pb-1 flex justify-center">
-      <span class="text-[8px] text-zinc-700 uppercase font-bold tracking-[0.2em] truncate">
+      <span class="text-[8px] text-ui-text-muted uppercase font-bold tracking-[0.2em] truncate">
         {{ currentClipAndTrack.item.name }}
       </span>
     </div>

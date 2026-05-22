@@ -13,6 +13,7 @@ defineProps<{
   totalSelectedSize: number;
   breadcrumbs: Breadcrumb[];
   hasFolderPath: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   menuItems: any[];
 }>();
 
