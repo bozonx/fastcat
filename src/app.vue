@@ -4,6 +4,7 @@ import BackgroundTaskToasts from '~/components/file-manager/BackgroundTaskToasts
 import DesktopMediaReplaceModal from '~/components/timeline/DesktopMediaReplaceModal.vue';
 import MobileMediaPickerDrawer from '~/components/timeline/MobileMediaPickerDrawer.vue';
 import { usePresetsStore } from '~/stores/presets.store';
+import { useConfirmClose } from '~/composables/useConfirmClose';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 const uiStore = useUiStore();
@@ -32,6 +33,7 @@ onUnmounted(() => {
 });
 
 const workspaceStore = useWorkspaceStore();
+useConfirmClose();
 
 // Apply interface scale dynamically
 watchEffect(() => {

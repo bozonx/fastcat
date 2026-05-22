@@ -1146,6 +1146,8 @@ export default {
       title: 'Background Tasks',
       transcriptionTitle: 'Transcription: {name}',
       uploadFailed: 'Failed to upload files',
+      confirmCloseTitle: 'Background tasks in progress',
+      confirmCloseMessage: 'There are unfinished background tasks. Are you sure you want to close the application?',
     },
     export: {
       audioBitrate: 'Audio bitrate (kbps)',

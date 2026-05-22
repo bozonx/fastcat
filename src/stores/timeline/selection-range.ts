@@ -1,8 +1,7 @@
 import { ref, type Ref } from 'vue';
-import type { TimelineDocument, TimelineSelectionRange, TimelineMetadata } from '~/timeline/types';
+import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
 import type { createTimelineTrimmingModule } from './trimming';
-import { TIMELINE_RULER_CONSTANTS } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineApplyOptions } from './commands';
 
@@ -47,7 +46,6 @@ export function createTimelineSelectionRangeModule(
     clearSelection,
     markerService,
     trimming,
-    applyTimeline,
     defaultStaticClipDurationUs,
   } = params;
 
