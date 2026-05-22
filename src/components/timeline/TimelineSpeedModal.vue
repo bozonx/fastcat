@@ -33,7 +33,7 @@ const showLowSpeedWarning = computed(
   () => Math.abs(props.speed) > 0 && Math.abs(props.speed) < 0.1,
 );
 
-const saveButtonRef = ref<any>(null);
+const saveButtonRef = ref<import('vue').ComponentPublicInstance | null>(null);
 
 function focusSaveButton() {
   const el = saveButtonRef.value?.$el || saveButtonRef.value;

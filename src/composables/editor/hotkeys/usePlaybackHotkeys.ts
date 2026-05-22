@@ -22,22 +22,12 @@ export function usePlaybackHotkeys(
     'playback.toggle': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
-        uiStore.triggerPreviewPlayback('toggle');
-        return true;
-      }
-
       timelineStore.togglePlayback();
       return true;
     },
 
     'playback.toggle1': () => {
       if (!canUsePlaybackOrTimelineFocus()) return false;
-
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
-        uiStore.triggerPreviewPlayback('toggle1');
-        return true;
-      }
 
       if (timelineStore.isPlaying) {
         timelineStore.setPlaybackSpeed(1);

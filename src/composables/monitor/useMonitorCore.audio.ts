@@ -5,7 +5,7 @@ import { getAudioSourceKey } from './useMonitorCore.helpers';
 
 export type MonitorAudioClipDescriptor = AudioEngineClip;
 
-function isAudioClipEffect(effect: ClipEffect<Record<string, any>>): effect is AudioClipEffect {
+function isAudioClipEffect(effect: ClipEffect<Record<string, unknown>>): effect is AudioClipEffect {
   return effect?.target === 'audio';
 }
 

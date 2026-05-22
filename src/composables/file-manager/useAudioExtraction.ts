@@ -225,11 +225,12 @@ export function useAudioExtraction() {
 
       // Scroll the tree view to make the new entry visible
       uiStore.triggerScrollToFileTreeEntry(targetPath);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Audio extraction failed', err);
+      const e = err instanceof Error ? err : null;
       toast.add({
         title: t('videoEditor.fileManager.extractAudio.failed'),
-        description: err.message,
+        description: e?.message ?? 'Unknown error',
         color: 'error',
       });
     } finally {

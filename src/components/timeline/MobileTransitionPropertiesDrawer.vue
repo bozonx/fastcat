@@ -58,7 +58,7 @@ function handleDeleteTransition() {
   emit('close');
 }
 
-const transitionPropertiesRef = ref<any>(null);
+const transitionPropertiesRef = ref<InstanceType<typeof import('~/components/properties/TransitionProperties.vue').default> | null>(null);
 
 const extraActions = computed(() => {
   const hasTransition =

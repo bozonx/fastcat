@@ -18,25 +18,25 @@ function computeStatus(
   entry: FsEntry,
   path: string,
   mediaType: 'video' | 'audio' | 'image',
-  mediaMetadata: Record<string, any>,
+  mediaMetadata: Record<string, unknown>,
   metadataLoadFailed: Record<string, boolean>,
   metadataLoading: Record<string, boolean>,
 ): FileCompatibilityStatus {
-  const meta = mediaMetadata[path];
-  if (meta?.error || metadataLoadFailed[path]) return 'corrupt';
+  const meta = mediaMetadata[path] as Record<string, unknown> | undefined;
+  if ((meta as Record<string, unknown> | null)?.error || metadataLoadFailed[path]) return 'corrupt';
   if (!meta || metadataLoading[path]) return 'checking';
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && meta.image?.canDisplay === false) {
+    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && (meta.image as Record<string, unknown> | undefined)?.canDisplay === false) {
       return 'corrupt';
     }
     return 'ok';
   }
 
   if (mediaType === 'video') {
-    const videoCanDecode = meta.video?.canDecode;
-    const audioCanDecode = meta.audio?.canDecode;
+    const videoCanDecode = (meta.video as Record<string, unknown> | undefined)?.canDecode;
+    const audioCanDecode = (meta.audio as Record<string, unknown> | undefined)?.canDecode;
 
     if (videoCanDecode === false) return 'fully_unsupported';
     if (audioCanDecode === false) return 'audio_unsupported';
@@ -44,7 +44,7 @@ function computeStatus(
   }
 
   if (mediaType === 'audio') {
-    const audioCanDecode = meta.audio?.canDecode;
+    const audioCanDecode = (meta.audio as Record<string, unknown> | undefined)?.canDecode;
     if (audioCanDecode === false) return 'fully_unsupported';
     return 'ok';
   }

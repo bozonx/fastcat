@@ -24,7 +24,7 @@ interface UseFileBrowserLifecycleParams {
     selectFsEntries: (entries: FsEntry[], instanceId: string, isExternal: boolean) => void;
   };
   focusStore: {
-    isPanelFocused: (panelId: any) => boolean;
+    isPanelFocused: (panelId: string) => boolean;
   };
   uiStore: {
     fileManagerUpdateCounter: number;

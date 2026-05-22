@@ -15,7 +15,7 @@ export interface UseSttTranscriptionOptions {
 }
 
 export interface SttTranscriptionState {
-  sttConfig: Ref<any>;
+  sttConfig: Ref<unknown>;
   modalOpen: Ref<boolean>;
   language: Ref<string>;
   errorMessage: Ref<string>;

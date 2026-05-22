@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import FilePreview from '~/components/preview/FilePreview.vue';
 import type { PanelFocusId } from '~/stores/focus.store';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 const { t } = useI18n();
 

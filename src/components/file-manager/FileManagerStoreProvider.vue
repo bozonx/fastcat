@@ -2,7 +2,7 @@
 import { provide } from 'vue';
 
 const props = defineProps<{
-  store: any;
+  store: unknown;
 }>();
 
 provide('fileManagerStore', props.store);

@@ -13,7 +13,7 @@ interface UiCompactSelectProps {
   labelKey?: string;
   multiple?: boolean;
   fullWidth?: boolean;
-  searchInput?: any;
+  searchInput?: HTMLElement;
 }
 
 const props = withDefaults(defineProps<UiCompactSelectProps>(), {

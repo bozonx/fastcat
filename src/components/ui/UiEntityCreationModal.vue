@@ -26,7 +26,7 @@ const { width } = useWindowSize();
 const isMobile = computed(() => width.value < 768);
 
 const name = ref(props.defaultValue || '');
-const inputRef = ref<any>(null);
+const inputRef = ref<HTMLElement | null>(null);
 
 // Reset name when opening and focus/select the input
 watch(isOpen, async (val) => {

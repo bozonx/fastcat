@@ -63,7 +63,7 @@ export interface BaseClipEffect {
 export type ClipEffect<T = Record<string, unknown>> = BaseClipEffect & T;
 
 // Registry
-const effectsRegistry = new Map<EffectType, EffectManifest<Record<string, any>>>();
+const effectsRegistry = new Map<EffectType, EffectManifest<Record<string, unknown>>>();
 
 export function registerEffect<T>(manifest: EffectManifest<T>) {
   if ('createNode' in manifest || manifest.target === 'audio') {
@@ -72,7 +72,7 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
       target: 'audio',
     };
 
-    effectsRegistry.set(manifest.type, audioManifest as EffectManifest<Record<string, any>>);
+    effectsRegistry.set(manifest.type, audioManifest as EffectManifest<Record<string, unknown>>);
 
     return;
   }
@@ -82,7 +82,7 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
     target: 'video',
   };
 
-  effectsRegistry.set(manifest.type, videoManifest as EffectManifest<Record<string, any>>);
+  effectsRegistry.set(manifest.type, videoManifest as EffectManifest<Record<string, unknown>>);
 }
 
 export function getEffectManifest(

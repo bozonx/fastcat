@@ -682,7 +682,7 @@ export class VideoCompositor {
       timelineClips,
       deps,
       mediabunny: {
-        Input: Input as unknown as new (params: unknown) => { getPrimaryVideoTrack(): Promise<any | null> },
+        Input: Input as unknown as new (params: unknown) => { getPrimaryVideoTrack(): Promise<unknown | null> },
         BlobSource,
         VideoSampleSink: VideoSampleSink as unknown as new (track: unknown) => unknown,
         ALL_FORMATS,

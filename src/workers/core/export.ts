@@ -69,7 +69,7 @@ export async function extractMetadata(
   try {
     const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
     const source = new BlobSource(file);
-    const input = new Input({ source, formats: ALL_FORMATS } as unknown);
+    const input = new Input({ source, formats: ALL_FORMATS } as any);
 
     try {
       const mimeType = typeof input.getMimeType === 'function' ? await input.getMimeType() : null;
@@ -217,8 +217,8 @@ export function isPassthroughCompatibleClip(
   if (fadeInUs > 0 || fadeOutUs > 0) {
     return { ok: false, reason: 'clip has fade in/out' };
   }
-  const transitionIn = clip.transitionIn ?? fastcat.transitionIn;
-  const transitionOut = clip.transitionOut ?? fastcat.transitionOut;
+  const transitionIn = (clip.transitionIn ?? fastcat.transitionIn) as { durationUs?: unknown } | undefined;
+  const transitionOut = (clip.transitionOut ?? fastcat.transitionOut) as { durationUs?: unknown } | undefined;
   if (
     (transitionIn?.durationUs && Number(transitionIn.durationUs) > 0) ||
     (transitionOut?.durationUs && Number(transitionOut.durationUs) > 0)
@@ -402,8 +402,9 @@ export async function runExport(
     const { packetSink, decoderConfig, ranges, input } = audioPacketState;
     let isFirstPacket = true;
     try {
-      for await (const packet of packetSink.packets()) {
+      for await (const packetRaw of packetSink.packets()) {
         ensureNotCancelled();
+        const packet = packetRaw as { timestamp?: number; duration?: number; clone?: (opts: { timestamp: number }) => unknown };
         const packetStart = Number(packet.timestamp || 0);
         const packetDuration = Number(packet.duration || 0);
         const packetEnd = packetStart + packetDuration;

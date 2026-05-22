@@ -428,4 +428,38 @@ describe('useEditorHotkeys', () => {
       source: 'local',
     });
   });
+
+  it('toggles timeline playback with Space from any panel focus', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'playback.toggle': ['Space'],
+    };
+
+    projectStore.setView('cut');
+    const togglePlaybackSpy = vi.fn();
+    timelineStore.togglePlayback = togglePlaybackSpy;
+
+    const previewLikePanels: string[] = [
+      'properties',
+      'files-sidebar',
+      'files-main',
+      'filesBrowser',
+      'left',
+      'right',
+      'project',
+      'dynamic:file-manager:detached-files',
+      'dynamic:properties:files-main',
+    ];
+
+    for (const panelId of previewLikePanels) {
+      focusStore.setPanelFocus(panelId as any);
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+      expect(togglePlaybackSpy).toHaveBeenCalled();
+      togglePlaybackSpy.mockClear();
+    }
+  });
 });
