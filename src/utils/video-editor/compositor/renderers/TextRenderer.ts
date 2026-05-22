@@ -17,8 +17,8 @@ export class TextRenderer {
     clip.canvas = canvas;
     clip.ctx = ctx as OffscreenCanvasRenderingContext2D;
 
-    const canvasSource = new CanvasSource({ resource: canvas as unknown });
-    clip.sprite.texture.source = canvasSource as unknown;
+    const canvasSource = new CanvasSource({ resource: canvas as any });
+    (clip.sprite as any).texture.source = canvasSource as any;
     clip.sourceKind = 'canvas';
     return true;
   }

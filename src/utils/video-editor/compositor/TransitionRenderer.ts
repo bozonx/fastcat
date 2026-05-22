@@ -66,7 +66,7 @@ export class TransitionRenderer {
 
       const transitionFilter = params.transitionManager.ensureUsableTransitionFilter(
         clip,
-        state.manifest,
+        state.manifest as any,
       );
       if (!transitionFilter) {
         continue;
@@ -154,7 +154,7 @@ export class TransitionRenderer {
 
       const filterUpdated = params.transitionManager.updateTransitionFilterSafely(
         clip,
-        state.manifest,
+        state.manifest as any,
         transitionFilter,
         transitionContext,
       );

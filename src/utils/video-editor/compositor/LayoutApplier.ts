@@ -186,7 +186,7 @@ export class LayoutApplier {
     const sprite = input.clip.sprite;
     if (!sprite) return;
 
-    sprite.anchor?.set?.(input.normalizedAnchor.x, input.normalizedAnchor.y);
+    (sprite as any).anchor?.set?.(input.normalizedAnchor.x, input.normalizedAnchor.y);
     sprite.width = input.targetW;
     sprite.height = input.targetH;
 

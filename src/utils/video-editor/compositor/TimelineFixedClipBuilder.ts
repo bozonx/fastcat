@@ -64,7 +64,7 @@ export class TimelineFixedClipBuilder {
           backgroundColor,
           clipType: 'background',
         });
-        clip.sprite.tint = parseHexColor(backgroundColor);
+        (clip.sprite as any).tint = parseHexColor(backgroundColor);
         return clip;
       }
       case 'text':

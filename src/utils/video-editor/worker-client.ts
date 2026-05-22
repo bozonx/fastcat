@@ -31,8 +31,8 @@ export interface VideoCoreHostAPI {
 type WorkerChannel = 'preview' | 'export' | 'proxy' | 'thumbnail';
 
 type PendingCall = {
-  resolve: (value: unknown) => void;
-  reject: (reason?: unknown) => void;
+  resolve: (value: any) => void;
+  reject: (reason?: any) => void;
   timeoutId?: number;
 };
 

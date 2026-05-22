@@ -237,8 +237,9 @@ export class FrameSampleOrchestrator {
         continue;
       }
 
+      const sampleAny = sample as any;
       try {
-        if (sample.isHud || sample.isMask) {
+        if (sampleAny.isHud || sampleAny.isMask) {
           // HUD and Mask frames are handled during sample request processing
           // or in drawHudClip, so we don't update main texture here.
         } else {
@@ -248,16 +249,16 @@ export class FrameSampleOrchestrator {
         // Mask samples ride alongside the clip's primary sample; the primary
         // push already takes care of disposal. Skipping the duplicate keeps
         // updatedClips clean for downstream consumers.
-        if (becameVisible && !sample.isMask) {
+        if (becameVisible && !sampleAny.isMask) {
           params.updatedClips.push(clip);
         }
       } catch (error) {
         params.onError(error);
         params.setClipSpriteVisible(clip, false);
       } finally {
-        if (typeof sample.close === 'function') {
+        if (typeof sampleAny.close === 'function') {
           try {
-            sample.close();
+            sampleAny.close();
           } catch (error) {
             params.onError(error);
           }

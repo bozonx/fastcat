@@ -211,7 +211,7 @@ export class TransitionManager {
 
   public ensureUsableTransitionFilter(
     clip: CompositorClip,
-    manifest: import('~/transitions/core/types').TransitionManifest,
+    manifest: import('~/transitions/core/registry').TransitionManifest,
   ): Filter | null {
     const currentFilter = clip.transitionFilter;
     if (this.isTransitionFilterUsable(currentFilter)) {
@@ -229,7 +229,7 @@ export class TransitionManager {
 
   private recreateTransitionFilter(
     clip: CompositorClip,
-    manifest: import('~/transitions/core/types').TransitionManifest,
+    manifest: import('~/transitions/core/registry').TransitionManifest,
   ): Filter | null {
     if (clip.transitionFilter) {
       try {
@@ -262,12 +262,12 @@ export class TransitionManager {
 
   public updateTransitionFilterSafely(
     clip: CompositorClip,
-    manifest: import('~/transitions/core/types').TransitionManifest,
+    manifest: import('~/transitions/core/registry').TransitionManifest,
     filter: Filter,
     context: unknown,
   ): Filter | null {
     const applyUpdate = (candidate: Filter) => {
-      manifest.updateFilter?.(candidate, context);
+      manifest.updateFilter?.(candidate, context as any);
       return candidate;
     };
 
