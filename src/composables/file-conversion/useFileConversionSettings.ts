@@ -34,7 +34,6 @@ export function useFileConversionSettings() {
 
   const audio = reactive({
     onlyFormat: DEFAULT_AUDIO_ONLY_FORMAT as 'opus' | 'aac',
-    onlyCodec: DEFAULT_AUDIO_ONLY_FORMAT as 'opus' | 'aac',
     onlyBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
     channels: 2,
     sampleRate: 'original' as 'original' | number,

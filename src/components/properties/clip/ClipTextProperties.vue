@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { TimelineTextClipItem, TimelineBlendMode } from '~/timeline/types';
-import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
+import type { TimelineTextClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
@@ -39,10 +38,8 @@ function getPaddingAxis(axis: 'x' | 'y') {
 
 function updatePaddingAxis(axis: 'x' | 'y', value: number) {
   const safe = Math.max(0, Number(value));
-  const currentX = getPaddingAxis('x');
-  const currentY = getPaddingAxis('y');
-  const nextX = axis === 'x' ? safe : currentX;
-  const nextY = paddingLinked.value ? nextX : axis === 'y' ? safe : currentY;
+  const nextX = axis === 'x' ? safe : paddingLinked.value ? safe : getPaddingAxis('x');
+  const nextY = axis === 'y' ? safe : paddingLinked.value ? safe : getPaddingAxis('y');
 
   emit('updateTextStyle', {
     padding: {
@@ -53,13 +50,6 @@ function updatePaddingAxis(axis: 'x' | 'y', value: number) {
     },
   });
 }
-
-const blendModeOptions = computed<Array<{ value: TimelineBlendMode; label: string }>>(() =>
-  RAW_BLEND_MODE_OPTIONS.map((opt) => ({
-    value: opt.value as TimelineBlendMode,
-    label: t(opt.labelKey),
-  })),
-);
 
 const backgroundEnabled = computed({
   get: () => Boolean(props.clip.style?.backgroundEnabled ?? props.clip.style?.backgroundColor),
@@ -93,6 +83,15 @@ const paddingLinked = computed({
   },
 });
 
+const isAutoWidth = computed({
+  get: () => !(typeof props.clip.style?.width === 'number' && props.clip.style.width > 0),
+  set: (value: boolean) => {
+    emit('updateTextStyle', {
+      width: value ? undefined : Number(props.clip.style?.width ?? 400),
+    });
+  },
+});
+
 const isAutoHeight = computed({
   get: () => !(typeof props.clip.style?.height === 'number' && props.clip.style.height > 0),
   set: (value: boolean) => {
@@ -115,9 +114,14 @@ const verticalAlignOptions = [
 ];
 
 const fontFamilyOptions = [
-  { value: 'sans-serif', label: 'Sans Serif' },
-  { value: 'serif', label: 'Serif' },
-  { value: 'monospace', label: 'Monospace' },
+  { value: 'Inter', label: 'Inter' },
+  { value: 'Roboto', label: 'Roboto' },
+  { value: 'Montserrat', label: 'Montserrat' },
+  { value: 'Oswald', label: 'Oswald' },
+  { value: 'Noto Sans', label: 'Noto Sans' },
+  { value: 'Open Sans', label: 'Open Sans' },
+  { value: 'Lato', label: 'Lato' },
+  { value: 'Playfair Display', label: 'Playfair Display' },
   { value: 'Arial', label: 'Arial' },
   { value: 'Arial Black', label: 'Arial Black' },
   { value: 'Verdana', label: 'Verdana' },
@@ -127,6 +131,9 @@ const fontFamilyOptions = [
   { value: 'Times New Roman', label: 'Times New Roman' },
   { value: 'Courier New', label: 'Courier New' },
   { value: 'Impact', label: 'Impact' },
+  { value: 'sans-serif', label: 'Sans Serif' },
+  { value: 'serif', label: 'Serif' },
+  { value: 'monospace', label: 'Monospace' },
 ];
 
 const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800', '900'].map(
@@ -218,13 +225,9 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           <UiColorBlendPicker
             :color="String(clip.style?.color ?? '#ffffff')"
             :alpha="Number(clip.style?.colorAlpha ?? 1)"
-            :blend-mode="(clip.style?.colorBlendMode as TimelineBlendMode) ?? 'normal'"
-            :blend-mode-options="blendModeOptions"
+            :show-blend-mode="false"
             @update:color="(v: string) => emit('updateTextStyle', { color: v })"
             @update:alpha="(v: number) => emit('updateTextStyle', { colorAlpha: v })"
-            @update:blend-mode="
-              (v: TimelineBlendMode) => emit('updateTextStyle', { colorBlendMode: v })
-            "
           />
         </PropertyField>
 
@@ -251,23 +254,30 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
         </div>
 
         <div class="grid grid-cols-2 gap-2">
-          <PropertyField :label="t('fastcat.textClip.widthPx')">
-            <UiWheelNumberInput
-              :model-value="Number(clip.style?.width ?? 0)"
-              size="sm"
-              :step="10"
-              :min="0"
-              full-width
-              @update:model-value="
-                (v: any) => emit('updateTextStyle', { width: v > 0 ? Number(v) : undefined })
-              "
-            />
+          <PropertyField :label="t('fastcat.textClip.widthMode')">
+            <div class="h-8 flex items-center justify-between gap-2">
+              <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoWidth') }}</span>
+              <USwitch v-model="isAutoWidth" size="sm" color="error" />
+            </div>
           </PropertyField>
           <PropertyField :label="t('fastcat.textClip.heightMode')">
             <div class="h-8 flex items-center justify-between gap-2">
               <span class="text-xs text-ui-text-muted">{{ t('fastcat.textClip.autoHeight') }}</span>
               <USwitch v-model="isAutoHeight" size="sm" color="error" />
             </div>
+          </PropertyField>
+        </div>
+
+        <div v-if="!isAutoWidth" class="grid grid-cols-2 gap-2">
+          <PropertyField :label="t('fastcat.textClip.widthPx')">
+            <UiWheelNumberInput
+              :model-value="Number(clip.style?.width ?? 400)"
+              size="sm"
+              :step="10"
+              :min="1"
+              full-width
+              @update:model-value="(v: any) => emit('updateTextStyle', { width: Number(v) })"
+            />
           </PropertyField>
         </div>
 
@@ -318,12 +328,11 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           </div>
           <PropertyField :label="t('fastcat.textClip.verticalPaddingPx')">
             <UiWheelNumberInput
-              :model-value="paddingLinked ? getPaddingAxis('x') : getPaddingAxis('y')"
+              :model-value="getPaddingAxis('y')"
               size="sm"
               :step="1"
               :min="0"
               full-width
-              :disabled="paddingLinked"
               @update:model-value="(v: any) => updatePaddingAxis('y', Number(v))"
             />
           </PropertyField>
@@ -356,7 +365,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             @update:alpha="(v: number) => emit('updateTextStyle', { textShadowAlpha: v })"
           />
         </PropertyField>
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-2 gap-2">
           <PropertyField :label="t('fastcat.textClip.shadowBlurPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.textShadowBlur ?? 8)"
@@ -369,6 +378,20 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               "
             />
           </PropertyField>
+          <PropertyField :label="t('fastcat.textClip.shadowSpreadPx')">
+            <UiWheelNumberInput
+              :model-value="Number(clip.style?.textShadowSpread ?? 0)"
+              size="sm"
+              :step="1"
+              :min="0"
+              full-width
+              @update:model-value="
+                (v: any) => emit('updateTextStyle', { textShadowSpread: Number(v) })
+              "
+            />
+          </PropertyField>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
           <PropertyField :label="t('fastcat.textClip.shadowOffsetXPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.textShadowOffsetX ?? 0)"
@@ -405,13 +428,9 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
           <UiColorBlendPicker
             :color="String(clip.style?.backgroundColor ?? '#000000')"
             :alpha="Number(clip.style?.backgroundAlpha ?? 1)"
-            :blend-mode="(clip.style?.backgroundBlendMode as TimelineBlendMode) ?? 'normal'"
-            :blend-mode-options="blendModeOptions"
+            :show-blend-mode="false"
             @update:color="(v: string) => emit('updateTextStyle', { backgroundColor: v })"
             @update:alpha="(v: number) => emit('updateTextStyle', { backgroundAlpha: v })"
-            @update:blend-mode="
-              (v: TimelineBlendMode) => emit('updateTextStyle', { backgroundBlendMode: v })
-            "
           />
         </PropertyField>
         <PropertyField :label="t('fastcat.textClip.backgroundRadiusPx')">
@@ -445,7 +464,7 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
             @update:alpha="(v: number) => emit('updateTextStyle', { backgroundShadowAlpha: v })"
           />
         </PropertyField>
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-2 gap-2">
           <PropertyField :label="t('fastcat.textClip.shadowBlurPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.backgroundShadowBlur ?? 12)"
@@ -458,6 +477,20 @@ const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800
               "
             />
           </PropertyField>
+          <PropertyField :label="t('fastcat.textClip.shadowSpreadPx')">
+            <UiWheelNumberInput
+              :model-value="Number(clip.style?.backgroundShadowSpread ?? 0)"
+              size="sm"
+              :step="1"
+              :min="0"
+              full-width
+              @update:model-value="
+                (v: any) => emit('updateTextStyle', { backgroundShadowSpread: Number(v) })
+              "
+            />
+          </PropertyField>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
           <PropertyField :label="t('fastcat.textClip.shadowOffsetXPx')">
             <UiWheelNumberInput
               :model-value="Number(clip.style?.backgroundShadowOffsetX ?? 0)"

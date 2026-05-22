@@ -9,6 +9,7 @@ import { useFileConversionActions } from '~/composables/file-conversion/useFileC
 export const useFileConversionStore = defineStore('file-conversion', () => {
   const isModalOpen = ref(false);
   const isConverting = ref(false);
+  const isExtractingMetadata = ref(false);
   const conversionError = ref('');
   const targetEntry = ref<FsEntry | null>(null);
   const targetIsExternal = ref(false);
@@ -25,16 +26,6 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
 
   const { video, audio, image } = useFileConversionSettings();
 
-  // Callbacks are meant to be provided by the UI layer (e.g. the modal component)
-  // Store just holds the references so actions can trigger them
-  const callbacks = {
-    onSuccess: undefined as
-      | ((type: 'bgTaskAdded' | 'success', bgTaskTitle?: string) => void)
-      | undefined,
-    onError: undefined as ((error: Error) => void) | undefined,
-    onWarning: undefined as ((message: string) => void) | undefined,
-  };
-
   const { openConversionModal, startConversion, cancelConversion } = useFileConversionActions({
     targetEntry,
     targetIsExternal,
@@ -46,16 +37,17 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     imageSettings: image,
     isCancelRequested,
     isConverting,
+    isExtractingMetadata,
     conversionError,
     isModalOpen,
     conversionModalRequestId,
     sourceHasAudio,
-    callbacks,
   });
 
   return {
     isModalOpen,
     isConverting,
+    isExtractingMetadata,
     conversionError,
     targetEntry,
     targetIsExternal,
@@ -73,8 +65,5 @@ export const useFileConversionStore = defineStore('file-conversion', () => {
     openConversionModal,
     startConversion,
     cancelConversion,
-
-    // Callbacks hook
-    callbacks,
   };
 });

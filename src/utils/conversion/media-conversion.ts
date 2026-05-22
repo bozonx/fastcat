@@ -7,7 +7,7 @@ import {
   unregisterExportTaskHostApi,
 } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import { useWorkspaceStore } from '~/stores/workspace.store';
+import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import type { ConversionRequest } from '~/types/conversion';
@@ -30,35 +30,7 @@ export async function executeMediaConversion(params: {
   signal?: AbortSignal;
 }) {
   const projectStore = useProjectStore();
-  const workspaceStore = useWorkspaceStore();
   const backgroundTasksStore = useBackgroundTasksStore();
-
-  async function getWorkspaceFileHandle(
-    path: string,
-    options?: { create?: boolean },
-  ): Promise<FileSystemFileHandle | null> {
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    if (!workspaceHandle) return null;
-
-    const parts = path.split('/').filter(Boolean);
-    const fileName = parts.pop();
-    if (!fileName) return null;
-
-    try {
-      let currentDir = workspaceHandle;
-      for (const part of parts) {
-        currentDir = await currentDir.getDirectoryHandle(part, {
-          create: options?.create ?? false,
-        });
-      }
-
-      return await currentDir.getFileHandle(fileName, {
-        create: options?.create ?? false,
-      });
-    } catch {
-      return null;
-    }
-  }
 
   async function getSourceFile(path: string): Promise<File | null> {
     if (params.isExternal) {

@@ -37,6 +37,10 @@ const mockBackgroundTasksStore = {
   tasks: [],
 };
 
+const mockToast = {
+  add: vi.fn(),
+};
+
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => mockProjectStore,
 }));
@@ -113,7 +117,6 @@ describe('useFileConversionActions', () => {
       } as any,
       audioSettings: {
         onlyFormat: 'opus',
-        onlyCodec: 'opus',
         onlyBitrateKbps: 128,
         channels: 'stereo',
         sampleRate: 'original',
@@ -129,25 +132,20 @@ describe('useFileConversionActions', () => {
       } as any,
       isCancelRequested: ref(false),
       isConverting: ref(false),
+      isExtractingMetadata: ref(false),
       conversionError: ref(''),
       isModalOpen: ref(false),
       conversionModalRequestId: ref(0),
       sourceHasAudio: ref(true),
-      callbacks: {
-        onSuccess: vi.fn(),
-        onError: vi.fn(),
-        onWarning: vi.fn(),
-      },
     };
   };
 
-  it('buildConversionRequest synchronizes audio codec with format for audio only', async () => {
+  it('buildConversionRequest uses onlyFormat for audio codec and extension', async () => {
     const props = createProps('audio');
     const { startConversion } = useFileConversionActions(props);
 
     props.targetEntry.value = { name: 'test.mp3', path: '/test.mp3', kind: 'file' } as any;
     props.audioSettings.onlyFormat = 'aac';
-    props.audioSettings.onlyCodec = 'opus';
 
     mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
       getFileHandle: vi.fn().mockResolvedValue({}),
@@ -155,7 +153,16 @@ describe('useFileConversionActions', () => {
 
     await startConversion();
 
-    expect(props.audioSettings.onlyCodec).toBe('aac');
+    expect(executeMediaConversion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({
+          type: 'audio',
+          audioOnly: expect.objectContaining({
+            codec: 'aac',
+          }),
+        }),
+      }),
+    );
   });
 
   it('passes audio reverse flag to media conversion for audio only', async () => {
@@ -183,7 +190,7 @@ describe('useFileConversionActions', () => {
     );
   });
 
-  it('openConversionModal triggers onWarning when metadata extraction fails', async () => {
+  it('openConversionModal resets video defaults when metadata extraction fails', async () => {
     const props = createProps('video');
     const { openConversionModal } = useFileConversionActions(props);
 
@@ -191,9 +198,10 @@ describe('useFileConversionActions', () => {
 
     await openConversionModal({ name: 'test.mp4', path: '/test.mp4', kind: 'file' } as any);
 
-    expect(props.callbacks.onWarning).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to extract video metadata'),
-    );
+    expect(props.videoSettings.bitrateMbps).toBe(0);
+    expect(props.videoSettings.audioBitrateKbps).toBe(0);
+    expect(props.audioSettings.onlyBitrateKbps).toBe(0);
+    expect(props.isExtractingMetadata.value).toBe(false);
   });
 
   it('forces excludeAudio for video without audio track', async () => {
@@ -305,6 +313,56 @@ describe('useFileConversionActions', () => {
 
     expect(props.audioSettings.originalSampleRate).toBe(48000);
     expect(props.audioSettings.sampleRate).toBe('original');
+  });
+
+  it('sets isExtractingMetadata during openConversionModal and clears it after', async () => {
+    const props = createProps('video');
+    const { openConversionModal } = useFileConversionActions(props);
+
+    mockProjectStore.getFileByPath.mockResolvedValue(
+      new File(['x'], 'clip.mp4', { type: 'video/mp4' }),
+    );
+
+    const promise = openConversionModal({ name: 'clip.mp4', path: '/clip.mp4', kind: 'file' } as any);
+
+    expect(props.isExtractingMetadata.value).toBe(true);
+
+    await promise;
+
+    expect(props.isExtractingMetadata.value).toBe(false);
+  });
+
+  it('rejects image files larger than 500MB during metadata extraction', async () => {
+    const props = createProps('image');
+    const { openConversionModal } = useFileConversionActions(props);
+
+    const largeFile = new File([new ArrayBuffer(0)], 'huge.png', { type: 'image/png' });
+    Object.defineProperty(largeFile, 'size', { value: 501 * 1024 * 1024 });
+
+    props.targetVfs.value = mockFileManager.vfs as any;
+    mockFileManager.vfs.getFile.mockResolvedValue(largeFile);
+
+    await openConversionModal({ name: 'huge.png', path: '/huge.png', kind: 'file' } as any);
+
+    expect(props.imageSettings.width).toBe(0);
+    expect(props.imageSettings.height).toBe(0);
+    expect(props.isExtractingMetadata.value).toBe(false);
+  });
+
+  it('isConverting guard prevents duplicate conversion starts', async () => {
+    const props = createProps('audio');
+    const { startConversion } = useFileConversionActions(props);
+
+    props.targetEntry.value = { name: 'test.mp3', path: '/test.mp3', kind: 'file' } as any;
+    props.isConverting.value = true;
+
+    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue({
+      getFileHandle: vi.fn().mockResolvedValue({}),
+    });
+
+    await startConversion();
+
+    expect(executeMediaConversion).not.toHaveBeenCalled();
   });
 
   it('uses VFS to read image metadata when opening conversion modal', async () => {

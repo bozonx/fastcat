@@ -1015,9 +1015,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           selectedFsEntry.kind === 'file'
         "
         :title="generalInfoTitle"
-        :file-info="
-          (fileInfo || selectedFsEntry) as any
-        "
+        :file-info="(fileInfo || selectedFsEntry) as any"
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
@@ -1054,9 +1052,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isBloggerDogGroup
         "
         :title="generalInfoTitle"
-        :file-info="
-          (fileInfo || selectedFsEntry) as any
-        "
+        :file-info="(fileInfo || selectedFsEntry) as any"
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"

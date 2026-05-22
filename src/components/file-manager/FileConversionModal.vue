@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, watch } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
@@ -15,36 +15,19 @@ const toast = useToast();
 
 const fileConversionStore = useFileConversionStore();
 
-const { isModalOpen, targetEntry, mediaType, sourceHasAudio, video, audio, image } =
-  storeToRefs(fileConversionStore);
+const {
+  isModalOpen,
+  isConverting,
+  isExtractingMetadata,
+  targetEntry,
+  mediaType,
+  sourceHasAudio,
+  video,
+  audio,
+  image,
+} = storeToRefs(fileConversionStore);
 
 const { startConversion: storeStartConversion } = fileConversionStore;
-
-onMounted(() => {
-  fileConversionStore.callbacks.onSuccess = (type, bgTaskTitle) => {
-    if (type === 'bgTaskAdded') {
-      toast.add({
-        title: t('videoEditor.fileManager.convert.bgTaskAdded'),
-        description: bgTaskTitle,
-        color: 'neutral',
-      });
-    }
-  };
-  fileConversionStore.callbacks.onError = (error) => {
-    toast.add({
-      title: t('videoEditor.fileManager.convert.failed'),
-      description: error.message,
-      color: 'error',
-    });
-  };
-  fileConversionStore.callbacks.onWarning = (message) => {
-    toast.add({
-      title: t('videoEditor.fileManager.convert.metadataWarning'),
-      description: message,
-      color: 'warning',
-    });
-  };
-});
 
 function startConversion() {
   storeStartConversion();
@@ -111,9 +94,14 @@ function onImageHeightChange(val: number) {
 const isFormValid = computed(() => {
   if (mediaType.value === 'video') {
     if (video.value.bitrateMbps <= 0) return false;
+    if (video.value.width <= 0 || video.value.height <= 0) return false;
+    if (video.value.fps <= 0) return false;
+    if (video.value.keyframeIntervalSec <= 0) return false;
     if (!video.value.excludeAudio && video.value.audioBitrateKbps <= 0) return false;
   } else if (mediaType.value === 'audio') {
     if (audio.value.onlyBitrateKbps <= 0) return false;
+  } else if (mediaType.value === 'image') {
+    if (image.value.width <= 0 || image.value.height <= 0) return false;
   }
   return true;
 });
@@ -126,6 +114,11 @@ const isFormValid = computed(() => {
     class="max-w-3xl"
   >
     <div class="flex flex-col gap-6">
+      <div v-if="isExtractingMetadata" class="flex items-center gap-2 text-sm text-ui-text-muted">
+        <UIcon name="i-lucide-loader-2" class="animate-spin" />
+        {{ t('videoEditor.fileManager.convert.loadingMetadata') }}
+      </div>
+
       <template v-if="mediaType === 'video'">
         {{ t('videoEditor.fileManager.convert.targetFile') }}
         <span class="font-mono text-ui-text">{{ fileName }}</span>
@@ -247,7 +240,8 @@ const isFormValid = computed(() => {
         <UButton
           color="primary"
           data-primary-focus="true"
-          :disabled="!isFormValid"
+          :disabled="!isFormValid || isConverting || isExtractingMetadata"
+          :loading="isConverting"
           @click="startConversion"
         >
           {{ t('videoEditor.export.convert') }}

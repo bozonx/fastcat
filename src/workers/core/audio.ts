@@ -28,9 +28,9 @@ export async function buildMixedAudioTrack(
     reportExportWarning,
     checkCancel,
     mediabunny: {
-      AudioSampleSink,
-      Input,
-      BlobSource,
+      AudioSampleSink: AudioSampleSink as any,
+      Input: Input as any,
+      BlobSource: BlobSource as any,
       ALL_FORMATS,
     },
   });
@@ -38,9 +38,7 @@ export async function buildMixedAudioTrack(
   if (prepared.length === 0) return null;
 
   const audioSource = new AudioSampleSource({
-    codec: getBunnyAudioCodec(
-      options.audioCodec === 'mulaw' ? 'alaw' : options.audioCodec,
-    ) as string,
+    codec: getBunnyAudioCodec(options.audioCodec === 'mulaw' ? 'alaw' : options.audioCodec) as any,
     bitrate: options.audioBitrate,
   });
 

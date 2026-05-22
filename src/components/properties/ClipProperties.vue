@@ -248,7 +248,7 @@ function handleCutClip() {
 const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
-  timelineStore,
+  timelineStore: timelineStore as any,
   projectStore,
   uiStore,
   fileManagerStore,
@@ -314,9 +314,7 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string) {
 }
 
 function handleUpdateMask(mask: unknown) {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as {
-    mask: unknown;
-  });
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as any);
 }
 
 function handleUpdateClipEffects(effects: VideoClipEffect[]) {
@@ -473,8 +471,8 @@ defineExpose({
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipActionsSection
       v-if="!hideActions"
-      :common-actions="commonActionsList"
-      :other-actions="otherActionsList"
+      :common-actions="commonActionsList as any"
+      :other-actions="otherActionsList as any"
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"
@@ -571,7 +569,7 @@ defineExpose({
         "
         @update-source-orientation="
           (sourceOrientation) =>
-            timelineStore.updateClipProperties(clip.trackId, clip.id, { sourceOrientation })
+            timelineStore.updateClipProperties(clip.trackId, clip.id, { sourceOrientation } as any)
         "
         @toggle-reversed="toggleReversed"
       />

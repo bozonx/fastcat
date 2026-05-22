@@ -89,7 +89,9 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
       isWebGpuAvailable = false;
     } else {
       try {
-        const adapter = await (gpu as { requestAdapter?: () => Promise<unknown> }).requestAdapter?.();
+        const adapter = await (
+          gpu as { requestAdapter?: () => Promise<unknown> }
+        ).requestAdapter?.();
         isWebGpuAvailable = !!adapter;
       } catch {
         isWebGpuAvailable = false;
@@ -175,7 +177,7 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
         } as any);
 
         console.log(
-          `[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as { chunks?: unknown[] }).chunks) ? (result as { chunks?: unknown[] }).chunks?.length : 'N/A'}',`
+          `[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as { chunks?: unknown[] }).chunks) ? (result as { chunks?: unknown[] }).chunks?.length : 'N/A'}',`,
         );
         self.postMessage({ type: 'result', id, data: result } satisfies SttWorkerResponse);
       })

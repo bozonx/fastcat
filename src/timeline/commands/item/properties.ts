@@ -441,6 +441,7 @@ export function updateClipProperties(
             : undefined;
         const textShadowAlpha = clampAlpha(rawRecord.textShadowAlpha);
         const textShadowBlur = clampRange(rawRecord.textShadowBlur, 0, 10_000);
+        const textShadowSpread = clampRange(rawRecord.textShadowSpread, 0, 10_000);
         const textShadowOffsetX = clampRange(rawRecord.textShadowOffsetX, -10_000, 10_000);
         const textShadowOffsetY = clampRange(rawRecord.textShadowOffsetY, -10_000, 10_000);
         const alignRaw = rawRecord.align;
@@ -493,6 +494,7 @@ export function updateClipProperties(
             : undefined;
         const backgroundShadowAlpha = clampAlpha(rawRecord.backgroundShadowAlpha);
         const backgroundShadowBlur = clampRange(rawRecord.backgroundShadowBlur, 0, 10_000);
+        const backgroundShadowSpread = clampRange(rawRecord.backgroundShadowSpread, 0, 10_000);
         const backgroundShadowOffsetX = clampRange(
           rawRecord.backgroundShadowOffsetX,
           -10_000,
@@ -503,19 +505,6 @@ export function updateClipProperties(
           -10_000,
           10_000,
         );
-        const isBlendMode = (value: unknown) =>
-          value === 'normal' ||
-          value === 'add' ||
-          value === 'multiply' ||
-          value === 'screen' ||
-          value === 'darken' ||
-          value === 'lighten';
-        const colorBlendMode = isBlendMode(rawRecord.colorBlendMode)
-          ? rawRecord.colorBlendMode
-          : undefined;
-        const backgroundBlendMode = isBlendMode(rawRecord.backgroundBlendMode)
-          ? rawRecord.backgroundBlendMode
-          : undefined;
         const borderEnabled =
           typeof rawRecord.borderEnabled === 'boolean' ? rawRecord.borderEnabled : undefined;
         const borderColor =
@@ -596,6 +585,7 @@ export function updateClipProperties(
             : {}),
           ...(textShadowAlpha !== undefined ? { textShadowAlpha } : {}),
           ...(textShadowBlur !== undefined ? { textShadowBlur } : {}),
+          ...(textShadowSpread !== undefined ? { textShadowSpread } : {}),
           ...(textShadowOffsetX !== undefined ? { textShadowOffsetX } : {}),
           ...(textShadowOffsetY !== undefined ? { textShadowOffsetY } : {}),
           ...(align !== undefined ? { align } : {}),
@@ -608,14 +598,13 @@ export function updateClipProperties(
             : {}),
           ...(backgroundAlpha !== undefined ? { backgroundAlpha } : {}),
           ...(backgroundRadius !== undefined ? { backgroundRadius } : {}),
-          ...(colorBlendMode !== undefined ? { colorBlendMode } : {}),
-          ...(backgroundBlendMode !== undefined ? { backgroundBlendMode } : {}),
           ...(backgroundShadowEnabled !== undefined ? { backgroundShadowEnabled } : {}),
           ...(backgroundShadowColor !== undefined && backgroundShadowColor.length > 0
             ? { backgroundShadowColor }
             : {}),
           ...(backgroundShadowAlpha !== undefined ? { backgroundShadowAlpha } : {}),
           ...(backgroundShadowBlur !== undefined ? { backgroundShadowBlur } : {}),
+          ...(backgroundShadowSpread !== undefined ? { backgroundShadowSpread } : {}),
           ...(backgroundShadowOffsetX !== undefined ? { backgroundShadowOffsetX } : {}),
           ...(backgroundShadowOffsetY !== undefined ? { backgroundShadowOffsetY } : {}),
           ...(borderEnabled !== undefined ? { borderEnabled } : {}),

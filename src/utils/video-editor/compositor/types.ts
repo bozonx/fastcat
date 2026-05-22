@@ -162,11 +162,11 @@ export function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): bo
     a.fontWeight === b.fontWeight &&
     a.color === b.color &&
     a.colorAlpha === b.colorAlpha &&
-    a.colorBlendMode === b.colorBlendMode &&
     a.textShadowEnabled === b.textShadowEnabled &&
     a.textShadowColor === b.textShadowColor &&
     a.textShadowAlpha === b.textShadowAlpha &&
     a.textShadowBlur === b.textShadowBlur &&
+    a.textShadowSpread === b.textShadowSpread &&
     a.textShadowOffsetX === b.textShadowOffsetX &&
     a.textShadowOffsetY === b.textShadowOffsetY &&
     a.align === b.align &&
@@ -177,11 +177,11 @@ export function areTextClipStylesEqual(a?: TextClipStyle, b?: TextClipStyle): bo
     a.backgroundColor === b.backgroundColor &&
     a.backgroundAlpha === b.backgroundAlpha &&
     a.backgroundRadius === b.backgroundRadius &&
-    a.backgroundBlendMode === b.backgroundBlendMode &&
     a.backgroundShadowEnabled === b.backgroundShadowEnabled &&
     a.backgroundShadowColor === b.backgroundShadowColor &&
     a.backgroundShadowAlpha === b.backgroundShadowAlpha &&
     a.backgroundShadowBlur === b.backgroundShadowBlur &&
+    a.backgroundShadowSpread === b.backgroundShadowSpread &&
     a.backgroundShadowOffsetX === b.backgroundShadowOffsetX &&
     a.backgroundShadowOffsetY === b.backgroundShadowOffsetY &&
     a.borderEnabled === b.borderEnabled &&

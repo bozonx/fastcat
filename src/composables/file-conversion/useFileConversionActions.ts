@@ -8,6 +8,7 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getExportWorkerClient, restartExportWorker } from '~/utils/video-editor/worker-client';
+import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
 import type { ConversionRequest } from '~/types/conversion';
 import {
   clampPositiveNumber,
@@ -57,7 +58,6 @@ interface UseFileConversionActionsProps {
   };
   audioSettings: {
     onlyFormat: 'opus' | 'aac';
-    onlyCodec: 'opus' | 'aac';
     onlyBitrateKbps: number;
     channels: number;
     sampleRate: number | 'original';
@@ -74,15 +74,11 @@ interface UseFileConversionActionsProps {
   };
   isCancelRequested: Ref<boolean>;
   isConverting: Ref<boolean>;
+  isExtractingMetadata: Ref<boolean>;
   conversionError: Ref<string>;
   isModalOpen: Ref<boolean>;
   conversionModalRequestId: Ref<number>;
   sourceHasAudio: Ref<boolean>;
-  callbacks?: {
-    onSuccess?: (type: 'bgTaskAdded' | 'success', bgTaskTitle?: string) => void;
-    onError?: (error: Error) => void;
-    onWarning?: (message: string) => void;
-  };
 }
 
 export function useFileConversionActions(props: UseFileConversionActionsProps) {
@@ -92,6 +88,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   const uiStore = useUiStore();
   const backgroundTasksStore = useBackgroundTasksStore();
   const { t } = useI18n();
+  const toast = useToast();
 
   function getSiblingTarget(
     entryPath: string,
@@ -119,40 +116,13 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     };
   }
 
-  async function getWorkspaceFileHandle(
-    path: string,
-    options?: { create?: boolean },
-  ): Promise<FileSystemFileHandle | null> {
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    if (!workspaceHandle) return null;
-
-    const parts = path.split('/').filter(Boolean);
-    const fileName = parts.pop();
-    if (!fileName) return null;
-
-    try {
-      let currentDir = workspaceHandle;
-      for (const part of parts) {
-        currentDir = await currentDir.getDirectoryHandle(part, {
-          create: options?.create ?? false,
-        });
-      }
-
-      return await currentDir.getFileHandle(fileName, {
-        create: options?.create ?? false,
-      });
-    } catch {
-      return null;
-    }
-  }
-
-  function syncAudioOnlyCodecWithFormat() {
-    props.audioSettings.onlyCodec = props.audioSettings.onlyFormat;
-  }
-
   function notifyMetadataWarning(message: string, error: unknown) {
     console.warn(message, error);
-    props.callbacks?.onWarning?.(message);
+    toast.add({
+      title: t('videoEditor.fileManager.convert.metadataWarning'),
+      description: message,
+      color: 'warning',
+    });
   }
 
   async function extractMetadataWithTimeout(file: File) {
@@ -214,6 +184,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
 
     props.isCancelRequested.value = false;
     props.isConverting.value = false;
+    props.isExtractingMetadata.value = true;
     props.conversionError.value = '';
     props.isModalOpen.value = true;
 
@@ -325,14 +296,12 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     } else if (mediaCategory === 'audio') {
       props.sourceHasAudio.value = true;
       // Reset to defaults
-      props.audioSettings.onlyCodec = 'opus';
       props.audioSettings.onlyFormat = 'opus';
       props.audioSettings.onlyBitrateKbps = DEFAULT_AUDIO_BITRATE_KBPS;
       props.audioSettings.channels = 2;
       props.audioSettings.originalSampleRate = null;
       props.audioSettings.originalChannels = null;
       props.audioSettings.sampleRate = 'original';
-      syncAudioOnlyCodecWithFormat();
 
       try {
         const file = await projectStore.getFileByPath(entry.path);
@@ -375,6 +344,12 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       try {
         const file = await resolveImageSourceFile(entry.path);
         if (!file) throw new Error('Failed to access source file');
+
+        // Guard against OOM on extremely large images before decoding
+        if (file.size > 500 * 1024 * 1024) {
+          throw new Error('Image file exceeds 500MB limit');
+        }
+
         const bitmap = await createImageBitmap(file);
         if (
           requestId !== props.conversionModalRequestId.value ||
@@ -394,6 +369,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         props.imageSettings.aspectRatio = 1;
       }
     }
+    props.isExtractingMetadata.value = false;
   }
 
   function buildConversionRequest(entry: FsEntry): ConversionRequest {
@@ -406,8 +382,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     let newExt = '';
     if (type === 'image') newExt = 'webp';
     else if (type === 'audio') {
-      syncAudioOnlyCodecWithFormat();
-      newExt = resolveAudioOnlyFileExtension(props.audioSettings.onlyCodec);
+      newExt = resolveAudioOnlyFileExtension(props.audioSettings.onlyFormat);
     } else newExt = props.videoSettings.format;
 
     const sampleRate =
@@ -444,7 +419,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       };
     } else if (type === 'audio') {
       request.audioOnly = {
-        codec: props.audioSettings.onlyCodec,
+        codec: props.audioSettings.onlyFormat,
         bitrateKbps: clampPositiveNumber(props.audioSettings.onlyBitrateKbps, 128),
         reverse: props.audioSettings.reverse,
       };
@@ -464,6 +439,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
 
   async function startConversion() {
     if (!props.targetEntry.value) return;
+    if (props.isConverting.value) return;
 
     props.isCancelRequested.value = false;
     props.conversionError.value = '';
@@ -515,8 +491,13 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           },
         });
 
-        props.callbacks?.onSuccess?.('bgTaskAdded', title);
+        props.isConverting.value = true;
         props.isModalOpen.value = false;
+        toast.add({
+          title: t('videoEditor.fileManager.convert.bgTaskAdded'),
+          description: title,
+          color: 'neutral',
+        });
 
         executeMediaConversion({
           request,
@@ -533,7 +514,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           .then(async () => {
             backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
             backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
-            props.callbacks?.onSuccess?.('success');
+            toast.add({
+              title: t('videoEditor.fileManager.convert.success'),
+              color: 'success',
+            });
           })
           .catch(async (err) => {
             if (isAbortError(err)) {
@@ -542,9 +526,15 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             } else {
               backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
               console.error('Conversion failed', err);
+              toast.add({
+                title: t('videoEditor.fileManager.convert.failed'),
+                description: err instanceof Error ? err.message : String(err),
+                color: 'error',
+              });
             }
           })
           .finally(async () => {
+            props.isConverting.value = false;
             await fileManager.reloadDirectory(dirPath);
             uiStore.notifyFileManagerUpdate();
           });
@@ -562,7 +552,10 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           });
           if (!createdFilePath) throw new Error('Failed to resolve target path');
           await (props.targetVfs.value ?? fileManager.vfs).writeFile(createdFilePath, blob);
-          props.callbacks?.onSuccess?.('success');
+          toast.add({
+            title: t('videoEditor.fileManager.convert.success'),
+            color: 'success',
+          });
           props.isModalOpen.value = false;
         } catch (err) {
           if (isAbortError(err) || props.isCancelRequested.value) {
@@ -572,8 +565,13 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
                 .catch(() => {});
             }
           } else {
-            props.conversionError.value = err instanceof Error ? err.message : String(err);
-            props.callbacks?.onError?.(err instanceof Error ? err : new Error(String(err)));
+            const error = err instanceof Error ? err : new Error(String(err));
+            props.conversionError.value = error.message;
+            toast.add({
+              title: t('videoEditor.fileManager.convert.failed'),
+              description: error.message,
+              color: 'error',
+            });
           }
         } finally {
           props.isConverting.value = false;
@@ -585,7 +583,11 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.error('Conversion initiation failed', err);
       props.isModalOpen.value = false;
-      props.callbacks?.onError?.(error);
+      toast.add({
+        title: t('videoEditor.fileManager.convert.failed'),
+        description: error.message,
+        color: 'error',
+      });
     }
   }
 

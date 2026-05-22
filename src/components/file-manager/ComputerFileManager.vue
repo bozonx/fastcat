@@ -43,7 +43,7 @@ const { vfs } = useComputerVfs();
 
 // Initialize file manager for computer
 const fileManager = createFileManager({
-  t: (key: string, params?: Record<string, unknown>) => useI18n().t(key, params),
+  t: ((key: string, params?: Record<string, unknown>) => useI18n().t(key, params)) as any,
   toast: useToast(),
   vfs: vfs.value!,
   isApiSupported: ref(true),
@@ -72,15 +72,15 @@ const fileManager = createFileManager({
     clearExistingProxies: () => {},
     clearVideoThumbnails: async () => {},
     clearWaveforms: async () => {},
-  } as unknown,
+  } as any,
   mediaStore: {
     revalidateMissingMedia: async () => {},
     removeMediaCache: async () => {},
     resetMediaState: () => {},
-  } as unknown,
+  } as any,
   historyStore: {
     push: () => {},
-  } as unknown,
+  } as any,
   shouldRecordFileManagerHistory: () => false,
   hideCommonRoot: true,
 });

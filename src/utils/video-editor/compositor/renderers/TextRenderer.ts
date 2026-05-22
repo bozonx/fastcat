@@ -77,6 +77,11 @@ export class TextRenderer {
     const frameH = Math.max(1, layout.frameHeight);
 
     if (normalizedStyle.backgroundEnabled && normalizedStyle.backgroundShadowEnabled) {
+      const bgShadowSpreadPx = Math.round(normalizedStyle.backgroundShadowSpread * renderScale);
+      const bgShadowRadius = Math.max(
+        0,
+        normalizedStyle.backgroundRadius * renderScale + bgShadowSpreadPx,
+      );
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundShadowAlpha;
       ctx.fillStyle = normalizedStyle.backgroundShadowColor;
@@ -86,11 +91,11 @@ export class TextRenderer {
       ctx.shadowOffsetY = normalizedStyle.backgroundShadowOffsetY * renderScale;
       this.drawRoundedRect(
         ctx,
-        frameX,
-        frameY,
-        frameW,
-        frameH,
-        normalizedStyle.backgroundRadius * renderScale,
+        frameX - bgShadowSpreadPx,
+        frameY - bgShadowSpreadPx,
+        Math.max(1, frameW + bgShadowSpreadPx * 2),
+        Math.max(1, frameH + bgShadowSpreadPx * 2),
+        bgShadowRadius,
       );
       ctx.fill();
       ctx.globalCompositeOperation = 'destination-out';
@@ -112,8 +117,6 @@ export class TextRenderer {
       ctx.save();
       ctx.globalAlpha = normalizedStyle.backgroundAlpha;
       ctx.fillStyle = normalizedStyle.backgroundColor;
-      ctx.globalCompositeOperation =
-        normalizedStyle.backgroundBlendMode as GlobalCompositeOperation;
       this.drawRoundedRect(
         ctx,
         frameX,
@@ -154,6 +157,7 @@ export class TextRenderer {
     const yOffsetPx = layout.yOffsetPx;
 
     if (normalizedStyle.textShadowEnabled) {
+      const textShadowSpreadPx = Math.round(normalizedStyle.textShadowSpread * renderScale);
       ctx.save();
       ctx.font = font;
       ctx.fillStyle = normalizedStyle.textShadowColor;
@@ -175,6 +179,22 @@ export class TextRenderer {
         align: normalizedStyle.align,
         renderScale,
       });
+      if (textShadowSpreadPx > 0) {
+        ctx.lineWidth = textShadowSpreadPx;
+        ctx.strokeStyle = normalizedStyle.textShadowColor;
+        this.drawTextLines({
+          ctx,
+          lines,
+          localTextStartX,
+          localTextTopPx,
+          lineHeightPx,
+          yOffsetPx,
+          letterSpacingPx,
+          align: normalizedStyle.align,
+          renderScale,
+          mode: 'stroke',
+        });
+      }
       ctx.globalCompositeOperation = 'destination-out';
       ctx.shadowColor = 'transparent';
       ctx.globalAlpha = 1;
@@ -189,12 +209,26 @@ export class TextRenderer {
         align: normalizedStyle.align,
         renderScale,
       });
+      if (textShadowSpreadPx > 0) {
+        ctx.lineWidth = textShadowSpreadPx;
+        this.drawTextLines({
+          ctx,
+          lines,
+          localTextStartX,
+          localTextTopPx,
+          lineHeightPx,
+          yOffsetPx,
+          letterSpacingPx,
+          align: normalizedStyle.align,
+          renderScale,
+          mode: 'stroke',
+        });
+      }
       ctx.restore();
     }
 
     ctx.fillStyle = normalizedStyle.color;
     ctx.globalAlpha = normalizedStyle.colorAlpha;
-    ctx.globalCompositeOperation = normalizedStyle.colorBlendMode as GlobalCompositeOperation;
     ctx.textBaseline = 'middle';
     ctx.textAlign = normalizedStyle.align;
     this.drawTextLines({
@@ -240,6 +274,7 @@ export class TextRenderer {
     letterSpacingPx: number;
     align: 'left' | 'center' | 'right';
     renderScale: number;
+    mode?: 'fill' | 'stroke';
   }): void {
     const {
       ctx,
@@ -251,6 +286,7 @@ export class TextRenderer {
       letterSpacingPx,
       align,
       renderScale,
+      mode = 'fill',
     } = params;
 
     for (let i = 0; i < lines.length; i++) {
@@ -258,7 +294,11 @@ export class TextRenderer {
       const lineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2 + yOffsetPx;
 
       if (letterSpacingPx === 0) {
-        ctx.fillText(line, localTextStartX, lineY);
+        if (mode === 'stroke') {
+          ctx.strokeText(line, localTextStartX, lineY);
+        } else {
+          ctx.fillText(line, localTextStartX, lineY);
+        }
       } else {
         this.drawLineWithLetterSpacing({
           ctx,
@@ -268,6 +308,7 @@ export class TextRenderer {
           align,
           letterSpacingPx,
           renderScale,
+          mode,
         });
       }
     }
@@ -281,8 +322,9 @@ export class TextRenderer {
     align: 'left' | 'center' | 'right';
     letterSpacingPx: number;
     renderScale: number;
+    mode?: 'fill' | 'stroke';
   }): void {
-    const { ctx, line, startX, y, letterSpacingPx } = params;
+    const { ctx, line, startX, y, letterSpacingPx, mode = 'fill' } = params;
 
     // Measure total line width with letter spacing for alignment
     let totalWidth = 0;
@@ -306,7 +348,11 @@ export class TextRenderer {
     }
 
     for (let i = 0; i < chars.length; i++) {
-      ctx.fillText(chars[i] ?? '', x, y);
+      if (mode === 'stroke') {
+        ctx.strokeText(chars[i] ?? '', x, y);
+      } else {
+        ctx.fillText(chars[i] ?? '', x, y);
+      }
       x += (charWidths[i] ?? 0) + letterSpacingPx;
     }
   }

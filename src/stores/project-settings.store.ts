@@ -104,7 +104,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     const view = getCurrentEditorView.value?.() ?? 'cut';
     const lastViewBeforeFullscreen = getLastViewBeforeFullscreen.value?.() ?? null;
     const targetView = view === 'fullscreen' ? lastViewBeforeFullscreen || 'cut' : view;
-    const safeView = targetView && ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
+    const safeView =
+      targetView && ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
 
     const platformSuffix = getPlatformSuffix();
     const platformViewKey = `${safeView}${platformSuffix}`;
@@ -506,7 +507,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     ([suffix, view, loading]) => {
       if (loading || !suffix) return;
       const targetView = view ?? 'cut';
-      const safeView = targetView && ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
+      const safeView =
+        targetView && ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
       const key = `${safeView}${suffix}`;
       if (!projectSettings.value.monitors[key]) {
         const base =

@@ -16,14 +16,14 @@ describe('text-layout', () => {
     expect(style.backgroundEnabled).toBe(false);
     expect(style.backgroundAlpha).toBe(1);
     expect(style.backgroundRadius).toBe(0);
-    expect(style.colorBlendMode).toBe('source-over');
-    expect(style.backgroundBlendMode).toBe('source-over');
     expect(style.textShadowEnabled).toBe(false);
     expect(style.textShadowAlpha).toBe(1);
     expect(style.textShadowBlur).toBe(0);
+    expect(style.textShadowSpread).toBe(0);
     expect(style.backgroundShadowEnabled).toBe(false);
     expect(style.backgroundShadowAlpha).toBe(1);
     expect(style.backgroundShadowBlur).toBe(0);
+    expect(style.backgroundShadowSpread).toBe(0);
     expect(style.borderEnabled).toBe(false);
     expect(style.borderAlpha).toBe(1);
     expect(style.borderWidth).toBe(0);

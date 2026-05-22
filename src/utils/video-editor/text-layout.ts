@@ -16,11 +16,11 @@ export interface NormalizedTextStyle {
   fontWeight: string;
   color: string;
   colorAlpha: number;
-  colorBlendMode: string;
   textShadowEnabled: boolean;
   textShadowColor: string;
   textShadowAlpha: number;
   textShadowBlur: number;
+  textShadowSpread: number;
   textShadowOffsetX: number;
   textShadowOffsetY: number;
   align: 'left' | 'center' | 'right';
@@ -31,11 +31,11 @@ export interface NormalizedTextStyle {
   backgroundColor: string;
   backgroundAlpha: number;
   backgroundRadius: number;
-  backgroundBlendMode: string;
   backgroundShadowEnabled: boolean;
   backgroundShadowColor: string;
   backgroundShadowAlpha: number;
   backgroundShadowBlur: number;
+  backgroundShadowSpread: number;
   backgroundShadowOffsetX: number;
   backgroundShadowOffsetY: number;
   borderEnabled: boolean;
@@ -161,7 +161,6 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '700',
     color: typeof style?.color === 'string' && style.color.length > 0 ? style.color : '#ffffff',
     colorAlpha: clampFinite(style?.colorAlpha, 1, 0, 1),
-    colorBlendMode: mapBlendModeToComposite(style?.colorBlendMode),
     textShadowEnabled:
       typeof style?.textShadowEnabled === 'boolean' ? style.textShadowEnabled : false,
     textShadowColor:
@@ -170,6 +169,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '#000000',
     textShadowAlpha: clampFinite(style?.textShadowAlpha, 1, 0, 1),
     textShadowBlur: clampFinite(style?.textShadowBlur, 0, 0, 10_000),
+    textShadowSpread: clampFinite(style?.textShadowSpread, 0, 0, 10_000),
     textShadowOffsetX: clampFinite(style?.textShadowOffsetX, 0, -10_000, 10_000),
     textShadowOffsetY: clampFinite(style?.textShadowOffsetY, 0, -10_000, 10_000),
     align:
@@ -194,7 +194,6 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '#000000',
     backgroundAlpha: clampFinite(style?.backgroundAlpha, 1, 0, 1),
     backgroundRadius: clampFinite(style?.backgroundRadius, 0, 0, 10_000),
-    backgroundBlendMode: mapBlendModeToComposite(style?.backgroundBlendMode),
     backgroundShadowEnabled:
       typeof style?.backgroundShadowEnabled === 'boolean' ? style.backgroundShadowEnabled : false,
     backgroundShadowColor:
@@ -204,6 +203,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : '#000000',
     backgroundShadowAlpha: clampFinite(style?.backgroundShadowAlpha, 1, 0, 1),
     backgroundShadowBlur: clampFinite(style?.backgroundShadowBlur, 0, 0, 10_000),
+    backgroundShadowSpread: clampFinite(style?.backgroundShadowSpread, 0, 0, 10_000),
     backgroundShadowOffsetX: clampFinite(style?.backgroundShadowOffsetX, 0, -10_000, 10_000),
     backgroundShadowOffsetY: clampFinite(style?.backgroundShadowOffsetY, 0, -10_000, 10_000),
     borderEnabled: typeof style?.borderEnabled === 'boolean' ? style.borderEnabled : false,
@@ -350,6 +350,9 @@ export function computeTextLayoutMetrics(input: {
   const backgroundShadowBlurPx = normalizedStyle.backgroundShadowEnabled
     ? Math.round(normalizedStyle.backgroundShadowBlur * renderScale)
     : 0;
+  const backgroundShadowSpreadPx = normalizedStyle.backgroundShadowEnabled
+    ? Math.round(normalizedStyle.backgroundShadowSpread * renderScale)
+    : 0;
   const backgroundShadowOffsetXPx = normalizedStyle.backgroundShadowEnabled
     ? Math.round(normalizedStyle.backgroundShadowOffsetX * renderScale)
     : 0;
@@ -359,6 +362,9 @@ export function computeTextLayoutMetrics(input: {
   const textShadowBlurPx = normalizedStyle.textShadowEnabled
     ? Math.round(normalizedStyle.textShadowBlur * renderScale)
     : 0;
+  const textShadowSpreadPx = normalizedStyle.textShadowEnabled
+    ? Math.round(normalizedStyle.textShadowSpread * renderScale)
+    : 0;
   const textShadowOffsetXPx = normalizedStyle.textShadowEnabled
     ? Math.round(normalizedStyle.textShadowOffsetX * renderScale)
     : 0;
@@ -367,23 +373,23 @@ export function computeTextLayoutMetrics(input: {
     : 0;
   const shadowLeft = Math.max(
     0,
-    backgroundShadowBlurPx - backgroundShadowOffsetXPx,
-    textShadowBlurPx - textShadowOffsetXPx,
+    backgroundShadowBlurPx + backgroundShadowSpreadPx - backgroundShadowOffsetXPx,
+    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetXPx,
   );
   const shadowRight = Math.max(
     0,
-    backgroundShadowBlurPx + backgroundShadowOffsetXPx,
-    textShadowBlurPx + textShadowOffsetXPx,
+    backgroundShadowBlurPx + backgroundShadowSpreadPx + backgroundShadowOffsetXPx,
+    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetXPx,
   );
   const shadowTop = Math.max(
     0,
-    backgroundShadowBlurPx - backgroundShadowOffsetYPx,
-    textShadowBlurPx - textShadowOffsetYPx,
+    backgroundShadowBlurPx + backgroundShadowSpreadPx - backgroundShadowOffsetYPx,
+    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetYPx,
   );
   const shadowBottom = Math.max(
     0,
-    backgroundShadowBlurPx + backgroundShadowOffsetYPx,
-    textShadowBlurPx + textShadowOffsetYPx,
+    backgroundShadowBlurPx + backgroundShadowSpreadPx + backgroundShadowOffsetYPx,
+    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetYPx,
   );
   const backgroundX = baseBackgroundX - borderWidthPx - shadowLeft;
   const backgroundY = baseBackgroundY - borderWidthPx - shadowTop;

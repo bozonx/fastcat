@@ -54,6 +54,7 @@ export interface TextClipStyle {
   textShadowColor?: string;
   textShadowAlpha?: number;
   textShadowBlur?: number;
+  textShadowSpread?: number;
   textShadowOffsetX?: number;
   textShadowOffsetY?: number;
   align?: 'left' | 'center' | 'right';
@@ -68,10 +69,9 @@ export interface TextClipStyle {
   backgroundShadowColor?: string;
   backgroundShadowAlpha?: number;
   backgroundShadowBlur?: number;
+  backgroundShadowSpread?: number;
   backgroundShadowOffsetX?: number;
   backgroundShadowOffsetY?: number;
-  colorBlendMode?: TimelineBlendMode;
-  backgroundBlendMode?: TimelineBlendMode;
   borderEnabled?: boolean;
   borderColor?: string;
   borderAlpha?: number;

@@ -9,12 +9,10 @@ describe('compositor/types', () => {
       const style = {
         color: '#ffffff',
         colorAlpha: 1,
-        colorBlendMode: 'normal' as const,
         backgroundEnabled: true,
         backgroundColor: '#000000',
         backgroundAlpha: 1,
         backgroundRadius: 0,
-        backgroundBlendMode: 'normal' as const,
         borderEnabled: false,
         borderColor: '#ffffff',
         borderAlpha: 1,
@@ -23,15 +21,15 @@ describe('compositor/types', () => {
       expect(areTextClipStylesEqual(style, { ...style })).toBe(true);
     });
 
-    it('detects colorBlendMode change', () => {
-      const a = { colorBlendMode: 'normal' as const };
-      const b = { colorBlendMode: 'multiply' as const };
+    it('detects textShadowSpread change', () => {
+      const a = { textShadowSpread: 0 };
+      const b = { textShadowSpread: 4 };
       expect(areTextClipStylesEqual(a, b)).toBe(false);
     });
 
-    it('detects backgroundBlendMode change', () => {
-      const a = { backgroundBlendMode: 'normal' as const };
-      const b = { backgroundBlendMode: 'add' as const };
+    it('detects backgroundShadowSpread change', () => {
+      const a = { backgroundShadowSpread: 0 };
+      const b = { backgroundShadowSpread: 6 };
       expect(areTextClipStylesEqual(a, b)).toBe(false);
     });
 

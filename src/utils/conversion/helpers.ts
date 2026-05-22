@@ -27,19 +27,20 @@ export function isAbortError(error: unknown) {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-export async function waitForFsSettling() {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-}
-
 export async function removeCreatedFile(params: {
   dirHandle: FileSystemDirectoryHandle | null;
   fileName: string | null;
 }) {
   if (!params.dirHandle || !params.fileName) return;
-  try {
-    await waitForFsSettling();
-    await params.dirHandle.removeEntry(params.fileName);
-  } catch {
-    // ignore
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await params.dirHandle.removeEntry(params.fileName);
+      return;
+    } catch {
+      if (attempt < 4) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
   }
 }
