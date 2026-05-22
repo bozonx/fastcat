@@ -7,7 +7,6 @@ import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 import {
-  createDefaultProjectPresets,
   createProjectPresetId,
   resolveProjectPreset,
 } from '~/utils/settings';

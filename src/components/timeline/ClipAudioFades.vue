@@ -2,7 +2,6 @@
 import { computed, onBeforeUnmount } from 'vue';
 import type { TimelineTrack, TimelineClipItem, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
-import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 
 const props = defineProps<{
   clip: TimelineClipItem;

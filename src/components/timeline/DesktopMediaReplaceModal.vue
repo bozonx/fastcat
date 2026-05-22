@@ -21,8 +21,6 @@ const isOpen = computed({
   },
 });
 
-const targetType = computed(() => uiStore.mediaReplaceTarget?.expectedType);
-
 function handleSelectFile(entry: FsEntry) {
   if (entry.kind !== 'file' || !entry.path) return;
   const target = uiStore.mediaReplaceTarget;

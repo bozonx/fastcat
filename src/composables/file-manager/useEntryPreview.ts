@@ -2,7 +2,6 @@ import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useSafeObjectUrl, safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import yaml from 'js-yaml';
 import {
-  TEXT_EXTENSIONS,
   getMediaTypeFromFilename,
   getMimeTypeFromFilename,
 } from '~/utils/media-types';

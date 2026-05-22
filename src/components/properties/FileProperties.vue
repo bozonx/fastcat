@@ -454,7 +454,6 @@ const {
   createSubfolder,
   createTimelineInFolder,
   createMarkdownInFolder,
-  onRename,
   onDelete,
   openAsTextPanel,
 } = useFilePropertiesHandlers({

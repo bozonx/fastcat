@@ -15,7 +15,6 @@ import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
-import { timelineZoomPositionToScale } from '~/utils/zoom';
 import { formatDurationSeconds, formatBytes } from '~/utils/format';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
@@ -183,15 +182,6 @@ const masterAudioEffects = computed(() =>
     (effect): effect is AudioClipEffect => effect?.target === 'audio',
   ),
 );
-
-const timelineZoom = computed({
-  get: () => timelineStore.timelineZoom,
-  set: (value: number) => {
-    timelineStore.setTimelineZoom(value);
-  },
-});
-
-const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
 
 function updateFormat(patch: TimelineFormatInput) {
   void timelineStore.updateTimelineFormat({

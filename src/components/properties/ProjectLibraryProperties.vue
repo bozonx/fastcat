@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, reactive } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { usePresetsStore } from '~/stores/presets.store';
 import { getHudManifest } from '~/hud/registry';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';

@@ -235,41 +235,6 @@ const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
     });
 });
 
-function getMemoKey(entry: VisibleControlEntry): unknown[] {
-  const base = [entry.key, entry.disabled];
-
-  switch (entry.kind) {
-    case 'slider':
-    case 'knob':
-    case 'number':
-      return [...base, entry.numberValue];
-    case 'scale-xy':
-      return [
-        ...base,
-        entry.scaleXYState?.xValue,
-        entry.scaleXYState?.yValue,
-        entry.scaleXYState?.isLinked,
-      ];
-    case 'select':
-    case 'button-group':
-    case 'toggle':
-    case 'boolean':
-      return [...base, entry.value];
-    case 'color':
-    case 'text':
-      return [...base, entry.stringValue];
-    case 'file':
-      return [...base, entry.fileDisplayValue, entry.hasValue];
-    case 'action':
-      return [...base, entry.actionLabel];
-    case 'array':
-      return [...base, JSON.stringify(entry.arrayItems)];
-    case 'row':
-    default:
-      return base;
-  }
-}
-
 function handleArrayAdd(control: ParamControl) {
   if (control.kind !== 'array') return;
   const current = Array.isArray(getValue(control.key))

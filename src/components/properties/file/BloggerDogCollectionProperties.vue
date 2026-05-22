@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { RemoteVfsDirectoryEntry, RemoteVfsEntry } from '~/types/remote-vfs';
+import type { RemoteVfsDirectoryEntry } from '~/types/remote-vfs';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 
