@@ -1120,7 +1120,7 @@
       "mono": "Mono",
       "original": "Original",
       "reverse": "Reverse",
-      "sampleRate": "Sample Rate",
+      "sampleRate": "Audio Sample Rate",
       "sound": "Sound",
       "stereo": "Stereo"
     },
@@ -1182,7 +1182,8 @@
       "processing": "Processing...",
       "rangeSourceHelp": "Choose which part of the timeline should be used for export.",
       "rangeSourceTitle": "What to export",
-      "saveAsDefault": "Save as project settings",
+      "saveAsDefault": "Save as timeline settings",
+      "chooseLocation": "Choose location",
       "saveLocationNote": "File will be saved to the export/ folder in your project directory",
       "selection": "Selection",
       "startExport": "Export",
@@ -1520,7 +1521,7 @@
       "resetSettings": "Reset settings",
       "resetConfirmDescription": "This will restore all project settings to the default values from your workspace settings.",
       "resetConfirmTitle": "Reset to defaults?",
-      "resolutionAndFps": "New Timeline Defaults",
+      "resolutionAndFps": "Resolution, FPS, Sample Rate",
       "storage": "Storage",
       "title": "Project Settings"
     },

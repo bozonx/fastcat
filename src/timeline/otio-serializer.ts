@@ -260,7 +260,10 @@ function serializeTrackItems(
       enabled: item.disabled ? false : undefined,
       media_reference: mediaReference,
       source_range: toTimeRange(adjustedSourceRange, fps),
-      effects: allEffects.length > 0 ? (allEffects as unknown[]) : undefined,
+      effects:
+        allEffects.length > 0
+          ? (allEffects as import('~/timeline/otio/types').OtioEffect[])
+          : undefined,
       metadata: {
         fastcat: {
           id: item.id,
@@ -512,158 +515,155 @@ export function parseTimelineFromOtio(
     },
   );
 
-  const stackChildren = Array.isArray((parsed.tracks as { children?: unknown[] })?.children)
-    ? (parsed.tracks as { children?: unknown[] }).children
-    : [];
+  const tracksChildren = (parsed.tracks as { children?: unknown[] }).children;
+  const stackChildren = Array.isArray(tracksChildren) ? tracksChildren : [];
 
-  const tracks: TimelineTrack[] = stackChildren.map(
-    (otioTrack: { metadata: unknown } & Record<string, unknown>, trackIndex: number) => {
-      const trackFastCatMeta = TimelineTrackFastCatMetaSchema.parse(
-        safeFastCatMetadata(otioTrack.metadata),
-      );
+  const tracks: TimelineTrack[] = stackChildren.map((otioTrackRaw: unknown, trackIndex: number) => {
+    const otioTrack = otioTrackRaw as { metadata: unknown } & Record<string, unknown>;
+    const trackFastCatMeta = TimelineTrackFastCatMetaSchema.parse(
+      safeFastCatMetadata(otioTrack.metadata),
+    );
 
-      const id = coerceId(
-        trackFastCatMeta.id,
-        `${otioTrack.kind === 'Audio' ? 'a' : 'v'}${trackIndex + 1}`,
-      );
-      const kind =
-        normalizeTrackKind(trackFastCatMeta.kind) ?? trackKindFromOtioKind(otioTrack.kind);
-      const name = coerceName(
-        otioTrack.name,
-        kind === 'audio' ? `Audio ${trackIndex + 1}` : `Video ${trackIndex + 1}`,
-      );
+    const id = coerceId(
+      trackFastCatMeta.id,
+      `${otioTrack.kind === 'Audio' ? 'a' : 'v'}${trackIndex + 1}`,
+    );
+    const kind = normalizeTrackKind(trackFastCatMeta.kind) ?? trackKindFromOtioKind(otioTrack.kind);
+    const name = coerceName(
+      otioTrack.name,
+      kind === 'audio' ? `Audio ${trackIndex + 1}` : `Video ${trackIndex + 1}`,
+    );
 
-      const children = Array.isArray(otioTrack.children) ? otioTrack.children : [];
-      const occupiedIds = new Set<string>();
-      let cursorUs = 0;
+    const children = Array.isArray(otioTrack.children) ? otioTrack.children : [];
+    const occupiedIds = new Set<string>();
+    let cursorUs = 0;
 
-      // Pre-scan track children to associate adjacent Transition.1 nodes with clips.
-      let pendingTransitionIn: ClipTransition | null = null;
+    // Pre-scan track children to associate adjacent Transition.1 nodes with clips.
+    let pendingTransitionIn: ClipTransition | null = null;
 
-      const rawItems: import('./types').TimelineTrackItem[] = [];
+    const rawItems: import('./types').TimelineTrackItem[] = [];
 
-      for (let i = 0; i < children.length; i += 1) {
-        const child = children[i] as unknown;
+    for (let i = 0; i < children.length; i += 1) {
+      const child = children[i] as Record<string, unknown>;
 
-        if (child?.OTIO_SCHEMA === 'Transition.1') {
-          const transition = parseOtioTransition(child);
-          if (transition) {
-            const transitionMeta = safeFastCatMetadata(child.metadata);
-            const ownerMeta =
-              transitionMeta.owner && typeof transitionMeta.owner === 'object'
-                ? (transitionMeta.owner as Record<string, unknown>)
-                : {};
-            const transitionEdge = ownerMeta.edge;
-            const prev = rawItems[rawItems.length - 1];
+      if (child.OTIO_SCHEMA === 'Transition.1') {
+        const transition = parseOtioTransition(child as unknown);
+        if (transition) {
+          const transitionMeta = safeFastCatMetadata(child.metadata);
+          const ownerMeta =
+            transitionMeta.owner && typeof transitionMeta.owner === 'object'
+              ? (transitionMeta.owner as Record<string, unknown>)
+              : {};
+          const transitionEdge = ownerMeta.edge;
+          const prev = rawItems[rawItems.length - 1];
 
-            if (transitionEdge === 'out') {
-              if (prev && prev.kind === 'clip') {
-                (prev as { transitionOut?: unknown }).transitionOut = transition;
-              }
-              pendingTransitionIn = null;
-              continue;
-            }
-
-            if (transitionEdge === 'in') {
-              pendingTransitionIn = transition;
-              continue;
-            }
-
+          if (transitionEdge === 'out') {
             if (prev && prev.kind === 'clip') {
               (prev as { transitionOut?: unknown }).transitionOut = transition;
             }
-            pendingTransitionIn = transition;
-          } else {
-            report.warn(
-              'malformed_transition',
-              'Dropped malformed Transition.1 node.',
-              `tracks[${id}].children[${i}]`,
-            );
+            pendingTransitionIn = null;
+            continue;
           }
-          continue;
-        }
 
-        if (child?.OTIO_SCHEMA === 'Gap.1') {
-          const item = parseGapItem({
-            trackId: id,
-            otio: child as OtioGap,
-            index: i,
-            occupiedIds,
-            fallbackStartUs: cursorUs,
-          });
-          rawItems.push(item);
-          cursorUs += parseItemSequenceDurationUs(child);
-          pendingTransitionIn = null;
-          continue;
-        }
+          if (transitionEdge === 'in') {
+            pendingTransitionIn = transition;
+            continue;
+          }
 
-        if (child?.OTIO_SCHEMA === 'Clip.1' || child?.OTIO_SCHEMA === 'Clip.2') {
-          const item = parseClipItem({
-            trackId: id,
-            otio: child as OtioAnyClip,
-            index: i,
-            occupiedIds,
-            fallbackStartUs: cursorUs,
-            transitionIn: pendingTransitionIn ?? undefined,
-            report,
-          });
-          rawItems.push(item);
-          cursorUs += parseItemSequenceDurationUs(child);
-          pendingTransitionIn = null;
-          continue;
+          if (prev && prev.kind === 'clip') {
+            (prev as { transitionOut?: unknown }).transitionOut = transition;
+          }
+          pendingTransitionIn = transition;
+        } else {
+          report.warn(
+            'malformed_transition',
+            'Dropped malformed Transition.1 node.',
+            `tracks[${id}].children[${i}]`,
+          );
         }
-
-        report.warn(
-          'unknown_child',
-          `Unknown track child schema: ${child?.OTIO_SCHEMA}`,
-          `tracks[${id}].children[${i}]`,
-        );
+        continue;
       }
 
-      const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      if (child.OTIO_SCHEMA === 'Gap.1') {
+        const item = parseGapItem({
+          trackId: id,
+          otio: child as unknown as import('~/timeline/otio/types').OtioGap,
+          index: i,
+          occupiedIds,
+          fallbackStartUs: cursorUs,
+        });
+        rawItems.push(item);
+        cursorUs += parseItemSequenceDurationUs(child);
+        pendingTransitionIn = null;
+        continue;
+      }
 
-      const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta.video?.hidden) : undefined;
-      const opacity = trackFastCatMeta.video?.opacity;
-      const blendMode = coerceBlendMode(trackFastCatMeta.video?.blendMode);
-      const audioMuted = Boolean(trackFastCatMeta.audio?.muted);
-      const audioSolo = Boolean(trackFastCatMeta.audio?.solo);
-      const audioGain = trackFastCatMeta.audio?.gain;
-      const audioBalance = trackFastCatMeta.audio?.balance;
-      const color = fromOtioColor(otioTrack.color) ?? trackFastCatMeta.appearance?.color;
-      const locked = trackFastCatMeta.flags?.locked ? true : undefined;
+      if (child.OTIO_SCHEMA === 'Clip.1' || child.OTIO_SCHEMA === 'Clip.2') {
+        const item = parseClipItem({
+          trackId: id,
+          otio: child as unknown as import('~/timeline/otio/types').OtioAnyClip,
+          index: i,
+          occupiedIds,
+          fallbackStartUs: cursorUs,
+          transitionIn: pendingTransitionIn ?? undefined,
+          report,
+        });
+        rawItems.push(item);
+        cursorUs += parseItemSequenceDurationUs(child);
+        pendingTransitionIn = null;
+        continue;
+      }
 
-      // Track effects: prefer OTIO standard, fallback to fastcat metadata.
-      const effects =
-        Array.isArray(otioTrack.effects) && otioTrack.effects.length > 0
-          ? parseEffects(otioTrack.effects)
-          : undefined;
+      report.warn(
+        'unknown_child',
+        `Unknown track child schema: ${child.OTIO_SCHEMA as string | undefined}`,
+        `tracks[${id}].children[${i}]`,
+      );
+    }
 
-      // Track-level markers (e.g. from an external OTIO).
-      const trackMarkers =
-        Array.isArray((otioTrack as { markers?: unknown[] }).markers) &&
-        (otioTrack as { markers?: unknown[] }).markers.length > 0
-          ? parseOtioMarkers((otioTrack as { markers?: unknown[] }).markers)
-          : undefined;
+    const items = [...rawItems].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
 
-      return {
-        id,
-        kind,
-        name,
-        videoHidden,
-        opacity,
-        blendMode,
-        audioMuted,
-        audioSolo,
-        audioGain,
-        audioBalance,
-        color,
-        locked,
-        effects,
-        items,
-        ...(trackMarkers && trackMarkers.length > 0 ? { markers: trackMarkers } : {}),
-      };
-    },
-  );
+    const videoHidden = kind === 'video' ? Boolean(trackFastCatMeta.video?.hidden) : undefined;
+    const opacity = trackFastCatMeta.video?.opacity;
+    const blendMode = coerceBlendMode(trackFastCatMeta.video?.blendMode);
+    const audioMuted = Boolean(trackFastCatMeta.audio?.muted);
+    const audioSolo = Boolean(trackFastCatMeta.audio?.solo);
+    const audioGain = trackFastCatMeta.audio?.gain;
+    const audioBalance = trackFastCatMeta.audio?.balance;
+    const color = fromOtioColor(otioTrack.color) ?? trackFastCatMeta.appearance?.color;
+    const locked = trackFastCatMeta.flags?.locked ? true : undefined;
+
+    // Track effects: prefer OTIO standard, fallback to fastcat metadata.
+    const effects =
+      Array.isArray(otioTrack.effects) && otioTrack.effects.length > 0
+        ? parseEffects(otioTrack.effects)
+        : undefined;
+
+    // Track-level markers (e.g. from an external OTIO).
+    const trackMarkersRaw = (otioTrack as { markers?: unknown[] }).markers;
+    const trackMarkers =
+      Array.isArray(trackMarkersRaw) && trackMarkersRaw.length > 0
+        ? parseOtioMarkers(trackMarkersRaw)
+        : undefined;
+
+    return {
+      id,
+      kind,
+      name,
+      videoHidden,
+      opacity,
+      blendMode,
+      audioMuted,
+      audioSolo,
+      audioGain,
+      audioBalance,
+      color,
+      locked,
+      effects,
+      items,
+      ...(trackMarkers && trackMarkers.length > 0 ? { markers: trackMarkers } : {}),
+    };
+  });
 
   const video = tracks.filter((t) => t.kind === 'video');
   const audio = tracks.filter((t) => t.kind === 'audio');
