@@ -195,7 +195,7 @@ export class VideoCompositor {
         clip.adjustmentSourceTexture ?? null,
       );
       this.renderLowerLayersToTexture(clip.layer, clip.adjustmentSourceTexture);
-      clip.sprite.texture = clip.adjustmentSourceTexture;
+      if (clip.sprite) clip.sprite.texture = clip.adjustmentSourceTexture;
     }
   }
 
@@ -214,12 +214,12 @@ export class VideoCompositor {
       if (!effect || typeof effect !== 'object') return false;
       if (
         typeof (effect as { id?: string }).id !== 'string' ||
-        (effect as { id?: string }).id.length === 0
+        !(effect as { id?: string }).id?.length
       )
         return false;
       if (
         typeof (effect as { type?: string }).type !== 'string' ||
-        (effect as { type?: string }).type.length === 0
+        !(effect as { type?: string }).type?.length
       )
         return false;
 
@@ -234,7 +234,11 @@ export class VideoCompositor {
   public async applyShaderTransitions(activeClips: CompositorClip[], currentTimeUs: number) {
     if (!this.app) return;
 
-    const self = this as unknown;
+    const self = this as unknown as {
+      renderSingleClipToTexture?: (clip: CompositorClip, texture: RenderTexture, clear?: boolean) => void;
+      renderLowerLayersToTexture?: (layer: number, texture: RenderTexture) => void;
+      ensureTransitionSprite?: (clip: CompositorClip) => void;
+    };
     const stageTextureRenderer = this.stageTextureRenderer ?? {
       renderSingleClipToTexture: (clip: CompositorClip, texture: RenderTexture, clear?: boolean) =>
         self.renderSingleClipToTexture?.(clip, texture, clear),
@@ -249,7 +253,7 @@ export class VideoCompositor {
       width: this.width,
       height: this.height,
       transitionManager: this.transitionManager,
-      stageTextureRenderer: stageTextureRenderer as unknown,
+      stageTextureRenderer: stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,
       getTrackById: (trackId) => this.trackById.get(trackId),
       getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs),
       ensureTransitionRenderTexture: (texture) =>
@@ -285,7 +289,7 @@ export class VideoCompositor {
       track.effects = def.effects;
       track.container.alpha = def.opacity ?? 1;
       track.container.blendMode = def.blendMode ?? 'normal';
-      (track.container as Record<string, unknown>).__trackId = def.id;
+      (track.container as unknown as Record<string, unknown>).__trackId = def.id;
 
       if (track.container.parent !== this.app.stage) {
         this.app.stage.addChild(track.container);
@@ -513,7 +517,7 @@ export class VideoCompositor {
     await this.app.init({
       width,
       height,
-      canvas: this.canvas as unknown,
+      canvas: this.canvas as import('pixi.js').ICanvas,
       backgroundColor: bgColor,
       preference: options.rendererPreference ?? 'webgl',
       clearBeforeRender: true,
@@ -550,17 +554,18 @@ export class VideoCompositor {
       if (clip.hudMediaStates) {
         const resetState = (s: unknown) => {
           if (!s) return;
-          if (s.lastVideoFrame) {
-            safeDispose(s.lastVideoFrame);
-            s.lastVideoFrame = null;
+          const state = s as Record<string, unknown>;
+          if (state.lastVideoFrame) {
+            safeDispose(state.lastVideoFrame as VideoFrame | ImageBitmap | null);
+            state.lastVideoFrame = null;
           }
-          if (s.bitmap) {
+          if (state.bitmap) {
             try {
-              s.bitmap.close();
+              (state.bitmap as { close: () => void }).close();
             } catch {
               /* no-op */
             }
-            s.bitmap = null;
+            state.bitmap = null;
           }
         };
         resetState(clip.hudMediaStates.background);
@@ -582,7 +587,7 @@ export class VideoCompositor {
           clip.imageSource?.resource &&
           typeof (clip.imageSource.resource as { update?: () => void }).update === 'function'
         ) {
-          (clip.imageSource.resource as { update?: () => void }).update();
+          (clip.imageSource.resource as { update?: () => void }).update?.();
         }
       } catch {
         /* no-op */
@@ -677,9 +682,9 @@ export class VideoCompositor {
       timelineClips,
       deps,
       mediabunny: {
-        Input,
+        Input: Input as unknown as new (params: unknown) => { getPrimaryVideoTrack(): Promise<any | null> },
         BlobSource,
-        VideoSampleSink,
+        VideoSampleSink: VideoSampleSink as unknown as new (track: unknown) => unknown,
         ALL_FORMATS,
       },
       callbacks: {
@@ -716,8 +721,8 @@ export class VideoCompositor {
     });
   }
 
-  updateTimelineLayout(timelineClips: unknown[]): number {
-    const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
+  updateTimelineLayout(timelineClips: Record<string, unknown>[]): number {
+    const meta = timelineClips.find((x) => x && typeof x === 'object' && (x as Record<string, unknown>).kind === 'meta');
     const nextMaster = meta
       ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null)
       : null;
@@ -809,7 +814,7 @@ export class VideoCompositor {
           drawHudClip: (clip, timeUs) => this.canvasFallbackRenderer.drawHudClip(clip, timeUs),
           drawShapeClip: (clip, size) => {
             this.shapeRenderer.draw({
-              graphics: clip.sprite,
+              graphics: clip.sprite as import('pixi.js').Graphics,
               type: clip.shapeType ?? 'square',
               fill: clip.fillColor ?? '#ffffff',
               stroke: clip.strokeColor ?? '#000000',
@@ -854,7 +859,7 @@ export class VideoCompositor {
           transitionManager: this.transitionManager,
           stageTextureRenderer: this.stageTextureRenderer!,
           getTrackById: (trackId) => this.trackById.get(trackId),
-          getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs),
+          getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs) as { opacity: number; progress: number; mode?: string } | null,
           ensureTransitionRenderTexture: (texture) =>
             this.clipResourceManager.ensureTransitionRenderTexture(texture),
           findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
@@ -995,7 +1000,7 @@ export class VideoCompositor {
       this.stageTextureRenderer = null;
     }
     if (this.app) {
-      const pixiApp = this.app as unknown;
+      const pixiApp = this.app as unknown as Record<string, unknown>;
 
       // Pixi v8 ResizePlugin teardown may call an internal _cancelResize callback.
       // Guard it because some lifecycle interleavings leave it unset.

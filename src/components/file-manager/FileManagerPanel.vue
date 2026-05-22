@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, inject, onUnmounted, computed } from 'vue';
+import { useRuntimeConfig } from 'nuxt/app';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -86,7 +87,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 const stt = useSttTranscription({
   vfs: { getFile: (path) => vfs.getFile(path) },
-  fastcatAccountApiUrl: computed(() => runtimeConfig.public.fastcatAccountApiUrl as string),
+  fastcatAccountApiUrl: computed(() => (useRuntimeConfig().public.fastcatAccountApiUrl as string)),
   onSuccess: ({ mediaType }) => {
     toast.add({
       title: t('videoEditor.fileManager.audio.transcriptionCompleted'),
@@ -146,10 +147,10 @@ const {
 
 const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileManagerPanelActions({
   vfs,
-  loadProjectDirectory,
+  loadProjectDirectory: loadProjectDirectory as (opts?: unknown) => Promise<void>,
   reloadDirectory,
   findEntryByPath,
-  onFileActionBase: onFileActionBase as (action: string, entry: FsEntry) => void,
+  onFileActionBase: onFileActionBase as (action: import('~/composables/file-manager/useFileManagerActions').FileAction, entry: FsEntry | FsEntry[], getExistingNames?: (() => string[])) => void | Promise<void>,
   openTranscriptionModal,
   extractAudio: (entry) => extractAudio(entry, { instanceId, isExternal: props.isExternal }),
   addFileTab,

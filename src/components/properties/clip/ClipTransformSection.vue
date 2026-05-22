@@ -11,7 +11,7 @@ const props = defineProps<{
   trackKind: import('~/timeline/types').TrackKind;
   canEditReversed: boolean;
   isReversed: boolean;
-  mediaMeta?: any;
+  mediaMeta?: unknown;
 }>();
 
 const emit = defineEmits<{
@@ -57,11 +57,18 @@ const {
   updateTransform: (next) => emit('updateTransform', next),
 });
 
+const mediaMetaObj = computed(() => props.mediaMeta as Record<string, unknown> | undefined);
 const mediaWidth = computed(
-  () => props.mediaMeta?.video?.displayWidth ?? props.mediaMeta?.image?.width ?? 1920,
+  () =>
+    Number((mediaMetaObj.value?.video as Record<string, unknown> | undefined)?.displayWidth) ||
+    Number((mediaMetaObj.value?.image as Record<string, unknown> | undefined)?.width) ||
+    1920,
 );
 const mediaHeight = computed(
-  () => props.mediaMeta?.video?.displayHeight ?? props.mediaMeta?.image?.height ?? 1080,
+  () =>
+    Number((mediaMetaObj.value?.video as Record<string, unknown> | undefined)?.displayHeight) ||
+    Number((mediaMetaObj.value?.image as Record<string, unknown> | undefined)?.height) ||
+    1080,
 );
 const canEditSourceLayout = computed(() => props.clip.clipType === 'media');
 

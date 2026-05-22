@@ -15,7 +15,7 @@ interface SecondaryAction {
   id: string;
   label: string;
   icon?: string;
-  color?: any;
+  color?: string;
   disabled?: boolean;
   hidden?: boolean;
   onClick: () => void;

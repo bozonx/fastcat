@@ -18,6 +18,7 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFocusStore, type MainPanelFocus } from '~/stores/focus.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
+import type { TimelineClipItem } from '~/timeline/types';
 import {
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
@@ -770,26 +771,26 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       await resolveDefaultTargetDir(params),
     runWithUiFeedback,
     async restoreHistory(snapshot: unknown) {
-      if (!snapshot || !snapshot.type) return;
-      const op = snapshot;
+      const op = snapshot as Record<string, unknown>;
+      if (!op || !op.type) return;
       isRestoringHistory = true;
 
       await runWithUiFeedback({
         action: async () => {
           if (op.type === 'rename') {
-            const entry = findEntryByPath(op.from);
-            if (!entry) throw new Error(`Entry to rename not found: ${op.from}`);
-            await renameEntry(entry, op.to);
+            const entry = findEntryByPath(op.from as string);
+            if (!entry) throw new Error(`Entry to rename not found: ${op.from as string}`);
+            await renameEntry(entry, op.to as string);
           } else if (op.type === 'move') {
-            const entry = findEntryByPath(op.from);
-            if (!entry) throw new Error(`Entry to move not found: ${op.from}`);
-            await moveEntry({ source: entry, targetDirPath: op.to });
+            const entry = findEntryByPath(op.from as string);
+            if (!entry) throw new Error(`Entry to move not found: ${op.from as string}`);
+            await moveEntry({ source: entry, targetDirPath: op.to as string });
           } else if (op.type === 'delete') {
-            const entry = findEntryByPath(op.path);
-            if (!entry) throw new Error(`Entry to delete not found: ${op.path}`);
+            const entry = findEntryByPath(op.path as string);
+            if (!entry) throw new Error(`Entry to delete not found: ${op.path as string}`);
             await deleteEntry(entry);
           } else if (op.type === 'createFolder') {
-            await createFolder(op.name, op.parentPath);
+            await createFolder(op.name as string, op.parentPath as string);
           }
         },
         defaultErrorMessage: 'Failed to restore file operation',
@@ -817,8 +818,8 @@ export function useFileManager(options?: {
     return injected;
   }
 
-  const _useNuxtApp: unknown =
-    (globalThis as { useNuxtApp?: typeof useNuxtApp }).useNuxtApp || useNuxtApp;
+  const _useNuxtApp: (() => unknown) =
+    ((globalThis as { useNuxtApp?: typeof useNuxtApp }).useNuxtApp || useNuxtApp) as (() => unknown);
   const nuxtApp = _useNuxtApp();
   const t =
     (nuxtApp as { $i18n?: { t: (key: string) => string } })?.$i18n?.t || ((key: string) => key);
@@ -976,7 +977,7 @@ export function useFileManager(options?: {
 
     // 3. Update sessions
     const sessions = timelines.sessions;
-    const newSessions: Record<string, unknown> = {};
+    const newSessions: Record<string, import('~/utils/project-settings').TimelineSessionState> = {};
     let sessionsChanged = false;
     for (const [path, session] of Object.entries(sessions)) {
       if (matchesOldPath(path)) {
@@ -996,7 +997,7 @@ export function useFileManager(options?: {
     }
 
     // 5. Update mainFocusByTimeline
-    const mainFocusByTimeline = focusStore.mainFocusByTimeline;
+    const mainFocusByTimeline = ((focusStore as unknown) as Record<string, unknown>).mainFocusByTimeline as Record<string, MainPanelFocus>;
     const newFocusByTimeline: Record<string, MainPanelFocus> = {};
     let focusChanged = false;
     for (const [path, focus] of Object.entries(mainFocusByTimeline)) {
@@ -1008,7 +1009,7 @@ export function useFileManager(options?: {
       }
     }
     if (focusChanged) {
-      focusStore.mainFocusByTimeline = newFocusByTimeline;
+      ((focusStore as unknown) as Record<string, unknown>).mainFocusByTimeline = newFocusByTimeline as Record<string, MainPanelFocus>;
     }
 
     // 6. Update file tabs
@@ -1119,7 +1120,7 @@ export function useFileManager(options?: {
               affectedClips.push({
                 trackId: track.id,
                 itemId: item.id,
-                source: (item as TimelineClipItem).source,
+                source: (item as TimelineClipItem).source ?? { path: '' },
               });
             }
           });
@@ -1171,7 +1172,7 @@ export function useFileManager(options?: {
           track.items.forEach((item) => {
             if (
               item.kind === 'clip' &&
-              (item as { source?: { path?: string } }).source?.path.startsWith(`${oldPath}/`)
+              (item as { source?: { path?: string } }).source?.path?.startsWith(`${oldPath}/`)
             ) {
               affectedClips.push({
                 trackId: track.id,
@@ -1189,8 +1190,8 @@ export function useFileManager(options?: {
             itemId: clip.itemId,
             properties: {
               source: {
-                ...clip.source,
-                path: `${newPath}${(clip.source.path as string).slice(oldPath.length)}`,
+                ...(clip.source as Record<string, unknown>),
+                path: `${newPath}${((clip.source as Record<string, unknown>).path as string).slice(oldPath.length)}`,
               },
             },
           }));

@@ -13,6 +13,7 @@ export interface LayoutManagerContext {
 
 export class LayoutManager {
   public applySolidLayout(clip: CompositorClip, context: LayoutManagerContext) {
+    if (!clip.sprite) return;
     const box = computeClipBoxLayout({
       canvasWidth: context.width,
       canvasHeight: context.height,
@@ -22,8 +23,9 @@ export class LayoutManager {
     });
 
     const anchor = resolveNormalizedAnchor(clip.transform?.anchor);
-    if (clip.sprite.anchor) {
-      clip.sprite.anchor.set(anchor.x, anchor.y);
+    const spriteAnchor = (clip.sprite as import('pixi.js').Sprite).anchor;
+    if (spriteAnchor) {
+      spriteAnchor.set(anchor.x, anchor.y);
     }
 
     clip.sprite.width = box.targetWidth;
@@ -46,6 +48,7 @@ export class LayoutManager {
     clip: CompositorClip,
     context: LayoutManagerContext,
   ) {
+    if (!clip.sprite) return;
     const box = computeClipBoxLayout({
       canvasWidth: context.width,
       canvasHeight: context.height,
@@ -55,8 +58,9 @@ export class LayoutManager {
     });
 
     const anchor = resolveNormalizedAnchor(clip.transform?.anchor);
-    if (clip.sprite.anchor) {
-      clip.sprite.anchor.set(anchor.x, anchor.y);
+    const spriteAnchor = (clip.sprite as import('pixi.js').Sprite).anchor;
+    if (spriteAnchor) {
+      spriteAnchor.set(anchor.x, anchor.y);
     }
 
     clip.sprite.width = box.targetWidth;

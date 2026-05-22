@@ -23,7 +23,7 @@ const props = defineProps<{
   iconClass: string;
   nameClass: string;
   meta: EntryMeta;
-  menuItems?: any[][];
+  menuItems?: unknown[][];
   isCut?: boolean;
   isCopy?: boolean;
 }>();
