@@ -15,7 +15,15 @@ export interface TransitionRendererParams {
   getActiveTransitionState: (
     clip: CompositorClip,
     timeUs: number,
-  ) => { opacity: number; progress: number; mode?: string } | null;
+  ) => {
+    opacity: number;
+    progress: number;
+    mode?: string;
+    manifest?: { renderMode?: string } | null;
+    transition?: { mode?: string; durationUs?: number; params?: Record<string, unknown> };
+    edge?: 'in' | 'out';
+    curve?: string;
+  } | null;
   ensureTransitionRenderTexture: (texture: RenderTexture | null) => RenderTexture;
   findPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
   findNextClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
@@ -64,7 +72,7 @@ export class TransitionRenderer {
         continue;
       }
 
-      const mode = state.transition.mode ?? DEFAULT_TRANSITION_MODE;
+      const mode = state.transition?.mode ?? DEFAULT_TRANSITION_MODE;
       if (mode !== 'adjacent' && mode !== 'background' && mode !== 'transparent') {
         continue;
       }
@@ -136,10 +144,10 @@ export class TransitionRenderer {
         elapsedUs:
           state.edge === 'in'
             ? timeUs - clip.startUs
-            : timeUs - (clip.endUs - state.transition.durationUs),
-        durationUs: state.transition.durationUs,
+            : timeUs - (clip.endUs - (state.transition?.durationUs ?? 0)),
+        durationUs: state.transition?.durationUs ?? 0,
         edge: state.edge as 'in' | 'out',
-        params: state.transition.params,
+        params: state.transition?.params ?? {},
         fromTexture: shaderFromTexture,
         toTexture: shaderToTexture,
       };
@@ -187,7 +195,7 @@ export class TransitionRenderer {
       if (mode === 'background') {
         const children = params.app.stage.children;
         for (let i = 0; i < children.length; i += 1) {
-          const child = children[i] as import('pixi.js').DisplayObject;
+          const child = children[i] as any;
           if (!child || child === transitionSprite) {
             continue;
           }
@@ -329,15 +337,13 @@ export class TransitionRenderer {
     } catch {
       return false;
     } finally {
-      if (typeof (sample as { close?: () => void }).close === 'function') {
-        try {
-          (sample as { close?: () => void }).close();
-        } catch (error) {
-          console.error(
-            '[VideoCompositor] Failed to close VideoSample in renderClipToTextureForTransition',
-            error,
-          );
-        }
+      try {
+        (sample as { close?: () => void }).close?.();
+      } catch (error) {
+        console.error(
+          '[VideoCompositor] Failed to close VideoSample in renderClipToTextureForTransition',
+          error,
+        );
       }
     }
   }

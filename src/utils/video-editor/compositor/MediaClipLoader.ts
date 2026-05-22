@@ -1,7 +1,7 @@
 import { ImageSource } from 'pixi.js';
 import { safeDispose } from '../utils';
 
-interface MediabunnyTrack {
+export interface MediabunnyTrack {
   canDecode(): Promise<boolean>;
   getFirstTimestamp(): Promise<number>;
   computeDuration(): Promise<number>;

@@ -67,7 +67,7 @@ export async function createAudioStreamFromFile(file: File): Promise<{
   numberOfChannels: number;
 }> {
   const source = new BlobSource(file);
-  const input = new Input({ source, formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source, formats: ALL_FORMATS } as any);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -92,7 +92,13 @@ export async function createAudioStreamFromFile(file: File): Promise<{
           for await (const sampleRaw of (
             sink as { samples: (...args: number[]) => AsyncIterable<unknown> }
           ).samples(0, durationS || 1e9)) {
-            const sample = sampleRaw as unknown;
+            const sample = sampleRaw as {
+              sampleRate?: number;
+              numberOfChannels?: number;
+              allocationSize?: (opts: { format: string }) => number;
+              copyTo?: (dst: ArrayBufferView, opts: { format: string }) => void;
+              close?: () => void;
+            };
             try {
               if (!headerSent) {
                 sampleRate = sample.sampleRate || 48000;
@@ -104,34 +110,24 @@ export async function createAudioStreamFromFile(file: File): Promise<{
 
               // Mediabunny samples can be planar or interleaved.
               // To make it simpler, we use 'f32-interleaved' if supported or manual interleaving.
-              const bytesNeeded = sample.allocationSize({ format: 'f32-interleaved' });
+              const bytesNeeded = sample.allocationSize!({ format: 'f32-interleaved' });
               const f32View = new Float32Array(bytesNeeded / 4);
-              sample.copyTo(f32View, { format: 'f32-interleaved' });
+              sample.copyTo!(f32View, { format: 'f32-interleaved' });
 
               const pcm16 = floatTo16BitPcm(f32View);
               controller.enqueue(new Uint8Array(pcm16.buffer));
             } finally {
-              if (typeof sample.close === 'function') sample.close();
+              sample.close?.();
             }
           }
           controller.close();
         } catch (err) {
           controller.error(err);
         } finally {
-          if (typeof (sink as { close?: () => void }).close === 'function')
-            (sink as { close?: () => void }).close();
-          if (typeof (sink as { dispose?: () => void }).dispose === 'function')
-            (sink as { dispose?: () => void }).dispose();
-          if (
-            'dispose' in input &&
-            typeof (input as { dispose?: () => void }).dispose === 'function'
-          )
-            (input as { dispose?: () => void }).dispose();
-          else if (
-            'close' in input &&
-            typeof (input as { close?: () => void }).close === 'function'
-          )
-            (input as { close?: () => void }).close();
+          (sink as { close?: () => void }).close?.();
+          (sink as { dispose?: () => void }).dispose?.();
+          (input as { dispose?: () => void }).dispose?.();
+          (input as { close?: () => void }).close?.();
         }
       },
     });
@@ -171,10 +167,8 @@ export async function createAudioStreamFromFile(file: File): Promise<{
       numberOfChannels,
     };
   } catch (err) {
-    if ('dispose' in input && typeof (input as { dispose?: () => void }).dispose === 'function')
-      (input as { dispose?: () => void }).dispose();
-    else if ('close' in input && typeof (input as { close?: () => void }).close === 'function')
-      (input as { close?: () => void }).close();
+    (input as { dispose?: () => void }).dispose?.();
+    (input as { close?: () => void }).close?.();
     throw err;
   }
 }
