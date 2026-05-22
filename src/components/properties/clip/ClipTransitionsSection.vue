@@ -40,7 +40,10 @@ const transitionOptions = computed(() =>
     has-toggle
   >
     <div class="grid grid-cols-2 gap-2" :class="{ 'opacity-50 pointer-events-none': !isEnabled }">
-      <div class="flex flex-col gap-1">
+      <div
+        class="flex flex-col gap-1"
+        :class="{ 'justify-center': !props.transitionIn && props.transitionOut }"
+      >
         <div class="flex items-center justify-between">
           <button
             v-if="props.transitionIn"
@@ -112,7 +115,10 @@ const transitionOptions = computed(() =>
         </div>
       </div>
 
-      <div class="flex flex-col gap-1">
+      <div
+        class="flex flex-col gap-1"
+        :class="{ 'justify-center': props.transitionIn && !props.transitionOut }"
+      >
         <div class="flex items-center justify-between">
           <button
             v-if="props.transitionOut"

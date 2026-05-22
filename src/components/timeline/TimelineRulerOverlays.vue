@@ -45,8 +45,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select-marker', markerId: string, event?: MouseEvent, part?: 'left' | 'right'): void;
-  (e: 'seek-to-marker', markerId: string, event?: MouseEvent, part?: 'left' | 'right'): void;
+  (
+    e: 'select-marker' | 'seek-to-marker',
+    markerId: string,
+    event?: MouseEvent,
+    part?: 'left' | 'right',
+  ): void;
   (e: 'marker-pointerdown', event: PointerEvent, markerId: string, part?: 'left' | 'right'): void;
   (e: 'select-selection-range', event?: MouseEvent): void;
   (e: 'selection-range-pointerdown', event: PointerEvent, part: 'move' | 'left' | 'right'): void;

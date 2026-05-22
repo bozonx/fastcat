@@ -201,7 +201,7 @@ interface PassthroughClip {
 
 export function isPassthroughCompatibleClip(
   clip: PassthroughClip,
-  options: { audioSampleRate?: number; audioChannels?: 'mono' | 'stereo' },
+  _options: { audioSampleRate?: number; audioChannels?: 'mono' | 'stereo' },
 ): { ok: true } | { ok: false; reason: string } {
   const fastcat = clip.fastcat ?? {};
   const gain = Number(clip.audioGain ?? fastcat.audioGain ?? 1);
@@ -586,8 +586,6 @@ export async function runExport(
 
       let audioSource: unknown = null;
       let writeMixedAudioToSource: (() => Promise<void>) | null = null;
-      let audioSampleRate = 48000;
-      let audioNumberOfChannels = 2;
       let audioPacketState: {
         audioSource: {
           add: (packet: unknown, opts?: { decoderConfig?: unknown }) => Promise<void>;
@@ -634,8 +632,6 @@ export async function runExport(
           if (audioTrack) {
             audioSource = audioTrack.audioSource;
             writeMixedAudioToSource = audioTrack.writeMixedToSource;
-            audioSampleRate = audioTrack.sampleRate;
-            audioNumberOfChannels = audioTrack.numberOfChannels;
             output.addAudioTrack(audioSource);
           } else {
             await reportExportWarning(

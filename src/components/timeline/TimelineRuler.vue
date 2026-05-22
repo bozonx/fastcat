@@ -177,18 +177,19 @@ function selectSelectionRange(e?: MouseEvent) {
 
 const isSnappingEnabled = computed(() => timelineSettingsStore.toolbarSnapMode !== 'no_snap');
 
-const { onMarkerPointerDown, displayMarkers, draggedMarkerId, hasDragged } = useTimelineRulerMarkerDrag({
-  markers,
-  zoom,
-  fps,
-  selectMarker,
-  updateMarker: timelineStore.updateMarker,
-  computeSnapTargets,
-  snapThresholdPx: computed(() => snapThresholdPx.value),
-  isSnappingEnabled,
-  scrollLeft,
-  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
-});
+const { onMarkerPointerDown, displayMarkers, draggedMarkerId, hasDragged } =
+  useTimelineRulerMarkerDrag({
+    markers,
+    zoom,
+    fps,
+    selectMarker,
+    updateMarker: timelineStore.updateMarker,
+    computeSnapTargets,
+    snapThresholdPx: computed(() => snapThresholdPx.value),
+    isSnappingEnabled,
+    scrollLeft,
+    getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
+  });
 
 const {
   isDraggingSelectionRange,
