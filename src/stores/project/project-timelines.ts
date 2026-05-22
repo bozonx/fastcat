@@ -17,7 +17,7 @@ export function createProjectTimelinesModule(params: {
   currentFileName: Ref<string | null>;
   projectSettings: Ref<FastCatProjectSettings>;
   toProjectRelativePath: (path: string) => string;
-  saveProjectMeta: (updates: any) => Promise<void>;
+  saveProjectMeta: (updates: Record<string, unknown>) => Promise<void>;
   setWorkspaceError: (message: string | null) => void;
 }) {
   async function openTimelineFile(path: string) {

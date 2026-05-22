@@ -171,8 +171,9 @@ export class TimelineFixedClipBuilder {
             bitmap: null,
           };
         }
-      } catch (err: any) {
-        if (err?.message !== 'Input has an unsupported or unrecognizable format.') {
+      } catch (err: unknown) {
+        const e = err instanceof Error ? err : null;
+        if (e?.message !== 'Input has an unsupported or unrecognizable format.') {
           console.error('[VideoCompositor] Failed to load HUD video state', err);
         }
       }

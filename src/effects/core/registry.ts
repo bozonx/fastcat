@@ -72,7 +72,7 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
       target: 'audio',
     };
 
-    effectsRegistry.set(manifest.type, audioManifest);
+    effectsRegistry.set(manifest.type, audioManifest as EffectManifest<Record<string, any>>);
 
     return;
   }
@@ -82,7 +82,7 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
     target: 'video',
   };
 
-  effectsRegistry.set(manifest.type, videoManifest);
+  effectsRegistry.set(manifest.type, videoManifest as EffectManifest<Record<string, any>>);
 }
 
 export function getEffectManifest(

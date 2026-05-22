@@ -30,13 +30,13 @@ export class TauriFileHandle {
   }
 
   async createWritable(): Promise<{
-    write: (data: any) => Promise<void>;
+    write: (data: string | Uint8Array | BlobPart) => Promise<void>;
     close: () => Promise<void>;
   }> {
     const tempPath = `${this.path}.tmp`;
 
     return {
-      write: async (data: any) => {
+      write: async (data: string | Uint8Array | BlobPart) => {
         let bytes: Uint8Array;
         if (typeof data === 'string') {
           bytes = new TextEncoder().encode(data);

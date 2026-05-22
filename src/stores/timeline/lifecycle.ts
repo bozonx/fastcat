@@ -56,7 +56,7 @@ interface TimelineLifecycleDeps {
   uiStore: {
     notifyTimelineSave: () => void;
   };
-  getProjectSettings: () => any; // Using any for now to avoid circularity if it happens, but better if we can type it
+  getProjectSettings: () => unknown;
 }
 
 export interface TimelineLifecycleModule {
@@ -159,16 +159,16 @@ export function createTimelineLifecycleModule(
     await deps.persistence.loadTimeline();
 
     // Restore session data from ProjectSettings if available
-    const settings = deps.getProjectSettings();
+    const settings = deps.getProjectSettings() as { timelines?: { sessions?: Record<string, unknown> } } | null;
     const path = deps.currentTimelinePath.value;
     if (path && settings?.timelines?.sessions?.[path]) {
-      const session = settings.timelines.sessions[path];
-      deps.currentTime.value = session.playheadUs;
-      deps.masterGain.value = session.masterGain;
-      if (deps.audioMuted) deps.audioMuted.value = session.masterMuted;
-      deps.timelineZoom.value = session.zoom;
-      deps.trackHeights.value = { ...session.trackHeights };
-      deps.selectionRange.value = session.selectionRange ? { ...session.selectionRange } : null;
+      const session = settings.timelines.sessions[path] as Record<string, unknown>;
+      deps.currentTime.value = Number(session.playheadUs);
+      deps.masterGain.value = Number(session.masterGain);
+      if (deps.audioMuted) deps.audioMuted.value = Boolean(session.masterMuted);
+      deps.timelineZoom.value = Number(session.zoom);
+      deps.trackHeights.value = { ...(session.trackHeights as Record<string, number>) };
+      deps.selectionRange.value = session.selectionRange ? { ...(session.selectionRange as Record<string, unknown>) } as { startUs: number; endUs: number } : null;
     }
   }
 

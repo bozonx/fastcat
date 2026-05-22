@@ -27,7 +27,7 @@ export interface TimelinePersistenceDeps {
   }) => Promise<FileSystemFileHandle | null>;
   createFallbackTimelineDoc: () => TimelineDocument;
 
-  getProjectSettings: () => { timelines?: { sessions?: Record<string, any> } } | null;
+  getProjectSettings: () => { timelines?: { sessions?: Record<string, unknown> } } | null;
 
   parseTimelineFromOtio: (
     text: string,
@@ -303,15 +303,15 @@ export function createTimelinePersistenceModule(
 
       const path = deps.currentTimelinePath.value;
       const settings = path ? deps.getProjectSettings() : null;
-      const session = settings?.timelines?.sessions?.[path] ?? null;
+      const session = (settings?.timelines?.sessions?.[path] ?? null) as Record<string, unknown> | null;
 
-      deps.currentTime.value = session?.playheadUs ?? 0;
-      deps.masterGain.value = session?.masterGain ?? 1;
-      if (deps.audioMuted) deps.audioMuted.value = session?.masterMuted ?? false;
-      deps.timelineZoom.value = session?.zoom ?? 50;
-      deps.trackHeights.value = session?.trackHeights ? { ...session.trackHeights } : {};
+      deps.currentTime.value = Number(session?.playheadUs ?? 0);
+      deps.masterGain.value = Number(session?.masterGain ?? 1);
+      if (deps.audioMuted) deps.audioMuted.value = Boolean(session?.masterMuted ?? false);
+      deps.timelineZoom.value = Number(session?.zoom ?? 50);
+      deps.trackHeights.value = session?.trackHeights ? { ...(session.trackHeights as Record<string, number>) } : {};
       if (deps.selectionRange) {
-        deps.selectionRange.value = session?.selectionRange ? { ...session.selectionRange } : null;
+        deps.selectionRange.value = session?.selectionRange ? { ...(session.selectionRange as Record<string, unknown>) } as { startUs: number; endUs: number } : null;
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);

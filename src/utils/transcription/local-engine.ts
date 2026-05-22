@@ -157,7 +157,7 @@ export async function transcribeLocally(
   // We use a conservative factor of 5x to avoid over-promising.
   const estimatedTimeS = Math.max(2, audioDurationS / 5);
   let startTime = Date.now();
-  let progressInterval: any = null;
+  let progressInterval: ReturnType<typeof setInterval> | null = null;
 
   return new Promise((resolve, reject) => {
     const cleanup = () => {

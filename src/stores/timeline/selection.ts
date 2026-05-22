@@ -14,7 +14,11 @@ export interface TimelineSelectionDeps {
     itemId: string;
     edge: 'in' | 'out';
   } | null>;
-  selectionStore?: any;
+  selectionStore?: {
+    clearTimelineSelection?: () => void;
+    selectTimelineTrack?: (trackId: string) => void;
+    selectTimelineItems?: (items: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[]) => void;
+  };
 }
 
 export interface TimelineSelectionModule {

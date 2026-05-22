@@ -6,11 +6,14 @@ export interface ClipRangesS {
   sourceEndS: number;
 }
 
-export function getClipRangesS(clip: any): ClipRangesS {
-  const timelineStartUs = Number(clip.timelineRange?.startUs || 0);
-  const timelineDurationUs = Number(clip.timelineRange?.durationUs || 0);
-  const sourceStartUs = Number(clip.sourceRange?.startUs || 0);
-  const sourceDurationUs = Number(clip.sourceRange?.durationUs || timelineDurationUs || 0);
+export function getClipRangesS(clip: unknown): ClipRangesS {
+  const c = clip as Record<string, unknown>;
+  const timelineRange = c.timelineRange as Record<string, unknown> | undefined;
+  const sourceRange = c.sourceRange as Record<string, unknown> | undefined;
+  const timelineStartUs = Number(timelineRange?.startUs ?? 0);
+  const timelineDurationUs = Number(timelineRange?.durationUs ?? 0);
+  const sourceStartUs = Number(sourceRange?.startUs ?? 0);
+  const sourceDurationUs = Number(sourceRange?.durationUs ?? timelineDurationUs ?? 0);
 
   const timelineStartS = Math.max(0, usToS(timelineStartUs));
   const sourceStartS = Math.max(0, usToS(sourceStartUs));
@@ -23,10 +26,11 @@ export function getClipRangesS(clip: any): ClipRangesS {
   };
 }
 
-export function computeMaxAudioDurationUs(clips: any[]): number {
-  return clips.reduce((max, clip) => {
-    const endUs =
-      Number(clip.timelineRange?.startUs || 0) + Number(clip.timelineRange?.durationUs || 0);
+export function computeMaxAudioDurationUs(clips: unknown[]): number {
+  return clips.reduce<number>((max, clip) => {
+    const c = clip as Record<string, unknown>;
+    const timelineRange = c.timelineRange as Record<string, unknown> | undefined;
+    const endUs = Number(timelineRange?.startUs ?? 0) + Number(timelineRange?.durationUs ?? 0);
     return Math.max(max, endUs);
   }, 0);
 }

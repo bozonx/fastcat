@@ -1,8 +1,9 @@
 import type { ShapeConfig, ShapeType } from '~/timeline/types';
 import { parseHexColor } from '../../utils';
+import type { Graphics } from 'pixi.js';
 
 export interface ShapeDrawParams {
-  graphics: any;
+  graphics: Graphics;
   type: ShapeType;
   fill: string;
   stroke: string;

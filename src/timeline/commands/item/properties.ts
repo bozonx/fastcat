@@ -809,7 +809,7 @@ export function updateClipTransition(
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || item.kind !== 'clip') return { next: doc };
 
-  function coerceTransition(raw: any): {
+  function coerceTransition(raw: unknown): {
     type: string;
     durationUs: number;
     mode: TransitionMode;
@@ -818,26 +818,27 @@ export function updateClipTransition(
     isOverridden?: boolean;
   } | null {
     if (!raw) return null;
-    const type = typeof raw.type === 'string' ? raw.type : '';
-    const durationUs = Number(raw.durationUs);
+    const rawObj = raw as Record<string, unknown>;
+    const type = typeof rawObj.type === 'string' ? rawObj.type : '';
+    const durationUs = Number(rawObj.durationUs);
     if (!type) return null;
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
       return {
         type,
         durationUs: 0,
-        mode: normalizeTransitionMode(raw.mode),
-        curve: normalizeTransitionCurve(raw.curve),
-        params: normalizeTransitionParams(type, raw.params) as Record<string, unknown> | undefined,
-        isOverridden: raw.isOverridden,
+        mode: normalizeTransitionMode(rawObj.mode),
+        curve: normalizeTransitionCurve(rawObj.curve),
+        params: normalizeTransitionParams(type, rawObj.params as Record<string, unknown> | undefined),
+        isOverridden: rawObj.isOverridden as boolean | undefined,
       };
     }
     return {
       type,
       durationUs: Math.max(0, Math.round(durationUs)),
-      mode: normalizeTransitionMode(raw.mode),
-      curve: normalizeTransitionCurve(raw.curve),
-      params: normalizeTransitionParams(type, raw.params) as Record<string, unknown> | undefined,
-      isOverridden: raw.isOverridden,
+      mode: normalizeTransitionMode(rawObj.mode),
+      curve: normalizeTransitionCurve(rawObj.curve),
+      params: normalizeTransitionParams(type, rawObj.params as Record<string, unknown> | undefined),
+      isOverridden: rawObj.isOverridden as boolean | undefined,
     };
   }
 

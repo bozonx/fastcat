@@ -4,5 +4,5 @@ export interface FileInfo {
   size?: number;
   lastModified?: number;
   path?: string;
-  metadata?: any;
+  metadata?: unknown;
 }

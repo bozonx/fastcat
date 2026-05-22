@@ -4,7 +4,7 @@ export interface CustomPreset {
   name: string;
   category: 'effect' | 'transition' | 'shape' | 'hud' | 'text';
   effectTarget?: 'video' | 'audio';
-  params: Record<string, any>;
+  params: Record<string, unknown>;
   order: number;
 }
 

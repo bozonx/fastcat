@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue';
-import type { ClipTransform, TimelineClipItem, TrackKind } from '~/timeline/types';
+import type { ClipAnchorPreset, ClipTransform, TimelineClipItem, TrackKind } from '~/timeline/types';
 
 interface UseClipTransformOptions {
   clip: Ref<TimelineClipItem>;
@@ -13,13 +13,13 @@ function clampNumber(value: unknown, min: number, max: number): number {
 }
 
 function getSafeTransform(clip: TimelineClipItem): ClipTransform {
-  const tr = (clip as { transform?: ClipTransform }).transform ?? {};
-  const scaleRaw = tr.scale ?? {};
+  const tr = ((clip as { transform?: ClipTransform }).transform ?? {}) as ClipTransform;
+  const scaleRaw = (tr.scale ?? {}) as Record<string, unknown>;
   const scaleX = typeof scaleRaw.x === 'number' && Number.isFinite(scaleRaw.x) ? scaleRaw.x : 1;
   const scaleY = typeof scaleRaw.y === 'number' && Number.isFinite(scaleRaw.y) ? scaleRaw.y : 1;
   const linked = scaleRaw.linked !== undefined ? Boolean(scaleRaw.linked) : true;
 
-  const positionRaw = tr.position ?? {};
+  const positionRaw = (tr.position ?? {}) as Record<string, unknown>;
   const posX =
     typeof positionRaw.x === 'number' && Number.isFinite(positionRaw.x) ? positionRaw.x : 0;
   const posY =
@@ -28,7 +28,7 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
   const rotationDeg =
     typeof tr.rotationDeg === 'number' && Number.isFinite(tr.rotationDeg) ? tr.rotationDeg : 0;
 
-  const anchorRaw = tr.anchor ?? {};
+  const anchorRaw = (tr.anchor ?? {}) as Record<string, unknown>;
   const preset =
     anchorRaw.preset === 'center' ||
     anchorRaw.preset === 'topLeft' ||
@@ -43,7 +43,7 @@ function getSafeTransform(clip: TimelineClipItem): ClipTransform {
   const anchorY =
     typeof anchorRaw.y === 'number' && Number.isFinite(anchorRaw.y) ? anchorRaw.y : 0.5;
 
-  const cropRaw = tr.crop ?? {};
+  const cropRaw = (tr.crop ?? {}) as Record<string, unknown>;
   const cropTop = typeof cropRaw.top === 'number' && Number.isFinite(cropRaw.top) ? cropRaw.top : 0;
   const cropBottom =
     typeof cropRaw.bottom === 'number' && Number.isFinite(cropRaw.bottom) ? cropRaw.bottom : 0;
@@ -237,7 +237,7 @@ export function useClipTransform(options: UseClipTransformOptions) {
       if (preset === 'custom') {
         updateSelectedClipTransform({ anchor: { preset: 'custom', x: 0.5, y: 0.5 } });
       } else {
-        updateSelectedClipTransform({ anchor: { preset: preset as string } });
+        updateSelectedClipTransform({ anchor: { preset: preset as ClipAnchorPreset } });
       }
     },
   });

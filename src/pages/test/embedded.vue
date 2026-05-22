@@ -17,9 +17,9 @@ const assets = [
   { url: 'https://picsum.photos/seed/fastcat/1280/720.jpg' },
 ];
 
-function onExported(data: any) {
+function onExported(data: unknown) {
   console.log('[TestPage] Exported successfully:', data);
-  const { file, filename } = data;
+  const { file, filename } = data as { file: Blob; filename: string };
 
   // Create download link for testing
   const url = URL.createObjectURL(file);

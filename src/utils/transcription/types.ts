@@ -20,7 +20,7 @@ export interface TranscriptionRecord {
   language: string;
   provider: string;
   models: string[];
-  response: any;
+  response: unknown;
 }
 
 export interface TranscriptionResult {

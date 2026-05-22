@@ -21,9 +21,10 @@ import { TimelineClipFastCatMetaSchema } from './schemas';
 
 export function parseItemSequenceDurationUs(child: unknown): number {
   if (!child || typeof child !== 'object') return 0;
-  const schema = child.OTIO_SCHEMA;
+  const obj = child as Record<string, unknown>;
+  const schema = obj.OTIO_SCHEMA;
   if (schema === 'Gap.1' || schema === 'Clip.1' || schema === 'Clip.2') {
-    return Math.max(0, fromRationalTimeUs(child?.source_range?.duration));
+    return Math.max(0, fromRationalTimeUs((obj.source_range as Record<string, unknown>)?.duration));
   }
   return 0;
 }
@@ -141,7 +142,7 @@ export function parseClipItem(input: {
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);
 
-  const ref = otio.media_reference as unknown as { OTIO_SCHEMA?: string; target_url?: string };
+  const ref = otio.media_reference as unknown as { OTIO_SCHEMA?: string; target_url?: string; available_range?: unknown };
   const path =
     ref?.OTIO_SCHEMA === 'ExternalReference.1' && typeof ref.target_url === 'string'
       ? ref.target_url
@@ -266,7 +267,7 @@ export function parseClipItem(input: {
     sourceOrientation: fastcatMeta.visual?.sourceOrientation,
     transform: coerceTransform(fastcatMeta.transform),
     transformActive: fastcatMeta.flags?.transformActive,
-    mask: fastcatMeta.mask as unknown,
+    mask: fastcatMeta.mask as import('~/timeline/types').ClipMask | undefined,
     maskActive: fastcatMeta.flags?.maskActive,
   };
 
@@ -306,7 +307,7 @@ export function parseClipItem(input: {
             'Text'),
       style:
         typeData?.kind === 'text'
-          ? typeData.style
+          ? (typeData.style as import('~/timeline/types').TextClipStyle | undefined)
           : (
               fastcatMeta.typeData as unknown as {
                 text?: { style?: import('~/timeline/types').TextClipStyle };
@@ -318,48 +319,48 @@ export function parseClipItem(input: {
   if (clipType === 'shape') {
     const shapeData =
       typeData?.kind === 'shape'
-        ? typeData
-        : (fastcatMeta.typeData as unknown as { shape?: unknown })?.shape;
+        ? (typeData as Record<string, unknown>)
+        : ((fastcatMeta.typeData as unknown as { shape?: unknown })?.shape as Record<string, unknown> | undefined);
     return {
       ...base,
       clipType: 'shape',
       sourceDurationUs,
       timelineRange: finalTimelineRange,
       sourceRange: finalSourceRange,
-      shapeType: (shapeData?.type ?? 'square') as string,
+      shapeType: (shapeData?.type ?? 'square') as import('~/timeline/types').ShapeType,
       fillColor:
-        shapeData?.fillColor && shapeData.fillColor.trim().length > 0
-          ? shapeData.fillColor
+        shapeData?.fillColor && String(shapeData.fillColor).trim().length > 0
+          ? String(shapeData.fillColor)
           : '#ffffff',
       strokeColor:
-        shapeData?.strokeColor && shapeData.strokeColor.trim().length > 0
-          ? shapeData.strokeColor
+        shapeData?.strokeColor && String(shapeData.strokeColor).trim().length > 0
+          ? String(shapeData.strokeColor)
           : '#000000',
-      strokeWidth: shapeData?.strokeWidth ?? 0,
-      shapeConfig: shapeData?.config as unknown,
+      strokeWidth: typeof shapeData?.strokeWidth === 'number' ? shapeData.strokeWidth : 0,
+      shapeConfig: shapeData?.config as import('~/timeline/types').ShapeConfig | undefined,
     };
   }
 
   if (clipType === 'hud') {
     const hudData =
       typeData?.kind === 'hud'
-        ? typeData
-        : (fastcatMeta.typeData as unknown as { hud?: unknown })?.hud;
+        ? (typeData as Record<string, unknown>)
+        : ((fastcatMeta.typeData as unknown as { hud?: unknown })?.hud as Record<string, unknown> | undefined);
     return {
       ...base,
       clipType: 'hud',
-      hudType: (hudData?.type ?? 'media_frame') as string,
-      background: hudData?.background as unknown,
-      content: hudData?.content as unknown,
-      frame: hudData?.frame as unknown,
+      hudType: (hudData?.type ?? 'media_frame') as 'media_frame',
+      background: hudData?.background as import('~/timeline/types').HudMediaParams | undefined,
+      content: hudData?.content as import('~/timeline/types').HudMediaParams | undefined,
+      frame: hudData?.frame as import('~/timeline/types').HudMediaParams | undefined,
     };
   }
 
   if (clipType === 'timeline') {
-    return { ...base, clipType: 'timeline', source: { path } };
+    return { ...base, clipType: 'timeline', source: { path } } as TimelineClipItem;
   }
 
-  return { ...base, clipType: 'media', source: { path } };
+  return { ...base, clipType: 'media', source: { path } } as TimelineClipItem;
 }
 
 export function parseGapItem(input: {

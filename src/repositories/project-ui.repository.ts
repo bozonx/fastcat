@@ -131,12 +131,12 @@ export function createProjectUiRepository(input: {
         create: false,
       });
       if (!handle) return null;
-      const raw = await readJsonFromFileHandle<any>(handle);
+      const raw = await readJsonFromFileHandle<unknown>(handle);
       if (!raw) return null;
 
       const parsed = ProjectUiSettingsSchema.safeParse({
-        ...raw,
-        monitors: raw.monitors ?? {},
+        ...(raw as Record<string, unknown>),
+        monitors: (raw as Record<string, unknown>).monitors ?? {},
       });
 
       if (!parsed.success) {

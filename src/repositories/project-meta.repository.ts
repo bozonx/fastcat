@@ -37,7 +37,7 @@ export function createProjectMetaRepository(input: {
         create: false,
       });
       if (!handle) return null;
-      const raw = await readJsonFromFileHandle<any>(handle);
+      const raw = await readJsonFromFileHandle<unknown>(handle);
       if (!raw) return null;
 
       const parsed = ProjectMetaSchema.safeParse(raw);

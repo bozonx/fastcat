@@ -1,3 +1,3 @@
 export interface I18nService {
-  t: (key: string, ...args: any[]) => string;
+  t: (key: string, ...args: unknown[]) => string;
 }

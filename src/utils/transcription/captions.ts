@@ -61,24 +61,25 @@ function isWordLike(value: unknown): value is TranscriptionWord {
   );
 }
 
-function normalizeWord(word: any): TranscriptionWord | null {
-  const text = (word.text || '').trim();
+function normalizeWord(word: unknown): TranscriptionWord | null {
+  const w = word as Record<string, unknown>;
+  const text = String(w.text || '').trim();
   if (!text) return null;
 
   let start: number;
   let end: number;
 
-  if (Array.isArray(word.timestamp)) {
+  if (Array.isArray(w.timestamp)) {
     // Whisper gives seconds, convert to ms with precision
-    start = word.timestamp[0] * 1000;
-    end = word.timestamp[1] * 1000;
+    start = (w.timestamp as number[])[0]! * 1000;
+    end = (w.timestamp as number[])[1]! * 1000;
   } else {
     // Assume already in ms or seconds based on value magnitude
     // (Whisper won't have start > 1000000 normally)
-    const isLikelySeconds = word.start < 100000 && word.end - word.start < 60;
+    const isLikelySeconds = Number(w.start) < 100000 && Number(w.end) - Number(w.start) < 60;
     const factor = isLikelySeconds ? 1000 : 1;
-    start = word.start * factor;
-    end = word.end * factor;
+    start = Number(w.start) * factor;
+    end = Number(w.end) * factor;
   }
 
   if (isNaN(start) || isNaN(end)) return null;
@@ -87,7 +88,7 @@ function normalizeWord(word: any): TranscriptionWord | null {
     start: Math.round(start),
     end: Math.round(end),
     text,
-    confidence: typeof word.confidence === 'number' ? word.confidence : undefined,
+    confidence: typeof w.confidence === 'number' ? w.confidence : undefined,
   };
 }
 

@@ -16,26 +16,29 @@ export function normalizeTrackOpacity(value: unknown): number | undefined {
 }
 
 export function buildTrackRuntimeList(
-  timelineItems: any[],
+  timelineItems: unknown[],
   toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined,
 ): TrackRuntimeDefinition[] {
   const explicitTracks = timelineItems
-    .filter((item) => item && typeof item === 'object' && item.kind === 'track')
-    .map((track) => ({
-      id:
-        typeof track.id === 'string' && track.id.length > 0
-          ? track.id
-          : `track_${String(track.layer ?? 0)}`,
-      layer: Math.round(Number(track.layer ?? 0)),
-      opacity: normalizeTrackOpacity(track.opacity),
-      blendMode: resolveBlendMode(track.blendMode),
-      effects: toVideoEffects(track.effects),
-    }));
+    .filter((item) => item && typeof item === 'object' && (item as Record<string, unknown>).kind === 'track')
+    .map((track) => {
+      const t = track as Record<string, unknown>;
+      return {
+        id:
+          typeof t.id === 'string' && t.id.length > 0
+            ? t.id
+            : `track_${String(t.layer ?? 0)}`,
+        layer: Math.round(Number(t.layer ?? 0)),
+        opacity: normalizeTrackOpacity(t.opacity),
+        blendMode: resolveBlendMode(t.blendMode),
+        effects: toVideoEffects(t.effects),
+      };
+    });
 
   const inferredLayers = new Set<number>();
   for (const item of timelineItems) {
-    if (!item || typeof item !== 'object' || item.kind !== 'clip') continue;
-    inferredLayers.add(Math.round(Number(item.layer ?? 0)));
+    if (!item || typeof item !== 'object' || (item as Record<string, unknown>).kind !== 'clip') continue;
+    inferredLayers.add(Math.round(Number((item as Record<string, unknown>).layer ?? 0)));
   }
 
   const explicitLayers = new Set(explicitTracks.map((track) => track.layer));
