@@ -17,7 +17,6 @@ import {
   MAX_TIMELINE_ZOOM_POSITION,
   MIN_TIMELINE_ZOOM_POSITION,
   timelineZoomPositionToScale,
-  timelineZoomScaleToPosition,
 } from '~/utils/zoom';
 import { LAYER_OPTIONS } from '~/utils/hotkeys/layerUtils';
 import type { TextClipStyle } from '~/timeline/types';
@@ -121,10 +120,6 @@ function selectToolbarSnapMode(mode: ToolbarSnapMode) {
   settingsStore.selectToolbarSnapMode(mode);
 }
 
-function selectToolbarDragMode(mode: ToolbarDragMode) {
-  settingsStore.selectToolbarDragMode(mode);
-}
-
 function toggleTrimMode(event?: MouseEvent) {
   event?.preventDefault();
   event?.stopPropagation();
@@ -132,23 +127,6 @@ function toggleTrimMode(event?: MouseEvent) {
 }
 
 const isSnapSettingsDisabled = computed(() => settingsStore.toolbarSnapMode !== 'snap');
-
-const textPresetItems = computed(() => {
-  const standard = [
-    { id: 'default', label: t('fastcat.library.texts.default') },
-    { id: 'title', label: t('fastcat.library.texts.title') },
-    { id: 'subtitle', label: t('fastcat.library.texts.subtitle') },
-  ];
-
-  const custom = presetsStore.customPresets
-    .filter((p) => p.category === 'text')
-    .map((p) => ({
-      id: p.id,
-      label: p.name,
-    }));
-
-  return [...standard, ...custom];
-});
 
 const standardTextPresets = computed<Record<string, { style: TextClipStyle; text?: string }>>(
   () => ({
