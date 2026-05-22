@@ -1,5 +1,5 @@
 import type { Sprite } from 'pixi.js';
-import { Graphics, ImageSource, RenderTexture } from 'pixi.js';
+import { RenderTexture } from 'pixi.js';
 import { safeDispose } from '../utils';
 import type { LayoutApplier } from './LayoutApplier';
 import type { TransitionManager } from './TransitionManager';

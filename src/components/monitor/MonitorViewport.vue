@@ -5,7 +5,7 @@
  * Additional SVG elements (grid, transform handles, etc.) should be added inside the svg-overlay slot.
  * Canvas content is placed via the default slot inside the canvas wrapper.
  */
-import { toRef, ref, computed } from 'vue';
+import { toRef, ref, watch } from 'vue';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import { useProjectStore } from '~/stores/project.store';
@@ -61,15 +61,19 @@ const {
   renderHeight: toRef(props, 'renderHeight'),
 });
 
-const activeMarkers = computed<TimelineMarker[]>(() => {
-  const time = props.uiCurrentTimeUs;
-  const markers = timelineStore.markers;
-  return markers.filter((m) => {
-    if (!m.text.trim()) return false;
-    if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
-    return Math.abs(time - m.timeUs) < 1000;
-  });
-});
+const activeMarkers = ref<TimelineMarker[]>([]);
+
+watch(
+  [() => props.uiCurrentTimeUs, () => timelineStore.markers],
+  ([time, markers]) => {
+    activeMarkers.value = markers.filter((m) => {
+      if (!m.text.trim()) return false;
+      if (m.durationUs != null) return time >= m.timeUs && time < m.timeUs + m.durationUs;
+      return Math.abs(time - m.timeUs) < 1000;
+    });
+  },
+  { immediate: true },
+);
 
 defineExpose({
   viewportEl,

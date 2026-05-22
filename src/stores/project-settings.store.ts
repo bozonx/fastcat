@@ -27,8 +27,6 @@ import {
   useFileManagerStore,
   useFilesPageFileManagerStore,
   useFilesPageSidebarFileManagerStore,
-  useComputerSidebarStore,
-  useBloggerDogSidebarStore,
 } from './file-manager.store';
 
 interface ProjectSettingsRepo {

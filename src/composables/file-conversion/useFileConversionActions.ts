@@ -60,7 +60,7 @@ interface UseFileConversionActionsProps {
     onlyCodec: 'opus' | 'aac';
     onlyBitrateKbps: number;
     channels: number;
-    sampleRate: number;
+    sampleRate: number | 'original';
     reverse: boolean;
     originalSampleRate: number | null;
     originalChannels: number | null;
@@ -301,7 +301,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
-          props.audioSettings.sampleRate = 0;
+          props.audioSettings.sampleRate = 'original';
           props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
             ? Math.round(meta.audio.bitrate / 1000)
             : 0;
@@ -310,7 +310,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           props.sourceHasAudio.value = false;
           props.videoSettings.excludeAudio = true;
           props.audioSettings.originalSampleRate = null;
-          props.audioSettings.sampleRate = 0;
+          props.audioSettings.sampleRate = 'original';
           props.audioSettings.onlyBitrateKbps = 0;
         }
       } catch (err) {
@@ -331,7 +331,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       props.audioSettings.channels = 2;
       props.audioSettings.originalSampleRate = null;
       props.audioSettings.originalChannels = null;
-      props.audioSettings.sampleRate = 0;
+      props.audioSettings.sampleRate = 'original';
       syncAudioOnlyCodecWithFormat();
 
       try {
@@ -352,14 +352,14 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
             1,
             Math.round(Number(meta.audio.sampleRate) || 0),
           );
-          props.audioSettings.sampleRate = 0;
+          props.audioSettings.sampleRate = 'original';
           props.audioSettings.onlyBitrateKbps = meta.audio.bitrate
             ? Math.round(meta.audio.bitrate / 1000)
             : 0;
         } else {
           props.audioSettings.originalSampleRate = null;
           props.audioSettings.originalChannels = null;
-          props.audioSettings.sampleRate = 0;
+          props.audioSettings.sampleRate = 'original';
           props.audioSettings.onlyBitrateKbps = 0;
         }
       } catch (err) {
@@ -411,7 +411,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     } else newExt = props.videoSettings.format;
 
     const sampleRate =
-      props.audioSettings.sampleRate === 0
+      props.audioSettings.sampleRate === 'original'
         ? props.audioSettings.originalSampleRate
         : clampPositiveNumber(Number(props.audioSettings.sampleRate), 0);
 

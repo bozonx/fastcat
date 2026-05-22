@@ -23,7 +23,7 @@ const props = withDefaults(
 
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<number>('audioChannels', { required: true });
-const audioSampleRate = defineModel<number>('audioSampleRate', { required: true });
+const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', { required: true });
 const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 
 const { t } = useI18n();
@@ -65,7 +65,7 @@ const sampleRateOptions = computed(() => {
 
   return [
     ...(props.allowOriginalSampleRate
-      ? [{ value: 0, label: formatSampleRateLabel(original) }]
+      ? [{ value: 'original' as const, label: formatSampleRateLabel(original) }]
       : []),
     { value: 44100, label: '44.1 kHz' },
     { value: 48000, label: '48 kHz' },
@@ -73,18 +73,15 @@ const sampleRateOptions = computed(() => {
   ];
 });
 
-const selectedSampleRateOption = computed({
-  get: () => {
-    const currentValue = Number(audioSampleRate.value);
-    return sampleRateOptions.value.find((option) => option.value === currentValue) ?? currentValue;
-  },
+const selectedSampleRate = computed({
+  get: () => audioSampleRate.value,
   set: (value: unknown) => {
     if (typeof value === 'object' && value !== null && 'value' in value) {
-      audioSampleRate.value = Number(value.value) || 0;
+      audioSampleRate.value = value.value as number | 'original';
       return;
     }
 
-    audioSampleRate.value = Number(value) || 0;
+    audioSampleRate.value = value as number | 'original';
   },
 });
 </script>
@@ -121,7 +118,7 @@ const selectedSampleRateOption = computed({
           {{ t('videoEditor.audio.sampleRate') }}
         </label>
         <UiSelect
-          v-model="selectedSampleRateOption"
+          v-model="selectedSampleRate"
           :items="sampleRateOptions"
           :disabled="props.disabled"
           :searchable="false"

@@ -246,7 +246,6 @@ export function updateClipProperties(
               // new geometry would collide with the locked clip.
               if (curr.locked) {
                 const lockedStartUs = curr.timelineRange.startUs;
-                const lockedEndUs = lockedStartUs + curr.timelineRange.durationUs;
                 const rippledEndOfCurrent = nextClips
                   .slice(0, i)
                   .reduce(
@@ -809,8 +808,6 @@ export function updateClipTransition(
   const track = getTrackById(doc, cmd.trackId);
   const item = track.items.find((x) => x.id === cmd.itemId);
   if (!item || item.kind !== 'clip') return { next: doc };
-
-  const itemId = item.id;
 
   function coerceTransition(raw: any): {
     type: string;

@@ -209,4 +209,60 @@ describe('timeline/commands split_item', () => {
     expect(leftAudio).toBeTruthy();
     expect(rightAudio).toBeTruthy();
   });
+
+  it('redirects split of locked audio to the linked video clip', () => {
+    const doc = makeDoc([
+      {
+        id: 'v1',
+        kind: 'video',
+        name: 'V1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'vclip',
+            trackId: 'v1',
+            name: 'Video',
+            source: { path: 'a.mp4' },
+            sourceDurationUs: 10_000_000,
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          },
+        ],
+      },
+      {
+        id: 'a1',
+        kind: 'audio',
+        name: 'A1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'aclip',
+            trackId: 'a1',
+            name: 'Audio',
+            source: { path: 'a.mp4' },
+            sourceDurationUs: 10_000_000,
+            linkedVideoClipId: 'vclip',
+            lockToLinkedVideo: true,
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          },
+        ],
+      },
+    ]);
+
+    const { next } = applyTimelineCommand(doc, {
+      type: 'split_item',
+      trackId: 'a1',
+      itemId: 'aclip',
+      atUs: 500_000,
+    });
+
+    const videoClips = next.tracks[0]?.items.filter((x) => x.kind === 'clip') as any[];
+    expect(videoClips.length).toBe(2);
+
+    const audioClips = next.tracks[1]?.items.filter((x) => x.kind === 'clip') as any[];
+    expect(audioClips.length).toBe(2);
+  });
 });

@@ -250,8 +250,6 @@ export const barnDoorManifest: TransitionManifest<BarnDoorParams> = {
     const progress = applyTransitionCurve(context.progress, context.curve);
     const params = normalizeBarnDoorParams(context.params);
 
-    const fromTex = context.fromTexture;
-    const toTex = context.toTexture;
     const applyToEdgeBlur = context.edge === 'in' ? 1 : 0;
 
     const angleRad = params.angle * (Math.PI / 180);

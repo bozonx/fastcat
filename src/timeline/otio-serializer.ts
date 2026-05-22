@@ -39,13 +39,11 @@ import {
   buildOtioTransition,
   parseOtioTransition,
   serializeTimeEffects,
-  parseTimeEffects,
 } from './otio/serialization';
 import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
 import {
   TimelineDocFastCatMetaSchema,
   TimelineTrackFastCatMetaSchema,
-  TimelineClipFastCatMetaSchema,
 } from './otio/schemas';
 import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
 

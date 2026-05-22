@@ -11,6 +11,7 @@ import {
   normalizeGaps,
   quantizeRangeToFrames,
   autoAdaptChangedTracks,
+  findClipById,
 } from '../utils';
 import { cloneValue } from '~/utils/clone';
 
@@ -43,7 +44,15 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   }
 
   if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
-    throw new Error('Locked audio clip');
+    const videoLoc = findClipById(doc, item.linkedVideoClipId);
+    if (!videoLoc || videoLoc.track.kind !== 'video' || videoLoc.item.kind !== 'clip') {
+      return { next: doc };
+    }
+    return splitItem(doc, {
+      ...cmd,
+      trackId: videoLoc.track.id,
+      itemId: videoLoc.item.id,
+    });
   }
 
   const fps = getDocFps(doc);
