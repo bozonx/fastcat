@@ -33,7 +33,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => ({
     userSettings: {
-      optimization: { previewRenderer: 'webgl', videoFrameCacheMb: 256 },
+      optimization: { pixiRenderer: 'webgl', videoFrameCacheMb: 256 },
       projectDefaults: { audioDeclickDurationUs: 5000 },
       timeline: { defaultStaticClipDurationUs: 5000000 },
     },

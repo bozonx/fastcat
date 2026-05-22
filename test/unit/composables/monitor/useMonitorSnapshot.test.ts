@@ -119,7 +119,12 @@ describe('useMonitorSnapshot', () => {
     mockProjectStore.getProjectFileHandleByRelativePath
       .mockResolvedValueOnce({}) // original exists
       .mockResolvedValueOnce(null) // _001 doesn't exist
-      .mockResolvedValueOnce({}); // Actual save (just mock something)
+      .mockResolvedValueOnce({
+        createWritable: vi.fn().mockResolvedValue({
+          write: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+        }),
+      }); // Actual save (just mock something)
 
     await createStopFrameSnapshot();
 

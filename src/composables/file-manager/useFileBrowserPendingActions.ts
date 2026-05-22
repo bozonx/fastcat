@@ -37,8 +37,9 @@ export function useFileBrowserPendingActions({
   const selectionStore = useSelectionStore();
 
   function matchesInstance(selected: unknown): boolean {
-    if (selected?.source !== 'fileManager') return false;
-    if (selected.instanceId) return selected.instanceId === instanceId;
+    const s = selected as Record<string, unknown>;
+    if (s?.source !== 'fileManager') return false;
+    if (s.instanceId) return s.instanceId === instanceId;
     return true;
   }
 
@@ -139,7 +140,7 @@ export function useFileBrowserPendingActions({
           return;
         }
       }
-      handlePendingBloggerDogCreateSubgroup(entry);
+      handlePendingBloggerDogCreateSubgroup(entry as FsEntry);
     },
   );
 
@@ -152,7 +153,7 @@ export function useFileBrowserPendingActions({
           return;
         }
       }
-      handlePendingBloggerDogCreateItem(entry);
+      handlePendingBloggerDogCreateItem(entry as FsEntry);
     },
   );
 
