@@ -42,6 +42,20 @@ describe('useClipboardStore', () => {
       });
       expect(store.hasTimelinePayload).toBe(true);
     });
+
+    it('computes hasClipParametersPayload', () => {
+      const store = useClipboardStore();
+      expect(store.hasClipParametersPayload).toBe(false);
+      store.setClipboardPayload({
+        source: 'clipParameters',
+        snapshot: {
+          clipType: 'media',
+          trackKind: 'video',
+          groups: { opacity: { opacity: 0.5 } },
+        },
+      });
+      expect(store.hasClipParametersPayload).toBe(true);
+    });
   });
 
   describe('drag operations', () => {

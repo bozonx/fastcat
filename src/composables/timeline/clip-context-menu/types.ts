@@ -8,6 +8,7 @@ import type {
 } from '~/timeline/types';
 import type { TimelineCommand, UpdateClipPropertiesCommand } from '~/timeline/commands';
 import type { FastCatProjectSettings } from '~/utils/project-settings';
+import type { ClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
 
 export interface ContextMenuAction {
   label: string;
@@ -48,6 +49,9 @@ export interface UseClipContextMenuOptions {
   cutSelectedClips: () => void;
   pasteClips: (insertStartUs?: number) => void;
   hasTimelineClipboard: boolean;
+  copyClipParameters: (clip: TimelineClipItem, trackKind: TimelineTrack['kind']) => void;
+  pasteClipParameters: (clip: TimelineClipItem, trackKind: TimelineTrack['kind']) => void;
+  getClipParametersSnapshot: () => ClipParametersSnapshot | null;
   t: (key: string, ...args: (string | number)[]) => string;
 }
 

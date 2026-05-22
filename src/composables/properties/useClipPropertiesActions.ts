@@ -11,6 +11,7 @@ import type { FsEntry } from '~/types/fs';
 import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -202,6 +203,18 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       options.trackKind.value === 'audio' ||
       clip.clipType === 'media' ||
       clip.clipType === 'timeline'
+    );
+  });
+
+  const hasApplicableClipParameters = computed(() => {
+    const payload = clipboardStore.clipboardPayload;
+    if (!payload || payload.source !== 'clipParameters') return false;
+    return (
+      getApplicableClipParameterGroups({
+        snapshot: payload.snapshot,
+        targetClip: options.clip.value,
+        targetTrackKind: options.trackKind.value,
+      }).length > 0
     );
   });
 
@@ -483,6 +496,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       onClick?: () => void;
       onSelect?: () => void;
       color?: string;
+      disabled?: boolean;
     }[] = [];
     const clip = options.clip.value;
 
@@ -494,6 +508,25 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         onClick: handleQuantizeClip,
       });
     }
+
+    list.push({
+      id: 'copy-parameters',
+      label: t('fastcat.clip.parameters.copy'),
+      icon: 'i-heroicons-clipboard-document',
+      onClick: () => {
+        /* Handled in components since it needs clipboard formatting */
+      },
+    });
+
+    list.push({
+      id: 'paste-parameters',
+      label: t('fastcat.clip.parameters.paste'),
+      icon: 'i-heroicons-clipboard-document-check',
+      disabled: !hasApplicableClipParameters.value || options.clip.value.locked,
+      onClick: () => {
+        /* Handled in components since it needs modal state */
+      },
+    });
 
     if (linkedAudioClip.value) {
       list.push({

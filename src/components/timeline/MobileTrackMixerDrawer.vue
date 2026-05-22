@@ -250,7 +250,7 @@ function handleRenameTrack(name: string) {
         <div
           v-for="track in filteredTracks"
           :key="track.id"
-          class="shrink-0 w-32 rounded-xl border border-ui-border/80 bg-zinc-900/40 p-3 flex flex-col transition-colors group snap-start relative"
+          class="shrink-0 w-32 rounded-xl border border-ui-border/80 bg-ui-bg-elevated/40 p-3 flex flex-col transition-colors group snap-start relative"
         >
           <!-- Top: Info & Display row -->
           <div class="flex flex-col items-center mb-3 gap-2">
@@ -271,7 +271,7 @@ function handleRenameTrack(name: string) {
             </div>
 
             <span
-              class="text-xs font-medium text-zinc-200 truncate w-full text-center px-1 cursor-text"
+              class="text-xs font-medium text-ui-text truncate w-full text-center px-1 cursor-text"
               @dblclick="
                 trackToRename = track;
                 isRenameModalOpen = true;

@@ -529,7 +529,7 @@ const menuItems = computed(() => [
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-zinc-950 text-zinc-200">
+  <div class="flex flex-col h-full bg-ui-bg text-ui-text">
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />
 
     <!-- Navigation (Breadcrumbs/Back) -->

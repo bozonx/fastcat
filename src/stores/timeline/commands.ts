@@ -120,11 +120,24 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     applyTimeline,
     getFileHandleByPath,
     getFileByPath,
-    getOrFetchMetadataByPath: getOrFetchMetadataByPath as (path: string) => Promise<import('~/timeline/application/timelineCommandService').TimelineMediaMetadata | null>,
-    getMediaMetadataByPath: (path) => (mediaMetadata.value[path] ?? null) as import('~/timeline/application/timelineCommandService').TimelineMediaMetadata | null,
-    fetchMediaMetadataByPath: getOrFetchMetadataByPath as (path: string) => Promise<import('~/timeline/application/timelineCommandService').TimelineMediaMetadata | null>,
-    getUserSettings: getUserSettings as () => import('~/utils/settings/defaults').FastCatUserSettings,
-    getProjectSettings: getProjectSettings as () => import('~/utils/project-settings').FastCatProjectSettings,
+    getOrFetchMetadataByPath: getOrFetchMetadataByPath as (
+      path: string,
+    ) => Promise<
+      import('~/timeline/application/timelineCommandService').TimelineMediaMetadata | null
+    >,
+    getMediaMetadataByPath: (path) =>
+      (mediaMetadata.value[path] ?? null) as
+        | import('~/timeline/application/timelineCommandService').TimelineMediaMetadata
+        | null,
+    fetchMediaMetadataByPath: getOrFetchMetadataByPath as (
+      path: string,
+    ) => Promise<
+      import('~/timeline/application/timelineCommandService').TimelineMediaMetadata | null
+    >,
+    getUserSettings:
+      getUserSettings as () => import('~/utils/settings/defaults').FastCatUserSettings,
+    getProjectSettings:
+      getProjectSettings as () => import('~/utils/project-settings').FastCatProjectSettings,
     updateTimelineFormat,
     showFpsWarning: (fileFps, projectFps) => {
       toast.add({
@@ -151,10 +164,12 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
       ensureProxy,
     } satisfies Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>,
     get defaultImageDurationUs() {
-      return (getUserSettings() as import('~/utils/settings/defaults').FastCatUserSettings).timeline.defaultStaticClipDurationUs;
+      return (getUserSettings() as import('~/utils/settings/defaults').FastCatUserSettings).timeline
+        .defaultStaticClipDurationUs;
     },
     get defaultImageSourceDurationUs() {
-      return (getUserSettings() as import('~/utils/settings/defaults').FastCatUserSettings).timeline.defaultStaticClipDurationUs;
+      return (getUserSettings() as import('~/utils/settings/defaults').FastCatUserSettings).timeline
+        .defaultStaticClipDurationUs;
     },
     parseTimelineFromOtio,
     selectTimelineDurationUs,

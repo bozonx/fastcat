@@ -739,15 +739,11 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         </li>
         <li v-if="isVideoCodecUnsupported">
           {{ t('videoEditor.fileManager.compatibility.videoCodecUnsupported') }}
-          <span v-if="videoCodecLabel" class="opacity-60">
-            ({{ videoCodecLabel }})
-          </span>
+          <span v-if="videoCodecLabel" class="opacity-60"> ({{ videoCodecLabel }}) </span>
         </li>
         <li v-if="isAudioCodecUnsupported">
           {{ t('videoEditor.fileManager.compatibility.audioCodecUnsupported') }}
-          <span v-if="audioCodecLabel" class="opacity-60">
-            ({{ audioCodecLabel }})
-          </span>
+          <span v-if="audioCodecLabel" class="opacity-60"> ({{ audioCodecLabel }}) </span>
         </li>
       </ul>
     </div>
@@ -1019,7 +1015,9 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           selectedFsEntry.kind === 'file'
         "
         :title="generalInfoTitle"
-        :file-info="(fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo"
+        :file-info="
+          (fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo
+        "
         :selected-path="selectedPath"
         :is-hidden="isHidden"
         :format-bytes="formatBytes"
@@ -1056,7 +1054,9 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           !isBloggerDogGroup
         "
         :title="generalInfoTitle"
-        :file-info="(fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo"
+        :file-info="
+          (fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo
+        "
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"
         :is-hidden="isHidden"

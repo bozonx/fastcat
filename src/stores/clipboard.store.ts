@@ -4,6 +4,7 @@ import { computed, ref, shallowRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import type { ClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
 import type {
   FileManagerDragCursorOperation,
   FileManagerDraggedItem,
@@ -21,7 +22,7 @@ export interface TimelineClipboardItem {
   clip: TimelineClipItem;
 }
 
-export type ClipboardSource = 'fileManager' | 'timeline';
+export type ClipboardSource = 'fileManager' | 'timeline' | 'clipParameters';
 export type ClipboardOperation = 'copy' | 'cut';
 
 export interface FileManagerClipboardPayload {
@@ -37,7 +38,15 @@ export interface TimelineClipboardPayload {
   items: TimelineClipboardItem[];
 }
 
-export type AppClipboardPayload = FileManagerClipboardPayload | TimelineClipboardPayload;
+export interface ClipParametersClipboardPayload {
+  source: 'clipParameters';
+  snapshot: ClipParametersSnapshot;
+}
+
+export type AppClipboardPayload =
+  | FileManagerClipboardPayload
+  | TimelineClipboardPayload
+  | ClipParametersClipboardPayload;
 
 export const useClipboardStore = defineStore('clipboard', () => {
   const clipboardPayload = ref<AppClipboardPayload | null>(null);
@@ -57,6 +66,12 @@ export const useClipboardStore = defineStore('clipboard', () => {
 
   const hasTimelinePayload = computed(
     () => clipboardPayload.value?.source === 'timeline' && clipboardPayload.value.items.length > 0,
+  );
+
+  const hasClipParametersPayload = computed(
+    () =>
+      clipboardPayload.value?.source === 'clipParameters' &&
+      Object.keys(clipboardPayload.value.snapshot.groups).length > 0,
   );
 
   function setClipboardPayload(payload: AppClipboardPayload | null) {
@@ -136,6 +151,7 @@ export const useClipboardStore = defineStore('clipboard', () => {
     fileManagerVfsRegistry,
     hasFileManagerPayload,
     hasTimelinePayload,
+    hasClipParametersPayload,
     setClipboardPayload,
     clearClipboardPayload,
     setCurrentDragOperation,

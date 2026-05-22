@@ -1,6 +1,7 @@
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { isClipFreePosition } from './utils';
+import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 
 export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup {
   const track = options.track.value;
@@ -275,8 +276,18 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
   const item = options.item.value;
   const isTrackLocked = Boolean(track.locked);
   const isLocked = item.kind === 'clip' && Boolean((item as TimelineClipItem).locked);
+  const clip = item.kind === 'clip' ? (item as TimelineClipItem) : null;
+  const clipParametersSnapshot = options.getClipParametersSnapshot();
+  const hasApplicableClipParameters =
+    clip !== null &&
+    clipParametersSnapshot !== null &&
+    getApplicableClipParameterGroups({
+      snapshot: clipParametersSnapshot,
+      targetClip: clip,
+      targetTrackKind: track.kind,
+    }).length > 0;
 
-  return [
+  const actions: ContextMenuGroup = [
     {
       label: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
@@ -302,4 +313,24 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
       },
     },
   ];
+
+  if (clip) {
+    actions.splice(
+      1,
+      0,
+      {
+        label: options.t('fastcat.clip.parameters.copy'),
+        icon: 'i-heroicons-clipboard-document',
+        onSelect: () => options.copyClipParameters(clip, track.kind),
+      },
+      {
+        label: options.t('fastcat.clip.parameters.paste'),
+        icon: 'i-heroicons-clipboard-document-check',
+        disabled: isTrackLocked || isLocked || !hasApplicableClipParameters,
+        onSelect: () => options.pasteClipParameters(clip, track.kind),
+      },
+    );
+  }
+
+  return actions;
 }

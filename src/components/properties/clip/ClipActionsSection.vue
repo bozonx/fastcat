@@ -22,6 +22,8 @@ const emit = defineEmits<{
   rename: [];
   copy: [];
   cut: [];
+  copyParameters: [];
+  pasteParameters: [];
 }>();
 
 const { t } = useI18n();
@@ -43,7 +45,25 @@ const augmentedCommonActions = computed(() => {
     if (action.id === 'cut') {
       return { ...baseAction, onClick: () => emit('cut') };
     }
+    if (action.id === 'copy-parameters') {
+      return { ...baseAction, onClick: () => emit('copyParameters') };
+    }
+    if (action.id === 'paste-parameters') {
+      return { ...baseAction, onClick: () => emit('pasteParameters') };
+    }
     return baseAction;
+  });
+});
+
+const augmentedOtherActions = computed(() => {
+  return props.otherActions.map((action) => {
+    if (action.id === 'copy-parameters') {
+      return { ...action, onClick: () => emit('copyParameters') };
+    }
+    if (action.id === 'paste-parameters') {
+      return { ...action, onClick: () => emit('pasteParameters') };
+    }
+    return action;
   });
 });
 </script>
@@ -52,7 +72,7 @@ const augmentedCommonActions = computed(() => {
   <PropertySection :title="t('fastcat.clip.actions')">
     <PropertyActionsBlock
       :quick-actions="augmentedCommonActions"
-      :additional-actions="otherActions"
+      :additional-actions="augmentedOtherActions"
     />
   </PropertySection>
 </template>

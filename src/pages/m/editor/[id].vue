@@ -156,7 +156,7 @@ function onDividerPointerDown(e: PointerEvent) {
 <template>
   <div class="flex h-full w-full flex-col">
     <!-- Main Content Area (Virtual Tabs) -->
-    <main class="relative flex-1 min-h-0 overflow-hidden bg-zinc-950">
+    <main class="relative flex-1 min-h-0 overflow-hidden bg-ui-bg">
       <div
         v-if="isOpeningProject"
         class="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-zinc-400"
@@ -192,7 +192,7 @@ function onDividerPointerDown(e: PointerEvent) {
       <div
         v-else-if="activeTab === 'edit'"
         ref="containerRef"
-        class="flex h-full overflow-hidden bg-zinc-950"
+        class="flex h-full overflow-hidden bg-ui-bg"
         :class="[isLandscapeMode ? 'flex-row' : 'flex-col']"
       >
         <MobileMonitorContainer mode="edit" flexible :style="monitorStyle" class="shrink-0" />

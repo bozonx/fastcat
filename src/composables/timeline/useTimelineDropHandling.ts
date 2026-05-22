@@ -308,18 +308,56 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       name: resolveVirtualClipName(item),
       shapeType:
         clipType === 'shape'
-          ? (item.presetParams?.shapeType ?? resolveShapeType(item.type))
+          ? (((item.presetParams as Record<string, unknown>)?.shapeType as
+              | import('~/timeline/types').ShapeType
+              | undefined) ?? resolveShapeType(item.type))
           : undefined,
-      fillColor: clipType === 'shape' ? item.presetParams?.fillColor : undefined,
-      strokeColor: clipType === 'shape' ? item.presetParams?.strokeColor : undefined,
-      strokeWidth: clipType === 'shape' ? item.presetParams?.strokeWidth : undefined,
-      shapeConfig: clipType === 'shape' ? item.presetParams?.shapeConfig : undefined,
+      fillColor:
+        clipType === 'shape'
+          ? ((item.presetParams as Record<string, unknown>)?.fillColor as string | undefined)
+          : undefined,
+      strokeColor:
+        clipType === 'shape'
+          ? ((item.presetParams as Record<string, unknown>)?.strokeColor as string | undefined)
+          : undefined,
+      strokeWidth:
+        clipType === 'shape'
+          ? ((item.presetParams as Record<string, unknown>)?.strokeWidth as number | undefined)
+          : undefined,
+      shapeConfig:
+        clipType === 'shape'
+          ? ((item.presetParams as Record<string, unknown>)?.shapeConfig as
+              | import('~/timeline/types').ShapeConfig
+              | undefined)
+          : undefined,
       hudType:
-        clipType === 'hud' ? (item.presetParams?.hudType ?? resolveHudType(item.type)) : undefined,
-      background: clipType === 'hud' ? item.presetParams?.background : undefined,
-      content: clipType === 'hud' ? item.presetParams?.content : undefined,
-      text: clipType === 'text' ? item.presetParams?.text : undefined,
-      style: clipType === 'text' ? item.presetParams?.style : undefined,
+        clipType === 'hud'
+          ? (((item.presetParams as Record<string, unknown>)?.hudType as
+              | 'media_frame'
+              | undefined) ?? resolveHudType(item.type))
+          : undefined,
+      background:
+        clipType === 'hud'
+          ? ((item.presetParams as Record<string, unknown>)?.background as
+              | import('~/timeline/types').HudMediaParams
+              | undefined)
+          : undefined,
+      content:
+        clipType === 'hud'
+          ? ((item.presetParams as Record<string, unknown>)?.content as
+              | import('~/timeline/types').HudMediaParams
+              | undefined)
+          : undefined,
+      text:
+        clipType === 'text'
+          ? ((item.presetParams as Record<string, unknown>)?.text as string | undefined)
+          : undefined,
+      style:
+        clipType === 'text'
+          ? ((item.presetParams as Record<string, unknown>)?.style as
+              | import('~/timeline/types').TextClipStyle
+              | undefined)
+          : undefined,
       pseudo: context.pseudo,
     });
 
@@ -580,7 +618,9 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       const type = getMediaTypeFromFilename(item.name || item.path);
       return type === 'video' || type === 'audio' || type === 'image' || type === 'text';
     }
-    return ['adjustment', 'background', 'text', 'shape', 'hud', 'timeline'].includes(item.kind);
+    return item.kind
+      ? ['adjustment', 'background', 'text', 'shape', 'hud', 'timeline'].includes(item.kind)
+      : false;
   }
 
   async function importExternalItemToProject(item: TimelineDropItem): Promise<TimelineDropItem> {
@@ -598,7 +638,10 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
       return {
         ...item,
-        path: resultPath?.newPath || item.path,
+        path:
+          ((resultPath as unknown as Record<string, unknown> | undefined)?.newPath as
+            | string
+            | undefined) || item.path,
         kind: 'file',
       };
     }

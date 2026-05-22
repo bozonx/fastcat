@@ -165,7 +165,9 @@ function onEnd(event: TouchEvent) {
           >
             {{ t('fastcat.timeline.start') }}
           </span>
-          <span class="text-[10px] font-mono font-bold text-ui-text-muted tabular-nums leading-none">
+          <span
+            class="text-[10px] font-mono font-bold text-ui-text-muted tabular-nums leading-none"
+          >
             {{ timeData.start }}
           </span>
         </div>
@@ -191,7 +193,9 @@ function onEnd(event: TouchEvent) {
           >
             {{ t('fastcat.timeline.end') }}
           </span>
-          <span class="text-[10px] font-mono font-bold text-ui-text-muted tabular-nums leading-none">
+          <span
+            class="text-[10px] font-mono font-bold text-ui-text-muted tabular-nums leading-none"
+          >
             {{ timeData.end }}
           </span>
         </div>

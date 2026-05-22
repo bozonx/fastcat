@@ -31,6 +31,7 @@ import ClipTransformSection from '~/components/properties/clip/ClipTransformSect
 import ClipTypeSection from '~/components/properties/clip/ClipTypeSection.vue';
 import ClipSpeedSection from '~/components/properties/clip/ClipSpeedSection.vue';
 import ClipMaskSection from '~/components/properties/clip/ClipMaskSection.vue';
+import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useClipTransitions } from '~/composables/properties/useClipTransitions';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
@@ -39,6 +40,13 @@ import { useClipShapeProperties } from '~/composables/properties/useClipShapePro
 import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
+import {
+  buildClipParametersPatch,
+  createClipParametersSnapshot,
+  getApplicableClipParameterGroups,
+  hasClipParametersPatch,
+  type ClipParameterGroup,
+} from '~/utils/timeline/clip-parameters';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -63,6 +71,8 @@ const clipboardStore = useAppClipboard();
 const { isMobile } = useDevice();
 
 const isUiRenameModalOpen = ref(false);
+const isPasteParametersModalOpen = ref(false);
+const selectedParameterGroups = ref<ClipParameterGroup[]>([]);
 
 const activeTab = ref('clip');
 
@@ -165,6 +175,63 @@ function handleCopyClip() {
       clip: item.clip,
     })),
   });
+}
+
+function handleCopyClipParameters() {
+  clipboardStore.setClipboardPayload({
+    source: 'clipParameters',
+    snapshot: createClipParametersSnapshot({
+      clip: props.clip,
+      trackKind: clipTrackKind.value,
+    }),
+  });
+}
+
+const clipParameterGroupOptions = computed(() => {
+  const payload = clipboardStore.clipboardPayload;
+  if (!payload || payload.source !== 'clipParameters') return [];
+  return getApplicableClipParameterGroups({
+    snapshot: payload.snapshot,
+    targetClip: props.clip,
+    targetTrackKind: clipTrackKind.value,
+  });
+});
+
+function openPasteClipParameters() {
+  if (!clipboardStore.hasClipParametersPayload || clipParameterGroupOptions.value.length === 0) {
+    return;
+  }
+  isPasteParametersModalOpen.value = true;
+}
+
+function applyClipParameters(groups: ClipParameterGroup[]) {
+  const payload = clipboardStore.clipboardPayload;
+  if (!payload || payload.source !== 'clipParameters') return;
+
+  const patch = buildClipParametersPatch({
+    snapshot: payload.snapshot,
+    targetClip: props.clip,
+    targetTrackKind: clipTrackKind.value,
+    groups,
+  });
+  if (!hasClipParametersPatch(patch)) return;
+
+  if (Object.keys(patch.properties).length > 0) {
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, patch.properties);
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(patch, 'transitionIn') ||
+    Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
+  ) {
+    timelineStore.updateClipTransition(props.clip.trackId, props.clip.id, {
+      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionIn')
+        ? { transitionIn: patch.transitionIn }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
+        ? { transitionOut: patch.transitionOut }
+        : {}),
+    });
+  }
 }
 
 function handleCutClip() {
@@ -411,6 +478,8 @@ defineExpose({
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"
+      @copy-parameters="handleCopyClipParameters"
+      @paste-parameters="openPasteClipParameters"
     />
 
     <UTabs v-model="activeTab" :items="tabs" variant="link" :content="false" class="mb-2" />
@@ -585,6 +654,13 @@ defineExpose({
           isUiRenameModalOpen = false;
         }
       "
+    />
+
+    <ClipParametersPasteModal
+      v-model:open="isPasteParametersModalOpen"
+      v-model:selected-groups="selectedParameterGroups"
+      :groups="clipParameterGroupOptions"
+      @apply="applyClipParameters"
     />
   </div>
 </template>

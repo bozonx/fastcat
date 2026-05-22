@@ -532,11 +532,6 @@ const movePreviewMemoByTrack = computed(() => {
 
   return result;
 });
-const trimPreviewItem = computed(() =>
-  props.tracks
-    .flatMap((track) => track.items)
-    .find((item) => item.id === props.trimPreview?.itemId),
-);
 
 function selectTransition(
   e: MouseEvent | PointerEvent,
@@ -763,31 +758,6 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           :is-dragging-current-item="false"
           :is-move-preview-current-item="true"
           :is-move-preview-collision="preview.isCollision"
-          :selected-transition="null"
-          :resize-volume="null"
-        />
-
-        <TimelineClip
-          v-if="trimPreview && trimPreview.trackId === trackViewModel.track.id && trimPreviewItem"
-          class="opacity-60 pointer-events-none z-40!"
-          :track="trackViewModel.track"
-          :item="
-            {
-              ...trimPreviewItem,
-              id: 'preview-' + trimPreviewItem.id,
-              timelineRange: {
-                ...trimPreviewItem.timelineRange,
-                startUs: trimPreview.startUs,
-                durationUs: trimPreview.durationUs,
-              },
-            } as TimelineTrackItem
-          "
-          :track-height="trackViewModel.height"
-          :can-edit-clip-content="false"
-          :is-dragging-current-item="false"
-          :is-move-preview-current-item="false"
-          :is-trim-preview-current-item="false"
-          :trim-preview="null"
           :selected-transition="null"
           :resize-volume="null"
         />

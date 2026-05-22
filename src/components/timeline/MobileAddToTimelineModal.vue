@@ -173,7 +173,9 @@ async function handleAdd() {
           <p class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
             {{ t('mobileFiles.chooseTargetTrack') }}
           </p>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-ui-bg-muted text-ui-text-muted font-medium">
+          <span
+            class="text-[10px] px-2 py-0.5 rounded-full bg-ui-bg-muted text-ui-text-muted font-medium"
+          >
             {{ entries.length }} {{ t('common.items') }}
           </span>
         </div>

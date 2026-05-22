@@ -51,6 +51,12 @@ export default withNuxt(eslintPluginPrettierRecommended)
     },
   })
   .append({
+    files: ['src/**/*.vue'],
+    rules: {
+      '@typescript-eslint/unified-signatures': 'off',
+    },
+  })
+  .append({
     files: ['src/pages/**/*.vue', 'src/layouts/**/*.vue'],
     rules: {
       'vue/multi-word-component-names': 'off',

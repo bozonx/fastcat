@@ -10,6 +10,7 @@ import type {
   TimelineResizeVolumePayload,
   TimelineTransitionSelection,
   TimelineTrimItemPayload,
+  TrackKind,
 } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -47,6 +48,14 @@ import ClipAudioFades from './ClipAudioFades.vue';
 import ClipMetadata from './ClipMetadata.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
 import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
+import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
+import {
+  buildClipParametersPatch,
+  createClipParametersSnapshot,
+  getApplicableClipParameterGroups,
+  hasClipParametersPatch,
+  type ClipParameterGroup,
+} from '~/utils/timeline/clip-parameters';
 
 interface Props {
   track: TimelineTrack;
@@ -131,13 +140,21 @@ const clipboardStore = useAppClipboard();
 const isHovered = ref(false);
 const isTransitionCreateHandleActive = ref(false);
 
+const effectiveTimelineRange = computed(() => {
+  const preview = props.trimPreview;
+  if (preview && preview.itemId === props.item.id) {
+    return { startUs: preview.startUs, durationUs: preview.durationUs };
+  }
+  return props.item.timelineRange;
+});
+
 const clipWidthPx = computed(() =>
   Math.round(
-    Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom)),
+    Math.max(2, timeUsToPx(effectiveTimelineRange.value.durationUs, timelineStore.timelineZoom)),
   ),
 );
 const clipLeftPx = computed(() =>
-  Math.round(timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom)),
+  Math.round(timeUsToPx(effectiveTimelineRange.value.startUs, timelineStore.timelineZoom)),
 );
 const currentSlipPreview = computed(() => {
   if (!props.slipPreview || props.slipPreview.itemId !== props.item.id) return null;
@@ -342,6 +359,12 @@ const focusStore = useFocusStore();
 const fileManagerStore = useFileManagerStore();
 const projectTabsStore = useProjectTabsStore();
 const fileManager = useFileManager();
+const isPasteParametersModalOpen = ref(false);
+const selectedParameterGroups = ref<ClipParameterGroup[]>([]);
+const pasteParametersTarget = ref<{
+  clip: NonNullable<typeof clipItem.value>;
+  trackKind: TrackKind;
+} | null>(null);
 
 const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertiesActions({
   clip: computed(() => clipItem.value!),
@@ -413,6 +436,68 @@ const isUnsupported = computed(() => {
   return false;
 });
 
+const clipParameterGroupOptions = computed(() => {
+  const payload = clipboardStore.clipboardPayload;
+  const target = pasteParametersTarget.value;
+  if (!payload || payload.source !== 'clipParameters' || !target) return [];
+  return getApplicableClipParameterGroups({
+    snapshot: payload.snapshot,
+    targetClip: target.clip,
+    targetTrackKind: target.trackKind,
+  });
+});
+
+function copyClipParameters(clip: NonNullable<typeof clipItem.value>, trackKind: TrackKind) {
+  clipboardStore.setClipboardPayload({
+    source: 'clipParameters',
+    snapshot: createClipParametersSnapshot({ clip, trackKind }),
+  });
+}
+
+function openPasteClipParameters(clip: NonNullable<typeof clipItem.value>, trackKind: TrackKind) {
+  const payload = clipboardStore.clipboardPayload;
+  if (!payload || payload.source !== 'clipParameters') return;
+  const groups = getApplicableClipParameterGroups({
+    snapshot: payload.snapshot,
+    targetClip: clip,
+    targetTrackKind: trackKind,
+  });
+  if (groups.length === 0) return;
+  pasteParametersTarget.value = { clip, trackKind };
+  isPasteParametersModalOpen.value = true;
+}
+
+function applyClipParameters(groups: ClipParameterGroup[]) {
+  const payload = clipboardStore.clipboardPayload;
+  const target = pasteParametersTarget.value;
+  if (!payload || payload.source !== 'clipParameters' || !target) return;
+
+  const patch = buildClipParametersPatch({
+    snapshot: payload.snapshot,
+    targetClip: target.clip,
+    targetTrackKind: target.trackKind,
+    groups,
+  });
+  if (!hasClipParametersPatch(patch)) return;
+
+  if (Object.keys(patch.properties).length > 0) {
+    timelineStore.updateClipProperties(target.clip.trackId, target.clip.id, patch.properties);
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(patch, 'transitionIn') ||
+    Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
+  ) {
+    timelineStore.updateClipTransition(target.clip.trackId, target.clip.id, {
+      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionIn')
+        ? { transitionIn: patch.transitionIn }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
+        ? { transitionOut: patch.transitionOut }
+        : {}),
+    });
+  }
+}
+
 const { contextMenuItems } = useClipContextMenu({
   track: computed(() => props.track),
   item: computed(() => props.item),
@@ -464,6 +549,12 @@ const { contextMenuItems } = useClipContextMenu({
   },
   get hasTimelineClipboard() {
     return clipboardStore.hasTimelinePayload;
+  },
+  copyClipParameters,
+  pasteClipParameters: openPasteClipParameters,
+  getClipParametersSnapshot: () => {
+    const payload = clipboardStore.clipboardPayload;
+    return payload?.source === 'clipParameters' ? payload.snapshot : null;
   },
   t,
 });
@@ -633,7 +724,6 @@ function handleTransitionCreate(
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
         isMobile ? 'touch-none' : '',
-        isTrimPreviewCurrentItem ? 'opacity-35' : '',
         isMovePreviewCollision ? 'bg-red-600/80! border-red-500! border-2! text-white! z-50!' : '',
       ]"
       @pointerdown="onClipPointerdown"
@@ -879,4 +969,11 @@ function handleTransitionCreate(
       </template>
     </div>
   </UContextMenu>
+
+  <ClipParametersPasteModal
+    v-model:open="isPasteParametersModalOpen"
+    v-model:selected-groups="selectedParameterGroups"
+    :groups="clipParameterGroupOptions"
+    @apply="applyClipParameters"
+  />
 </template>

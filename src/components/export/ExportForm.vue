@@ -114,6 +114,18 @@ const encodingSummary = computed(() => {
   return `${t('videoEditor.projectSettings.export')}: ${format} ${vCodec} ${vBitrate} | ${aCodec} ${aBitrate}`;
 });
 
+const exportRangeRadioItems = computed(() =>
+  exportRangeOptions.value.map((option) => ({
+    value: option.id,
+    label: option.label,
+    description: option.description,
+    class:
+      selectedExportRangeId.value === option.id
+        ? 'bg-violet-500/10 border-violet-400/30'
+        : 'hover:bg-white/5',
+  })),
+);
+
 function focusExportForm() {
   if (props.disableFocusFrame) return;
   focusStore.setPanelFocus('exportForm');
@@ -190,35 +202,19 @@ async function onConfirm() {
             </div>
           </div>
 
-          <div class="flex flex-col gap-2">
-            <URadio
-              v-for="option in exportRangeOptions"
-              :key="option.id"
-              v-model="selectedExportRangeId"
-              :value="option.id"
-              :disabled="isExporting"
-              :ui="{
-                wrapper:
-                  'flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors cursor-pointer',
-              }"
-              :class="
-                selectedExportRangeId === option.id
-                  ? 'bg-violet-500/10 border-violet-400/30'
-                  : 'hover:bg-white/5'
-              "
-            >
-              <template #label>
-                <div class="min-w-0">
-                  <div class="font-medium text-ui-text">
-                    {{ option.label }}
-                  </div>
-                  <div v-if="option.description" class="text-sm text-ui-text-muted truncate">
-                    {{ option.description }}
-                  </div>
-                </div>
-              </template>
-            </URadio>
-          </div>
+          <URadioGroup
+            v-model="selectedExportRangeId"
+            :items="exportRangeRadioItems"
+            :disabled="isExporting"
+            indicator="hidden"
+            :ui="{
+              fieldset: 'flex flex-col gap-2',
+              item: 'flex items-start gap-3 rounded-md border border-transparent px-3 py-2 transition-colors cursor-pointer',
+              wrapper: 'min-w-0',
+              label: 'font-medium text-ui-text',
+              description: 'text-sm text-ui-text-muted truncate',
+            }"
+          />
         </div>
 
         <div class="flex flex-col gap-1.5">
