@@ -332,11 +332,11 @@ const isFormatUnsupported = computed(() =>
 );
 
 const isVideoCodecUnsupported = computed(
-  () => (mediaMeta.value?.video as Record<string, unknown>)?.canDecode === false,
+  () => (mediaMeta.value?.video as unknown as Record<string, unknown>)?.canDecode === false,
 );
 
 const isAudioCodecUnsupported = computed(
-  () => (mediaMeta.value?.audio as Record<string, unknown>)?.canDecode === false,
+  () => (mediaMeta.value?.audio as unknown as Record<string, unknown>)?.canDecode === false,
 );
 
 const isImageUnsupported = computed(() => {
@@ -344,7 +344,7 @@ const isImageUnsupported = computed(() => {
   const ext = props.selectedFsEntry?.name.split('.').pop()?.toLowerCase() ?? '';
   if (
     BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) &&
-    (mediaMeta.value?.image as Record<string, unknown>)?.canDisplay === false
+    (mediaMeta.value?.image as unknown as Record<string, unknown>)?.canDisplay === false
   ) {
     return true;
   }
@@ -356,12 +356,12 @@ const isMediaFullyUnsupported = computed(
 );
 
 const videoCodecLabel = computed(() => {
-  const v = mediaMeta.value?.video as Record<string, unknown> | undefined;
+  const v = mediaMeta.value?.video as unknown as Record<string, unknown> | undefined;
   return String(v?.parsedCodec || v?.codec || '');
 });
 
 const audioCodecLabel = computed(() => {
-  const a = mediaMeta.value?.audio as Record<string, unknown> | undefined;
+  const a = mediaMeta.value?.audio as unknown as Record<string, unknown> | undefined;
   return String(a?.parsedCodec || a?.codec || '');
 });
 
@@ -794,7 +794,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
           (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
           (isVideoFile || mediaType === 'audio')
         "
-        :media-meta="mediaMeta as unknown as import('~/stores/media.store').MediaMetadata"
+        :media-meta="mediaMeta as any"
         :format-duration-seconds="formatDurationSeconds"
         :format-bitrate="formatBitrate"
         :latest-transcription-cache-key="latestTranscriptionCacheKey"
@@ -1016,7 +1016,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         "
         :title="generalInfoTitle"
         :file-info="
-          (fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo
+          (fileInfo || selectedFsEntry) as any
         "
         :selected-path="selectedPath"
         :is-hidden="isHidden"
@@ -1055,7 +1055,7 @@ const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
         "
         :title="generalInfoTitle"
         :file-info="
-          (fileInfo || selectedFsEntry) as unknown as import('~/types/file-manager').FileInfo
+          (fileInfo || selectedFsEntry) as any
         "
         :selected-path="selectedPath"
         :path-link="bloggerDogDeepLink"

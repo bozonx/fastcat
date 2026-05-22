@@ -48,10 +48,6 @@ import ClipAudioFades from './ClipAudioFades.vue';
 import ClipMetadata from './ClipMetadata.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
 import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
-
-defineOptions({ inheritAttrs: false });
-
-const attrs = useAttrs();
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import {
   buildClipParametersPatch,
@@ -60,6 +56,10 @@ import {
   hasClipParametersPatch,
   type ClipParameterGroup,
 } from '~/utils/timeline/clip-parameters';
+
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
 
 interface Props {
   track: TimelineTrack;
@@ -694,6 +694,7 @@ function handleTransitionCreate(
       :data-clip-id="item.kind === 'clip' ? item.id : undefined"
       :data-gap-id="item.kind === 'gap' ? item.id : undefined"
       class="absolute top-0.5 bottom-0.5 rounded flex flex-col text-xs text-(--clip-text) select-none transition-shadow group/clip"
+      v-bind="attrs"
       :style="{
         left: `${clipLeftPx}px`,
         width: `${clipWidthPx}px`,

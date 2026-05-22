@@ -3,6 +3,7 @@ import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { frameToUs, usToFrame } from '~/timeline/commands/utils';
 import { useResizeObserver } from '@vueuse/core';
 
 const props = defineProps<{
@@ -155,15 +156,17 @@ function draw() {
     }
   }
 
-  const startS = Math.floor(startUs / 1_000_000 / mainStepS) * mainStepS;
-  const endS = Math.ceil(endUs / 1_000_000);
+  const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
+  const startFrame = usToFrame(startUs, currentFps, 'floor');
+  const endFrame = usToFrame(endUs, currentFps, 'ceil');
+  const firstMajorFrame = Math.floor(startFrame / mainStepFrames) * mainStepFrames;
 
   // Major tick lines (at labeled ruler marks)
   ctx.strokeStyle = majorTickColor;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let s = startS; s <= endS; s += mainStepS) {
-    const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
+  for (let frame = firstMajorFrame; frame <= endFrame; frame += mainStepFrames) {
+    const x = Math.round(timeUsToPx(frameToUs(frame, currentFps), currentZoom) - startPx) + 0.5;
     if (x >= -1 && x <= nextRenderWidthPx + 1) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, h);
@@ -175,7 +178,7 @@ function draw() {
   ctx.lineWidth = 1;
   ctx.beginPath();
 
-  for (let s = startS; s <= endS; s += mainStepS) {
+  for (let frame = firstMajorFrame; frame <= endFrame; frame += mainStepFrames) {
     if (mainStepS === 1) {
       // Frame-level ticks at high zoom
       let frameStep = 1;
@@ -188,11 +191,13 @@ function draw() {
       if (pxPerFrame > 15) ctx.lineWidth = 1.5;
       else ctx.lineWidth = 1;
 
-      for (let f = 1; f < currentFps; f += frameStep) {
+      for (
+        let subFrame = frame + frameStep;
+        subFrame < frame + mainStepFrames;
+        subFrame += frameStep
+      ) {
         const frameX =
-          Math.round(
-            timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
-          ) + 0.5;
+          Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
         if (frameX >= -1 && frameX <= nextRenderWidthPx + 1) {
           ctx.moveTo(frameX, 0);
           ctx.lineTo(frameX, h);
@@ -207,9 +212,15 @@ function draw() {
       if (mainStepS >= 60) subStepS = 10;
       else if (mainStepS >= 10) subStepS = 5;
       else if (mainStepS >= 5) subStepS = 1;
+      const subStepFrames = Math.max(1, Math.round(subStepS * currentFps));
 
-      for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
-        const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
+      for (
+        let subFrame = frame + subStepFrames;
+        subFrame < frame + mainStepFrames;
+        subFrame += subStepFrames
+      ) {
+        const subX =
+          Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
         if (subX >= -1 && subX <= nextRenderWidthPx + 1) {
           ctx.moveTo(subX, 0);
           ctx.lineTo(subX, h);

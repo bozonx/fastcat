@@ -1,6 +1,7 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
 import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { frameToUs, usToFrame } from '~/timeline/commands/utils';
 import { formatRulerTime } from './useTimelineRulerPresentation';
 
 interface TimelineRulerDrawOptions {
@@ -144,21 +145,24 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
 
-    const startS = Math.floor(startUs / 1_000_000 / mainStepS) * mainStepS;
-    const endS = Math.ceil(endUs / 1_000_000);
+    const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
+    const startFrame = usToFrame(startUs, currentFps, 'floor');
+    const endFrame = usToFrame(endUs, currentFps, 'ceil');
+    const firstMajorFrame = Math.floor(startFrame / mainStepFrames) * mainStepFrames;
 
     const majorTickHeight = 12 * scale;
     const subTickHeight = 5 * scale;
     const textTopOffset = (isMobile ? 4 : 2) * scale;
 
     ctx.beginPath();
-    for (let s = startS; s <= endS; s += mainStepS) {
-      const x = Math.round(timeUsToPx(s * 1_000_000, currentZoom) - startPx) + 0.5;
+    for (let frame = firstMajorFrame; frame <= endFrame; frame += mainStepFrames) {
+      const tickUs = frameToUs(frame, currentFps);
+      const x = Math.round(timeUsToPx(tickUs, currentZoom) - startPx) + 0.5;
 
       if (x >= -50 && x <= nextRenderWidthPx + 50) {
         ctx.moveTo(x, h - majorTickHeight);
         ctx.lineTo(x, h);
-        ctx.fillText(formatRulerTime(s * 1_000_000, currentFps), x, textTopOffset);
+        ctx.fillText(formatRulerTime(tickUs, currentFps), x, textTopOffset);
       }
     }
     ctx.stroke();
@@ -166,7 +170,7 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.lineWidth = options.subTickWidth;
     ctx.beginPath();
 
-    for (let s = startS; s <= endS; s += mainStepS) {
+    for (let frame = firstMajorFrame; frame <= endFrame; frame += mainStepFrames) {
       if (mainStepS === 1) {
         let frameStep = 1;
         const minFrameDist = 5 * scale;
@@ -174,11 +178,13 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
           frameStep = Math.ceil(minFrameDist / pxPerFrame);
         }
 
-        for (let f = 1; f < currentFps; f += frameStep) {
+        for (
+          let subFrame = frame + frameStep;
+          subFrame < frame + mainStepFrames;
+          subFrame += frameStep
+        ) {
           const frameX =
-            Math.round(
-              timeUsToPx(s * 1_000_000 + (f * 1_000_000) / currentFps, currentZoom) - startPx,
-            ) + 0.5;
+            Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
           if (frameX >= -50 && frameX <= nextRenderWidthPx + 50) {
             ctx.moveTo(frameX, h - subTickHeight);
             ctx.lineTo(frameX, h);
@@ -189,9 +195,15 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
         if (mainStepS >= 60) subStepS = 10;
         else if (mainStepS >= 10) subStepS = 5;
         else if (mainStepS >= 5) subStepS = 1;
+        const subStepFrames = Math.max(1, Math.round(subStepS * currentFps));
 
-        for (let sub = s + subStepS; sub < s + mainStepS; sub += subStepS) {
-          const subX = Math.round(timeUsToPx(sub * 1_000_000, currentZoom) - startPx) + 0.5;
+        for (
+          let subFrame = frame + subStepFrames;
+          subFrame < frame + mainStepFrames;
+          subFrame += subStepFrames
+        ) {
+          const subX =
+            Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
           if (subX >= -50 && subX <= nextRenderWidthPx + 50) {
             ctx.moveTo(subX, h - subTickHeight);
             ctx.lineTo(subX, h);
