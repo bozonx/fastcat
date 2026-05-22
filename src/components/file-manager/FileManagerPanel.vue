@@ -15,13 +15,11 @@ import { useAudioExtraction } from '~/composables/file-manager/useAudioExtractio
 import { useFileManagerPanelPendingActions } from '~/composables/file-manager/useFileManagerPanelPendingActions';
 import { useFileManagerPanelBootstrap } from '~/composables/file-manager/useFileManagerPanelBootstrap';
 
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -58,8 +56,6 @@ const uiStore = useUiStore();
 const conversionStore = useFileConversionStore();
 const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabsStore();
-const runtimeConfig = useRuntimeConfig();
-const workspaceStore = useWorkspaceStore();
 const clipboardStore = useAppClipboard();
 
 const fileManager = useFileManager();
@@ -228,14 +224,6 @@ const rootContextMenuItems = computed(() => {
   return menu;
 });
 
-// toolbarMenuItems removed
-const sortFields: { label: string; value: FileSortField }[] = [
-  { label: t('common.name'), value: 'name' },
-  { label: t('common.type'), value: 'type' },
-  { label: t('common.size'), value: 'size' },
-  { label: t('common.created'), value: 'created' },
-  { label: t('common.modified'), value: 'modified' },
-];
 
 async function onCreateTimeline() {
   const createdPath = await createTimeline();

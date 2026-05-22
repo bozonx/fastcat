@@ -442,6 +442,7 @@ function onDragVirtualEnd() {
 <template>
   <div
     ref="containerRef"
+    data-testid="timeline-container"
     class="panel-focus-frame relative flex flex-col h-full bg-ui-bg border-t border-ui-border"
     :class="{ 'panel-focus-frame--active': focusStore.isPanelFocused('timeline') }"
     @pointerdown.capture="focusStore.setMainFocus('timeline')"

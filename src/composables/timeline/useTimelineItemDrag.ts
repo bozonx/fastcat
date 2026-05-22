@@ -15,16 +15,11 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import {
-  TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY,
   getTimelineCommandLabelKey,
   getUpdateClipPropertiesLabelKey,
 } from '~/stores/timeline/history-labels';
 
-import {
-  DEFAULT_HOTKEYS,
-  type HotkeyCommandId,
-  type HotkeyCombo,
-} from '~/utils/hotkeys/defaultHotkeys';
+import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
   createDefaultHotkeyLookup,

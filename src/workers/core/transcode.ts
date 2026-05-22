@@ -251,12 +251,6 @@ export async function runTranscode(
       displayHeight?: number;
     } | null;
     const sourceVideoTrackAny = sourceVideoTrack as { frameRate?: number } | null;
-    const sourceWidth = Number(
-      sourceDecoderConfigAny?.codedWidth || sourceDecoderConfigAny?.displayWidth || 0,
-    );
-    const sourceHeight = Number(
-      sourceDecoderConfigAny?.codedHeight || sourceDecoderConfigAny?.displayHeight || 0,
-    );
     const sourceFrameRate = Number(sourceVideoTrackAny?.frameRate || 0);
 
     const supportedVideoCodecs =

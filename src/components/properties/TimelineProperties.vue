@@ -15,12 +15,7 @@ import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
-import {
-  DEFAULT_TIMELINE_ZOOM_POSITION,
-  formatZoomMultiplier,
-  timelineZoomPositionToScale,
-  timelineZoomScaleToPosition,
-} from '~/utils/zoom';
+import { timelineZoomPositionToScale } from '~/utils/zoom';
 import { formatDurationSeconds, formatBytes } from '~/utils/format';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
@@ -81,7 +76,7 @@ const isInactiveTimeline = computed(() => {
 
 const finalIsReadOnly = computed(() => props.isReadOnly || isInactiveTimeline.value);
 
-const { onRename, onDelete } = useFilePropertiesHandlers({
+const { onDelete } = useFilePropertiesHandlers({
   // onRename is kept for potential future use but not used for the quick-action button anymore
 
   selectedFsEntry: fsEntryRef,
@@ -197,16 +192,6 @@ const timelineZoom = computed({
 });
 
 const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
-
-const timelineZoomMultiplierInput = computed({
-  get: () => formatZoomMultiplier(timelineZoomScale.value),
-  set: (value: string | number) => {
-    const normalized = String(value).trim().toLowerCase().replace(',', '.').replace(/^x/, '');
-    const parsed = Number(normalized);
-    if (!Number.isFinite(parsed) || parsed <= 0) return;
-    timelineStore.setTimelineZoomExact(timelineZoomScaleToPosition(parsed));
-  },
-});
 
 function updateFormat(patch: TimelineFormatInput) {
   void timelineStore.updateTimelineFormat({
