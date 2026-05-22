@@ -12,7 +12,7 @@ export class StageManager {
   public sortStage(params: StageManagerParams) {
     this.sortTrackContainerChildren(params.tracks, params.getClipById);
     params.app.stage.children.sort(
-      (a: import('pixi.js').DisplayObject, b: import('pixi.js').DisplayObject) => {
+      (a: any, b: any) => {
         const aTrackId = String((a as { __trackId?: string }).__trackId ?? '');
         const bTrackId = String((b as { __trackId?: string }).__trackId ?? '');
         const aTrack = params.getTrackById(aTrackId);
@@ -31,7 +31,7 @@ export class StageManager {
   ) {
     for (const track of tracks) {
       track.container.children.sort(
-        (a: import('pixi.js').DisplayObject, b: import('pixi.js').DisplayObject) => {
+        (a: any, b: any) => {
           const aClip = getClipById((a as { __clipId?: string }).__clipId ?? '');
           const bClip = getClipById((b as { __clipId?: string }).__clipId ?? '');
 
@@ -56,7 +56,7 @@ export class StageManager {
               ? (b as { __clipOrder?: number }).__clipOrder
               : 0;
           if (aOrder !== bOrder) {
-            return aOrder - bOrder;
+            return (aOrder ?? 0) - (bOrder ?? 0);
           }
 
           return String((a as { __clipId?: string }).__clipId ?? '').localeCompare(
