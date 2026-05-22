@@ -9,7 +9,7 @@ interface UseFileStorageInfoOptions {
 
 export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
   const isProjectRootDir = computed(() => {
-    const entry = options.selectedFsEntry.value;
+    const entry = options.selectedFsEntry.value as Record<string, unknown>;
     if (!entry || entry.kind !== 'directory') return false;
     const path = typeof entry.path === 'string' ? entry.path : undefined;
     return path === '';
@@ -33,8 +33,9 @@ export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
             (navigator as { storage?: { estimate?: () => Promise<unknown> } }).storage,
           );
           if (res && typeof res === 'object') {
-            const quota = typeof res.quota === 'number' ? res.quota : undefined;
-            const usage = typeof res.usage === 'number' ? res.usage : undefined;
+            const resObj = res as Record<string, unknown>;
+            const quota = typeof resObj.quota === 'number' ? resObj.quota : undefined;
+            const usage = typeof resObj.usage === 'number' ? resObj.usage : undefined;
             if (quota !== undefined && usage !== undefined) {
               storageEstimate.value = { quota, usage };
             }

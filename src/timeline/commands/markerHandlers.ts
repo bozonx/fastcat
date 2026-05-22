@@ -5,6 +5,12 @@ import type {
   TimelineCommandResult,
   UpdateMarkerCommand,
 } from '../commands';
+import { sanitizeFps, quantizeTimeUsToFrames } from './utils';
+
+/** Markers always live on the frame grid, regardless of the entry path. */
+function snapMarkerTimeUs(value: number, fps: number): number {
+  return Math.max(0, quantizeTimeUsToFrames(Math.max(0, Number(value)), fps, 'round'));
+}
 
 function getMarkers(doc: TimelineDocument): TimelineMarker[] {
   const raw = (doc as { metadata?: { fastcat?: { markers?: unknown } } })?.metadata?.fastcat
@@ -33,10 +39,11 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
     throw new Error('Marker already exists');
   }
 
+  const fps = sanitizeFps(doc.timebase?.fps);
   const marker: TimelineMarker = {
     id: cmd.id,
-    timeUs: Math.max(0, Math.round(cmd.timeUs)),
-    durationUs: cmd.durationUs !== undefined ? Math.max(0, Math.round(cmd.durationUs)) : undefined,
+    timeUs: snapMarkerTimeUs(cmd.timeUs, fps),
+    durationUs: cmd.durationUs !== undefined ? snapMarkerTimeUs(cmd.durationUs, fps) : undefined,
     text: typeof cmd.text === 'string' ? cmd.text : '',
     color:
       typeof (cmd as { color?: string }).color === 'string'
@@ -61,14 +68,15 @@ export function updateMarker(
 
   const prev = markers[idx]!;
 
+  const fps = sanitizeFps(doc.timebase?.fps);
   const nextMarker: TimelineMarker = {
     ...prev,
-    timeUs: cmd.timeUs !== undefined ? Math.max(0, Math.round(Number(cmd.timeUs))) : prev.timeUs,
+    timeUs: cmd.timeUs !== undefined ? snapMarkerTimeUs(cmd.timeUs, fps) : prev.timeUs,
     durationUs:
       cmd.durationUs !== undefined
         ? cmd.durationUs === null
           ? undefined
-          : Math.max(0, Math.round(Number(cmd.durationUs)))
+          : snapMarkerTimeUs(cmd.durationUs, fps)
         : prev.durationUs,
     text: cmd.text !== undefined ? String(cmd.text) : prev.text,
     color: cmd.color !== undefined ? String(cmd.color) : (prev as { color?: string }).color,

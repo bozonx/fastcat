@@ -77,6 +77,12 @@ export const useTimelineStore = defineStore('timeline', () => {
   const isSavingTimeline = ref(false);
   const timelineSaveError = ref<string | null>(null);
 
+  // Per-path (per-tab) dirty state. Only one timeline doc lives in memory at a
+  // time, so this map remembers which open timelines have uncommitted changes
+  // even while they are not the active tab — used for tab dots and the
+  // aggregated unsaved-changes warning on close.
+  const dirtyPaths = ref<Record<string, boolean>>({});
+
   const isPlaying = ref(false);
   const playbackSpeed = ref(TIMELINE_DEFAULTS.PLAYBACK_SPEED);
   const currentTime = ref(0);
@@ -108,7 +114,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
 
     timelineDoc.value = setTimelineFormat(timelineDoc.value, settings);
-    await requestTimelineSave({ immediate: true });
+    lifecycle.markTimelineAsDirty();
+    await requestTimelineSave();
   }
 
   const selectedItemIds = ref<string[]>([]);
@@ -319,6 +326,27 @@ export const useTimelineStore = defineStore('timeline', () => {
     );
   }
 
+  // Deletes the crash-recovery sidecar (`.fastcat/autosave/<path>`) for a
+  // timeline. Called after an explicit save commits the work, and on clean
+  // shutdown so a leftover sidecar is never mistaken for crash data.
+  async function deleteTimelineAutosaveFile(timelinePath: string) {
+    const sidecarPath = `.fastcat/autosave/${timelinePath}`;
+    const parts = sidecarPath.split('/');
+    const fileName = parts.pop();
+    if (!fileName) return;
+    const dirHandle = await projectStore.getDirectoryHandleByPath(parts.join('/'), {
+      create: false,
+    });
+    if (!dirHandle) return;
+    try {
+      await dirHandle.removeEntry(fileName);
+    } catch (e) {
+      if ((e as { name?: string })?.name !== 'NotFoundError') {
+        console.warn('Failed to delete autosave sidecar', timelinePath, e);
+      }
+    }
+  }
+
   const persistence = createTimelinePersistenceModule({
     timelineDoc,
     currentTime,
@@ -345,7 +373,15 @@ export const useTimelineStore = defineStore('timeline', () => {
     parseTimelineFromOtio,
     serializeTimelineToOtio,
     selectTimelineDurationUs,
-    autoSaveDebounceMs: isMobileEditorRoute() ? 4_000 : 10_000,
+    getAutosaveIntervalMs: () => {
+      const minutes = workspaceStore.userSettings.autosave?.intervalMinutes ?? 2;
+      return Math.max(1, minutes) * 60_000;
+    },
+    deleteAutosaveFile: (timelinePath) => deleteTimelineAutosaveFile(timelinePath),
+    onDirtyStateChange: (timelinePath, dirty) => {
+      if (!timelinePath) return;
+      dirtyPaths.value[timelinePath] = dirty;
+    },
     shouldRestoreAutosaveSilently: () => isMobileEditorRoute(),
     confirmRestoreAutosave: ({ timelinePath }) => {
       if (typeof window === 'undefined') return false;
@@ -367,18 +403,15 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
   });
 
-  let lastBackupTime = 0;
-
+  // Backups are a history of EXPLICIT saves (for rollback), so one is taken on
+  // every manual save — `handleBackup` is only wired into `onSaveSuccess`, which
+  // fires from `saveTimeline`, never from the periodic crash-recovery autosave.
+  // `backup.intervalMinutes <= 0` acts as the kill switch; any positive value
+  // just means "backups enabled" (the value itself no longer throttles).
   async function handleBackup(serialized: string) {
     if (!currentTimelinePath.value) return;
     const backupSettings = workspaceStore.userSettings.backup;
     if (!backupSettings || backupSettings.intervalMinutes <= 0) return;
-
-    const now = Date.now();
-    const intervalMs = backupSettings.intervalMinutes * 60 * 1000;
-    if (now - lastBackupTime < intervalMs) return;
-
-    lastBackupTime = now;
 
     try {
       const pathParts = currentTimelinePath.value.split('/');
@@ -629,8 +662,44 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
+  // True when any open timeline (active or background tab) has uncommitted
+  // changes. Used by the close handler to warn about unsaved work across tabs.
+  const hasAnyDirtyTimeline = computed(() => Object.values(dirtyPaths.value).some(Boolean));
+
+  function isPathDirty(path: string) {
+    return !!dirtyPaths.value[path];
+  }
+
+  // Writes the active timeline's crash-recovery sidecar immediately (used on
+  // window blur / page hide / before switching tabs), bypassing the periodic
+  // timer so accumulated edits survive an unexpected exit.
+  async function flushTimelineAutosave() {
+    await persistence.flushTimelineAutosave();
+  }
+
+  // Removes crash-recovery sidecars for every open timeline. Called on clean
+  // shutdown (and when the user explicitly chooses "Don't save"): a clean exit
+  // leaves no sidecar, so its presence on next launch means a crash.
+  async function deleteAllOpenAutosaves() {
+    const paths = new Set<string>(projectStore.projectSettings?.timelines?.openPaths ?? []);
+    if (currentTimelinePath.value) paths.add(currentTimelinePath.value);
+    for (const path of paths) {
+      try {
+        await deleteTimelineAutosaveFile(path);
+      } catch (e) {
+        console.warn('Failed to delete autosave on shutdown', path, e);
+      }
+      dirtyPaths.value[path] = false;
+    }
+  }
+
   return {
     timelineDoc,
+    dirtyPaths,
+    hasAnyDirtyTimeline,
+    isPathDirty,
+    flushTimelineAutosave,
+    deleteAllOpenAutosaves,
     markers: computed(() => markerService.getMarkers()),
     selectionRange: computed(() => selectionRangeModule.getSelectionRange()),
     getMarkers: markerService.getMarkers,

@@ -61,7 +61,6 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
         .catch(DEFAULT_USER_SETTINGS.timeline.defaultStaticClipDurationUs),
       snapping: snapSchema,
       frameSnapMode: z.enum(['free', 'frames']).catch(DEFAULT_USER_SETTINGS.timeline.frameSnapMode),
-      clipSnapMode: z.enum(['none', 'clips']).catch(DEFAULT_USER_SETTINGS.timeline.clipSnapMode),
       toolbarSnapMode: z
         .enum(['snap', 'no_snap', 'free_mode'])
         .catch(DEFAULT_USER_SETTINGS.timeline.toolbarSnapMode),

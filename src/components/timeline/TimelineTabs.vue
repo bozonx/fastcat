@@ -28,7 +28,7 @@ function isActive(path: string) {
 }
 
 function isDirty(path: string) {
-  return isActive(path) && timelineStore.isTimelineDirty;
+  return timelineStore.isPathDirty(path);
 }
 
 function selectTab(path: string) {

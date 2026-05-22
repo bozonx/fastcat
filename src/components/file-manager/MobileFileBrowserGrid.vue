@@ -180,11 +180,11 @@ onBeforeUnmount(clearLongPress);
     <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
       <div v-for="entry in entries" :key="entry.path" class="relative group">
         <button
-          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-zinc-900 border-2 transition-all active:scale-95"
+          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-ui-bg-elevated border-2 transition-all active:scale-95"
           :class="[
             isSelected(entry)
               ? 'border-selection-accent-500 ring-2 ring-selection-accent-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
-              : 'border-transparent hover:border-zinc-700',
+              : 'border-transparent hover:border-ui-border',
           ]"
           @touchstart="handleTouchStart(entry, $event)"
           @touchmove="handleTouchMove($event)"
@@ -197,11 +197,11 @@ onBeforeUnmount(clearLongPress);
         >
           <!-- Thumbnail / Icon Area -->
           <div
-            class="relative flex-1 w-full bg-zinc-950 flex items-center justify-center overflow-hidden"
+            class="relative flex-1 w-full bg-ui-bg flex items-center justify-center overflow-hidden"
           >
             <template v-if="isCheckingCompatibility(entry)">
               <div
-                class="w-full h-full flex items-center justify-center text-zinc-400"
+                class="w-full h-full flex items-center justify-center text-ui-text-muted"
                 :title="t('videoEditor.fileManager.compatibility.checking')"
               >
                 <UIcon name="i-heroicons-arrow-path" class="w-6 h-6 animate-spin" />
@@ -267,7 +267,7 @@ onBeforeUnmount(clearLongPress);
           </div>
 
           <!-- Name & Size -->
-          <div class="px-2.5 py-2 bg-zinc-900/90 backdrop-blur-sm border-t border-zinc-800/50">
+          <div class="px-2.5 py-2 bg-ui-bg-elevated/90 backdrop-blur-sm border-t border-ui-border/50">
             <div
               class="truncate text-[12px] font-medium leading-tight mb-0.5 transition-colors"
               :class="[
@@ -287,10 +287,10 @@ onBeforeUnmount(clearLongPress);
             <div
               class="flex items-center justify-between opacity-80 text-[10px] tabular-nums mt-0.5 font-medium"
             >
-              <span class="truncate pr-2 text-zinc-400">
+              <span class="truncate pr-2 text-ui-text-muted">
                 {{ entry.kind === 'directory' ? t('common.folder') : getFileTypeLabel(entry) }}
               </span>
-              <span class="shrink-0 text-zinc-500">
+              <span class="shrink-0 text-ui-text-muted">
                 {{
                   entry.kind === 'directory'
                     ? props.folderSizes[entry.path] !== undefined

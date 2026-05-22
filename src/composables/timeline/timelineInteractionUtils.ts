@@ -21,7 +21,10 @@ export interface TimelineMoveOperation {
 
 export function computeSnapTargetsUs(params: {
   tracks: TimelineTrack[];
-  excludeItemId?: string;
+  /** Clip ids being dragged — excluded so a moving group never snaps to itself. */
+  excludeItemIds?: string[];
+  /** Marker id being dragged — excluded so a marker never snaps to its own origin. */
+  excludeMarkerId?: string;
   includeTimelineStart: boolean;
   includeTimelineEndUs: number | null;
   includePlayheadUs: number | null;
@@ -44,6 +47,7 @@ export function computeSnapTargetsUs(params: {
 
   if (params.includeMarkers) {
     for (const marker of params.markers) {
+      if (params.excludeMarkerId && marker.id === params.excludeMarkerId) continue;
       if (!Number.isFinite(marker.timeUs)) continue;
       targets.push(marker.timeUs);
       if (typeof marker.durationUs === 'number' && Number.isFinite(marker.durationUs)) {
@@ -65,7 +69,7 @@ export function computeSnapTargetsUs(params: {
     for (const track of params.tracks) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (params.excludeItemId && item.id === params.excludeItemId) continue;
+        if (params.excludeItemIds && params.excludeItemIds.includes(item.id)) continue;
         targets.push(item.timelineRange.startUs);
         targets.push(item.timelineRange.startUs + item.timelineRange.durationUs);
       }

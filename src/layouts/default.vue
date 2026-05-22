@@ -87,19 +87,18 @@ useHead({
   title: t('navigation.fastcat'),
 });
 
-function isMobileEditorRoute() {
-  return route.path.startsWith('/m/');
+// Autosave is periodic, but when the window loses focus or is hidden we flush
+// the crash-recovery sidecar immediately so an unexpected exit can't lose more
+// than the edits made since the last flush. Applies to all platforms.
+function flushTimelineAutosaveOnHide() {
+  if (!timelineStore.isTimelineDirty) return;
+  void timelineStore.flushTimelineAutosave();
 }
 
-function flushMobileTimelineAutosave() {
-  if (!isMobileEditorRoute() || !timelineStore.isTimelineDirty) return;
-  void timelineStore.requestTimelineSave({ immediate: true });
-}
-
-useEventListener(window, 'blur', flushMobileTimelineAutosave);
+useEventListener(window, 'blur', flushTimelineAutosaveOnHide);
 useEventListener(document, 'visibilitychange', () => {
   if (document.hidden) {
-    flushMobileTimelineAutosave();
+    flushTimelineAutosaveOnHide();
   }
 });
 </script>

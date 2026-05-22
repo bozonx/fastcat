@@ -61,7 +61,7 @@ const playheadClick = computed({
         :min="1"
         :max="100"
         :step="1"
-        :default-value="10"
+        :default-value="8"
         unit="px"
       />
 

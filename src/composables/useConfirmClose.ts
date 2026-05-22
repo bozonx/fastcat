@@ -10,7 +10,7 @@ export function useConfirmClose() {
   let unlistenTauriClose: (() => void) | undefined;
 
   function onBeforeUnload(e: BeforeUnloadEvent) {
-    if (backgroundTasksStore.hasActiveTasks || timelineStore.isTimelineDirty) {
+    if (backgroundTasksStore.hasActiveTasks || timelineStore.hasAnyDirtyTimeline) {
       e.preventDefault();
       // Modern browsers ignore the return value text and show a generic message
       e.returnValue = '';
@@ -27,24 +27,43 @@ export function useConfirmClose() {
       const { confirm } = await import('@tauri-apps/plugin-dialog');
       const appWindow = getCurrentWindow();
 
+      let isClosing = false;
+
       unlistenTauriClose = await appWindow.onCloseRequested(async (event) => {
-        if (backgroundTasksStore.hasActiveTasks || timelineStore.isTimelineDirty) {
+        if (isClosing) return;
+        // Always intercept so async cleanup (and the confirm) runs before the
+        // window actually closes.
+        event.preventDefault();
+
+        const hasUnsaved = timelineStore.hasAnyDirtyTimeline;
+        if (backgroundTasksStore.hasActiveTasks || hasUnsaved) {
           const confirmed = await confirm(
-            timelineStore.isTimelineDirty
+            hasUnsaved
               ? t('videoEditor.timeline.confirmCloseUnsavedMessage')
               : t('videoEditor.backgroundTasks.confirmCloseMessage'),
             {
-              title: timelineStore.isTimelineDirty
+              title: hasUnsaved
                 ? t('videoEditor.timeline.confirmCloseUnsavedTitle')
                 : t('videoEditor.backgroundTasks.confirmCloseTitle'),
               kind: 'warning',
             },
           );
 
-          if (!confirmed) {
-            event.preventDefault();
-          }
+          // User cancelled (or, for unsaved work, chose not to discard): stay open.
+          if (!confirmed) return;
         }
+
+        // Clean exit (nothing unsaved, or the user chose "Don't save"): drop the
+        // crash-recovery sidecars so their presence on next launch unambiguously
+        // means a crash.
+        try {
+          await timelineStore.deleteAllOpenAutosaves();
+        } catch (e) {
+          console.warn('Failed to clean autosaves on close', e);
+        }
+
+        isClosing = true;
+        await appWindow.destroy();
       });
     } catch (err) {
       console.error('Failed to setup Tauri close handler:', err);

@@ -18,6 +18,7 @@ export interface TimelineFixedClipDescriptor {
 }
 
 export interface BuildFixedClipParams {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clipData: any;
   descriptor: TimelineFixedClipDescriptor;
   toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined;

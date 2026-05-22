@@ -322,7 +322,8 @@ const topActions = computed(() => {
   const path = selectedFsEntry.value?.path;
   if (!entry) return [];
 
-  const actions: import('~/components/properties/PropertyActionList.vue').PropertyAction[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const actions: any[] = [];
 
   // Convert
   if (canConvert.value) {

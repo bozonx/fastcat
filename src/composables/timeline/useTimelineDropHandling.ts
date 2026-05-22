@@ -587,7 +587,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
     const pseudo =
       isLayer1Pressed(e, workspaceStore.userSettings) ||
-      timelineSettingsStore.overlapMode === 'pseudo';
+      timelineSettingsStore.isPseudoOverlapEnabled;
     const startUs = resolveInsertStartUs({
       trackId: targetTrackId,
       startUs: dropPositionUs,

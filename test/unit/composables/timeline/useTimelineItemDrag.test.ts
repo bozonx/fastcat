@@ -55,7 +55,6 @@ const settingsStoreMock = {
   toolbarDragMode: 'copy',
   frameSnapMode: 'none',
   snapThresholdPx: 8,
-  overlapMode: 'replace',
 };
 
 const workspaceStoreMock = {

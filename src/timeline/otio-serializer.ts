@@ -9,14 +9,7 @@ import type {
   ClipEffect,
   TimelineFormat,
 } from './types';
-import type {
-  OtioTrack,
-  OtioTrackChild,
-  OtioMediaReference,
-  OtioTimeline,
-  OtioGap,
-  OtioAnyClip,
-} from './otio/types';
+import type { OtioTrack, OtioTrackChild, OtioMediaReference, OtioTimeline } from './otio/types';
 import {
   toTimeRange,
   trackKindToOtioKind,

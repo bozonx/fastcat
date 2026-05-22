@@ -167,7 +167,7 @@ export async function runTranscode(
     sourceFile instanceof File
       ? new BlobSource(sourceFile)
       : new BlobSource(await sourceFile.getFile());
-  const input = new Input({ source, formats: ALL_FORMATS } as unknown);
+  const input = new Input({ source, formats: ALL_FORMATS } as any);
 
   // 2. Setup Output
   const format =
@@ -184,7 +184,7 @@ export async function runTranscode(
       }) => Promise<{ abort?: () => Promise<void> }>;
     }
   ).createWritable({ keepExistingData: false });
-  const target = new StreamTarget(writable, {
+  const target = new StreamTarget(writable as unknown as WritableStream<unknown>, {
     chunked: true,
     chunkSize: 16 * 1024 * 1024,
   });
@@ -222,9 +222,7 @@ export async function runTranscode(
     outputCancelled = true;
 
     try {
-      if (typeof (output as { cancel?: () => Promise<void> }).cancel === 'function') {
-        await (output as { cancel?: () => Promise<void> }).cancel();
-      }
+      (output as { cancel?: () => Promise<void> }).cancel?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes('already been canceled')) {
@@ -243,20 +241,12 @@ export async function runTranscode(
     const sourceVideoTrackAny = sourceVideoTrack as { frameRate?: number } | null;
     const sourceFrameRate = Number(sourceVideoTrackAny?.frameRate || 0);
 
-    const supportedVideoCodecs =
-      typeof (format as unknown as { getSupportedVideoCodecs?: () => string[] })
-        .getSupportedVideoCodecs === 'function'
-        ? (
-            format as unknown as { getSupportedVideoCodecs?: () => string[] }
-          ).getSupportedVideoCodecs()
-        : undefined;
-    const supportedAudioCodecs =
-      typeof (format as unknown as { getSupportedAudioCodecs?: () => string[] })
-        .getSupportedAudioCodecs === 'function'
-        ? (
-            format as unknown as { getSupportedAudioCodecs?: () => string[] }
-          ).getSupportedAudioCodecs()
-        : undefined;
+    const supportedVideoCodecs = (
+      format as unknown as { getSupportedVideoCodecs?: () => string[] }
+    ).getSupportedVideoCodecs?.();
+    const supportedAudioCodecs = (
+      format as unknown as { getSupportedAudioCodecs?: () => string[] }
+    ).getSupportedAudioCodecs?.();
 
     const preferredVideoCodec =
       options.videoCodec === 'none' ? null : getBunnyVideoCodec(options.videoCodec);
@@ -264,12 +254,12 @@ export async function runTranscode(
 
     const resolvedVideoCodec = preferredVideoCodec
       ? await getFirstEncodableVideoCodec(
-          supportedVideoCodecs?.includes(preferredVideoCodec)
+          (supportedVideoCodecs?.includes(preferredVideoCodec)
             ? [
                 preferredVideoCodec,
                 ...supportedVideoCodecs.filter((codec: string) => codec !== preferredVideoCodec),
               ]
-            : supportedVideoCodecs,
+            : supportedVideoCodecs) as any,
           {
             width: options.width,
             height: options.height,
@@ -280,12 +270,12 @@ export async function runTranscode(
 
     const resolvedAudioCodec = preferredAudioCodec
       ? await getFirstEncodableAudioCodec(
-          supportedAudioCodecs?.includes(preferredAudioCodec)
+          (supportedAudioCodecs?.includes(preferredAudioCodec)
             ? [
                 preferredAudioCodec,
                 ...supportedAudioCodecs.filter((codec: string) => codec !== preferredAudioCodec),
               ]
-            : supportedAudioCodecs,
+            : supportedAudioCodecs) as any,
           {
             sampleRate: options.audioSampleRate,
           },
@@ -336,8 +326,10 @@ export async function runTranscode(
     conversionProcess = await Conversion.init({
       input,
       output,
-      video: videoConfig as unknown,
-      audio: audioConfig as unknown,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      video: videoConfig as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      audio: audioConfig as any,
       showWarnings: false,
     });
 
@@ -357,7 +349,9 @@ export async function runTranscode(
     const progressIntervalMs = 250;
     const yieldIntervalMs = 32;
 
-    conversionProcess.onProgress = (progress: number) => {
+    (conversionProcess as unknown as { onProgress?: (progress: number) => void }).onProgress = (
+      progress: number,
+    ) => {
       ensureNotCancelled();
 
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -376,14 +370,14 @@ export async function runTranscode(
     // Create an interval to yield/check cancel
     const cancelInterval = setInterval(() => {
       if (checkCancel()) {
-        if (conversionProcess && typeof conversionProcess.cancel === 'function') {
-          conversionProcess.cancel();
+        if (conversionProcess) {
+          (conversionProcess as unknown as { cancel?: () => void }).cancel?.();
         }
       }
     }, yieldIntervalMs);
 
     try {
-      await conversionProcess.execute();
+      await (conversionProcess as unknown as { execute?: () => Promise<void> }).execute?.();
     } finally {
       clearInterval(cancelInterval);
     }
@@ -391,8 +385,8 @@ export async function runTranscode(
     await notifyPhase('saving', taskId);
   } catch (e) {
     try {
-      if (conversionProcess && typeof conversionProcess.cancel === 'function') {
-        await conversionProcess.cancel();
+      if (conversionProcess) {
+        await (conversionProcess as unknown as { cancel?: () => Promise<void> }).cancel?.();
       }
     } catch {
       /* no-op */
@@ -403,8 +397,7 @@ export async function runTranscode(
       /* no-op */
     }
     try {
-      if (typeof (writable as { abort?: () => Promise<void> }).abort === 'function')
-        await (writable as { abort?: () => Promise<void> }).abort();
+      (writable as { abort?: () => Promise<void> }).abort?.();
     } catch {
       /* no-op */
     }

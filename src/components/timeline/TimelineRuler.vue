@@ -85,7 +85,7 @@ function getSnappedPlayheadTimeUs(rawTimeUs: number) {
   });
 }
 
-function computeSnapTargets() {
+function computeSnapTargets(excludeMarkerId?: string) {
   const snapSettings = workspaceStore.userSettings.timeline.snapping;
   const timelineEndUs = Number.isFinite(timelineStore.duration)
     ? Math.max(0, Math.round(timelineStore.duration))
@@ -93,6 +93,7 @@ function computeSnapTargets() {
 
   return computeSnapTargetsUs({
     tracks: timelineStore.timelineDoc?.tracks ?? [],
+    excludeMarkerId,
     includeTimelineStart: snapSettings.timelineEdges,
     includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
     includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,

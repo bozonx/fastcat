@@ -396,7 +396,7 @@ async function onDrop(e: DragEvent, trackId: string) {
 
   const pseudo =
     isLayer1Pressed(e as DragEvent, workspaceStore.userSettings) ||
-    timelineSettingsStore.overlapMode === 'pseudo';
+    timelineSettingsStore.isPseudoOverlapEnabled;
 
   const libraryItemData =
     e.dataTransfer?.getData('fastcat-item') || e.dataTransfer?.getData('application/json');

@@ -138,10 +138,10 @@ function close() {
           <UIcon name="i-heroicons-arrows-right-left" class="w-4 h-4 text-blue-400" />
         </div>
         <div class="flex flex-col">
-          <span class="text-sm font-bold text-zinc-200 leading-none">
+          <span class="text-sm font-bold text-ui-text leading-none">
             {{ t('fastcat.timeline.trimMode') }}
           </span>
-          <span v-if="clip" class="text-[10px] text-zinc-500 mt-1 uppercase tracking-tighter">
+          <span v-if="clip" class="text-[10px] text-ui-text-muted mt-1 uppercase tracking-tighter">
             {{ clip.name }} | {{ (clip.timelineRange.durationUs / 1e6).toFixed(2) }}s
           </span>
         </div>
@@ -150,9 +150,9 @@ function close() {
 
     <div class="px-4 py-8">
       <div
-        class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl overflow-hidden shadow-inner"
+        class="bg-ui-bg-elevated/60 border border-ui-border/80 rounded-2xl overflow-hidden shadow-inner"
       >
-        <div class="flex h-44 divide-x divide-zinc-800/80">
+        <div class="flex h-44 divide-x divide-ui-border/80">
           <!-- Start Area -->
           <div
             class="flex-1 flex flex-col items-center justify-center gap-3 touch-none select-none relative transition-colors"
@@ -168,11 +168,11 @@ function close() {
             <UIcon
               name="i-heroicons-arrow-left-20-solid"
               class="w-5 h-5 transition-transform"
-              :class="activeEdge === 'start' ? 'text-blue-400 scale-125' : 'text-zinc-600'"
+              :class="activeEdge === 'start' ? 'text-blue-400 scale-125' : 'text-ui-text-muted'"
             />
 
             <div class="flex flex-col items-center">
-              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">
+              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-ui-text-muted">
                 {{ t('fastcat.timeline.trimStart') }}
               </span>
             </div>
@@ -189,7 +189,7 @@ function close() {
                   class="w-0.5 rounded-full transition-colors"
                   :class="[
                     i % 5 === 0 ? 'h-6' : 'h-3',
-                    activeEdge === 'start' ? 'bg-blue-400/40' : 'bg-zinc-700/30',
+                    activeEdge === 'start' ? 'bg-blue-400/40' : 'bg-ui-border/30',
                   ]"
                 ></div>
               </div>
@@ -211,11 +211,11 @@ function close() {
             <UIcon
               name="i-heroicons-arrow-right-20-solid"
               class="w-5 h-5 transition-transform"
-              :class="activeEdge === 'end' ? 'text-blue-400 scale-125' : 'text-zinc-600'"
+              :class="activeEdge === 'end' ? 'text-blue-400 scale-125' : 'text-ui-text-muted'"
             />
 
             <div class="flex flex-col items-center">
-              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">
+              <span class="text-[10px] uppercase tracking-[0.2em] font-black text-ui-text-muted">
                 {{ t('fastcat.timeline.trimEnd') }}
               </span>
             </div>
@@ -232,7 +232,7 @@ function close() {
                   class="w-0.5 rounded-full transition-colors"
                   :class="[
                     i % 5 === 0 ? 'h-6' : 'h-3',
-                    activeEdge === 'end' ? 'bg-blue-400/40' : 'bg-zinc-700/30',
+                    activeEdge === 'end' ? 'bg-blue-400/40' : 'bg-ui-border/30',
                   ]"
                 ></div>
               </div>
@@ -242,10 +242,10 @@ function close() {
 
         <!-- Hint -->
         <div
-          class="bg-zinc-900 border-t border-zinc-800/80 py-2 px-4 flex justify-center items-center gap-2"
+          class="bg-ui-bg-elevated border-t border-ui-border/80 py-2 px-4 flex justify-center items-center gap-2"
         >
-          <UIcon name="i-heroicons-hand-raised" class="w-3.5 h-3.5 text-zinc-600" />
-          <span class="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">
+          <UIcon name="i-heroicons-hand-raised" class="w-3.5 h-3.5 text-ui-text-muted" />
+          <span class="text-[10px] text-ui-text-muted font-medium uppercase tracking-widest">
             {{ t('fastcat.timeline.trimHint') }}
           </span>
         </div>
@@ -255,7 +255,7 @@ function close() {
     <template #footer>
       <div class="flex gap-3">
         <button
-          class="flex-1 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 text-zinc-200 py-3 rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95"
+          class="flex-1 bg-ui-bg-muted hover:bg-ui-bg-elevated active:bg-ui-border text-ui-text py-3 rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95"
           @click="close"
         >
           {{ t('common.done') }}

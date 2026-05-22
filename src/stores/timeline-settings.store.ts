@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { OverlapMode, FrameSnapMode, ClipSnapMode } from '~/utils/timeline-modes';
+import type { FrameSnapMode } from '~/utils/timeline-modes';
 import { DEFAULT_SNAP_SETTINGS } from '~/utils/timeline-modes';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 
@@ -10,19 +10,10 @@ export type ToolbarDragMode = 'pseudo_overlap' | 'copy' | 'slip';
 export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const workspaceStore = useWorkspaceStore();
 
-  const overlapMode = ref<OverlapMode>(DEFAULT_SNAP_SETTINGS.overlapMode);
-
   const frameSnapMode = computed({
     get: () => workspaceStore.userSettings.timeline.frameSnapMode,
     set: (v) => {
       workspaceStore.userSettings.timeline.frameSnapMode = v;
-    },
-  });
-
-  const clipSnapMode = computed({
-    get: () => workspaceStore.userSettings.timeline.clipSnapMode,
-    set: (v) => {
-      workspaceStore.userSettings.timeline.clipSnapMode = v;
     },
   });
 
@@ -47,16 +38,13 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
 
   const landscapeDrawerPosition = ref<'right' | 'bottom'>('bottom');
 
-  if (overlapMode.value !== 'none' && overlapMode.value !== 'pseudo') {
-    overlapMode.value = DEFAULT_SNAP_SETTINGS.overlapMode;
-  }
+  /** Pseudo-overlap is driven by the toolbar drag mode (cuts underlying clips). */
+  const isPseudoOverlapEnabled = computed(
+    () => toolbarDragModeEnabled.value && toolbarDragMode.value === 'pseudo_overlap',
+  );
 
   if (frameSnapMode.value !== 'free' && frameSnapMode.value !== 'frames') {
     frameSnapMode.value = DEFAULT_SNAP_SETTINGS.frameSnapMode;
-  }
-
-  if (clipSnapMode.value !== 'none' && clipSnapMode.value !== 'clips') {
-    clipSnapMode.value = DEFAULT_SNAP_SETTINGS.clipSnapMode;
   }
 
   if (
@@ -88,16 +76,8 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
     return DEFAULT_SNAP_SETTINGS.snapThresholdPx;
   });
 
-  function setOverlapMode(mode: OverlapMode) {
-    overlapMode.value = mode;
-  }
-
   function setFrameSnapMode(mode: FrameSnapMode) {
     frameSnapMode.value = mode;
-  }
-
-  function setClipSnapMode(mode: ClipSnapMode) {
-    clipSnapMode.value = mode;
   }
 
   function setGlobalSnapThresholdPx(value: number) {
@@ -153,16 +133,13 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   const isSnapSettingsModalOpen = ref(false);
 
   return {
-    overlapMode,
     frameSnapMode,
-    clipSnapMode,
     toolbarSnapMode,
     toolbarDragMode,
     toolbarDragModeEnabled,
+    isPseudoOverlapEnabled,
     snapThresholdPx,
-    setOverlapMode,
     setFrameSnapMode,
-    setClipSnapMode,
     setGlobalSnapThresholdPx,
     selectToolbarSnapMode,
     cycleToolbarSnapMode,

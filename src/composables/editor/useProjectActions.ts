@@ -34,6 +34,10 @@ export function useProjectActions() {
     if (!projectStore.currentProjectName) return;
 
     try {
+      // Persist the outgoing timeline's crash-recovery sidecar before the active
+      // path changes — only one doc lives in memory, so its accumulated edits
+      // would otherwise be lost when the new timeline replaces it.
+      await timelineStore.flushTimelineAutosave();
       await projectStore.openTimelineFile(path);
       focusStore.setActiveTimelinePath(path);
       await timelineStore.loadTimeline();

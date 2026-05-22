@@ -14,7 +14,6 @@ vi.mock('~/stores/workspace.store', () => ({
       timeline: {
         snapThresholdPx: 10,
         frameSnapMode: 'frames',
-        clipSnapMode: 'clips',
         toolbarSnapMode: 'snap',
         toolbarDragMode: 'pseudo_overlap',
         toolbarDragModeEnabled: false,
@@ -35,15 +34,16 @@ describe('useTimelineSettingsStore', () => {
 
   it('initializes with default snap settings', () => {
     const store = useTimelineSettingsStore();
-    expect(store.overlapMode).toBe(DEFAULT_SNAP_SETTINGS.overlapMode);
     expect(store.frameSnapMode).toBe(DEFAULT_SNAP_SETTINGS.frameSnapMode);
-    expect(store.clipSnapMode).toBe(DEFAULT_SNAP_SETTINGS.clipSnapMode);
   });
 
-  it('sets overlap mode', () => {
+  it('derives pseudo-overlap from the toolbar drag mode', () => {
     const store = useTimelineSettingsStore();
-    store.setOverlapMode('pseudo');
-    expect(store.overlapMode).toBe('pseudo');
+    expect(store.isPseudoOverlapEnabled).toBe(false);
+    store.selectToolbarDragMode('pseudo_overlap');
+    expect(store.isPseudoOverlapEnabled).toBe(true);
+    store.selectToolbarDragMode('copy');
+    expect(store.isPseudoOverlapEnabled).toBe(false);
   });
 
   it('sets frame snap mode', () => {

@@ -36,10 +36,10 @@ const isOpen = computed({
         </div>
 
         <div
-          class="flex flex-col gap-1 bg-zinc-800/30 rounded-2xl overflow-hidden border border-zinc-800/50 p-1"
+          class="flex flex-col gap-1 bg-ui-bg-muted/30 rounded-2xl overflow-hidden border border-ui-border/50 p-1"
         >
           <button
-            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-zinc-700/40 transition-colors group text-left"
+            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-ui-bg-elevated/40 transition-colors group text-left"
             @click="emit('upload')"
           >
             <div
@@ -47,14 +47,14 @@ const isOpen = computed({
             >
               <Icon name="lucide:upload-cloud" class="w-5 h-5 text-indigo-400" />
             </div>
-            <span class="text-sm font-medium text-zinc-200">{{
+            <span class="text-sm font-medium text-ui-text">{{
               t('videoEditor.fileManager.actions.uploadFiles')
             }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
 
           <button
-            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-zinc-700/40 transition-colors group text-left"
+            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-ui-bg-elevated/40 transition-colors group text-left"
             @click="emit('create-folder')"
           >
             <div
@@ -62,14 +62,14 @@ const isOpen = computed({
             >
               <Icon name="lucide:folder-plus" class="w-5 h-5 text-emerald-400" />
             </div>
-            <span class="text-sm font-medium text-zinc-200">{{
+            <span class="text-sm font-medium text-ui-text">{{
               t('videoEditor.fileManager.actions.createFolder')
             }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
 
           <button
-            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-zinc-700/40 transition-colors group text-left"
+            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-ui-bg-elevated/40 transition-colors group text-left"
             @click="emit('create-text-file', selectedFolderPath)"
           >
             <div
@@ -77,12 +77,12 @@ const isOpen = computed({
             >
               <Icon name="lucide:file-text" class="w-5 h-5 text-blue-400" />
             </div>
-            <span class="text-sm font-medium text-zinc-200">{{ t('common.textDocument') }}</span>
+            <span class="text-sm font-medium text-ui-text">{{ t('common.textDocument') }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
 
           <button
-            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-zinc-700/40 transition-colors group text-left"
+            class="flex items-center gap-4 w-full p-3.5 rounded-xl hover:bg-ui-bg-elevated/40 transition-colors group text-left"
             @click="emit('create-timeline', selectedFolderPath)"
           >
             <div
@@ -90,7 +90,7 @@ const isOpen = computed({
             >
               <Icon name="lucide:film" class="w-5 h-5 text-orange-400" />
             </div>
-            <span class="text-sm font-medium text-zinc-200">{{ t('common.timeline') }}</span>
+            <span class="text-sm font-medium text-ui-text">{{ t('common.timeline') }}</span>
             <Icon name="lucide:chevron-right" class="w-4 h-4 ml-auto opacity-20" />
           </button>
         </div>
@@ -122,7 +122,7 @@ const isOpen = computed({
           </button>
 
           <button
-            class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-zinc-800/40 border border-zinc-700/50 hover:bg-zinc-700 active:scale-95 transition-all text-center group"
+            class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-ui-bg-muted/40 border border-ui-border/50 hover:bg-ui-bg-elevated active:scale-95 transition-all text-center group"
             @click="emit('create-timeline')"
           >
             <div
@@ -130,7 +130,7 @@ const isOpen = computed({
             >
               <Icon name="lucide:film" class="w-6 h-6 text-orange-500" />
             </div>
-            <span class="text-xs font-bold text-zinc-200 uppercase tracking-tight">{{
+            <span class="text-xs font-bold text-ui-text uppercase tracking-tight">{{
               t('common.timeline')
             }}</span>
             <span class="text-[10px] text-orange-400/60 font-medium leading-none">{{
@@ -139,7 +139,7 @@ const isOpen = computed({
           </button>
 
           <button
-            class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-zinc-800/40 border border-zinc-700/50 hover:bg-zinc-700 active:scale-95 transition-all text-center group"
+            class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-ui-bg-muted/40 border border-ui-border/50 hover:bg-ui-bg-elevated active:scale-95 transition-all text-center group"
             @click="emit('create-text-file')"
           >
             <div
@@ -148,7 +148,7 @@ const isOpen = computed({
               <Icon name="lucide:file-text" class="w-6 h-6 text-blue-500" />
             </div>
             <span
-              class="text-xs font-bold text-zinc-200 uppercase tracking-tight text-nowrap whitespace-nowrap overflow-hidden text-ellipsis w-full px-1"
+              class="text-xs font-bold text-ui-text uppercase tracking-tight text-nowrap whitespace-nowrap overflow-hidden text-ellipsis w-full px-1"
               >{{ t('common.textDocument') }}</span
             >
             <span class="text-[10px] text-blue-400/60 font-medium leading-none">{{

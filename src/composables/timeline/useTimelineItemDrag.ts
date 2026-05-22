@@ -290,9 +290,15 @@ export function useTimelineItemDrag(
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
     const snapSettings = workspaceStore.userSettings.timeline.snapping;
+    // Exclude every selected movable clip — when moving a group, its own members
+    // must not act as snap targets, otherwise the group sticks to itself.
+    const moveExcludeItemIds = getSelectedMovableItemIds({
+      selectedItemIds: timelineStore.selectedItemIds,
+      tracks: tracks.value,
+    });
     dragSnapTargetsUs.value = computeSnapTargetsUs({
       tracks: tracks.value,
-      excludeItemId: itemId,
+      excludeItemIds: moveExcludeItemIds.length > 0 ? moveExcludeItemIds : [itemId],
       includeTimelineStart: snapSettings.timelineEdges,
       includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
       includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
@@ -355,7 +361,7 @@ export function useTimelineItemDrag(
     const snapSettings = workspaceStore.userSettings.timeline.snapping;
     dragSnapTargetsUs.value = computeSnapTargetsUs({
       tracks: tracks.value,
-      excludeItemId: input.itemId,
+      excludeItemIds: [input.itemId],
       includeTimelineStart: snapSettings.timelineEdges,
       includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
       includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
@@ -438,8 +444,7 @@ export function useTimelineItemDrag(
     const enableClipSnapBase = settingsStore.toolbarSnapMode === 'snap';
     const enableClipSnap = dragToggleSnapOverride.value ? !enableClipSnapBase : enableClipSnapBase;
     const snapThresholdPx = settingsStore.snapThresholdPx;
-    const isShiftPressed = dragUsePseudoOverlapOverride.value;
-    const overlapMode = isShiftPressed ? 'pseudo' : settingsStore.overlapMode;
+    const overlapMode = dragUsePseudoOverlapOverride.value ? 'pseudo' : 'none';
 
     if (mode === 'slip') {
       const track = tracks.value.find((value) => value.id === trackId);
@@ -489,7 +494,10 @@ export function useTimelineItemDrag(
         },
       } as const;
 
-      timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, { saveMode: 'none', skipHistory: true });
+      timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, {
+        saveMode: 'none',
+        skipHistory: true,
+      });
       lastDragAppliedCmd.value = cmd as unknown as import('~/timeline/commands').TimelineCommand;
       hasPendingTimelinePersist.value = true;
       return;
@@ -926,7 +934,7 @@ export function useTimelineItemDrag(
 
     if (!cancel && draggingMode.value === 'move') {
       const usePseudoOverlap = dragUsePseudoOverlapOverride.value;
-      const overlapMode = usePseudoOverlap ? 'pseudo' : settingsStore.overlapMode;
+      const overlapMode = usePseudoOverlap ? 'pseudo' : 'none';
 
       const commit = pendingMoveCommit.value;
       if (commit && commit.moves.length > 0 && !commit.isCollision) {
@@ -947,11 +955,15 @@ export function useTimelineItemDrag(
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
           }));
-          timelineStore.batchApplyTimeline(cmds as unknown as import('~/timeline/commands').TimelineCommand[], {
-            saveMode: 'none',
-            skipHistory: true,
-          });
-          appliedCmdLocal = (cmds[cmds.length - 1] ?? null) as unknown as import('~/timeline/commands').TimelineCommand;
+          timelineStore.batchApplyTimeline(
+            cmds as unknown as import('~/timeline/commands').TimelineCommand[],
+            {
+              saveMode: 'none',
+              skipHistory: true,
+            },
+          );
+          appliedCmdLocal = (cmds[cmds.length - 1] ??
+            null) as unknown as import('~/timeline/commands').TimelineCommand;
         } else {
           const cmd = {
             type: 'move_items',
@@ -959,7 +971,10 @@ export function useTimelineItemDrag(
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
           } as const;
-          timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, { saveMode: 'none', skipHistory: true });
+          timelineStore.applyTimeline(
+            cmd as unknown as import('~/timeline/commands').TimelineCommand,
+            { saveMode: 'none', skipHistory: true },
+          );
           appliedCmdLocal = cmd as unknown as import('~/timeline/commands').TimelineCommand;
         }
         // Only record an applied command if the document actually changed.
@@ -984,9 +999,13 @@ export function useTimelineItemDrag(
           quantizeToFrames: commit.quantizeToFrames,
         } as const;
         const docBeforeApply = timelineStore.timelineDoc;
-        timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, { saveMode: 'none', skipHistory: true });
+        timelineStore.applyTimeline(
+          cmd as unknown as import('~/timeline/commands').TimelineCommand,
+          { saveMode: 'none', skipHistory: true },
+        );
         if (timelineStore.timelineDoc !== docBeforeApply) {
-          lastDragAppliedCmd.value = cmd as unknown as import('~/timeline/commands').TimelineCommand;
+          lastDragAppliedCmd.value =
+            cmd as unknown as import('~/timeline/commands').TimelineCommand;
           hasPendingTimelinePersist.value = true;
         }
       }

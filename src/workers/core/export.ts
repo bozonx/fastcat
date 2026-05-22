@@ -69,7 +69,7 @@ export async function extractMetadata(
   try {
     const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
     const source = new BlobSource(file);
-    const input = new Input({ source, formats: ALL_FORMATS });
+    const input = new Input({ source, formats: ALL_FORMATS } as any);
 
     try {
       const mimeType = typeof input.getMimeType === 'function' ? await input.getMimeType() : null;
@@ -106,7 +106,7 @@ export async function extractMetadata(
           parsedCodec: parseVideoCodec(codecParam || vTrack.codec || ''),
           fps: stats.averagePacketRate,
           bitrate: stats.averageBitrate,
-          colorSpace: colorSpace as unknown,
+          colorSpace: colorSpace as any,
           canDecode: canDecodeVideo,
         };
       }

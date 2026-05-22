@@ -104,7 +104,7 @@ export interface FastCatProjectSettings {
   };
   ui: {
     activeTabId: string | null;
-    fileTabs: import('~/types/project').ProjectFileTab[];
+    fileTabs: import('~/stores/project-tabs.store').ProjectFileTab[];
     staticTabsOrder: string[];
     fileManagerPaths: Record<string, string | null>;
     layout: ProjectUiLayoutState;

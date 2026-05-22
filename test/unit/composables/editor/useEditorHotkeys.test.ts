@@ -31,7 +31,6 @@ const mockWorkspaceStore = {
     timeline: {
       defaultStaticClipDurationUs: 5000000,
       frameSnapMode: 'frames',
-      clipSnapMode: 'clips',
       toolbarSnapMode: 'snap',
       toolbarDragMode: 'pseudo_overlap',
       toolbarDragModeEnabled: false,

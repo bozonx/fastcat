@@ -23,7 +23,7 @@ interface UseTimelineRulerMarkerDragOptions {
   fps: Ref<number>;
   selectMarker: (markerId: string, e?: MouseEvent, part?: 'left' | 'right') => void;
   updateMarker: (markerId: string, patch: { timeUs?: number; durationUs?: number }) => void;
-  computeSnapTargets?: () => number[];
+  computeSnapTargets?: (excludeMarkerId?: string) => number[];
   snapThresholdPx?: Ref<number>;
   isSnappingEnabled?: Ref<boolean>;
   scrollLeft: Ref<number>;
@@ -122,7 +122,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
         const thresholdUs = Math.round(
           (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
         );
-        const targets = options.computeSnapTargets();
+        const targets = options.computeSnapTargets(draggedMarkerId.value ?? undefined);
         const snap = pickBestSnapCandidateUs({ rawUs: newUs, thresholdUs, targetsUs: targets });
         if (snap.distUs < thresholdUs) {
           newUs = Math.max(0, quantize(snap.snappedUs));
@@ -151,7 +151,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       const thresholdUs = Math.round(
         (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
       );
-      const targets = options.computeSnapTargets();
+      const targets = options.computeSnapTargets(draggedMarkerId.value ?? undefined);
       const snap = pickBestSnapCandidateUs({ rawUs: endUs, thresholdUs, targetsUs: targets });
       if (snap.distUs < thresholdUs) {
         newDurationUs = Math.max(1, quantize(snap.snappedUs) - markerDragStartUs.value);

@@ -97,9 +97,7 @@ const formatDate = (dateStr?: string) => {
     <WelcomeScreen v-if="!workspaceStore.workspaceHandle" />
 
     <template v-else>
-      <div
-        class="flex h-screen w-full flex-col bg-ui-bg overflow-hidden text-ui-text font-sans"
-      >
+      <div class="flex h-screen w-full flex-col bg-ui-bg overflow-hidden text-ui-text font-sans">
         <!-- Sticky Header with Glass Effect -->
         <header
           class="shrink-0 pt-safe px-5 pb-4 bg-ui-bg/80 backdrop-blur-xl border-b border-white/5 z-20"
@@ -124,7 +122,7 @@ const formatDate = (dateStr?: string) => {
                 variant="ghost"
                 color="neutral"
                 icon="i-heroicons-computer-desktop"
-                class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-zinc-400"
+                class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-ui-text-muted"
                 @click="router.push('/')"
               />
               <UButton
@@ -182,7 +180,9 @@ const formatDate = (dateStr?: string) => {
                       <h3 class="font-bold text-white text-sm truncate">
                         {{ project.projectName }}
                       </h3>
-                      <p class="text-[10px] text-zinc-400 font-medium mt-1 flex items-center gap-1">
+                      <p
+                        class="text-[10px] text-ui-text-muted font-medium mt-1 flex items-center gap-1"
+                      >
                         <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
                         {{ formatDate(project.updatedAt) }}
                       </p>
@@ -209,7 +209,7 @@ const formatDate = (dateStr?: string) => {
                 <div
                   v-for="project in smartSortedProjects"
                   :key="project.projectName"
-                  class="group bg-zinc-900/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-zinc-800 transition-all shadow-sm h-20"
+                  class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
                   @click="handleOpenProject(project.projectName)"
                 >
                   <div class="w-20 h-full relative shrink-0">
@@ -225,7 +225,7 @@ const formatDate = (dateStr?: string) => {
                   <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
                     <div class="flex flex-col min-w-0">
                       <span
-                        class="font-bold text-zinc-100 truncate text-sm tracking-tight leading-tight"
+                        class="font-bold text-ui-text truncate text-sm tracking-tight leading-tight"
                         >{{ project.projectName }}</span
                       >
                       <span
@@ -242,7 +242,7 @@ const formatDate = (dateStr?: string) => {
                         variant="ghost"
                         color="neutral"
                         icon="lucide:edit-2"
-                        class="rounded-full w-9 h-9 p-0 text-zinc-600 active:text-white active:bg-white/5 transition-colors"
+                        class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
                         @click.stop="startRename(project.projectName)"
                       />
                       <UButton
@@ -250,7 +250,7 @@ const formatDate = (dateStr?: string) => {
                         variant="ghost"
                         color="neutral"
                         icon="i-heroicons-trash"
-                        class="rounded-full w-9 h-9 p-0 text-zinc-600 active:text-white active:bg-white/5 transition-colors"
+                        class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
                         @click.stop="startDelete(project.projectName)"
                       />
                     </div>
@@ -261,10 +261,10 @@ const formatDate = (dateStr?: string) => {
               <!-- Empty State -->
               <div
                 v-else
-                class="flex flex-col items-center justify-center py-24 text-zinc-600 gap-8"
+                class="flex flex-col items-center justify-center py-24 text-ui-text-muted gap-8"
               >
                 <div
-                  class="w-28 h-28 rounded-full bg-zinc-900/50 flex items-center justify-center border border-white/5 relative"
+                  class="w-28 h-28 rounded-full bg-ui-bg-elevated/50 flex items-center justify-center border border-white/5 relative"
                 >
                   <UIcon name="i-heroicons-folder-open" class="w-12 h-12 opacity-10" />
                   <div class="absolute inset-0 bg-primary-500/5 rounded-full animate-pulse" />
@@ -320,7 +320,7 @@ const formatDate = (dateStr?: string) => {
               variant="none"
               full-width
               :ui="{
-                base: 'h-16 text-xl font-bold px-6 bg-zinc-900/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700',
+                base: 'h-16 text-xl font-bold px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-ui-text-muted',
               }"
               autofocus
               @keyup.enter="createNewProject"
@@ -329,7 +329,7 @@ const formatDate = (dateStr?: string) => {
 
           <div
             v-if="!projectCreationSettings.isAdvancedSettingsOpen"
-            class="text-[11px] text-ui-text-muted bg-zinc-900/30 p-5 rounded-3xl flex gap-4 border border-white/5 leading-relaxed"
+            class="text-[11px] text-ui-text-muted bg-ui-bg-elevated/30 p-5 rounded-3xl flex gap-4 border border-white/5 leading-relaxed"
           >
             <UIcon
               name="i-heroicons-information-circle"
@@ -368,7 +368,7 @@ const formatDate = (dateStr?: string) => {
                     value-key="value"
                     label-key="label"
                     full-width
-                    class="bg-zinc-900/50! rounded-2xl! h-12!"
+                    class="bg-ui-bg-elevated/50! rounded-2xl! h-12!"
                     @update:model-value="
                       (value: unknown) =>
                         applyProjectCreationPreset(
@@ -438,7 +438,7 @@ const formatDate = (dateStr?: string) => {
               variant="none"
               full-width
               :ui="{
-                base: 'h-16 text-xl font-bold px-6 bg-zinc-900/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-zinc-700',
+                base: 'h-16 text-xl font-bold px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl focus:ring-2 focus:ring-primary-500 transition-all placeholder:text-ui-text-muted',
               }"
               autofocus
               @keyup.enter="renameProject"

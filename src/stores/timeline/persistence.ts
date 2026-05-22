@@ -38,7 +38,22 @@ export interface TimelinePersistenceDeps {
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
 
   shouldRestoreAutosaveSilently?: () => boolean;
-  autoSaveDebounceMs?: number;
+  /**
+   * Returns the periodic crash-recovery autosave interval in milliseconds.
+   * The sidecar is written at most once per interval after the first change,
+   * not on every edit. Defaults to 2 minutes.
+   */
+  getAutosaveIntervalMs?: () => number;
+  /**
+   * Deletes the crash-recovery sidecar for the given timeline path. Called on
+   * explicit save (the work is now committed) and on clean shutdown.
+   */
+  deleteAutosaveFile?: (timelinePath: string) => Promise<void>;
+  /**
+   * Notified whenever the dirty state of a specific timeline path changes, so
+   * the store can keep per-path (per-tab) dirty indicators in sync.
+   */
+  onDirtyStateChange?: (timelinePath: string | null, isDirty: boolean) => void;
   confirmRestoreAutosave?: (input: {
     timelinePath: string;
     autosavePath: string;
@@ -55,6 +70,7 @@ export interface TimelinePersistenceModule {
   markCleanForCurrentRevision: () => void;
 
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
+  flushTimelineAutosave: () => Promise<void>;
   loadTimeline: () => Promise<void>;
   saveTimeline: () => Promise<void>;
 }
@@ -186,7 +202,9 @@ export function createTimelinePersistenceModule(
   }
 
   function setDirtyState() {
-    deps.isTimelineDirty.value = isDirty();
+    const dirty = isDirty();
+    deps.isTimelineDirty.value = dirty;
+    deps.onDirtyStateChange?.(deps.currentTimelinePath.value, dirty);
   }
 
   function getAutosavePath(timelinePath: string) {
@@ -219,8 +237,42 @@ export function createTimelinePersistenceModule(
     return serialized;
   }
 
+  // Crash-recovery autosave is periodic, not per-edit: the first change after a
+  // clean state arms a single timer; further edits within the window do not
+  // reset it; when it fires the accumulated state is written to the sidecar.
+  let autosaveTimer: number | null = null;
+
+  function clearAutosaveTimer() {
+    if (typeof window === 'undefined') return;
+    if (autosaveTimer === null) return;
+    window.clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+  }
+
+  function getAutosaveIntervalMs() {
+    const raw = deps.getAutosaveIntervalMs?.() ?? 120_000;
+    // Guard against misconfiguration; never autosave more often than every 10s.
+    return Number.isFinite(raw) && raw >= 10_000 ? raw : 120_000;
+  }
+
+  function scheduleAutosave() {
+    if (typeof window === 'undefined') {
+      void flushTimelineAutosave();
+      return;
+    }
+    if (autosaveTimer !== null) return;
+    autosaveTimer = window.setTimeout(() => {
+      autosaveTimer = null;
+      void flushTimelineAutosave();
+    }, getAutosaveIntervalMs());
+  }
+
+  async function flushTimelineAutosave() {
+    clearAutosaveTimer();
+    await autoSave.requestSave({ immediate: true });
+  }
+
   const autoSave = createAutoSave({
-    debounceMs: deps.autoSaveDebounceMs ?? 10_000,
     doSave: async () => {
       const doc = deps.timelineDoc.value;
       if (!doc || !isDirty()) return false;
@@ -263,6 +315,7 @@ export function createTimelinePersistenceModule(
   });
 
   function resetPersistenceState() {
+    clearAutosaveTimer();
     autoSave.reset();
     currentRevision = 0;
     mainSavedRevision = 0;
@@ -284,18 +337,22 @@ export function createTimelinePersistenceModule(
     currentRevision += 1;
     setDirtyState();
     autoSave.markDirty();
-    void autoSave.requestSave();
+    scheduleAutosave();
   }
 
-  async function requestTimelineSave(options?: { immediate?: boolean }) {
+  // Under the periodic model an edit only ensures the autosave timer is armed;
+  // it never forces an immediate sidecar write. Explicit flush points (blur,
+  // tab switch, shutdown) call `flushTimelineAutosave` directly instead.
+  async function requestTimelineSave(_options?: { immediate?: boolean }) {
     if (!deps.timelineDoc.value) return;
-    await autoSave.requestSave(options);
+    scheduleAutosave();
   }
 
   async function loadTimeline() {
     if (!deps.currentProjectName.value || !deps.currentTimelinePath.value) return;
 
     const requestId = ++loadTimelineRequestId;
+    clearAutosaveTimer();
     autoSave.reset();
     let restoredAutosave = false;
 
@@ -425,6 +482,27 @@ export function createTimelinePersistenceModule(
         setDirtyState();
       }
 
+      // The committed canonical file is now the source of truth. If the save
+      // captured everything, the crash-recovery sidecar is redundant — remove
+      // it so a leftover sidecar can't be mistaken for unsaved work on next
+      // launch. If edits landed mid-save (still dirty), keep the sidecar (it
+      // holds the latest autosaved state) and re-arm the periodic timer.
+      if (
+        currentProjectId === deps.currentProjectName.value &&
+        currentTimelinePath === deps.currentTimelinePath.value
+      ) {
+        if (!isDirty()) {
+          clearAutosaveTimer();
+          try {
+            await deps.deleteAutosaveFile?.(currentTimelinePath);
+          } catch (e) {
+            console.warn('Failed to remove autosave sidecar after save', e);
+          }
+        } else {
+          scheduleAutosave();
+        }
+      }
+
       deps.onSaveSuccess?.(serialized);
     } catch (e: unknown) {
       deps.timelineSaveError.value =
@@ -448,6 +526,7 @@ export function createTimelinePersistenceModule(
     markDirty,
     markCleanForCurrentRevision,
     requestTimelineSave,
+    flushTimelineAutosave,
     loadTimeline,
     saveTimeline,
   };
