@@ -2,7 +2,7 @@
 import type { EffectManifest } from '~/effects';
 
 const props = defineProps<{
-  manifest: EffectManifest<any>;
+  manifest: EffectManifest<Record<string, unknown>>;
   isSelected?: boolean;
   isDraggable?: boolean;
   showAction?: boolean;

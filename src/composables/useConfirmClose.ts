@@ -1,14 +1,16 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 
 export function useConfirmClose() {
   const backgroundTasksStore = useBackgroundTasksStore();
+  const timelineStore = useTimelineStore();
   const { t } = useI18n();
 
   let unlistenTauriClose: (() => void) | undefined;
 
   function onBeforeUnload(e: BeforeUnloadEvent) {
-    if (backgroundTasksStore.hasActiveTasks) {
+    if (backgroundTasksStore.hasActiveTasks || timelineStore.isTimelineDirty) {
       e.preventDefault();
       // Modern browsers ignore the return value text and show a generic message
       e.returnValue = '';
@@ -26,11 +28,15 @@ export function useConfirmClose() {
       const appWindow = getCurrentWindow();
 
       unlistenTauriClose = await appWindow.onCloseRequested(async (event) => {
-        if (backgroundTasksStore.hasActiveTasks) {
+        if (backgroundTasksStore.hasActiveTasks || timelineStore.isTimelineDirty) {
           const confirmed = await confirm(
-            t('videoEditor.backgroundTasks.confirmCloseMessage'),
+            timelineStore.isTimelineDirty
+              ? t('videoEditor.timeline.confirmCloseUnsavedMessage')
+              : t('videoEditor.backgroundTasks.confirmCloseMessage'),
             {
-              title: t('videoEditor.backgroundTasks.confirmCloseTitle'),
+              title: timelineStore.isTimelineDirty
+                ? t('videoEditor.timeline.confirmCloseUnsavedTitle')
+                : t('videoEditor.backgroundTasks.confirmCloseTitle'),
               kind: 'warning',
             },
           );

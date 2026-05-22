@@ -24,6 +24,7 @@ export interface TimelinePersistenceDeps {
 
   ensureTimelineFileHandle: (options?: {
     create?: boolean;
+    relativePath?: string;
   }) => Promise<FileSystemFileHandle | null>;
   createFallbackTimelineDoc: () => TimelineDocument;
 
@@ -36,6 +37,12 @@ export interface TimelinePersistenceDeps {
   serializeTimelineToOtio: (doc: TimelineDocument) => string;
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
 
+  shouldRestoreAutosaveSilently?: () => boolean;
+  autoSaveDebounceMs?: number;
+  confirmRestoreAutosave?: (input: {
+    timelinePath: string;
+    autosavePath: string;
+  }) => boolean | Promise<boolean>;
   onSaveSuccess?: (serialized: string) => void;
   onSaveError?: (error: unknown) => void;
 }
@@ -171,15 +178,52 @@ export function createTimelinePersistenceModule(
   deps: TimelinePersistenceDeps,
 ): TimelinePersistenceModule {
   let loadTimelineRequestId = 0;
+  let currentRevision = 0;
+  let mainSavedRevision = 0;
+
+  function isDirty() {
+    return mainSavedRevision < currentRevision;
+  }
+
+  function setDirtyState() {
+    deps.isTimelineDirty.value = isDirty();
+  }
+
+  function getAutosavePath(timelinePath: string) {
+    return `.fastcat/autosave/${timelinePath}`;
+  }
+
+  async function writeSerializedToHandle(handle: FileSystemFileHandle, serialized: string) {
+    const writable = await (
+      handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
+    ).createWritable();
+    await writable.write(serialized);
+    await writable.close();
+  }
+
+  async function serializeValidatedTimeline(doc: TimelineDocument) {
+    const serialized = await serializeInWorker(toRaw(doc));
+
+    // Validation: prevent writing empty or corrupted data
+    if (!serialized || serialized.length < 10) {
+      throw new Error('Refusing to save: Serialized timeline data is suspiciously small or empty');
+    }
+
+    try {
+      JSON.parse(serialized);
+    } catch (e) {
+      console.error('Invalid timeline serialization', e, serialized.substring(0, 100));
+      throw new Error('Refusing to save: Invalid timeline JSON structure');
+    }
+
+    return serialized;
+  }
 
   const autoSave = createAutoSave({
-    debounceMs: 2000,
-    onStateChange: (state) => {
-      deps.isTimelineDirty.value = state.isDirty;
-    },
+    debounceMs: deps.autoSaveDebounceMs ?? 10_000,
     doSave: async () => {
       const doc = deps.timelineDoc.value;
-      if (!doc || !deps.isTimelineDirty.value) return false;
+      if (!doc || !isDirty()) return false;
       if (deps.isReadOnly?.value) return false;
 
       const currentProjectId = deps.currentProjectName.value;
@@ -187,63 +231,29 @@ export function createTimelinePersistenceModule(
 
       if (!currentProjectId || !currentTimelinePath) return false;
 
-      deps.isSavingTimeline.value = true;
       deps.timelineSaveError.value = null;
 
-      // No intermediate clone here — serializeInWorker postMessages a
-      // structuredClone already, and the serializer doesn't mutate the doc.
-      const snapshot = toRaw(doc);
-
       try {
-        // Double check if context changed before writing
         if (
           currentProjectId !== deps.currentProjectName.value ||
           currentTimelinePath !== deps.currentTimelinePath.value
         ) {
-          return false; // Skip save, context changed
+          return false;
         }
 
-        const handle = await deps.ensureTimelineFileHandle({ create: true });
+        const handle = await deps.ensureTimelineFileHandle({
+          create: true,
+          relativePath: getAutosavePath(currentTimelinePath),
+        });
         if (!handle) return false;
 
-        const serialized = await serializeInWorker(snapshot);
-
-        // Validation: prevent writing empty or corrupted data
-        if (!serialized || serialized.length < 10) {
-          throw new Error(
-            'Refusing to save: Serialized timeline data is suspiciously small or empty',
-          );
-        }
-
-        try {
-          JSON.parse(serialized);
-        } catch (e) {
-          console.error('Invalid timeline serialization', e, serialized.substring(0, 100));
-          throw new Error('Refusing to save: Invalid timeline JSON structure');
-        }
-
-        const writable = await (
-          handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
-        ).createWritable();
-        await writable.write(serialized);
-        await writable.close();
-
-        deps.onSaveSuccess?.(serialized);
+        await writeSerializedToHandle(handle, await serializeValidatedTimeline(doc));
         return true;
       } catch (e: unknown) {
         deps.timelineSaveError.value =
-          e instanceof Error ? e.message : 'Failed to save timeline file';
-        console.warn('Failed to save timeline file', e);
-        // Throw to let autoSave know it failed, but we also handle toast in the global error handler
+          e instanceof Error ? e.message : 'Failed to auto-save timeline file';
+        console.warn('Failed to auto-save timeline file', e);
         throw e;
-      } finally {
-        // Only reset flags if we're still on the same timeline context
-        if (
-          currentProjectId === deps.currentProjectName.value &&
-          currentTimelinePath === deps.currentTimelinePath.value
-        ) {
-          deps.isSavingTimeline.value = false;
-        }
       }
     },
     onError: (e) => {
@@ -254,6 +264,9 @@ export function createTimelinePersistenceModule(
 
   function resetPersistenceState() {
     autoSave.reset();
+    currentRevision = 0;
+    mainSavedRevision = 0;
+    setDirtyState();
     loadTimelineRequestId += 1;
   }
 
@@ -262,10 +275,14 @@ export function createTimelinePersistenceModule(
   }
 
   function markCleanForCurrentRevision() {
+    mainSavedRevision = currentRevision;
     autoSave.markCleanForCurrentRevision();
+    setDirtyState();
   }
 
   function markDirty() {
+    currentRevision += 1;
+    setDirtyState();
     autoSave.markDirty();
     void autoSave.requestSave();
   }
@@ -280,19 +297,50 @@ export function createTimelinePersistenceModule(
 
     const requestId = ++loadTimelineRequestId;
     autoSave.reset();
+    let restoredAutosave = false;
 
     const fallback = deps.createFallbackTimelineDoc();
 
     try {
       const handle = await deps.ensureTimelineFileHandle({ create: false });
-      if (!handle) {
+      const autosavePath = getAutosavePath(deps.currentTimelinePath.value);
+      const autosaveHandle = await deps.ensureTimelineFileHandle({
+        create: false,
+        relativePath: autosavePath,
+      });
+      if (!handle && !autosaveHandle) {
         if (requestId !== loadTimelineRequestId) return;
         deps.timelineDoc.value = fallback;
         return;
       }
 
-      const file = await handle.getFile();
-      const text = await file.text();
+      const mainFile = handle ? await handle.getFile() : null;
+      const autosaveFile = autosaveHandle ? await autosaveHandle.getFile() : null;
+      let text = mainFile ? await mainFile.text() : '';
+      const shouldOfferAutosave =
+        !!autosaveFile && (!mainFile || autosaveFile.lastModified > mainFile.lastModified);
+
+      if (shouldOfferAutosave) {
+        const shouldRestore =
+          deps.shouldRestoreAutosaveSilently?.() ??
+          (await deps.confirmRestoreAutosave?.({
+            timelinePath: deps.currentTimelinePath.value,
+            autosavePath,
+          })) ??
+          false;
+
+        if (shouldRestore) {
+          text = await autosaveFile.text();
+          restoredAutosave = true;
+        }
+      }
+
+      if (!text) {
+        if (requestId !== loadTimelineRequestId) return;
+        deps.timelineDoc.value = fallback;
+        return;
+      }
+
       const parsed = deps.parseTimelineFromOtio(text, {
         id: fallback.id,
         name: fallback.name,
@@ -303,32 +351,95 @@ export function createTimelinePersistenceModule(
 
       const path = deps.currentTimelinePath.value;
       const settings = path ? deps.getProjectSettings() : null;
-      const session = (settings?.timelines?.sessions?.[path] ?? null) as Record<string, unknown> | null;
+      const session = (settings?.timelines?.sessions?.[path] ?? null) as Record<
+        string,
+        unknown
+      > | null;
 
       deps.currentTime.value = Number(session?.playheadUs ?? 0);
       deps.masterGain.value = Number(session?.masterGain ?? 1);
       if (deps.audioMuted) deps.audioMuted.value = Boolean(session?.masterMuted ?? false);
       deps.timelineZoom.value = Number(session?.zoom ?? 50);
-      deps.trackHeights.value = session?.trackHeights ? { ...(session.trackHeights as Record<string, number>) } : {};
+      deps.trackHeights.value = session?.trackHeights
+        ? { ...(session.trackHeights as Record<string, number>) }
+        : {};
       if (deps.selectionRange) {
-        deps.selectionRange.value = session?.selectionRange ? { ...(session.selectionRange as Record<string, unknown>) } as { startUs: number; endUs: number } : null;
+        deps.selectionRange.value = session?.selectionRange
+          ? ({ ...(session.selectionRange as Record<string, unknown>) } as {
+              startUs: number;
+              endUs: number;
+            })
+          : null;
       }
     } catch (e: unknown) {
       console.warn('Failed to load timeline file, fallback to default', e);
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = fallback;
     } finally {
-      if (requestId !== loadTimelineRequestId) return;
-      deps.duration.value = deps.timelineDoc.value
-        ? deps.selectTimelineDurationUs(deps.timelineDoc.value)
-        : 0;
-      markCleanForCurrentRevision();
-      deps.timelineSaveError.value = null;
+      if (requestId === loadTimelineRequestId) {
+        deps.duration.value = deps.timelineDoc.value
+          ? deps.selectTimelineDurationUs(deps.timelineDoc.value)
+          : 0;
+        currentRevision = restoredAutosave ? 1 : 0;
+        mainSavedRevision = 0;
+        autoSave.reset();
+        setDirtyState();
+        deps.timelineSaveError.value = null;
+      }
     }
   }
 
   async function saveTimeline() {
-    await requestTimelineSave({ immediate: true });
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+    if (deps.isReadOnly?.value) return;
+
+    const currentProjectId = deps.currentProjectName.value;
+    const currentTimelinePath = deps.currentTimelinePath.value;
+    if (!currentProjectId || !currentTimelinePath) return;
+
+    const revisionToSave = currentRevision;
+    deps.isSavingTimeline.value = true;
+    deps.timelineSaveError.value = null;
+
+    try {
+      if (
+        currentProjectId !== deps.currentProjectName.value ||
+        currentTimelinePath !== deps.currentTimelinePath.value
+      ) {
+        return;
+      }
+
+      const handle = await deps.ensureTimelineFileHandle({ create: true });
+      if (!handle) return;
+
+      const serialized = await serializeValidatedTimeline(doc);
+      await writeSerializedToHandle(handle, serialized);
+
+      if (
+        currentProjectId === deps.currentProjectName.value &&
+        currentTimelinePath === deps.currentTimelinePath.value &&
+        mainSavedRevision < revisionToSave
+      ) {
+        mainSavedRevision = revisionToSave;
+        setDirtyState();
+      }
+
+      deps.onSaveSuccess?.(serialized);
+    } catch (e: unknown) {
+      deps.timelineSaveError.value =
+        e instanceof Error ? e.message : 'Failed to save timeline file';
+      console.warn('Failed to save timeline file', e);
+      deps.onSaveError?.(e);
+      throw e;
+    } finally {
+      if (
+        currentProjectId === deps.currentProjectName.value &&
+        currentTimelinePath === deps.currentTimelinePath.value
+      ) {
+        deps.isSavingTimeline.value = false;
+      }
+    }
   }
 
   return {

@@ -1780,10 +1780,14 @@
       "autoSettingsAppliedDesc": "Resolution {width}x{height}, {fps} FPS",
       "format": "Timeline Format",
       "settings": "Timeline settings",
+      "confirmCloseUnsavedMessage": "This timeline has unsaved changes. Close without saving to the main file?",
+      "confirmCloseUnsavedTitle": "Unsaved changes",
+      "restoreAutosaveConfirm": "Found a newer auto-save for {name}. Restore the unsaved version?",
       "tabs": {
         "cut": "Cut",
         "sound": "Sound"
       },
+      "unsavedChanges": "Unsaved changes",
       "versionCreated": "Version created: {name}",
       "versionSaveError": "Version save error"
     }

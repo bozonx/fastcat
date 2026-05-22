@@ -262,6 +262,11 @@ export function useGeneralHotkeys(
       return false;
     },
 
+    'general.save': () => {
+      void timelineStore.saveTimeline();
+      return true;
+    },
+
     'general.copy': () => {
       if (!isFileManagerFocus()) return false;
 

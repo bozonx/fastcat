@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import 'splitpanes/dist/splitpanes.css';
+import { useEventListener } from '@vueuse/core';
 
 // Stores
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
 
 // Composables
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
 import { useGlobalDragAndDrop } from '~/composables/editor/useGlobalDragAndDrop';
+import { useConfirmClose } from '~/composables/useConfirmClose';
 
 // Components
 import LoadingScreen from '~/components/startup/LoadingScreen.vue';
@@ -26,6 +29,7 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const projectStore = useProjectStore();
+const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
 const route = useRoute();
 
@@ -48,6 +52,7 @@ const isStartingUp = ref(true);
 
 // Initialize Actions and Hotkeys
 useEditorHotkeys();
+useConfirmClose();
 
 // Initialization
 onMounted(async () => {
@@ -80,6 +85,22 @@ function onOverlayFolderDrop(files: File[], targetDirPath: string) {
 
 useHead({
   title: t('navigation.fastcat'),
+});
+
+function isMobileEditorRoute() {
+  return route.path.startsWith('/m/');
+}
+
+function flushMobileTimelineAutosave() {
+  if (!isMobileEditorRoute() || !timelineStore.isTimelineDirty) return;
+  void timelineStore.requestTimelineSave({ immediate: true });
+}
+
+useEventListener(window, 'blur', flushMobileTimelineAutosave);
+useEventListener(document, 'visibilitychange', () => {
+  if (document.hidden) {
+    flushMobileTimelineAutosave();
+  }
 });
 </script>
 

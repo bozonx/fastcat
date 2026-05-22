@@ -195,7 +195,7 @@ export class TransitionRenderer {
       if (mode === 'background') {
         const children = params.app.stage.children;
         for (let i = 0; i < children.length; i += 1) {
-          const child = children[i] as any;
+          const child = children[i] as import('pixi.js').Container & { __trackId?: string };
           if (!child || child === transitionSprite) {
             continue;
           }

@@ -80,6 +80,23 @@ const menuItems = computed(() => {
 
       <div class="w-px h-4 bg-ui-border mx-1" />
 
+      <UiActionButton
+        size="sm"
+        variant="ghost"
+        color="neutral"
+        :icon="
+          timelineStore.isSavingTimeline
+            ? 'i-heroicons-arrow-path'
+            : timelineStore.isTimelineDirty
+              ? 'i-heroicons-circle-stack'
+              : 'i-heroicons-check-circle'
+        "
+        :disabled="timelineStore.isSavingTimeline || !timelineStore.timelineDoc"
+        :title="getHotkeyTitle(t('common.save'), 'general.save')"
+        :class="timelineStore.isSavingTimeline ? 'animate-spin' : ''"
+        @click="timelineStore.saveTimeline()"
+      />
+
       <!-- Window Switcher -->
       <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mr-2">
         <button

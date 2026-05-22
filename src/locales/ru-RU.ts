@@ -1816,10 +1816,16 @@ export default {
       autoSettingsAppliedDesc: 'Разрешение {width}x{height}, {fps} FPS',
       format: 'Формат таймлайна',
       settings: 'Настройки таймлайна',
+      confirmCloseUnsavedMessage:
+        'В таймлайне есть несохраненные изменения. Закрыть без записи в основной файл?',
+      confirmCloseUnsavedTitle: 'Несохраненные изменения',
+      restoreAutosaveConfirm:
+        'Найдено более новое автосохранение для {name}. Восстановить несохраненную версию?',
       tabs: {
         cut: 'Монтаж',
         sound: 'Звук',
       },
+      unsavedChanges: 'Несохраненные изменения',
       versionCreated: 'Версия создана: {name}',
       versionSaveError: 'Ошибка сохранения версии',
     },

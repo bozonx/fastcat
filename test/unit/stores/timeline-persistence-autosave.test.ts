@@ -99,7 +99,7 @@ describe('Timeline Persistence and AutoSave', () => {
     vi.useRealTimers();
   });
 
-  it('marks timeline as dirty and triggers auto-save after debounce', async () => {
+  it('marks timeline as dirty and writes auto-save to the hidden file after debounce', async () => {
     const timelineStore = useTimelineStore();
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
@@ -114,8 +114,7 @@ describe('Timeline Persistence and AutoSave', () => {
     // Should not save immediately
     expect(mockFileHandle.createWritable).not.toHaveBeenCalled();
 
-    // Fast-forward debounce time (2000ms) - let's use more to be safe
-    vi.advanceTimersByTime(5000);
+    vi.advanceTimersByTime(10_000);
 
     // Now wait for all microtasks and async operations (multiple flushes to be sure)
     for (let i = 0; i < 10; i++) {
@@ -124,9 +123,13 @@ describe('Timeline Persistence and AutoSave', () => {
     }
 
     expect(mockFileHandle.createWritable).toHaveBeenCalled();
+    expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalledWith({
+      relativePath: '.fastcat/autosave/timelines/main.otio',
+      create: true,
+    });
     expect(mockWritable.write).toHaveBeenCalled();
     expect(mockWritable.close).toHaveBeenCalled();
-    expect(timelineStore.isTimelineDirty).toBe(false);
+    expect(timelineStore.isTimelineDirty).toBe(true);
   });
 
   it('performs immediate save when requested', async () => {
@@ -149,11 +152,15 @@ describe('Timeline Persistence and AutoSave', () => {
     await Promise.resolve();
 
     expect(mockFileHandle.createWritable).toHaveBeenCalled();
+    expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalledWith({
+      relativePath: 'timelines/main.otio',
+      create: true,
+    });
     expect(timelineStore.isSavingTimeline).toBe(false);
     expect(timelineStore.isTimelineDirty).toBe(false);
   });
 
-  it('posts the raw timeline document to the serializer worker without an intermediate clone', async () => {
+  it('posts a serializable timeline document to the serializer worker', async () => {
     const timelineStore = useTimelineStore();
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
@@ -166,7 +173,7 @@ describe('Timeline Persistence and AutoSave', () => {
     timelineStore.markTimelineAsDirty();
     await timelineStore.saveTimeline();
 
-    expect(WorkerMock.postedMessages[0]).toBe(rawDoc);
+    expect(WorkerMock.postedMessages[0]).toEqual(rawDoc);
   });
 
   it('triggers backup after a successful save', async () => {

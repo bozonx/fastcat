@@ -41,6 +41,7 @@ import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
 import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
+import { useRoute } from 'vue-router';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
@@ -55,6 +56,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
   const nuxtApp = useNuxtApp();
+  const route = useRoute();
   const toast = nuxtApp.$notificationService as AppNotificationService;
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
@@ -300,12 +302,21 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   async function ensureTimelineFileHandle(options?: {
     create?: boolean;
+    relativePath?: string;
   }): Promise<FileSystemFileHandle | null> {
-    if (!currentTimelinePath.value) return null;
+    const relativePath = options?.relativePath ?? currentTimelinePath.value;
+    if (!relativePath) return null;
     return await projectStore.getProjectFileHandleByRelativePath({
-      relativePath: currentTimelinePath.value,
+      relativePath,
       create: options?.create ?? false,
     });
+  }
+
+  function isMobileEditorRoute() {
+    return (
+      route?.path.startsWith('/m/') ||
+      (typeof window !== 'undefined' && window.location.pathname.startsWith('/m/'))
+    );
   }
 
   const persistence = createTimelinePersistenceModule({
@@ -334,6 +345,16 @@ export const useTimelineStore = defineStore('timeline', () => {
     parseTimelineFromOtio,
     serializeTimelineToOtio,
     selectTimelineDurationUs,
+    autoSaveDebounceMs: isMobileEditorRoute() ? 4_000 : 10_000,
+    shouldRestoreAutosaveSilently: () => isMobileEditorRoute(),
+    confirmRestoreAutosave: ({ timelinePath }) => {
+      if (typeof window === 'undefined') return false;
+      return window.confirm(
+        t('videoEditor.timeline.restoreAutosaveConfirm', {
+          name: timelinePath.split('/').pop() ?? timelinePath,
+        }),
+      );
+    },
     onSaveSuccess: (serialized) => {
       void lifecycle.handleSaveSuccess();
       void handleBackup(serialized);

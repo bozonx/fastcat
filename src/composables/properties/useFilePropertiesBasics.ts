@@ -12,18 +12,18 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
   const bd = computed(() => getBdPayload(options.selectedFsEntry.value ?? {}));
 
   const selectedPath = computed<string | null>(() => {
-    const entry = options.selectedFsEntry.value;
+    const entry = options.selectedFsEntry.value as Record<string, unknown>;
     return typeof entry?.path === 'string' && entry.path.length > 0 ? entry.path : null;
   });
 
   const isHidden = computed(() => {
-    const entry = options.selectedFsEntry.value;
+    const entry = options.selectedFsEntry.value as Record<string, unknown>;
     const name = typeof entry?.name === 'string' ? entry.name : '';
     return name.startsWith('.');
   });
 
   const ext = computed(() => {
-    const entry = options.selectedFsEntry.value;
+    const entry = options.selectedFsEntry.value as Record<string, unknown>;
     const name = typeof entry?.name === 'string' ? entry.name : '';
     const value = name.split('.').pop()?.toLowerCase() ?? '';
     return value && value !== name.toLowerCase() ? value : value;
@@ -36,15 +36,15 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
   const runtimeConfig = useRuntimeConfig();
   const bloggerDogDeepLink = computed(() => {
-    const entry = options.selectedFsEntry.value;
+    const entry = options.selectedFsEntry.value as Record<string, unknown>;
     if (entry?.source !== 'remote') return null;
 
     const uiUrl = runtimeConfig.public.bloggerDogUiUrl;
     if (typeof uiUrl !== 'string' || !uiUrl) return null;
 
     const baseUrl = uiUrl.endsWith('/') ? uiUrl.slice(0, -1) : uiUrl;
-    const remoteId = entry.remoteId || bd.value?.remoteData?.id;
-    let normalizedPath = entry.path || '';
+    const remoteId = (entry.remoteId as string | undefined) || (bd.value?.remoteData?.id as string | undefined);
+    let normalizedPath = String(entry.path || '');
     if (normalizedPath.startsWith('/remote')) normalizedPath = normalizedPath.slice(7) || '/';
 
     let projectPrefix = '';
@@ -84,7 +84,7 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
   const { t } = useI18n();
   const generalInfoTitle = computed(() => {
-    const info = options.fileInfo.value || options.selectedFsEntry.value;
+    const info = (options.fileInfo.value || options.selectedFsEntry.value) as Record<string, unknown>;
     if (!info) return '';
 
     if (info.kind === 'directory') {
@@ -96,10 +96,10 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
     if (options.isOtio.value) return 'OTIO';
 
-    return info.mimeType ?? t('common.file');
+    return (info.mimeType as string | undefined) ?? t('common.file');
   });
 
-  const mediaMeta = computed(() => options.fileInfo.value?.metadata as Record<string, unknown>);
+  const mediaMeta = computed(() => (options.fileInfo.value as Record<string, unknown>)?.metadata as Record<string, unknown>);
 
   const isVideoOrAudio = computed(() => {
     return options.mediaType.value === 'video' || options.mediaType.value === 'audio';

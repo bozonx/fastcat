@@ -2,10 +2,12 @@
 import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { storeToRefs } from 'pinia';
 
 const projectStore = useProjectStore();
+const timelineStore = useTimelineStore();
 const { currentTimelinePath, projectSettings } = storeToRefs(projectStore);
 const { loadTimeline } = useProjectActions();
 
@@ -23,6 +25,10 @@ function getFileName(path: string) {
 
 function isActive(path: string) {
   return currentTimelinePath.value === path;
+}
+
+function isDirty(path: string) {
+  return isActive(path) && timelineStore.isTimelineDirty;
 }
 
 function selectTab(path: string) {
@@ -158,6 +164,12 @@ onBeforeUnmount(() => {
             <span class="text-2xs truncate flex-1 font-bold tracking-widest uppercase">
               {{ getFileName(path) }}
             </span>
+
+            <span
+              v-if="isDirty(path)"
+              class="w-2 h-2 rounded-full bg-amber-400 ring-2 ring-amber-400/20 shrink-0"
+              :title="$t('videoEditor.timeline.unsavedChanges')"
+            />
 
             <button
               class="tab-close-btn text-ui-text-muted hover:bg-red-500/10 hover:text-red-500 p-0.5 rounded-md transition-all duration-200"

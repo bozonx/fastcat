@@ -8,6 +8,7 @@ export type HotkeyCommandId =
   | 'general.paste'
   | 'general.delete'
   | 'general.rename'
+  | 'general.save'
   | 'general.undo'
   | 'general.redo'
   | 'general.mute'
@@ -132,6 +133,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.paste', groupId: 'general', title: 'Paste' },
     { id: 'general.delete', groupId: 'general', title: 'Delete' },
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
+    { id: 'general.save', groupId: 'general', title: 'Save' },
     { id: 'general.undo', groupId: 'general', title: 'Undo' },
     { id: 'general.redo', groupId: 'general', title: 'Redo' },
     { id: 'general.mute', groupId: 'general', title: 'Mute / Unmute' },
@@ -309,6 +311,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.paste': [`${Mod}+V`],
     'general.delete': ['Delete', 'X'],
     'general.rename': ['F2'],
+    'general.save': [`${Mod}+S`],
     'general.undo': [`${Mod}+Z`],
     'general.redo': [`${Mod}+Y`, `${Mod}+Shift+Z`],
     'general.mute': ['M'],
@@ -350,7 +353,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.monitorVolumeDown': ['ArrowDown'],
 
     'timeline.toggleSnap': ['T'],
-    'timeline.selectClipsLeftOfPlayhead': [`${Mod}+S`],
+    'timeline.selectClipsLeftOfPlayhead': [],
     'timeline.selectClipsRightOfPlayhead': [`${Mod}+D`],
     'timeline.trimToPlayheadLeft': ['C'],
     'timeline.trimToPlayheadRight': ['V'],
