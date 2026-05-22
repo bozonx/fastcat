@@ -17,7 +17,7 @@ describe('useFileConversionSettings', () => {
   it('returns default audio settings', () => {
     const settings = useFileConversionSettings();
     expect(settings.audio.channels).toBe(2);
-    expect(settings.audio.sampleRate).toBe(0);
+    expect(settings.audio.sampleRate).toBe('original');
     expect(settings.audio.reverse).toBe(false);
     expect(settings.audio.originalSampleRate).toBeNull();
     expect(settings.audio.originalChannels).toBeNull();

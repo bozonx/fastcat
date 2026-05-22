@@ -98,7 +98,7 @@ describe('useMonitorSnapshot', () => {
     expect(mockToast.add).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Snapshot created',
-        color: 'primary',
+        color: 'success',
       }),
     );
   });

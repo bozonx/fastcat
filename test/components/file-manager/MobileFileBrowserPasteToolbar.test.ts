@@ -18,6 +18,7 @@ describe('MobileFileBrowserPasteToolbar', () => {
 
   it('renders correctly with copy operation', async () => {
     mockClipboardStore.clipboardPayload = {
+      source: 'fileManager',
       operation: 'copy',
       items: [{}, {}],
     };
@@ -34,6 +35,7 @@ describe('MobileFileBrowserPasteToolbar', () => {
 
   it('renders correctly with cut operation', async () => {
     mockClipboardStore.clipboardPayload = {
+      source: 'fileManager',
       operation: 'cut',
       items: [{}, {}, {}],
     };
@@ -50,6 +52,7 @@ describe('MobileFileBrowserPasteToolbar', () => {
 
   it('emits paste event', async () => {
     mockClipboardStore.clipboardPayload = {
+      source: 'fileManager',
       operation: 'copy',
       items: [{}, {}],
     };

@@ -27,6 +27,7 @@ vi.mock('~/utils/video-editor/worker-client', () => ({
   getPreviewWorkerClient: () => ({ client: mockClient, worker: {} }),
   setPreviewHostApi: vi.fn(),
   setProxyHostApi: vi.fn(),
+  broadcastPixiRendererPreference: vi.fn(),
 }));
 
 vi.mock('~/stores/workspace.store', () => ({

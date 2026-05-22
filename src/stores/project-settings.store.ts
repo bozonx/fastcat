@@ -104,7 +104,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     const view = getCurrentEditorView.value?.() ?? 'cut';
     const lastViewBeforeFullscreen = getLastViewBeforeFullscreen.value?.() ?? null;
     const targetView = view === 'fullscreen' ? lastViewBeforeFullscreen || 'cut' : view;
-    const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
+    const safeView = targetView && ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
 
     const platformSuffix = getPlatformSuffix();
     const platformViewKey = `${safeView}${platformSuffix}`;
@@ -112,7 +112,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     return (
       projectSettings.value.monitors[platformViewKey] ??
       projectSettings.value.monitors[safeView] ??
-      projectSettings.value.monitors.cut
+      projectSettings.value.monitors.cut ??
+      DEFAULT_MONITOR_VIEW_SETTINGS
     );
   });
 
@@ -207,7 +208,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           await projectUiRepo.value.save({
             version: 1,
             monitor: projectSettings.value.monitor,
-            monitors: projectSettings.value.monitors,
+            monitors: projectSettings.value.monitors as Record<string, any>,
             timelines: {
               openPaths: timelines.openPaths,
               sessions: timelines.sessions,
@@ -470,12 +471,12 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       await projectSettingsRepo.value.save(projectSettings.value);
       await projectUiRepo.value.save({
         version: 1,
-        monitors: initial.monitors,
+        monitors: initial.monitors as Record<string, any>,
         timelines: {
           openPaths: initial.timelines.openPaths,
           sessions: initial.timelines.sessions,
         },
-        ui: initial.ui as ProjectUiLayoutState,
+        ui: initial.ui as any,
       });
     } catch (e) {
       console.warn('Failed to create project settings/ui files', e);
@@ -505,7 +506,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     ([suffix, view, loading]) => {
       if (loading || !suffix) return;
       const targetView = view ?? 'cut';
-      const safeView = ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
+      const safeView = targetView && ['cut', 'sound', 'export'].includes(targetView) ? targetView : 'cut';
       const key = `${safeView}${suffix}`;
       if (!projectSettings.value.monitors[key]) {
         const base =

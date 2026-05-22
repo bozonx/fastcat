@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import Timeline from '~/components/layout-panels/Timeline.vue';
+import Timeline from '~/components/layout-panels/EditorTimeline.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { ref } from 'vue';

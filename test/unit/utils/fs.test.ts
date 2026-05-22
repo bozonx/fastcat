@@ -1,11 +1,15 @@
 /** @vitest-environment node */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { generateUniqueFsEntryName } from '~/utils/fs';
+
+const createMockVfs = () => ({
+  exists: vi.fn().mockResolvedValue(false),
+});
 
 describe('generateUniqueFsEntryName', () => {
   it('finds first unique name using existingNames', async () => {
     const result = await generateUniqueFsEntryName({
-      vfs: {} as any,
+      vfs: createMockVfs() as any,
       dirPath: '',
       baseName: 'test',
       extension: '.mp4',
@@ -16,7 +20,7 @@ describe('generateUniqueFsEntryName', () => {
 
   it('returns first candidate when no conflicts', async () => {
     const result = await generateUniqueFsEntryName({
-      vfs: {} as any,
+      vfs: createMockVfs() as any,
       dirPath: '',
       baseName: 'clip',
       extension: '.mov',
@@ -27,7 +31,7 @@ describe('generateUniqueFsEntryName', () => {
 
   it('respects custom startIndex and padWidth', async () => {
     const result = await generateUniqueFsEntryName({
-      vfs: {} as any,
+      vfs: createMockVfs() as any,
       dirPath: '',
       baseName: 'file',
       extension: '.txt',
@@ -40,7 +44,7 @@ describe('generateUniqueFsEntryName', () => {
 
   it('finds first gap in existingNames', async () => {
     const result = await generateUniqueFsEntryName({
-      vfs: {} as any,
+      vfs: createMockVfs() as any,
       dirPath: '',
       baseName: 'item',
       extension: '.json',

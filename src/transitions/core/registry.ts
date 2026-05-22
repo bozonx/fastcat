@@ -115,9 +115,10 @@ export function applyTransitionCurve(
   }
 
   // Use provided params if available, otherwise use defaults based on curve type
-  const bulge = params?.curveBulge ?? 0.8;
+  const bulge = (params?.curveBulge as number | undefined) ?? 0.8;
   const offset =
-    params?.curveOffset ?? (curve === 'ease-in' ? 1.0 : curve === 'ease-out' ? 0.0 : 0.5);
+    (params?.curveOffset as number | undefined) ??
+    (curve === 'ease-in' ? 1.0 : curve === 'ease-out' ? 0.0 : 0.5);
 
   const x1 = offset * bulge;
   const x2 = 1 - (1 - offset) * bulge;
@@ -195,7 +196,7 @@ export function registerTransition<T>(manifest: TransitionManifest<T>): void {
   if (existing && existing !== manifest) {
     console.warn(`[Transitions] Transition type "${manifest.type}" is already registered.`);
   }
-  registry.set(manifest.type, manifest);
+  registry.set(manifest.type, manifest as TransitionManifest<Record<string, unknown>>);
 }
 
 export function getTransitionManifest(
