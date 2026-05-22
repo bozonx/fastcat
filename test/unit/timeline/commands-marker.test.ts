@@ -1,0 +1,131 @@
+import { describe, it, expect } from 'vitest';
+import { addMarker, updateMarker, removeMarker } from '~/timeline/commands/markerHandlers';
+import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
+
+function createDoc(markers: TimelineMarker[] = []): TimelineDocument {
+  return {
+    OTIO_SCHEMA: 'Timeline.1',
+    id: 'test',
+    name: 'Test',
+    timebase: { fps: 30 },
+    tracks: [],
+    metadata: {
+      fastcat: {
+        markers,
+      },
+    },
+  } as unknown as TimelineDocument;
+}
+
+describe('markerHandlers', () => {
+  describe('addMarker', () => {
+    it('adds a marker to an empty list', () => {
+      const doc = createDoc();
+      const result = addMarker(doc, {
+        type: 'add_marker',
+        id: 'm1',
+        timeUs: 1000,
+        text: 'hello',
+      });
+      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      expect(markers).toHaveLength(1);
+      expect(markers[0]!.id).toBe('m1');
+      expect(markers[0]!.timeUs).toBe(1000);
+    });
+
+    it('sorts markers by timeUs', () => {
+      const doc = createDoc([{ id: 'm2', timeUs: 2000, text: '' }] as TimelineMarker[]);
+      const result = addMarker(doc, {
+        type: 'add_marker',
+        id: 'm1',
+        timeUs: 1000,
+        text: '',
+      });
+      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      expect(markers[0]!.id).toBe('m1');
+      expect(markers[1]!.id).toBe('m2');
+    });
+
+    it('throws if marker already exists', () => {
+      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      expect(() =>
+        addMarker(doc, {
+          type: 'add_marker',
+          id: 'm1',
+          timeUs: 2000,
+          text: '',
+        }),
+      ).toThrow('Marker already exists');
+    });
+  });
+
+  describe('updateMarker', () => {
+    it('updates marker timeUs', () => {
+      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const result = updateMarker(doc, {
+        type: 'update_marker',
+        id: 'm1',
+        timeUs: 3000,
+      });
+      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      expect(markers[0]!.timeUs).toBe(3000);
+    });
+
+    it('updates marker durationUs', () => {
+      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const result = updateMarker(doc, {
+        type: 'update_marker',
+        id: 'm1',
+        durationUs: 500,
+      });
+      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      expect(markers[0]!.durationUs).toBe(500);
+    });
+
+    it('updates marker text', () => {
+      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const result = updateMarker(doc, {
+        type: 'update_marker',
+        id: 'm1',
+        text: 'updated',
+      });
+      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      expect(markers[0]!.text).toBe('updated');
+    });
+
+    it('returns doc unchanged when marker is not found (defensive)', () => {
+      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const result = updateMarker(doc, {
+        type: 'update_marker',
+        id: 'missing',
+        timeUs: 2000,
+      });
+      expect(result.next).toBe(doc);
+    });
+  });
+
+  describe('removeMarker', () => {
+    it('removes an existing marker', () => {
+      const doc = createDoc([
+        { id: 'm1', timeUs: 1000, text: '' },
+        { id: 'm2', timeUs: 2000, text: '' },
+      ] as TimelineMarker[]);
+      const result = removeMarker(doc, {
+        type: 'remove_marker',
+        id: 'm1',
+      });
+      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      expect(markers).toHaveLength(1);
+      expect(markers[0]!.id).toBe('m2');
+    });
+
+    it('returns doc unchanged when marker is not found', () => {
+      const doc = createDoc([{ id: 'm1', timeUs: 1000, text: '' }] as TimelineMarker[]);
+      const result = removeMarker(doc, {
+        type: 'remove_marker',
+        id: 'missing',
+      });
+      expect(result.next).toBe(doc);
+    });
+  });
+});

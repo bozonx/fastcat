@@ -29,14 +29,13 @@ const audioReverse = defineModel<boolean>('audioReverse', { default: false });
 const { t } = useI18n();
 
 function formatSampleRateLabel(sampleRate: number | null) {
-  if (sampleRate === null) {
-    return t('videoEditor.audio.original');
-  }
-
-  const kilohertz = sampleRate / 1000;
-  const formattedKilohertz = Number.isInteger(kilohertz)
-    ? String(kilohertz)
-    : kilohertz.toFixed(1).replace(/\.0$/, '');
+  const kilohertz = sampleRate === null ? null : sampleRate / 1000;
+  const formattedKilohertz =
+    kilohertz === null
+      ? '—'
+      : Number.isInteger(kilohertz)
+        ? String(kilohertz)
+        : kilohertz.toFixed(1).replace(/\.0$/, '');
 
   return `${t('videoEditor.audio.original')} (${formattedKilohertz} kHz)`;
 }

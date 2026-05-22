@@ -56,7 +56,6 @@ const {
   onPlay,
   onPause,
   resetState: resetPlaybackState,
-  pauseAndClearPlayback,
 } = useMediaPlayerPlayback(mediaElement, props, volume, isMuted, focusStore);
 
 function onTimeUpdate() {
@@ -267,10 +266,6 @@ watch(
     fitToContainer();
   },
 );
-
-function toggleMute() {
-  isMuted.value = !isMuted.value;
-}
 
 const isIdle = ref(false);
 let idleTimer: number | undefined;

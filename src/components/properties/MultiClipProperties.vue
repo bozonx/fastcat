@@ -4,7 +4,6 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
@@ -160,11 +159,6 @@ const batchOpacity = computed({
 const batchBlendMode = computed({
   get: () => firstClip.value?.blendMode ?? 'normal',
   set: (val: TimelineBlendMode) => handleBatchUpdateProperties({ blendMode: val }),
-});
-
-const batchAudioGain = computed({
-  get: () => Number(firstClip.value?.audioGain ?? 0),
-  set: (val: number) => handleBatchUpdateProperties({ audioGain: val }),
 });
 
 const {

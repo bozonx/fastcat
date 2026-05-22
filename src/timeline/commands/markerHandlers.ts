@@ -55,7 +55,8 @@ export function updateMarker(
   const markers = getMarkers(doc);
   const idx = markers.findIndex((m) => m.id === cmd.id);
   if (idx === -1) {
-    throw new Error('Marker not found');
+    console.warn('Marker not found for update, skipping:', cmd.id);
+    return { next: doc };
   }
 
   const prev = markers[idx]!;

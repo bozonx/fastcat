@@ -45,4 +45,32 @@ describe('FileConversionAudioSettings', () => {
       label: 'videoEditor.audio.original (44.1 kHz)',
     });
   });
+
+  it('shows em dash when original sample rate is unknown', async () => {
+    const wrapper = await mountSuspended(FileConversionAudioSettings, {
+      props: {
+        audioBitrateKbps: 128,
+        audioChannels: 2,
+        audioSampleRate: 'original',
+        originalSampleRate: null,
+        originalChannels: 2,
+        allowOriginalSampleRate: true,
+      },
+      global: {
+        stubs: {
+          UiButtonGroup: true,
+          UiWheelNumberInput: true,
+          USwitch: true,
+        },
+      },
+    });
+
+    const select = wrapper.get('.ui-select-mock');
+    const items = JSON.parse(select.text());
+
+    expect(items[0]).toEqual({
+      value: 'original',
+      label: 'videoEditor.audio.original (— kHz)',
+    });
+  });
 });

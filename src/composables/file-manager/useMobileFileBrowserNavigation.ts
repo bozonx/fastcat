@@ -4,7 +4,6 @@ import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useUiStore } from '~/stores/ui.store';
 import {
   getWorkspacePathParent,
   getWorkspacePathFileName,
@@ -21,14 +20,13 @@ interface NavigationDeps {
 export function useMobileFileBrowserNavigation({
   readDirectory,
   vfs,
-  findEntryByPath,
+  findEntryByPath: _findEntryByPath,
 }: NavigationDeps) {
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
-  const uiStore = useUiStore();
 
   const entries = ref<FsEntry[]>([]);
   const isLoading = ref(false);

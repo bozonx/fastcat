@@ -11,7 +11,7 @@ import type {
 } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { normalizeTimeUs } from '~/utils/monitor-time';
-import { clampNumber, mergeBalance, mergeGain } from '~/utils/audio/envelope';
+import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
 import {
@@ -76,12 +76,6 @@ export function useMonitorTimeline() {
     visibleVideoTracks.value.flatMap((track) =>
       (track.items ?? []).filter((it: TimelineTrackItem) => it.kind === 'clip'),
     ),
-  );
-
-  const audioItems = computed(() =>
-    audioTracks.value
-      .flatMap((track) => track.items)
-      .filter((it: TimelineTrackItem) => it.kind === 'clip'),
   );
 
   const rawWorkerTimelineClips = computed(() => {
