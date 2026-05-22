@@ -14,6 +14,7 @@ import {
   normalizeProjectDefaults,
   normalizeHistorySettings,
   normalizeBackupSettings,
+  normalizeAutosaveSettings,
   normalizePresetsSettings,
 } from './normalizers/user-domains';
 import { normalizeLocale } from './normalizers/shared';
@@ -71,6 +72,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
     mouse: normalizeMouseSettings(input.mouse),
     history: normalizeHistorySettings(input),
     backup: normalizeBackupSettings(input),
+    autosave: normalizeAutosaveSettings(input),
     presets: normalizePresetsSettings(input),
   };
 }

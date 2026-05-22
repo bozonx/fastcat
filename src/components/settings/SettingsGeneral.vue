@@ -34,6 +34,7 @@ function resetGeneralDefaults() {
     DEFAULT_USER_SETTINGS.deleteWithoutConfirmation;
   workspaceStore.userSettings.history.maxEntries = DEFAULT_USER_SETTINGS.history.maxEntries;
   workspaceStore.userSettings.backup = { ...DEFAULT_USER_SETTINGS.backup };
+  workspaceStore.userSettings.autosave = { ...DEFAULT_USER_SETTINGS.autosave };
 
   isResetConfirmOpen.value = false;
 }
@@ -178,6 +179,19 @@ function clearCache() {
             :max="1000"
             :step="1"
             :wheel-step-multiplier="10"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.autosaveInterval')"
+          :help="t('videoEditor.settings.autosaveIntervalHelp')"
+        >
+          <UiWheelNumberInput
+            v-model="workspaceStore.userSettings.autosave.intervalMinutes"
+            :min="1"
+            :max="60"
+            :step="1"
+            :wheel-step-multiplier="5"
           />
         </UiFormField>
 

@@ -1563,6 +1563,8 @@
       "audioDeclickDurationHelp": "Duration of micro-fades to eliminate clicks.",
       "audioScrubbingHint": "Play audio while scrubbing the timeline.",
       "autoCreateProxies": "Automatically create proxies when adding media to the timeline",
+      "autosaveInterval": "Auto-save interval (min)",
+      "autosaveIntervalHelp": "How often to save a crash-recovery copy while editing.",
       "backupCount": "Backup count",
       "backupCountHelp": "Number of backup versions to keep.",
       "backupInterval": "Backup interval (min)",

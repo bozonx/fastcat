@@ -98,11 +98,11 @@ const formatDate = (dateStr?: string) => {
 
     <template v-else>
       <div
-        class="flex h-screen w-full flex-col bg-zinc-950 overflow-hidden text-zinc-200 font-sans"
+        class="flex h-screen w-full flex-col bg-ui-bg overflow-hidden text-ui-text font-sans"
       >
         <!-- Sticky Header with Glass Effect -->
         <header
-          class="shrink-0 pt-safe px-5 pb-4 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5 z-20"
+          class="shrink-0 pt-safe px-5 pb-4 bg-ui-bg/80 backdrop-blur-xl border-b border-white/5 z-20"
         >
           <div class="flex items-center justify-between h-14">
             <div class="flex flex-col min-w-0">
@@ -110,7 +110,7 @@ const formatDate = (dateStr?: string) => {
                 FastCat <span class="text-primary-500 not-italic">Editor</span>
               </h1>
               <div
-                class="flex items-center gap-1 text-[10px] text-zinc-500 font-bold uppercase tracking-widest"
+                class="flex items-center gap-1 text-[10px] text-ui-text-muted font-bold uppercase tracking-widest"
               >
                 <UIcon name="i-heroicons-folder" class="w-3 h-3" />
                 <span class="truncate max-w-[120px]">{{
@@ -140,9 +140,9 @@ const formatDate = (dateStr?: string) => {
         </header>
 
         <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto bg-zinc-950 custom-scrollbar relative">
+        <main class="flex-1 overflow-y-auto bg-ui-bg custom-scrollbar relative">
           <!-- Search Bar Sticky below header -->
-          <div class="px-5 py-4 sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-md">
+          <div class="px-5 py-4 sticky top-0 z-10 bg-ui-bg/80 backdrop-blur-md">
             <UiSearchInput
               v-model="searchQuery"
               :placeholder="t('fastcat.projects.searchPlaceholder')"
@@ -154,7 +154,7 @@ const formatDate = (dateStr?: string) => {
             <!-- Recent Projects Horizontal Scroll -->
             <section v-if="recentProjects.length > 0 && !searchQuery" class="space-y-4">
               <div class="px-5 flex items-center justify-between">
-                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted">
                   {{ t('common.recent') }}
                 </h2>
               </div>
@@ -195,7 +195,7 @@ const formatDate = (dateStr?: string) => {
             <!-- All Projects List -->
             <section class="space-y-4 px-5">
               <div class="flex items-center justify-between">
-                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted">
                   {{ searchQuery ? t('common.found') : t('fastcat.projects.title') }}
                 </h2>
                 <span
@@ -229,7 +229,7 @@ const formatDate = (dateStr?: string) => {
                         >{{ project.projectName }}</span
                       >
                       <span
-                        class="text-[10px] text-zinc-500 font-medium flex items-center gap-1 mt-1"
+                        class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
                       >
                         <UIcon name="i-heroicons-clock" class="w-3 h-3" />
                         {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
@@ -270,7 +270,7 @@ const formatDate = (dateStr?: string) => {
                   <div class="absolute inset-0 bg-primary-500/5 rounded-full animate-pulse" />
                 </div>
                 <div class="text-center space-y-3">
-                  <p class="font-black uppercase tracking-[0.2em] text-[10px] text-zinc-500">
+                  <p class="font-black uppercase tracking-[0.2em] text-[10px] text-ui-text-muted">
                     {{ t('fastcat.projects.noProjectsFound') }}
                   </p>
                   <UButton
@@ -307,7 +307,7 @@ const formatDate = (dateStr?: string) => {
         :title="t('fastcat.projects.newProject')"
         :ui="{
           content:
-            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[50vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
+            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[50vh] bg-ui-bg border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
           body: 'pb-12 pt-8 px-6',
           header: 'pt-6 px-6 border-none',
         }"
@@ -329,7 +329,7 @@ const formatDate = (dateStr?: string) => {
 
           <div
             v-if="!projectCreationSettings.isAdvancedSettingsOpen"
-            class="text-[11px] text-zinc-500 bg-zinc-900/30 p-5 rounded-3xl flex gap-4 border border-white/5 leading-relaxed"
+            class="text-[11px] text-ui-text-muted bg-zinc-900/30 p-5 rounded-3xl flex gap-4 border border-white/5 leading-relaxed"
           >
             <UIcon
               name="i-heroicons-information-circle"
@@ -350,7 +350,7 @@ const formatDate = (dateStr?: string) => {
               color="neutral"
               variant="ghost"
               size="sm"
-              class="p-0 hover:bg-transparent text-zinc-500 font-black uppercase tracking-[0.2em] text-[10px]"
+              class="p-0 hover:bg-transparent text-ui-text-muted font-black uppercase tracking-[0.2em] text-[10px]"
               :icon="
                 projectCreationSettings.isAdvancedSettingsOpen
                   ? 'i-heroicons-chevron-down-20-solid'
@@ -398,7 +398,7 @@ const formatDate = (dateStr?: string) => {
             <UButton
               variant="ghost"
               color="neutral"
-              class="flex-1 h-16 rounded-[1.5rem] font-bold text-zinc-500 active:bg-white/5"
+              class="flex-1 h-16 rounded-[1.5rem] font-bold text-ui-text-muted active:bg-white/5"
               :label="t('common.cancel')"
               @click="isCreateModalOpen = false"
             />
@@ -425,7 +425,7 @@ const formatDate = (dateStr?: string) => {
         :title="t('common.rename')"
         :ui="{
           content:
-            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[40vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
+            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[40vh] bg-ui-bg border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
           body: 'pb-12 pt-8 px-6',
           header: 'pt-6 px-6 border-none',
         }"
@@ -451,7 +451,7 @@ const formatDate = (dateStr?: string) => {
             <UButton
               variant="ghost"
               color="neutral"
-              class="flex-1 h-16 rounded-[1.5rem] font-bold text-zinc-500 active:bg-white/5"
+              class="flex-1 h-16 rounded-[1.5rem] font-bold text-ui-text-muted active:bg-white/5"
               :label="t('common.cancel')"
               @click="isRenameModalOpen = false"
             />
@@ -473,7 +473,7 @@ const formatDate = (dateStr?: string) => {
         :description="t('videoEditor.projectSettings.deleteProjectConfirmDescription')"
         :ui="{
           content:
-            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[35vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
+            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[35vh] bg-ui-bg border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
           body: 'pb-12 pt-8 px-6',
           header: 'pt-6 px-6 border-none',
         }"
@@ -483,7 +483,7 @@ const formatDate = (dateStr?: string) => {
             <UButton
               variant="ghost"
               color="neutral"
-              class="flex-1 h-16 rounded-[1.5rem] font-bold text-zinc-500 active:bg-white/5"
+              class="flex-1 h-16 rounded-[1.5rem] font-bold text-ui-text-muted active:bg-white/5"
               :label="t('common.cancel')"
               @click="closeDeleteModal"
             />

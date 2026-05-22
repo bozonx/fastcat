@@ -355,6 +355,19 @@ export function normalizeBackupSettings(raw: unknown): FastCatUserSettings['back
     .parse((raw as Record<string, unknown>)?.['backup'] ?? {});
 }
 
+export function normalizeAutosaveSettings(raw: unknown): FastCatUserSettings['autosave'] {
+  return z
+    .object({
+      intervalMinutes: z.coerce
+        .number()
+        .min(1)
+        .max(60)
+        .catch(DEFAULT_USER_SETTINGS.autosave.intervalMinutes),
+    })
+    .catch(DEFAULT_USER_SETTINGS.autosave)
+    .parse((raw as Record<string, unknown>)?.['autosave'] ?? {});
+}
+
 export function normalizePresetsSettings(raw: unknown): FastCatUserSettings['presets'] {
   const input = (raw as Record<string, unknown>)?.['presets'];
   const defaults = DEFAULT_USER_SETTINGS.presets;

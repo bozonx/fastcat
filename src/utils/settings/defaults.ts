@@ -194,6 +194,9 @@ export interface FastCatUserSettings {
     intervalMinutes: number;
     count: number;
   };
+  autosave: {
+    intervalMinutes: number;
+  };
 }
 
 export interface FastCatAppSettings {
@@ -346,6 +349,9 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   backup: {
     intervalMinutes: 5,
     count: 5,
+  },
+  autosave: {
+    intervalMinutes: 2,
   },
 };
 

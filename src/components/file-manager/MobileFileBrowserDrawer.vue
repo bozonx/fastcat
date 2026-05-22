@@ -322,7 +322,7 @@ const topActions = computed(() => {
   const path = selectedFsEntry.value?.path;
   if (!entry) return [];
 
-  const actions: any[] = [];
+  const actions: import('~/components/properties/PropertyActionList.vue').PropertyAction[] = [];
 
   // Convert
   if (canConvert.value) {
