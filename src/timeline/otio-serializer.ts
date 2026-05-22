@@ -41,10 +41,7 @@ import {
   serializeTimeEffects,
 } from './otio/serialization';
 import { parseGapItem, parseClipItem, parseItemSequenceDurationUs } from './otio/items';
-import {
-  TimelineDocFastCatMetaSchema,
-  TimelineTrackFastCatMetaSchema,
-} from './otio/schemas';
+import { TimelineDocFastCatMetaSchema, TimelineTrackFastCatMetaSchema } from './otio/schemas';
 import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } from './format';
 
 // ---------------------------------------------------------------------------

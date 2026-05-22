@@ -159,7 +159,9 @@ export function createTimelineLifecycleModule(
     await deps.persistence.loadTimeline();
 
     // Restore session data from ProjectSettings if available
-    const settings = deps.getProjectSettings() as { timelines?: { sessions?: Record<string, unknown> } } | null;
+    const settings = deps.getProjectSettings() as {
+      timelines?: { sessions?: Record<string, unknown> };
+    } | null;
     const path = deps.currentTimelinePath.value;
     if (path && settings?.timelines?.sessions?.[path]) {
       const session = settings.timelines.sessions[path] as Record<string, unknown>;
@@ -168,7 +170,12 @@ export function createTimelineLifecycleModule(
       if (deps.audioMuted) deps.audioMuted.value = Boolean(session.masterMuted);
       deps.timelineZoom.value = Number(session.zoom);
       deps.trackHeights.value = { ...(session.trackHeights as Record<string, number>) };
-      deps.selectionRange.value = session.selectionRange ? { ...(session.selectionRange as Record<string, unknown>) } as { startUs: number; endUs: number } : null;
+      deps.selectionRange.value = session.selectionRange
+        ? ({ ...(session.selectionRange as Record<string, unknown>) } as {
+            startUs: number;
+            endUs: number;
+          })
+        : null;
     }
   }
 

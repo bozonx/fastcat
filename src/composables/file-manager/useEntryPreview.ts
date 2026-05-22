@@ -1,10 +1,7 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useSafeObjectUrl, safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import yaml from 'js-yaml';
-import {
-  getMediaTypeFromFilename,
-  getMimeTypeFromFilename,
-} from '~/utils/media-types';
+import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { computeDirectoryStats } from '~/utils/fs';

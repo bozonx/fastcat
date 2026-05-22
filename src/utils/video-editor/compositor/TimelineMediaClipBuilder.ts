@@ -69,7 +69,9 @@ export class TimelineMediaClipBuilder {
       transform: clipData.transform as import('~/timeline/types').ClipTransform | undefined,
       sourceOrientation: clipData.sourceOrientation as CompositorClip['sourceOrientation'],
       transitionIn: clipData.transitionIn as import('~/timeline/types').ClipTransition | undefined,
-      transitionOut: clipData.transitionOut as import('~/timeline/types').ClipTransition | undefined,
+      transitionOut: clipData.transitionOut as
+        | import('~/timeline/types').ClipTransition
+        | undefined,
       mask: clipData.mask as import('~/timeline/types').ClipMask | undefined,
     });
 
@@ -130,7 +132,9 @@ export class TimelineMediaClipBuilder {
       transform: clipData.transform as import('~/timeline/types').ClipTransform | undefined,
       sourceOrientation: clipData.sourceOrientation as CompositorClip['sourceOrientation'],
       transitionIn: clipData.transitionIn as import('~/timeline/types').ClipTransition | undefined,
-      transitionOut: clipData.transitionOut as import('~/timeline/types').ClipTransition | undefined,
+      transitionOut: clipData.transitionOut as
+        | import('~/timeline/types').ClipTransition
+        | undefined,
       mask: clipData.mask as import('~/timeline/types').ClipMask | undefined,
       sourceRotation,
     });

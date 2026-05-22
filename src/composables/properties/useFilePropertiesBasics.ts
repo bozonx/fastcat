@@ -43,7 +43,8 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     if (typeof uiUrl !== 'string' || !uiUrl) return null;
 
     const baseUrl = uiUrl.endsWith('/') ? uiUrl.slice(0, -1) : uiUrl;
-    const remoteId = (entry.remoteId as string | undefined) || (bd.value?.remoteData?.id as string | undefined);
+    const remoteId =
+      (entry.remoteId as string | undefined) || (bd.value?.remoteData?.id as string | undefined);
     let normalizedPath = String(entry.path || '');
     if (normalizedPath.startsWith('/remote')) normalizedPath = normalizedPath.slice(7) || '/';
 
@@ -84,7 +85,10 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
 
   const { t } = useI18n();
   const generalInfoTitle = computed(() => {
-    const info = (options.fileInfo.value || options.selectedFsEntry.value) as Record<string, unknown>;
+    const info = (options.fileInfo.value || options.selectedFsEntry.value) as Record<
+      string,
+      unknown
+    >;
     if (!info) return '';
 
     if (info.kind === 'directory') {
@@ -99,7 +103,9 @@ export function useFilePropertiesBasics(options: UseFilePropertiesBasicsOptions)
     return (info.mimeType as string | undefined) ?? t('common.file');
   });
 
-  const mediaMeta = computed(() => (options.fileInfo.value as Record<string, unknown>)?.metadata as Record<string, unknown>);
+  const mediaMeta = computed(
+    () => (options.fileInfo.value as Record<string, unknown>)?.metadata as Record<string, unknown>,
+  );
 
   const isVideoOrAudio = computed(() => {
     return options.mediaType.value === 'video' || options.mediaType.value === 'audio';

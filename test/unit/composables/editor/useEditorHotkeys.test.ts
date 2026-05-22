@@ -457,7 +457,9 @@ describe('useEditorHotkeys', () => {
 
     for (const panelId of previewLikePanels) {
       focusStore.setPanelFocus(panelId as any);
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }),
+      );
       expect(togglePlaybackSpy).toHaveBeenCalled();
       togglePlaybackSpy.mockClear();
     }

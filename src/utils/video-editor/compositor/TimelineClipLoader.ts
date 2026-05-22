@@ -77,12 +77,39 @@ export class TimelineClipLoader {
     const sourcePath =
       typeof sourceRaw?.path === 'string' && sourceRaw.path.length > 0 ? sourceRaw.path : '';
 
-    const hudBackgroundPath = String(((clipData.background as Record<string, unknown> | undefined)?.source as Record<string, unknown> | undefined)?.path ?? '');
-    const hudContentPath = String(((clipData.content as Record<string, unknown> | undefined)?.source as Record<string, unknown> | undefined)?.path ?? '');
-    const hudFramePath = String(((clipData.frame as Record<string, unknown> | undefined)?.source as Record<string, unknown> | undefined)?.path ?? '');
-    const maskPath = String(((clipData.mask as Record<string, unknown> | undefined)?.source as Record<string, unknown> | undefined)?.path ?? '');
+    const hudBackgroundPath = String(
+      (
+        (clipData.background as Record<string, unknown> | undefined)?.source as
+          | Record<string, unknown>
+          | undefined
+      )?.path ?? '',
+    );
+    const hudContentPath = String(
+      (
+        (clipData.content as Record<string, unknown> | undefined)?.source as
+          | Record<string, unknown>
+          | undefined
+      )?.path ?? '',
+    );
+    const hudFramePath = String(
+      (
+        (clipData.frame as Record<string, unknown> | undefined)?.source as
+          | Record<string, unknown>
+          | undefined
+      )?.path ?? '',
+    );
+    const maskPath = String(
+      (
+        (clipData.mask as Record<string, unknown> | undefined)?.source as
+          | Record<string, unknown>
+          | undefined
+      )?.path ?? '',
+    );
 
-    const sourceStartUs = Math.max(0, Math.round(Number((clipData.sourceRange as Record<string, unknown>)?.startUs ?? 0)));
+    const sourceStartUs = Math.max(
+      0,
+      Math.round(Number((clipData.sourceRange as Record<string, unknown>)?.startUs ?? 0)),
+    );
     const freezeFrameSourceUsRaw = clipData.freezeFrameSourceUs;
     const freezeFrameSourceUs =
       typeof freezeFrameSourceUsRaw === 'number' && Number.isFinite(freezeFrameSourceUsRaw)
@@ -99,7 +126,12 @@ export class TimelineClipLoader {
     );
     const requestedSourceRangeDurationUs = Math.max(
       0,
-      Math.round(Number((clipData.sourceRange as Record<string, unknown>)?.durationUs ?? requestedTimelineDurationUs)),
+      Math.round(
+        Number(
+          (clipData.sourceRange as Record<string, unknown>)?.durationUs ??
+            requestedTimelineDurationUs,
+        ),
+      ),
     );
     const clipSourceDurationRaw = clipData.sourceDurationUs;
     const requestedSourceDurationUs = Math.max(
@@ -121,7 +153,10 @@ export class TimelineClipLoader {
 
     const startUs =
       typeof (clipData.timelineRange as Record<string, unknown>)?.startUs === 'number'
-        ? Math.max(0, Math.round(Number((clipData.timelineRange as Record<string, unknown>).startUs)))
+        ? Math.max(
+            0,
+            Math.round(Number((clipData.timelineRange as Record<string, unknown>).startUs)),
+          )
         : sequentialTimeUs;
 
     return {
@@ -228,8 +263,12 @@ export class TimelineClipLoader {
     reusable.blendMode = resolveBlendMode(clipData.blendMode as string | undefined);
     reusable.effects = toVideoEffects(clipData.effects);
     reusable.transform = clipData.transform as import('~/timeline/types').ClipTransform | undefined;
-    reusable.transitionIn = clipData.transitionIn as import('~/timeline/types').ClipTransition | undefined;
-    reusable.transitionOut = clipData.transitionOut as import('~/timeline/types').ClipTransition | undefined;
+    reusable.transitionIn = clipData.transitionIn as
+      | import('~/timeline/types').ClipTransition
+      | undefined;
+    reusable.transitionOut = clipData.transitionOut as
+      | import('~/timeline/types').ClipTransition
+      | undefined;
     reusable.mask = clipData.mask as import('~/timeline/types').ClipMask | undefined;
 
     if (reusable.clipKind === 'text') {
@@ -255,7 +294,9 @@ export class TimelineClipLoader {
     }
 
     if (reusable.clipKind === 'shape') {
-      reusable.shapeType = (clipData.shapeType ?? reusable.shapeType ?? 'square') as import('~/timeline/types').ShapeType;
+      reusable.shapeType = (clipData.shapeType ??
+        reusable.shapeType ??
+        'square') as import('~/timeline/types').ShapeType;
       reusable.fillColor = String(clipData.fillColor ?? reusable.fillColor ?? '#ffffff');
       reusable.strokeColor = String(clipData.strokeColor ?? reusable.strokeColor ?? '#000000');
       reusable.strokeWidth = Number(clipData.strokeWidth ?? reusable.strokeWidth ?? 0);

@@ -1,5 +1,10 @@
 import { computed, type Ref } from 'vue';
-import type { ClipAnchorPreset, ClipTransform, TimelineClipItem, TrackKind } from '~/timeline/types';
+import type {
+  ClipAnchorPreset,
+  ClipTransform,
+  TimelineClipItem,
+  TrackKind,
+} from '~/timeline/types';
 
 interface UseClipTransformOptions {
   clip: Ref<TimelineClipItem>;

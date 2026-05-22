@@ -828,7 +828,10 @@ export function updateClipTransition(
         durationUs: 0,
         mode: normalizeTransitionMode(rawObj.mode),
         curve: normalizeTransitionCurve(rawObj.curve),
-        params: normalizeTransitionParams(type, rawObj.params as Record<string, unknown> | undefined),
+        params: normalizeTransitionParams(
+          type,
+          rawObj.params as Record<string, unknown> | undefined,
+        ),
         isOverridden: rawObj.isOverridden as boolean | undefined,
       };
     }

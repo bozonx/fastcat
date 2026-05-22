@@ -17,7 +17,9 @@ export interface TimelineSelectionDeps {
   selectionStore?: {
     clearTimelineSelection?: () => void;
     selectTimelineTrack?: (trackId: string) => void;
-    selectTimelineItems?: (items: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[]) => void;
+    selectTimelineItems?: (
+      items: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
+    ) => void;
   };
 }
 

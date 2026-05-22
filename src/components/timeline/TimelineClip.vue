@@ -316,24 +316,23 @@ function onClipDblClick() {
   }
 }
 
-const { isDraggingOver, handleDragLeave, handleDrop } =
-  useClipDrop({
-    track: computed(() => props.track),
-    clipItem,
-    canEditClipContent: computed(() => props.canEditClipContent),
-    updateClipProperties: (trackId, itemId, patch) =>
-      timelineStore.updateClipProperties(trackId, itemId, patch),
-    updateClipTransition: (trackId, itemId, patch) =>
-      timelineStore.updateClipTransition(trackId, itemId, patch),
-    selectTimelineItem: (trackId, itemId, kind) =>
-      selectionStore.selectTimelineItem(trackId, itemId, kind),
-    selectTimelineTransition: (trackId, itemId, edge) =>
-      selectionStore.selectTimelineTransition(trackId, itemId, edge),
-    triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
-    defaultTransitionDurationUs: computed(
-      () => workspaceStore.userSettings.timeline.defaultTransitionDurationUs,
-    ),
-  });
+const { isDraggingOver, handleDragLeave, handleDrop } = useClipDrop({
+  track: computed(() => props.track),
+  clipItem,
+  canEditClipContent: computed(() => props.canEditClipContent),
+  updateClipProperties: (trackId, itemId, patch) =>
+    timelineStore.updateClipProperties(trackId, itemId, patch),
+  updateClipTransition: (trackId, itemId, patch) =>
+    timelineStore.updateClipTransition(trackId, itemId, patch),
+  selectTimelineItem: (trackId, itemId, kind) =>
+    selectionStore.selectTimelineItem(trackId, itemId, kind),
+  selectTimelineTransition: (trackId, itemId, edge) =>
+    selectionStore.selectTimelineTransition(trackId, itemId, edge),
+  triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
+  defaultTransitionDurationUs: computed(
+    () => workspaceStore.userSettings.timeline.defaultTransitionDurationUs,
+  ),
+});
 
 const isMediaMissing = computed(() => {
   if (

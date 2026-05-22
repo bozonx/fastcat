@@ -74,7 +74,11 @@ const projectStore = useProjectStore();
     </div>
 
     <div class="shrink-0 flex items-center ml-2">
-      <UDropdownMenu v-if="!isSelectionMode" :items="menuItems as unknown[]" :ui="{ content: 'w-56 min-w-max' }">
+      <UDropdownMenu
+        v-if="!isSelectionMode"
+        :items="menuItems as unknown[]"
+        :ui="{ content: 'w-56 min-w-max' }"
+      >
         <UButton icon="lucide:more-vertical" variant="ghost" color="neutral" size="sm" />
       </UDropdownMenu>
     </div>

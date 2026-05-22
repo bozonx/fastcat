@@ -28,7 +28,10 @@ function computeStatus(
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && (meta.image as Record<string, unknown> | undefined)?.canDisplay === false) {
+    if (
+      BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) &&
+      (meta.image as Record<string, unknown> | undefined)?.canDisplay === false
+    ) {
       return 'corrupt';
     }
     return 'ok';

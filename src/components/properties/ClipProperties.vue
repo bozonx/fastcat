@@ -178,11 +178,7 @@ function handleCutClip() {
   });
 }
 
-const {
-  handleDeleteClip,
-  otherActionsList,
-  commonActionsList,
-} = useClipPropertiesActions({
+const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
   timelineStore,

@@ -48,9 +48,7 @@ const sortBy = ref<SortBy>('date');
 const sortOrder = ref<SortOrder>('desc');
 
 const allProjects = computed(() => {
-  const recentMap = new Map(
-    workspaceStore.recentProjects.map((p) => [p.projectName, p]),
-  );
+  const recentMap = new Map(workspaceStore.recentProjects.map((p) => [p.projectName, p]));
   return filteredProjects.value.map((name) => {
     const recent = recentMap.get(name);
     return {
@@ -234,7 +232,9 @@ const formatDate = (dateStr?: string) => {
                 </UTooltip>
                 <div class="w-px h-4 bg-ui-border mx-1" />
                 <UTooltip
-                  :text="sortOrder === 'asc' ? t('common.sortOrder.asc') : t('common.sortOrder.desc')"
+                  :text="
+                    sortOrder === 'asc' ? t('common.sortOrder.asc') : t('common.sortOrder.desc')
+                  "
                 >
                   <UButton
                     variant="ghost"

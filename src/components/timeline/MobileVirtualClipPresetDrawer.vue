@@ -22,7 +22,6 @@ const isOpenLocal = computed({
   },
 });
 
-
 interface PresetItem {
   id: string;
   name: string;

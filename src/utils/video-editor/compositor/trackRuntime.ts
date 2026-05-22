@@ -20,14 +20,14 @@ export function buildTrackRuntimeList(
   toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined,
 ): TrackRuntimeDefinition[] {
   const explicitTracks = timelineItems
-    .filter((item) => item && typeof item === 'object' && (item as Record<string, unknown>).kind === 'track')
+    .filter(
+      (item) =>
+        item && typeof item === 'object' && (item as Record<string, unknown>).kind === 'track',
+    )
     .map((track) => {
       const t = track as Record<string, unknown>;
       return {
-        id:
-          typeof t.id === 'string' && t.id.length > 0
-            ? t.id
-            : `track_${String(t.layer ?? 0)}`,
+        id: typeof t.id === 'string' && t.id.length > 0 ? t.id : `track_${String(t.layer ?? 0)}`,
         layer: Math.round(Number(t.layer ?? 0)),
         opacity: normalizeTrackOpacity(t.opacity),
         blendMode: resolveBlendMode(t.blendMode),
@@ -37,7 +37,8 @@ export function buildTrackRuntimeList(
 
   const inferredLayers = new Set<number>();
   for (const item of timelineItems) {
-    if (!item || typeof item !== 'object' || (item as Record<string, unknown>).kind !== 'clip') continue;
+    if (!item || typeof item !== 'object' || (item as Record<string, unknown>).kind !== 'clip')
+      continue;
     inferredLayers.add(Math.round(Number((item as Record<string, unknown>).layer ?? 0)));
   }
 

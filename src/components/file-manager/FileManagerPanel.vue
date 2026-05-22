@@ -87,7 +87,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 const stt = useSttTranscription({
   vfs: { getFile: (path) => vfs.getFile(path) },
-  fastcatAccountApiUrl: computed(() => (useRuntimeConfig().public.fastcatAccountApiUrl as string)),
+  fastcatAccountApiUrl: computed(() => useRuntimeConfig().public.fastcatAccountApiUrl as string),
   onSuccess: ({ mediaType }) => {
     toast.add({
       title: t('videoEditor.fileManager.audio.transcriptionCompleted'),
@@ -150,7 +150,11 @@ const { handleFileAction: onFileAction, createTimelineInDirectory } = useFileMan
   loadProjectDirectory: loadProjectDirectory as (opts?: unknown) => Promise<void>,
   reloadDirectory,
   findEntryByPath,
-  onFileActionBase: onFileActionBase as (action: import('~/composables/file-manager/useFileManagerActions').FileAction, entry: FsEntry | FsEntry[], getExistingNames?: (() => string[])) => void | Promise<void>,
+  onFileActionBase: onFileActionBase as (
+    action: import('~/composables/file-manager/useFileManagerActions').FileAction,
+    entry: FsEntry | FsEntry[],
+    getExistingNames?: () => string[],
+  ) => void | Promise<void>,
   openTranscriptionModal,
   extractAudio: (entry) => extractAudio(entry, { instanceId, isExternal: props.isExternal }),
   addFileTab,
@@ -224,7 +228,6 @@ const rootContextMenuItems = computed(() => {
 
   return menu;
 });
-
 
 async function onCreateTimeline() {
   const createdPath = await createTimeline();

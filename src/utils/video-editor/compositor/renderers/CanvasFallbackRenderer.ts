@@ -40,20 +40,25 @@ export class CanvasFallbackRenderer {
     let imageSource: unknown;
     try {
       imageSource =
-        typeof (sample as { toCanvasImageSource?: () => unknown }).toCanvasImageSource === 'function'
+        typeof (sample as { toCanvasImageSource?: () => unknown }).toCanvasImageSource ===
+        'function'
           ? (sample as { toCanvasImageSource: () => unknown }).toCanvasImageSource()
           : sample;
-      const src = imageSource as { displayWidth?: number; width?: number; displayHeight?: number; height?: number };
+      const src = imageSource as {
+        displayWidth?: number;
+        width?: number;
+        displayHeight?: number;
+        height?: number;
+      };
       const frameW = Math.max(1, Math.round(src.displayWidth ?? src.width ?? 1));
-      const frameH = Math.max(
-        1,
-        Math.round(src.displayHeight ?? src.height ?? 1),
-      );
+      const frameH = Math.max(1, Math.round(src.displayHeight ?? src.height ?? 1));
 
       if (canvas.width !== frameW || canvas.height !== frameH) {
         canvas.width = frameW;
         canvas.height = frameH;
-        const texSource = (clip.sprite as import('pixi.js').Sprite).texture.source as { resize?: (w: number, h: number) => void };
+        const texSource = (clip.sprite as import('pixi.js').Sprite).texture.source as {
+          resize?: (w: number, h: number) => void;
+        };
         if (typeof texSource.resize === 'function') {
           texSource.resize(frameW, frameH);
         }
@@ -69,7 +74,9 @@ export class CanvasFallbackRenderer {
         }
         ctx.drawImage(imageSource as CanvasImageSource, 0, 0, frameW, frameH);
         this.context.layoutApplier.applySpriteLayout(frameW, frameH, clip);
-        ((clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }).update?.();
+        (
+          (clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }
+        ).update?.();
         return;
       } catch (err) {
         this.context.clipPreferBitmapFallback.set(clip.itemId, true);
@@ -82,7 +89,9 @@ export class CanvasFallbackRenderer {
           try {
             ctx.drawImage(bmp, 0, 0, frameW, frameH);
             this.context.layoutApplier.applySpriteLayout(frameW, frameH, clip);
-            ((clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }).update?.();
+            (
+              (clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }
+            ).update?.();
           } finally {
             bmp.close();
           }
@@ -98,8 +107,20 @@ export class CanvasFallbackRenderer {
 
     if (typeof (sample as { draw?: unknown }).draw === 'function') {
       try {
-        (sample as { draw: (ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, x: number, y: number, w: number, h: number) => void }).draw(ctx, 0, 0, canvas.width, canvas.height);
-        ((clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }).update?.();
+        (
+          sample as {
+            draw: (
+              ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+              x: number,
+              y: number,
+              w: number,
+              h: number,
+            ) => void;
+          }
+        ).draw(ctx, 0, 0, canvas.width, canvas.height);
+        (
+          (clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }
+        ).update?.();
       } catch (err) {
         console.error('[CanvasFallbackRenderer] sample.draw failed:', err);
       }
@@ -122,13 +143,17 @@ export class CanvasFallbackRenderer {
       if (!clip.sprite) return;
       try {
         if (
-          typeof ((clip.sprite as import('pixi.js').Sprite).texture.source as { resize?: (w: number, h: number) => void })
-            .resize === 'function'
+          typeof (
+            (clip.sprite as import('pixi.js').Sprite).texture.source as {
+              resize?: (w: number, h: number) => void;
+            }
+          ).resize === 'function'
         ) {
-          ((clip.sprite as import('pixi.js').Sprite).texture.source as { resize: (w: number, h: number) => void }).resize(
-            targetW,
-            targetH,
-          );
+          (
+            (clip.sprite as import('pixi.js').Sprite).texture.source as {
+              resize: (w: number, h: number) => void;
+            }
+          ).resize(targetW, targetH);
         }
       } catch {
         // ignore
@@ -167,8 +192,12 @@ export class CanvasFallbackRenderer {
       if (!state || !(state.bitmap || state.lastVideoFrame)) return;
       const frame = state.bitmap || state.lastVideoFrame;
       if (!frame) return;
-      const w = (frame as unknown as { displayWidth?: number; width?: number }).displayWidth ?? (frame as unknown as { displayWidth?: number; width?: number }).width;
-      const h = (frame as unknown as { displayHeight?: number; height?: number }).displayHeight ?? (frame as unknown as { displayHeight?: number; height?: number }).height;
+      const w =
+        (frame as unknown as { displayWidth?: number; width?: number }).displayWidth ??
+        (frame as unknown as { displayWidth?: number; width?: number }).width;
+      const h =
+        (frame as unknown as { displayHeight?: number; height?: number }).displayHeight ??
+        (frame as unknown as { displayHeight?: number; height?: number }).height;
       if (!w || !h) return;
 
       const layerOpacity = getLayerOpacity(params);
@@ -214,7 +243,9 @@ export class CanvasFallbackRenderer {
 
     if (!clip.sprite) return;
     try {
-      ((clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void })?.update?.();
+      (
+        (clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }
+      )?.update?.();
     } catch {
       // ignore
     }

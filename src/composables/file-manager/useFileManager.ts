@@ -1,12 +1,4 @@
-import {
-  ref,
-  shallowRef,
-  computed,
-  watch,
-  type Ref,
-  inject,
-  type InjectionKey,
-} from 'vue';
+import { ref, shallowRef, computed, watch, type Ref, inject, type InjectionKey } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -818,8 +810,8 @@ export function useFileManager(options?: {
     return injected;
   }
 
-  const _useNuxtApp: (() => unknown) =
-    ((globalThis as { useNuxtApp?: typeof useNuxtApp }).useNuxtApp || useNuxtApp) as (() => unknown);
+  const _useNuxtApp: () => unknown = ((globalThis as { useNuxtApp?: typeof useNuxtApp })
+    .useNuxtApp || useNuxtApp) as () => unknown;
   const nuxtApp = _useNuxtApp();
   const t =
     (nuxtApp as { $i18n?: { t: (key: string) => string } })?.$i18n?.t || ((key: string) => key);
@@ -997,7 +989,8 @@ export function useFileManager(options?: {
     }
 
     // 5. Update mainFocusByTimeline
-    const mainFocusByTimeline = ((focusStore as unknown) as Record<string, unknown>).mainFocusByTimeline as Record<string, MainPanelFocus>;
+    const mainFocusByTimeline = (focusStore as unknown as Record<string, unknown>)
+      .mainFocusByTimeline as Record<string, MainPanelFocus>;
     const newFocusByTimeline: Record<string, MainPanelFocus> = {};
     let focusChanged = false;
     for (const [path, focus] of Object.entries(mainFocusByTimeline)) {
@@ -1009,7 +1002,8 @@ export function useFileManager(options?: {
       }
     }
     if (focusChanged) {
-      ((focusStore as unknown) as Record<string, unknown>).mainFocusByTimeline = newFocusByTimeline as Record<string, MainPanelFocus>;
+      (focusStore as unknown as Record<string, unknown>).mainFocusByTimeline =
+        newFocusByTimeline as Record<string, MainPanelFocus>;
     }
 
     // 6. Update file tabs
@@ -1205,7 +1199,13 @@ export function useFileManager(options?: {
         api.mediaCache.clearExistingProxies();
       }
     },
-    onDirectoryCopied: async ({ oldPath: _oldPath, newPath: _newPath }: { oldPath: string; newPath: string }) => {
+    onDirectoryCopied: async ({
+      oldPath: _oldPath,
+      newPath: _newPath,
+    }: {
+      oldPath: string;
+      newPath: string;
+    }) => {
       mediaStore.resetMediaState();
     },
     onDirectoryLoaded: () => {

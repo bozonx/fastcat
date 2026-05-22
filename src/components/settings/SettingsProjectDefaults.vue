@@ -6,10 +6,7 @@ import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
-import {
-  createProjectPresetId,
-  resolveProjectPreset,
-} from '~/utils/settings';
+import { createProjectPresetId, resolveProjectPreset } from '~/utils/settings';
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 

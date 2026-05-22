@@ -217,8 +217,12 @@ export function isPassthroughCompatibleClip(
   if (fadeInUs > 0 || fadeOutUs > 0) {
     return { ok: false, reason: 'clip has fade in/out' };
   }
-  const transitionIn = (clip.transitionIn ?? fastcat.transitionIn) as { durationUs?: unknown } | undefined;
-  const transitionOut = (clip.transitionOut ?? fastcat.transitionOut) as { durationUs?: unknown } | undefined;
+  const transitionIn = (clip.transitionIn ?? fastcat.transitionIn) as
+    | { durationUs?: unknown }
+    | undefined;
+  const transitionOut = (clip.transitionOut ?? fastcat.transitionOut) as
+    | { durationUs?: unknown }
+    | undefined;
   if (
     (transitionIn?.durationUs && Number(transitionIn.durationUs) > 0) ||
     (transitionOut?.durationUs && Number(transitionOut.durationUs) > 0)
@@ -404,7 +408,11 @@ export async function runExport(
     try {
       for await (const packetRaw of packetSink.packets()) {
         ensureNotCancelled();
-        const packet = packetRaw as { timestamp?: number; duration?: number; clone?: (opts: { timestamp: number }) => unknown };
+        const packet = packetRaw as {
+          timestamp?: number;
+          duration?: number;
+          clone?: (opts: { timestamp: number }) => unknown;
+        };
         const packetStart = Number(packet.timestamp || 0);
         const packetDuration = Number(packet.duration || 0);
         const packetEnd = packetStart + packetDuration;

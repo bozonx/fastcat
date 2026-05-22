@@ -1147,7 +1147,8 @@ export default {
       transcriptionTitle: 'Transcription: {name}',
       uploadFailed: 'Failed to upload files',
       confirmCloseTitle: 'Background tasks in progress',
-      confirmCloseMessage: 'There are unfinished background tasks. Are you sure you want to close the application?',
+      confirmCloseMessage:
+        'There are unfinished background tasks. Are you sure you want to close the application?',
     },
     export: {
       audioBitrate: 'Audio bitrate (kbps)',
@@ -1814,8 +1815,7 @@ export default {
       confirmCloseUnsavedMessage:
         'This timeline has unsaved changes. Close without saving to the main file?',
       confirmCloseUnsavedTitle: 'Unsaved changes',
-      restoreAutosaveConfirm:
-        'Found a newer auto-save for {name}. Restore the unsaved version?',
+      restoreAutosaveConfirm: 'Found a newer auto-save for {name}. Restore the unsaved version?',
       tabs: {
         cut: 'Cut',
         sound: 'Sound',

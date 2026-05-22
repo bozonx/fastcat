@@ -130,19 +130,15 @@ export function parseClipItem(input: {
   transitionOut?: ClipTransition;
   report?: OtioValidationReport;
 }): TimelineClipItem {
-  const {
-    trackId,
-    otio,
-    index,
-    occupiedIds,
-    fallbackStartUs,
-    transitionIn,
-    transitionOut,
-  } = input;
+  const { trackId, otio, index, occupiedIds, fallbackStartUs, transitionIn, transitionOut } = input;
   const sourceRange = fromTimeRange(otio.source_range);
   const name = coerceName(otio.name, `clip_${index + 1}`);
 
-  const ref = otio.media_reference as unknown as { OTIO_SCHEMA?: string; target_url?: string; available_range?: unknown };
+  const ref = otio.media_reference as unknown as {
+    OTIO_SCHEMA?: string;
+    target_url?: string;
+    available_range?: unknown;
+  };
   const path =
     ref?.OTIO_SCHEMA === 'ExternalReference.1' && typeof ref.target_url === 'string'
       ? ref.target_url
@@ -320,7 +316,9 @@ export function parseClipItem(input: {
     const shapeData =
       typeData?.kind === 'shape'
         ? (typeData as Record<string, unknown>)
-        : ((fastcatMeta.typeData as unknown as { shape?: unknown })?.shape as Record<string, unknown> | undefined);
+        : ((fastcatMeta.typeData as unknown as { shape?: unknown })?.shape as
+            | Record<string, unknown>
+            | undefined);
     return {
       ...base,
       clipType: 'shape',
@@ -345,7 +343,9 @@ export function parseClipItem(input: {
     const hudData =
       typeData?.kind === 'hud'
         ? (typeData as Record<string, unknown>)
-        : ((fastcatMeta.typeData as unknown as { hud?: unknown })?.hud as Record<string, unknown> | undefined);
+        : ((fastcatMeta.typeData as unknown as { hud?: unknown })?.hud as
+            | Record<string, unknown>
+            | undefined);
     return {
       ...base,
       clipType: 'hud',

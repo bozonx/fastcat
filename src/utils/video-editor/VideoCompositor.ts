@@ -235,7 +235,11 @@ export class VideoCompositor {
     if (!this.app) return;
 
     const self = this as unknown as {
-      renderSingleClipToTexture?: (clip: CompositorClip, texture: RenderTexture, clear?: boolean) => void;
+      renderSingleClipToTexture?: (
+        clip: CompositorClip,
+        texture: RenderTexture,
+        clear?: boolean,
+      ) => void;
       renderLowerLayersToTexture?: (layer: number, texture: RenderTexture) => void;
       ensureTransitionSprite?: (clip: CompositorClip) => void;
     };
@@ -253,9 +257,15 @@ export class VideoCompositor {
       width: this.width,
       height: this.height,
       transitionManager: this.transitionManager,
-      stageTextureRenderer: stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,
+      stageTextureRenderer:
+        stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,
       getTrackById: (trackId) => this.trackById.get(trackId),
-      getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs) as { opacity: number; progress: number; mode?: string } | null,
+      getActiveTransitionState: (clip, timeUs) =>
+        this.getActiveTransitionState(clip, timeUs) as {
+          opacity: number;
+          progress: number;
+          mode?: string;
+        } | null,
       ensureTransitionRenderTexture: (texture) =>
         this.clipResourceManager.ensureTransitionRenderTexture(texture),
       findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
@@ -682,7 +692,11 @@ export class VideoCompositor {
       timelineClips,
       deps,
       mediabunny: {
-        Input: Input as unknown as new (params: unknown) => { getPrimaryVideoTrack(): Promise<import('./compositor/MediaClipLoader').MediabunnyTrack | null> },
+        Input: Input as unknown as new (params: unknown) => {
+          getPrimaryVideoTrack(): Promise<
+            import('./compositor/MediaClipLoader').MediabunnyTrack | null
+          >;
+        },
         BlobSource,
         VideoSampleSink: VideoSampleSink as unknown as new (track: unknown) => unknown,
         ALL_FORMATS,
@@ -722,7 +736,9 @@ export class VideoCompositor {
   }
 
   updateTimelineLayout(timelineClips: Record<string, unknown>[]): number {
-    const meta = timelineClips.find((x) => x && typeof x === 'object' && (x as Record<string, unknown>).kind === 'meta');
+    const meta = timelineClips.find(
+      (x) => x && typeof x === 'object' && (x as Record<string, unknown>).kind === 'meta',
+    );
     const nextMaster = meta
       ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null)
       : null;
@@ -859,7 +875,12 @@ export class VideoCompositor {
           transitionManager: this.transitionManager,
           stageTextureRenderer: this.stageTextureRenderer!,
           getTrackById: (trackId) => this.trackById.get(trackId),
-          getActiveTransitionState: (clip, timeUs) => this.getActiveTransitionState(clip, timeUs) as { opacity: number; progress: number; mode?: string } | null,
+          getActiveTransitionState: (clip, timeUs) =>
+            this.getActiveTransitionState(clip, timeUs) as {
+              opacity: number;
+              progress: number;
+              mode?: string;
+            } | null,
           ensureTransitionRenderTexture: (texture) =>
             this.clipResourceManager.ensureTransitionRenderTexture(texture),
           findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),

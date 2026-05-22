@@ -78,7 +78,9 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
 }
 
 export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['stopFrames'] {
-  const stopFrames = (raw as Record<string, unknown>)?.['stopFrames'] as Record<string, unknown> | undefined;
+  const stopFrames = (raw as Record<string, unknown>)?.['stopFrames'] as
+    | Record<string, unknown>
+    | undefined;
   const qp =
     stopFrames?.['qualityPercent'] ??
     (raw as Record<string, unknown>)?.['stopFrameQualityPercent'] ??

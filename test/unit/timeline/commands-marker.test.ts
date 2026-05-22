@@ -27,7 +27,8 @@ describe('markerHandlers', () => {
         timeUs: 1000,
         text: 'hello',
       });
-      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      const markers =
+        (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers).toHaveLength(1);
       expect(markers[0]!.id).toBe('m1');
       expect(markers[0]!.timeUs).toBe(1000);
@@ -41,7 +42,8 @@ describe('markerHandlers', () => {
         timeUs: 1000,
         text: '',
       });
-      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      const markers =
+        (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers[0]!.id).toBe('m1');
       expect(markers[1]!.id).toBe('m2');
     });
@@ -67,7 +69,8 @@ describe('markerHandlers', () => {
         id: 'm1',
         timeUs: 3000,
       });
-      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      const markers =
+        (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers[0]!.timeUs).toBe(3000);
     });
 
@@ -78,7 +81,8 @@ describe('markerHandlers', () => {
         id: 'm1',
         durationUs: 500,
       });
-      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      const markers =
+        (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers[0]!.durationUs).toBe(500);
     });
 
@@ -89,7 +93,8 @@ describe('markerHandlers', () => {
         id: 'm1',
         text: 'updated',
       });
-      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      const markers =
+        (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers[0]!.text).toBe('updated');
     });
 
@@ -114,7 +119,8 @@ describe('markerHandlers', () => {
         type: 'remove_marker',
         id: 'm1',
       });
-      const markers = (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
+      const markers =
+        (result.next.metadata?.fastcat as { markers?: TimelineMarker[] })?.markers ?? [];
       expect(markers).toHaveLength(1);
       expect(markers[0]!.id).toBe('m2');
     });

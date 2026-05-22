@@ -40,7 +40,9 @@ const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
 const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<number>('audioChannels', { default: 2 });
-const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', { default: 'original' });
+const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
+  default: 'original',
+});
 const preset = defineModel<string>('preset', { default: 'custom' });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });

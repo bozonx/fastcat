@@ -476,7 +476,14 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   }
 
   const otherActionsList = computed(() => {
-    const list: { label: string; icon: string; id?: string; onClick?: () => void; onSelect?: () => void; color?: string }[] = [];
+    const list: {
+      label: string;
+      icon: string;
+      id?: string;
+      onClick?: () => void;
+      onSelect?: () => void;
+      color?: string;
+    }[] = [];
     const clip = options.clip.value;
 
     if (isFreePosition.value) {

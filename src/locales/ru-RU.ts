@@ -1151,7 +1151,8 @@ export default {
       transcriptionTitle: 'Транскрибация: {name}',
       uploadFailed: 'Не удалось загрузить файлы',
       confirmCloseTitle: 'Фоновые задачи в процессе',
-      confirmCloseMessage: 'Есть незавершённые фоновые задачи. Вы уверены, что хотите закрыть приложение?',
+      confirmCloseMessage:
+        'Есть незавершённые фоновые задачи. Вы уверены, что хотите закрыть приложение?',
     },
     export: {
       audioBitrate: 'Битрейт аудио (кбит/с)',
