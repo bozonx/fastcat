@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { useTimelineRulerDraw } from '~/composables/timeline/useTimelineRulerDraw';
+import { frameToUs } from '~/timeline/commands/utils';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 
 vi.mock('@vueuse/core', () => ({
   useResizeObserver: vi.fn(),
@@ -96,6 +98,79 @@ describe('useTimelineRulerDraw', () => {
     scheduleDraw?.();
     expect(widthAssignments).toBe(1);
     expect(heightAssignments).toBe(1);
+
+    wrapper.unmount();
+  });
+
+  it('keeps ruler ticks aligned to global frame positions for non-integer fps', () => {
+    let scheduleDraw: (() => void) | null = null;
+    const moveTo = vi.fn();
+    const fillText = vi.fn();
+
+    const ctx = {
+      setTransform: vi.fn(),
+      scale: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo,
+      lineTo: vi.fn(),
+      fillText,
+      stroke: vi.fn(),
+      fillStyle: '',
+      strokeStyle: '',
+      lineWidth: 0,
+      font: '',
+      textAlign: 'center',
+      textBaseline: 'top',
+    };
+
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => ctx),
+    } as unknown as HTMLCanvasElement;
+
+    const fps = 29.97;
+    const zoom = 50;
+    const frameAtTenMinutesTimecode = 18_000;
+    const tickUs = frameToUs(frameAtTenMinutesTimecode, fps);
+    const tickAbsPx = timeUsToPx(tickUs, zoom);
+    const scrollLeft = tickAbsPx - 100;
+
+    const TestComponent = defineComponent({
+      setup() {
+        const api = useTimelineRulerDraw({
+          containerRef: ref(null),
+          canvasRef: ref(canvas),
+          width: ref(400),
+          height: ref(40),
+          scrollLeft: ref(scrollLeft),
+          zoom: ref(zoom),
+          fps: ref(fps),
+          textColor: '#fff',
+          tickColor: '#999',
+          majorTickWidth: 1,
+          subTickWidth: 1,
+          interfaceScale: ref(14),
+          isMobile: ref(false),
+        });
+
+        scheduleDraw = api.scheduleDraw;
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComponent);
+    scheduleDraw?.();
+
+    const renderStartPx = Math.max(0, scrollLeft - 512);
+    const expectedCanvasX = Math.round(tickAbsPx - renderStartPx) + 0.5;
+    const oldRealSecondCanvasX = Math.round(timeUsToPx(600_000_000, zoom) - renderStartPx) + 0.5;
+    const majorTickXs = fillText.mock.calls.map((call) => call[1]);
+
+    expect(majorTickXs).toContain(expectedCanvasX);
+    expect(majorTickXs).not.toContain(oldRealSecondCanvasX);
+    expect(Math.abs(expectedCanvasX - oldRealSecondCanvasX)).toBeGreaterThan(5);
 
     wrapper.unmount();
   });
