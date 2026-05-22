@@ -280,39 +280,6 @@ function handleUpdateBackgroundColor(val: string) {
   });
 }
 
-function handleFreezeFrame() {
-  const playheadUs = timelineStore.currentTime;
-  const clipStartUs = props.clip.timelineRange.startUs;
-  const relativeUs = playheadUs - clipStartUs;
-  const clampedUs = Math.max(0, Math.min(relativeUs, props.clip.timelineRange.durationUs));
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    freezeFrameSourceUs: Math.round(clampedUs),
-  });
-}
-
-function handleResetFreezeFrame() {
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    freezeFrameSourceUs: undefined,
-  });
-}
-
-async function handleExtractAudio() {
-  await timelineStore.extractAudioToTrack({
-    videoTrackId: props.clip.trackId,
-    videoItemId: props.clip.id,
-  });
-  await timelineStore.requestTimelineSave({ immediate: true });
-}
-
-function handleReturnAudio() {
-  if (props.clip.linkedVideoClipId) {
-    timelineStore.returnAudioToVideo({ videoItemId: props.clip.linkedVideoClipId });
-  } else {
-    timelineStore.returnAudioToVideo({ videoItemId: props.clip.id });
-  }
-  timelineStore.requestTimelineSave({ immediate: true });
-}
-
 const { handleUpdateText, handleUpdateTextStyle } = useClipTextProperties({
   clip: clipRef,
   timelineStore,

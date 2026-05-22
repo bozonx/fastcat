@@ -81,7 +81,9 @@ const timelineStore = {
   loadTimelineMetadata: vi.fn(),
 };
 
-const focusStore = {};
+const focusStore = {
+  setActiveTimelinePath: vi.fn(),
+};
 
 const projectTabsStore = {
   removeFileTabByPath: vi.fn(),
@@ -126,6 +128,9 @@ describe('useFileManagerActions', () => {
     projectStore.currentTimelinePath = null;
     projectStore.closeTimelineFile.mockClear();
     projectStore.openTimelineFile.mockClear();
+    focusStore.setActiveTimelinePath.mockClear();
+    timelineStore.loadTimeline.mockClear();
+    timelineStore.loadTimelineMetadata.mockClear();
     projectTabsStore.removeFileTabByPath.mockClear();
     fileManagerStore.selectedFolder = null;
     fileManagerStore.openFolder.mockClear();
@@ -310,5 +315,44 @@ describe('useFileManagerActions', () => {
 
     expect(copyEntry).not.toHaveBeenCalled();
     expect(moveEntry).not.toHaveBeenCalled();
+  });
+
+  it('creates an OTIO version and opens the newly created timeline', async () => {
+    const loadProjectDirectory = vi.fn().mockResolvedValue(undefined);
+    const copyFile = vi.fn().mockResolvedValue(undefined);
+    const findEntryByPath = vi.fn().mockReturnValue({
+      kind: 'file',
+      name: 'timeline_003.otio',
+      path: 'timelines/timeline_003.otio',
+    });
+    const api = createComposable({
+      loadProjectDirectory,
+      vfs: {
+        listEntryNames: vi.fn().mockResolvedValue(['timeline_001.otio', 'timeline_002.otio']),
+        copyFile,
+        exists: vi.fn().mockResolvedValue(false),
+      } as unknown as IFileSystemAdapter,
+      findEntryByPath,
+    });
+
+    await api.onFileAction('createOtioVersion', {
+      kind: 'file',
+      name: 'timeline_002.otio',
+      path: 'timelines/timeline_002.otio',
+      parentPath: 'timelines',
+    });
+
+    expect(copyFile).toHaveBeenCalledWith(
+      'timelines/timeline_002.otio',
+      'timelines/timeline_003.otio',
+    );
+    expect(loadProjectDirectory).toHaveBeenCalledTimes(1);
+    expect(selectionStore.selectFsEntryWithUiUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'timelines/timeline_003.otio' }),
+    );
+    expect(projectStore.openTimelineFile).toHaveBeenCalledWith('timelines/timeline_003.otio');
+    expect(focusStore.setActiveTimelinePath).toHaveBeenCalledWith('timelines/timeline_003.otio');
+    expect(timelineStore.loadTimeline).toHaveBeenCalledTimes(1);
+    expect(timelineStore.loadTimelineMetadata).toHaveBeenCalledTimes(1);
   });
 });

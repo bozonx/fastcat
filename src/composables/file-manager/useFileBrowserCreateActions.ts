@@ -2,6 +2,7 @@ import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useTimelineStore } from '~/stores/timeline.store';
 import {
   createTimelineCommand,
   createMarkdownCommand,
@@ -31,6 +32,7 @@ export function useFileBrowserCreateActions({
   const selectionStore = useSelectionStore();
   const uiStore = useUiStore();
   const projectStore = useProjectStore();
+  const timelineStore = useTimelineStore();
 
   async function createTimelineInDirectory(entry: FsEntry) {
     if (entry.kind !== 'directory') return;
@@ -50,6 +52,9 @@ export function useFileBrowserCreateActions({
       if (onFileSelect) onFileSelect(createdEntry);
       else selectionStore.selectFsEntry(createdEntry, instanceId ?? undefined);
     }
+    await projectStore.openTimelineFile(createdPath);
+    await timelineStore.loadTimeline();
+    void timelineStore.loadTimelineMetadata();
   }
 
   async function createMarkdownInDirectory(entry: FsEntry) {

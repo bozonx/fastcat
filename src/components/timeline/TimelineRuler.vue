@@ -144,6 +144,25 @@ function selectMarker(markerId: string, e?: MouseEvent) {
   selectionStore.selectTimelineMarker(markerId);
 }
 
+function seekToMarker(markerId: string, e?: MouseEvent, part?: 'left' | 'right') {
+  e?.stopPropagation();
+  // If this click followed an actual drag gesture, don't seek — the drag already handled the interaction
+  if (hasDragged.value) {
+    return;
+  }
+
+  const marker = markers.value.find((m) => m.id === markerId);
+  if (!marker) return;
+
+  const timeUs =
+    part === 'right' && marker.durationUs !== undefined
+      ? marker.timeUs + marker.durationUs
+      : marker.timeUs;
+
+  timelineStore.setCurrentTimeUs(timeUs);
+  selectionStore.selectTimelineMarker(markerId);
+}
+
 function selectSelectionRange(e?: MouseEvent) {
   if (e && isLayer1Active(e, workspaceStore.userSettings)) {
     executeRulerClickAction(workspaceStore.userSettings.mouse.ruler.shiftClick, e);
@@ -158,7 +177,7 @@ function selectSelectionRange(e?: MouseEvent) {
 
 const isSnappingEnabled = computed(() => timelineSettingsStore.toolbarSnapMode !== 'no_snap');
 
-const { onMarkerPointerDown, displayMarkers, draggedMarkerId } = useTimelineRulerMarkerDrag({
+const { onMarkerPointerDown, displayMarkers, draggedMarkerId, hasDragged } = useTimelineRulerMarkerDrag({
   markers,
   zoom,
   fps,
@@ -387,6 +406,7 @@ function onMobilePointerUp() {
         :zone-marker-end-label="t('fastcat.timeline.zoneMarkerEnd')"
         :is-mobile="isMobile"
         @select-marker="selectMarker"
+        @seek-to-marker="seekToMarker"
         @marker-pointerdown="onMarkerPointerDown"
         @select-selection-range="selectSelectionRange"
         @selection-range-pointerdown="startSelectionRangeDrag"

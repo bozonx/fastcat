@@ -46,6 +46,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'select-marker', markerId: string, event?: MouseEvent, part?: 'left' | 'right'): void;
+  (e: 'seek-to-marker', markerId: string, event?: MouseEvent, part?: 'left' | 'right'): void;
   (e: 'marker-pointerdown', event: PointerEvent, markerId: string, part?: 'left' | 'right'): void;
   (e: 'select-selection-range', event?: MouseEvent): void;
   (e: 'selection-range-pointerdown', event: PointerEvent, part: 'move' | 'left' | 'right'): void;
@@ -143,7 +144,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'left')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id)"
               @contextmenu.stop
-              @click="emit('select-marker', point.id, $event, 'left')"
+              @click="emit('seek-to-marker', point.id, $event, 'left')"
             >
               <!-- 11px wide (odd) for precise centering; shorter + more open angle -->
               <svg
@@ -175,7 +176,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
               @dblclick.stop.prevent="emit('select-marker', point.id, undefined, 'right')"
               @pointerdown.stop="emit('marker-pointerdown', $event, point.id, 'right')"
               @contextmenu.stop
-              @click="emit('select-marker', point.id, $event, 'right')"
+              @click="emit('seek-to-marker', point.id, $event, 'right')"
             >
               <svg
                 width="11"

@@ -14,6 +14,8 @@ services:
       # so the container (running as root) does not leave root-owned files in the repo.
       - playwright_node_modules:/app/node_modules
       - playwright_nuxt:/app/.nuxt
+      - playwright_test_results:/app/test-results
+      - playwright_report:/app/playwright-report
     environment:
       - CI=true
       - E2E_TEST=1
@@ -23,3 +25,5 @@ services:
 volumes:
   playwright_node_modules:
   playwright_nuxt:
+  playwright_test_results:
+  playwright_report:

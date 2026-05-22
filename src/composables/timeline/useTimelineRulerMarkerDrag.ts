@@ -4,6 +4,7 @@ import { quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import { DRAG_DEADZONE_PX } from '~/utils/mouse';
 import {
   createDefaultHotkeyLookup,
   createHotkeyLookup,
@@ -32,7 +33,9 @@ interface UseTimelineRulerMarkerDragOptions {
 export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOptions) {
   const draggedMarkerId = ref<string | null>(null);
   const draggedMarkerPart = ref<'left' | 'right'>('left');
+  const hasDragged = ref(false);
   const markerDragStartX = ref(0);
+  const markerDragStartY = ref(0);
   const markerDragStartScrollLeft = ref(0);
   const markerDragStartMouseTimeUs = ref(0);
   const markerDragStartUs = ref(0);
@@ -95,6 +98,14 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
 
   function onWindowPointerMove(event: PointerEvent) {
     if (!draggedMarkerId.value) return;
+
+    if (!hasDragged.value) {
+      const dx = Math.abs(event.clientX - markerDragStartX.value);
+      const dy = Math.abs(event.clientY - markerDragStartY.value);
+      if (dx > DRAG_DEADZONE_PX || dy > DRAG_DEADZONE_PX) {
+        hasDragged.value = true;
+      }
+    }
 
     const dxPx =
       event.clientX -
@@ -198,7 +209,9 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
 
     draggedMarkerId.value = markerId;
     draggedMarkerPart.value = part;
+    hasDragged.value = false;
     markerDragStartX.value = event.clientX;
+    markerDragStartY.value = event.clientY;
     markerDragStartScrollLeft.value = options.scrollLeft.value;
     markerDragStartMouseTimeUs.value = options.getTimeUsFromPointerEvent(event);
     markerDragStartUs.value = quantize(marker.timeUs);
@@ -221,6 +234,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   return {
     clearMarkerPointerListeners,
     draggedMarkerId,
+    hasDragged,
     onMarkerPointerDown,
     displayMarkers,
   };

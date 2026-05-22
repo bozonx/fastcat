@@ -9,7 +9,7 @@ defineProps<{
   isOpen: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   close: [];
 }>();
 
@@ -21,9 +21,6 @@ const { restoreHistory } = useFileManager();
 const past = computed(() => historyStore.past);
 const future = computed(() => historyStore.future);
 
-const canUndo = computed(() => historyStore.canUndo());
-const canRedo = computed(() => historyStore.canRedo());
-
 const reversedPast = computed(() => [...past.value].reverse());
 const reversedFuture = computed(() => [...future.value].reverse());
 
@@ -33,28 +30,6 @@ function formatTime(timestamp: number): string {
     minute: '2-digit',
     second: '2-digit',
   }).format(new Date(timestamp));
-}
-
-function handleUndo() {
-  timelineStore.historyDebounce.clearPendingDebouncedHistory();
-  const entry = historyStore.undoGlobal();
-  if (!entry) return;
-  if (entry.scope === 'timeline') {
-    timelineStore.applyRestoredSnapshot(entry.snapshot);
-  } else if (entry.scope === 'fileManager') {
-    void restoreHistory(entry.snapshot);
-  }
-}
-
-function handleRedo() {
-  timelineStore.historyDebounce.clearPendingDebouncedHistory();
-  const entry = historyStore.redoGlobal();
-  if (!entry) return;
-  if (entry.scope === 'timeline') {
-    timelineStore.applyRestoredSnapshot(entry.snapshot);
-  } else if (entry.scope === 'fileManager') {
-    void restoreHistory(entry.snapshot);
-  }
 }
 
 function jumpToState(entryId: string, isFuture: boolean) {
