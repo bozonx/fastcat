@@ -60,10 +60,10 @@ export interface BaseClipEffect {
   target?: EffectTarget;
 }
 
-export type ClipEffect<T = Record<string, any>> = BaseClipEffect & T;
+export type ClipEffect<T = Record<string, unknown>> = BaseClipEffect & T;
 
 // Registry
-const effectsRegistry = new Map<EffectType, EffectManifest<Record<string, unknown>>>();
+const effectsRegistry = new Map<EffectType, EffectManifest<Record<string, any>>>();
 
 export function registerEffect<T>(manifest: EffectManifest<T>) {
   if ('createNode' in manifest || manifest.target === 'audio') {

@@ -9,7 +9,7 @@ import {
 interface UseClipAudioOptions {
   clip: Ref<TimelineClipItem>;
   tracks: Ref<TimelineTrack[] | undefined>;
-  mediaMetadataByPath: Ref<Record<string, any>>;
+  mediaMetadataByPath: Ref<Record<string, unknown>>;
   updateAudio: (patch: {
     audioGain?: number;
     audioBalance?: number;
@@ -47,7 +47,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
     const path = clip.source?.path;
     if (path) {
       const meta = options.mediaMetadataByPath.value[path];
-      if (meta && !meta.audio) return false;
+      if (meta && !(meta as Record<string, unknown>).audio) return false;
     }
 
     return true;

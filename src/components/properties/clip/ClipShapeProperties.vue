@@ -87,7 +87,7 @@ const { t } = useI18n();
           :model-value="String(clip.fillColor ?? '#ffffff')"
           format="hex"
           size="sm"
-          @update:model-value="(v: any) => emit('updateFillColor', String(v))"
+          @update:model-value="(v: unknown) => emit('updateFillColor', String(v))"
         />
       </PropertyField>
 
@@ -96,7 +96,7 @@ const { t } = useI18n();
           :model-value="String(clip.strokeColor ?? '#000000')"
           format="hex"
           size="sm"
-          @update:model-value="(v: any) => emit('updateStrokeColor', String(v))"
+          @update:model-value="(v: unknown) => emit('updateStrokeColor', String(v))"
         />
       </PropertyField>
 
@@ -106,7 +106,7 @@ const { t } = useI18n();
           size="sm"
           :step="1"
           :min="0"
-          @update:model-value="(v: any) => emit('updateStrokeWidth', Number(v))"
+          @update:model-value="(v: unknown) => emit('updateStrokeWidth', Number(v))"
         />
       </PropertyField>
 
@@ -116,7 +116,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.squashX ?? 0)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { squashX: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { squashX: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.squashY')">
@@ -124,7 +124,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.squashY ?? 0)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { squashY: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { squashY: Number(v) })"
           />
         </PropertyField>
       </template>
@@ -135,7 +135,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.width ?? 100)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { width: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { width: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.height')">
@@ -143,7 +143,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.height ?? 100)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { height: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { height: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.cornerRadius')">
@@ -153,7 +153,7 @@ const { t } = useI18n();
             :step="1"
             :min="0"
             :max="100"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { cornerRadius: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { cornerRadius: Number(v) })"
           />
         </PropertyField>
       </template>
@@ -164,7 +164,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.baseLength ?? 100)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { baseLength: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { baseLength: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.vertexOffset')">
@@ -172,7 +172,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.vertexOffset ?? 50)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { vertexOffset: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { vertexOffset: Number(v) })"
           />
         </PropertyField>
       </template>
@@ -184,7 +184,7 @@ const { t } = useI18n();
             size="sm"
             :step="1"
             :min="3"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { rays: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { rays: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.innerRadius')">
@@ -194,7 +194,7 @@ const { t } = useI18n();
             "
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { innerRadius: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { innerRadius: Number(v) })"
           />
         </PropertyField>
       </template>
@@ -232,7 +232,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.width ?? 100)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { width: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { width: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.height')">
@@ -240,7 +240,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.height ?? 70)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { height: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { height: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.cornerRadius')">
@@ -250,7 +250,7 @@ const { t } = useI18n();
             :step="1"
             :min="0"
             :max="100"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { cornerRadius: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { cornerRadius: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.pointerSharpness')">
@@ -259,7 +259,7 @@ const { t } = useI18n();
             size="sm"
             :step="1"
             @update:model-value="
-              (v: any) => emit('updateShapeConfig', { pointerSharpness: Number(v) })
+              (v: unknown) => emit('updateShapeConfig', { pointerSharpness: Number(v) })
             "
           />
         </PropertyField>
@@ -268,7 +268,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.pointerAngle ?? 20)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { pointerAngle: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { pointerAngle: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.shapeClip.pointerX')">
@@ -276,7 +276,7 @@ const { t } = useI18n();
             :model-value="Number(clip.shapeConfig?.pointerX ?? 30)"
             size="sm"
             :step="1"
-            @update:model-value="(v: any) => emit('updateShapeConfig', { pointerX: Number(v) })"
+            @update:model-value="(v: unknown) => emit('updateShapeConfig', { pointerX: Number(v) })"
           />
         </PropertyField>
         <PropertyField :label="$t('fastcat.clip.pointerDirection')">

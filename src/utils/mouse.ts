@@ -42,6 +42,7 @@ export const TIMELINE_CLICK_ACTIONS = [
   'select_multiple',
   'none',
 ] as const;
+export type TimelineClickAction = (typeof TIMELINE_CLICK_ACTIONS)[number];
 
 export const MONITOR_CLICK_ACTIONS = [
   'fit',
@@ -84,6 +85,11 @@ export const CLIP_DRAG_ACTIONS = TIMELINE_DRAG_ACTIONS;
 
 export const MOUSE_HORIZONTAL_MOVEMENT_ACTIONS = ['move_playhead', 'none'] as const;
 export type MouseHorizontalMovementAction = (typeof MOUSE_HORIZONTAL_MOVEMENT_ACTIONS)[number];
+
+export type MonitorWheelAction = (typeof MONITOR_WHEEL_ACTIONS)[number];
+export type MonitorClickAction = (typeof MONITOR_CLICK_ACTIONS)[number];
+export type MonitorDragAction = (typeof MONITOR_DRAG_ACTIONS)[number];
+export type TrackHeadersWheelAction = (typeof TRACK_HEADERS_WHEEL_ACTIONS)[number];
 
 export const SHIFT_CLICK_ACTIONS = RULER_CLICK_ACTIONS;
 

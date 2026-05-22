@@ -50,7 +50,7 @@ export function useTimelineTextPreset() {
       presetsStore.customPresets.find((p) => p.id === presetId)?.params;
 
     if (preset) {
-      const update: any = {
+      const update: Record<string, unknown> = {
         style: JSON.parse(JSON.stringify(toRaw(preset.style))),
       };
       if (preset.text) {

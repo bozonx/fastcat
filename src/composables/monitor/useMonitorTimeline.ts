@@ -197,7 +197,7 @@ export function useMonitorTimeline() {
 
   const workerTimelineClips = ref<WorkerTimelineClip[]>([]);
   const workerAudioClips = ref<WorkerTimelineClip[]>([]);
-  const workerTimelinePayload = ref<any[]>([]);
+  const workerTimelinePayload = ref<unknown[]>([]);
 
   const safeDurationUs = computed(() => normalizeTimeUs(timelineStore.duration));
 

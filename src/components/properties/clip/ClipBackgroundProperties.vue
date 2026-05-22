@@ -2,7 +2,7 @@
 import PropertySection from '~/components/properties/PropertySection.vue';
 
 defineProps<{
-  clip: any;
+  clip: Record<string, unknown>;
 }>();
 
 const emit = defineEmits<{
@@ -15,9 +15,9 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('common.color')">
     <div class="flex items-center justify-between gap-3">
-      <span class="font-mono text-xs text-ui-text">{{ clip.backgroundColor }}</span>
+      <span class="font-mono text-xs text-ui-text">{{ String(clip.backgroundColor) }}</span>
       <UColorPicker
-        :model-value="clip.backgroundColor"
+        :model-value="String(clip.backgroundColor)"
         format="hex"
         size="sm"
         @update:model-value="emit('updateBackgroundColor', String($event))"

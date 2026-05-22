@@ -6,7 +6,7 @@ export function useMediaPlayerPlayback(
   props: { src: string; isModal?: boolean; focusPanelId?: string },
   volume: Ref<number>,
   isMuted: Ref<boolean>,
-  focusStore: any,
+  focusStore: { canUsePreviewHotkeys: boolean; effectiveFocus: string | null },
 ) {
   const uiStore = useUiStore();
   const isPlaying = ref(false);

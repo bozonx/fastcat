@@ -36,6 +36,7 @@ export interface WorkerTimelineClip {
   effects?: import('~/timeline/types').ClipEffect[];
   mask?: import('~/timeline/types').ClipMask;
   transform?: import('~/timeline/types').ClipTransform;
+  sourceOrientation?: unknown;
   sourceDurationUs?: number;
   timelineRange: {
     startUs: number;

@@ -9,6 +9,7 @@ import type { PanelFocusId } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_HOTKEYS } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import {
   createDefaultHotkeyLookup,
   createHotkeyLookup,
@@ -42,7 +43,7 @@ const props = defineProps<{
   filePath?: string;
   fileName?: string;
   focusPanelId?: PanelFocusId;
-  vfs?: any;
+  vfs?: IFileSystemAdapter;
 }>();
 
 const isMediaModalOpen = ref(false);

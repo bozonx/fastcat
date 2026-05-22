@@ -1,6 +1,14 @@
 import type { HotkeyCommandId, HotkeyCombo } from '../hotkeys/defaultHotkeys';
 import type { StoragePathRegistry } from '../storage-roots';
-import type { TimelineDragAction } from '../mouse';
+import type {
+  CommonWheelAction,
+  TimelineDragAction,
+  TimelineClickAction,
+  MonitorWheelAction,
+  MonitorClickAction,
+  MonitorDragAction,
+  TrackHeadersWheelAction,
+} from '../mouse';
 import type {
   UserExportPresetsSettings,
   UserProjectPresetsSettings,
@@ -128,10 +136,10 @@ export interface FastCatUserSettings {
   integrations: ExternalIntegrationsSettings;
   mouse: {
     ruler: {
-      wheel: string;
-      wheelShift: string;
-      wheelSecondary: string;
-      wheelSecondaryShift: string;
+      wheel: CommonWheelAction;
+      wheelShift: CommonWheelAction;
+      wheelSecondary: CommonWheelAction;
+      wheelSecondaryShift: CommonWheelAction;
       click: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
       middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
       doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
@@ -142,38 +150,14 @@ export interface FastCatUserSettings {
       horizontalMovement: 'move_playhead' | 'none';
     };
     timeline: {
-      wheel: string;
-      wheelShift: string;
-      wheelSecondary: string;
-      wheelSecondaryShift: string;
-      click:
-        | 'seek'
-        | 'add_marker'
-        | 'reset_zoom'
-        | 'fit_zoom'
-        | 'clear_selection'
-        | 'select_item'
-        | 'select_multiple'
-        | 'none';
-      shiftClick:
-        | 'seek'
-        | 'add_marker'
-        | 'reset_zoom'
-        | 'fit_zoom'
-        | 'clear_selection'
-        | 'select_item'
-        | 'select_multiple'
-        | 'none';
+      wheel: CommonWheelAction;
+      wheelShift: CommonWheelAction;
+      wheelSecondary: CommonWheelAction;
+      wheelSecondaryShift: CommonWheelAction;
+      click: TimelineClickAction;
+      shiftClick: TimelineClickAction;
       drag: TimelineDragAction;
-      middleClick:
-        | 'seek'
-        | 'add_marker'
-        | 'reset_zoom'
-        | 'fit_zoom'
-        | 'clear_selection'
-        | 'select_item'
-        | 'select_multiple'
-        | 'none';
+      middleClick: TimelineClickAction;
       middleDrag: TimelineDragAction;
       horizontalMovement: 'move_playhead' | 'none';
       clipDragShift: TimelineDragAction;
@@ -181,22 +165,22 @@ export interface FastCatUserSettings {
       clipDragRight: TimelineDragAction;
     };
     trackHeaders: {
-      wheel: string;
-      wheelShift: string;
-      wheelSecondary: string;
-      wheelSecondaryShift: string;
+      wheel: TrackHeadersWheelAction;
+      wheelShift: TrackHeadersWheelAction;
+      wheelSecondary: TrackHeadersWheelAction;
+      wheelSecondaryShift: TrackHeadersWheelAction;
       click: 'select_track' | 'select_all_clips' | 'none';
       middleClick: 'select_track' | 'select_all_clips' | 'none';
       doubleClick: 'select_track' | 'select_all_clips' | 'none';
     };
     monitor: {
-      wheel: string;
-      wheelShift: string;
-      wheelSecondary: string;
-      wheelSecondaryShift: string;
-      middleClick: 'fit' | 'reset_zoom' | 'reset_zoom_center' | 'center' | 'none';
-      doubleClick: 'fit' | 'reset_zoom' | 'reset_zoom_center' | 'center' | 'none';
-      middleDrag: 'pan' | 'none';
+      wheel: MonitorWheelAction;
+      wheelShift: MonitorWheelAction;
+      wheelSecondary: MonitorWheelAction;
+      wheelSecondaryShift: MonitorWheelAction;
+      middleClick: MonitorClickAction;
+      doubleClick: MonitorClickAction;
+      middleDrag: MonitorDragAction;
     };
   };
   deleteWithoutConfirmation: boolean;

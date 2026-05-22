@@ -52,7 +52,7 @@ function handleTransitionUpdate(payload: {
   }
 }
 
-const panelRef = ref<any>(null);
+const panelRef = ref<InstanceType<typeof ClipTransitionPanel> | null>(null);
 
 defineExpose({
   openSaveModal: () => {

@@ -42,7 +42,7 @@ const props = withDefaults(
       | 'info'
       | 'danger';
     /** Additional class for the container */
-    class?: any;
+    class?: string;
   }>(),
   {
     vertical: true,

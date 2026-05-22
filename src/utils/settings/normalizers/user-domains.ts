@@ -7,6 +7,7 @@ import {
   MONITOR_WHEEL_ACTIONS,
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
   RULER_WHEEL_ACTIONS,
+  TIMELINE_CLICK_ACTIONS,
   TIMELINE_DRAG_ACTIONS,
   TIMELINE_WHEEL_ACTIONS,
   TRACK_HEADERS_WHEEL_ACTIONS,
@@ -77,8 +78,9 @@ export function normalizeTimelineSettings(raw: unknown): FastCatUserSettings['ti
 }
 
 export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['stopFrames'] {
+  const stopFrames = (raw as Record<string, unknown>)?.['stopFrames'] as Record<string, unknown> | undefined;
   const qp =
-    (raw as Record<string, unknown>)?.['stopFrames']?.['qualityPercent'] ??
+    stopFrames?.['qualityPercent'] ??
     (raw as Record<string, unknown>)?.['stopFrameQualityPercent'] ??
     (raw as Record<string, unknown>)?.['stopFramesQuality'];
   return z
@@ -94,7 +96,7 @@ export function normalizeStopFramesSettings(raw: unknown): FastCatUserSettings['
 }
 
 export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings['optimization'] {
-  const opt = (raw as Record<string, unknown>)?.['optimization'] ?? {};
+  const opt = ((raw as Record<string, unknown>)?.['optimization'] ?? {}) as Record<string, unknown>;
 
   // Custom parsing step for proxyResolution string mapping
   let proxyMaxPixels = opt.proxyMaxPixels;
@@ -231,6 +233,7 @@ export function normalizeProjectDefaults(raw: unknown): FastCatUserSettings['pro
 export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse'] {
   const rWheelEnum = z.enum(RULER_WHEEL_ACTIONS);
   const clickEnum = z.enum(CLICK_ACTIONS);
+  const timelineClickEnum = z.enum(TIMELINE_CLICK_ACTIONS);
   const dragEnum = z.enum(TIMELINE_DRAG_ACTIONS);
   const horizEnum = z.enum(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS);
   const tWheelEnum = z.enum(TIMELINE_WHEEL_ACTIONS);
@@ -272,10 +275,10 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           wheelSecondaryShift: tWheelEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondaryShift,
           ),
-          click: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.click),
-          shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.shiftClick),
+          click: timelineClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.click),
+          shiftClick: timelineClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.shiftClick),
           drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.drag),
-          middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick),
+          middleClick: timelineClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick),
           middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag),
           horizontalMovement: horizEnum.catch(
             DEFAULT_USER_SETTINGS.mouse.timeline.horizontalMovement,

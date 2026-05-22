@@ -1,4 +1,4 @@
-import { computed, inject } from 'vue';
+import { computed, inject, type Ref } from 'vue';
 
 /**
  * Composable to resolve the correct teleport target for components.
@@ -6,7 +6,7 @@ import { computed, inject } from 'vue';
  */
 export function useTeleportTarget() {
   const isEmbedded = inject('isEmbedded', false);
-  const teleportTarget = inject<any>('teleportTarget', null);
+  const teleportTarget = inject<Ref<HTMLElement | string> | null>('teleportTarget', null);
 
   const target = computed(() => {
     if (isEmbedded && teleportTarget?.value) return teleportTarget.value;

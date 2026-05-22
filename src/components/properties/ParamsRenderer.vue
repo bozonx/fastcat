@@ -163,7 +163,7 @@ function buildScaleXYState(control: ScaleXYParamControl) {
 interface VisibleControlEntry {
   actionLabel: string;
   arrayItems: Record<string, unknown>[];
-  control: ParamControl;
+  control: any;
   disabled: boolean;
   fileDisplayValue: string;
   hasValue: boolean;

@@ -329,18 +329,19 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       // Render at current time without clamping — the dispatchers already
       // keep duration including disabled clips.
       scheduleRender(getRenderTimeForLayoutUpdate());
-    } catch (e: any) {
-      if (e?.name === 'AbortError' && requestId !== buildRequestId) {
+    } catch (e: unknown) {
+      const err = e instanceof Error ? e : null;
+      if (err?.name === 'AbortError' && requestId !== buildRequestId) {
         return;
       }
       console.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {
-        loadError.value = e.message || t('fastcat.monitor.loadError');
+        loadError.value = err?.message || t('fastcat.monitor.loadError');
       }
       toast.add({
         color: 'error',
         title: t('fastcat.monitor.previewError'),
-        description: e.message || t('fastcat.monitor.loadError'),
+        description: err?.message || t('fastcat.monitor.loadError'),
       });
     } finally {
       if (requestId === buildRequestId) {

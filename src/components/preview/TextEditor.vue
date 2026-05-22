@@ -4,12 +4,13 @@ import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 const props = defineProps<{
   filePath: string;
   fileName?: string;
   focusPanelId?: PanelFocusId;
-  vfs?: any; // IFileSystemAdapter is not directly imported in some components, using any for simplicity or we can import it
+  vfs?: IFileSystemAdapter;
 }>();
 
 const { locale } = useI18n();

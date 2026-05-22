@@ -11,6 +11,7 @@ import type {
   ShapeConfig,
   TextClipStyle,
   TimelineBlendMode,
+  TimelineClipItem,
 } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 
@@ -58,7 +59,7 @@ export function cloneMonitorEffects(effects?: ClipEffect[]): ClipEffect[] | unde
 }
 
 export function createBaseWorkerClip(params: {
-  item: any;
+  item: TimelineClipItem;
   trackId: string;
   layer: number;
   clipType: WorkerTimelineClip['clipType'];

@@ -81,10 +81,10 @@ watch(
   },
 );
 
-const generateButtonRef = ref<any>(null);
+const generateButtonRef = ref<HTMLElement | null>(null);
 
 function focusGenerateButton() {
-  const el = generateButtonRef.value?.$el || generateButtonRef.value;
+  const el = generateButtonRef.value;
   if (!(el instanceof HTMLElement)) {
     return;
   }
