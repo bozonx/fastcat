@@ -489,8 +489,8 @@ export function useTimelineItemDrag(
         },
       } as const;
 
-      timelineStore.applyTimeline(cmd as unknown, { saveMode: 'none', skipHistory: true });
-      lastDragAppliedCmd.value = cmd as unknown;
+      timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, { saveMode: 'none', skipHistory: true });
+      lastDragAppliedCmd.value = cmd as unknown as import('~/timeline/commands').TimelineCommand;
       hasPendingTimelinePersist.value = true;
       return;
     }
@@ -896,7 +896,7 @@ export function useTimelineItemDrag(
         }
 
         if (movedVideoIds.length > 0) {
-          const cmds: unknown[] = [];
+          const cmds: import('~/timeline/commands').TimelineCommand[] = [];
           for (const t of doc.tracks) {
             if (t.kind !== 'audio') continue;
             for (const it of t.items) {
@@ -914,7 +914,7 @@ export function useTimelineItemDrag(
           }
 
           if (cmds.length > 0) {
-            timelineStore.batchApplyTimeline(cmds as unknown[], {
+            timelineStore.batchApplyTimeline(cmds, {
               saveMode: 'none',
               skipHistory: true,
             });
@@ -936,7 +936,7 @@ export function useTimelineItemDrag(
           !dragDisableFrameSnapOverride.value;
 
         const docBeforeApply = timelineStore.timelineDoc;
-        let appliedCmdLocal: unknown = null;
+        let appliedCmdLocal: import('~/timeline/commands').TimelineCommand | null = null;
         if (overlapMode === 'pseudo') {
           const cmds = commit.moves.map((move) => ({
             type: 'overlay_place_item' as const,
@@ -947,11 +947,11 @@ export function useTimelineItemDrag(
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
           }));
-          timelineStore.batchApplyTimeline(cmds as unknown[], {
+          timelineStore.batchApplyTimeline(cmds as unknown as import('~/timeline/commands').TimelineCommand[], {
             saveMode: 'none',
             skipHistory: true,
           });
-          appliedCmdLocal = (cmds[cmds.length - 1] ?? null) as unknown;
+          appliedCmdLocal = (cmds[cmds.length - 1] ?? null) as unknown as import('~/timeline/commands').TimelineCommand;
         } else {
           const cmd = {
             type: 'move_items',
@@ -959,8 +959,8 @@ export function useTimelineItemDrag(
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
           } as const;
-          timelineStore.applyTimeline(cmd as unknown, { saveMode: 'none', skipHistory: true });
-          appliedCmdLocal = cmd as unknown;
+          timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, { saveMode: 'none', skipHistory: true });
+          appliedCmdLocal = cmd as unknown as import('~/timeline/commands').TimelineCommand;
         }
         // Only record an applied command if the document actually changed.
         // A click-without-drag (or drag back to original position) leaves the doc
@@ -976,7 +976,7 @@ export function useTimelineItemDrag(
       const commit = pendingTrimCommit.value;
       if (commit && commit.deltaUs !== 0) {
         const cmd = {
-          type: commit.commandType,
+          type: commit.commandType as string,
           trackId: commit.trackId,
           itemId: commit.itemId,
           edge: commit.edge,
@@ -984,9 +984,9 @@ export function useTimelineItemDrag(
           quantizeToFrames: commit.quantizeToFrames,
         } as const;
         const docBeforeApply = timelineStore.timelineDoc;
-        timelineStore.applyTimeline(cmd as unknown, { saveMode: 'none', skipHistory: true });
+        timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, { saveMode: 'none', skipHistory: true });
         if (timelineStore.timelineDoc !== docBeforeApply) {
-          lastDragAppliedCmd.value = cmd as unknown;
+          lastDragAppliedCmd.value = cmd as unknown as import('~/timeline/commands').TimelineCommand;
           hasPendingTimelinePersist.value = true;
         }
       }

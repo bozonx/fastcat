@@ -10,6 +10,11 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const clipboardStore = useClipboardStore();
+
+const fileManagerPayload = computed(() => {
+  const payload = clipboardStore.clipboardPayload;
+  return payload?.source === 'fileManager' ? payload : null;
+});
 </script>
 
 <template>
@@ -17,9 +22,8 @@ const clipboardStore = useClipboardStore();
     <div
       class="px-4 py-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50"
     >
-      {{
-        clipboardStore.clipboardPayload?.operation === 'cut' ? t('common.cut') : t('common.copied')
-      }}: {{ clipboardStore.clipboardPayload?.items.length }}
+      {{ fileManagerPayload?.operation === 'cut' ? t('common.cut') : t('common.copied') }}:
+      {{ fileManagerPayload?.items.length ?? 0 }}
     </div>
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton

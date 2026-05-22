@@ -6,6 +6,7 @@ import type {
   TimelineDocument,
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
+import type { TimelineClipClipboardItem } from '~/stores/timeline/clips';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import type { FsEntry } from '~/types/fs';
 import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
@@ -40,7 +41,7 @@ interface TimelineStoreActions {
   deleteFirstSelectedItem: () => void;
   rippleDeleteFirstSelectedItem: () => void;
   pasteClips: (
-    items: unknown[],
+    items: TimelineClipClipboardItem[],
     options?: { insertStartUs?: number },
   ) => Promise<{ trackId: string; itemId: string }[]>;
 }
@@ -495,7 +496,15 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       id?: string;
       onClick?: () => void;
       onSelect?: () => void;
-      color?: string;
+      color?:
+        | 'neutral'
+        | 'error'
+        | 'success'
+        | 'warning'
+        | 'info'
+        | 'primary'
+        | 'secondary'
+        | 'danger';
       disabled?: boolean;
     }[] = [];
     const clip = options.clip.value;

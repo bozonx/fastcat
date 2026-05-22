@@ -11,6 +11,7 @@ interface ActionItem {
   onClick: () => void;
   color?: 'neutral' | 'error' | 'success' | 'warning' | 'info' | 'primary' | 'secondary' | 'danger';
   variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
+  disabled?: boolean;
 }
 
 const props = defineProps<{
