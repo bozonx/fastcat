@@ -14,7 +14,7 @@ import type {
   TimelineTrackItem,
   TimelineTrimItemPayload,
 } from '~/timeline/types';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineItemResize } from '~/composables/timeline/useTimelineItemResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
 import { useFocusStore } from '~/stores/focus.store';
@@ -95,7 +95,9 @@ interface TrackVisibilityIndexEntry {
 }
 
 function buildClipRenderMemo(item: TimelineTrackItem): string {
-  if (item.kind !== 'clip') return item.id;
+  if (item.kind !== 'clip') {
+    return [item.id, item.timelineRange.startUs, item.timelineRange.durationUs].join(':');
+  }
 
   const clip = item as TimelineClipItem;
   return [
@@ -166,9 +168,12 @@ const itemGeometries = computed(() => {
   const map = new Map<string, { startPx: number; widthPx: number; endPx: number }>();
   for (const track of props.tracks) {
     for (const item of track.items) {
-      const startPx = timeUsToPx(item.timelineRange.startUs, zoom);
-      const width = Math.max(2, timeUsToPx(item.timelineRange.durationUs, zoom));
-      map.set(item.id, { startPx, widthPx: width, endPx: startPx + width });
+      const geometry = timelineRangeToRoundedPx(item.timelineRange, zoom, 2);
+      map.set(item.id, {
+        startPx: geometry.leftPx,
+        widthPx: geometry.widthPx,
+        endPx: geometry.endPx,
+      });
     }
   }
   return map;
@@ -679,6 +684,7 @@ function onTrackClick(e: MouseEvent, trackId: string) {
           trackViewModel.track.videoHidden,
           trackViewModel.track.audioMuted,
           trackViewModel.track.audioSolo,
+          timelineStore.timelineZoom,
           timelineStore.isAnyTrackSoloed,
           trackViewModel.clipRenderMemo,
           movePreviewMemoByTrack[trackViewModel.track.id] ?? null,

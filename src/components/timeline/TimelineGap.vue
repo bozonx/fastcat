@@ -4,7 +4,7 @@ import type { TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { timelineRangeToRoundedPx } from '~/utils/timeline/geometry';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -70,10 +70,17 @@ const emit = defineEmits<{
 let pointerStartX = 0;
 let pointerStartY = 0;
 
-const style = computed(() => ({
-  left: `${timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom)}px`,
-  width: `${Math.max(2, timeUsToPx(props.item.timelineRange.durationUs, timelineStore.timelineZoom))}px`,
-}));
+const style = computed(() => {
+  const geometry = timelineRangeToRoundedPx(
+    props.item.timelineRange,
+    timelineStore.timelineZoom,
+    2,
+  );
+  return {
+    left: `${geometry.leftPx}px`,
+    width: `${geometry.widthPx}px`,
+  };
+});
 
 const isSelected = computed(() => {
   if (timelineStore.selectedItemIds.includes(props.item.id)) {

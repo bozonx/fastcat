@@ -117,7 +117,7 @@ const mainActions = computed<unknown[]>(() => {
       <div>
         <div
           v-if="mainActions.length > 0"
-          class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
+          class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40"
         >
           <PropertyActionList :actions="mainActions" vertical variant="ghost" size="md" />
         </div>

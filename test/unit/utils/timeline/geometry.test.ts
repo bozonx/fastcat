@@ -4,6 +4,7 @@ import {
   zoomToPxPerSecond,
   pxPerSecondToZoom,
   timeUsToPx,
+  timelineRangeToRoundedPx,
   pxToTimeUs,
   pxToDeltaUs,
   computeAnchoredScrollLeft,
@@ -43,6 +44,27 @@ describe('timeUsToPx / pxToTimeUs', () => {
     const px = timeUsToPx(1_000_000, 50);
     expect(px).toBe(10);
     expect(pxToTimeUs(px, 50)).toBe(1_000_000);
+  });
+});
+
+describe('timelineRangeToRoundedPx', () => {
+  it('derives width from rounded absolute edges', () => {
+    const range = { startUs: 1_000_000, durationUs: 1_000_000 };
+    const zoom = pxPerSecondToZoom(10.4);
+
+    expect(timelineRangeToRoundedPx(range, zoom, 1)).toEqual({
+      leftPx: 10,
+      widthPx: 11,
+      endPx: 21,
+    });
+  });
+
+  it('keeps adjacent ranges sharing the same rounded boundary', () => {
+    const zoom = pxPerSecondToZoom(10.4);
+    const left = timelineRangeToRoundedPx({ startUs: 0, durationUs: 1_000_000 }, zoom, 1);
+    const right = timelineRangeToRoundedPx({ startUs: 1_000_000, durationUs: 1_000_000 }, zoom, 1);
+
+    expect(left.endPx).toBe(right.leftPx);
   });
 });
 

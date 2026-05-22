@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, useAttrs } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -18,7 +18,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
-import { pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxToTimeUs, timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { cloneValue } from '~/utils/clone';
@@ -48,6 +48,10 @@ import ClipAudioFades from './ClipAudioFades.vue';
 import ClipMetadata from './ClipMetadata.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
 import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
+
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import {
   buildClipParametersPatch,
@@ -148,14 +152,11 @@ const effectiveTimelineRange = computed(() => {
   return props.item.timelineRange;
 });
 
-const clipWidthPx = computed(() =>
-  Math.round(
-    Math.max(2, timeUsToPx(effectiveTimelineRange.value.durationUs, timelineStore.timelineZoom)),
-  ),
+const clipGeometry = computed(() =>
+  timelineRangeToRoundedPx(effectiveTimelineRange.value, timelineStore.timelineZoom, 2),
 );
-const clipLeftPx = computed(() =>
-  Math.round(timeUsToPx(effectiveTimelineRange.value.startUs, timelineStore.timelineZoom)),
-);
+const clipWidthPx = computed(() => clipGeometry.value.widthPx);
+const clipLeftPx = computed(() => clipGeometry.value.leftPx);
 const currentSlipPreview = computed(() => {
   if (!props.slipPreview || props.slipPreview.itemId !== props.item.id) return null;
   return props.slipPreview;

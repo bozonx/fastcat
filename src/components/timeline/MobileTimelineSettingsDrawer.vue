@@ -190,7 +190,7 @@ const timelineActions = computed(() => [
       </div>
 
       <!-- Actions Section -->
-      <div class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40">
+      <div class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40">
         <PropertyActionList :actions="timelineActions" vertical variant="ghost" size="md" />
       </div>
 

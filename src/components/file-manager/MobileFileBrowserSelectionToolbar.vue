@@ -66,7 +66,7 @@ const canCutSelection = computed(
 
 <template>
   <div
-    class="border-t border-ui-border bg-zinc-900 flex flex-col z-40 shrink-0 pb-safe container-safe"
+    class="border-t border-ui-border bg-ui-bg-elevated flex flex-col z-40 shrink-0 pb-safe container-safe"
   >
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton

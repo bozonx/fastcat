@@ -228,7 +228,7 @@ const hasAudio = computed(() => {
       <div class="mb-4">
         <div
           v-if="otherActionsList.length > 0"
-          class="py-1 px-3 border border-ui-border rounded-xl bg-zinc-900/40"
+          class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40"
         >
           <PropertyActionList :actions="otherActionsList" vertical variant="ghost" size="md" />
         </div>

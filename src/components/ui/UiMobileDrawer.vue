@@ -108,11 +108,11 @@ const snapContentHeight = computed(() => {
 const containerClasses = computed(() => {
   const base =
     'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-[var(--z-fixed)] antialiased transform-gpu';
-  const bgColor = 'bg-zinc-900/98 backdrop-blur-xl ring-1 ring-white/10';
+  const bgColor = 'bg-ui-bg-elevated/98 backdrop-blur-xl ring-1 ring-white/10';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
     const sideBorder = effectiveDirection.value === 'right' ? 'border-l' : 'border-r';
-    return `${base} max-h-dvh h-screen w-[55vw] sm:w-[45vw] ml-auto ${sideBorder} border-zinc-800/80 ${bgColor} ${props.ui.container || ''}`;
+    return `${base} max-h-dvh h-screen w-[55vw] sm:w-[45vw] ml-auto ${sideBorder} border-ui-border/80 ${bgColor} ${props.ui.container || ''}`;
   }
 
   const heightClass = props.snapPoints?.length
@@ -120,7 +120,7 @@ const containerClasses = computed(() => {
     : props.isFullHeight
       ? 'h-[95dvh]'
       : 'max-h-[85dvh]';
-  return `${base} ${heightClass} w-full border-t border-zinc-800/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`.replace(
+  return `${base} ${heightClass} w-full border-t border-ui-border/80 ${bgColor} rounded-t-2xl ${props.ui.container || ''}`.replace(
     /  +/g,
     ' ',
   );
@@ -338,7 +338,7 @@ watch(isOpen, (val) => {
 <template>
   <Teleport v-if="!props.modal" :to="effectiveTeleportTarget">
     <div
-      class="fixed inset-0 bg-zinc-950/40 backdrop-blur-[2px] transition-all duration-300 z-[calc(var(--z-fixed)-1)]"
+      class="fixed inset-0 bg-ui-bg/40 backdrop-blur-[2px] transition-all duration-300 z-[calc(var(--z-fixed)-1)]"
       :class="
         isBackdropVisible
           ? ['pointer-events-auto', props.overlay ? 'opacity-100' : 'opacity-0']
@@ -381,7 +381,7 @@ watch(isOpen, (val) => {
         >
           <div class="flex justify-center py-2.5">
             <div
-              class="w-12 h-1.5 rounded-full bg-zinc-700/40 group-hover:bg-zinc-600/60 transition-colors"
+              class="w-12 h-1.5 rounded-full bg-ui-border/40 group-hover:bg-ui-text-muted/60 transition-colors"
             ></div>
           </div>
         </div>
@@ -396,7 +396,7 @@ watch(isOpen, (val) => {
           @click.stop="onHandleTap"
         >
           <div
-            class="w-1 h-12 rounded-full bg-zinc-700/60 transition-colors hover:bg-zinc-500/60"
+            class="w-1 h-12 rounded-full bg-ui-border/60 transition-colors hover:bg-ui-text-muted/60"
           />
         </div>
 
@@ -416,11 +416,11 @@ watch(isOpen, (val) => {
             <slot name="header">
               <h3
                 v-if="props.title"
-                class="text-base font-bold text-zinc-100 leading-tight truncate"
+                class="text-base font-bold text-ui-text leading-tight truncate"
               >
                 {{ props.title }}
               </h3>
-              <p v-if="props.description" class="mt-0.5 text-xs text-zinc-400 line-clamp-2">
+              <p v-if="props.description" class="mt-0.5 text-xs text-ui-text-muted line-clamp-2">
                 {{ props.description }}
               </p>
             </slot>
@@ -428,7 +428,7 @@ watch(isOpen, (val) => {
 
           <button
             v-if="props.showClose"
-            class="shrink-0 p-2 -mr-2 rounded-full text-zinc-400 hover:text-zinc-100 hover:bg-white/10 transition-colors"
+            class="shrink-0 p-2 -mr-2 rounded-full text-ui-text-muted hover:text-ui-text hover:bg-white/10 transition-colors"
             :class="props.ui.close"
             @click="onClose"
           >
@@ -444,7 +444,7 @@ watch(isOpen, (val) => {
         <!-- Footer -->
         <div
           v-if="$slots.footer"
-          class="shrink-0 px-5 py-4 border-t border-zinc-800/60"
+          class="shrink-0 px-5 py-4 border-t border-ui-border/60"
           :class="props.ui.footer"
           data-vaul-no-drag
         >

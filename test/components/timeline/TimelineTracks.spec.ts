@@ -15,7 +15,8 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
 vi.mock('~/components/timeline/TimelineGap.vue', () => ({
   default: {
     name: 'TimelineGap',
-    template: '<div class="mock-timeline-gap" :data-item-id="item.id"><slot /></div>',
+    template:
+      '<div class="mock-timeline-gap" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs"><slot /></div>',
     props: ['item', 'trackId'],
   },
 }));
@@ -457,6 +458,48 @@ describe('TimelineTracks', () => {
     const clip = component.find('.mock-timeline-clip');
     expect(clip.attributes('data-start-us')).toBe('2000000');
     expect(clip.attributes('data-duration-us')).toBe('3000000');
+  });
+
+  it('updates gap timeline geometry without waiting for a later track rerender', async () => {
+    const tracks = [
+      {
+        id: 'track-1',
+        kind: 'video',
+        items: [
+          {
+            id: 'gap-1',
+            kind: 'gap',
+            timelineRange: { startUs: 1_000_000, durationUs: 2_000_000 },
+          },
+        ],
+      },
+    ];
+
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks,
+        trackHeights: { 'track-1': 50 },
+      },
+    });
+
+    await component.setProps({
+      tracks: [
+        {
+          ...tracks[0],
+          items: [
+            {
+              ...tracks[0]!.items[0],
+              timelineRange: { startUs: 2_000_000, durationUs: 4_000_000 },
+            },
+          ],
+        },
+      ],
+    });
+
+    const gap = component.find('.mock-timeline-gap');
+    expect(gap.attributes('data-start-us')).toBe('2000000');
+    expect(gap.attributes('data-duration-us')).toBe('4000000');
   });
 
   it('updates clip state props such as locked without waiting for a later track rerender', async () => {

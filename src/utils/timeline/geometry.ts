@@ -19,6 +19,28 @@ export function timeUsToPx(timeUs: number, zoom = 100) {
   return (timeUs / 1e6) * pxPerSecond;
 }
 
+export interface TimelinePixelRange {
+  leftPx: number;
+  widthPx: number;
+  endPx: number;
+}
+
+export function timelineRangeToRoundedPx(
+  range: { startUs: number; durationUs: number },
+  zoom = 100,
+  minWidthPx = 1,
+): TimelinePixelRange {
+  const leftPx = Math.round(timeUsToPx(range.startUs, zoom));
+  const rawEndPx = Math.round(timeUsToPx(range.startUs + range.durationUs, zoom));
+  const endPx = Math.max(leftPx + minWidthPx, rawEndPx);
+
+  return {
+    leftPx,
+    widthPx: endPx - leftPx,
+    endPx,
+  };
+}
+
 export function pxToTimeUs(px: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
   return Math.max(0, Math.round((px / pxPerSecond) * 1e6));

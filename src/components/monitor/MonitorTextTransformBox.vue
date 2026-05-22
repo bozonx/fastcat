@@ -153,15 +153,15 @@ function buildNextTransform(
     ...current,
     ...patch,
     scale: {
-      ...(current.scale ?? { x: 1, y: 1, linked: true }),
+      ...(current?.scale ?? { x: 1, y: 1, linked: true }),
       ...(patch.scale ?? {}),
     },
     position: {
-      ...(current.position ?? { x: 0, y: 0 }),
+      ...(current?.position ?? { x: 0, y: 0 }),
       ...(patch.position ?? {}),
     },
     anchor: {
-      ...(current.anchor ?? { preset: 'center' }),
+      ...(current?.anchor ?? { preset: 'center' }),
       ...(patch.anchor ?? {}),
     },
   };
@@ -224,17 +224,17 @@ function scheduleClipUpdate(params: {
       ...(pendingTransformPatch ?? {}),
       ...params.transform,
       scale: {
-        ...((pendingTransformPatch?.scale as Record<string, number> | undefined) ?? {}),
+        ...((pendingTransformPatch?.scale as Record<string, unknown> | undefined) ?? {}),
         ...(params.transform.scale ?? {}),
-      },
+      } as import('~/timeline/types').ClipScale,
       position: {
-        ...((pendingTransformPatch?.position as Record<string, number> | undefined) ?? {}),
+        ...((pendingTransformPatch?.position as Record<string, unknown> | undefined) ?? {}),
         ...(params.transform.position ?? {}),
-      },
+      } as import('~/timeline/types').ClipPosition,
       anchor: {
-        ...((pendingTransformPatch?.anchor as Record<string, number> | undefined) ?? {}),
+        ...((pendingTransformPatch?.anchor as Record<string, unknown> | undefined) ?? {}),
         ...(params.transform.anchor ?? {}),
-      },
+      } as import('~/timeline/types').ClipAnchor,
     };
   }
 
