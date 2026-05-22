@@ -221,21 +221,21 @@ const extraActions = computed(() => {
 });
 
 const trackQuickActions = computed(() => {
-  const actions = [
+  const actions: import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[] = [
     {
       id: 'delete',
       title: t('common.delete'),
       icon: 'i-heroicons-trash',
-      color: 'neutral' as const,
-      variant: 'ghost' as const,
+      color: 'neutral',
+      variant: 'ghost',
       onClick: requestDeleteTrack,
     },
     {
       id: 'rename',
       title: t('common.rename'),
       icon: 'i-heroicons-pencil',
-      color: 'neutral' as const,
-      variant: 'ghost' as const,
+      color: 'neutral',
+      variant: 'ghost',
       onClick: () => {
         isRenameModalOpen.value = true;
       },

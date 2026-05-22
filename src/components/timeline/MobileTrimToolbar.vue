@@ -170,7 +170,7 @@ function onEnd(event: TouchEvent) {
           </span>
         </div>
 
-        <div class="w-px h-6 bg-zinc-800/60"></div>
+        <div class="w-px h-6 bg-ui-border/60"></div>
 
         <div class="flex flex-col items-center">
           <span
@@ -183,7 +183,7 @@ function onEnd(event: TouchEvent) {
           </span>
         </div>
 
-        <div class="w-px h-6 bg-zinc-800/60"></div>
+        <div class="w-px h-6 bg-ui-border/60"></div>
 
         <div class="flex flex-col items-center">
           <span
@@ -217,7 +217,7 @@ function onEnd(event: TouchEvent) {
         @touchend="onEnd"
         @touchcancel="onEnd"
       >
-        <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
+        <span class="text-[9px] uppercase font-black text-ui-text-muted mb-1 leading-none">
           {{ t('fastcat.timeline.trimStart') }}
         </span>
         <div class="bg-ui-bg-muted p-1.5 rounded-lg border border-ui-border/50 shadow-sm">
@@ -238,7 +238,7 @@ function onEnd(event: TouchEvent) {
         @touchend="onEnd"
         @touchcancel="onEnd"
       >
-        <span class="text-[9px] uppercase font-black text-zinc-600 mb-1 leading-none">
+        <span class="text-[9px] uppercase font-black text-ui-text-muted mb-1 leading-none">
           {{ t('fastcat.timeline.trimEnd') }}
         </span>
         <div class="bg-ui-bg-muted p-1.5 rounded-lg border border-ui-border/50 shadow-sm">

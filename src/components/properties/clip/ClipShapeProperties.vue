@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { ShapeType } from '~/timeline/types';
+import type { ShapeType, TimelineShapeClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 
 const props = defineProps<{
-  clip: any;
+  clip: TimelineShapeClipItem;
   presets: Array<{ label: string; value: string }>;
   hidePresets?: boolean;
 }>();

@@ -204,7 +204,7 @@ function handleRenameTrack(name: string) {
       >
         <!-- Master Volume (First item) -->
         <div
-          class="shrink-0 w-32 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 shadow-sm relative overflow-hidden flex flex-col snap-start"
+          class="shrink-0 w-32 rounded-xl border border-ui-border bg-ui-bg-elevated/60 p-3 shadow-sm relative overflow-hidden flex flex-col snap-start"
         >
           <div
             class="absolute inset-0 bg-linear-to-br from-primary-500/5 to-transparent pointer-events-none"
@@ -212,11 +212,11 @@ function handleRenameTrack(name: string) {
 
           <div class="flex flex-col items-center mb-3 relative z-10">
             <span
-              class="text-xs font-bold text-zinc-100 uppercase tracking-widest mb-1 text-center w-full truncate"
+              class="text-xs font-bold text-ui-text uppercase tracking-widest mb-1 text-center w-full truncate"
             >
               {{ $t('fastcat.audioMixer.master') }}
             </span>
-            <span class="text-[10px] text-zinc-500 font-mono">{{
+            <span class="text-[10px] text-ui-text-muted font-mono">{{
               formatDb(timelineStore.audioLevels?.master?.peakDb)
             }}</span>
           </div>
@@ -229,7 +229,7 @@ function handleRenameTrack(name: string) {
           </div>
 
           <div
-            class="flex justify-center gap-2 mt-3 pt-3 border-t border-zinc-800/50 relative z-10"
+            class="flex justify-center gap-2 mt-3 pt-3 border-t border-ui-border/50 relative z-10"
           >
             <UiToggleButton
               :model-value="isMasterMuted"
@@ -250,7 +250,7 @@ function handleRenameTrack(name: string) {
         <div
           v-for="track in filteredTracks"
           :key="track.id"
-          class="shrink-0 w-32 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3 flex flex-col transition-colors group snap-start relative"
+          class="shrink-0 w-32 rounded-xl border border-ui-border/80 bg-zinc-900/40 p-3 flex flex-col transition-colors group snap-start relative"
         >
           <!-- Top: Info & Display row -->
           <div class="flex flex-col items-center mb-3 gap-2">
@@ -318,7 +318,7 @@ function handleRenameTrack(name: string) {
           </div>
 
           <!-- Bottom: Solo & Mute -->
-          <div class="flex justify-center gap-2 mt-3 pt-3 border-t border-zinc-800/50">
+          <div class="flex justify-center gap-2 mt-3 pt-3 border-t border-ui-border/50">
             <UiToggleButton
               :model-value="Boolean(track.audioSolo)"
               size="xs"
@@ -346,7 +346,7 @@ function handleRenameTrack(name: string) {
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex gap-2 pt-4 mt-1 border-t border-zinc-800/50 shrink-0">
+      <div class="flex gap-2 pt-4 mt-1 border-t border-ui-border/50 shrink-0">
         <UButton
           icon="i-heroicons-musical-note"
           :label="$t('fastcat.timeline.addAudioTrack')"

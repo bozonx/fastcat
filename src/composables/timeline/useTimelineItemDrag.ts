@@ -674,11 +674,19 @@ export function useTimelineItemDrag(
           (startItem.clipType === 'media' && !startItem.isImage) ||
           startItem.clipType === 'timeline';
         const maxSourceDurationUs = hasFixedSourceDuration
-          ? Math.max(0, Math.round(startItem.sourceDurationUs))
+          ? Math.max(0, Math.round(Number(startItem.sourceDurationUs ?? 0)))
           : Number.POSITIVE_INFINITY;
 
-        const prevSourceStartUs = Math.max(0, Math.round(startItem.sourceRange.startUs));
-        const prevSourceDurationUs = Math.max(0, Math.round(startItem.sourceRange.durationUs));
+        const prevSourceStartUs = Math.max(
+          0,
+          Math.round(Number(startItem.sourceRange?.startUs ?? 0)),
+        );
+        const prevSourceDurationUs = Math.max(
+          0,
+          Math.round(
+            Number(startItem.sourceRange?.durationUs ?? startItem.timelineRange?.durationUs ?? 0),
+          ),
+        );
         const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
 
         if (mode === 'trim_start') {
