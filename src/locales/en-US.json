@@ -1598,6 +1598,10 @@
       "clearTempWorkspaceTitle": "Clear temporary files",
       "clearUiCache": "Clear UI cache",
       "clearUiCacheDesc": "Resets layout, panel sizes, and other UI preferences.",
+      "clipThumbnailMode": "Clip thumbnail mode",
+      "clipThumbnailModeEdges": "Edges only",
+      "clipThumbnailModeNone": "None",
+      "clipThumbnailModeStandard": "Standard",
       "contentRootPath": "Content root path",
       "contentRootPathHelp": "Path where project content is stored.",
       "dataRootPath": "Data root path",
@@ -1776,6 +1780,7 @@
       "userProject": "Project presets",
       "userProxy": "Proxy",
       "userSection": "User settings",
+      "userUi": "UI",
       "userVideo": "Video",
       "video": {
         "accelerationDiagnostics": "Acceleration diagnostics",

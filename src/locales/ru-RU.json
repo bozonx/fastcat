@@ -1598,6 +1598,10 @@
       "clearTempWorkspaceTitle": "Очистка временных файлов",
       "clearUiCache": "Очистить кэш интерфейса",
       "clearUiCacheDesc": "Сбрасывает разметку, размеры панелей и другие предпочтения интерфейса.",
+      "clipThumbnailMode": "Режим миниатюр клипов",
+      "clipThumbnailModeEdges": "Только края",
+      "clipThumbnailModeNone": "Отключено",
+      "clipThumbnailModeStandard": "Стандартный",
       "contentRootPath": "Путь к корню контента",
       "contentRootPathHelp": "Путь, где хранится контент проекта.",
       "dataRootPath": "Путь к корню данных",
@@ -1776,6 +1780,7 @@
       "userProject": "Пресеты проектов",
       "userProxy": "Прокси",
       "userSection": "Пользовательские настройки",
+      "userUi": "Интерфейс",
       "userVideo": "Видео",
       "video": {
         "accelerationDiagnostics": "Диагностика ускорения",

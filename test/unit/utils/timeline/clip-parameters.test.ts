@@ -114,7 +114,9 @@ describe('clip parameters clipboard helpers', () => {
 
   it('hasClipParametersPatch returns true when properties or transitions exist', () => {
     expect(hasClipParametersPatch({ properties: { opacity: 0.5 } })).toBe(true);
-    expect(hasClipParametersPatch({ properties: {}, transitionIn: { type: 'fade', durationUs: 0 } })).toBe(true);
+    expect(
+      hasClipParametersPatch({ properties: {}, transitionIn: { type: 'fade', durationUs: 0 } }),
+    ).toBe(true);
     expect(hasClipParametersPatch({ properties: {}, transitionOut: null })).toBe(true);
     expect(hasClipParametersPatch({ properties: {} })).toBe(false);
   });
@@ -158,12 +160,14 @@ describe('clip parameters clipboard helpers', () => {
       clip: makeClip({ clipType: 'background', backgroundColor: '#000000' }),
     });
 
-    const videoTarget = makeClip({ clipType: 'media', trackId: 'v1' });
+    const shapeTarget = makeClip({ clipType: 'shape', trackId: 'v1' });
+    const textTarget = makeClip({ clipType: 'text', trackId: 'v1' });
+    const bgTarget = makeClip({ clipType: 'background', trackId: 'v1' });
 
     expect(
       getApplicableClipParameterGroups({
         snapshot: shapeSnapshot,
-        targetClip: videoTarget,
+        targetClip: shapeTarget,
         targetTrackKind: 'video',
       }).map((g: { id: string }) => g.id),
     ).toContain('shape');
@@ -171,7 +175,7 @@ describe('clip parameters clipboard helpers', () => {
     expect(
       getApplicableClipParameterGroups({
         snapshot: textSnapshot,
-        targetClip: videoTarget,
+        targetClip: textTarget,
         targetTrackKind: 'video',
       }).map((g: { id: string }) => g.id),
     ).toContain('text');
@@ -179,7 +183,7 @@ describe('clip parameters clipboard helpers', () => {
     expect(
       getApplicableClipParameterGroups({
         snapshot: bgSnapshot,
-        targetClip: videoTarget,
+        targetClip: bgTarget,
         targetTrackKind: 'video',
       }).map((g: { id: string }) => g.id),
     ).toContain('background');

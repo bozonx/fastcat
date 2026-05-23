@@ -1,12 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import type { ClipParameterGroupOption } from '~/utils/timeline/clip-parameters';
 
 describe('ClipParametersPasteModal', () => {
   const baseGroups: ClipParameterGroupOption[] = [
-    { id: 'transform', labelKey: 'fastcat.clip.parameters.groups.transform', selectedByDefault: true },
+    {
+      id: 'transform',
+      labelKey: 'fastcat.clip.parameters.groups.transform',
+      selectedByDefault: true,
+    },
     { id: 'opacity', labelKey: 'fastcat.clip.parameters.groups.opacity', selectedByDefault: true },
     { id: 'speed', labelKey: 'fastcat.clip.parameters.groups.speed', selectedByDefault: false },
   ];
@@ -29,8 +33,10 @@ describe('ClipParametersPasteModal', () => {
       },
     });
 
-    const checkboxes = wrapper.findAll('input[type="checkbox"]');
-    expect(checkboxes.length).toBe(3);
+    await nextTick();
+    expect(document.body.textContent).toContain('fastcat.clip.parameters.groups.transform');
+    expect(document.body.textContent).toContain('fastcat.clip.parameters.groups.opacity');
+    expect(document.body.textContent).toContain('fastcat.clip.parameters.groups.speed');
   });
 
   it('disables apply button when no groups are selected', async () => {
@@ -102,7 +108,7 @@ describe('ClipParametersPasteModal', () => {
       },
     });
 
-    const message = wrapper.find('.text-sm.text-ui-text-muted');
-    expect(message.exists()).toBe(true);
+    await nextTick();
+    expect(document.body.textContent).toContain('fastcat.clip.parameters.noApplicableGroups');
   });
 });

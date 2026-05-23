@@ -100,8 +100,6 @@ export function useTimelineWheelHandler({
 
   function updateTrackHeight(trackId: string, height: number) {
     trackHeights.value[trackId] = height;
-    timelineStore.markTimelineAsDirty();
-    timelineStore.requestTimelineSave();
   }
 
   function onTimelineWheel(
@@ -185,8 +183,6 @@ export function useTimelineWheelHandler({
         const currentHeight = trackHeights.value[track.id] ?? 40;
         trackHeights.value[track.id] = Math.max(32, Math.min(300, currentHeight * factor));
       });
-      timelineStore.markTimelineAsDirty();
-      timelineStore.requestTimelineSave();
       return;
     }
 

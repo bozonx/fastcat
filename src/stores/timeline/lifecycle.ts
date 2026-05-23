@@ -169,7 +169,6 @@ export function createTimelineLifecycleModule(
       deps.masterGain.value = Number(session.masterGain);
       if (deps.audioMuted) deps.audioMuted.value = Boolean(session.masterMuted);
       deps.timelineZoom.value = Number(session.zoom);
-      deps.trackHeights.value = { ...(session.trackHeights as Record<string, number>) };
       deps.selectionRange.value = session.selectionRange
         ? ({ ...(session.selectionRange as Record<string, unknown>) } as {
             startUs: number;
