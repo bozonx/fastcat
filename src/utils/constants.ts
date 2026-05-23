@@ -23,7 +23,7 @@ export const FILE_IO_LIMITS = {
    * exhausting that pool — which surfaced as `InvalidStateError: Failed to
    * create datapipe` on writes and `TypeError: network error` on worker reads.
    */
-  MAX_CONCURRENT_FILE_WRITES: 4,
+  MAX_CONCURRENT_FILE_WRITES: 2,
   /**
    * Max concurrent writes in the **Tauri** runtime. Tauri writes go to the
    * native filesystem (custom handle, not a Chromium `FileSystemFileHandle`), so

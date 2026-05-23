@@ -48,21 +48,6 @@ export function useTimelineItemSelection(
       timelineStore.selectTimelineItems(nextSelectedIds);
     } else {
       const trackId = tracks.value.find((t) => t.items.some((i) => i.id === itemId))?.id;
-      const isTouchPointer = e.pointerType === 'touch' || (isMobile?.value && e.pointerType === '');
-
-      const isCurrentItemFullySelected =
-        timelineStore.selectedItemIds.length === groupedIds.length &&
-        groupedIds.every((id) => timelineStore.selectedItemIds.includes(id)) &&
-        selectionStore.selectedEntity?.source === 'timeline' &&
-        selectionStore.selectedEntity?.kind === kind &&
-        (kind !== 'gap' || selectionStore.selectedEntity.itemId === itemId);
-
-      if (trackId && isCurrentItemFullySelected && !isMobile?.value && !isTouchPointer) {
-        timelineStore.clearSelection();
-        timelineStore.selectTrack(trackId);
-        selectionStore.selectTimelineTrack(trackId);
-        return;
-      }
 
       nextSelectedIds = groupedIds;
       timelineStore.selectTrack(null);

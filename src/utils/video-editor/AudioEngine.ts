@@ -47,6 +47,7 @@ export class AudioEngine {
   private masterGain: GainNode | null = null;
   private monitorGain: GainNode | null = null;
   private currentClips: AudioEngineClip[] = [];
+  private destroyed = false;
   private readonly activePlaybackCollection: AudioNodeCollection = {
     nodes: this.activeNodes,
     cleanups: this.activeCleanups,
@@ -123,6 +124,9 @@ export class AudioEngine {
     sourceKey: string,
     options?: { maxLength?: number; precision?: number },
   ) {
+    if (this.destroyed) {
+      return Promise.reject(new Error('AudioEngine destroyed'));
+    }
     const worker = this.ensureDecodeWorker();
     return new Promise<DecodeResponse['result']>((resolve, reject) => {
       const id = ++this.decodeCallId;
@@ -133,6 +137,9 @@ export class AudioEngine {
   }
 
   private decodeInWorker(arrayBuffer: ArrayBuffer, sourceKey: string) {
+    if (this.destroyed) {
+      return Promise.reject(new Error('AudioEngine destroyed'));
+    }
     const worker = this.ensureDecodeWorker();
     return new Promise<DecodeResponse['result']>((resolve, reject) => {
       const id = ++this.decodeCallId;
@@ -148,6 +155,9 @@ export class AudioEngine {
     startTimeS: number,
     durationS: number,
   ) {
+    if (this.destroyed) {
+      return Promise.reject(new Error('AudioEngine destroyed'));
+    }
     const worker = this.ensureDecodeWorker();
     return new Promise<DecodeResponse['result']>((resolve, reject) => {
       const id = ++this.decodeCallId;
@@ -270,6 +280,9 @@ export class AudioEngine {
 
         return decoded.peaks;
       } catch (err) {
+        if (err instanceof Error && err.message === 'AudioEngine destroyed') {
+          return null;
+        }
         console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`, err);
         return null;
       }
@@ -370,7 +383,7 @@ export class AudioEngine {
         const chunkKey = this.getChunkKey(sourceKey, targetIndex);
         if (this.chunkCache.get(sourceKey)?.some((c) => c.chunkIndex === targetIndex)) continue;
         if (this.chunkDecodeInFlight.has(chunkKey)) continue;
-        void this.ensureChunkDecoded(sourceKey, clip.fileHandle, targetIndex);
+        await this.ensureChunkDecoded(sourceKey, clip.fileHandle, targetIndex);
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
@@ -1572,6 +1585,10 @@ export class AudioEngine {
   }
 
   destroy() {
+    if (this.destroyed) {
+      return;
+    }
+    this.destroyed = true;
     this.scheduler.destroy();
     this.stopAllNodes();
     this.stopScrubPreview();

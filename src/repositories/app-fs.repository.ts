@@ -71,18 +71,19 @@ export function createAppFsRepository(): AppFsRepository {
     if (input.data === undefined) {
       throw new Error('Refusing to write undefined to JSON file');
     }
-    await runResilientFileWrite(async () => {
-      const writable = await input.handle.createWritable();
-      try {
-        await writeTextToWritableFileStream(writable, `${JSON.stringify(input.data, null, 2)}\n`);
-        await writable.close();
-      } catch (error) {
-        await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
-          .abort?.()
-          .catch(() => undefined);
-        throw error;
-      }
-    });
+    await runResilientFileWrite(
+      async () => {
+        const writable = await input.handle.createWritable();
+        try {
+          await writeTextToWritableFileStream(writable, `${JSON.stringify(input.data, null, 2)}\n`);
+        } finally {
+          await (writable as FileSystemWritableFileStream & { close: () => Promise<void> })
+            .close()
+            .catch(() => undefined);
+        }
+      },
+      { attempts: 6, baseDelayMs: 200 },
+    );
   }
 
   return {

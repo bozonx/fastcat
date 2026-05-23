@@ -24,6 +24,24 @@ const MAX_CACHED_DECODE_SOURCES = 16;
 const decodeSourceCache = new Map<string, CachedDecodeSource>();
 const decodeSourceLocks = new Map<string, Promise<void>>();
 
+const MAX_GLOBAL_DECODE_SLOTS = 2;
+let activeGlobalDecodes = 0;
+const globalDecodeQueue: Array<() => void> = [];
+
+async function withGlobalDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (activeGlobalDecodes >= MAX_GLOBAL_DECODE_SLOTS) {
+    await new Promise<void>((resolve) => globalDecodeQueue.push(resolve));
+  }
+  activeGlobalDecodes += 1;
+  try {
+    return await task();
+  } finally {
+    activeGlobalDecodes = Math.max(0, activeGlobalDecodes - 1);
+    const next = globalDecodeQueue.shift();
+    if (next) next();
+  }
+}
+
 function disposeDecodeSource(source: CachedDecodeSource) {
   const sink = source.sink as { close?: () => void; dispose?: () => void };
   const input = source.input as { dispose?: () => void; close?: () => void };
@@ -479,9 +497,11 @@ if (typeof self !== 'undefined')
 
     try {
       if (data.type === 'extract-peaks') {
-        const peaks = await extractPeaksFromSource(
-          data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
-          data.options,
+        const peaks = await withGlobalDecodeSlot(() =>
+          extractPeaksFromSource(
+            data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
+            data.options,
+          ),
         );
         response.ok = true;
         response.result = {
@@ -500,9 +520,11 @@ if (typeof self !== 'undefined')
       }
 
       if (data.type === 'decode-stt') {
-        const result = await decodeToSttMono(
-          data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
-          data.options?.targetSampleRate || 16000,
+        const result = await withGlobalDecodeSlot(() =>
+          decodeToSttMono(
+            data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
+            data.options?.targetSampleRate || 16000,
+          ),
         );
         response.ok = true;
         response.result = {
@@ -516,12 +538,14 @@ if (typeof self !== 'undefined')
       }
 
       if (data.type === 'decode-range') {
-        const result = await withDecodeSourceLock(data.sourceKey, () =>
-          decodeToFloat32Channels(
-            data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
-            data.sourceKey,
-            data.startTimeS ?? 0,
-            data.durationS,
+        const result = await withGlobalDecodeSlot(() =>
+          withDecodeSourceLock(data.sourceKey, () =>
+            decodeToFloat32Channels(
+              data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
+              data.sourceKey,
+              data.startTimeS ?? 0,
+              data.durationS,
+            ),
           ),
         );
 
@@ -534,10 +558,12 @@ if (typeof self !== 'undefined')
         return;
       }
 
-      const result = await withDecodeSourceLock(data.sourceKey, () =>
-        decodeToFloat32Channels(
-          data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
-          data.sourceKey,
+      const result = await withGlobalDecodeSlot(() =>
+        withDecodeSourceLock(data.sourceKey, () =>
+          decodeToFloat32Channels(
+            data.arrayBuffer ?? data.blob ?? new ArrayBuffer(0),
+            data.sourceKey,
+          ),
         ),
       );
 

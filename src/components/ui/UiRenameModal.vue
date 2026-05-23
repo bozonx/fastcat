@@ -30,7 +30,7 @@ const { t } = useI18n();
   <UiEntityCreationModal
     v-model:open="isOpen"
     :title="title || t('common.rename')"
-    :default-value="props.initialName ?? props.currentName"
+    :default-value="props.initialName || props.currentName"
     :loading="props.loading"
     :select-without-extension="props.selectWithoutExtension"
     @confirm="

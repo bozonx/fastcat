@@ -631,4 +631,29 @@ describe('AudioEngine', () => {
     ]);
     expect(audioContextInstance.createdSources.length).toBe(2);
   });
+
+  it('is safe to call destroy() multiple times', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    engine.destroy();
+    expect(() => engine.destroy()).not.toThrow();
+  });
+
+  it('returns null from extractPeaks without logging a warning when cancelled by destroy()', async () => {
+    workerResponseDelayMs = 100;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const engine = new AudioEngine();
+    const fileHandle = createFileHandle();
+    const peaksPromise = engine.extractPeaks(fileHandle, 'audio.mp3', { maxLength: 1000 });
+
+    engine.destroy();
+    const peaks = await peaksPromise;
+
+    expect(peaks).toBeNull();
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
 });
