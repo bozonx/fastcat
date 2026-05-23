@@ -10,6 +10,7 @@ import {
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import { withFileWriteSlot } from '~/utils/io/io-governor';
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
@@ -446,9 +447,11 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
             const fileName = `${Math.round(currentTime)}.webp`;
             const fileHandle = await dir.getFileHandle(fileName, { create: true });
-            const writable = await (fileHandle as WritableFileHandle).createWritable();
-            await writable.write(blob);
-            await writable.close();
+            await withFileWriteSlot(async () => {
+              const writable = await (fileHandle as WritableFileHandle).createWritable();
+              await writable.write(blob);
+              await writable.close();
+            });
 
             const thumbUrl = URL.createObjectURL(blob);
 

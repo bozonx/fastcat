@@ -1,4 +1,5 @@
 import type { TranscriptionRecord } from './types';
+import { runResilientFileWrite } from '~/utils/io/io-governor';
 
 /**
  * Saves the transcription record as a sidecar file (.stt.json) next to the source file.
@@ -19,11 +20,14 @@ export async function saveTranscriptionSidecar(
   }
 
   const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
-  const writable = await (
-    fileHandle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
-  ).createWritable();
-  await writable.write(JSON.stringify(record, null, 2));
-  await writable.close();
+  const serialized = JSON.stringify(record, null, 2);
+  await runResilientFileWrite(async () => {
+    const writable = await (
+      fileHandle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
+    ).createWritable();
+    await writable.write(serialized);
+    await writable.close();
+  });
 }
 
 /**

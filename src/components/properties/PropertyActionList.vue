@@ -6,7 +6,7 @@
  * Supports primary/secondary grouping and consistent styling with Nuxt UI.
  */
 
-interface PropertyAction {
+export interface PropertyAction {
   id: string;
   label?: string;
   /** Accessibility title or tooltip */

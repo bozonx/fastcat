@@ -193,7 +193,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     });
 
     if (compositor) {
-      compositor.destroy();
+      await compositor.destroy();
     }
     compositor = nextCompositor;
   },
@@ -276,7 +276,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
   async destroyCompositor() {
     if (compositor) {
-      compositor.destroy();
+      await compositor.destroy();
       compositor = null;
     }
   },
@@ -405,7 +405,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       });
       return blob;
     } finally {
-      localCompositor.destroy();
+      await localCompositor.destroy();
     }
   },
 

@@ -317,7 +317,7 @@ defineExpose({
         :options="curveOptions"
         orientation="vertical"
         fluid
-        @update:model-value="handleCurveChange"
+        @update:model-value="handleCurveChange as (value: unknown) => any"
       >
         <template #option="{ option }">
           <div class="flex items-center gap-2 w-full min-w-0">

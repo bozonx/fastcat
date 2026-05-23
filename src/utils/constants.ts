@@ -37,6 +37,13 @@ export const FILE_IO_LIMITS = {
 export const VIDEO_CORE_LIMITS = {
   MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS: 4,
   MAX_VIDEO_SAMPLE_REQUEST_TIMEOUT_MS: 5_000,
+  /**
+   * Max wall-clock a single op (render/load/mutation) may hold the compositor's
+   * serialization queue before the watchdog aborts it to release the queue. Set
+   * well above MAX_VIDEO_SAMPLE_REQUEST_TIMEOUT_MS so it only fires on a genuine
+   * stall, never on a normally-slow render.
+   */
+  OP_QUEUE_WATCHDOG_MS: 15_000,
   MAX_VIDEO_FRAME_CACHE_MB: 256,
   MAX_WORKER_RPC_PENDING_CALLS: 500,
   /** Max gap (µs) between adjacent clips to still apply blend shadow during transitions */

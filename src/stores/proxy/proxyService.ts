@@ -5,6 +5,7 @@ import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
+import { withFileWriteSlot } from '~/utils/io/io-governor';
 import type { BackgroundTasksStore } from '~/stores/background-tasks.store';
 
 export interface ProxyService {
@@ -501,16 +502,19 @@ export function createProxyService(params: {
       } else {
         // Fallback: copy and delete if move is not supported (unlikely in modern Chrome)
         const newHandle = await dir.getFileHandle(newFilename, { create: true });
-        const writable = await (
-          newHandle as unknown as {
-            createWritable: () => Promise<{
-              write: (data: File) => Promise<void>;
-              close: () => Promise<void>;
-            }>;
-          }
-        ).createWritable();
-        await writable.write(await handle.getFile());
-        await writable.close();
+        const sourceFile = await handle.getFile();
+        await withFileWriteSlot(async () => {
+          const writable = await (
+            newHandle as unknown as {
+              createWritable: () => Promise<{
+                write: (data: File) => Promise<void>;
+                close: () => Promise<void>;
+              }>;
+            }
+          ).createWritable();
+          await writable.write(sourceFile);
+          await writable.close();
+        });
         await dir.removeEntry(oldFilename);
       }
 

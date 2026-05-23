@@ -698,7 +698,7 @@ export async function runExport(
       }
     }
   } finally {
-    localCompositor.destroy();
+    await localCompositor.destroy();
   }
 }
 

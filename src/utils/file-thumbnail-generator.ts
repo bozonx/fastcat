@@ -14,6 +14,7 @@ import {
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
+import { withFileWriteSlot } from '~/utils/io/io-governor';
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
@@ -184,16 +185,18 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const fileName = `${task.id}.webp`;
     const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    const writable = await (
-      fileHandle as unknown as {
-        createWritable: () => Promise<{
-          write: (data: Blob) => Promise<void>;
-          close: () => Promise<void>;
-        }>;
-      }
-    ).createWritable();
-    await writable.write(blob);
-    await writable.close();
+    await withFileWriteSlot(async () => {
+      const writable = await (
+        fileHandle as unknown as {
+          createWritable: () => Promise<{
+            write: (data: Blob) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }
+      ).createWritable();
+      await writable.write(blob);
+      await writable.close();
+    });
 
     const thumbUrl = URL.createObjectURL(blob);
 
@@ -230,16 +233,18 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const fileName = `${hash}.webp`;
     const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    const writable = await (
-      fileHandle as unknown as {
-        createWritable: () => Promise<{
-          write: (data: Blob) => Promise<void>;
-          close: () => Promise<void>;
-        }>;
-      }
-    ).createWritable();
-    await writable.write(input.blob);
-    await writable.close();
+    await withFileWriteSlot(async () => {
+      const writable = await (
+        fileHandle as unknown as {
+          createWritable: () => Promise<{
+            write: (data: Blob) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }
+      ).createWritable();
+      await writable.write(input.blob);
+      await writable.close();
+    });
 
     const thumbUrl = URL.createObjectURL(input.blob);
 
@@ -370,16 +375,18 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
       const fileName = `${input.markerId}_${input.timeUs}.webp`;
       const fileHandle = await dir.getFileHandle(fileName, { create: true });
-      const writable = await (
-        fileHandle as unknown as {
-          createWritable: () => Promise<{
-            write: (data: Blob) => Promise<void>;
-            close: () => Promise<void>;
-          }>;
-        }
-      ).createWritable();
-      await writable.write(input.blob);
-      await writable.close();
+      await withFileWriteSlot(async () => {
+        const writable = await (
+          fileHandle as unknown as {
+            createWritable: () => Promise<{
+              write: (data: Blob) => Promise<void>;
+              close: () => Promise<void>;
+            }>;
+          }
+        ).createWritable();
+        await writable.write(input.blob);
+        await writable.close();
+      });
 
       const url = URL.createObjectURL(input.blob);
       const cacheKey = `marker:${input.markerId}`;

@@ -359,7 +359,7 @@ const {
 
 const { hudManifest, hudControlValues, handleUpdateHudControl } = useClipHudProperties({
   clip: clipRef,
-  timelineStore,
+  timelineStore: timelineStore as any,
 });
 
 const canEditReversed = computed(() => {

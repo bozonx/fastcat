@@ -80,7 +80,16 @@ export class VideoCompositor {
   // about to upload -> "texSubImage2D: can't texture a closed VideoFrame" and a
   // mid-playback decode storm (cache cleared under the renderer). One FIFO queue
   // guarantees a render and a mutation never interleave.
+  //
+  // INVARIANT: every entry point that disposes/recreates clip, texture or cache
+  // resources MUST go through runExclusive (renderFrame, updateTimelineLayout,
+  // clearClips, loadTimeline, the context-restore rebuild). The disposing cores
+  // are private (`*Locked`) so they can only be reached via the queue; `destroy`
+  // is the sole exception and instead *drains* the queue before tearing down.
   private opQueue: Promise<unknown> = Promise.resolve();
+  // Set the moment destroy() begins so queued/late entry points bail instead of
+  // touching resources that teardown is about to free.
+  private disposed = false;
   private timelineLoadAbortController: AbortController | null = null;
   private clipPreferBitmapFallback = new Map<string, boolean>();
   private videoFrameCache = new VideoFrameCache(
@@ -442,12 +451,15 @@ export class VideoCompositor {
   ): Promise<void> {
     if (this.app) {
       try {
-        this.destroy();
+        await this.destroy();
       } catch (err) {
         console.error('[VideoCompositor] Failed to destroy previous application instance', err);
         this.app = null;
       }
     }
+    // Re-init of a reused instance: clear the disposed flag set by destroy() so
+    // this freshly-initialized compositor accepts renders/mutations again.
+    this.disposed = false;
 
     this.width = width;
     this.height = height;
@@ -590,6 +602,15 @@ export class VideoCompositor {
   };
 
   private onContextRestored = () => {
+    if (this.disposed) return;
+    // Rebuild on the op queue so it never disposes a VideoFrame / cache entry
+    // while a render is mid-flight — same no-interleave invariant as the timeline
+    // mutations. contextLost stays true until the queued rebuild runs, so any
+    // renders queued ahead of it harmlessly no-op.
+    void this.runExclusive(() => this.rebuildAfterContextRestoredLocked(), 'contextRestore');
+  };
+
+  private rebuildAfterContextRestoredLocked() {
     console.warn('[VideoCompositor] WebGL/WebGPU context restored!');
     this.contextLost = false;
     this.stageSortDirty = true;
@@ -659,7 +680,7 @@ export class VideoCompositor {
         clip.adjustmentSourceTexture = null;
       }
     }
-  };
+  }
 
   async loadTimeline(
     timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: unknown })[],
@@ -677,7 +698,7 @@ export class VideoCompositor {
     },
     checkCancel?: () => boolean,
   ): Promise<number> {
-    if (!this.app) throw new Error('VideoCompositor not initialized');
+    if (this.disposed || !this.app) throw new Error('VideoCompositor not initialized');
 
     // Abort a previous in-flight load synchronously (before queueing) so a
     // superseding load cancels the running one, which then checks isCancelled
@@ -686,9 +707,13 @@ export class VideoCompositor {
     const abortController = new AbortController();
     this.timelineLoadAbortController = abortController;
     try {
-      return await this.runExclusive(() =>
-        this.loadTimelineLocked(timelineClips, deps, checkCancel, abortController.signal),
-      );
+      return await this.runExclusive((signal) => {
+        // The queue watchdog aborts via `signal`; forward it to the load's own
+        // cancellation so a stuck load unwinds and releases the queue.
+        if (signal.aborted) abortController.abort();
+        else signal.addEventListener('abort', () => abortController.abort(), { once: true });
+        return this.loadTimelineLocked(timelineClips, deps, checkCancel, abortController.signal);
+      }, 'loadTimeline');
     } finally {
       if (this.timelineLoadAbortController === abortController) {
         this.timelineLoadAbortController = null;
@@ -701,9 +726,31 @@ export class VideoCompositor {
    * compositor, in FIFO order. The chain advances regardless of whether a step
    * resolves or rejects, and never retains a rejection (so it can't surface as
    * an unhandled rejection or stall the queue).
+   *
+   * Head-of-line protection: each op gets an AbortSignal that fires after
+   * OP_QUEUE_WATCHDOG_MS. A cooperative op (renderFrame, loadTimeline) wires the
+   * signal to its own cancellation so a stalled decode/load unwinds instead of
+   * freezing every queued edit behind it. The queue still only advances once the
+   * op *actually* settles — the watchdog nudges settlement, it never runs the
+   * next op concurrently, so the no-interleave invariant is preserved.
    */
-  private runExclusive<T>(fn: () => Promise<T> | T): Promise<T> {
-    const result = this.opQueue.then(fn, fn);
+  private runExclusive<T>(fn: (signal: AbortSignal) => Promise<T> | T, label = 'op'): Promise<T> {
+    const run = async (): Promise<T> => {
+      const controller = new AbortController();
+      const watchdog = setTimeout(() => {
+        controller.abort();
+        console.warn(
+          `[VideoCompositor] opQueue watchdog: "${label}" exceeded ` +
+            `${VIDEO_CORE_LIMITS.OP_QUEUE_WATCHDOG_MS}ms; aborting to release the queue`,
+        );
+      }, VIDEO_CORE_LIMITS.OP_QUEUE_WATCHDOG_MS);
+      try {
+        return await fn(controller.signal);
+      } finally {
+        clearTimeout(watchdog);
+      }
+    };
+    const result = this.opQueue.then(run, run);
     this.opQueue = result.then(
       () => undefined,
       () => undefined,
@@ -786,7 +833,8 @@ export class VideoCompositor {
   }
 
   updateTimelineLayout(timelineClips: Record<string, unknown>[]): Promise<number> {
-    return this.runExclusive(() => this.updateTimelineLayoutLocked(timelineClips));
+    if (this.disposed) return Promise.resolve(this.maxDurationUs);
+    return this.runExclusive(() => this.updateTimelineLayoutLocked(timelineClips), 'updateTimelineLayout');
   }
 
   private updateTimelineLayoutLocked(timelineClips: Record<string, unknown>[]): number {
@@ -832,7 +880,7 @@ export class VideoCompositor {
     timeUs: number,
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
-    if (!this.app || !this.canvas) return null;
+    if (this.disposed || !this.app || !this.canvas) return null;
     // Capture into locals: the guard's narrowing of the mutable this.app/
     // this.canvas does not survive into the runExclusive closure below.
     const app = this.app;
@@ -843,8 +891,14 @@ export class VideoCompositor {
     // clearClips run on the same queue, so a mutation can never dispose a
     // VideoFrame or sink mid-render — it waits for the in-flight render to settle
     // first (and vice versa).
-    return this.runExclusive(() =>
-      this.renderingEngine.renderFrame(timeUs, options, {
+    return this.runExclusive((signal) => {
+      // If the queue watchdog trips, abort in-flight sample reads so a stalled
+      // render unwinds and stops blocking queued edits.
+      if (signal.aborted) this.resourceManager.abortInFlight();
+      else signal.addEventListener('abort', () => this.resourceManager.abortInFlight(), {
+        once: true,
+      });
+      return this.renderingEngine.renderFrame(timeUs, options, {
       app,
       canvas,
       width: this.width,
@@ -965,8 +1019,8 @@ export class VideoCompositor {
       setLastRenderedTimeUs: (value) => {
         this.lastRenderedTimeUs = value;
       },
-      }),
-    );
+      });
+    }, 'renderFrame');
   }
 
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
@@ -1038,7 +1092,8 @@ export class VideoCompositor {
   }
 
   clearClips(): Promise<void> {
-    return this.runExclusive(() => this.clearClipsLocked());
+    if (this.disposed) return Promise.resolve();
+    return this.runExclusive(() => this.clearClipsLocked(), 'clearClips');
   }
 
   private clearClipsLocked() {
@@ -1080,7 +1135,14 @@ export class VideoCompositor {
     this.maxDurationUs = 0;
   }
 
-  destroy() {
+  async destroy() {
+    // Mark disposed first so any late renderFrame/updateTimelineLayout/clearClips
+    // RPC bails instead of touching resources we are about to free.
+    this.disposed = true;
+    // Drain the queue so we never tear down pixi while an in-flight render is
+    // still reading a sink or uploading a VideoFrame. The watchdog guarantees
+    // the in-flight op settles in bounded time, so this can't hang teardown.
+    await this.opQueue.catch(() => undefined);
     // Terminal teardown: run the clear synchronously (not through the queue) so
     // pixi resources are gone before we dispose the renderer below.
     this.clearClipsLocked();

@@ -1,6 +1,7 @@
 import { rasterizeSvgToBlob } from '~/utils/svg';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import { withFileWriteSlot } from '~/utils/io/io-governor';
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
 
@@ -114,9 +115,11 @@ export async function ensureVectorImageRaster(
     throw new Error('Failed to write vector image cache: createWritable is not available');
   }
 
-  const writable = await createWritable.call(fileHandle);
-  await writable.write(blob);
-  await writable.close();
+  await withFileWriteSlot(async () => {
+    const writable = await createWritable.call(fileHandle);
+    await writable.write(blob);
+    await writable.close();
+  });
   return fileHandle;
 }
 

@@ -104,8 +104,8 @@ const commonActions = computed(() => [
   },
 ]);
 
-const mainActions = computed<unknown[]>(() => {
-  const list: unknown[] = [
+const mainActions = computed<import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[]>(() => {
+  const list: import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[] = [
     {
       id: 'convert',
       label: isZone.value

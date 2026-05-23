@@ -55,8 +55,8 @@ function handleUpdatePreset() {
   presetsStore.updatePreset(manifest.value.type, params.value);
 }
 
-const actions = computed(() => {
-  const list: unknown[] = [];
+const actions = computed<import('~/components/properties/PropertyActionList.vue').PropertyAction[]>(() => {
+  const list: import('~/components/properties/PropertyActionList.vue').PropertyAction[] = [];
   if (manifest.value?.isCustom) {
     list.push({
       id: 'update-preset',
