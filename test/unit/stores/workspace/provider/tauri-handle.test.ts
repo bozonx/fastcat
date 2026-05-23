@@ -1,7 +1,16 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TauriFileHandle, TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
-import { readFile, writeFile, stat, exists, mkdir, readDir, remove } from '@tauri-apps/plugin-fs';
+import {
+  readFile,
+  writeFile,
+  stat,
+  exists,
+  mkdir,
+  readDir,
+  remove,
+  rename,
+} from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
@@ -12,6 +21,7 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   mkdir: vi.fn(),
   readDir: vi.fn(),
   remove: vi.fn(),
+  rename: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/api/path', () => ({
@@ -66,7 +76,10 @@ describe('TauriFileHandle', () => {
       const writable = await handle.createWritable();
       await writable.write('hello');
 
-      expect(writeFile).toHaveBeenCalledWith('/test/file.txt.tmp', expect.any(Uint8Array));
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
+        expect.any(Uint8Array),
+      );
       // We know it converts string to Uint8Array
       const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
       expect(new TextDecoder().decode(callArg)).toBe('hello');
@@ -78,7 +91,10 @@ describe('TauriFileHandle', () => {
       const data = new Uint8Array([1, 2, 3]);
       await writable.write(data);
 
-      expect(writeFile).toHaveBeenCalledWith('/test/file.txt.tmp', data);
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
+        data,
+      );
     });
 
     it('writes other data types (Blob)', async () => {
@@ -87,15 +103,23 @@ describe('TauriFileHandle', () => {
       const blob = new Blob(['blob data']);
       await writable.write(blob);
 
-      expect(writeFile).toHaveBeenCalledWith('/test/file.txt.tmp', expect.any(Uint8Array));
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
+        expect.any(Uint8Array),
+      );
       const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
       expect(new TextDecoder().decode(callArg)).toBe('blob data');
     });
 
     it('has a close method that resolves', async () => {
       const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
+      vi.mocked(exists).mockResolvedValue(true);
       const writable = await handle.createWritable();
       await expect(writable.close()).resolves.toBeUndefined();
+      expect(rename).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
+        '/test/file.txt',
+      );
     });
   });
 });

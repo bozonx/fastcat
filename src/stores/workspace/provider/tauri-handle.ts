@@ -33,7 +33,8 @@ export class TauriFileHandle {
     write: (data: string | Uint8Array | BlobPart) => Promise<void>;
     close: () => Promise<void>;
   }> {
-    const tempPath = `${this.path}.tmp`;
+    const random = Math.random().toString(36).slice(2, 8);
+    const tempPath = `${this.path}.${Date.now().toString(36)}.${random}.tmp`;
 
     return {
       write: async (data: string | Uint8Array | BlobPart) => {

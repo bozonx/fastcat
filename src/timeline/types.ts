@@ -370,7 +370,7 @@ export interface TimelineTransitionSelection {
 }
 
 export interface TimelineClipActionPayload {
-  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame' | 'openAutoMontage' | 'trim_item';
+  action: 'extractAudio' | 'returnAudio' | 'freezeFrame' | 'resetFreezeFrame' | 'openAutoMontage' | 'trim_item' | 'longPress';
   trackId: string;
   itemId: string;
   videoItemId?: string;

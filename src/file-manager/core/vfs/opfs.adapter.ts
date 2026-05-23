@@ -14,6 +14,7 @@ import {
   throwIfAborted,
   wrapPlatformError,
 } from './errors';
+import { acquireQueuedFileAccess, runQueuedFileAccess } from '~/utils/file-access-queue';
 
 interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
@@ -61,6 +62,10 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   private objectUrlsByPath = new Map<string, string>();
 
   constructor(private getProjectRoot: () => Promise<FileSystemDirectoryHandle | null>) {}
+
+  private getFileAccessKey(path: string): string {
+    return `opfs:${path || '/'}`;
+  }
 
   private async getRoot(): Promise<FileSystemDirectoryHandle | null> {
     return await this.getProjectRoot();
@@ -200,15 +205,20 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
   async readFile(path: string, options?: VfsOperationOptions): Promise<Blob> {
     throwIfAborted(options?.signal, path);
-    const handle = (await this.getHandleByPath(path, {
-      isFile: true,
-    })) as FileSystemFileHandle | null;
-    if (!handle) throw new VfsNotFoundError(path);
-    try {
-      return await handle.getFile();
-    } catch (e) {
-      throw wrapPlatformError(e, path);
-    }
+    return await runQueuedFileAccess({
+      key: this.getFileAccessKey(path),
+      task: async () => {
+        const handle = (await this.getHandleByPath(path, {
+          isFile: true,
+        })) as FileSystemFileHandle | null;
+        if (!handle) throw new VfsNotFoundError(path);
+        try {
+          return await handle.getFile();
+        } catch (e) {
+          throw wrapPlatformError(e, path);
+        }
+      },
+    });
   }
 
   /**
@@ -228,91 +238,98 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     options?: VfsOperationOptions,
   ): Promise<void> {
     throwIfAborted(options?.signal, path);
-    const parentHandle = await this.getParentDirHandle(path, { create: true });
-    if (!parentHandle) throw new VfsNotFoundError(path);
-    await this.ensureReadWritePermission(parentHandle, path);
+    await runQueuedFileAccess({
+      key: this.getFileAccessKey(path),
+      task: async () => {
+        const parentHandle = await this.getParentDirHandle(path, { create: true });
+        if (!parentHandle) throw new VfsNotFoundError(path);
+        await this.ensureReadWritePermission(parentHandle, path);
 
-    const parts = path.split('/').filter(Boolean);
-    const fileName = parts[parts.length - 1];
-    if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
+        const parts = path.split('/').filter(Boolean);
+        const fileName = parts[parts.length - 1];
+        if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
 
-    const supportsAtomicMove = await this.supportsHandleMove(parentHandle);
+        const supportsAtomicMove = await this.supportsHandleMove(parentHandle);
 
-    if (!supportsAtomicMove) {
-      try {
-        const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-        await this.ensureReadWritePermission(fileHandle, path);
-        const writable = await (fileHandle as ExtendedFileHandle).createWritable();
-        await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
-        await writable.close();
-        this.revokeObjectUrlsUnder(path);
-      } catch (e) {
-        throw wrapPlatformError(e, path);
-      }
-      return;
-    }
-
-    const normalizedData = normalizeWritableData(data);
-
-    const tempName = this.createTempName(fileName);
-    let tempHandle: FileSystemFileHandle | null = null;
-    try {
-      tempHandle = await parentHandle.getFileHandle(tempName, { create: true });
-      await this.ensureReadWritePermission(tempHandle, path);
-      const writable = await (tempHandle as ExtendedFileHandle).createWritable();
-      try {
-        await writable.write(normalizedData as FileSystemWriteChunkType);
-        await writable.close();
-      } catch (e) {
-        try {
-          await writable.close();
-        } catch {
-          /* ignore */
+        if (!supportsAtomicMove) {
+          try {
+            const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+            await this.ensureReadWritePermission(fileHandle, path);
+            const writable = await (fileHandle as ExtendedFileHandle).createWritable();
+            await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
+            await writable.close();
+            this.revokeObjectUrlsUnder(path);
+          } catch (e) {
+            throw wrapPlatformError(e, path);
+          }
+          return;
         }
-        throw e;
-      }
 
-      await (tempHandle as ExtendedHandle).move!(parentHandle, fileName);
-      this.revokeObjectUrlsUnder(path);
-    } catch (e) {
-      const isLocked =
-        (e as Error).name === 'NoModificationAllowedError' ||
-        (e as Error).message?.toLowerCase().includes('locked');
+        const normalizedData = normalizeWritableData(data);
 
-      if (isLocked) {
-        // Destination is locked (another context has the file open).
-        // Fall back to a direct overwrite — non-atomic, but the best we can do.
+        const tempName = this.createTempName(fileName);
+        let tempHandle: FileSystemFileHandle | null = null;
         try {
-          const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-          await this.ensureReadWritePermission(fileHandle, path);
-          const writable = await (fileHandle as ExtendedFileHandle).createWritable();
+          tempHandle = await parentHandle.getFileHandle(tempName, { create: true });
+          await this.ensureReadWritePermission(tempHandle, path);
+          const writable = await (tempHandle as ExtendedFileHandle).createWritable();
           try {
             await writable.write(normalizedData as FileSystemWriteChunkType);
             await writable.close();
-          } catch (writeErr) {
+          } catch (e) {
             try {
               await writable.close();
             } catch {
               /* ignore */
             }
-            throw writeErr;
+            throw e;
           }
+
+          await (tempHandle as ExtendedHandle).move!(parentHandle, fileName);
           this.revokeObjectUrlsUnder(path);
-        } catch (fallbackErr) {
-          throw wrapPlatformError(fallbackErr, path);
-        } finally {
+        } catch (e) {
+          const isLocked =
+            (e as Error).name === 'NoModificationAllowedError' ||
+            (e as Error).message?.toLowerCase().includes('locked');
+
+          if (isLocked) {
+            // Destination is locked (another context has the file open).
+            // Fall back to a direct overwrite — non-atomic, but the best we can do.
+            try {
+              const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+              await this.ensureReadWritePermission(fileHandle, path);
+              const writable = await (fileHandle as ExtendedFileHandle).createWritable();
+              try {
+                await writable.write(normalizedData as FileSystemWriteChunkType);
+                await writable.close();
+              } catch (writeErr) {
+                try {
+                  await writable.close();
+                } catch {
+                  /* ignore */
+                }
+                throw writeErr;
+              }
+              this.revokeObjectUrlsUnder(path);
+            } catch (fallbackErr) {
+              throw wrapPlatformError(fallbackErr, path);
+            } finally {
+              if (tempHandle) {
+                await (parentHandle as ExtendedDirectoryHandle)
+                  .removeEntry(tempName)
+                  .catch(() => {});
+              }
+            }
+            return;
+          }
+
           if (tempHandle) {
             await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
           }
+          throw wrapPlatformError(e, path);
         }
-        return;
-      }
-
-      if (tempHandle) {
-        await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
-      }
-      throw wrapPlatformError(e, path);
-    }
+      },
+    });
   }
 
   private supportsHandleMoveCache: boolean | undefined;
@@ -340,27 +357,32 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async deleteEntry(path: string, recursive?: boolean): Promise<void> {
-    const parentHandle = await this.getParentDirHandle(path);
-    if (!parentHandle) return; // parent doesn't exist, nothing to delete
+    await runQueuedFileAccess({
+      key: this.getFileAccessKey(path),
+      task: async () => {
+        const parentHandle = await this.getParentDirHandle(path);
+        if (!parentHandle) return; // parent doesn't exist, nothing to delete
 
-    const parts = path.split('/').filter(Boolean);
-    const name = parts[parts.length - 1];
-    if (!name) return; // root or empty path
+        const parts = path.split('/').filter(Boolean);
+        const name = parts[parts.length - 1];
+        if (!name) return; // root or empty path
 
-    // Revoke before removing so consumers can't accidentally race a stale URL
-    // against an entry that's already on its way out.
-    this.revokeObjectUrlsUnder(path);
+        // Revoke before removing so consumers can't accidentally race a stale URL
+        // against an entry that's already on its way out.
+        this.revokeObjectUrlsUnder(path);
 
-    try {
-      await (parentHandle as ExtendedDirectoryHandle).removeEntry(name, { recursive });
-    } catch (e: unknown) {
-      const errorName = (e as Error).name;
-      if (errorName === 'NotFoundError') return;
-      if (errorName === 'InvalidModificationError') {
-        throw new VfsConflictError(path, `Directory is not empty: ${path}`, { cause: e });
-      }
-      throw wrapPlatformError(e, path);
-    }
+        try {
+          await (parentHandle as ExtendedDirectoryHandle).removeEntry(name, { recursive });
+        } catch (e: unknown) {
+          const errorName = (e as Error).name;
+          if (errorName === 'NotFoundError') return;
+          if (errorName === 'InvalidModificationError') {
+            throw new VfsConflictError(path, `Directory is not empty: ${path}`, { cause: e });
+          }
+          throw wrapPlatformError(e, path);
+        }
+      },
+    });
   }
 
   private trackObjectUrl(path: string, url: string): void {
@@ -489,27 +511,32 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async getMetadata(path: string): Promise<VfsEntryMetadata | null> {
-    const handle = await this.getHandleByPath(path);
-    if (!handle) return null;
+    return await runQueuedFileAccess({
+      key: this.getFileAccessKey(path),
+      task: async () => {
+        const handle = await this.getHandleByPath(path);
+        if (!handle) return null;
 
-    if (handle.kind === 'file') {
-      try {
-        const file = await (handle as FileSystemFileHandle).getFile();
+        if (handle.kind === 'file') {
+          try {
+            const file = await (handle as FileSystemFileHandle).getFile();
+            return {
+              size: file.size,
+              lastModified: file.lastModified,
+              kind: 'file',
+            };
+          } catch (e) {
+            throw wrapPlatformError(e, path);
+          }
+        }
+        // OPFS doesn't expose directory mtime cheaply; report 0 instead of lying with Date.now().
         return {
-          size: file.size,
-          lastModified: file.lastModified,
-          kind: 'file',
+          size: 0,
+          lastModified: 0,
+          kind: 'directory',
         };
-      } catch (e) {
-        throw wrapPlatformError(e, path);
-      }
-    }
-    // OPFS doesn't expose directory mtime cheaply; report 0 instead of lying with Date.now().
-    return {
-      size: 0,
-      lastModified: 0,
-      kind: 'directory',
-    };
+      },
+    });
   }
 
   async getObjectUrl(path: string): Promise<string> {
@@ -525,15 +552,20 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async getFile(path: string): Promise<File | null> {
-    const handle = (await this.getHandleByPath(path, {
-      isFile: true,
-    })) as FileSystemFileHandle | null;
-    if (!handle) return null;
-    try {
-      return await handle.getFile();
-    } catch (e) {
-      throw wrapPlatformError(e, path);
-    }
+    return await runQueuedFileAccess({
+      key: this.getFileAccessKey(path),
+      task: async () => {
+        const handle = (await this.getHandleByPath(path, {
+          isFile: true,
+        })) as FileSystemFileHandle | null;
+        if (!handle) return null;
+        try {
+          return await handle.getFile();
+        } catch (e) {
+          throw wrapPlatformError(e, path);
+        }
+      },
+    });
   }
 
   async readStream(
@@ -551,19 +583,53 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     options?: VfsOperationOptions,
   ): Promise<WritableStream<Uint8Array>> {
     throwIfAborted(options?.signal, path);
+    const release = await acquireQueuedFileAccess(this.getFileAccessKey(path));
     const parentHandle = await this.getParentDirHandle(path, { create: true });
-    if (!parentHandle) throw new VfsNotFoundError(path);
-    await this.ensureReadWritePermission(parentHandle, path);
+    try {
+      if (!parentHandle) throw new VfsNotFoundError(path);
+      await this.ensureReadWritePermission(parentHandle, path);
 
-    const parts = path.split('/').filter(Boolean);
-    const fileName = parts[parts.length - 1];
-    if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
+      const parts = path.split('/').filter(Boolean);
+      const fileName = parts[parts.length - 1];
+      if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
 
-    const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-    await this.ensureReadWritePermission(fileHandle, path);
-    return (await (
-      fileHandle as ExtendedFileHandle
-    ).createWritable()) as unknown as WritableStream<Uint8Array>;
+      const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+      await this.ensureReadWritePermission(fileHandle, path);
+      const writable = (await (
+        fileHandle as ExtendedFileHandle
+      ).createWritable()) as unknown as WritableStream<Uint8Array>;
+      const writer = writable.getWriter();
+      let released = false;
+      const releaseOnce = () => {
+        if (released) return;
+        released = true;
+        release();
+      };
+
+      return new WritableStream<Uint8Array>({
+        write: async (chunk) => {
+          await writer.write(chunk);
+        },
+        close: async () => {
+          try {
+            await writer.close();
+            this.revokeObjectUrlsUnder(path);
+          } finally {
+            releaseOnce();
+          }
+        },
+        abort: async (reason) => {
+          try {
+            await writer.abort(reason);
+          } finally {
+            releaseOnce();
+          }
+        },
+      });
+    } catch (e) {
+      release();
+      throw e;
+    }
   }
 
   async writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void> {

@@ -6,6 +6,7 @@ import { useProjectStore } from './project.store';
 
 import { createMediaCacheFsModule } from '~/stores/media/media-cache-fs';
 import { createMediaWorkerModule } from '~/stores/media/media-worker';
+import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 interface VideoColorSpaceInit {
@@ -76,6 +77,26 @@ export const useMediaStore = defineStore('media', () => {
 
   const pendingRequests = new Map<string, Promise<MediaMetadata | null>>();
   const pendingPeakWrites = new Map<string, Promise<void>>();
+
+  function shouldQueueCacheAccess(): boolean {
+    return workspaceStore.workspaceProviderId !== 'tauri';
+  }
+
+  async function runCacheFileAccess<T>(
+    kind: 'metadata' | 'waveform',
+    fileName: string,
+    task: () => Promise<T>,
+  ): Promise<T> {
+    if (!shouldQueueCacheAccess()) {
+      return await task();
+    }
+
+    const projectId = projectStore.currentProjectId ?? 'no-project';
+    return await runQueuedFileAccess({
+      key: `opfs-media-cache:${projectId}:${kind}:${fileName}`,
+      task,
+    });
+  }
 
   function resetMediaState() {
     mediaMetadata.value = {};
@@ -169,9 +190,11 @@ export const useMediaStore = defineStore('media', () => {
 
     if (!options?.forceRefresh && metaDir) {
       try {
-        const cacheHandle = await metaDir.getFileHandle(cacheFileName);
-        const cacheFile = await cacheHandle.getFile();
-        const text = await cacheFile.text();
+        const text = await runCacheFileAccess('metadata', cacheFileName, async () => {
+          const cacheHandle = await metaDir.getFileHandle(cacheFileName);
+          const cacheFile = await cacheHandle.getFile();
+          return await cacheFile.text();
+        });
         const parsed = JSON.parse(text) as MediaMetadata;
         if (parsed.source.size === file.size && parsed.source.lastModified === file.lastModified) {
           const mediaType = getMediaTypeFromFilename(projectRelativePath);
@@ -203,9 +226,11 @@ export const useMediaStore = defineStore('media', () => {
         const waveformsDir = await fsModule.ensureWaveformsDir();
         if (waveformsDir) {
           try {
-            const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
-            const peaksFile = await peaksHandle.getFile();
-            const peaksText = await peaksFile.text();
+            const peaksText = await runCacheFileAccess('waveform', cacheFileName, async () => {
+              const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
+              const peaksFile = await peaksHandle.getFile();
+              return await peaksFile.text();
+            });
             const peaksData = JSON.parse(peaksText) as number[][];
             parsedMeta.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
           } catch {
@@ -225,8 +250,10 @@ export const useMediaStore = defineStore('media', () => {
       try {
         const waveformsDir = await fsModule.ensureWaveformsDir();
         if (waveformsDir) {
-          await waveformsDir.removeEntry(cacheFileName).catch(() => {
-            // No previous peaks file — ok
+          await runCacheFileAccess('waveform', cacheFileName, async () => {
+            await waveformsDir.removeEntry(cacheFileName).catch(() => {
+              // No previous peaks file — ok
+            });
           });
         }
       } catch {
@@ -239,16 +266,21 @@ export const useMediaStore = defineStore('media', () => {
         mediaMetadata.value[cacheKey] = meta;
 
         if (metaDir) {
-          const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (
-            cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-          ).createWritable();
-          // We don't want to save large peaks array inside main metadata json
-          const metaToSave = { ...meta };
-          delete metaToSave.audioPeaks;
+          await runCacheFileAccess('metadata', cacheFileName, async () => {
+            const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
+            const writable = await (
+              cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
+            ).createWritable();
+            // We don't want to save large peaks array inside main metadata json
+            const metaToSave = { ...meta };
+            delete metaToSave.audioPeaks;
 
-          await writable.write(JSON.stringify(metaToSave, null, 2));
-          await writable.close();
+            try {
+              await writable.write(JSON.stringify(metaToSave, null, 2));
+            } finally {
+              await writable.close();
+            }
+          });
         }
 
         return meta;
@@ -270,12 +302,17 @@ export const useMediaStore = defineStore('media', () => {
 
       if (metaDir) {
         try {
-          const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (
-            cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-          ).createWritable();
-          await writable.write(JSON.stringify(errorMeta, null, 2));
-          await writable.close();
+          await runCacheFileAccess('metadata', cacheFileName, async () => {
+            const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
+            const writable = await (
+              cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
+            ).createWritable();
+            try {
+              await writable.write(JSON.stringify(errorMeta, null, 2));
+            } finally {
+              await writable.close();
+            }
+          });
         } catch {
           // Ignore OPFS write error
         }
@@ -306,15 +343,17 @@ export const useMediaStore = defineStore('media', () => {
         try {
           const waveformsDir = await fsModule.ensureWaveformsDir();
           if (!waveformsDir) return;
-          const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
-          const writable = await (
-            peaksHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-          ).createWritable();
-          try {
-            await writable.write(JSON.stringify(peaksAsJson));
-          } finally {
-            await writable.close();
-          }
+          await runCacheFileAccess('waveform', cacheFileName, async () => {
+            const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
+            const writable = await (
+              peaksHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
+            ).createWritable();
+            try {
+              await writable.write(JSON.stringify(peaksAsJson));
+            } finally {
+              await writable.close();
+            }
+          });
         } catch (e) {
           console.warn('Failed to write peaks', e);
         }
@@ -346,7 +385,30 @@ export const useMediaStore = defineStore('media', () => {
     Reflect.deleteProperty(missingPaths.value, projectRelativePath);
     Reflect.deleteProperty(metadataLoadFailed.value, projectRelativePath);
     Reflect.deleteProperty(metadataLoading.value, projectRelativePath);
-    await fsModule.removeCacheFiles(projectRelativePath);
+
+    const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
+
+    try {
+      const metaDir = await fsModule.ensureFilesMetaDir();
+      if (metaDir) {
+        await runCacheFileAccess('metadata', cacheFileName, async () => {
+          await metaDir.removeEntry(cacheFileName);
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const waveformsDir = await fsModule.ensureWaveformsDir();
+      if (waveformsDir) {
+        await runCacheFileAccess('waveform', cacheFileName, async () => {
+          await waveformsDir.removeEntry(cacheFileName);
+        });
+      }
+    } catch {
+      // ignore
+    }
   }
 
   return {
