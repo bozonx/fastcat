@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
+
+const uTextareaRef = ref<ComponentPublicInstance | null>(null);
+const containerRef = computed(() => uTextareaRef.value?.$el as HTMLElement | null);
+useBlurOnPointerDownOutside(containerRef);
+
 interface UiTextareaProps {
   modelValue: string;
   placeholder?: string;
@@ -34,6 +40,7 @@ const emit = defineEmits<{
 
 <template>
   <UTextarea
+    ref="uTextareaRef"
     :model-value="props.modelValue"
     :placeholder="placeholder"
     :disabled="disabled"

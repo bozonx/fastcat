@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
+
 const modelValue = defineModel<string>({ default: '' });
+
+const uInputRef = ref<ComponentPublicInstance | null>(null);
+const containerRef = computed(() => uInputRef.value?.$el as HTMLElement | null);
+useBlurOnPointerDownOutside(containerRef);
 
 withDefaults(
   defineProps<{
@@ -19,6 +25,7 @@ const { t } = useI18n();
 
 <template>
   <UInput
+    ref="uInputRef"
     v-model="modelValue"
     data-primary-focus="true"
     :placeholder="placeholder ?? t('common.search')"

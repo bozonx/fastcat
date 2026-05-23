@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
 
 interface UiTextInputProps {
   modelValue: string;
@@ -36,8 +37,11 @@ const emit = defineEmits<{
 
 const uInputRef = ref<InstanceType<typeof UInput> | null>(null);
 
+const containerRef = computed(() => uInputRef.value?.$el as HTMLElement | null);
+useBlurOnPointerDownOutside(containerRef);
+
 const inputElement = computed<HTMLInputElement | null>(() => {
-  const el = uInputRef.value?.$el as HTMLElement | undefined;
+  const el = containerRef.value;
   return el?.querySelector('input') ?? null;
 });
 
