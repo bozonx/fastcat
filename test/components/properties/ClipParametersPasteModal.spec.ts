@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { ref, nextTick } from 'vue';
+import { flushPromises } from '@vue/test-utils';
+import { ref } from 'vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import type { ClipParameterGroupOption } from '~/utils/timeline/clip-parameters';
 
@@ -33,7 +34,7 @@ describe('ClipParametersPasteModal', () => {
       },
     });
 
-    await nextTick();
+    await flushPromises();
     expect(document.body.textContent).toContain('fastcat.clip.parameters.groups.transform');
     expect(document.body.textContent).toContain('fastcat.clip.parameters.groups.opacity');
     expect(document.body.textContent).toContain('fastcat.clip.parameters.groups.speed');
@@ -108,7 +109,7 @@ describe('ClipParametersPasteModal', () => {
       },
     });
 
-    await nextTick();
+    await flushPromises();
     expect(document.body.textContent).toContain('fastcat.clip.parameters.noApplicableGroups');
   });
 });
