@@ -13,6 +13,10 @@ const workspaceStoreMock = reactive({
   projectsHandle: { getDirectoryHandle: vi.fn() } as any,
 });
 
+const { mockGetFile } = vi.hoisted(() => ({
+  mockGetFile: vi.fn(),
+}));
+
 vi.mock('~/stores/project.store', () => ({
   useProjectStore: vi.fn(() => projectStoreMock),
 }));
@@ -22,7 +26,7 @@ vi.mock('~/stores/workspace.store', () => ({
 }));
 
 vi.mock('~/composables/useVfs', () => ({
-  useVfs: vi.fn(() => null),
+  useVfs: vi.fn(() => ({ getFile: mockGetFile })),
 }));
 
 vi.mock('~/timeline/otio-serializer', () => ({
@@ -36,6 +40,22 @@ vi.mock('~/timeline/id', () => ({
 vi.mock('~/utils/timeline-media-usage', () => ({
   computeMediaUsageByTimelineDocs: vi.fn(() => ({ mediaPathToTimelines: {} })),
 }));
+
+function createMockFileEntry(name: string) {
+  return { name, kind: 'file' };
+}
+
+function createMockDirEntry(name: string, children: any[] = []) {
+  return {
+    name,
+    kind: 'directory',
+    values: async function* () {
+      for (const child of children) {
+        yield child;
+      }
+    },
+  };
+}
 
 describe('TimelineMediaUsageStore', () => {
   beforeEach(() => {
@@ -68,5 +88,35 @@ describe('TimelineMediaUsageStore', () => {
     const refs = store.mediaPathToTimelines['video/a.mp4'];
     expect(refs).toHaveLength(1);
     expect(refs[0].timelineName).toBe('Live');
+  });
+
+  it('skips .fastcat directory when scanning timelines', async () => {
+    const projectDir = createMockDirEntry('test-project', [
+      createMockFileEntry('timeline1.otio'),
+      createMockDirEntry('.fastcat', [
+        createMockDirEntry('autosave', [createMockFileEntry('timeline1.otio')]),
+      ]),
+      createMockDirEntry('subfolder', [createMockFileEntry('timeline2.otio')]),
+    ]);
+
+    workspaceStoreMock.projectsHandle = {
+      getDirectoryHandle: vi.fn().mockResolvedValue(projectDir),
+    };
+
+    mockGetFile.mockImplementation((path: string) => {
+      if (path.endsWith('.otio')) {
+        return Promise.resolve({
+          text: () => Promise.resolve(JSON.stringify({ OTIO_SCHEMA: 'Timeline.1', name: path })),
+        } as unknown as File);
+      }
+      return Promise.resolve(null);
+    });
+
+    const store = useTimelineMediaUsageStore();
+    await store.refreshUsage();
+
+    expect(mockGetFile).toHaveBeenCalledWith('timeline1.otio');
+    expect(mockGetFile).toHaveBeenCalledWith('subfolder/timeline2.otio');
+    expect(mockGetFile).not.toHaveBeenCalledWith('.fastcat/autosave/timeline1.otio');
   });
 });

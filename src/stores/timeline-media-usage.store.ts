@@ -124,6 +124,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
         const fullPath = basePath ? `${basePath}/${handle.name}` : handle.name;
 
         if (handle.kind === 'directory') {
+          if (handle.name === '.fastcat') continue;
           await walk(handle as FileSystemDirectoryHandle, fullPath);
           continue;
         }

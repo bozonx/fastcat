@@ -341,6 +341,11 @@ export function useGeneralHotkeys(
         } else if (selected?.kind === 'marker') {
           timelineStore.removeMarker(selected.markerId);
           selectionStore.clearSelection();
+        } else if (selected?.kind === 'markers') {
+          for (const markerId of selected.markerIds) {
+            timelineStore.removeMarker(markerId);
+          }
+          selectionStore.clearSelection();
         } else {
           timelineStore.deleteFirstSelectedItem();
         }

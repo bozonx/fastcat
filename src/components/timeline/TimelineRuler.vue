@@ -143,7 +143,27 @@ function deleteMarker(markerId: string) {
 function selectMarker(markerId: string, e?: MouseEvent) {
   // Always stop propagation so the ruler's own click/pointerdown actions are not triggered
   e?.stopPropagation();
+
+  if (e?.shiftKey) {
+    const currentIds = getSelectedMarkerIds();
+    if (currentIds.includes(markerId)) {
+      const next = currentIds.filter((id) => id !== markerId);
+      selectionStore.selectTimelineMarkers(next);
+    } else {
+      selectionStore.selectTimelineMarkers([...currentIds, markerId]);
+    }
+    return;
+  }
+
   selectionStore.selectTimelineMarker(markerId);
+}
+
+function getSelectedMarkerIds(): string[] {
+  const entity = selectionStore.selectedEntity;
+  if (!entity || entity.source !== 'timeline') return [];
+  if (entity.kind === 'marker') return [entity.markerId];
+  if (entity.kind === 'markers') return entity.markerIds;
+  return [];
 }
 
 function seekToMarker(markerId: string, e?: MouseEvent, part?: 'left' | 'right') {
@@ -191,6 +211,7 @@ const {
   fps,
   selectMarker,
   updateMarker: timelineStore.updateMarker,
+  getSelectedMarkerIds,
   computeSnapTargets,
   snapThresholdPx: computed(() => snapThresholdPx.value),
   isSnappingEnabled,
@@ -288,11 +309,7 @@ const isSelectionRangeSelected = computed(
 );
 
 function isMarkerSelected(markerId: string) {
-  return (
-    selectionStore.selectedEntity?.source === 'timeline' &&
-    selectionStore.selectedEntity?.kind === 'marker' &&
-    selectionStore.selectedEntity.markerId === markerId
-  );
+  return selectionStore.isMarkerSelected(markerId);
 }
 
 const mobileScrubActive = ref(false);

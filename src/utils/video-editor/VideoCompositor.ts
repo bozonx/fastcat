@@ -552,7 +552,7 @@ export class VideoCompositor {
     for (const rendererPreference of rendererPreferences) {
       const app = new Application();
       try {
-        await app.init({
+        const initPromise = app.init({
           width,
           height,
           canvas: this.canvas as import('pixi.js').ICanvas,
@@ -560,6 +560,19 @@ export class VideoCompositor {
           preference: rendererPreference,
           clearBeforeRender: true,
         });
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          const timeoutMs = 5000;
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Pixi ${rendererPreference} renderer init timed out after ${timeoutMs}ms`,
+                ),
+              ),
+            timeoutMs,
+          );
+        });
+        await Promise.race([initPromise, timeoutPromise]);
         this.app = app;
         initError = null;
         break;

@@ -27,9 +27,31 @@ const sortedMarkers = computed(() => {
   return [...markers.value].sort((a, b) => a.timeUs - b.timeUs);
 });
 
-function handleMarkerClick(marker: { id: string; timeUs: number }) {
+function handleMarkerClick(marker: { id: string; timeUs: number }, event: MouseEvent) {
   timelineStore.setCurrentTimeUs(marker.timeUs);
+
+  if (event.shiftKey) {
+    const currentIds = selectionStore.selectedEntity?.source === 'timeline' &&
+      selectionStore.selectedEntity.kind === 'markers'
+      ? selectionStore.selectedEntity.markerIds
+      : selectionStore.selectedEntity?.source === 'timeline' &&
+          selectionStore.selectedEntity.kind === 'marker'
+        ? [selectionStore.selectedEntity.markerId]
+        : [];
+
+    if (currentIds.includes(marker.id)) {
+      selectionStore.selectTimelineMarkers(currentIds.filter((id) => id !== marker.id));
+    } else {
+      selectionStore.selectTimelineMarkers([...currentIds, marker.id]);
+    }
+    return;
+  }
+
   selectionStore.selectTimelineMarker(marker.id);
+}
+
+function isMarkerSelected(markerId: string): boolean {
+  return selectionStore.isMarkerSelected(markerId);
 }
 </script>
 
@@ -54,12 +76,9 @@ function handleMarkerClick(marker: { id: string; timeUs: number }) {
             :key="marker.id"
             class="group hover:bg-ui-bg-muted/50 cursor-pointer transition-colors"
             :class="{
-              'bg-primary-500/10':
-                selectionStore.selectedEntity?.source === 'timeline' &&
-                selectionStore.selectedEntity.kind === 'marker' &&
-                selectionStore.selectedEntity.markerId === marker.id,
+              'bg-primary-500/10': isMarkerSelected(marker.id),
             }"
-            @click="handleMarkerClick(marker)"
+            @click="handleMarkerClick(marker, $event)"
           >
             <td class="px-3 py-1.5 w-24 align-middle">
               <MarkerThumbnail :marker-id="marker.id" :time-us="marker.timeUs" />

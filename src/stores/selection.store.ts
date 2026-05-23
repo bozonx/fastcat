@@ -63,6 +63,12 @@ export interface SelectedTimelineMarker extends SelectedEntityBase {
   markerId: string;
 }
 
+export interface SelectedTimelineMarkers extends SelectedEntityBase {
+  source: 'timeline';
+  kind: 'markers';
+  markerIds: string[];
+}
+
 export interface SelectedTimelineSelectionRange extends SelectedEntityBase {
   source: 'timeline';
   kind: 'selection-range';
@@ -107,6 +113,7 @@ export type SelectedEntity =
   | SelectedTimelineTrack
   | SelectedTimelineTransition
   | SelectedTimelineMarker
+  | SelectedTimelineMarkers
   | SelectedTimelineSelectionRange
   | SelectedTimelineProperties
   | SelectedFsEntry
@@ -184,6 +191,28 @@ export const useSelectionStore = defineStore('selection', () => {
       kind: 'marker',
       markerId,
     };
+  }
+
+  function selectTimelineMarkers(markerIds: string[]) {
+    if (markerIds.length === 0) {
+      clearSelection();
+    } else if (markerIds.length === 1 && markerIds[0]) {
+      selectTimelineMarker(markerIds[0]);
+    } else {
+      selectedEntity.value = {
+        source: 'timeline',
+        kind: 'markers',
+        markerIds,
+      };
+    }
+  }
+
+  function isMarkerSelected(markerId: string): boolean {
+    const entity = selectedEntity.value;
+    if (!entity || entity.source !== 'timeline') return false;
+    if (entity.kind === 'marker') return entity.markerId === markerId;
+    if (entity.kind === 'markers') return entity.markerIds.includes(markerId);
+    return false;
   }
 
   function selectTimelineSelectionRange() {
@@ -329,6 +358,8 @@ export const useSelectionStore = defineStore('selection', () => {
     selectTimelineTrack,
     selectTimelineTransition,
     selectTimelineMarker,
+    selectTimelineMarkers,
+    isMarkerSelected,
     selectTimelineSelectionRange,
     selectFsEntry,
     selectFsEntryWithUiUpdate,
