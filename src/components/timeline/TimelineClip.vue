@@ -42,6 +42,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
+import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
 
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
@@ -339,6 +340,39 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
   emitSelectItem: (e, itemId) => emit('selectItem', e, itemId),
   didStartDrag,
   longPressTriggered,
+});
+
+const effectiveSourceRange = computed(() => {
+  const preview = props.trimPreview;
+  if (preview && preview.itemId === props.item.id && clipItem.value) {
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    const hasFixedSourceDuration =
+      (clipItem.value.clipType === 'media' && !clipItem.value.isImage) ||
+      clipItem.value.clipType === 'timeline';
+
+    const { sourceRange } = computeTrimGeometry({
+      edge: preview.edge,
+      deltaUs: preview.deltaUs,
+      speed: clipItem.value.speed,
+      fps,
+      quantizeToFrames: false,
+      timelineRange: clipItem.value.timelineRange,
+      sourceRange: clipItem.value.sourceRange,
+      sourceDurationUs: clipItem.value.sourceDurationUs,
+      hasFixedSourceDuration,
+    });
+    return sourceRange;
+  }
+  return clipItem.value?.sourceRange ?? { startUs: 0, durationUs: 0 };
+});
+
+const effectiveClipItem = computed(() => {
+  if (!clipItem.value) return null;
+  return {
+    ...clipItem.value,
+    timelineRange: effectiveTimelineRange.value,
+    sourceRange: effectiveSourceRange.value,
+  };
 });
 
 function onClipClick(e: MouseEvent) {
@@ -782,21 +816,21 @@ function handleTransitionCreate(
           :style="{ zIndex: 'var(--z-clip-content)' }"
         >
           <TimelineClipThumbnails
-            v-if="clipItem && isVideo(item, track) && clipItem.showThumbnails !== false"
-            :item="clipItem"
+            v-if="effectiveClipItem && isVideo(item, track) && effectiveClipItem.showThumbnails !== false"
+            :item="effectiveClipItem"
             :width="clipWidthPx"
             :scroll-left="scrollLeft ?? 0"
             :viewport-width="viewportWidth ?? 0"
-            :clip-start-px="timeUsToPx(item.timelineRange.startUs, timelineStore.timelineZoom)"
+            :clip-start-px="timeUsToPx(effectiveTimelineRange.startUs, timelineStore.timelineZoom)"
           />
           <TimelineAudioWaveform
             v-if="
-              clipItem &&
-              clipItem.showWaveform !== false &&
+              effectiveClipItem &&
+              effectiveClipItem.showWaveform !== false &&
               (isAudio(item, track) ||
                 (isVideo(item, track) && clipHasAudio(item, track, mediaStore.mediaMetadata)))
             "
-            :item="clipItem"
+            :item="effectiveClipItem"
           />
 
           <div
@@ -894,23 +928,31 @@ function handleTransitionCreate(
           v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
         >
           <div
-            class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim"
+            class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-start pl-0.5"
             :style="{ zIndex: 'var(--z-clip-trim)' }"
             :class="[
               isMobile ? 'w-4' : 'w-4',
-              isTransitionCreateHandleActive ? '' : 'hover:bg-white/30',
+              isTransitionCreateHandleActive ? '' : 'hover:bg-white/15',
             ]"
             @pointerdown="onTrimHandlePointerDown($event, 'start')"
-          />
+          >
+            <div
+              class="w-[3px] h-6 rounded-full bg-white opacity-0 group-hover/trim:opacity-75 transition-opacity duration-150"
+            />
+          </div>
           <div
-            class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim"
+            class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-end pr-0.5"
             :style="{ zIndex: 'var(--z-clip-trim)' }"
             :class="[
               isMobile ? 'w-4' : 'w-4',
-              isTransitionCreateHandleActive ? '' : 'hover:bg-white/30',
+              isTransitionCreateHandleActive ? '' : 'hover:bg-white/15',
             ]"
             @pointerdown="onTrimHandlePointerDown($event, 'end')"
-          />
+          >
+            <div
+              class="w-[3px] h-6 rounded-full bg-white opacity-0 group-hover/trim:opacity-75 transition-opacity duration-150"
+            />
+          </div>
         </template>
       </template>
     </div>

@@ -26,11 +26,19 @@ export function createTimelineHydrationModule(
             const durationS = Number(meta.duration);
             const durationUs =
               Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+            const hasVideo = Boolean(meta.video);
+            const hasAudio = Boolean(meta.audio);
+            const isImageLike = !hasVideo && !hasAudio;
 
             const needsSourceDurationPatch = durationUs > 0 && it.sourceDurationUs !== durationUs;
-            if (needsSourceDurationPatch) {
+            const needsIsImagePatch = it.isImage !== isImageLike;
+            if (needsSourceDurationPatch || needsIsImagePatch) {
               trackChanged = true;
-              return { ...it, sourceDurationUs: durationUs };
+              return {
+                ...it,
+                ...(needsSourceDurationPatch ? { sourceDurationUs: durationUs } : {}),
+                ...(needsIsImagePatch ? { isImage: isImageLike } : {}),
+              };
             }
           }
         }
@@ -87,7 +95,7 @@ export function createTimelineHydrationModule(
       Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
 
     const needsSourceDurationPatch = durationUs > 0 && item.sourceDurationUs !== durationUs;
-    const needsIsImagePatch = isImageLike && !item.isImage;
+    const needsIsImagePatch = item.isImage !== isImageLike;
 
     if (!needsSourceDurationPatch && !needsIsImagePatch) return doc;
 
@@ -100,7 +108,7 @@ export function createTimelineHydrationModule(
               if (it.id === item.id && it.kind === 'clip' && it.clipType === 'media') {
                 const patch: { sourceDurationUs?: number; isImage?: boolean } = {};
                 if (needsSourceDurationPatch) patch.sourceDurationUs = durationUs;
-                if (needsIsImagePatch) patch.isImage = true;
+                if (needsIsImagePatch) patch.isImage = isImageLike;
                 return { ...it, ...patch };
               }
               return it;
