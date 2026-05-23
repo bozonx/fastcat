@@ -189,7 +189,7 @@ const {
   updateAudio: (patch) => {
     const doc = timelineStore.timelineDoc;
     if (!doc) return;
-    const cmds: unknown[] = [];
+    const cmds: import('~/timeline/commands').TimelineCommand[] = [];
     for (const { trackId, itemId } of props.items) {
       const track = doc.tracks.find((t) => t.id === trackId);
       const clip = track?.items.find((it) => it.id === itemId);
@@ -224,7 +224,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
   const current =
     edge === 'in' ? firstVideoClip.value.transitionIn : firstVideoClip.value.transitionOut;
 
-  const cmds: unknown[] = [];
+  const cmds: import('~/timeline/commands').TimelineCommand[] = [];
 
   if (current) {
     for (const { trackId, itemId } of props.items) {
@@ -281,7 +281,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
 function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: number) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: unknown[] = [];
+  const cmds: import('~/timeline/commands').TimelineCommand[] = [];
   const durationUs = Math.round(durationSec * 1_000_000);
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
@@ -307,7 +307,7 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
 function handleBatchUpdateTransitionType(edge: 'in' | 'out', type: string) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: unknown[] = [];
+  const cmds: import('~/timeline/commands').TimelineCommand[] = [];
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
     if (!track || track.kind === 'audio') continue;
@@ -370,7 +370,7 @@ function handleBatchTransform(next: ClipTransform) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
 
-  const cmds: unknown[] = [];
+  const cmds: import('~/timeline/commands').TimelineCommand[] = [];
 
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
@@ -424,7 +424,7 @@ function handleBatchTransform(next: ClipTransform) {
 function handleBatchUpdateSpeed(speed: number) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: unknown[] = [];
+  const cmds: import('~/timeline/commands').TimelineCommand[] = [];
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
     if (!track || track.kind !== 'video') continue;
@@ -445,7 +445,7 @@ function handleBatchUpdateSourceOrientation(sourceOrientation: ClipSourceOrienta
 function handleBatchToggleReversed() {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
-  const cmds: unknown[] = [];
+  const cmds: import('~/timeline/commands').TimelineCommand[] = [];
   for (const { trackId, itemId } of props.items) {
     const track = doc.tracks.find((t) => t.id === trackId);
     if (!track || track.kind !== 'video') continue;
@@ -513,7 +513,7 @@ const commonActions = computed(() => {
     });
   }
 
-  return actions;
+  return actions as import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[];
 });
 
 const otherActions = computed(() => {
@@ -597,7 +597,7 @@ const otherActions = computed(() => {
     });
   }
 
-  return result;
+  return result as import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[];
 });
 </script>
 

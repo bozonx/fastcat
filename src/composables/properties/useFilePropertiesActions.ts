@@ -14,7 +14,7 @@ export interface PrimaryEntryAction extends EntryAction {
 
 export interface SecondaryEntryAction extends EntryAction {
   label: string;
-  color?: string;
+  color?: 'neutral' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | 'danger';
 }
 
 interface UseFilePropertiesActionsOptions {

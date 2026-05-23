@@ -28,8 +28,8 @@ export function useBlurOnPointerDownOutside(containerRef: Ref<HTMLElement | null
     }
   }
 
-  window.addEventListener('pointerdown', handler, true);
+  document.addEventListener('pointerdown', handler, true);
   onUnmounted(() => {
-    window.removeEventListener('pointerdown', handler, true);
+    document.removeEventListener('pointerdown', handler, true);
   });
 }

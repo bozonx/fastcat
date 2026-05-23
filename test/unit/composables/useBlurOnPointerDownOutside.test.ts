@@ -14,12 +14,8 @@ describe('useBlurOnPointerDownOutside', () => {
 
     const TestComp = defineComponent({
       setup() {
-        containerRef.value = document.createElement('div');
-        const el = document.createElement(tag);
-        containerRef.value.appendChild(el);
-        document.body.appendChild(containerRef.value);
         useBlurOnPointerDownOutside(containerRef);
-        return () => h('div', { ref: containerRef });
+        return () => h('div', { ref: containerRef }, [h(tag)]);
       },
     });
 
@@ -55,13 +51,11 @@ describe('useBlurOnPointerDownOutside', () => {
   });
 
   it('does not blur when pointerdown occurs inside the container', () => {
-    const { containerRef, focusable } = mountTestComponent();
+    const { focusable } = mountTestComponent();
     focusable.focus();
     expect(document.activeElement).toBe(focusable);
 
-    const inside = document.createElement('span');
-    containerRef.value!.appendChild(inside);
-    inside.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    focusable.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
 
     expect(document.activeElement).toBe(focusable);
   });
@@ -77,4 +71,5 @@ describe('useBlurOnPointerDownOutside', () => {
     expect(document.activeElement).not.toBe(focusable);
     outside.remove();
   });
+
 });

@@ -388,19 +388,13 @@ export function useGeneralHotkeys(
     },
 
     'general.monitorVolumeUp': (e) => {
-      if (focusStore.effectiveFocus === 'monitor') {
-        startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
-        return true;
-      }
-      return false;
+      startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
+      return true;
     },
 
     'general.monitorVolumeDown': (e) => {
-      if (focusStore.effectiveFocus === 'monitor') {
-        startMonitorVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
-        return true;
-      }
-      return false;
+      startMonitorVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
+      return true;
     },
 
     'general.navigateBack': () => {

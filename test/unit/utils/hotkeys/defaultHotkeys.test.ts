@@ -38,4 +38,26 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.delete']).toContain('Delete');
     expect(DEFAULT_HOTKEYS.bindings['general.delete']).toContain('X');
   });
+
+  it('has binding for general.mute as Control+Q', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.mute']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.mute']).toContain('Control+Q');
+  });
+
+  it('has binding for general.addMarker as M', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.addMarker']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.addMarker']).toContain('M');
+  });
+
+  it('has bindings for general.monitorVolumeUp including Control+R', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toContain('ArrowUp');
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toContain('Control+R');
+  });
+
+  it('has bindings for general.monitorVolumeDown including Control+E', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toContain('ArrowDown');
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toContain('Control+E');
+  });
 });
