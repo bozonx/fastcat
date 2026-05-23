@@ -3,7 +3,6 @@ import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { useProjectStore } from '~/stores/project.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
@@ -83,7 +82,6 @@ interface UseFileConversionActionsProps {
 
 export function useFileConversionActions(props: UseFileConversionActionsProps) {
   const projectStore = useProjectStore();
-  const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
   const uiStore = useUiStore();
   const backgroundTasksStore = useBackgroundTasksStore();

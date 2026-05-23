@@ -14,6 +14,22 @@ import {
 } from '~/utils/mouse';
 import { normalizeTokenValue, normalizeUrlValue } from './shared';
 
+export function normalizeUiSettings(raw: unknown): FastCatUserSettings['ui'] {
+  const input = (raw as Record<string, unknown>)?.['ui'] as Record<string, unknown> | undefined;
+  return {
+    interfaceScale:
+      typeof input?.interfaceScale === 'number'
+        ? input.interfaceScale
+        : typeof input?.baseFontSize === 'number'
+          ? input.baseFontSize
+          : DEFAULT_USER_SETTINGS.ui.interfaceScale,
+    clipThumbnailMode: z
+      .enum(['standard', 'edges', 'none'])
+      .catch(DEFAULT_USER_SETTINGS.ui.clipThumbnailMode)
+      .parse(input?.clipThumbnailMode),
+  };
+}
+
 export function normalizeOpenLastProjectOnStart(raw: unknown): boolean {
   return z
     .boolean()

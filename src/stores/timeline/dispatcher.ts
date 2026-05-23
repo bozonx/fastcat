@@ -87,7 +87,7 @@ export function createTimelineDispatcherModule(
       }
       if (error instanceof Error && error.message === 'Marker already exists at this time') {
         console.warn('Timeline command rejected: marker already exists at this time', cmd);
-        deps.notifyWarning?.('videoEditor.timeline.markerAlreadyExists');
+        deps.notifyWarning?.('fastcat.timeline.markerAlreadyExists');
         return [];
       }
       console.warn('Failed to apply timeline command:', error, cmd);
@@ -154,7 +154,7 @@ export function createTimelineDispatcherModule(
           console.warn('Timeline batch command rejected: item overlaps with another item', cmd);
         } else if (markerExists) {
           console.warn('Timeline batch command rejected: marker already exists at this time', cmd);
-          deps.notifyWarning?.('videoEditor.timeline.markerAlreadyExists');
+          deps.notifyWarning?.('fastcat.timeline.markerAlreadyExists');
         } else {
           console.warn('Failed to apply timeline command in batch:', error, cmd);
         }

@@ -10,6 +10,9 @@ const props = withDefaults(
     selectWithoutExtension?: boolean;
   }>(),
   {
+    title: '',
+    initialName: '',
+    currentName: '',
     selectWithoutExtension: true,
   },
 );

@@ -49,13 +49,7 @@ import ClipMetadata from './ClipMetadata.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
 import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
-import {
-  buildClipParametersPatch,
-  createClipParametersSnapshot,
-  getApplicableClipParameterGroups,
-  hasClipParametersPatch,
-  type ClipParameterGroup,
-} from '~/utils/timeline/clip-parameters';
+import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 
 defineOptions({ inheritAttrs: false });
 
@@ -360,12 +354,8 @@ const focusStore = useFocusStore();
 const fileManagerStore = useFileManagerStore();
 const projectTabsStore = useProjectTabsStore();
 const fileManager = useFileManager();
-const isPasteParametersModalOpen = ref(false);
-const selectedParameterGroups = ref<ClipParameterGroup[]>([]);
-const pasteParametersTarget = ref<{
-  clip: NonNullable<typeof clipItem.value>;
-  trackKind: TrackKind;
-} | null>(null);
+const safeClip = computed(() => clipItem.value!);
+const safeTrackKind = computed<TrackKind>(() => props.track.kind);
 
 const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertiesActions({
   clip: computed(() => clipItem.value!),
@@ -437,67 +427,21 @@ const isUnsupported = computed(() => {
   return false;
 });
 
-const clipParameterGroupOptions = computed(() => {
-  const payload = clipboardStore.clipboardPayload;
-  const target = pasteParametersTarget.value;
-  if (!payload || payload.source !== 'clipParameters' || !target) return [];
-  return getApplicableClipParameterGroups({
-    snapshot: payload.snapshot,
-    targetClip: target.clip,
-    targetTrackKind: target.trackKind,
-  });
+const {
+  isPasteParametersModalOpen,
+  selectedParameterGroups,
+  clipParameterGroupOptions,
+  copyClipParameters,
+  openPasteClipParameters,
+  applyClipParameters,
+} = useClipParametersClipboard({
+  clip: safeClip,
+  trackKind: safeTrackKind,
+  updateClipProperties: (trackId, itemId, props) =>
+    timelineStore.updateClipProperties(trackId, itemId, props),
+  updateClipTransition: (trackId, itemId, patch) =>
+    timelineStore.updateClipTransition(trackId, itemId, patch),
 });
-
-function copyClipParameters(clip: NonNullable<typeof clipItem.value>, trackKind: TrackKind) {
-  clipboardStore.setClipboardPayload({
-    source: 'clipParameters',
-    snapshot: createClipParametersSnapshot({ clip, trackKind }),
-  });
-}
-
-function openPasteClipParameters(clip: NonNullable<typeof clipItem.value>, trackKind: TrackKind) {
-  const payload = clipboardStore.clipboardPayload;
-  if (!payload || payload.source !== 'clipParameters') return;
-  const groups = getApplicableClipParameterGroups({
-    snapshot: payload.snapshot,
-    targetClip: clip,
-    targetTrackKind: trackKind,
-  });
-  if (groups.length === 0) return;
-  pasteParametersTarget.value = { clip, trackKind };
-  isPasteParametersModalOpen.value = true;
-}
-
-function applyClipParameters(groups: ClipParameterGroup[]) {
-  const payload = clipboardStore.clipboardPayload;
-  const target = pasteParametersTarget.value;
-  if (!payload || payload.source !== 'clipParameters' || !target) return;
-
-  const patch = buildClipParametersPatch({
-    snapshot: payload.snapshot,
-    targetClip: target.clip,
-    targetTrackKind: target.trackKind,
-    groups,
-  });
-  if (!hasClipParametersPatch(patch)) return;
-
-  if (Object.keys(patch.properties).length > 0) {
-    timelineStore.updateClipProperties(target.clip.trackId, target.clip.id, patch.properties);
-  }
-  if (
-    Object.prototype.hasOwnProperty.call(patch, 'transitionIn') ||
-    Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
-  ) {
-    timelineStore.updateClipTransition(target.clip.trackId, target.clip.id, {
-      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionIn')
-        ? { transitionIn: patch.transitionIn }
-        : {}),
-      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
-        ? { transitionOut: patch.transitionOut }
-        : {}),
-    });
-  }
-}
 
 const { contextMenuItems } = useClipContextMenu({
   track: computed(() => props.track),

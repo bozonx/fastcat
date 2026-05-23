@@ -185,6 +185,7 @@ export interface FastCatUserSettings {
   deleteWithoutConfirmation: boolean;
   ui: {
     interfaceScale: number;
+    clipThumbnailMode: 'standard' | 'edges' | 'none';
   };
   history: {
     maxEntries: number;
@@ -342,6 +343,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   deleteWithoutConfirmation: false,
   ui: {
     interfaceScale: 14,
+    clipThumbnailMode: 'standard',
   },
   history: {
     maxEntries: 100,
