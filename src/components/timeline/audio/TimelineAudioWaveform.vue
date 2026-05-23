@@ -333,14 +333,6 @@ const extractPeaks = async () => {
   } catch (err) {
     console.error('Failed to extract audio peaks:', err);
   } finally {
-    try {
-      (engine as AudioEngine | null)?.destroy();
-    } catch {
-      // ignore
-    }
-    if (activeExtractionEngine === engine) {
-      activeExtractionEngine = null;
-    }
     isExtracting.value = false;
   }
 };

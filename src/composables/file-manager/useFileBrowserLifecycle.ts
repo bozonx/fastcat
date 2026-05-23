@@ -91,6 +91,13 @@ export function useFileBrowserLifecycle(params: UseFileBrowserLifecycleParams) {
     await params.loadFolderContent();
   }
 
+  const refreshOnFocus = useThrottleFn(() => {
+    if (params.isRemoteMode.value) return;
+    void params.loadFolderContent();
+  }, 1000);
+
+  useEventListener(window, 'focus', refreshOnFocus);
+
   onUnmounted(() => {
     params.clipboardStore.unregisterFileManagerVfs(params.instanceId);
   });
