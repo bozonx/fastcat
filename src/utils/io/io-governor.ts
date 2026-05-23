@@ -51,3 +51,57 @@ export function withFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
 export function getFileWriteQueueStats(): { size: number; pending: number } {
   return { size: writeQueue.size, pending: writeQueue.pending };
 }
+
+/**
+ * Whether a write failure looks like transient renderer resource exhaustion
+ * rather than a real I/O fault. The governor caps writes on the main thread, but
+ * it cannot see the preview/export worker's video reads draining the *same*
+ * datapipe pool, so a write can still occasionally fail with
+ * `InvalidStateError: Failed to create datapipe`. Such failures clear on their
+ * own once the pool drains, so they are worth retrying.
+ */
+export function isTransientWriteError(error: unknown): boolean {
+  const candidate = error as { name?: unknown; message?: unknown } | null | undefined;
+  const name = typeof candidate?.name === 'string' ? candidate.name : '';
+  const message = typeof candidate?.message === 'string' ? candidate.message : '';
+  return name === 'InvalidStateError' || /datapipe|failed to create/i.test(message);
+}
+
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => {
+    if (typeof window === 'undefined') {
+      setTimeout(resolve, ms);
+    } else {
+      window.setTimeout(resolve, ms);
+    }
+  });
+
+/**
+ * Run a governed file write that retries transient datapipe exhaustion with
+ * exponential backoff. Use this for writes whose loss matters (project config,
+ * timeline document). `task` must be idempotent — it is re-run from scratch on
+ * each attempt — which holds for the full-file overwrites used across the app.
+ */
+export async function runResilientFileWrite<T>(
+  task: () => Promise<T>,
+  options?: { attempts?: number; baseDelayMs?: number },
+): Promise<T> {
+  const attempts = Math.max(1, Math.round(options?.attempts ?? 4));
+  const baseDelayMs = Math.max(1, Math.round(options?.baseDelayMs ?? 150));
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await withFileWriteSlot(task);
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts - 1 || !isTransientWriteError(error)) {
+        throw error;
+      }
+      // Backoff between attempts; releasing the slot first lets the worker's
+      // reads drain so the next attempt can grab a datapipe.
+      await delay(baseDelayMs * 2 ** attempt);
+    }
+  }
+  throw lastError;
+}

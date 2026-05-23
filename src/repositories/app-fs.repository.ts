@@ -1,4 +1,4 @@
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { runResilientFileWrite } from '~/utils/io/io-governor';
 
 export type FileHandleLike = Pick<FileSystemFileHandle, 'getFile' | 'createWritable'>;
 
@@ -71,7 +71,7 @@ export function createAppFsRepository(): AppFsRepository {
     if (input.data === undefined) {
       throw new Error('Refusing to write undefined to JSON file');
     }
-    await withFileWriteSlot(async () => {
+    await runResilientFileWrite(async () => {
       const writable = await input.handle.createWritable();
       try {
         await writeTextToWritableFileStream(writable, `${JSON.stringify(input.data, null, 2)}\n`);
