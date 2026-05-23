@@ -170,7 +170,7 @@ describe('VideoCompositor render optimization', () => {
     ]);
   });
 
-  it('does not mark text clip dirty when style values are unchanged', () => {
+  it('does not mark text clip dirty when style values are unchanged', async () => {
     const compositor = new VideoCompositor() as any;
     const clipStyle = {
       width: 320,
@@ -218,7 +218,7 @@ describe('VideoCompositor render optimization', () => {
     compositor.trackById = new Map();
     compositor.tracks = [];
     compositor.transitionFilters = new Map();
-    compositor.updateTimelineLayout([
+    await compositor.updateTimelineLayout([
       {
         kind: 'clip',
         id: 'text-1',
@@ -234,7 +234,7 @@ describe('VideoCompositor render optimization', () => {
     expect(clip.textDirty).toBe(false);
   });
 
-  it('reapplies sprite layout immediately when transform changes in updateTimelineLayout', () => {
+  it('reapplies sprite layout immediately when transform changes in updateTimelineLayout', async () => {
     const compositor = new VideoCompositor() as any;
     compositor.width = 1920;
     compositor.height = 1080;
@@ -276,7 +276,7 @@ describe('VideoCompositor render optimization', () => {
       },
     ];
 
-    compositor.updateTimelineLayout([
+    await compositor.updateTimelineLayout([
       {
         kind: 'clip',
         id: 'text-1',
@@ -438,7 +438,7 @@ describe('VideoCompositor render optimization', () => {
     expect(inactiveAdjustment.sprite.texture).not.toEqual({ stale: true });
   });
 
-  it('normalizes background color when updating solid clips in updateTimelineLayout', () => {
+  it('normalizes background color when updating solid clips in updateTimelineLayout', async () => {
     const compositor = new VideoCompositor() as any;
     compositor.width = 1920;
     compositor.height = 1080;
@@ -477,7 +477,7 @@ describe('VideoCompositor render optimization', () => {
 
     compositor.clips = [clip];
 
-    compositor.updateTimelineLayout([
+    await compositor.updateTimelineLayout([
       {
         kind: 'clip',
         id: 'bg1',

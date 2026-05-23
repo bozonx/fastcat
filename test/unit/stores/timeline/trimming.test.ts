@@ -56,8 +56,8 @@ function createMockDeps() {
       rippleDeleteRange: vi.fn().mockReturnValue(null),
       rippleTrimRight: vi.fn().mockResolvedValue(null),
       rippleTrimLeft: vi.fn().mockResolvedValue(null),
-      advancedRippleTrimRight: vi.fn().mockResolvedValue(undefined),
-      advancedRippleTrimLeft: vi.fn().mockResolvedValue(undefined),
+      advancedRippleTrimRight: vi.fn().mockResolvedValue(null),
+      advancedRippleTrimLeft: vi.fn().mockResolvedValue(null),
     },
   };
 }
@@ -110,6 +110,24 @@ describe('TimelineTrimmingModule', () => {
     deps.editService.rippleTrimRight.mockResolvedValue(123_456);
     const mod = createTimelineTrimmingModule(deps);
     await mod.rippleTrimRight();
+    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
+  });
+
+  it('advancedRippleTrimRight moves playhead to pixel-aligned collapse point', async () => {
+    const deps = createMockDeps();
+    deps.editService.advancedRippleTrimRight.mockResolvedValue(123_456);
+    const mod = createTimelineTrimmingModule(deps);
+    await mod.advancedRippleTrimRight();
+    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
+  });
+
+  it('advancedRippleTrimLeft moves playhead to pixel-aligned collapse point', async () => {
+    const deps = createMockDeps();
+    deps.editService.advancedRippleTrimLeft.mockResolvedValue(123_456);
+    const mod = createTimelineTrimmingModule(deps);
+    await mod.advancedRippleTrimLeft();
     expect(deps.currentTime.value).toBe(100_000);
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });

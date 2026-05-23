@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, computed } from 'vue';
 import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
 
 const uTextareaRef = ref<ComponentPublicInstance | null>(null);

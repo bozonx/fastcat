@@ -346,6 +346,19 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         edge: 'start',
         deltaUs,
       },
+      // A start-edge trim parks the clip at the cut (its left edge moves to
+      // cutUs). Slide the surviving portion back to the original left edge so it
+      // fills the removed span instead of leaving a gap — the left counterpart
+      // of rippleTrimRight, where trimming the end keeps the start fixed. Links
+      // are honored so locked linked audio (already retimed by the trim above)
+      // follows the clip.
+      {
+        type: 'move_item',
+        trackId: target.trackId,
+        itemId: target.itemId,
+        startUs,
+        quantizeToFrames: true,
+      },
     ];
 
     const moves: Array<{
@@ -388,232 +401,80 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     return startUs;
   }
 
-  async function advancedRippleTrimRight() {
+  async function advancedRippleTrimRight(): Promise<number | null> {
     const doc = deps.getDoc();
-    if (!doc) return;
+    if (!doc) return null;
 
-    if (deps.getSelectedItemIds().length !== 1) return;
+    if (deps.getSelectedItemIds().length !== 1) return null;
     const target = deps.getHotkeyTargetClip();
-    if (!target) return;
+    if (!target) return null;
 
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-    if (track.locked || item.locked) return;
+    if (!track || !item || item.kind !== 'clip') return null;
+    if (track.locked || item.locked) return null;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    if (!(cutUs > startUs && cutUs < endUs)) return null;
 
     const deltaUs = endUs - cutUs;
-    if (deltaUs <= 0) return;
+    if (deltaUs <= 0) return null;
 
-    const batchOptions: ApplyTimelineOptions = {
-      saveMode: 'none',
-      labelKey: 'videoEditor.fileManager.history.entries.trimClip',
-    };
-
-    const buildSplitCmds = (atUs: number, fromDoc: TimelineDocument): TimelineCommand[] => {
-      const cmds: TimelineCommand[] = [];
-      for (const t of fromDoc.tracks) {
-        if (t.locked) continue;
-        for (const it of t.items) {
-          if (it.kind !== 'clip') continue;
-          if (it.locked) continue;
-          const itStart = it.timelineRange.startUs;
-          const itEnd = itStart + it.timelineRange.durationUs;
-          if (atUs > itStart && atUs < itEnd) {
-            cmds.push({ type: 'split_item', trackId: t.id, itemId: it.id, atUs });
-          }
-        }
-      }
-      return cmds;
-    };
-
-    // Phase 1: split at endUs then cutUs (separate batches — split changes IDs).
-    const splitEnd = buildSplitCmds(endUs, doc);
-    if (splitEnd.length > 0) deps.batchApplyTimeline(splitEnd, batchOptions);
-    const afterSplitEnd = deps.getDoc();
-    if (!afterSplitEnd) return;
-
-    const splitCut = buildSplitCmds(cutUs, afterSplitEnd);
-    if (splitCut.length > 0) deps.batchApplyTimeline(splitCut, batchOptions);
-
-    // Phase 2: delete clips whose center lies inside [cutUs, endUs].
-    const updated = deps.getDoc();
-    if (!updated) return;
-
-    const deleteCmds: TimelineCommand[] = [];
-    for (const t of updated.tracks) {
-      if (t.locked) continue;
-      const toDelete: string[] = [];
-      for (const it of t.items) {
-        if (it.kind !== 'clip') continue;
-        if (it.locked) continue;
-        const itStart = it.timelineRange.startUs;
-        const center = itStart + it.timelineRange.durationUs / 2;
-
-        if (center >= cutUs && center <= endUs) {
-          toDelete.push(it.id);
-        }
-      }
-
-      if (toDelete.length > 0) {
-        deleteCmds.push({ type: 'delete_items', trackId: t.id, itemIds: toDelete });
-      }
-    }
-    if (deleteCmds.length > 0) deps.batchApplyTimeline(deleteCmds, batchOptions);
-
-    // Phase 3: shift surviving clips left across every track.
-    const afterDelete = deps.getDoc();
-    if (!afterDelete) return;
-
-    const EPSILON = 10;
-    const moves: Array<{
-      fromTrackId: string;
-      toTrackId: string;
-      itemId: string;
-      startUs: number;
-    }> = [];
-    for (const t of afterDelete.tracks) {
-      if (t.locked) continue;
-      for (const it of t.items) {
-        if (it.kind !== 'clip') continue;
-        if (it.locked) continue;
-        const clipStart = it.timelineRange.startUs;
-        if (clipStart < endUs - EPSILON) continue;
-        moves.push({
-          fromTrackId: t.id,
-          toTrackId: t.id,
-          itemId: it.id,
-          startUs: Math.max(0, clipStart - deltaUs),
-        });
-      }
-    }
-    if (moves.length > 0) {
-      deps.batchApplyTimeline(
-        [{ type: 'move_items', moves, quantizeToFrames: false, ignoreLinks: true }],
-        batchOptions,
-      );
-    }
-
+    const collapseUs = rippleDeleteRange(
+      {
+        trackIds: doc.tracks.map((item) => item.id),
+        startUs: cutUs,
+        endUs,
+      },
+      {
+        saveMode: 'none',
+        labelKey: 'videoEditor.fileManager.history.entries.trimClip',
+      },
+    );
+    if (collapseUs === null) return null;
     await deps.requestTimelineSave({ immediate: true });
+    return collapseUs;
   }
 
-  async function advancedRippleTrimLeft() {
+  async function advancedRippleTrimLeft(): Promise<number | null> {
     const doc = deps.getDoc();
-    if (!doc) return;
+    if (!doc) return null;
 
-    if (deps.getSelectedItemIds().length !== 1) return;
+    if (deps.getSelectedItemIds().length !== 1) return null;
     const target = deps.getHotkeyTargetClip();
-    if (!target) return;
+    if (!target) return null;
 
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-    if (track.locked || item.locked) return;
+    if (!track || !item || item.kind !== 'clip') return null;
+    if (track.locked || item.locked) return null;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    if (!(cutUs > startUs && cutUs < endUs)) return null;
 
     const deltaUs = cutUs - startUs;
-    if (deltaUs <= 0) return;
+    if (deltaUs <= 0) return null;
 
-    const batchOptions: ApplyTimelineOptions = {
-      saveMode: 'none',
-      labelKey: 'videoEditor.fileManager.history.entries.trimClip',
-    };
-
-    const buildSplitCmds = (atUs: number, fromDoc: TimelineDocument): TimelineCommand[] => {
-      const cmds: TimelineCommand[] = [];
-      for (const t of fromDoc.tracks) {
-        if (t.locked) continue;
-        for (const it of t.items) {
-          if (it.kind !== 'clip') continue;
-          if (it.locked) continue;
-          const itStart = it.timelineRange.startUs;
-          const itEnd = itStart + it.timelineRange.durationUs;
-          if (atUs > itStart && atUs < itEnd) {
-            cmds.push({ type: 'split_item', trackId: t.id, itemId: it.id, atUs });
-          }
-        }
-      }
-      return cmds;
-    };
-
-    // Phase 1: split at cutUs then startUs (separate batches — split changes IDs).
-    const splitCut = buildSplitCmds(cutUs, doc);
-    if (splitCut.length > 0) deps.batchApplyTimeline(splitCut, batchOptions);
-    const afterSplitCut = deps.getDoc();
-    if (!afterSplitCut) return;
-
-    const splitStart = buildSplitCmds(startUs, afterSplitCut);
-    if (splitStart.length > 0) deps.batchApplyTimeline(splitStart, batchOptions);
-
-    // Phase 2: delete clips whose center lies inside [startUs, cutUs].
-    const updated = deps.getDoc();
-    if (!updated) return;
-
-    const deleteCmds: TimelineCommand[] = [];
-    for (const t of updated.tracks) {
-      if (t.locked) continue;
-      const toDelete: string[] = [];
-      for (const it of t.items) {
-        if (it.kind !== 'clip') continue;
-        if (it.locked) continue;
-        const itStart = it.timelineRange.startUs;
-        const center = itStart + it.timelineRange.durationUs / 2;
-
-        if (center >= startUs && center <= cutUs) {
-          toDelete.push(it.id);
-        }
-      }
-
-      if (toDelete.length > 0) {
-        deleteCmds.push({ type: 'delete_items', trackId: t.id, itemIds: toDelete });
-      }
-    }
-    if (deleteCmds.length > 0) deps.batchApplyTimeline(deleteCmds, batchOptions);
-
-    // Phase 3: shift surviving clips left across every track.
-    const afterDelete = deps.getDoc();
-    if (!afterDelete) return;
-
-    const EPSILON = 10;
-    const moves: Array<{
-      fromTrackId: string;
-      toTrackId: string;
-      itemId: string;
-      startUs: number;
-    }> = [];
-    for (const t of afterDelete.tracks) {
-      if (t.locked) continue;
-      for (const it of t.items) {
-        if (it.kind !== 'clip') continue;
-        if (it.locked) continue;
-        const clipStart = it.timelineRange.startUs;
-        if (clipStart < cutUs - EPSILON) continue;
-        moves.push({
-          fromTrackId: t.id,
-          toTrackId: t.id,
-          itemId: it.id,
-          startUs: Math.max(0, clipStart - deltaUs),
-        });
-      }
-    }
-    if (moves.length > 0) {
-      deps.batchApplyTimeline(
-        [{ type: 'move_items', moves, quantizeToFrames: false, ignoreLinks: true }],
-        batchOptions,
-      );
-    }
-
+    const collapseUs = rippleDeleteRange(
+      {
+        trackIds: doc.tracks.map((item) => item.id),
+        startUs,
+        endUs: cutUs,
+      },
+      {
+        saveMode: 'none',
+        labelKey: 'videoEditor.fileManager.history.entries.trimClip',
+      },
+    );
+    if (collapseUs === null) return null;
     await deps.requestTimelineSave({ immediate: true });
+    return collapseUs;
   }
 
   return {

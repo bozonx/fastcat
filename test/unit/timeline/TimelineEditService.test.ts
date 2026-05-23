@@ -185,4 +185,49 @@ describe('TimelineEditService', () => {
       ]);
     });
   });
+
+  describe('rippleTrimLeft', () => {
+    it('trims start, slides the remnant back, and ripples subsequent clips', async () => {
+      deps.getHotkeyTargetClip.mockReturnValue({ trackId: 'v1', itemId: 'c1' });
+      deps.getCurrentTime.mockReturnValue(5_000_000); // Trim C1 start to 5s (current start is 0)
+
+      await service.rippleTrimLeft();
+
+      expect(deps.applyTimeline).not.toHaveBeenCalled();
+      expect(deps.batchApplyTimeline).toHaveBeenCalledTimes(1);
+
+      const batch = deps.batchApplyTimeline.mock.calls[0][0] as TimelineCommand[];
+
+      // First command: trim c1 start edge by +5s.
+      expect(batch[0]).toEqual(
+        expect.objectContaining({
+          type: 'trim_item',
+          itemId: 'c1',
+          edge: 'start',
+          deltaUs: 5_000_000,
+        }),
+      );
+
+      // Second command: slide the trimmed clip back to its original left edge (0)
+      // so the surviving portion fills the cut instead of leaving a gap. This is
+      // the regression guard — without it the remnant stays parked at the cut.
+      expect(batch[1]).toEqual(
+        expect.objectContaining({
+          type: 'move_item',
+          itemId: 'c1',
+          startUs: 0,
+        }),
+      );
+
+      // Subsequent clips collapse into a single move_items command.
+      // c2 is at 10s, deltaUs is 5s → c2 moves to 5s.
+      const moveItemsCmd = batch.find((cmd: TimelineCommand) => cmd.type === 'move_items') as
+        | Extract<TimelineCommand, { type: 'move_items' }>
+        | undefined;
+      expect(moveItemsCmd).toBeDefined();
+      expect(moveItemsCmd!.moves).toEqual([
+        expect.objectContaining({ itemId: 'c2', startUs: 5_000_000 }),
+      ]);
+    });
+  });
 });

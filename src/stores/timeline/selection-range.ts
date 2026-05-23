@@ -182,53 +182,6 @@ export function createTimelineSelectionRangeModule(
       options,
     );
 
-    const deltaUs = range.endUs - range.startUs;
-    if (deltaUs > 0) {
-      const markers = markerService.getMarkers();
-      for (const marker of markers) {
-        const markerStartUs = marker.timeUs;
-        const markerEndUs = marker.timeUs + Math.max(0, marker.durationUs ?? 0);
-
-        // Marker ends before the deleted range
-        if (markerEndUs <= range.startUs) continue;
-
-        // Marker starts after the deleted range (shift left)
-        if (markerStartUs >= range.endUs) {
-          markerService.updateMarker(
-            marker.id,
-            {
-              timeUs: Math.max(0, markerStartUs - deltaUs),
-            },
-            options,
-          );
-          continue;
-        }
-
-        // Marker intersects the deleted range
-        if (marker.durationUs !== undefined) {
-          // It's a zone marker: reduce duration or remove if fully inside
-          const newStartUs = Math.min(markerStartUs, range.startUs);
-          const newEndUs = Math.max(markerEndUs, range.endUs) - deltaUs;
-
-          if (newEndUs <= newStartUs) {
-            markerService.removeMarker(marker.id, options);
-          } else {
-            markerService.updateMarker(
-              marker.id,
-              {
-                timeUs: newStartUs,
-                durationUs: newEndUs - newStartUs,
-              },
-              options,
-            );
-          }
-        } else {
-          // Regular point marker inside the deleted range: remove it
-          markerService.removeMarker(marker.id, options);
-        }
-      }
-    }
-
     removeSelectionRange(options);
   }
 

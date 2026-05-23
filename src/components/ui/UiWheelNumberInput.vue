@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
 import { useWheelSupport } from '../../composables/useWheelSupport';
 import { useWorkspaceStore } from '../../stores/workspace.store';
 import { isLayer1Active } from '../../utils/hotkeys/layerUtils';
@@ -50,6 +51,8 @@ const value = computed({
 
 const wrapperRef = ref<HTMLElement | null>(null);
 const workspaceStore = useWorkspaceStore();
+
+useBlurOnPointerDownOutside(wrapperRef);
 
 useWheelSupport({
   wrapperRef,

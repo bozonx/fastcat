@@ -35,7 +35,7 @@ const emit = defineEmits<{
   (e: 'focus' | 'blur', event: FocusEvent): void;
 }>();
 
-const uInputRef = ref<InstanceType<typeof UInput> | null>(null);
+const uInputRef = ref<any>(null);
 
 const containerRef = computed(() => uInputRef.value?.$el as HTMLElement | null);
 useBlurOnPointerDownOutside(containerRef);

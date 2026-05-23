@@ -374,6 +374,9 @@ export interface TimelineClipActionPayload {
   trackId: string;
   itemId: string;
   videoItemId?: string;
+  edge?: 'in' | 'out' | 'end';
+  deltaUs?: number;
+  quantizeToFrames?: boolean;
 }
 
 export interface TimelineOpenAutoMontageModalPayload {

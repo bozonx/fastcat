@@ -41,6 +41,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
   const markerDragStartUs = ref(0);
   const markerDragStartDurationUs = ref(0);
   const draggedMarkerPatch = ref<{ timeUs?: number; durationUs?: number } | null>(null);
+  const suppressNextRulerClick = ref(false);
   const workspaceStore = useWorkspaceStore();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
@@ -104,6 +105,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       const dy = Math.abs(event.clientY - markerDragStartY.value);
       if (dx > DRAG_DEADZONE_PX || dy > DRAG_DEADZONE_PX) {
         hasDragged.value = true;
+        suppressNextRulerClick.value = true;
       }
     }
 
@@ -161,6 +163,12 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     draggedMarkerPatch.value = { durationUs: newDurationUs };
   }
 
+  function resetSuppressNextRulerClick() {
+    window.setTimeout(() => {
+      suppressNextRulerClick.value = false;
+    }, 0);
+  }
+
   function onWindowPointerUp() {
     if (draggedMarkerId.value && draggedMarkerPatch.value) {
       const marker = options.markers.value.find((item) => item.id === draggedMarkerId.value);
@@ -175,6 +183,7 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     draggedMarkerId.value = null;
     draggedMarkerPatch.value = null;
     clearMarkerPointerListeners();
+    resetSuppressNextRulerClick();
   }
 
   function onWindowKeyDown(event: KeyboardEvent) {
@@ -237,5 +246,6 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
     hasDragged,
     onMarkerPointerDown,
     displayMarkers,
+    suppressNextRulerClick,
   };
 }

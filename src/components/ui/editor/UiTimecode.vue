@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 
@@ -29,6 +30,7 @@ const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 const isFocused = ref(false);
 const localValue = ref('');
 const wrapperRef = ref<HTMLElement | null>(null);
+useBlurOnPointerDownOutside(wrapperRef);
 
 let lastCommittedValue = props.modelValue;
 

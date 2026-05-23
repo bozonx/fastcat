@@ -238,8 +238,8 @@ const customItems = computed<PresetItem[]>(() =>
           const trackId = timelineStore.resolveMobileTargetTrackId('video');
           if (props.type === 'text') {
             timelineStore.addTextClipAtPlayhead({
-              text: p.params?.text,
-              style: p.params?.style,
+              text: p.params?.text as string | undefined,
+              style: p.params?.style as any,
               pseudo: true,
               trackId,
             });

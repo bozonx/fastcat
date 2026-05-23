@@ -33,6 +33,7 @@ const props = defineProps<{
     startUs: number;
     durationUs: number;
     edge: 'start' | 'end';
+    deltaUs: number;
   } | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;

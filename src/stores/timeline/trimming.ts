@@ -40,8 +40,8 @@ export interface TimelineTrimmingDeps {
     ) => number | null;
     rippleTrimRight: () => Promise<number | null>;
     rippleTrimLeft: () => Promise<number | null>;
-    advancedRippleTrimRight: () => Promise<void>;
-    advancedRippleTrimLeft: () => Promise<void>;
+    advancedRippleTrimRight: () => Promise<number | null>;
+    advancedRippleTrimLeft: () => Promise<number | null>;
   };
 }
 
@@ -231,11 +231,11 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
   }
 
   async function advancedRippleTrimRight() {
-    await deps.editService.advancedRippleTrimRight();
+    movePlayheadToCollapse(await deps.editService.advancedRippleTrimRight());
   }
 
   async function advancedRippleTrimLeft() {
-    await deps.editService.advancedRippleTrimLeft();
+    movePlayheadToCollapse(await deps.editService.advancedRippleTrimLeft());
   }
 
   function jumpToPrevClipBoundary(options?: { currentTrackOnly?: boolean }) {

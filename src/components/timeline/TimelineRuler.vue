@@ -179,26 +179,31 @@ function selectSelectionRange(e?: MouseEvent) {
 
 const isSnappingEnabled = computed(() => timelineSettingsStore.toolbarSnapMode !== 'no_snap');
 
-const { onMarkerPointerDown, displayMarkers, draggedMarkerId, hasDragged } =
-  useTimelineRulerMarkerDrag({
-    markers,
-    zoom,
-    fps,
-    selectMarker,
-    updateMarker: timelineStore.updateMarker,
-    computeSnapTargets,
-    snapThresholdPx: computed(() => snapThresholdPx.value),
-    isSnappingEnabled,
-    scrollLeft,
-    getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
-  });
+const {
+  onMarkerPointerDown,
+  displayMarkers,
+  draggedMarkerId,
+  hasDragged,
+  suppressNextRulerClick: suppressNextRulerClickMarker,
+} = useTimelineRulerMarkerDrag({
+  markers,
+  zoom,
+  fps,
+  selectMarker,
+  updateMarker: timelineStore.updateMarker,
+  computeSnapTargets,
+  snapThresholdPx: computed(() => snapThresholdPx.value),
+  isSnappingEnabled,
+  scrollLeft,
+  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
+});
 
 const {
   isDraggingSelectionRange,
   isCreatingSelectionRange: _isCreatingSelectionRange,
   startSelectionRangeDrag,
   startSelectionRangeCreate,
-  suppressNextRulerClick,
+  suppressNextRulerClick: suppressNextRulerClickSelection,
   displaySelectionRange,
 } = useTimelineRulerSelectionDrag({
   selectionRange,
@@ -240,6 +245,14 @@ const {
   timelineStore,
   selectMarker,
   deleteMarker,
+});
+
+const suppressNextRulerClick = computed({
+  get: () => suppressNextRulerClickMarker.value || suppressNextRulerClickSelection.value,
+  set: (val) => {
+    suppressNextRulerClickMarker.value = val;
+    suppressNextRulerClickSelection.value = val;
+  },
 });
 
 const {
