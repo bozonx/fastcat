@@ -137,7 +137,7 @@ export function useGeneralHotkeys(
     volumeHoldRunner.startHold({
       keyCode: params.keyCode,
       action: () => {
-        uiStore.monitorVolume = Math.min(1, Math.max(0, uiStore.monitorVolume + params.step));
+        uiStore.monitorVolume = Math.min(2, Math.max(0, uiStore.monitorVolume + params.step));
       },
     });
   }

@@ -46,6 +46,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     safeDurationUs,
     clipSourceSignature,
     clipLayoutSignature,
+    clipContentSignature,
+    activeLayoutSignature,
     audioClipSourceSignature,
     audioClipLayoutSignature,
   } = monitorTimeline;
@@ -62,6 +64,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let buildRequestId = 0;
   let lastBuiltSourceSignature = 0;
   let lastBuiltLayoutSignature = 0;
+  let lastBuiltContentSignature = 0;
+  let lastActiveLayoutSignature = 0;
   let isUnmounted = false;
   let forceRecreateCompositorNextBuild = false;
   let currentTimeProvider: (() => number) | null = null;
@@ -164,7 +168,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         audioDurationUs: preparedTimeline.audioDurationUs,
       });
       lastBuiltLayoutSignature = clipLayoutSignature.value;
-      scheduleRender(getRenderTimeForLayoutUpdate());
+      lastBuiltContentSignature = clipContentSignature.value;
+
+      const currentActiveLayoutSignature = activeLayoutSignature.value;
+      const shouldScheduleRender = currentActiveLayoutSignature !== lastActiveLayoutSignature;
+      lastActiveLayoutSignature = currentActiveLayoutSignature;
+
+      if (shouldScheduleRender) {
+        scheduleRender(getRenderTimeForLayoutUpdate());
+      }
     } catch (error) {
       console.error('[Monitor] Failed to update timeline layout', error);
       toast.add({
@@ -196,13 +208,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   const scheduleLayoutUpdate = (
     layoutClips: WorkerTimelineClip[],
     audioClips: WorkerTimelineClip[],
-    workerTimelinePayload?: Ref<WorkerVideoPayloadItem[]>,
+    debounceMs?: number,
   ) => {
-    queues.scheduleLayoutUpdate({
-      layoutClips,
-      layoutAudioClips: audioClips,
-      workerTimelinePayload,
-    });
+    queues.scheduleLayoutUpdate(
+      {
+        layoutClips,
+        layoutAudioClips: audioClips,
+      },
+      debounceMs,
+    );
   };
 
   const scheduleRender = compositorRuntime.scheduleRender;
@@ -316,6 +330,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       lastBuiltSourceSignature = clipSourceSignature.value;
       lastBuiltLayoutSignature = clipLayoutSignature.value;
+      lastBuiltContentSignature = clipContentSignature.value;
+      lastActiveLayoutSignature = activeLayoutSignature.value;
 
       // Keep store duration at least as large as current value to avoid clamping
       // when disabled clips are excluded from the worker payload.
@@ -368,6 +384,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     getIsCompositorReady: compositorRuntime.isReady,
     getLastBuiltSourceSignature: () => lastBuiltSourceSignature,
     getLastBuiltLayoutSignature: () => lastBuiltLayoutSignature,
+    getLastBuiltContentSignature: () => lastBuiltContentSignature,
     getLayoutUpdateFromQueue: () => layoutUpdateFromQueue,
     getTimelineMasterGain: () => timelineStore.masterGain,
     getTimelineAudioMuted: () => timelineStore.audioMuted,
@@ -390,7 +407,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     updateCanvasDisplaySize,
     scheduleBuild,
     scheduleRender,
-    scheduleLayoutUpdate: scheduleLayoutUpdate as any,
+    clipContentSignature,
+    activeLayoutSignature,
+    clipLayoutDebounceMs: 200,
+    clipContentDebounceMs: 1000,
+    audioLayoutDebounceMs: LAYOUT_DEBOUNCE_MS,
+    scheduleLayoutUpdate,
     setAudioEngineMasterVolume: (volume) => {
       audioEngine.setMasterVolume(volume);
     },

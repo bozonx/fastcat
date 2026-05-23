@@ -14,6 +14,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   audioClipSourceSignature: Ref<number>;
   clipLayoutSignature: Ref<number>;
   clipContentSignature: Ref<number>;
+  activeLayoutSignature: Ref<number>;
   audioClipLayoutSignature: Ref<number>;
   clipLayoutDebounceMs: number;
   clipContentDebounceMs: number;
