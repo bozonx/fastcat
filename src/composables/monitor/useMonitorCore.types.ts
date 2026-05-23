@@ -14,6 +14,8 @@ export interface MonitorTimelineState {
   safeDurationUs: Ref<number>;
   clipSourceSignature: Ref<number>;
   clipLayoutSignature: Ref<number>;
+  clipContentSignature: Ref<number>;
+  activeLayoutSignature: Ref<number>;
   audioClipSourceSignature: Ref<number>;
   audioClipLayoutSignature: Ref<number>;
 }

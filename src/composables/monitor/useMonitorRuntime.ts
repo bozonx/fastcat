@@ -42,6 +42,8 @@ export function useMonitorRuntime() {
     safeDurationUs,
     clipSourceSignature,
     clipLayoutSignature,
+    clipContentSignature,
+    activeLayoutSignature,
     audioClipSourceSignature,
     audioClipLayoutSignature,
   } = useMonitorTimeline();

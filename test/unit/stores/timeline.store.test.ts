@@ -102,6 +102,7 @@ vi.mock('#app', () => ({
     $i18nService: { t: (key: string) => key },
     $vfs: mockVfs,
   }),
+  useRoute: () => ({ path: '/', fullPath: '/', query: {}, params: {}, hash: '' }),
 }));
 
 describe('TimelineStore', () => {

@@ -390,7 +390,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     updateCanvasDisplaySize,
     scheduleBuild,
     scheduleRender,
-    scheduleLayoutUpdate,
+    scheduleLayoutUpdate: scheduleLayoutUpdate as any,
     setAudioEngineMasterVolume: (volume) => {
       audioEngine.setMasterVolume(volume);
     },

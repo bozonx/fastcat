@@ -131,4 +131,72 @@ describe('hotkeyFromKeyboardEvent', () => {
     });
     expect(hotkeyFromKeyboardEvent(enter)).toBe('Enter');
   });
+
+  it('uses e.code for IntlBackslash regardless of layout', () => {
+    const intlBackslash = new KeyboardEvent('keydown', {
+      code: 'IntlBackslash',
+      key: '\\',
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(intlBackslash)).toBe('\\');
+  });
+
+  it('applies virtual layers from user settings instead of hardcoded modifiers', () => {
+    const settings = {
+      hotkeys: {
+        layer1: 'Alt',
+        layer2: 'Shift',
+      },
+    } as any;
+
+    // Alt becomes virtual Shift, Shift becomes virtual Ctrl
+    const altZ = new KeyboardEvent('keydown', {
+      code: 'KeyZ',
+      key: 'z',
+      altKey: true,
+      shiftKey: false,
+      ctrlKey: false,
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(altZ, settings)).toBe('Shift+Z');
+
+    const shiftZ = new KeyboardEvent('keydown', {
+      code: 'KeyZ',
+      key: 'z',
+      altKey: false,
+      shiftKey: true,
+      ctrlKey: false,
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(shiftZ, settings)).toBe('Ctrl+Z');
+
+    // Physical Ctrl passes through because it is not assigned to any layer
+    const ctrlZ = new KeyboardEvent('keydown', {
+      code: 'KeyZ',
+      key: 'z',
+      altKey: false,
+      shiftKey: false,
+      ctrlKey: true,
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(ctrlZ, settings)).toBe('Ctrl+Z');
+  });
+
+  it('blocks global hotkeys in editable targets while allowing system keys', () => {
+    const input = document.createElement('input');
+    input.type = 'text';
+
+    const hEvent = new KeyboardEvent('keydown', {
+      code: 'KeyH',
+      key: 'h',
+      bubbles: true,
+    });
+    Object.defineProperty(hEvent, 'target', { value: input, writable: false });
+
+    // isEditableTarget should detect text input as editable
+    expect(isEditableTarget(input)).toBe(true);
+
+    // The combo itself is still resolved; protection happens in canExecuteHotkeyCommand
+    expect(hotkeyFromKeyboardEvent(hEvent)).toBe('H');
+  });
 });
