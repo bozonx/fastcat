@@ -34,6 +34,38 @@ vi.mock('~/stores/project.store', () => ({
   useProjectStore: vi.fn(),
 }));
 
+vi.mock('~/utils/video-editor/worker-client', () => ({
+  getThumbnailWorkerClient: vi.fn(() => ({
+    client: {
+      extractVideoFrameBlobs: vi
+        .fn()
+        .mockResolvedValue([new Blob(['test'], { type: 'image/webp' })]),
+      cancelExport: vi.fn().mockResolvedValue(undefined),
+      releaseFrameExtractor: vi.fn().mockResolvedValue(undefined),
+    },
+  })),
+  setThumbnailHostApi: vi.fn(),
+}));
+
+vi.mock('~/utils/video-editor/createVideoCoreHostApi', () => ({
+  createVideoCoreHostApi: vi.fn().mockReturnValue({}),
+}));
+
+vi.mock('~/utils/media-task-queue', () => ({
+  addMediaTask: vi.fn((task: () => Promise<void>) => task()),
+  MEDIA_TASK_PRIORITIES: {
+    timelineThumbnail: 3,
+    timelineThumbnailLazy: 0,
+    fileThumbnail: 2,
+    proxy: 1,
+    conversionBackground: 1,
+  },
+}));
+
+vi.mock('~/utils/io/io-governor', () => ({
+  withFileWriteSlot: vi.fn((fn: () => Promise<void>) => fn()),
+}));
+
 // Mock URL.createObjectURL/revokeObjectURL
 global.URL.createObjectURL = vi.fn(() => 'blob:url');
 global.URL.revokeObjectURL = vi.fn();
@@ -170,6 +202,82 @@ describe('Thumbnail Generators', () => {
         ['url-8', 8],
       ]);
       expect(complete).toHaveBeenCalledOnce();
+    });
+
+    it('should merge requested times for the same task id', () => {
+      const generator = thumbnailGenerator as unknown as {
+        pendingRequestedTimes: Map<string, Set<number>>;
+        addTask: (task: {
+          id: string;
+          projectId: string;
+          projectRelativePath: string;
+          duration: number;
+          requestedTimesS?: number[];
+        }) => void;
+      };
+
+      generator.pendingRequestedTimes.clear();
+
+      generator.addTask({
+        id: 'merge-test',
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        duration: 20,
+        requestedTimesS: [0, 4, 8],
+      });
+
+      generator.addTask({
+        id: 'merge-test',
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        duration: 20,
+        requestedTimesS: [12, 16],
+      });
+
+      const pending = generator.pendingRequestedTimes.get('merge-test');
+      expect(pending).toBeDefined();
+      expect(Array.from(pending!).sort((a, b) => a - b)).toEqual([0, 4, 8, 12, 16]);
+    });
+
+    it('should cancelTask clear listeners, pending times and opfs checked times', () => {
+      const generator = thumbnailGenerator as unknown as {
+        listeners: Map<string, Map<string, unknown>>;
+        pendingRequestedTimes: Map<string, Set<number>>;
+        opfsCheckedTimes: Map<string, Set<number>>;
+        cancelTask: (id: string) => void;
+      };
+
+      generator.listeners.set('cancel-test', new Map([['k1', {}]]));
+      generator.pendingRequestedTimes.set('cancel-test', new Set([0, 4]));
+      generator.opfsCheckedTimes.set('cancel-test', new Set([0, 4, 8]));
+
+      generator.cancelTask('cancel-test');
+
+      expect(generator.listeners.has('cancel-test')).toBe(false);
+      expect(generator.pendingRequestedTimes.has('cancel-test')).toBe(false);
+      expect(generator.opfsCheckedTimes.has('cancel-test')).toBe(false);
+    });
+
+    it('should clearThumbnails remove listeners along with cache and pending state', async () => {
+      const generator = thumbnailGenerator as unknown as {
+        cache: Map<string, unknown>;
+        listeners: Map<string, Map<string, unknown>>;
+        pendingRequestedTimes: Map<string, Set<number>>;
+        opfsCheckedTimes: Map<string, Set<number>>;
+        clearThumbnails: (input: { projectId: string; hash: string }) => Promise<void>;
+      };
+
+      generator.cache.set('clear-test', new Map([[0, 'url-0']]));
+      generator.listeners.set('clear-test', new Map([['k1', {}]]));
+      generator.pendingRequestedTimes.set('clear-test', new Set([0, 4]));
+      generator.opfsCheckedTimes.set('clear-test', new Set([0, 4, 8]));
+
+      await generator.clearThumbnails({ projectId: 'p1', hash: 'clear-test' });
+
+      expect(generator.cache.has('clear-test')).toBe(false);
+      expect(generator.listeners.has('clear-test')).toBe(false);
+      expect(generator.pendingRequestedTimes.has('clear-test')).toBe(false);
+      expect(generator.opfsCheckedTimes.has('clear-test')).toBe(false);
     });
   });
 });

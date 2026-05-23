@@ -305,6 +305,17 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       const totalFrames = requestedTimes.length;
       let framesProcessed = requestedTimes.length - timesToCheck.length;
 
+      // Single-pass directory scan avoids expensive per-file getFileHandle calls
+      // that throw NotFoundError for every missing thumbnail.
+      const existingFiles = new Set<string>();
+      for await (const entry of (
+        hashDir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }
+      ).values()) {
+        if (entry.kind === 'file') {
+          existingFiles.add(entry.name);
+        }
+      }
+
       for (const time of timesToCheck) {
         if (this.isCancelled(task.id)) {
           this.opfsCheckedTimes.set(task.id, checked);
@@ -317,6 +328,9 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
           continue;
         }
         const fileName = `${key}.webp`;
+        if (!existingFiles.has(fileName)) {
+          continue;
+        }
         try {
           const fileHandle = await hashDir.getFileHandle(fileName);
           const file = await fileHandle.getFile();
@@ -492,6 +506,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       this.revokeCacheValue(cachedUrls);
       this.cache.delete(input.hash);
     }
+    this.listeners.delete(input.hash);
     this.pendingRequestedTimes.delete(input.hash);
     this.opfsCheckedTimes.delete(input.hash);
 

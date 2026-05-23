@@ -229,7 +229,7 @@ const {
   onGlobalPointerMove,
   onGlobalPointerUp,
   scheduleDragReapply,
-} = useTimelineInteraction(scrollEl, tracks, ref(true));
+} = useTimelineInteraction(scrollEl, tracks);
 
 const { updateEdgeScroll, stopEdgeScroll } = useMobileTimelineEdgeScroll(
   scrollEl,

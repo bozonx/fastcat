@@ -423,6 +423,12 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   onBeforeUnmount(() => {
     isUnmounted = true;
     revokeImageUrl();
+    if (clipHash.value) {
+      thumbnailGenerator.cancelTask(clipHash.value);
+    }
+    if (fileThumbnailHash.value) {
+      fileThumbnailGenerator.cancelTask(fileThumbnailHash.value);
+    }
   });
 
   watch(fileUrl, () => {

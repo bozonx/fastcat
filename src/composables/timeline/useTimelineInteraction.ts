@@ -28,7 +28,6 @@ export { BASE_PX_PER_SECOND, timeUsToPx, pxToTimeUs, pxToDeltaUs, computeAnchore
 export function useTimelineInteraction(
   scrollEl: Ref<HTMLElement | null>,
   tracks: ComputedRef<TimelineTrack[]>,
-  isExplicitMobile?: Ref<boolean>,
 ) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
@@ -50,7 +49,7 @@ export function useTimelineInteraction(
     onGlobalPointerUp: onPlayheadGlobalPointerUp,
   } = useTimelinePlayheadDrag(scrollEl);
 
-  const { selectItem } = useTimelineItemSelection(tracks, isExplicitMobile);
+  const { selectItem } = useTimelineItemSelection(tracks);
 
   const {
     draggingMode,

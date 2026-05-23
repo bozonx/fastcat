@@ -498,10 +498,7 @@ if (typeof self !== 'undefined')
     try {
       if (data.type === 'extract-peaks') {
         const peaks = await withGlobalDecodeSlot(() =>
-          extractPeaksFromSource(
-            data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0),
-            data.options,
-          ),
+          extractPeaksFromSource(data.blob ?? data.arrayBuffer ?? new ArrayBuffer(0), data.options),
         );
         response.ok = true;
         response.result = {

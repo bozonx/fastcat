@@ -9,10 +9,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
 
-export function useTimelineItemSelection(
-  tracks: ComputedRef<TimelineTrack[]>,
-  isMobile?: Ref<boolean>,
-) {
+export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const selectionStore = useSelectionStore();
