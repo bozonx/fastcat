@@ -59,7 +59,7 @@ function handleLoadTextPreset(presetId: string) {
   if (!preset) return;
 
   const p = preset.params;
-  if (p.style) emit('updateTextStyle', p.style);
+  if (p.style) emit('updateTextStyle', p.style as any);
 }
 
 function handleLoadShapePreset(presetId: string) {
@@ -67,11 +67,11 @@ function handleLoadShapePreset(presetId: string) {
   if (!preset) return;
 
   const p = preset.params;
-  if (p.shapeType) emit('updateShapeType', p.shapeType);
-  if (p.fillColor) emit('updateFillColor', p.fillColor);
-  if (p.strokeColor) emit('updateStrokeColor', p.strokeColor);
-  if (p.strokeWidth !== undefined) emit('updateStrokeWidth', p.strokeWidth);
-  if (p.shapeConfig) emit('updateShapeConfig', p.shapeConfig);
+  if (p.shapeType) emit('updateShapeType', p.shapeType as any);
+  if (p.fillColor) emit('updateFillColor', p.fillColor as any);
+  if (p.strokeColor) emit('updateStrokeColor', p.strokeColor as any);
+  if (p.strokeWidth !== undefined) emit('updateStrokeWidth', p.strokeWidth as any);
+  if (p.shapeConfig) emit('updateShapeConfig', p.shapeConfig as any);
 }
 
 function handleLoadHudPreset(presetId: string) {
@@ -131,7 +131,7 @@ function confirmSavePreset() {
 <template>
   <ClipBackgroundProperties
     v-if="props.clip.clipType === 'background'"
-    :clip="props.clip"
+    :clip="props.clip as any"
     @update-background-color="emit('updateBackgroundColor', $event)"
   />
 
