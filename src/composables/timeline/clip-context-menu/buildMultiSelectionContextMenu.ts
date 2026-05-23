@@ -1,4 +1,5 @@
 import type { TimelineCommand } from '~/timeline/commands';
+import type { TimelineClipItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { collectMultiSelectionState, isClipFreePosition } from './utils';
 

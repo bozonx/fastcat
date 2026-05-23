@@ -6,6 +6,12 @@ import { createDefaultUserSettings } from '~/utils/settings/helpers';
 
 function createFileHandleMock(input: { text: string }) {
   let text = input.text;
+  let bytes = new TextEncoder().encode(text);
+
+  function syncText() {
+    text = new TextDecoder().decode(bytes);
+  }
+
   return {
     async getFile() {
       return {
@@ -16,10 +22,29 @@ function createFileHandleMock(input: { text: string }) {
     },
     async createWritable() {
       return {
-        async write(data: string) {
-          text = data;
+        async write(data: string | { type: 'write'; position?: number; data: Uint8Array }) {
+          if (typeof data === 'string') {
+            bytes = new TextEncoder().encode(data);
+            syncText();
+            return;
+          }
+
+          const position = data.position ?? bytes.length;
+          const nextLength = Math.max(bytes.length, position + data.data.length);
+          const nextBytes = new Uint8Array(nextLength);
+          nextBytes.set(bytes);
+          nextBytes.set(data.data, position);
+          bytes = nextBytes;
+          syncText();
+        },
+        async truncate(size: number) {
+          bytes = bytes.slice(0, size);
+          syncText();
         },
         async close() {
+          // no-op
+        },
+        async abort() {
           // no-op
         },
       };

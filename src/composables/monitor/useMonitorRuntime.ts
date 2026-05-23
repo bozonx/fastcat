@@ -85,11 +85,11 @@ export function useMonitorRuntime() {
     },
     monitorTimeline: {
       videoItems,
-      workerTimelineClips,
-      workerAudioClips,
-      workerTimelinePayload,
-      rawWorkerTimelineClips,
-      rawWorkerAudioClips,
+      workerTimelineClips: workerTimelineClips as any,
+      workerAudioClips: workerAudioClips as any,
+      workerTimelinePayload: workerTimelinePayload as any,
+      rawWorkerTimelineClips: rawWorkerTimelineClips as any,
+      rawWorkerAudioClips: rawWorkerAudioClips as any,
       safeDurationUs,
       clipSourceSignature,
       clipLayoutSignature,
@@ -143,9 +143,9 @@ export function useMonitorRuntime() {
     isLoading,
     loadError,
     uiCurrentTimeUs,
-    workerTimelineClips,
-    rawWorkerTimelineClips,
-    workerTimelinePayload,
+    workerTimelineClips: workerTimelineClips as any,
+    rawWorkerTimelineClips: rawWorkerTimelineClips as any,
+    workerTimelinePayload: workerTimelinePayload as any,
   });
 
   watch(

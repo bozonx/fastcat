@@ -190,7 +190,7 @@ export function createTimelineDispatcherModule(
     // then push a single entry at the end via this helper. Flush any pending
     // debounced entry first so callers don't have to remember.
     deps.historyDebounce.flushPendingDebouncedHistory();
-    deps.historyStore.push('timeline', commandType, preState, labelKey);
+    (deps.historyStore as any).push('timeline', commandType, preState, labelKey);
   }
 
   function applyRestoredSnapshot(snapshot: TimelineDocument) {

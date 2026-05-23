@@ -155,7 +155,7 @@ export function useFileManagerPanelPendingActions({
       (uiStore as { pendingBloggerDogCreateSubgroup?: unknown }).pendingBloggerDogCreateSubgroup,
     (entry) => {
       if (!entry || !isFocusedOrSelected()) return;
-      handlePendingBloggerDogCreateSubgroup(entry);
+      handlePendingBloggerDogCreateSubgroup(entry as FsEntry);
       (
         uiStore as { pendingBloggerDogCreateSubgroup?: unknown | null }
       ).pendingBloggerDogCreateSubgroup = null;
@@ -166,7 +166,7 @@ export function useFileManagerPanelPendingActions({
     () => (uiStore as { pendingBloggerDogCreateItem?: unknown }).pendingBloggerDogCreateItem,
     (entry) => {
       if (!entry || !isFocusedOrSelected()) return;
-      handlePendingBloggerDogCreateItem(entry);
+      handlePendingBloggerDogCreateItem(entry as FsEntry);
       (uiStore as { pendingBloggerDogCreateItem?: unknown | null }).pendingBloggerDogCreateItem =
         null;
     },

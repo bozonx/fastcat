@@ -19,7 +19,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
     for (const i in ob) {
       if (!Object.prototype.hasOwnProperty.call(ob, i)) continue;
       if (typeof ob[i] === 'object' && ob[i] !== null && !Array.isArray(ob[i])) {
-        const flatObject = flattenObject(ob[i], prefix + i + '.');
+        const flatObject = flattenObject(ob[i] as Record<string, unknown>, prefix + i + '.');
         for (const x in flatObject) {
           if (!Object.prototype.hasOwnProperty.call(flatObject, x)) continue;
           result[x] = flatObject[x];
@@ -63,7 +63,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
     );
     const layerSource = liveClip ?? clip.value;
     const current = JSON.parse(
-      JSON.stringify((layerSource as Record<string, unknown>)[layer] ?? {}),
+      JSON.stringify((layerSource as unknown as Record<string, unknown>)[layer] ?? {}),
     );
 
     let target = current;
@@ -81,7 +81,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
       target[lastKey] = value;
     }
 
-    timelineStore.updateClipProperties(clip.value.trackId, clip.value.id, {
+    (timelineStore as any).updateClipProperties(clip.value.trackId, clip.value.id, {
       [layer]: current,
     });
   }

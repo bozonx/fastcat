@@ -9,6 +9,7 @@ import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { computeWaveformWindowMetrics, resolveWaveformSourceUs } from '~/utils/audio/waveform';
+import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
 import {
   normalizeProjectPath,
   resolveNestedMediaPath,
@@ -50,9 +51,11 @@ const audioPeaks = computed<Float32Array[] | null>(() => {
 });
 
 const isExtracting = ref(false);
+const hasDeferredExtraction = ref(false);
 
 let isUnmounted = false;
 let extractCallId = 0;
+let activeExtractionEngine: AudioEngine | null = null;
 
 function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
   return Array.from({ length: channelCount }, () => new Float32Array(length));
@@ -62,31 +65,50 @@ function mixPeakValue(target: number, next: number) {
   return Math.max(Math.abs(target), Math.abs(next));
 }
 
-async function ensureMediaPeaks(path: string, maxLength: number): Promise<Float32Array[] | null> {
+async function ensureMediaPeaks(params: {
+  path: string;
+  maxLength: number;
+  shouldCancel?: () => boolean;
+}): Promise<Float32Array[] | null> {
+  const { path, maxLength, shouldCancel } = params;
   const existing = mediaStore.mediaMetadata[path]?.audioPeaks;
   if (existing && existing.length > 0) return existing;
 
-  const fileHandle = await projectStore.getFileHandleByPath(path);
-  if (!fileHandle) return null;
+  return await runQueuedPeakExtraction({
+    path,
+    shouldCancel,
+    task: async () => {
+      const cached = mediaStore.mediaMetadata[path]?.audioPeaks;
+      if (cached && cached.length > 0) return cached;
+      if (shouldCancel?.()) return null;
 
-  const engine = new AudioEngine();
-  try {
-    const peaks = await engine.extractPeaks(fileHandle, path, {
-      maxLength,
-      precision: 10000,
-    });
-    if (peaks) {
-      mediaStore.setAudioPeaks(path, peaks);
-      return peaks;
-    }
-    return null;
-  } finally {
-    try {
-      engine.destroy();
-    } catch {
-      // ignore
-    }
-  }
+      const fileHandle = await projectStore.getFileHandleByPath(path);
+      if (!fileHandle || shouldCancel?.()) return null;
+
+      const engine = new AudioEngine();
+      activeExtractionEngine = engine;
+      try {
+        const peaks = await engine.extractPeaks(fileHandle, path, {
+          maxLength,
+          precision: 10000,
+        });
+        if (peaks && !shouldCancel?.()) {
+          mediaStore.setAudioPeaks(path, peaks);
+          return peaks;
+        }
+        return null;
+      } finally {
+        try {
+          engine.destroy();
+        } catch {
+          // ignore
+        }
+        if (activeExtractionEngine === engine) {
+          activeExtractionEngine = null;
+        }
+      }
+    },
+  });
 }
 
 async function buildTimelinePeaks(params: {
@@ -167,7 +189,7 @@ async function buildTimelinePeaks(params: {
       visiting.delete(path);
     } else {
       if (shouldCancel?.()) return null;
-      sourcePeaks = await ensureMediaPeaks(path, maxLength);
+      sourcePeaks = await ensureMediaPeaks({ path, maxLength, shouldCancel });
       if (shouldCancel?.()) return null;
     }
 
@@ -227,11 +249,19 @@ async function buildTimelinePeaks(params: {
 const extractPeaks = async () => {
   if (!fileUrl.value || !projectStore.currentProjectId) return;
   if (audioPeaks.value || isExtracting.value) return;
+  if (timelineStore.isPlaying) {
+    hasDeferredExtraction.value = true;
+    return;
+  }
 
+  hasDeferredExtraction.value = false;
   const callId = ++extractCallId;
   const urlAtStart = fileUrl.value;
   const shouldCancel = () =>
-    isUnmounted || callId !== extractCallId || fileUrl.value !== urlAtStart;
+    isUnmounted ||
+    timelineStore.isPlaying ||
+    callId !== extractCallId ||
+    fileUrl.value !== urlAtStart;
   let engine: AudioEngine | null = null;
 
   try {
@@ -286,8 +316,6 @@ const extractPeaks = async () => {
       return;
     }
 
-    engine = new AudioEngine();
-
     // Resolution budget: ~200 samples per second is more than enough — even at
     // max zoom (~1280 px/s) there is no benefit from a denser array, and a denser
     // one bloats OPFS JSON and JSON.stringify cost for long sources.
@@ -295,12 +323,25 @@ const extractPeaks = async () => {
     const samplesPerSecond = 200;
     const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
 
-    const peaks = await engine.extractPeaks(fileHandle, fileUrl.value, {
-      maxLength,
-      precision: 10000,
+    const peaks = await runQueuedPeakExtraction({
+      path: fileUrl.value,
+      shouldCancel,
+      task: async () => {
+        if (shouldCancel()) return null;
+        engine = new AudioEngine();
+        activeExtractionEngine = engine;
+
+        return await engine.extractPeaks(fileHandle, fileUrl.value, {
+          maxLength,
+          precision: 10000,
+        });
+      },
     });
 
     if (shouldCancel()) {
+      if (timelineStore.isPlaying) {
+        hasDeferredExtraction.value = true;
+      }
       return;
     }
 
@@ -312,27 +353,60 @@ const extractPeaks = async () => {
     console.error('Failed to extract audio peaks:', err);
   } finally {
     try {
-      engine?.destroy();
+      (engine as AudioEngine | null)?.destroy();
     } catch {
       // ignore
+    }
+    if (activeExtractionEngine === engine) {
+      activeExtractionEngine = null;
     }
     isExtracting.value = false;
   }
 };
 
+function requestPeaksExtraction() {
+  if (audioPeaks.value) return;
+  if (timelineStore.isPlaying) {
+    hasDeferredExtraction.value = true;
+    return;
+  }
+
+  void extractPeaks();
+}
+
 watch(
   fileUrl,
   () => {
-    if (!audioPeaks.value) {
-      void extractPeaks();
-    }
+    requestPeaksExtraction();
   },
   { immediate: true },
 );
 
+watch(
+  () => timelineStore.isPlaying,
+  (isPlaying) => {
+    if (isPlaying) {
+      if (isExtracting.value) {
+        hasDeferredExtraction.value = true;
+        extractCallId += 1;
+        try {
+          activeExtractionEngine?.destroy();
+        } catch {
+          // ignore
+        }
+      }
+      return;
+    }
+
+    if (hasDeferredExtraction.value && !audioPeaks.value) {
+      requestPeaksExtraction();
+    }
+  },
+);
+
 onMounted(() => {
   isUnmounted = false;
-  void extractPeaks();
+  requestPeaksExtraction();
 });
 
 onBeforeUnmount(() => {
@@ -559,6 +633,9 @@ watch(
 // External peaks updates (e.g. cache refresh, late extraction completion) must
 // trigger a redraw — otherwise the canvas stays empty until the user pans/zooms.
 watch(audioPeaks, () => {
+  if (audioPeaks.value) {
+    hasDeferredExtraction.value = false;
+  }
   void redrawMountedChunks();
 });
 

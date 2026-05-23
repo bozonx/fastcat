@@ -348,8 +348,13 @@ function createChannelClient(channel: WorkerChannel): {
             width: number,
             height: number,
             bgColor: string,
+            rendererPreference?: 'webgl' | 'webgpu',
           ) => {
-            return postWorkerCall('initCompositor', [canvas, width, height, bgColor], [canvas]);
+            return postWorkerCall(
+              'initCompositor',
+              [canvas, width, height, bgColor, rendererPreference],
+              [canvas],
+            );
           };
         }
         return async (...args: Parameters<VideoCoreWorkerAPI[typeof method]>) => {

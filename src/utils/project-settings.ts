@@ -513,5 +513,5 @@ export function normalizeProjectSettings(
     };
   }
 
-  return { ...parsed, monitor: parsed.monitor, monitors: mergedMonitors };
+  return { ...parsed, monitor: parsed.monitor, monitors: mergedMonitors } as FastCatProjectSettings;
 }

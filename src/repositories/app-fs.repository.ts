@@ -19,6 +19,24 @@ export interface AppFsRepository {
   writeJsonToFileHandle: (input: { handle: FileHandleLike; data: unknown }) => Promise<void>;
 }
 
+const JSON_WRITE_CHUNK_SIZE = 512 * 1024;
+
+async function writeTextToWritableFileStream(
+  writable: FileSystemWritableFileStream,
+  text: string,
+): Promise<void> {
+  const bytes = new TextEncoder().encode(text);
+  for (let position = 0; position < bytes.length; position += JSON_WRITE_CHUNK_SIZE) {
+    const chunk = bytes.slice(position, position + JSON_WRITE_CHUNK_SIZE);
+    await writable.write({
+      type: 'write',
+      position,
+      data: chunk,
+    });
+  }
+  await writable.truncate(bytes.length);
+}
+
 export function createAppFsRepository(): AppFsRepository {
   async function ensureAppFileHandle(input: {
     baseDir: DirectoryHandleLike;
@@ -52,8 +70,15 @@ export function createAppFsRepository(): AppFsRepository {
       throw new Error('Refusing to write undefined to JSON file');
     }
     const writable = await input.handle.createWritable();
-    await writable.write(`${JSON.stringify(input.data, null, 2)}\n`);
-    await writable.close();
+    try {
+      await writeTextToWritableFileStream(writable, `${JSON.stringify(input.data, null, 2)}\n`);
+      await writable.close();
+    } catch (error) {
+      await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
+        .abort?.()
+        .catch(() => undefined);
+      throw error;
+    }
   }
 
   return {

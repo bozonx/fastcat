@@ -96,7 +96,9 @@ export function createDefaultUserSettings(): FastCatUserSettings {
     },
     history: { ...DEFAULT_USER_SETTINGS.history },
     backup: { ...DEFAULT_USER_SETTINGS.backup },
-  };
+    presets: { ...DEFAULT_USER_SETTINGS.presets },
+    autosave: { ...DEFAULT_USER_SETTINGS.autosave },
+  } as FastCatUserSettings;
 }
 
 export function createDefaultAppSettings(): FastCatAppSettings {

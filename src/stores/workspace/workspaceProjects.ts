@@ -169,7 +169,7 @@ export function createWorkspaceProjectsModule(params: {
         params.recentProjects.value[recentIndex] = {
           ...params.recentProjects.value[recentIndex],
           projectName: newName,
-        };
+        } as RecentProject;
       }
     } catch (e: unknown) {
       params.error.value = getErrorMessage(e, 'Failed to rename project');

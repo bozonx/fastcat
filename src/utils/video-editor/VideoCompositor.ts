@@ -47,6 +47,8 @@ export interface VideoCompositorInitOptions {
   rendererPreference?: 'webgl' | 'webgpu';
 }
 
+type PixiRendererPreference = NonNullable<VideoCompositorInitOptions['rendererPreference']>;
+
 export class VideoCompositor {
   public app: Application | null = null;
   public canvas: OffscreenCanvas | HTMLCanvasElement | null = null;
@@ -499,8 +501,6 @@ export class VideoCompositor {
       DOMAdapter.set(WebWorkerAdapter);
     }
 
-    this.app = new Application();
-
     if (externalCanvas) {
       this.canvas = externalCanvas;
     } else if (offscreen) {
@@ -524,14 +524,46 @@ export class VideoCompositor {
       );
     }
 
-    await this.app.init({
-      width,
-      height,
-      canvas: this.canvas as import('pixi.js').ICanvas,
-      backgroundColor: bgColor,
-      preference: options.rendererPreference ?? 'webgl',
-      clearBeforeRender: true,
-    });
+    const preferredRenderer = options.rendererPreference ?? 'webgl';
+    const rendererPreferences: PixiRendererPreference[] =
+      preferredRenderer === 'webgl' ? ['webgl', 'webgpu'] : ['webgpu', 'webgl'];
+    let initError: unknown = null;
+
+    for (const rendererPreference of rendererPreferences) {
+      const app = new Application();
+      try {
+        await app.init({
+          width,
+          height,
+          canvas: this.canvas as import('pixi.js').ICanvas,
+          backgroundColor: bgColor,
+          preference: rendererPreference,
+          clearBeforeRender: true,
+        });
+        this.app = app;
+        initError = null;
+        break;
+      } catch (error) {
+        initError = error;
+        try {
+          app.destroy(true);
+        } catch (cleanupError) {
+          void cleanupError;
+        }
+        if (rendererPreference === preferredRenderer) {
+          console.warn(
+            `[VideoCompositor] ${rendererPreference} renderer failed, trying alternate Pixi renderer`,
+            error,
+          );
+        }
+      }
+    }
+
+    if (!this.app) {
+      throw initError instanceof Error
+        ? initError
+        : new Error('Failed to initialize Pixi renderer');
+    }
 
     // Stop the automatic ticker, we will render manually
     this.app.ticker.stop();

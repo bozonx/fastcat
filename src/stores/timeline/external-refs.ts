@@ -22,13 +22,13 @@ function createStoreRef<T>(
   fallback: T,
 ): WritableComputedRef<T> {
   return computed({
-    get: () => (store && key in store ? store[key] : fallback),
+    get: () => (store && key in store ? (store[key] as T) : fallback),
     set: (v: T) => {
       if (store && key in store) {
         store[key] = v;
       }
     },
-  });
+  }) as WritableComputedRef<T>;
 }
 
 export function createTimelineExternalRefsModule(deps: {

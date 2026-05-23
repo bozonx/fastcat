@@ -290,11 +290,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const handle = workspaceHandle.value;
     isLoading.value = true;
     try {
-      interface AsyncIterableDir extends FileSystemDirectoryHandle {
-        values(): AsyncIterable<{ name: string; kind: 'file' | 'directory' }>;
-      }
       // Clear all entries in the workspace handle
-      const entries = (handle as AsyncIterableDir).values();
+      const entries = (handle as any).values();
       for await (const entry of entries) {
         await handle.removeEntry(entry.name, { recursive: entry.kind === 'directory' });
       }

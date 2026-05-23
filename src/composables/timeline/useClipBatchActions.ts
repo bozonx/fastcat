@@ -106,7 +106,7 @@ export function useClipBatchActions(
         (track.kind === 'video' &&
           clip.clipType === 'media' &&
           (Boolean(clip.linkedVideoClipId) ||
-            Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio)))
+            Boolean((ctx.mediaMetadata.value[clip.source?.path ?? ''] as Record<string, unknown> | undefined)?.audio)))
       );
     });
     if (clipsWithAudio.length === 0) return false;
@@ -138,7 +138,7 @@ export function useClipBatchActions(
         track.kind === 'video' &&
         clip.clipType === 'media' &&
         (Boolean((clip as TimelineClipItem).linkedVideoClipId) ||
-          Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio));
+          Boolean((ctx.mediaMetadata.value[clip.source?.path ?? ''] as Record<string, unknown> | undefined)?.audio));
 
       if (isAudioTrack || isVideoWithAudio) return clip as TimelineClipItem;
     }
@@ -393,7 +393,7 @@ export function useClipBatchActions(
         track.kind === 'video' &&
         clip.clipType === 'media' &&
         (Boolean((clip as TimelineClipItem).linkedVideoClipId) ||
-          Boolean(ctx.mediaMetadata.value[clip.source?.path ?? '']?.audio));
+          Boolean((ctx.mediaMetadata.value[clip.source?.path ?? ''] as Record<string, unknown> | undefined)?.audio));
 
       if (isAudioTrack || isVideoWithAudio) {
         cmds.push({
