@@ -309,13 +309,6 @@ const extractPeaks = async () => {
       return;
     }
 
-    const fileHandle = await projectStore.getFileHandleByPath(fileUrl.value);
-    if (!fileHandle) return;
-
-    if (shouldCancel()) {
-      return;
-    }
-
     // Resolution budget: ~200 samples per second is more than enough — even at
     // max zoom (~1280 px/s) there is no benefit from a denser array, and a denser
     // one bloats OPFS JSON and JSON.stringify cost for long sources.
@@ -323,19 +316,10 @@ const extractPeaks = async () => {
     const samplesPerSecond = 200;
     const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
 
-    const peaks = await runQueuedPeakExtraction({
+    const peaks = await ensureMediaPeaks({
       path: fileUrl.value,
+      maxLength,
       shouldCancel,
-      task: async () => {
-        if (shouldCancel()) return null;
-        engine = new AudioEngine();
-        activeExtractionEngine = engine;
-
-        return await engine.extractPeaks(fileHandle, fileUrl.value, {
-          maxLength,
-          precision: 10000,
-        });
-      },
     });
 
     if (shouldCancel()) {
@@ -346,7 +330,6 @@ const extractPeaks = async () => {
     }
 
     if (peaks) {
-      mediaStore.setAudioPeaks(fileUrl.value, peaks);
       void redrawMountedChunks();
     }
   } catch (err) {

@@ -150,11 +150,11 @@ export function createTimelineLifecycleModule(
     deps.selection.clearSelection();
     deps.selection.selectTrack(null);
     deps.isPlaying.value = false;
-    deps.historyStore.clear('timeline');
-    deps.historyDebounce.clearPendingDebouncedHistory();
 
-    // Note: loadTimeline intentionally wipes the timeline history stack.
-    // History is scoped to the currently open timeline document.
+    // History is now per-tab: `persistence.loadTimeline` parks the outgoing
+    // tab's undo stack and restores the incoming tab's (or clears it on a fresh
+    // disk load) via the captureHistoryState/restoreHistoryState hooks. Clearing
+    // here would wipe the outgoing stack before it could be parked.
 
     await deps.persistence.loadTimeline();
 

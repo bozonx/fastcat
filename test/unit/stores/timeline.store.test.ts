@@ -85,6 +85,8 @@ const historyStoreMock = {
   undo: vi.fn(),
   redo: vi.fn(),
   clear: vi.fn(),
+  extractScope: vi.fn().mockReturnValue({ past: [], future: [] }),
+  injectScope: vi.fn(),
   registerStateGetter: vi.fn(),
 };
 

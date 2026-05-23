@@ -37,6 +37,18 @@ export interface TimelinePersistenceDeps {
    */
   getOpenPaths?: () => string[];
 
+  /**
+   * Parks the active timeline's undo stack out of the live history store and
+   * returns it (opaque), so a background tab keeps its own undo history. Called
+   * when the active tab is about to be swapped out.
+   */
+  captureHistoryState?: () => unknown;
+  /**
+   * Restores a previously parked undo stack for the now-active tab. Passing
+   * `null` clears the timeline history (used for a fresh disk load).
+   */
+  restoreHistoryState?: (state: unknown) => void;
+
   parseTimelineFromOtio: (
     text: string,
     options: { id: string; name: string; format: TimelineFormatInput },
@@ -221,6 +233,7 @@ export function createTimelinePersistenceModule(
     timelineZoom: number;
     trackHeights: Record<string, number>;
     selectionRange: TimelineSelectionRange | null;
+    history: unknown;
   }
   const tabCache = new Map<string, TabState>();
   // Path of the timeline whose state currently lives in the active refs/doc.
@@ -242,6 +255,9 @@ export function createTimelinePersistenceModule(
       timelineZoom: deps.timelineZoom.value,
       trackHeights: { ...deps.trackHeights.value },
       selectionRange: deps.selectionRange?.value ? { ...deps.selectionRange.value } : null,
+      // Park the outgoing tab's undo stack out of the live store so it travels
+      // with the tab (and can't bleed into the incoming tab's undo/redo).
+      history: deps.captureHistoryState?.() ?? null,
     });
   }
 
@@ -281,6 +297,7 @@ export function createTimelinePersistenceModule(
     if (deps.selectionRange) {
       deps.selectionRange.value = state.selectionRange ? { ...state.selectionRange } : null;
     }
+    deps.restoreHistoryState?.(state.history);
     deps.timelineSaveError.value = null;
     setDirtyState();
     return true;
@@ -463,6 +480,12 @@ export function createTimelinePersistenceModule(
       if (isDirty()) scheduleAutosave();
       return;
     }
+
+    // Disk load (fresh open / reload-current): start the new doc with an empty
+    // undo stack. The outgoing tab's stack was already parked by
+    // `snapshotOutgoingTab`; this also discards any stale stack on a same-path
+    // reload.
+    deps.restoreHistoryState?.(null);
 
     let restoredAutosave = false;
 

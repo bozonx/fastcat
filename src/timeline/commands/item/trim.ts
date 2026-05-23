@@ -3,16 +3,13 @@ import type { TrimItemCommand, TimelineCommandResult } from '../../commands';
 import {
   getTrackById,
   getDocFps,
-  frameToUs,
   assertNoOverlap,
   assertClipNotLocked,
   normalizeGaps,
   updateLinkedLockedAudio,
-  quantizeDeltaUsToFrames,
-  clampInt,
-  quantizeRangeToFrames,
   autoAdaptChangedTracks,
 } from '../utils';
+import { computeTrimGeometry } from './trimGeometry';
 
 export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineCommandResult {
   const track = getTrackById(doc, cmd.trackId);
@@ -27,148 +24,30 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
-  const deltaCandidate = Math.round(Number(cmd.deltaUs));
-  const deltaUs = shouldQuantizeToFrames
-    ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
-    : deltaCandidate;
 
-  const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
-  const absSpeed = Math.abs(speed);
-  const sourceDeltaUs = shouldQuantizeToFrames
-    ? quantizeDeltaUsToFrames(Math.round(deltaUs * absSpeed), fps, 'round')
-    : Math.round(deltaUs * absSpeed);
-
-  const prevTimelineStartUs = Math.max(0, Math.round(item.timelineRange.startUs));
-  const prevTimelineDurationUs = Math.max(0, Math.round(item.timelineRange.durationUs));
-
-  const prevSourceStartUs = Math.max(0, Math.round(item.sourceRange.startUs));
-  const prevSourceDurationUs = Math.max(0, Math.round(item.sourceRange.durationUs));
-
-  const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
-
-  // For clips with fixed source duration (media and nested timelines), use actual source limits.
-  // For infinite-source clips (images, virtual clips), allow unlimited expansion.
+  // Clips with fixed source duration (media and nested timelines) are limited to
+  // their real material; images and virtual clips may be extended freely.
   const hasFixedSourceDuration =
     (item.clipType === 'media' && !item.isImage) || item.clipType === 'timeline';
-  const maxSourceDurationUs = hasFixedSourceDuration
-    ? Math.max(0, Math.round(item.sourceDurationUs))
-    : Number.POSITIVE_INFINITY;
 
-  const minSourceStartUs = hasFixedSourceDuration ? 0 : Number.NEGATIVE_INFINITY;
-  const maxSourceEndUs = maxSourceDurationUs;
+  const { timelineRange, sourceRange, valid } = computeTrimGeometry({
+    edge: cmd.edge,
+    deltaUs: cmd.deltaUs,
+    speed: item.speed,
+    fps,
+    quantizeToFrames: shouldQuantizeToFrames,
+    timelineRange: item.timelineRange,
+    sourceRange: item.sourceRange,
+    sourceDurationUs: item.sourceDurationUs,
+    hasFixedSourceDuration,
+  });
 
-  let nextTimelineStartUs = prevTimelineStartUs;
-  let nextTimelineDurationUs = prevTimelineDurationUs;
-  let nextSourceStartUs = prevSourceStartUs;
-  let nextSourceEndUs = prevSourceEndUs;
+  if (!valid) return { next: doc };
 
-  if (cmd.edge === 'start') {
-    if (speed >= 0) {
-      const unclampedSourceStartUs = prevSourceStartUs + sourceDeltaUs;
-      nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
-      const appliedDeltaUs = nextSourceStartUs - prevSourceStartUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
-
-      nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
-      nextSourceEndUs = prevSourceEndUs;
-    } else {
-      // Reversed: trim start of timeline means trim end of source range.
-      const unclampedSourceEndUs = prevSourceEndUs - sourceDeltaUs;
-      nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
-      const appliedDeltaUs = prevSourceEndUs - nextSourceEndUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
-
-      nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
-      nextSourceStartUs = prevSourceStartUs;
-    }
-  } else {
-    if (speed >= 0) {
-      const unclampedSourceEndUs = prevSourceEndUs + sourceDeltaUs;
-      nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
-      const appliedDeltaUs = nextSourceEndUs - prevSourceEndUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
-
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
-      nextTimelineStartUs = prevTimelineStartUs;
-      nextSourceStartUs = prevSourceStartUs;
-    } else {
-      // Reversed: trim end of timeline means trim start of source range.
-      const unclampedSourceStartUs = prevSourceStartUs - sourceDeltaUs;
-      nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
-      const appliedDeltaUs = prevSourceStartUs - nextSourceStartUs;
-      const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
-
-      nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
-      nextTimelineStartUs = prevTimelineStartUs;
-      nextSourceEndUs = prevSourceEndUs;
-    }
-  }
-
-  let nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
-
-  if (shouldQuantizeToFrames) {
-    const qTimeline = quantizeRangeToFrames(
-      { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
-      fps,
-    );
-
-    // Quantization may shift timeline start/end by up to one frame. Re-derive
-    // sourceRange from the quantized timeline so the invariant
-    // sourceDuration = timelineDuration * absSpeed holds — otherwise long
-    // edits accumulate sub-frame source drift.
-    const timelineDeltaStartUs = qTimeline.startUs - nextTimelineStartUs;
-    const timelineDeltaDurationUs = qTimeline.durationUs - nextTimelineDurationUs;
-    nextTimelineStartUs = qTimeline.startUs;
-    nextTimelineDurationUs = qTimeline.durationUs;
-
-    if (cmd.edge === 'start') {
-      if (speed >= 0) {
-        nextSourceStartUs = Math.max(
-          0,
-          nextSourceStartUs + Math.round(timelineDeltaStartUs * absSpeed),
-        );
-      } else {
-        nextSourceEndUs = Math.max(
-          nextSourceStartUs,
-          nextSourceEndUs - Math.round(timelineDeltaStartUs * absSpeed),
-        );
-      }
-    } else {
-      if (speed >= 0) {
-        nextSourceEndUs = Math.max(
-          nextSourceStartUs,
-          nextSourceEndUs + Math.round(timelineDeltaDurationUs * absSpeed),
-        );
-      } else {
-        nextSourceStartUs = Math.max(
-          0,
-          nextSourceStartUs - Math.round(timelineDeltaDurationUs * absSpeed),
-        );
-      }
-    }
-
-    nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);
-  }
-
-  // Refuse to shrink below one frame — a zero-duration clip is invisible in the
-  // UI and a hazard for downstream calculations (Math.min(...) === 0 chains).
-  const minFrameDurationUs = frameToUs(1, fps);
-  if (nextTimelineDurationUs < minFrameDurationUs) {
-    return { next: doc };
-  }
-
-  assertNoOverlap(track, item.id, nextTimelineStartUs, nextTimelineDurationUs);
+  assertNoOverlap(track, item.id, timelineRange.startUs, timelineRange.durationUs);
 
   const nextItemsRaw: TimelineTrackItem[] = track.items.map((x) =>
-    x.id === item.id
-      ? {
-          ...x,
-          timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
-          sourceRange: { startUs: nextSourceStartUs, durationUs: nextSourceDurationUs },
-        }
-      : x,
+    x.id === item.id ? { ...x, timelineRange, sourceRange } : x,
   );
 
   nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
@@ -181,8 +60,8 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   if (track.kind === 'video' && item.clipType === 'media') {
     nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
       ...audio,
-      timelineRange: { startUs: nextTimelineStartUs, durationUs: nextTimelineDurationUs },
-      sourceRange: { startUs: nextSourceStartUs, durationUs: nextSourceDurationUs },
+      timelineRange,
+      sourceRange,
       // Keep audio's own sourceDurationUs — overriding with the video's value can corrupt the audio
       // clip when the linked audio comes from a different source file.
     }));

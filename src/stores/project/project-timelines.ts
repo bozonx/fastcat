@@ -19,6 +19,13 @@ export function createProjectTimelinesModule(params: {
   toProjectRelativePath: (path: string) => string;
   saveProjectMeta: (updates: Record<string, unknown>) => Promise<void>;
   setWorkspaceError: (message: string | null) => void;
+  /**
+   * Called after the active timeline changes as a side effect of closing or
+   * reordering tabs (which, unlike `selectTab`, don't reload the document
+   * themselves). Lets the owner load the now-active timeline — or reset the
+   * editor when the last tab was closed (path becomes `null`).
+   */
+  onActiveTimelineChanged?: () => Promise<void> | void;
 }) {
   async function openTimelineFile(path: string) {
     if (!params.currentProjectName.value) {
@@ -59,6 +66,10 @@ export function createProjectTimelinesModule(params: {
         params.currentTimelinePath.value = null;
         params.currentFileName.value = null;
       }
+
+      // The active tab was closed: load the newly-active timeline (or reset the
+      // editor when no tabs remain).
+      await params.onActiveTimelineChanged?.();
     }
   }
 
@@ -70,6 +81,7 @@ export function createProjectTimelinesModule(params: {
 
     if (params.currentTimelinePath.value !== path) {
       await openTimelineFile(path);
+      await params.onActiveTimelineChanged?.();
       return;
     }
 
@@ -82,6 +94,7 @@ export function createProjectTimelinesModule(params: {
     params.currentTimelinePath.value = null;
     params.currentFileName.value = null;
     void params.saveProjectMeta({ lastOpenedTimelinePath: null });
+    await params.onActiveTimelineChanged?.();
   }
 
   function reorderTimelines(paths: string[]) {
@@ -90,7 +103,10 @@ export function createProjectTimelinesModule(params: {
     // Meta is updated via openTimelineFile if current path invalid
 
     if (params.currentTimelinePath.value && !paths.includes(params.currentTimelinePath.value)) {
-      void openTimelineFile(paths[0] ?? `${TIMELINES_DIR_NAME}/unknown_001.otio`);
+      void (async () => {
+        await openTimelineFile(paths[0] ?? `${TIMELINES_DIR_NAME}/unknown_001.otio`);
+        await params.onActiveTimelineChanged?.();
+      })();
     }
   }
 

@@ -226,6 +226,37 @@ export const useHistoryStore = defineStore('history', () => {
     future.value = future.value.filter((e) => e.scope !== scope);
   }
 
+  /**
+   * Removes and returns all past/future entries for a scope. Used to "park" a
+   * background timeline tab's undo stack out of the live store so it neither
+   * leaks into the active tab's undo/redo nor into global undo, while staying
+   * recoverable when the user switches back. Pairs with `injectScope`.
+   */
+  function extractScope(scope: string): {
+    past: HistoryEntry<unknown>[];
+    future: HistoryEntry<unknown>[];
+  } {
+    const parkedPast = past.value.filter((e) => e.scope === scope);
+    const parkedFuture = future.value.filter((e) => e.scope === scope);
+    if (parkedPast.length) past.value = past.value.filter((e) => e.scope !== scope);
+    if (parkedFuture.length) future.value = future.value.filter((e) => e.scope !== scope);
+    return { past: parkedPast, future: parkedFuture };
+  }
+
+  /**
+   * Re-inserts a previously parked undo stack for a scope. Clears any existing
+   * entries of that scope first so a re-injection can never duplicate them.
+   */
+  function injectScope(
+    scope: string,
+    state: { past: HistoryEntry<unknown>[]; future: HistoryEntry<unknown>[] } | null,
+  ) {
+    clear(scope);
+    if (!state) return;
+    if (state.past.length) past.value.push(...state.past);
+    if (state.future.length) future.value.push(...state.future);
+  }
+
   /** Clears all history */
   function clearAll() {
     past.value = [];
@@ -247,6 +278,8 @@ export const useHistoryStore = defineStore('history', () => {
     registerCommandScope,
     isCommandScope,
     clear,
+    extractScope,
+    injectScope,
     clearAll,
   };
 });

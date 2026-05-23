@@ -107,18 +107,26 @@ vi.mock('~/repositories/project-settings.repository', () => ({
 vi.mock('~/repositories/project-ui.repository', () => ({
   createProjectUiRepository: vi.fn(() => ({
     load: vi.fn().mockResolvedValue(null),
-    save: vi.fn().mockResolvedValue(undefined),
+    save: uiSaveSpy,
   })),
 }));
 
+const { capturedAutoSave, uiSaveSpy } = vi.hoisted(() => ({
+  capturedAutoSave: { doSave: null as null | (() => Promise<unknown>) },
+  uiSaveSpy: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('~/utils/auto-save', () => ({
-  createAutoSave: vi.fn(() => ({
-    markDirty: vi.fn(),
-    markCleanForCurrentRevision: vi.fn(),
-    reset: vi.fn(),
-    requestSave: vi.fn().mockResolvedValue(undefined),
-    isDirty: vi.fn().mockReturnValue(false),
-  })),
+  createAutoSave: vi.fn((config: { doSave: () => Promise<unknown> }) => {
+    capturedAutoSave.doSave = config.doSave;
+    return {
+      markDirty: vi.fn(),
+      markCleanForCurrentRevision: vi.fn(),
+      reset: vi.fn(),
+      requestSave: vi.fn().mockResolvedValue(undefined),
+      isDirty: vi.fn().mockReturnValue(false),
+    };
+  }),
 }));
 
 const focusStoreMock = { activeTimelinePath: null };
@@ -261,6 +269,35 @@ describe('ProjectSettingsStore', () => {
     expect(store.projectSettings.monitors.cut).toBeDefined();
     expect(store.projectSettings.version).toBe(1);
     expect(store.isLoadingProjectSettings).toBe(false);
+  });
+
+  it('autosave persists the live UI layout (panel sizes, vertical splits, timeline heights)', async () => {
+    const store = useProjectSettingsStore();
+    store.setContext({
+      getProjectDirHandle: async () => ({}) as any,
+      getCurrentProjectName: () => 'test',
+      getIsReadOnly: () => false,
+      getProjectMeta: () => null,
+      saveProjectMeta: async () => {},
+      getCurrentEditorView: () => 'cut',
+      getLastViewBeforeFullscreen: () => null,
+    });
+
+    // Simulate sizes the user produced by dragging splitters / timeline divider.
+    store.projectSettings.ui.layout.splitSizes['editor-files-top:p1'] = [70, 30];
+    store.projectSettings.ui.layout.verticalSplitSizes['vkey'] = { 'col-1': [60, 40] };
+    store.projectSettings.ui.layout.timelineHeights['timeline-height-cut:p1'] = 55;
+
+    expect(capturedAutoSave.doSave).toBeTypeOf('function');
+    await capturedAutoSave.doSave!();
+
+    expect(uiSaveSpy).toHaveBeenCalled();
+    const saved = uiSaveSpy.mock.calls.at(-1)![0];
+    // Regression guard: these were previously written as empty objects, so every
+    // drag-resized panel/timeline size was silently dropped on save.
+    expect(saved.ui.layout.splitSizes['editor-files-top:p1']).toEqual([70, 30]);
+    expect(saved.ui.layout.verticalSplitSizes['vkey']).toEqual({ 'col-1': [60, 40] });
+    expect(saved.ui.layout.timelineHeights['timeline-height-cut:p1']).toBe(55);
   });
 });
 

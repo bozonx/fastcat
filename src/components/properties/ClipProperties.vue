@@ -38,15 +38,9 @@ import { useClipPropertiesActions } from '~/composables/properties/useClipProper
 import { useClipTextProperties } from '~/composables/properties/useClipTextProperties';
 import { useClipShapeProperties } from '~/composables/properties/useClipShapeProperties';
 import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
+import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
-import {
-  buildClipParametersPatch,
-  createClipParametersSnapshot,
-  getApplicableClipParameterGroups,
-  hasClipParametersPatch,
-  type ClipParameterGroup,
-} from '~/utils/timeline/clip-parameters';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -71,8 +65,6 @@ const clipboardStore = useAppClipboard();
 const { isMobile } = useDevice();
 
 const isUiRenameModalOpen = ref(false);
-const isPasteParametersModalOpen = ref(false);
-const selectedParameterGroups = ref<ClipParameterGroup[]>([]);
 
 const activeTab = ref('clip');
 
@@ -177,62 +169,21 @@ function handleCopyClip() {
   });
 }
 
-function handleCopyClipParameters() {
-  clipboardStore.setClipboardPayload({
-    source: 'clipParameters',
-    snapshot: createClipParametersSnapshot({
-      clip: props.clip,
-      trackKind: clipTrackKind.value,
-    }),
-  });
-}
-
-const clipParameterGroupOptions = computed(() => {
-  const payload = clipboardStore.clipboardPayload;
-  if (!payload || payload.source !== 'clipParameters') return [];
-  return getApplicableClipParameterGroups({
-    snapshot: payload.snapshot,
-    targetClip: props.clip,
-    targetTrackKind: clipTrackKind.value,
-  });
+const {
+  isPasteParametersModalOpen,
+  selectedParameterGroups,
+  clipParameterGroupOptions,
+  copyClipParameters,
+  openPasteClipParameters,
+  applyClipParameters,
+} = useClipParametersClipboard({
+  clip: clipRef,
+  trackKind: clipTrackKind,
+  updateClipProperties: (trackId, itemId, props) =>
+    timelineStore.updateClipProperties(trackId, itemId, props),
+  updateClipTransition: (trackId, itemId, patch) =>
+    timelineStore.updateClipTransition(trackId, itemId, patch),
 });
-
-function openPasteClipParameters() {
-  if (!clipboardStore.hasClipParametersPayload || clipParameterGroupOptions.value.length === 0) {
-    return;
-  }
-  isPasteParametersModalOpen.value = true;
-}
-
-function applyClipParameters(groups: ClipParameterGroup[]) {
-  const payload = clipboardStore.clipboardPayload;
-  if (!payload || payload.source !== 'clipParameters') return;
-
-  const patch = buildClipParametersPatch({
-    snapshot: payload.snapshot,
-    targetClip: props.clip,
-    targetTrackKind: clipTrackKind.value,
-    groups,
-  });
-  if (!hasClipParametersPatch(patch)) return;
-
-  if (Object.keys(patch.properties).length > 0) {
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, patch.properties);
-  }
-  if (
-    Object.prototype.hasOwnProperty.call(patch, 'transitionIn') ||
-    Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
-  ) {
-    timelineStore.updateClipTransition(props.clip.trackId, props.clip.id, {
-      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionIn')
-        ? { transitionIn: patch.transitionIn }
-        : {}),
-      ...(Object.prototype.hasOwnProperty.call(patch, 'transitionOut')
-        ? { transitionOut: patch.transitionOut }
-        : {}),
-    });
-  }
-}
 
 function handleCutClip() {
   clipboardStore.setClipboardPayload({
@@ -476,7 +427,7 @@ defineExpose({
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"
-      @copy-parameters="handleCopyClipParameters"
+      @copy-parameters="copyClipParameters"
       @paste-parameters="openPasteClipParameters"
     />
 

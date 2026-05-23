@@ -681,9 +681,6 @@ export function useTimelineItemDrag(
         const hasFixedSourceDuration =
           (startItem.clipType === 'media' && !startItem.isImage) ||
           startItem.clipType === 'timeline';
-        const maxSourceDurationUs = hasFixedSourceDuration
-          ? Math.max(0, Math.round(Number(startItem.sourceDurationUs ?? 0)))
-          : Number.POSITIVE_INFINITY;
 
         const prevSourceStartUs = Math.max(
           0,
@@ -697,9 +694,20 @@ export function useTimelineItemDrag(
         );
         const prevSourceEndUs = prevSourceStartUs + prevSourceDurationUs;
 
+        // Furthest source position the clip may consume. Mirrors computeTrimGeometry:
+        // material-backed clips are bound to their real source; when the source
+        // duration is not resolved yet, fall back to what is already consumed so
+        // the clip cannot be extended into material that does not exist.
+        const rawSourceDurationUs = Number(startItem.sourceDurationUs);
+        const knownSourceEndUs =
+          Number.isFinite(rawSourceDurationUs) && rawSourceDurationUs > 0
+            ? Math.round(rawSourceDurationUs)
+            : prevSourceEndUs;
+        const maxSourceEndUs = hasFixedSourceDuration ? knownSourceEndUs : Number.POSITIVE_INFINITY;
+
         if (mode === 'trim_start') {
           const maxLeftExpansionSource =
-            speed >= 0 ? prevSourceStartUs : maxSourceDurationUs - prevSourceEndUs;
+            speed >= 0 ? prevSourceStartUs : maxSourceEndUs - prevSourceEndUs;
 
           const minSourceBound = hasFixedSourceDuration
             ? anchorStartUs - maxLeftExpansionSource / absSpeed
@@ -709,7 +717,7 @@ export function useTimelineItemDrag(
           maxEdgeUs = anchorEndUs;
         } else {
           const maxRightExpansionSource =
-            speed >= 0 ? maxSourceDurationUs - prevSourceEndUs : prevSourceStartUs;
+            speed >= 0 ? maxSourceEndUs - prevSourceEndUs : prevSourceStartUs;
 
           const maxSourceBound = hasFixedSourceDuration
             ? anchorEndUs + maxRightExpansionSource / absSpeed

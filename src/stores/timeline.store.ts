@@ -374,6 +374,20 @@ export const useTimelineStore = defineStore('timeline', () => {
     getProjectSettings: () => projectStore.projectSettings,
     getOpenPaths: () => projectStore.projectSettings?.timelines?.openPaths ?? [],
 
+    // Per-tab undo: park the outgoing tab's timeline undo stack (committing any
+    // pending debounced entry first) and restore the incoming tab's on switch.
+    captureHistoryState: () => {
+      historyDebounce.flushPendingDebouncedHistory();
+      return historyStore.extractScope('timeline');
+    },
+    restoreHistoryState: (state) => {
+      historyDebounce.clearPendingDebouncedHistory();
+      historyStore.injectScope(
+        'timeline',
+        (state as Parameters<typeof historyStore.injectScope>[1]) ?? null,
+      );
+    },
+
     parseTimelineFromOtio,
     serializeTimelineToOtio,
     selectTimelineDurationUs,

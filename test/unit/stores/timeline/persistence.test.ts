@@ -168,6 +168,60 @@ describe('TimelinePersistenceModule', () => {
     expect(parseTimelineFromOtio.mock.calls.length).toBe(parseCallsAfterA + 1);
   });
 
+  it('parks and restores each tab undo stack across a switch', async () => {
+    const currentTimelinePath = ref('A.otio');
+    const fileContents: Record<string, string> = {
+      'A.otio': JSON.stringify({ ...fallbackDoc, id: 'A' }),
+      'B.otio': JSON.stringify({ ...fallbackDoc, id: 'B' }),
+    };
+    const ensureTimelineFileHandle = vi.fn(
+      async (options?: { create?: boolean; relativePath?: string }) => {
+        const path = options?.relativePath ?? currentTimelinePath.value;
+        if (!path || path.startsWith('.fastcat/autosave/')) return null;
+        const text = fileContents[path];
+        if (text === undefined) return null;
+        return { getFile: async () => ({ text: async () => text, lastModified: 1 }) } as any;
+      },
+    );
+    parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
+
+    // Model the live undo stack: capture parks (and clears) it, restore swaps it.
+    let liveHistory: string[] = [];
+    const captureHistoryState = vi.fn(() => {
+      const parked = liveHistory;
+      liveHistory = [];
+      return parked;
+    });
+    const restoreHistoryState = vi.fn((state: unknown) => {
+      liveHistory = (state as string[] | null) ?? [];
+    });
+
+    const deps = createMockDeps({
+      currentTimelinePath,
+      ensureTimelineFileHandle,
+      getOpenPaths: () => ['A.otio', 'B.otio'],
+      captureHistoryState,
+      restoreHistoryState,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    await mod.loadTimeline();
+    liveHistory.push('A-edit');
+    mod.markDirty();
+
+    // Switch to B → A's stack is parked; B starts fresh.
+    currentTimelinePath.value = 'B.otio';
+    await mod.loadTimeline();
+    expect(liveHistory).toEqual([]);
+    liveHistory.push('B-edit');
+    mod.markDirty();
+
+    // Switch back to A → A's parked stack is restored, B's is gone from live.
+    currentTimelinePath.value = 'A.otio';
+    await mod.loadTimeline();
+    expect(liveHistory).toEqual(['A-edit']);
+  });
+
   it('evicts cached tab state once the tab is no longer open', async () => {
     const currentTimelinePath = ref('A.otio');
     let openPaths = ['A.otio', 'B.otio'];

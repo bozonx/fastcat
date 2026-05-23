@@ -32,7 +32,12 @@ interface ClipResizeFields {
   transitionOut?: ClipTransition | null;
 }
 
-export function useTimelineItemResize(
+/**
+ * Drives the in-clip adjustment handles — audio fade triangles, transition
+ * handles and the volume line. This is NOT trimming of the clip's duration;
+ * edge trim/slip/move live in `useTimelineItemDrag`.
+ */
+export function useTimelineClipHandleResize(
   getScrollLeft: () => number,
   tracksRef: () => TimelineTrack[],
 ) {

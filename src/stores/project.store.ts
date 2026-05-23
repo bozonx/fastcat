@@ -121,6 +121,15 @@ export const useProjectStore = defineStore('project', () => {
     setWorkspaceError: (message) => {
       workspaceStore.error = message;
     },
+    onActiveTimelineChanged: async () => {
+      const timelineStore = useTimelineStore();
+      if (currentTimelinePath.value) {
+        await timelineStore.loadTimeline();
+      } else {
+        // No tabs left open — clear the editor instead of leaving a stale doc.
+        timelineStore.resetTimelineState();
+      }
+    },
   });
 
   const {

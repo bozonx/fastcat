@@ -144,14 +144,20 @@ function selectMarker(markerId: string, e?: MouseEvent) {
   // Always stop propagation so the ruler's own click/pointerdown actions are not triggered
   e?.stopPropagation();
 
+  const currentIds = getSelectedMarkerIds();
+
   if (e?.shiftKey) {
-    const currentIds = getSelectedMarkerIds();
     if (currentIds.includes(markerId)) {
       const next = currentIds.filter((id) => id !== markerId);
       selectionStore.selectTimelineMarkers(next);
     } else {
       selectionStore.selectTimelineMarkers([...currentIds, markerId]);
     }
+    return;
+  }
+
+  // Clicking an already-selected marker preserves the selection (for dragging)
+  if (currentIds.includes(markerId)) {
     return;
   }
 

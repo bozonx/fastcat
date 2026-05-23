@@ -15,7 +15,7 @@ import type {
   TimelineTrimItemPayload,
 } from '~/timeline/types';
 import { timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry';
-import { useTimelineItemResize } from '~/composables/timeline/useTimelineItemResize';
+import { useTimelineClipHandleResize } from '~/composables/timeline/useTimelineClipHandleResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
 import { useFocusStore } from '~/stores/focus.store';
 
@@ -325,7 +325,7 @@ function shouldStartMarquee(e: PointerEvent): boolean {
 }
 
 const { resizeVolume, startResizeVolume, startResizeFade, startResizeTransition } =
-  useTimelineItemResize(
+  useTimelineClipHandleResize(
     () => props.scrollLeft ?? 0,
     () => props.tracks,
   );

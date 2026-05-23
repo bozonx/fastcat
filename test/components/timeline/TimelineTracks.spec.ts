@@ -73,8 +73,8 @@ vi.mock('~/stores/media.store', () => ({
 // Pinia is already initialized in vitest.setup.ts
 
 // Mock Composables used inside TimelineTracks
-vi.mock('~/composables/timeline/useTimelineItemResize', () => ({
-  useTimelineItemResize: () => ({
+vi.mock('~/composables/timeline/useTimelineClipHandleResize', () => ({
+  useTimelineClipHandleResize: () => ({
     resizeVolume: null,
     startResizeVolume: vi.fn(),
     startResizeFade: vi.fn(),

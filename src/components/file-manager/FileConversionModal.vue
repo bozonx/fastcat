@@ -11,7 +11,6 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 const { t } = useI18n();
-const toast = useToast();
 
 const fileConversionStore = useFileConversionStore();
 
