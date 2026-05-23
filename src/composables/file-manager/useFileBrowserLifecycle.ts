@@ -1,5 +1,6 @@
 import { nextTick, onMounted, onUnmounted, watch } from 'vue';
 import type { Ref } from 'vue';
+import { useEventListener, useThrottleFn } from '@vueuse/core';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
