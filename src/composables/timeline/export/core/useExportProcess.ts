@@ -1,6 +1,7 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { isTauriRuntime } from '~/utils/io/io-governor';
 import {
   broadcastPixiRendererPreference,
   getExportWorkerClient,
@@ -49,6 +50,11 @@ export function useExportProcess(
     if (timelineExportInFlight) {
       throw new Error('Another timeline export is already in progress');
     }
+
+    if (!isTauriRuntime() && timelineStore.isPlaying) {
+      timelineStore.stopPlayback();
+    }
+
     timelineExportInFlight = true;
     const exportTaskId = `timeline-export-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     activeExportTaskId.value = exportTaskId;

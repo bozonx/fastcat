@@ -233,7 +233,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
             <FileBrowser
               v-else
               :remote-mode-only="true"
-              :vfs="bloggerDogVfs"
+              :vfs="bloggerDogVfs as any"
               instance-id="sidebar"
               hide-focus-frame
               class="h-full"

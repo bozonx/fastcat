@@ -51,6 +51,10 @@ export function addMarker(doc: TimelineDocument, cmd: AddMarkerCommand): Timelin
         : '#eab308',
   };
 
+  if (markers.some((m) => m.timeUs === marker.timeUs)) {
+    throw new Error('Marker already exists at this time');
+  }
+
   const next = [...markers, marker].sort((a, b) => a.timeUs - b.timeUs);
   return { next: withMarkers(doc, next) };
 }

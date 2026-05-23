@@ -25,7 +25,7 @@ import { FILE_IO_LIMITS } from '~/utils/constants';
  * OPFS) constraint. In Tauri, writes go to the native filesystem and do not
  * share that pool, so a much higher cap is used to avoid throttling desktop I/O.
  */
-function isTauriRuntime(): boolean {
+export function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 

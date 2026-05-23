@@ -609,8 +609,8 @@ describe('useMonitorCore', () => {
     expect(mockClient.updateTimelineLayout).not.toHaveBeenCalled();
     expect(mockClient.renderFrame).not.toHaveBeenCalled();
 
-    // After another 100ms (250ms total) layout update should flush
-    await vi.advanceTimersByTimeAsync(100);
+    // After another 400ms (550ms total) layout update should definitely flush
+    await vi.advanceTimersByTimeAsync(400);
     await nextTick();
     expect(mockClient.updateTimelineLayout).toHaveBeenCalled();
     expect(mockClient.renderFrame).toHaveBeenCalled();

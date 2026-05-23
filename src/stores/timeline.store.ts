@@ -818,6 +818,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     historyDebounce,
     setPlaybackSpeed: playback.setPlaybackSpeed,
     togglePlayback: playback.togglePlayback,
+    stopPlayback: playback.stopPlayback,
     goToStart: playback.goToStart,
     goToEnd: playback.goToEnd,
     setAudioVolume: playback.setAudioVolume,

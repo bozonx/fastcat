@@ -106,6 +106,8 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
   function toggleToolbarSnapMode() {
     if (toolbarSnapMode.value === 'snap') {
       toolbarSnapMode.value = 'no_snap';
+    } else if (toolbarSnapMode.value === 'free_mode') {
+      toolbarSnapMode.value = 'no_snap';
     } else {
       toolbarSnapMode.value = 'snap';
     }
@@ -113,6 +115,8 @@ export const useTimelineSettingsStore = defineStore('timelineSettings', () => {
 
   function toggleToolbarSnapModeFree() {
     if (toolbarSnapMode.value === 'snap') {
+      toolbarSnapMode.value = 'free_mode';
+    } else if (toolbarSnapMode.value === 'no_snap') {
       toolbarSnapMode.value = 'free_mode';
     } else {
       toolbarSnapMode.value = 'snap';

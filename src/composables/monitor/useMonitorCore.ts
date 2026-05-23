@@ -278,6 +278,11 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const clips = flattenedClips;
       const audioClips = flattenedAudio;
 
+      lastBuiltSourceSignature = clipSourceSignature.value;
+      lastBuiltLayoutSignature = clipLayoutSignature.value;
+      lastBuiltContentSignature = clipContentSignature.value;
+      lastActiveLayoutSignature = activeLayoutSignature.value;
+
       if (clips.length === 0 && audioClips.length === 0) {
         await runWorkerTimelineOperation(async () => {
           await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
@@ -327,11 +332,6 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       const audioEngineClips = await syncAudioEngineClips(audioClips);
       await audioEngine.loadClips(audioEngineClips);
-
-      lastBuiltSourceSignature = clipSourceSignature.value;
-      lastBuiltLayoutSignature = clipLayoutSignature.value;
-      lastBuiltContentSignature = clipContentSignature.value;
-      lastActiveLayoutSignature = activeLayoutSignature.value;
 
       // Keep store duration at least as large as current value to avoid clamping
       // when disabled clips are excluded from the worker payload.

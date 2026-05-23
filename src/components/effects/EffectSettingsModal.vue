@@ -261,10 +261,10 @@ function handleUpdateValue(key: string, value: unknown) {
   for (let i = 1; i < keys.length - 1; i++) {
     const k = keys[i];
     if (k && current[k] === undefined) {
-      current[k] = isNaN(Number(keys[i + 1])) ? {} : [];
+      (current as any)[k] = isNaN(Number(keys[i + 1])) ? {} : [];
     }
     if (k) {
-      current = current[k];
+      current = current[k] as any;
     }
   }
 
