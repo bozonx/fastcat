@@ -1,5 +1,6 @@
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
+import { withFileWriteSlot } from '~/utils/io/io-governor';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
@@ -212,11 +213,13 @@ export function createTimelinePersistenceModule(
   }
 
   async function writeSerializedToHandle(handle: FileSystemFileHandle, serialized: string) {
-    const writable = await (
-      handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
-    ).createWritable();
-    await writable.write(serialized);
-    await writable.close();
+    await withFileWriteSlot(async () => {
+      const writable = await (
+        handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
+      ).createWritable();
+      await writable.write(serialized);
+      await writable.close();
+    });
   }
 
   async function serializeValidatedTimeline(doc: TimelineDocument) {

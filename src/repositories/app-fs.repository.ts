@@ -1,3 +1,5 @@
+import { withFileWriteSlot } from '~/utils/io/io-governor';
+
 export type FileHandleLike = Pick<FileSystemFileHandle, 'getFile' | 'createWritable'>;
 
 export type DirectoryHandleLike = Pick<
@@ -69,16 +71,18 @@ export function createAppFsRepository(): AppFsRepository {
     if (input.data === undefined) {
       throw new Error('Refusing to write undefined to JSON file');
     }
-    const writable = await input.handle.createWritable();
-    try {
-      await writeTextToWritableFileStream(writable, `${JSON.stringify(input.data, null, 2)}\n`);
-      await writable.close();
-    } catch (error) {
-      await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
-        .abort?.()
-        .catch(() => undefined);
-      throw error;
-    }
+    await withFileWriteSlot(async () => {
+      const writable = await input.handle.createWritable();
+      try {
+        await writeTextToWritableFileStream(writable, `${JSON.stringify(input.data, null, 2)}\n`);
+        await writable.close();
+      } catch (error) {
+        await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
+          .abort?.()
+          .catch(() => undefined);
+        throw error;
+      }
+    });
   }
 
   return {

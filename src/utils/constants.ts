@@ -11,6 +11,20 @@ export const FASTCAT_PUBLICADOR_APP_NAME = 'FastCat';
 
 export const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024; // 200MB
 
+export const FILE_IO_LIMITS = {
+  /**
+   * Max concurrent `FileSystemWritableFileStream` writes across the whole app.
+   *
+   * Every open writable consumes a Chromium "datapipe" handle, and the
+   * preview/export workers read video through the same renderer-process pool.
+   * Capping concurrency here keeps a burst of writers (settings/ui/meta autosave,
+   * timeline autosave + backups, audio peaks, thumbnails, proxies) from
+   * exhausting that pool — which surfaced as `InvalidStateError: Failed to
+   * create datapipe` on writes and `TypeError: network error` on worker reads.
+   */
+  MAX_CONCURRENT_FILE_WRITES: 4,
+} as const;
+
 export const VIDEO_CORE_LIMITS = {
   MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS: 4,
   MAX_VIDEO_SAMPLE_REQUEST_TIMEOUT_MS: 5_000,
