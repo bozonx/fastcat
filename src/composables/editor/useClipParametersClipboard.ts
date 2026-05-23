@@ -89,7 +89,10 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
     const target = pasteParametersTarget.value;
     if (!payload || payload.source !== 'clipParameters') return;
 
-    const effectiveTarget = target ?? { clip: options.clip.value, trackKind: options.trackKind.value };
+    const effectiveTarget = target ?? {
+      clip: options.clip.value,
+      trackKind: options.trackKind.value,
+    };
 
     const patch = buildClipParametersPatch({
       snapshot: payload.snapshot,

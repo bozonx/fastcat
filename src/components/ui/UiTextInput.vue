@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { useBlurOnPointerDownOutside } from '~/composables/useBlurOnPointerDownOutside';
 
 interface UiTextInputProps {
@@ -35,7 +36,7 @@ const emit = defineEmits<{
   (e: 'focus' | 'blur', event: FocusEvent): void;
 }>();
 
-const uInputRef = ref<any>(null);
+const uInputRef = ref<ComponentPublicInstance | null>(null);
 
 const containerRef = computed(() => uInputRef.value?.$el as HTMLElement | null);
 useBlurOnPointerDownOutside(containerRef);

@@ -12,6 +12,7 @@ import SettingsIntegrations from '~/components/settings/SettingsIntegrations.vue
 import SettingsVideo from '~/components/settings/SettingsVideo.vue';
 import SettingsAudio from '~/components/settings/SettingsAudio.vue';
 import SettingsStorage from '~/components/settings/SettingsStorage.vue';
+import SettingsUi from '~/components/settings/SettingsUi.vue';
 import { useUiStore } from '~/stores/ui.store';
 
 interface Props {
@@ -38,6 +39,7 @@ type SettingsSection =
   | 'user.integrations'
   | 'user.video'
   | 'user.audio'
+  | 'user.ui'
   | 'workspace.storage';
 
 const activeSection = ref<SettingsSection>(
@@ -212,6 +214,19 @@ watch(
               class="justify-start"
               @click="activeSection = 'user.integrations'"
             />
+            <UiToggleButton
+              :model-value="activeSection === 'user.ui'"
+              label="UI"
+              inactive-color="neutral"
+              active-color="neutral"
+              :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"
+              :active-text="'var(--selection-accent-400)'"
+              inactive-variant="ghost"
+              active-variant="soft"
+              no-toggle
+              class="justify-start"
+              @click="activeSection = 'user.ui'"
+            />
           </div>
 
           <div class="flex flex-col gap-2">
@@ -248,6 +263,7 @@ watch(
         <SettingsVideo v-else-if="activeSection === 'user.video'" />
         <SettingsAudio v-else-if="activeSection === 'user.audio'" />
         <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
+        <SettingsUi v-else-if="activeSection === 'user.ui'" />
         <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />
       </div>
     </div>

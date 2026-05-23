@@ -262,7 +262,7 @@ const extractPeaks = async () => {
     timelineStore.isPlaying ||
     callId !== extractCallId ||
     fileUrl.value !== urlAtStart;
-  let engine: AudioEngine | null = null;
+  const engine: AudioEngine | null = null;
 
   try {
     isExtracting.value = true;

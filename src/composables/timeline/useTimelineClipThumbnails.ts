@@ -4,6 +4,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 import { useMediaStore } from '~/stores/media.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { isSvgFilename } from '~/utils/svg';
 import { timeUsToPx } from '~/utils/timeline/geometry';
@@ -58,6 +59,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
+  const workspaceStore = useWorkspaceStore();
   const fileManager = useFileManager();
 
   let isUnmounted = false;
@@ -67,6 +69,8 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
   const isGenerating = ref(false);
   const thumbnailsBySecond = ref(new Map<number, string>());
+
+  const clipThumbnailMode = computed(() => workspaceStore.userSettings.ui.clipThumbnailMode);
 
   const fileUrl = computed(() => {
     const item = options.item.value;
@@ -187,6 +191,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   });
 
   const requestedThumbnailTimes = computed(() => {
+    if (clipThumbnailMode.value === 'none') return [];
     if (!fileUrl.value || duration.value <= 0 || isImage.value) return [];
 
     const pxPerSec = pxPerSecond.value;
@@ -277,7 +282,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     const firstIdx = Math.max(0, Math.floor((visibleLeft - trimOff) / tileW) - 1);
     const lastIdx = Math.ceil((visibleRight - trimOff) / tileW);
 
-    const tiles: ThumbnailTile[] = [];
+    let tiles: ThumbnailTile[] = [];
 
     for (let idx = firstIdx; idx <= lastIdx; idx++) {
       // Source time at this tile's left edge in seconds.
@@ -315,6 +320,11 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
         leftPx: trimOff + idx * tileW,
         widthPx: tileW,
       });
+    }
+
+    if (clipThumbnailMode.value === 'edges') {
+      const total = tiles.length;
+      tiles = tiles.filter((_, i) => i < 2 || i >= total - 2);
     }
 
     return tiles;
@@ -359,6 +369,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
   }
 
   const generate = (requestedTimesS = requestedThumbnailTimes.value) => {
+    if (clipThumbnailMode.value === 'none') return;
     if (!fileUrl.value || duration.value <= 0 || !clipHash.value) return;
     if (!projectStore.currentProjectId) return;
     if (isImage.value) return;

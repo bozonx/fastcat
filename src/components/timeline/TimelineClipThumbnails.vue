@@ -42,7 +42,7 @@ const thumbnailsStripWidthPx = computed(() => props.width + trimOffsetPx.value);
   >
     <!-- Video clips: virtual img tiles -->
     <div
-      v-if="!isImage"
+      v-if="!isImage && thumbnailTiles.length > 0"
       class="absolute inset-y-0 h-full"
       :style="{
         left: `${-trimOffsetPx}px`,

@@ -753,7 +753,7 @@ export async function extractAudioStream(
       format = new MkvOutputFormat();
     }
 
-    const { output, writable } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
+    const { output } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
       const writable = await (
         targetHandle as unknown as {
           createWritable: (opts?: {

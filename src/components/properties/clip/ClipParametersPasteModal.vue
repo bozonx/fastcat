@@ -11,7 +11,9 @@ const props = defineProps<{
 }>();
 
 const isOpen = defineModel<boolean>('open', { default: false });
-const selectedGroups = defineModel<any[]>('selectedGroups', { default: () => [] });
+const selectedGroups = defineModel<ClipParameterGroup[]>('selectedGroups', {
+  default: (): ClipParameterGroup[] => [],
+});
 
 const emit = defineEmits<{
   apply: [groups: ClipParameterGroup[]];
@@ -20,6 +22,9 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const hasSelection = computed(() => selectedGroups.value.length > 0);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const checkboxModelValue = computed(() => selectedGroups.value as any);
 
 watch(
   () => [isOpen.value, props.groups] as const,
@@ -50,7 +55,7 @@ function handleApply() {
       <UCheckbox
         v-for="group in groups"
         :key="group.id"
-        :model-value="selectedGroups as any"
+        :model-value="checkboxModelValue"
         :value="group.id"
         :label="t(group.labelKey)"
       />

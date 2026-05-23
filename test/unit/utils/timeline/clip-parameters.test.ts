@@ -4,6 +4,7 @@ import {
   buildClipParametersPatch,
   createClipParametersSnapshot,
   getApplicableClipParameterGroups,
+  hasClipParametersPatch,
 } from '~/utils/timeline/clip-parameters';
 
 function makeClip(patch: Partial<TimelineClipItem> = {}): TimelineClipItem {
@@ -109,5 +110,133 @@ describe('clip parameters clipboard helpers', () => {
       { id: 'copied-video', manifestId: 'blur', params: {}, target: 'video' },
       { id: 'target-audio', manifestId: 'compressor', params: {}, target: 'audio' },
     ]);
+  });
+
+  it('hasClipParametersPatch returns true when properties or transitions exist', () => {
+    expect(hasClipParametersPatch({ properties: { opacity: 0.5 } })).toBe(true);
+    expect(hasClipParametersPatch({ properties: {}, transitionIn: { type: 'fade', durationUs: 0 } })).toBe(true);
+    expect(hasClipParametersPatch({ properties: {}, transitionOut: null })).toBe(true);
+    expect(hasClipParametersPatch({ properties: {} })).toBe(false);
+  });
+
+  it('excludes video-only groups for audio track targets', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({
+        transform: { position: { x: 0, y: 0 } },
+        opacity: 0.5,
+        mask: { path: 'mask.svg' },
+        transitionIn: { type: 'fade', durationUs: 100_000 },
+        effects: [{ id: 'fx', manifestId: 'blur', params: {}, target: 'video' }],
+      }),
+    });
+
+    const groups = getApplicableClipParameterGroups({
+      snapshot,
+      targetClip: makeClip({ trackId: 'a1' }),
+      targetTrackKind: 'audio',
+    }).map((g: { id: string }) => g.id);
+
+    expect(groups).not.toContain('transform');
+    expect(groups).not.toContain('opacity');
+    expect(groups).not.toContain('mask');
+    expect(groups).not.toContain('transitions');
+    expect(groups).not.toContain('videoEffects');
+  });
+
+  it('includes shape only for shape clips, text only for text clips, etc.', () => {
+    const shapeSnapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({ clipType: 'shape', shapeType: 'rect', fillColor: '#ff0000' }),
+    });
+    const textSnapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({ clipType: 'text', style: { fontSize: 12 } }),
+    });
+    const bgSnapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({ clipType: 'background', backgroundColor: '#000000' }),
+    });
+
+    const videoTarget = makeClip({ clipType: 'media', trackId: 'v1' });
+
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot: shapeSnapshot,
+        targetClip: videoTarget,
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).toContain('shape');
+
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot: textSnapshot,
+        targetClip: videoTarget,
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).toContain('text');
+
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot: bgSnapshot,
+        targetClip: videoTarget,
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).toContain('background');
+
+    // shape/text/background are NOT applicable to each other
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot: shapeSnapshot,
+        targetClip: makeClip({ clipType: 'text' }),
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).not.toContain('shape');
+  });
+
+  it('includes sourceOrientation only for media clips', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({ clipType: 'media', sourceOrientation: 90 }),
+    });
+
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot,
+        targetClip: makeClip({ clipType: 'media' }),
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).toContain('sourceOrientation');
+
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot,
+        targetClip: makeClip({ clipType: 'text' }),
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).not.toContain('sourceOrientation');
+  });
+
+  it('includes speed only for media and timeline clips', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({ clipType: 'media', speed: 2 }),
+    });
+
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot,
+        targetClip: makeClip({ clipType: 'media' }),
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).toContain('speed');
+
+    expect(
+      getApplicableClipParameterGroups({
+        snapshot,
+        targetClip: makeClip({ clipType: 'text' }),
+        targetTrackKind: 'video',
+      }).map((g: { id: string }) => g.id),
+    ).not.toContain('speed');
   });
 });

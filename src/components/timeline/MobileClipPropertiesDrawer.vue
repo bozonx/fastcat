@@ -16,6 +16,8 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useProjectStore } from '~/stores/project.store';
+import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
+import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -69,7 +71,7 @@ const {
   handleToggleMuted,
   toggleSolo,
   isSoloed,
-  otherActionsList,
+  otherActionsList: rawOtherActionsList,
 } = useClipPropertiesActions({
   clip: clip as any,
   trackKind: clipTrackKind,
@@ -82,6 +84,34 @@ const {
   fileManager,
   setActiveTab,
 });
+
+const {
+  isPasteParametersModalOpen,
+  selectedParameterGroups,
+  clipParameterGroupOptions,
+  copyClipParameters,
+  openPasteClipParameters,
+  applyClipParameters,
+} = useClipParametersClipboard({
+  clip: clip as any,
+  trackKind: clipTrackKind,
+  updateClipProperties: (trackId, itemId, props) =>
+    timelineStore.updateClipProperties(trackId, itemId, props),
+  updateClipTransition: (trackId, itemId, patch) =>
+    timelineStore.updateClipTransition(trackId, itemId, patch),
+});
+
+const otherActionsList = computed(() =>
+  rawOtherActionsList.value.map((action: { id?: string; onClick?: () => void }) => {
+    if (action.id === 'copy-parameters') {
+      return { ...action, onClick: () => copyClipParameters() };
+    }
+    if (action.id === 'paste-parameters') {
+      return { ...action, onClick: () => openPasteClipParameters() };
+    }
+    return action;
+  }),
+);
 
 function handleCopy() {
   if (!clip.value) return;
@@ -248,6 +278,13 @@ const hasAudio = computed(() => {
       :title="t('fastcat.clip.rename')"
       @update:open="isRenameModalOpen = $event"
       @rename="handleRename"
+    />
+
+    <ClipParametersPasteModal
+      v-model:open="isPasteParametersModalOpen"
+      v-model:selected-groups="selectedParameterGroups"
+      :groups="clipParameterGroupOptions"
+      @apply="applyClipParameters"
     />
   </MobileTimelineDrawer>
 </template>
