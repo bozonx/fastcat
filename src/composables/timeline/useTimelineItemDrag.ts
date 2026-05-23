@@ -706,21 +706,15 @@ export function useTimelineItemDrag(
         const maxSourceEndUs = hasFixedSourceDuration ? knownSourceEndUs : Number.POSITIVE_INFINITY;
 
         if (mode === 'trim_start') {
-          const maxLeftExpansionSource =
-            speed >= 0 ? prevSourceStartUs : maxSourceEndUs - prevSourceEndUs;
-
           const minSourceBound = hasFixedSourceDuration
-            ? anchorStartUs - maxLeftExpansionSource / absSpeed
+            ? anchorEndUs - knownSourceEndUs / absSpeed
             : Number.NEGATIVE_INFINITY;
 
           minEdgeUs = Math.max(prevClipEnd, minSourceBound);
           maxEdgeUs = anchorEndUs;
         } else {
-          const maxRightExpansionSource =
-            speed >= 0 ? maxSourceEndUs - prevSourceEndUs : prevSourceStartUs;
-
           const maxSourceBound = hasFixedSourceDuration
-            ? anchorEndUs + maxRightExpansionSource / absSpeed
+            ? anchorStartUs + knownSourceEndUs / absSpeed
             : Number.POSITIVE_INFINITY;
 
           minEdgeUs = anchorStartUs;

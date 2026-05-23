@@ -10,7 +10,7 @@ import {
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds

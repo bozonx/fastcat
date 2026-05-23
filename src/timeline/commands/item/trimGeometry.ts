@@ -78,44 +78,68 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
   if (edge === 'start') {
     if (speed >= 0) {
       const unclampedSourceStartUs = prevSourceStartUs + sourceDeltaUs;
-      nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
+      if (unclampedSourceStartUs < minSourceStartUs) {
+        const overshoot = minSourceStartUs - unclampedSourceStartUs;
+        nextSourceStartUs = minSourceStartUs;
+        nextSourceEndUs = clampInt(prevSourceEndUs + overshoot, prevSourceStartUs, maxSourceEndUs);
+      } else {
+        nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
+        nextSourceEndUs = prevSourceEndUs;
+      }
       const appliedDeltaUs = nextSourceStartUs - prevSourceStartUs;
       const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
 
       nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
       nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
-      nextSourceEndUs = prevSourceEndUs;
     } else {
       // Reversed: trimming the timeline start moves the end of the source range.
       const unclampedSourceEndUs = prevSourceEndUs - sourceDeltaUs;
-      nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
+      if (unclampedSourceEndUs > maxSourceEndUs) {
+        const overshoot = unclampedSourceEndUs - maxSourceEndUs;
+        nextSourceEndUs = maxSourceEndUs;
+        nextSourceStartUs = clampInt(prevSourceStartUs - overshoot, minSourceStartUs, prevSourceEndUs);
+      } else {
+        nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
+        nextSourceStartUs = prevSourceStartUs;
+      }
       const appliedDeltaUs = prevSourceEndUs - nextSourceEndUs;
       const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
 
       nextTimelineStartUs = Math.max(0, prevTimelineStartUs + appliedTimelineDeltaUs);
       nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs - appliedTimelineDeltaUs);
-      nextSourceStartUs = prevSourceStartUs;
     }
   } else {
     if (speed >= 0) {
       const unclampedSourceEndUs = prevSourceEndUs + sourceDeltaUs;
-      nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
+      if (unclampedSourceEndUs > maxSourceEndUs) {
+        const overshoot = unclampedSourceEndUs - maxSourceEndUs;
+        nextSourceEndUs = maxSourceEndUs;
+        nextSourceStartUs = clampInt(prevSourceStartUs - overshoot, minSourceStartUs, prevSourceEndUs);
+      } else {
+        nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
+        nextSourceStartUs = prevSourceStartUs;
+      }
       const appliedDeltaUs = nextSourceEndUs - prevSourceEndUs;
       const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
 
       nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
       nextTimelineStartUs = prevTimelineStartUs;
-      nextSourceStartUs = prevSourceStartUs;
     } else {
       // Reversed: trimming the timeline end moves the start of the source range.
       const unclampedSourceStartUs = prevSourceStartUs - sourceDeltaUs;
-      nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
+      if (unclampedSourceStartUs < minSourceStartUs) {
+        const overshoot = minSourceStartUs - unclampedSourceStartUs;
+        nextSourceStartUs = minSourceStartUs;
+        nextSourceEndUs = clampInt(prevSourceEndUs + overshoot, prevSourceStartUs, maxSourceEndUs);
+      } else {
+        nextSourceStartUs = clampInt(unclampedSourceStartUs, minSourceStartUs, prevSourceEndUs);
+        nextSourceEndUs = prevSourceEndUs;
+      }
       const appliedDeltaUs = prevSourceStartUs - nextSourceStartUs;
       const appliedTimelineDeltaUs = Math.round(appliedDeltaUs / absSpeed);
 
       nextTimelineDurationUs = Math.max(0, prevTimelineDurationUs + appliedTimelineDeltaUs);
       nextTimelineStartUs = prevTimelineStartUs;
-      nextSourceEndUs = prevSourceEndUs;
     }
   }
 
