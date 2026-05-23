@@ -173,7 +173,7 @@ watch(
     <UiFormField :label="t('videoEditor.export.outputFormat')">
       <UiButtonGroup
         v-model="outputFormat"
-        :options="props.formatOptions"
+        :options="(props.formatOptions as any)"
         :disabled="props.disabled"
       />
     </UiFormField>

@@ -19,6 +19,7 @@ import {
   getMimeTypeFromFilename,
   BROWSER_NATIVE_IMAGE_EXTENSIONS,
 } from '../../utils/media-types';
+import { withWorkerFileWriteSlotForHandle } from './io-governor';
 import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
 

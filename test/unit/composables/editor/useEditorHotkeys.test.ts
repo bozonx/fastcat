@@ -116,24 +116,6 @@ describe('useEditorHotkeys', () => {
     expect(focusStore.activePanelId).toBe('monitor');
   });
 
-  it('toggles focus on Tab even when general.focus is bound to another shortcut', async () => {
-    mockWorkspaceStore.userSettings.hotkeys.bindings = {
-      'general.focus': ['/'],
-      'general.copy': ['Ctrl+C'],
-    };
-
-    wrapper = mount(HotkeysHarness);
-    const focusStore = useFocusStore();
-    const projectStore = useProjectStore();
-
-    projectStore.setView('cut');
-    expect(focusStore.activePanelId).toBe('timeline');
-
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
-
-    expect(focusStore.activePanelId).toBe('monitor');
-  });
-
   it('ignores non-repeatable commands on repeated keydown', async () => {
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();

@@ -40,6 +40,7 @@ export type HotkeyCommandId =
   | 'general.newTimeline'
   | 'timeline.duplicate'
   | 'timeline.toggleSnap'
+  | 'timeline.toggleSnapFree'
   | 'timeline.selectClipsLeftOfPlayhead'
   | 'timeline.selectClipsRightOfPlayhead'
   | 'timeline.trimToPlayheadLeft'
@@ -185,6 +186,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
+    { id: 'timeline.toggleSnapFree', groupId: 'timeline', title: 'Toggle snap free mode' },
     {
       id: 'timeline.selectClipsLeftOfPlayhead',
       groupId: 'timeline',
@@ -359,6 +361,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.monitorVolumeDown': ['ArrowDown'],
 
     'timeline.toggleSnap': ['T'],
+    'timeline.toggleSnapFree': ['Shift+T'],
     'timeline.selectClipsLeftOfPlayhead': [],
     'timeline.selectClipsRightOfPlayhead': [`${Mod}+D`],
     'timeline.trimToPlayheadLeft': ['C'],

@@ -60,6 +60,12 @@ export function useTimelineHotkeys(
       return true;
     },
 
+    'timeline.toggleSnapFree': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      settingsStore.toggleToolbarSnapModeFree();
+      return true;
+    },
+
     'general.copy': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;
