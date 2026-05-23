@@ -11,7 +11,7 @@ const props = defineProps<{
 }>();
 
 const isOpen = defineModel<boolean>('open', { default: false });
-const selectedGroups = defineModel<ClipParameterGroup[]>('selectedGroups', { default: () => [] });
+const selectedGroups = defineModel<any[]>('selectedGroups', { default: () => [] });
 
 const emit = defineEmits<{
   apply: [groups: ClipParameterGroup[]];
@@ -27,7 +27,7 @@ watch(
     if (!open) return;
     selectedGroups.value = props.groups
       .filter((group) => group.selectedByDefault)
-      .map((group) => group.id);
+      .map((group) => group.id as ClipParameterGroup);
   },
   { immediate: true },
 );
@@ -50,7 +50,7 @@ function handleApply() {
       <UCheckbox
         v-for="group in groups"
         :key="group.id"
-        v-model="selectedGroups as any"
+        :model-value="(selectedGroups as any)"
         :value="group.id"
         :label="t(group.labelKey)"
       />

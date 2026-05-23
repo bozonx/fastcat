@@ -310,7 +310,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'playback.backward1', groupId: 'playback', title: 'Backward 1x' },
   ],
   bindings: {
-    'general.focus': ['/'],
+    'general.focus': ['Tab'],
     'general.deselect': ['Escape'],
     'general.copy': [`${Mod}+C`],
     'general.cut': [`${Mod}+X`],

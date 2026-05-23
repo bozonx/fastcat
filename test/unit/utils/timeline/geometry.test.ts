@@ -85,6 +85,31 @@ describe('computeAnchoredScrollLeft', () => {
     });
     expect(result).toBe(Math.max(0, 10 - 500));
   });
+
+  it('keeps adaptive anchor (timeline center) at viewport center when zooming from short timeline', () => {
+    const result = computeAnchoredScrollLeft({
+      prevZoom: 50,
+      nextZoom: 100,
+      prevScrollLeft: 0,
+      viewportWidth: 1000,
+      anchor: { anchorTimeUs: 500_000, anchorViewportX: 500 },
+    });
+
+    const expectedAnchorPx = timeUsToPx(500_000, 100);
+    expect(expectedAnchorPx - result).toBeCloseTo(500, 6);
+  });
+
+  it('clamps scrollLeft to 0 when timeline still fits viewport after adaptive zoom', () => {
+    const result = computeAnchoredScrollLeft({
+      prevZoom: 50,
+      nextZoom: 60,
+      prevScrollLeft: 0,
+      viewportWidth: 1000,
+      anchor: { anchorTimeUs: 500_000, anchorViewportX: 500 },
+    });
+
+    expect(result).toBe(0);
+  });
 });
 
 describe('computeTimelinePlaybackAutoScrollLeft', () => {

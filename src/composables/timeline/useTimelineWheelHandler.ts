@@ -4,7 +4,7 @@ import { useEventListener } from '@vueuse/core';
 import type { FastCatUserSettings } from '~/utils/settings/defaults';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxToTimeUs } from '~/utils/timeline/geometry';
+import { pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
@@ -151,15 +151,32 @@ export function useTimelineWheelHandler({
 
     if (action === 'zoom_horizontal') {
       e.preventDefault();
-      const anchorViewportX = getZoomAnchorViewportX({
+      const rawAnchorViewportX = getZoomAnchorViewportX({
         event: e,
         category,
         activeEl,
       });
-      const anchorTimeUs = pxToTimeUs(
-        (horizontalScrollEl.value?.scrollLeft ?? 0) + anchorViewportX,
+
+      const scrollLeft = horizontalScrollEl.value?.scrollLeft ?? 0;
+      const viewportWidth = horizontalScrollEl.value?.clientWidth ?? 0;
+      const durationUs = timelineStore.duration;
+      const timelineWidthPx = timeUsToPx(durationUs, timelineStore.timelineZoom);
+
+      let anchorViewportX = rawAnchorViewportX;
+      let anchorTimeUs = pxToTimeUs(
+        scrollLeft + rawAnchorViewportX,
         timelineStore.timelineZoom,
       );
+
+      // Adaptive anchor: zoom from viewport center when timeline fits within viewport
+      if (timelineWidthPx > 0 && timelineWidthPx <= viewportWidth) {
+        anchorViewportX = viewportWidth / 2;
+        anchorTimeUs = Math.max(0, Math.min(durationUs, durationUs / 2));
+      } else {
+        // Clamp anchor time to timeline bounds to avoid jumping past the end
+        anchorTimeUs = Math.max(0, Math.min(durationUs, anchorTimeUs));
+      }
+
       handleZoomWheel(getZoomStep(delta), { anchorTimeUs, anchorViewportX });
       return;
     }

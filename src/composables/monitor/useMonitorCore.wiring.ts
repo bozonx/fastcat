@@ -191,7 +191,7 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
       workerAudioClips: options.workerAudioClips,
     });
 
-    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips);
+    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips, options.audioLayoutDebounceMs);
   });
 
   watch(

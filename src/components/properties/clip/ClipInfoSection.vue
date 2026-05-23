@@ -36,7 +36,7 @@ const { t } = useI18n();
     :title="t('common.source')"
   >
     <PropertyRow :label="t('common.path')" :value="props.clip.source.path" />
-    <MediaMetadataList :media-meta="props.mediaMeta" />
+    <MediaMetadataList :media-meta="props.mediaMeta as any" />
   </PropertySection>
 
   <PropertySection v-if="props.showInfo" class="hidden md:block">
