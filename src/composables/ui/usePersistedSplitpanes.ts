@@ -48,12 +48,20 @@ export function usePersistedSplitpanes(
     isLoaded.value = true;
   }
 
-  // Watch projectId, pageKey, and defaultSizes to reload if length changes
+  // Watch projectId, pageKey, defaultSizes length, AND the stored value itself.
+  // The stored snapshot is essential: project settings load asynchronously
+  // (after projectId is already set), so without it loadSizes runs once against
+  // empty storage, falls back to defaults, and never re-runs when the persisted
+  // sizes actually arrive — leaving panels at default widths on every reload.
   watch(
     [
       () => projectId.value,
       isRef(pageKey) ? pageKey : () => pageKey,
       isRef(defaultSizes) ? () => defaultSizes.value.length : () => defaultSizes.length,
+      () => {
+        const stored = storage.get(getKey());
+        return Array.isArray(stored) ? stored.join(',') : '';
+      },
     ],
     loadSizes,
     {

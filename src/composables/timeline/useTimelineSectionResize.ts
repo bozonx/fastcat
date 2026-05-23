@@ -16,9 +16,15 @@ export function useTimelineSectionResize({ projectId, storage }: UseTimelineSect
     `fastcat-timeline-video-section-${projectId.value}${getPlatformSuffix()}`;
   const videoSectionPercent = ref(storage?.get(getStorageKey()) ?? DEFAULT_VIDEO_SECTION_PERCENT);
 
+  // Track both the key and the stored value: project settings load
+  // asynchronously after projectId is set, so watching the key alone would read
+  // empty storage once and never pick up the persisted height on reload.
   watch(
-    () => getStorageKey(),
-    (key) => {
+    () => {
+      const key = getStorageKey();
+      return [key, storage?.get(key) ?? null] as const;
+    },
+    ([key]) => {
       videoSectionPercent.value = storage?.get(key) ?? DEFAULT_VIDEO_SECTION_PERCENT;
     },
     { immediate: true },

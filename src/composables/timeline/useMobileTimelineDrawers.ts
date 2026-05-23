@@ -203,7 +203,10 @@ export function useMobileTimelineDrawers() {
     if (suppressDrawerSelectionClear.value) {
       return;
     }
-    if (selectionStore.selectedEntity?.kind === 'marker' || selectionStore.selectedEntity?.kind === 'markers') {
+    if (
+      selectionStore.selectedEntity?.kind === 'marker' ||
+      selectionStore.selectedEntity?.kind === 'markers'
+    ) {
       selectionStore.clearSelection();
     }
   }

@@ -182,7 +182,11 @@ function seekToMarker(markerId: string, e?: MouseEvent, part?: 'left' | 'right')
       : marker.timeUs;
 
   timelineStore.setCurrentTimeUs(timeUs);
-  selectionStore.selectTimelineMarker(markerId);
+
+  // Don't override multi-selection when shift is held
+  if (!e?.shiftKey) {
+    selectionStore.selectTimelineMarker(markerId);
+  }
 }
 
 function selectSelectionRange(e?: MouseEvent) {

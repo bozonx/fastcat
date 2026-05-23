@@ -219,12 +219,15 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
               fileTabs: projectTabsStore.fileTabs,
               staticTabsOrder: projectTabsStore.staticTabsOrder,
               fileManagerPaths,
+              // Persist the live layout (panel widths, vertical splits, timeline
+              // heights, panel arrangement). Writing empty objects here silently
+              // dropped every drag-resized size on save, so nothing restored.
               layout: {
-                cutPanels: null,
-                soundPanels: null,
-                splitSizes: {},
-                verticalSplitSizes: {},
-                timelineHeights: {},
+                cutPanels: projectSettings.value.ui.layout.cutPanels,
+                soundPanels: projectSettings.value.ui.layout.soundPanels,
+                splitSizes: { ...projectSettings.value.ui.layout.splitSizes },
+                verticalSplitSizes: { ...projectSettings.value.ui.layout.verticalSplitSizes },
+                timelineHeights: { ...projectSettings.value.ui.layout.timelineHeights },
               },
             },
           });
