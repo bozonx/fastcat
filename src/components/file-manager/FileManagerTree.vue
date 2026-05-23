@@ -80,7 +80,7 @@ const clipboardCopyPaths = useClipboardCopyPaths();
 
 const ctx = inject<TreeContext>('fileManagerTreeCtx', {
   getFileIcon: () => 'i-heroicons-document',
-  selectedPath: ref(null) as import('vue').Ref<string | null>,
+  selectedPath: computed(() => null) as import('vue').ComputedRef<string | null>,
   getEntryMeta: () => ({ hasProxy: false, generatingProxy: false }),
   getFileCompatibilityStatus: () => 'ok',
 });
@@ -755,7 +755,7 @@ const { getContextMenuItems } = useFileContextMenu(
     },
   },
   (action, entry) => {
-    emit('action', action, entry);
+    emit('action', action as any, entry);
   },
 );
 </script>

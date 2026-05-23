@@ -5,6 +5,7 @@ import {
   parseHotkeyCombo,
   normalizeHotkeyCombo,
   isEditableTarget,
+  hotkeyFromKeyboardEvent,
 } from '~/utils/hotkeys/hotkeyUtils';
 
 describe('stringifyHotkey', () => {

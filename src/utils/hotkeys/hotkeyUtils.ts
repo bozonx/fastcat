@@ -14,7 +14,25 @@ const MOD_ORDER = ['Ctrl', 'Meta', 'Alt', 'Shift'] as const;
 
 type ModLabel = (typeof MOD_ORDER)[number];
 
+const CODE_TO_LABEL: Record<string, string> = {
+  BracketLeft: '[',
+  BracketRight: ']',
+  Slash: '/',
+  Backslash: '\\',
+  Period: '.',
+  Comma: ',',
+  Semicolon: ';',
+  Quote: "'",
+  Backquote: '`',
+  Minus: '-',
+  Equal: '=',
+  IntlBackslash: '\\',
+};
+
 function normalizeKeyLabel(rawKey: string): string {
+  const codeLabel = CODE_TO_LABEL[rawKey];
+  if (codeLabel) return codeLabel;
+
   if (rawKey === ' ') return 'Space';
 
   const key = rawKey.trim();
@@ -99,12 +117,30 @@ export function normalizeHotkeyCombo(combo: HotkeyCombo): HotkeyCombo | null {
   return stringifyHotkey(parsed);
 }
 
+const LAYOUT_INDEPENDENT_CODES = [
+  'BracketLeft',
+  'BracketRight',
+  'Slash',
+  'Backslash',
+  'Period',
+  'Comma',
+  'Semicolon',
+  'Quote',
+  'Backquote',
+  'Minus',
+  'Equal',
+  'IntlBackslash',
+];
+
 export function hotkeyFromKeyboardEvent(
   e: KeyboardEvent,
   settings?: FastCatUserSettings,
 ): HotkeyCombo | null {
   const useCode =
-    e.code.startsWith('Key') || e.code.startsWith('Digit') || e.code.startsWith('Numpad');
+    e.code.startsWith('Key') ||
+    e.code.startsWith('Digit') ||
+    e.code.startsWith('Numpad') ||
+    LAYOUT_INDEPENDENT_CODES.includes(e.code);
   const key = normalizeKeyLabel(useCode ? e.code : e.key);
   if (!key) return null;
 

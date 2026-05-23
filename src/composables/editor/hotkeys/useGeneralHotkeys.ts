@@ -496,7 +496,7 @@ export function useGeneralHotkeys(
         toggleTimelineSelectAll();
         return true;
       }
-      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
+      if (isFileManagerMainFocus(focusStore.effectiveFocus) || focusStore.effectiveFocus === 'filesBrowser') {
         uiStore.fileBrowserSelectAllTrigger++;
         return true;
       }

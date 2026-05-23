@@ -148,7 +148,8 @@ const {
       kind: 'directory',
       name: path.split('/').pop() || '',
       source: 'remote',
-    }) as FsEntry,
+      remoteType: 'directory',
+    }) as import('~/utils/remote-vfs').RemoteFsEntry,
   remoteCurrentFolder: ref(null),
   loadFolderContent,
   loadParentFolders: async () => {},
@@ -344,7 +345,7 @@ async function onRenameConfirm(newName: string) {
   } catch (err) {
     toast.add({
       title: t('common.error'),
-      description: String(err?.message || err),
+      description: String((err as { message?: string })?.message || err),
       color: 'error',
     });
   } finally {

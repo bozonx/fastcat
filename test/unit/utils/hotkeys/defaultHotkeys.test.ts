@@ -49,15 +49,25 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.addMarker']).toContain('M');
   });
 
-  it('has bindings for general.monitorVolumeUp including Control+R', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toContain('ArrowUp');
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toContain('Control+R');
+  it('has bindings for general.volumeUp including = and Control+R', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('=');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Control+R');
   });
 
-  it('has bindings for general.monitorVolumeDown including Control+E', () => {
+  it('has bindings for general.volumeDown including - and Control+E', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('-');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Control+E');
+  });
+
+  it('has binding for general.monitorVolumeUp as ArrowUp only', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toEqual(['ArrowUp']);
+  });
+
+  it('has binding for general.monitorVolumeDown as ArrowDown only', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toContain('ArrowDown');
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toContain('Control+E');
+    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toEqual(['ArrowDown']);
   });
 });

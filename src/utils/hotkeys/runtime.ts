@@ -30,6 +30,10 @@ export const HOTKEY_COMMAND_POLICIES: Readonly<
   'general.focus': {
     allowWhenModalOpen: false,
   },
+  'general.rename': {
+    allowInEditable: true,
+    allowWhenModalOpen: false,
+  },
   'general.fullscreen': {
     allowWhenModalOpen: true,
   },
