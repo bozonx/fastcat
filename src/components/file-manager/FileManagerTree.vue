@@ -755,7 +755,7 @@ const { getContextMenuItems } = useFileContextMenu(
     },
   },
   (action, entry) => {
-    emit('action', action as any, entry);
+    emit('action', action as any, entry as import('~/types/fs').FsEntry);
   },
 );
 </script>

@@ -87,3 +87,48 @@ describe('isEditableTarget', () => {
     expect(isEditableTarget(input)).toBe(false);
   });
 });
+
+describe('hotkeyFromKeyboardEvent', () => {
+  it('uses e.code for layout-independent keys (brackets in Russian layout)', () => {
+    const bracketLeft = new KeyboardEvent('keydown', {
+      code: 'BracketLeft',
+      key: 'х',
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(bracketLeft)).toBe('[');
+
+    const bracketRight = new KeyboardEvent('keydown', {
+      code: 'BracketRight',
+      key: 'ъ',
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(bracketRight)).toBe(']');
+  });
+
+  it('uses e.code for Slash in Russian layout', () => {
+    const slash = new KeyboardEvent('keydown', {
+      code: 'Slash',
+      key: '.',
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(slash)).toBe('/');
+  });
+
+  it('uses e.code for letter keys regardless of layout', () => {
+    const keyA = new KeyboardEvent('keydown', {
+      code: 'KeyA',
+      key: 'ф',
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(keyA)).toBe('A');
+  });
+
+  it('falls back to e.key for non-layout-independent keys', () => {
+    const enter = new KeyboardEvent('keydown', {
+      code: 'Enter',
+      key: 'Enter',
+      bubbles: true,
+    });
+    expect(hotkeyFromKeyboardEvent(enter)).toBe('Enter');
+  });
+});

@@ -362,7 +362,7 @@ const remote = useFileBrowserRemote({
   vfs,
 });
 
-remoteApi = remote;
+remoteApi = remote as any;
 
 const {
   remoteTransferOpen,
@@ -774,7 +774,7 @@ const { refreshFileTree } = useFileBrowserLifecycle({
   buildRemoteDirectoryEntry,
   fileManagerStore,
   selectionStore,
-  focusStore,
+  focusStore: focusStore as any,
   uiStore,
   clipboardStore,
   instanceId,

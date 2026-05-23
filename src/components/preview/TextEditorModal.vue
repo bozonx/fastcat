@@ -24,7 +24,7 @@ const content = defineModel<string>('content', { default: '' });
       <UiTextarea
         v-model="content"
         class="flex-1"
-        :ui="{ base: 'h-full resize-none font-mono' }"
+        :ui="{ root: 'ring-0', base: 'h-full resize-none font-mono ring-0 border border-ui-border' }"
         :spellcheck="false"
         data-primary-focus="true"
         full-width

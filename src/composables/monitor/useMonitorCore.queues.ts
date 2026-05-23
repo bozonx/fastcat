@@ -21,6 +21,7 @@ export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions)
   let buildRequested = false;
   let buildDebounceTimer: number | null = null;
   let layoutDebounceTimer: number | null = null;
+  let layoutScheduledFireAt = Number.POSITIVE_INFINITY;
   let layoutUpdateInFlight = false;
   let pendingLayoutPayload: MonitorLayoutQueuePayload | null = null;
 
@@ -69,16 +70,29 @@ export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions)
     }, options.buildDebounceMs);
   }
 
-  function scheduleLayoutUpdate(payload: MonitorLayoutQueuePayload) {
+  function scheduleLayoutUpdate(payload: MonitorLayoutQueuePayload, debounceMs?: number) {
     pendingLayoutPayload = payload;
+
+    const delay = debounceMs ?? options.layoutDebounceMs;
+    const fireAt = Date.now() + delay;
+
+    // Earliest deadline wins: a pending short (numeric) debounce must not be
+    // pushed out by a later long (text) one, but a later short one can pull a
+    // pending long one forward.
+    if (layoutDebounceTimer !== null && fireAt >= layoutScheduledFireAt) {
+      return;
+    }
+
     if (layoutDebounceTimer !== null) {
       clearTimeout(layoutDebounceTimer);
     }
 
+    layoutScheduledFireAt = fireAt;
     layoutDebounceTimer = window.setTimeout(() => {
       layoutDebounceTimer = null;
+      layoutScheduledFireAt = Number.POSITIVE_INFINITY;
       void flushLayoutUpdateQueue();
-    }, options.layoutDebounceMs);
+    }, delay);
   }
 
   function clear() {
@@ -91,6 +105,7 @@ export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions)
       clearTimeout(layoutDebounceTimer);
       layoutDebounceTimer = null;
     }
+    layoutScheduledFireAt = Number.POSITIVE_INFINITY;
 
     pendingLayoutPayload = null;
     buildRequested = false;

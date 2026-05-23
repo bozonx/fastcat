@@ -17,7 +17,7 @@ interface UiTextareaProps {
   readonly?: boolean;
   fullWidth?: boolean;
   spellcheck?: boolean;
-  ui?: { base?: string };
+  ui?: { base?: string; root?: string; [key: string]: string | undefined };
 }
 
 const props = withDefaults(defineProps<UiTextareaProps>(), {

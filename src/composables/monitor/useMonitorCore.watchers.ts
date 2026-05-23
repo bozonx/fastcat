@@ -59,6 +59,34 @@ export function shouldScheduleClipLayoutUpdate(params: {
   return true;
 }
 
+export function shouldScheduleClipContentUpdate(params: {
+  isLoading: boolean;
+  isCompositorReady: boolean;
+  clipSourceSignature: number;
+  lastBuiltSourceSignature: number;
+  clipContentSignature: number;
+  lastBuiltContentSignature: number;
+  layoutUpdateFromQueue: boolean;
+}): boolean {
+  if (params.isLoading || !params.isCompositorReady) {
+    return false;
+  }
+
+  if (params.clipSourceSignature !== params.lastBuiltSourceSignature) {
+    return false;
+  }
+
+  if (params.clipContentSignature === params.lastBuiltContentSignature) {
+    return false;
+  }
+
+  if (params.layoutUpdateFromQueue) {
+    return false;
+  }
+
+  return true;
+}
+
 export function shouldScheduleAudioLayoutUpdate(params: {
   isLoading: boolean;
   isCompositorReady: boolean;

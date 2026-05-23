@@ -5,6 +5,7 @@ import {
   getMonitorLayoutUpdatePayload,
   hasProxyForMonitorSources,
   shouldScheduleAudioLayoutUpdate,
+  shouldScheduleClipContentUpdate,
   shouldScheduleClipLayoutUpdate,
 } from './useMonitorCore.watchers';
 
@@ -12,7 +13,11 @@ export interface RegisterMonitorCoreWatchersOptions {
   clipSourceSignature: Ref<number>;
   audioClipSourceSignature: Ref<number>;
   clipLayoutSignature: Ref<number>;
+  clipContentSignature: Ref<number>;
   audioClipLayoutSignature: Ref<number>;
+  clipLayoutDebounceMs: number;
+  clipContentDebounceMs: number;
+  audioLayoutDebounceMs: number;
   rawWorkerTimelineClips?: Ref<WorkerTimelineClip[]>;
   rawWorkerAudioClips?: Ref<WorkerTimelineClip[]>;
   workerTimelineClips: Ref<WorkerTimelineClip[]>;
@@ -26,6 +31,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   getIsCompositorReady: () => boolean;
   getLastBuiltSourceSignature: () => number;
   getLastBuiltLayoutSignature: () => number;
+  getLastBuiltContentSignature: () => number;
   getLayoutUpdateFromQueue: () => boolean;
   getTimelineMasterGain: () => number;
   getTimelineAudioMuted: () => boolean;
@@ -42,6 +48,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   scheduleLayoutUpdate: (
     layoutClips: WorkerTimelineClip[],
     layoutAudioClips: WorkerTimelineClip[],
+    debounceMs?: number,
   ) => void;
   setAudioEngineMasterVolume: (volume: number) => void;
   setAudioEngineMonitorVolume: (volume: number) => void;
@@ -135,7 +142,35 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
       workerAudioClips: options.workerAudioClips,
     });
 
-    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips);
+    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips, options.clipLayoutDebounceMs);
+  });
+
+  // Text content edits flip only clipContentSignature. They go through the same
+  // layout-update flush but with a longer debounce, so rapid typing coalesces
+  // into a single monitor update.
+  watch(options.clipContentSignature, () => {
+    if (
+      !shouldScheduleClipContentUpdate({
+        isLoading: options.isLoading.value,
+        isCompositorReady: options.getIsCompositorReady(),
+        clipSourceSignature: options.clipSourceSignature.value,
+        lastBuiltSourceSignature: options.getLastBuiltSourceSignature(),
+        clipContentSignature: options.clipContentSignature.value,
+        lastBuiltContentSignature: options.getLastBuiltContentSignature(),
+        layoutUpdateFromQueue: options.getLayoutUpdateFromQueue(),
+      })
+    ) {
+      return;
+    }
+
+    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
+      rawWorkerTimelineClips: options.rawWorkerTimelineClips,
+      rawWorkerAudioClips: options.rawWorkerAudioClips,
+      workerTimelineClips: options.workerTimelineClips,
+      workerAudioClips: options.workerAudioClips,
+    });
+
+    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips, options.clipContentDebounceMs);
   });
 
   watch(options.audioClipLayoutSignature, () => {

@@ -225,13 +225,6 @@ export function useMonitorTimeline() {
               ),
             ),
           );
-        } else if (item.clipType === 'text') {
-          const textItem = item as TimelineTextClipItem;
-          hash = mixHash(hash, hashString(String(textItem.text ?? '')));
-          const style = textItem.style;
-          if (style) {
-            hash = mixHash(hash, hashString(JSON.stringify(style)));
-          }
         } else if (item.clipType === 'shape') {
           const shapeItem = item as TimelineShapeClipItem;
           hash = mixHash(hash, hashString(String(shapeItem.shapeType ?? 'square')));
@@ -336,7 +329,9 @@ export function useMonitorTimeline() {
 
         if (item.clipType === 'text') {
           const textItem = item as TimelineTextClipItem;
-          hash = mixHash(hash, hashString(String(textItem.text ?? '')));
+          // Text *content* lives in clipContentSignature (longer debounce). Only
+          // style — driven by numeric inputs / pickers — stays on the layout
+          // signature (shorter debounce).
           const style = textItem.style;
           if (style) {
             hash = mixHash(hash, hashString(JSON.stringify(style)));
@@ -373,6 +368,59 @@ export function useMonitorTimeline() {
         if (track) {
           hash = mixFloat(hash, track.opacity ?? 1, 1000);
           hash = mixHash(hash, hashString(String(track.blendMode ?? 'normal')));
+        }
+      }
+    }
+    return hash;
+  });
+
+  // Text content only. Editing the text of a text clip flips this signature but
+  // not clipLayoutSignature, so its watcher can use a longer debounce than the
+  // numeric/geometry layout fields.
+  const clipContentSignature = computed(() => {
+    let hash = mixHash(2166136261, videoItems.value.length);
+    for (const item of videoItems.value) {
+      if (item.kind !== 'clip' || item.clipType !== 'text') continue;
+      const textItem = item as TimelineTextClipItem;
+      hash = mixHash(hash, hashString(item.id));
+      hash = mixHash(hash, hashString(String(textItem.text ?? '')));
+    }
+    return hash;
+  });
+
+  // Hash of everything that affects the frame *currently under the playhead*:
+  // master video effects plus every enabled clip active at the current time and
+  // its track. Lazily evaluated — only read when a layout/content update flushes
+  // — so it lets the monitor skip a redraw when the edited clip is not visible at
+  // the playhead (off-screen, or on a hidden/disabled track which is excluded).
+  const activeLayoutSignature = computed(() => {
+    const timeUs = timelineStore.currentTime;
+    let hash = mixHash(2166136261, 0);
+
+    const masterVideoEffects = masterEffects.value.filter((effect) => effect?.target !== 'audio');
+    if (masterVideoEffects.length > 0) {
+      hash = mixHash(hash, hashString(JSON.stringify(masterVideoEffects)));
+    }
+
+    const trackById = new Map<string, TimelineTrack>(
+      visibleVideoTracks.value.map((t) => [t.id, t]),
+    );
+
+    for (const item of videoItems.value) {
+      if (item.disabled) continue;
+      const startUs = item.timelineRange.startUs;
+      const endUs = startUs + item.timelineRange.durationUs;
+      if (timeUs < startUs || timeUs >= endUs) continue;
+
+      // Visible at the current frame: any change to this clip (including text
+      // content) must trigger a redraw, so hash the whole item plus its track.
+      hash = mixHash(hash, hashString(JSON.stringify(item)));
+      const track = trackById.get(item.trackId);
+      if (track) {
+        hash = mixFloat(hash, track.opacity ?? 1, 1000);
+        hash = mixHash(hash, hashString(String(track.blendMode ?? 'normal')));
+        if (Array.isArray(track.effects)) {
+          hash = mixHash(hash, hashString(JSON.stringify(track.effects)));
         }
       }
     }
@@ -464,6 +512,8 @@ export function useMonitorTimeline() {
     safeDurationUs,
     clipSourceSignature,
     clipLayoutSignature,
+    clipContentSignature,
+    activeLayoutSignature,
     audioClipSourceSignature,
     audioClipLayoutSignature,
   };

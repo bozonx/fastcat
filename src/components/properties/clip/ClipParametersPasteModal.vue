@@ -11,7 +11,7 @@ const props = defineProps<{
 }>();
 
 const isOpen = defineModel<boolean>('open', { default: false });
-const selectedGroups = defineModel<ClipParameterGroup[]>('selectedGroups', { default: () => [] });
+const selectedGroups = defineModel<string[]>('selectedGroups', { default: () => [] });
 
 const emit = defineEmits<{
   apply: [groups: ClipParameterGroup[]];
