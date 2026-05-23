@@ -202,27 +202,48 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
     const tileW = tileDisplayWidthPx.value;
     const overscanPx = Math.max(options.viewportWidth.value * 0.5, tileW * 4);
-    const visibleStartLocalPx = Math.max(
-      0,
-      options.scrollLeft.value - options.clipStartPx.value - overscanPx,
-    );
+
+    const clipStartInViewportPx = options.scrollLeft.value - options.clipStartPx.value;
+    const visibleStartLocalPx = Math.max(0, clipStartInViewportPx - overscanPx);
     const visibleEndLocalPx = Math.min(
       clipW,
-      options.scrollLeft.value +
-        options.viewportWidth.value -
-        options.clipStartPx.value +
-        overscanPx,
+      clipStartInViewportPx + options.viewportWidth.value + overscanPx,
     );
 
     if (visibleEndLocalPx < visibleStartLocalPx) return [];
 
+    const sourceStartUs = options.item.value.sourceRange.startUs;
+
+    if (clipThumbnailMode.value === 'edges') {
+      const totalTiles = Math.max(1, Math.ceil(clipW / tileW));
+      const firstIdx = Math.max(0, Math.floor(visibleStartLocalPx / tileW) - 1);
+      const lastIdx = Math.ceil(visibleEndLocalPx / tileW);
+
+      const times: number[] = [];
+      const addedTimes = new Set<number>();
+
+      for (let idx = firstIdx; idx <= lastIdx; idx++) {
+        if (idx === 0 || idx === 1 || idx === totalTiles - 1 || idx === totalTiles - 2) {
+          const sourceTimeSec = sourceStartUs / 1_000_000 + (idx * tileW) / pxPerSec;
+          const nearestSecond = Math.round(sourceTimeSec / intervalSeconds) * intervalSeconds;
+          const roundedTime = Math.round(nearestSecond);
+          if (roundedTime >= 0 && roundedTime <= duration.value && !addedTimes.has(roundedTime)) {
+            times.push(roundedTime);
+            addedTimes.add(roundedTime);
+          }
+        }
+      }
+
+      return times.sort((a, b) => a - b);
+    }
+
     const sourceStartSec = Math.max(
       0,
-      options.item.value.sourceRange.startUs / 1_000_000 + visibleStartLocalPx / pxPerSec,
+      sourceStartUs / 1_000_000 + visibleStartLocalPx / pxPerSec,
     );
     const sourceEndSec = Math.min(
       duration.value,
-      options.item.value.sourceRange.startUs / 1_000_000 + visibleEndLocalPx / pxPerSec,
+      sourceStartUs / 1_000_000 + visibleEndLocalPx / pxPerSec,
     );
 
     const step = thumbnailGridStepSeconds.value;
@@ -236,7 +257,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     if (times.length === 0 && sourceStartSec <= duration.value) {
       times.push(Math.floor(sourceStartSec / intervalSeconds) * intervalSeconds);
     }
-
     return times;
   });
 
@@ -256,6 +276,8 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
    * leftPx is relative to the strip container which starts at -trimOffsetPx.
    */
   const thumbnailTiles = computed<ThumbnailTile[]>(() => {
+    if (clipThumbnailMode.value === 'none') return [];
+
     const tileW = tileDisplayWidthPx.value;
     if (!Number.isFinite(tileW) || tileW <= 0) return [];
 
@@ -283,8 +305,15 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     const lastIdx = Math.ceil((visibleRight - trimOff) / tileW);
 
     let tiles: ThumbnailTile[] = [];
+    const totalTiles = Math.max(1, Math.ceil(clipWidthPx.value / tileW));
 
     for (let idx = firstIdx; idx <= lastIdx; idx++) {
+      if (clipThumbnailMode.value === 'edges') {
+        if (idx !== 0 && idx !== 1 && idx !== totalTiles - 1 && idx !== totalTiles - 2) {
+          continue;
+        }
+      }
+
       // Source time at this tile's left edge in seconds.
       const sourceTimeSec = (trimOff + idx * tileW) / pxPerSec;
 
@@ -320,11 +349,6 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
         leftPx: trimOff + idx * tileW,
         widthPx: tileW,
       });
-    }
-
-    if (clipThumbnailMode.value === 'edges') {
-      const total = tiles.length;
-      tiles = tiles.filter((_, i) => i < 2 || i >= total - 2);
     }
 
     return tiles;
@@ -431,10 +455,19 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     }
   });
 
-  watch(fileUrl, () => {
+  watch(clipHash, (newHash, oldHash) => {
+    if (oldHash) {
+      thumbnailGenerator.cancelTask(oldHash);
+    }
     thumbnailsBySecond.value = new Map();
-    if (!isImage.value) {
+    if (newHash && !isImage.value) {
       generate();
+    }
+  });
+
+  watch(fileThumbnailHash, (newHash, oldHash) => {
+    if (oldHash) {
+      fileThumbnailGenerator.cancelTask(oldHash);
     }
   });
 
@@ -450,5 +483,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     isImage,
     thumbnailTiles,
     trimOffsetPx,
+    requestedThumbnailTimes,
+    thumbnailGridStepSeconds,
   };
 }

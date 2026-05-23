@@ -19,7 +19,7 @@ import {
   getMimeTypeFromFilename,
   BROWSER_NATIVE_IMAGE_EXTENSIONS,
 } from '../../utils/media-types';
-import { withWorkerFileWriteSlotForHandle } from './io-governor';
+import { withWorkerFileWriteSlotForHandle, withWorkerFileIoSlotForHandle } from './io-governor';
 import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
 
@@ -29,7 +29,9 @@ export async function extractMetadata(
   const file =
     fileOrHandle instanceof File
       ? fileOrHandle
-      : await (fileOrHandle as FileSystemFileHandle).getFile();
+      : await withWorkerFileIoSlotForHandle(fileOrHandle, () =>
+          (fileOrHandle as FileSystemFileHandle).getFile(),
+        );
 
   const isImage = getMediaTypeFromFilename(file.name) === 'image';
 
@@ -261,7 +263,9 @@ async function buildPassthroughAudioTrack(params: {
   const fileHandle = clip.fileHandle || (await hostClient.getFileHandleByPath(sourcePath));
   if (!fileHandle) return null;
 
-  const file = (await hostClient.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
+  const file =
+    (await hostClient.getFileByPath?.(sourcePath)) ??
+    (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -732,7 +736,7 @@ export async function extractAudioStream(
   const targetHandle = await hostClient.getFileHandleByPath(targetPath);
   if (!targetHandle) throw new Error('Target file handle not found');
 
-  const sourceFile = await sourceHandle.getFile();
+  const sourceFile = await withWorkerFileIoSlotForHandle(sourceHandle, () => sourceHandle.getFile());
   const {
     Input,
     BlobSource,

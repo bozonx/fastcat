@@ -1,4 +1,5 @@
 import { ImageSource } from 'pixi.js';
+import PQueue from 'p-queue';
 import { getMediaTypeFromFilename } from '../../media-types';
 import type { WorkerTimelineClip } from '../../../composables/monitor/types';
 import type { VideoClipEffect } from '~/timeline/types';
@@ -71,7 +72,16 @@ export interface TimelineLoadOrchestratorResult {
 }
 
 export class TimelineLoadOrchestrator {
+  private clipLoadQueue: PQueue | null = null;
+
   constructor(private readonly context: TimelineLoadOrchestratorContext) {}
+
+  private getClipLoadQueue(isOpfs: boolean): PQueue {
+    if (!this.clipLoadQueue) {
+      this.clipLoadQueue = new PQueue({ concurrency: isOpfs ? 2 : 8 });
+    }
+    return this.clipLoadQueue;
+  }
 
   public async load(
     params: TimelineLoadOrchestratorParams,
@@ -243,6 +253,14 @@ export class TimelineLoadOrchestrator {
       };
     }
 
+    const isOpfs = (() => {
+      try {
+        return fileHandle instanceof FileSystemFileHandle;
+      } catch {
+        return false;
+      }
+    })();
+
     const file = (await deps.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
     const isImage =
       (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
@@ -297,17 +315,21 @@ export class TimelineLoadOrchestrator {
       return { sequentialTimeUs };
     }
 
+    const queue = this.getClipLoadQueue(isOpfs);
+
     try {
-      const loadedVideo = await this.context.mediaClipLoader.loadVideoRuntime({
-        mediabunny,
-        file,
-        sourceStartUs,
-        requestedTimelineDurationUs,
-        requestedSourceDurationUs,
-        requestedSourceRangeDurationUs,
-        startUs,
-        abortSignal: callbacks.abortSignal,
-      });
+      const loadedVideo = await queue.add(() =>
+        this.context.mediaClipLoader.loadVideoRuntime({
+          mediabunny,
+          file,
+          sourceStartUs,
+          requestedTimelineDurationUs,
+          requestedSourceDurationUs,
+          requestedSourceRangeDurationUs,
+          startUs,
+          abortSignal: callbacks.abortSignal,
+        }),
+      );
       if (!loadedVideo) {
         return { sequentialTimeUs };
       }

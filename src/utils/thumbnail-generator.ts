@@ -72,6 +72,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
   private listeners = new Map<string, Map<string, ThumbnailTaskListener>>();
   private pendingRequestedTimes = new Map<string, Set<number>>();
   private opfsCheckedTimes = new Map<string, Set<number>>();
+  private opfsExistingFiles = new Map<string, Set<string>>();
 
   protected override evictCacheIfNeeded() {
     super.evictCacheIfNeeded();
@@ -84,6 +85,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       this.listeners.delete(oldestKey);
       this.pendingRequestedTimes.delete(oldestKey);
       this.opfsCheckedTimes.delete(oldestKey);
+      this.opfsExistingFiles.delete(oldestKey);
     }
   }
 
@@ -210,6 +212,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     this.listeners.delete(id);
     this.pendingRequestedTimes.delete(id);
     this.opfsCheckedTimes.delete(id);
+    this.opfsExistingFiles.delete(id);
     if (this.activeTasks.has(id)) {
       void getThumbnailWorkerClient()
         .client.cancelExport(id)
@@ -307,13 +310,17 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
       // Single-pass directory scan avoids expensive per-file getFileHandle calls
       // that throw NotFoundError for every missing thumbnail.
-      const existingFiles = new Set<string>();
-      for await (const entry of (
-        hashDir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }
-      ).values()) {
-        if (entry.kind === 'file') {
-          existingFiles.add(entry.name);
+      let existingFiles = this.opfsExistingFiles.get(task.id);
+      if (!existingFiles) {
+        existingFiles = new Set<string>();
+        for await (const entry of (
+          hashDir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }
+        ).values()) {
+          if (entry.kind === 'file') {
+            existingFiles.add(entry.name);
+          }
         }
+        this.opfsExistingFiles.set(task.id, existingFiles);
       }
 
       for (const time of timesToCheck) {
@@ -467,6 +474,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
               await writable.close();
             });
 
+            this.opfsExistingFiles.get(task.id)?.add(fileName);
+
             const thumbUrl = URL.createObjectURL(blob);
 
             const urls = this.cache.get(task.id) ?? new Map<number, string>();
@@ -492,6 +501,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
         task.onComplete?.();
       }
     } finally {
+      this.opfsExistingFiles.delete(task.id);
       try {
         await client.releaseFrameExtractor(task.id);
       } catch {
@@ -509,6 +519,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     this.listeners.delete(input.hash);
     this.pendingRequestedTimes.delete(input.hash);
     this.opfsCheckedTimes.delete(input.hash);
+    this.opfsExistingFiles.delete(input.hash);
 
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return;

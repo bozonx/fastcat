@@ -1,9 +1,58 @@
 /** @vitest-environment node */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
+import { setActivePinia, createPinia } from 'pinia';
 import {
   resolveVisualVideoAspect,
+  useTimelineClipThumbnails,
   type ThumbnailTile,
 } from '~/composables/timeline/useTimelineClipThumbnails';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useMediaStore } from '~/stores/media.store';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+import type { TimelineClipItem } from '~/timeline/types';
+
+vi.mock('~/stores/workspace.store', () => ({
+  useWorkspaceStore: vi.fn(),
+}));
+
+vi.mock('~/stores/timeline.store', () => ({
+  useTimelineStore: vi.fn(),
+}));
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: vi.fn(),
+}));
+
+vi.mock('~/stores/media.store', () => ({
+  useMediaStore: vi.fn(),
+}));
+
+vi.mock('~/composables/file-manager/useFileManager', () => ({
+  useFileManager: vi.fn(() => ({
+    vfs: {
+      getFile: vi.fn().mockResolvedValue(new File([], 'test.mp4')),
+    },
+  })),
+}));
+
+vi.mock('~/utils/thumbnail-generator', () => ({
+  getClipThumbnailsHash: vi.fn(() => 'test-clip-hash'),
+  thumbnailGenerator: {
+    addTask: vi.fn(),
+    cancelTask: vi.fn(),
+  },
+}));
+
+vi.mock('~/utils/file-thumbnail-generator', () => ({
+  getFileThumbnailHash: vi.fn(() => 'test-file-hash'),
+  fileThumbnailGenerator: {
+    addTask: vi.fn(),
+    cancelTask: vi.fn(),
+  },
+}));
 
 describe('ThumbnailTile interface', () => {
   it('has expected shape', () => {
@@ -73,3 +122,114 @@ describe('resolveVisualVideoAspect', () => {
     ).toBeCloseTo(9 / 16, 5);
   });
 });
+
+
+describe('useTimelineClipThumbnails reactive logic', () => {
+  let userSettings: any;
+  let timelineZoom: any;
+  let currentProjectId: string;
+  let mediaMetadata: any;
+
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+
+    userSettings = {
+      ui: {
+        clipThumbnailMode: 'standard',
+      },
+    };
+
+    timelineZoom = 61.0;
+    currentProjectId = 'test-project';
+    mediaMetadata = {
+      'test-video.mp4': {
+        video: {
+          displayWidth: 1920,
+          displayHeight: 1080,
+          rotation: 0,
+        },
+      },
+    };
+
+    vi.mocked(useWorkspaceStore).mockReturnValue({
+      userSettings,
+    } as any);
+
+    vi.mocked(useTimelineStore).mockReturnValue({
+      timelineZoom,
+    } as any);
+
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId,
+    } as any);
+
+    vi.mocked(useMediaStore).mockReturnValue({
+      mediaMetadata,
+    } as any);
+  });
+
+  const createMockOptions = (clipThumbnailModeVal = 'standard') => {
+    userSettings.ui.clipThumbnailMode = clipThumbnailModeVal;
+
+    const itemRef = ref<TimelineClipItem>({
+      id: 'clip-1',
+      clipType: 'media',
+      source: { path: 'test-video.mp4' },
+      sourceDurationUs: 20_000_000, // 20 seconds
+      sourceRange: { startUs: 0, durationUs: 20_000_000 },
+      timelineRange: { startUs: 0, durationUs: 20_000_000 },
+    } as any);
+
+    const scrollLeft = ref(0);
+    const viewportWidth = ref(800);
+    const clipStartPx = ref(0);
+    const clipHeightPx = ref(50); // aspect ratio ~1.77 => width ~88px per tile
+
+    return {
+      item: itemRef,
+      scrollLeft,
+      viewportWidth,
+      clipStartPx,
+      clipHeightPx,
+    };
+  };
+
+  it('returns empty requested times and tiles when mode is none', () => {
+    const options = createMockOptions('none');
+    const { requestedThumbnailTimes, thumbnailTiles } = useTimelineClipThumbnails(options);
+
+    expect(requestedThumbnailTimes.value).toEqual([]);
+    expect(thumbnailTiles.value).toEqual([]);
+  });
+
+  it('computes full range of requested times in standard mode', () => {
+    const options = createMockOptions('standard');
+    const { requestedThumbnailTimes } = useTimelineClipThumbnails(options);
+
+    // standard mode: requestedTimesS should contain times across the whole visible region.
+    // video duration is 20s, step is 4s (default INTERVAL_SECONDS), so it requests times like 0, 4, 8, 12, 16, 20
+    expect(requestedThumbnailTimes.value).toEqual([0, 4, 8, 12, 16, 20]);
+  });
+
+  it('computes only edge times in edges mode', () => {
+    const options = createMockOptions('edges');
+    const { requestedThumbnailTimes } = useTimelineClipThumbnails(options);
+
+    // edges mode: totalTiles = clipWidth / tileDisplayWidth.
+    // durationUs = 20_000_000 Us => clipWidthPx at zoom 1.0 (assuming 1us = some px)
+    // В данном тесте проверим, что в edges режиме количество запрашиваемых времен меньше,
+    // и они соответствуют только первому и последнему кадрам клипа.
+    // Наш мок возвращает массив времен, которые соответствуют индексам 0, 1 и totalTiles - 2, totalTiles - 1.
+    // Так как видео длится 20 секунд, и плитки помещаются во вьюпорт,
+    // крайними будут времена в районе начала (0, 4) и конца (16, 20).
+    const times = requestedThumbnailTimes.value;
+    expect(times).toContain(0);
+    expect(times).toContain(4);
+    expect(times).toContain(16);
+    // Середина (8, 12) должна отсутствовать
+    expect(times).not.toContain(8);
+    expect(times).not.toContain(12);
+  });
+});
+

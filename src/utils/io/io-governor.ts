@@ -66,15 +66,19 @@ export function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
  * stream). Prefer {@link withFileIoSlot} for simple async blocks.
  */
 export async function acquireFileIoSlot(): Promise<() => void> {
+  let start!: () => void;
+  const started = new Promise<void>((resolve) => {
+    start = resolve;
+  });
   let release!: () => void;
-  const promise = new Promise<void>((resolve) => {
+  const hold = new Promise<void>((resolve) => {
     release = resolve;
   });
-  // PQueue.onEmpty can be used, but we need to actually add a task to the queue.
-  // We add a promise that resolves when release() is called.
-  void ioQueue.add(() => promise);
-  // Wait until our task starts (i.e. we have the slot).
-  await ioQueue.onSizeLessThan(ioQueue.size + ioQueue.pending);
+  void ioQueue.add(async () => {
+    start();
+    await hold;
+  });
+  await started;
   return release;
 }
 

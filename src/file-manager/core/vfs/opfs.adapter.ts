@@ -15,7 +15,7 @@ import {
   wrapPlatformError,
 } from './errors';
 import { acquireQueuedFileAccess, runQueuedFileAccess } from '~/utils/file-access-queue';
-import { withFileIoSlot } from '~/utils/io/io-governor';
+import { withFileIoSlot, acquireFileIoSlot } from '~/utils/io/io-governor';
 
 interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
@@ -586,7 +586,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     options?: VfsOperationOptions,
   ): Promise<WritableStream<Uint8Array>> {
     throwIfAborted(options?.signal, path);
-    const release = await acquireQueuedFileAccess(this.getFileAccessKey(path));
+    const releasePath = await acquireQueuedFileAccess(this.getFileAccessKey(path));
+    const releaseIo = await acquireFileIoSlot();
     const parentHandle = await this.getParentDirHandle(path, { create: true });
     try {
       if (!parentHandle) throw new VfsNotFoundError(path);
@@ -602,11 +603,17 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         fileHandle as ExtendedFileHandle
       ).createWritable()) as unknown as WritableStream<Uint8Array>;
       const writer = writable.getWriter();
-      let released = false;
-      const releaseOnce = () => {
-        if (released) return;
-        released = true;
-        release();
+      let pathReleased = false;
+      let ioReleased = false;
+      const releasePathOnce = () => {
+        if (pathReleased) return;
+        pathReleased = true;
+        releasePath();
+      };
+      const releaseIoOnce = () => {
+        if (ioReleased) return;
+        ioReleased = true;
+        releaseIo();
       };
 
       return new WritableStream<Uint8Array>({
@@ -618,19 +625,22 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
             await writer.close();
             this.revokeObjectUrlsUnder(path);
           } finally {
-            releaseOnce();
+            releasePathOnce();
+            releaseIoOnce();
           }
         },
         abort: async (reason) => {
           try {
             await writer.abort(reason);
           } finally {
-            releaseOnce();
+            releasePathOnce();
+            releaseIoOnce();
           }
         },
       });
     } catch (e) {
-      release();
+      releasePath();
+      releaseIo();
       throw e;
     }
   }

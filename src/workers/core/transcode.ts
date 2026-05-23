@@ -1,6 +1,6 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import type { ExportOptions } from '~/composables/timeline/export/types';
-import { withWorkerFileWriteSlotForHandle } from './io-governor';
+import { withWorkerFileWriteSlotForHandle, withWorkerFileIoSlotForHandle } from './io-governor';
 import { getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 
 export async function runTranscode(
