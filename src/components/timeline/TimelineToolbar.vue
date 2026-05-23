@@ -182,7 +182,7 @@ function addTextClip(event?: MouseEvent) {
   if (preset) {
     timelineStore.addTextClipAtPlayhead({
       style: JSON.parse(JSON.stringify(toRaw(preset.style))),
-      text: preset.text,
+      text: preset.text as string | undefined,
     });
   } else {
     timelineStore.addTextClipAtPlayhead();
@@ -335,7 +335,7 @@ function onToolbarContextMenu(e: MouseEvent) {
                 caretButtonClass: 'px-0.5 hover:bg-ui-bg-hover/60',
                 caretIconClass: 'size-2.5',
                 onClick: toggleTrimMode,
-              } as unknown
+              } as any
             "
           />
         </UiTooltip>

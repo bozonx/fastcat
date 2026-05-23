@@ -186,16 +186,28 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const doc = deps.timelineDoc.value;
     if (!doc) return;
 
-    const target = deps.getHotkeyTargetClip();
-    if (!target || !deps.selectedItemIds.value.includes(target.itemId)) return;
+    const selectedItemIdSet = new Set(deps.selectedItemIds.value);
+    if (selectedItemIdSet.size === 0) return;
 
-    const track = doc.tracks.find((item) => item.id === target.trackId) ?? null;
-    const clip = track?.items.find((item) => item.id === target.itemId && item.kind === 'clip');
-    if (!track || !clip || clip.kind !== 'clip') return;
-    if (track.locked || clip.locked) return;
+    const target =
+      doc.tracks
+        .flatMap((track) =>
+          track.items.map((item) => ({
+            track,
+            item,
+          })),
+        )
+        .find(
+          ({ item }) =>
+            selectedItemIdSet.has(item.id) && (item.kind === 'clip' || item.kind === 'gap'),
+        ) ?? null;
 
-    const startUs = clip.timelineRange.startUs;
-    const endUs = startUs + clip.timelineRange.durationUs;
+    if (!target) return;
+    if (target.track.locked) return;
+    if (target.item.kind === 'clip' && target.item.locked) return;
+
+    const startUs = target.item.timelineRange.startUs;
+    const endUs = startUs + target.item.timelineRange.durationUs;
     if (!(endUs > startUs)) return;
 
     rippleDeleteRange(

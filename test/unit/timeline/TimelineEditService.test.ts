@@ -78,7 +78,9 @@ describe('TimelineEditService', () => {
             track.items.splice(idx, 1, left, right);
           }
         }
+        mockDoc = { ...mockDoc, tracks: [...mockDoc.tracks] };
       }),
+      pushTimelineHistory: vi.fn(),
       requestTimelineSave: vi.fn(() => Promise.resolve()),
     };
 
@@ -119,6 +121,32 @@ describe('TimelineEditService', () => {
         c[0].some((cmd: TimelineCommand) => cmd.type === 'move_item'),
       );
       expect(moveCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('writes a single history entry for all internal phases', () => {
+      const preState = mockDoc;
+
+      service.rippleDeleteRange(
+        {
+          trackIds: ['v1'],
+          startUs: 5_000_000,
+          endUs: 15_000_000,
+        },
+        {
+          labelKey: 'custom.delete',
+        },
+      );
+
+      expect(deps.batchApplyTimeline).toHaveBeenCalled();
+      for (const call of deps.batchApplyTimeline.mock.calls) {
+        expect(call[1]).toEqual(expect.objectContaining({ skipHistory: true }));
+      }
+      expect(deps.pushTimelineHistory).toHaveBeenCalledOnce();
+      expect(deps.pushTimelineHistory).toHaveBeenCalledWith(
+        preState,
+        'delete_items',
+        'custom.delete',
+      );
     });
   });
 

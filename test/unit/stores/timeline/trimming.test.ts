@@ -156,6 +156,44 @@ describe('TimelineTrimmingModule', () => {
     expect(deps.editService.rippleDeleteRange).not.toHaveBeenCalled();
   });
 
+  it('rippleDeleteSelectedClipRangeAllTracks works with a selected gap', () => {
+    const deps = createMockDeps();
+    deps.timelineDoc.value = {
+      ...mockDoc,
+      tracks: [
+        {
+          id: 'track-1',
+          items: [
+            {
+              id: 'gap-1',
+              kind: 'gap',
+              timelineRange: { startUs: 2_000_000, durationUs: 500_000 },
+            },
+          ],
+          locked: false,
+        },
+        {
+          id: 'track-2',
+          items: [],
+          locked: false,
+        },
+      ],
+    };
+    deps.selectedItemIds.value = ['gap-1'];
+    const mod = createTimelineTrimmingModule(deps);
+
+    mod.rippleDeleteSelectedClipRangeAllTracks();
+
+    expect(deps.editService.rippleDeleteRange).toHaveBeenCalledWith(
+      {
+        trackIds: ['track-1', 'track-2'],
+        startUs: 2_000_000,
+        endUs: 2_500_000,
+      },
+      expect.any(Object),
+    );
+  });
+
   it('splitClipAtPlayhead batches split commands', async () => {
     const deps = createMockDeps();
     const mod = createTimelineTrimmingModule(deps);

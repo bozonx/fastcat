@@ -172,6 +172,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     getCurrentTime: () => currentTime.value,
     applyTimeline,
     batchApplyTimeline,
+    pushTimelineHistory: (preState, commandType, labelKey) =>
+      dispatcher.pushTimelineHistory(preState, commandType, labelKey),
     requestTimelineSave,
   });
 
@@ -534,7 +536,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
     getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
     getFileByPath: (path) =>
-      (nuxtApp as unknown as { $vfs: { getFile: (p: string) => Promise<File | null> } }).$vfs.getFile(path),
+      (
+        nuxtApp as unknown as { $vfs: { getFile: (p: string) => Promise<File | null> } }
+      ).$vfs.getFile(path),
     getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,
     getProjectSettings: () => projectStore.projectSettings,

@@ -23,6 +23,7 @@ export interface TimelineEditServiceDeps {
   getCurrentTime: () => number;
   applyTimeline: (cmd: TimelineCommand, options?: ApplyTimelineOptions) => void;
   batchApplyTimeline: (cmds: TimelineCommand[], options?: ApplyTimelineOptions) => void;
+  pushTimelineHistory: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
 }
 
@@ -107,6 +108,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
   ): number | null {
     const doc = deps.getDoc();
     if (!doc) return null;
+    const preState = doc;
 
     const startUs = computeCutUs(doc, input.startUs);
     const endUs = computeCutUs(doc, input.endUs);
@@ -116,8 +118,10 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     const trackIdSet = new Set(input.trackIds);
     const batchOptions: ApplyTimelineOptions = options ?? {
       saveMode: 'none',
-      historyMode: 'debounced',
-      historyDebounceMs: 100,
+    };
+    const internalBatchOptions: ApplyTimelineOptions = {
+      ...batchOptions,
+      skipHistory: true,
     };
 
     const buildSplitCmds = (fromDoc: TimelineDocument, atUs: number): TimelineCommand[] => {
@@ -140,7 +144,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     // Phase 1: split at endUs then startUs (sequential — each split changes doc state)
     const splitCmdsEnd = buildSplitCmds(doc, endUs);
     if (splitCmdsEnd.length > 0) {
-      deps.batchApplyTimeline(splitCmdsEnd, batchOptions);
+      deps.batchApplyTimeline(splitCmdsEnd, internalBatchOptions);
     }
 
     const afterSplitEnd = deps.getDoc();
@@ -148,7 +152,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     const splitCmdsStart = buildSplitCmds(afterSplitEnd, startUs);
     if (splitCmdsStart.length > 0) {
-      deps.batchApplyTimeline(splitCmdsStart, batchOptions);
+      deps.batchApplyTimeline(splitCmdsStart, internalBatchOptions);
     }
 
     // Phase 2: delete clips that lie entirely (or all but an epsilon) within the cut range.
@@ -182,7 +186,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       }
     }
     if (deleteCmds.length > 0) {
-      deps.batchApplyTimeline(deleteCmds, batchOptions);
+      deps.batchApplyTimeline(deleteCmds, internalBatchOptions);
     }
 
     // Phase 3: shift clips after the deleted range, preserving frame alignment.
@@ -218,7 +222,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
       }
     }
     if (moveCmds.length > 0) {
-      deps.batchApplyTimeline(moveCmds, batchOptions);
+      deps.batchApplyTimeline(moveCmds, internalBatchOptions);
     }
 
     // Phase 4: update markers in the same way the clips were moved.
@@ -226,8 +230,17 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     if (markerDoc) {
       const markerCmds = buildRippleMarkerCommands(markerDoc, startUs, endUs);
       if (markerCmds.length > 0) {
-        deps.batchApplyTimeline(markerCmds, batchOptions);
+        deps.batchApplyTimeline(markerCmds, internalBatchOptions);
       }
+    }
+
+    const finalDoc = deps.getDoc();
+    if (finalDoc && finalDoc !== preState && !options?.skipHistory) {
+      deps.pushTimelineHistory(
+        preState,
+        'delete_items',
+        options?.labelKey ?? 'videoEditor.fileManager.history.entries.deleteItems',
+      );
     }
 
     return startUs;
