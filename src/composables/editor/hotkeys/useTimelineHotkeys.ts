@@ -173,6 +173,12 @@ export function useTimelineHotkeys(
       return true;
     },
 
+    'timeline.rippleDeleteSelectedClipRange': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.rippleDeleteSelectedClipRangeAllTracks();
+      return true;
+    },
+
     'timeline.rippleDelete': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
 
@@ -282,7 +288,7 @@ export function useTimelineHotkeys(
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
+          const fps = getDocFps((timelineStore.timelineDoc || ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument);
           timelineStore.moveSelectedClips(-fps);
         },
       });
@@ -295,7 +301,7 @@ export function useTimelineHotkeys(
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
+          const fps = getDocFps((timelineStore.timelineDoc || ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument);
           timelineStore.moveSelectedClips(fps);
         },
       });

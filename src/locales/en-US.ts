@@ -1500,6 +1500,7 @@ export default {
         jumpPrevBoundary: 'Jump to previous clip boundary',
         jumpPrevBoundaryTrack: 'Jump to prev boundary (current track)',
         rippleDelete: 'Ripple delete',
+        rippleDeleteSelectedClipRange: 'Ripple delete selected clip range (all tracks)',
         rippleTrimLeft: 'Ripple trim to playhead (left)',
         rippleTrimRight: 'Ripple trim to playhead (right)',
         splitAllAtPlayhead: 'Split all clips at playhead',

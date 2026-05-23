@@ -271,7 +271,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
   async clearClips() {
     if (!compositor) return;
-    compositor.clearClips();
+    await compositor.clearClips();
   },
 
   async destroyCompositor() {

@@ -597,8 +597,19 @@ function onTrackPointerDown(e: PointerEvent, trackId: string) {
       trackPointerStartX = e.clientX;
       trackPointerStartY = e.clientY;
     } else {
-      selectTrackById(trackId);
-      timelineStore.clearSelection();
+      // Clips/gaps bubble their pointerdown up to the track. Only treat this as
+      // a track-background press (select track + clear clip selection) when it
+      // did not originate from a clip or gap — otherwise pressing a clip to drag
+      // a multi-selection would wipe the selection here, leaving startMoveItem to
+      // re-select just the grabbed clip and move only that one.
+      const target = e.target as HTMLElement | null;
+      const fromClipOrGap = Boolean(
+        target?.closest('[data-clip-id]') || target?.closest('[data-gap-id]'),
+      );
+      if (!fromClipOrGap) {
+        selectTrackById(trackId);
+        timelineStore.clearSelection();
+      }
     }
   }
 }

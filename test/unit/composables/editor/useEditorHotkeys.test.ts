@@ -261,6 +261,32 @@ describe('useEditorHotkeys', () => {
     expect(settingsStore.toolbarSnapMode).toBe('snap');
   });
 
+  it('runs global ripple delete by selected clip bounds with Shift+Z', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'timeline.rippleDeleteSelectedClipRange': ['Shift+Z'],
+    };
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+    const rippleDeleteSpy = vi.fn();
+    timelineStore.rippleDeleteSelectedClipRangeAllTracks = rippleDeleteSpy;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Z',
+        code: 'KeyZ',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(rippleDeleteSpy).toHaveBeenCalledOnce();
+  });
+
   it('prioritizes file manager copy when a file manager panel is focused', async () => {
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();

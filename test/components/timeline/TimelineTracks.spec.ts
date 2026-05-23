@@ -8,7 +8,7 @@ vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
     name: 'TimelineClip',
     template:
-      '<div class="mock-timeline-clip" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)"><slot /></div>',
+      '<div class="mock-timeline-clip" :data-clip-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs" :data-locked="item.locked" :data-disabled="item.disabled" :data-audio-muted="item.audioMuted" :data-show-waveform="item.showWaveform" :data-show-thumbnails="item.showThumbnails" :data-waveform-mode="item.audioWaveformMode" :data-is-move-preview="isMovePreviewCurrentItem" :data-has-slip-preview="Boolean(slipPreview)"><slot /></div>',
     props: ['item', 'track', 'isMovePreviewCurrentItem', 'slipPreview'],
   },
 }));
@@ -16,7 +16,7 @@ vi.mock('~/components/timeline/TimelineGap.vue', () => ({
   default: {
     name: 'TimelineGap',
     template:
-      '<div class="mock-timeline-gap" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs"><slot /></div>',
+      '<div class="mock-timeline-gap" :data-gap-id="item.id" :data-item-id="item.id" :data-start-us="item.timelineRange.startUs" :data-duration-us="item.timelineRange.durationUs"><slot /></div>',
     props: ['item', 'trackId'],
   },
 }));
@@ -208,6 +208,50 @@ describe('TimelineTracks', () => {
     await nextTick();
 
     expect(component.emitted('long-press-track')).toBeFalsy();
+  });
+
+  it('does not clear the clip selection when pressing a clip to start a group drag (desktop)', async () => {
+    // Clips bubble their pointerdown up to the track. The track handler must not
+    // treat that as a background press and clear the clip selection — otherwise a
+    // pre-existing multi-selection is wiped before the group drag begins and only
+    // the grabbed clip moves.
+    const component = await mountSuspended(TimelineTracks, {
+      props: defaultProps,
+    });
+
+    const clip = component.find('[data-clip-id="clip-1"]');
+    expect(clip.exists()).toBe(true);
+
+    await clip.trigger('pointerdown', {
+      button: 0,
+      clientX: 30,
+      clientY: 12,
+      pointerType: 'mouse',
+    });
+    await nextTick();
+
+    expect(clearSelectionSpy).not.toHaveBeenCalled();
+    expect(selectTrackSpy).not.toHaveBeenCalledWith('track-1');
+  });
+
+  it('does not clear the clip selection when pressing a gap (desktop)', async () => {
+    const component = await mountSuspended(TimelineTracks, {
+      props: defaultProps,
+    });
+
+    const gap = component.find('[data-gap-id="gap-1"]');
+    expect(gap.exists()).toBe(true);
+
+    await gap.trigger('pointerdown', {
+      button: 0,
+      clientX: 30,
+      clientY: 12,
+      pointerType: 'mouse',
+    });
+    await nextTick();
+
+    expect(clearSelectionSpy).not.toHaveBeenCalled();
+    expect(selectTrackSpy).not.toHaveBeenCalledWith('track-1');
   });
 
   it('renders only items intersecting the visible viewport while keeping overlapping clips', async () => {

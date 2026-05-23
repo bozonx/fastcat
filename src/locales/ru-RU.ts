@@ -1505,6 +1505,7 @@ export default {
         jumpPrevBoundary: 'Перейти к предыдущей границе клипа',
         jumpPrevBoundaryTrack: 'Перейти к пред. границе (текущая дорожка)',
         rippleDelete: 'Удалить со сдвигом',
+        rippleDeleteSelectedClipRange: 'Удалить диапазон выбранного клипа со сдвигом (все дорожки)',
         rippleTrimLeft: 'Обрезать до курсора со сдвигом (удалить левую часть)',
         rippleTrimRight: 'Обрезать до курсора со сдвигом (удалить правую часть)',
         splitAllAtPlayhead: 'Разрезать всё по курсору',

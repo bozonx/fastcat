@@ -129,7 +129,7 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
           max: 24,
           step: 0.1,
           format: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)} dB`,
-          showIf: (v) => ['lowshelf', 'highshelf', 'peaking'].includes(v.type),
+          showIf: (v) => ['lowshelf', 'highshelf', 'peaking'].includes((v as any).type),
         },
         {
           kind: 'knob',
@@ -140,7 +140,7 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
           step: 0.01,
           format: (v) => v.toFixed(2),
           showIf: (v) =>
-            ['lowpass', 'highpass', 'bandpass', 'peaking', 'notch', 'allpass'].includes(v.type),
+            ['lowpass', 'highpass', 'bandpass', 'peaking', 'notch', 'allpass'].includes((v as any).type),
         },
       ],
     },

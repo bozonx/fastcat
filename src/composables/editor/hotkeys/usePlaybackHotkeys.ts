@@ -93,7 +93,7 @@ export function usePlaybackHotkeys(
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
+          const fps = getDocFps((timelineStore.timelineDoc || ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument);
           timelineStore.seekFrames(fps);
         },
       });
@@ -106,7 +106,7 @@ export function usePlaybackHotkeys(
       playbackStepHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps(timelineStore.timelineDoc || ({} as { format?: { fps?: number } }));
+          const fps = getDocFps((timelineStore.timelineDoc || ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument);
           timelineStore.seekFrames(-fps);
         },
       });

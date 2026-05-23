@@ -114,6 +114,48 @@ describe('TimelineTrimmingModule', () => {
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
+  it('rippleDeleteSelectedClipRangeAllTracks deletes selected clip bounds across all tracks', () => {
+    const deps = createMockDeps();
+    deps.timelineDoc.value = {
+      ...mockDoc,
+      tracks: [
+        ...mockDoc.tracks,
+        {
+          id: 'track-2',
+          items: [],
+          locked: false,
+        },
+      ],
+    };
+    deps.editService.rippleDeleteRange.mockReturnValue(123_456);
+    const mod = createTimelineTrimmingModule(deps);
+
+    mod.rippleDeleteSelectedClipRangeAllTracks();
+
+    expect(deps.editService.rippleDeleteRange).toHaveBeenCalledWith(
+      {
+        trackIds: ['track-1', 'track-2'],
+        startUs: 0,
+        endUs: 1_000_000,
+      },
+      expect.objectContaining({
+        labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
+      }),
+    );
+    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
+  });
+
+  it('rippleDeleteSelectedClipRangeAllTracks requires a selected target clip', () => {
+    const deps = createMockDeps();
+    deps.selectedItemIds.value = [];
+    const mod = createTimelineTrimmingModule(deps);
+
+    mod.rippleDeleteSelectedClipRangeAllTracks();
+
+    expect(deps.editService.rippleDeleteRange).not.toHaveBeenCalled();
+  });
+
   it('splitClipAtPlayhead batches split commands', async () => {
     const deps = createMockDeps();
     const mod = createTimelineTrimmingModule(deps);

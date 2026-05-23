@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 
-const props = defineProps<{
-  title?: string;
-  initialName?: string;
-  currentName?: string;
-  loading?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    title?: string;
+    initialName?: string;
+    currentName?: string;
+    loading?: boolean;
+    selectWithoutExtension?: boolean;
+  }>(),
+  {
+    selectWithoutExtension: true,
+  },
+);
 
 const emit = defineEmits<{
   (e: 'rename', newName: string): void;
@@ -23,6 +29,7 @@ const { t } = useI18n();
     :title="title || t('common.rename')"
     :default-value="props.initialName ?? props.currentName"
     :loading="props.loading"
+    :select-without-extension="props.selectWithoutExtension"
     @confirm="
       emit('rename', $event);
       isOpen = false;

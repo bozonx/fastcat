@@ -12,6 +12,7 @@ const props = defineProps<{
   confirmLabel?: string;
   defaultValue?: string;
   loading?: boolean;
+  selectWithoutExtension?: boolean;
 }>();
 
 const isOpen = defineModel<boolean>('open', { required: true });
@@ -37,7 +38,17 @@ watch(isOpen, async (val) => {
       const input = inputRef.value?.$el?.querySelector('input') || inputRef.value?.input;
       if (input) {
         input.focus();
-        input.select();
+        const value = name.value;
+        if (props.selectWithoutExtension && value) {
+          const lastDot = value.lastIndexOf('.');
+          if (lastDot > 0) {
+            input.setSelectionRange(0, lastDot);
+          } else {
+            input.select();
+          }
+        } else {
+          input.select();
+        }
       }
     }, 50);
   }

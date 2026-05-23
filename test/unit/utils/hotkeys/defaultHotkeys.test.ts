@@ -26,6 +26,13 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.splitAtPlayhead']).toContain('G');
   });
 
+  it('has binding for timeline.rippleDeleteSelectedClipRange', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toContain(
+      'Shift+Z',
+    );
+  });
+
   it('has binding for general.delete including X', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.delete']).toBeDefined();
     expect(DEFAULT_HOTKEYS.bindings['general.delete']).toContain('Delete');

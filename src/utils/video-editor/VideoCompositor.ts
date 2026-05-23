@@ -72,7 +72,15 @@ export class VideoCompositor {
   private masterEffectFilters = new Map<string, Filter>();
   private stageSortDirty = true;
   private activeSortDirty = true;
-  private timelineMutation: Promise<unknown> | null = null;
+  // Serializes rendering against timeline mutations. renderFrame is async and
+  // touches VideoFrames / sprites / the frame cache across its internal awaits
+  // (decode + shader transitions) before render() uploads them. Timeline edits
+  // (updateTimelineLayout, loadTimeline) dispose those exact resources. If an
+  // edit runs during a render's await window it closes the VideoFrame the GPU is
+  // about to upload -> "texSubImage2D: can't texture a closed VideoFrame" and a
+  // mid-playback decode storm (cache cleared under the renderer). One FIFO queue
+  // guarantees a render and a mutation never interleave.
+  private opQueue: Promise<unknown> = Promise.resolve();
   private timelineLoadAbortController: AbortController | null = null;
   private clipPreferBitmapFallback = new Map<string, boolean>();
   private videoFrameCache = new VideoFrameCache(
@@ -671,26 +679,36 @@ export class VideoCompositor {
   ): Promise<number> {
     if (!this.app) throw new Error('VideoCompositor not initialized');
 
+    // Abort a previous in-flight load synchronously (before queueing) so a
+    // superseding load cancels the running one, which then checks isCancelled
+    // and bails fast, freeing the queue slot.
     this.timelineLoadAbortController?.abort();
     const abortController = new AbortController();
     this.timelineLoadAbortController = abortController;
-    const mutation = this.loadTimelineLocked(
-      timelineClips,
-      deps,
-      checkCancel,
-      abortController.signal,
-    );
-    this.timelineMutation = mutation;
     try {
-      return await mutation;
+      return await this.runExclusive(() =>
+        this.loadTimelineLocked(timelineClips, deps, checkCancel, abortController.signal),
+      );
     } finally {
-      if (this.timelineMutation === mutation) {
-        this.timelineMutation = null;
-      }
       if (this.timelineLoadAbortController === abortController) {
         this.timelineLoadAbortController = null;
       }
     }
+  }
+
+  /**
+   * Runs `fn` exclusively against every other rendering/mutation op on this
+   * compositor, in FIFO order. The chain advances regardless of whether a step
+   * resolves or rejects, and never retains a rejection (so it can't surface as
+   * an unhandled rejection or stall the queue).
+   */
+  private runExclusive<T>(fn: () => Promise<T> | T): Promise<T> {
+    const result = this.opQueue.then(fn, fn);
+    this.opQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private async loadTimelineLocked(
@@ -767,7 +785,11 @@ export class VideoCompositor {
     });
   }
 
-  updateTimelineLayout(timelineClips: Record<string, unknown>[]): number {
+  updateTimelineLayout(timelineClips: Record<string, unknown>[]): Promise<number> {
+    return this.runExclusive(() => this.updateTimelineLayoutLocked(timelineClips));
+  }
+
+  private updateTimelineLayoutLocked(timelineClips: Record<string, unknown>[]): number {
     const meta = timelineClips.find(
       (x) => x && typeof x === 'object' && (x as Record<string, unknown>).kind === 'meta',
     );
@@ -811,11 +833,20 @@ export class VideoCompositor {
     options?: PreviewRenderOptions,
   ): Promise<OffscreenCanvas | HTMLCanvasElement | null> {
     if (!this.app || !this.canvas) return null;
-    await this.timelineMutation;
+    // Capture into locals: the guard's narrowing of the mutable this.app/
+    // this.canvas does not survive into the runExclusive closure below.
+    const app = this.app;
+    const canvas = this.canvas;
 
-    return this.renderingEngine.renderFrame(timeUs, options, {
-      app: this.app,
-      canvas: this.canvas,
+    // Render holds an exclusive queue slot for its full async lifetime (decode +
+    // shader transitions + GPU upload). updateTimelineLayout / loadTimeline /
+    // clearClips run on the same queue, so a mutation can never dispose a
+    // VideoFrame or sink mid-render — it waits for the in-flight render to settle
+    // first (and vice versa).
+    return this.runExclusive(() =>
+      this.renderingEngine.renderFrame(timeUs, options, {
+      app,
+      canvas,
       width: this.width,
       height: this.height,
       clips: this.clips,
@@ -934,7 +965,8 @@ export class VideoCompositor {
       setLastRenderedTimeUs: (value) => {
         this.lastRenderedTimeUs = value;
       },
-    });
+      }),
+    );
   }
 
   private findPrevClipOnLayer(clip: CompositorClip): CompositorClip | null {
@@ -1005,7 +1037,11 @@ export class VideoCompositor {
     await this.clipResourceManager.updateClipTextureFromSample(sample, clip);
   }
 
-  clearClips() {
+  clearClips(): Promise<void> {
+    return this.runExclusive(() => this.clearClipsLocked());
+  }
+
+  private clearClipsLocked() {
     this.videoFrameCache.clear();
     this.transitionManager.clear();
     for (const clip of this.clips) {
@@ -1045,7 +1081,9 @@ export class VideoCompositor {
   }
 
   destroy() {
-    this.clearClips();
+    // Terminal teardown: run the clear synchronously (not through the queue) so
+    // pixi resources are gone before we dispose the renderer below.
+    this.clearClipsLocked();
     this.videoFrameCache.clear();
     this.transitionRenderer.destroy();
     if (this.stageTextureRenderer) {

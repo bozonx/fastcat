@@ -24,7 +24,7 @@ export async function assertEntryDoesNotExist(params: {
     }
     throw new Error(`Target already exists: ${params.entryName}`);
   } catch (e) {
-    if (e?.name !== 'NotFoundError') throw e;
+    if ((e as { name?: string })?.name !== 'NotFoundError') throw e;
   }
 }
 

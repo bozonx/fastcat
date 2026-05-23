@@ -51,7 +51,7 @@ const FastcatElement = defineCustomElement({
 
     return () =>
       h(FastcatEmbeddedLayout, {
-        assets: props.assets as unknown[],
+        assets: props.assets as import('~/utils/external-assets.service').ExternalAsset[],
         workspaceId: props.workspaceId,
         locale: props.locale,
         onExported: (data: unknown) => emit('fastcat:exported', data),

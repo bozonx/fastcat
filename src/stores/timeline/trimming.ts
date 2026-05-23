@@ -58,6 +58,7 @@ export interface TimelineTrimmingModule {
   ) => void;
   rippleTrimRight: () => Promise<void>;
   rippleTrimLeft: () => Promise<void>;
+  rippleDeleteSelectedClipRangeAllTracks: () => void;
   advancedRippleTrimRight: () => Promise<void>;
   advancedRippleTrimLeft: () => Promise<void>;
   jumpToPrevClipBoundary: (options?: { currentTrackOnly?: boolean }) => void;
@@ -181,6 +182,36 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     movePlayheadToCollapse(await deps.editService.rippleTrimLeft());
   }
 
+  function rippleDeleteSelectedClipRangeAllTracks() {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+
+    const target = deps.getHotkeyTargetClip();
+    if (!target || !deps.selectedItemIds.value.includes(target.itemId)) return;
+
+    const track = doc.tracks.find((item) => item.id === target.trackId) ?? null;
+    const clip = track?.items.find((item) => item.id === target.itemId && item.kind === 'clip');
+    if (!track || !clip || clip.kind !== 'clip') return;
+    if (track.locked || clip.locked) return;
+
+    const startUs = clip.timelineRange.startUs;
+    const endUs = startUs + clip.timelineRange.durationUs;
+    if (!(endUs > startUs)) return;
+
+    rippleDeleteRange(
+      {
+        trackIds: doc.tracks.map((item) => item.id),
+        startUs,
+        endUs,
+      },
+      {
+        historyMode: 'debounced',
+        historyDebounceMs: 100,
+        labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
+      },
+    );
+  }
+
   function movePlayheadToCollapse(collapseUs: number | null) {
     if (collapseUs === null) return;
     deps.currentTime.value = quantizeTimeUsToPixelGrid(collapseUs, deps.timelineZoom.value);
@@ -295,6 +326,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     rippleDeleteRange,
     rippleTrimRight,
     rippleTrimLeft,
+    rippleDeleteSelectedClipRangeAllTracks,
     advancedRippleTrimRight,
     advancedRippleTrimLeft,
     jumpToPrevClipBoundary,

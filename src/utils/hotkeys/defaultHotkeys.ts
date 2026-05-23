@@ -48,6 +48,7 @@ export type HotkeyCommandId =
   | 'timeline.rippleTrimRight'
   | 'timeline.advancedRippleTrimLeft'
   | 'timeline.advancedRippleTrimRight'
+  | 'timeline.rippleDeleteSelectedClipRange'
   | 'timeline.rippleDelete'
   | 'timeline.jumpPrevBoundary'
   | 'timeline.jumpNextBoundary'
@@ -220,6 +221,11 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       groupId: 'timeline',
       title: 'Advanced ripple trim end',
     },
+    {
+      id: 'timeline.rippleDeleteSelectedClipRange',
+      groupId: 'timeline',
+      title: 'Ripple delete selected clip range on all tracks',
+    },
     { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
     { id: 'timeline.jumpPrevBoundary', groupId: 'timeline', title: 'Jump to previous edit point' },
     { id: 'timeline.jumpNextBoundary', groupId: 'timeline', title: 'Jump to next edit point' },
@@ -361,6 +367,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.rippleTrimRight': ['R'],
     'timeline.advancedRippleTrimLeft': ['D'],
     'timeline.advancedRippleTrimRight': ['F'],
+    'timeline.rippleDeleteSelectedClipRange': ['Shift+Z'],
     'timeline.rippleDelete': ['Z', 'Backspace'],
     'timeline.jumpPrevBoundary': ['A'],
     'timeline.jumpNextBoundary': ['S'],

@@ -225,7 +225,7 @@ export function useGeneralHotkeys(
       if (!entry) return true;
 
       if (entry.scope === 'timeline') {
-        timelineStore.applyRestoredSnapshot(entry.snapshot);
+        timelineStore.applyRestoredSnapshot(entry.snapshot as import('~/timeline/types').TimelineDocument);
       } else if (entry.scope === 'fileManager') {
         void fileManager.restoreHistory(entry.snapshot);
       }
@@ -238,7 +238,7 @@ export function useGeneralHotkeys(
       if (!entry) return true;
 
       if (entry.scope === 'timeline') {
-        timelineStore.applyRestoredSnapshot(entry.snapshot);
+        timelineStore.applyRestoredSnapshot(entry.snapshot as import('~/timeline/types').TimelineDocument);
       } else if (entry.scope === 'fileManager') {
         void fileManager.restoreHistory(entry.snapshot);
       }
