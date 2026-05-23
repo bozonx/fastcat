@@ -357,19 +357,22 @@ export async function runExport(
     };
     writable: { abort?: () => Promise<void> };
   }> {
-    const writable = await (
-      targetHandle as unknown as {
-        createWritable: (opts?: {
-          keepExistingData?: boolean;
-        }) => Promise<{ abort?: () => Promise<void> }>;
-      }
-    ).createWritable({ keepExistingData: false });
+    const { output, writable } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
+      const writable = await (
+        targetHandle as unknown as {
+          createWritable: (opts?: {
+            keepExistingData?: boolean;
+          }) => Promise<{ abort?: () => Promise<void> }>;
+        }
+      ).createWritable({ keepExistingData: false });
 
-    const target = new StreamTarget(writable as any, {
-      chunked: true,
-      chunkSize: 16 * 1024 * 1024,
+      const target = new StreamTarget(writable as any, {
+        chunked: true,
+        chunkSize: 16 * 1024 * 1024,
+      });
+      const output = new Output({ target, format: params.format as any });
+      return { output, writable };
     });
-    const output = new Output({ target, format: params.format as any });
     return { output, writable };
   }
 
@@ -748,15 +751,18 @@ export async function extractAudioStream(
       format = new MkvOutputFormat();
     }
 
-    const writable = await (
-      targetHandle as unknown as {
-        createWritable: (opts?: {
-          keepExistingData?: boolean;
-        }) => Promise<{ abort?: () => Promise<void> }>;
-      }
-    ).createWritable({ keepExistingData: false });
-    const target = new StreamTarget(writable as any, { chunked: true });
-    const output = new Output({ target, format: format as any });
+    const { output, writable } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
+      const writable = await (
+        targetHandle as unknown as {
+          createWritable: (opts?: {
+            keepExistingData?: boolean;
+          }) => Promise<{ abort?: () => Promise<void> }>;
+        }
+      ).createWritable({ keepExistingData: false });
+      const target = new StreamTarget(writable as any, { chunked: true });
+      const output = new Output({ target, format: format as any });
+      return { output, writable };
+    });
 
     // Fallback if missing decoderConfig in audioTrack extraction
     const decoderConfig = await audioTrack.getDecoderConfig();

@@ -1,5 +1,6 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import type { ExportOptions } from '~/composables/timeline/export/types';
+import { withWorkerFileWriteSlotForHandle } from './io-governor';
 import { getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 
 export async function runTranscode(
@@ -178,18 +179,21 @@ export async function runTranscode(
         ? new MkvOutputFormat()
         : new Mp4OutputFormat();
 
-  const writable = await (
-    targetHandle as unknown as {
-      createWritable: (opts?: {
-        keepExistingData?: boolean;
-      }) => Promise<{ abort?: () => Promise<void> }>;
-    }
-  ).createWritable({ keepExistingData: false });
-  const target = new StreamTarget(writable as unknown as WritableStream<unknown>, {
-    chunked: true,
-    chunkSize: 16 * 1024 * 1024,
+  const { target, output, writable } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
+    const writable = await (
+      targetHandle as unknown as {
+        createWritable: (opts?: {
+          keepExistingData?: boolean;
+        }) => Promise<{ abort?: () => Promise<void> }>;
+      }
+    ).createWritable({ keepExistingData: false });
+    const target = new StreamTarget(writable as unknown as WritableStream<unknown>, {
+      chunked: true,
+      chunkSize: 16 * 1024 * 1024,
+    });
+    const output = new Output({ target, format });
+    return { target, output, writable };
   });
-  const output = new Output({ target, format });
 
   // WORKAROUND: mediabunny's Conversion._processVideoTrack accidentally passes rotation synchronously
   // to addVideoTrack before its async block resets outputTrackRotation to 0.

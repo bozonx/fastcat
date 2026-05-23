@@ -43,7 +43,7 @@ const { vfs } = useComputerVfs();
 
 // Initialize file manager for computer
 const fileManager = createFileManager({
-  t: ((key: string, params?: Record<string, unknown>) => useI18n().t(key, params)) as any,
+  t: ((key: string, params?: any) => useI18n().t(key, params) as any) as any,
   toast: useToast(),
   vfs: vfs.value!,
   isApiSupported: ref(true),

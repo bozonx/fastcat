@@ -483,6 +483,10 @@ export function useGeneralHotkeys(
       projectStore.setView('cut');
       return true;
     },
+    'general.switchViewEffects': () => {
+      // Reserved for future versions (effects editor)
+      return true;
+    },
     'general.switchViewSound': () => {
       projectStore.setView('sound');
       return true;

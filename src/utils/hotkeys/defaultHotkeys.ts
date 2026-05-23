@@ -33,6 +33,7 @@ export type HotkeyCommandId =
   | 'general.tab9'
   | 'general.switchViewFiles'
   | 'general.switchViewCut'
+  | 'general.switchViewEffects'
   | 'general.switchViewSound'
   | 'general.switchViewExport'
   | 'general.selectAll'
@@ -160,6 +161,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.tab9', groupId: 'general', title: 'Switch to tab 9' },
     { id: 'general.switchViewFiles', groupId: 'general', title: 'Switch to Files' },
     { id: 'general.switchViewCut', groupId: 'general', title: 'Switch to Cut' },
+    { id: 'general.switchViewEffects', groupId: 'general', title: 'Switch to Effects' },
     { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
@@ -333,19 +335,20 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.zoomOut': [`${Mod}+-`],
     'general.zoomReset': [`${Mod}+0`],
     'general.zoomFit': [`${Mod}+9`],
-    'general.tab1': [`${Mod}+1`],
-    'general.tab2': [`${Mod}+2`],
-    'general.tab3': [`${Mod}+3`],
-    'general.tab4': [`${Mod}+4`],
-    'general.tab5': [`${Mod}+5`],
-    'general.tab6': [`${Mod}+6`],
-    'general.tab7': [`${Mod}+7`],
-    'general.tab8': [`${Mod}+8`],
-    'general.tab9': [`${Mod}+9`],
-    'general.switchViewFiles': ['Shift+1'],
-    'general.switchViewCut': ['Shift+2'],
-    'general.switchViewSound': ['Shift+3'],
-    'general.switchViewExport': ['Shift+4'],
+    'general.tab1': ['Shift+1'],
+    'general.tab2': ['Shift+2'],
+    'general.tab3': ['Shift+3'],
+    'general.tab4': ['Shift+4'],
+    'general.tab5': ['Shift+5'],
+    'general.tab6': ['Shift+6'],
+    'general.tab7': ['Shift+7'],
+    'general.tab8': ['Shift+8'],
+    'general.tab9': ['Shift+9'],
+    'general.switchViewFiles': ['1'],
+    'general.switchViewCut': ['2'],
+    'general.switchViewEffects': ['3'],
+    'general.switchViewSound': ['4'],
+    'general.switchViewExport': ['5'],
     'general.selectAll': [`${Mod}+A`],
 
     'general.snapshot': ['H'],

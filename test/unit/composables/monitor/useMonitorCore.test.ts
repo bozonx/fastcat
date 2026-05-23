@@ -526,4 +526,255 @@ describe('useMonitorCore', () => {
 
     wrapper.unmount();
   });
+
+  it('uses 200ms debounce for clip layout updates', async () => {
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 0,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
+    });
+
+    const projectStore = reactive({
+      projectSettings: { export: { width: 1920, height: 1080 } },
+      activeMonitor: createMonitorSettings(),
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const proxyStore = {
+      getProxyFileHandle: vi.fn(async () => null),
+      getProxyFile: vi.fn(async () => null),
+      existingProxies: ref(new Set()),
+    };
+
+    const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const clipLayoutSig = ref(1);
+    const activeLayoutSig = ref(1);
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore,
+          monitorTimeline: {
+            videoItems: ref([]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
+            safeDurationUs: ref(2_000_000),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: clipLayoutSig,
+            clipContentSignature: ref(1),
+            activeLayoutSignature: activeLayoutSig,
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    // Wait for initial build
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+    mockClient.renderFrame.mockClear();
+    mockClient.updateTimelineLayout.mockClear();
+
+    // Change layout signature to trigger a layout update
+    clipLayoutSig.value = 2;
+    await nextTick();
+
+    // After 150ms debounce should not have fired yet (needs 200ms)
+    await vi.advanceTimersByTimeAsync(150);
+    expect(mockClient.updateTimelineLayout).not.toHaveBeenCalled();
+    expect(mockClient.renderFrame).not.toHaveBeenCalled();
+
+    // After another 100ms (250ms total) layout update should flush
+    await vi.advanceTimersByTimeAsync(100);
+    expect(mockClient.updateTimelineLayout).toHaveBeenCalled();
+    expect(mockClient.renderFrame).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('uses 1000ms debounce for clip content updates', async () => {
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 0,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
+    });
+
+    const projectStore = reactive({
+      projectSettings: { export: { width: 1920, height: 1080 } },
+      activeMonitor: createMonitorSettings(),
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const proxyStore = {
+      getProxyFileHandle: vi.fn(async () => null),
+      getProxyFile: vi.fn(async () => null),
+      existingProxies: ref(new Set()),
+    };
+
+    const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const clipContentSig = ref(1);
+    const activeLayoutSig = ref(1);
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore,
+          monitorTimeline: {
+            videoItems: ref([]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
+            safeDurationUs: ref(2_000_000),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: ref(1),
+            clipContentSignature: clipContentSig,
+            activeLayoutSignature: activeLayoutSig,
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    // Wait for initial build
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+    mockClient.renderFrame.mockClear();
+    mockClient.updateTimelineLayout.mockClear();
+
+    // Change content signature to trigger a content update
+    clipContentSig.value = 2;
+    await nextTick();
+
+    // After 900ms debounce should not have fired yet (needs 1000ms)
+    await vi.advanceTimersByTimeAsync(900);
+    expect(mockClient.updateTimelineLayout).not.toHaveBeenCalled();
+    expect(mockClient.renderFrame).not.toHaveBeenCalled();
+
+    // After another 200ms (1100ms total) content update should flush
+    await vi.advanceTimersByTimeAsync(200);
+    expect(mockClient.updateTimelineLayout).toHaveBeenCalled();
+    expect(mockClient.renderFrame).toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('skips render when activeLayoutSignature is unchanged after layout update', async () => {
+    const timelineStore = reactive({
+      duration: 0,
+      currentTime: 0,
+      isPlaying: false,
+      masterGain: 1,
+      audioMuted: false,
+      setCurrentTimeUs: vi.fn(),
+      timelineDoc: null,
+    });
+
+    const projectStore = reactive({
+      projectSettings: { export: { width: 1920, height: 1080 } },
+      activeMonitor: createMonitorSettings(),
+      getFileHandleByPath: vi.fn(async () => ({}) as FileSystemFileHandle),
+    });
+
+    const proxyStore = {
+      getProxyFileHandle: vi.fn(async () => null),
+      getProxyFile: vi.fn(async () => null),
+      existingProxies: ref(new Set()),
+    };
+
+    const containerEl = ref<HTMLDivElement | null>(document.createElement('div'));
+    const viewportEl = ref<HTMLDivElement | null>(document.createElement('div'));
+
+    const clipLayoutSig = ref(1);
+    const activeLayoutSig = ref(42);
+
+    const TestComp = defineComponent({
+      setup() {
+        useMonitorCore({
+          projectStore,
+          timelineStore,
+          proxyStore,
+          monitorTimeline: {
+            videoItems: ref([]),
+            workerTimelineClips: ref([]),
+            workerAudioClips: ref([]),
+            workerTimelinePayload: ref([]),
+            safeDurationUs: ref(2_000_000),
+            clipSourceSignature: ref(1),
+            clipLayoutSignature: clipLayoutSig,
+            clipContentSignature: ref(1),
+            activeLayoutSignature: activeLayoutSig,
+            audioClipSourceSignature: ref(1),
+            audioClipLayoutSignature: ref(1),
+          },
+          monitorDisplay: {
+            containerEl,
+            viewportEl,
+            renderWidth: ref(640),
+            renderHeight: ref(360),
+            updateCanvasDisplaySize: vi.fn(),
+          },
+        });
+        return () => h('div');
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    // Wait for initial build
+    await vi.advanceTimersByTimeAsync(200);
+    await nextTick();
+    mockClient.renderFrame.mockClear();
+    mockClient.updateTimelineLayout.mockClear();
+
+    // Change layout signature but keep activeLayoutSignature the same.
+    // The edited clip is off-playhead / hidden, so active layout hasn't changed.
+    clipLayoutSig.value = 2;
+    await nextTick();
+
+    await vi.advanceTimersByTimeAsync(300);
+    expect(mockClient.updateTimelineLayout).toHaveBeenCalled();
+    // Because activeLayoutSignature stayed 42, scheduleRender should be skipped.
+    expect(mockClient.renderFrame).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
 });

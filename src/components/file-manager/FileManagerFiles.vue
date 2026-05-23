@@ -526,7 +526,7 @@ async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
           @toggle="emit('toggle', $event)"
           @select="onEntrySelect"
           @focus="onEntryFocus"
-          @action="(action, entry) => emit('action', action as string, entry)"
+          @action="(action, entry) => emit('action', action as any, entry)"
           @request-move="onRequestMove"
           @request-copy="onRequestCopy"
           @request-upload="onRequestUpload"
