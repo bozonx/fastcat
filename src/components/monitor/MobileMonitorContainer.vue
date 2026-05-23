@@ -232,13 +232,13 @@ const isReadonly = computed(
 
 onMounted(() => {
   if (viewportRef.value) {
-    timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl;
+    timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
   }
 });
 
 watch(viewportRef, (vp) => {
   if (vp) {
-    timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl;
+    timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
   }
 });
 

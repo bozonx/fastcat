@@ -23,7 +23,8 @@ const content = defineModel<string>('content', { default: '' });
     <div class="flex flex-col h-full min-h-0 pt-2">
       <UiTextarea
         v-model="content"
-        class="flex-1 resize-none font-mono"
+        class="flex-1"
+        :ui="{ base: 'h-full resize-none font-mono' }"
         :spellcheck="false"
         data-primary-focus="true"
         full-width

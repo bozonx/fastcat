@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, toRef, computed } from 'vue';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
+import { runResilientFileWrite } from '~/utils/io/io-governor';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
@@ -446,16 +447,18 @@ export const useTimelineStore = defineStore('timeline', () => {
       const nextName = getNextBackupName(baseName, existingBackupNames);
 
       const newHandle = await backupDirHandle.getFileHandle(nextName, { create: true });
-      const writable = await (
-        newHandle as unknown as {
-          createWritable: () => Promise<{
-            write: (data: string) => Promise<void>;
-            close: () => Promise<void>;
-          }>;
-        }
-      ).createWritable();
-      await writable.write(serialized);
-      await writable.close();
+      await runResilientFileWrite(async () => {
+        const writable = await (
+          newHandle as unknown as {
+            createWritable: () => Promise<{
+              write: (data: string) => Promise<void>;
+              close: () => Promise<void>;
+            }>;
+          }
+        ).createWritable();
+        await writable.write(serialized);
+        await writable.close();
+      });
 
       const toDelete = getBackupsToDelete(existingBackupNames, backupSettings.count);
       for (const name of toDelete) {
@@ -634,16 +637,18 @@ export const useTimelineStore = defineStore('timeline', () => {
     try {
       const newHandle = await dirHandle.getFileHandle(nextName, { create: true });
 
-      const writable = await (
-        newHandle as unknown as {
-          createWritable: () => Promise<{
-            write: (data: string) => Promise<void>;
-            close: () => Promise<void>;
-          }>;
-        }
-      ).createWritable();
-      await writable.write(snapshotSerialized);
-      await writable.close();
+      await runResilientFileWrite(async () => {
+        const writable = await (
+          newHandle as unknown as {
+            createWritable: () => Promise<{
+              write: (data: string) => Promise<void>;
+              close: () => Promise<void>;
+            }>;
+          }
+        ).createWritable();
+        await writable.write(snapshotSerialized);
+        await writable.close();
+      });
 
       toast.add({
         title: t('videoEditor.timeline.versionCreated', {

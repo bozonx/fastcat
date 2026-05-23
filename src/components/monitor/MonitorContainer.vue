@@ -214,7 +214,7 @@ onMounted(() => {
   window.addEventListener('mousemove', resetIdle);
   // Synchronize timecode transition target
   if (viewportRef.value) {
-    timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl;
+    timecodeEl.value = (viewportRef.value as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
   }
 });
 
@@ -225,7 +225,7 @@ onUnmounted(() => {
 
 watch(viewportRef, (vp) => {
   if (vp) {
-    timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl;
+    timecodeEl.value = (vp as { timecodeEl?: HTMLElement }).timecodeEl ?? null;
   }
 });
 </script>

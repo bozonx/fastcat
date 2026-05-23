@@ -37,6 +37,16 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
   (e: 'focus' | 'blur', event: FocusEvent): void;
 }>();
+
+const textareaElement = computed<HTMLTextAreaElement | null>(() => {
+  const el = containerRef.value;
+  return el?.querySelector('textarea') ?? null;
+});
+
+defineExpose({
+  input: textareaElement,
+  focus: () => textareaElement.value?.focus(),
+});
 </script>
 
 <template>

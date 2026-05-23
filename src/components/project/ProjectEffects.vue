@@ -6,7 +6,8 @@ import {
   getAllAudioEffectManifests,
   getEffectManifest,
 } from '~/effects';
-import type { AudioEffectManifest } from '~/effects';
+import type { AudioEffectManifest, EffectManifest } from '~/effects';
+import type { TransitionManifest } from '~/transitions';
 import { getAllTransitionManifests, getTransitionManifest } from '~/transitions';
 import { useSelectionStore } from '~/stores/selection.store';
 import { usePresetsStore } from '~/stores/presets.store';

@@ -255,6 +255,11 @@ let dragMoved = false;
 let activePointerId: number | null = null;
 let dragSourceEl: HTMLElement | null = null;
 let dragSvgEl: SVGSVGElement | null = null;
+
+function round1(value: number): number {
+  return Number(value.toFixed(1));
+}
+
 let dragStartPos = { x: 0, y: 0 };
 let dragStartState = {
   posX: 0,
@@ -405,8 +410,8 @@ function onPointerMove(event: PointerEvent) {
     scheduleClipUpdate({
       transform: {
         position: {
-          x: dragStartState.posX + designDx,
-          y: dragStartState.posY + designDy,
+          x: round1(dragStartState.posX + designDx),
+          y: round1(dragStartState.posY + designDy),
         },
       },
     });
@@ -421,7 +426,7 @@ function onPointerMove(event: PointerEvent) {
     const rotationDelta = ((currentAngle - startAngle) * 180) / Math.PI;
     scheduleClipUpdate({
       transform: {
-        rotationDeg: dragStartState.rotationDeg + rotationDelta,
+        rotationDeg: round1(dragStartState.rotationDeg + rotationDelta),
       },
     });
     return;

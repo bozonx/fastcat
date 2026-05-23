@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 
 import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
+import { runResilientFileWrite } from '~/utils/io/io-governor';
 import { createDefaultTimelineDocument } from '~/timeline/otio-serializer';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
@@ -235,7 +236,6 @@ export const useProjectStore = defineStore('project', () => {
       if (typeof (otioFile as FileSystemFileHandle).createWritable !== 'function') {
         throw new Error('Failed to create timeline: createWritable is not available');
       }
-      const writable = await (otioFile as FileSystemFileHandle).createWritable();
       const payload = {
         OTIO_SCHEMA: 'Timeline.1',
         name,
@@ -245,8 +245,11 @@ export const useProjectStore = defineStore('project', () => {
           name: 'tracks',
         },
       };
-      await writable.write(`${JSON.stringify(payload, null, 2)}\n`);
-      await writable.close();
+      await runResilientFileWrite(async () => {
+        const writable = await (otioFile as FileSystemFileHandle).createWritable();
+        await writable.write(`${JSON.stringify(payload, null, 2)}\n`);
+        await writable.close();
+      });
 
       const initialTimeline = `${TIMELINES_DIR_NAME}/${otioFileName}`;
 

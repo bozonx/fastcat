@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
@@ -29,7 +29,7 @@ const isLoading = ref(true);
 
 let saveTimer: number | undefined;
 
-const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const textareaRef = ref<InstanceType<typeof UiTextarea> | null>(null);
 
 async function loadContent() {
   clearTimer();
@@ -131,7 +131,8 @@ function focusPanel() {
       v-if="!isLoading"
       ref="textareaRef"
       v-model="content"
-      class="flex-1 resize-none font-mono"
+      class="flex-1"
+      :ui="{ base: 'h-full resize-none font-mono' }"
       :spellcheck="false"
       data-primary-focus="true"
       full-width

@@ -246,6 +246,10 @@ let dragMoved = false;
 let dragSourceEl: HTMLElement | null = null;
 let dragSvgEl: SVGSVGElement | null = null;
 
+function round1(value: number): number {
+  return Number(value.toFixed(1));
+}
+
 function cleanupDragListeners() {
   window.removeEventListener('pointermove', onWindowPointerMove);
   window.removeEventListener('pointerup', onWindowPointerUp);
@@ -383,7 +387,7 @@ function onPointerMove(e: PointerEvent) {
 
   if (dragType === 'translate') {
     scheduleTransformUpdate({
-      position: { x: dragStartTransform.posX + designDx, y: dragStartTransform.posY + designDy },
+      position: { x: round1(dragStartTransform.posX + designDx), y: round1(dragStartTransform.posY + designDy) },
     });
   } else if (dragType === 'rotate' || (mode.value === 'rotate' && dragType.startsWith('rotate'))) {
     const centerX = layout.value.anchorAbsX;
@@ -392,7 +396,7 @@ function onPointerMove(e: PointerEvent) {
     const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
     const rotationDelta = ((currentAngle - startAngle) * 180) / Math.PI;
     scheduleTransformUpdate({
-      rotationDeg: dragStartTransform.rotationDeg + rotationDelta - sourceRotation.value,
+      rotationDeg: round1(dragStartTransform.rotationDeg + rotationDelta - sourceRotation.value),
     });
   } else if (dragType.startsWith('scale')) {
     const rad = (-dragStartTransform.rotationDeg * Math.PI) / 180;
@@ -435,7 +439,7 @@ function onPointerMove(e: PointerEvent) {
       Math.abs(newScaleY) < 0.001 ? Math.sign(newScaleY || 1) * 0.001 : newScaleY;
 
     scheduleTransformUpdate({
-      scale: { x: clampedScaleX, y: clampedScaleY, linked: dragType.length > 7 },
+      scale: { x: round1(clampedScaleX), y: round1(clampedScaleY), linked: dragType.length > 7 },
     });
   } else if (dragType === 'anchor') {
     const W = layout.value.targetW;
@@ -466,10 +470,10 @@ function onPointerMove(e: PointerEvent) {
     scheduleTransformUpdate({
       anchor: {
         preset: 'custom',
-        x: Math.max(-10, Math.min(10, newAx)),
-        y: Math.max(-10, Math.min(10, newAy)),
+        x: round1(Math.max(-10, Math.min(10, newAx))),
+        y: round1(Math.max(-10, Math.min(10, newAy))),
       },
-      position: { x: dragStartTransform.posX + deltaPosX, y: dragStartTransform.posY + deltaPosY },
+      position: { x: round1(dragStartTransform.posX + deltaPosX), y: round1(dragStartTransform.posY + deltaPosY) },
     });
   }
 }
