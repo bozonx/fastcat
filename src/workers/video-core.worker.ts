@@ -368,9 +368,15 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   ) {
     await loadFonts();
     const localCompositor = new VideoCompositor();
-    await localCompositor.init(width, height, '#000', true, undefined, {
-      rendererPreference: pixiRendererPreference,
-    });
+    try {
+      await localCompositor.init(width, height, '#000', true, undefined, {
+        rendererPreference: pixiRendererPreference,
+      });
+    } catch (initErr) {
+      console.warn('[Worker] extractFrameToBlob: compositor init failed', initErr);
+      await localCompositor.destroy().catch(() => {});
+      return null;
+    }
 
     try {
       await localCompositor.loadTimeline(

@@ -409,6 +409,28 @@ describe('AudioEngine', () => {
     expect(workerInstance?.postMessage).toHaveBeenCalledTimes(2);
   });
 
+  it('gives up after 3 transient NotReadableError retries', async () => {
+    workerOk = false;
+    workerErrorName = 'NotReadableError';
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip();
+
+    // First 3 attempts each retry the chunk.
+    for (let i = 0; i < 3; i += 1) {
+      await engine.loadClips([clip]);
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+
+    // 4th attempt: chunk should be permanently failed, no worker call.
+    workerOk = true;
+    await engine.loadClips([clip]);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(workerInstance?.postMessage).toHaveBeenCalledTimes(3);
+  });
+
   it('decodes every chunk needed for a multi-chunk clip', async () => {
     // Clip covers 12s of source — needs chunks 0, 1, and 2 (5s each).
     const engine = new AudioEngine();

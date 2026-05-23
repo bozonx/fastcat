@@ -22,7 +22,12 @@ export async function getFileHandleForAudio(params: {
   });
   const cached = params.audioHandleCache.get(cacheKey);
   if (cached) {
-    return cached;
+    try {
+      await cached.getFile();
+      return cached;
+    } catch {
+      params.audioHandleCache.delete(cacheKey);
+    }
   }
 
   if (params.useProxyInMonitor) {

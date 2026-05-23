@@ -37,6 +37,7 @@ export class AudioEngine {
   private chunkCache = new Map<string, AudioChunk[]>();
   private chunkDecodeInFlight = new Map<string, Promise<AudioChunk | null>>();
   private failedChunkKeys = new Set<string>();
+  private chunkRetryCounts = new Map<string, number>();
   private chunkLruKeys = new Map<string, true>();
   private fileBlobCache = new Map<string, Blob>();
   private activeNodes = new Set<AudioBufferSourceNode>();
@@ -411,6 +412,12 @@ export class AudioEngine {
         this.fileBlobCache.delete(key);
       }
     }
+    for (const key of this.chunkRetryCounts.keys()) {
+      const sourceKey = key.slice(0, key.lastIndexOf(':'));
+      if (!activePaths.has(sourceKey)) {
+        this.chunkRetryCounts.delete(key);
+      }
+    }
     this.cleanupAnalyserNodes();
   }
 
@@ -551,16 +558,30 @@ export class AudioEngine {
         return chunk;
       } catch (err) {
         const name = (err as Error)?.name;
-        // Only permanent failures should block retries. Transient errors
-        // (e.g. blob read interrupted) deserve another shot the next time the
-        // chunk is requested.
+        const message = (err as Error)?.message || '';
+        const isTransient = name === 'NotReadableError' || /network error/i.test(message);
+
         if (name === 'NoAudioTrackError' || name === 'UnsupportedFormatError') {
           this.failedChunkKeys.add(chunkKey);
+        } else if (isTransient) {
+          const retries = (this.chunkRetryCounts.get(chunkKey) ?? 0) + 1;
+          if (retries >= 3) {
+            this.failedChunkKeys.add(chunkKey);
+            this.chunkRetryCounts.delete(chunkKey);
+            console.warn(
+              `[AudioEngine] Chunk ${chunkKey} failed after ${retries} transient retries; marking as permanently failed`,
+              err,
+            );
+          } else {
+            this.chunkRetryCounts.set(chunkKey, retries);
+            console.warn(
+              `[AudioEngine] Failed to decode chunk ${chunkKey} (transient, retry ${retries}/3)`,
+              err,
+            );
+          }
+          this.fileBlobCache.delete(sourceKey);
         } else {
           console.warn(`[AudioEngine] Failed to decode chunk ${chunkKey}`, err);
-          // Drop the cached blob so the next retry fetches a fresh snapshot.
-          // This fixes stale reads after the underlying OPFS/Tauri file is
-          // regenerated or modified.
           this.fileBlobCache.delete(sourceKey);
         }
         return null;
