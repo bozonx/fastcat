@@ -592,8 +592,13 @@ describe('useMonitorCore', () => {
     // Wait for initial build
     await vi.advanceTimersByTimeAsync(200);
     await nextTick();
+
+    // Ensure init build actually ran so signatures are set up
+    expect(mockClient.clearClips).toHaveBeenCalled();
+
     mockClient.renderFrame.mockClear();
     mockClient.updateTimelineLayout.mockClear();
+    mockClient.clearClips.mockClear();
 
     // Change layout signature to trigger a layout update
     clipLayoutSig.value = 2;
@@ -606,6 +611,7 @@ describe('useMonitorCore', () => {
 
     // After another 100ms (250ms total) layout update should flush
     await vi.advanceTimersByTimeAsync(100);
+    await nextTick();
     expect(mockClient.updateTimelineLayout).toHaveBeenCalled();
     expect(mockClient.renderFrame).toHaveBeenCalled();
 
