@@ -1,63 +1,14 @@
-/**
- * Atomically writes content to a file.
- * Uses a temporary file to ensure data integrity during write operations.
- *
- * @param handle - FileSystemFileHandle to write to
- * @param content - Content to write (string or Blob)
- * @param getTempHandle - Optional function to create temp file handle (for testing)
- */
-export async function atomicWriteFile(
-  handle: FileSystemFileHandle,
-  content: string | Blob,
-  getTempHandle?: (name: string) => Promise<FileSystemFileHandle | null>,
-): Promise<void> {
-  const name = handle.name;
-  const tempName = `${name}.tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-  let tempHandle: FileSystemFileHandle | null = null;
-
-  try {
-    if (getTempHandle) {
-      tempHandle = await getTempHandle(tempName);
-    }
-
-    if (!tempHandle) {
-      return await writeDirectly(handle, content);
-    }
-
-    const tempWritable = await (
-      tempHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-    ).createWritable();
-    await tempWritable.write(content);
-    await tempWritable.close();
-
-    const tempFile = await tempHandle.getFile();
-    const finalContent = await tempFile.arrayBuffer();
-
-    const finalWritable = await (
-      handle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-    ).createWritable();
-    await finalWritable.write(finalContent);
-    await finalWritable.close();
-
-    const parent = await (
-      handle as { getParentDirectory?: () => Promise<FileSystemDirectoryHandle> }
-    ).getParentDirectory?.();
-    if (parent) {
-      await parent.removeEntry(tempName, { recursive: false }).catch(() => {});
-    }
-  } catch {
-    await writeDirectly(handle, content);
-  }
-}
-
-async function writeDirectly(handle: FileSystemFileHandle, content: string | Blob): Promise<void> {
-  const writable = await (
-    handle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-  ).createWritable();
-  await writable.write(content);
-  await writable.close();
-}
+// NOTE: There is intentionally no `atomicWriteFile` helper here. Atomic
+// replacement is already guaranteed by every backend we write through, so a
+// JS-level temp-file dance would be redundant (and the previous implementation
+// was not actually atomic — it copied the temp back into the real file):
+//   - Tauri: `TauriFileHandle.createWritable()` writes a `.tmp` and `rename()`s
+//     it into place on close (see provider/tauri-handle.ts).
+//   - Browser project files (user-picked dir, File System Access): Chromium's
+//     `createWritable()` streams to a swap file and atomically replaces the
+//     target only on `close()`.
+//   - Browser OPFS (file-manager VFS): opfs.adapter stages a temp file and
+//     `move()`s it into place, because OPFS handles truncate on open.
 
 /**
  * Validates that serialized content is not corrupted.
