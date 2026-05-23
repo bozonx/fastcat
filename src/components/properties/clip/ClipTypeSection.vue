@@ -59,6 +59,7 @@ function handleLoadTextPreset(presetId: string) {
   if (!preset) return;
 
   const p = preset.params;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (p.style) emit('updateTextStyle', p.style as any);
 }
 
@@ -67,10 +68,15 @@ function handleLoadShapePreset(presetId: string) {
   if (!preset) return;
 
   const p = preset.params;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (p.shapeType) emit('updateShapeType', p.shapeType as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (p.fillColor) emit('updateFillColor', p.fillColor as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (p.strokeColor) emit('updateStrokeColor', p.strokeColor as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (p.strokeWidth !== undefined) emit('updateStrokeWidth', p.strokeWidth as any);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (p.shapeConfig) emit('updateShapeConfig', p.shapeConfig as any);
 }
 

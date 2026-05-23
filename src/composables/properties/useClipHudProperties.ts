@@ -81,6 +81,7 @@ export function useClipHudProperties(options: UseClipHudPropertiesOptions) {
       target[lastKey] = value;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (timelineStore as any).updateClipProperties(clip.value.trackId, clip.value.id, {
       [layer]: current,
     });

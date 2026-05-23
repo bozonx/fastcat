@@ -109,6 +109,7 @@ export class StageTextureRenderer {
     const stagePrev = stageChildren.map((child) => child.visible);
 
     for (let i = 0; i < stageChildren.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const child = stageChildren[i] as any;
       if (!child) continue;
       const track = this.context.getTrackById(child?.__trackId ?? '');
@@ -119,6 +120,7 @@ export class StageTextureRenderer {
     const containerChildren = trackContainer ? [...trackContainer.children] : [];
     const containerPrev = containerChildren.map((c) => c.visible);
     for (const c of containerChildren) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (c as any).visible = c === clip.sprite;
     }
 
@@ -139,6 +141,7 @@ export class StageTextureRenderer {
       }
 
       for (let i = 0; i < containerChildren.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (containerChildren[i] as any).visible = containerPrev[i] ?? true;
       }
       for (let i = 0; i < stageChildren.length; i++) {

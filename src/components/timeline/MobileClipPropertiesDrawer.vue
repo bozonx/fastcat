@@ -73,6 +73,7 @@ const {
   isSoloed,
   otherActionsList: rawOtherActionsList,
 } = useClipPropertiesActions({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clip: clip as any,
   trackKind: clipTrackKind,
   timelineStore,
@@ -93,6 +94,7 @@ const {
   openPasteClipParameters,
   applyClipParameters,
 } = useClipParametersClipboard({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   clip: clip as any,
   trackKind: clipTrackKind,
   updateClipProperties: (trackId, itemId, props) =>

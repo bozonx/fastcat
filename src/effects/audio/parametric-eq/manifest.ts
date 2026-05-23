@@ -129,6 +129,7 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
           max: 24,
           step: 0.1,
           format: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)} dB`,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           showIf: (v) => ['lowshelf', 'highshelf', 'peaking'].includes((v as any).type),
         },
         {
@@ -141,6 +142,7 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
           format: (v) => v.toFixed(2),
           showIf: (v) =>
             ['lowpass', 'highpass', 'bandpass', 'peaking', 'notch', 'allpass'].includes(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (v as any).type,
             ),
         },

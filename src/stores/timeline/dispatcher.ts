@@ -201,6 +201,7 @@ export function createTimelineDispatcherModule(
     // then push a single entry at the end via this helper. Flush any pending
     // debounced entry first so callers don't have to remember.
     deps.historyDebounce.flushPendingDebouncedHistory();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (deps.historyStore as any).push('timeline', commandType, preState, labelKey);
   }
 

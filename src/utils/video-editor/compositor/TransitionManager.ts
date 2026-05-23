@@ -267,6 +267,7 @@ export class TransitionManager {
     context: unknown,
   ): Filter | null {
     const applyUpdate = (candidate: Filter) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       manifest.updateFilter?.(candidate, context as any);
       return candidate;
     };

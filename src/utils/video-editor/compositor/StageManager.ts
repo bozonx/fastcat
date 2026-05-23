@@ -11,6 +11,8 @@ export interface StageManagerParams {
 export class StageManager {
   public sortStage(params: StageManagerParams) {
     this.sortTrackContainerChildren(params.tracks, params.getClipById);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     params.app.stage.children.sort((a: any, b: any) => {
       const aTrackId = String((a as { __trackId?: string }).__trackId ?? '');
       const bTrackId = String((b as { __trackId?: string }).__trackId ?? '');
@@ -28,6 +30,7 @@ export class StageManager {
     getClipById: (clipId: string) => CompositorClip | undefined,
   ) {
     for (const track of tracks) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       track.container.children.sort((a: any, b: any) => {
         const aClip = getClipById((a as { __clipId?: string }).__clipId ?? '');
         const bClip = getClipById((b as { __clipId?: string }).__clipId ?? '');

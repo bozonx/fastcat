@@ -17,7 +17,10 @@ export class TextRenderer {
     clip.canvas = canvas;
     clip.ctx = ctx as OffscreenCanvasRenderingContext2D;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const canvasSource = new CanvasSource({ resource: canvas as any });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (clip.sprite as any).texture.source = canvasSource as any;
     clip.sourceKind = 'canvas';
     return true;

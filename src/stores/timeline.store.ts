@@ -577,6 +577,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     openProjectSettings: () => {
       uiStore.isProjectSettingsOpen = true;
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     toast: toast as any,
     t,
   });

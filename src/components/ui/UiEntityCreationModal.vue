@@ -36,6 +36,7 @@ watch(isOpen, async (val) => {
     await nextTick();
     setTimeout(() => {
       const input =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (inputRef.value as any)?.$el?.querySelector('input') || (inputRef.value as any)?.input;
       if (input) {
         input.focus();

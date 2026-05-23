@@ -755,6 +755,7 @@ const { getContextMenuItems } = useFileContextMenu(
     },
   },
   (action, entry) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     emit('action', action as any, entry as import('~/types/fs').FsEntry);
   },
 );

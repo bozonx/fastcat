@@ -108,6 +108,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
       transcriber = (await pipeline('automatic-speech-recognition', modelName, {
         device: 'webgpu',
         quantized: true,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)) as AutomaticSpeechRecognitionPipeline;
 
       console.log('[STT Worker] Pipeline initialized with WebGPU');
@@ -126,6 +127,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
   transcriber = (await pipeline('automatic-speech-recognition', modelName, {
     device: 'wasm',
     quantized: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)) as AutomaticSpeechRecognitionPipeline;
 
   console.log('[STT Worker] Pipeline initialized with WASM');
@@ -174,6 +176,7 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
               data: output,
             } satisfies SttWorkerResponse);
           },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
 
         console.log(

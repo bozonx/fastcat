@@ -54,6 +54,7 @@ export function parseHexColor(value: string): number {
  * Used across ResourceManager to normalize error handling.
  */
 export function isInputDisposed(e: unknown): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const name = e instanceof Error ? e.name : ((e as any)?.name ?? '');
   const msg = e instanceof Error ? e.message : String(e ?? '');
   return name === 'InputDisposedError' || msg.includes('Input has been disposed');

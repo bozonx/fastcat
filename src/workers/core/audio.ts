@@ -28,8 +28,11 @@ export async function buildMixedAudioTrack(
     reportExportWarning,
     checkCancel,
     mediabunny: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       AudioSampleSink: AudioSampleSink as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Input: Input as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       BlobSource: BlobSource as any,
       ALL_FORMATS,
     },
@@ -38,6 +41,7 @@ export async function buildMixedAudioTrack(
   if (prepared.length === 0) return null;
 
   const audioSource = new AudioSampleSource({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     codec: getBunnyAudioCodec(options.audioCodec === 'mulaw' ? 'alaw' : options.audioCodec) as any,
     bitrate: options.audioBitrate,
   });

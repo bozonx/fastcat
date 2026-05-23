@@ -87,10 +87,15 @@ export function useMonitorRuntime() {
     },
     monitorTimeline: {
       videoItems,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       workerTimelineClips: workerTimelineClips as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       workerAudioClips: workerAudioClips as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       workerTimelinePayload: workerTimelinePayload as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rawWorkerTimelineClips: rawWorkerTimelineClips as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rawWorkerAudioClips: rawWorkerAudioClips as any,
       safeDurationUs,
       clipSourceSignature,
@@ -147,8 +152,11 @@ export function useMonitorRuntime() {
     isLoading,
     loadError,
     uiCurrentTimeUs,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     workerTimelineClips: workerTimelineClips as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rawWorkerTimelineClips: rawWorkerTimelineClips as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     workerTimelinePayload: workerTimelinePayload as any,
   });
 

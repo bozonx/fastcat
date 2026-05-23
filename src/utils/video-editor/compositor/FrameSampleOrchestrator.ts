@@ -237,6 +237,7 @@ export class FrameSampleOrchestrator {
         continue;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sampleAny = sample as any;
       try {
         if (sampleAny.isHud || sampleAny.isMask) {

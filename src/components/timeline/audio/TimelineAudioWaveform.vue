@@ -57,6 +57,25 @@ let isUnmounted = false;
 let extractCallId = 0;
 let activeExtractionEngine: AudioEngine | null = null;
 
+const effectiveSourceDurationUs = computed(() => {
+  const explicit = props.item.sourceDurationUs;
+  if (explicit && explicit > 0) return explicit;
+
+  if (fileUrl.value) {
+    const metaDurationS = mediaStore.mediaMetadata[fileUrl.value]?.duration;
+    if (metaDurationS && metaDurationS > 0) {
+      return Math.floor(metaDurationS * 1_000_000);
+    }
+  }
+
+  const rangeEndUs = props.item.sourceRange.startUs + props.item.sourceRange.durationUs;
+  if (rangeEndUs > 0) return rangeEndUs;
+
+  return props.item.sourceRange.durationUs || 0;
+});
+
+const durationUs = computed(() => effectiveSourceDurationUs.value);
+
 function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
   return Array.from({ length: channelCount }, () => new Float32Array(length));
 }
@@ -393,25 +412,6 @@ onBeforeUnmount(() => {
 });
 
 const isReversed = computed(() => (props.item.speed ?? 1) < 0);
-
-const effectiveSourceDurationUs = computed(() => {
-  const explicit = props.item.sourceDurationUs;
-  if (explicit && explicit > 0) return explicit;
-
-  if (fileUrl.value) {
-    const metaDurationS = mediaStore.mediaMetadata[fileUrl.value]?.duration;
-    if (metaDurationS && metaDurationS > 0) {
-      return Math.floor(metaDurationS * 1_000_000);
-    }
-  }
-
-  const rangeEndUs = props.item.sourceRange.startUs + props.item.sourceRange.durationUs;
-  if (rangeEndUs > 0) return rangeEndUs;
-
-  return props.item.sourceRange.durationUs || 0;
-});
-
-const durationUs = computed(() => effectiveSourceDurationUs.value);
 
 const waveformMetrics = computed(() =>
   computeWaveformWindowMetrics({

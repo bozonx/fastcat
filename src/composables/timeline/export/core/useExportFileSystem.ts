@@ -45,6 +45,7 @@ export function useExportFileSystem() {
 
   async function listExportFilenames(exportDir: FileSystemDirectoryHandle): Promise<Set<string>> {
     const names = new Set<string>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dir = exportDir as any;
     const iterator = dir.values?.() ?? dir.entries?.();
     if (!iterator) return names;

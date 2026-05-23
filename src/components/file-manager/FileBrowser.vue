@@ -362,6 +362,7 @@ const remote = useFileBrowserRemote({
   vfs,
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 remoteApi = remote as any;
 
 const {
@@ -774,6 +775,7 @@ const { refreshFileTree } = useFileBrowserLifecycle({
   buildRemoteDirectoryEntry,
   fileManagerStore,
   selectionStore,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   focusStore: focusStore as any,
   uiStore,
   clipboardStore,

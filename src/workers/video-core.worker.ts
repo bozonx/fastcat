@@ -211,6 +211,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       Number.isFinite(requestId) &&
       requestId !== latestLoadTimelineRequestId;
     return compositor.loadTimeline(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       clips as any,
       {
         getFileHandleByPath: async (path: string) => {
@@ -238,6 +239,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
   ) {
     if (!compositor) throw new Error('Compositor not initialized');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return compositor.updateTimelineLayout(clips as any);
   },
 
@@ -372,6 +374,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
 
     try {
       await localCompositor.loadTimeline(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         timelineClips as any,
         {
           getFileHandleByPath: async (path) => {
@@ -559,6 +562,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
             quality: options.quality,
           });
         } finally {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const closeFn = (sample as any).close;
           if (typeof closeFn === 'function') {
             try {
@@ -623,6 +627,7 @@ const frameExtractors = new Map<string, FrameExtractorState>();
 async function createFrameExtractorState(file: File): Promise<FrameExtractorState> {
   const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
   const source = new BlobSource(file);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source, formats: ALL_FORMATS } as any);
   const track = await input.getPrimaryVideoTrack();
 
@@ -709,6 +714,7 @@ function disposeFrameExtractorState(state: FrameExtractorState): void {
   const input = state.input;
   if (input) {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const inp = input as any;
       if (typeof inp.dispose === 'function') inp.dispose();
       else if (typeof inp.close === 'function') inp.close();

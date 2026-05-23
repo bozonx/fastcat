@@ -199,6 +199,7 @@ function handleCutClip() {
 const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   timelineStore: timelineStore as any,
   projectStore,
   uiStore,
@@ -265,6 +266,7 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string) {
 }
 
 function handleUpdateMask(mask: unknown) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as any);
 }
 
@@ -310,6 +312,7 @@ const {
 
 const { hudManifest, hudControlValues, handleUpdateHudControl } = useClipHudProperties({
   clip: clipRef,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   timelineStore: timelineStore as any,
 });
 

@@ -66,6 +66,7 @@ export class TransitionRenderer {
 
       const transitionFilter = params.transitionManager.ensureUsableTransitionFilter(
         clip,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         state.manifest as any,
       );
       if (!transitionFilter) {
@@ -154,6 +155,7 @@ export class TransitionRenderer {
 
       const filterUpdated = params.transitionManager.updateTransitionFilterSafely(
         clip,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         state.manifest as any,
         transitionFilter,
         transitionContext,

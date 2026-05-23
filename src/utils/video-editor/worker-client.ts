@@ -31,7 +31,9 @@ export interface VideoCoreHostAPI {
 type WorkerChannel = 'preview' | 'export' | 'proxy' | 'thumbnail';
 
 type PendingCall = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   resolve: (value: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   reject: (reason?: any) => void;
   timeoutId?: number;
 };

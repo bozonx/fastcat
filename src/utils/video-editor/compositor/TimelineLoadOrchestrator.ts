@@ -255,6 +255,7 @@ export class TimelineLoadOrchestrator {
       });
       sequentialTimeUs = fixedDuration.sequentialTimeUs;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const imageSource = new ImageSource({ resource: new OffscreenCanvas(2, 2) as any });
       let bitmap: ImageBitmap | null = null;
       const loadedImage = await this.context.rasterImageLoader.load({ sourcePath, deps });
@@ -329,7 +330,9 @@ export class TimelineLoadOrchestrator {
           speed,
           freezeFrameSourceUs,
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         input: loadedVideo.input as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sink: loadedVideo.sink as any,
         firstTimestampS: loadedVideo.firstTimestampS,
         frameRate: loadedVideo.frameRate,

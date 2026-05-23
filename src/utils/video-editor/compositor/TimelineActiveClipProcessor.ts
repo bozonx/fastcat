@@ -99,6 +99,7 @@ export class TimelineActiveClipProcessor {
           statePromises.push(
             params.createPrimaryVideoSampleRequest(mockClip, sampleTimeS).then((res) => {
               if (res.sample) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const sampleAny = res.sample as any;
                 if (typeof sampleAny.toVideoFrame === 'function') {
                   if (state.lastVideoFrame) {
@@ -213,6 +214,7 @@ export class TimelineActiveClipProcessor {
           .then((res) => {
             if (res.sample) {
               const state = clip.maskState!;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const sampleAny = res.sample as any;
               if (typeof sampleAny.toVideoFrame === 'function') {
                 if (state.lastVideoFrame) {

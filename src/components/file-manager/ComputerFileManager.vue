@@ -43,6 +43,7 @@ const { vfs } = useComputerVfs();
 
 // Initialize file manager for computer
 const fileManager = createFileManager({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: useI18n().t as any,
   toast: useToast(),
   vfs: vfs.value!,
@@ -72,14 +73,17 @@ const fileManager = createFileManager({
     clearExistingProxies: () => {},
     clearVideoThumbnails: async () => {},
     clearWaveforms: async () => {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
   mediaStore: {
     revalidateMissingMedia: async () => {},
     removeMediaCache: async () => {},
     resetMediaState: () => {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
   historyStore: {
     push: () => {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
   shouldRecordFileManagerHistory: () => false,
   hideCommonRoot: true,

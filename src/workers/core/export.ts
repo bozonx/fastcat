@@ -264,6 +264,7 @@ async function buildPassthroughAudioTrack(params: {
   const file = (await hostClient.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
 
   try {
@@ -366,10 +367,12 @@ export async function runExport(
         }
       ).createWritable({ keepExistingData: false });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const target = new StreamTarget(writable as any, {
         chunked: true,
         chunkSize: 16 * 1024 * 1024,
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const output = new Output({ target, format: params.format as any });
       return { output, writable };
     });
@@ -490,6 +493,7 @@ export async function runExport(
         }
         emptyFrameCount++;
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await waitForVideoBackpressure(params.videoSource as any);
       await params.videoSource.add(frame.timestampS, frame.durationS);
 
@@ -524,6 +528,7 @@ export async function runExport(
 
   try {
     const maxVideoDurationUs = await localCompositor.loadTimeline(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       timelineClips as any,
       {
         getFileHandleByPath: async (path) => {
@@ -601,10 +606,12 @@ export async function runExport(
         keyFrameInterval,
         hardwareAcceleration: preference,
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (output as any).addVideoTrack(videoSource);
 
       let audioSource: unknown = null;
       let writeMixedAudioToSource: (() => Promise<void>) | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let audioPacketState: any = null;
       if (options.audio && hasAnyAudio) {
         if (options.audioPassthrough && audioClips.length === 1 && audioClips[0] !== undefined) {
@@ -622,6 +629,7 @@ export async function runExport(
             });
             if (audioPacketState) {
               audioSource = audioPacketState.audioSource;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (output as any).addAudioTrack(audioSource);
             } else {
               await reportExportWarning(
@@ -643,6 +651,7 @@ export async function runExport(
           if (audioTrack) {
             audioSource = audioTrack.audioSource;
             writeMixedAudioToSource = audioTrack.writeMixedToSource;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (output as any).addAudioTrack(audioSource);
           } else {
             await reportExportWarning(
@@ -654,6 +663,7 @@ export async function runExport(
 
       let finalized = false;
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (output as any).start();
 
         await writeOpusPassthroughIfNeeded({ audioPacketState });
@@ -672,6 +682,7 @@ export async function runExport(
 
         await notifyPhase('saving', taskId);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (output as any).finalize();
         if (hostClient) {
           await hostClient.onExportProgress(100, taskId);
@@ -735,6 +746,7 @@ export async function extractAudioStream(
     EncodedPacketSink,
   } = await import('mediabunny');
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as any);
 
   try {
@@ -761,7 +773,9 @@ export async function extractAudioStream(
           }) => Promise<{ abort?: () => Promise<void> }>;
         }
       ).createWritable({ keepExistingData: false });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const target = new StreamTarget(writable as any, { chunked: true });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const output = new Output({ target, format: format as any });
       return { output, writable };
     });
@@ -770,10 +784,13 @@ export async function extractAudioStream(
     const decoderConfig = await audioTrack.getDecoderConfig();
 
     const packetSource = new EncodedAudioPacketSource(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getBunnyAudioCodec((lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as any) as any,
     );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (output as any).addAudioTrack(packetSource);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (output as any).start();
     const packetSink = new EncodedPacketSink(audioTrack);
 
@@ -796,6 +813,7 @@ export async function extractAudioStream(
     if (typeof closeFn === 'function') {
       closeFn.call(packetSource);
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (output as any).finalize();
   } catch (err) {
     console.error('[Worker Export] Failed to extract audio:', err);

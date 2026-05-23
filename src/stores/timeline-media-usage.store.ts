@@ -107,6 +107,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
     const result: string[] = [];
 
     const walk = async (dir: FileSystemDirectoryHandle, basePath: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const d = dir as any;
       const iterator = d.values?.() ?? d.entries?.();
       if (!iterator) return;

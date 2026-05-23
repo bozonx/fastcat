@@ -64,6 +64,7 @@ export class TimelineFixedClipBuilder {
           backgroundColor,
           clipType: 'background',
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (clip.sprite as any).tint = parseHexColor(backgroundColor);
         return clip;
       }

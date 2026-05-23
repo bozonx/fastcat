@@ -209,6 +209,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
           await projectUiRepo.value.save({
             version: 1,
             monitor: projectSettings.value.monitor,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             monitors: projectSettings.value.monitors as Record<string, any>,
             timelines: {
               openPaths: timelines.openPaths,
@@ -475,11 +476,13 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       await projectSettingsRepo.value.save(projectSettings.value);
       await projectUiRepo.value.save({
         version: 1,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         monitors: initial.monitors as Record<string, any>,
         timelines: {
           openPaths: initial.timelines.openPaths,
           sessions: initial.timelines.sessions,
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ui: initial.ui as any,
       });
     } catch (e) {

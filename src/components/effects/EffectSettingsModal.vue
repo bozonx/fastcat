@@ -261,9 +261,11 @@ function handleUpdateValue(key: string, value: unknown) {
   for (let i = 1; i < keys.length - 1; i++) {
     const k = keys[i];
     if (k && current[k] === undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (current as any)[k] = isNaN(Number(keys[i + 1])) ? {} : [];
     }
     if (k) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       current = current[k] as any;
     }
   }
