@@ -319,8 +319,8 @@ export function createProxyService(params: {
             await client.exportTimeline(
               proxyFileHandle,
               exportOptions,
-              videoClips,
-              audioClips,
+              videoClips as any,
+              audioClips as any,
               taskId,
             );
 

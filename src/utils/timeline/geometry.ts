@@ -46,6 +46,10 @@ export function pxToTimeUs(px: number, zoom = 100) {
   return Math.max(0, Math.round((px / pxPerSecond) * 1e6));
 }
 
+export function quantizeTimeUsToPixelGrid(timeUs: number, zoom = 100) {
+  return pxToTimeUs(Math.round(timeUsToPx(timeUs, zoom)), zoom);
+}
+
 export function pxToDeltaUs(px: number, zoom = 100) {
   const pxPerSecond = zoomToPxPerSecond(zoom);
   return Math.round((px / pxPerSecond) * 1e6);

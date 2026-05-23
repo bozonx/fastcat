@@ -41,7 +41,7 @@ import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
 import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
-import { useRoute } from 'vue-router';
+import { useRoute } from 'nuxt/app';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
@@ -209,6 +209,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timelineDoc,
     currentTime,
     duration,
+    timelineZoom,
     selectedItemIds,
     applyTimeline,
     batchApplyTimeline,
@@ -533,7 +534,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
     getFileHandleByPath: (path) => projectStore.getFileHandleByPath(path),
     getFileByPath: (path) =>
-      (nuxtApp as { $vfs: { getFile: (p: string) => Promise<File | null> } }).$vfs.getFile(path),
+      (nuxtApp as unknown as { $vfs: { getFile: (p: string) => Promise<File | null> } }).$vfs.getFile(path),
     getOrFetchMetadataByPath: (path) => mediaStore.getOrFetchMetadataByPath(path),
     getUserSettings: () => workspaceStore.userSettings,
     getProjectSettings: () => projectStore.projectSettings,
@@ -546,7 +547,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     openProjectSettings: () => {
       uiStore.isProjectSettingsOpen = true;
     },
-    toast,
+    toast: toast as any,
     t,
   });
 

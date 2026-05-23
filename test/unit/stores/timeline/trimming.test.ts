@@ -44,6 +44,7 @@ function createMockDeps() {
     timelineDoc: ref<any>(mockDoc),
     currentTime: ref(1_000_000),
     duration: ref(5_000_000),
+    timelineZoom: ref(50),
     selectedItemIds: ref<string[]>(['clip-1', 'clip-2']),
     applyTimeline: vi.fn(),
     batchApplyTimeline: vi.fn(),
@@ -52,9 +53,9 @@ function createMockDeps() {
     getSelectedOrActiveTrackId: vi.fn().mockReturnValue('track-1'),
     onPlayheadJump: vi.fn(),
     editService: {
-      rippleDeleteRange: vi.fn(),
-      rippleTrimRight: vi.fn().mockResolvedValue(undefined),
-      rippleTrimLeft: vi.fn().mockResolvedValue(undefined),
+      rippleDeleteRange: vi.fn().mockReturnValue(null),
+      rippleTrimRight: vi.fn().mockResolvedValue(null),
+      rippleTrimLeft: vi.fn().mockResolvedValue(null),
       advancedRippleTrimRight: vi.fn().mockResolvedValue(undefined),
       advancedRippleTrimLeft: vi.fn().mockResolvedValue(undefined),
     },
@@ -88,11 +89,29 @@ describe('TimelineTrimmingModule', () => {
     expect(deps.editService.rippleDeleteRange).toHaveBeenCalledWith(input, { someOption: true });
   });
 
+  it('rippleDeleteRange moves playhead to pixel-aligned collapse point', () => {
+    const deps = createMockDeps();
+    deps.editService.rippleDeleteRange.mockReturnValue(123_456);
+    const mod = createTimelineTrimmingModule(deps);
+    mod.rippleDeleteRange({ trackIds: ['track-1'], startUs: 0, endUs: 500_000 });
+    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
+  });
+
   it('rippleTrimRight delegates to editService', async () => {
     const deps = createMockDeps();
     const mod = createTimelineTrimmingModule(deps);
     await mod.rippleTrimRight();
     expect(deps.editService.rippleTrimRight).toHaveBeenCalled();
+  });
+
+  it('rippleTrimRight moves playhead to pixel-aligned collapse point', async () => {
+    const deps = createMockDeps();
+    deps.editService.rippleTrimRight.mockResolvedValue(123_456);
+    const mod = createTimelineTrimmingModule(deps);
+    await mod.rippleTrimRight();
+    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
   it('splitClipAtPlayhead batches split commands', async () => {

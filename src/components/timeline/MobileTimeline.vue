@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type {
   TimelineClipActionPayload,
@@ -178,6 +178,24 @@ watch(
     onCleanup(() => el.removeEventListener('scroll', onScroll));
   },
   { immediate: true },
+);
+
+watch(
+  () => timelineStore.scrollToPlayheadRequest,
+  () => {
+    nextTick(() => {
+      const el = scrollEl.value;
+      if (!el) return;
+
+      const playheadX = playheadPx.value;
+      const viewportStart = el.scrollLeft;
+      const viewportEnd = viewportStart + el.clientWidth;
+      if (playheadX >= viewportStart && playheadX <= viewportEnd) return;
+
+      el.scrollLeft = Math.max(0, playheadX - el.clientWidth / 2);
+      timelineStore.timelineScrollLeftPx = el.scrollLeft;
+    });
+  },
 );
 
 const lastPointerType = ref('');

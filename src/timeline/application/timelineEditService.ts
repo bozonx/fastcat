@@ -101,13 +101,16 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     return cmds;
   }
 
-  function rippleDeleteRange(input: RippleDeleteRangeParams, options?: ApplyTimelineOptions) {
+  function rippleDeleteRange(
+    input: RippleDeleteRangeParams,
+    options?: ApplyTimelineOptions,
+  ): number | null {
     const doc = deps.getDoc();
-    if (!doc) return;
+    if (!doc) return null;
 
     const startUs = computeCutUs(doc, input.startUs);
     const endUs = computeCutUs(doc, input.endUs);
-    if (!(endUs > startUs)) return;
+    if (!(endUs > startUs)) return null;
 
     const deltaUs = endUs - startUs;
     const trackIdSet = new Set(input.trackIds);
@@ -141,7 +144,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     }
 
     const afterSplitEnd = deps.getDoc();
-    if (!afterSplitEnd) return;
+    if (!afterSplitEnd) return null;
 
     const splitCmdsStart = buildSplitCmds(afterSplitEnd, startUs);
     if (splitCmdsStart.length > 0) {
@@ -150,7 +153,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     // Phase 2: delete clips that lie entirely (or all but an epsilon) within the cut range.
     const updated = deps.getDoc();
-    if (!updated) return;
+    if (!updated) return null;
 
     const EPSILON = 10;
     const deleteCmds: TimelineCommand[] = [];
@@ -184,7 +187,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     // Phase 3: shift clips after the deleted range, preserving frame alignment.
     const afterDelete = deps.getDoc();
-    if (!afterDelete) return;
+    if (!afterDelete) return null;
 
     const moveCmds: TimelineCommand[] = [];
     for (const track of afterDelete.tracks) {
@@ -226,28 +229,30 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
         deps.batchApplyTimeline(markerCmds, batchOptions);
       }
     }
+
+    return startUs;
   }
 
-  async function rippleTrimRight() {
+  async function rippleTrimRight(): Promise<number | null> {
     const doc = deps.getDoc();
-    if (!doc) return;
+    if (!doc) return null;
 
     const target = deps.getHotkeyTargetClip();
-    if (!target) return;
+    if (!target) return null;
 
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-    if (track.locked || item.locked) return;
+    if (!track || !item || item.kind !== 'clip') return null;
+    if (track.locked || item.locked) return null;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    if (!(cutUs > startUs && cutUs < endUs)) return null;
 
     const deltaUs = endUs - cutUs;
-    if (deltaUs <= 0) return;
+    if (deltaUs <= 0) return null;
 
     const cmds: TimelineCommand[] = [
       {
@@ -296,28 +301,29 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     });
 
     await deps.requestTimelineSave({ immediate: true });
+    return cutUs;
   }
 
-  async function rippleTrimLeft() {
+  async function rippleTrimLeft(): Promise<number | null> {
     const doc = deps.getDoc();
-    if (!doc) return;
+    if (!doc) return null;
 
     const target = deps.getHotkeyTargetClip();
-    if (!target) return;
+    if (!target) return null;
 
     const track = getTrackById(doc, target.trackId);
     const item = track?.items.find((it) => it.kind === 'clip' && it.id === target.itemId) ?? null;
-    if (!track || !item || item.kind !== 'clip') return;
-    if (track.locked || item.locked) return;
+    if (!track || !item || item.kind !== 'clip') return null;
+    if (track.locked || item.locked) return null;
 
     const cutUs = computeCutUs(doc, deps.getCurrentTime());
     const startUs = item.timelineRange.startUs;
     const endUs = startUs + item.timelineRange.durationUs;
 
-    if (!(cutUs > startUs && cutUs < endUs)) return;
+    if (!(cutUs > startUs && cutUs < endUs)) return null;
 
     const deltaUs = cutUs - startUs;
-    if (deltaUs <= 0) return;
+    if (deltaUs <= 0) return null;
 
     const cmds: TimelineCommand[] = [
       {
@@ -366,6 +372,7 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     });
 
     await deps.requestTimelineSave({ immediate: true });
+    return startUs;
   }
 
   async function advancedRippleTrimRight() {

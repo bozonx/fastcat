@@ -3,6 +3,7 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineApplyOptions } from './commands';
 import { calculateNextClipBoundary, calculatePrevClipBoundary } from '~/timeline/domain/navigation';
+import { quantizeTimeUsToPixelGrid } from '~/utils/timeline/geometry';
 import {
   buildSplitClipCommands,
   buildSplitAllClipsCommands,
@@ -14,6 +15,7 @@ export interface TimelineTrimmingDeps {
   timelineDoc: Ref<TimelineDocument | null>;
   currentTime: Ref<number>;
   duration: Ref<number>;
+  timelineZoom: Ref<number>;
   selectedItemIds: Ref<string[]>;
   applyTimeline: (
     cmd: TimelineCommand,
@@ -35,9 +37,9 @@ export interface TimelineTrimmingDeps {
     rippleDeleteRange: (
       input: { trackIds: string[]; startUs: number; endUs: number },
       options?: TimelineApplyOptions,
-    ) => void;
-    rippleTrimRight: () => Promise<void>;
-    rippleTrimLeft: () => Promise<void>;
+    ) => number | null;
+    rippleTrimRight: () => Promise<number | null>;
+    rippleTrimLeft: () => Promise<number | null>;
     advancedRippleTrimRight: () => Promise<void>;
     advancedRippleTrimLeft: () => Promise<void>;
   };
@@ -168,15 +170,21 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     input: { trackIds: string[]; startUs: number; endUs: number },
     options?: TimelineApplyOptions,
   ) {
-    deps.editService.rippleDeleteRange(input, options);
+    movePlayheadToCollapse(deps.editService.rippleDeleteRange(input, options));
   }
 
   async function rippleTrimRight() {
-    await deps.editService.rippleTrimRight();
+    movePlayheadToCollapse(await deps.editService.rippleTrimRight());
   }
 
   async function rippleTrimLeft() {
-    await deps.editService.rippleTrimLeft();
+    movePlayheadToCollapse(await deps.editService.rippleTrimLeft());
+  }
+
+  function movePlayheadToCollapse(collapseUs: number | null) {
+    if (collapseUs === null) return;
+    deps.currentTime.value = quantizeTimeUsToPixelGrid(collapseUs, deps.timelineZoom.value);
+    deps.onPlayheadJump?.();
   }
 
   async function advancedRippleTrimRight() {

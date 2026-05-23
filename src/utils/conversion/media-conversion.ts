@@ -9,6 +9,7 @@ import {
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
 import { useProjectStore } from '~/stores/project.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import type { ConversionRequest } from '~/types/conversion';
 import { clampPositiveNumber, resolveAudioOnlyContainerFormat } from './helpers';
@@ -30,6 +31,7 @@ export async function executeMediaConversion(params: {
   signal?: AbortSignal;
 }) {
   const projectStore = useProjectStore();
+  const workspaceStore = useWorkspaceStore();
   const backgroundTasksStore = useBackgroundTasksStore();
 
   async function getSourceFile(path: string): Promise<File | null> {

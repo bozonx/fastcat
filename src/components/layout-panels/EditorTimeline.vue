@@ -354,6 +354,7 @@ watch(
       const vw = el.clientWidth;
       if (playheadPx < el.scrollLeft || playheadPx > el.scrollLeft + vw) {
         el.scrollLeft = Math.max(0, playheadPx - vw / 2);
+        timelineStore.timelineScrollLeftPx = el.scrollLeft;
       }
     });
   },

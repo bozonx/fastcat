@@ -323,9 +323,10 @@ export function clipHasAudio(
 ): boolean {
   if (item.kind !== 'clip') return false;
   const clip = item as import('~/timeline/types').TimelineClipItem;
-  if (clip.clipType === 'timeline') return true;
+  const ct = clip.clipType as string;
+  if (ct === 'timeline') return true;
   if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
-  if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
+  if (ct !== 'media' && ct !== 'timeline') return track.kind === 'audio';
   if (!clip.source?.path) return track.kind === 'audio';
-  return Boolean(mediaMetadata[clip.source.path]?.audio);
+  return Boolean((mediaMetadata[clip.source.path] as Record<string, unknown> | undefined)?.audio);
 }
