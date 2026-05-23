@@ -9,6 +9,7 @@ import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { writeFileAtomic } from '~/utils/io/atomic-file-write';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/waveform';
 
 interface VideoColorSpaceInit {
   fullRange?: boolean;
@@ -308,13 +309,23 @@ export const useMediaStore = defineStore('media', () => {
       const waveformsDir = await fsModule.ensureWaveformsDir();
       if (waveformsDir) {
         try {
-          const peaksText = await runCacheFileAccess('waveform', cacheFileName, async () => {
+          const arrayBuffer = await runCacheFileAccess('waveform', cacheFileName, async () => {
             const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
             const peaksFile = await peaksHandle.getFile();
-            return await peaksFile.text();
+            return await peaksFile.arrayBuffer();
           });
-          const peaksData = JSON.parse(peaksText) as number[][];
-          parsedMeta.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
+          const uint8 = new Uint8Array(arrayBuffer);
+          if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {
+            const decoder = new TextDecoder();
+            const text = decoder.decode(uint8);
+            const peaksData = JSON.parse(text) as number[][];
+            parsedMeta.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
+          } else {
+            const deserialized = deserializeWaveformPeaks(arrayBuffer);
+            if (deserialized) {
+              parsedMeta.audioPeaks = deserialized;
+            }
+          }
         } catch {
           // No cached peaks
         }
@@ -329,12 +340,10 @@ export const useMediaStore = defineStore('media', () => {
       mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
     }
 
-    // OPFS still stores peaks as JSON `number[][]` so old caches keep working.
-    // Convert once here on the write side; reads convert back to Float32Array.
-    const peaksAsJson = peaks.map((channel) => Array.from(channel));
+    const binaryData = serializeWaveformPeaks(peaks);
 
     // Serialize peaks writes per-path to avoid concurrent createWritable() races on the
-    // same OPFS entry which can yield truncated/interleaved JSON for long audio.
+    // same OPFS entry which can yield truncated/interleaved data for long audio.
     const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
     const previous = pendingPeakWrites.get(projectRelativePath) ?? Promise.resolve();
     const writeTask = previous
@@ -349,7 +358,7 @@ export const useMediaStore = defineStore('media', () => {
             await writeFileAtomic({
               dir: waveformsDir,
               fileName: cacheFileName,
-              data: JSON.stringify(peaksAsJson),
+              data: binaryData,
             });
           });
         } catch (e) {
@@ -409,6 +418,78 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
+  let sharedAudioDecodeWorker: Worker | null = null;
+  const decodePending = new Map<
+    number,
+    { resolve: (value: unknown) => void; reject: (reason?: unknown) => void }
+  >();
+  let decodeCallId = 0;
+
+  function ensureSharedAudioDecodeWorker() {
+    if (sharedAudioDecodeWorker) return sharedAudioDecodeWorker;
+
+    sharedAudioDecodeWorker = new Worker(
+      new URL('~/workers/audio-decode.worker.ts', import.meta.url),
+      {
+        type: 'module',
+        name: 'audio-decode-shared',
+      },
+    );
+
+    sharedAudioDecodeWorker.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || data.type !== 'decode-result') return;
+      const pending = decodePending.get(data.id);
+      if (!pending) return;
+      decodePending.delete(data.id);
+
+      if (!data.ok) {
+        pending.reject(new Error(data.error?.message || 'Audio decode failed'));
+        return;
+      }
+      pending.resolve(data.result);
+    });
+
+    sharedAudioDecodeWorker.addEventListener('error', (event) => {
+      console.error('[SharedAudioDecodeWorker] Worker error', event);
+      for (const [, pending] of decodePending.entries()) {
+        pending.reject(new Error('Audio decode worker crashed'));
+      }
+      decodePending.clear();
+      sharedAudioDecodeWorker = null;
+    });
+
+    return sharedAudioDecodeWorker;
+  }
+
+  async function extractPeaks(
+    file: File,
+    sourceKey: string,
+    options?: { maxLength?: number; precision?: number },
+  ): Promise<Float32Array[] | null> {
+    const worker = ensureSharedAudioDecodeWorker();
+    return new Promise<Float32Array[] | null>((resolve) => {
+      const id = ++decodeCallId;
+      decodePending.set(id, {
+        resolve: (result: unknown) => {
+          const res = result as { peaks?: Float32Array[] } | null;
+          resolve(res?.peaks || null);
+        },
+        reject: (err: unknown) => {
+          console.warn('Failed to extract peaks in shared worker', err);
+          resolve(null);
+        },
+      });
+      worker.postMessage({
+        type: 'extract-peaks',
+        id,
+        sourceKey,
+        blob: file,
+        options,
+      });
+    });
+  }
+
   return {
     mediaMetadata,
     missingPaths,
@@ -420,5 +501,6 @@ export const useMediaStore = defineStore('media', () => {
     setAudioPeaks,
     revalidateMissingMedia,
     removeMediaCache,
+    extractPeaks,
   };
 });

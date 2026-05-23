@@ -331,13 +331,32 @@ async function extractPeaksFromSource(
           }
 
           const timestampS = Number(sample.timestamp) || 0;
-          const startFrame = Math.max(0, Math.floor(timestampS * sampleRate));
-          const lastFrame = startFrame + frames;
-          if (lastFrame > totalFramesEstimate) {
-            totalFramesEstimate = lastFrame;
+          // Calculate frames relative to trackSampleRate for consistent scale comparisons.
+          const startFrameTrack = Math.max(0, Math.round(timestampS * trackSampleRate));
+          const framesInTrackRate = Math.round(frames * (trackSampleRate / sampleRate));
+          const lastFrameTrack = startFrameTrack + framesInTrackRate;
+
+          if (lastFrameTrack > totalFramesEstimate) {
+            const oldEstimate = totalFramesEstimate;
+            totalFramesEstimate = lastFrameTrack;
+            const ratio = oldEstimate / totalFramesEstimate;
+            for (let ch = 0; ch < resolvedChannels; ch += 1) {
+              const channel = peaks[ch];
+              if (!channel) continue;
+              const newChannel = new Float32Array(maxLength);
+              for (let b = 0; b < maxLength; b += 1) {
+                const newB = Math.min(maxLength - 1, Math.floor(b * ratio));
+                if (channel[b]! > newChannel[newB]!) {
+                  newChannel[newB] = channel[b]!;
+                }
+              }
+              peaks[ch] = newChannel;
+            }
           }
 
           const channelsToCopy = Math.min(resolvedChannels, numberOfChannels);
+          const timePerFrame = 1 / sampleRate;
+
           for (let ch = 0; ch < channelsToCopy; ch += 1) {
             const bytesNeeded = sample.allocationSize!({ format: 'f32-planar', planeIndex: ch });
             const channel = new Float32Array(bytesNeeded / 4);
@@ -346,7 +365,8 @@ async function extractPeaksFromSource(
             const peakChannel = peaks[ch];
             if (!peakChannel) continue;
             for (let i = 0; i < frames && i < channel.length; i += 1) {
-              const globalFrame = startFrame + i;
+              const frameTime = timestampS + i * timePerFrame;
+              const globalFrame = Math.max(0, Math.floor(frameTime * trackSampleRate));
               const bucket = Math.min(
                 maxLength - 1,
                 Math.max(0, Math.floor((globalFrame / totalFramesEstimate) * maxLength)),

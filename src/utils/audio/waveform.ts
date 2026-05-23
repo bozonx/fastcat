@@ -70,3 +70,41 @@ export function resolveWaveformSourceUs(params: WaveformSourceTimeParams): numbe
 
   return sourceStartUs + Math.min(sourceRangeDurationUs, Math.max(0, sourceOffsetUs));
 }
+
+export function serializeWaveformPeaks(peaks: Float32Array[]): ArrayBuffer {
+  const channelCount = peaks.length;
+  const samplesCount = channelCount > 0 ? peaks[0]!.length : 0;
+  const headerByteLength = 8;
+  const dataByteLength = channelCount * samplesCount * 4;
+  const buffer = new ArrayBuffer(headerByteLength + dataByteLength);
+  const view = new DataView(buffer);
+  view.setUint32(0, channelCount, true);
+  view.setUint32(4, samplesCount, true);
+
+  const floatArray = new Float32Array(buffer, headerByteLength);
+  for (let ch = 0; ch < channelCount; ch++) {
+    const channelPeaks = peaks[ch];
+    if (channelPeaks) {
+      floatArray.set(channelPeaks, ch * samplesCount);
+    }
+  }
+  return buffer;
+}
+
+export function deserializeWaveformPeaks(buffer: ArrayBuffer): Float32Array[] | null {
+  if (buffer.byteLength < 8) return null;
+  const view = new DataView(buffer);
+  const channelCount = view.getUint32(0, true);
+  const samplesCount = view.getUint32(4, true);
+  const expectedByteLength = 8 + channelCount * samplesCount * 4;
+  if (buffer.byteLength < expectedByteLength) return null;
+
+  const floatArray = new Float32Array(buffer, 8);
+  const peaks: Float32Array[] = [];
+  for (let ch = 0; ch < channelCount; ch++) {
+    const channelData = new Float32Array(samplesCount);
+    channelData.set(floatArray.subarray(ch * samplesCount, (ch + 1) * samplesCount));
+    peaks.push(channelData);
+  }
+  return peaks;
+}

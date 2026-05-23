@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeWaveformWindowMetrics, resolveWaveformSourceUs } from '~/utils/audio/waveform';
+import {
+  computeWaveformWindowMetrics,
+  resolveWaveformSourceUs,
+  serializeWaveformPeaks,
+  deserializeWaveformPeaks,
+} from '~/utils/audio/waveform';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
 describe('audio waveform utilities', () => {
@@ -61,5 +66,22 @@ describe('audio waveform utilities', () => {
     });
 
     expect(sourceUs).toBe(5_000_000);
+  });
+
+  it('serializes and deserializes peaks to/from binary ArrayBuffer correctly', () => {
+    const originalPeaks = [
+      new Float32Array([0.1, 0.2, 0.3, 0.4]),
+      new Float32Array([0.5, 0.6, 0.7, 0.8]),
+    ];
+
+    const serialized = serializeWaveformPeaks(originalPeaks);
+    expect(serialized).toBeInstanceOf(ArrayBuffer);
+    expect(serialized.byteLength).toBe(8 + 2 * 4 * 4);
+
+    const deserialized = deserializeWaveformPeaks(serialized);
+    expect(deserialized).not.toBeNull();
+    expect(deserialized).toHaveLength(2);
+    expect(deserialized![0]).toEqual(new Float32Array([0.1, 0.2, 0.3, 0.4]));
+    expect(deserialized![1]).toEqual(new Float32Array([0.5, 0.6, 0.7, 0.8]));
   });
 });

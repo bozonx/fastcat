@@ -4,7 +4,6 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -55,7 +54,6 @@ const hasDeferredExtraction = ref(false);
 
 let isUnmounted = false;
 let extractCallId = 0;
-let activeExtractionEngine: AudioEngine | null = null;
 
 const effectiveSourceDurationUs = computed(() => {
   const explicit = props.item.sourceDurationUs;
@@ -101,13 +99,11 @@ async function ensureMediaPeaks(params: {
       if (cached && cached.length > 0) return cached;
       if (shouldCancel?.()) return null;
 
-      const fileHandle = await projectStore.getFileHandleByPath(path);
-      if (!fileHandle || shouldCancel?.()) return null;
+      const file = await projectStore.getFileByPath(path);
+      if (!file || shouldCancel?.()) return null;
 
-      const engine = new AudioEngine();
-      activeExtractionEngine = engine;
       try {
-        const peaks = await engine.extractPeaks(fileHandle, path, {
+        const peaks = await mediaStore.extractPeaks(file, path, {
           maxLength,
           precision: 10000,
         });
@@ -116,15 +112,9 @@ async function ensureMediaPeaks(params: {
           return peaks;
         }
         return null;
-      } finally {
-        try {
-          engine.destroy();
-        } catch {
-          // ignore
-        }
-        if (activeExtractionEngine === engine) {
-          activeExtractionEngine = null;
-        }
+      } catch (err) {
+        console.error('Failed to extract peaks:', err);
+        return null;
       }
     },
   });
@@ -196,10 +186,13 @@ async function buildTimelinePeaks(params: {
       }
 
       visiting.add(path);
+      const nestedDurationS = sourceDurationUs / 1_000_000;
+      const nestedMaxLength = Math.max(8000, Math.ceil(nestedDurationS * 200));
+
       sourcePeaks = await buildTimelinePeaks({
         doc: nestedDoc,
         durationUs: sourceDurationUs,
-        maxLength,
+        maxLength: nestedMaxLength,
         visiting,
         timelinePath: path,
         docCache,
@@ -381,11 +374,6 @@ watch(
       if (isExtracting.value) {
         hasDeferredExtraction.value = true;
         extractCallId += 1;
-        try {
-          activeExtractionEngine?.destroy();
-        } catch {
-          // ignore
-        }
       }
       return;
     }
@@ -507,18 +495,20 @@ function drawChunk(chunkIndex: number) {
 
   const totalW = totalWidthPx.value;
 
-  // Calculate which portion of the peaks array falls into this chunk
+  // Calculate which portion of the peaks array falls into this chunk.
+  // We include one extra peak at the end (if available) so that the line
+  // connects smoothly to the start of the next chunk instead of dropping to zero.
   const startRatio = chunk.startPx / totalW;
   const endRatio = (chunk.startPx + chunk.widthPx) / totalW;
 
   const startIndex = Math.floor(startRatio * peaksCount);
-  const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount));
+  const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount) + 1);
   const chunkLength = endIndex - startIndex;
 
   if (chunkLength <= 0) return;
 
   const halfH = targetHeight / 2;
-  const step = targetWidth / chunkLength;
+  const step = chunkLength > 1 ? targetWidth / (chunkLength - 1) : targetWidth;
 
   const mode = props.item.audioWaveformMode || 'half';
   const gain = props.item.audioGain ?? 1;
