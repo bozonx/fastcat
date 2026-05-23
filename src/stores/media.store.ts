@@ -7,7 +7,7 @@ import { useProjectStore } from './project.store';
 import { createMediaCacheFsModule } from '~/stores/media/media-cache-fs';
 import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { writeFileAtomic } from '~/utils/io/atomic-file-write';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 interface VideoColorSpaceInit {
@@ -268,20 +268,14 @@ export const useMediaStore = defineStore('media', () => {
 
         if (metaDir) {
           await runCacheFileAccess('metadata', cacheFileName, async () => {
-            const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
             // We don't want to save large peaks array inside main metadata json
             const metaToSave = { ...meta };
             delete metaToSave.audioPeaks;
 
-            await withFileWriteSlot(async () => {
-              const writable = await (
-                cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-              ).createWritable();
-              try {
-                await writable.write(JSON.stringify(metaToSave, null, 2));
-              } finally {
-                await writable.close();
-              }
+            await writeFileAtomic({
+              dir: metaDir,
+              fileName: cacheFileName,
+              data: JSON.stringify(metaToSave, null, 2),
             });
           });
         }
@@ -306,16 +300,10 @@ export const useMediaStore = defineStore('media', () => {
       if (metaDir) {
         try {
           await runCacheFileAccess('metadata', cacheFileName, async () => {
-            const cacheHandle = await metaDir.getFileHandle(cacheFileName, { create: true });
-            await withFileWriteSlot(async () => {
-              const writable = await (
-                cacheHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-              ).createWritable();
-              try {
-                await writable.write(JSON.stringify(errorMeta, null, 2));
-              } finally {
-                await writable.close();
-              }
+            await writeFileAtomic({
+              dir: metaDir,
+              fileName: cacheFileName,
+              data: JSON.stringify(errorMeta, null, 2),
             });
           });
         } catch {
@@ -349,16 +337,10 @@ export const useMediaStore = defineStore('media', () => {
           const waveformsDir = await fsModule.ensureWaveformsDir();
           if (!waveformsDir) return;
           await runCacheFileAccess('waveform', cacheFileName, async () => {
-            const peaksHandle = await waveformsDir.getFileHandle(cacheFileName, { create: true });
-            await withFileWriteSlot(async () => {
-              const writable = await (
-                peaksHandle as { createWritable: () => Promise<FileSystemWritableFileStream> }
-              ).createWritable();
-              try {
-                await writable.write(JSON.stringify(peaksAsJson));
-              } finally {
-                await writable.close();
-              }
+            await writeFileAtomic({
+              dir: waveformsDir,
+              fileName: cacheFileName,
+              data: JSON.stringify(peaksAsJson),
             });
           });
         } catch (e) {
