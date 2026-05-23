@@ -1,8 +1,8 @@
 [package]
-name = "app"
-version = "0.4.0"
-description = "A Tauri App"
-authors = ["you"]
+name = "fastcat"
+version = "0.5.1"
+description = "FastCat video editor"
+authors = []
 license = ""
 repository = ""
 edition = "2021"

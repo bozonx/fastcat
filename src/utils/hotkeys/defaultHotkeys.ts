@@ -354,7 +354,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.snapshot': ['H'],
     'general.newTimeline': ['N'],
     'timeline.duplicate': [`${Mod}+Shift+S`],
-    'general.navigateBack': ['Backspace'],
+    'general.navigateBack': ['Backspace', 'z'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
     'general.navigateSelectionUp': ['ArrowUp'],
     'general.navigateSelectionDown': ['ArrowDown'],

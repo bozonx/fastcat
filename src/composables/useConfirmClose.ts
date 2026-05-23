@@ -63,6 +63,8 @@ export function useConfirmClose() {
         }
 
         isClosing = true;
+        // destroy() terminates the Tauri process; unlisten and other cleanup
+        // are implicitly handled by the runtime.
         await appWindow.destroy();
       });
     } catch (err) {

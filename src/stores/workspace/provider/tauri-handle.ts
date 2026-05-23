@@ -9,6 +9,7 @@ import {
   rename,
 } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
+import { withFileWriteSlot } from '~/utils/io/io-governor';
 
 export class TauriFileHandle {
   kind = 'file' as const;
@@ -46,11 +47,11 @@ export class TauriFileHandle {
         } else {
           bytes = new Uint8Array(await new Blob([data]).arrayBuffer());
         }
-        await writeFile(tempPath, bytes);
+        await withFileWriteSlot(() => writeFile(tempPath, bytes));
       },
       close: async () => {
         if (await exists(tempPath)) {
-          await rename(tempPath, this.path);
+          await withFileWriteSlot(() => rename(tempPath, this.path));
         }
       },
     };

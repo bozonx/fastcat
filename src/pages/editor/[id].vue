@@ -8,26 +8,19 @@ import EditorSoundView from '~/components/editor/EditorSoundView.vue';
 import { usePersistedSplitpanes } from '~/composables/ui/usePersistedSplitpanes';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorDynamicPanels } from '~/composables/editor/useEditorDynamicPanels';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { computed, ref } from 'vue';
-import { useEventListener, until } from '@vueuse/core';
-import { isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFileManagerStore, useFilesPageFileManagerStore } from '~/stores/file-manager.store';
-import {
-  getWorkspacePathParent,
-  WORKSPACE_COMMON_DIR_NAME,
-  WORKSPACE_COMMON_PATH_PREFIX,
-} from '~/utils/workspace-common';
+import { until } from '@vueuse/core';
 import EditorTimeline from '~/components/layout-panels/EditorTimeline.vue';
-
-import { useFocusStore, isFileManagerPanelFocus } from '~/stores/focus.store';
-import { useSelectionStore } from '~/stores/selection.store';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
 
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+const focusStore = useFocusStore();
+const selectionStore = useSelectionStore();
 const { t } = useI18n();
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
@@ -74,15 +67,6 @@ const mainSplitterMenuItems = computed(() => [
 const route = useRoute();
 const router = useRouter();
 const { currentProjectId } = storeToRefs(projectStore);
-const editorFileManagerStore = useFileManagerStore();
-const filesPageFileManagerStore = useFilesPageFileManagerStore();
-
-const activeFileManagerStore = computed(() =>
-  activeEditorView.value === 'files' ? filesPageFileManagerStore : editorFileManagerStore,
-);
-
-const selectionStore = useSelectionStore();
-const focusStore = useFocusStore();
 
 const activeEditorView = computed(() => {
   if (projectStore.currentView === 'fullscreen') {
@@ -168,63 +152,10 @@ const {
   projectSplitSizesStorage,
 );
 
-let fileManager: ReturnType<typeof useFileManager> | null = null;
-
-function getFileManager() {
-  fileManager ??= useFileManager();
-  return fileManager;
-}
-
-function selectRootFolder() {
-  activeFileManagerStore.value.openFolder({
-    kind: 'directory',
-    name: projectStore.currentProjectName || '',
-    path: '',
-  });
-}
-
-function selectWorkspaceCommonFolder() {
-  activeFileManagerStore.value.openFolder({
-    kind: 'directory',
-    name: WORKSPACE_COMMON_DIR_NAME,
-    path: WORKSPACE_COMMON_PATH_PREFIX,
-  });
-}
-
-function selectFolderByPath(path: string) {
-  if (!path) {
-    selectRootFolder();
-    return;
-  }
-
-  if (path === WORKSPACE_COMMON_PATH_PREFIX) {
-    selectWorkspaceCommonFolder();
-    return;
-  }
-
-  const { findEntryByPath } = getFileManager();
-  const entry = findEntryByPath(path);
-  if (entry && entry.kind === 'directory') {
-    activeFileManagerStore.value.openFolder(entry);
-  }
-}
-
-async function navigateToParentFolder() {
-  const folder = activeFileManagerStore.value.selectedFolder;
-  if (!folder) return;
-
-  const currentPath = folder.path ?? '';
-  if (!currentPath) return;
-
-  const parentPath = getWorkspacePathParent(currentPath);
-  selectFolderByPath(parentPath);
-}
-
 const {
   draggingPanelId,
   dragOverPanelId,
   dropPosition,
-  getActiveDetachedPanel,
   getDynamicPanelFocusId,
   getVerticalSize,
   focusDynamicPanel,
@@ -278,31 +209,6 @@ function onDynamicPanelVerticalResize(
 ) {
   onVerticalSplitResize({ event, colId, view });
 }
-
-function onGlobalKeyDown(e: KeyboardEvent) {
-  if (e.key !== 'Backspace') return;
-  if (isEditableTarget(e.target)) return;
-
-  if (projectStore.currentView === 'cut') {
-    const activeDetachedPanel = getActiveDetachedPanel();
-    if (!activeDetachedPanel) return;
-
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    closePanelAndRestoreTab(activeDetachedPanel, { restoreFocus: true });
-    return;
-  }
-
-  if (projectStore.currentView !== 'files') return;
-
-  if (!isFileManagerPanelFocus(focusStore.effectiveFocus)) return;
-
-  e.preventDefault();
-  e.stopImmediatePropagation();
-  void navigateToParentFolder();
-}
-
-useEventListener(window, 'keydown', onGlobalKeyDown, { capture: true });
 
 const { openProject } = useProjectActions();
 

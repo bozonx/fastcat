@@ -527,6 +527,12 @@ export const useTimelineStore = defineStore('timeline', () => {
       selectionStore.selectTimelineItems(items);
     },
     pruneSelection: selection.pruneSelectionForDoc,
+    notifyWarning: (messageKey: string) => {
+      toast.add({
+        title: t(messageKey),
+        color: 'warning',
+      });
+    },
   });
 
   const { undoTimeline, redoTimeline, pushTimelineHistory } = dispatcher;
@@ -764,9 +770,9 @@ export const useTimelineStore = defineStore('timeline', () => {
       const existingMarkers = markerService.getMarkers();
       markerService.addMarkerAtPlayhead(options);
       const nextMarkers = markerService.getMarkers();
-      const createdMarker =
-        nextMarkers.find((marker) => !existingMarkers.some((item) => item.id === marker.id)) ??
-        nextMarkers[nextMarkers.length - 1];
+      const createdMarker = nextMarkers.find(
+        (marker) => !existingMarkers.some((item) => item.id === marker.id),
+      );
 
       if (createdMarker && options?.select !== false) {
         selectionStore.selectTimelineMarker(createdMarker.id);

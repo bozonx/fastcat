@@ -34,6 +34,7 @@ import {
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
 import { normalizeFsPath } from '~/file-manager/core/path';
+import { withFileWriteSlot } from '~/utils/io/io-governor';
 
 /** Marker string for the Tauri AppData base directory. */
 export const TAURI_APP_DATA_BASE_PATH = 'app-data';
@@ -321,14 +322,17 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const tempArgs = await this.getTauriFsArgs(tempRelative);
     const finalArgs = await this.getTauriFsArgs(path);
 
+    const bytes = await this.toBytes(data);
     try {
-      await writeFile(tempArgs.tauriPath, await this.toBytes(data), tempArgs.options);
-      await rename(tempArgs.tauriPath, finalArgs.tauriPath, {
-        oldPathBaseDir: tempArgs.options.baseDir,
-        newPathBaseDir: finalArgs.options.baseDir,
-      });
+      await withFileWriteSlot(() => writeFile(tempArgs.tauriPath, bytes, tempArgs.options));
+      await withFileWriteSlot(() =>
+        rename(tempArgs.tauriPath, finalArgs.tauriPath, {
+          oldPathBaseDir: tempArgs.options.baseDir,
+          newPathBaseDir: finalArgs.options.baseDir,
+        }),
+      );
     } catch (e) {
-      await remove(tempArgs.tauriPath, tempArgs.options).catch(() => {});
+      await withFileWriteSlot(() => remove(tempArgs.tauriPath, tempArgs.options)).catch(() => {});
       throw wrapPlatformError(e, path);
     }
   }
@@ -356,10 +360,12 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
     try {
-      await rename(source.tauriPath, target.tauriPath, {
-        oldPathBaseDir: source.options.baseDir,
-        newPathBaseDir: target.options.baseDir,
-      });
+      await withFileWriteSlot(() =>
+        rename(source.tauriPath, target.tauriPath, {
+          oldPathBaseDir: source.options.baseDir,
+          newPathBaseDir: target.options.baseDir,
+        }),
+      );
     } catch (e) {
       // EXDEV: source and target live on different filesystems → rename is not
       // possible. Fall back to copy + delete which works across mountpoints.
@@ -389,10 +395,12 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const source = await this.getTauriFsArgs(sourcePath);
     const target = await this.getTauriFsArgs(targetPath);
     try {
-      await copyFile(source.tauriPath, target.tauriPath, {
-        fromPathBaseDir: source.options.baseDir,
-        toPathBaseDir: target.options.baseDir,
-      });
+      await withFileWriteSlot(() =>
+        copyFile(source.tauriPath, target.tauriPath, {
+          fromPathBaseDir: source.options.baseDir,
+          toPathBaseDir: target.options.baseDir,
+        }),
+      );
     } catch (e) {
       if (isNotFoundError(e)) throw new VfsNotFoundError(sourcePath, { cause: e });
       throw wrapPlatformError(e, sourcePath);

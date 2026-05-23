@@ -622,4 +622,87 @@ describe('useMonitorTimeline', () => {
       expect(res.audioClipLayoutSignature.value).not.toBe(afterCurve);
     });
   });
+
+  it('clipContentSignature changes only for text clip text edits', () => {
+    withMonitorTimeline((res, timelineStore) => {
+      timelineStore.timelineDoc = {
+        tracks: [
+          {
+            id: 'v1',
+            kind: 'video',
+            videoHidden: false,
+            items: [
+              {
+                id: 'text1',
+                kind: 'clip',
+                clipType: 'text',
+                text: 'hello',
+                timelineRange: { startUs: 0, durationUs: 1000 },
+                sourceRange: { startUs: 0, durationUs: 1000 },
+              },
+              {
+                id: 'media1',
+                kind: 'clip',
+                clipType: 'media',
+                source: { path: 'a.mp4' },
+                timelineRange: { startUs: 0, durationUs: 1000 },
+                sourceRange: { startUs: 0, durationUs: 1000 },
+              },
+            ],
+          },
+        ],
+      } as any;
+
+      const initial = res.clipContentSignature.value;
+
+      // Editing text of a text clip should flip the signature
+      timelineStore.timelineDoc.tracks[0].items[0].text = 'world';
+      expect(res.clipContentSignature.value).not.toBe(initial);
+
+      const afterText = res.clipContentSignature.value;
+
+      // Editing a media clip should leave content signature untouched
+      timelineStore.timelineDoc.tracks[0].items[1].source = { path: 'b.mp4' };
+      expect(res.clipContentSignature.value).toBe(afterText);
+    });
+  });
+
+  it('activeLayoutSignature reflects only clips visible at the current playhead', () => {
+    withMonitorTimeline((res, timelineStore) => {
+      timelineStore.timelineDoc = {
+        tracks: [
+          {
+            id: 'v1',
+            kind: 'video',
+            videoHidden: false,
+            items: [
+              {
+                id: 'clip1',
+                kind: 'clip',
+                clipType: 'media',
+                source: { path: 'a.mp4' },
+                timelineRange: { startUs: 0, durationUs: 1000 },
+                sourceRange: { startUs: 0, durationUs: 1000 },
+              },
+            ],
+          },
+        ],
+      } as any;
+
+      timelineStore.currentTime = 500;
+      const onPlayhead = res.activeLayoutSignature.value;
+
+      // Move playhead off the clip
+      timelineStore.currentTime = 2000;
+      const offPlayhead = res.activeLayoutSignature.value;
+      expect(offPlayhead).not.toBe(onPlayhead);
+
+      // Hide the track should also change the signature
+      timelineStore.currentTime = 500;
+      const visible = res.activeLayoutSignature.value;
+      timelineStore.timelineDoc.tracks[0].videoHidden = true;
+      const hidden = res.activeLayoutSignature.value;
+      expect(hidden).not.toBe(visible);
+    });
+  });
 });

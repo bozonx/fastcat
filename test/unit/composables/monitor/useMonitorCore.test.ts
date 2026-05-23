@@ -600,8 +600,9 @@ describe('useMonitorCore', () => {
     mockClient.updateTimelineLayout.mockClear();
     mockClient.clearClips.mockClear();
 
-    // Change layout signature to trigger a layout update
+    // Change layout signature and active layout (clip becomes visible) to trigger update
     clipLayoutSig.value = 2;
+    activeLayoutSig.value = 2;
     await nextTick();
 
     // After 150ms debounce should not have fired yet (needs 200ms)
@@ -686,8 +687,9 @@ describe('useMonitorCore', () => {
     mockClient.renderFrame.mockClear();
     mockClient.updateTimelineLayout.mockClear();
 
-    // Change content signature to trigger a content update
+    // Change content signature and active layout (clip becomes visible) to trigger update
     clipContentSig.value = 2;
+    activeLayoutSig.value = 2;
     await nextTick();
 
     // After 900ms debounce should not have fired yet (needs 1000ms)

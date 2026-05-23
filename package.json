@@ -32,7 +32,8 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "start": "nuxt preview",
-    "prod": "pnpm build && pnpm start"
+    "prod": "pnpm build && pnpm start",
+    "build:preview": "pnpm build && pnpm preview"
   },
   "dependencies": {
     "@huggingface/transformers": "3.0.0-alpha.19",

@@ -342,4 +342,22 @@ describe('TimelineStore', () => {
     expect(store.timelineDoc).toBeDefined();
     expect(store.timelineDoc.name).toBe('Default');
   });
+
+  it('adds marker at playhead', () => {
+    store.currentTime = 1_000_000;
+    const marker = store.addMarkerAtPlayhead();
+    expect(marker).toBeDefined();
+    expect(store.markers).toHaveLength(1);
+    expect(store.markers[0].timeUs).toBe(1_000_000);
+  });
+
+  it('prevents duplicate marker at same time', () => {
+    store.currentTime = 1_000_000;
+    store.addMarkerAtPlayhead();
+    expect(store.markers).toHaveLength(1);
+
+    const marker = store.addMarkerAtPlayhead();
+    expect(marker).toBeUndefined();
+    expect(store.markers).toHaveLength(1);
+  });
 });

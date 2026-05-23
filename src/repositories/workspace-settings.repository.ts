@@ -158,11 +158,11 @@ export function createWorkspaceSettingsRepository(input: {
     },
 
     async loadWorkspaceSettings() {
-      return await this.loadAppSettings();
+      return await loadSettings('app.settings.json', false);
     },
 
     async saveWorkspaceSettings(data) {
-      await this.saveAppSettings(data);
+      await saveSettings('app.settings.json', false, data);
     },
     async loadWorkspaceState() {
       return (await loadSettings('workspace-state.json', false)) as WorkspaceState | null;

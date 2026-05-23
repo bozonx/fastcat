@@ -730,6 +730,7 @@
       "addVideoTrackAbove": "Добавить видеодорожку сверху",
       "addVideoTrackBelow": "Добавить видеодорожку снизу",
       "addZoneMarkerAtPlayhead": "Добавить маркер зоны на курсор",
+      "markerAlreadyExists": "В этой позиции уже есть маркер",
       "adjustment": "Корректировка",
       "adjustmentClipDefaultName": "Корректирующий слой",
       "audioTracks": "Аудиодорожки",

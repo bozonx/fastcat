@@ -730,6 +730,7 @@
       "addVideoTrackAbove": "Add video track above",
       "addVideoTrackBelow": "Add video track below",
       "addZoneMarkerAtPlayhead": "Add zone marker at playhead",
+      "markerAlreadyExists": "A marker already exists at this position",
       "adjustment": "Adjustment",
       "adjustmentClipDefaultName": "Adjustment Clip",
       "audioTracks": "Audio tracks",

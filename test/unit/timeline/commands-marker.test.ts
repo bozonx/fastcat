@@ -60,6 +60,18 @@ describe('markerHandlers', () => {
         }),
       ).toThrow('Marker already exists');
     });
+
+    it('throws if another marker already exists at the same time', () => {
+      const doc = createDoc([{ id: 'm1', timeUs: 1_000_000, text: '' }] as TimelineMarker[]);
+      expect(() =>
+        addMarker(doc, {
+          type: 'add_marker',
+          id: 'm2',
+          timeUs: 1_000_000,
+          text: '',
+        }),
+      ).toThrow('Marker already exists at this time');
+    });
   });
 
   describe('updateMarker', () => {

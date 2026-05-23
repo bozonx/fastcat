@@ -36,6 +36,11 @@ export function useFocusableListNavigation({
       : ['ArrowDown', 'ArrowUp'];
 
     if (!allowedKeys.includes(event.key)) return;
+
+    // Let modifier+arrow combinations pass through to the global hotkey system
+    // (e.g. Ctrl+ArrowUp for "Navigate up")
+    if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+
     event.preventDefault();
 
     if (currentIndex === -1) {

@@ -26,6 +26,7 @@ export interface TimelineDispatcherDeps {
   selectTimelineItems: (itemIds: string[]) => void;
   selectGlobalTimelineItems: (itemIds: string[], doc: TimelineDocument) => void;
   pruneSelection?: (doc: TimelineDocument) => void;
+  notifyWarning?: (messageKey: string) => void;
 }
 
 export interface TimelineDispatcherModule {
@@ -82,6 +83,11 @@ export function createTimelineDispatcherModule(
     } catch (error) {
       if (error instanceof Error && error.message === 'Item overlaps with another item') {
         console.warn('Timeline command rejected: item overlaps with another item', cmd);
+        return [];
+      }
+      if (error instanceof Error && error.message === 'Marker already exists at this time') {
+        console.warn('Timeline command rejected: marker already exists at this time', cmd);
+        deps.notifyWarning?.('videoEditor.timeline.markerAlreadyExists');
         return [];
       }
       console.warn('Failed to apply timeline command:', error, cmd);
@@ -142,8 +148,13 @@ export function createTimelineDispatcherModule(
       } catch (error) {
         const overlap =
           error instanceof Error && error.message === 'Item overlaps with another item';
+        const markerExists =
+          error instanceof Error && error.message === 'Marker already exists at this time';
         if (overlap) {
           console.warn('Timeline batch command rejected: item overlaps with another item', cmd);
+        } else if (markerExists) {
+          console.warn('Timeline batch command rejected: marker already exists at this time', cmd);
+          deps.notifyWarning?.('videoEditor.timeline.markerAlreadyExists');
         } else {
           console.warn('Failed to apply timeline command in batch:', error, cmd);
         }
