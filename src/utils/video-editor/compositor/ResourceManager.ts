@@ -7,6 +7,22 @@ export interface ResourceManagerContext {
   sampleRequestQueue: Array<{ resolve: () => void; signal?: AbortSignal }>;
 }
 
+/**
+ * Closes a decoded sample that the caller abandoned (aborted/timed out). Mirrors
+ * the disposal the consumer would otherwise do, so an orphaned decode does not
+ * leak a decoder frame.
+ */
+function disposeAbandonedSample(value: unknown): void {
+  const closer = value as { close?: () => void } | null;
+  if (value && typeof closer?.close === 'function') {
+    try {
+      closer.close();
+    } catch {
+      // ignore
+    }
+  }
+}
+
 export async function getVideoSampleWithZeroFallback(
   sink: Pick<VideoSampleSink, 'getSample'>,
   timeS: number,
@@ -142,11 +158,28 @@ export class ResourceManager {
     }
 
     this.sampleRequestsInFlight += 1;
-    try {
-      return await this.raceTaskWithAbortAndTimeout(task, signal);
-    } finally {
+
+    // Start the decode exactly once and hold the slot until it *actually*
+    // settles — not until the caller stops waiting. mediabunny's getSample is
+    // not cancellable, so an aborted/timed-out decode keeps running and keeps
+    // its file-read datapipe open. Releasing the slot the moment the abort race
+    // wins would let fresh decodes pile on top of orphaned ones, so the real
+    // number of concurrent reads (and open datapipes) could climb far past the
+    // limit and exhaust the renderer pool. Tying the slot to the real decode
+    // keeps concurrency honest; we also dispose the orphaned sample once it
+    // lands so it does not leak a decoder frame.
+    const taskPromise = task();
+    const release = () => {
       this.sampleRequestsInFlight -= 1;
       this.processRequestQueue();
+    };
+    taskPromise.then(release, release);
+
+    try {
+      return await this.raceTaskWithAbortAndTimeout(() => taskPromise, signal);
+    } catch (error) {
+      void taskPromise.then(disposeAbandonedSample, () => undefined);
+      throw error;
     }
   }
 

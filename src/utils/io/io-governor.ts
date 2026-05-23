@@ -20,10 +20,23 @@ import { FILE_IO_LIMITS } from '~/utils/constants';
  * hard failures. This is the single chokepoint; new writers should wrap their
  * `createWritable()` block in {@link withFileWriteSlot} rather than adding their
  * own ad-hoc serialization.
+ *
+ * The cap is runtime-dependent: the datapipe pool is a browser (Chromium FSA /
+ * OPFS) constraint. In Tauri, writes go to the native filesystem and do not
+ * share that pool, so a much higher cap is used to avoid throttling desktop I/O.
  */
-const writeQueue = new PQueue({
-  concurrency: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_WRITES)),
-});
+function isTauriRuntime(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
+
+function resolveWriteConcurrency(): number {
+  const limit = isTauriRuntime()
+    ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_WRITES_NATIVE
+    : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_WRITES;
+  return Math.max(1, Math.round(limit));
+}
+
+const writeQueue = new PQueue({ concurrency: resolveWriteConcurrency() });
 
 /**
  * Run a file-write task under the global write budget. The slot is held for the

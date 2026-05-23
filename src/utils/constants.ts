@@ -13,7 +13,8 @@ export const MAX_AUDIO_FILE_BYTES = 200 * 1024 * 1024; // 200MB
 
 export const FILE_IO_LIMITS = {
   /**
-   * Max concurrent `FileSystemWritableFileStream` writes across the whole app.
+   * Max concurrent `FileSystemWritableFileStream` writes in the **browser**
+   * (Chromium File System Access / OPFS) runtime.
    *
    * Every open writable consumes a Chromium "datapipe" handle, and the
    * preview/export workers read video through the same renderer-process pool.
@@ -23,6 +24,14 @@ export const FILE_IO_LIMITS = {
    * create datapipe` on writes and `TypeError: network error` on worker reads.
    */
   MAX_CONCURRENT_FILE_WRITES: 4,
+  /**
+   * Max concurrent writes in the **Tauri** runtime. Tauri writes go to the
+   * native filesystem (custom handle, not a Chromium `FileSystemFileHandle`), so
+   * they do not share the mojo datapipe pool — the browser cap would only add
+   * latency. Kept finite as a light guard against pathological FD/disk thrash;
+   * far above the handful of writers that ever run at once.
+   */
+  MAX_CONCURRENT_FILE_WRITES_NATIVE: 32,
 } as const;
 
 export const VIDEO_CORE_LIMITS = {
