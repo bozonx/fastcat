@@ -14,18 +14,36 @@ function isNativeOpfsHandle(handle: unknown): boolean {
   }
 }
 
-const workerWriteQueue = new PQueue({ concurrency: 2 });
+const workerIoQueue = new PQueue({ concurrency: 2 });
 
-export function withWorkerFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
-  return workerWriteQueue.add(task) as Promise<T>;
+export function withWorkerFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
+  return workerIoQueue.add(task) as Promise<T>;
 }
 
-export function withWorkerFileWriteSlotForHandle<T>(
+export function withWorkerFileIoSlotForHandle<T>(
   handle: unknown,
   task: () => Promise<T>,
 ): Promise<T> {
   if (!isNativeOpfsHandle(handle)) {
     return task();
   }
-  return withWorkerFileWriteSlot(task);
+  return withWorkerFileIoSlot(task);
+}
+
+/**
+ * @deprecated Prefer {@link withWorkerFileIoSlot}; kept for compat and routes
+ *   through the unified worker I/O queue.
+ */
+export function withWorkerFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
+  return workerIoQueue.add(task) as Promise<T>;
+}
+
+/**
+ * @deprecated Prefer {@link withWorkerFileIoSlotForHandle}; kept for compat.
+ */
+export function withWorkerFileWriteSlotForHandle<T>(
+  handle: unknown,
+  task: () => Promise<T>,
+): Promise<T> {
+  return withWorkerFileIoSlotForHandle(handle, task);
 }

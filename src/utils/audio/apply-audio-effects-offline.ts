@@ -149,6 +149,11 @@ async function applyEffectsThroughOfflineContext({
   const rendered = await offlineCtx.startRendering();
 
   destroy();
+  try {
+    source.disconnect();
+  } catch {
+    /* no-op */
+  }
 
   const currentPlanes: Float32Array[] = [];
   for (let c = 0; c < safeChannels; c += 1) {

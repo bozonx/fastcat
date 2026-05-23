@@ -16,6 +16,7 @@ interface WalkieTalkieNodeGraph extends AudioEffectNodeGraph {
   bandpass: BiquadFilterNode;
   distortion: WaveShaperNode;
   noiseGain: GainNode;
+  noiseSource: AudioBufferSourceNode;
   compressor: DynamicsCompressorNode;
 }
 
@@ -122,7 +123,7 @@ export const walkieTalkieManifest: AudioEffectManifest<WalkieTalkieParams> = {
 
     compressor.connect(output);
 
-    return { input, output, bandpass, distortion, noiseGain, compressor };
+    return { input, output, bandpass, distortion, noiseGain, noiseSource, compressor };
   },
   updateNode(node, values) {
     const graph = node as WalkieTalkieNodeGraph;
@@ -136,6 +137,10 @@ export const walkieTalkieManifest: AudioEffectManifest<WalkieTalkieParams> = {
       graph.input.disconnect();
       graph.bandpass.disconnect();
       graph.distortion.disconnect();
+      if (graph.noiseSource) {
+        graph.noiseSource.stop();
+        graph.noiseSource.disconnect();
+      }
       graph.noiseGain.disconnect();
       graph.compressor.disconnect();
       graph.output.disconnect();

@@ -146,6 +146,7 @@ describe('resampleChannelsOfflineAudioContext', () => {
       createBufferSource: vi.fn().mockReturnValue({
         connect: vi.fn(),
         start: vi.fn(),
+        disconnect: vi.fn(),
       }),
       destination: {},
       startRendering: vi.fn().mockResolvedValue(mockRenderedBuffer),
@@ -720,6 +721,7 @@ describe('AudioMixer time-stretch via speed', () => {
         playbackRate: { value: 1 },
         connect: vi.fn(),
         start: vi.fn(),
+        disconnect: vi.fn(),
       }),
       destination: {},
       startRendering: vi.fn().mockResolvedValue({
@@ -841,6 +843,7 @@ describe('resampleAndStretchOffline', () => {
       playbackRate: { value: 1 },
       connect: vi.fn(),
       start: vi.fn(),
+      disconnect: vi.fn(),
     };
     const rendered = new Float32Array(500).fill(0.25);
     const offlineCtx = {

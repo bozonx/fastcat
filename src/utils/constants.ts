@@ -32,6 +32,19 @@ export const FILE_IO_LIMITS = {
    * far above the handful of writers that ever run at once.
    */
   MAX_CONCURRENT_FILE_WRITES_NATIVE: 32,
+  /**
+   * Max concurrent **any** OPFS file operations (reads + writes) in the
+   * **browser**. Reads and writes share the same Chromium datapipe pool, so a
+   * unified cap prevents a burst of concurrent `getFile()`/`createWritable()`
+   * calls from exhausting it.
+   */
+  MAX_CONCURRENT_FILE_IO: 2,
+  /**
+   * Unified I/O cap for the **Tauri** runtime. Same rationale as writes: in
+   * Tauri this is only a light guard against FD thrash, so the value is high
+   * enough not to throttle desktop I/O.
+   */
+  MAX_CONCURRENT_FILE_IO_NATIVE: 32,
 } as const;
 
 export const VIDEO_CORE_LIMITS = {

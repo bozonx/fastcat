@@ -36,20 +36,63 @@ function resolveWriteConcurrency(): number {
   return Math.max(1, Math.round(limit));
 }
 
+function resolveIoConcurrency(): number {
+  const limit = isTauriRuntime()
+    ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE
+    : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO;
+  return Math.max(1, Math.round(limit));
+}
+
 const writeQueue = new PQueue({ concurrency: resolveWriteConcurrency() });
+
+/**
+ * Unified process-wide governor for **all** OPFS file operations (reads and
+ * writes). Reads and writes share the same Chromium datapipe pool, so they must
+ * share one budget.
+ *
+ * The slot is held for the full duration of `task`. For writes this means the
+ * whole `createWritable → write → close` sequence; for reads it means the
+ * full `getFile()` call (or any other operation that opens a datapipe).
+ */
+const ioQueue = new PQueue({ concurrency: resolveIoConcurrency() });
+
+export function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
+  return ioQueue.add(task) as Promise<T>;
+}
+
+/**
+ * Acquire a file I/O slot manually. Returns a release function that must be
+ * called when the slot is no longer needed (e.g. after closing a writable
+ * stream). Prefer {@link withFileIoSlot} for simple async blocks.
+ */
+export async function acquireFileIoSlot(): Promise<() => void> {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // PQueue.onEmpty can be used, but we need to actually add a task to the queue.
+  // We add a promise that resolves when release() is called.
+  void ioQueue.add(() => promise);
+  // Wait until our task starts (i.e. we have the slot).
+  await ioQueue.onSizeLessThan(ioQueue.size + ioQueue.pending);
+  return release;
+}
 
 /**
  * Run a file-write task under the global write budget. The slot is held for the
  * full duration of `task`, so keep the whole `createWritable → write → close`
  * sequence inside it (that is what holds the datapipe open).
+ *
+ * @deprecated Prefer {@link withFileIoSlot} for new callers; this alias is kept
+ *   for existing write-only consumers and now routes through the unified queue.
  */
 export function withFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
-  return writeQueue.add(task) as Promise<T>;
+  return ioQueue.add(task) as Promise<T>;
 }
 
 /** Inspect the write queue (depth + currently running). Intended for diagnostics. */
 export function getFileWriteQueueStats(): { size: number; pending: number } {
-  return { size: writeQueue.size, pending: writeQueue.pending };
+  return { size: ioQueue.size, pending: ioQueue.pending };
 }
 
 /**

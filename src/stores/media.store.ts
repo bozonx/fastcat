@@ -187,6 +187,19 @@ export const useMediaStore = defineStore('media', () => {
     const metaDir = await fsModule.ensureFilesMetaDir();
     const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
 
+    if (options?.forceRefresh) {
+      try {
+        const waveformsDir = await fsModule.ensureWaveformsDir();
+        if (waveformsDir) {
+          await runCacheFileAccess('waveform', cacheFileName, async () => {
+            await waveformsDir.removeEntry(cacheFileName).catch(() => {});
+          });
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     let parsedMeta: MediaMetadata | null = null;
 
     if (!options?.forceRefresh && metaDir) {
@@ -215,6 +228,18 @@ export const useMediaStore = defineStore('media', () => {
               metadataLoadFailed.value[cacheKey] = true;
             }
           }
+        } else {
+          // File changed! Drop stale peaks cache
+          try {
+            const waveformsDir = await fsModule.ensureWaveformsDir();
+            if (waveformsDir) {
+              await runCacheFileAccess('waveform', cacheFileName, async () => {
+                await waveformsDir.removeEntry(cacheFileName).catch(() => {});
+              });
+            }
+          } catch {
+            // ignore
+          }
         }
       } catch {
         // Cache miss
@@ -222,103 +247,87 @@ export const useMediaStore = defineStore('media', () => {
     }
 
     if (parsedMeta) {
-      // Try to load cached peaks
-      if (!parsedMeta.error) {
-        const waveformsDir = await fsModule.ensureWaveformsDir();
-        if (waveformsDir) {
-          try {
-            const peaksText = await runCacheFileAccess('waveform', cacheFileName, async () => {
-              const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
-              const peaksFile = await peaksHandle.getFile();
-              return await peaksFile.text();
-            });
-            const peaksData = JSON.parse(peaksText) as number[][];
-            parsedMeta.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
-          } catch {
-            // No cached peaks
-          }
-        }
-      }
-
       mediaMetadata.value[cacheKey] = parsedMeta;
-      return parsedMeta;
-    }
-
-    try {
-      // Drop any stale peaks cache before regenerating metadata for a changed source.
-      // Otherwise next session will load fresh metadata + outdated peaks together
-      // and the waveform will mismatch the actual audio content.
+    } else {
       try {
-        const waveformsDir = await fsModule.ensureWaveformsDir();
-        if (waveformsDir) {
-          await runCacheFileAccess('waveform', cacheFileName, async () => {
-            await waveformsDir.removeEntry(cacheFileName).catch(() => {
-              // No previous peaks file — ok
+        const meta = await workerModule.extractMetadata(file);
+
+        if (meta) {
+          parsedMeta = meta;
+          mediaMetadata.value[cacheKey] = meta;
+
+          if (metaDir) {
+            await runCacheFileAccess('metadata', cacheFileName, async () => {
+              // We don't want to save large peaks array inside main metadata json
+              const metaToSave = { ...meta };
+              delete metaToSave.audioPeaks;
+
+              await writeFileAtomic({
+                dir: metaDir,
+                fileName: cacheFileName,
+                data: JSON.stringify(metaToSave, null, 2),
+              });
             });
-          });
+          }
+        } else {
+          // If meta is null but worker didn't throw (e.g. unknown media)
+          throw new Error('Worker returned null metadata');
         }
-      } catch {
-        // ignore
-      }
+      } catch (e) {
+        console.warn('Failed to fetch metadata for', projectRelativePath, (e as Error)?.message);
+        metadataLoadFailed.value[projectRelativePath] = true;
 
-      const meta = await workerModule.extractMetadata(file);
-
-      if (meta) {
-        mediaMetadata.value[cacheKey] = meta;
+        // Persist failure state so we don't try again until file changes
+        const errorMeta: MediaMetadata = {
+          source: { size: file.size, lastModified: file.lastModified },
+          duration: 0,
+          error: true,
+        };
+        mediaMetadata.value[cacheKey] = errorMeta;
 
         if (metaDir) {
-          await runCacheFileAccess('metadata', cacheFileName, async () => {
-            // We don't want to save large peaks array inside main metadata json
-            const metaToSave = { ...meta };
-            delete metaToSave.audioPeaks;
-
-            await writeFileAtomic({
-              dir: metaDir,
-              fileName: cacheFileName,
-              data: JSON.stringify(metaToSave, null, 2),
+          try {
+            await runCacheFileAccess('metadata', cacheFileName, async () => {
+              await writeFileAtomic({
+                dir: metaDir,
+                fileName: cacheFileName,
+                data: JSON.stringify(errorMeta, null, 2),
+              });
             });
-          });
+          } catch {
+            // Ignore OPFS write error
+          }
         }
 
-        return meta;
+        return null;
       }
-
-      // If meta is null but worker didn't throw (e.g. unknown media)
-      throw new Error('Worker returned null metadata');
-    } catch (e) {
-      console.warn('Failed to fetch metadata for', projectRelativePath, (e as Error)?.message);
-      metadataLoadFailed.value[projectRelativePath] = true;
-
-      // Persist failure state so we don't try again until file changes
-      const errorMeta: MediaMetadata = {
-        source: { size: file.size, lastModified: file.lastModified },
-        duration: 0,
-        error: true,
-      };
-      mediaMetadata.value[cacheKey] = errorMeta;
-
-      if (metaDir) {
-        try {
-          await runCacheFileAccess('metadata', cacheFileName, async () => {
-            await writeFileAtomic({
-              dir: metaDir,
-              fileName: cacheFileName,
-              data: JSON.stringify(errorMeta, null, 2),
-            });
-          });
-        } catch {
-          // Ignore OPFS write error
-        }
-      }
-
-      return null;
     }
+
+    // Try to load cached peaks for whatever metadata we ended up with
+    if (parsedMeta && !parsedMeta.error) {
+      const waveformsDir = await fsModule.ensureWaveformsDir();
+      if (waveformsDir) {
+        try {
+          const peaksText = await runCacheFileAccess('waveform', cacheFileName, async () => {
+            const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
+            const peaksFile = await peaksHandle.getFile();
+            return await peaksFile.text();
+          });
+          const peaksData = JSON.parse(peaksText) as number[][];
+          parsedMeta.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
+        } catch {
+          // No cached peaks
+        }
+      }
+    }
+
+    return parsedMeta;
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
-    if (!mediaMetadata.value[projectRelativePath]) return;
-
-    mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+    if (mediaMetadata.value[projectRelativePath]) {
+      mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+    }
 
     // OPFS still stores peaks as JSON `number[][]` so old caches keep working.
     // Convert once here on the write side; reads convert back to Float32Array.

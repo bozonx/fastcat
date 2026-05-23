@@ -157,6 +157,33 @@ describe('MediaStore', () => {
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks?.[0]).toBeInstanceOf(Float32Array);
   });
 
+  it('persists audio peaks even when in-memory metadata is absent', async () => {
+    const store = useMediaStore();
+    // mediaMetadata is empty — simulate the race where peaks arrive before metadata
+    store.setAudioPeaks('some/path.mp4', [new Float32Array([0.5, -0.25])]);
+
+    await vi.waitFor(() => {
+      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBe('[[0.5,-0.25]]');
+    });
+  });
+
+  it('loads cached audio peaks even when metadata is extracted from worker', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'some%2Fpath.mp4.json';
+    // No meta cache, but waveform cache exists (e.g. from a prior session)
+    mediaFsMock.waveformFiles.set(cacheFileName, JSON.stringify([[0.5, -0.25], [1]]));
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'path.mp4' } as File,
+      'some/path.mp4',
+    );
+
+    expect(extractMetadataMock).toHaveBeenCalled();
+    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
+    expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1]);
+  });
+
   it('loads cached audio peaks from JSON as Float32Array channels', async () => {
     const store = useMediaStore();
     const cacheFileName = 'some%2Fpath.mp4.json';

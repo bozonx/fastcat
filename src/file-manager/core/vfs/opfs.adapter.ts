@@ -15,6 +15,7 @@ import {
   wrapPlatformError,
 } from './errors';
 import { acquireQueuedFileAccess, runQueuedFileAccess } from '~/utils/file-access-queue';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
@@ -241,93 +242,95 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     await runQueuedFileAccess({
       key: this.getFileAccessKey(path),
       task: async () => {
-        const parentHandle = await this.getParentDirHandle(path, { create: true });
-        if (!parentHandle) throw new VfsNotFoundError(path);
-        await this.ensureReadWritePermission(parentHandle, path);
+        await withFileIoSlot(async () => {
+          const parentHandle = await this.getParentDirHandle(path, { create: true });
+          if (!parentHandle) throw new VfsNotFoundError(path);
+          await this.ensureReadWritePermission(parentHandle, path);
 
-        const parts = path.split('/').filter(Boolean);
-        const fileName = parts[parts.length - 1];
-        if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
+          const parts = path.split('/').filter(Boolean);
+          const fileName = parts[parts.length - 1];
+          if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
 
-        const supportsAtomicMove = await this.supportsHandleMove(parentHandle);
+          const supportsAtomicMove = await this.supportsHandleMove(parentHandle);
 
-        if (!supportsAtomicMove) {
-          try {
-            const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-            await this.ensureReadWritePermission(fileHandle, path);
-            const writable = await (fileHandle as ExtendedFileHandle).createWritable();
-            await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
-            await writable.close();
-            this.revokeObjectUrlsUnder(path);
-          } catch (e) {
-            throw wrapPlatformError(e, path);
-          }
-          return;
-        }
-
-        const normalizedData = normalizeWritableData(data);
-
-        const tempName = this.createTempName(fileName);
-        let tempHandle: FileSystemFileHandle | null = null;
-        try {
-          tempHandle = await parentHandle.getFileHandle(tempName, { create: true });
-          await this.ensureReadWritePermission(tempHandle, path);
-          const writable = await (tempHandle as ExtendedFileHandle).createWritable();
-          try {
-            await writable.write(normalizedData as FileSystemWriteChunkType);
-            await writable.close();
-          } catch (e) {
-            try {
-              await writable.close();
-            } catch {
-              /* ignore */
-            }
-            throw e;
-          }
-
-          await (tempHandle as ExtendedHandle).move!(parentHandle, fileName);
-          this.revokeObjectUrlsUnder(path);
-        } catch (e) {
-          const isLocked =
-            (e as Error).name === 'NoModificationAllowedError' ||
-            (e as Error).message?.toLowerCase().includes('locked');
-
-          if (isLocked) {
-            // Destination is locked (another context has the file open).
-            // Fall back to a direct overwrite — non-atomic, but the best we can do.
+          if (!supportsAtomicMove) {
             try {
               const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
               await this.ensureReadWritePermission(fileHandle, path);
               const writable = await (fileHandle as ExtendedFileHandle).createWritable();
-              try {
-                await writable.write(normalizedData as FileSystemWriteChunkType);
-                await writable.close();
-              } catch (writeErr) {
-                try {
-                  await writable.close();
-                } catch {
-                  /* ignore */
-                }
-                throw writeErr;
-              }
+              await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
+              await writable.close();
               this.revokeObjectUrlsUnder(path);
-            } catch (fallbackErr) {
-              throw wrapPlatformError(fallbackErr, path);
-            } finally {
-              if (tempHandle) {
-                await (parentHandle as ExtendedDirectoryHandle)
-                  .removeEntry(tempName)
-                  .catch(() => {});
-              }
+            } catch (e) {
+              throw wrapPlatformError(e, path);
             }
             return;
           }
 
-          if (tempHandle) {
-            await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
+          const normalizedData = normalizeWritableData(data);
+
+          const tempName = this.createTempName(fileName);
+          let tempHandle: FileSystemFileHandle | null = null;
+          try {
+            tempHandle = await parentHandle.getFileHandle(tempName, { create: true });
+            await this.ensureReadWritePermission(tempHandle, path);
+            const writable = await (tempHandle as ExtendedFileHandle).createWritable();
+            try {
+              await writable.write(normalizedData as FileSystemWriteChunkType);
+              await writable.close();
+            } catch (e) {
+              try {
+                await writable.close();
+              } catch {
+                /* ignore */
+              }
+              throw e;
+            }
+
+            await (tempHandle as ExtendedHandle).move!(parentHandle, fileName);
+            this.revokeObjectUrlsUnder(path);
+          } catch (e) {
+            const isLocked =
+              (e as Error).name === 'NoModificationAllowedError' ||
+              (e as Error).message?.toLowerCase().includes('locked');
+
+            if (isLocked) {
+              // Destination is locked (another context has the file open).
+              // Fall back to a direct overwrite — non-atomic, but the best we can do.
+              try {
+                const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
+                await this.ensureReadWritePermission(fileHandle, path);
+                const writable = await (fileHandle as ExtendedFileHandle).createWritable();
+                try {
+                  await writable.write(normalizedData as FileSystemWriteChunkType);
+                  await writable.close();
+                } catch (writeErr) {
+                  try {
+                    await writable.close();
+                  } catch {
+                    /* ignore */
+                  }
+                  throw writeErr;
+                }
+                this.revokeObjectUrlsUnder(path);
+              } catch (fallbackErr) {
+                throw wrapPlatformError(fallbackErr, path);
+              } finally {
+                if (tempHandle) {
+                  await (parentHandle as ExtendedDirectoryHandle)
+                    .removeEntry(tempName)
+                    .catch(() => {});
+                }
+              }
+              return;
+            }
+
+            if (tempHandle) {
+              await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
+            }
+            throw wrapPlatformError(e, path);
           }
-          throw wrapPlatformError(e, path);
-        }
+        });
       },
     });
   }

@@ -64,7 +64,28 @@ class WorkerMock {
 }
 
 class GainNodeMock {
-  gain = { value: 1 };
+  gain = {
+    value: 1,
+    setValueAtTime: vi.fn().mockImplementation(function (this: any, val: number) {
+      this.value = val;
+      return this;
+    }),
+    linearRampToValueAtTime: vi.fn().mockImplementation(function (this: any, val: number) {
+      this.value = val;
+      return this;
+    }),
+    exponentialRampToValueAtTime: vi.fn().mockImplementation(function (this: any, val: number) {
+      this.value = val;
+      return this;
+    }),
+    setTargetAtTime: vi.fn().mockImplementation(function (this: any, val: number) {
+      this.value = val;
+      return this;
+    }),
+    cancelScheduledValues: vi.fn().mockImplementation(function (this: any) {
+      return this;
+    }),
+  };
   connect = vi.fn();
   disconnect = vi.fn();
 }

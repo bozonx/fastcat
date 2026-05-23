@@ -17,6 +17,8 @@ import type {
   ClipPlaybackWindow,
 } from '~/utils/video-editor/audio-engine.types';
 
+import { withFileIoSlot } from '~/utils/io/io-governor';
+
 export type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 
 const logger = createDevLogger('AudioEngine');
@@ -512,7 +514,7 @@ export class AudioEngine {
       try {
         let blob = this.fileBlobCache.get(sourceKey);
         if (!blob) {
-          blob = await fileHandle.getFile();
+          blob = await withFileIoSlot(() => fileHandle.getFile());
           this.fileBlobCache.set(sourceKey, blob);
         }
         if (!this.ctx) return null;
@@ -859,6 +861,7 @@ export class AudioEngine {
     let remainingToPlayS = safeDurationToPlayS;
     let currentOffsetS = safeBufferOffsetS;
     const chunkNodes: AudioBufferSourceNode[] = [];
+    const chunkGainNodes: GainNode[] = [];
 
     for (const chunk of chunks) {
       if (remainingToPlayS <= 0) break;
@@ -881,12 +884,25 @@ export class AudioEngine {
         sourceNode.playbackRate.value = window.effectiveSpeed;
       }
 
-      sourceNode.connect(clipInputNode);
+      const chunkGainNode = this.ctx.createGain();
+      sourceNode.connect(chunkGainNode);
+      chunkGainNode.connect(clipInputNode);
 
       const actualPlayDurationS = playDurationS / window.effectiveSpeed;
+      const fadeDurationS = Math.min(0.005, actualPlayDurationS / 2);
+      if (fadeDurationS > 0) {
+        chunkGainNode.gain.setValueAtTime(0, scheduledTimeS);
+        chunkGainNode.gain.linearRampToValueAtTime(1, scheduledTimeS + fadeDurationS);
+        chunkGainNode.gain.setValueAtTime(1, scheduledTimeS + actualPlayDurationS - fadeDurationS);
+        chunkGainNode.gain.linearRampToValueAtTime(0, scheduledTimeS + actualPlayDurationS);
+      } else {
+        chunkGainNode.gain.setValueAtTime(1, scheduledTimeS);
+      }
+
       sourceNode.start(scheduledTimeS, offsetInChunkS, playDurationS);
 
       chunkNodes.push(sourceNode);
+      chunkGainNodes.push(chunkGainNode);
 
       scheduledTimeS += actualPlayDurationS;
       remainingToPlayS -= playDurationS;
@@ -912,6 +928,13 @@ export class AudioEngine {
         targetNodeSet.delete(node);
         try {
           node.disconnect();
+        } catch {
+          /* no-op */
+        }
+      }
+      for (const gainNode of chunkGainNodes) {
+        try {
+          gainNode.disconnect();
         } catch {
           /* no-op */
         }
@@ -1139,9 +1162,11 @@ export class AudioEngine {
     this.currentMasterVolume = Math.max(0, Math.min(10, volume));
     if (this.masterGain) {
       const gain = this.masterGain.gain as AudioParam & {
+        setValueAtTime?: (value: number, startTime: number) => AudioParam;
         setTargetAtTime?: (target: number, startTime: number, timeConstant: number) => AudioParam;
       };
       if (this.ctx && typeof gain.setTargetAtTime === 'function') {
+        gain.setValueAtTime?.(gain.value, this.ctx.currentTime);
         gain.setTargetAtTime(this.currentMasterVolume, this.ctx.currentTime, 0.02);
       } else {
         gain.value = this.currentMasterVolume;
@@ -1343,6 +1368,7 @@ export class AudioEngine {
       currentSourceTimeS,
       remainingToPlayS: totalSafeDurationS,
       chunkNodes: [] as AudioBufferSourceNode[],
+      chunkGainNodes: [] as GainNode[],
       scheduledTotal: 0,
       endedTotal: 0,
       streamingDone: false,
@@ -1368,6 +1394,13 @@ export class AudioEngine {
         targetCleanupMap.delete(node);
         try {
           node.disconnect();
+        } catch {
+          /* no-op */
+        }
+      }
+      for (const gainNode of state.chunkGainNodes) {
+        try {
+          gainNode.disconnect();
         } catch {
           /* no-op */
         }
@@ -1416,10 +1449,26 @@ export class AudioEngine {
       if (sourceNode.playbackRate) {
         sourceNode.playbackRate.value = window.effectiveSpeed;
       }
-      sourceNode.connect(clipInputNode);
+
+      const chunkGainNode = this.ctx.createGain();
+      sourceNode.connect(chunkGainNode);
+      chunkGainNode.connect(clipInputNode);
+
+      const actualPlayDurationS = playDurationS / window.effectiveSpeed;
+      const fadeDurationS = Math.min(0.005, actualPlayDurationS / 2);
+      if (fadeDurationS > 0) {
+        chunkGainNode.gain.setValueAtTime(0, state.scheduledCtxTimeS);
+        chunkGainNode.gain.linearRampToValueAtTime(1, state.scheduledCtxTimeS + fadeDurationS);
+        chunkGainNode.gain.setValueAtTime(1, state.scheduledCtxTimeS + actualPlayDurationS - fadeDurationS);
+        chunkGainNode.gain.linearRampToValueAtTime(0, state.scheduledCtxTimeS + actualPlayDurationS);
+      } else {
+        chunkGainNode.gain.setValueAtTime(1, state.scheduledCtxTimeS);
+      }
+
       sourceNode.start(state.scheduledCtxTimeS, offsetInChunkS, playDurationS);
 
       state.chunkNodes.push(sourceNode);
+      state.chunkGainNodes.push(chunkGainNode);
       state.scheduledTotal += 1;
       targetNodeSet.add(sourceNode);
       // Every chunk node maps to the same teardown function. Stop() iterates

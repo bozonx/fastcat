@@ -122,6 +122,11 @@ export async function resampleChannelsOfflineAudioContext(params: {
   source.connect(offlineCtx.destination);
   source.start(0);
   const renderedBuffer = await offlineCtx.startRendering();
+  try {
+    source.disconnect();
+  } catch {
+    /* no-op */
+  }
   const resampledPlanes: Float32Array[] = [];
   for (let i = 0; i < channels; i += 1) {
     resampledPlanes.push(renderedBuffer.getChannelData(i));
@@ -181,6 +186,11 @@ export async function resampleAndStretchOffline(params: {
   source.connect(offlineCtx.destination);
   source.start(0);
   const renderedBuffer = await offlineCtx.startRendering();
+  try {
+    source.disconnect();
+  } catch {
+    /* no-op */
+  }
   const out: Float32Array[] = [];
   for (let i = 0; i < channels; i += 1) {
     out.push(renderedBuffer.getChannelData(i));

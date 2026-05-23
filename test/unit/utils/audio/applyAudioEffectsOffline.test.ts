@@ -55,6 +55,7 @@ class MockOfflineAudioContext {
     return {
       buffer: null,
       start: vi.fn(),
+      disconnect: vi.fn(),
     };
   }
 

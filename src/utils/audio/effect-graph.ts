@@ -61,7 +61,6 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
             err,
           );
         }
-        return;
       }
 
       if (isAudioEffectNodeGraph(effectNode)) {

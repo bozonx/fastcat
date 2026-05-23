@@ -18,6 +18,7 @@ interface OldVinylNodeGraph extends AudioEffectNodeGraph {
   bandpass: BiquadFilterNode;
   waveshaper: WaveShaperNode;
   noiseGain: GainNode;
+  noiseSource: AudioBufferSourceNode;
   wowOscillator: OscillatorNode;
   wowGain: GainNode;
   delay: DelayNode;
@@ -173,7 +174,7 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
     delay.connect(output);
     noiseGain.connect(output);
 
-    return { input, output, bandpass, waveshaper, noiseGain, wowOscillator, wowGain, delay };
+    return { input, output, bandpass, waveshaper, noiseGain, noiseSource, wowOscillator, wowGain, delay };
   },
   updateNode(node, values) {
     const graph = node as OldVinylNodeGraph;
@@ -207,6 +208,10 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
       graph.delay.disconnect();
       graph.wowOscillator.stop();
       graph.wowOscillator.disconnect();
+      if (graph.noiseSource) {
+        graph.noiseSource.stop();
+        graph.noiseSource.disconnect();
+      }
       graph.noiseGain.disconnect();
       graph.output.disconnect();
     } catch {
