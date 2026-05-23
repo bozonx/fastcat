@@ -43,7 +43,9 @@ const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
-const preset = defineModel<'custom' | 'high' | 'optimal' | 'social' | 'lossless'>('preset', { default: 'custom' });
+const preset = defineModel<'custom' | 'high' | 'optimal' | 'social' | 'lossless'>('preset', {
+  default: 'custom',
+});
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
 const keyframeIntervalSec = defineModel<number>('keyframeIntervalSec', { default: 2 });
 const exportAlpha = defineModel<boolean>('exportAlpha', { default: false });

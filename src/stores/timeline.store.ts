@@ -40,9 +40,8 @@ import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
-import { useNuxtApp } from 'nuxt/app';
+import { useNuxtApp, useRoute } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
-import { useRoute } from 'nuxt/app';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
@@ -373,6 +372,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     ensureTimelineFileHandle,
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
     getProjectSettings: () => projectStore.projectSettings,
+    getOpenPaths: () => projectStore.projectSettings?.timelines?.openPaths ?? [],
 
     parseTimelineFromOtio,
     serializeTimelineToOtio,
@@ -386,7 +386,10 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (!timelinePath) return;
       dirtyPaths.value[timelinePath] = dirty;
     },
-    shouldRestoreAutosaveSilently: () => isMobileEditorRoute(),
+    // Mobile restores silently; on desktop return `undefined` (not `false`) so
+    // the `?? confirm()` fallthrough actually runs — returning `false` would
+    // short-circuit `??` and silently skip crash recovery on first/startup load.
+    shouldRestoreAutosaveSilently: () => isMobileEditorRoute() || undefined,
     confirmRestoreAutosave: ({ timelinePath }) => {
       if (typeof window === 'undefined') return false;
       return window.confirm(

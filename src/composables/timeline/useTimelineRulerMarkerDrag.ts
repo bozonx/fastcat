@@ -153,7 +153,12 @@ export function useTimelineRulerMarkerDrag(options: UseTimelineRulerMarkerDragOp
       } else {
         let newUs = Math.max(0, quantize(startState.timeUs + deltaUs));
 
-        if (isLead && getIsSnappingEnabled() && options.computeSnapTargets && options.snapThresholdPx) {
+        if (
+          isLead &&
+          getIsSnappingEnabled() &&
+          options.computeSnapTargets &&
+          options.snapThresholdPx
+        ) {
           const thresholdUs = Math.round(
             (options.snapThresholdPx.value / zoomToPxPerSecond(currentZoom)) * 1e6,
           );

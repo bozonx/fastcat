@@ -294,7 +294,10 @@ export function useTimelineHotkeys(
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps((timelineStore.timelineDoc || ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument);
+          const fps = getDocFps(
+            (timelineStore.timelineDoc ||
+              ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument,
+          );
           timelineStore.moveSelectedClips(-fps);
         },
       });
@@ -307,7 +310,10 @@ export function useTimelineHotkeys(
       navigationHoldRunner.startHold({
         keyCode: e.code,
         action: () => {
-          const fps = getDocFps((timelineStore.timelineDoc || ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument);
+          const fps = getDocFps(
+            (timelineStore.timelineDoc ||
+              ({} as { format?: { fps?: number } })) as import('~/timeline/types').TimelineDocument,
+          );
           timelineStore.moveSelectedClips(fps);
         },
       });

@@ -35,7 +35,8 @@ watch(isOpen, async (val) => {
     name.value = props.defaultValue || '';
     await nextTick();
     setTimeout(() => {
-      const input = (inputRef.value as any)?.$el?.querySelector('input') || (inputRef.value as any)?.input;
+      const input =
+        (inputRef.value as any)?.$el?.querySelector('input') || (inputRef.value as any)?.input;
       if (input) {
         input.focus();
         const value = name.value;

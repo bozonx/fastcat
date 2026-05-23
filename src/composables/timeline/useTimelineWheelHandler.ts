@@ -163,10 +163,7 @@ export function useTimelineWheelHandler({
       const timelineWidthPx = timeUsToPx(durationUs, timelineStore.timelineZoom);
 
       let anchorViewportX = rawAnchorViewportX;
-      let anchorTimeUs = pxToTimeUs(
-        scrollLeft + rawAnchorViewportX,
-        timelineStore.timelineZoom,
-      );
+      let anchorTimeUs = pxToTimeUs(scrollLeft + rawAnchorViewportX, timelineStore.timelineZoom);
 
       // Adaptive anchor: zoom from viewport center when timeline fits within viewport
       if (timelineWidthPx > 0 && timelineWidthPx <= viewportWidth) {

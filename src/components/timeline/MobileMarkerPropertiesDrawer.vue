@@ -63,7 +63,9 @@ function handleCreateSelectionRange() {
   timelineStore.createSelectionRangeFromMarker(marker.value.id);
 }
 
-const mainActions = computed<import('~/components/properties/PropertyActionList.vue').PropertyAction[]>(() => {
+const mainActions = computed<
+  import('~/components/properties/PropertyActionList.vue').PropertyAction[]
+>(() => {
   const list: import('~/components/properties/PropertyActionList.vue').PropertyAction[] = [];
   if (!marker.value) return list;
 

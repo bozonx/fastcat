@@ -50,7 +50,7 @@ function handleApply() {
       <UCheckbox
         v-for="group in groups"
         :key="group.id"
-        :model-value="(selectedGroups as any)"
+        :model-value="selectedGroups as any"
         :value="group.id"
         :label="t(group.labelKey)"
       />

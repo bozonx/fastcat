@@ -847,7 +847,10 @@ export class VideoCompositor {
 
   updateTimelineLayout(timelineClips: Record<string, unknown>[]): Promise<number> {
     if (this.disposed) return Promise.resolve(this.maxDurationUs);
-    return this.runExclusive(() => this.updateTimelineLayoutLocked(timelineClips), 'updateTimelineLayout');
+    return this.runExclusive(
+      () => this.updateTimelineLayoutLocked(timelineClips),
+      'updateTimelineLayout',
+    );
   }
 
   private updateTimelineLayoutLocked(timelineClips: Record<string, unknown>[]): number {
@@ -908,130 +911,131 @@ export class VideoCompositor {
       // If the queue watchdog trips, abort in-flight sample reads so a stalled
       // render unwinds and stops blocking queued edits.
       if (signal.aborted) this.resourceManager.abortInFlight();
-      else signal.addEventListener('abort', () => this.resourceManager.abortInFlight(), {
-        once: true,
-      });
-      return this.renderingEngine.renderFrame(timeUs, options, {
-      app,
-      canvas,
-      width: this.width,
-      height: this.height,
-      clips: this.clips,
-      tracks: this.tracks,
-      lastRenderedTimeUs: this.lastRenderedTimeUs,
-      stageSortDirty: this.stageSortDirty,
-      activeSortDirty: this.activeSortDirty,
-      contextLost: this.contextLost,
-      previewEffectsEnabled: this.previewEffectsEnabled,
-      setPreviewEffectsEnabled: (enabled) => {
-        this.previewEffectsEnabled = enabled;
-      },
-      applyVideoFrameCacheLimit: (limitMb) => {
-        this.videoFrameCache.applyLimitMb(limitMb);
-      },
-      abortInFlightResources: () => {
-        this.resourceManager.abortInFlight();
-      },
-      updateActiveClips: (currentTimeUs, lastTimeUs) =>
-        this.activeTracker.update({
-          clips: this.clips,
-          timeUs: currentTimeUs,
-          lastTimeUs,
-          onDeactivate: (clip) => {
-            if (clip.sprite && !clip.sprite.destroyed) {
-              clip.sprite.visible = false;
-            }
-          },
-        }),
-      applyTrackState: (track) => {
-        this.applyTrackEffects(track);
-      },
-      processFrameSamples: ({ activeClips, timeUs: currentTimeUs }) =>
-        this.frameSampleOrchestrator.process({
-          activeClips,
-          timeUs: currentTimeUs,
-          width: this.width,
-          height: this.height,
-          activeClipProcessor: this.timelineActiveClipProcessor,
-          syncTransitionFilter: (clip, clipTimeUs) => this.syncTransitionFilter(clip, clipTimeUs),
-          computeTransitionOpacity: (clip, clipTimeUs) =>
-            this.computeTransitionOpacity(clip, clipTimeUs),
-          applyClipEffects: (clip) => this.applyClipEffects(clip),
-          drawHudClip: (clip, timeUs) => this.canvasFallbackRenderer.drawHudClip(clip, timeUs),
-          drawShapeClip: (clip, size) => {
-            this.shapeRenderer.draw({
-              graphics: clip.sprite as import('pixi.js').Graphics,
-              type: clip.shapeType ?? 'square',
-              fill: clip.fillColor ?? '#ffffff',
-              stroke: clip.strokeColor ?? '#000000',
-              strokeWidth: clip.strokeWidth ?? 0,
-              config: clip.shapeConfig ?? {},
-              canvasWidth: size.width,
-              canvasHeight: size.height,
-            });
-          },
-          drawTextClip: (clip, size) => {
-            this.textRenderer.draw(clip, size.width, size.height);
-            this.layoutApplier.applyTextLayout(clip);
-          },
-          createAbortController: (key) => this.resourceManager.createAbortController(key),
-          getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
-          getPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
-          updateClipTextureFromSample: (sample, clip) =>
-            this.updateClipTextureFromSample(sample, clip),
-          setClipSpriteVisible: (clip, visible) => this.setClipSpriteVisible(clip, visible),
-        }),
-      sortStage: () => {
-        if (!this.app) {
-          return;
-        }
-
-        this.stageManager.sortStage({
-          app: this.app,
-          tracks: this.tracks,
-          getClipById: (clipId) => this.clipById.get(clipId),
-          getTrackById: (trackId) => this.trackById.get(trackId),
+      else
+        signal.addEventListener('abort', () => this.resourceManager.abortInFlight(), {
+          once: true,
         });
-      },
-      prepareAdjustmentClips: (activeClips) => {
-        this.prepareAdjustmentClips(activeClips);
-      },
-      applyShaderTransitions: (activeClips, currentTimeUs) =>
-        this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
-          app: this.app!,
-          clips: this.clips,
-          width: this.width,
-          height: this.height,
-          transitionManager: this.transitionManager,
-          stageTextureRenderer: this.stageTextureRenderer!,
-          getTrackById: (trackId) => this.trackById.get(trackId),
-          getActiveTransitionState: (clip, timeUs) =>
-            this.getActiveTransitionState(clip, timeUs) as {
-              opacity: number;
-              progress: number;
-              mode?: string;
-            } | null,
-          ensureTransitionRenderTexture: (texture) =>
-            this.clipResourceManager.ensureTransitionRenderTexture(texture),
-          findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
-          findNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
-          createAbortController: (key) => this.resourceManager.createAbortController(key),
-          getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
-          updateClipTextureFromSample: (sample, clip) =>
-            this.updateClipTextureFromSample(sample, clip),
-        }),
-      applyMasterEffects: () => {
-        this.applyMasterEffects();
-      },
-      setStageSortDirty: (value) => {
-        this.stageSortDirty = value;
-      },
-      setActiveSortDirty: (value) => {
-        this.activeSortDirty = value;
-      },
-      setLastRenderedTimeUs: (value) => {
-        this.lastRenderedTimeUs = value;
-      },
+      return this.renderingEngine.renderFrame(timeUs, options, {
+        app,
+        canvas,
+        width: this.width,
+        height: this.height,
+        clips: this.clips,
+        tracks: this.tracks,
+        lastRenderedTimeUs: this.lastRenderedTimeUs,
+        stageSortDirty: this.stageSortDirty,
+        activeSortDirty: this.activeSortDirty,
+        contextLost: this.contextLost,
+        previewEffectsEnabled: this.previewEffectsEnabled,
+        setPreviewEffectsEnabled: (enabled) => {
+          this.previewEffectsEnabled = enabled;
+        },
+        applyVideoFrameCacheLimit: (limitMb) => {
+          this.videoFrameCache.applyLimitMb(limitMb);
+        },
+        abortInFlightResources: () => {
+          this.resourceManager.abortInFlight();
+        },
+        updateActiveClips: (currentTimeUs, lastTimeUs) =>
+          this.activeTracker.update({
+            clips: this.clips,
+            timeUs: currentTimeUs,
+            lastTimeUs,
+            onDeactivate: (clip) => {
+              if (clip.sprite && !clip.sprite.destroyed) {
+                clip.sprite.visible = false;
+              }
+            },
+          }),
+        applyTrackState: (track) => {
+          this.applyTrackEffects(track);
+        },
+        processFrameSamples: ({ activeClips, timeUs: currentTimeUs }) =>
+          this.frameSampleOrchestrator.process({
+            activeClips,
+            timeUs: currentTimeUs,
+            width: this.width,
+            height: this.height,
+            activeClipProcessor: this.timelineActiveClipProcessor,
+            syncTransitionFilter: (clip, clipTimeUs) => this.syncTransitionFilter(clip, clipTimeUs),
+            computeTransitionOpacity: (clip, clipTimeUs) =>
+              this.computeTransitionOpacity(clip, clipTimeUs),
+            applyClipEffects: (clip) => this.applyClipEffects(clip),
+            drawHudClip: (clip, timeUs) => this.canvasFallbackRenderer.drawHudClip(clip, timeUs),
+            drawShapeClip: (clip, size) => {
+              this.shapeRenderer.draw({
+                graphics: clip.sprite as import('pixi.js').Graphics,
+                type: clip.shapeType ?? 'square',
+                fill: clip.fillColor ?? '#ffffff',
+                stroke: clip.strokeColor ?? '#000000',
+                strokeWidth: clip.strokeWidth ?? 0,
+                config: clip.shapeConfig ?? {},
+                canvasWidth: size.width,
+                canvasHeight: size.height,
+              });
+            },
+            drawTextClip: (clip, size) => {
+              this.textRenderer.draw(clip, size.width, size.height);
+              this.layoutApplier.applyTextLayout(clip);
+            },
+            createAbortController: (key) => this.resourceManager.createAbortController(key),
+            getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
+            getPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+            updateClipTextureFromSample: (sample, clip) =>
+              this.updateClipTextureFromSample(sample, clip),
+            setClipSpriteVisible: (clip, visible) => this.setClipSpriteVisible(clip, visible),
+          }),
+        sortStage: () => {
+          if (!this.app) {
+            return;
+          }
+
+          this.stageManager.sortStage({
+            app: this.app,
+            tracks: this.tracks,
+            getClipById: (clipId) => this.clipById.get(clipId),
+            getTrackById: (trackId) => this.trackById.get(trackId),
+          });
+        },
+        prepareAdjustmentClips: (activeClips) => {
+          this.prepareAdjustmentClips(activeClips);
+        },
+        applyShaderTransitions: (activeClips, currentTimeUs) =>
+          this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
+            app: this.app!,
+            clips: this.clips,
+            width: this.width,
+            height: this.height,
+            transitionManager: this.transitionManager,
+            stageTextureRenderer: this.stageTextureRenderer!,
+            getTrackById: (trackId) => this.trackById.get(trackId),
+            getActiveTransitionState: (clip, timeUs) =>
+              this.getActiveTransitionState(clip, timeUs) as {
+                opacity: number;
+                progress: number;
+                mode?: string;
+              } | null,
+            ensureTransitionRenderTexture: (texture) =>
+              this.clipResourceManager.ensureTransitionRenderTexture(texture),
+            findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+            findNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
+            createAbortController: (key) => this.resourceManager.createAbortController(key),
+            getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
+            updateClipTextureFromSample: (sample, clip) =>
+              this.updateClipTextureFromSample(sample, clip),
+          }),
+        applyMasterEffects: () => {
+          this.applyMasterEffects();
+        },
+        setStageSortDirty: (value) => {
+          this.stageSortDirty = value;
+        },
+        setActiveSortDirty: (value) => {
+          this.activeSortDirty = value;
+        },
+        setLastRenderedTimeUs: (value) => {
+          this.lastRenderedTimeUs = value;
+        },
       });
     }, 'renderFrame');
   }

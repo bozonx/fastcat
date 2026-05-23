@@ -41,7 +41,9 @@ function jumpToState(entryId: string, isFuture: boolean) {
       const entry = historyStore.redoGlobal();
       if (!entry) break;
       if (entry.scope === 'timeline') {
-        timelineStore.applyRestoredSnapshot(entry.snapshot as import('~/timeline/types').TimelineDocument);
+        timelineStore.applyRestoredSnapshot(
+          entry.snapshot as import('~/timeline/types').TimelineDocument,
+        );
       } else if (entry.scope === 'fileManager') {
         void restoreHistory(entry.snapshot);
       }
@@ -55,7 +57,9 @@ function jumpToState(entryId: string, isFuture: boolean) {
       const entry = historyStore.undoGlobal();
       if (!entry) break;
       if (entry.scope === 'timeline') {
-        timelineStore.applyRestoredSnapshot(entry.snapshot as import('~/timeline/types').TimelineDocument);
+        timelineStore.applyRestoredSnapshot(
+          entry.snapshot as import('~/timeline/types').TimelineDocument,
+        );
       } else if (entry.scope === 'fileManager') {
         void restoreHistory(entry.snapshot);
       }

@@ -225,7 +225,9 @@ export function useGeneralHotkeys(
       if (!entry) return true;
 
       if (entry.scope === 'timeline') {
-        timelineStore.applyRestoredSnapshot(entry.snapshot as import('~/timeline/types').TimelineDocument);
+        timelineStore.applyRestoredSnapshot(
+          entry.snapshot as import('~/timeline/types').TimelineDocument,
+        );
       } else if (entry.scope === 'fileManager') {
         void fileManager.restoreHistory(entry.snapshot);
       }
@@ -238,7 +240,9 @@ export function useGeneralHotkeys(
       if (!entry) return true;
 
       if (entry.scope === 'timeline') {
-        timelineStore.applyRestoredSnapshot(entry.snapshot as import('~/timeline/types').TimelineDocument);
+        timelineStore.applyRestoredSnapshot(
+          entry.snapshot as import('~/timeline/types').TimelineDocument,
+        );
       } else if (entry.scope === 'fileManager') {
         void fileManager.restoreHistory(entry.snapshot);
       }
@@ -505,7 +509,10 @@ export function useGeneralHotkeys(
         toggleTimelineSelectAll();
         return true;
       }
-      if (isFileManagerMainFocus(focusStore.effectiveFocus) || focusStore.effectiveFocus === 'filesBrowser') {
+      if (
+        isFileManagerMainFocus(focusStore.effectiveFocus) ||
+        focusStore.effectiveFocus === 'filesBrowser'
+      ) {
         uiStore.fileBrowserSelectAllTrigger++;
         return true;
       }

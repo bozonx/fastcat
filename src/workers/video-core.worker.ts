@@ -489,7 +489,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
             ? (sample as VideoFrame)
             : typeof (sample as { toCanvasImageSource?: () => CanvasImageSource })
                   .toCanvasImageSource === 'function'
-              ? ((sample as { toCanvasImageSource?: () => CanvasImageSource }).toCanvasImageSource?.() ?? null)
+              ? ((
+                  sample as { toCanvasImageSource?: () => CanvasImageSource }
+                ).toCanvasImageSource?.() ?? null)
               : null;
 
           if (!imageSource) {
@@ -639,9 +641,9 @@ async function createFrameExtractorState(file: File): Promise<FrameExtractorStat
   const firstTimestampS: number =
     typeof (track as unknown as { getFirstTimestamp?: () => Promise<number> }).getFirstTimestamp ===
     'function'
-      ? await (
+      ? ((await (
           track as unknown as { getFirstTimestamp?: () => Promise<number> }
-        ).getFirstTimestamp?.() ?? 0
+        ).getFirstTimestamp?.()) ?? 0)
       : 0;
 
   return {

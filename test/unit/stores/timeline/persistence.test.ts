@@ -121,6 +121,98 @@ describe('TimelinePersistenceModule', () => {
     expect(deps.timelineSaveError.value).toBeNull();
   });
 
+  it('preserves a tab unsaved edits in memory across a tab switch', async () => {
+    const currentTimelinePath = ref('A.otio');
+    const fileContents: Record<string, string> = {
+      'A.otio': JSON.stringify({ ...fallbackDoc, id: 'A' }),
+      'B.otio': JSON.stringify({ ...fallbackDoc, id: 'B' }),
+    };
+    const ensureTimelineFileHandle = vi.fn(
+      async (options?: { create?: boolean; relativePath?: string }) => {
+        const path = options?.relativePath ?? currentTimelinePath.value;
+        if (!path || path.startsWith('.fastcat/autosave/')) return null;
+        const text = fileContents[path];
+        if (text === undefined) return null;
+        return { getFile: async () => ({ text: async () => text, lastModified: 1 }) } as any;
+      },
+    );
+    parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
+
+    const deps = createMockDeps({
+      currentTimelinePath,
+      ensureTimelineFileHandle,
+      getOpenPaths: () => ['A.otio', 'B.otio'],
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    // Load A from disk, then make an unsaved in-memory edit.
+    await mod.loadTimeline();
+    expect(deps.timelineDoc.value.id).toBe('A');
+    deps.timelineDoc.value = { ...deps.timelineDoc.value, edited: true };
+    mod.markDirty();
+    expect(deps.isTimelineDirty.value).toBe(true);
+
+    const parseCallsAfterA = parseTimelineFromOtio.mock.calls.length;
+
+    // Switch to B (A's edits are snapshotted in memory, not re-read on return).
+    currentTimelinePath.value = 'B.otio';
+    await mod.loadTimeline();
+    expect(deps.timelineDoc.value.id).toBe('B');
+
+    // Switch back to A: edits + dirty restored from memory, no disk re-read.
+    currentTimelinePath.value = 'A.otio';
+    await mod.loadTimeline();
+    expect(deps.timelineDoc.value.edited).toBe(true);
+    expect(deps.isTimelineDirty.value).toBe(true);
+    // Only B was parsed across the two switches; A came from the cache.
+    expect(parseTimelineFromOtio.mock.calls.length).toBe(parseCallsAfterA + 1);
+  });
+
+  it('evicts cached tab state once the tab is no longer open', async () => {
+    const currentTimelinePath = ref('A.otio');
+    let openPaths = ['A.otio', 'B.otio'];
+    const fileContents: Record<string, string> = {
+      'A.otio': JSON.stringify({ ...fallbackDoc, id: 'A' }),
+      'B.otio': JSON.stringify({ ...fallbackDoc, id: 'B' }),
+    };
+    const ensureTimelineFileHandle = vi.fn(
+      async (options?: { create?: boolean; relativePath?: string }) => {
+        const path = options?.relativePath ?? currentTimelinePath.value;
+        if (!path || path.startsWith('.fastcat/autosave/')) return null;
+        const text = fileContents[path];
+        if (text === undefined) return null;
+        return { getFile: async () => ({ text: async () => text, lastModified: 1 }) } as any;
+      },
+    );
+    parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
+
+    const deps = createMockDeps({
+      currentTimelinePath,
+      ensureTimelineFileHandle,
+      getOpenPaths: () => openPaths,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    // Load A, edit it, switch to B → A is cached in memory.
+    await mod.loadTimeline();
+    deps.timelineDoc.value = { ...deps.timelineDoc.value, edited: true };
+    mod.markDirty();
+    currentTimelinePath.value = 'B.otio';
+    await mod.loadTimeline();
+
+    // Close A and trigger a load while it's gone → its cache entry is pruned.
+    openPaths = ['B.otio'];
+    await mod.loadTimeline();
+
+    // Reopen A: it's no longer cached, so it loads fresh from disk (no stale edit).
+    openPaths = ['B.otio', 'A.otio'];
+    currentTimelinePath.value = 'A.otio';
+    await mod.loadTimeline();
+    expect(deps.timelineDoc.value.id).toBe('A');
+    expect(deps.timelineDoc.value.edited).toBeUndefined();
+    expect(deps.isTimelineDirty.value).toBe(false);
+  });
+
   it('saveTimeline skips when doc is null', async () => {
     const deps = createMockDeps({ timelineDoc: ref<any>(null) });
     const mod = createTimelinePersistenceModule(deps);

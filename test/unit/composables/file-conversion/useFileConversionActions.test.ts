@@ -323,7 +323,11 @@ describe('useFileConversionActions', () => {
       new File(['x'], 'clip.mp4', { type: 'video/mp4' }),
     );
 
-    const promise = openConversionModal({ name: 'clip.mp4', path: '/clip.mp4', kind: 'file' } as any);
+    const promise = openConversionModal({
+      name: 'clip.mp4',
+      path: '/clip.mp4',
+      kind: 'file',
+    } as any);
 
     expect(props.isExtractingMetadata.value).toBe(true);
 

@@ -140,7 +140,9 @@ export const parametricEqManifest: AudioEffectManifest<ParametricEqParams> = {
           step: 0.01,
           format: (v) => v.toFixed(2),
           showIf: (v) =>
-            ['lowpass', 'highpass', 'bandpass', 'peaking', 'notch', 'allpass'].includes((v as any).type),
+            ['lowpass', 'highpass', 'bandpass', 'peaking', 'notch', 'allpass'].includes(
+              (v as any).type,
+            ),
         },
       ],
     },

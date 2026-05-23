@@ -27,9 +27,12 @@ describe('VideoCompositor init timeout', () => {
 
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const originalInit = Application.prototype.init;
-    Application.prototype.init = vi.fn(() => new Promise(() => {
-      // never resolves
-    })) as any;
+    Application.prototype.init = vi.fn(
+      () =>
+        new Promise(() => {
+          // never resolves
+        }),
+    ) as any;
 
     try {
       const compositor = new VideoCompositor();

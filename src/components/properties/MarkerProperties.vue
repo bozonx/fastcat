@@ -104,7 +104,9 @@ const commonActions = computed(() => [
   },
 ]);
 
-const mainActions = computed<import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[]>(() => {
+const mainActions = computed<
+  import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[]
+>(() => {
   const list: import('~/components/properties/PropertyActionsBlock.vue').PropertyActionItem[] = [
     {
       id: 'convert',

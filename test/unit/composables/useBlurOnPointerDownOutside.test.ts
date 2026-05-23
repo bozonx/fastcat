@@ -71,5 +71,4 @@ describe('useBlurOnPointerDownOutside', () => {
     expect(document.activeElement).not.toBe(focusable);
     outside.remove();
   });
-
 });

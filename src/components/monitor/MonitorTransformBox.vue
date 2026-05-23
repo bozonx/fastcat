@@ -387,7 +387,10 @@ function onPointerMove(e: PointerEvent) {
 
   if (dragType === 'translate') {
     scheduleTransformUpdate({
-      position: { x: round1(dragStartTransform.posX + designDx), y: round1(dragStartTransform.posY + designDy) },
+      position: {
+        x: round1(dragStartTransform.posX + designDx),
+        y: round1(dragStartTransform.posY + designDy),
+      },
     });
   } else if (dragType === 'rotate' || (mode.value === 'rotate' && dragType.startsWith('rotate'))) {
     const centerX = layout.value.anchorAbsX;
@@ -473,7 +476,10 @@ function onPointerMove(e: PointerEvent) {
         x: round1(Math.max(-10, Math.min(10, newAx))),
         y: round1(Math.max(-10, Math.min(10, newAy))),
       },
-      position: { x: round1(dragStartTransform.posX + deltaPosX), y: round1(dragStartTransform.posY + deltaPosY) },
+      position: {
+        x: round1(dragStartTransform.posX + deltaPosX),
+        y: round1(dragStartTransform.posY + deltaPosY),
+      },
     });
   }
 }

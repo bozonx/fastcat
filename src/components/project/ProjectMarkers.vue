@@ -31,13 +31,14 @@ function handleMarkerClick(marker: { id: string; timeUs: number }, event: MouseE
   timelineStore.setCurrentTimeUs(marker.timeUs);
 
   if (event.shiftKey) {
-    const currentIds = selectionStore.selectedEntity?.source === 'timeline' &&
+    const currentIds =
+      selectionStore.selectedEntity?.source === 'timeline' &&
       selectionStore.selectedEntity.kind === 'markers'
-      ? selectionStore.selectedEntity.markerIds
-      : selectionStore.selectedEntity?.source === 'timeline' &&
-          selectionStore.selectedEntity.kind === 'marker'
-        ? [selectionStore.selectedEntity.markerId]
-        : [];
+        ? selectionStore.selectedEntity.markerIds
+        : selectionStore.selectedEntity?.source === 'timeline' &&
+            selectionStore.selectedEntity.kind === 'marker'
+          ? [selectionStore.selectedEntity.markerId]
+          : [];
 
     if (currentIds.includes(marker.id)) {
       selectionStore.selectTimelineMarkers(currentIds.filter((id) => id !== marker.id));

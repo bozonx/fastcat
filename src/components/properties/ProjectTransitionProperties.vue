@@ -57,26 +57,28 @@ function handleUpdatePreset() {
   presetsStore.updatePreset(manifest.value.type, params.value);
 }
 
-const actions = computed<import('~/components/properties/PropertyActionList.vue').PropertyAction[]>(() => {
-  const list: import('~/components/properties/PropertyActionList.vue').PropertyAction[] = [];
-  if (manifest.value?.isCustom) {
+const actions = computed<import('~/components/properties/PropertyActionList.vue').PropertyAction[]>(
+  () => {
+    const list: import('~/components/properties/PropertyActionList.vue').PropertyAction[] = [];
+    if (manifest.value?.isCustom) {
+      list.push({
+        id: 'update-preset',
+        label: t('common.save'),
+        icon: 'i-heroicons-check',
+        onClick: handleUpdatePreset,
+      });
+    }
     list.push({
-      id: 'update-preset',
-      label: t('common.save'),
-      icon: 'i-heroicons-check',
-      onClick: handleUpdatePreset,
+      id: 'save-as-preset',
+      label: manifest.value?.isCustom
+        ? t('fastcat.effects.saveAsNew')
+        : t('fastcat.effects.saveAsPreset'),
+      icon: 'i-heroicons-bookmark',
+      onClick: () => (isSaveModalOpen.value = true),
     });
-  }
-  list.push({
-    id: 'save-as-preset',
-    label: manifest.value?.isCustom
-      ? t('fastcat.effects.saveAsNew')
-      : t('fastcat.effects.saveAsPreset'),
-    icon: 'i-heroicons-bookmark',
-    onClick: () => (isSaveModalOpen.value = true),
-  });
-  return list;
-});
+    return list;
+  },
+);
 </script>
 
 <template>

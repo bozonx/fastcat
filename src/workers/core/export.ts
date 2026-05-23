@@ -431,7 +431,9 @@ export async function runExport(
         if (packetStart < ranges.sourceStartS) continue;
 
         const adjustedTimestamp = packetStart - ranges.sourceStartS + ranges.timelineStartS;
-        const adjustedPacket = (packet as { clone?: (opts: { timestamp: number }) => unknown }).clone?.({ timestamp: adjustedTimestamp });
+        const adjustedPacket = (
+          packet as { clone?: (opts: { timestamp: number }) => unknown }
+        ).clone?.({ timestamp: adjustedTimestamp });
         if (isFirstPacket) {
           await audioPacketState.audioSource.add(adjustedPacket, { decoderConfig });
           isFirstPacket = false;
@@ -768,9 +770,7 @@ export async function extractAudioStream(
     const decoderConfig = await audioTrack.getDecoderConfig();
 
     const packetSource = new EncodedAudioPacketSource(
-      getBunnyAudioCodec(
-        (lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as any,
-      ) as any,
+      getBunnyAudioCodec((lowercaseCodec === 'mulaw' ? 'alaw' : lowercaseCodec) as any) as any,
     );
     (output as any).addAudioTrack(packetSource);
 

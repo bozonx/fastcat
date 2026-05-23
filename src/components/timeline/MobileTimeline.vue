@@ -136,7 +136,8 @@ const {
   {
     timelineDoc: computed(() => timelineStore.timelineDoc),
     mediaMetadata: computed(() => mediaStore.mediaMetadata),
-    batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds as import('~/timeline/commands').TimelineCommand[]),
+    batchApplyTimeline: (cmds) =>
+      timelineStore.batchApplyTimeline(cmds as import('~/timeline/commands').TimelineCommand[]),
     clearSelection: () => timelineStore.clearSelection(),
   },
 );

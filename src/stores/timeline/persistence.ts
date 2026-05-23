@@ -31,6 +31,12 @@ export interface TimelinePersistenceDeps {
 
   getProjectSettings: () => { timelines?: { sessions?: Record<string, unknown> } } | null;
 
+  /**
+   * Returns the paths of all currently open timeline tabs. Used to evict
+   * cached in-memory tab state for timelines that have since been closed.
+   */
+  getOpenPaths?: () => string[];
+
   parseTimelineFromOtio: (
     text: string,
     options: { id: string; name: string; format: TimelineFormatInput },
@@ -38,7 +44,7 @@ export interface TimelinePersistenceDeps {
   serializeTimelineToOtio: (doc: TimelineDocument) => string;
   selectTimelineDurationUs: (doc: TimelineDocument) => number;
 
-  shouldRestoreAutosaveSilently?: () => boolean;
+  shouldRestoreAutosaveSilently?: () => boolean | undefined;
   /**
    * Returns the periodic crash-recovery autosave interval in milliseconds.
    * The sidecar is written at most once per interval after the first change,
@@ -198,6 +204,88 @@ export function createTimelinePersistenceModule(
   let currentRevision = 0;
   let mainSavedRevision = 0;
 
+  // Live in-memory state per open tab. Only one timeline doc is *active* at a
+  // time, but switching tabs must not lose the outgoing tab's uncommitted edits
+  // by re-reading the canonical file. We snapshot the outgoing tab here before
+  // its doc is replaced, and restore it on switch-back — instant, no disk read,
+  // no data loss. The crash-recovery sidecar is now used ONLY for true first
+  // loads / startup recovery, never as the transport for tab switching.
+  interface TabState {
+    doc: TimelineDocument;
+    currentRevision: number;
+    mainSavedRevision: number;
+    currentTime: number;
+    duration: number;
+    masterGain: number;
+    audioMuted: boolean;
+    timelineZoom: number;
+    trackHeights: Record<string, number>;
+    selectionRange: TimelineSelectionRange | null;
+  }
+  const tabCache = new Map<string, TabState>();
+  // Path of the timeline whose state currently lives in the active refs/doc.
+  // Distinct from `currentTimelinePath`, which is switched to the *incoming*
+  // path before `loadTimeline` runs.
+  let lastLoadedPath: string | null = null;
+
+  function captureTabState(path: string) {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return;
+    tabCache.set(path, {
+      doc: toRaw(doc),
+      currentRevision,
+      mainSavedRevision,
+      currentTime: deps.currentTime.value,
+      duration: deps.duration.value,
+      masterGain: deps.masterGain.value,
+      audioMuted: deps.audioMuted?.value ?? false,
+      timelineZoom: deps.timelineZoom.value,
+      trackHeights: { ...deps.trackHeights.value },
+      selectionRange: deps.selectionRange?.value ? { ...deps.selectionRange.value } : null,
+    });
+  }
+
+  // Snapshot the outgoing tab (the one still in the active refs) before its doc
+  // is replaced by the incoming load. No-op on first load and on reloads of the
+  // same path.
+  function snapshotOutgoingTab() {
+    const incoming = deps.currentTimelinePath.value;
+    if (lastLoadedPath && lastLoadedPath !== incoming && deps.timelineDoc.value) {
+      captureTabState(lastLoadedPath);
+    }
+  }
+
+  // Forget cached state for tabs that are no longer open, so closing a tab
+  // releases its memory and a reopened tab loads fresh from disk.
+  function pruneClosedTabs() {
+    const open = deps.getOpenPaths?.();
+    if (!open) return;
+    const openSet = new Set(open);
+    for (const key of tabCache.keys()) {
+      if (!openSet.has(key)) tabCache.delete(key);
+    }
+  }
+
+  function restoreTabFromCache(path: string): boolean {
+    const state = tabCache.get(path);
+    if (!state) return false;
+    deps.timelineDoc.value = state.doc;
+    currentRevision = state.currentRevision;
+    mainSavedRevision = state.mainSavedRevision;
+    deps.currentTime.value = state.currentTime;
+    deps.duration.value = state.duration;
+    deps.masterGain.value = state.masterGain;
+    if (deps.audioMuted) deps.audioMuted.value = state.audioMuted;
+    deps.timelineZoom.value = state.timelineZoom;
+    deps.trackHeights.value = { ...state.trackHeights };
+    if (deps.selectionRange) {
+      deps.selectionRange.value = state.selectionRange ? { ...state.selectionRange } : null;
+    }
+    deps.timelineSaveError.value = null;
+    setDirtyState();
+    return true;
+  }
+
   function isDirty() {
     return mainSavedRevision < currentRevision;
   }
@@ -320,6 +408,8 @@ export function createTimelinePersistenceModule(
   function resetPersistenceState() {
     clearAutosaveTimer();
     autoSave.reset();
+    tabCache.clear();
+    lastLoadedPath = null;
     currentRevision = 0;
     mainSavedRevision = 0;
     setDirtyState();
@@ -354,9 +444,26 @@ export function createTimelinePersistenceModule(
   async function loadTimeline() {
     if (!deps.currentProjectName.value || !deps.currentTimelinePath.value) return;
 
+    // Preserve the outgoing tab's live edits in memory before its doc is
+    // replaced, and drop any cache entries for tabs that were closed meanwhile.
+    snapshotOutgoingTab();
+    pruneClosedTabs();
+
     const requestId = ++loadTimelineRequestId;
     clearAutosaveTimer();
     autoSave.reset();
+
+    const incoming = deps.currentTimelinePath.value;
+
+    // Fast path: we're switching back to a tab whose live state is still in
+    // memory. Restore it instantly — no disk read, no data loss, sidecar left
+    // untouched. The periodic autosave timer is re-armed only if it's dirty.
+    if (restoreTabFromCache(incoming)) {
+      lastLoadedPath = incoming;
+      if (isDirty()) scheduleAutosave();
+      return;
+    }
+
     let restoredAutosave = false;
 
     const fallback = deps.createFallbackTimelineDoc();
@@ -445,6 +552,7 @@ export function createTimelinePersistenceModule(
         autoSave.reset();
         setDirtyState();
         deps.timelineSaveError.value = null;
+        lastLoadedPath = deps.currentTimelinePath.value;
       }
     }
   }

@@ -28,9 +28,7 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('has binding for timeline.rippleDeleteSelectedClipRange', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toContain(
-      'Shift+Z',
-    );
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toContain('Shift+Z');
   });
 
   it('has binding for general.delete including X', () => {
