@@ -25,11 +25,14 @@ const playheadTransform = computed(() => {
 /** Lines for active markers (hovered + selected simultaneously). Zone markers show both pins. */
 const activeMarkerLines = computed(() => {
   const entity = selectionStore.selectedEntity;
-  const selectedId =
-    entity?.source === 'timeline' && entity?.kind === 'marker' ? entity.markerId : null;
+  const selectedIds =
+    entity?.source === 'timeline' && entity?.kind === 'marker'
+      ? [entity.markerId]
+      : entity?.source === 'timeline' && entity?.kind === 'markers'
+        ? entity.markerIds
+        : [];
 
-  const ids = new Set<string>();
-  if (selectedId) ids.add(selectedId);
+  const ids = new Set<string>(selectedIds);
   if (hoveredMarkerId.value) ids.add(hoveredMarkerId.value);
   if (ids.size === 0) return [];
 
