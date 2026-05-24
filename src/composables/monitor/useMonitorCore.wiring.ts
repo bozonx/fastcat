@@ -38,7 +38,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   getTimelineAudioMuted: () => boolean;
   getMonitorVolume: () => number;
   getMonitorMuted: () => boolean;
-  getProjectSizeKey: () => [number, number, number];
+  getProjectSizeKey: () => string;
   getRenderTimeForLayoutUpdate: () => number;
   stopPlayback: () => void;
   clearAudioHandleCache: () => void;

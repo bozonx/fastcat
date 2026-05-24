@@ -7,7 +7,14 @@ export interface TimelineActiveTrackerAccessors<TClip> {
 export interface TimelineActiveTrackerUpdateParams<TClip> {
   clips: readonly TClip[];
   timeUs: number;
-  lastTimeUs: number;
+  /**
+   * @deprecated Ignored. The tracker keeps its own `lastTimeUs` internally so the
+   * forward/backward decision can never desync from `activeClips`/`nextClipStartIndex`.
+   * Passing the externally tracked render time (which only advances on a successful
+   * present) made a render that aborted before presenting leave the tracker pointing
+   * at the wrong direction, stranding the previously active clip on screen.
+   */
+  lastTimeUs?: number;
   onDeactivate?: (clip: TClip) => void;
 }
 
@@ -19,18 +26,24 @@ export interface TimelineActiveTrackerUpdateResult<TClip> {
 export class TimelineActiveTracker<TClip> {
   private activeClips: TClip[] = [];
   private nextClipStartIndex = 0;
+  // Authoritative "where the playhead was last evaluated", committed together with
+  // activeClips/nextClipStartIndex at the end of every update(). Kept internal so it
+  // can never drift from the rest of the tracker state (the caller's render time only
+  // advances when a frame actually presents, which is not guaranteed).
+  private lastTimeUs = 0;
 
   constructor(private readonly accessors: TimelineActiveTrackerAccessors<TClip>) {}
 
   reset() {
     this.activeClips = [];
     this.nextClipStartIndex = 0;
+    this.lastTimeUs = 0;
   }
 
   update(
     params: TimelineActiveTrackerUpdateParams<TClip>,
   ): TimelineActiveTrackerUpdateResult<TClip> {
-    const { clips, timeUs, lastTimeUs, onDeactivate } = params;
+    const { clips, timeUs, onDeactivate } = params;
 
     if (clips.length === 0) {
       this.reset();
@@ -40,7 +53,7 @@ export class TimelineActiveTracker<TClip> {
     const { getStartUs, getEndUs } = this.accessors;
     const { getId } = this.accessors;
 
-    const movingForward = timeUs >= lastTimeUs;
+    const movingForward = timeUs >= this.lastTimeUs;
     let activeChanged = false;
 
     if (!movingForward) {
@@ -97,6 +110,7 @@ export class TimelineActiveTracker<TClip> {
       }
     }
 
+    this.lastTimeUs = timeUs;
     return { activeClips: this.activeClips, activeChanged };
   }
 

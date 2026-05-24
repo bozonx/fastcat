@@ -401,11 +401,16 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     getTimelineAudioMuted: () => timelineStore.audioMuted,
     getMonitorVolume: () => uiStore.monitorVolume,
     getMonitorMuted: () => uiStore.monitorMuted,
-    getProjectSizeKey: () => [
-      timelineStore.timelineFormat?.width ?? projectStore.projectSettings?.project?.width ?? 0,
-      timelineStore.timelineFormat?.height ?? projectStore.projectSettings?.project?.height ?? 0,
-      projectStore.activeMonitor?.previewResolution ?? 0,
-    ],
+    // Stable primitive key: `timelineFormat` is a computed off the whole doc, so
+    // it returns a fresh object on every edit (including marker moves). Returning
+    // an array here made the watch compare by reference and fire on every doc
+    // change, needlessly invalidating the compositor + rebuilding (a visible
+    // flicker). A string compares by value, so the watch fires only when the
+    // dimensions actually change.
+    getProjectSizeKey: () =>
+      `${timelineStore.timelineFormat?.width ?? projectStore.projectSettings?.project?.width ?? 0}x${
+        timelineStore.timelineFormat?.height ?? projectStore.projectSettings?.project?.height ?? 0
+      }x${projectStore.activeMonitor?.previewResolution ?? 0}`,
     getRenderTimeForLayoutUpdate,
     stopPlayback: () => {
       timelineStore.isPlaying = false;
