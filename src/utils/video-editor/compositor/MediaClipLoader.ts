@@ -1,5 +1,6 @@
 import { ImageSource } from 'pixi.js';
 import { safeDispose } from '../utils';
+import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 
 export interface MediabunnyTrack {
   canDecode(): Promise<boolean>;
@@ -62,7 +63,7 @@ export class MediaClipLoader {
       throw abortErr;
     }
 
-    const source = new mediabunny.BlobSource(file);
+    const source = new mediabunny.BlobSource(governedBlobWorker(file));
     const input = new mediabunny.Input({
       source,
       formats: mediabunny.ALL_FORMATS,

@@ -20,6 +20,7 @@ import {
   BROWSER_NATIVE_IMAGE_EXTENSIONS,
 } from '../../utils/media-types';
 import { runResilientWorkerFileIo, acquireStreamingWorkerFileIoSlot } from './io-governor';
+import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
 
@@ -72,7 +73,7 @@ export async function extractMetadata(
 
   try {
     const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
-    const source = new BlobSource(file);
+    const source = new BlobSource(governedBlobWorker(file));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const input = new Input({ source, formats: ALL_FORMATS } as any);
 
@@ -269,7 +270,7 @@ async function buildPassthroughAudioTrack(params: {
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as any);
+  const input = new Input({ source: new BlobSource(governedBlobWorker(file)), formats: ALL_FORMATS } as any);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -761,7 +762,7 @@ export async function extractAudioStream(
   } = await import('mediabunny');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as any);
+  const input = new Input({ source: new BlobSource(governedBlobWorker(sourceFile)), formats: ALL_FORMATS } as any);
 
   const audioTrack = await input.getPrimaryAudioTrack();
   if (!audioTrack) throw new Error('No audio track found in source file');

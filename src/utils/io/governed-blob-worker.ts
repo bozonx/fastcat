@@ -5,8 +5,10 @@ import { withWorkerFileIoSlot } from '../../workers/core/io-governor';
  * Wraps a Blob so that heavy I/O calls (arrayBuffer, text)
  * go through the worker interactive I/O budget.
  */
-export function governedBlobWorker(file: File | Blob): Blob {
-  return new Proxy(file, {
+export function governedBlobWorker(file: File): File;
+export function governedBlobWorker(file: Blob): Blob;
+export function governedBlobWorker(file: File | Blob): File | Blob {
+  const proxy = new Proxy(file, {
     get(target, prop) {
       if (prop === 'slice') {
         return (start?: number, end?: number, contentType?: string): Blob =>
@@ -21,4 +23,5 @@ export function governedBlobWorker(file: File | Blob): Blob {
       return Reflect.get(target, prop);
     },
   });
+  return proxy as File | Blob;
 }

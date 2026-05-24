@@ -423,7 +423,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
 
     'timeline.duplicate': [`${Mod}+Shift+S`],
     'general.navigateBack': ['Backspace', 'z', 'MouseBack'],
-    'general.navigateForward': ['MouseForward'],
+    'general.navigateForward': ['Shift+Backspace', 'MouseForward'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
     'general.navigateSelectionUp': ['ArrowUp'],
     'general.navigateSelectionDown': ['ArrowDown'],

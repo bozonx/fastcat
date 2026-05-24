@@ -15,6 +15,7 @@ import {
 import { clampFloat32 } from './utils';
 import { usToS } from './time';
 import { runResilientWorkerFileIo } from './io-governor';
+import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 
 export function interleavedToPlanar(params: {
   interleaved: Float32Array;
@@ -1013,7 +1014,7 @@ export class AudioMixer {
         0,
       );
 
-      const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS } as unknown);
+      const input = new Input({ source: new BlobSource(governedBlobWorker(file)), formats: ALL_FORMATS } as unknown);
       try {
         const aTrack = await input.getPrimaryAudioTrack();
         if (!aTrack) {

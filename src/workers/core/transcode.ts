@@ -1,6 +1,7 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import type { ExportOptions } from '~/composables/timeline/export/types';
 import { runResilientWorkerFileIo, acquireStreamingWorkerFileIoSlot } from './io-governor';
+import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 import { getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 
 export async function runTranscode(
@@ -166,8 +167,8 @@ export async function runTranscode(
   // 1. Setup Input
   const source =
     sourceFile instanceof File
-      ? new BlobSource(sourceFile)
-      : new BlobSource(await runResilientWorkerFileIo(sourceFile, () => sourceFile.getFile()));
+      ? new BlobSource(governedBlobWorker(sourceFile))
+      : new BlobSource(governedBlobWorker(await runResilientWorkerFileIo(sourceFile, () => sourceFile.getFile())));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source, formats: ALL_FORMATS } as any);
 

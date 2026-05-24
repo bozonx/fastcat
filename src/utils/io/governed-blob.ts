@@ -8,8 +8,10 @@ import { withFileIoSlot } from './io-governor';
  * each of which opens a short-lived datapipe. Routing them through the
  * governor prevents uncontrolled bursts that exhaust the Chromium pool.
  */
-export function governedBlob(file: File | Blob): Blob {
-  return new Proxy(file, {
+export function governedBlob(file: File): File;
+export function governedBlob(file: Blob): Blob;
+export function governedBlob(file: File | Blob): File | Blob {
+  const proxy = new Proxy(file, {
     get(target, prop) {
       if (prop === 'slice') {
         return (start?: number, end?: number, contentType?: string): Blob =>
@@ -24,4 +26,5 @@ export function governedBlob(file: File | Blob): Blob {
       return Reflect.get(target, prop);
     },
   });
+  return proxy as File | Blob;
 }

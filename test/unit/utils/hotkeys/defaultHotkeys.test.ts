@@ -61,4 +61,29 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toBeDefined();
     expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toContain('Shift+/');
   });
+
+  it('has navigateForward with Shift+Backspace and MouseForward', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward']).toContain('Shift+Backspace');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateForward']).toContain('MouseForward');
+  });
+
+  it('has navigateBack with Backspace, z and MouseBack', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toContain('Backspace');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toContain('z');
+    expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toContain('MouseBack');
+  });
+
+  it('has jumpPrevBoundary with A and MouseForward', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpPrevBoundary']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpPrevBoundary']).toContain('A');
+    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpPrevBoundary']).toContain('MouseForward');
+  });
+
+  it('has jumpNextBoundary with S and MouseBack', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toContain('S');
+    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toContain('MouseBack');
+  });
 });
