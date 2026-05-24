@@ -306,14 +306,20 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         if (requestId !== buildRequestId) {
           return;
         }
-        if (timelineStore.timelineDoc !== null) {
+        // Re-check AFTER the (slow) compositor init above: that async gap is
+        // exactly when the initial project load lands. This build may have been
+        // scheduled on mount, started while `timelineDoc` was still null, and
+        // only now woken up — by which point the real timeline (with its clips)
+        // has loaded and the playhead has been restored. If the doc gained
+        // content meanwhile, a follow-up build is already queued by the
+        // clipSourceSignature watcher; bail instead of mutating store state from
+        // the stale "empty" snapshot this build started with.
+        const hasContentAfterInit = (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0;
+        if (timelineStore.timelineDoc !== null && !hasContentAfterInit) {
           timelineStore.duration = 0;
-          // Do NOT reset the playhead here. It is editor/user state, not derived
-          // from the clip set. An empty timeline (no compositable clips, e.g. a
-          // brand-new or trackless timeline) must not clobber the playhead the
-          // persistence layer just restored — otherwise, on initial load, the
-          // monitor's first build drops the restored position to 0 once it
-          // finishes (the save watcher then persists that 0, making it sticky).
+          // Never reset the playhead here: it is editor/user state, not derived
+          // from the clip set. Forcing it to 0 would clobber a restored or
+          // user-set position (and the save watcher would then persist that 0).
         }
         isLoading.value = false;
         return;

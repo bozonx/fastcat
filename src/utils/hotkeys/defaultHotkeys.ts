@@ -101,9 +101,7 @@ export type HotkeyCommandId =
   | 'general.navigateSelectionUp'
   | 'general.navigateSelectionDown'
   | 'general.navigateSelectionLeft'
-  | 'general.navigateSelectionRight'
-  | 'general.monitorVolumeUp'
-  | 'general.monitorVolumeDown';
+  | 'general.navigateSelectionRight';
 
 export type HotkeyCombo = string;
 
@@ -137,15 +135,13 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.delete', groupId: 'general', title: 'Delete' },
     { id: 'general.selectAll', groupId: 'general', title: 'Select all' },
     { id: 'general.deselect', groupId: 'general', title: 'Deselect all / Close modals' },
+    { id: 'general.save', groupId: 'general', title: 'Save' },
     { id: 'general.focus', groupId: 'general', title: 'Focus / Search' },
     { id: 'general.rename', groupId: 'general', title: 'Rename' },
-    { id: 'general.save', groupId: 'general', title: 'Save' },
     { id: 'general.newTimeline', groupId: 'general', title: 'Create new timeline' },
     { id: 'general.mute', groupId: 'general', title: 'Mute / Unmute' },
-    { id: 'general.volumeUp', groupId: 'general', title: 'Volume up' },
-    { id: 'general.volumeDown', groupId: 'general', title: 'Volume down' },
-    { id: 'general.monitorVolumeUp', groupId: 'general', title: 'Increase monitor volume' },
-    { id: 'general.monitorVolumeDown', groupId: 'general', title: 'Decrease monitor volume' },
+    { id: 'general.volumeUp', groupId: 'general', title: 'Increase monitor volume' },
+    { id: 'general.volumeDown', groupId: 'general', title: 'Decrease monitor volume' },
     { id: 'general.snapshot', groupId: 'general', title: 'Create snapshot from monitor' },
     { id: 'general.fullscreen', groupId: 'general', title: 'Toggle fullscreen' },
     { id: 'general.zoomIn', groupId: 'general', title: 'Zoom in' },
@@ -333,8 +329,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.mute': ['Control+Q'],
     'general.volumeUp': ['Control+R'],
     'general.volumeDown': ['Control+E'],
-    'general.monitorVolumeUp': ['ArrowUp'],
-    'general.monitorVolumeDown': ['ArrowDown'],
     'general.snapshot': ['H'],
     'general.fullscreen': ['`'],
 

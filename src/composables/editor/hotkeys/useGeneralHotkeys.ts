@@ -396,16 +396,6 @@ export function useGeneralHotkeys(
       return true;
     },
 
-    'general.monitorVolumeUp': (e) => {
-      startMonitorVolumeHotkeyHold({ step: 0.05, keyCode: e.code });
-      return true;
-    },
-
-    'general.monitorVolumeDown': (e) => {
-      startMonitorVolumeHotkeyHold({ step: -0.05, keyCode: e.code });
-      return true;
-    },
-
     'general.navigateBack': () => {
       if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
         uiStore.fileBrowserNavigateBackTrigger++;
