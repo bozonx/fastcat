@@ -1,6 +1,11 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import type { ExportOptions } from '~/composables/timeline/export/types';
-import { withWorkerFileWriteSlotForHandle, withWorkerFileIoSlotForHandle } from './io-governor';
+import {
+  withWorkerFileWriteSlotForHandle,
+  withWorkerFileIoSlotForHandle,
+  runResilientWorkerFileIo,
+  runResilientWorkerFileWrite,
+} from './io-governor';
 import { getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 
 export async function runTranscode(
@@ -167,7 +172,7 @@ export async function runTranscode(
   const source =
     sourceFile instanceof File
       ? new BlobSource(sourceFile)
-      : new BlobSource(await withWorkerFileIoSlotForHandle(sourceFile, () => sourceFile.getFile()));
+      : new BlobSource(await runResilientWorkerFileIo(sourceFile, () => sourceFile.getFile()));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source, formats: ALL_FORMATS } as any);
 
@@ -179,7 +184,7 @@ export async function runTranscode(
         ? new MkvOutputFormat()
         : new Mp4OutputFormat();
 
-  const { output, writable } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
+  const { output, writable } = await runResilientWorkerFileWrite(targetHandle, async () => {
     const writable = await (
       targetHandle as unknown as {
         createWritable: (opts?: {

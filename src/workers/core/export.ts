@@ -19,7 +19,12 @@ import {
   getMimeTypeFromFilename,
   BROWSER_NATIVE_IMAGE_EXTENSIONS,
 } from '../../utils/media-types';
-import { withWorkerFileWriteSlotForHandle, withWorkerFileIoSlotForHandle } from './io-governor';
+import {
+  withWorkerFileWriteSlotForHandle,
+  withWorkerFileIoSlotForHandle,
+  runResilientWorkerFileIo,
+  runResilientWorkerFileWrite,
+} from './io-governor';
 import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
 
@@ -29,7 +34,7 @@ export async function extractMetadata(
   const file =
     fileOrHandle instanceof File
       ? fileOrHandle
-      : await withWorkerFileIoSlotForHandle(fileOrHandle, () =>
+      : await runResilientWorkerFileIo(fileOrHandle, () =>
           (fileOrHandle as FileSystemFileHandle).getFile(),
         );
 
@@ -265,7 +270,7 @@ async function buildPassthroughAudioTrack(params: {
 
   const file =
     (await hostClient.getFileByPath?.(sourcePath)) ??
-    (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
+    (await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile()));
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -362,7 +367,7 @@ export async function runExport(
     };
     writable: { abort?: () => Promise<void> };
   }> {
-    const { output, writable } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
+    const { output, writable } = await runResilientWorkerFileWrite(targetHandle, async () => {
       const writable = await (
         targetHandle as unknown as {
           createWritable: (opts?: {
@@ -736,7 +741,7 @@ export async function extractAudioStream(
   const targetHandle = await hostClient.getFileHandleByPath(targetPath);
   if (!targetHandle) throw new Error('Target file handle not found');
 
-  const sourceFile = await withWorkerFileIoSlotForHandle(sourceHandle, () =>
+  const sourceFile = await runResilientWorkerFileIo(sourceHandle, () =>
     sourceHandle.getFile(),
   );
   const {
@@ -771,7 +776,7 @@ export async function extractAudioStream(
       format = new MkvOutputFormat();
     }
 
-    const { output } = await withWorkerFileWriteSlotForHandle(targetHandle, async () => {
+    const { output } = await runResilientWorkerFileWrite(targetHandle, async () => {
       const writable = await (
         targetHandle as unknown as {
           createWritable: (opts?: {

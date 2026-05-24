@@ -48,3 +48,58 @@ export function withWorkerFileWriteSlotForHandle<T>(
 ): Promise<T> {
   return withWorkerFileIoSlotForHandle(handle, task);
 }
+
+export function isTransientIoError(error: unknown): boolean {
+  const candidate = error as { name?: unknown; message?: unknown } | null | undefined;
+  const name = typeof candidate?.name === 'string' ? candidate.name : '';
+  const message = typeof candidate?.message === 'string' ? candidate.message : '';
+  return name === 'InvalidStateError' || /datapipe|failed to create/i.test(message);
+}
+
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => {
+    if (typeof self !== 'undefined' && 'setTimeout' in self) {
+      self.setTimeout(resolve, ms);
+    } else {
+      setTimeout(resolve, ms);
+    }
+  });
+
+/**
+ * Run a resilient file I/O operation in a worker that retries transient datapipe
+ * exhaustion with exponential backoff.
+ */
+export async function runResilientWorkerFileIo<T>(
+  handle: unknown,
+  task: () => Promise<T>,
+  options?: { attempts?: number; baseDelayMs?: number },
+): Promise<T> {
+  const attempts = Math.max(1, Math.round(options?.attempts ?? 4));
+  const baseDelayMs = Math.max(1, Math.round(options?.baseDelayMs ?? 150));
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await withWorkerFileIoSlotForHandle(handle, task);
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts - 1 || !isTransientIoError(error)) {
+        throw error;
+      }
+      await delay(baseDelayMs * 2 ** attempt);
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Run a resilient file write operation in a worker (analogous to runResilientWorkerFileIo).
+ */
+export async function runResilientWorkerFileWrite<T>(
+  handle: unknown,
+  task: () => Promise<T>,
+  options?: { attempts?: number; baseDelayMs?: number },
+): Promise<T> {
+  return runResilientWorkerFileIo(handle, task, options);
+}
+

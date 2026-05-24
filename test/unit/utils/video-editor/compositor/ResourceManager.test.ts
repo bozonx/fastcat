@@ -66,4 +66,81 @@ describe('ResourceManager.withVideoSampleSlot', () => {
     decodes.slice(1).forEach((decode) => decode.resolve({ close: () => {} }));
     await Promise.all(callers.map((caller) => caller.settled));
   });
+
+  it('retries transient failures and eventually succeeds', async () => {
+    const rm = new ResourceManager();
+    let calls = 0;
+
+    const result = await rm.withVideoSampleSlot(
+      async () => {
+        calls += 1;
+        if (calls < 3) {
+          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+        }
+        return 'decoded-frame';
+      },
+      undefined,
+      { attempts: 4, baseDelayMs: 1 },
+    );
+
+    expect(result).toBe('decoded-frame');
+    expect(calls).toBe(3);
+  });
+
+  it('gives up after maximum attempts and propagates the last error', async () => {
+    const rm = new ResourceManager();
+    let calls = 0;
+
+    await expect(
+      rm.withVideoSampleSlot(
+        async () => {
+          calls += 1;
+          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+        },
+        undefined,
+        { attempts: 3, baseDelayMs: 1 },
+      ),
+    ).rejects.toThrow('Failed to create datapipe');
+
+    expect(calls).toBe(3);
+  });
+
+  it('does not retry non-transient errors', async () => {
+    const rm = new ResourceManager();
+    let calls = 0;
+
+    await expect(
+      rm.withVideoSampleSlot(
+        async () => {
+          calls += 1;
+          throw new Error('Some decoder error');
+        },
+        undefined,
+        { attempts: 3, baseDelayMs: 1 },
+      ),
+    ).rejects.toThrow('Some decoder error');
+
+    expect(calls).toBe(1);
+  });
+
+  it('does not retry if signal is aborted', async () => {
+    const rm = new ResourceManager();
+    let calls = 0;
+    const controller = new AbortController();
+
+    const taskPromise = rm.withVideoSampleSlot(
+      async () => {
+        calls += 1;
+        // Trigger abort before throwing the error
+        controller.abort();
+        throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+      },
+      controller.signal,
+      { attempts: 3, baseDelayMs: 1 },
+    );
+
+    await expect(taskPromise).rejects.toThrow();
+    // Should have only called the task once because it got aborted
+    expect(calls).toBe(1);
+  });
 });

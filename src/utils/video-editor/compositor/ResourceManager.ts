@@ -53,6 +53,13 @@ export async function getVideoSampleWithZeroFallback(
   return safeSample(1e-6);
 }
 
+function isTransientVideoSampleError(error: unknown): boolean {
+  const candidate = error as { name?: unknown; message?: unknown } | null | undefined;
+  const name = typeof candidate?.name === 'string' ? candidate.name : '';
+  const message = typeof candidate?.message === 'string' ? candidate.message : '';
+  return name === 'InvalidStateError' || /datapipe|failed to create/i.test(message);
+}
+
 export class ResourceManager {
   private sampleRequestsInFlight = 0;
   private readonly sampleRequestQueue: Array<{ resolve: () => void; signal?: AbortSignal }> = [];
@@ -123,64 +130,92 @@ export class ResourceManager {
     });
   }
 
-  public async withVideoSampleSlot<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-    const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
-    if (this.sampleRequestsInFlight >= max) {
-      await new Promise<void>((resolve, reject) => {
-        if (signal?.aborted) {
-          reject(new Error('Aborted before acquiring slot'));
-          return;
-        }
+  public async withVideoSampleSlot<T>(
+    task: () => Promise<T>,
+    signal?: AbortSignal,
+    options?: { attempts?: number; baseDelayMs?: number },
+  ): Promise<T> {
+    const attempts = Math.max(1, Math.round(options?.attempts ?? 3));
+    const baseDelayMs = Math.max(1, Math.round(options?.baseDelayMs ?? 50));
 
-        let onAbort: (() => void) | undefined;
-        const queueItem = {
-          resolve: () => {
-            if (onAbort && signal) signal.removeEventListener('abort', onAbort);
-            resolve();
-          },
-          signal,
-        };
+    let lastError: unknown;
 
-        if (signal) {
-          onAbort = () => {
-            if (onAbort) signal.removeEventListener('abort', onAbort);
-            const index = this.sampleRequestQueue.indexOf(queueItem);
-            if (index !== -1) {
-              this.sampleRequestQueue.splice(index, 1);
-            }
-            reject(new Error('Aborted while waiting for slot'));
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (signal?.aborted) {
+        throw new Error('Aborted before acquiring slot');
+      }
+
+      // Wait for slot if busy
+      const max = Math.max(1, Math.round(VIDEO_CORE_LIMITS.MAX_CONCURRENT_VIDEO_SAMPLE_REQUESTS));
+      if (this.sampleRequestsInFlight >= max) {
+        await new Promise<void>((resolve, reject) => {
+          if (signal?.aborted) {
+            reject(new Error('Aborted before acquiring slot'));
+            return;
+          }
+
+          let onAbort: (() => void) | undefined;
+          const queueItem = {
+            resolve: () => {
+              if (onAbort && signal) signal.removeEventListener('abort', onAbort);
+              resolve();
+            },
+            signal,
           };
-          signal.addEventListener('abort', onAbort);
+
+          if (signal) {
+            onAbort = () => {
+              if (onAbort) signal.removeEventListener('abort', onAbort);
+              const index = this.sampleRequestQueue.indexOf(queueItem);
+              if (index !== -1) {
+                this.sampleRequestQueue.splice(index, 1);
+              }
+              reject(new Error('Aborted while waiting for slot'));
+            };
+            signal.addEventListener('abort', onAbort);
+          }
+
+          this.sampleRequestQueue.push(queueItem);
+        });
+      }
+
+      this.sampleRequestsInFlight += 1;
+
+      // Start the decode exactly once and hold the slot until it *actually*
+      // settles — not until the caller stops waiting. mediabunny's getSample is
+      // not cancellable, so an aborted/timed-out decode keeps running and keeps
+      // its file-read datapipe open. Releasing the slot the moment the abort race
+      // wins would let fresh decodes pile on top of orphaned ones, so the real
+      // number of concurrent reads (and open datapipes) could climb far past the
+      // limit and exhaust the renderer pool. Tying the slot to the real decode
+      // keeps concurrency honest; we also dispose the orphaned sample once it
+      // lands so it does not leak a decoder frame.
+      const taskPromise = task();
+      const release = () => {
+        this.sampleRequestsInFlight -= 1;
+        this.processRequestQueue();
+      };
+      taskPromise.then(release, release);
+
+      try {
+        return await this.raceTaskWithAbortAndTimeout(() => taskPromise, signal);
+      } catch (error) {
+        lastError = error;
+        void taskPromise.then(disposeAbandonedSample, () => undefined);
+
+        if (attempt === attempts - 1 || signal?.aborted || !isTransientVideoSampleError(error)) {
+          throw error;
         }
 
-        this.sampleRequestQueue.push(queueItem);
-      });
+        // Backoff before next attempt
+        await new Promise<void>((resolve) => {
+          const delayMs = baseDelayMs * 2 ** attempt;
+          setTimeout(resolve, delayMs);
+        });
+      }
     }
 
-    this.sampleRequestsInFlight += 1;
-
-    // Start the decode exactly once and hold the slot until it *actually*
-    // settles — not until the caller stops waiting. mediabunny's getSample is
-    // not cancellable, so an aborted/timed-out decode keeps running and keeps
-    // its file-read datapipe open. Releasing the slot the moment the abort race
-    // wins would let fresh decodes pile on top of orphaned ones, so the real
-    // number of concurrent reads (and open datapipes) could climb far past the
-    // limit and exhaust the renderer pool. Tying the slot to the real decode
-    // keeps concurrency honest; we also dispose the orphaned sample once it
-    // lands so it does not leak a decoder frame.
-    const taskPromise = task();
-    const release = () => {
-      this.sampleRequestsInFlight -= 1;
-      this.processRequestQueue();
-    };
-    taskPromise.then(release, release);
-
-    try {
-      return await this.raceTaskWithAbortAndTimeout(() => taskPromise, signal);
-    } catch (error) {
-      void taskPromise.then(disposeAbandonedSample, () => undefined);
-      throw error;
-    }
+    throw lastError;
   }
 
   private processRequestQueue() {

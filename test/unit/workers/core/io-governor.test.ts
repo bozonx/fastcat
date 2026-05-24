@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import {
   withWorkerFileWriteSlot,
   withWorkerFileWriteSlotForHandle,
+  isTransientIoError,
+  runResilientWorkerFileIo,
+  runResilientWorkerFileWrite,
 } from '~/workers/core/io-governor';
 
 let originalFileSystemFileHandle: typeof FileSystemFileHandle | undefined;
@@ -114,5 +117,80 @@ describe('withWorkerFileWriteSlotForHandle', () => {
     expect(r1).toBe('queued');
     expect(r2).toBe('queued');
     expect(task).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('isTransientIoError', () => {
+  it('flags InvalidStateError and messages containing datapipe/failed to create', () => {
+    expect(isTransientIoError(Object.assign(new Error('Mojo error'), { name: 'InvalidStateError' }))).toBe(true);
+    expect(isTransientIoError(new Error('Failed to create datapipe'))).toBe(true);
+    expect(isTransientIoError(new Error('Other datapipe error'))).toBe(true);
+    expect(isTransientIoError(new Error('Something else'))).toBe(false);
+  });
+});
+
+describe('runResilientWorkerFileIo', () => {
+  it('retries transient failures and eventually succeeds', async () => {
+    let calls = 0;
+    const mockHandle = Object.create(FileSystemFileHandle.prototype);
+
+    const result = await runResilientWorkerFileIo(
+      mockHandle,
+      async () => {
+        calls += 1;
+        if (calls < 3) {
+          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+        }
+        return 'success';
+      },
+      { attempts: 4, baseDelayMs: 1 },
+    );
+
+    expect(result).toBe('success');
+    expect(calls).toBe(3);
+  });
+
+  it('gives up after budget attempts', async () => {
+    let calls = 0;
+    const mockHandle = Object.create(FileSystemFileHandle.prototype);
+
+    await expect(
+      runResilientWorkerFileIo(
+        mockHandle,
+        async () => {
+          calls += 1;
+          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+        },
+        { attempts: 3, baseDelayMs: 1 },
+      ),
+    ).rejects.toThrow('Failed to create datapipe');
+
+    expect(calls).toBe(3);
+  });
+
+  it('does not retry non-transient errors', async () => {
+    let calls = 0;
+    const mockHandle = Object.create(FileSystemFileHandle.prototype);
+
+    await expect(
+      runResilientWorkerFileIo(
+        mockHandle,
+        async () => {
+          calls += 1;
+          throw new Error('Fatal filesystem error');
+        },
+        { attempts: 3, baseDelayMs: 1 },
+      ),
+    ).rejects.toThrow('Fatal filesystem error');
+
+    expect(calls).toBe(1);
+  });
+});
+
+describe('runResilientWorkerFileWrite', () => {
+  it('delegates to runResilientWorkerFileIo and returns success', async () => {
+    const mockHandle = Object.create(FileSystemFileHandle.prototype);
+    const result = await runResilientWorkerFileWrite(mockHandle, async () => 'written', { attempts: 2, baseDelayMs: 1 });
+    expect(result).toBe('written');
   });
 });
