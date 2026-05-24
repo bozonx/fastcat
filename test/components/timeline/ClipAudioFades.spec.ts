@@ -134,4 +134,79 @@ describe('ClipAudioFades', () => {
 
     addEventListenerSpy.mockRestore();
   });
+
+  describe('volume control visibility', () => {
+    async function mountAndGetControl(props: Record<string, unknown>) {
+      const clipOverrides = (props.clip as Record<string, unknown>) ?? {};
+      const component = await mountSuspended(ClipAudioFades, {
+        props: {
+          ...defaultProps,
+          ...props,
+          clip: { ...baseItem, ...clipOverrides },
+        },
+      });
+      return component.get('[data-testid="clip-volume-control"]');
+    }
+
+    // The draggable volume bar and the % indicator share this container; its
+    // opacity-0 hides both. Rule: hidden only when the clip is unselected AND
+    // gain is 100% (plus the muted / active-resize guards). Shown otherwise.
+    const isHidden = (el: { classes(): string[] }) => el.classes().includes('opacity-0');
+
+    it('hides when unselected and gain is 100%', async () => {
+      const el = await mountAndGetControl({
+        clip: { audioGain: 1 },
+        isSelected: false,
+        isHovered: false,
+      });
+      expect(isHidden(el)).toBe(true);
+    });
+
+    it('stays hidden on hover when unselected and gain is 100% (regression)', async () => {
+      // Hovering must NOT reveal the control for a default-volume, unselected clip.
+      const el = await mountAndGetControl({
+        clip: { audioGain: 1 },
+        isSelected: false,
+        isHovered: true,
+      });
+      expect(isHidden(el)).toBe(true);
+    });
+
+    it('shows when selected even at 100% gain', async () => {
+      const el = await mountAndGetControl({
+        clip: { audioGain: 1 },
+        isSelected: true,
+        isHovered: false,
+      });
+      expect(isHidden(el)).toBe(false);
+    });
+
+    it('shows when gain differs from 100% even if unselected', async () => {
+      const el = await mountAndGetControl({
+        clip: { audioGain: 1.5 },
+        isSelected: false,
+        isHovered: false,
+      });
+      expect(isHidden(el)).toBe(false);
+    });
+
+    it('shows while actively resizing volume', async () => {
+      const el = await mountAndGetControl({
+        clip: { audioGain: 1 },
+        isSelected: false,
+        isHovered: false,
+        isResizingVolume: true,
+      });
+      expect(isHidden(el)).toBe(false);
+    });
+
+    it('hides when muted regardless of selection', async () => {
+      const el = await mountAndGetControl({
+        clip: { audioGain: 1.5, audioMuted: true },
+        isSelected: true,
+        isHovered: true,
+      });
+      expect(isHidden(el)).toBe(true);
+    });
+  });
 });

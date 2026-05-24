@@ -376,6 +376,10 @@ watch(
   () => uiStore.openAutoMontageTrigger,
   (val) => {
     if (!val) return;
+    const hasAnyItem = props.tracks.some((track) =>
+      track.items.some((item) => val.itemIds.includes(item.id)),
+    );
+    if (!hasAnyItem) return;
     autoMontageModal.value = {
       open: true,
       itemIds: val.itemIds,
@@ -654,12 +658,12 @@ watch(
   () => uiStore.clipPasteParametersTrigger,
   (val) => {
     if (!val) return;
-    const doc = timelineStore.timelineDoc;
-    const track = doc?.tracks.find((t) => t.id === val.trackId);
-    const clip = track?.items.find(
+    const track = props.tracks.find((t) => t.id === val.trackId);
+    if (!track) return;
+    const clip = track.items.find(
       (it) => it.id === val.itemId && it.kind === 'clip',
     ) as TimelineClipItem;
-    if (clip && track) {
+    if (clip) {
       activeClipForPasteParameters.value = clip;
       activeTrackKindForPasteParameters.value = track.kind;
       // Opening is deferred to a macrotask inside the composable so it survives

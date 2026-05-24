@@ -3,6 +3,8 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { reactive, nextTick, toRef } from 'vue';
 import { defineStore } from 'pinia';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
+import { useUiStore } from '~/stores/ui.store';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 
 vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
@@ -592,5 +594,85 @@ describe('TimelineTracks', () => {
     expect(clip.attributes('data-locked')).toBe('true');
     expect(clip.attributes('data-disabled')).toBe('true');
     expect(clip.attributes('data-audio-muted')).toBe('true');
+  });
+
+  it('opens paste parameters modal only if the target track belongs to props.tracks', async () => {
+    const docStore = useMockTimelineStore();
+    docStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video',
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              timelineRange: { startUs: 0, durationUs: 5000000 },
+            },
+          ],
+        },
+        {
+          id: 'track-2',
+          kind: 'audio',
+          items: [
+            {
+              id: 'clip-2',
+              kind: 'clip',
+              timelineRange: { startUs: 0, durationUs: 5000000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks: [docStore.timelineDoc.tracks[0]],
+      },
+    });
+
+    const clipboardStore = useAppClipboard();
+    clipboardStore.setClipboardPayload({
+      source: 'clipParameters',
+      snapshot: {
+        trackKind: 'video',
+        clipType: 'media',
+        groups: {
+          transform: {
+            transform: {},
+          },
+        },
+      },
+    });
+
+    const uiStore = useUiStore();
+    uiStore.triggerClipPasteParameters('track-2', 'clip-2');
+    await nextTick();
+    expect(component.vm.isPasteParametersModalOpen).toBe(false);
+
+    uiStore.triggerClipPasteParameters('track-1', 'clip-1');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await nextTick();
+    expect(component.vm.isPasteParametersModalOpen).toBe(true);
+  });
+
+  it('opens auto montage modal only if at least one item belongs to props.tracks', async () => {
+    const uiStore = useUiStore();
+    const component = await mountSuspended(TimelineTracks, {
+      props: {
+        ...defaultProps,
+        tracks: [baseTracks[0]],
+      },
+    });
+
+    uiStore.triggerOpenAutoMontage(['clip-2']);
+    await nextTick();
+    expect(component.vm.autoMontageModal).toBeNull();
+
+    uiStore.triggerOpenAutoMontage(['clip-1']);
+    await nextTick();
+    expect(component.vm.autoMontageModal).not.toBeNull();
+    expect(component.vm.autoMontageModal?.open).toBe(true);
   });
 });

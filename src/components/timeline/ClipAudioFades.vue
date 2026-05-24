@@ -268,12 +268,13 @@ const volumeIndicatorPosition = computed(() => {
 
     <!-- Volume Control Line -->
     <div
+      data-testid="clip-volume-control"
       class="absolute left-0 right-0 z-45 h-3 -mt-1.5 flex flex-col justify-center transition-opacity"
       :class="[
         canEdit && !clip.locked && !track.locked && !isMobile
           ? 'cursor-ns-resize pointer-events-auto'
           : 'pointer-events-none',
-        clip.audioMuted || (clip.audioGain === 1 && !isHovered && !isResizingVolume && !isSelected)
+        clip.audioMuted || ((clip.audioGain ?? 1) === 1 && !isResizingVolume && !isSelected)
           ? 'opacity-0'
           : 'opacity-100',
         isDragging && !isResizingVolume ? 'opacity-0! pointer-events-none' : '',
