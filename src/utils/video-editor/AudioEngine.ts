@@ -761,7 +761,8 @@ export class AudioEngine {
       // source (buffer) seconds. Convert the cap into source units via the
       // effective playback rate before clamping — otherwise previews on clips
       // with speed > 1 were cut short (the cap was applied as if 1x).
-      safeDurationToPlayS = Math.min(safeDurationToPlayS, options.maxPlaybackDurationS);
+      const maxSourceDurationS = options.maxPlaybackDurationS * window.effectiveSpeed;
+      safeDurationToPlayS = Math.min(safeDurationToPlayS, maxSourceDurationS);
     }
 
     if (!Number.isFinite(safeBufferOffsetS) || safeBufferOffsetS < 0) {

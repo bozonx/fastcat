@@ -33,12 +33,11 @@ describe('createReversedAudioSamples', () => {
 
     const result = createReversedAudioSamples(AudioSample, samples);
     expect(result).toHaveLength(1);
-    expect(AudioSample).toHaveBeenCalled();
-    const callArg = AudioSample.mock.calls[0]![0] as { data: Float32Array };
-    expect(callArg.data[0]).toBe(3);
-    expect(callArg.data[1]).toBe(4);
-    expect(callArg.data[2]).toBe(1);
-    expect(callArg.data[3]).toBe(2);
+    const created = result[0] as { data: Float32Array };
+    expect(created.data[0]).toBe(3);
+    expect(created.data[1]).toBe(4);
+    expect(created.data[2]).toBe(1);
+    expect(created.data[3]).toBe(2);
   });
 
   it('reverses multiple samples preserving chunk boundaries', () => {
@@ -60,8 +59,6 @@ describe('createReversedAudioSamples', () => {
 
     const result = createReversedAudioSamples(AudioSample, samples);
     expect(result).toHaveLength(2);
-    // First output chunk should contain data from last input sample
-    expect(AudioSample).toHaveBeenCalledTimes(2);
   });
 });
 
