@@ -48,9 +48,7 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
   const deltaUs = quantizeToFrames
     ? quantizeDeltaUsToFrames(deltaCandidate, fps, 'round')
     : deltaCandidate;
-  const sourceDeltaUs = quantizeToFrames
-    ? quantizeDeltaUsToFrames(Math.round(deltaUs * absSpeed), fps, 'round')
-    : Math.round(deltaUs * absSpeed);
+  const sourceDeltaUs = Math.round(deltaUs * absSpeed);
 
   const prevTimelineStartUs = Math.max(0, Math.round(input.timelineRange.startUs));
   const prevTimelineDurationUs = Math.max(0, Math.round(input.timelineRange.durationUs));
@@ -163,35 +161,25 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
     // sourceRange from the quantized timeline so the invariant
     // sourceDuration = timelineDuration * absSpeed holds — otherwise long edits
     // accumulate sub-frame source drift.
-    const timelineDeltaStartUs = qTimeline.startUs - nextTimelineStartUs;
-    const timelineDeltaDurationUs = qTimeline.durationUs - nextTimelineDurationUs;
+    const deltaLeftUs = qTimeline.startUs - nextTimelineStartUs;
+    const deltaRightUs =
+      qTimeline.startUs + qTimeline.durationUs - (nextTimelineStartUs + nextTimelineDurationUs);
+
     nextTimelineStartUs = qTimeline.startUs;
     nextTimelineDurationUs = qTimeline.durationUs;
 
-    if (edge === 'start') {
-      if (speed >= 0) {
-        nextSourceStartUs = Math.max(
-          0,
-          nextSourceStartUs + Math.round(timelineDeltaStartUs * absSpeed),
-        );
-      } else {
-        nextSourceEndUs = Math.max(
-          nextSourceStartUs,
-          nextSourceEndUs - Math.round(timelineDeltaStartUs * absSpeed),
-        );
-      }
+    if (speed >= 0) {
+      nextSourceStartUs = Math.max(0, nextSourceStartUs + Math.round(deltaLeftUs * absSpeed));
+      nextSourceEndUs = Math.max(
+        nextSourceStartUs,
+        nextSourceEndUs + Math.round(deltaRightUs * absSpeed),
+      );
     } else {
-      if (speed >= 0) {
-        nextSourceEndUs = Math.max(
-          nextSourceStartUs,
-          nextSourceEndUs + Math.round(timelineDeltaDurationUs * absSpeed),
-        );
-      } else {
-        nextSourceStartUs = Math.max(
-          0,
-          nextSourceStartUs - Math.round(timelineDeltaDurationUs * absSpeed),
-        );
-      }
+      nextSourceStartUs = Math.max(0, nextSourceStartUs - Math.round(deltaRightUs * absSpeed));
+      nextSourceEndUs = Math.max(
+        nextSourceStartUs,
+        nextSourceEndUs - Math.round(deltaLeftUs * absSpeed),
+      );
     }
 
     nextSourceDurationUs = Math.max(0, nextSourceEndUs - nextSourceStartUs);

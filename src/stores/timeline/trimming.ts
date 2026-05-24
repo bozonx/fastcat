@@ -226,7 +226,7 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
 
   function movePlayheadToCollapse(collapseUs: number | null) {
     if (collapseUs === null) return;
-    deps.currentTime.value = quantizeTimeUsToPixelGrid(collapseUs, deps.timelineZoom.value);
+    deps.currentTime.value = collapseUs;
     deps.onPlayheadJump?.();
   }
 
