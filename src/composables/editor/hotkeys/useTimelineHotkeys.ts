@@ -630,6 +630,12 @@ export function useTimelineHotkeys(
       }
       return true;
     },
+
+    'timeline.centerPlayhead': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.requestScrollToPlayhead();
+      return true;
+    },
   };
 
   return handlers;

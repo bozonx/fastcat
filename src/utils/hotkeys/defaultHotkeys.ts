@@ -81,6 +81,7 @@ export type HotkeyCommandId =
   | 'timeline.toggleLockTrack'
   | 'timeline.setSelectionIn'
   | 'timeline.setSelectionOut'
+  | 'timeline.centerPlayhead'
   | 'playback.toggle'
   | 'playback.toggle1'
   | 'playback.toStart'
@@ -344,6 +345,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     },
     { id: 'timeline.setSelectionIn', groupId: 'timeline', title: 'Set selection In' },
     { id: 'timeline.setSelectionOut', groupId: 'timeline', title: 'Set selection Out' },
+    { id: 'timeline.centerPlayhead', groupId: 'timeline', title: 'Center playhead' },
 
     { id: 'playback.toggle', groupId: 'playback', title: 'Toggle playback' },
     { id: 'playback.toggle1', groupId: 'playback', title: 'Toggle playback (secondary)' },
@@ -466,6 +468,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.toggleLockTrack': ['Shift+Y'],
     'timeline.setSelectionIn': ['I'],
     'timeline.setSelectionOut': ['O'],
+    'timeline.centerPlayhead': ['Shift+/'],
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],

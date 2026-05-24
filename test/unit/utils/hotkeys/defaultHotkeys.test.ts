@@ -56,4 +56,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toBeDefined();
     expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Control+E');
   });
+
+  it('has binding for timeline.centerPlayhead as Shift+/', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['timeline.centerPlayhead']).toContain('Shift+/');
+  });
 });
