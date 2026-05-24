@@ -96,8 +96,6 @@ describe('io-budget shared budget', () => {
     );
 
     release();
-    expect(budget.getSnapshot().interactiveAvailable).toBe(
-      FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO,
-    );
+    expect(budget.getSnapshot().interactiveAvailable).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO);
   });
 });

@@ -4,7 +4,7 @@ import { useEventListener } from '@vueuse/core';
 import type { FastCatUserSettings } from '~/utils/settings/defaults';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
+import { pxPerSecondToZoom, pxToTimeUs, timeUsToPx } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
@@ -149,6 +149,8 @@ export function useTimelineWheelHandler({
 
     if (action === 'zoom_horizontal') {
       e.preventDefault();
+      const zoomStep = getZoomStep(delta);
+      const prevZoom = timelineStore.timelineZoom;
       const rawAnchorViewportX = getZoomAnchorViewportX({
         event: e,
         category,
@@ -159,12 +161,29 @@ export function useTimelineWheelHandler({
       const viewportWidth = horizontalScrollEl.value?.clientWidth ?? 0;
       const durationUs = timelineStore.duration;
       const timelineWidthPx = timeUsToPx(durationUs, timelineStore.timelineZoom);
+      let nextZoom = Math.min(110, Math.max(0, prevZoom + zoomStep));
+
+      if (zoomStep < 0 && durationUs > 0 && viewportWidth > 0) {
+        const minCursorZoom = Math.min(
+          110,
+          Math.max(0, pxPerSecondToZoom(viewportWidth / (durationUs / 1e6))),
+        );
+
+        if (prevZoom <= minCursorZoom) return;
+
+        nextZoom = Math.max(minCursorZoom, nextZoom);
+      }
 
       let anchorViewportX = rawAnchorViewportX;
       let anchorTimeUs = pxToTimeUs(scrollLeft + rawAnchorViewportX, timelineStore.timelineZoom);
+      const nextTimelineWidthPx = timeUsToPx(durationUs, nextZoom);
 
-      // Adaptive anchor: zoom from viewport center when timeline fits within viewport
-      if (timelineWidthPx > 0 && timelineWidthPx <= viewportWidth) {
+      // Adaptive anchor: zoom from viewport center when the timeline fits or will fit.
+      if (
+        viewportWidth > 0 &&
+        ((timelineWidthPx > 0 && timelineWidthPx <= viewportWidth) ||
+          (nextTimelineWidthPx > 0 && nextTimelineWidthPx <= viewportWidth))
+      ) {
         anchorViewportX = viewportWidth / 2;
         anchorTimeUs = Math.max(0, Math.min(durationUs, durationUs / 2));
       } else {
@@ -172,7 +191,10 @@ export function useTimelineWheelHandler({
         anchorTimeUs = Math.max(0, Math.min(durationUs, anchorTimeUs));
       }
 
-      handleZoomWheel(getZoomStep(delta), { anchorTimeUs, anchorViewportX });
+      const nextZoomStep = nextZoom - prevZoom;
+      if (nextZoomStep !== 0) {
+        handleZoomWheel(nextZoomStep, { anchorTimeUs, anchorViewportX });
+      }
       return;
     }
 

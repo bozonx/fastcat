@@ -209,6 +209,12 @@ function createFileHandle() {
   } as unknown as FileSystemFileHandle;
 }
 
+function getDecodePostMessageCalls(worker: WorkerMock | null) {
+  return (worker?.postMessage.mock.calls ?? []).filter(
+    (call) => (call[0] as any).type !== 'io-init',
+  );
+}
+
 function createClip(overrides: Partial<Parameters<AudioEngine['loadClips']>[0][number]> = {}) {
   return {
     id: 'clip-1',
@@ -291,7 +297,7 @@ describe('AudioEngine', () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-    expect(workerInstance?.postMessage).toHaveBeenCalledTimes(1);
+    expect(getDecodePostMessageCalls(workerInstance).length).toBe(1);
   });
 
   it('schedules playback and stops nodes', async () => {
@@ -410,7 +416,7 @@ describe('AudioEngine', () => {
 
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-    expect(workerInstance?.postMessage).toHaveBeenCalledTimes(1);
+    expect(getDecodePostMessageCalls(workerInstance).length).toBe(1);
   });
 
   it('retries transient decode failures the next time the chunk is requested', async () => {
@@ -429,7 +435,7 @@ describe('AudioEngine', () => {
 
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-    expect(workerInstance?.postMessage).toHaveBeenCalledTimes(2);
+    expect(getDecodePostMessageCalls(workerInstance).length).toBe(2);
   });
 
   it('gives up after 3 transient NotReadableError retries', async () => {
@@ -451,7 +457,7 @@ describe('AudioEngine', () => {
     await engine.loadClips([clip]);
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-    expect(workerInstance?.postMessage).toHaveBeenCalledTimes(3);
+    expect(getDecodePostMessageCalls(workerInstance).length).toBe(3);
   });
 
   it('decodes every chunk needed for a multi-chunk clip', async () => {

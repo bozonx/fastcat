@@ -31,6 +31,17 @@ Standalone video editor project extracted from FastCat.
 - [Tone.js](https://tonejs.github.io/)
 - [Pinia](https://pinia.vuejs.org/)
 
+## I/O Budget Architecture
+
+FastCat coordinates file-system access across the main thread and multiple Web Workers through a shared `SharedArrayBuffer` semaphore. This prevents Chromium's renderer-process datapipe pool from exhausting when many concurrent `getFile()` / `createWritable()` calls happen simultaneously.
+
+- **Interactive pool** — governs short-lived reads and small writes (`MAX_CONCURRENT_FILE_IO = 2` in browsers, `32` in Tauri).
+- **Streaming pool** — governs long-lived writable streams during export/transcode (`MAX_CONCURRENT_FILE_IO_STREAMING = 1`).
+- **Governed Blob wrapper** — `governedBlob()` / `governedBlobWorker()` intercept `arrayBuffer()`, `text()`, and `slice()` on Blobs so every random read performed by `BlobSource` (mediabunny) is budgeted.
+- **Transient-error retry** — `runResilientWorkerFileIo` and `runResilientFileWrite` detect `InvalidStateError` / "datapipe" exhaustion and retry with exponential backoff.
+
+Workers receive the budget buffer via an `io-init` postMessage immediately after creation. Fallback `LocalBudget` is used when `SharedArrayBuffer` is unavailable.
+
 ## Setup
 
 ```bash

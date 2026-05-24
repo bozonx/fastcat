@@ -20,7 +20,9 @@ describe('governedBlob', () => {
   });
 
   it('routes arrayBuffer through the I/O governor', async () => {
-    const acquireSpy = vi.spyOn(ioGovernor, 'withFileIoSlot').mockImplementation((task: () => Promise<unknown>) => task());
+    const acquireSpy = vi
+      .spyOn(ioGovernor, 'withFileIoSlot')
+      .mockImplementation((task: () => Promise<unknown>) => task());
     const blob = new Blob(['abc']);
     const wrapped = governedBlob(blob);
     const buffer = await wrapped.arrayBuffer();
@@ -30,7 +32,9 @@ describe('governedBlob', () => {
   });
 
   it('routes text through the I/O governor', async () => {
-    const acquireSpy = vi.spyOn(ioGovernor, 'withFileIoSlot').mockImplementation((task: () => Promise<unknown>) => task());
+    const acquireSpy = vi
+      .spyOn(ioGovernor, 'withFileIoSlot')
+      .mockImplementation((task: () => Promise<unknown>) => task());
     const blob = new Blob(['hello']);
     const wrapped = governedBlob(blob);
     const text = await wrapped.text();

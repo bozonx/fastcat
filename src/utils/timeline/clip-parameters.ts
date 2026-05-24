@@ -1,10 +1,5 @@
 import type { UpdateClipPropertiesCommand } from '~/timeline/commands';
-import type {
-  ClipTransition,
-  TimelineClipItem,
-  TrackKind,
-  ClipTransform,
-} from '~/timeline/types';
+import type { ClipTransition, TimelineClipItem, TrackKind, ClipTransform } from '~/timeline/types';
 import { cloneValue } from '~/utils/clone';
 
 export type ClipParameterGroup =
