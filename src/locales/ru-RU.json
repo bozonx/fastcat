@@ -131,7 +131,8 @@
     "bloggerDog": {
       "actions": {
         "createItem": "Создать элемент контента",
-        "createSubgroup": "Создать подгруппу"
+        "createSubgroup": "Создать подгруппу",
+        "createGroup": "Создать группу"
       },
       "allContent": "Весь контент",
       "connected": "Установлено",
@@ -1837,5 +1838,8 @@
   "timeline": {
     "cutItems": "Вырезать элементы",
     "pasteItems": "Вставить элементы"
+  },
+  "custom": {
+    "delete": "Удалить"
   }
 }

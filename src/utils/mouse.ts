@@ -79,6 +79,10 @@ export const TIMELINE_DRAG_ACTIONS = [
 
 export type TimelineDragAction = (typeof TIMELINE_DRAG_ACTIONS)[number];
 
+export const RULER_DRAG_ACTIONS = ['pan', 'move_playhead', 'select_area', 'none'] as const;
+
+export type RulerDragAction = (typeof RULER_DRAG_ACTIONS)[number];
+
 export const DRAG_ACTIONS = TIMELINE_DRAG_ACTIONS;
 
 export const CLIP_DRAG_ACTIONS = TIMELINE_DRAG_ACTIONS;

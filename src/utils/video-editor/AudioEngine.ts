@@ -89,6 +89,11 @@ export class AudioEngine {
       type: 'module',
       name: 'audio-decode',
     });
+    if (typeof worker !== 'undefined') {
+      import('../io/io-budget-main').then(({ postIoInitMessage }) => {
+        postIoInitMessage(worker as unknown as Worker);
+      });
+    }
 
     worker.addEventListener('message', (event: MessageEvent<DecodeResponse>) => {
       const data = event.data;

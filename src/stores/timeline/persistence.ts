@@ -1,6 +1,8 @@
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
 import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
+import { postIoInitMessage } from '~/utils/io/io-budget-main';
+import { TIMELINE_DEFAULTS } from '~/utils/constants';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
@@ -184,6 +186,7 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
         type: 'module',
       },
     );
+    postIoInitMessage(worker);
     worker.onmessage = (e) => {
       if (e.data.success) {
         resolve(e.data.serialized);
@@ -551,7 +554,7 @@ export function createTimelinePersistenceModule(
       deps.currentTime.value = Number(session?.playheadUs ?? 0);
       deps.masterGain.value = Number(session?.masterGain ?? 1);
       if (deps.audioMuted) deps.audioMuted.value = Boolean(session?.masterMuted ?? false);
-      deps.timelineZoom.value = Number(session?.zoom ?? 50);
+      deps.timelineZoom.value = Number(session?.zoom ?? TIMELINE_DEFAULTS.ZOOM);
       deps.trackHeights.value = session?.trackHeights
         ? { ...(session.trackHeights as Record<string, number>) }
         : {};

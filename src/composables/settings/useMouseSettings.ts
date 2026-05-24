@@ -7,6 +7,7 @@ import {
   MONITOR_WHEEL_ACTIONS,
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
   RULER_WHEEL_ACTIONS,
+  RULER_DRAG_ACTIONS,
   SHIFT_CLICK_ACTIONS,
   TIMELINE_CLICK_ACTIONS,
   TIMELINE_DRAG_ACTIONS,
@@ -142,6 +143,7 @@ export function useMouseSettings() {
     formatOptions(TIMELINE_CLICK_ACTIONS, commonClickLabels.value),
   );
   const dragOptions = computed(() => formatOptions(TIMELINE_DRAG_ACTIONS, commonDragLabels.value));
+  const rulerDragOptions = computed(() => formatOptions(RULER_DRAG_ACTIONS, commonDragLabels.value));
   const mouseHorizontalMovementOptions = computed(() =>
     formatOptions(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS, commonHorizontalMovementLabels.value),
   );
@@ -202,19 +204,19 @@ export function useMouseSettings() {
             {
               key: 'drag',
               label: t('videoEditor.settings.mouseTimelineDrag'),
-              options: dragOptions.value,
+              options: rulerDragOptions.value,
             },
             {
               key: 'dragShift',
               label: t('videoEditor.settings.mouseRulerDragShift', {
                 modifier1: modifier1Name.value,
               }),
-              options: dragOptions.value,
+              options: rulerDragOptions.value,
             },
             {
               key: 'middleDrag',
               label: t('videoEditor.settings.mouseTimelineMiddleDrag'),
-              options: dragOptions.value,
+              options: rulerDragOptions.value,
             },
             {
               key: 'click',

@@ -9,6 +9,7 @@ import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { writeFileAtomic } from '~/utils/io/atomic-file-write';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { postIoInitMessage } from '~/utils/io/io-budget-main';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/waveform';
 
@@ -436,6 +437,7 @@ export const useMediaStore = defineStore('media', () => {
         name: 'audio-decode-shared',
       },
     );
+    postIoInitMessage(sharedAudioDecodeWorker);
 
     sharedAudioDecodeWorker.addEventListener('message', (event) => {
       const data = event.data;

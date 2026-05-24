@@ -131,7 +131,8 @@ export default {
     "bloggerDog": {
       "actions": {
         "createItem": "Create content item",
-        "createSubgroup": "Create subgroup"
+        "createSubgroup": "Create subgroup",
+        "createGroup": "Create group"
       },
       "allContent": "All Content",
       "connected": "Established",
@@ -1837,5 +1838,8 @@ export default {
   "timeline": {
     "cutItems": "Cut items",
     "pasteItems": "Paste items"
+  },
+  "custom": {
+    "delete": "Delete"
   }
 };

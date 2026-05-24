@@ -5,6 +5,7 @@ import type { MediaPathToTimelinesMap } from '~/utils/timeline-media-usage';
 import { computeMediaUsageByTimelineDocs } from '~/utils/timeline-media-usage';
 import { generateTimelineThumbnail } from '~/timeline/timeline-thumbnail';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
+import { TIMELINE_DEFAULTS } from '~/utils/constants';
 
 interface TimelineSelectionModule {
   clearSelection: () => void;
@@ -97,7 +98,7 @@ export function createTimelineLifecycleModule(
   );
 
   function resetTimelineZoom() {
-    deps.timelineZoom.value = 50;
+    deps.timelineZoom.value = TIMELINE_DEFAULTS.ZOOM;
   }
 
   function setCurrentTimeUs(nextTimeUs: number) {
@@ -122,7 +123,7 @@ export function createTimelineLifecycleModule(
     deps.masterGain.value = 1;
     deps.audioMuted.value = false;
     deps.audioLevels.value = {};
-    deps.timelineZoom.value = 50;
+    deps.timelineZoom.value = TIMELINE_DEFAULTS.ZOOM;
     deps.selectionRange.value = null;
     deps.selection.clearSelection();
     deps.selection.selectTrack(null);

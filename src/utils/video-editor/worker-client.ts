@@ -5,6 +5,7 @@ import type {
   WorkerRpcErrorShape,
 } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
+import { postIoInitMessage } from '~/utils/io/io-budget-main';
 
 interface WorkerTaskHostApi {
   onExportProgress?: VideoCoreHostAPI['onExportProgress'];
@@ -224,6 +225,7 @@ function createWorker(channel: WorkerChannel): Worker {
     type: 'module',
     name: `video-core-${channel}`,
   });
+  postIoInitMessage(worker);
 
   worker.addEventListener('message', async (e: MessageEvent<VideoCoreHostRpcMessage>) => {
     const data = e.data;

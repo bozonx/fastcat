@@ -10,6 +10,7 @@ import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import SttWorker from '~/workers/stt.worker.ts?worker';
 import AudioDecodeWorker from '~/workers/audio-decode.worker.ts?worker';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { postIoInitMessage } from '~/utils/io/io-budget-main';
 
 export type { LocalTranscriptionProgress };
 
@@ -21,6 +22,7 @@ let sttWorkerInitialized = false;
 function getSttWorker(): Worker {
   if (!sharedSttWorker) {
     sharedSttWorker = new SttWorker();
+    postIoInitMessage(sharedSttWorker);
   }
   return sharedSttWorker;
 }
@@ -36,6 +38,7 @@ function terminateSttWorker(): void {
 function getDecodeWorker(): Worker {
   if (!sharedDecodeWorker) {
     sharedDecodeWorker = new AudioDecodeWorker();
+    postIoInitMessage(sharedDecodeWorker);
   }
   return sharedDecodeWorker;
 }

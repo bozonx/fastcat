@@ -7,6 +7,7 @@ import {
   MONITOR_WHEEL_ACTIONS,
   MOUSE_HORIZONTAL_MOVEMENT_ACTIONS,
   RULER_WHEEL_ACTIONS,
+  RULER_DRAG_ACTIONS,
   TIMELINE_CLICK_ACTIONS,
   TIMELINE_DRAG_ACTIONS,
   TIMELINE_WHEEL_ACTIONS,
@@ -252,6 +253,7 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
   const clickEnum = z.enum(CLICK_ACTIONS);
   const timelineClickEnum = z.enum(TIMELINE_CLICK_ACTIONS);
   const dragEnum = z.enum(TIMELINE_DRAG_ACTIONS);
+  const rulerDragEnum = z.enum(RULER_DRAG_ACTIONS);
   const horizEnum = z.enum(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS);
   const tWheelEnum = z.enum(TIMELINE_WHEEL_ACTIONS);
   const thWheelEnum = z.enum(TRACK_HEADERS_WHEEL_ACTIONS);
@@ -277,9 +279,9 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
           middleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleClick),
           doubleClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.doubleClick),
           shiftClick: clickEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.shiftClick),
-          drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.drag),
-          middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleDrag),
-          dragShift: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.dragShift),
+          drag: rulerDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.drag),
+          middleDrag: rulerDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.middleDrag),
+          dragShift: rulerDragEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.dragShift),
           horizontalMovement: horizEnum.catch(DEFAULT_USER_SETTINGS.mouse.ruler.horizontalMovement),
         })
         .catch(DEFAULT_USER_SETTINGS.mouse.ruler),

@@ -8,6 +8,7 @@ import type {
   MonitorClickAction,
   MonitorDragAction,
   TrackHeadersWheelAction,
+  RulerDragAction,
 } from '../mouse';
 import type {
   UserExportPresetsSettings,
@@ -143,9 +144,9 @@ export interface FastCatUserSettings {
       middleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
       doubleClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
       shiftClick: 'seek' | 'add_marker' | 'reset_zoom' | 'fit_zoom' | 'clear_selection' | 'none';
-      drag: TimelineDragAction;
-      middleDrag: TimelineDragAction;
-      dragShift: TimelineDragAction;
+      drag: RulerDragAction;
+      middleDrag: RulerDragAction;
+      dragShift: RulerDragAction;
       horizontalMovement: 'move_playhead' | 'none';
     };
     timeline: {

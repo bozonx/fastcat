@@ -1,131 +1,97 @@
-import PQueue from 'p-queue';
-
-import { FILE_IO_LIMITS } from '~/utils/constants';
+import { getMainIoBudget, isTauriRuntime as isTauriRuntimeImpl } from './io-budget-main';
+import { isTransientIoError, isTransientWriteError } from './transient-errors';
 
 /**
- * Process-wide governor for file-system writes.
+ * Process-wide governor for file-system reads and writes on the main thread.
  *
- * The app has dozens of independent writers — project settings/ui/meta autosave,
- * timeline autosave + backups, audio peaks, metadata caches, thumbnails,
- * proxies — that each called `createWritable()` with no shared budget. Every
- * open `FileSystemWritableFileStream` consumes a Chromium "datapipe" handle, and
- * the preview/export workers read video through the *same* renderer-process
- * pool. A burst of edits (e.g. dragging a shadow slider while autosave runs)
- * could therefore exhaust the pool, surfacing as
- * `InvalidStateError: Failed to create datapipe` on the write side and
- * `TypeError: network error` on the worker read side, freezing the editor.
+ * The app has dozens of independent I/O sites — project/timeline autosaves,
+ * audio peaks, metadata caches, thumbnails, proxies, plus the preview/export
+ * workers — that all share Chromium's renderer-process datapipe pool. A burst
+ * of `getFile()` + `createWritable()` calls used to exhaust the pool and
+ * surface as `InvalidStateError: Failed to create datapipe`, freezing the
+ * editor.
  *
- * Routing every write through one bounded queue caps how many writables can be
- * open at once and turns bursts into backpressure (callers queue) instead of
- * hard failures. This is the single chokepoint; new writers should wrap their
- * `createWritable()` block in {@link withFileWriteSlot} rather than adding their
- * own ad-hoc serialization.
+ * This module is the main-thread facade over the shared
+ * {@link `~/utils/io/io-budget`} semaphore. The semaphore is backed by a
+ * `SharedArrayBuffer` and coordinates concurrency across every worker as well,
+ * so the previous mismatch (main + each worker holding independent quotas) is
+ * gone — there's now a single renderer-wide budget split into an *interactive*
+ * pool (fast `getFile()` / small writes) and a *streaming* pool (long-lived
+ * writables, large copies).
  *
- * The cap is runtime-dependent: the datapipe pool is a browser (Chromium FSA /
- * OPFS) constraint. In Tauri, writes go to the native filesystem and do not
- * share that pool, so a much higher cap is used to avoid throttling desktop I/O.
+ * New callers should wrap their `createWritable()` block in
+ * {@link withFileIoSlot} (small writes) or acquire a streaming slot manually
+ * via {@link acquireStreamingFileIoSlot} (long-lived writables) instead of
+ * adding ad-hoc serialization.
  */
-export function isTauriRuntime(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-}
 
-function resolveInteractiveConcurrency(): number {
-  const limit = isTauriRuntime()
-    ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE
-    : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO;
-  return Math.max(1, Math.round(limit));
-}
+export { isTransientIoError, isTransientWriteError };
 
-function resolveStreamingConcurrency(): number {
-  const limit = isTauriRuntime()
-    ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE
-    : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_STREAMING;
-  return Math.max(1, Math.round(limit));
+/** Re-export the runtime detector so existing call sites keep working. */
+export const isTauriRuntime = isTauriRuntimeImpl;
+
+/**
+ * Run a short interactive I/O task under the shared budget. Use for
+ * `getFile()` calls and small `createWritable()`+write+close sequences.
+ */
+export async function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
+  const release = await getMainIoBudget().acquire('interactive');
+  try {
+    return await task();
+  } finally {
+    release();
+  }
 }
 
 /**
- * Queue for fast/interactive file operations (e.g. metadata queries, configuration loading,
- * small writes, getFile calls).
- */
-const interactiveQueue = new PQueue({ concurrency: resolveInteractiveConcurrency() });
-
-/**
- * Queue for long-running streaming file operations (e.g. video file imports, VFS copies).
- * Separating this ensures imports never block interactive timeline loading or UI autosave.
- */
-const streamingQueue = new PQueue({ concurrency: resolveStreamingConcurrency() });
-
-export function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
-  return interactiveQueue.add(task) as Promise<T>;
-}
-
-/**
- * Acquire a file I/O slot manually for streaming operations. Returns a release function
- * that must be called when the slot is no longer needed (after stream close/abort).
+ * Acquire a streaming slot manually for long-lived writables/copies. Caller
+ * **must** invoke the returned release function in a `finally` block (or after
+ * `close()`/`abort()`); otherwise the slot leaks and other writers stall.
  */
 export async function acquireStreamingFileIoSlot(): Promise<() => void> {
-  let start!: () => void;
-  const started = new Promise<void>((resolve) => {
-    start = resolve;
-  });
-  let release!: () => void;
-  const hold = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  void streamingQueue.add(async () => {
-    start();
-    await hold;
-  });
-  await started;
-  return release;
+  return getMainIoBudget().acquire('streaming');
 }
 
 /**
- * Acquire a file I/O slot manually. Legacy method, now forwards to acquireStreamingFileIoSlot.
- * @deprecated Prefer {@link acquireStreamingFileIoSlot} for streaming writes.
+ * Acquire a slot manually. Kept for compatibility with existing call sites
+ * (e.g. tauri-handle.ts) — forwards to {@link acquireStreamingFileIoSlot}.
+ * @deprecated Prefer {@link acquireStreamingFileIoSlot} explicitly.
  */
 export async function acquireFileIoSlot(): Promise<() => void> {
   return acquireStreamingFileIoSlot();
 }
 
 /**
- * Run a file-write task under the global write budget.
+ * Run a write task under the interactive budget.
  * @deprecated Prefer {@link withFileIoSlot} for new callers; this alias is kept
- *   for existing write-only consumers and now routes through the interactive queue.
+ *   for existing write-only consumers and is identical in behaviour.
  */
 export function withFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
-  return interactiveQueue.add(task) as Promise<T>;
-}
-
-/** Inspect the write queues (depth + currently running). Intended for diagnostics. */
-export function getFileWriteQueueStats(): { size: number; pending: number } {
-  return {
-    size: interactiveQueue.size + streamingQueue.size,
-    pending: interactiveQueue.pending + streamingQueue.pending,
-  };
+  return withFileIoSlot(task);
 }
 
 /**
- * Whether a write failure looks like transient renderer resource exhaustion
- * rather than a real I/O fault. The governor caps writes on the main thread, but
- * it cannot see the preview/export worker's video reads draining the *same*
- * datapipe pool, so a write can still occasionally fail with
- * `InvalidStateError: Failed to create datapipe`. Such failures clear on their
- * own once the pool drains, so they are worth retrying.
+ * Inspect the current budget. Intended for diagnostics only — the real depth
+ * lives in the shared atomic semaphore, so this only reports what is currently
+ * known by the local snapshot.
  */
-export function isTransientWriteError(error: unknown): boolean {
-  const candidate = error as { name?: unknown; message?: unknown } | null | undefined;
-  const name = typeof candidate?.name === 'string' ? candidate.name : '';
-  const message = typeof candidate?.message === 'string' ? candidate.message : '';
-  return name === 'InvalidStateError' || /datapipe|failed to create/i.test(message);
+export function getFileWriteQueueStats(): {
+  size: number;
+  pending: number;
+} {
+  const snapshot = getMainIoBudget().getSnapshot();
+  return {
+    size: 0,
+    pending: snapshot.interactiveAvailable + snapshot.streamingAvailable,
+  };
 }
 
 const delay = (ms: number) =>
   new Promise<void>((resolve) => {
-    if (typeof window === 'undefined') {
-      setTimeout(resolve, ms);
+    if (typeof globalThis !== 'undefined' && typeof globalThis.setTimeout === 'function') {
+      globalThis.setTimeout(resolve, ms);
     } else {
-      window.setTimeout(resolve, ms);
+      setTimeout(resolve, ms);
     }
   });
 
@@ -145,7 +111,7 @@ export async function runResilientFileWrite<T>(
   let lastError: unknown;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      return await withFileWriteSlot(task);
+      return await withFileIoSlot(task);
     } catch (error) {
       lastError = error;
       if (attempt === attempts - 1 || !isTransientWriteError(error)) {
@@ -153,6 +119,32 @@ export async function runResilientFileWrite<T>(
       }
       // Backoff between attempts; releasing the slot first lets the worker's
       // reads drain so the next attempt can grab a datapipe.
+      await delay(baseDelayMs * 2 ** attempt);
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Run a governed read with the same retry semantics as
+ * {@link runResilientFileWrite}. Symmetric with the worker-side variant.
+ */
+export async function runResilientFileIo<T>(
+  task: () => Promise<T>,
+  options?: { attempts?: number; baseDelayMs?: number },
+): Promise<T> {
+  const attempts = Math.max(1, Math.round(options?.attempts ?? 4));
+  const baseDelayMs = Math.max(1, Math.round(options?.baseDelayMs ?? 150));
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await withFileIoSlot(task);
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts - 1 || !isTransientIoError(error)) {
+        throw error;
+      }
       await delay(baseDelayMs * 2 ** attempt);
     }
   }
