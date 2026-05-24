@@ -1,8 +1,9 @@
-import { watch } from 'vue';
+import { inject, watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 
 export interface FileManagerPanelPendingActionsOptions {
   openDeleteConfirmModal: (entries: FsEntry[]) => void;
@@ -32,6 +33,9 @@ export function useFileManagerPanelPendingActions({
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
   const selectionStore = useSelectionStore();
+  const fileManagerStore =
+    (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
+    useFileManagerStore();
 
   const isFocusedOrSelected = () => {
     if (focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`)) return true;
@@ -40,6 +44,16 @@ export function useFileManagerPanelPendingActions({
     const selectedInstanceId = (selected as { instanceId?: string }).instanceId;
     if (selectedInstanceId) return selectedInstanceId === instanceId;
     return true;
+  };
+
+  // The tree (FileManagerPanel) and the file list (FileBrowser) share the same
+  // panel focus id, so both watch pending fs-entry actions. An entry that lives
+  // inside the currently-open folder is shown in the file list and must be
+  // handled there — otherwise the tree (which mounts first) would steal the
+  // action (e.g. F2 rename) and the list would never react.
+  const belongsToFileList = (entry: FsEntry) => {
+    const parentPath = entry.path ? entry.path.split('/').slice(0, -1).join('/') : '';
+    return parentPath === (fileManagerStore.selectedFolder?.path ?? '');
   };
 
   const isSidebarPasteTarget = () => {
@@ -72,6 +86,8 @@ export function useFileManagerPanelPendingActions({
       const entry = value;
       if (!entry) return;
       if (!isFocusedOrSelected()) return;
+      // Defer to the file list for entries it owns (see belongsToFileList).
+      if (belongsToFileList(entry)) return;
       startRename(entry);
       uiStore.pendingFsEntryRename = null;
     },

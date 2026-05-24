@@ -329,7 +329,7 @@ export function useTimelineHotkeys(
         keyCode: e.code,
         action: () => {
           if (adjustAudioMixerGain(AUDIO_MIXER_GAIN_STEP)) return;
-          timelineStore.adjustSelectedClipsVolume(1);
+          timelineStore.adjustSelectedClipsVolume(0.01);
         },
       });
       return true;
@@ -341,7 +341,7 @@ export function useTimelineHotkeys(
         keyCode: e.code,
         action: () => {
           if (adjustAudioMixerGain(-AUDIO_MIXER_GAIN_STEP)) return;
-          timelineStore.adjustSelectedClipsVolume(-1);
+          timelineStore.adjustSelectedClipsVolume(-0.01);
         },
       });
       return true;
@@ -353,7 +353,7 @@ export function useTimelineHotkeys(
         keyCode: e.code,
         action: () => {
           if (adjustAudioMixerGain(AUDIO_MIXER_GAIN_STEP * 5)) return;
-          timelineStore.adjustSelectedClipsVolume(5);
+          timelineStore.adjustSelectedClipsVolume(0.05);
         },
       });
       return true;
@@ -365,7 +365,7 @@ export function useTimelineHotkeys(
         keyCode: e.code,
         action: () => {
           if (adjustAudioMixerGain(-AUDIO_MIXER_GAIN_STEP * 5)) return;
-          timelineStore.adjustSelectedClipsVolume(-5);
+          timelineStore.adjustSelectedClipsVolume(-0.05);
         },
       });
       return true;

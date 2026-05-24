@@ -290,6 +290,7 @@ export class VideoCompositor {
       findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
       findNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
       createAbortController: (key) => this.resourceManager.createAbortController(key),
+      removeAbortController: (key) => this.resourceManager.removeAbortController(key),
       getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
       updateClipTextureFromSample: (sample, clip) => this.updateClipTextureFromSample(sample, clip),
     });
@@ -1009,6 +1010,7 @@ export class VideoCompositor {
               this.layoutApplier.applyTextLayout(clip);
             },
             createAbortController: (key) => this.resourceManager.createAbortController(key),
+            removeAbortController: (key) => this.resourceManager.removeAbortController(key),
             getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
             getPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
             updateClipTextureFromSample: (sample, clip) =>
@@ -1050,6 +1052,7 @@ export class VideoCompositor {
             findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
             findNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
             createAbortController: (key) => this.resourceManager.createAbortController(key),
+            removeAbortController: (key) => this.resourceManager.removeAbortController(key),
             getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
             updateClipTextureFromSample: (sample, clip) =>
               this.updateClipTextureFromSample(sample, clip),

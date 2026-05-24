@@ -668,13 +668,23 @@ watch(
     }
   },
 );
+
+watch(
+  () => focusStore.effectiveFocus,
+  (val) => {
+    if (val === 'timeline') {
+      containerRef.value?.focus();
+    }
+  },
+);
 </script>
 
 <template>
   <UContextMenu :items="timelineEmptyAreaContextMenuItems" :disabled="isMobile">
     <div
       ref="containerRef"
-      class="flex flex-col min-h-full relative"
+      tabindex="-1"
+      class="flex flex-col min-h-full relative outline-none"
       :style="timelineContentStyle"
       @pointerdown="
         focusStore.setPanelFocus('timeline');

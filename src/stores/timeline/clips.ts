@@ -197,7 +197,7 @@ export interface TimelineClipsModule {
   toggleDisableTargetClip: () => Promise<void>;
   toggleMuteTargetClip: () => Promise<void>;
   moveSelectedClips: (deltaFrames: number) => void;
-  adjustSelectedClipsVolume: (deltaDb: number) => void;
+  adjustSelectedClipsVolume: (deltaLinear: number) => void;
   copySelectedClips: () => TimelineClipClipboardItem[];
   cutSelectedClips: () => TimelineClipClipboardItem[];
   pasteClips: (
@@ -979,7 +979,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     });
   }
 
-  function adjustSelectedClipsVolume(deltaDb: number) {
+  function adjustSelectedClipsVolume(deltaLinear: number) {
     const doc = deps.timelineDoc.value;
     if (!doc || deps.selectedItemIds.value.length === 0) return;
 
@@ -988,9 +988,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       for (const item of track.items) {
         if (selectedSet.has(item.id) && item.kind === 'clip') {
           const currentGain = item.audioGain ?? 1;
-          const currentDb = 20 * Math.log10(currentGain || 0.0001);
-          const nextDb = currentDb + deltaDb;
-          const nextGain = Math.pow(10, nextDb / 20);
+          const nextGain = currentGain + deltaLinear;
 
           updateClipProperties(track.id, item.id, {
             audioGain: Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, nextGain)),

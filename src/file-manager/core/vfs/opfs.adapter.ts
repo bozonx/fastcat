@@ -263,7 +263,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
                 await writable.close();
               } catch (writeErr) {
                 try {
-                  await writable.close();
+                  if (typeof (writable as any).abort === 'function') {
+                    await (writable as any).abort();
+                  } else {
+                    await writable.close();
+                  }
                 } catch {
                   /* ignore */
                 }
@@ -289,7 +293,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
               await writable.close();
             } catch (e) {
               try {
-                await writable.close();
+                if (typeof (writable as any).abort === 'function') {
+                  await (writable as any).abort();
+                } else {
+                  await writable.close();
+                }
               } catch {
                 /* ignore */
               }
@@ -315,7 +323,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
                   await writable.close();
                 } catch (writeErr) {
                   try {
-                    await writable.close();
+                    if (typeof (writable as any).abort === 'function') {
+                      await (writable as any).abort();
+                    } else {
+                      await writable.close();
+                    }
                   } catch {
                     /* ignore */
                   }

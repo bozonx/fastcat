@@ -23,8 +23,8 @@ describe('io-governor withFileWriteSlot', () => {
     await expect(withFileWriteSlot(async () => 42)).resolves.toBe(42);
   });
 
-  it('never runs more than MAX_CONCURRENT_FILE_WRITES tasks at once', async () => {
-    const cap = FILE_IO_LIMITS.MAX_CONCURRENT_FILE_WRITES;
+  it('never runs more than MAX_CONCURRENT_FILE_IO tasks at once', async () => {
+    const cap = FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO;
     let inFlight = 0;
     let peak = 0;
 

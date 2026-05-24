@@ -2,14 +2,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { copyFileToDirectory } from '~/file-manager/fs/ops';
 
+const withFileIoSlotMock = vi.fn(async (task: () => Promise<unknown>) => task());
 const withFileWriteSlotMock = vi.fn(async (task: () => Promise<unknown>) => task());
 
 vi.mock('~/utils/io/io-governor', () => ({
+  withFileIoSlot: (task: () => Promise<unknown>) => withFileIoSlotMock(task),
   withFileWriteSlot: (task: () => Promise<unknown>) => withFileWriteSlotMock(task),
 }));
 
 describe('copyFileToDirectory', () => {
   beforeEach(() => {
+    withFileIoSlotMock.mockClear();
     withFileWriteSlotMock.mockClear();
   });
   it('copies file through the write governor slot', async () => {

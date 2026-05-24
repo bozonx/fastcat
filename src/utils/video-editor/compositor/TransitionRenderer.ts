@@ -28,6 +28,7 @@ export interface TransitionRendererParams {
   findPrevClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
   findNextClipOnLayer: (clip: CompositorClip) => CompositorClip | null;
   createAbortController: (key: string) => AbortController;
+  removeAbortController?: (key: string) => void;
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
@@ -121,6 +122,7 @@ export class TransitionRenderer {
             isNextClip: state.edge === 'out',
             stageTextureRenderer: params.stageTextureRenderer,
             createAbortController: params.createAbortController,
+            removeAbortController: params.removeAbortController,
             getVideoSampleForClip: params.getVideoSampleForClip,
             updateClipTextureFromSample: params.updateClipTextureFromSample,
           });
@@ -232,6 +234,7 @@ export class TransitionRenderer {
       isNextClip?: boolean;
       stageTextureRenderer: StageTextureRenderer;
       createAbortController: (key: string) => AbortController;
+      removeAbortController?: (key: string) => void;
       getVideoSampleForClip: (params: {
         clip: CompositorClip;
         sampleTimeS: number;
@@ -302,12 +305,18 @@ export class TransitionRenderer {
       }
     }
 
-    const abortController = params.createAbortController(clip.itemId + '_transition_texture');
-    const sample = await params.getVideoSampleForClip({
-      clip,
-      sampleTimeS: sampleUs / 1_000_000,
-      abortSignal: abortController.signal,
-    });
+    const key = clip.itemId + '_transition_texture';
+    const abortController = params.createAbortController(key);
+    let sample: unknown | null = null;
+    try {
+      sample = await params.getVideoSampleForClip({
+        clip,
+        sampleTimeS: sampleUs / 1_000_000,
+        abortSignal: abortController.signal,
+      });
+    } finally {
+      params.removeAbortController?.(key);
+    }
 
     if (!sample) {
       if (clip.lastVideoFrame) {

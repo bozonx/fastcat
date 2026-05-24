@@ -1,11 +1,6 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import {
-  useFocusStore,
-  isFileManagerPanelFocus,
-  isFileManagerMainFocus,
-  isFileManagerSidebarFocus,
-} from '~/stores/focus.store';
+import { useFocusStore, isFileManagerPanelFocus } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -420,7 +415,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateBack': () => {
-      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
+      if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
         uiStore.fileBrowserNavigateBackTrigger++;
         return true;
       }
@@ -428,7 +423,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateUp': () => {
-      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
+      if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
         uiStore.fileBrowserNavigateUpTrigger++;
         return true;
       }
@@ -452,7 +447,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateSelectionLeft': (e) => {
-      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
+      if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
         startNavigationHotkeyHold({ dir: 'left', keyCode: e.code });
         return true;
       }
@@ -460,7 +455,7 @@ export function useGeneralHotkeys(
     },
 
     'general.navigateSelectionRight': (e) => {
-      if (isFileManagerMainFocus(focusStore.effectiveFocus)) {
+      if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
         startNavigationHotkeyHold({ dir: 'right', keyCode: e.code });
         return true;
       }
@@ -523,14 +518,10 @@ export function useGeneralHotkeys(
         return true;
       }
       if (
-        isFileManagerMainFocus(focusStore.effectiveFocus) ||
+        isFileManagerPanelFocus(focusStore.effectiveFocus) ||
         focusStore.effectiveFocus === 'filesBrowser'
       ) {
         uiStore.fileBrowserSelectAllTrigger++;
-        return true;
-      }
-      if (isFileManagerSidebarFocus(focusStore.effectiveFocus)) {
-        uiStore.fileTreeSelectAllTrigger++;
         return true;
       }
       return false;

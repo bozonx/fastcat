@@ -20,6 +20,7 @@ export interface FrameSampleOrchestratorParams {
   drawShapeClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   drawTextClip: (clip: CompositorClip, size: { width: number; height: number }) => void;
   createAbortController: (key: string) => AbortController;
+  removeAbortController?: (key: string) => void;
   getVideoSampleForClip: (params: {
     clip: CompositorClip;
     sampleTimeS: number;
@@ -49,7 +50,8 @@ export class FrameSampleOrchestrator {
       drawShapeClip: params.drawShapeClip,
       drawTextClip: params.drawTextClip,
       createPrimaryVideoSampleRequest: (clip, sampleTimeS) => {
-        const abortController = params.createAbortController(clip.itemId + '_primary');
+        const key = clip.itemId + '_primary';
+        const abortController = params.createAbortController(key);
 
         return params
           .getVideoSampleForClip({
@@ -57,8 +59,12 @@ export class FrameSampleOrchestrator {
             sampleTimeS,
             abortSignal: abortController.signal,
           })
-          .then((sample) => ({ clip, sample }))
+          .then((sample) => {
+            params.removeAbortController?.(key);
+            return { clip, sample };
+          })
           .catch((error) => {
+            params.removeAbortController?.(key);
             console.error('[VideoCompositor] Failed to render sample', error);
             return { clip, sample: null };
           });
@@ -174,6 +180,7 @@ export class FrameSampleOrchestrator {
             key: prevClip.itemId + '_shadow_end',
             sampleTimeS: Math.max(0, lastUs / 1_000_000),
             createAbortController: params.createAbortController,
+            removeAbortController: params.removeAbortController,
             getVideoSampleForClip: params.getVideoSampleForClip,
           }),
         );
@@ -195,6 +202,7 @@ export class FrameSampleOrchestrator {
           key: prevClip.itemId + '_shadow_overrun',
           sampleTimeS: Math.max(0, sampleUs / 1_000_000),
           createAbortController: params.createAbortController,
+          removeAbortController: params.removeAbortController,
           getVideoSampleForClip: params.getVideoSampleForClip,
         }),
       );
@@ -208,6 +216,7 @@ export class FrameSampleOrchestrator {
     key: string;
     sampleTimeS: number;
     createAbortController: (key: string) => AbortController;
+    removeAbortController?: (key: string) => void;
     getVideoSampleForClip: (params: {
       clip: CompositorClip;
       sampleTimeS: number;
@@ -222,8 +231,12 @@ export class FrameSampleOrchestrator {
         sampleTimeS: params.sampleTimeS,
         abortSignal: abortController.signal,
       })
-      .then((sample) => ({ clip: params.clip, sample }))
+      .then((sample) => {
+        params.removeAbortController?.(params.key);
+        return { clip: params.clip, sample };
+      })
       .catch((error) => {
+        params.removeAbortController?.(params.key);
         console.warn('[VideoCompositor] Failed to get shadow sample:', error);
         return { clip: params.clip, sample: null };
       });
