@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, inject, watch, onMounted, onUnmounted } from 'vue';
+import { ref, inject, onMounted, onUnmounted } from 'vue';
 import type { ComputedRef } from 'vue';
 import {
   useDraggedFile,
@@ -13,7 +13,6 @@ import type { FsEntry } from '~/types/fs';
 import type { getBdPayload } from '~/types/bloggerdog';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useFocusStore } from '~/stores/focus.store';
 import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
@@ -155,84 +154,10 @@ const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
-const focusStore = useFocusStore();
 const appClipboard = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
 const dragOperation = ref<'copy' | 'move' | 'cancel' | null>(null);
-
-watch(
-  () => uiStore.fileTreeSelectAllTrigger,
-  () => {
-    if (props.depth !== 0) return;
-    // Only the focused instance's tree should react to the global trigger.
-    if (!focusStore.isPanelFocused(`dynamic:file-manager:${props.instanceId}`)) return;
-    const selected = selectionStore.selectedEntity;
-
-    let anchorEntry: FsEntry | null = null;
-
-    if (selected && selected.source === 'fileManager') {
-      anchorEntry =
-        selected.kind === 'multiple'
-          ? (selected.entries[selected.entries.length - 1] as FsEntry)
-          : (selected.entry as FsEntry);
-    }
-
-    // If nothing is selected through selectionStore (e.g., just clicked a folder
-    // and it became active in uiStore), use uiStore.selectedFsEntry
-    if (!anchorEntry && uiStore.selectedFsEntry) {
-      anchorEntry = uiStore.selectedFsEntry as FsEntry;
-    }
-
-    if (!anchorEntry) return;
-
-    const siblingEntries = getSiblingEntries(anchorEntry);
-
-    let selectedPaths: string[] = [];
-    if (selected && selected.source === 'fileManager') {
-      selectedPaths =
-        selected.kind === 'multiple'
-          ? selected.entries.map((entry) => entry.path)
-          : [selected.entry.path];
-    } else if (uiStore.selectedFsEntry?.path) {
-      selectedPaths = [uiStore.selectedFsEntry.path];
-    }
-
-    const visiblePaths = siblingEntries.map((entry) => entry.path);
-    const isAllSelected =
-      siblingEntries.length > 0 &&
-      selectedPaths.length === visiblePaths.length &&
-      visiblePaths.every((path) => selectedPaths.includes(path));
-
-    if (isAllSelected) {
-      selectionStore.clearSelection();
-      return;
-    }
-    selectionStore.selectFsEntries(siblingEntries, props.instanceId, props.isExternal);
-  },
-);
-
-function getVisibleEntries(entriesList: FsEntry[]): FsEntry[] {
-  const list: FsEntry[] = [];
-  for (const e of entriesList) {
-    list.push(e);
-    if (e.kind === 'directory' && e.expanded && e.children) {
-      list.push(...getVisibleEntries(e.children));
-    }
-  }
-  return list;
-}
-
-function getSiblingEntries(entry: FsEntry): FsEntry[] {
-  const parentPath = entry.parentPath ?? entry.path?.split('/').slice(0, -1).join('/') ?? '';
-  const visibleEntries = getVisibleEntries(props.entries);
-
-  return visibleEntries.filter((candidate) => {
-    const candidateParentPath =
-      candidate.parentPath ?? candidate.path?.split('/').slice(0, -1).join('/') ?? '';
-    return candidateParentPath === parentPath;
-  });
-}
 
 function isDotEntry(entry: FsEntry): boolean {
   return entry.name.startsWith('.');
@@ -246,9 +171,7 @@ function isSelected(entry: FsEntry): boolean {
   } else {
     const selected = selectionStore.selectedEntity;
     if (!selected || selected.source !== 'fileManager') return false;
-    if (selected.kind === 'multiple') {
-      return selected.entries.some((e) => e.path === entry.path);
-    }
+    if (selected.kind === 'multiple') return false;
     return selected.path === entry.path;
   }
 }
@@ -364,19 +287,7 @@ function onCaretClick(e: MouseEvent, entry: FsEntry) {
 function onDragStart(e: DragEvent, entry: FsEntry) {
   if (!entry.path) return;
 
-  const selected = selectionStore.selectedEntity;
-
-  let entriesToMove: FsEntry[] = [entry];
-
-  // If dragging an already selected item, move the whole selection
-  if (selected?.source === 'fileManager') {
-    if (selected.kind === 'multiple') {
-      const isSelected = selected.entries.some((s) => s.path === entry.path);
-      if (isSelected) {
-        entriesToMove = selected.entries;
-      }
-    }
-  }
+  const entriesToMove: FsEntry[] = [entry];
 
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'copyMove';
@@ -737,14 +648,7 @@ const { getContextMenuItems } = useFileContextMenu(
     isTranscribableMediaFile: () => true,
     isVideo: () => false,
     getEntryMeta: () => ({ hasProxy: false, generatingProxy: false }),
-    getSelectedEntries: () => {
-      const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager') {
-        if (selected.kind === 'multiple') return selected.entries;
-        if ('entry' in selected) return [selected.entry];
-      }
-      return [];
-    },
+    getSelectedEntries: () => [],
     isFilesPage: props.isFilesPage,
     instanceId: props.instanceId,
     isExternal: props.isExternal,

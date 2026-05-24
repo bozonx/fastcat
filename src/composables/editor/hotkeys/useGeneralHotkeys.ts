@@ -529,14 +529,7 @@ export function useGeneralHotkeys(
         isFileManagerPanelFocus(focusStore.effectiveFocus) ||
         focusStore.effectiveFocus === 'filesBrowser'
       ) {
-        // The folder tree and the file list share a panel id, so route by the
-        // last-focused surface: the tree selects the current folder's siblings,
-        // the file list selects the open folder's contents.
-        if (focusStore.fileManagerSurface === 'tree') {
-          uiStore.fileTreeSelectAllTrigger++;
-        } else {
-          uiStore.fileBrowserSelectAllTrigger++;
-        }
+        uiStore.fileBrowserSelectAllTrigger++;
         return true;
       }
       return false;

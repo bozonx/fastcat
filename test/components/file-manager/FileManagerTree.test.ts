@@ -42,7 +42,6 @@ const selectionStoreMock = {
 };
 
 const uiStoreMock = reactive({
-  fileTreeSelectAllTrigger: 0,
   isFileManagerDragging: false,
 });
 
@@ -164,7 +163,6 @@ describe('FileManagerTree', () => {
     mockState.setDragSourceFileManagerInstanceId.mockClear();
     mockState.setDragTargetFileManagerInstanceId.mockClear();
     mockState.setDragSourceVfs.mockClear();
-    uiStoreMock.fileTreeSelectAllTrigger = 0;
     uiStoreMock.isFileManagerDragging = false;
   });
 

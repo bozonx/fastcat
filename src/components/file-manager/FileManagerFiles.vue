@@ -459,23 +459,14 @@ function getVisibleEntries(entries: FsEntry[]): FsEntry[] {
   return list;
 }
 
-const { handleEntryClick: handleSelectionClick, selectSingle } = useFileManagerSelection({
+const { selectSingle } = useFileManagerSelection({
   getVisibleEntries: () => getVisibleEntries(props.rootEntries),
   onSingleSelect: (entry) => emit('select', entry),
   instanceId: props.instanceId,
   isExternal: props.isExternal,
 });
 
-async function onEntrySelect(entry: FsEntry, event?: MouseEvent) {
-  if (event && !props.isFilesPage) {
-    handleSelectionClick(event, entry);
-    focusStore.setTempFocus('files-sidebar');
-    if (!props.isExternal && entry.kind === 'file' && entry.path?.toLowerCase().endsWith('.otio')) {
-      await loadTimeline(entry.path);
-    }
-    return;
-  }
-
+async function onEntrySelect(entry: FsEntry) {
   selectSingle(entry);
 
   focusStore.setTempFocus('files-sidebar');

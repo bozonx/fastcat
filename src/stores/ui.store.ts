@@ -145,7 +145,6 @@ export const useUiStore = defineStore('ui', () => {
   }>({ action: '', speed: 0, direction: '', timestamp: 0 });
   const previewFullscreenToggleTrigger = ref(0);
   const fileBrowserSelectAllTrigger = ref(0);
-  const fileTreeSelectAllTrigger = ref(0);
   const fileBrowserNavigateBackTrigger = ref(0);
   const fileBrowserNavigateForwardTrigger = ref(0);
   const fileBrowserNavigateUpTrigger = ref(0);
@@ -271,7 +270,6 @@ export const useUiStore = defineStore('ui', () => {
     previewPlaybackTrigger,
     previewFullscreenToggleTrigger,
     fileBrowserSelectAllTrigger,
-    fileTreeSelectAllTrigger,
     fileBrowserNavigateBackTrigger,
     fileBrowserNavigateForwardTrigger,
     fileBrowserNavigateUpTrigger,

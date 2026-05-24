@@ -211,10 +211,9 @@ describe('AudioDecodeEngine', () => {
       1,
     );
 
-    const promises = [
-      engine.decodeToFloat32Channels(new Blob([]), 'a'),
-      engine.decodeToFloat32Channels(new Blob([]), 'b'),
-    ];
+    const reqA: DecodeRequest = { type: 'decode', id: 1, sourceKey: 'a', arrayBuffer: new ArrayBuffer(0) };
+    const reqB: DecodeRequest = { type: 'decode', id: 2, sourceKey: 'b', arrayBuffer: new ArrayBuffer(0) };
+    const promises = [engine.handleRequest(reqA), engine.handleRequest(reqB)];
     await Promise.all(promises);
     expect(maxActive).toBe(1);
   });

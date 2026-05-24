@@ -92,7 +92,7 @@ vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelect
 
 const mockUiStore = reactive({
   selectedFsEntry: null as any,
-  fileTreeSelectAllTrigger: 0,
+  fileBrowserSelectAllTrigger: 0,
   scrollToFileTreeEntryTrigger: 0,
   scrollToFileTreeEntryPath: null,
   notifyFileManagerUpdate: vi.fn(),
@@ -136,8 +136,10 @@ async function createWrapper(params: {
   getProjectRootDirHandle?: () => Promise<FileSystemDirectoryHandle | null>;
 }) {
   mockUiStore.selectedFsEntry = null;
-  mockUiStore.fileTreeSelectAllTrigger = 0;
+  mockUiStore.fileBrowserSelectAllTrigger = 0;
   mockSelectionStore.selectedEntity = null;
+  mockSelectionStore.selectFsEntry.mockClear();
+  mockSelectionStore.selectFsEntries.mockClear();
 
   const fmProps = createFmProps(params);
 
@@ -153,7 +155,17 @@ async function createWrapper(params: {
       stubs: {
         UContextMenu: { template: '<div><slot /></div>' },
         UIcon: true,
-        FileManagerTree: { template: '<div data-test="tree" />' },
+        FileManagerTree: defineComponent({
+          props: {
+            entries: {
+              type: Array,
+              required: true,
+            },
+          },
+          emits: ['select'],
+          template:
+            '<button data-test="tree-entry" @click="$emit(\'select\', entries[0], $event)">entry</button>',
+        }),
       },
     },
   });
@@ -184,7 +196,7 @@ describe('FileManagerFiles', () => {
     expect((selectionStore.selectedEntity as any)?.path).toBe('');
   });
 
-  it('triggers tree select all on ctrl+a', async () => {
+  it('triggers file browser select all on ctrl+a from the tree', async () => {
     const wrapper = await createWrapper({
       projectName: 'MyProject',
       rootEntries: [{ name: 'a' }] as any,
@@ -194,7 +206,7 @@ describe('FileManagerFiles', () => {
 
     const uiStore = useUiStore();
     const focusStore = useFocusStore();
-    const initialTrigger = uiStore.fileTreeSelectAllTrigger;
+    const initialTrigger = uiStore.fileBrowserSelectAllTrigger;
 
     focusStore.setPanelFocus('files-sidebar');
     await nextTick();
@@ -209,7 +221,24 @@ describe('FileManagerFiles', () => {
     );
     await nextTick();
 
-    expect(uiStore.fileTreeSelectAllTrigger).toBe(initialTrigger + 1);
+    expect(uiStore.fileBrowserSelectAllTrigger).toBe(initialTrigger + 1);
+  });
+
+  it('keeps tree clicks as single selection when modifiers are pressed', async () => {
+    const wrapper = await createWrapper({
+      projectName: 'MyProject',
+      rootEntries: [{ name: 'folder', kind: 'directory', path: 'folder' }] as any,
+    });
+
+    const treeItem = wrapper.get('[data-test="tree-entry"]');
+    await treeItem.trigger('click', { ctrlKey: true });
+
+    expect(mockSelectionStore.selectFsEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'folder' }),
+      undefined,
+      false,
+    );
+    expect(mockSelectionStore.selectFsEntries).not.toHaveBeenCalled();
   });
 
   it('falls back to resolveEntryByPath for move requests when source is absent in loaded tree', async () => {
