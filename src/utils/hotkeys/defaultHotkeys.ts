@@ -69,6 +69,16 @@ export type HotkeyCommandId =
   | 'timeline.moveSelectedClipsRightLarge'
   | 'timeline.increaseSelectedClipsVolume'
   | 'timeline.decreaseSelectedClipsVolume'
+  | 'timeline.increaseSelectedClipsVolumeLarge'
+  | 'timeline.decreaseSelectedClipsVolumeLarge'
+  | 'timeline.copyClipParameters'
+  | 'timeline.pasteClipParameters'
+  | 'timeline.toggleWaveformMode'
+  | 'timeline.toggleShowWaveform'
+  | 'timeline.toggleShowThumbnails'
+  | 'timeline.toggleFreezeFrame'
+  | 'timeline.toggleLockClip'
+  | 'timeline.toggleLockTrack'
   | 'timeline.setSelectionIn'
   | 'timeline.setSelectionOut'
   | 'playback.toggle'
@@ -282,6 +292,56 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       groupId: 'timeline',
       title: 'Decrease selected clips volume',
     },
+    {
+      id: 'timeline.increaseSelectedClipsVolumeLarge',
+      groupId: 'timeline',
+      title: 'Increase selected clips volume (large step)',
+    },
+    {
+      id: 'timeline.decreaseSelectedClipsVolumeLarge',
+      groupId: 'timeline',
+      title: 'Decrease selected clips volume (large step)',
+    },
+    {
+      id: 'timeline.copyClipParameters',
+      groupId: 'timeline',
+      title: 'Copy clip parameters',
+    },
+    {
+      id: 'timeline.pasteClipParameters',
+      groupId: 'timeline',
+      title: 'Paste clip parameters',
+    },
+    {
+      id: 'timeline.toggleWaveformMode',
+      groupId: 'timeline',
+      title: 'Toggle clip waveform mode',
+    },
+    {
+      id: 'timeline.toggleShowWaveform',
+      groupId: 'timeline',
+      title: 'Toggle show clip waveform',
+    },
+    {
+      id: 'timeline.toggleShowThumbnails',
+      groupId: 'timeline',
+      title: 'Toggle show clip thumbnails',
+    },
+    {
+      id: 'timeline.toggleFreezeFrame',
+      groupId: 'timeline',
+      title: 'Toggle clip freeze frame',
+    },
+    {
+      id: 'timeline.toggleLockClip',
+      groupId: 'timeline',
+      title: 'Toggle lock clip',
+    },
+    {
+      id: 'timeline.toggleLockTrack',
+      groupId: 'timeline',
+      title: 'Toggle lock track',
+    },
     { id: 'timeline.setSelectionIn', groupId: 'timeline', title: 'Set selection In' },
     { id: 'timeline.setSelectionOut', groupId: 'timeline', title: 'Set selection Out' },
 
@@ -367,16 +427,16 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
 
     'timeline.toggleSnap': ['T'],
     'timeline.toggleSnapFree': ['Shift+T'],
-    'timeline.selectClipsLeftOfPlayhead': [],
-    'timeline.selectClipsRightOfPlayhead': [`${Mod}+D`],
+    'timeline.selectClipsLeftOfPlayhead': ['Shift+D'],
+    'timeline.selectClipsRightOfPlayhead': ['Shift+F'],
     'timeline.trimToPlayheadLeft': ['C'],
     'timeline.trimToPlayheadRight': ['V'],
     'timeline.rippleTrimLeft': ['E'],
     'timeline.rippleTrimRight': ['R'],
     'timeline.advancedRippleTrimLeft': ['D'],
     'timeline.advancedRippleTrimRight': ['F'],
-    'timeline.rippleDeleteSelectedClipRange': ['Shift+Z'],
-    'timeline.rippleDelete': ['Z', 'Backspace'],
+    'timeline.rippleDeleteSelectedClipRange': ['Z'],
+    'timeline.rippleDelete': ['Shift+Z', 'Backspace'],
     'timeline.jumpPrevBoundary': ['A'],
     'timeline.jumpNextBoundary': ['S'],
     'timeline.jumpPrevBoundaryTrack': ['Shift+A'],
@@ -394,6 +454,16 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.moveSelectedClipsRightLarge': ['Shift+ArrowRight'],
     'timeline.increaseSelectedClipsVolume': ['ArrowUp'],
     'timeline.decreaseSelectedClipsVolume': ['ArrowDown'],
+    'timeline.increaseSelectedClipsVolumeLarge': ['Shift+ArrowUp'],
+    'timeline.decreaseSelectedClipsVolumeLarge': ['Shift+ArrowDown'],
+    'timeline.copyClipParameters': ['Shift+C'],
+    'timeline.pasteClipParameters': ['Shift+V'],
+    'timeline.toggleWaveformMode': ['Shift+X'],
+    'timeline.toggleShowWaveform': ['Shift+E'],
+    'timeline.toggleShowThumbnails': ['Shift+R'],
+    'timeline.toggleFreezeFrame': ['Shift+B'],
+    'timeline.toggleLockClip': ['Y'],
+    'timeline.toggleLockTrack': ['Shift+Y'],
     'timeline.setSelectionIn': ['I'],
     'timeline.setSelectionOut': ['O'],
 

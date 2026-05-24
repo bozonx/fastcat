@@ -28,7 +28,7 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('has binding for timeline.rippleDeleteSelectedClipRange', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toContain('Shift+Z');
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleDeleteSelectedClipRange']).toContain('Z');
   });
 
   it('has binding for general.delete including X', () => {
@@ -47,25 +47,13 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.addMarker']).toContain('M');
   });
 
-  it('has bindings for general.volumeUp including = and Control+R', () => {
+  it('has bindings for general.volumeUp including Control+R', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('=');
     expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Control+R');
   });
 
-  it('has bindings for general.volumeDown including - and Control+E', () => {
+  it('has bindings for general.volumeDown including Control+E', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('-');
     expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Control+E');
-  });
-
-  it('has binding for general.monitorVolumeUp as ArrowUp only', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeUp']).toEqual(['ArrowUp']);
-  });
-
-  it('has binding for general.monitorVolumeDown as ArrowDown only', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.monitorVolumeDown']).toEqual(['ArrowDown']);
   });
 });

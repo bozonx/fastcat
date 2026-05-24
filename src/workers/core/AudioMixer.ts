@@ -1088,7 +1088,7 @@ export class AudioMixer {
     let clippedFrames = 0;
 
     const chunkFrames = Math.ceil(sampleRate * chunkDurationS);
-    const totalFrames = Math.ceil(durationS * sampleRate);
+    const totalFrames = Math.round(durationS * sampleRate);
     const totalChunks = Math.max(1, Math.ceil(totalFrames / chunkFrames));
 
     const mixedInterleavedPool = new Float32Array(chunkFrames * numberOfChannels);
@@ -1174,15 +1174,16 @@ export class AudioMixer {
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
         ensureNotCancelled();
 
-        const chunkStartS = chunkIndex * chunkDurationS;
-        const chunkEndS = Math.min(durationS, chunkStartS + chunkDurationS);
-        const framesInChunk = Math.min(chunkFrames, totalFrames - chunkIndex * chunkFrames);
+        const chunkStartFrame = chunkIndex * chunkFrames;
+        const chunkEndFrame = Math.min(totalFrames, chunkStartFrame + chunkFrames);
+        const framesInChunk = chunkEndFrame - chunkStartFrame;
         if (framesInChunk <= 0) continue;
 
         // Lazy-load any clips that start before the end of this chunk.
         while (nextLoadIndex < sortedClips.length) {
           const clip = sortedClips[nextLoadIndex]!;
-          if (clip.clipStartS >= chunkEndS) break;
+          const clipStartFrame = Math.round(clip.clipStartS * sampleRate);
+          if (clipStartFrame >= chunkEndFrame) break;
           ensureNotCancelled();
           activeClips.push({
             clip,
@@ -1206,29 +1207,18 @@ export class AudioMixer {
           const { clip } = active;
           ensureNotCancelled();
 
-          const clipGlobalStartS = clip.clipStartS;
-          const clipGlobalEndS = clipGlobalStartS + clip.playDurationS;
-          if (clipGlobalEndS <= chunkStartS) continue;
-          if (clipGlobalStartS >= chunkEndS) continue;
+          const clipStartFrame = Math.round(clip.clipStartS * sampleRate);
+          const clipEndFrame = clipStartFrame + Math.round(clip.playDurationS * sampleRate);
+          if (clipEndFrame <= chunkStartFrame) continue;
+          if (clipStartFrame >= chunkEndFrame) continue;
 
-          const overlapStartS = Math.max(chunkStartS, clipGlobalStartS);
-          const overlapEndS = Math.min(chunkEndS, clipGlobalEndS);
-          if (overlapEndS <= overlapStartS) continue;
-
-          const writeStartFrame = Math.max(
-            0,
-            Math.floor((overlapStartS - chunkStartS) * sampleRate),
-          );
-          const sourceStartFrame = Math.max(
-            0,
-            Math.floor((overlapStartS - clipGlobalStartS) * sampleRate),
-          );
-          const writeFramesAvailable = Math.max(0, framesInChunk - writeStartFrame);
-          const overlapEndFrame = Math.floor((overlapEndS - chunkStartS) * sampleRate);
-          const framesInOverlap = Math.max(0, overlapEndFrame - writeStartFrame);
-          const framesToWrite = Math.min(framesInOverlap, writeFramesAvailable);
+          const overlapStartFrame = Math.max(chunkStartFrame, clipStartFrame);
+          const overlapEndFrame = Math.min(chunkEndFrame, clipEndFrame);
+          const framesToWrite = overlapEndFrame - overlapStartFrame;
           if (framesToWrite <= 0) continue;
 
+          const writeStartFrame = overlapStartFrame - chunkStartFrame;
+          const sourceStartFrame = overlapStartFrame - clipStartFrame;
           const sourceEndFrame = sourceStartFrame + framesToWrite;
           let sourceCursorFrame = sourceStartFrame;
           try {
@@ -1280,7 +1270,9 @@ export class AudioMixer {
 
         for (let i = activeClips.length - 1; i >= 0; i -= 1) {
           const active = activeClips[i]!;
-          if (active.clip.clipStartS + active.clip.playDurationS <= chunkEndS || active.done) {
+          const clipStartFrame = Math.round(active.clip.clipStartS * sampleRate);
+          const clipEndFrame = clipStartFrame + Math.round(active.clip.playDurationS * sampleRate);
+          if (clipEndFrame <= chunkEndFrame || active.done) {
             if (typeof active.iterator.return === 'function') {
               await active.iterator.return();
             }
@@ -1301,7 +1293,7 @@ export class AudioMixer {
           format: 'f32-planar',
           numberOfChannels,
           sampleRate,
-          timestamp: chunkStartS,
+          timestamp: chunkStartFrame / sampleRate,
         });
 
         try {

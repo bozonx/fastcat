@@ -3,7 +3,6 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineApplyOptions } from './commands';
 import { calculateNextClipBoundary, calculatePrevClipBoundary } from '~/timeline/domain/navigation';
-import { quantizeTimeUsToPixelGrid } from '~/utils/timeline/geometry';
 import {
   buildSplitClipCommands,
   buildSplitAllClipsCommands,

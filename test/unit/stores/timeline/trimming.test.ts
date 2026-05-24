@@ -94,7 +94,7 @@ describe('TimelineTrimmingModule', () => {
     deps.editService.rippleDeleteRange.mockReturnValue(123_456);
     const mod = createTimelineTrimmingModule(deps);
     mod.rippleDeleteRange({ trackIds: ['track-1'], startUs: 0, endUs: 500_000 });
-    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.currentTime.value).toBe(123_456);
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
@@ -110,7 +110,7 @@ describe('TimelineTrimmingModule', () => {
     deps.editService.rippleTrimRight.mockResolvedValue(123_456);
     const mod = createTimelineTrimmingModule(deps);
     await mod.rippleTrimRight();
-    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.currentTime.value).toBe(123_456);
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
@@ -119,7 +119,7 @@ describe('TimelineTrimmingModule', () => {
     deps.editService.advancedRippleTrimRight.mockResolvedValue(123_456);
     const mod = createTimelineTrimmingModule(deps);
     await mod.advancedRippleTrimRight();
-    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.currentTime.value).toBe(123_456);
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
@@ -128,7 +128,7 @@ describe('TimelineTrimmingModule', () => {
     deps.editService.advancedRippleTrimLeft.mockResolvedValue(123_456);
     const mod = createTimelineTrimmingModule(deps);
     await mod.advancedRippleTrimLeft();
-    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.currentTime.value).toBe(123_456);
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 
@@ -160,7 +160,7 @@ describe('TimelineTrimmingModule', () => {
         labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
       }),
     );
-    expect(deps.currentTime.value).toBe(100_000);
+    expect(deps.currentTime.value).toBe(123_456);
     expect(deps.onPlayheadJump).toHaveBeenCalledOnce();
   });
 

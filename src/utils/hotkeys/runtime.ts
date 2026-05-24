@@ -140,7 +140,13 @@ export function canExecuteHotkeyCommand(params: {
   isEditableActiveElement: boolean;
   pressedCombo?: HotkeyCombo | null;
 }): boolean {
-  const { cmdId, hasBlockingModalState, isEditableEventTarget, isEditableActiveElement, pressedCombo } = params;
+  const {
+    cmdId,
+    hasBlockingModalState,
+    isEditableEventTarget,
+    isEditableActiveElement,
+    pressedCombo,
+  } = params;
   const policy = getHotkeyCommandPolicy(cmdId);
 
   if (hasBlockingModalState && !policy.allowWhenModalOpen) {

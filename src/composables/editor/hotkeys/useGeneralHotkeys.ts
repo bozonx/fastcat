@@ -17,6 +17,7 @@ import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
 import type { FsEntry } from '~/types/fs';
+import type { TimelineClipItem } from '~/timeline/types';
 
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
@@ -260,6 +261,28 @@ export function useGeneralHotkeys(
           if (entry) {
             uiStore.pendingFsEntryRename = entry;
             return true;
+          }
+        }
+      }
+
+      if (focusStore.effectiveFocus === 'timeline' || focusStore.effectiveFocus === 'properties') {
+        if (timelineStore.selectedItemIds.length === 1) {
+          const itemId = timelineStore.selectedItemIds[0];
+          const doc = timelineStore.timelineDoc;
+          if (doc) {
+            for (const track of doc.tracks) {
+              const clip = track.items.find((it) => it.id === itemId && it.kind === 'clip') as
+                | TimelineClipItem
+                | undefined;
+              if (clip) {
+                uiStore.pendingClipRename = {
+                  trackId: track.id,
+                  itemId: clip.id,
+                  name: clip.name,
+                };
+                return true;
+              }
+            }
           }
         }
       }

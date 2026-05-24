@@ -258,8 +258,17 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
               const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
               await this.ensureReadWritePermission(fileHandle, path);
               const writable = await (fileHandle as ExtendedFileHandle).createWritable();
-              await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
-              await writable.close();
+              try {
+                await writable.write(normalizeWritableData(data) as FileSystemWriteChunkType);
+                await writable.close();
+              } catch (writeErr) {
+                try {
+                  await writable.close();
+                } catch {
+                  /* ignore */
+                }
+                throw writeErr;
+              }
               this.revokeObjectUrlsUnder(path);
             } catch (e) {
               throw wrapPlatformError(e, path);

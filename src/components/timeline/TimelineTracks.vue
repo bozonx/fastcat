@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRefs } from 'vue';
+import { ref, computed, toRefs, nextTick, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -13,6 +13,7 @@ import type {
   TimelineTrack,
   TimelineTrackItem,
   TimelineTrimItemPayload,
+  TrackKind,
 } from '~/timeline/types';
 import { timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineClipHandleResize } from '~/composables/timeline/useTimelineClipHandleResize';
@@ -28,6 +29,8 @@ import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu'
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import { useSilenceTrimming } from '~/composables/timeline/useSilenceTrimming';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
+import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -627,6 +630,44 @@ function onTrackClick(e: MouseEvent, trackId: string) {
   selectTrackById(trackId);
   timelineStore.clearSelection();
 }
+
+// Paste Parameters Modal logic
+const activeClipForPasteParameters = ref<TimelineClipItem | null>(null);
+const activeTrackKindForPasteParameters = ref<TrackKind>('video');
+
+const {
+  isPasteParametersModalOpen,
+  selectedParameterGroups,
+  clipParameterGroupOptions,
+  openPasteClipParameters,
+  applyClipParameters,
+} = useClipParametersClipboard({
+  clip: computed(() => activeClipForPasteParameters.value || ({} as TimelineClipItem)),
+  trackKind: computed(() => activeTrackKindForPasteParameters.value),
+  updateClipProperties: (trackId, itemId, props) =>
+    timelineStore.updateClipProperties(trackId, itemId, props),
+  updateClipTransition: (trackId, itemId, patch) =>
+    timelineStore.updateClipTransition(trackId, itemId, patch),
+});
+
+watch(
+  () => uiStore.clipPasteParametersTrigger,
+  (val) => {
+    if (!val) return;
+    const doc = timelineStore.timelineDoc;
+    const track = doc?.tracks.find((t) => t.id === val.trackId);
+    const clip = track?.items.find(
+      (it) => it.id === val.itemId && it.kind === 'clip',
+    ) as TimelineClipItem;
+    if (clip && track) {
+      activeClipForPasteParameters.value = clip;
+      activeTrackKindForPasteParameters.value = track.kind;
+      nextTick(() => {
+        openPasteClipParameters(clip, track.kind);
+      });
+    }
+  },
+);
 </script>
 
 <template>
@@ -848,6 +889,30 @@ function onTrackClick(e: MouseEvent, trackId: string) {
     :title="t('fastcat.timeline.renameTrack')"
     @update:open="isTrackRenameModalOpen = $event"
     @rename="handleRenameTrack"
+  />
+
+  <UiRenameModal
+    :open="!!uiStore.pendingClipRename"
+    :current-name="uiStore.pendingClipRename?.name || ''"
+    :title="t('fastcat.clip.rename')"
+    @update:open="if (!$event) uiStore.pendingClipRename = null;"
+    @rename="
+      if (uiStore.pendingClipRename) {
+        timelineStore.renameItem(
+          uiStore.pendingClipRename.trackId,
+          uiStore.pendingClipRename.itemId,
+          $event,
+        );
+        uiStore.pendingClipRename = null;
+      }
+    "
+  />
+
+  <ClipParametersPasteModal
+    v-model:open="isPasteParametersModalOpen"
+    v-model:selected-groups="selectedParameterGroups"
+    :groups="clipParameterGroupOptions"
+    @apply="applyClipParameters"
   />
 </template>
 

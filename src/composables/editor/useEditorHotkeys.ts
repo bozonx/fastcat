@@ -5,7 +5,11 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
-import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
+import {
+  DEFAULT_HOTKEYS,
+  type HotkeyCommandId,
+  type HotkeyCombo,
+} from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
   canExecuteHotkeyCommand,

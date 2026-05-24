@@ -2,10 +2,12 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
-
+import type { TimelineClipItem } from '~/timeline/types';
+import { createClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 
 const AUDIO_MIXER_GAIN_STEP = 0.05;
@@ -17,6 +19,7 @@ export function useTimelineHotkeys(
   const settingsStore = useTimelineSettingsStore();
   const focusStore = useFocusStore();
   const workspaceStore = useWorkspaceStore();
+  const uiStore = useUiStore();
   const clipboardStore = useAppClipboard();
 
   function getTargetTrackId() {
@@ -341,6 +344,238 @@ export function useTimelineHotkeys(
           timelineStore.adjustSelectedClipsVolume(-1);
         },
       });
+      return true;
+    },
+
+    'timeline.increaseSelectedClipsVolumeLarge': (e) => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          if (adjustAudioMixerGain(AUDIO_MIXER_GAIN_STEP * 5)) return;
+          timelineStore.adjustSelectedClipsVolume(5);
+        },
+      });
+      return true;
+    },
+
+    'timeline.decreaseSelectedClipsVolumeLarge': (e) => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      navigationHoldRunner.startHold({
+        keyCode: e.code,
+        action: () => {
+          if (adjustAudioMixerGain(-AUDIO_MIXER_GAIN_STEP * 5)) return;
+          timelineStore.adjustSelectedClipsVolume(-5);
+        },
+      });
+      return true;
+    },
+
+    'timeline.copyClipParameters': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length !== 1) return false;
+      const itemId = timelineStore.selectedItemIds[0];
+      const doc = timelineStore.timelineDoc;
+      if (doc) {
+        for (const track of doc.tracks) {
+          const clip = track.items.find((it) => it.id === itemId && it.kind === 'clip') as
+            | TimelineClipItem
+            | undefined;
+          if (clip) {
+            clipboardStore.setClipboardPayload({
+              source: 'clipParameters',
+              snapshot: createClipParametersSnapshot({ clip, trackKind: track.kind }),
+            });
+            return true;
+          }
+        }
+      }
+      return false;
+    },
+
+    'timeline.pasteClipParameters': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length !== 1) return false;
+
+      const payload = clipboardStore.clipboardPayload;
+      if (!payload || payload.source !== 'clipParameters') return false;
+
+      const itemId = timelineStore.selectedItemIds[0];
+      const doc = timelineStore.timelineDoc;
+      if (doc) {
+        for (const track of doc.tracks) {
+          const clip = track.items.find((it) => it.id === itemId && it.kind === 'clip') as
+            | TimelineClipItem
+            | undefined;
+          if (clip) {
+            uiStore.triggerClipPasteParameters(track.id, clip.id);
+            return true;
+          }
+        }
+      }
+      return false;
+    },
+
+    'timeline.toggleWaveformMode': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return false;
+
+      const selectedSet = new Set(timelineStore.selectedItemIds);
+      let currentMode: 'half' | 'full' | undefined;
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            currentMode = item.audioWaveformMode || 'half';
+            break;
+          }
+        }
+        if (currentMode) break;
+      }
+
+      if (!currentMode) return false;
+      const nextMode = currentMode === 'half' ? 'full' : 'half';
+
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            timelineStore.updateClipProperties(track.id, item.id, {
+              audioWaveformMode: nextMode,
+            });
+          }
+        }
+      }
+      void timelineStore.requestTimelineSave({ immediate: true });
+      return true;
+    },
+
+    'timeline.toggleShowWaveform': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return false;
+
+      const selectedSet = new Set(timelineStore.selectedItemIds);
+      let currentShow = true;
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            currentShow = item.showWaveform !== false;
+            break;
+          }
+        }
+      }
+
+      const nextShow = !currentShow;
+
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            timelineStore.updateClipProperties(track.id, item.id, {
+              showWaveform: nextShow,
+            });
+          }
+        }
+      }
+      void timelineStore.requestTimelineSave({ immediate: true });
+      return true;
+    },
+
+    'timeline.toggleShowThumbnails': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return false;
+
+      const selectedSet = new Set(timelineStore.selectedItemIds);
+      let currentShow = true;
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            currentShow = item.showThumbnails !== false;
+            break;
+          }
+        }
+      }
+
+      const nextShow = !currentShow;
+
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            timelineStore.updateClipProperties(track.id, item.id, {
+              showThumbnails: nextShow,
+            });
+          }
+        }
+      }
+      void timelineStore.requestTimelineSave({ immediate: true });
+      return true;
+    },
+
+    'timeline.toggleFreezeFrame': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length !== 1) return false;
+
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return false;
+
+      const itemId = timelineStore.selectedItemIds[0];
+      for (const track of doc.tracks) {
+        const item = track.items.find((it) => it.id === itemId && it.kind === 'clip');
+        if (item && item.kind === 'clip' && item.clipType === 'media') {
+          if (typeof item.freezeFrameSourceUs === 'number') {
+            timelineStore.resetClipFreezeFrame({ trackId: track.id, itemId: item.id });
+          } else {
+            timelineStore.setClipFreezeFrameFromPlayhead({ trackId: track.id, itemId: item.id });
+          }
+          return true;
+        }
+      }
+      return false;
+    },
+
+    'timeline.toggleLockClip': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      if (timelineStore.selectedItemIds.length === 0) return false;
+
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return false;
+
+      const selectedSet = new Set(timelineStore.selectedItemIds);
+      let currentLocked = false;
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            currentLocked = Boolean(item.locked);
+            break;
+          }
+        }
+        if (currentLocked) break;
+      }
+
+      const nextLocked = !currentLocked;
+
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (selectedSet.has(item.id) && item.kind === 'clip') {
+            timelineStore.updateClipProperties(track.id, item.id, {
+              locked: nextLocked,
+            });
+          }
+        }
+      }
+      void timelineStore.requestTimelineSave({ immediate: true });
+      return true;
+    },
+
+    'timeline.toggleLockTrack': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      void timelineStore.toggleLockTargetTrack();
       return true;
     },
 

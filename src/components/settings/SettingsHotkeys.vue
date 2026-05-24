@@ -167,7 +167,10 @@ const hotkeyGroups = computed(() => {
       title: getCommandGroupTitle(groupId),
       commands: DEFAULT_HOTKEYS.commands.filter((c) => {
         if (c.groupId !== groupId) return false;
-        return !query || getCommandTitle(c.id).toLowerCase().includes(query);
+        if (!query) return true;
+        const translatedTitle = getCommandTitle(c.id).toLowerCase();
+        const fallbackTitle = c.title.toLowerCase();
+        return translatedTitle.includes(query) || fallbackTitle.includes(query);
       }),
     }))
     .filter((g) => g.commands.length > 0);

@@ -878,3 +878,99 @@ describe('resampleAndStretchOffline', () => {
     (globalThis as any).OfflineAudioContext = saved;
   });
 });
+
+describe('AudioMixer adjacent clips precision', () => {
+  it('correctly aligns adjacent clips on fractional time boundaries without gap/overlap in sample index space', async () => {
+    const sampleRate = 48000;
+    const numberOfChannels = 1;
+    const durationS = 1.0;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const customSink1 = new mockMediabunny.AudioSampleSink();
+    customSink1.samples = vi.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          numberOfFrames: 5926,
+          sampleRate: 48000,
+          numberOfChannels: 1,
+          timestamp: 0,
+          allocationSize: () => 5926 * 4,
+          copyTo: (dst: Float32Array) => dst.fill(0.1),
+        };
+      },
+    });
+
+    const customSink2 = new mockMediabunny.AudioSampleSink();
+    customSink2.samples = vi.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        yield {
+          numberOfFrames: 42074,
+          sampleRate: 48000,
+          numberOfChannels: 1,
+          timestamp: 0,
+          allocationSize: () => 42074 * 4,
+          copyTo: (dst: Float32Array) => dst.fill(0.2),
+        };
+      },
+    });
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS: 0.123456,
+        input: new mockMediabunny.Input() as any,
+        sink: customSink1 as any,
+        sourcePath: 'adjacent1.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+      {
+        clipStartS: 0.123456,
+        offsetS: 0,
+        playDurationS: 1.0 - 0.123456,
+        input: new mockMediabunny.Input() as any,
+        sink: customSink2 as any,
+        sourcePath: 'adjacent2.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS,
+      audioSource,
+      chunkDurationS: 1.0,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    expect(audioSource.add).toHaveBeenCalledTimes(1);
+    const mixedSample = audioSource.add.mock.calls[0][0];
+    const mixedData = mixedSample.data.data;
+
+    for (let i = 0; i < 5926; i++) {
+      expect(mixedData[i]).toBeCloseTo(0.1);
+    }
+    for (let i = 5926; i < 48000; i++) {
+      expect(mixedData[i]).toBeCloseTo(0.2);
+    }
+  });
+});

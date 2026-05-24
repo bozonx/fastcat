@@ -263,6 +263,14 @@ export class ResourceManager {
     }
   }
 
+  /**
+   * Remove an abort controller after its task completed successfully.
+   * Prevents unbounded growth of the controllers map during long sessions.
+   */
+  public removeAbortController(id: string): void {
+    this.sampleAbortControllers.delete(id);
+  }
+
   public clear() {
     this.abortInFlight();
     this.sampleRequestQueue.length = 0;

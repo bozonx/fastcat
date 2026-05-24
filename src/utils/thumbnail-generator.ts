@@ -470,8 +470,15 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
             const fileHandle = await dir.getFileHandle(fileName, { create: true });
             await withFileWriteSlot(async () => {
               const writable = await (fileHandle as WritableFileHandle).createWritable();
-              await writable.write(blob);
-              await writable.close();
+              try {
+                await writable.write(blob);
+                await writable.close();
+              } catch (error) {
+                await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
+                  .abort?.()
+                  .catch(() => undefined);
+                throw error;
+              }
             });
 
             this.opfsExistingFiles.get(task.id)?.add(fileName);

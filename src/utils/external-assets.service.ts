@@ -71,8 +71,15 @@ export async function loadExternalAssets(params: {
         const writable = await (
           handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
         ).createWritable();
-        await writable.write(blob);
-        await writable.close();
+        try {
+          await writable.write(blob);
+          await writable.close();
+        } catch (error) {
+          await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
+            .abort?.()
+            .catch(() => undefined);
+          throw error;
+        }
       });
 
       return {
@@ -91,5 +98,12 @@ export async function loadExternalAssets(params: {
     }
   });
 
-  return Promise.all(promises);
+  // Batch execution to limit concurrent fetches + blob memory pressure.
+  const BATCH_SIZE = 4;
+  const results: AssetLoadResult[] = [];
+  for (let i = 0; i < promises.length; i += BATCH_SIZE) {
+    const batch = promises.slice(i, i + BATCH_SIZE);
+    results.push(...(await Promise.all(batch)));
+  }
+  return results;
 }

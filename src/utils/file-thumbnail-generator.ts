@@ -188,14 +188,18 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     await withFileWriteSlot(async () => {
       const writable = await (
         fileHandle as unknown as {
-          createWritable: () => Promise<{
-            write: (data: Blob) => Promise<void>;
-            close: () => Promise<void>;
-          }>;
+          createWritable: () => Promise<FileSystemWritableFileStream>;
         }
       ).createWritable();
-      await writable.write(blob);
-      await writable.close();
+      try {
+        await writable.write(blob);
+        await writable.close();
+      } catch (error) {
+        await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
+          .abort?.()
+          .catch(() => undefined);
+        throw error;
+      }
     });
 
     const thumbUrl = URL.createObjectURL(blob);
@@ -236,14 +240,18 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     await withFileWriteSlot(async () => {
       const writable = await (
         fileHandle as unknown as {
-          createWritable: () => Promise<{
-            write: (data: Blob) => Promise<void>;
-            close: () => Promise<void>;
-          }>;
+          createWritable: () => Promise<FileSystemWritableFileStream>;
         }
       ).createWritable();
-      await writable.write(input.blob);
-      await writable.close();
+      try {
+        await writable.write(input.blob);
+        await writable.close();
+      } catch (error) {
+        await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
+          .abort?.()
+          .catch(() => undefined);
+        throw error;
+      }
     });
 
     const thumbUrl = URL.createObjectURL(input.blob);
@@ -378,14 +386,18 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       await withFileWriteSlot(async () => {
         const writable = await (
           fileHandle as unknown as {
-            createWritable: () => Promise<{
-              write: (data: Blob) => Promise<void>;
-              close: () => Promise<void>;
-            }>;
+            createWritable: () => Promise<FileSystemWritableFileStream>;
           }
         ).createWritable();
-        await writable.write(input.blob);
-        await writable.close();
+        try {
+          await writable.write(input.blob);
+          await writable.close();
+        } catch (error) {
+          await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
+            .abort?.()
+            .catch(() => undefined);
+          throw error;
+        }
       });
 
       const url = URL.createObjectURL(input.blob);

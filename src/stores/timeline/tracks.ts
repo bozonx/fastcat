@@ -50,6 +50,7 @@ export interface TimelineTracksModule {
   toggleVisibilityTargetTrack: () => Promise<void>;
   toggleMuteTargetTrack: () => Promise<void>;
   toggleSoloTargetTrack: () => Promise<void>;
+  toggleLockTargetTrack: () => Promise<void>;
   moveTrackUp: (trackId: string) => void;
   moveTrackDown: (trackId: string) => void;
   isAnyTrackSoloed: ComputedRef<boolean>;
@@ -216,6 +217,16 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     await deps.requestTimelineSave({ immediate: true });
   }
 
+  async function toggleLockTargetTrack() {
+    const trackId = deps.getSelectedOrActiveTrackId();
+    if (!trackId) return;
+    const track = deps.timelineDoc.value?.tracks.find((t) => t.id === trackId);
+    if (!track) return;
+
+    updateTrackProperties(trackId, { locked: !track.locked });
+    await deps.requestTimelineSave({ immediate: true });
+  }
+
   function moveTrackUp(trackId: string) {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
@@ -356,6 +367,7 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     toggleVisibilityTargetTrack,
     toggleMuteTargetTrack,
     toggleSoloTargetTrack,
+    toggleLockTargetTrack,
     isAnyTrackSoloed,
     unsoloAllTracks,
     unmuteAllTracks,

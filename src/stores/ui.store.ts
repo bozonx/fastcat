@@ -67,6 +67,16 @@ export const useUiStore = defineStore('ui', () => {
   const pendingBloggerDogCreateSubgroup = ref<FsEntry | null>(null);
   const pendingBloggerDogCreateItem = ref<FsEntry | null>(null);
   const pendingFsEntryPaste = ref<FsEntry | null>(null);
+  const pendingClipRename = ref<{ trackId: string; itemId: string; name: string } | null>(null);
+  const clipPasteParametersTrigger = ref<{
+    trackId: string;
+    itemId: string;
+    timestamp: number;
+  } | null>(null);
+
+  function triggerClipPasteParameters(trackId: string, itemId: string) {
+    clipPasteParametersTrigger.value = { trackId, itemId, timestamp: Date.now() };
+  }
 
   const fileManagerUpdateCounter = ref(0);
   const isProjectSettingsOpen = ref(false);
@@ -246,6 +256,9 @@ export const useUiStore = defineStore('ui', () => {
     pendingBloggerDogCreateSubgroup,
     pendingBloggerDogCreateItem,
     pendingFsEntryPaste,
+    pendingClipRename,
+    clipPasteParametersTrigger,
+    triggerClipPasteParameters,
     remoteExchangeModalOpen,
     remoteExchangeLocalEntry,
 

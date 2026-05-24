@@ -75,7 +75,8 @@ describe('export-helpers', () => {
     it('computes total frames from exact timeline duration and fps', () => {
       expect(computeExportTotalFrames({ durationUs: 1_000_000, fps: 30 })).toBe(30);
       expect(computeExportTotalFrames({ durationUs: 1_000_000, fps: 29.97 })).toBe(30);
-      expect(computeExportTotalFrames({ durationUs: 1_001_000, fps: 30 })).toBe(31);
+      expect(computeExportTotalFrames({ durationUs: 1_001_000, fps: 30 })).toBe(30);
+      expect(computeExportTotalFrames({ durationUs: 1_017_000, fps: 30 })).toBe(31);
     });
 
     it('does not accumulate timing drift for non-integer fps', () => {
@@ -96,7 +97,7 @@ describe('export-helpers', () => {
 
     it('clips the final frame duration to the requested timeline duration', () => {
       const fps = 30;
-      const durationUs = 1_000_001;
+      const durationUs = 1_017_000;
       const totalFrames = computeExportTotalFrames({ durationUs, fps });
       const lastFrame = getExportFrameTiming({
         frameNum: totalFrames - 1,
@@ -106,7 +107,7 @@ describe('export-helpers', () => {
       });
 
       expect(lastFrame.timeUs).toBe(1_000_000);
-      expect(lastFrame.durationS).toBeCloseTo(0.000001);
+      expect(lastFrame.durationS).toBeCloseTo(0.017);
       expect(lastFrame.timestampS + lastFrame.durationS).toBeCloseTo(durationUs / 1_000_000);
     });
   });

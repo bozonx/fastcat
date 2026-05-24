@@ -98,9 +98,9 @@ function rationalFrameTimeUs(frameNum: number, fps: ExportFpsRatio): number {
 export function computeExportTotalFrames(params: { durationUs: number; fps: number }): number {
   const durationUs = Math.max(0, Math.round(Number(params.durationUs) || 0));
   const fps = normalizeExportFps(params.fps);
-  return Number(
-    divCeilBigInt(BigInt(durationUs) * BigInt(fps.numerator), 1_000_000n * BigInt(fps.denominator)),
-  );
+  const divisor = 1_000_000n * BigInt(fps.denominator);
+  const value = BigInt(durationUs) * BigInt(fps.numerator);
+  return Number((value + divisor / 2n) / divisor);
 }
 
 export function computeExportFrameInterval(params: {
