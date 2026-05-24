@@ -123,7 +123,6 @@ describe('resolveVisualVideoAspect', () => {
   });
 });
 
-
 describe('useTimelineClipThumbnails reactive logic', () => {
   let userSettings: any;
   let timelineZoom: any;
@@ -223,4 +222,3 @@ describe('useTimelineClipThumbnails reactive logic', () => {
     expect(times).toEqual([0, 16]);
   });
 });
-

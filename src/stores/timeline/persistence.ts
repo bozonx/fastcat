@@ -505,7 +505,9 @@ export function createTimelinePersistenceModule(
       }
 
       const mainFile = handle ? await withFileIoSlot(() => handle.getFile()) : null;
-      const autosaveFile = autosaveHandle ? await withFileIoSlot(() => autosaveHandle.getFile()) : null;
+      const autosaveFile = autosaveHandle
+        ? await withFileIoSlot(() => autosaveHandle.getFile())
+        : null;
       let text = mainFile ? await mainFile.text() : '';
       const shouldOfferAutosave =
         !!autosaveFile && (!mainFile || autosaveFile.lastModified > mainFile.lastModified);

@@ -816,7 +816,11 @@ function handleTransitionCreate(
           :style="{ zIndex: 'var(--z-clip-content)' }"
         >
           <TimelineClipThumbnails
-            v-if="effectiveClipItem && isVideo(item, track) && effectiveClipItem.showThumbnails !== false"
+            v-if="
+              effectiveClipItem &&
+              isVideo(item, track) &&
+              effectiveClipItem.showThumbnails !== false
+            "
             :item="effectiveClipItem"
             :width="clipWidthPx"
             :scroll-left="scrollLeft ?? 0"

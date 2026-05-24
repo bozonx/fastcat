@@ -288,8 +288,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         // the clipSourceSignature watcher — skip all state mutations here
         // to avoid clearing the compositor and resetting the playhead with
         // stale (pre-load) data.
-        const hasTimelineContent =
-          (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0;
+        const hasTimelineContent = (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0;
         if (hasTimelineContent) {
           isLoading.value = false;
           return;

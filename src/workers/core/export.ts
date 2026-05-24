@@ -736,7 +736,9 @@ export async function extractAudioStream(
   const targetHandle = await hostClient.getFileHandleByPath(targetPath);
   if (!targetHandle) throw new Error('Target file handle not found');
 
-  const sourceFile = await withWorkerFileIoSlotForHandle(sourceHandle, () => sourceHandle.getFile());
+  const sourceFile = await withWorkerFileIoSlotForHandle(sourceHandle, () =>
+    sourceHandle.getFile(),
+  );
   const {
     Input,
     BlobSource,

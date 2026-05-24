@@ -97,7 +97,11 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
       if (unclampedSourceEndUs > maxSourceEndUs) {
         const overshoot = unclampedSourceEndUs - maxSourceEndUs;
         nextSourceEndUs = maxSourceEndUs;
-        nextSourceStartUs = clampInt(prevSourceStartUs - overshoot, minSourceStartUs, prevSourceEndUs);
+        nextSourceStartUs = clampInt(
+          prevSourceStartUs - overshoot,
+          minSourceStartUs,
+          prevSourceEndUs,
+        );
       } else {
         nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
         nextSourceStartUs = prevSourceStartUs;
@@ -114,7 +118,11 @@ export function computeTrimGeometry(input: TrimGeometryInput): TrimGeometryResul
       if (unclampedSourceEndUs > maxSourceEndUs) {
         const overshoot = unclampedSourceEndUs - maxSourceEndUs;
         nextSourceEndUs = maxSourceEndUs;
-        nextSourceStartUs = clampInt(prevSourceStartUs - overshoot, minSourceStartUs, prevSourceEndUs);
+        nextSourceStartUs = clampInt(
+          prevSourceStartUs - overshoot,
+          minSourceStartUs,
+          prevSourceEndUs,
+        );
       } else {
         nextSourceEndUs = clampInt(unclampedSourceEndUs, prevSourceStartUs, maxSourceEndUs);
         nextSourceStartUs = prevSourceStartUs;

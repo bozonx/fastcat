@@ -1459,8 +1459,14 @@ export class AudioEngine {
       if (fadeDurationS > 0) {
         chunkGainNode.gain.setValueAtTime(0, state.scheduledCtxTimeS);
         chunkGainNode.gain.linearRampToValueAtTime(1, state.scheduledCtxTimeS + fadeDurationS);
-        chunkGainNode.gain.setValueAtTime(1, state.scheduledCtxTimeS + actualPlayDurationS - fadeDurationS);
-        chunkGainNode.gain.linearRampToValueAtTime(0, state.scheduledCtxTimeS + actualPlayDurationS);
+        chunkGainNode.gain.setValueAtTime(
+          1,
+          state.scheduledCtxTimeS + actualPlayDurationS - fadeDurationS,
+        );
+        chunkGainNode.gain.linearRampToValueAtTime(
+          0,
+          state.scheduledCtxTimeS + actualPlayDurationS,
+        );
       } else {
         chunkGainNode.gain.setValueAtTime(1, state.scheduledCtxTimeS);
       }

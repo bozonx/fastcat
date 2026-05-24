@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
-import type {
-  ClipParameterGroupOption,
-} from '~/utils/timeline/clip-parameters';
+import type { ClipParameterGroupOption } from '~/utils/timeline/clip-parameters';
 
 const props = defineProps<{
   groups: ClipParameterGroupOption[];
@@ -56,7 +54,9 @@ function toggleGroup(groupId: string, checked: boolean) {
       }
     }
   } else {
-    nextSelected = nextSelected.filter((id) => id !== groupId && !subs.some((sub) => sub.id === id));
+    nextSelected = nextSelected.filter(
+      (id) => id !== groupId && !subs.some((sub) => sub.id === id),
+    );
   }
   selectedGroups.value = nextSelected;
 }

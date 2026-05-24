@@ -174,7 +174,17 @@ export const oldVinylManifest: AudioEffectManifest<OldVinylParams> = {
     delay.connect(output);
     noiseGain.connect(output);
 
-    return { input, output, bandpass, waveshaper, noiseGain, noiseSource, wowOscillator, wowGain, delay };
+    return {
+      input,
+      output,
+      bandpass,
+      waveshaper,
+      noiseGain,
+      noiseSource,
+      wowOscillator,
+      wowGain,
+      delay,
+    };
   },
   updateNode(node, values) {
     const graph = node as OldVinylNodeGraph;

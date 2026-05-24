@@ -237,10 +237,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       return times.sort((a, b) => a - b);
     }
 
-    const sourceStartSec = Math.max(
-      0,
-      sourceStartUs / 1_000_000 + visibleStartLocalPx / pxPerSec,
-    );
+    const sourceStartSec = Math.max(0, sourceStartUs / 1_000_000 + visibleStartLocalPx / pxPerSec);
     const sourceEndSec = Math.min(
       duration.value,
       sourceStartUs / 1_000_000 + visibleEndLocalPx / pxPerSec,
@@ -304,7 +301,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
     const firstIdx = Math.max(0, Math.floor((visibleLeft - trimOff) / tileW) - 1);
     const lastIdx = Math.ceil((visibleRight - trimOff) / tileW);
 
-    let tiles: ThumbnailTile[] = [];
+    const tiles: ThumbnailTile[] = [];
     const totalTiles = Math.max(1, Math.ceil(clipWidthPx.value / tileW));
 
     for (let idx = firstIdx; idx <= lastIdx; idx++) {
