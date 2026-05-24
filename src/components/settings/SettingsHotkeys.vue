@@ -12,8 +12,11 @@ import {
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
   findDuplicateOwnerByContext,
+  findOverrideOwnerByContext,
   getHotkeyConflicts,
+  getHotkeyOverrides,
   isHotkeyConflicting,
+  isHotkeyOverriding,
 } from '~/utils/hotkeys/hotkeyConflicts';
 import { useHotkeyCapture } from '~/composables/settings/useHotkeyCapture';
 
@@ -56,6 +59,15 @@ const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, 
     findDuplicateOwner: (combo, targetCmdId) => {
       const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
       return findDuplicateOwnerByContext({
+        effective,
+        commands: DEFAULT_HOTKEYS.commands,
+        targetCmdId,
+        combo,
+      });
+    },
+    findOverrideOwner: (combo, targetCmdId) => {
+      const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+      return findOverrideOwnerByContext({
         effective,
         commands: DEFAULT_HOTKEYS.commands,
         targetCmdId,

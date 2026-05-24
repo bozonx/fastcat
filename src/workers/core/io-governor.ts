@@ -1,7 +1,4 @@
-import {
-  getWorkerIoBudget,
-  installWorkerIoBudgetListener,
-} from '~/utils/io/io-budget-worker';
+import { getWorkerIoBudget, installWorkerIoBudgetListener } from '~/utils/io/io-budget-worker';
 import { isTransientIoError } from '~/utils/io/transient-errors';
 
 /**

@@ -12,11 +12,8 @@ export function governedBlob(file: File | Blob): Blob {
   return new Proxy(file, {
     get(target, prop) {
       if (prop === 'slice') {
-        return (
-          start?: number,
-          end?: number,
-          contentType?: string,
-        ): Blob => governedBlob(target.slice(start, end, contentType));
+        return (start?: number, end?: number, contentType?: string): Blob =>
+          governedBlob(target.slice(start, end, contentType));
       }
       if (prop === 'arrayBuffer') {
         return () => withFileIoSlot(() => target.arrayBuffer());

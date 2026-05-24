@@ -11,11 +11,7 @@
  * so behaviour stays correct, just without cross-worker coordination.
  */
 
-import {
-  createLocalBudget,
-  createSharedBudget,
-  type IoBudget,
-} from './io-budget';
+import { createLocalBudget, createSharedBudget, type IoBudget } from './io-budget';
 
 interface IoInitMessage {
   type: 'io-init';

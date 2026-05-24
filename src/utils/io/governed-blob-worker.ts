@@ -9,11 +9,8 @@ export function governedBlobWorker(file: File | Blob): Blob {
   return new Proxy(file, {
     get(target, prop) {
       if (prop === 'slice') {
-        return (
-          start?: number,
-          end?: number,
-          contentType?: string,
-        ): Blob => governedBlobWorker(target.slice(start, end, contentType));
+        return (start?: number, end?: number, contentType?: string): Blob =>
+          governedBlobWorker(target.slice(start, end, contentType));
       }
       if (prop === 'arrayBuffer') {
         return () => withWorkerFileIoSlot(() => target.arrayBuffer());

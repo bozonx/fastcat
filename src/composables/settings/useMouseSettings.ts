@@ -143,7 +143,9 @@ export function useMouseSettings() {
     formatOptions(TIMELINE_CLICK_ACTIONS, commonClickLabels.value),
   );
   const dragOptions = computed(() => formatOptions(TIMELINE_DRAG_ACTIONS, commonDragLabels.value));
-  const rulerDragOptions = computed(() => formatOptions(RULER_DRAG_ACTIONS, commonDragLabels.value));
+  const rulerDragOptions = computed(() =>
+    formatOptions(RULER_DRAG_ACTIONS, commonDragLabels.value),
+  );
   const mouseHorizontalMovementOptions = computed(() =>
     formatOptions(MOUSE_HORIZONTAL_MOVEMENT_ACTIONS, commonHorizontalMovementLabels.value),
   );

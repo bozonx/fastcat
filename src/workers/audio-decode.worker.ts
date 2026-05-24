@@ -1,9 +1,9 @@
 import { AudioSampleSink, BlobSource, Input, ALL_FORMATS } from 'mediabunny';
 import { installWorkerIoBudgetListener } from '~/utils/io/io-budget-worker';
 
-installWorkerIoBudgetListener();
-
 import type { DecodeRequest, DecodeResponse } from '../utils/audio/types';
+
+installWorkerIoBudgetListener();
 
 interface CachedDecodeSource {
   input: InstanceType<typeof Input>;

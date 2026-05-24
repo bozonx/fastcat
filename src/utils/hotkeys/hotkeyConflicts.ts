@@ -6,9 +6,7 @@ import {
 } from './defaultHotkeys';
 
 function areGroupsOverlapping(a: HotkeyGroupId, b: HotkeyGroupId): boolean {
-  if (a === b) return true;
-  if (a === 'general' || b === 'general') return true;
-  return false;
+  return a === b;
 }
 
 function getCommandGroupId(
@@ -87,6 +85,83 @@ export function findDuplicateOwnerByContext(params: {
     if (cmd.id === targetCmdId) continue;
 
     if (!areGroupsOverlapping(targetGroupId, cmd.groupId)) continue;
+
+    const bindings = effective[cmd.id] ?? [];
+    if (bindings.includes(combo)) return cmd.id;
+  }
+
+  return null;
+}
+
+export interface HotkeyOverridesResult {
+  overridesByCommand: Map<HotkeyCommandId, Set<string>>;
+}
+
+export function getHotkeyOverrides(
+  effective: Record<HotkeyCommandId, string[]>,
+  commands: readonly HotkeyCommandDefinition[] = DEFAULT_HOTKEYS.commands as unknown as HotkeyCommandDefinition[],
+): HotkeyOverridesResult {
+  const overridesByCommand = new Map<HotkeyCommandId, Set<string>>();
+
+  const groupById = new Map<HotkeyCommandId, HotkeyGroupId>();
+  for (const cmd of commands) {
+    groupById.set(cmd.id, cmd.groupId);
+  }
+
+  for (const cmd of commands) {
+    const list = effective[cmd.id] ?? [];
+    if (list.length === 0) continue;
+
+    const cmdGroup = groupById.get(cmd.id) ?? cmd.groupId;
+
+    for (const combo of list) {
+      let hasOverride = false;
+
+      for (const other of commands) {
+        if (other.id === cmd.id) continue;
+
+        const otherGroup = groupById.get(other.id) ?? other.groupId;
+        if (areGroupsOverlapping(cmdGroup, otherGroup)) continue;
+
+        const otherList = effective[other.id] ?? [];
+        if (otherList.includes(combo)) {
+          hasOverride = true;
+          break;
+        }
+      }
+
+      if (!hasOverride) continue;
+
+      const set = overridesByCommand.get(cmd.id) ?? new Set<string>();
+      set.add(combo);
+      overridesByCommand.set(cmd.id, set);
+    }
+  }
+
+  return { overridesByCommand };
+}
+
+export function isHotkeyOverriding(params: {
+  overrides: HotkeyOverridesResult;
+  cmdId: HotkeyCommandId;
+  combo: string;
+}): boolean {
+  return params.overrides.overridesByCommand.get(params.cmdId)?.has(params.combo) ?? false;
+}
+
+export function findOverrideOwnerByContext(params: {
+  effective: Record<HotkeyCommandId, string[]>;
+  commands: readonly HotkeyCommandDefinition[];
+  targetCmdId: HotkeyCommandId;
+  combo: string;
+}): HotkeyCommandId | null {
+  const { effective, commands, targetCmdId, combo } = params;
+  const targetGroupId = getCommandGroupId(commands, targetCmdId);
+
+  for (const cmd of commands) {
+    if (cmd.id === targetCmdId) continue;
+
+    if (areGroupsOverlapping(targetGroupId, cmd.groupId)) continue;
 
     const bindings = effective[cmd.id] ?? [];
     if (bindings.includes(combo)) return cmd.id;
