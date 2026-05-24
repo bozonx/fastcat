@@ -27,6 +27,7 @@ import { useFilePropertiesBasics } from '~/composables/properties/useFilePropert
 
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { useProjectStore } from '~/stores/project.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useFileTimelineUsage } from '~/composables/properties/useFileTimelineUsage';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
@@ -53,6 +54,7 @@ const mediaStore = useMediaStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 const selectionStore = useSelectionStore();
+const { setActiveTab } = useProjectTabsStore();
 const focusStore = useFocusStore();
 const fileManagerStore = useFileManagerStore();
 
@@ -115,7 +117,7 @@ async function handleSelectInFileManager() {
     path: normalizeWorkspaceFilePath(entry.path),
     beforeReveal: async () => {
       if (projectStore.currentView && projectStore.currentView !== 'files') {
-        projectStore.goToFiles();
+        setActiveTab('files');
       }
     },
     loadProjectDirectory: fileManager.loadProjectDirectory,
@@ -160,18 +162,18 @@ const timelineQuickActions = computed(() => {
         isRenameModalOpen.value = true;
       },
     },
-    {
-      id: 'showInFileManager',
-      title: t('fastcat.clip.showInFileManager'),
-      icon: 'i-heroicons-folder-open',
-      onClick: handleSelectInFileManager,
-    },
   ];
 });
 
 const timelineAdditionalActions = computed(() => {
   const list = [...addTrackActions.value];
   if (props.fsEntry) {
+    list.unshift({
+      id: 'showInFileManager',
+      label: t('fastcat.clip.showInFileManager'),
+      icon: 'i-heroicons-folder-open',
+      onClick: handleSelectInFileManager,
+    });
     list.unshift({
       id: 'createOtioVersion',
       label: t('fastcat.timeline.createVersion'),

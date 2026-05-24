@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { onBeforeUnmount, ref, computed } from 'vue';
 /**
  * Unified Modal Component
  *
@@ -46,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+let cleanupOutsideClickSuppression: (() => void) | null = null;
 
 const modalUi = computed(() => {
   const userUi = props.ui ?? {};
@@ -71,7 +72,16 @@ const modalContent = {
       event.preventDefault();
     }
   },
+  onPointerDownOutside: (event: Event) => {
+    suppressNextOutsideClick(event);
+  },
 };
+
+interface PointerDownOutsideEvent extends Event {
+  detail?: {
+    originalEvent?: PointerEvent;
+  };
+}
 
 function isFocusableElement(element: HTMLElement) {
   if (element.hasAttribute('disabled')) {
@@ -101,6 +111,37 @@ function focusPreferredElement(): boolean {
   return true;
 }
 
+function suppressNextOutsideClick(event: Event) {
+  if (props.preventClose) {
+    return;
+  }
+
+  const originalEvent = (event as PointerDownOutsideEvent).detail?.originalEvent;
+  if (!originalEvent) {
+    return;
+  }
+
+  cleanupOutsideClickSuppression?.();
+
+  const onClick = (clickEvent: MouseEvent) => {
+    clickEvent.preventDefault();
+    clickEvent.stopPropagation();
+    clickEvent.stopImmediatePropagation();
+    cleanupOutsideClickSuppression?.();
+  };
+  const timeoutId = window.setTimeout(() => {
+    cleanupOutsideClickSuppression?.();
+  }, 250);
+
+  cleanupOutsideClickSuppression = () => {
+    document.removeEventListener('click', onClick, true);
+    window.clearTimeout(timeoutId);
+    cleanupOutsideClickSuppression = null;
+  };
+
+  document.addEventListener('click', onClick, true);
+}
+
 function handleAfterEnter() {
   emit('after:enter');
 }
@@ -108,6 +149,10 @@ function handleAfterEnter() {
 function handleClose() {
   isOpen.value = false;
 }
+
+onBeforeUnmount(() => {
+  cleanupOutsideClickSuppression?.();
+});
 </script>
 
 <template>

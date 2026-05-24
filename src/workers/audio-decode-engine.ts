@@ -18,9 +18,9 @@ interface AudioSampleSinkLike {
 }
 
 export interface AudioDecodeEngineDeps {
-  AudioSampleSink: new (track: unknown) => AudioSampleSinkLike;
-  Input: new (params: { source: unknown; formats: unknown }) => InputLike;
-  BlobSource: new (blob: unknown) => unknown;
+  AudioSampleSink: new (...args: unknown[]) => AudioSampleSinkLike;
+  Input: new (...args: unknown[]) => InputLike;
+  BlobSource: new (...args: unknown[]) => unknown;
   ALL_FORMATS: unknown;
   governedBlobWorker?: (blob: Blob) => Blob;
 }
@@ -182,7 +182,7 @@ export class AudioDecodeEngine {
       ),
       formats: this.deps.ALL_FORMATS,
     });
-    let aTrack: Awaited<ReturnType<InstanceType<typeof this.deps.Input>['getPrimaryAudioTrack']>>;
+    let aTrack: unknown;
     try {
       aTrack = await input.getPrimaryAudioTrack();
       if (!aTrack) {

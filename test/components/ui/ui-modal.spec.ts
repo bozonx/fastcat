@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiModal from '~/components/ui/UiModal.vue';
 
@@ -102,5 +102,44 @@ describe('UiModal', () => {
     expect(ui.overlay).toContain('bg-black/80');
     expect(ui.content).toContain('z-[var(--z-modal)]');
     expect(ui.content).toContain('sm:max-w-lg');
+  });
+
+  it('suppresses the click that follows an outside pointerdown', async () => {
+    const component = await mountSuspended(UiModal, {
+      props: {
+        open: true,
+      },
+      slots: {
+        default: 'Body',
+      },
+      global: {
+        stubs: {
+          UModal: modalStub,
+        },
+      },
+    });
+
+    const modal = component.findComponent(modalStub);
+    const content = modal.props('content') as {
+      onPointerDownOutside: (event: Event) => void;
+    };
+    const outsideEvent = new Event('pointerDownOutside') as Event & {
+      detail: { originalEvent: MouseEvent };
+    };
+    outsideEvent.detail = {
+      originalEvent: new MouseEvent('pointerdown', { bubbles: true, cancelable: true }),
+    };
+
+    content.onPointerDownOutside(outsideEvent);
+
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+    const stopPropagation = vi.spyOn(clickEvent, 'stopPropagation');
+    const stopImmediatePropagation = vi.spyOn(clickEvent, 'stopImmediatePropagation');
+
+    document.dispatchEvent(clickEvent);
+
+    expect(clickEvent.defaultPrevented).toBe(true);
+    expect(stopPropagation).toHaveBeenCalledOnce();
+    expect(stopImmediatePropagation).toHaveBeenCalledOnce();
   });
 });
