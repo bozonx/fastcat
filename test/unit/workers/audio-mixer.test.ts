@@ -31,14 +31,24 @@ describe('interleavedToPlanar', () => {
 describe('normalizeSampleChannels', () => {
   it('returns same channels when count matches', () => {
     const planes = [new Float32Array([1, 2]), new Float32Array([3, 4])];
-    const result = normalizeSampleChannels({ planes, sourceChannels: 2, targetChannels: 2, frames: 2 });
+    const result = normalizeSampleChannels({
+      planes,
+      sourceChannels: 2,
+      targetChannels: 2,
+      frames: 2,
+    });
     expect(result).toHaveLength(2);
     expect(result[0]).toBe(planes[0]);
   });
 
   it('duplicates mono to stereo', () => {
     const planes = [new Float32Array([1, 2])];
-    const result = normalizeSampleChannels({ planes, sourceChannels: 1, targetChannels: 2, frames: 2 });
+    const result = normalizeSampleChannels({
+      planes,
+      sourceChannels: 1,
+      targetChannels: 2,
+      frames: 2,
+    });
     expect(result).toHaveLength(2);
     expect(result[0]).toEqual(new Float32Array([1, 2]));
     expect(result[1]).toEqual(new Float32Array([1, 2]));
@@ -46,7 +56,12 @@ describe('normalizeSampleChannels', () => {
 
   it('mixes stereo to mono', () => {
     const planes = [new Float32Array([2, 4]), new Float32Array([4, 6])];
-    const result = normalizeSampleChannels({ planes, sourceChannels: 2, targetChannels: 1, frames: 2 });
+    const result = normalizeSampleChannels({
+      planes,
+      sourceChannels: 2,
+      targetChannels: 1,
+      frames: 2,
+    });
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual(new Float32Array([3, 5]));
   });
@@ -182,7 +197,9 @@ describe('pullNextProcessedChunk', () => {
       done: false,
     };
 
-    const result = await pullNextProcessedChunk(active as unknown as Parameters<typeof pullNextProcessedChunk>[0]);
+    const result = await pullNextProcessedChunk(
+      active as unknown as Parameters<typeof pullNextProcessedChunk>[0],
+    );
     expect(result).toEqual({ startFrame: 0, frames: 10 });
     expect(active.current).toEqual({ startFrame: 0, frames: 10 });
   });
@@ -196,7 +213,9 @@ describe('pullNextProcessedChunk', () => {
       done: false,
     };
 
-    const result = await pullNextProcessedChunk(active as unknown as Parameters<typeof pullNextProcessedChunk>[0]);
+    const result = await pullNextProcessedChunk(
+      active as unknown as Parameters<typeof pullNextProcessedChunk>[0],
+    );
     expect(result).toBeNull();
     expect(active.done).toBe(true);
   });

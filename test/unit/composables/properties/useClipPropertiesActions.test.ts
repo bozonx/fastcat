@@ -1,17 +1,18 @@
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
+
 // useAppClipboard wraps a pinia store; stub it so the composable is exercised in
 // isolation without standing up the real clipboard store.
-const clipboardState: { clipboardPayload: unknown; setClipboardPayload: ReturnType<typeof vi.fn> } = {
-  clipboardPayload: null,
-  setClipboardPayload: vi.fn(),
-};
+const clipboardState: { clipboardPayload: unknown; setClipboardPayload: ReturnType<typeof vi.fn> } =
+  {
+    clipboardPayload: null,
+    setClipboardPayload: vi.fn(),
+  };
 vi.mock('~/composables/useAppClipboard', () => ({
   useAppClipboard: () => clipboardState,
 }));
-
-import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
 
 type AnyClip = Record<string, unknown>;
 
@@ -264,7 +265,9 @@ describe('useClipPropertiesActions', () => {
     it('exposes media-specific actions for media clips', () => {
       const { actions } = build();
       const ids = actions.otherActionsList.value.map((a) => a.id);
-      expect(ids).toEqual(expect.arrayContaining(['replaceMedia', 'showInFileManager', 'autoMontage']));
+      expect(ids).toEqual(
+        expect.arrayContaining(['replaceMedia', 'showInFileManager', 'autoMontage']),
+      );
     });
   });
 

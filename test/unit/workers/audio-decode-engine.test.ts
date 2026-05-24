@@ -59,7 +59,9 @@ function createMockDeps(overrides?: {
   return {
     Input: overrides?.inputClass ?? (MockInput as unknown as new (...args: unknown[]) => unknown),
     AudioSampleSink: MockAudioSampleSink as unknown as new (...args: unknown[]) => unknown,
-    BlobSource: overrides?.blobSourceClass ?? (MockBlobSource as unknown as new (...args: unknown[]) => unknown),
+    BlobSource:
+      overrides?.blobSourceClass ??
+      (MockBlobSource as unknown as new (...args: unknown[]) => unknown),
     ALL_FORMATS: {},
     governedBlobWorker: (blob: Blob) => blob,
   };
@@ -76,7 +78,9 @@ describe('AudioDecodeEngine', () => {
     }
 
     const engine = new AudioDecodeEngine({
-      ...createMockDeps({ inputClass: FailingInput as unknown as new (...args: unknown[]) => unknown }),
+      ...createMockDeps({
+        inputClass: FailingInput as unknown as new (...args: unknown[]) => unknown,
+      }),
     });
 
     const request: DecodeRequest = {
@@ -211,8 +215,18 @@ describe('AudioDecodeEngine', () => {
       1,
     );
 
-    const reqA: DecodeRequest = { type: 'decode', id: 1, sourceKey: 'a', arrayBuffer: new ArrayBuffer(0) };
-    const reqB: DecodeRequest = { type: 'decode', id: 2, sourceKey: 'b', arrayBuffer: new ArrayBuffer(0) };
+    const reqA: DecodeRequest = {
+      type: 'decode',
+      id: 1,
+      sourceKey: 'a',
+      arrayBuffer: new ArrayBuffer(0),
+    };
+    const reqB: DecodeRequest = {
+      type: 'decode',
+      id: 2,
+      sourceKey: 'b',
+      arrayBuffer: new ArrayBuffer(0),
+    };
     const promises = [engine.handleRequest(reqA), engine.handleRequest(reqB)];
     await Promise.all(promises);
     expect(maxActive).toBe(1);

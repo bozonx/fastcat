@@ -2,7 +2,11 @@ import { AudioSampleSink, BlobSource, Input, ALL_FORMATS } from 'mediabunny';
 import { installWorkerIoBudgetListener } from '~/utils/io/io-budget-worker';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 
-import { AudioDecodeEngine, copyPlanarSampleToChannelBuffers, resample } from './audio-decode-engine';
+import {
+  AudioDecodeEngine,
+  copyPlanarSampleToChannelBuffers,
+  resample,
+} from './audio-decode-engine';
 import type { DecodeRequest } from '../utils/audio/types';
 
 installWorkerIoBudgetListener();
@@ -23,7 +27,9 @@ if (typeof self !== 'undefined')
 
     const response = await engine.handleRequest(data);
 
-    const scope = self as unknown as WorkerGlobalScope & { postMessage: (msg: unknown, transfer?: Transferable[]) => void };
+    const scope = self as unknown as WorkerGlobalScope & {
+      postMessage: (msg: unknown, transfer?: Transferable[]) => void;
+    };
     if (response.ok && response.result) {
       const result = response.result;
       if (result.peaks && result.peaks.length > 0) {

@@ -144,8 +144,12 @@ describe('WorkerIoBudget', () => {
 
 describe('default wrappers', () => {
   it('default exports exist and are functions', async () => {
-    const { installWorkerIoBudgetListener, getWorkerIoBudget, tryGetWorkerIoBudget, __resetWorkerIoBudgetForTesting } =
-      await import('~/utils/io/io-budget-worker');
+    const {
+      installWorkerIoBudgetListener,
+      getWorkerIoBudget,
+      tryGetWorkerIoBudget,
+      __resetWorkerIoBudgetForTesting,
+    } = await import('~/utils/io/io-budget-worker');
     expect(typeof installWorkerIoBudgetListener).toBe('function');
     expect(typeof getWorkerIoBudget).toBe('function');
     expect(typeof tryGetWorkerIoBudget).toBe('function');

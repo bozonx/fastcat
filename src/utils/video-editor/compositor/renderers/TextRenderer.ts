@@ -158,7 +158,6 @@ export class TextRenderer {
     // textStartX is relative to the compositor canvas; convert to local canvas coords
     const localTextStartX = layout.textStartX - layout.backgroundX;
     const localTextTopPx = layout.textBlockTopPx - layout.backgroundY;
-    const yOffsetPx = layout.yOffsetPx;
 
     if (normalizedStyle.textShadowEnabled) {
       const textShadowSpreadPx = Math.round(normalizedStyle.textShadowSpread * renderScale);
@@ -178,7 +177,6 @@ export class TextRenderer {
         localTextStartX,
         localTextTopPx,
         lineHeightPx,
-        yOffsetPx,
         letterSpacingPx,
         align: normalizedStyle.align,
         renderScale,
@@ -192,7 +190,6 @@ export class TextRenderer {
           localTextStartX,
           localTextTopPx,
           lineHeightPx,
-          yOffsetPx,
           letterSpacingPx,
           align: normalizedStyle.align,
           renderScale,
@@ -208,7 +205,6 @@ export class TextRenderer {
         localTextStartX,
         localTextTopPx,
         lineHeightPx,
-        yOffsetPx,
         letterSpacingPx,
         align: normalizedStyle.align,
         renderScale,
@@ -221,7 +217,6 @@ export class TextRenderer {
           localTextStartX,
           localTextTopPx,
           lineHeightPx,
-          yOffsetPx,
           letterSpacingPx,
           align: normalizedStyle.align,
           renderScale,
@@ -241,7 +236,6 @@ export class TextRenderer {
       localTextStartX,
       localTextTopPx,
       lineHeightPx,
-      yOffsetPx,
       letterSpacingPx,
       align: normalizedStyle.align,
       renderScale,
@@ -274,7 +268,6 @@ export class TextRenderer {
     localTextStartX: number;
     localTextTopPx: number;
     lineHeightPx: number;
-    yOffsetPx: number;
     letterSpacingPx: number;
     align: 'left' | 'center' | 'right';
     renderScale: number;
@@ -286,7 +279,6 @@ export class TextRenderer {
       localTextStartX,
       localTextTopPx,
       lineHeightPx,
-      yOffsetPx,
       letterSpacingPx,
       align,
       renderScale,

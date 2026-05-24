@@ -186,7 +186,11 @@ describe('notifyPhase', () => {
     const hostClient = {
       onExportPhase: vi.fn().mockResolvedValue(undefined),
     };
-    await notifyPhase(hostClient as unknown as { onExportPhase: (phase: string, taskId?: string) => Promise<void> }, 'encoding', 'task-1');
+    await notifyPhase(
+      hostClient as unknown as { onExportPhase: (phase: string, taskId?: string) => Promise<void> },
+      'encoding',
+      'task-1',
+    );
     expect(hostClient.onExportPhase).toHaveBeenCalledWith('encoding', 'task-1');
   });
 
@@ -195,7 +199,12 @@ describe('notifyPhase', () => {
       onExportPhase: vi.fn().mockRejectedValue(new Error('network error')),
     };
     await expect(
-      notifyPhase(hostClient as unknown as { onExportPhase: (phase: string, taskId?: string) => Promise<void> }, 'saving'),
+      notifyPhase(
+        hostClient as unknown as {
+          onExportPhase: (phase: string, taskId?: string) => Promise<void>;
+        },
+        'saving',
+      ),
     ).resolves.toBeUndefined();
   });
 });

@@ -13,7 +13,11 @@ import type {
   TrackKind,
 } from '~/timeline/types';
 import type { TimelineContext } from './context';
-import { pxToTimeUs, timelineRangeToRoundedPx, timeUsToPx, calculatePointerTimeUs } from '~/utils/timeline/geometry';
+import {
+  timelineRangeToRoundedPx,
+  timeUsToPx,
+  calculatePointerTimeUs,
+} from '~/utils/timeline/geometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { cloneValue } from '~/utils/clone';
@@ -27,6 +31,7 @@ import {
 } from '~/utils/timeline/clip';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
@@ -239,13 +244,15 @@ const {
   onDragStart: (e) => {
     if (clipItem.value?.locked || props.track.locked) return false;
     // On mobile, dragging is only allowed when the clip is already selected
-    if (props.isMobile && !timelineContext.selectedItemIds.value.includes(props.item.id)) return false;
+    if (props.isMobile && !timelineContext.selectedItemIds.value.includes(props.item.id))
+      return false;
     emit('startMoveItem', e, {
       trackId: props.track.id,
       itemId: props.item.id,
       startUs: props.item.timelineRange.startUs,
       mode:
-        timelineContext.toolbarDragModeEnabled.value && timelineContext.toolbarDragMode.value === 'slip'
+        timelineContext.toolbarDragModeEnabled.value &&
+        timelineContext.toolbarDragMode.value === 'slip'
           ? 'slip'
           : 'move',
     });
@@ -369,17 +376,27 @@ function onClipClick(e: MouseEvent) {
 const safeClip = computed(() => clipItem.value!);
 const safeTrackKind = computed<TrackKind>(() => props.track.kind);
 
+const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
+const uiStore = useUiStore();
+const fileManagerStore = useFileManagerStore();
+const selectionStore = useSelectionStore();
+const focusStore = useFocusStore();
+const fileManager = useFileManager();
+const { setActiveTab } = useProjectTabsStore();
+
 const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertiesActions({
   clip: computed(() => clipItem.value!),
   trackKind: computed(() => props.track.kind),
-  timelineStore: timelineContext as any,
-  projectStore: timelineContext as any,
-  uiStore: timelineContext as any,
-  fileManagerStore: timelineContext as any,
-  selectionStore: timelineContext as any,
-  focusStore: timelineContext as any,
-  fileManager: timelineContext as any,
-  setActiveTab: timelineContext.setActiveTab,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  timelineStore: timelineStore as any,
+  projectStore,
+  uiStore,
+  fileManagerStore,
+  selectionStore,
+  focusStore,
+  fileManager,
+  setActiveTab,
 });
 
 function onClipDblClick() {
@@ -517,7 +534,11 @@ const { contextMenuItems } = useClipContextMenu({
 });
 
 const isFreePosition = computed(() =>
-  isClipFreePosition(clipItem.value, timelineContext.timelineDoc.value, timelineContext.fps.value || 30),
+  isClipFreePosition(
+    clipItem.value,
+    timelineContext.timelineDoc.value,
+    timelineContext.fps.value || 30,
+  ),
 );
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
@@ -816,7 +837,8 @@ function handleTransitionCreate(
               effectiveClipItem &&
               effectiveClipItem.showWaveform !== false &&
               (isAudio(item, track) ||
-                (isVideo(item, track) && clipHasAudio(item, track, timelineContext.mediaMetadata.value)))
+                (isVideo(item, track) &&
+                  clipHasAudio(item, track, timelineContext.mediaMetadata.value)))
             "
             :item="effectiveClipItem"
           />

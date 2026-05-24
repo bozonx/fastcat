@@ -1636,6 +1636,7 @@
       "hotkeysCaptureHint": "Waiting for key combination (Esc to cancel)",
       "hotkeysCapturing": "Capturing...",
       "hotkeysConflict": "Hotkey conflict",
+      "hotkeysOverride": "Overrides a command in another context",
       "hotkeysDuplicateConfirm": "Add anyway",
       "hotkeysDuplicateReplace": "Replace",
       "hotkeysDuplicateTitle": "Duplicate hotkey",

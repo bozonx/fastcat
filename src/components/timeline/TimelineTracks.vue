@@ -18,12 +18,15 @@ import type {
 import { timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineClipHandleResize } from '~/composables/timeline/useTimelineClipHandleResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
-import { useFocusStore } from '~/stores/focus.store';
+import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
+import type { FsEntry } from '~/types/fs';
+import type { TimelineCommand } from '~/timeline/commands';
+import type { TimelineContext } from './context';
 
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
@@ -53,7 +56,7 @@ const uiStore = useUiStore();
 const clipboardStore = useAppClipboard();
 const settingsStore = useTimelineSettingsStore();
 
-provide('timelineContext', {
+provide<TimelineContext>('timelineContext', {
   zoom: computed(() => timelineStore.timelineZoom),
   fps: computed(() => timelineStore.fps),
   currentTime: computed(() => timelineStore.currentTime),
@@ -70,54 +73,81 @@ provide('timelineContext', {
   toolbarDragModeEnabled: computed(() => settingsStore.toolbarDragModeEnabled),
   toolbarDragMode: computed(() => settingsStore.toolbarDragMode),
 
-  updateClipProperties: (trackId, itemId, props, options) =>
-    timelineStore.updateClipProperties(trackId, itemId, props, options),
-  updateClipTransition: (trackId, itemId, patch, options) =>
-    timelineStore.updateClipTransition(trackId, itemId, patch, options),
-  requestTimelineSave: (options) => timelineStore.requestTimelineSave(options),
-  splitClipAtTime: (target, atUs) => timelineStore.splitClipAtTime(target, atUs),
-  splitClipAtPlayhead: (target) => timelineStore.splitClipAtPlayhead(target),
-  selectTimelineItems: (items) => timelineStore.selectTimelineItems(items),
-  trimToPlayheadLeftNoRipple: (target) => timelineStore.trimToPlayheadLeftNoRipple(target),
-  trimToPlayheadRightNoRipple: (target) => timelineStore.trimToPlayheadRightNoRipple(target),
-  applyTimeline: (cmd) => timelineStore.applyTimeline(cmd),
-  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
-  selectTransition: (payload) => timelineStore.selectTransition(payload),
-  selectTimelineTransition: (trackId, itemId, edge) =>
+  updateClipProperties: (trackId: string, itemId: string, props: Record<string, unknown>) =>
+    timelineStore.updateClipProperties(trackId, itemId, props),
+  updateClipTransition: (
+    trackId: string,
+    itemId: string,
+    patch: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ) => timelineStore.updateClipTransition(trackId, itemId, patch, options),
+  requestTimelineSave: (options?: { immediate?: boolean }) =>
+    timelineStore.requestTimelineSave(options),
+  splitClipAtTime: (target: { trackId: string; itemId: string }, atUs: number) =>
+    timelineStore.splitClipAtTime(target, atUs),
+  splitClipAtPlayhead: (target: { trackId: string; itemId: string }) =>
+    timelineStore.splitClipAtPlayhead(target),
+  selectTimelineItems: (items: Array<{ trackId: string; itemId: string }>) =>
+    timelineStore.selectTimelineItems(items),
+  trimToPlayheadLeftNoRipple: (target: { trackId: string; itemId: string }) =>
+    timelineStore.trimToPlayheadLeftNoRipple(target),
+  trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) =>
+    timelineStore.trimToPlayheadRightNoRipple(target),
+  applyTimeline: (cmd: TimelineCommand) => timelineStore.applyTimeline(cmd),
+  batchApplyTimeline: (cmds: TimelineCommand[]) => timelineStore.batchApplyTimeline(cmds),
+  selectTransition: (payload: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
+    timelineStore.selectTransition(payload),
+  selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') =>
     selectionStore.selectTimelineTransition(trackId, itemId, edge),
-  selectTimelineItem: (trackId, itemId, kind) =>
+  selectTimelineItem: (trackId: string, itemId: string, kind: 'clip' | 'gap') =>
     selectionStore.selectTimelineItem(trackId, itemId, kind),
   clearSelection: () => selectionStore.clearSelection(),
-  setClipboardPayload: (payload) => clipboardStore.setClipboardPayload(payload),
+  setClipboardPayload: (payload: unknown) => clipboardStore.setClipboardPayload(payload),
   triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
   copySelectedClips: () => timelineStore.copySelectedClips() || [],
   cutSelectedClips: () => timelineStore.cutSelectedClips() || [],
-  pasteClips: (options) => timelineStore.pasteClips(clipboardStore.clipboardPayload?.items || [], options),
+  pasteClips: (options?: { insertStartUs?: number }) =>
+    timelineStore.pasteClips(
+      clipboardStore.clipboardPayload?.source === 'timeline'
+        ? clipboardStore.clipboardPayload.items
+        : [],
+      options,
+    ),
 
-  unlinkAudioFromVideo: (input) => timelineStore.unlinkAudioFromVideo(input),
-  renameItem: (trackId, itemId, name) => timelineStore.renameItem(trackId, itemId, name),
-  updateTrackProperties: (trackId, patch) => timelineStore.updateTrackProperties(trackId, patch),
+  unlinkAudioFromVideo: (input: {
+    videoItemId?: string;
+    audioTrackId?: string;
+    audioItemId?: string;
+  }) => timelineStore.unlinkAudioFromVideo(input),
+  renameItem: (trackId: string, itemId: string, name: string) =>
+    timelineStore.renameItem(trackId, itemId, name),
+  updateTrackProperties: (trackId: string, patch: Record<string, unknown>) =>
+    timelineStore.updateTrackProperties(trackId, patch),
   goToFiles: () => projectStore.goToFiles(),
-  openTimelineFile: (path) => projectStore.openTimelineFile(path),
+  openTimelineFile: (path: string) => projectStore.openTimelineFile(path),
   goToCut: () => projectStore.goToCut(),
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
-  triggerScrollToFileTreeEntry: (path) => uiStore.triggerScrollToFileTreeEntry(path),
-  openFolder: (entry) => fileManagerStore.openFolder(entry),
-  selectFsEntry: (entry) => selectionStore.selectFsEntry(entry),
-  setTempFocus: (panel) => focusStore.setTempFocus(panel),
-  setPanelFocus: (panel) => focusStore.setPanelFocus(panel),
+  triggerScrollToFileTreeEntry: (path: string) => uiStore.triggerScrollToFileTreeEntry(path),
+  openFolder: (entry: FsEntry) => fileManagerStore.openFolder(entry),
+  selectFsEntry: (entry: FsEntry) => selectionStore.selectFsEntry(entry),
+  setTempFocus: (panel: 'files-sidebar' | 'files-main') => focusStore.setTempFocus(panel),
+  setPanelFocus: (panel: PanelFocusId) => focusStore.setPanelFocus(panel),
   loadProjectDirectory: () => fileManager.loadProjectDirectory(),
-  findEntryByPath: (path) => fileManager.findEntryByPath(path),
-  toggleDirectory: (entry) => fileManager.toggleDirectory(entry),
-  setActiveTab: (tabId) => projectTabsStore.setActiveTab(tabId),
+  findEntryByPath: (path: string) => fileManager.findEntryByPath(path),
+  toggleDirectory: (entry: FsEntry) => fileManager.toggleDirectory(entry),
+  setActiveTab: (tabId: string) => projectTabsStore.setActiveTab(tabId),
 
   mediaReplaceTarget: computed({
     get: () => uiStore.mediaReplaceTarget,
-    set: (val) => { uiStore.mediaReplaceTarget = val; },
+    set: (val) => {
+      uiStore.mediaReplaceTarget = val;
+    },
   }),
   isMediaReplaceModalOpen: computed({
     get: () => uiStore.isMediaReplaceModalOpen,
-    set: (val) => { uiStore.isMediaReplaceModalOpen = val; },
+    set: (val) => {
+      uiStore.isMediaReplaceModalOpen = val;
+    },
   }),
 });
 
@@ -450,7 +480,6 @@ async function applyAutoMontage(settings: {
     settings,
   });
 }
-
 
 watch(
   () => uiStore.openAutoMontageTrigger,

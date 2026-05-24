@@ -9,7 +9,7 @@ export interface ReversibleAudioSample {
 }
 
 export function createReversedAudioSamples(
-  AudioSample: new (...args: any[]) => unknown,
+  AudioSample: new (...args: unknown[]) => unknown,
   samples: ReversibleAudioSample[],
 ): unknown[] {
   const firstSample = samples[0];
@@ -28,11 +28,7 @@ export function createReversedAudioSamples(
       const sourceOffset = frameIndex * currentSample.numberOfChannels;
       const targetOffset = writeFrameOffset * currentSample.numberOfChannels;
 
-      for (
-        let channelIndex = 0;
-        channelIndex < currentSample.numberOfChannels;
-        channelIndex += 1
-      ) {
+      for (let channelIndex = 0; channelIndex < currentSample.numberOfChannels; channelIndex += 1) {
         reversedData[targetOffset + channelIndex] =
           currentSample.data[sourceOffset + channelIndex] ?? 0;
       }
@@ -81,7 +77,7 @@ export interface AudioProcessSample {
 
 export function createAudioProcessConfig(
   options: ExportOptions,
-  AudioSample: new (...args: any[]) => unknown,
+  AudioSample: new (...args: unknown[]) => unknown,
 ) {
   if (
     !options.audioReverse ||

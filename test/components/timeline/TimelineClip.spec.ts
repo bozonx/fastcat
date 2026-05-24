@@ -67,9 +67,6 @@ const mockWorkspaceStore = reactive({
   },
 });
 
-
-
-
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
     loadProjectDirectory: vi.fn(async () => {}),
@@ -89,7 +86,11 @@ const mockTimelineContext = {
   userSettings: computed(() => mockWorkspaceStore.userSettings as any),
   missingPaths: computed(() => mockMediaStore.missingPaths),
   mediaMetadata: computed(() => mockMediaStore.mediaMetadata),
-  clipboardPayload: computed(() => ({ source: 'timeline' as const, operation: 'copy' as const, items: [] })),
+  clipboardPayload: computed(() => ({
+    source: 'timeline' as const,
+    operation: 'copy' as const,
+    items: [],
+  })),
   hasTimelinePayload: computed(() => false),
   timelineDoc: computed(() => mockTimelineStore.timelineDoc as any),
   projectSettings: computed(() => ({})),
@@ -196,8 +197,6 @@ describe('TimelineClip', () => {
     mockTimelineStore.timelineZoom = 1;
     mockTimelineStore.isTrimModeActive = false;
   });
-
-
 
   it('calculates position and width correctly based on time and zoom', async () => {
     // Zoom 1 means timeUsToPx(us, 1) = us / 1000000 * 100

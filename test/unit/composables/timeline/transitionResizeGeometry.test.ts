@@ -41,19 +41,30 @@ describe('getAdjacentClipForTransitionEdge', () => {
   const tracks = [track([a, b, c])];
 
   it('resolves the previous clip for an in edge', () => {
-    const res = getAdjacentClipForTransitionEdge({ tracks, trackId: 'v1', itemId: 'b', edge: 'in' });
+    const res = getAdjacentClipForTransitionEdge({
+      tracks,
+      trackId: 'v1',
+      itemId: 'b',
+      edge: 'in',
+    });
     expect(res?.clip.id).toBe('b');
     expect(res?.adjacent?.id).toBe('a');
   });
 
   it('resolves the next clip for an out edge', () => {
-    const res = getAdjacentClipForTransitionEdge({ tracks, trackId: 'v1', itemId: 'b', edge: 'out' });
+    const res = getAdjacentClipForTransitionEdge({
+      tracks,
+      trackId: 'v1',
+      itemId: 'b',
+      edge: 'out',
+    });
     expect(res?.adjacent?.id).toBe('c');
   });
 
   it('returns null adjacent at the boundaries', () => {
     expect(
-      getAdjacentClipForTransitionEdge({ tracks, trackId: 'v1', itemId: 'a', edge: 'in' })?.adjacent,
+      getAdjacentClipForTransitionEdge({ tracks, trackId: 'v1', itemId: 'a', edge: 'in' })
+        ?.adjacent,
     ).toBeNull();
     expect(
       getAdjacentClipForTransitionEdge({ tracks, trackId: 'v1', itemId: 'c', edge: 'out' })
@@ -62,8 +73,12 @@ describe('getAdjacentClipForTransitionEdge', () => {
   });
 
   it('returns null for an unknown track or item', () => {
-    expect(getAdjacentClipForTransitionEdge({ tracks, trackId: 'x', itemId: 'b', edge: 'in' })).toBeNull();
-    expect(getAdjacentClipForTransitionEdge({ tracks, trackId: 'v1', itemId: 'z', edge: 'in' })).toBeNull();
+    expect(
+      getAdjacentClipForTransitionEdge({ tracks, trackId: 'x', itemId: 'b', edge: 'in' }),
+    ).toBeNull();
+    expect(
+      getAdjacentClipForTransitionEdge({ tracks, trackId: 'v1', itemId: 'z', edge: 'in' }),
+    ).toBeNull();
   });
 });
 

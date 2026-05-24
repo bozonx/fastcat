@@ -1,7 +1,4 @@
-import type {
-  DecodeRequest,
-  DecodeResponse,
-} from '../utils/audio/types';
+import type { DecodeRequest, DecodeResponse } from '../utils/audio/types';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 
 interface InputLike {
@@ -18,9 +15,9 @@ interface AudioSampleSinkLike {
 }
 
 export interface AudioDecodeEngineDeps {
-  AudioSampleSink: new (...args: any[]) => AudioSampleSinkLike;
-  Input: new (...args: any[]) => InputLike;
-  BlobSource: new (...args: any[]) => unknown;
+  AudioSampleSink: new (...args: unknown[]) => AudioSampleSinkLike;
+  Input: new (...args: unknown[]) => InputLike;
+  BlobSource: new (...args: unknown[]) => unknown;
   ALL_FORMATS: unknown;
   governedBlobWorker?: (blob: Blob) => Blob;
 }
@@ -177,9 +174,7 @@ export class AudioDecodeEngine {
 
     const blob = source instanceof Blob ? source : new Blob([source]);
     const input = new this.deps.Input({
-      source: new this.deps.BlobSource(
-        (this.deps.governedBlobWorker ?? governedBlobWorker)(blob),
-      ),
+      source: new this.deps.BlobSource((this.deps.governedBlobWorker ?? governedBlobWorker)(blob)),
       formats: this.deps.ALL_FORMATS,
     });
     let aTrack: unknown;
@@ -254,7 +249,8 @@ export class AudioDecodeEngine {
       let numberOfChannels: number | undefined;
       let actualStartTimeS: number | undefined;
 
-      const channelChunks: Array<{ startFrame: number; planes: Float32Array[]; frames: number }> = [];
+      const channelChunks: Array<{ startFrame: number; planes: Float32Array[]; frames: number }> =
+        [];
       let maxFrame = 0;
 
       const decodeStartS = rangeStartTimeS;
@@ -269,7 +265,10 @@ export class AudioDecodeEngine {
           numberOfFrames: number;
           timestamp: number;
           allocationSize: (options: { format: 'f32-planar'; planeIndex: number }) => number;
-          copyTo: (dst: Float32Array, options: { format: 'f32-planar'; planeIndex: number }) => void;
+          copyTo: (
+            dst: Float32Array,
+            options: { format: 'f32-planar'; planeIndex: number },
+          ) => void;
           close: () => void;
         };
         try {
@@ -357,9 +356,7 @@ export class AudioDecodeEngine {
     const precision = options?.precision || 10000;
     const blob = source instanceof Blob ? source : new Blob([source]);
     const input = new this.deps.Input({
-      source: new this.deps.BlobSource(
-        (this.deps.governedBlobWorker ?? governedBlobWorker)(blob),
-      ),
+      source: new this.deps.BlobSource((this.deps.governedBlobWorker ?? governedBlobWorker)(blob)),
       formats: this.deps.ALL_FORMATS,
     });
 
@@ -378,7 +375,10 @@ export class AudioDecodeEngine {
       try {
         const metaDurationS = await input.computeDuration();
         const durationS = Number.isFinite(metaDurationS) && metaDurationS > 0 ? metaDurationS : 0;
-        const trackSampleRate = Math.max(1, (aTrack as { sampleRate?: number }).sampleRate || 48000);
+        const trackSampleRate = Math.max(
+          1,
+          (aTrack as { sampleRate?: number }).sampleRate || 48000,
+        );
         let totalFramesEstimate = Math.max(1, Math.ceil(durationS * trackSampleRate));
         const peaks: Float32Array[] = [];
         let resolvedChannels = 0;
@@ -487,9 +487,7 @@ export class AudioDecodeEngine {
   async decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16000) {
     const blob = source instanceof Blob ? source : new Blob([source]);
     const input = new this.deps.Input({
-      source: new this.deps.BlobSource(
-        (this.deps.governedBlobWorker ?? governedBlobWorker)(blob),
-      ),
+      source: new this.deps.BlobSource((this.deps.governedBlobWorker ?? governedBlobWorker)(blob)),
       formats: this.deps.ALL_FORMATS,
     });
 
@@ -572,7 +570,11 @@ export class AudioDecodeEngine {
   }
 }
 
-export function resample(audio: Float32Array, currentRate: number, targetRate: number): Float32Array {
+export function resample(
+  audio: Float32Array,
+  currentRate: number,
+  targetRate: number,
+): Float32Array {
   if (currentRate === targetRate) return audio;
   const ratio = currentRate / targetRate;
   const newLength = Math.round(audio.length / ratio);

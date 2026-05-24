@@ -402,8 +402,14 @@ export function mixProcessedChunk(params: {
   mixedInterleaved: Float32Array;
   numberOfChannels: number;
 }): number {
-  const { processed, sourceStartFrame, sourceEndFrame, writeStartFrame, mixedInterleaved, numberOfChannels } =
-    params;
+  const {
+    processed,
+    sourceStartFrame,
+    sourceEndFrame,
+    writeStartFrame,
+    mixedInterleaved,
+    numberOfChannels,
+  } = params;
   const processedStartFrame = processed.startFrame;
   const processedEndFrame = processedStartFrame + processed.frames;
   const segmentStartFrame = Math.max(sourceStartFrame, processedStartFrame);
