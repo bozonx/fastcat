@@ -5,7 +5,7 @@ import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import type { BackgroundTasksStore } from '~/stores/background-tasks.store';
 
 export interface ProxyService {
@@ -145,7 +145,7 @@ export function createProxyService(params: {
       try {
         const proxyFilename = await params.getProxyFileName(path);
         const handle = await dir.getFileHandle(proxyFilename);
-        const file = await handle.getFile();
+        const file = await withFileIoSlot(() => handle.getFile());
         if (file.size > 0) {
           next.add(path);
         } else {
@@ -504,7 +504,7 @@ export function createProxyService(params: {
       } else {
         // Fallback: copy and delete if move is not supported (unlikely in modern Chrome)
         const newHandle = await dir.getFileHandle(newFilename, { create: true });
-        const sourceFile = await handle.getFile();
+        const sourceFile = await withFileIoSlot(() => handle.getFile());
         await withFileWriteSlot(async () => {
           const writable = await (
             newHandle as unknown as {
@@ -558,7 +558,7 @@ export function createProxyService(params: {
     try {
       const proxyFilename = await params.getProxyFileName(projectRelativePath);
       const handle = await dir.getFileHandle(proxyFilename);
-      return await handle.getFile();
+      return await withFileIoSlot(() => handle.getFile());
     } catch {
       return null;
     }

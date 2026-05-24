@@ -1,6 +1,7 @@
 import { ImageSource } from 'pixi.js';
 import PQueue from 'p-queue';
 import { getMediaTypeFromFilename } from '../../media-types';
+import { withWorkerFileIoSlotForHandle } from '../../../workers/core/io-governor';
 import type { WorkerTimelineClip } from '../../../composables/monitor/types';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';
@@ -261,7 +262,9 @@ export class TimelineLoadOrchestrator {
       }
     })();
 
-    const file = (await deps.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
+    const file =
+      (await deps.getFileByPath?.(sourcePath)) ??
+      (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
     const isImage =
       (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
       getMediaTypeFromFilename(sourcePath) === 'image';

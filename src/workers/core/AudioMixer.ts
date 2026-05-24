@@ -14,6 +14,7 @@ import {
 } from '../../utils/audio/apply-audio-effects-offline';
 import { clampFloat32 } from './utils';
 import { usToS } from './time';
+import { withWorkerFileIoSlotForHandle } from './io-governor';
 
 export function interleavedToPlanar(params: {
   interleaved: Float32Array;
@@ -882,7 +883,9 @@ export class AudioMixer {
 
       let file: File;
       try {
-        file = (await hostClient?.getFileByPath?.(sourcePath)) ?? (await fileHandle.getFile());
+        file =
+          (await hostClient?.getFileByPath?.(sourcePath)) ??
+          (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
       } catch {
         await reportExportWarning('[Worker Export] Failed to read audio file handle');
         continue;

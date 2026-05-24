@@ -98,4 +98,33 @@ describe('ClipParametersPasteModal', () => {
 
     expect(isOpen.value).toBe(false);
   });
+
+  it('toggles selection when checkbox is clicked', async () => {
+    const selected = ref<string[]>(['transform']);
+
+    const wrapper = await mountSuspended(ClipParametersPasteModal, {
+      props: {
+        groups: baseGroups,
+        open: true,
+        selectedGroups: selected.value,
+        'onUpdate:selectedGroups': (v: string[]) => {
+          selected.value = v;
+        },
+      },
+    });
+
+    console.log('CLIP PARAMETERS PASTE MODAL HTML:', wrapper.html());
+
+    const checkboxes = wrapper.findAllComponents({ name: 'UCheckbox' });
+    expect(checkboxes.length).toBe(3);
+
+    // Uncheck 'transform'
+    await checkboxes[0].setValue(false);
+    expect(selected.value).not.toContain('transform');
+
+    // Check 'speed'
+    await checkboxes[2].setValue(true);
+    expect(selected.value).toContain('speed');
+  });
 });
+

@@ -223,7 +223,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       const addedTimes = new Set<number>();
 
       for (let idx = firstIdx; idx <= lastIdx; idx++) {
-        if (idx === 0 || idx === 1 || idx === totalTiles - 1 || idx === totalTiles - 2) {
+        if (idx === 0 || idx === totalTiles - 1) {
           const sourceTimeSec = sourceStartUs / 1_000_000 + (idx * tileW) / pxPerSec;
           const nearestSecond = Math.round(sourceTimeSec / intervalSeconds) * intervalSeconds;
           const roundedTime = Math.round(nearestSecond);
@@ -309,7 +309,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
 
     for (let idx = firstIdx; idx <= lastIdx; idx++) {
       if (clipThumbnailMode.value === 'edges') {
-        if (idx !== 0 && idx !== 1 && idx !== totalTiles - 1 && idx !== totalTiles - 2) {
+        if (idx !== 0 && idx !== totalTiles - 1) {
           continue;
         }
       }

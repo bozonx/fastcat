@@ -23,8 +23,15 @@ const { t } = useI18n();
 
 const hasSelection = computed(() => selectedGroups.value.length > 0);
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const checkboxModelValue = computed(() => selectedGroups.value as any);
+function toggleGroup(group: ClipParameterGroup, checked: boolean) {
+  if (checked) {
+    if (!selectedGroups.value.includes(group)) {
+      selectedGroups.value = [...selectedGroups.value, group];
+    }
+  } else {
+    selectedGroups.value = selectedGroups.value.filter((g) => g !== group);
+  }
+}
 
 watch(
   () => [isOpen.value, props.groups] as const,
@@ -55,9 +62,9 @@ function handleApply() {
       <UCheckbox
         v-for="group in groups"
         :key="group.id"
-        :model-value="checkboxModelValue"
-        :value="group.id"
+        :model-value="selectedGroups.includes(group.id)"
         :label="t(group.labelKey)"
+        @update:model-value="(checked) => toggleGroup(group.id as ClipParameterGroup, Boolean(checked))"
       />
       <p v-if="groups.length === 0" class="text-sm text-ui-text-muted">
         {{ t('fastcat.clip.parameters.noApplicableGroups') }}

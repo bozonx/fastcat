@@ -11,6 +11,7 @@ import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { ConversionRequest } from '~/types/conversion';
 import { clampPositiveNumber, resolveAudioOnlyContainerFormat } from './helpers';
 import {
@@ -39,7 +40,7 @@ export async function executeMediaConversion(params: {
       const workspaceFileHandle = await getWorkspaceFileHandle(path);
       if (workspaceFileHandle) {
         try {
-          return await workspaceFileHandle.getFile();
+          return await withFileIoSlot(() => workspaceFileHandle.getFile());
         } catch {
           // Fall through to projectStore fallback below.
         }

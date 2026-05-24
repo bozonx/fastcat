@@ -1,4 +1,5 @@
 import { WORKSPACE_TEMP_ROOT_DIR_NAME } from '../storage-roots';
+import { withFileIoSlot } from '../io/io-governor';
 
 export interface ModelDownloadProgress {
   model: string;
@@ -180,33 +181,35 @@ export async function downloadModel(
     }
 
     const fileHandle = await targetDir.getFileHandle(targetFileName, { create: true });
-    const writable = await fileHandle.createWritable();
+    await withFileIoSlot(async () => {
+      const writable = await fileHandle.createWritable();
 
-    try {
-      let loaded = 0;
+      try {
+        let loaded = 0;
 
-      while (true) {
-        if (signal?.aborted) {
-          throw new DOMException('Download cancelled', 'AbortError');
+        while (true) {
+          if (signal?.aborted) {
+            throw new DOMException('Download cancelled', 'AbortError');
+          }
+
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          await writable.write(value);
+          loaded += value.length;
+
+          onProgress?.({
+            model: modelName,
+            file: fileName,
+            loaded,
+            total: contentLength,
+            status: 'downloading',
+          });
         }
-
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        await writable.write(value);
-        loaded += value.length;
-
-        onProgress?.({
-          model: modelName,
-          file: fileName,
-          loaded,
-          total: contentLength,
-          status: 'downloading',
-        });
+      } finally {
+        await writable.close();
       }
-    } finally {
-      await writable.close();
-    }
+    });
 
     onProgress?.({
       model: modelName,
@@ -238,5 +241,5 @@ export async function getModelFile(
   }
 
   const fileHandle = await targetDir.getFileHandle(targetFileName, { create: false });
-  return await fileHandle.getFile();
+  return await withFileIoSlot(() => fileHandle.getFile());
 }

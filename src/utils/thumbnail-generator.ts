@@ -340,7 +340,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
         }
         try {
           const fileHandle = await hashDir.getFileHandle(fileName);
-          const file = await fileHandle.getFile();
+          const file = await withFileIoSlot(() => fileHandle.getFile());
           const buffer = await file.arrayBuffer();
           const blob = new Blob([buffer], { type: file.type });
           const url = URL.createObjectURL(blob);

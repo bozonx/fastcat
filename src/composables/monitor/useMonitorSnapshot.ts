@@ -11,6 +11,7 @@ import { buildStopFrameBaseName } from '~/utils/stop-frames';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { IMAGES_DIR_NAME } from '~/utils/constants';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 import { cloneValue } from '~/utils/clone';
 
@@ -187,9 +188,11 @@ export function useMonitorSnapshot(input: {
         return;
       }
 
-      const writable = await fileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
+      await withFileIoSlot(async () => {
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      });
 
       toast.add({
         color: 'success',

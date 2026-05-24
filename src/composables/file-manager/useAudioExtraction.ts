@@ -7,6 +7,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 interface AudioExtractionSelectionContext {
   instanceId?: string;
@@ -87,7 +88,7 @@ export function useAudioExtraction() {
         const handle = await getWorkspaceFileHandle(entry.path);
         if (handle) {
           try {
-            sourceFile = await handle.getFile();
+            sourceFile = await withFileIoSlot(() => handle.getFile());
           } catch {
             /* fall through */
           }
@@ -118,7 +119,7 @@ export function useAudioExtraction() {
               const handle = await getWorkspaceFileHandle(path);
               if (handle) {
                 try {
-                  return await handle.getFile();
+                  return await withFileIoSlot(() => handle.getFile());
                 } catch {
                   /* fall through */
                 }

@@ -1,5 +1,6 @@
 import type { ConversionRequest } from '~/types/conversion';
 import { MAX_CANVAS_DIMENSION } from '~/utils/conversion/constants';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 function throwCancelError() {
   const err = new Error('Cancelled');
@@ -20,15 +21,17 @@ export async function executeImageConversion(params: {
     isCancelRequested: params.isCancelRequested,
   });
 
-  const writable = await params.targetHandle.createWritable();
+  await withFileIoSlot(async () => {
+    const writable = await params.targetHandle.createWritable();
 
-  if (params.isCancelRequested()) {
-    await writable.abort();
-    throwCancelError();
-  }
+    if (params.isCancelRequested()) {
+      await writable.abort();
+      throwCancelError();
+    }
 
-  await writable.write(blob);
-  await writable.close();
+    await writable.write(blob);
+    await writable.close();
+  });
 }
 
 export async function convertImageFile(params: {

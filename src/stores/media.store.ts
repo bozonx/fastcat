@@ -8,6 +8,7 @@ import { createMediaCacheFsModule } from '~/stores/media/media-cache-fs';
 import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { writeFileAtomic } from '~/utils/io/atomic-file-write';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/waveform';
 
@@ -207,7 +208,7 @@ export const useMediaStore = defineStore('media', () => {
       try {
         const text = await runCacheFileAccess('metadata', cacheFileName, async () => {
           const cacheHandle = await metaDir.getFileHandle(cacheFileName);
-          const cacheFile = await cacheHandle.getFile();
+          const cacheFile = await withFileIoSlot(() => cacheHandle.getFile());
           return await cacheFile.text();
         });
         const parsed = JSON.parse(text) as MediaMetadata;
@@ -311,7 +312,7 @@ export const useMediaStore = defineStore('media', () => {
         try {
           const arrayBuffer = await runCacheFileAccess('waveform', cacheFileName, async () => {
             const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
-            const peaksFile = await peaksHandle.getFile();
+            const peaksFile = await withFileIoSlot(() => peaksHandle.getFile());
             return await peaksFile.arrayBuffer();
           });
           const uint8 = new Uint8Array(arrayBuffer);

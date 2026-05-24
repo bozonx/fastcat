@@ -13,6 +13,7 @@ import {
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import { save } from '@tauri-apps/plugin-dialog';
 import { copyFile } from '@tauri-apps/plugin-fs';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export interface ExportRangeOption {
   id: string;
@@ -360,15 +361,17 @@ export function useExportForm() {
         }
 
         const fileHandle = await exportDir.getFileHandle(finalFilename, { create: true });
-        const tempFile = await tempFileHandle.getFile();
-        const writable = await fileHandle.createWritable({ keepExistingData: false });
-        try {
-          await writable.write(tempFile);
-          await writable.close();
-        } catch (e) {
-          await writable.abort();
-          throw e;
-        }
+        await withFileIoSlot(async () => {
+          const tempFile = await tempFileHandle.getFile();
+          const writable = await fileHandle.createWritable({ keepExistingData: false });
+          try {
+            await writable.write(tempFile);
+            await writable.close();
+          } catch (e) {
+            await writable.abort();
+            throw e;
+          }
+        });
 
         exportSuccess = true;
         exportProgress.value = 1;
@@ -400,7 +403,7 @@ export function useExportForm() {
         });
 
         if (onSuccess) {
-          const file = await fileHandle.getFile();
+          const file = await withFileIoSlot(() => fileHandle.getFile());
           await onSuccess(file);
         }
 

@@ -217,19 +217,10 @@ describe('useTimelineClipThumbnails reactive logic', () => {
     const { requestedThumbnailTimes } = useTimelineClipThumbnails(options);
 
     // edges mode: totalTiles = clipWidth / tileDisplayWidth.
-    // durationUs = 20_000_000 Us => clipWidthPx at zoom 1.0 (assuming 1us = some px)
     // В данном тесте проверим, что в edges режиме количество запрашиваемых времен меньше,
-    // и они соответствуют только первому и последнему кадрам клипа.
-    // Наш мок возвращает массив времен, которые соответствуют индексам 0, 1 и totalTiles - 2, totalTiles - 1.
-    // Так как видео длится 20 секунд, и плитки помещаются во вьюпорт,
-    // крайними будут времена в районе начала (0, 4) и конца (16, 20).
+    // и они соответствуют только первому и последнему кадрам клипа (одна миниатюра слева, одна справа).
     const times = requestedThumbnailTimes.value;
-    expect(times).toContain(0);
-    expect(times).toContain(4);
-    expect(times).toContain(16);
-    // Середина (8, 12) должна отсутствовать
-    expect(times).not.toContain(8);
-    expect(times).not.toContain(12);
+    expect(times).toEqual([0, 16]);
   });
 });
 

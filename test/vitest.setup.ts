@@ -215,15 +215,6 @@ config.global.stubs = {
   UContextMenu: { template: '<div><slot /></div>' },
   UIcon: { props: ['name'], template: '<span class="icon-mock" />' },
   UButton: { props: ['label'], template: '<button>{{ label }}<slot /></button>' },
-};
-
-// Global stubs for Nuxt UI components
-config.global.stubs = {
-  ...config.global.stubs,
-  UTooltip: { template: '<span><slot /></span>' },
-  UContextMenu: { template: '<div><slot /></div>' },
-  UIcon: { props: ['name'], template: '<span class="icon-mock" />' },
-  UButton: { props: ['label'], template: '<button>{{ label }}<slot /></button>' },
   UModal: {
     props: ['open', 'title', 'description', 'close', 'ui', 'dismissible', 'content'],
     template: `
@@ -233,7 +224,7 @@ config.global.stubs = {
           <p v-if="description">{{ description }}</p>
           <slot name="header" />
         </div>
-        <div class="modal-body"><slot /></div>
+        <div class="modal-body"><slot name="body" /><slot /></div>
         <div class="modal-footer"><slot name="footer" /></div>
         <button v-if="close" class="modal-close" @click="$emit('update:open', false)">×</button>
       </div>

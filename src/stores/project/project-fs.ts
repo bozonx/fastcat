@@ -6,6 +6,7 @@ import {
   toWorkspaceCommonPath,
 } from '~/utils/workspace-common';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export interface ProjectFsModule {
   toProjectRelativePath: (path: string) => string;
@@ -144,7 +145,7 @@ export function createProjectFsModule(params: {
     if (!fileHandle) return null;
 
     try {
-      return await fileHandle.getFile();
+      return await withFileIoSlot(() => fileHandle.getFile());
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
         console.error('Failed to read file by path:', path, e);

@@ -387,6 +387,7 @@ const addTrackActions = computed(() => [
     <UiRenameModal
       v-if="fsEntry"
       :open="isRenameModalOpen"
+      :initial-name="fsEntry.name"
       :current-name="fsEntry.name"
       @update:open="isRenameModalOpen = $event"
       @rename="handleRenameConfirm"

@@ -1,6 +1,6 @@
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
-import { runResilientFileWrite } from '~/utils/io/io-governor';
+import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
@@ -504,8 +504,8 @@ export function createTimelinePersistenceModule(
         return;
       }
 
-      const mainFile = handle ? await handle.getFile() : null;
-      const autosaveFile = autosaveHandle ? await autosaveHandle.getFile() : null;
+      const mainFile = handle ? await withFileIoSlot(() => handle.getFile()) : null;
+      const autosaveFile = autosaveHandle ? await withFileIoSlot(() => autosaveHandle.getFile()) : null;
       let text = mainFile ? await mainFile.text() : '';
       const shouldOfferAutosave =
         !!autosaveFile && (!mainFile || autosaveFile.lastModified > mainFile.lastModified);

@@ -1,4 +1,5 @@
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export type FsDirectoryHandleWithIteration = FileSystemDirectoryHandle;
 
@@ -102,7 +103,7 @@ export async function computeDirectoryStats(
 
       if (entryHandle.kind === 'file') {
         try {
-          const file = await (entryHandle as FileSystemFileHandle).getFile();
+          const file = await withFileIoSlot(() => (entryHandle as FileSystemFileHandle).getFile());
           totalSize += file.size;
           totalSizeAcrossWalk += file.size;
           if (isRoot || recursiveFilesCount) {

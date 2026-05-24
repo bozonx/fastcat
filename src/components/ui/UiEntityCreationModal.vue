@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue';
+import { ref, watch, nextTick, computed, onMounted } from 'vue';
 import { useWindowSize } from '@vueuse/core';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
@@ -30,29 +30,39 @@ const name = ref(props.defaultValue || '');
 const inputRef = ref<HTMLElement | null>(null);
 
 // Reset name when opening and focus/select the input
-watch(isOpen, async (val) => {
-  if (val) {
-    name.value = props.defaultValue || '';
-    await nextTick();
-    setTimeout(() => {
-      const input =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (inputRef.value as any)?.$el?.querySelector('input') || (inputRef.value as any)?.input;
-      if (input) {
-        input.focus();
-        const value = name.value;
-        if (props.selectWithoutExtension && value) {
-          const lastDot = value.lastIndexOf('.');
-          if (lastDot > 0) {
-            input.setSelectionRange(0, lastDot);
+watch(
+  isOpen,
+  async (val) => {
+    if (val) {
+      name.value = props.defaultValue || '';
+      await nextTick();
+      setTimeout(() => {
+        const input =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (inputRef.value as any)?.$el?.querySelector('input') || (inputRef.value as any)?.input;
+        if (input) {
+          input.focus();
+          const value = name.value;
+          if (props.selectWithoutExtension && value) {
+            const lastDot = value.lastIndexOf('.');
+            if (lastDot > 0) {
+              input.setSelectionRange(0, lastDot);
+            } else {
+              input.select();
+            }
           } else {
             input.select();
           }
-        } else {
-          input.select();
         }
-      }
-    }, 50);
+      }, 50);
+    }
+  },
+  { immediate: true },
+);
+
+onMounted(() => {
+  if (isOpen.value) {
+    name.value = props.defaultValue || '';
   }
 });
 

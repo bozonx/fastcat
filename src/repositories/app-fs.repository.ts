@@ -1,4 +1,4 @@
-import { runResilientFileWrite } from '~/utils/io/io-governor';
+import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
 
 export type FileHandleLike = Pick<FileSystemFileHandle, 'getFile' | 'createWritable'>;
 
@@ -57,7 +57,7 @@ export function createAppFsRepository(): AppFsRepository {
   }
 
   async function readJsonFromFileHandle<T>(handle: FileHandleLike): Promise<T | null> {
-    const file = await handle.getFile();
+    const file = await withFileIoSlot(() => handle.getFile());
     const text = await file.text();
     const trimmed = text.trim();
     if (!trimmed) return null;

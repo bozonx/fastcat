@@ -14,7 +14,7 @@ import {
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
@@ -92,7 +92,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
       const fileName = `${task.id}.webp`;
       const fileHandle = await dir.getFileHandle(fileName);
-      const file = await fileHandle.getFile();
+      const file = await withFileIoSlot(() => fileHandle.getFile());
       const buffer = await file.arrayBuffer();
       const blob = new Blob([buffer], { type: file.type });
       const url = URL.createObjectURL(blob);
@@ -336,7 +336,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       }
 
       if (foundHandle) {
-        const file = await foundHandle.getFile();
+        const file = await withFileIoSlot(() => foundHandle.getFile());
         const blob = new Blob([await file.arrayBuffer()], { type: 'image/webp' });
         const url = URL.createObjectURL(blob);
         const previousUrl = this.cache.get(cacheKey);

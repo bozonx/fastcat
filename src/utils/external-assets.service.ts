@@ -1,4 +1,5 @@
 import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export interface ExternalAsset {
   id?: string;
@@ -66,11 +67,13 @@ export async function loadExternalAssets(params: {
       const handle = await params.getProjectFileHandle(relativePath, { create: true });
       if (!handle) throw new Error(`Failed to get file handle for ${relativePath}`);
 
-      const writable = await (
-        handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
-      ).createWritable();
-      await writable.write(blob);
-      await writable.close();
+      await withFileIoSlot(async () => {
+        const writable = await (
+          handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
+        ).createWritable();
+        await writable.write(blob);
+        await writable.close();
+      });
 
       return {
         asset: { ...asset, id: asset.id || filename, type: resolvedType, filename },
