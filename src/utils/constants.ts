@@ -40,6 +40,11 @@ export const FILE_IO_LIMITS = {
    */
   MAX_CONCURRENT_FILE_IO: 2,
   /**
+   * Max concurrent streaming OPFS file operations (large writes/copies) in the
+   * browser, ensuring interactive operations are never fully starved.
+   */
+  MAX_CONCURRENT_FILE_IO_STREAMING: 1,
+  /**
    * Unified I/O cap for the **Tauri** runtime. Same rationale as writes: in
    * Tauri this is only a light guard against FD thrash, so the value is high
    * enough not to throttle desktop I/O.

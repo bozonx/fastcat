@@ -283,7 +283,9 @@ export class ClipFactory {
       const canvasSource = new CanvasSource({
         resource: clip.canvas as unknown as HTMLCanvasElement,
       });
-      sprite.texture.source = canvasSource;
+      // Replace instead of mutating sprite.texture.source (which would mutate Texture.EMPTY)
+      const texture = new Texture({ source: canvasSource });
+      sprite.texture = texture;
     }
 
     return clip;

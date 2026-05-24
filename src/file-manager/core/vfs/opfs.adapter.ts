@@ -15,7 +15,7 @@ import {
   wrapPlatformError,
 } from './errors';
 import { acquireQueuedFileAccess, runQueuedFileAccess } from '~/utils/file-access-queue';
-import { withFileIoSlot, acquireFileIoSlot } from '~/utils/io/io-governor';
+import { withFileIoSlot, acquireStreamingFileIoSlot } from '~/utils/io/io-governor';
 
 interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
@@ -587,7 +587,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   ): Promise<WritableStream<Uint8Array>> {
     throwIfAborted(options?.signal, path);
     const releasePath = await acquireQueuedFileAccess(this.getFileAccessKey(path));
-    const releaseIo = await acquireFileIoSlot();
+    const releaseIo = await acquireStreamingFileIoSlot();
     const parentHandle = await this.getParentDirHandle(path, { create: true });
     try {
       if (!parentHandle) throw new VfsNotFoundError(path);

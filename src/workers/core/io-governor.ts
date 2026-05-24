@@ -1,4 +1,5 @@
 import PQueue from 'p-queue';
+import { FILE_IO_LIMITS } from '~/utils/constants';
 
 /**
  * Detects whether a handle is a native OPFS `FileSystemFileHandle`.
@@ -14,7 +15,7 @@ function isNativeOpfsHandle(handle: unknown): boolean {
   }
 }
 
-const workerIoQueue = new PQueue({ concurrency: 2 });
+const workerIoQueue = new PQueue({ concurrency: FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO });
 
 export function withWorkerFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
   return workerIoQueue.add(task) as Promise<T>;

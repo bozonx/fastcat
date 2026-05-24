@@ -1,4 +1,4 @@
-import { CanvasSource } from 'pixi.js';
+import { CanvasSource, Texture } from 'pixi.js';
 import type { CompositorClip } from '../types';
 import { computeTextLayoutMetrics } from '../../text-layout';
 
@@ -20,8 +20,9 @@ export class TextRenderer {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const canvasSource = new CanvasSource({ resource: canvas as any });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (clip.sprite as any).texture.source = canvasSource as any;
+    // Create a new unique Texture for this text clip sprite instead of mutating Texture.EMPTY
+    const texture = new Texture({ source: canvasSource });
+    clip.sprite!.texture = texture;
     clip.sourceKind = 'canvas';
     return true;
   }

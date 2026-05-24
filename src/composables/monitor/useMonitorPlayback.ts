@@ -298,6 +298,16 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     },
   );
 
+  watch(
+    () => safeDurationUs.value,
+    (newDuration) => {
+      if (newDuration > 0 && !isPlaying.value) {
+        setLocalTimeFromStore();
+        scheduleRender(localCurrentTimeUs);
+      }
+    }
+  );
+
   onMounted(() => {
     isUnmounted = false;
     setLocalTimeFromStore();

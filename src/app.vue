@@ -7,6 +7,7 @@ import { usePresetsStore } from '~/stores/presets.store';
 import { useConfirmClose } from '~/composables/useConfirmClose';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
+import { loadFonts } from '~/utils/video-editor/load-fonts';
 const uiStore = useUiStore();
 const route = useRoute();
 const isMobileLayout = computed(() => route.path === '/m' || route.path.startsWith('/m/'));
@@ -22,6 +23,7 @@ function preventContextMenu(e: MouseEvent) {
 // Load presets on startup
 onMounted(() => {
   presetsStore.load();
+  loadFonts(); // Load Google fonts in the main thread too
   const shouldBlock = String(runtimeConfig.public.blockContextMenu).toLowerCase() !== 'false';
   if (shouldBlock) {
     window.addEventListener('contextmenu', preventContextMenu);

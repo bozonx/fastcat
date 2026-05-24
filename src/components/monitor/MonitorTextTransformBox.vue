@@ -96,8 +96,22 @@ const clipLayout = computed(() => {
   });
 });
 
+const fontsLoadedTrigger = ref(0);
+
+if (typeof document !== 'undefined' && document.fonts) {
+  document.fonts.ready.then(() => {
+    fontsLoadedTrigger.value++;
+  });
+  document.fonts.addEventListener('loadingdone', () => {
+    fontsLoadedTrigger.value++;
+  });
+}
+
 const textMetrics = computed(() => {
   if (!clipData.value || !measureContext) return null;
+
+  // React to changes in loaded fonts (when Google fonts download finishes)
+  void fontsLoadedTrigger.value;
 
   return computeTextLayoutMetrics({
     text: String((clipData.value as { text?: string }).text ?? ''),

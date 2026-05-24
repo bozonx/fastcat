@@ -161,11 +161,14 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         await ensureCompositorReady();
         return await client.updateTimelineLayout(payload);
       });
-      timelineStore.duration = computeMonitorTimelineDuration({
-        currentDurationUs: timelineStore.duration,
-        maxDurationUs: maxDuration,
-        audioDurationUs: preparedTimeline.audioDurationUs,
-      });
+      timelineStore.duration = Math.max(
+        timelineStore.duration,
+        computeMonitorTimelineDuration({
+          currentDurationUs: timelineStore.duration,
+          maxDurationUs: maxDuration,
+          audioDurationUs: preparedTimeline.audioDurationUs,
+        }),
+      );
       lastBuiltLayoutSignature = clipLayoutSignature.value;
       lastBuiltContentSignature = clipContentSignature.value;
 
@@ -300,8 +303,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
           await client.clearClips();
         });
         await audioEngine.loadClips([]);
-        timelineStore.duration = 0;
-        updateStoreTime(0);
+        if (requestId !== buildRequestId) {
+          return;
+        }
+        if (timelineStore.timelineDoc !== null) {
+          timelineStore.duration = 0;
+          updateStoreTime(0);
+        }
         isLoading.value = false;
         return;
       }
@@ -345,12 +353,15 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
 
       // Keep store duration at least as large as current value to avoid clamping
       // when disabled clips are excluded from the worker payload.
-      timelineStore.duration = computeMonitorTimelineDuration({
-        currentDurationUs: timelineStore.duration,
-        maxDurationUs: maxDuration,
-        audioDurationUs: preparedTimeline.audioDurationUs,
-        normalize: true,
-      });
+      timelineStore.duration = Math.max(
+        timelineStore.duration,
+        computeMonitorTimelineDuration({
+          currentDurationUs: timelineStore.duration,
+          maxDurationUs: maxDuration,
+          audioDurationUs: preparedTimeline.audioDurationUs,
+          normalize: true,
+        }),
+      );
 
       // Render at current time without clamping — the dispatchers already
       // keep duration including disabled clips.

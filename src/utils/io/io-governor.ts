@@ -29,34 +29,41 @@ export function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
-function resolveIoConcurrency(): number {
+function resolveInteractiveConcurrency(): number {
   const limit = isTauriRuntime()
     ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE
     : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO;
   return Math.max(1, Math.round(limit));
 }
 
-/**
- * Unified process-wide governor for **all** OPFS file operations (reads and
- * writes). Reads and writes share the same Chromium datapipe pool, so they must
- * share one budget.
- *
- * The slot is held for the full duration of `task`. For writes this means the
- * whole `createWritable → write → close` sequence; for reads it means the
- * full `getFile()` call (or any other operation that opens a datapipe).
- */
-const ioQueue = new PQueue({ concurrency: resolveIoConcurrency() });
-
-export function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
-  return ioQueue.add(task) as Promise<T>;
+function resolveStreamingConcurrency(): number {
+  const limit = isTauriRuntime()
+    ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE
+    : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_STREAMING;
+  return Math.max(1, Math.round(limit));
 }
 
 /**
- * Acquire a file I/O slot manually. Returns a release function that must be
- * called when the slot is no longer needed (e.g. after closing a writable
- * stream). Prefer {@link withFileIoSlot} for simple async blocks.
+ * Queue for fast/interactive file operations (e.g. metadata queries, configuration loading,
+ * small writes, getFile calls).
  */
-export async function acquireFileIoSlot(): Promise<() => void> {
+const interactiveQueue = new PQueue({ concurrency: resolveInteractiveConcurrency() });
+
+/**
+ * Queue for long-running streaming file operations (e.g. video file imports, VFS copies).
+ * Separating this ensures imports never block interactive timeline loading or UI autosave.
+ */
+const streamingQueue = new PQueue({ concurrency: resolveStreamingConcurrency() });
+
+export function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
+  return interactiveQueue.add(task) as Promise<T>;
+}
+
+/**
+ * Acquire a file I/O slot manually for streaming operations. Returns a release function
+ * that must be called when the slot is no longer needed (after stream close/abort).
+ */
+export async function acquireStreamingFileIoSlot(): Promise<() => void> {
   let start!: () => void;
   const started = new Promise<void>((resolve) => {
     start = resolve;
@@ -65,7 +72,7 @@ export async function acquireFileIoSlot(): Promise<() => void> {
   const hold = new Promise<void>((resolve) => {
     release = resolve;
   });
-  void ioQueue.add(async () => {
+  void streamingQueue.add(async () => {
     start();
     await hold;
   });
@@ -74,20 +81,28 @@ export async function acquireFileIoSlot(): Promise<() => void> {
 }
 
 /**
- * Run a file-write task under the global write budget. The slot is held for the
- * full duration of `task`, so keep the whole `createWritable → write → close`
- * sequence inside it (that is what holds the datapipe open).
- *
- * @deprecated Prefer {@link withFileIoSlot} for new callers; this alias is kept
- *   for existing write-only consumers and now routes through the unified queue.
+ * Acquire a file I/O slot manually. Legacy method, now forwards to acquireStreamingFileIoSlot.
+ * @deprecated Prefer {@link acquireStreamingFileIoSlot} for streaming writes.
  */
-export function withFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
-  return ioQueue.add(task) as Promise<T>;
+export async function acquireFileIoSlot(): Promise<() => void> {
+  return acquireStreamingFileIoSlot();
 }
 
-/** Inspect the write queue (depth + currently running). Intended for diagnostics. */
+/**
+ * Run a file-write task under the global write budget.
+ * @deprecated Prefer {@link withFileIoSlot} for new callers; this alias is kept
+ *   for existing write-only consumers and now routes through the interactive queue.
+ */
+export function withFileWriteSlot<T>(task: () => Promise<T>): Promise<T> {
+  return interactiveQueue.add(task) as Promise<T>;
+}
+
+/** Inspect the write queues (depth + currently running). Intended for diagnostics. */
 export function getFileWriteQueueStats(): { size: number; pending: number } {
-  return { size: ioQueue.size, pending: ioQueue.pending };
+  return {
+    size: interactiveQueue.size + streamingQueue.size,
+    pending: interactiveQueue.pending + streamingQueue.pending,
+  };
 }
 
 /**

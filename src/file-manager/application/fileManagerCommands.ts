@@ -128,7 +128,7 @@ export async function handleFilesCommand(
   },
   deps: HandleFilesDeps,
 ): Promise<UploadResult[]> {
-  const queue = new PQueue({ concurrency: 3 });
+  const queue = new PQueue({ concurrency: 2 });
   const allFiles = Array.from(files);
   const totalFiles = allFiles.length;
   const totalBytes = allFiles.reduce((acc, file) => acc + file.size, 0);
