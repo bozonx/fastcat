@@ -1,7 +1,7 @@
 import { ImageSource } from 'pixi.js';
 import PQueue from 'p-queue';
 import { getMediaTypeFromFilename } from '../../media-types';
-import { withWorkerFileIoSlotForHandle } from '../../../workers/core/io-governor';
+import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
 import type { WorkerTimelineClip } from '../../../composables/monitor/types';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';
@@ -73,15 +73,10 @@ export interface TimelineLoadOrchestratorResult {
 }
 
 export class TimelineLoadOrchestrator {
-  private clipLoadQueue: PQueue | null = null;
-
   constructor(private readonly context: TimelineLoadOrchestratorContext) {}
 
   private getClipLoadQueue(isOpfs: boolean): PQueue {
-    if (!this.clipLoadQueue) {
-      this.clipLoadQueue = new PQueue({ concurrency: isOpfs ? 2 : 8 });
-    }
-    return this.clipLoadQueue;
+    return new PQueue({ concurrency: isOpfs ? 2 : 8 });
   }
 
   public async load(
@@ -264,7 +259,7 @@ export class TimelineLoadOrchestrator {
 
     const file =
       (await deps.getFileByPath?.(sourcePath)) ??
-      (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
+      (await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile()));
     const isImage =
       (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
       getMediaTypeFromFilename(sourcePath) === 'image';

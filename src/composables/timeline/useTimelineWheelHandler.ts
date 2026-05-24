@@ -176,6 +176,17 @@ export function useTimelineWheelHandler({
       return;
     }
 
+    if (action === 'zoom_horizontal_to_playhead') {
+      e.preventDefault();
+      const scrollLeft = horizontalScrollEl.value?.scrollLeft ?? 0;
+      const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
+      const anchorViewportX = playheadPx - scrollLeft;
+      const anchorTimeUs = Math.max(0, Math.min(timelineStore.duration, timelineStore.currentTime));
+
+      handleZoomWheel(getZoomStep(delta), { anchorTimeUs, anchorViewportX });
+      return;
+    }
+
     if (action === 'zoom_vertical') {
       e.preventDefault();
       const factor = delta > 0 ? 0.9 : 1.1;

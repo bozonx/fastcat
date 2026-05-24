@@ -66,7 +66,7 @@ const workspaceStoreMock = {
     mouse: {
       timeline: {
         clipDragRight: 'copy',
-        clipDragShift: 'toggle_clip_move_mode',
+        clipDragShift: 'select_area',
         clipDragCtrl: 'free_mode',
       },
     },

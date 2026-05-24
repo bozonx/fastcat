@@ -5,7 +5,7 @@ import type { HudMediaLoader, HudMediaLoaderDeps } from './HudMediaLoader';
 import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';
 import { resolveBlendMode, type CompositorClip, type HudMediaState } from './types';
 import { Sprite, Texture } from 'pixi.js';
-import { withWorkerFileIoSlotForHandle } from '../../../workers/core/io-governor';
+import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
 
 export interface TimelineFixedClipDescriptor {
   clipType: 'background' | 'adjustment' | 'text' | 'shape' | 'hud';
@@ -132,7 +132,7 @@ export class TimelineFixedClipBuilder {
       if (!fileHandle) return null;
       const file =
         (await deps.getFileByPath?.(path)) ??
-        (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
+        (await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile()));
 
       // For explicit timeline sources skip image detection and load as video
       if (sourceKind !== 'timeline') {
@@ -245,7 +245,7 @@ export class TimelineFixedClipBuilder {
       if (!fileHandle) return;
       const file =
         (await deps.getFileByPath?.(maskPath)) ??
-        (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
+        (await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile()));
 
       const isImage =
         (typeof file?.type === 'string' && file.type.startsWith('image/')) ||

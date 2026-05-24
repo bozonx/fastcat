@@ -1,6 +1,6 @@
 import { getMediaTypeFromFilename } from '../../media-types';
 import { isSvgFile } from '../../svg';
-import { withWorkerFileIoSlotForHandle } from '../../../workers/core/io-governor';
+import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
 
 export interface RasterImageLoaderDeps {
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
@@ -47,7 +47,7 @@ export class RasterImageLoader {
 
     const file =
       (await deps.getFileByPath?.(sourcePath)) ??
-      (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
+      (await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile()));
     const isImage =
       (typeof file?.type === 'string' && file.type.startsWith('image/')) ||
       getMediaTypeFromFilename(sourcePath) === 'image';
@@ -72,7 +72,7 @@ export class RasterImageLoader {
           sourceFileHandle: fileHandle,
         });
         if (cached) {
-          imageFile = await withWorkerFileIoSlotForHandle(cached, () => cached.getFile());
+          imageFile = await runResilientWorkerFileIo(cached, () => cached.getFile());
         }
       }
     }

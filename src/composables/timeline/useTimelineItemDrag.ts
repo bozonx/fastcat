@@ -147,14 +147,6 @@ export function useTimelineItemDrag(
     return settingsStore.toolbarDragMode;
   }
 
-  function toggleToolbarDragAction(mode: ToolbarDragMode | 'none'): ToolbarDragMode | 'none' {
-    if (mode === 'none') {
-      return settingsStore.toolbarDragMode;
-    }
-
-    return 'none';
-  }
-
   function resolveDragAction(
     event: PointerEvent | KeyboardEvent | MouseEvent,
     pointerButton: 0 | 2,
@@ -184,9 +176,7 @@ export function useTimelineItemDrag(
       action = '';
     }
 
-    if (action === 'toggle_clip_move_mode') {
-      dragAction = toggleToolbarDragAction(dragAction);
-    } else if (action === 'pseudo_overlap' || action === 'copy' || action === 'slip') {
+    if (action === 'pseudo_overlap' || action === 'copy' || action === 'slip') {
       dragAction = action;
     } else if (action === 'free_mode' || action === 'no_snap' || action === 'snap') {
       snapAction = action;

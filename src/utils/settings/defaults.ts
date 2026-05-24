@@ -318,7 +318,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       middleClick: 'fit_zoom',
       middleDrag: 'pan',
       horizontalMovement: 'none',
-      clipDragShift: 'toggle_clip_move_mode',
+      clipDragShift: 'select_area',
       clipDragCtrl: 'free_mode',
       clipDragRight: 'copy',
     },
