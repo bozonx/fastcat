@@ -427,6 +427,14 @@ export function useGeneralHotkeys(
       return false;
     },
 
+    'general.navigateForward': () => {
+      if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
+        uiStore.fileBrowserNavigateForwardTrigger++;
+        return true;
+      }
+      return false;
+    },
+
     'general.navigateUp': () => {
       if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
         uiStore.fileBrowserNavigateUpTrigger++;

@@ -364,8 +364,10 @@ export async function runExport(
       setMetadataTags?: (tags: Record<string, unknown>) => void;
     };
     writable: { abort?: () => Promise<void> };
+    releaseSlot: () => void;
   }> {
-    const { output, writable } = await runResilientWorkerFileWrite(targetHandle, async () => {
+    const release = await acquireStreamingWorkerFileIoSlot();
+    try {
       const writable = await (
         targetHandle as unknown as {
           createWritable: (opts?: {
@@ -381,9 +383,11 @@ export async function runExport(
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const output = new Output({ target, format: params.format as any });
-      return { output, writable };
-    });
-    return { output, writable };
+      return { output, writable, releaseSlot: release };
+    } catch (err) {
+      release();
+      throw err;
+    }
   }
 
   async function safeCancel(params: {
@@ -580,7 +584,7 @@ export async function runExport(
     ) {
       await notifyPhase('encoding', taskId);
 
-      const { output, writable } = await createOutput({ format });
+      const { output, writable, releaseSlot } = await createOutput({ format });
 
       if (options.metadata) {
         const tags = buildMetadataTags(options.metadata);
@@ -699,6 +703,7 @@ export async function runExport(
         if (!finalized) {
           await safeCancel({ output, writable });
         }
+        releaseSlot();
         safeDispose(audioSource);
         safeDispose(videoSource);
       }
@@ -761,36 +766,34 @@ export async function extractAudioStream(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source: new BlobSource(sourceFile), formats: ALL_FORMATS } as any);
 
+  const audioTrack = await input.getPrimaryAudioTrack();
+  if (!audioTrack) throw new Error('No audio track found in source file');
+
+  const inputCodecStr = (await audioTrack.getCodecParameterString()) || audioTrack.codec || '';
+  const lowercaseCodec = inputCodecStr.toLowerCase();
+
+  let format: unknown;
+  if (lowercaseCodec.startsWith('mp4a') || lowercaseCodec.includes('aac')) {
+    format = new Mp4OutputFormat();
+  } else if (lowercaseCodec.includes('opus')) {
+    format = new WebMOutputFormat();
+  } else {
+    format = new MkvOutputFormat();
+  }
+
+  const release = await acquireStreamingWorkerFileIoSlot();
   try {
-    const audioTrack = await input.getPrimaryAudioTrack();
-    if (!audioTrack) throw new Error('No audio track found in source file');
-
-    const inputCodecStr = (await audioTrack.getCodecParameterString()) || audioTrack.codec || '';
-    const lowercaseCodec = inputCodecStr.toLowerCase();
-
-    let format: unknown;
-    if (lowercaseCodec.startsWith('mp4a') || lowercaseCodec.includes('aac')) {
-      format = new Mp4OutputFormat();
-    } else if (lowercaseCodec.includes('opus')) {
-      format = new WebMOutputFormat();
-    } else {
-      format = new MkvOutputFormat();
-    }
-
-    const { output } = await runResilientWorkerFileWrite(targetHandle, async () => {
-      const writable = await (
-        targetHandle as unknown as {
-          createWritable: (opts?: {
-            keepExistingData?: boolean;
-          }) => Promise<{ abort?: () => Promise<void> }>;
-        }
-      ).createWritable({ keepExistingData: false });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const target = new StreamTarget(writable as any, { chunked: true });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const output = new Output({ target, format: format as any });
-      return { output, writable };
-    });
+    const writable = await (
+      targetHandle as unknown as {
+        createWritable: (opts?: {
+          keepExistingData?: boolean;
+        }) => Promise<{ abort?: () => Promise<void> }>;
+      }
+    ).createWritable({ keepExistingData: false });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const target = new StreamTarget(writable as any, { chunked: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const output = new Output({ target, format: format as any });
 
     // Fallback if missing decoderConfig in audioTrack extraction
     const decoderConfig = await audioTrack.getDecoderConfig();
@@ -831,6 +834,7 @@ export async function extractAudioStream(
     console.error('[Worker Export] Failed to extract audio:', err);
     throw err;
   } finally {
+    release();
     safeDispose(input);
   }
 }

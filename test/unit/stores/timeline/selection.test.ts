@@ -108,6 +108,15 @@ describe('TimelineSelectionModule', () => {
     expect(deps.selectedItemIds.value.sort()).toEqual(['clip-1', 'clip-2']);
   });
 
+  it('selectAllClipsOnTrack with append merges clips into existing selection', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineSelectionModule(deps);
+
+    mod.selectAllClipsOnTrack('track-1');
+    mod.selectAllClipsOnTrack('track-2', { append: true });
+    expect(deps.selectedItemIds.value.sort()).toEqual(['clip-1', 'clip-2', 'clip-3']);
+  });
+
   it('selectClipsRelativeToPlayhead filters by direction', () => {
     const deps = createMockDeps();
     deps.currentTime.value = 1_500_000;

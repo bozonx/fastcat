@@ -108,6 +108,7 @@ export type HotkeyCommandId =
   | 'playback.backward0_5'
   | 'playback.backward1'
   | 'general.navigateBack'
+  | 'general.navigateForward'
   | 'general.navigateUp'
   | 'general.navigateSelectionUp'
   | 'general.navigateSelectionDown'
@@ -178,6 +179,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.tab9', groupId: 'general', title: 'Switch to tab 9' },
     { id: 'timeline.duplicate', groupId: 'timeline', title: 'Duplicate timeline / Create version' },
     { id: 'general.navigateBack', groupId: 'fileManager', title: 'Navigate back' },
+    { id: 'general.navigateForward', groupId: 'fileManager', title: 'Navigate forward' },
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
     { id: 'general.navigateSelectionUp', groupId: 'fileManager', title: 'Navigate selection up' },
     {
@@ -420,7 +422,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.tab9': ['Shift+9'],
 
     'timeline.duplicate': [`${Mod}+Shift+S`],
-    'general.navigateBack': ['Backspace', 'z'],
+    'general.navigateBack': ['Backspace', 'z', 'MouseBack'],
+    'general.navigateForward': ['MouseForward'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
     'general.navigateSelectionUp': ['ArrowUp'],
     'general.navigateSelectionDown': ['ArrowDown'],
@@ -439,8 +442,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.advancedRippleTrimRight': ['F'],
     'timeline.rippleDeleteSelectedClipRange': ['Z'],
     'timeline.rippleDelete': ['Shift+Z', 'Backspace'],
-    'timeline.jumpPrevBoundary': ['A'],
-    'timeline.jumpNextBoundary': ['S'],
+    'timeline.jumpPrevBoundary': ['A', 'MouseForward'],
+    'timeline.jumpNextBoundary': ['S', 'MouseBack'],
     'timeline.jumpPrevBoundaryTrack': ['Shift+A'],
     'timeline.jumpNextBoundaryTrack': ['Shift+S'],
     'timeline.splitAtPlayhead': ['G'],

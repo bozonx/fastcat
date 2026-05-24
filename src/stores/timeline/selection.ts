@@ -31,8 +31,9 @@ export interface TimelineSelectionModule {
   toggleSelection: (itemId: string, options?: { multi?: boolean }) => void;
   selectTimelineItems: (
     itemIds: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
+    options?: { append?: boolean },
   ) => void;
-  selectAllClipsOnTrack: (trackId: string) => void;
+  selectAllClipsOnTrack: (trackId: string, options?: { append?: boolean }) => void;
   selectAllClips: () => void;
   selectClipsRelativeToPlayhead: (params: {
     direction: 'left' | 'right';
@@ -109,16 +110,19 @@ export function createTimelineSelectionModule(
 
   function selectTimelineItems(
     items: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
+    options?: { append?: boolean },
   ) {
     deps.selectedTransition.value = null;
     if (items.length === 0) {
-      deps.selectedItemIds.value = [];
-      deps.selectionStore?.clearTimelineSelection?.();
+      if (!options?.append) {
+        deps.selectedItemIds.value = [];
+        deps.selectionStore?.clearTimelineSelection?.();
+      }
       return;
     }
 
     const doc = deps.timelineDoc.value;
-    const nextIds = new Set<string>();
+    const nextIds = new Set<string>(options?.append ? deps.selectedItemIds.value : []);
 
     if (typeof items[0] === 'string') {
       for (const id of items as string[]) {
@@ -156,11 +160,24 @@ export function createTimelineSelectionModule(
     }
   }
 
-  function selectAllClipsOnTrack(trackId: string) {
+  function selectAllClipsOnTrack(trackId: string, options?: { append?: boolean }) {
     const track = deps.timelineDoc.value?.tracks.find((t) => t.id === trackId);
     if (!track) return;
     const ids = track.items.filter((it) => it.kind === 'clip').map((it) => it.id);
-    selectTimelineItems(ids);
+
+    if (options?.append && deps.selectedItemIds.value.length > 0) {
+      const allObjects: { trackId: string; itemId: string; kind: 'clip' }[] = [];
+      const mergedIds = new Set([...deps.selectedItemIds.value, ...ids]);
+      for (const id of mergedIds) {
+        const itemTrackId = itemToTrackMap.value.get(id);
+        if (itemTrackId) {
+          allObjects.push({ trackId: itemTrackId, itemId: id, kind: 'clip' });
+        }
+      }
+      selectTimelineItems(allObjects, { append: false });
+    } else {
+      selectTimelineItems(ids);
+    }
   }
 
   function selectAllClips() {

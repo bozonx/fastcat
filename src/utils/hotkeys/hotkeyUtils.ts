@@ -194,6 +194,12 @@ export function hotkeyFromKeyboardEvent(
   });
 }
 
+export function hotkeyFromMouseEvent(e: MouseEvent): HotkeyCombo | null {
+  if (e.button === 3) return 'MouseBack';
+  if (e.button === 4) return 'MouseForward';
+  return null;
+}
+
 export function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
 

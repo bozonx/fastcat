@@ -4,7 +4,11 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
-import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
+import {
+  hotkeyFromKeyboardEvent,
+  hotkeyFromMouseEvent,
+  isEditableTarget,
+} from '~/utils/hotkeys/hotkeyUtils';
 import {
   DEFAULT_HOTKEYS,
   type HotkeyCommandId,
@@ -81,61 +85,29 @@ export function useEditorHotkeys() {
     return projectStore.currentView === 'cut' || projectStore.currentView === 'sound';
   }
 
-  function onGlobalKeydown(e: KeyboardEvent) {
-    if (e.defaultPrevented) return;
-
-    // 1. Get literal combo (physical keys without virtual layers)
-    const literalCombo = hotkeyFromKeyboardEvent(e);
-    // 2. Get layered combo (with virtual layers applied)
-    const layeredCombo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
-
-    if (!literalCombo && !layeredCombo) return;
-
-    // Step 1: Check literal match in effective hotkeys
-    let matched = getMatchedHotkeyCommands({ combo: literalCombo, lookup: hotkeyLookup.value });
-    let matchedCombo: HotkeyCombo | null = literalCombo;
-
-    // Step 2: If no literal match, check layered match in default hotkeys
-    if (matched.length === 0 && layeredCombo && layeredCombo !== literalCombo) {
-      matched = getMatchedHotkeyCommands({
-        combo: layeredCombo,
-        lookup: defaultHotkeyLookup.value,
-      });
-      matchedCombo = layeredCombo;
-    }
-
-    if (matched.length === 0) return;
-
-    if (e.repeat && !shouldHandleRepeatForMatchedCommands(matched)) return;
-
-    if (matched.includes('general.deselect')) {
-      if (timelineStore.isTrimModeActive) {
-        timelineStore.isTrimModeActive = false;
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-    }
-
+  function dispatchMatchedCommands(
+    matched: HotkeyCommandId[],
+    matchedCombo: HotkeyCombo | null,
+    e: Event,
+  ): boolean {
     const allowsFullscreenExit = matched.includes('general.fullscreen');
     const isPlaybackCmd = matched.some((cmdId) => cmdId.startsWith('playback.'));
     const isZoomCmd = matched.some((cmdId) => cmdId.includes('zoom'));
     const modalOpen = hasBlockingModalState();
     const fullscreen = isFullscreen();
 
-    if (modalOpen && !allowsFullscreenExit && !isZoomCmd) return;
-    if (fullscreen && !allowsFullscreenExit && !isPlaybackCmd && !isZoomCmd) return;
+    if (modalOpen && !allowsFullscreenExit && !isZoomCmd) return false;
+    if (fullscreen && !allowsFullscreenExit && !isPlaybackCmd && !isZoomCmd) return false;
 
     if (matched.includes('general.focus') && canHandleFocusTab()) {
-      // Allow native tab navigation if we're in an editable target
-      if (isEditableTarget(e.target)) return;
+      if (isEditableTarget((e as KeyboardEvent).target)) return false;
 
       e.preventDefault();
       focusStore.handleFocusHotkey();
-      return;
+      return true;
     }
 
-    const isEditableEventTarget = isEditableTarget(e.target);
+    const isEditableEventTarget = isEditableTarget((e as KeyboardEvent).target);
     const isEditableActiveElement = isEditableTarget(document.activeElement);
 
     const focusAwareOrder = getFocusAwareHotkeyOrder({
@@ -161,7 +133,7 @@ export function useEditorHotkeys() {
 
       const handler = registry[cmdId];
       if (handler) {
-        const executed = handler(e);
+        const executed = handler(e as KeyboardEvent);
         if (executed) {
           if (
             shouldBlurAfterHotkey({
@@ -174,10 +146,62 @@ export function useEditorHotkeys() {
           e.preventDefault();
           e.stopPropagation();
           (e as Event).stopImmediatePropagation?.();
-          suppressedKeyupCodes.add(e.code);
-          return;
+          return true;
         }
       }
+    }
+    return false;
+  }
+
+  function onGlobalKeydown(e: KeyboardEvent) {
+    if (e.defaultPrevented) return;
+
+    const literalCombo = hotkeyFromKeyboardEvent(e);
+    const layeredCombo = hotkeyFromKeyboardEvent(e, workspaceStore.userSettings);
+
+    if (!literalCombo && !layeredCombo) return;
+
+    let matched = getMatchedHotkeyCommands({ combo: literalCombo, lookup: hotkeyLookup.value });
+    let matchedCombo: HotkeyCombo | null = literalCombo;
+
+    if (matched.length === 0 && layeredCombo && layeredCombo !== literalCombo) {
+      matched = getMatchedHotkeyCommands({
+        combo: layeredCombo,
+        lookup: defaultHotkeyLookup.value,
+      });
+      matchedCombo = layeredCombo;
+    }
+
+    if (matched.length === 0) return;
+
+    if (e.repeat && !shouldHandleRepeatForMatchedCommands(matched)) return;
+
+    if (matched.includes('general.deselect')) {
+      if (timelineStore.isTrimModeActive) {
+        timelineStore.isTrimModeActive = false;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+
+    if (dispatchMatchedCommands(matched, matchedCombo, e)) {
+      suppressedKeyupCodes.add(e.code);
+    }
+  }
+
+  function onGlobalMousedown(e: MouseEvent) {
+    if (e.button !== 3 && e.button !== 4) return;
+
+    const combo = hotkeyFromMouseEvent(e);
+    if (!combo) return;
+
+    const matched = getMatchedHotkeyCommands({ combo, lookup: hotkeyLookup.value });
+    if (matched.length === 0) return;
+
+    if (dispatchMatchedCommands(matched, combo, e)) {
+      e.preventDefault();
+      e.stopPropagation();
     }
   }
 
@@ -229,6 +253,7 @@ export function useEditorHotkeys() {
   onMounted(() => {
     window.addEventListener('keydown', onGlobalKeydown);
     window.addEventListener('keyup', onGlobalKeyup);
+    window.addEventListener('mousedown', onGlobalMousedown);
     window.addEventListener('blur', onGlobalBlur);
     document.addEventListener('visibilitychange', onVisibilityChange);
     document.addEventListener('pointerdown', onGlobalPointerDown);
@@ -237,6 +262,7 @@ export function useEditorHotkeys() {
   onUnmounted(() => {
     window.removeEventListener('keydown', onGlobalKeydown);
     window.removeEventListener('keyup', onGlobalKeyup);
+    window.removeEventListener('mousedown', onGlobalMousedown);
     window.removeEventListener('blur', onGlobalBlur);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     document.removeEventListener('pointerdown', onGlobalPointerDown);
