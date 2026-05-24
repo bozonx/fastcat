@@ -1,7 +1,8 @@
 import { withFileIoSlot } from './io-governor';
+import { createGovernedBlob } from './governed-blob-core';
 
 /**
- * Wraps a Blob so that every heavy I/O call (arrayBuffer, text, stream)
+ * Wraps a Blob so that every heavy I/O call (arrayBuffer, text)
  * goes through the interactive I/O budget on the main thread.
  *
  * Mediabunny's BlobSource performs random reads via slice()+arrayBuffer(),
@@ -11,20 +12,5 @@ import { withFileIoSlot } from './io-governor';
 export function governedBlob(file: File): File;
 export function governedBlob(file: Blob): Blob;
 export function governedBlob(file: File | Blob): File | Blob {
-  const proxy = new Proxy(file, {
-    get(target, prop) {
-      if (prop === 'slice') {
-        return (start?: number, end?: number, contentType?: string): Blob =>
-          governedBlob(target.slice(start, end, contentType));
-      }
-      if (prop === 'arrayBuffer') {
-        return () => withFileIoSlot(() => target.arrayBuffer());
-      }
-      if (prop === 'text') {
-        return () => withFileIoSlot(() => target.text());
-      }
-      return Reflect.get(target, prop);
-    },
-  });
-  return proxy as File | Blob;
+  return createGovernedBlob(file, { withIoSlot: withFileIoSlot });
 }

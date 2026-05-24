@@ -1,4 +1,5 @@
 import { withWorkerFileIoSlot } from '../../workers/core/io-governor';
+import { createGovernedBlob } from './governed-blob-core';
 
 /**
  * Worker-side variant of {@link governedBlob}.
@@ -8,20 +9,5 @@ import { withWorkerFileIoSlot } from '../../workers/core/io-governor';
 export function governedBlobWorker(file: File): File;
 export function governedBlobWorker(file: Blob): Blob;
 export function governedBlobWorker(file: File | Blob): File | Blob {
-  const proxy = new Proxy(file, {
-    get(target, prop) {
-      if (prop === 'slice') {
-        return (start?: number, end?: number, contentType?: string): Blob =>
-          governedBlobWorker(target.slice(start, end, contentType));
-      }
-      if (prop === 'arrayBuffer') {
-        return () => withWorkerFileIoSlot(() => target.arrayBuffer());
-      }
-      if (prop === 'text') {
-        return () => withWorkerFileIoSlot(() => target.text());
-      }
-      return Reflect.get(target, prop);
-    },
-  });
-  return proxy as File | Blob;
+  return createGovernedBlob(file, { withIoSlot: withWorkerFileIoSlot });
 }

@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { effectScope, ref } from 'vue';
+import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 
 const clipboardPayload = {
   source: 'clipParameters' as const,
@@ -20,8 +21,6 @@ vi.mock('~/utils/timeline/clip-parameters', () => ({
   createClipParametersSnapshot: () => ({}),
   hasClipParametersPatch: () => false,
 }));
-
-import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 
 function createComposable() {
   const scope = effectScope();
