@@ -190,21 +190,6 @@ export function useEditorHotkeys() {
     }
   }
 
-  function onGlobalMousedown(e: MouseEvent) {
-    if (e.button !== 3 && e.button !== 4) return;
-
-    const combo = hotkeyFromMouseEvent(e);
-    if (!combo) return;
-
-    const matched = getMatchedHotkeyCommands({ combo, lookup: hotkeyLookup.value });
-    if (matched.length === 0) return;
-
-    if (dispatchMatchedCommands(matched, combo, e)) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
-
   function onGlobalKeyup(e: KeyboardEvent) {
     if (suppressedKeyupCodes.has(e.code)) {
       e.preventDefault();
@@ -220,6 +205,21 @@ export function useEditorHotkeys() {
   }
 
   function onGlobalPointerDown(e: PointerEvent) {
+    // Handle mouse back/forward buttons as hotkeys
+    if (e.button === 3 || e.button === 4) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const combo = hotkeyFromMouseEvent(e);
+      if (!combo) return;
+
+      const matched = getMatchedHotkeyCommands({ combo, lookup: hotkeyLookup.value });
+      if (matched.length === 0) return;
+
+      dispatchMatchedCommands(matched, combo, e);
+      return;
+    }
+
     const target = e.target as HTMLElement;
     if (
       target instanceof HTMLButtonElement ||
@@ -253,19 +253,17 @@ export function useEditorHotkeys() {
   onMounted(() => {
     window.addEventListener('keydown', onGlobalKeydown);
     window.addEventListener('keyup', onGlobalKeyup);
-    window.addEventListener('mousedown', onGlobalMousedown);
     window.addEventListener('blur', onGlobalBlur);
     document.addEventListener('visibilitychange', onVisibilityChange);
-    document.addEventListener('pointerdown', onGlobalPointerDown);
+    window.addEventListener('pointerdown', onGlobalPointerDown, true);
   });
 
   onUnmounted(() => {
     window.removeEventListener('keydown', onGlobalKeydown);
     window.removeEventListener('keyup', onGlobalKeyup);
-    window.removeEventListener('mousedown', onGlobalMousedown);
     window.removeEventListener('blur', onGlobalBlur);
     document.removeEventListener('visibilitychange', onVisibilityChange);
-    document.removeEventListener('pointerdown', onGlobalPointerDown);
+    window.removeEventListener('pointerdown', onGlobalPointerDown, true);
     volumeHoldRunner.clearTimers();
     zoomHoldRunner.clearTimers();
     navigationHoldRunner.clearTimers();

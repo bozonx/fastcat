@@ -193,8 +193,17 @@ const hotkeyConflicts = computed(() => {
   return getHotkeyConflicts(effective);
 });
 
+const hotkeyOverrides = computed(() => {
+  const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+  return getHotkeyOverrides(effective);
+});
+
 function isConflicting(cmdId: HotkeyCommandId, combo: string): boolean {
   return isHotkeyConflicting({ conflicts: hotkeyConflicts.value, cmdId, combo });
+}
+
+function isOverriding(cmdId: HotkeyCommandId, combo: string): boolean {
+  return isHotkeyOverriding({ overrides: hotkeyOverrides.value, cmdId, combo });
 }
 
 defineExpose({ finishCapture, isDuplicateConfirmOpen });
@@ -292,6 +301,7 @@ defineExpose({ finishCapture, isDuplicateConfirmOpen });
         :capturing-command-id="captureTargetCommandId"
         :get-current-bindings="getCurrentBindings"
         :is-conflicting="isConflicting"
+        :is-overriding="isOverriding"
         :is-combo-custom="isComboCustom"
         @remove="removeBinding"
         @capture="startCapture"

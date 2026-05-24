@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   getHotkeyConflicts,
+  getHotkeyOverrides,
   isHotkeyConflicting,
+  isHotkeyOverriding,
   findDuplicateOwnerByContext,
+  findOverrideOwnerByContext,
 } from '~/utils/hotkeys/hotkeyConflicts';
 
 import type { HotkeyCommandDefinition, HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
@@ -39,7 +42,7 @@ describe('hotkeyConflicts', () => {
     );
   });
 
-  it('treats same combo in general and timeline as conflict (general is global)', () => {
+  it('does not treat same combo in general and timeline as conflict', () => {
     const effective = makeEffective({
       'general.focus': ['Space'],
       'timeline.splitAtPlayhead': ['Space'],
@@ -47,10 +50,10 @@ describe('hotkeyConflicts', () => {
 
     const conflicts = getHotkeyConflicts(effective, commands);
 
-    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.focus', combo: 'Space' })).toBe(true);
+    expect(isHotkeyConflicting({ conflicts, cmdId: 'general.focus', combo: 'Space' })).toBe(false);
     expect(
       isHotkeyConflicting({ conflicts, cmdId: 'timeline.splitAtPlayhead', combo: 'Space' }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('does not treat same combo in file manager and timeline as conflict', () => {
@@ -110,7 +113,7 @@ describe('hotkeyConflicts', () => {
     ).toBeNull();
   });
 
-  it('findDuplicateOwnerByContext treats general as duplicate owner across contexts', () => {
+  it('findDuplicateOwnerByContext ignores general vs timeline duplicates', () => {
     const effective = makeEffective({
       'general.focus': ['Space'],
       'timeline.splitAtPlayhead': ['Space'],
@@ -123,7 +126,7 @@ describe('hotkeyConflicts', () => {
         targetCmdId: 'timeline.splitAtPlayhead',
         combo: 'Space',
       }),
-    ).toBe('general.focus');
+    ).toBeNull();
   });
 
   it('findDuplicateOwnerByContext ignores file manager vs timeline duplicates', () => {
@@ -140,5 +143,34 @@ describe('hotkeyConflicts', () => {
         combo: 'Backspace',
       }),
     ).toBeNull();
+  });
+
+  it('findOverrideOwnerByContext detects general vs timeline override', () => {
+    const effective = makeEffective({
+      'general.focus': ['Space'],
+      'timeline.splitAtPlayhead': ['Space'],
+    });
+
+    expect(
+      findOverrideOwnerByContext({
+        effective,
+        commands,
+        targetCmdId: 'timeline.splitAtPlayhead',
+        combo: 'Space',
+      }),
+    ).toBe('general.focus');
+  });
+
+  it('getHotkeyOverrides detects cross-group overlaps', () => {
+    const effective = makeEffective({
+      'general.focus': ['Space'],
+      'timeline.splitAtPlayhead': ['Space'],
+    });
+
+    const overrides = getHotkeyOverrides(effective, commands);
+    expect(isHotkeyOverriding({ overrides, cmdId: 'general.focus', combo: 'Space' })).toBe(true);
+    expect(
+      isHotkeyOverriding({ overrides, cmdId: 'timeline.splitAtPlayhead', combo: 'Space' }),
+    ).toBe(true);
   });
 });

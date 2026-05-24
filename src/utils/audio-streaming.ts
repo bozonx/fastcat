@@ -1,4 +1,5 @@
 import { Input, BlobSource, ALL_FORMATS, AudioSampleSink } from 'mediabunny';
+import { governedBlob } from './io/governed-blob';
 
 /**
  * Creates a WAV header for a given audio configuration.
@@ -66,7 +67,7 @@ export async function createAudioStreamFromFile(file: File): Promise<{
   sampleRate: number;
   numberOfChannels: number;
 }> {
-  const source = new BlobSource(file);
+  const source = new BlobSource(governedBlob(file));
   const input = new Input({ source, formats: ALL_FORMATS });
 
   try {

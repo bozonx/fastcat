@@ -65,4 +65,24 @@ describe('useMouseSettings', () => {
 
     expect(getSettingValue('ruler', 'wheel')).toBe(DEFAULT_USER_SETTINGS.mouse.ruler.wheel);
   });
+
+  it('includes zoom_horizontal_to_playhead in common wheel labels', () => {
+    const { sectionConfigs } = useMouseSettings();
+
+    const timelineSection = sectionConfigs.value.find((s: { key: string }) => s.key === 'timeline');
+    const wheelRow = timelineSection?.rows.find((r: { key: string }) => r.key === 'wheel');
+    const options = wheelRow?.options ?? [];
+
+    expect(options.map((o: { value: string }) => o.value)).toContain('zoom_horizontal_to_playhead');
+  });
+
+  it('renames zoom_horizontal to clarify mouse cursor anchoring', () => {
+    const { sectionConfigs } = useMouseSettings();
+
+    const timelineSection = sectionConfigs.value.find((s: { key: string }) => s.key === 'timeline');
+    const wheelRow = timelineSection?.rows.find((r: { key: string }) => r.key === 'wheel');
+    const zoomToMouse = wheelRow?.options.find((o: { value: string }) => o.value === 'zoom_horizontal');
+
+    expect(zoomToMouse?.label).toBe('videoEditor.settings.mouseActionZoomHorizontal');
+  });
 });

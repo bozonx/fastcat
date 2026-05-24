@@ -1636,6 +1636,7 @@ export default {
       "hotkeysCaptureHint": "Ожидание комбинации клавиш (Esc для отмены)",
       "hotkeysCapturing": "Запись...",
       "hotkeysConflict": "Конфликт горячих клавиш",
+      "hotkeysOverride": "Перекрывает команду в другом контексте",
       "hotkeysDuplicateConfirm": "Всё равно добавить",
       "hotkeysDuplicateReplace": "Заменить",
       "hotkeysDuplicateTitle": "Дубликат горячей клавиши",

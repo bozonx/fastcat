@@ -11,6 +11,7 @@ const props = defineProps<{
   capturingCommandId: HotkeyCommandId | null;
   getCurrentBindings: (cmdId: HotkeyCommandId) => string[];
   isConflicting: (cmdId: HotkeyCommandId, combo: string) => boolean;
+  isOverriding: (cmdId: HotkeyCommandId, combo: string) => boolean;
   isComboCustom: (cmdId: HotkeyCommandId, combo: string) => boolean;
 }>();
 
@@ -69,9 +70,11 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                   :class="[
                     isConflicting(cmd.id, combo)
                       ? 'border-error-500/50 bg-error-500/10'
-                      : isComboCustom(cmd.id, combo)
-                        ? 'border-yellow-500/50 bg-yellow-500/10'
-                        : 'border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80',
+                      : isOverriding(cmd.id, combo)
+                        ? 'border-blue-500/50 bg-blue-500/10'
+                        : isComboCustom(cmd.id, combo)
+                          ? 'border-yellow-500/50 bg-yellow-500/10'
+                          : 'border-ui-border bg-ui-bg-accent/50 group-hover:bg-ui-bg-accent/80',
                   ]"
                   :title="
                     isConflicting(cmd.id, combo)
@@ -79,7 +82,12 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                           'videoEditor.settings.hotkeysConflict',
                           'Conflict: used by another command',
                         )
-                      : undefined
+                      : isOverriding(cmd.id, combo)
+                        ? t(
+                            'videoEditor.settings.hotkeysOverride',
+                            'Overrides a command in another context',
+                          )
+                        : undefined
                   "
                 >
                   <span
@@ -87,9 +95,11 @@ function getTitleParts(cmdId: HotkeyCommandId) {
                     :class="[
                       isConflicting(cmd.id, combo)
                         ? 'text-error-600 dark:text-error-400'
-                        : isComboCustom(cmd.id, combo)
-                          ? 'text-yellow-600 dark:text-yellow-400'
-                          : 'text-ui-text-muted',
+                        : isOverriding(cmd.id, combo)
+                          ? 'text-blue-600 dark:text-blue-400'
+                          : isComboCustom(cmd.id, combo)
+                            ? 'text-yellow-600 dark:text-yellow-400'
+                            : 'text-ui-text-muted',
                     ]"
                   >
                     {{ combo }}

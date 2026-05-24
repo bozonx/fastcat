@@ -16,6 +16,7 @@ import { ExportOptionsSchema } from '../composables/timeline/export/types';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
+import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 import { extractMetadata, runExport, extractAudioStream } from './core/export';
 import { runTranscode } from './core/transcode';
 import { VIDEO_CORE_LIMITS } from '../utils/constants';
@@ -664,7 +665,7 @@ const frameExtractors = new Map<string, FrameExtractorState>();
 
 async function createFrameExtractorState(file: File): Promise<FrameExtractorState> {
   const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
-  const source = new BlobSource(file);
+  const source = new BlobSource(governedBlobWorker(file));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source, formats: ALL_FORMATS } as any);
   const track = await input.getPrimaryVideoTrack();

@@ -1,6 +1,13 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { getWheelDelta, isSecondaryWheel } from '~/utils/mouse';
+import {
+  getWheelDelta,
+  isSecondaryWheel,
+  COMMON_WHEEL_ACTIONS,
+  TIMELINE_WHEEL_ACTIONS,
+  RULER_WHEEL_ACTIONS,
+  TRACK_HEADERS_WHEEL_ACTIONS,
+} from '~/utils/mouse';
 
 describe('mouse utils', () => {
   describe('isSecondaryWheel', () => {
@@ -34,6 +41,18 @@ describe('mouse utils', () => {
     it('returns deltaY if NOT secondary wheel', () => {
       const e = { deltaX: 0, deltaY: 25 } as WheelEvent;
       expect(getWheelDelta(e)).toBe(25);
+    });
+  });
+
+  describe('wheel action arrays', () => {
+    it('includes zoom_horizontal_to_playhead in common wheel actions', () => {
+      expect(COMMON_WHEEL_ACTIONS).toContain('zoom_horizontal_to_playhead');
+    });
+
+    it('propagates zoom_horizontal_to_playhead to timeline, ruler and track headers', () => {
+      expect(TIMELINE_WHEEL_ACTIONS).toContain('zoom_horizontal_to_playhead');
+      expect(RULER_WHEEL_ACTIONS).toContain('zoom_horizontal_to_playhead');
+      expect(TRACK_HEADERS_WHEEL_ACTIONS).toContain('zoom_horizontal_to_playhead');
     });
   });
 });
