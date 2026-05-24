@@ -441,6 +441,35 @@ export class VideoCompositor {
     }
   }
 
+  // Per-frame safety net: hide every clip sprite that is not in the active set.
+  //
+  // The render is incremental — a clip is normally hidden only by the tracker's
+  // onDeactivate when it leaves the active set. That alone is not enough for
+  // non-video clips (image/text/shape/hud/solid/adjustment), which have no
+  // per-frame "am I still in range" self-check the way video clips do, and for
+  // clips made visible *outside* the tracker (a transition's outgoing "shadow"
+  // clip in FrameSampleOrchestrator.buildBlendShadowRequests). If such a clip is
+  // never re-hidden — a missed/late onDeactivate, a transition step that bails
+  // before it cleans up, or a window-boundary mismatch — it strands on screen
+  // even though the playhead has moved off it. Hiding all inactive sprites at the
+  // start of every frame removes that dependency on call order. Sprites that are
+  // legitimately needed this frame (active clips, in-window shadow/transition
+  // peers) are made visible again later in the same render before it presents, so
+  // there is no flicker; only the final state at present time reaches the canvas.
+  private hideInactiveClipSprites(activeClips: CompositorClip[]) {
+    if (this.clips.length === 0 || activeClips.length === this.clips.length) {
+      return;
+    }
+    const activeSet = new Set(activeClips);
+    for (const clip of this.clips) {
+      if (activeSet.has(clip)) continue;
+      const sprite = clip.sprite;
+      if (sprite && !sprite.destroyed && sprite.visible) {
+        sprite.visible = false;
+      }
+    }
+  }
+
   async init(
     width: number,
     height: number,
@@ -947,6 +976,7 @@ export class VideoCompositor {
               }
             },
           }),
+        hideInactiveClipSprites: (activeClips) => this.hideInactiveClipSprites(activeClips),
         applyTrackState: (track) => {
           this.applyTrackEffects(track);
         },

@@ -25,6 +25,7 @@ export interface RenderingEngineContext {
     activeClips: CompositorClip[];
     activeChanged: boolean;
   };
+  hideInactiveClipSprites: (activeClips: CompositorClip[]) => void;
   applyTrackState: (track: CompositorTrack) => void;
   processFrameSamples: (params: {
     activeClips: CompositorClip[];
@@ -97,6 +98,13 @@ export class RenderingEngine {
         activeClips.sort((a, b) => a.layer - b.layer || a.startUs - b.startUs);
         context.setActiveSortDirty(false);
       }
+
+      // Hide everything not active before anything makes clips visible again. This
+      // is the authoritative "off" pass; the tracker's incremental onDeactivate and
+      // the video processor's range check still run, but this guarantees a clip the
+      // playhead has moved off (including a transition's outgoing shadow clip) can
+      // never linger on screen even if those incremental paths miss it.
+      context.hideInactiveClipSprites(activeClips);
 
       for (const track of context.tracks) {
         track.container.alpha = track.opacity ?? 1;
