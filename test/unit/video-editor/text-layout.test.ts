@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { computeTextLayoutMetrics, normalizeTextClipStyle } from '~/utils/video-editor/text-layout';
+import { computeTextLayoutMetrics, normalizeTextClipStyle, getFontStack } from '~/utils/video-editor/text-layout';
 
 describe('text-layout', () => {
   it('normalizes default text style values', () => {
@@ -123,5 +123,30 @@ describe('text-layout', () => {
     expect(metrics.frameHeight).toBe(200);
     expect(metrics.backgroundHeight).toBe(200);
     expect(metrics.textBlockTopPx).toBe(572);
+  });
+
+  describe('getFontStack', () => {
+    it('returns custom or mapped stack with quotes and fallbacks', () => {
+      expect(getFontStack('Arial Black')).toBe('"Arial Black", "Arial Bold", sans-serif');
+      expect(getFontStack('Impact')).toBe('Impact, Charcoal, "Arial Narrow Bold", sans-serif');
+      expect(getFontStack('Playfair Display')).toBe('"Playfair Display", serif');
+      expect(getFontStack('Arial')).toBe('Arial, sans-serif');
+      expect(getFontStack('Times New Roman')).toBe('"Times New Roman", Times, serif');
+      expect(getFontStack('sans-serif')).toBe('sans-serif');
+    });
+
+    it('handles custom fonts with spaces by adding quotes and sans-serif fallback', () => {
+      expect(getFontStack('My Awesome Font')).toBe('"My Awesome Font", sans-serif');
+      expect(getFontStack('SimpleFont')).toBe('SimpleFont, sans-serif');
+    });
+
+    it('keeps already formatted font stacks as is', () => {
+      expect(getFontStack('"Custom Font", monospace')).toBe('"Custom Font", monospace');
+    });
+
+    it('normalizes fontFamily in style', () => {
+      const style = normalizeTextClipStyle({ fontFamily: 'Arial Black' });
+      expect(style.fontFamily).toBe('"Arial Black", "Arial Bold", sans-serif');
+    });
   });
 });

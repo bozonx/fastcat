@@ -1,5 +1,5 @@
 import type { UpdateClipPropertiesCommand } from '~/timeline/commands';
-import type { ClipTransition, TimelineClipItem, TrackKind, ClipTransform } from '~/timeline/types';
+import type { ClipTransition, TimelineClipItem, TrackKind, ClipTransform, TextClipStyle } from '~/timeline/types';
 import { cloneValue } from '~/utils/clone';
 
 export type ClipParameterGroup =
@@ -279,7 +279,7 @@ export function buildClipParametersPatch(input: {
     if (group === 'videoEffects' || group === 'audioEffects') continue;
 
     if (group === 'transform') {
-      const hasSubProps = GROUP_SUB_PROPERTIES.transform.some((sub) => selected.has(sub.id));
+      const hasSubProps = GROUP_SUB_PROPERTIES.transform!.some((sub) => selected.has(sub.id));
       if (hasSubProps) {
         const targetTransform = cloneValue(input.targetClip.transform ?? {});
         const sourceTransform = groupValue.transform as ClipTransform | undefined;
@@ -302,7 +302,7 @@ export function buildClipParametersPatch(input: {
         }
         patch.properties.transform = targetTransform;
         if ('transformActive' in groupValue) {
-          patch.properties.transformActive = groupValue.transformActive;
+          patch.properties.transformActive = groupValue.transformActive as boolean | undefined;
         }
       } else if (selected.has('transform')) {
         Object.assign(patch.properties, cloneValue(groupValue));
@@ -311,7 +311,7 @@ export function buildClipParametersPatch(input: {
     }
 
     if (group === 'text') {
-      const hasSubProps = GROUP_SUB_PROPERTIES.text.some((sub) => selected.has(sub.id));
+      const hasSubProps = GROUP_SUB_PROPERTIES.text!.some((sub) => selected.has(sub.id));
       if (hasSubProps) {
         const targetStyle = cloneValue(input.targetClip.style ?? {});
         const sourceStyle = groupValue.style as Record<string, unknown> | undefined;
@@ -319,11 +319,12 @@ export function buildClipParametersPatch(input: {
           for (const subId of Object.keys(TEXT_SUB_PROP_KEYS)) {
             if (selected.has(subId)) {
               const keys = TEXT_SUB_PROP_KEYS[subId];
+              if (!keys) continue;
               for (const key of keys) {
                 if (sourceStyle[key] !== undefined) {
-                  targetStyle[key] = cloneValue(sourceStyle[key]);
+                  (targetStyle as Record<string, unknown>)[key] = cloneValue(sourceStyle[key]);
                 } else {
-                  delete targetStyle[key];
+                  delete (targetStyle as Record<string, unknown>)[key];
                 }
               }
             }
@@ -337,13 +338,13 @@ export function buildClipParametersPatch(input: {
     }
 
     if (group === 'audio') {
-      const hasSubProps = GROUP_SUB_PROPERTIES.audio.some((sub) => selected.has(sub.id));
+      const hasSubProps = GROUP_SUB_PROPERTIES.audio!.some((sub) => selected.has(sub.id));
       if (hasSubProps) {
         if (selected.has('audio:volume') && 'audioGain' in groupValue) {
-          patch.properties.audioGain = cloneValue(groupValue.audioGain);
+          patch.properties.audioGain = cloneValue(groupValue.audioGain as number | undefined);
         }
         if (selected.has('audio:balance') && 'audioBalance' in groupValue) {
-          patch.properties.audioBalance = cloneValue(groupValue.audioBalance);
+          patch.properties.audioBalance = cloneValue(groupValue.audioBalance as number | undefined);
         }
         if (selected.has('audio:fades')) {
           const fadeKeys = [
@@ -355,7 +356,7 @@ export function buildClipParametersPatch(input: {
           ];
           for (const key of fadeKeys) {
             if (key in groupValue) {
-              patch.properties[key] = cloneValue(groupValue[key]);
+              (patch.properties as Record<string, unknown>)[key] = cloneValue(groupValue[key]);
             }
           }
         }

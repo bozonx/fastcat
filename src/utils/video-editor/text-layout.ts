@@ -129,6 +129,47 @@ export function normalizeTextPadding(padding: TextClipStyle['padding']): Normali
   return { top: 60, right: 60, bottom: 60, left: 60 };
 }
 
+export function getFontStack(fontFamily: string): string {
+  const normalized = fontFamily.trim();
+
+  if (normalized.includes(',')) {
+    return normalized;
+  }
+
+  const fontStacks: Record<string, string> = {
+    Inter: '"Inter", sans-serif',
+    Roboto: '"Roboto", sans-serif',
+    Montserrat: '"Montserrat", sans-serif',
+    Oswald: '"Oswald", sans-serif',
+    'Noto Sans': '"Noto Sans", sans-serif',
+    'Open Sans': '"Open Sans", sans-serif',
+    Lato: '"Lato", sans-serif',
+    'Playfair Display': '"Playfair Display", serif',
+    Arial: 'Arial, sans-serif',
+    'Arial Black': '"Arial Black", "Arial Bold", sans-serif',
+    Verdana: 'Verdana, sans-serif',
+    Tahoma: 'Tahoma, sans-serif',
+    'Trebuchet MS': '"Trebuchet MS", sans-serif',
+    Georgia: 'Georgia, serif',
+    'Times New Roman': '"Times New Roman", Times, serif',
+    'Courier New': '"Courier New", Courier, monospace',
+    Impact: 'Impact, Charcoal, "Arial Narrow Bold", sans-serif',
+    'sans-serif': 'sans-serif',
+    'serif': 'serif',
+    'monospace': 'monospace',
+  };
+
+  if (fontStacks[normalized]) {
+    return fontStacks[normalized]!;
+  }
+
+  if (/\s/.test(normalized) && !/^['"].*['"]$/.test(normalized)) {
+    return `"${normalized}", sans-serif`;
+  }
+
+  return `${normalized}, sans-serif`;
+}
+
 export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextStyle {
   const rawPadding = normalizeTextPadding(style?.padding);
   const padding =
@@ -152,7 +193,7 @@ export function normalizeTextClipStyle(style?: TextClipStyle): NormalizedTextSty
         : undefined,
     fontFamily:
       typeof style?.fontFamily === 'string' && style.fontFamily.length > 0
-        ? style.fontFamily
+        ? getFontStack(style.fontFamily)
         : 'sans-serif',
     fontSize: clampFinite(style?.fontSize, 64, 1, 1000),
     fontWeight:
