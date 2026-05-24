@@ -283,6 +283,18 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       lastActiveLayoutSignature = activeLayoutSignature.value;
 
       if (clips.length === 0 && audioClips.length === 0) {
+        // Re-check if the timeline loaded during our async operations.
+        // If it has content now, a follow-up build is already scheduled by
+        // the clipSourceSignature watcher — skip all state mutations here
+        // to avoid clearing the compositor and resetting the playhead with
+        // stale (pre-load) data.
+        const hasTimelineContent =
+          (timelineStore.timelineDoc?.tracks?.length ?? 0) > 0;
+        if (hasTimelineContent) {
+          isLoading.value = false;
+          return;
+        }
+
         await runWorkerTimelineOperation(async () => {
           await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
           forceRecreateCompositorNextBuild = false;
