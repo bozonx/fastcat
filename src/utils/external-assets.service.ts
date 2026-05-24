@@ -1,5 +1,6 @@
 import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { randomToken } from '~/utils/ids';
 
 export interface ExternalAsset {
   id?: string;
@@ -59,7 +60,7 @@ export async function loadExternalAssets(params: {
             : IMAGES_DIR_NAME;
 
       if (!filename) {
-        filename = `asset-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${resolvedType === 'image' ? 'png' : resolvedType === 'video' ? 'mp4' : 'mp3'}`;
+        filename = `asset-${Date.now()}-${randomToken(7)}.${resolvedType === 'image' ? 'png' : resolvedType === 'video' ? 'mp4' : 'mp3'}`;
       }
 
       const relativePath = `${folder}/${filename}`;

@@ -4,10 +4,11 @@ import type { WorkspaceHandleStorage } from '~/repositories/workspace-handle.rep
 import { open } from '@tauri-apps/plugin-dialog';
 import { exists } from '@tauri-apps/plugin-fs';
 import { TauriDirectoryHandle } from './tauri-handle';
+import { isTauriRuntime } from '~/utils/runtime';
 
 export class TauriWorkspaceProvider implements WorkspaceProvider {
   id = 'tauri';
-  isSupported = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  isSupported = isTauriRuntime();
 
   constructor(private storage: WorkspaceHandleStorage<string>) {}
 

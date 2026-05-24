@@ -1,3 +1,5 @@
+import { randomToken } from '~/utils/ids';
+
 export function resolveAudioChannelsFromMeta(channels?: number): number {
   if (!channels) return 2;
   return channels;
@@ -20,7 +22,7 @@ export function clampPositiveNumber(value: number, fallback: number) {
 }
 
 export function createConversionTaskId() {
-  return `file-conversion-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `file-conversion-${Date.now()}-${randomToken()}`;
 }
 
 export function isAbortError(error: unknown) {

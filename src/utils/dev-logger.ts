@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- this module is the sanctioned console wrapper */
 export interface DevLogger {
   log: (...args: unknown[]) => void;
   info: (...args: unknown[]) => void;

@@ -14,6 +14,8 @@ import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import { save } from '@tauri-apps/plugin-dialog';
 import { copyFile } from '@tauri-apps/plugin-fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { isTauriRuntime } from '~/utils/runtime';
+import { randomToken } from '~/utils/ids';
 
 export interface ExportRangeOption {
   id: string;
@@ -32,7 +34,7 @@ export function useExportForm() {
   const selectedExportRangeId = ref('timeline');
   const saveAsDefaults = ref(false);
   const customExportPath = ref<string | null>(null);
-  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  const isTauri = isTauriRuntime();
 
   const {
     isExporting,
@@ -310,7 +312,7 @@ export function useExportForm() {
         }
       }
 
-      const tempFilename = `.${finalFilename}.tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const tempFilename = `.${finalFilename}.tmp-${Date.now()}-${randomToken(6)}`;
       const tempFileHandle = await exportDir.getFileHandle(tempFilename, { create: true });
 
       const resolvedCodecs = resolveExportCodecs(

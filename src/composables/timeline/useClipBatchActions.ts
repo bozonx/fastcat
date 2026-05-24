@@ -1,6 +1,7 @@
 import { computed, type Ref } from 'vue';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
+import { createLinkedGroupId } from '~/timeline/id';
 
 export interface ClipBatchActionsContext {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -13,8 +14,7 @@ export function useClipBatchActions(
   items: Ref<{ trackId: string; itemId: string }[]>,
   ctx: ClipBatchActionsContext,
 ) {
-  const generatedGroupId = () =>
-    `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const generatedGroupId = () => createLinkedGroupId();
 
   const selectedClips = computed(() => {
     const clips: TimelineClipItem[] = [];

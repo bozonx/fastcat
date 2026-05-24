@@ -16,6 +16,7 @@ import {
 } from './errors';
 import { acquireQueuedFileAccess, runQueuedFileAccess } from '~/utils/file-access-queue';
 import { withFileIoSlot, acquireStreamingFileIoSlot } from '~/utils/io/io-governor';
+import { randomToken } from '~/utils/ids';
 
 interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
@@ -380,7 +381,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   }
 
   private createTempName(baseName: string): string {
-    const random = Math.random().toString(36).slice(2, 8);
+    const random = randomToken(6);
     return `.${baseName}.${Date.now().toString(36)}.${random}.tmp`;
   }
 

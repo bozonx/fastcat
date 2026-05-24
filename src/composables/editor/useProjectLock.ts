@@ -1,13 +1,16 @@
 import { ref } from 'vue';
+import { genUuid } from '~/utils/ids';
+import { createDevLogger } from '~/utils/dev-logger';
 
 const LOCK_CHANNEL_NAME = 'fastcat_project_locks';
+const log = createDevLogger('ProjectLock');
 
 /**
  * Create a unique ID for this instance (tab load)
  */
 function createInstanceId(): string {
   if (typeof window === 'undefined') return 'server';
-  return crypto.randomUUID();
+  return genUuid();
 }
 
 export function useProjectLock() {
@@ -32,9 +35,7 @@ export function useProjectLock() {
       if (requesterTabId === tabId.value) return;
 
       if (type === 'lock:steal' && lockedProjectId.value === projectId) {
-        console.log(
-          `[ProjectLock] Received steal request for project: ${projectId} from tab: ${requesterTabId}`,
-        );
+        log.log(`Received steal request for project: ${projectId} from tab: ${requesterTabId}`);
         await releaseLock();
         isLockLost.value = true;
       }
@@ -56,7 +57,7 @@ export function useProjectLock() {
     const lockName = getLockName(projectId);
     isLockLost.value = false;
 
-    console.log(`[ProjectLock] Attempting to acquire lock: ${projectId} (Tab: ${tabId.value})`);
+    log.log(`Attempting to acquire lock: ${projectId} (Tab: ${tabId.value})`);
 
     if (typeof navigator === 'undefined' || !navigator.locks) {
       console.warn('[ProjectLock] Web Locks API not supported');
@@ -79,7 +80,7 @@ export function useProjectLock() {
 
           lockedProjectId.value = projectId;
           resolveAcquire(true);
-          console.log(`[ProjectLock] Lock acquired for project: ${projectId}`);
+          log.log(`Lock acquired for project: ${projectId}`);
 
           return new Promise<void>((resolveRelease) => {
             lockReleaseFn = resolveRelease;
@@ -97,7 +98,7 @@ export function useProjectLock() {
    */
   async function stealLock(projectId: string) {
     if (broadcastChannel) {
-      console.log(`[ProjectLock] Sending lock:steal to others for project: ${projectId}`);
+      log.log(`Sending lock:steal to others for project: ${projectId}`);
       broadcastChannel.postMessage({
         type: 'lock:steal',
         projectId,
@@ -108,9 +109,7 @@ export function useProjectLock() {
       await new Promise((r) => setTimeout(r, 500));
     }
     const result = await acquireLock(projectId);
-    console.log(
-      `[ProjectLock] Steal attempt result for ${projectId}: ${result ? 'SUCCESS' : 'FAILED'}`,
-    );
+    log.log(`Steal attempt result for ${projectId}: ${result ? 'SUCCESS' : 'FAILED'}`);
     return result;
   }
 
@@ -118,7 +117,7 @@ export function useProjectLock() {
     if (!lockedProjectId.value) return;
 
     const projectId = lockedProjectId.value;
-    console.log(`[ProjectLock] Releasing lock for project: ${projectId}`);
+    log.log(`Releasing lock for project: ${projectId}`);
 
     if (lockReleaseFn) {
       lockReleaseFn();

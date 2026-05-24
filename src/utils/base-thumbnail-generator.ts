@@ -121,4 +121,26 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
   protected abstract get taskPriority(): number;
   protected abstract executeTask(task: TTask): Promise<void>;
   protected abstract onCacheHit(task: TTask, cachedValue: TCache): void;
+
+  /**
+   * Revoke every cached object URL and drop all in-memory state.
+   *
+   * The app uses a single module-level instance of each generator, so its
+   * cache/queues persist across Vitest specs. Tests call `reset()` in
+   * `beforeEach` to get a clean slate without re-importing the module (which
+   * would leave the previous instance's blob URLs leaked).
+   */
+  reset(): void {
+    for (const value of this.cache.values()) {
+      this.revokeCacheValue(value);
+    }
+    this.cache.clear();
+    this.queuedTasks.clear();
+    this.activeTasks.clear();
+    this.cancelledTasks.clear();
+    this.clearAdditionalState();
+  }
+
+  /** Hook for subclasses to clear their own bookkeeping maps in {@link reset}. */
+  protected clearAdditionalState(): void {}
 }

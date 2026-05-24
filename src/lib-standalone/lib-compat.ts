@@ -8,6 +8,8 @@ export function useNuxtApp() {
   return {
     $isEmbedded: inject('isEmbedded', false),
     $notificationService: inject('notificationService', {
+      // Intentional fallback output when the host provides no notification service.
+      // eslint-disable-next-line no-console
       add: (msg: unknown) => console.log('Notification:', msg),
     }),
     $i18nService: inject('i18nService', {

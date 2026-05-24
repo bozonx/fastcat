@@ -75,6 +75,11 @@ describe('Thumbnail Generators', () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
 
+    // Both generators are module-level singletons; reset them so each spec
+    // starts from a clean cache/queue instead of inheriting prior state.
+    thumbnailGenerator.reset();
+    fileThumbnailGenerator.reset();
+
     vi.mocked(useWorkspaceStore).mockReturnValue({
       workspaceHandle: (function () {
         const h = { getDirectoryHandle: vi.fn(), removeEntry: vi.fn() };
@@ -256,6 +261,37 @@ describe('Thumbnail Generators', () => {
       expect(generator.listeners.has('cancel-test')).toBe(false);
       expect(generator.pendingRequestedTimes.has('cancel-test')).toBe(false);
       expect(generator.opfsCheckedTimes.has('cancel-test')).toBe(false);
+    });
+
+    it('reset() revokes cached urls and drops all in-memory state', () => {
+      const generator = thumbnailGenerator as unknown as {
+        cache: Map<string, Map<number, string>>;
+        listeners: Map<string, Map<string, unknown>>;
+        pendingRequestedTimes: Map<string, Set<number>>;
+        opfsCheckedTimes: Map<string, Set<number>>;
+        reset: () => void;
+      };
+
+      generator.cache.set(
+        'reset-test',
+        new Map([
+          [0, 'url-a'],
+          [4, 'url-b'],
+        ]),
+      );
+      generator.listeners.set('reset-test', new Map([['k1', {}]]));
+      generator.pendingRequestedTimes.set('reset-test', new Set([0, 4]));
+      generator.opfsCheckedTimes.set('reset-test', new Set([0]));
+
+      generator.reset();
+
+      expect(generator.cache.size).toBe(0);
+      expect(generator.listeners.size).toBe(0);
+      expect(generator.pendingRequestedTimes.size).toBe(0);
+      expect(generator.opfsCheckedTimes.size).toBe(0);
+      // Every cached blob URL must be revoked to avoid leaks.
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('url-a');
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('url-b');
     });
 
     it('should clearThumbnails remove listeners along with cache and pending state', async () => {

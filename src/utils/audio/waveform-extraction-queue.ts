@@ -39,3 +39,12 @@ export function runQueuedPeakExtraction(params: {
 
   return queued;
 }
+
+/**
+ * Test-only helper: drop the in-flight dedup map and reset the serial queue so
+ * each spec starts from a clean state without re-importing the module.
+ */
+export function __resetWaveformExtractionQueueForTesting(): void {
+  peakExtractionsByPath.clear();
+  peakExtractionQueue = Promise.resolve();
+}

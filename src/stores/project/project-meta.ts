@@ -5,12 +5,10 @@ import {
   type ProjectMetaRepository,
   type ProjectMeta,
 } from '~/repositories/project-meta.repository';
+import { genUuid } from '~/utils/ids';
 
 function createProjectId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `p_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+  return genUuid();
 }
 
 export interface ProjectMetaModule {

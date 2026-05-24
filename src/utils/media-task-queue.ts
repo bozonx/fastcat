@@ -63,6 +63,17 @@ export function addMediaTask<T>(
   });
 }
 
+/**
+ * Test-only helper: clear pending tasks, the keyed-task version map, and the
+ * lazy-init flag so a spec can exercise the queue without the watch/state that
+ * a previous spec left behind.
+ */
+export function __resetMediaTaskQueueForTesting(): void {
+  mediaTaskQueue.value.clear();
+  keyedTaskVersions.clear();
+  isMediaTaskQueueInitialized = false;
+}
+
 export function addLatestMediaTask(input: {
   key: string;
   task: () => Promise<void>;

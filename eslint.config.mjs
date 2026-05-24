@@ -28,6 +28,10 @@ export default withNuxt(eslintPluginPrettierRecommended)
       'vue/require-default-prop': 'warn',
       'no-empty': 'warn',
       'no-unsafe-finally': 'warn',
+      // Diagnostic logging must go through ~/utils/dev-logger (gated by env and
+      // mockable in tests). console.warn/error stay allowed because the logger
+      // forwards them unconditionally anyway.
+      'no-console': ['error', { allow: ['warn', 'error'] }],
     },
   })
   .append({
@@ -60,5 +64,12 @@ export default withNuxt(eslintPluginPrettierRecommended)
     files: ['src/pages/**/*.vue', 'src/layouts/**/*.vue'],
     rules: {
       'vue/multi-word-component-names': 'off',
+    },
+  })
+  .append({
+    // Build/dev CLI scripts are Node tools whose console output is the point.
+    files: ['scripts/**'],
+    rules: {
+      'no-console': 'off',
     },
   });

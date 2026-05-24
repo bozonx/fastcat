@@ -11,6 +11,7 @@ import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-edi
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
+import { randomToken } from '~/utils/ids';
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
@@ -103,6 +104,13 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     _urls.forEach((url) => URL.revokeObjectURL(url));
   }
 
+  protected override clearAdditionalState(): void {
+    this.listeners.clear();
+    this.pendingRequestedTimes.clear();
+    this.opfsCheckedTimes.clear();
+    this.opfsExistingFiles.clear();
+  }
+
   protected onCacheHit(task: ThumbnailTask, urls: Map<number, string>): void {
     const entries = Array.from(urls.entries()).sort(([a], [b]) => a - b);
     entries.forEach(([time, url], index) => {
@@ -162,8 +170,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       onError: task.onError,
     };
     const listeners = this.listeners.get(task.id) ?? new Map<string, ThumbnailTaskListener>();
-    const listenerKey =
-      task.listenerKey ?? `${Date.now()}:${Math.random().toString(36).slice(2)}:${listeners.size}`;
+    const listenerKey = task.listenerKey ?? `${Date.now()}:${randomToken()}:${listeners.size}`;
     listeners.set(listenerKey, listener);
     this.listeners.set(task.id, listeners);
     return listener;
@@ -548,3 +555,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 }
 
 export const thumbnailGenerator = new ThumbnailGenerator();
+// Exported separately (not as `export class`) so tests can construct a fresh
+// instance; an inline `export` on the generic heritage clause trips Vite's
+// SSR transform.
+export { ThumbnailGenerator };

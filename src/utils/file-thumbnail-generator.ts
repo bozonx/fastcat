@@ -70,6 +70,10 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
   }
 
+  protected override clearAdditionalState(): void {
+    this.cacheProjectIds.clear();
+  }
+
   protected onCacheHit(task: FileThumbnailTask, url: string): void {
     task.onComplete?.(url);
   }
@@ -448,3 +452,6 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 }
 
 export const fileThumbnailGenerator = new FileThumbnailGenerator();
+// See thumbnail-generator.ts — exported separately to avoid a Vite transform
+// quirk with `export class` on a generic heritage clause.
+export { FileThumbnailGenerator };

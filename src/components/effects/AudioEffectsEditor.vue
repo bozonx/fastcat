@@ -11,6 +11,7 @@ import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import { getAudioEffectManifest } from '~/effects';
 import type { AudioClipEffect } from '~/timeline/types';
 import { usePresetsStore } from '~/stores/presets.store';
+import { genUuid } from '~/utils/ids';
 
 const props = defineProps<{
   effects?: AudioClipEffect[];
@@ -73,7 +74,7 @@ function handleAddEffect(type: string) {
   if (!manifest) return;
 
   const newEffect: AudioClipEffect = {
-    id: `audio_effect_${crypto.randomUUID()}`,
+    id: `audio_effect_${genUuid()}`,
     type,
     enabled: true,
     target: 'audio',

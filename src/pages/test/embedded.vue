@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import FastcatEmbeddedLayout from '~/components/embedded/FastcatEmbeddedLayout.vue';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('TestPage');
 
 definePageMeta({
   layout: 'embedded',
@@ -18,7 +21,7 @@ const assets = [
 ];
 
 function onExported(data: unknown) {
-  console.log('[TestPage] Exported successfully:', data);
+  log.log('Exported successfully:', data);
   const { file, filename } = data as { file: Blob; filename: string };
 
   // Create download link for testing

@@ -11,6 +11,7 @@ import {
   type DirectoryHandleLike,
 } from './app-fs.repository';
 import { FASTCAT_CONFIG_DIR_NAME } from '~/utils/storage-roots';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const isDevMode = (): boolean => import.meta.dev;
 
@@ -54,10 +55,6 @@ async function writeWorkspaceJson(input: {
   });
   if (!handle) return;
   await writeJsonToFileHandle({ handle, data: input.data });
-}
-
-function isTauriRuntime(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
 async function readTauriConfigJson(

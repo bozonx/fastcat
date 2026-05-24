@@ -42,6 +42,8 @@ const FastcatElement = defineCustomElement({
     // Provide Nuxt-like services that are expected by components via useNuxtApp()
     provide('isEmbedded', true);
     provide('notificationService', {
+      // Intentional fallback output when the embedding host provides no service.
+      // eslint-disable-next-line no-console
       add: (msg: unknown) => console.log('[Embedded Editor] Notification:', msg),
     });
     provide('i18nService', {

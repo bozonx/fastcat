@@ -10,6 +10,7 @@ import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import { loadExternalAssets, type ExternalAsset } from '~/utils/external-assets.service';
 import { useMediaStore } from '~/stores/media.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
+import { randomToken } from '~/utils/ids';
 
 const props = defineProps<{
   assets?: ExternalAsset[];
@@ -50,8 +51,7 @@ async function initEmbedded() {
   workspaceStore.isEphemeral = true;
 
   if (!workspaceStore.workspaceHandle) {
-    internalWorkspaceId.value =
-      props.workspaceId || `embedded-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    internalWorkspaceId.value = props.workspaceId || `embedded-${Date.now()}-${randomToken(7)}`;
     await workspaceStore.initAutomaticWorkspace(internalWorkspaceId.value);
   }
 

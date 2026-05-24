@@ -26,3 +26,11 @@ export async function loadFonts(): Promise<void> {
     console.warn('[Worker] Font loading failed:', e);
   }
 }
+
+/**
+ * Test-only helper: clear the "fonts already loaded" latch so a spec can assert
+ * the load path runs again.
+ */
+export function __resetFontsLoadedForTesting(): void {
+  fontsLoaded = false;
+}

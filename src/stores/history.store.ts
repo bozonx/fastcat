@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, toRaw } from 'vue';
 
 import { useWorkspaceStore } from './workspace.store';
+import { genUuid } from '~/utils/ids';
 
 export interface HistoryEntry<T = unknown> {
   id: string;
@@ -17,10 +18,7 @@ export interface HistoryEntry<T = unknown> {
 }
 
 function generateHistoryEntryId(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+  return genUuid();
 }
 
 /** Deep plain copy. structuredClone is ~3-5x faster than JSON round-trip on

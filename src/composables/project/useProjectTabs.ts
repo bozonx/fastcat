@@ -10,6 +10,7 @@ import {
   useProjectTabsStore,
 } from '~/stores/project-tabs.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
+import { genUuid } from '~/utils/ids';
 
 const TAB_ID_TO_PANEL_TYPE: Record<
   string,
@@ -327,7 +328,7 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     const tab = staticTabs.value.find((t) => t.id === tabId);
     if (!tab) return;
 
-    const panelId = `static-${tabId}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`;
+    const panelId = `static-${tabId}-${genUuid()}`;
 
     projectStore.insertPanelAt(
       {

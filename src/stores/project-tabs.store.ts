@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { getMediaTypeFromFilename, getIconForMediaType } from '~/utils/media-types';
+import { genUuid } from '~/utils/ids';
 
 import { defineStore } from 'pinia';
 
@@ -126,7 +127,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     const icon = getIconForMediaType(mediaType);
 
     const tab: ProjectFileTab = {
-      id: `file-tab-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`,
+      id: `file-tab-${genUuid()}`,
       filePath,
       fileName,
       mediaType: mappedType,

@@ -21,6 +21,7 @@ import {
   WORKSPACE_COMMON_PATH_PREFIX,
   toWorkspaceCommonStoragePath,
 } from '~/utils/workspace-common';
+import { isTauriRuntime } from '~/utils/runtime';
 
 /**
  * Bridges core VFS progress reporting to the Nuxt-side background-tasks store
@@ -171,7 +172,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
-  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  const isTauri = isTauriRuntime();
 
   const { project, workspace } = isTauri
     ? createTauriWorkspaceAdapters(workspaceStore, projectStore)

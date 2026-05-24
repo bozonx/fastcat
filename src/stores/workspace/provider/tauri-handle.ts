@@ -10,6 +10,7 @@ import {
 } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
 import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { randomToken } from '~/utils/ids';
 
 export class TauriFileHandle {
   kind = 'file' as const;
@@ -34,7 +35,7 @@ export class TauriFileHandle {
     write: (data: string | Uint8Array | BlobPart) => Promise<void>;
     close: () => Promise<void>;
   }> {
-    const random = Math.random().toString(36).slice(2, 8);
+    const random = randomToken(6);
     const tempPath = `${this.path}.${Date.now().toString(36)}.${random}.tmp`;
 
     return {

@@ -5,6 +5,7 @@ import type {
   TimelineTrack,
   TimelineTrackItem,
 } from '../types';
+import { genUuid } from '~/utils/ids';
 
 /**
  * Throws if the given item is a locked clip — single source of truth for the
@@ -501,15 +502,7 @@ export function normalizeTrackOrder(doc: TimelineDocument, trackIds: string[]): 
 }
 
 export function nextItemId(trackId: string, prefix: string): string {
-  const cryptoObj = globalThis.crypto;
-  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
-    return `${prefix}_${trackId}_${cryptoObj.randomUUID()}`;
-  }
-  // Fallback for environments without crypto.randomUUID. 10 random base36 chars
-  // (≈52 bits) avoids the burst-collisions the previous 3-char suffix allowed.
-  const r1 = Math.random().toString(36).substring(2, 12);
-  const r2 = Math.random().toString(36).substring(2, 8);
-  return `${prefix}_${trackId}_${Date.now().toString(36)}_${r1}${r2}`;
+  return `${prefix}_${trackId}_${genUuid()}`;
 }
 
 export function computeTrackEndUs(track: TimelineTrack): number {

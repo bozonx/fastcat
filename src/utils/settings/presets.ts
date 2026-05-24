@@ -1,3 +1,5 @@
+import { randomToken } from '~/utils/ids';
+
 export interface CustomPreset {
   id: string; // Used as the type in registry
   baseType: string;
@@ -217,9 +219,9 @@ export function resolveExportPreset(
 }
 
 export function createProjectPresetId(): string {
-  return `project-${Math.random().toString(36).slice(2, 10)}`;
+  return `project-${randomToken()}`;
 }
 
 export function createExportPresetId(): string {
-  return `export-${Math.random().toString(36).slice(2, 10)}`;
+  return `export-${randomToken()}`;
 }

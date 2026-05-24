@@ -17,17 +17,13 @@ import {
   createSharedBudgetBuffer,
   type IoBudget,
 } from './io-budget';
+import { isTauriRuntime } from '~/utils/runtime';
 
 /**
- * Tauri runtime is detected via the global `__TAURI_INTERNALS__` symbol it
- * injects into `window`. The check is reused by the legacy main-thread
- * governor so it stays the single source of truth.
+ * Re-export the canonical Tauri detector (see `~/utils/runtime`) so the legacy
+ * main-thread governor (`io-governor.ts`) keeps importing it from here.
  */
-export function isTauriRuntime(): boolean {
-  if (typeof globalThis === 'undefined') return false;
-  const root = globalThis as { __TAURI_INTERNALS__?: unknown };
-  return root.__TAURI_INTERNALS__ !== undefined;
-}
+export { isTauriRuntime };
 
 interface MainBudgetState {
   budget: IoBudget;

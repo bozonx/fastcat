@@ -5,6 +5,9 @@ import type {
   SttWorkerResponse,
 } from '~/utils/transcription/types';
 import { runResilientWorkerFileIo } from './core/io-governor';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('STT Worker');
 
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
@@ -24,7 +27,7 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
     return originalFetch(url, options);
   }
 
-  console.log(`[STT Worker] Intercepted local fetch: ${urlStr}`);
+  log.log(`Intercepted local fetch: ${urlStr}`);
 
   const escapedCurrentModelName = currentModelName.replace(/\//g, '_');
 
@@ -67,8 +70,8 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
     }
 
     const file = await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile());
-    console.log(
-      `[STT Worker] Serving local file: ${escapedCurrentModelName}/${filePath} (size: ${file.size} bytes)`,
+    log.log(
+      `Serving local file: ${escapedCurrentModelName}/${filePath} (size: ${file.size} bytes)`,
     );
     return new Response(file);
   } catch {
@@ -82,7 +85,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
     return transcriber;
   }
 
-  console.log(`[STT Worker] Initializing pipeline for ${modelName}...`);
+  log.log(`Initializing pipeline for ${modelName}...`);
 
   if (isWebGpuAvailable === null) {
     const gpu = (self.navigator as { gpu?: unknown }).gpu;
@@ -98,7 +101,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
         isWebGpuAvailable = false;
       }
     }
-    console.log(`[STT Worker] WebGPU support verified: ${isWebGpuAvailable}`);
+    log.log(`WebGPU support verified: ${isWebGpuAvailable}`);
   }
 
   if (isWebGpuAvailable) {
@@ -112,7 +115,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)) as AutomaticSpeechRecognitionPipeline;
 
-      console.log('[STT Worker] Pipeline initialized with WebGPU');
+      log.log('Pipeline initialized with WebGPU');
       return transcriber;
     } catch (err: unknown) {
       console.warn('[STT Worker] WebGPU initialization failed, falling back to WASM:', err);
@@ -131,7 +134,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)) as AutomaticSpeechRecognitionPipeline;
 
-  console.log('[STT Worker] Pipeline initialized with WASM');
+  log.log('Pipeline initialized with WASM');
   return transcriber;
 }
 
@@ -151,9 +154,7 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
     taskQueue = taskQueue
       .then(async () => {
         const durationS = audio.length / 16000;
-        console.log(
-          `[STT Worker] Processing ${modelName}: ${audio.length} samples (${durationS.toFixed(2)}s)`,
-        );
+        log.log(`Processing ${modelName}: ${audio.length} samples (${durationS.toFixed(2)}s)`);
 
         const p = await initTranscriber(modelName);
 
@@ -180,8 +181,8 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
 
-        console.log(
-          `[STT Worker] Transcription finished. Total chunks: ${Array.isArray((result as { chunks?: unknown[] }).chunks) ? (result as { chunks?: unknown[] }).chunks?.length : 'N/A'}',`,
+        log.log(
+          `Transcription finished. Total chunks: ${Array.isArray((result as { chunks?: unknown[] }).chunks) ? (result as { chunks?: unknown[] }).chunks?.length : 'N/A'}',`,
         );
         self.postMessage({ type: 'result', id, data: result } satisfies SttWorkerResponse);
       })

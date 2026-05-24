@@ -563,8 +563,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       return doc.tracks.find((track) => track.kind === sourceKind) ?? baseTargetTrack;
     }
 
-    // Use nextItemId for both clip and group IDs — it uses crypto.randomUUID
-    // when available so two paste bursts in the same track cannot collide.
+    // Use nextItemId for both clip and group IDs — it uses genUuid (crypto-backed
+    // when available) so two paste bursts in the same track cannot collide.
     for (const item of items) {
       const clip = item.clip;
       const targetTrack = resolveCompatibleTargetTrack(item);

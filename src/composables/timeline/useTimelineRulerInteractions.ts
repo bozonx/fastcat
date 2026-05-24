@@ -3,6 +3,7 @@ import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { isSecondaryWheel, DRAG_DEADZONE_PX } from '~/utils/mouse';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import type { FastCatUserSettings } from '~/utils/settings';
+import { createMarkerId } from '~/timeline/id';
 
 interface TimelineSelectionStoreLike {
   clearSelection: () => void;
@@ -43,10 +44,6 @@ interface UseTimelineRulerInteractionsOptions {
     (e: 'wheel', event: WheelEvent): void;
     (e: 'dblclick-ruler', timeUs: number): void;
   };
-}
-
-function createMarkerId() {
-  return `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export function useTimelineRulerInteractions(options: UseTimelineRulerInteractionsOptions) {

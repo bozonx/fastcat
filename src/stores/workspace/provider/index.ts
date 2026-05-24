@@ -2,9 +2,10 @@ import type { WorkspaceProvider } from './types';
 import { WebWorkspaceProvider } from './web';
 import { TauriWorkspaceProvider } from './tauri';
 import { createIndexedDbWorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
+import { isTauriRuntime } from '~/utils/runtime';
 
 export function createWorkspaceProvider(): WorkspaceProvider {
-  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  const isTauri = isTauriRuntime();
 
   if (isTauri) {
     const storage =

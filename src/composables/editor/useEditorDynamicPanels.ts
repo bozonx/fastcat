@@ -6,6 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { readLocalStorageJson, getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { DynamicPanel } from '~/stores/editor-view.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
+import { genUuid } from '~/utils/ids';
 
 interface UseEditorDynamicPanelsOptions {
   currentProjectId: Ref<string | null>;
@@ -293,7 +294,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
         projectStore.insertPanelAt(
           {
-            id: `static-${payload.tabId}-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`,
+            id: `static-${payload.tabId}-${genUuid()}`,
             type: panelType,
             title: payload.label,
           },
@@ -328,7 +329,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
         projectStore.insertPanelAt(
           {
-            id: `file-panel-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 7)}`,
+            id: `file-panel-${genUuid()}`,
             type: 'media',
             filePath: payload.filePath,
             mediaType,

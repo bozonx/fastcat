@@ -8,6 +8,7 @@ import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { TimelineTrack } from '~/timeline/types';
 import { resolvePlayheadClickTimeUs } from './timelineInteractionUtils';
+import { createMarkerId } from '~/timeline/id';
 
 export interface UseTimelineClickActionsOptions {
   horizontalScrollEl: Ref<HTMLElement | null>;
@@ -85,7 +86,7 @@ export function useTimelineClickActions({
       const timeUs = pxToTimeUs(x, timelineStore.timelineZoom);
       timelineStore.applyTimeline({
         type: 'add_marker',
-        id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+        id: createMarkerId(),
         timeUs,
         text: '',
       });
@@ -147,7 +148,7 @@ export function useTimelineClickActions({
     } else if (action === 'add_marker') {
       timelineStore.applyTimeline({
         type: 'add_marker',
-        id: `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
+        id: createMarkerId(),
         timeUs,
         text: '',
       });

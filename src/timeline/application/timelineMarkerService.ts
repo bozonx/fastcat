@@ -1,5 +1,6 @@
 import type { TimelineDocument, TimelineMarker } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
+import { createMarkerId } from '~/timeline/id';
 
 export interface TimelineMarkerServiceDeps {
   getDoc: () => TimelineDocument | null;
@@ -23,7 +24,7 @@ export interface TimelineMarkerService {
 }
 
 function generateMarkerId(): string {
-  return `marker_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  return createMarkerId();
 }
 
 export function createTimelineMarkerService(

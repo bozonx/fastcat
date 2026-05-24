@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted } from 'vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { isTauriRuntime } from '~/utils/runtime';
 
 export function useConfirmClose() {
   const backgroundTasksStore = useBackgroundTasksStore();
@@ -18,7 +19,7 @@ export function useConfirmClose() {
   }
 
   async function setupTauriCloseHandler() {
-    if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) {
+    if (!isTauriRuntime()) {
       return;
     }
 

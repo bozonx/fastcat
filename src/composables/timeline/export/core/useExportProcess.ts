@@ -2,6 +2,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { isTauriRuntime } from '~/utils/io/io-governor';
+import { randomToken } from '~/utils/ids';
 import {
   broadcastPixiRendererPreference,
   getExportWorkerClient,
@@ -56,7 +57,7 @@ export function useExportProcess(
     }
 
     timelineExportInFlight = true;
-    const exportTaskId = `timeline-export-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const exportTaskId = `timeline-export-${Date.now()}-${randomToken()}`;
     activeExportTaskId.value = exportTaskId;
     cancelRequested.value = false;
 

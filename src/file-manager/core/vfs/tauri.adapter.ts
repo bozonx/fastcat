@@ -35,6 +35,7 @@ import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-
 
 import { normalizeFsPath } from '~/file-manager/core/path';
 import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { isTauriRuntime } from '~/utils/runtime';
 
 /** Marker string for the Tauri AppData base directory. */
 export const TAURI_APP_DATA_BASE_PATH = 'app-data';
@@ -97,7 +98,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   async init(): Promise<void> {
-    if (typeof window === 'undefined' || !('__TAURI_INTERNALS__' in window)) {
+    if (!isTauriRuntime()) {
       throw new Error('Not running in Tauri environment');
     }
 
@@ -195,7 +196,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   }
 
   private createTempName(baseName: string): string {
-    const random = Math.random().toString(36).slice(2, 8);
+    const random = randomToken(6);
     return `.${baseName}.${Date.now().toString(36)}.${random}.tmp`;
   }
 

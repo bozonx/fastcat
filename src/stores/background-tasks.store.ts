@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { genUuid } from '~/utils/ids';
 
 export type BackgroundTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type BackgroundTaskType =
@@ -38,11 +39,7 @@ const TERMINAL_STATUSES: ReadonlySet<BackgroundTaskStatus> = new Set([
 const MAX_COMPLETED_TASKS = 200;
 
 function generateTaskId(): string {
-  // crypto.randomUUID is available in modern browsers and Node 16+.
-  if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return genUuid();
 }
 
 function clampProgress(progress: number): number {

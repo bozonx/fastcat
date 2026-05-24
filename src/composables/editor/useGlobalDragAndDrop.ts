@@ -12,6 +12,7 @@ import {
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const isDropInProgress = ref(false);
 const isCurrentDragCancelled = ref(false);
@@ -165,7 +166,7 @@ export function useGlobalDragAndDrop() {
   onMounted(async () => {
     window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
 
-    if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    if (isTauriRuntime()) {
       try {
         const { getCurrentWebview } = await import('@tauri-apps/api/webview');
         unlistenTauriDrop = await getCurrentWebview().onDragDropEvent(async (event) => {

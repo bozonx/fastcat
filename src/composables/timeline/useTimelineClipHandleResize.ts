@@ -12,7 +12,6 @@ import type {
   TimelineResizeFadePayload,
   TimelineResizeVolumePayload,
 } from '~/timeline/types';
-import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
@@ -23,6 +22,10 @@ import {
   createHotkeyLookup,
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
+import {
+  computeMaxResizableTransitionDurationUs as computeMaxResizableTransitionDurationUsPure,
+  computeTransitionHandleSnapDurationUs as computeTransitionHandleSnapDurationUsPure,
+} from '~/composables/timeline/transitionResizeGeometry';
 
 interface ClipResizeFields {
   audioFadeInUs?: number;
@@ -312,92 +315,15 @@ export function useTimelineClipHandleResize(
     });
   }
 
-  function getOrderedClipsOnTrack(track: TimelineTrack): TimelineClipItem[] {
-    const clips = track.items.filter((it): it is TimelineClipItem => it.kind === 'clip');
-    return [...clips].sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-  }
-
-  function getAdjacentClipForTransitionEdge(input: {
-    trackId: string;
-    itemId: string;
-    edge: 'in' | 'out';
-  }): { clip: TimelineClipItem; adjacent: TimelineClipItem | null } | null {
-    const tracks = tracksRef();
-    const track = tracks.find((t) => t.id === input.trackId);
-    if (!track) return null;
-    const ordered = getOrderedClipsOnTrack(track);
-    const idx = ordered.findIndex((c) => c.id === input.itemId);
-    if (idx === -1) return null;
-    const clip = ordered[idx]!;
-    const adjacent =
-      input.edge === 'in'
-        ? idx > 0
-          ? ordered[idx - 1]!
-          : null
-        : idx < ordered.length - 1
-          ? ordered[idx + 1]!
-          : null;
-    return { clip, adjacent };
-  }
-
-  function getTransitionAdjacentHandleLimitUs(input: {
-    edge: 'in' | 'out';
-    adjacent: TimelineClipItem | null;
-  }): number {
-    if (!input.adjacent) return Number.POSITIVE_INFINITY;
-
-    if (input.edge === 'in') {
-      const prev = input.adjacent;
-      const prevFields = getClipResizeFields(prev);
-      const prevSourceEnd = (prev.sourceRange?.startUs ?? 0) + (prev.sourceRange?.durationUs ?? 0);
-      const prevMaxEnd =
-        (prev.clipType === 'media' || prev.clipType === 'timeline') && !prev.isImage
-          ? (prevFields.sourceDurationUs ?? prevSourceEnd)
-          : Number.POSITIVE_INFINITY;
-      return Number.isFinite(prevMaxEnd)
-        ? Math.max(0, Math.round(Number(prevMaxEnd)) - Math.round(prevSourceEnd))
-        : Number.POSITIVE_INFINITY;
-    }
-
-    return input.adjacent.clipType === 'media' || input.adjacent.clipType === 'timeline'
-      ? Math.max(0, Math.round(Number(input.adjacent.sourceRange?.startUs ?? 0)))
-      : Number.POSITIVE_INFINITY;
-  }
-
+  // Transition-handle geometry lives in `transitionResizeGeometry.ts` as pure
+  // functions; these wrappers just supply the current track list.
   function computeMaxResizableTransitionDurationUs(input: {
     trackId: string;
     itemId: string;
     edge: 'in' | 'out';
     currentTransition: ClipTransition;
   }): number {
-    const resolved = getAdjacentClipForTransitionEdge({
-      trackId: input.trackId,
-      itemId: input.itemId,
-      edge: input.edge,
-    });
-    if (!resolved) return 10_000_000;
-
-    const { clip, adjacent } = resolved;
-    const clipFields = getClipResizeFields(clip);
-
-    const clipDuration = clip.timelineRange.durationUs;
-    const oppTransitionUs =
-      input.edge === 'in'
-        ? (clipFields.transitionOut?.durationUs ?? 0)
-        : (clipFields.transitionIn?.durationUs ?? 0);
-    const maxWithinClip = Math.max(0, clipDuration - oppTransitionUs);
-
-    let limitByHandle = Number.POSITIVE_INFINITY;
-
-    const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
-    if (mode === 'adjacent' && adjacent) {
-      limitByHandle = getTransitionAdjacentHandleLimitUs({
-        edge: input.edge,
-        adjacent,
-      });
-    }
-
-    return Math.min(maxWithinClip, limitByHandle);
+    return computeMaxResizableTransitionDurationUsPure({ tracks: tracksRef(), ...input });
   }
 
   function computeTransitionHandleSnapDurationUs(input: {
@@ -407,35 +333,7 @@ export function useTimelineClipHandleResize(
     currentTransition: ClipTransition;
     rawDurationUs: number;
   }): number | null {
-    const resolved = getAdjacentClipForTransitionEdge({
-      trackId: input.trackId,
-      itemId: input.itemId,
-      edge: input.edge,
-    });
-    if (!resolved) return null;
-
-    const { clip, adjacent } = resolved;
-    const mode = input.currentTransition.mode ?? DEFAULT_TRANSITION_MODE;
-    if (mode !== 'adjacent' || !adjacent) return null;
-
-    const clipEdgeUs =
-      input.edge === 'in'
-        ? clip.timelineRange.startUs
-        : clip.timelineRange.startUs + clip.timelineRange.durationUs;
-    const adjacentEdgeUs =
-      input.edge === 'in'
-        ? adjacent.timelineRange.startUs + adjacent.timelineRange.durationUs
-        : adjacent.timelineRange.startUs;
-    const gapUs = Math.abs(clipEdgeUs - adjacentEdgeUs);
-    if (gapUs > 1_000) return null;
-
-    const handleLimitUs = getTransitionAdjacentHandleLimitUs({
-      edge: input.edge,
-      adjacent,
-    });
-
-    if (!Number.isFinite(handleLimitUs)) return null;
-    return Math.max(0, Math.round(handleLimitUs));
+    return computeTransitionHandleSnapDurationUsPure({ tracks: tracksRef(), ...input });
   }
 
   function startResizeTransition(e: PointerEvent, payload: TimelineResizeFadePayload) {

@@ -1,4 +1,5 @@
 import { runResilientFileWrite } from './io-governor';
+import { randomToken } from '~/utils/ids';
 
 type WritableData = string | BufferSource | Blob;
 
@@ -13,7 +14,7 @@ interface AtomicWriteDir {
 }
 
 function createTempName(fileName: string): string {
-  return `${fileName}.tmp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return `${fileName}.tmp_${Date.now().toString(36)}_${randomToken(6)}`;
 }
 
 async function writeAndClose(handle: AtomicWritableHandle, data: WritableData): Promise<void> {

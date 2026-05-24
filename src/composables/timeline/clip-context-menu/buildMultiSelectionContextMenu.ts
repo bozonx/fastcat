@@ -2,6 +2,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineClipItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { collectMultiSelectionState, isClipFreePosition } from './utils';
+import { createLinkedGroupId } from '~/timeline/id';
 
 export function buildMultiSelectionContextMenu(
   options: UseClipContextMenuOptions,
@@ -151,9 +152,7 @@ export function buildMultiSelectionContextMenu(
     icon: state.hasGroupedClip ? 'i-heroicons-rectangle-group' : 'i-heroicons-square-2-stack',
     onSelect: async () => {
       const isGrouping = !state.hasGroupedClip;
-      const nextGroupId = isGrouping
-        ? `linked-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
-        : undefined;
+      const nextGroupId = isGrouping ? createLinkedGroupId() : undefined;
 
       const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
         type: 'update_clip_properties' as const,

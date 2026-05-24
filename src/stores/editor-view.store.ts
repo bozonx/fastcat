@@ -1,6 +1,7 @@
 import { ref, computed, watch, type Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { ProjectUiLayoutState } from '~/utils/project-settings';
+import { genUuid } from '~/utils/ids';
 
 export type EditorView = 'files' | 'cut' | 'sound' | 'export' | 'fullscreen' | 'settings';
 
@@ -76,9 +77,7 @@ const viewConfigs: Record<EditorView, ViewConfig> = {
 };
 
 function generateId() {
-  return typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : Math.random().toString(36).substring(2, 9);
+  return genUuid();
 }
 
 function sanitizePanel(panel: unknown): DynamicPanel | null {

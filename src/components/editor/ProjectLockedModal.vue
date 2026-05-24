@@ -2,7 +2,9 @@
 import { ref, watch, computed } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import UiModal from '~/components/ui/UiModal.vue';
+import { createDevLogger } from '~/utils/dev-logger';
 
+const log = createDevLogger('ProjectLockedModal');
 const projectStore = useProjectStore();
 const { t } = useI18n();
 const route = useRoute();
@@ -48,9 +50,9 @@ async function handleStealLock() {
 
   isStealing.value = true;
   try {
-    console.log('[ProjectLockedModal] Initiating steal lock sequence...');
+    log.log('Initiating steal lock sequence...');
     await projectStore.stealProjectLock();
-    console.log('[ProjectLockedModal] Steal sequence finished.');
+    log.log('Steal sequence finished.');
   } catch (e) {
     console.error('[ProjectLockedModal] Error steal lock:', e);
   } finally {

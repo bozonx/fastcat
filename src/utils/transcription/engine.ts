@@ -3,8 +3,11 @@ import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/exter
 import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { createDevLogger } from '~/utils/dev-logger';
 
 export type { TranscriptionRequest, TranscriptionResult };
+
+const log = createDevLogger('STT');
 
 function normalizeLanguage(language?: string): string {
   return typeof language === 'string' ? language.trim() : '';
@@ -134,7 +137,7 @@ export async function transcribeAudioFile(
   });
 
   if (import.meta.dev) {
-    console.debug('[STT] Upload request:', {
+    log.debug('Upload request:', {
       endpoint,
       contentType: headers.get('Content-Type'),
       fileName: headers.get('X-File-Name'),
