@@ -23,7 +23,16 @@ describe('monitor-time utils', () => {
     expect(sanitizeFps(Number.NaN)).toBe(30);
     expect(sanitizeFps(0)).toBe(1);
     expect(sanitizeFps(0.4)).toBe(1);
-    expect(sanitizeFps(23.6)).toBe(24);
     expect(sanitizeFps(1000)).toBe(240);
+  });
+
+  it('sanitizeFps preserves NTSC non-integer rates (must match ruler/playhead fps)', () => {
+    // Rounding these to integers would make the monitor timecode disagree with
+    // the ruler, which formats with the real fps from the timeline format.
+    expect(sanitizeFps(29.97)).toBe(29.97);
+    expect(sanitizeFps(23.976)).toBe(23.976);
+    expect(sanitizeFps(59.94)).toBe(59.94);
+    // Quantized to 3 decimals to strip float noise without forcing integers.
+    expect(sanitizeFps(23.9760004)).toBe(23.976);
   });
 });

@@ -29,20 +29,21 @@ export function clampTimeUs(value: number, maxDurationUs: number): number {
   return normalizedValue;
 }
 
+/**
+ * Sanitize fps preserving non-integer rates required for NTSC (29.97, 23.976,
+ * 59.94, …). We clamp to a reasonable range and quantize to 3 decimal places to
+ * keep the value finite and free of float noise without forcing integer-only
+ * fps. This mirrors `sanitizeFps` in `~/timeline/commands/utils` and
+ * `~/utils/timeline/geometry`; rounding to an integer here would make the
+ * monitor's timecode and frame interval disagree with the ruler and playhead,
+ * which use the real fps.
+ */
 export function sanitizeFps(value: unknown): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
     return FALLBACK_FPS;
   }
 
-  const rounded = Math.round(parsed);
-  if (rounded < MIN_FPS) {
-    return MIN_FPS;
-  }
-
-  if (rounded > MAX_FPS) {
-    return MAX_FPS;
-  }
-
-  return rounded;
+  const clamped = Math.min(MAX_FPS, Math.max(MIN_FPS, parsed));
+  return Math.round(clamped * 1000) / 1000;
 }
