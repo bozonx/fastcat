@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   AudioDecodeEngine,
   copyPlanarSampleToChannelBuffers,
@@ -7,88 +7,76 @@ import {
 } from '~/workers/audio-decode-engine';
 import type { DecodeRequest } from '~/utils/audio/types';
 
+async function* createEmptySamples(): AsyncGenerator<never> {
+  // empty
+}
+
+function createMockTrack(overrides?: { sampleRate?: number }) {
+  return {
+    canDecode: vi.fn().mockResolvedValue(true),
+    sampleRate: overrides?.sampleRate ?? 48000,
+  };
+}
+
 function createMockInput(params: {
   duration?: number;
-  canDecode?: boolean;
-  samples?: AsyncIterable<{
-    sampleRate: number;
-    numberOfChannels: number;
-    numberOfFrames: number;
-    timestamp: number;
-    allocationSize(opts: { format: string; planeIndex: number }): number;
-    copyTo(dst: Float32Array, opts: { format: string; planeIndex: number }): void;
-    close(): void;
-  }>;
+  track?: ReturnType<typeof createMockTrack>;
 }) {
-  const track = {
-    canDecode: vi.fn().mockResolvedValue(params.canDecode ?? true),
-    sampleRate: 48000,
-  };
-
-  const input = {
+  const track = params.track ?? createMockTrack();
+  return {
     getPrimaryAudioTrack: vi.fn().mockResolvedValue(track),
     computeDuration: vi.fn().mockResolvedValue(params.duration ?? 1),
     dispose: vi.fn(),
     close: vi.fn(),
   };
+}
+
+function createMockDeps(overrides?: {
+  input?: ReturnType<typeof createMockInput>;
+  samples?: AsyncIterable<unknown>;
+  blobSourceClass?: new (...args: unknown[]) => unknown;
+  inputClass?: new (...args: unknown[]) => unknown;
+}) {
+  const input = overrides?.input ?? createMockInput({});
+
+  class MockInput {
+    getPrimaryAudioTrack = input.getPrimaryAudioTrack;
+    computeDuration = input.computeDuration;
+    dispose = input.dispose;
+    close = input.close;
+  }
+
+  class MockAudioSampleSink {
+    samples = vi.fn().mockReturnValue(overrides?.samples ?? createEmptySamples());
+    close = vi.fn();
+    dispose = vi.fn();
+  }
+
+  class MockBlobSource {
+    constructor(public blob: Blob) {}
+  }
 
   return {
-    input,
-    track,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    AudioSampleSink: vi.fn().mockImplementation(() => ({
-      samples: vi.fn().mockReturnValue(params.samples ?? createEmptySamples()),
-      close: vi.fn(),
-      dispose: vi.fn(),
-    })) as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Input: vi.fn().mockImplementation(() => input) as any,
-  };
-}
-
-async function* createEmptySamples(): AsyncGenerator<never> {
-  // empty
-}
-
-async function* createSingleSample(frames: number, channels = 2): AsyncGenerator<{
-  sampleRate: number;
-  numberOfChannels: number;
-  numberOfFrames: number;
-  timestamp: number;
-  allocationSize(opts: { format: string; planeIndex: number }): number;
-  copyTo(dst: Float32Array, opts: { format: string; planeIndex: number }): void;
-  close(): void;
-}> {
-  yield {
-    sampleRate: 48000,
-    numberOfChannels: channels,
-    numberOfFrames: frames,
-    timestamp: 0,
-    allocationSize: () => (frames / channels) * 4,
-    copyTo: (dst, opts) => {
-      const planeIndex = opts.planeIndex ?? 0;
-      const planeFrames = frames;
-      for (let i = 0; i < planeFrames; i += 1) {
-        dst[i] = (planeIndex + 1) * 0.5;
-      }
-    },
-    close: vi.fn(),
+    Input: overrides?.inputClass ?? (MockInput as unknown as new (...args: unknown[]) => unknown),
+    AudioSampleSink: MockAudioSampleSink as unknown as new (...args: unknown[]) => unknown,
+    BlobSource: overrides?.blobSourceClass ?? (MockBlobSource as unknown as new (...args: unknown[]) => unknown),
+    ALL_FORMATS: {},
+    governedBlobWorker: (blob: Blob) => blob,
   };
 }
 
 describe('AudioDecodeEngine', () => {
   it('handleRequest returns error for unsupported format', async () => {
-    const deps = createMockInput({});
-    deps.Input.mockImplementation(() => {
-      throw Object.assign(new Error('Input has an unsupported or unrecognizable format.'), {
-        name: 'UnsupportedFormatError',
-      });
-    });
+    class FailingInput {
+      constructor() {
+        throw Object.assign(new Error('Input has an unsupported or unrecognizable format.'), {
+          name: 'UnsupportedFormatError',
+        });
+      }
+    }
 
     const engine = new AudioDecodeEngine({
-      ...deps,
-      BlobSource: vi.fn(),
-      ALL_FORMATS: {},
+      ...createMockDeps({ inputClass: FailingInput as unknown as new (...args: unknown[]) => unknown }),
     });
 
     const request: DecodeRequest = {
@@ -104,17 +92,21 @@ describe('AudioDecodeEngine', () => {
   });
 
   it('decodeToFloat32Channels returns decoded data', async () => {
-    const deps = createMockInput({
-      duration: 1,
-      samples: createSingleSample(48000, 2),
-    });
+    async function* singleSample() {
+      yield {
+        sampleRate: 48000,
+        numberOfChannels: 2,
+        numberOfFrames: 48000,
+        timestamp: 0,
+        allocationSize: () => 96000,
+        copyTo: (dst: Float32Array) => {
+          dst.fill(0.5);
+        },
+        close: vi.fn(),
+      };
+    }
 
-    const engine = new AudioDecodeEngine({
-      ...deps,
-      BlobSource: vi.fn((blob: Blob) => blob),
-      ALL_FORMATS: {},
-      governedBlobWorker: (blob: Blob) => blob,
-    });
+    const engine = new AudioDecodeEngine(createMockDeps({ samples: singleSample() }));
 
     const result = await engine.decodeToFloat32Channels(new Blob([]), 'key');
     expect(result.sampleRate).toBe(48000);
@@ -124,56 +116,94 @@ describe('AudioDecodeEngine', () => {
   });
 
   it('reset clears cached sources', async () => {
-    const deps = createMockInput({
-      duration: 1,
-      samples: createSingleSample(48000, 2),
-    });
+    async function* singleSample() {
+      yield {
+        sampleRate: 48000,
+        numberOfChannels: 2,
+        numberOfFrames: 100,
+        timestamp: 0,
+        allocationSize: () => 400,
+        copyTo: (dst: Float32Array) => {
+          dst.fill(0.5);
+        },
+        close: vi.fn(),
+      };
+    }
+
+    let callCount = 0;
+    class CountingInput {
+      getPrimaryAudioTrack = vi.fn().mockResolvedValue(createMockTrack());
+      computeDuration = vi.fn().mockResolvedValue(1);
+      dispose = vi.fn();
+      close = vi.fn();
+      constructor() {
+        callCount += 1;
+      }
+    }
+
+    class CountingAudioSampleSink {
+      samples = vi.fn().mockReturnValue(singleSample());
+      close = vi.fn();
+      dispose = vi.fn();
+    }
 
     const engine = new AudioDecodeEngine({
-      ...deps,
-      BlobSource: vi.fn((blob: Blob) => blob),
-      ALL_FORMATS: {},
-      governedBlobWorker: (blob: Blob) => blob,
+      ...createMockDeps({
+        inputClass: CountingInput as unknown as new (...args: unknown[]) => unknown,
+      }),
+      AudioSampleSink: CountingAudioSampleSink as unknown as new (...args: unknown[]) => unknown,
     });
 
     await engine.decodeToFloat32Channels(new Blob([]), 'key1');
     engine.reset();
-    // After reset the same key should trigger a new Input creation
     await engine.decodeToFloat32Channels(new Blob([]), 'key1');
-    expect(deps.Input).toHaveBeenCalledTimes(2);
+    expect(callCount).toBe(2);
   });
 
   it('global decode slot limits concurrent decodes', async () => {
     let active = 0;
     let maxActive = 0;
 
-    const slowInput = {
-      getPrimaryAudioTrack: vi.fn().mockImplementation(async () => {
+    async function* singleSample() {
+      yield {
+        sampleRate: 48000,
+        numberOfChannels: 2,
+        numberOfFrames: 100,
+        timestamp: 0,
+        allocationSize: () => 400,
+        copyTo: (dst: Float32Array) => {
+          dst.fill(0.5);
+        },
+        close: vi.fn(),
+      };
+    }
+
+    class SlowInput {
+      getPrimaryAudioTrack = vi.fn().mockImplementation(async () => {
         active += 1;
         maxActive = Math.max(maxActive, active);
         await new Promise((r) => setTimeout(r, 50));
         active -= 1;
         return { canDecode: vi.fn().mockResolvedValue(true), sampleRate: 48000 };
-      }),
-      computeDuration: vi.fn().mockResolvedValue(1),
-      dispose: vi.fn(),
-      close: vi.fn(),
-    };
+      });
+      computeDuration = vi.fn().mockResolvedValue(1);
+      dispose = vi.fn();
+      close = vi.fn();
+    }
+
+    class SlowAudioSampleSink {
+      samples = vi.fn().mockReturnValue(singleSample());
+      close = vi.fn();
+      dispose = vi.fn();
+    }
 
     const engine = new AudioDecodeEngine(
       {
-        Input: vi.fn().mockReturnValue(slowInput) as unknown as new (...args: unknown[]) => {
-          getPrimaryAudioTrack(): Promise<unknown>;
-          computeDuration(): Promise<number>;
-        },
-        AudioSampleSink: vi.fn().mockReturnValue({
-          samples: vi.fn().mockReturnValue(createEmptySamples()),
-          close: vi.fn(),
-          dispose: vi.fn(),
-        }) as unknown as new (...args: unknown[]) => {
-          samples(...args: number[]): AsyncIterable<unknown>;
-        },
-        BlobSource: vi.fn((blob: Blob) => blob),
+        Input: SlowInput as unknown as new (...args: unknown[]) => unknown,
+        AudioSampleSink: SlowAudioSampleSink as unknown as new (...args: unknown[]) => unknown,
+        BlobSource: class {
+          constructor(public blob: Blob) {}
+        } as unknown as new (...args: unknown[]) => unknown,
         ALL_FORMATS: {},
         governedBlobWorker: (blob: Blob) => blob,
       },

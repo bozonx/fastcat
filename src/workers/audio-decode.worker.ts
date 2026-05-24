@@ -23,22 +23,23 @@ if (typeof self !== 'undefined')
 
     const response = await engine.handleRequest(data);
 
+    const scope = self as unknown as WorkerGlobalScope & { postMessage: (msg: unknown, transfer?: Transferable[]) => void };
     if (response.ok && response.result) {
       const result = response.result;
       if (result.peaks && result.peaks.length > 0) {
         const transfer = result.peaks.map((ch) => ch.buffer as ArrayBuffer);
-        self.postMessage(response, transfer);
+        scope.postMessage(response, transfer);
         return;
       }
       if (result.sttAudio) {
-        self.postMessage(response, [result.sttAudio.buffer]);
+        scope.postMessage(response, [result.sttAudio.buffer]);
         return;
       }
       if (result.channelBuffers && result.channelBuffers.length > 0) {
-        self.postMessage(response, [...result.channelBuffers]);
+        scope.postMessage(response, [...result.channelBuffers]);
         return;
       }
     }
 
-    self.postMessage(response);
+    scope.postMessage(response);
   });

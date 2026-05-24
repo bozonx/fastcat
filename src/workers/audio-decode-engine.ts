@@ -18,9 +18,9 @@ interface AudioSampleSinkLike {
 }
 
 export interface AudioDecodeEngineDeps {
-  AudioSampleSink: new (...args: unknown[]) => AudioSampleSinkLike;
-  Input: new (...args: unknown[]) => InputLike;
-  BlobSource: new (...args: unknown[]) => unknown;
+  AudioSampleSink: new (...args: any[]) => AudioSampleSinkLike;
+  Input: new (...args: any[]) => InputLike;
+  BlobSource: new (...args: any[]) => unknown;
   ALL_FORMATS: unknown;
   governedBlobWorker?: (blob: Blob) => Blob;
 }
@@ -43,7 +43,7 @@ export class AudioDecodeEngine {
   ) {}
 
   reset(): void {
-    for (const cached of this.decodeSourceCache.values()) {
+    for (const cached of Array.from(this.decodeSourceCache.values())) {
       this.disposeDecodeSource(cached);
     }
     this.decodeSourceCache.clear();
