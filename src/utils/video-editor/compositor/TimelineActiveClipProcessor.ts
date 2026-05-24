@@ -25,12 +25,12 @@ export interface TimelineActiveClipProcessorResult {
   sampleRequests: Array<Promise<{ clip: CompositorClip; sample: unknown | null }>>;
 }
 
-const MIN_VIDEO_SAMPLE_END_GUARD_US = 1_000;
+export const MIN_VIDEO_SAMPLE_END_GUARD_US = 1_000;
 
 // Guard half a source frame off the end so we never request a timestamp past
 // the last decodable frame. At 24 fps a frame is ~41.7 ms — a flat 1 ms guard
 // would still land beyond the last sample boundary on some files.
-function clampToLastReadableSourceUs(durationUs: number, frameRate?: number): number {
+export function clampToLastReadableSourceUs(durationUs: number, frameRate?: number): number {
   const halfFrameUs =
     typeof frameRate === 'number' && Number.isFinite(frameRate) && frameRate > 0
       ? Math.round(500_000 / frameRate)

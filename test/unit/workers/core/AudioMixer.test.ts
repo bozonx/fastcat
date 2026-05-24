@@ -879,6 +879,145 @@ describe('resampleAndStretchOffline', () => {
   });
 });
 
+describe('AudioMixer fade boundary precision', () => {
+  it('drives the last frame to ~0 at the end of fade-out for fractional playDurationS', async () => {
+    // playDurationS=1.4995 at sr=1000 gives expectedOutFrames=round(1499.5)=1500
+    // while floor(playDurationS*sr)=1499. Without the ceil-bound fix the very
+    // last frame (index 1499) would retain baseGain instead of the faded-out
+    // tail value, producing a sub-millisecond click at the clip end.
+    const sampleRate = 1000;
+    const numberOfChannels = 1;
+    const playDurationS = 1.4995;
+    const fadeOutS = 0.5;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const totalFrames = Math.round(playDurationS * sampleRate); // 1500
+    const customSink = new mockMediabunny.AudioSampleSink();
+    customSink.samples = vi.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        const data = new Float32Array(totalFrames).fill(1.0);
+        yield {
+          numberOfFrames: totalFrames,
+          sampleRate,
+          numberOfChannels: 1,
+          timestamp: 0,
+          allocationSize: () => totalFrames * 4,
+          copyTo: (dst: Float32Array) => dst.set(data),
+        };
+      },
+    });
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS,
+        input: new mockMediabunny.Input() as any,
+        sink: customSink as any,
+        sourcePath: 'fade-tail.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: 0,
+        audioFadeOutS: fadeOutS,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS: playDurationS,
+      audioSource,
+      chunkDurationS: 2,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    const mixedData = audioSource.add.mock.calls[0][0].data.data;
+    // Last frame must reflect the trailing fade — gain at t=(N-1)/sr=1.499
+    // with fade-out starting at playDurationS - fadeOutS = 0.9995 and curve
+    // linear: gain ≈ (1.4995 - 1.499) / 0.5 = 0.001.
+    expect(mixedData[totalFrames - 1]).toBeLessThan(0.1);
+    // And it must not be left at baseGain (which is what the off-by-one bug
+    // produced before the fix).
+    expect(mixedData[totalFrames - 1]).not.toBeCloseTo(1.0, 1);
+  });
+
+  it('drives the first in-fade boundary frame down for fractional fadeInS', async () => {
+    // fadeInS=0.1234 at sr=10000 → floor(fadeInS*sr)=1234. Without the ceil
+    // upper bound, frame 1234 (which still satisfies t/sr < fadeInS) would
+    // keep baseGain rather than the in-fade ramp value.
+    const sampleRate = 10_000;
+    const numberOfChannels = 1;
+    const playDurationS = 0.5;
+    const fadeInS = 0.1234;
+    const audioSource = { add: vi.fn().mockResolvedValue(undefined) };
+
+    const totalFrames = Math.round(playDurationS * sampleRate); // 5000
+    const customSink = new mockMediabunny.AudioSampleSink();
+    customSink.samples = vi.fn().mockReturnValue({
+      [Symbol.asyncIterator]: async function* () {
+        const data = new Float32Array(totalFrames).fill(1.0);
+        yield {
+          numberOfFrames: totalFrames,
+          sampleRate,
+          numberOfChannels: 1,
+          timestamp: 0,
+          allocationSize: () => totalFrames * 4,
+          copyTo: (dst: Float32Array) => dst.set(data),
+        };
+      },
+    });
+
+    const prepared: PreparedClip[] = [
+      {
+        clipStartS: 0,
+        offsetS: 0,
+        playDurationS,
+        input: new mockMediabunny.Input() as any,
+        sink: customSink as any,
+        sourcePath: 'fade-head.mp3',
+        speed: 1,
+        reversed: false,
+        audioGain: 1,
+        audioBalance: 0,
+        audioFadeInS: fadeInS,
+        audioFadeOutS: 0,
+        audioFadeInCurve: 'linear',
+        audioFadeOutCurve: 'linear',
+        audioEffects: [],
+      },
+    ];
+
+    await AudioMixer.writeMixedToSource({
+      prepared,
+      durationS: playDurationS,
+      audioSource,
+      chunkDurationS: 1,
+      sampleRate,
+      numberOfChannels,
+      reportExportWarning: vi.fn(),
+      AudioSample: mockMediabunny.AudioSample as any,
+    });
+
+    const mixedData = audioSource.add.mock.calls[0][0].data.data;
+    // The boundary frame: floor(fadeInS*sr) = 1234. Time at that frame is
+    // 0.1234s == fadeInS, so getGainAtClipTime returns baseGain — that's the
+    // intended cross-over point. The frame just before should still be inside
+    // the fade ramp (~ 0.9991...).
+    const boundaryFrame = Math.floor(fadeInS * sampleRate);
+    expect(mixedData[boundaryFrame - 1]).toBeLessThan(1.0);
+    expect(mixedData[boundaryFrame - 1]).toBeGreaterThan(0.99);
+    // And the very first frame is at gain 0 (start of fade).
+    expect(mixedData[0]).toBeCloseTo(0);
+  });
+});
+
 describe('AudioMixer adjacent clips precision', () => {
   it('correctly aligns adjacent clips on fractional time boundaries without gap/overlap in sample index space', async () => {
     const sampleRate = 48000;

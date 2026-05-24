@@ -469,15 +469,24 @@ function buildGainEnvelope(params: {
     return gainEnvelope;
   }
 
+  // Use Math.ceil for the fade-in upper bound so the boundary frame (where
+  // frame_time/sr < fadeInS but floor(fadeIn*sr) equals the frame index) still
+  // gets evaluated through getGainAtClipTime; it returns baseGain past the
+  // fade so the extra iteration is a no-op but the in-fade boundary frame is
+  // no longer left at baseGain when playDurationS*sr is fractional.
   if (clip.audioFadeInS > 0) {
-    applyEnvelopeRange(0, Math.floor(clip.audioFadeInS * targetSampleRate));
+    applyEnvelopeRange(0, Math.ceil(clip.audioFadeInS * targetSampleRate));
   }
 
+  // Same idea on the trailing edge: Math.floor for the upper bound would skip
+  // the last frame whenever playDurationS*sr rounds up (e.g. 1.4995 → 1500
+  // expected frames but floor = 1499), leaving that final frame at baseGain
+  // and producing a sub-millisecond click at the clip tail.
   if (clip.audioFadeOutS > 0) {
     const fadeOutStartS = Math.max(0, clip.playDurationS - clip.audioFadeOutS);
     applyEnvelopeRange(
       Math.floor(fadeOutStartS * targetSampleRate),
-      Math.floor(clip.playDurationS * targetSampleRate),
+      Math.ceil(clip.playDurationS * targetSampleRate),
     );
   }
 

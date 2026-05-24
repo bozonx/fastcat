@@ -5,7 +5,10 @@ import {
   normalizeTransitionParams,
 } from '~/transitions';
 import type { CompositorClip } from './types';
-import type { TimelineActiveClipProcessor } from './TimelineActiveClipProcessor';
+import {
+  clampToLastReadableSourceUs,
+  type TimelineActiveClipProcessor,
+} from './TimelineActiveClipProcessor';
 
 export interface FrameSampleOrchestratorParams {
   activeClips: CompositorClip[];
@@ -162,23 +165,43 @@ export class FrameSampleOrchestrator {
         continue;
       }
 
-      const handleUs =
-        prevClip.sourceDurationUs - prevClip.sourceStartUs - prevClip.sourceRangeDurationUs;
       if (!prevClip.sink) {
         if (prevClip.sprite) prevClip.sprite.visible = false;
         continue;
       }
 
+      // Timeline-space localTimeUs maps to source-space via |speed|; sampling
+      // without it freezes/overshoots the shadow frame whenever the previous
+      // clip is not at unity speed.
+      const speedRaw = Number(prevClip.speed);
+      const sourceSpeed = Number.isFinite(speedRaw) && speedRaw !== 0 ? Math.abs(speedRaw) : 1;
+      const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
+      const sourceDeltaUs = Math.max(0, Math.round(localTimeUs * sourceSpeed));
+
+      // Handle = unread source material on the side we're about to extend into.
+      // Forward playback consumes the trailing handle; reversed consumes leading.
+      const trailingHandleUs = Math.max(
+        0,
+        prevClip.sourceDurationUs - prevClip.sourceStartUs - prevClip.sourceRangeDurationUs,
+      );
+      const leadingHandleUs = Math.max(0, prevClip.sourceStartUs);
+      const handleUs = reversed ? leadingHandleUs : trailingHandleUs;
+
+      const lastReadableSourceUs = clampToLastReadableSourceUs(
+        prevClip.sourceDurationUs,
+        prevClip.frameRate,
+      );
+
       if (handleUs < 1_000) {
-        const lastUs =
-          (prevClip.speed || 1) < 0
-            ? Math.max(0, prevClip.sourceStartUs + 1_000)
-            : Math.max(0, prevClip.sourceStartUs + prevClip.sourceRangeDurationUs - 1_000);
+        const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
+        const lastUs = reversed
+          ? Math.max(0, Math.min(sourceRangeEndUs, prevClip.sourceStartUs + 1_000))
+          : Math.max(0, Math.min(lastReadableSourceUs, sourceRangeEndUs - 1_000));
         requests.push(
           this.createSampleRequest({
             clip: prevClip,
             key: prevClip.itemId + '_shadow_end',
-            sampleTimeS: Math.max(0, lastUs / 1_000_000),
+            sampleTimeS: lastUs / 1_000_000,
             createAbortController: params.createAbortController,
             removeAbortController: params.removeAbortController,
             getVideoSampleForClip: params.getVideoSampleForClip,
@@ -188,13 +211,9 @@ export class FrameSampleOrchestrator {
       }
 
       const sourceRangeEndUs = prevClip.sourceStartUs + prevClip.sourceRangeDurationUs;
-      const sampleUs =
-        (prevClip.speed || 1) < 0
-          ? Math.max(0, prevClip.sourceStartUs - localTimeUs)
-          : Math.min(
-              sourceRangeEndUs + localTimeUs,
-              prevClip.sourceStartUs + prevClip.sourceDurationUs - 1_000,
-            );
+      const sampleUs = reversed
+        ? Math.max(0, prevClip.sourceStartUs - sourceDeltaUs)
+        : Math.min(sourceRangeEndUs + sourceDeltaUs, lastReadableSourceUs);
 
       requests.push(
         this.createSampleRequest({
