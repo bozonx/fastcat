@@ -2,6 +2,7 @@ import type { TranscriptionRecord, TranscriptionRequest, TranscriptionResult } f
 import { resolveExternalServiceConfig, resolveSttStreamUrl } from '~/utils/external-integrations';
 import type { FastCatUserSettings } from '~/utils/settings';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export type { TranscriptionRequest, TranscriptionResult };
 
@@ -112,7 +113,10 @@ export async function transcribeAudioFile(
     throw new Error('STT integration is not configured');
   }
 
-  const file = input.file instanceof File ? input.file : await input.file.getFile();
+  const file =
+    input.file instanceof File
+      ? input.file
+      : await withFileIoSlot(() => input.file.getFile());
   const language = normalizeLanguage(input.language);
   const models = normalizeModels(input.userSettings.integrations.stt.models);
   const contentType = normalizeFileType(input.fileType, file);

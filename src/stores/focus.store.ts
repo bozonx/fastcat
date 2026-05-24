@@ -185,6 +185,7 @@ export const useFocusStore = defineStore('focus', () => {
 
   return {
     activeTimelinePath,
+    mainFocusByTimeline,
     activePanelId,
     mainFocus,
     effectiveFocus,

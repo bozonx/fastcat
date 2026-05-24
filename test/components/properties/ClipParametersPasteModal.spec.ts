@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import type { ClipParameterGroupOption } from '~/utils/timeline/clip-parameters';
 
@@ -10,12 +10,24 @@ describe('ClipParametersPasteModal', () => {
       id: 'transform',
       labelKey: 'fastcat.clip.parameters.groups.transform',
       selectedByDefault: true,
+      subProperties: [
+        { id: 'transform:scale', labelKey: 'fastcat.clip.transform.scale' },
+        { id: 'transform:position', labelKey: 'fastcat.clip.transform.position' },
+      ],
     },
-    { id: 'opacity', labelKey: 'fastcat.clip.parameters.groups.opacity', selectedByDefault: true },
-    { id: 'speed', labelKey: 'fastcat.clip.parameters.groups.speed', selectedByDefault: false },
+    {
+      id: 'opacity',
+      labelKey: 'fastcat.clip.parameters.groups.opacity',
+      selectedByDefault: true,
+    },
+    {
+      id: 'speed',
+      labelKey: 'fastcat.clip.parameters.groups.speed',
+      selectedByDefault: false,
+    },
   ];
 
-  it('initializes selectedGroups with groups that are selectedByDefault when opened', async () => {
+  it('initializes selectedGroups with groups and their subproperties that are selectedByDefault when opened', async () => {
     const selected = ref<string[]>([]);
 
     await mountSuspended(ClipParametersPasteModal, {
@@ -30,6 +42,8 @@ describe('ClipParametersPasteModal', () => {
     });
 
     expect(selected.value).toContain('transform');
+    expect(selected.value).toContain('transform:scale');
+    expect(selected.value).toContain('transform:position');
     expect(selected.value).toContain('opacity');
     expect(selected.value).not.toContain('speed');
   });
@@ -69,7 +83,10 @@ describe('ClipParametersPasteModal', () => {
     await applyBtn.trigger('click');
 
     expect(onApply).toHaveBeenCalledOnce();
-    expect(onApply).toHaveBeenCalledWith(['transform', 'opacity']);
+    const args = onApply.mock.calls[0][0] as string[];
+    expect(args).toContain('transform');
+    expect(args).toContain('transform:scale');
+    expect(args).toContain('opacity');
   });
 
   it('closes modal on cancel click', async () => {
@@ -90,7 +107,6 @@ describe('ClipParametersPasteModal', () => {
     if (cancelBtn.exists()) {
       await cancelBtn.trigger('click');
     } else {
-      // Fallback: trigger click on the first neutral ghost button (Cancel)
       const btn = wrapper.findAll('button').find((b) => b.text().includes('common.cancel'));
       expect(btn).toBeDefined();
       await btn!.trigger('click');
@@ -99,8 +115,8 @@ describe('ClipParametersPasteModal', () => {
     expect(isOpen.value).toBe(false);
   });
 
-  it('toggles selection when checkbox is clicked', async () => {
-    const selected = ref<string[]>(['transform']);
+  it('toggles selection when checkboxes are clicked', async () => {
+    const selected = ref<string[]>(['transform', 'transform:scale', 'transform:position']);
 
     const wrapper = await mountSuspended(ClipParametersPasteModal, {
       props: {
@@ -113,18 +129,24 @@ describe('ClipParametersPasteModal', () => {
       },
     });
 
-    console.log('CLIP PARAMETERS PASTE MODAL HTML:', wrapper.html());
-
     const checkboxes = wrapper.findAllComponents({ name: 'UCheckbox' });
-    expect(checkboxes.length).toBe(3);
+    // Expect 5 checkboxes total: transform (parent), transform:scale, transform:position, opacity, speed
+    expect(checkboxes.length).toBe(5);
 
-    // Uncheck 'transform'
+    // Uncheck 'transform:scale'
+    await checkboxes[1].setValue(false);
+    expect(selected.value).not.toContain('transform:scale');
+    expect(selected.value).not.toContain('transform'); // Parent should be unchecked too
+
+    // Check 'transform:scale' back
+    await checkboxes[1].setValue(true);
+    expect(selected.value).toContain('transform:scale');
+    expect(selected.value).toContain('transform'); // Parent should become checked again
+
+    // Uncheck parent 'transform' checkbox
     await checkboxes[0].setValue(false);
     expect(selected.value).not.toContain('transform');
-
-    // Check 'speed'
-    await checkboxes[2].setValue(true);
-    expect(selected.value).toContain('speed');
+    expect(selected.value).not.toContain('transform:scale');
+    expect(selected.value).not.toContain('transform:position');
   });
 });
-

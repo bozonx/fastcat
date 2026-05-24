@@ -27,7 +27,7 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
   const clipboardStore = useAppClipboard();
 
   const isPasteParametersModalOpen = ref(false);
-  const selectedParameterGroups = ref<ClipParameterGroup[]>([]);
+  const selectedParameterGroups = ref<string[]>([]);
   const pasteParametersTarget = ref<{ clip: TimelineClipItem; trackKind: TrackKind } | null>(null);
 
   const clipParameterGroupOptions = computed(() => {
@@ -78,13 +78,22 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
     if (groups.length === 0) return;
 
     pasteParametersTarget.value = { clip: c, trackKind: tk };
-    selectedParameterGroups.value = groups
-      .filter((group) => group.selectedByDefault)
-      .map((group) => group.id);
+    const initialSelected: string[] = [];
+    for (const group of groups) {
+      if (group.selectedByDefault) {
+        initialSelected.push(group.id);
+        if (group.subProperties) {
+          for (const sub of group.subProperties) {
+            initialSelected.push(sub.id);
+          }
+        }
+      }
+    }
+    selectedParameterGroups.value = initialSelected;
     isPasteParametersModalOpen.value = true;
   }
 
-  function applyClipParameters(groups: ClipParameterGroup[]) {
+  function applyClipParameters(groups: string[]) {
     const payload = clipboardStore.clipboardPayload;
     const target = pasteParametersTarget.value;
     if (!payload || payload.source !== 'clipParameters') return;

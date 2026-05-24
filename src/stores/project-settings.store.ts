@@ -446,6 +446,25 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     },
     () => {
       if (isLoadingProjectSettings.value) return;
+
+      const focusStore = useFocusStore();
+      const timelineStore = useTimelineStore();
+      if (focusStore.activeTimelinePath && timelineStore.timelineDoc) {
+        projectSettings.value.timelines = applyLoadedTimelineSessionSnapshot(
+          projectSettings.value.timelines,
+          {
+            activeTimelinePath: focusStore.activeTimelinePath,
+            timelineDoc: timelineStore.timelineDoc,
+            currentTime: timelineStore.currentTime,
+            masterGain: timelineStore.masterGain,
+            masterMuted: timelineStore.audioMuted ?? false,
+            zoom: timelineStore.timelineZoom,
+            trackHeights: timelineStore.trackHeights,
+            selectionRange: timelineStore.selectionRange,
+          },
+        );
+      }
+
       markProjectSettingsAsDirty();
       // We don't need to call requestProjectSettingsSave(immediate: true) here
       // as markProjectSettingsAsDirty will eventually trigger debounced save

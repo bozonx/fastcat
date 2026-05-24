@@ -4,6 +4,7 @@ import type {
   SttWorkerTranscribeMessage,
   SttWorkerResponse,
 } from '~/utils/transcription/types';
+import { withWorkerFileIoSlotForHandle } from './core/io-governor';
 
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
@@ -65,7 +66,7 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
       }
     }
 
-    const file = await fileHandle.getFile();
+    const file = await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile());
     console.log(
       `[STT Worker] Serving local file: ${escapedCurrentModelName}/${filePath} (size: ${file.size} bytes)`,
     );

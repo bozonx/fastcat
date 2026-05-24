@@ -1,5 +1,5 @@
 import type { UpdateClipPropertiesCommand } from '~/timeline/commands';
-import type { ClipTransition, TimelineClipItem, TrackKind } from '~/timeline/types';
+import type { ClipTransition, TimelineClipItem, TrackKind, ClipTransform } from '~/timeline/types';
 import { cloneValue } from '~/utils/clone';
 
 export type ClipParameterGroup =
@@ -30,11 +30,82 @@ export interface ClipParametersPatch {
   transitionOut?: ClipTransition | null;
 }
 
+export interface ClipParameterSubProperty {
+  id: string;
+  labelKey: string;
+}
+
 export interface ClipParameterGroupOption {
   id: ClipParameterGroup;
   labelKey: string;
   selectedByDefault: boolean;
+  subProperties?: ClipParameterSubProperty[];
 }
+
+export const GROUP_SUB_PROPERTIES: Record<string, ClipParameterSubProperty[]> = {
+  text: [
+    { id: 'text:textStyle', labelKey: 'fastcat.textClip.textBlock' },
+    { id: 'text:textShadow', labelKey: 'fastcat.textClip.textShadow' },
+    { id: 'text:background', labelKey: 'fastcat.textClip.backgroundBlock' },
+    { id: 'text:backgroundShadow', labelKey: 'fastcat.textClip.backgroundShadow' },
+    { id: 'text:border', labelKey: 'fastcat.textClip.borderBlock' },
+  ],
+  transform: [
+    { id: 'transform:anchor', labelKey: 'fastcat.clip.transform.anchor' },
+    { id: 'transform:scale', labelKey: 'fastcat.clip.transform.scale' },
+    { id: 'transform:rotation', labelKey: 'fastcat.clip.transform.rotation' },
+    { id: 'transform:position', labelKey: 'fastcat.clip.transform.position' },
+    { id: 'transform:crop', labelKey: 'fastcat.clip.transform.crop' },
+  ],
+  audio: [
+    { id: 'audio:volume', labelKey: 'fastcat.clip.audio.volume' },
+    { id: 'audio:balance', labelKey: 'fastcat.clip.audio.balance' },
+    { id: 'audio:fades', labelKey: 'fastcat.clip.audioFade.title' },
+  ],
+};
+
+export const TEXT_SUB_PROP_KEYS: Record<string, string[]> = {
+  'text:textStyle': [
+    'fontFamily',
+    'fontSize',
+    'fontWeight',
+    'color',
+    'colorAlpha',
+    'align',
+    'verticalAlign',
+    'lineHeight',
+    'letterSpacing',
+    'padding',
+    'paddingLinked',
+    'width',
+    'height',
+  ],
+  'text:textShadow': [
+    'textShadowEnabled',
+    'textShadowColor',
+    'textShadowAlpha',
+    'textShadowBlur',
+    'textShadowSpread',
+    'textShadowOffsetX',
+    'textShadowOffsetY',
+  ],
+  'text:background': [
+    'backgroundEnabled',
+    'backgroundColor',
+    'backgroundAlpha',
+    'backgroundRadius',
+  ],
+  'text:backgroundShadow': [
+    'backgroundShadowEnabled',
+    'backgroundShadowColor',
+    'backgroundShadowAlpha',
+    'backgroundShadowBlur',
+    'backgroundShadowSpread',
+    'backgroundShadowOffsetX',
+    'backgroundShadowOffsetY',
+  ],
+  'text:border': ['borderEnabled', 'borderColor', 'borderAlpha', 'borderWidth'],
+};
 
 const GROUP_LABEL_KEYS: Record<ClipParameterGroup, string> = {
   transform: 'fastcat.clip.parameters.groups.transform',
@@ -162,6 +233,7 @@ export function getApplicableClipParameterGroups(input: {
       id: group,
       labelKey: GROUP_LABEL_KEYS[group],
       selectedByDefault: group !== 'speed',
+      subProperties: GROUP_SUB_PROPERTIES[group],
     }));
 }
 
@@ -169,7 +241,7 @@ export function buildClipParametersPatch(input: {
   snapshot: ClipParametersSnapshot;
   targetClip: TimelineClipItem;
   targetTrackKind: TrackKind;
-  groups: ClipParameterGroup[];
+  groups: string[];
 }): ClipParametersPatch {
   const selected = new Set(input.groups);
   const patch: ClipParametersPatch = { properties: {} };
@@ -183,7 +255,13 @@ export function buildClipParametersPatch(input: {
       ? ((input.snapshot.groups.audioEffects.effects as TimelineClipItem['effects']) ?? [])
       : targetEffects.filter((effect) => effect?.target === 'audio');
 
-  for (const group of selected) {
+  const activeGroups = new Set<ClipParameterGroup>();
+  for (const item of input.groups) {
+    const topLevelGroup = item.split(':')[0] as ClipParameterGroup;
+    activeGroups.add(topLevelGroup);
+  }
+
+  for (const group of activeGroups) {
     if (!isGroupApplicable(group, input.targetClip, input.targetTrackKind)) continue;
     const groupValue = input.snapshot.groups[group];
     if (!groupValue) continue;
@@ -199,6 +277,94 @@ export function buildClipParametersPatch(input: {
     }
 
     if (group === 'videoEffects' || group === 'audioEffects') continue;
+
+    if (group === 'transform') {
+      const hasSubProps = GROUP_SUB_PROPERTIES.transform.some((sub) => selected.has(sub.id));
+      if (hasSubProps) {
+        const targetTransform = cloneValue(input.targetClip.transform ?? {});
+        const sourceTransform = groupValue.transform as ClipTransform | undefined;
+        if (sourceTransform) {
+          if (selected.has('transform:anchor')) {
+            targetTransform.anchor = cloneValue(sourceTransform.anchor);
+          }
+          if (selected.has('transform:scale')) {
+            targetTransform.scale = cloneValue(sourceTransform.scale);
+          }
+          if (selected.has('transform:rotation')) {
+            targetTransform.rotationDeg = sourceTransform.rotationDeg;
+          }
+          if (selected.has('transform:position')) {
+            targetTransform.position = cloneValue(sourceTransform.position);
+          }
+          if (selected.has('transform:crop')) {
+            targetTransform.crop = cloneValue(sourceTransform.crop);
+          }
+        }
+        patch.properties.transform = targetTransform;
+        if ('transformActive' in groupValue) {
+          patch.properties.transformActive = groupValue.transformActive;
+        }
+      } else if (selected.has('transform')) {
+        Object.assign(patch.properties, cloneValue(groupValue));
+      }
+      continue;
+    }
+
+    if (group === 'text') {
+      const hasSubProps = GROUP_SUB_PROPERTIES.text.some((sub) => selected.has(sub.id));
+      if (hasSubProps) {
+        const targetStyle = cloneValue(input.targetClip.style ?? {});
+        const sourceStyle = groupValue.style as Record<string, unknown> | undefined;
+        if (sourceStyle) {
+          for (const subId of Object.keys(TEXT_SUB_PROP_KEYS)) {
+            if (selected.has(subId)) {
+              const keys = TEXT_SUB_PROP_KEYS[subId];
+              for (const key of keys) {
+                if (sourceStyle[key] !== undefined) {
+                  targetStyle[key] = cloneValue(sourceStyle[key]);
+                } else {
+                  delete targetStyle[key];
+                }
+              }
+            }
+          }
+        }
+        patch.properties.style = targetStyle;
+      } else if (selected.has('text')) {
+        Object.assign(patch.properties, cloneValue(groupValue));
+      }
+      continue;
+    }
+
+    if (group === 'audio') {
+      const hasSubProps = GROUP_SUB_PROPERTIES.audio.some((sub) => selected.has(sub.id));
+      if (hasSubProps) {
+        if (selected.has('audio:volume') && 'audioGain' in groupValue) {
+          patch.properties.audioGain = cloneValue(groupValue.audioGain);
+        }
+        if (selected.has('audio:balance') && 'audioBalance' in groupValue) {
+          patch.properties.audioBalance = cloneValue(groupValue.audioBalance);
+        }
+        if (selected.has('audio:fades')) {
+          const fadeKeys = [
+            'audioFadeInUs',
+            'audioFadeOutUs',
+            'audioFadeInCurve',
+            'audioFadeOutCurve',
+            'audioFadesActive',
+          ];
+          for (const key of fadeKeys) {
+            if (key in groupValue) {
+              patch.properties[key] = cloneValue(groupValue[key]);
+            }
+          }
+        }
+      } else if (selected.has('audio')) {
+        Object.assign(patch.properties, cloneValue(groupValue));
+      }
+      continue;
+    }
+
     Object.assign(patch.properties, cloneValue(groupValue));
   }
 

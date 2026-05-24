@@ -29,21 +29,12 @@ export function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
-function resolveWriteConcurrency(): number {
-  const limit = isTauriRuntime()
-    ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_WRITES_NATIVE
-    : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_WRITES;
-  return Math.max(1, Math.round(limit));
-}
-
 function resolveIoConcurrency(): number {
   const limit = isTauriRuntime()
     ? FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE
     : FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO;
   return Math.max(1, Math.round(limit));
 }
-
-const writeQueue = new PQueue({ concurrency: resolveWriteConcurrency() });
 
 /**
  * Unified process-wide governor for **all** OPFS file operations (reads and

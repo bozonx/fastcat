@@ -72,7 +72,16 @@ onBeforeUnmount(() => {
   }
 });
 
-function onBlur() {
+function onBlur(event: FocusEvent) {
+  const relatedTarget = event.relatedTarget as HTMLElement | null;
+
+  // Если фокус переходит на родительский контейнер (карточку/строку файла), который содержит наш инпут,
+  // то это, скорее всего, контекстное меню восстанавливает фокус при закрытии. Возвращаем фокус на инпут.
+  if (relatedTarget && (relatedTarget.contains(inputRef.value) || inputRef.value?.contains(relatedTarget))) {
+    focusAndSelectName();
+    return;
+  }
+
   if (!isReady) {
     // If blurred before ready (e.g. by context menu closing), just re-focus
     focusAndSelectName();

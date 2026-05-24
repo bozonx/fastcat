@@ -243,4 +243,134 @@ describe('clip parameters clipboard helpers', () => {
       }).map((g: { id: string }) => g.id),
     ).not.toContain('speed');
   });
+
+  it('populates subProperties for text, transform, and audio groups', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({
+        clipType: 'text',
+        transform: { scale: { x: 2, y: 2 } },
+        style: { fontSize: 42 },
+        audioGain: 0.8,
+      }),
+    });
+
+    const groups = getApplicableClipParameterGroups({
+      snapshot,
+      targetClip: makeClip({ clipType: 'text' }),
+      targetTrackKind: 'video',
+    });
+
+    const transformOpt = groups.find((g) => g.id === 'transform');
+    expect(transformOpt?.subProperties).toBeDefined();
+    expect(transformOpt?.subProperties?.map((p) => p.id)).toContain('transform:scale');
+
+    const textOpt = groups.find((g) => g.id === 'text');
+    expect(textOpt?.subProperties).toBeDefined();
+    expect(textOpt?.subProperties?.map((p) => p.id)).toContain('text:textShadow');
+  });
+
+  it('partially merges transform parameters based on selected sub-properties', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({
+        transform: {
+          scale: { x: 2, y: 2 },
+          rotationDeg: 45,
+          position: { x: 10, y: 20 },
+        },
+      }),
+    });
+
+    const target = makeClip({
+      transform: {
+        scale: { x: 1, y: 1 },
+        rotationDeg: 90,
+        position: { x: 0, y: 0 },
+      },
+    });
+
+    const patch = buildClipParametersPatch({
+      snapshot,
+      targetClip: target,
+      targetTrackKind: 'video',
+      groups: ['transform:scale', 'transform:position'],
+    });
+
+    expect(patch.properties.transform?.scale).toEqual({ x: 2, y: 2 });
+    expect(patch.properties.transform?.position).toEqual({ x: 10, y: 20 });
+    expect(patch.properties.transform?.rotationDeg).toBe(90); // Preserved!
+  });
+
+  it('partially merges text style parameters based on selected sub-properties', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'video',
+      clip: makeClip({
+        clipType: 'text',
+        style: {
+          fontSize: 64,
+          color: '#ff0000',
+          textShadowEnabled: true,
+          textShadowColor: '#000000',
+          backgroundEnabled: true,
+          backgroundColor: '#ffffff',
+        },
+      }),
+    });
+
+    const target = makeClip({
+      clipType: 'text',
+      style: {
+        fontSize: 32,
+        color: '#0000ff',
+        textShadowEnabled: false,
+        backgroundEnabled: false,
+      },
+    });
+
+    const patch = buildClipParametersPatch({
+      snapshot,
+      targetClip: target,
+      targetTrackKind: 'video',
+      groups: ['text:textShadow', 'text:background'],
+    });
+
+    expect(patch.properties.style?.fontSize).toBe(32); // Preserved!
+    expect(patch.properties.style?.color).toBe('#0000ff'); // Preserved!
+    expect(patch.properties.style?.textShadowEnabled).toBe(true);
+    expect(patch.properties.style?.textShadowColor).toBe('#000000');
+    expect(patch.properties.style?.backgroundEnabled).toBe(true);
+    expect(patch.properties.style?.backgroundColor).toBe('#ffffff');
+  });
+
+  it('partially merges audio parameters based on selected sub-properties', () => {
+    const snapshot = createClipParametersSnapshot({
+      trackKind: 'audio',
+      clip: makeClip({
+        audioGain: 0.5,
+        audioBalance: -1,
+        audioFadeInUs: 500_000,
+        audioFadesActive: true,
+      }),
+    });
+
+    const target = makeClip({
+      audioGain: 1.0,
+      audioBalance: 0,
+      audioFadeInUs: 0,
+      audioFadesActive: false,
+    });
+
+    const patch = buildClipParametersPatch({
+      snapshot,
+      targetClip: target,
+      targetTrackKind: 'audio',
+      groups: ['audio:volume', 'audio:fades'],
+    });
+
+    expect(patch.properties.audioGain).toBe(0.5);
+    expect(patch.properties.audioFadeInUs).toBe(500_000);
+    expect(patch.properties.audioFadesActive).toBe(true);
+    expect(patch.properties.audioBalance).toBeUndefined(); // Preserved!
+  });
 });

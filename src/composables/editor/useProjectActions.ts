@@ -14,6 +14,11 @@ export function useProjectActions() {
   const router = useRouter();
 
   async function resetProjectState() {
+    try {
+      await projectStore.saveProjectSettings();
+    } catch (e) {
+      console.warn('Failed to save project settings during reset:', e);
+    }
     timelineStore.resetTimelineState();
     mediaStore.resetMediaState();
     await projectStore.closeProject();
@@ -38,6 +43,11 @@ export function useProjectActions() {
       // path changes — only one doc lives in memory, so its accumulated edits
       // would otherwise be lost when the new timeline replaces it.
       await timelineStore.flushTimelineAutosave();
+
+      // Save project settings before changing the active path to capture
+      // the playhead/zoom of the outgoing timeline.
+      await projectStore.saveProjectSettings();
+
       await projectStore.openTimelineFile(path);
       focusStore.setActiveTimelinePath(path);
       await timelineStore.loadTimeline();

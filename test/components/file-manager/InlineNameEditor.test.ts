@@ -72,4 +72,57 @@ describe('InlineNameEditor', () => {
     // Check computed if possible, or just the class
     expect(input.classes()).toContain('border-red-500');
   });
+
+  it('does not cancel and refocusses when blur relatedTarget is parent', async () => {
+    const container = document.createElement('div');
+    const wrapper = mount(InlineNameEditor, {
+      props: {
+        initialName: 'test.mp4',
+        isFolder: false,
+        existingNames: [],
+      },
+      attachTo: container,
+    });
+
+    await nextTick();
+
+    const inputWrapper = wrapper.find('input');
+    const inputEl = inputWrapper.element as HTMLInputElement;
+    const focusSpy = vi.spyOn(inputEl, 'focus');
+
+    await inputWrapper.trigger('blur', {
+      relatedTarget: container,
+    });
+
+    expect(focusSpy).toHaveBeenCalled();
+    expect(wrapper.emitted('cancel')).toBeFalsy();
+    wrapper.unmount();
+  });
+
+  it('cancels on blur when relatedTarget is not parent and ready', async () => {
+    vi.useFakeTimers();
+    const wrapper = mount(InlineNameEditor, {
+      props: {
+        initialName: 'test.mp4',
+        isFolder: false,
+        existingNames: [],
+      },
+    });
+
+    // Wait for Vue's nextTick so that the setTimeout in onMounted gets registered
+    await nextTick();
+
+    // Advance to trigger ready state setTimeout
+    vi.advanceTimersByTime(150);
+
+    const inputWrapper = wrapper.find('input');
+    await inputWrapper.trigger('blur');
+
+    // Advance to trigger blurTimer (150ms)
+    vi.advanceTimersByTime(200);
+
+    expect(wrapper.emitted('cancel')).toBeTruthy();
+    wrapper.unmount();
+    vi.useRealTimers();
+  });
 });

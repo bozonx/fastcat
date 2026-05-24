@@ -968,7 +968,7 @@ export function useFileManager(options?: {
     }
 
     // 3. Update sessions
-    const sessions = timelines.sessions;
+    const sessions = timelines?.sessions ?? {};
     const newSessions: Record<string, import('~/utils/project-settings').TimelineSessionState> = {};
     let sessionsChanged = false;
     for (const [path, session] of Object.entries(sessions)) {
@@ -979,7 +979,7 @@ export function useFileManager(options?: {
         newSessions[path] = session;
       }
     }
-    if (sessionsChanged) {
+    if (sessionsChanged && timelines) {
       timelines.sessions = newSessions;
     }
 
@@ -989,8 +989,8 @@ export function useFileManager(options?: {
     }
 
     // 5. Update mainFocusByTimeline
-    const mainFocusByTimeline = (focusStore as unknown as Record<string, unknown>)
-      .mainFocusByTimeline as Record<string, MainPanelFocus>;
+    const mainFocusByTimeline = ((focusStore as unknown as Record<string, unknown>)
+      .mainFocusByTimeline ?? {}) as Record<string, MainPanelFocus>;
     const newFocusByTimeline: Record<string, MainPanelFocus> = {};
     let focusChanged = false;
     for (const [path, focus] of Object.entries(mainFocusByTimeline)) {

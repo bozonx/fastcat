@@ -2,7 +2,6 @@
 import { computed, watch } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import type {
-  ClipParameterGroup,
   ClipParameterGroupOption,
 } from '~/utils/timeline/clip-parameters';
 
@@ -11,35 +10,90 @@ const props = defineProps<{
 }>();
 
 const isOpen = defineModel<boolean>('open', { default: false });
-const selectedGroups = defineModel<ClipParameterGroup[]>('selectedGroups', {
-  default: (): ClipParameterGroup[] => [],
+const selectedGroups = defineModel<string[]>('selectedGroups', {
+  default: (): string[] => [],
 });
 
 const emit = defineEmits<{
-  apply: [groups: ClipParameterGroup[]];
+  apply: [groups: string[]];
 }>();
 
 const { t } = useI18n();
 
 const hasSelection = computed(() => selectedGroups.value.length > 0);
 
-function toggleGroup(group: ClipParameterGroup, checked: boolean) {
+function getGroupSubProperties(groupId: string) {
+  const group = props.groups.find((g) => g.id === groupId);
+  return group?.subProperties ?? [];
+}
+
+function isGroupAllSelected(groupId: string): boolean {
+  const subs = getGroupSubProperties(groupId);
+  if (subs.length === 0) {
+    return selectedGroups.value.includes(groupId);
+  }
+  return subs.every((sub) => selectedGroups.value.includes(sub.id));
+}
+
+function isGroupIndeterminate(groupId: string): boolean {
+  const subs = getGroupSubProperties(groupId);
+  if (subs.length === 0) return false;
+  const selectedCount = subs.filter((sub) => selectedGroups.value.includes(sub.id)).length;
+  return selectedCount > 0 && selectedCount < subs.length;
+}
+
+function toggleGroup(groupId: string, checked: boolean) {
+  const subs = getGroupSubProperties(groupId);
+  let nextSelected = [...selectedGroups.value];
+
   if (checked) {
-    if (!selectedGroups.value.includes(group)) {
-      selectedGroups.value = [...selectedGroups.value, group];
+    if (!nextSelected.includes(groupId)) {
+      nextSelected.push(groupId);
+    }
+    for (const sub of subs) {
+      if (!nextSelected.includes(sub.id)) {
+        nextSelected.push(sub.id);
+      }
     }
   } else {
-    selectedGroups.value = selectedGroups.value.filter((g) => g !== group);
+    nextSelected = nextSelected.filter((id) => id !== groupId && !subs.some((sub) => sub.id === id));
   }
+  selectedGroups.value = nextSelected;
+}
+
+function toggleSubProperty(groupId: string, subId: string, checked: boolean) {
+  let nextSelected = [...selectedGroups.value];
+  if (checked) {
+    if (!nextSelected.includes(subId)) {
+      nextSelected.push(subId);
+    }
+    const subs = getGroupSubProperties(groupId);
+    if (subs.every((sub) => nextSelected.includes(sub.id)) && !nextSelected.includes(groupId)) {
+      nextSelected.push(groupId);
+    }
+  } else {
+    nextSelected = nextSelected.filter((id) => id !== subId);
+    nextSelected = nextSelected.filter((id) => id !== groupId);
+  }
+  selectedGroups.value = nextSelected;
 }
 
 watch(
   () => [isOpen.value, props.groups] as const,
   ([open]) => {
     if (!open) return;
-    selectedGroups.value = props.groups
-      .filter((group) => group.selectedByDefault)
-      .map((group) => group.id as ClipParameterGroup);
+    const initialSelected: string[] = [];
+    for (const group of props.groups) {
+      if (group.selectedByDefault) {
+        initialSelected.push(group.id);
+        if (group.subProperties) {
+          for (const sub of group.subProperties) {
+            initialSelected.push(sub.id);
+          }
+        }
+      }
+    }
+    selectedGroups.value = initialSelected;
   },
   { immediate: true },
 );
@@ -58,14 +112,27 @@ function handleApply() {
     :description="t('fastcat.clip.parameters.pasteDescription')"
     :ui="{ content: 'sm:max-w-md' }"
   >
-    <div class="flex flex-col gap-2">
-      <UCheckbox
-        v-for="group in groups"
-        :key="group.id"
-        :model-value="selectedGroups.includes(group.id)"
-        :label="t(group.labelKey)"
-        @update:model-value="(checked) => toggleGroup(group.id as ClipParameterGroup, Boolean(checked))"
-      />
+    <div class="flex flex-col gap-3">
+      <div v-for="group in groups" :key="group.id" class="flex flex-col gap-1.5">
+        <UCheckbox
+          :model-value="isGroupAllSelected(group.id)"
+          :indeterminate="isGroupIndeterminate(group.id)"
+          :label="t(group.labelKey)"
+          @update:model-value="(checked) => toggleGroup(group.id, Boolean(checked))"
+        />
+        <div
+          v-if="group.subProperties && group.subProperties.length > 0"
+          class="pl-6 flex flex-col gap-1.5 border-l border-ui-border ml-2 mt-1"
+        >
+          <UCheckbox
+            v-for="sub in group.subProperties"
+            :key="sub.id"
+            :model-value="selectedGroups.includes(sub.id)"
+            :label="t(sub.labelKey)"
+            @update:model-value="(checked) => toggleSubProperty(group.id, sub.id, Boolean(checked))"
+          />
+        </div>
+      </div>
       <p v-if="groups.length === 0" class="text-sm text-ui-text-muted">
         {{ t('fastcat.clip.parameters.noApplicableGroups') }}
       </p>

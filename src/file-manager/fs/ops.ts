@@ -1,5 +1,5 @@
 import PQueue from 'p-queue';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 
 function getDirectoryIterator(
@@ -34,7 +34,7 @@ export async function copyFileToDirectory(params: {
   fileName: string;
   targetDirHandle: FileSystemDirectoryHandle;
 }) {
-  const file = await params.sourceHandle.getFile();
+  const file = await withFileIoSlot(() => params.sourceHandle.getFile());
   const targetHandle = await params.targetDirHandle.getFileHandle(params.fileName, {
     create: true,
   });

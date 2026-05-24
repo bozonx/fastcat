@@ -157,25 +157,6 @@ export function createTimelineLifecycleModule(
     // here would wipe the outgoing stack before it could be parked.
 
     await deps.persistence.loadTimeline();
-
-    // Restore session data from ProjectSettings if available
-    const settings = deps.getProjectSettings() as {
-      timelines?: { sessions?: Record<string, unknown> };
-    } | null;
-    const path = deps.currentTimelinePath.value;
-    if (path && settings?.timelines?.sessions?.[path]) {
-      const session = settings.timelines.sessions[path] as Record<string, unknown>;
-      deps.currentTime.value = Number(session.playheadUs);
-      deps.masterGain.value = Number(session.masterGain);
-      if (deps.audioMuted) deps.audioMuted.value = Boolean(session.masterMuted);
-      deps.timelineZoom.value = Number(session.zoom);
-      deps.selectionRange.value = session.selectionRange
-        ? ({ ...(session.selectionRange as Record<string, unknown>) } as {
-            startUs: number;
-            endUs: number;
-          })
-        : null;
-    }
   }
 
   async function saveTimeline() {
