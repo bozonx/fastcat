@@ -206,6 +206,52 @@ describe('TimelineStore', () => {
     expect(clip.freezeFrameSourceUs).toBe(2_000_000);
   });
 
+  it('sets freeze frame from playhead with clip speed applied', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          clips: [{ id: 'c1', startUs: 1_000_000, durationUs: 2_500_000 }],
+        },
+      ],
+    });
+    const clip = timeline.tracks[0].items.find((it: any) => it.id === 'c1') as any;
+    clip.sourceRange = { startUs: 1_000_000, durationUs: 5_000_000 };
+    clip.speed = 2;
+
+    store.timelineDoc = timeline;
+    store.currentTime = 2_000_000;
+
+    await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
+
+    const updated = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    expect(updated.freezeFrameSourceUs).toBe(3_000_000);
+  });
+
+  it('sets freeze frame from playhead for reversed clips without passing the source range end', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          clips: [{ id: 'c1', startUs: 1_000_000, durationUs: 5_000_000 }],
+        },
+      ],
+    });
+    const clip = timeline.tracks[0].items.find((it: any) => it.id === 'c1') as any;
+    clip.sourceRange = { startUs: 1_000_000, durationUs: 5_000_000 };
+    clip.speed = -1;
+
+    store.timelineDoc = timeline;
+    store.currentTime = 1_000_000;
+
+    await store.setClipFreezeFrameFromPlayhead({ trackId: 'v1', itemId: 'c1' });
+
+    const updated = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    expect(updated.freezeFrameSourceUs).toBe(5_966_667);
+  });
+
   it('sets freeze frame to first frame when playhead is outside clip', async () => {
     const timeline = createTestTimeline({
       tracks: [

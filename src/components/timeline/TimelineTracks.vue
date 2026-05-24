@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRefs, nextTick, watch } from 'vue';
+import { ref, computed, toRefs, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -662,9 +662,9 @@ watch(
     if (clip && track) {
       activeClipForPasteParameters.value = clip;
       activeTrackKindForPasteParameters.value = track.kind;
-      nextTick(() => {
-        openPasteClipParameters(clip, track.kind);
-      });
+      // Opening is deferred to a macrotask inside the composable so it survives
+      // being invoked from a closing context menu / dropdown layer.
+      openPasteClipParameters(clip, track.kind);
     }
   },
 );

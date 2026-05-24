@@ -56,8 +56,8 @@ function resetSpeed() {
         <UiSliderInput
           v-model="speedMultiplier"
           :label="t('fastcat.clip.speedMultiplier')"
-          :min="-50"
-          :max="50"
+          :min="-10"
+          :max="10"
           :step="0.01"
           :wheel-step-multiplier="10"
           :default-value="1"

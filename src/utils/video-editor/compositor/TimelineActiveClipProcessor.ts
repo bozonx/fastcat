@@ -1,4 +1,10 @@
 import type { CompositorClip } from './types';
+import {
+  clampToLastReadableSourceUs,
+  MIN_SOURCE_TIME_END_GUARD_US,
+  normalizeClipSpeed,
+  resolveClipSourceTimeUs,
+} from '../source-time';
 
 export interface ActiveClipSampleRequest {
   clip: CompositorClip;
@@ -25,19 +31,12 @@ export interface TimelineActiveClipProcessorResult {
   sampleRequests: Array<Promise<{ clip: CompositorClip; sample: unknown | null }>>;
 }
 
-export const MIN_VIDEO_SAMPLE_END_GUARD_US = 1_000;
+export const MIN_VIDEO_SAMPLE_END_GUARD_US = MIN_SOURCE_TIME_END_GUARD_US;
 
 // Guard half a source frame off the end so we never request a timestamp past
 // the last decodable frame. At 24 fps a frame is ~41.7 ms — a flat 1 ms guard
 // would still land beyond the last sample boundary on some files.
-export function clampToLastReadableSourceUs(durationUs: number, frameRate?: number): number {
-  const halfFrameUs =
-    typeof frameRate === 'number' && Number.isFinite(frameRate) && frameRate > 0
-      ? Math.round(500_000 / frameRate)
-      : 0;
-  const guard = Math.max(MIN_VIDEO_SAMPLE_END_GUARD_US, halfFrameUs);
-  return Math.max(0, Math.round(durationUs) - guard);
-}
+export { clampToLastReadableSourceUs };
 
 export class TimelineActiveClipProcessor {
   public process(params: TimelineActiveClipProcessorParams): TimelineActiveClipProcessorResult {
@@ -74,17 +73,13 @@ export class TimelineActiveClipProcessor {
           const localTimeUs = timeUs - clip.startUs;
           if (localTimeUs < 0 || localTimeUs >= clip.durationUs) return;
 
-          const speedRaw = typeof clip.speed === 'number' && clip.speed !== 0 ? clip.speed : 1;
-          const speed = Math.abs(speedRaw);
-          const reversed = speedRaw < 0;
-
-          const sampleUs = reversed
-            ? Math.max(
-                0,
-                clampToLastReadableSourceUs(state.sourceDurationUs, state.frameRate) -
-                  Math.round(localTimeUs * speed),
-              )
-            : Math.round(localTimeUs * speed);
+          const sampleUs = resolveClipSourceTimeUs({
+            localTimeUs,
+            sourceStartUs: 0,
+            sourceRangeDurationUs: state.sourceDurationUs,
+            speed: clip.speed,
+            frameRate: state.frameRate,
+          });
 
           let sampleTimeS = sampleUs / 1_000_000;
           if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) sampleTimeS = 0;
@@ -168,27 +163,23 @@ export class TimelineActiveClipProcessor {
       }
 
       const localTimeUs = timeUs - clip.startUs;
-      const speedRaw = typeof clip.speed === 'number' && clip.speed !== 0 ? clip.speed : 1;
-      const speed = Math.abs(speedRaw);
-      const reversed = speedRaw < 0;
+      const speed = normalizeClipSpeed(clip.speed);
       if (localTimeUs < 0 || localTimeUs >= clip.durationUs) {
         if (clip.sprite) clip.sprite.visible = false;
         continue;
       }
 
       const freezeUs = clip.freezeFrameSourceUs;
-      const effectiveLocalUs = reversed
-        ? Math.max(
-            0,
-            clampToLastReadableSourceUs(clip.sourceRangeDurationUs, clip.frameRate) -
-              Math.round(localTimeUs * speed),
-          )
-        : Math.round(localTimeUs * speed);
-
       let sampleTimeS =
         typeof freezeUs === 'number'
           ? Math.max(0, freezeUs) / 1_000_000
-          : Math.max(0, clip.sourceStartUs + effectiveLocalUs) / 1_000_000;
+          : resolveClipSourceTimeUs({
+              localTimeUs,
+              sourceStartUs: clip.sourceStartUs,
+              sourceRangeDurationUs: clip.sourceRangeDurationUs,
+              speed,
+              frameRate: clip.frameRate,
+            }) / 1_000_000;
 
       if (!Number.isFinite(sampleTimeS) || Number.isNaN(sampleTimeS)) {
         sampleTimeS = 0;

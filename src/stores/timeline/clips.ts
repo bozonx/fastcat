@@ -11,6 +11,7 @@ import type { TimelineCommand } from '~/timeline/commands';
 import { getDocFps, nextItemId, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 import { cloneValue } from '~/utils/clone';
+import { resolveClipSourceTimeUs } from '~/utils/video-editor/source-time';
 
 export interface TimelineClipClipboardItem {
   sourceTrackId: string;
@@ -908,8 +909,14 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
     const usePlayhead = playheadUs >= clipStartUs && playheadUs < clipEndUs;
     const localUs = usePlayhead ? playheadUs - clipStartUs : 0;
-    const sourceUsRaw = item.sourceRange.startUs + localUs;
-    const sourceUs = quantizeTimeUsToFrames(sourceUsRaw, fps, 'round');
+    const sourceUsRaw = resolveClipSourceTimeUs({
+      localTimeUs: localUs,
+      sourceStartUs: item.sourceRange.startUs,
+      sourceRangeDurationUs: item.sourceRange.durationUs,
+      speed: item.speed,
+      frameRate: fps,
+    });
+    const sourceUs = quantizeTimeUsToFrames(sourceUsRaw, fps, 'floor');
 
     updateClipProperties(input.trackId, input.itemId, { freezeFrameSourceUs: sourceUs });
   }
