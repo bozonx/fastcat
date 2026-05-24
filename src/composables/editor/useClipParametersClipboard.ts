@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, onScopeDispose, ref, type Ref } from 'vue';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import {
   buildClipParametersPatch,
@@ -29,6 +29,27 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
   const isPasteParametersModalOpen = ref(false);
   const selectedParameterGroups = ref<string[]>([]);
   const pasteParametersTarget = ref<{ clip: TimelineClipItem; trackKind: TrackKind } | null>(null);
+
+  // When the paste action is triggered from a context menu / dropdown, Reka closes
+  // that menu in a microtask (`await nextTick()`) *after* our `onSelect` handler has
+  // already run. Opening the dialog synchronously (or on a microtask) therefore mounts
+  // it underneath the still-closing menu layer, and the first attempt to dismiss the
+  // dialog gets swallowed by the lingering layer — the modal appears to "reopen" and
+  // only closes on the second try. Deferring the open to a macrotask guarantees the
+  // dialog mounts on a clean overlay stack, after the menu has fully closed.
+  let openTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function queueOpenPasteParametersModal() {
+    if (openTimeout !== null) clearTimeout(openTimeout);
+    openTimeout = setTimeout(() => {
+      openTimeout = null;
+      isPasteParametersModalOpen.value = true;
+    }, 0);
+  }
+
+  onScopeDispose(() => {
+    if (openTimeout !== null) clearTimeout(openTimeout);
+  });
 
   const clipParameterGroupOptions = computed(() => {
     const payload = clipboardStore.clipboardPayload;
@@ -90,7 +111,7 @@ export function useClipParametersClipboard(options: UseClipParametersClipboardOp
       }
     }
     selectedParameterGroups.value = initialSelected;
-    isPasteParametersModalOpen.value = true;
+    queueOpenPasteParametersModal();
   }
 
   function applyClipParameters(groups: string[]) {
