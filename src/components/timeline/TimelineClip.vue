@@ -786,6 +786,7 @@ function handleTransitionCreate(
           :is-resizing-volume="resizeVolume?.itemId === item.id"
           :is-mobile="isMobile"
           :is-hovered="isHovered"
+          :is-selected="timelineStore.selectedItemIds.includes(item.id)"
           :scroll-left="scrollLeft"
           :viewport-width="viewportWidth"
           @start-resize-fade="

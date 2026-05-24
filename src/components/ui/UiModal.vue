@@ -120,6 +120,7 @@ function handleClose() {
     :aria-describedby="props.description ? undefined : undefined"
     :close="props.closeButton"
     :ui="modalUi"
+    @close="handleClose"
     @after:enter="handleAfterEnter"
   >
     <template v-if="$slots.header" #header>

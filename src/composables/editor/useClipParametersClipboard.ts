@@ -6,7 +6,7 @@ import {
   getApplicableClipParameterGroups,
   hasClipParametersPatch,
 } from '~/utils/timeline/clip-parameters';
-import type { ClipParameterGroup, ClipParametersPatch } from '~/utils/timeline/clip-parameters';
+import type { ClipParametersPatch } from '~/utils/timeline/clip-parameters';
 import type { TimelineClipItem, TrackKind } from '~/timeline/types';
 
 export interface UseClipParametersClipboardOptions {

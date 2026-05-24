@@ -81,7 +81,9 @@ describe('useMouseSettings', () => {
 
     const timelineSection = sectionConfigs.value.find((s: { key: string }) => s.key === 'timeline');
     const wheelRow = timelineSection?.rows.find((r: { key: string }) => r.key === 'wheel');
-    const zoomToMouse = wheelRow?.options.find((o: { value: string }) => o.value === 'zoom_horizontal');
+    const zoomToMouse = wheelRow?.options.find(
+      (o: { value: string }) => o.value === 'zoom_horizontal',
+    );
 
     expect(zoomToMouse?.label).toBe('videoEditor.settings.mouseActionZoomHorizontal');
   });

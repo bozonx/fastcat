@@ -738,15 +738,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         variant: options.clip.value.audioMuted ? 'solid' : 'ghost',
         onClick: handleToggleMuted,
       });
-
-      actions.push({
-        id: 'toggle-solo',
-        label: isSoloed.value ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo'),
-        icon: isSoloed.value ? 'i-heroicons-star-solid' : 'i-heroicons-star',
-        color: isSoloed.value ? 'success' : 'neutral',
-        variant: isSoloed.value ? 'solid' : 'ghost',
-        onClick: toggleSolo,
-      });
     }
 
     actions.push({

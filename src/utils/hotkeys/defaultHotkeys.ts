@@ -388,7 +388,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.focus': ['Tab'],
     'general.rename': ['F2'],
     'general.save': [`${Mod}+S`],
-    'general.newTimeline': ['N'],
+    'general.newTimeline': ['N', `${Mod}+N`],
 
     'general.mute': ['Control+Q'],
     'general.volumeUp': ['Control+R'],

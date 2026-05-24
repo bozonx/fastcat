@@ -1014,7 +1014,10 @@ export class AudioMixer {
         0,
       );
 
-      const input = new Input({ source: new BlobSource(governedBlobWorker(file)), formats: ALL_FORMATS } as unknown);
+      const input = new Input({
+        source: new BlobSource(governedBlobWorker(file)),
+        formats: ALL_FORMATS,
+      } as unknown);
       try {
         const aTrack = await input.getPrimaryAudioTrack();
         if (!aTrack) {

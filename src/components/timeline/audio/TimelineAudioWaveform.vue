@@ -91,6 +91,16 @@ async function ensureMediaPeaks(params: {
   const existing = mediaStore.mediaMetadata[path]?.audioPeaks;
   if (existing && existing.length > 0) return existing;
 
+  const metadata = await mediaStore.getOrFetchMetadataByPath(path);
+  if (shouldCancel?.()) return null;
+
+  const cachedAfterMetadataLoad =
+    mediaStore.mediaMetadata[path]?.audioPeaks ??
+    (metadata as { audioPeaks?: Float32Array[] } | null)?.audioPeaks;
+  if (cachedAfterMetadataLoad && cachedAfterMetadataLoad.length > 0) {
+    return cachedAfterMetadataLoad;
+  }
+
   return await runQueuedPeakExtraction({
     path,
     shouldCancel,

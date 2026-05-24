@@ -168,7 +168,11 @@ export async function runTranscode(
   const source =
     sourceFile instanceof File
       ? new BlobSource(governedBlobWorker(sourceFile))
-      : new BlobSource(governedBlobWorker(await runResilientWorkerFileIo(sourceFile, () => sourceFile.getFile())));
+      : new BlobSource(
+          governedBlobWorker(
+            await runResilientWorkerFileIo(sourceFile, () => sourceFile.getFile()),
+          ),
+        );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const input = new Input({ source, formats: ALL_FORMATS } as any);
 

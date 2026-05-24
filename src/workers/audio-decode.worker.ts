@@ -69,7 +69,10 @@ async function getCachedDecodeSource(
   }
 
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(governedBlobWorker(blob)), formats: ALL_FORMATS });
+  const input = new Input({
+    source: new BlobSource(governedBlobWorker(blob)),
+    formats: ALL_FORMATS,
+  });
   let aTrack: Awaited<ReturnType<InstanceType<typeof Input>['getPrimaryAudioTrack']>>;
   try {
     aTrack = await input.getPrimaryAudioTrack();
@@ -279,7 +282,10 @@ async function extractPeaksFromSource(
   const maxLength = options?.maxLength || 8000;
   const precision = options?.precision || 10000;
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(governedBlobWorker(blob)), formats: ALL_FORMATS });
+  const input = new Input({
+    source: new BlobSource(governedBlobWorker(blob)),
+    formats: ALL_FORMATS,
+  });
 
   try {
     const aTrack = await input.getPrimaryAudioTrack();
@@ -426,7 +432,10 @@ function resample(audio: Float32Array, currentRate: number, targetRate: number):
 
 async function decodeToSttMono(source: Blob | ArrayBuffer, targetSampleRate = 16000) {
   const blob = source instanceof Blob ? source : new Blob([source]);
-  const input = new Input({ source: new BlobSource(governedBlobWorker(blob)), formats: ALL_FORMATS });
+  const input = new Input({
+    source: new BlobSource(governedBlobWorker(blob)),
+    formats: ALL_FORMATS,
+  });
 
   try {
     const aTrack = await input.getPrimaryAudioTrack();

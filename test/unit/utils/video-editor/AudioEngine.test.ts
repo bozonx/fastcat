@@ -36,6 +36,8 @@ interface DecodeResponse {
 class WorkerMock {
   private listeners: Record<string, Array<(event: WorkerMessageEvent<any>) => void>> = {};
   public postMessage = vi.fn((payload: DecodeRequest) => {
+    if ((payload as any).type === 'io-init') return;
+
     const response = createWorkerResponse(payload);
     const emitResponse = () => {
       this.emit('message', { data: response });

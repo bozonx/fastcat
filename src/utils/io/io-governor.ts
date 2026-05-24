@@ -30,15 +30,19 @@ export { isTransientIoError, isTransientWriteError };
 /** Re-export the runtime detector so existing call sites keep working. */
 export const isTauriRuntime = isTauriRuntimeImpl;
 
+let inFlightCount = 0;
+
 /**
  * Run a short interactive I/O task under the shared budget. Use for
  * `getFile()` calls and small `createWritable()`+write+close sequences.
  */
 export async function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
   const release = await getMainIoBudget().acquire('interactive');
+  inFlightCount += 1;
   try {
     return await task();
   } finally {
+    inFlightCount -= 1;
     release();
   }
 }
@@ -79,10 +83,9 @@ export function getFileWriteQueueStats(): {
   size: number;
   pending: number;
 } {
-  const snapshot = getMainIoBudget().getSnapshot();
   return {
     size: 0,
-    pending: snapshot.interactiveAvailable + snapshot.streamingAvailable,
+    pending: inFlightCount,
   };
 }
 

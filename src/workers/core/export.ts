@@ -269,8 +269,11 @@ async function buildPassthroughAudioTrack(params: {
     (await runResilientWorkerFileIo(fileHandle, () => fileHandle.getFile()));
   const { Input, BlobSource, ALL_FORMATS, EncodedPacketSink, EncodedAudioPacketSource } =
     await import('mediabunny');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const input = new Input({ source: new BlobSource(governedBlobWorker(file)), formats: ALL_FORMATS } as any);
+
+  const input = new Input({
+    source: new BlobSource(governedBlobWorker(file)),
+    formats: ALL_FORMATS,
+  } as ConstructorParameters<typeof Input>[0]);
 
   try {
     const audioTrack = await input.getPrimaryAudioTrack();
@@ -761,8 +764,10 @@ export async function extractAudioStream(
     EncodedPacketSink,
   } = await import('mediabunny');
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const input = new Input({ source: new BlobSource(governedBlobWorker(sourceFile)), formats: ALL_FORMATS } as any);
+  const input = new Input({
+    source: new BlobSource(governedBlobWorker(sourceFile)),
+    formats: ALL_FORMATS,
+  } as ConstructorParameters<typeof Input>[0]);
 
   const audioTrack = await input.getPrimaryAudioTrack();
   if (!audioTrack) throw new Error('No audio track found in source file');

@@ -14,6 +14,7 @@ const props = defineProps<{
   isResizingVolume?: boolean;
   isMobile?: boolean;
   isHovered?: boolean;
+  isSelected?: boolean;
   trackHeight: number;
   scrollLeft?: number;
   viewportWidth?: number;
@@ -272,7 +273,7 @@ const volumeIndicatorPosition = computed(() => {
         canEdit && !clip.locked && !track.locked && !isMobile
           ? 'cursor-ns-resize pointer-events-auto'
           : 'pointer-events-none',
-        clip.audioMuted || (clip.audioGain === 1 && !isHovered && !isResizingVolume)
+        clip.audioMuted || (clip.audioGain === 1 && !isHovered && !isResizingVolume && !isSelected)
           ? 'opacity-0'
           : 'opacity-100',
         isDragging && !isResizingVolume ? 'opacity-0! pointer-events-none' : '',

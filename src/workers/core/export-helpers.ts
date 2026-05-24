@@ -83,10 +83,6 @@ function gcd(a: number, b: number): number {
   return x || 1;
 }
 
-function divCeilBigInt(value: bigint, divisor: bigint): bigint {
-  return (value + divisor - 1n) / divisor;
-}
-
 function rationalFrameTimeUs(frameNum: number, fps: ExportFpsRatio): number {
   return Number(
     (BigInt(frameNum) * 1_000_000n * BigInt(fps.denominator) +

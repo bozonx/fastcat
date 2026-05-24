@@ -6,6 +6,11 @@ import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
+import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
+import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
+import { useSelectionStore } from '~/stores/selection.store';
+import { useFocusStore } from '~/stores/focus.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
@@ -47,6 +52,9 @@ const uiStore = useUiStore();
 const mediaStore = useMediaStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
+const selectionStore = useSelectionStore();
+const focusStore = useFocusStore();
+const fileManagerStore = useFileManagerStore();
 
 const fsEntryRef = computed(() => props.fsEntry ?? null);
 
@@ -100,6 +108,41 @@ async function handleRenameConfirm(newName: string) {
   isRenameModalOpen.value = false;
 }
 
+async function handleSelectInFileManager() {
+  const entry = props.fsEntry;
+  if (!entry) return;
+  await revealFileManagerEntry({
+    path: normalizeWorkspaceFilePath(entry.path),
+    beforeReveal: async () => {
+      if (projectStore.currentView && projectStore.currentView !== 'files') {
+        projectStore.goToFiles();
+      }
+    },
+    loadProjectDirectory: fileManager.loadProjectDirectory,
+    notifyFileManagerUpdate: uiStore.notifyFileManagerUpdate,
+    findEntryByPath: fileManager.findEntryByPath,
+    toggleDirectory: fileManager.toggleDirectory,
+    openFolder: fileManagerStore.openFolder,
+    setSelectedFsEntry: (e) => {
+      uiStore.selectedFsEntry = {
+        kind: e.kind,
+        name: e.name,
+        path: e.path,
+        parentPath: e.parentPath,
+        lastModified: e.lastModified,
+        size: e.size,
+        source: e.source,
+        remoteId: e.remoteId,
+        remotePath: e.remotePath,
+        adapterPayload: e.adapterPayload,
+      };
+    },
+    selectEntry: (e) => selectionStore.selectFsEntry(e),
+    scrollToEntry: (path) => uiStore.triggerScrollToFileTreeEntry(path),
+    focusFileManager: () => focusStore.setTempFocus('files-sidebar'),
+  });
+}
+
 const timelineQuickActions = computed(() => {
   if (!props.fsEntry) return [];
   return [
@@ -116,6 +159,12 @@ const timelineQuickActions = computed(() => {
       onClick: () => {
         isRenameModalOpen.value = true;
       },
+    },
+    {
+      id: 'showInFileManager',
+      title: t('fastcat.clip.showInFileManager'),
+      icon: 'i-heroicons-folder-open',
+      onClick: handleSelectInFileManager,
     },
   ];
 });

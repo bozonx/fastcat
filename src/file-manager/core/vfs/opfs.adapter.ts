@@ -21,8 +21,12 @@ interface ExtendedDirectoryHandle extends FileSystemDirectoryHandle {
   removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
 }
 
+interface WritableFileStreamWithAbort extends FileSystemWritableFileStream {
+  abort(): Promise<void>;
+}
+
 interface ExtendedFileHandle extends FileSystemFileHandle {
-  createWritable(options?: unknown): Promise<FileSystemWritableFileStream>;
+  createWritable(options?: unknown): Promise<WritableFileStreamWithAbort>;
 }
 
 interface ExtendedHandle extends FileSystemHandle {
@@ -263,8 +267,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
                 await writable.close();
               } catch (writeErr) {
                 try {
-                  if (typeof (writable as any).abort === 'function') {
-                    await (writable as any).abort();
+                  if (typeof writable.abort === 'function') {
+                    await writable.abort();
                   } else {
                     await writable.close();
                   }
@@ -293,8 +297,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
               await writable.close();
             } catch (e) {
               try {
-                if (typeof (writable as any).abort === 'function') {
-                  await (writable as any).abort();
+                if (typeof writable.abort === 'function') {
+                  await writable.abort();
                 } else {
                   await writable.close();
                 }
@@ -323,8 +327,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
                   await writable.close();
                 } catch (writeErr) {
                   try {
-                    if (typeof (writable as any).abort === 'function') {
-                      await (writable as any).abort();
+                    if (typeof writable.abort === 'function') {
+                      await writable.abort();
                     } else {
                       await writable.close();
                     }

@@ -4,7 +4,6 @@ import type {
   TimelineClipItem,
   TrackKind,
   ClipTransform,
-  TextClipStyle,
 } from '~/timeline/types';
 import { cloneValue } from '~/utils/clone';
 
@@ -330,7 +329,7 @@ export function buildClipParametersPatch(input: {
                 if (sourceStyle[key] !== undefined) {
                   (targetStyle as Record<string, unknown>)[key] = cloneValue(sourceStyle[key]);
                 } else {
-                  delete (targetStyle as Record<string, unknown>)[key];
+                  Reflect.deleteProperty(targetStyle as Record<string, unknown>, key);
                 }
               }
             }

@@ -6,15 +6,15 @@ import { mount } from '@vue/test-utils';
 
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
+import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
+import { useTimelineWheelHandler } from '~/composables/timeline/useTimelineWheelHandler';
+
 vi.mock('~/composables/timeline/useTimelineZoom', () => ({
   useTimelineZoom: vi.fn(() => ({
     handleZoomWheel: vi.fn(),
     fitTimelineZoom: vi.fn(),
   })),
 }));
-
-import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
-import { useTimelineWheelHandler } from '~/composables/timeline/useTimelineWheelHandler';
 
 vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
   cb(0);
@@ -38,7 +38,10 @@ describe('useTimelineWheelHandler', () => {
     setActivePinia(createPinia());
 
     // Reset workspace store to defaults before each test
-    Object.assign(mockWorkspaceStore.userSettings, JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)));
+    Object.assign(
+      mockWorkspaceStore.userSettings,
+      JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)),
+    );
 
     mockHandleZoomWheel = vi.fn();
     vi.mocked(useTimelineZoom).mockReturnValue({

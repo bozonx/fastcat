@@ -1,12 +1,17 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   withFileWriteSlot,
   getFileWriteQueueStats,
   isTransientWriteError,
   runResilientFileWrite,
 } from '~/utils/io/io-governor';
+import { __resetMainIoBudgetForTesting } from '~/utils/io/io-budget-main';
 import { FILE_IO_LIMITS } from '~/utils/constants';
+
+beforeEach(() => {
+  __resetMainIoBudgetForTesting();
+});
 
 function deferred() {
   let resolve!: () => void;

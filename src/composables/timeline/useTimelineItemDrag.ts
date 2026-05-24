@@ -693,8 +693,6 @@ export function useTimelineItemDrag(
           Number.isFinite(rawSourceDurationUs) && rawSourceDurationUs > 0
             ? Math.round(rawSourceDurationUs)
             : prevSourceEndUs;
-        const maxSourceEndUs = hasFixedSourceDuration ? knownSourceEndUs : Number.POSITIVE_INFINITY;
-
         if (mode === 'trim_start') {
           const minSourceBound = hasFixedSourceDuration
             ? anchorEndUs - knownSourceEndUs / absSpeed
