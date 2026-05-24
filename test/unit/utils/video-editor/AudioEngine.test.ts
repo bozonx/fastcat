@@ -400,6 +400,39 @@ describe('AudioEngine', () => {
     expect(engine.getCurrentTimeUs()).toBe(0);
   });
 
+  it('scales the scrub preview window by clip speed so fast clips are not cut short', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    // Source runs at 2x: 4s of material occupies 2s of timeline.
+    const clip = createClip({
+      speed: 2,
+      startUs: 0,
+      durationUs: 2_000_000,
+      sourceStartUs: 0,
+      sourceRangeDurationUs: 4_000_000,
+      sourceDurationUs: 10_000_000,
+    });
+    await engine.loadClips([clip]);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 3;
+
+    // Request a 150ms (timeline) preview window.
+    await engine.previewScrubForward(0, 300_000, 150_000);
+
+    expect(audioContextInstance.createdSources.length).toBe(1);
+    const source = audioContextInstance.createdSources[0]!;
+    // start(when, offset, durationInBufferSeconds): the buffer (source) duration
+    // must be timelineWindow * clipSpeed = 0.15 * 2 = 0.3s. Before the fix the
+    // cap was applied as if 1x, cutting the preview to 0.15s of source.
+    const playedSourceDurationS = (source.start.mock.calls[0]?.[2] ?? 0) as number;
+    expect(playedSourceDurationS).toBeCloseTo(0.3, 5);
+    expect(source.playbackRate.value).toBe(2);
+  });
+
   it('does not retry permanent decode failures', async () => {
     workerOk = false;
     workerErrorName = 'UnsupportedFormatError';

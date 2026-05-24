@@ -8,8 +8,10 @@ import {
 } from '~/workers/core/transcode-engine';
 import type { ExportOptions } from '~/composables/timeline/export/types';
 
-function createMockAudioSample() {
-  return vi.fn().mockImplementation((params: Record<string, unknown>) => params);
+function createMockAudioSample(): new (...args: any[]) => unknown {
+  return function (this: Record<string, unknown>, params: Record<string, unknown>) {
+    Object.assign(this, params);
+  } as unknown as new (...args: any[]) => unknown;
 }
 
 describe('createReversedAudioSamples', () => {

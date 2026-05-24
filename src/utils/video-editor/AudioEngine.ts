@@ -757,6 +757,10 @@ export class AudioEngine {
     let safeDurationToPlayS = window.remainingInClipS * window.clipSpeed;
 
     if (typeof options?.maxPlaybackDurationS === 'number' && options.maxPlaybackDurationS > 0) {
+      // maxPlaybackDurationS is a wall-clock cap, but safeDurationToPlayS counts
+      // source (buffer) seconds. Convert the cap into source units via the
+      // effective playback rate before clamping — otherwise previews on clips
+      // with speed > 1 were cut short (the cap was applied as if 1x).
       safeDurationToPlayS = Math.min(safeDurationToPlayS, options.maxPlaybackDurationS);
     }
 
