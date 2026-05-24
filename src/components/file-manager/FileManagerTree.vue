@@ -13,6 +13,7 @@ import type { FsEntry } from '~/types/fs';
 import type { getBdPayload } from '~/types/bloggerdog';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
+import { useFocusStore } from '~/stores/focus.store';
 import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
@@ -154,6 +155,7 @@ const proxyStore = useProxyStore();
 const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const uiStore = useUiStore();
+const focusStore = useFocusStore();
 const appClipboard = useAppClipboard();
 
 const isDragOver = ref<string | null>(null);
@@ -163,6 +165,8 @@ watch(
   () => uiStore.fileTreeSelectAllTrigger,
   () => {
     if (props.depth !== 0) return;
+    // Only the focused instance's tree should react to the global trigger.
+    if (!focusStore.isPanelFocused(`dynamic:file-manager:${props.instanceId}`)) return;
     const selected = selectionStore.selectedEntity;
 
     let anchorEntry: FsEntry | null = null;

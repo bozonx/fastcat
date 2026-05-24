@@ -295,7 +295,7 @@ export class TextRenderer {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? '';
-      const lineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2 + yOffsetPx;
+      const lineY = localTextTopPx + i * lineHeightPx + lineHeightPx / 2;
 
       if (letterSpacingPx === 0) {
         if (mode === 'stroke') {

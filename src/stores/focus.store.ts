@@ -81,6 +81,8 @@ export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): 
   return panelId === 'timeline' || panelId === 'audioMixer';
 }
 
+export type FileManagerSurface = 'tree' | 'list';
+
 export const useFocusStore = defineStore('focus', () => {
   const activeTimelinePath = ref<string | null>(null);
 
@@ -88,6 +90,11 @@ export const useFocusStore = defineStore('focus', () => {
   const activePanelId = ref<PanelFocusId>('timeline');
   const lastCutMainPanelId = ref<MainPanelFocus>('timeline');
   const lastNonMainPanelId = ref<Exclude<PanelFocusId, MainPanelFocus> | null>(null);
+
+  // Within a file-manager instance the folder tree and the file list share the
+  // same panel focus id, so this tracks which of the two surfaces was focused
+  // last. Used to route surface-specific hotkeys (e.g. select-all).
+  const fileManagerSurface = ref<FileManagerSurface | null>(null);
 
   const mainFocus = computed<MainPanelFocus>(() => {
     if (isMainPanelFocus(activePanelId.value)) {
@@ -110,6 +117,11 @@ export const useFocusStore = defineStore('focus', () => {
   function setPanelFocus(panelId: PanelFocusId) {
     activePanelId.value = panelId;
 
+    // Reset the tree/list surface whenever focus leaves the file manager.
+    if (!isFileManagerPanelFocus(panelId)) {
+      fileManagerSurface.value = null;
+    }
+
     if (isMainPanelFocus(panelId)) {
       lastCutMainPanelId.value = panelId;
       syncMainFocusToTimeline(panelId);
@@ -117,6 +129,11 @@ export const useFocusStore = defineStore('focus', () => {
     }
 
     lastNonMainPanelId.value = panelId;
+  }
+
+  function setFileManagerPanelFocus(panelId: PanelFocusId, surface: FileManagerSurface) {
+    fileManagerSurface.value = surface;
+    setPanelFocus(panelId);
   }
 
   function setActiveTimelinePath(nextPath: string | null) {
@@ -191,6 +208,7 @@ export const useFocusStore = defineStore('focus', () => {
     effectiveFocus,
     lastCutMainPanelId,
     lastNonMainPanelId,
+    fileManagerSurface,
 
     canUseTimelineHotkeys,
     canUsePlaybackHotkeys,
@@ -201,6 +219,7 @@ export const useFocusStore = defineStore('focus', () => {
 
     setActiveTimelinePath,
     setPanelFocus,
+    setFileManagerPanelFocus,
     setMainFocus,
     setTempFocus,
     clearTempFocus,

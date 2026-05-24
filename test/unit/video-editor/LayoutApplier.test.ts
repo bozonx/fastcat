@@ -236,4 +236,44 @@ describe('LayoutApplier', () => {
 
     expect(sprite.rotation).toBeCloseTo(0);
   });
+
+  it('applies text layout correctly to text clips', () => {
+    const sprite = createMockSprite();
+    const mockCtx = {
+      font: '',
+      measureText: (text: string) => ({ width: text.length * 10 }),
+    };
+
+    const clip = {
+      itemId: 'clip-text',
+      layer: 1,
+      startUs: 0,
+      endUs: 1_000_000,
+      durationUs: 1_000_000,
+      sprite,
+      clipKind: 'text' as const,
+      clipType: 'text' as const,
+      text: 'Sample Text',
+      ctx: mockCtx as any,
+      style: {
+        fontSize: 40,
+        lineHeight: 1.5,
+        align: 'center' as const,
+        verticalAlign: 'middle' as const,
+        padding: 10,
+      },
+    };
+
+    applier.applyTextLayout(clip as any);
+
+    // Text box height should be (lines.length * lineHeight + padding * 2) * renderScale
+    // With renderScale = 1 (canvasHeight = 1080, DESIGN_BASE = 1080)
+    // fontSize = 40, lineHeight = 1.5 -> lineHeightPx = 60
+    // padding = 10 -> paddingPx = 10
+    // height = 60 + 20 = 80
+    expect(sprite.width).toBeCloseTo(130); // 110 + 20
+    expect(sprite.height).toBeCloseTo(80);
+    expect(sprite.x).toBeCloseTo(1920 / 2); // Centered because of align and center anchor
+    expect(sprite.y).toBeCloseTo(1080 / 2);
+  });
 });

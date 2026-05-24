@@ -396,7 +396,9 @@ useFileManagerPanelBootstrap({
       'panel-focus-frame--active':
         !props.hideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
-    @pointerdown.capture="focusStore.setPanelFocus(`dynamic:file-manager:${instanceId}`)"
+    @pointerdown.capture="
+      focusStore.setFileManagerPanelFocus(`dynamic:file-manager:${instanceId}`, 'tree')
+    "
   >
     <!-- Hidden inputs -->
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFileSelect" />

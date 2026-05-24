@@ -225,7 +225,12 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
   >
     <div class="flex-1 overflow-hidden min-h-0">
-      <ProjectView class="h-full pt-2" :use-external-focus="true" :compact="view === 'cut'" />
+      <ProjectView
+        class="h-full pt-2"
+        :use-external-focus="true"
+        :compact="view === 'cut'"
+        :file-manager-instance-id="panel.id"
+      />
     </div>
   </div>
 </template>

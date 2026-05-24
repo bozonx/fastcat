@@ -663,7 +663,7 @@ const emptySpaceContextMenuItems = computed(() => {
 
 // --- Marquee selection ---
 function focusBrowserPanel() {
-  focusStore.setPanelFocus(`dynamic:file-manager:${instanceId}`);
+  focusStore.setFileManagerPanelFocus(`dynamic:file-manager:${instanceId}`, 'list');
 }
 
 const {

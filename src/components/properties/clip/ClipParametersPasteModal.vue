@@ -4,25 +4,16 @@ import UiModal from '~/components/ui/UiModal.vue';
 import type { ClipParameterGroupOption } from '~/utils/timeline/clip-parameters';
 
 const props = defineProps<{
-  open: boolean;
   groups: ClipParameterGroupOption[];
-  selectedGroups: string[];
 }>();
 
 const emit = defineEmits<{
-  'update:open': [value: boolean];
-  'update:selectedGroups': [value: string[]];
   apply: [groups: string[]];
 }>();
 
-const isOpen = computed({
-  get: () => props.open,
-  set: (v) => emit('update:open', v),
-});
-
-const selectedGroups = computed({
-  get: () => props.selectedGroups,
-  set: (v) => emit('update:selectedGroups', v),
+const isOpen = defineModel<boolean>('open', { default: false });
+const selectedGroups = defineModel<string[]>('selectedGroups', {
+  default: (): string[] => [],
 });
 
 const { t } = useI18n();

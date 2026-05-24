@@ -13,6 +13,11 @@ const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
 
+// In the cut/sound views this tab lives inside a dynamic panel whose focus id is
+// `dynamic:file-manager:${panelId}`. The browser/tree must use that same panel id
+// as their instance id so their focus matches and hotkeys reach them.
+const instanceId = inject<string>('fileManagerPanelInstanceId', 'fileManager');
+
 const DEFAULT_TREE_SIZE = 30;
 const treeSize = computed(() => fileManagerStore.treeSize ?? DEFAULT_TREE_SIZE);
 const listSize = computed(() => 100 - treeSize.value);
@@ -30,7 +35,7 @@ function onResized(event: { panes: Array<{ size: number }> }) {
         folders-only
         is-files-page
         :compact="compact"
-        instance-id="editor-main"
+        :instance-id="instanceId"
         hide-focus-frame
         hide-project-label
         class="h-full"
@@ -40,7 +45,7 @@ function onResized(event: { panes: Array<{ size: number }> }) {
     <Pane :size="listSize" min-size="20">
       <FileBrowser
         :compact="compact"
-        instance-id="editor-main"
+        :instance-id="instanceId"
         hide-focus-frame
         hide-view-switcher
         hide-breadcrumbs

@@ -1,11 +1,6 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import {
-  useFocusStore,
-  isFileManagerPanelFocus,
-  isFileManagerSidebarFocus,
-  isFileManagerMainFocus,
-} from '~/stores/focus.store';
+import { useFocusStore, isFileManagerPanelFocus } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -530,15 +525,18 @@ export function useGeneralHotkeys(
         toggleTimelineSelectAll();
         return true;
       }
-      if (isFileManagerSidebarFocus(focusStore.effectiveFocus)) {
-        uiStore.fileTreeSelectAllTrigger++;
-        return true;
-      }
       if (
-        isFileManagerMainFocus(focusStore.effectiveFocus) ||
+        isFileManagerPanelFocus(focusStore.effectiveFocus) ||
         focusStore.effectiveFocus === 'filesBrowser'
       ) {
-        uiStore.fileBrowserSelectAllTrigger++;
+        // The folder tree and the file list share a panel id, so route by the
+        // last-focused surface: the tree selects the current folder's siblings,
+        // the file list selects the open folder's contents.
+        if (focusStore.fileManagerSurface === 'tree') {
+          uiStore.fileTreeSelectAllTrigger++;
+        } else {
+          uiStore.fileBrowserSelectAllTrigger++;
+        }
         return true;
       }
       return false;

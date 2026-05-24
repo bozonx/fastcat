@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { markRaw, onMounted } from 'vue';
+import { markRaw, onMounted, provide } from 'vue';
 import ProjectFilesTab from '~/components/project/ProjectFilesTab.vue';
 import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
@@ -18,12 +18,19 @@ const props = withDefaults(
   defineProps<{
     useExternalFocus?: boolean;
     compact?: boolean;
+    fileManagerInstanceId?: string;
   }>(),
   {
     useExternalFocus: false,
     compact: false,
+    fileManagerInstanceId: 'fileManager',
   },
 );
+
+// Expose the owning dynamic-panel id to the Files tab so its file browser/tree
+// register focus under the same panel id (see ProjectFilesTab). The panel is
+// remounted (keyed by id) when it changes, so a plain value is sufficient.
+provide('fileManagerPanelInstanceId', props.fileManagerInstanceId);
 
 const emit = defineEmits<{
   (e: 'tab-drag-start', event: DragEvent, tabId: string): void;

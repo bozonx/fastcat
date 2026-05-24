@@ -3,6 +3,18 @@ import { mount } from '@vue/test-utils';
 import MonitorViewport from '~/components/monitor/MonitorViewport.vue';
 import { ref } from 'vue';
 
+vi.mock('~/composables/monitor/useMonitorSettings', () => ({
+  useMonitorSettings: () => ({ showTimecode: ref(true) }),
+}));
+
+vi.mock('~/stores/project.store', () => ({
+  useProjectStore: () => ({}),
+}));
+
+vi.mock('~/stores/timeline.store', () => ({
+  useTimelineStore: () => ({ markers: [] }),
+}));
+
 // Mock the composable
 const mockGestures = {
   isPreviewSelected: ref(false),
@@ -80,5 +92,45 @@ describe('MonitorViewport', () => {
     const canvasWrapper = wrapper.find('.shrink-0');
     await canvasWrapper.trigger('pointerdown');
     expect(mockGestures.onPreviewPointerDown).toHaveBeenCalled();
+  });
+
+  it('applies idle class when isIdle is true in fullscreen', () => {
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+        effectiveFullscreen: true,
+        isIdle: true,
+      },
+    });
+
+    expect(wrapper.find('.opacity-0').exists()).toBe(true);
+  });
+
+  it('applies fullscreen offset classes', () => {
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+        effectiveFullscreen: true,
+      },
+    });
+
+    expect(wrapper.find('.bottom-24').exists()).toBe(true);
+  });
+
+  it('triggers aux click and double click handlers', async () => {
+    const wrapper = mount(MonitorViewport, {
+      props: {
+        renderWidth: 100,
+        renderHeight: 100,
+      },
+    });
+
+    await wrapper.trigger('auxclick');
+    expect(mockGestures.onViewportAuxClick).toHaveBeenCalled();
+
+    await wrapper.trigger('dblclick');
+    expect(mockGestures.onViewportDoubleClick).toHaveBeenCalled();
   });
 });
