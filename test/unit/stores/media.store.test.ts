@@ -4,22 +4,36 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
+import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 vi.mock('#app-manifest', () => ({}));
 
 const { mediaFsMock, extractMetadataMock } = vi.hoisted(() => {
-  const metaFiles = new Map<string, string>();
-  const waveformFiles = new Map<string, string>();
+  const metaFiles = new Map<string, any>();
+  const waveformFiles = new Map<string, any>();
 
-  function createFileHandle(files: Map<string, string>, name: string) {
+  function createFileHandle(files: Map<string, any>, name: string) {
     return {
       createWritable: vi.fn().mockResolvedValue({
-        write: vi.fn().mockImplementation(async (value: string) => {
-          files.set(name, String(value));
+        write: vi.fn().mockImplementation(async (value: any) => {
+          files.set(name, value);
         }),
         close: vi.fn().mockResolvedValue(undefined),
       }),
       getFile: vi.fn().mockResolvedValue({
-        text: vi.fn().mockImplementation(async () => files.get(name) ?? '{}'),
+        text: vi.fn().mockImplementation(async () => {
+          const val = files.get(name);
+          if (val instanceof ArrayBuffer) {
+            return new TextDecoder().decode(val);
+          }
+          return val ?? '{}';
+        }),
+        arrayBuffer: vi.fn().mockImplementation(async () => {
+          const val = files.get(name);
+          if (typeof val === 'string') {
+            return new TextEncoder().encode(val).buffer;
+          }
+          return val ?? new ArrayBuffer(0);
+        }),
       }),
     };
   }
@@ -152,8 +166,13 @@ describe('MediaStore', () => {
     store.setAudioPeaks('some/path.mp4', [new Float32Array([0.5, -0.25])]);
 
     await vi.waitFor(() => {
-      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBe('[[0.5,-0.25]]');
+      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBeDefined();
     });
+    const buffer = mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json') as ArrayBuffer;
+    expect(buffer).toBeInstanceOf(ArrayBuffer);
+    const peaks = deserializeWaveformPeaks(buffer);
+    expect(peaks).toBeDefined();
+    expect(Array.from(peaks![0])).toEqual([0.5, -0.25]);
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks?.[0]).toBeInstanceOf(Float32Array);
   });
 
@@ -163,8 +182,13 @@ describe('MediaStore', () => {
     store.setAudioPeaks('some/path.mp4', [new Float32Array([0.5, -0.25])]);
 
     await vi.waitFor(() => {
-      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBe('[[0.5,-0.25]]');
+      expect(mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json')).toBeDefined();
     });
+    const buffer = mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json') as ArrayBuffer;
+    expect(buffer).toBeInstanceOf(ArrayBuffer);
+    const peaks = deserializeWaveformPeaks(buffer);
+    expect(peaks).toBeDefined();
+    expect(Array.from(peaks![0])).toEqual([0.5, -0.25]);
   });
 
   it('loads cached audio peaks even when metadata is extracted from worker', async () => {

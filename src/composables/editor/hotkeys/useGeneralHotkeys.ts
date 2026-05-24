@@ -1,6 +1,11 @@
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useUiStore } from '~/stores/ui.store';
-import { useFocusStore, isFileManagerPanelFocus } from '~/stores/focus.store';
+import {
+  useFocusStore,
+  isFileManagerPanelFocus,
+  isFileManagerSidebarFocus,
+  isFileManagerMainFocus,
+} from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
@@ -517,8 +522,12 @@ export function useGeneralHotkeys(
         toggleTimelineSelectAll();
         return true;
       }
+      if (isFileManagerSidebarFocus(focusStore.effectiveFocus)) {
+        uiStore.fileTreeSelectAllTrigger++;
+        return true;
+      }
       if (
-        isFileManagerPanelFocus(focusStore.effectiveFocus) ||
+        isFileManagerMainFocus(focusStore.effectiveFocus) ||
         focusStore.effectiveFocus === 'filesBrowser'
       ) {
         uiStore.fileBrowserSelectAllTrigger++;
