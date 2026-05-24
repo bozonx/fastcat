@@ -85,6 +85,49 @@ describe('text-layout', () => {
     expect(metrics.backgroundY).toBe(482);
   });
 
+  it('adds positive letter spacing to the measured line width', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'abcd',
+      style: {
+        fontSize: 40,
+        letterSpacing: 5,
+        padding: 0,
+        align: 'left',
+        verticalAlign: 'top',
+      },
+      // renderScale === 1 so letterSpacingPx === letterSpacing
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text) => text.length * 10,
+    });
+
+    // 4 glyphs * 10 + 3 gaps * 5
+    expect(metrics.letterSpacingPx).toBe(5);
+    expect(metrics.maxLineWidthPx).toBe(55);
+  });
+
+  it('subtracts negative letter spacing so the box matches the painted glyphs', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'abcd',
+      style: {
+        fontSize: 40,
+        letterSpacing: -5,
+        padding: 0,
+        align: 'left',
+        verticalAlign: 'top',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      measureText: (text) => text.length * 10,
+    });
+
+    // 4 glyphs * 10 + 3 gaps * (-5) — TextRenderer advances by charWidth + spacing,
+    // so the layout must shrink to match instead of clamping spacing at 0.
+    expect(metrics.letterSpacingPx).toBe(-5);
+    expect(metrics.maxLineWidthPx).toBe(25);
+    expect(metrics.textBlockWidthPx).toBe(25);
+  });
+
   it('expands text frame metrics for an outer border', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'text',

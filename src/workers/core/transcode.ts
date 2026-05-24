@@ -26,6 +26,7 @@ export async function runTranscode(
     ALL_FORMATS,
     getFirstEncodableVideoCodec,
     getFirstEncodableAudioCodec,
+    AudioSample,
   } = await import('mediabunny');
 
   // 1. Setup Input
@@ -184,7 +185,7 @@ export async function runTranscode(
                   ? 2
                   : undefined,
             sampleRate: options.audioSampleRate,
-            ...createAudioProcessConfig(),
+            ...createAudioProcessConfig(options, AudioSample),
           };
 
     if (
@@ -217,7 +218,7 @@ export async function runTranscode(
       throw new Error(`Conversion setup is invalid. Reasons: ${reasons}`);
     }
 
-    await notifyPhase('encoding', taskId);
+    await notifyPhase(hostClient, 'encoding', taskId);
 
     let lastProgressAtMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const progressIntervalMs = 250;
@@ -226,7 +227,7 @@ export async function runTranscode(
     (conversionProcess as unknown as { onProgress?: (progress: number) => void }).onProgress = (
       progress: number,
     ) => {
-      ensureNotCancelled();
+      ensureNotCancelled(checkCancel);
 
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
@@ -256,7 +257,7 @@ export async function runTranscode(
       clearInterval(cancelInterval);
     }
 
-    await notifyPhase('saving', taskId);
+    await notifyPhase(hostClient, 'saving', taskId);
   } catch (e) {
     try {
       if (conversionProcess) {

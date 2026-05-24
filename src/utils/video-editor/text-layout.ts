@@ -296,9 +296,13 @@ export function computeTextLayoutMetrics(input: {
       ? Math.max(1, explicitWidthPx - paddingPx.left - paddingPx.right)
       : undefined;
   const font = `${normalizedStyle.fontWeight} ${fontSizePx}px ${normalizedStyle.fontFamily}`;
+  // Letter spacing must use its signed value so the measured width matches what
+  // TextRenderer.drawLineWithLetterSpacing actually paints (it advances by
+  // `charWidth + letterSpacingPx`, where the spacing can be negative). Clamping
+  // the spacing to >= 0 here over-measured tight (negative-spacing) text, which
+  // made the background/border box wider than the glyphs and shifted wrapping.
   const measureLine = (text: string) =>
-    input.measureText(text, font) +
-    Math.max(0, Array.from(text).length - 1) * Math.max(0, letterSpacingPx);
+    input.measureText(text, font) + Math.max(0, Array.from(text).length - 1) * letterSpacingPx;
 
   // Initialize a segmenter for word/grapheme boundaries, falling back to simple split if unsupported
   const segmenter =

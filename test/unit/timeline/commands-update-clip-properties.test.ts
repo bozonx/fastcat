@@ -280,6 +280,51 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.timelineRange.durationUs).toBeLessThan(1_000_000);
   });
 
+  it('keeps sourceRange as the anchor so repeated speed edits do not accumulate drift', () => {
+    const makeSpeedDoc = () =>
+      makeDoc({
+        id: 'v1',
+        kind: 'video',
+        name: 'V1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'c1',
+            trackId: 'v1',
+            name: 'C1',
+            source: { path: 'a.mp4' },
+            sourceDurationUs: 10_000_000,
+            timelineRange: { startUs: 0, durationUs: 1_000_000 },
+            sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          },
+        ],
+      });
+
+    const applySpeed = (doc: TimelineDocument, speed: number) =>
+      applyTimelineCommand(doc, {
+        type: 'update_clip_properties',
+        trackId: 'v1',
+        itemId: 'c1',
+        properties: { speed },
+      }).next;
+
+    // Walk through several speeds and back to 1. Because the source range is the
+    // anchor (speed only re-derives the timeline duration from it), returning to
+    // a speed must reproduce the same timeline duration regardless of the path.
+    let doc = makeSpeedDoc();
+    for (const speed of [3, 0.5, 4, 2, 1]) {
+      doc = applySpeed(doc, speed);
+    }
+    const clip = (doc.tracks[0] as TimelineTrack).items[0] as any;
+
+    // The source window must never change as a side effect of speed edits.
+    expect(clip.sourceRange).toEqual({ startUs: 0, durationUs: 1_000_000 });
+    expect(clip.speed).toBe(1);
+    // Back at unity speed the timeline duration equals the (unchanged) source.
+    expect(clip.timelineRange.durationUs).toBe(1_000_000);
+  });
+
   it('proportionally shrinks audio fades when they would overlap on the same clip', () => {
     const doc = makeDoc({
       id: 'v1',
