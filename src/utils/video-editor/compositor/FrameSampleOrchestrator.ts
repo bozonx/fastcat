@@ -75,7 +75,9 @@ export class FrameSampleOrchestrator {
         updatedClips,
         updateClipTextureFromSample: params.updateClipTextureFromSample,
         setClipSpriteVisible: params.setClipSpriteVisible,
-        onError: () => {},
+        onError: (error) => {
+          console.warn('[VideoCompositor] Failed to update shadow clip texture:', error);
+        },
       });
     }
 
@@ -221,7 +223,10 @@ export class FrameSampleOrchestrator {
         abortSignal: abortController.signal,
       })
       .then((sample) => ({ clip: params.clip, sample }))
-      .catch(() => ({ clip: params.clip, sample: null }));
+      .catch((error) => {
+        console.warn('[VideoCompositor] Failed to get shadow sample:', error);
+        return { clip: params.clip, sample: null };
+      });
   }
 
   private async applySampleResults(params: {

@@ -720,7 +720,8 @@ async function* processClipAudio(args: {
           playbackRate: clip.speed,
         });
         blockOutputFrames = blockPlanes[0]?.length ?? targetFrames;
-      } catch {
+      } catch (err) {
+        console.error('[Worker Export] Resample audio clip block failed:', err);
         await reportExportWarning(
           '[Worker Export] Failed to resample audio clip block; substituting silence.',
         );
@@ -886,7 +887,8 @@ export class AudioMixer {
         file =
           (await hostClient?.getFileByPath?.(sourcePath)) ??
           (await withWorkerFileIoSlotForHandle(fileHandle, () => fileHandle.getFile()));
-      } catch {
+      } catch (err) {
+        console.error('[Worker Export] Failed to read audio file handle:', err);
         await reportExportWarning('[Worker Export] Failed to read audio file handle');
         continue;
       }
@@ -1050,7 +1052,8 @@ export class AudioMixer {
           audioFadeOutCurve: fadeOutCurve,
           audioEffects: (clipData.effects ?? []).filter((effect) => effect?.target === 'audio'),
         });
-      } catch {
+      } catch (err) {
+        console.error('[Worker Export] Failed to decode audio clip:', err);
         await reportExportWarning('[Worker Export] Failed to decode audio clip');
         safeDispose(input);
       }
@@ -1248,6 +1251,7 @@ export class AudioMixer {
             }
           } catch (err) {
             if (err instanceof Error && err.name === 'AbortError') throw err;
+            console.error('[Worker Export] Failed to decode audio clip segment:', err);
             await reportExportWarning('[Worker Export] Failed to decode audio clip');
             safeDispose(clip.sink);
             safeDispose(clip.input);

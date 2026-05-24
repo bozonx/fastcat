@@ -511,7 +511,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
               1e-6,
             );
           }
-        } catch {
+        } catch (err) {
+          console.error('[Worker] Failed to get video sample at time', safeTimeS, err);
           results.push(null);
           continue;
         }

@@ -305,7 +305,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         setLocalTimeFromStore();
         scheduleRender(localCurrentTimeUs);
       }
-    }
+    },
   );
 
   onMounted(() => {

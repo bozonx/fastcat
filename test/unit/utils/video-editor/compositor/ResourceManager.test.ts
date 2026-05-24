@@ -75,7 +75,9 @@ describe('ResourceManager.withVideoSampleSlot', () => {
       async () => {
         calls += 1;
         if (calls < 3) {
-          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+          throw Object.assign(new Error('Failed to create datapipe'), {
+            name: 'InvalidStateError',
+          });
         }
         return 'decoded-frame';
       },
@@ -95,7 +97,9 @@ describe('ResourceManager.withVideoSampleSlot', () => {
       rm.withVideoSampleSlot(
         async () => {
           calls += 1;
-          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+          throw Object.assign(new Error('Failed to create datapipe'), {
+            name: 'InvalidStateError',
+          });
         },
         undefined,
         { attempts: 3, baseDelayMs: 1 },

@@ -1,6 +1,10 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest';
-import { computeTextLayoutMetrics, normalizeTextClipStyle, getFontStack } from '~/utils/video-editor/text-layout';
+import {
+  computeTextLayoutMetrics,
+  normalizeTextClipStyle,
+  getFontStack,
+} from '~/utils/video-editor/text-layout';
 
 describe('text-layout', () => {
   it('normalizes default text style values', () => {

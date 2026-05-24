@@ -26,11 +26,11 @@ export class CanvasFallbackRenderer {
     clip.ctx = clipCtx;
     const canvasSource = new CanvasSource({ resource: clipCanvas as import('pixi.js').ICanvas });
     const sprite = clip.sprite as import('pixi.js').Sprite;
-    
+
     // Create a new unique Texture instead of mutating a shared Texture.EMPTY
     const texture = new Texture({ source: canvasSource });
     sprite.texture = texture;
-    
+
     clip.sourceKind = 'canvas';
   }
 

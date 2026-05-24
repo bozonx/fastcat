@@ -122,7 +122,9 @@ describe('withWorkerFileWriteSlotForHandle', () => {
 
 describe('isTransientIoError', () => {
   it('flags InvalidStateError and messages containing datapipe/failed to create', () => {
-    expect(isTransientIoError(Object.assign(new Error('Mojo error'), { name: 'InvalidStateError' }))).toBe(true);
+    expect(
+      isTransientIoError(Object.assign(new Error('Mojo error'), { name: 'InvalidStateError' })),
+    ).toBe(true);
     expect(isTransientIoError(new Error('Failed to create datapipe'))).toBe(true);
     expect(isTransientIoError(new Error('Other datapipe error'))).toBe(true);
     expect(isTransientIoError(new Error('Something else'))).toBe(false);
@@ -139,7 +141,9 @@ describe('runResilientWorkerFileIo', () => {
       async () => {
         calls += 1;
         if (calls < 3) {
-          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+          throw Object.assign(new Error('Failed to create datapipe'), {
+            name: 'InvalidStateError',
+          });
         }
         return 'success';
       },
@@ -159,7 +163,9 @@ describe('runResilientWorkerFileIo', () => {
         mockHandle,
         async () => {
           calls += 1;
-          throw Object.assign(new Error('Failed to create datapipe'), { name: 'InvalidStateError' });
+          throw Object.assign(new Error('Failed to create datapipe'), {
+            name: 'InvalidStateError',
+          });
         },
         { attempts: 3, baseDelayMs: 1 },
       ),
@@ -190,7 +196,10 @@ describe('runResilientWorkerFileIo', () => {
 describe('runResilientWorkerFileWrite', () => {
   it('delegates to runResilientWorkerFileIo and returns success', async () => {
     const mockHandle = Object.create(FileSystemFileHandle.prototype);
-    const result = await runResilientWorkerFileWrite(mockHandle, async () => 'written', { attempts: 2, baseDelayMs: 1 });
+    const result = await runResilientWorkerFileWrite(mockHandle, async () => 'written', {
+      attempts: 2,
+      baseDelayMs: 1,
+    });
     expect(result).toBe('written');
   });
 });

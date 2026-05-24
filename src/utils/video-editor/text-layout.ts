@@ -160,8 +160,8 @@ export function getFontStack(fontFamily: string): string {
     'JetBrains Mono': '"JetBrains Mono", monospace',
     Caveat: '"Caveat", cursive',
     'sans-serif': 'sans-serif',
-    'serif': 'serif',
-    'monospace': 'monospace',
+    serif: 'serif',
+    monospace: 'monospace',
   };
 
   if (fontStacks[normalized]) {

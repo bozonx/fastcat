@@ -19,12 +19,7 @@ import {
   getMimeTypeFromFilename,
   BROWSER_NATIVE_IMAGE_EXTENSIONS,
 } from '../../utils/media-types';
-import {
-  withWorkerFileWriteSlotForHandle,
-  withWorkerFileIoSlotForHandle,
-  runResilientWorkerFileIo,
-  runResilientWorkerFileWrite,
-} from './io-governor';
+import { runResilientWorkerFileIo, runResilientWorkerFileWrite } from './io-governor';
 import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
 
@@ -710,6 +705,7 @@ export async function runExport(
       await runExportWithHardwareAcceleration('prefer-hardware', true);
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') throw e;
+      console.warn('[Worker Export] Hardware acceleration export with exact profile failed:', e);
       await reportExportWarning(
         '[Worker Export] Hardware acceleration export with exact profile failed, retrying with default HW profile.',
       );
@@ -717,6 +713,10 @@ export async function runExport(
         await runExportWithHardwareAcceleration('prefer-hardware', false);
       } catch (e2) {
         if (e2 instanceof Error && e2.name === 'AbortError') throw e2;
+        console.warn(
+          '[Worker Export] Hardware acceleration export failed completely, retrying with software:',
+          e2,
+        );
         await reportExportWarning(
           '[Worker Export] Hardware acceleration export failed completely, retrying with software.',
         );
@@ -741,9 +741,7 @@ export async function extractAudioStream(
   const targetHandle = await hostClient.getFileHandleByPath(targetPath);
   if (!targetHandle) throw new Error('Target file handle not found');
 
-  const sourceFile = await runResilientWorkerFileIo(sourceHandle, () =>
-    sourceHandle.getFile(),
-  );
+  const sourceFile = await runResilientWorkerFileIo(sourceHandle, () => sourceHandle.getFile());
   const {
     Input,
     BlobSource,
