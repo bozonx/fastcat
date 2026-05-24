@@ -43,6 +43,7 @@ class WorkerMock {
   onerror: any = null;
   constructor(public url: string) {}
   postMessage(data: any) {
+    if (data?.type === 'io-init') return;
     WorkerMock.postedMessages.push(data);
     // Synchronous for testing to avoid microtask/timer issues
     if (this.onmessage) {

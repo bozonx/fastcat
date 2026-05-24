@@ -94,6 +94,8 @@ export function withWorkerFileWriteSlotForHandle<T>(
   return withWorkerFileIoSlotForHandle(handle, task);
 }
 
+export { isTransientIoError };
+
 const delay = (ms: number) =>
   new Promise<void>((resolve) => {
     if (typeof self !== 'undefined' && 'setTimeout' in self) {

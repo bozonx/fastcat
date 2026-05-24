@@ -15,6 +15,7 @@ The project uses a custom `src/` directory. Besides the standard Nuxt folders (`
 - `src/workers/` — Web Workers for heavy computations (e.g., video editor core).
 - `src/timeline/` — logic and components specific to the video editor timeline.
 - `src/locales/` — localization files (i18n).
+- `src/utils/io/` — shared I/O budget and governor (`io-budget.ts`, `io-governor.ts`, `governed-blob.ts`). Main thread and workers coordinate OPFS access through a `SharedArrayBuffer` semaphore to avoid Chromium datapipe exhaustion.
 
 ## Testing Structure (`test/`)
 - `test/unit/` — Unit tests for internal logic, stores, and utils.

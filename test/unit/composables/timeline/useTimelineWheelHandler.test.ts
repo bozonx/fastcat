@@ -8,7 +8,7 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 
 import { useTimelineZoom } from '~/composables/timeline/useTimelineZoom';
 import { useTimelineWheelHandler } from '~/composables/timeline/useTimelineWheelHandler';
-import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
+import { pxPerSecondToZoom, pxToTimeUs } from '~/utils/timeline/geometry';
 
 vi.mock('~/composables/timeline/useTimelineZoom', () => ({
   useTimelineZoom: vi.fn(() => ({
@@ -328,6 +328,84 @@ describe('useTimelineWheelHandler', () => {
     const [zoomDelta, anchor] = mockHandleZoomWheel.mock.calls[0];
     expect(zoomDelta).toBe(-2);
     expect(anchor.anchorTimeUs).toBe(40_000_000);
+
+    wrapper.unmount();
+  });
+
+  it('uses the cursor anchor when zooming in from the cursor zoom boundary', async () => {
+    const { useTimelineStore } = await import('~/stores/timeline.store');
+    const timelineStore = useTimelineStore();
+    const durationUs = 100_000_000;
+    const viewportWidth = 500;
+    const cursorX = 120;
+    const minCursorZoom = pxPerSecondToZoom(viewportWidth / (durationUs / 1e6));
+
+    timelineStore.duration = durationUs;
+    timelineStore.setTimelineZoomExact(minCursorZoom);
+    mockWorkspaceStore.userSettings.mouse.timeline.wheel = 'zoom_horizontal';
+
+    const horizontalEl = document.createElement('div');
+    Object.defineProperty(horizontalEl, 'scrollLeft', {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(horizontalEl, 'clientWidth', {
+      value: viewportWidth,
+      writable: true,
+      configurable: true,
+    });
+
+    const videoEl = document.createElement('div');
+    videoEl.className = 'video-tracks-scroll';
+    videoEl.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        right: viewportWidth,
+        bottom: 200,
+        width: viewportWidth,
+        height: 200,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    const TestComp = defineComponent({
+      setup() {
+        useTimelineWheelHandler({
+          horizontalScrollEl: ref(horizontalEl),
+          videoScrollEl: ref(videoEl),
+          audioScrollEl: ref(document.createElement('div')),
+          rulerContainerRef: ref(document.createElement('div')),
+          scrollEl: ref(document.createElement('div')),
+          tracks: ref([]),
+        });
+        return () => null;
+      },
+    });
+
+    const wrapper = mount(TestComp);
+
+    const wheelEvent = new WheelEvent('wheel', {
+      deltaY: -20,
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(wheelEvent, 'clientX', {
+      value: cursorX,
+      configurable: true,
+    });
+    videoEl.dispatchEvent(wheelEvent);
+
+    await nextTick();
+
+    expect(mockHandleZoomWheel).toHaveBeenCalledTimes(1);
+
+    const [zoomDelta, anchor] = mockHandleZoomWheel.mock.calls[0];
+    expect(zoomDelta).toBe(2);
+    expect(anchor.anchorViewportX).toBe(cursorX);
+    expect(anchor.anchorTimeUs).toBe(pxToTimeUs(cursorX, minCursorZoom));
 
     wrapper.unmount();
   });
