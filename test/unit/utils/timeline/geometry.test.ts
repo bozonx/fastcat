@@ -15,6 +15,7 @@ import {
   sanitizeSnapTargetsUs,
   pickBestSnapCandidateUs,
   computeSnappedStartUs,
+  calculatePointerTimeUs,
 } from '~/utils/timeline/geometry';
 
 describe('zoomToPxPerSecond', () => {
@@ -214,5 +215,40 @@ describe('computeSnappedStartUs', () => {
       frameOffsetUs: 0,
     });
     expect(result).toBe(1_000_000);
+  });
+});
+
+describe('calculatePointerTimeUs', () => {
+  it('calculates pointer time code correctly within element width', () => {
+    const params = {
+      clientX: 150,
+      rectLeft: 100,
+      rectWidth: 200,
+      clipStartUs: 1_000_000,
+      zoom: 50,
+    };
+    expect(calculatePointerTimeUs(params)).toBe(6_000_000);
+  });
+
+  it('clamps pointer position within rectWidth', () => {
+    const params = {
+      clientX: 400,
+      rectLeft: 100,
+      rectWidth: 200,
+      clipStartUs: 1_000_000,
+      zoom: 50,
+    };
+    expect(calculatePointerTimeUs(params)).toBe(21_000_000);
+  });
+
+  it('clamps pointer position to 0 delta when clientX is to the left of rectLeft', () => {
+    const params = {
+      clientX: 50,
+      rectLeft: 100,
+      rectWidth: 200,
+      clipStartUs: 1_000_000,
+      zoom: 50,
+    };
+    expect(calculatePointerTimeUs(params)).toBe(1_000_000);
   });
 });

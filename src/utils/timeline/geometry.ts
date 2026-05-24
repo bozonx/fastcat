@@ -233,3 +233,14 @@ export function computeSnappedStartUs(params: {
 
   return Math.max(0, best);
 }
+
+export function calculatePointerTimeUs(params: {
+  clientX: number;
+  rectLeft: number;
+  rectWidth: number;
+  clipStartUs: number;
+  zoom: number;
+}): number {
+  const localX = Math.min(params.rectWidth, Math.max(0, params.clientX - params.rectLeft));
+  return params.clipStartUs + pxToTimeUs(localX, params.zoom);
+}

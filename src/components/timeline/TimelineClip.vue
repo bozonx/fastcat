@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useAttrs } from 'vue';
+import { computed, nextTick, ref, useAttrs, inject } from 'vue';
 import type {
   TimelineTrack,
   TimelineTrackItem,
@@ -12,13 +12,8 @@ import type {
   TimelineTrimItemPayload,
   TrackKind,
 } from '~/timeline/types';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { useMediaStore } from '~/stores/media.store';
-import { useSelectionStore } from '~/stores/selection.store';
-import { useUiStore } from '~/stores/ui.store';
-import { useProjectStore } from '~/stores/project.store';
-import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
-import { pxToTimeUs, timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry';
+import type { TimelineContext } from './context';
+import { pxToTimeUs, timelineRangeToRoundedPx, timeUsToPx, calculatePointerTimeUs } from '~/utils/timeline/geometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { cloneValue } from '~/utils/clone';
@@ -30,17 +25,11 @@ import {
   isAudio,
   clipHasAudio,
 } from '~/utils/timeline/clip';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipDrop } from '~/composables/timeline/useClipDrop';
 import { useClipInteractions } from '~/composables/timeline/useClipInteractions';
 import { isClipFreePosition } from '~/utils/timeline/clip-checks';
 import { useClickOrDrag } from '~/composables/timeline/useClickOrDrag';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFocusStore } from '~/stores/focus.store';
-import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useProjectTabsStore } from '~/stores/project-tabs.store';
-import { useAppClipboard } from '~/composables/useAppClipboard';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
 
@@ -127,14 +116,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const timelineStore = useTimelineStore();
-const selectionStore = useSelectionStore();
-const mediaStore = useMediaStore();
-const uiStore = useUiStore();
-const projectStore = useProjectStore();
-const settingsStore = useTimelineSettingsStore();
-const workspaceStore = useWorkspaceStore();
-const clipboardStore = useAppClipboard();
+const timelineContext = inject<TimelineContext>('timelineContext')!;
 
 const isHovered = ref(false);
 const isTransitionCreateHandleActive = ref(false);
@@ -148,7 +130,7 @@ const effectiveTimelineRange = computed(() => {
 });
 
 const clipGeometry = computed(() =>
-  timelineRangeToRoundedPx(effectiveTimelineRange.value, timelineStore.timelineZoom, 2),
+  timelineRangeToRoundedPx(effectiveTimelineRange.value, timelineContext.zoom.value, 2),
 );
 const clipWidthPx = computed(() => clipGeometry.value.widthPx);
 const clipLeftPx = computed(() => clipGeometry.value.leftPx);
@@ -198,7 +180,7 @@ const trimOverlay = computed<TrimOverlayView | null>(() => {
   const startPercent = hasSourceRange ? (sourceRangeStartUs / sourceDurationUs) * 100 : 0;
   const widthPercent = hasSourceRange ? (sourceRangeDurationUs / sourceDurationUs) * 100 : 100;
 
-  const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+  const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase?.fps);
   const timecode = `${preview.deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
     timeUs: Math.abs(preview.deltaUs),
     fps,
@@ -223,10 +205,10 @@ function toggleFadeCurve(edge: 'in' | 'out') {
   const currentCurve = clipItem.value[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
   const nextCurve = currentCurve === 'logarithmic' ? 'linear' : 'logarithmic';
 
-  timelineStore.updateClipProperties(props.track.id, props.item.id, {
+  timelineContext.updateClipProperties(props.track.id, props.item.id, {
     [curveProp]: nextCurve,
   });
-  void timelineStore.requestTimelineSave({ immediate: true });
+  void timelineContext.requestTimelineSave({ immediate: true });
 }
 
 function onContextMenu(e: MouseEvent) {
@@ -257,13 +239,13 @@ const {
   onDragStart: (e) => {
     if (clipItem.value?.locked || props.track.locked) return false;
     // On mobile, dragging is only allowed when the clip is already selected
-    if (props.isMobile && !timelineStore.selectedItemIds.includes(props.item.id)) return false;
+    if (props.isMobile && !timelineContext.selectedItemIds.value.includes(props.item.id)) return false;
     emit('startMoveItem', e, {
       trackId: props.track.id,
       itemId: props.item.id,
       startUs: props.item.timelineRange.startUs,
       mode:
-        settingsStore.toolbarDragModeEnabled && settingsStore.toolbarDragMode === 'slip'
+        timelineContext.toolbarDragModeEnabled.value && timelineContext.toolbarDragMode.value === 'slip'
           ? 'slip'
           : 'move',
     });
@@ -294,10 +276,10 @@ const {
 });
 
 function onClipPointerdown(e: PointerEvent) {
-  if (timelineStore.isTrimModeActive) return;
+  if (timelineContext.isTrimModeActive.value) return;
   if (!props.canEditClipContent || !clipItem.value) return;
 
-  focusStore.setPanelFocus('timeline');
+  timelineContext.setPanelFocus('timeline');
 
   if (props.isMobile && e.pointerType === 'touch') {
     e.stopPropagation();
@@ -326,16 +308,16 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
   track: computed(() => props.track),
   item: computed(() => props.item),
   canEditClipContent: computed(() => props.canEditClipContent),
-  isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
-  userSettings: computed(() => workspaceStore.userSettings),
+  isTrimModeActive: computed(() => timelineContext.isTrimModeActive.value),
+  userSettings: computed(() => timelineContext.userSettings.value),
   selectTimelineItems: (ids) =>
-    timelineStore.selectTimelineItems(
+    timelineContext.selectTimelineItems(
       ids.map((id) => ({ trackId: props.track.id, itemId: id, kind: 'clip' as const })),
     ),
-  trimToPlayheadLeftNoRipple: (target) => void timelineStore.trimToPlayheadLeftNoRipple(target),
-  trimToPlayheadRightNoRipple: (target) => void timelineStore.trimToPlayheadRightNoRipple(target),
-  splitClipAtPlayhead: (target) => void timelineStore.splitClipAtPlayhead(target),
-  splitClipAtTime: (target, atUs) => void timelineStore.splitClipAtTime(target, atUs),
+  trimToPlayheadLeftNoRipple: (target) => void timelineContext.trimToPlayheadLeftNoRipple(target),
+  trimToPlayheadRightNoRipple: (target) => void timelineContext.trimToPlayheadRightNoRipple(target),
+  splitClipAtPlayhead: (target) => void timelineContext.splitClipAtPlayhead(target),
+  splitClipAtTime: (target, atUs) => void timelineContext.splitClipAtTime(target, atUs),
   getPointerTimeUs: getClipPointerTimeUs,
   emitSelectItem: (e, itemId) => emit('selectItem', e, itemId),
   didStartDrag,
@@ -345,7 +327,7 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
 const effectiveSourceRange = computed(() => {
   const preview = props.trimPreview;
   if (preview && preview.itemId === props.item.id && clipItem.value) {
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase?.fps);
     const hasFixedSourceDuration =
       (clipItem.value.clipType === 'media' && !clipItem.value.isImage) ||
       clipItem.value.clipType === 'timeline';
@@ -384,24 +366,20 @@ function onClipClick(e: MouseEvent) {
   onClipClickInteraction(e);
 }
 
-const focusStore = useFocusStore();
-const fileManagerStore = useFileManagerStore();
-const projectTabsStore = useProjectTabsStore();
-const fileManager = useFileManager();
 const safeClip = computed(() => clipItem.value!);
 const safeTrackKind = computed<TrackKind>(() => props.track.kind);
 
 const { handleSelectInFileManager, handleOpenNestedTimeline } = useClipPropertiesActions({
   clip: computed(() => clipItem.value!),
   trackKind: computed(() => props.track.kind),
-  timelineStore,
-  projectStore,
-  uiStore,
-  fileManagerStore,
-  selectionStore,
-  focusStore,
-  fileManager,
-  setActiveTab: projectTabsStore.setActiveTab,
+  timelineStore: timelineContext as any,
+  projectStore: timelineContext as any,
+  uiStore: timelineContext as any,
+  fileManagerStore: timelineContext as any,
+  selectionStore: timelineContext as any,
+  focusStore: timelineContext as any,
+  fileManager: timelineContext as any,
+  setActiveTab: timelineContext.setActiveTab,
 });
 
 function onClipDblClick() {
@@ -419,16 +397,16 @@ const { isDraggingOver, handleDragLeave, handleDrop } = useClipDrop({
   clipItem,
   canEditClipContent: computed(() => props.canEditClipContent),
   updateClipProperties: (trackId, itemId, patch) =>
-    timelineStore.updateClipProperties(trackId, itemId, patch),
+    timelineContext.updateClipProperties(trackId, itemId, patch),
   updateClipTransition: (trackId, itemId, patch) =>
-    timelineStore.updateClipTransition(trackId, itemId, patch),
+    timelineContext.updateClipTransition(trackId, itemId, patch),
   selectTimelineItem: (trackId, itemId, kind) =>
-    selectionStore.selectTimelineItem(trackId, itemId, kind),
+    timelineContext.selectTimelineItem(trackId, itemId, kind),
   selectTimelineTransition: (trackId, itemId, edge) =>
-    selectionStore.selectTimelineTransition(trackId, itemId, edge),
-  triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
+    timelineContext.selectTimelineTransition(trackId, itemId, edge),
+  triggerScrollToEffects: () => timelineContext.triggerScrollToEffects(),
   defaultTransitionDurationUs: computed(
-    () => workspaceStore.userSettings.timeline.defaultTransitionDurationUs,
+    () => timelineContext.userSettings.value.timeline.defaultTransitionDurationUs,
   ),
 });
 
@@ -438,13 +416,13 @@ const isMediaMissing = computed(() => {
     (clipItem.value.clipType !== 'media' && clipItem.value.clipType !== 'timeline')
   )
     return false;
-  return mediaStore.missingPaths[clipItem.value.source.path] === true;
+  return timelineContext.missingPaths.value[clipItem.value.source.path] === true;
 });
 
 const isUnsupported = computed(() => {
   if (!clipItem.value || clipItem.value.clipType !== 'media') return false;
   const path = clipItem.value.source.path;
-  const meta = mediaStore.mediaMetadata[path];
+  const meta = timelineContext.mediaMetadata.value[path];
   if (!meta) return false;
 
   const isVideoType = isVideo(props.item, props.track);
@@ -472,74 +450,74 @@ const {
   clip: safeClip,
   trackKind: safeTrackKind,
   updateClipProperties: (trackId, itemId, props) =>
-    timelineStore.updateClipProperties(trackId, itemId, props),
+    timelineContext.updateClipProperties(trackId, itemId, props),
   updateClipTransition: (trackId, itemId, patch) =>
-    timelineStore.updateClipTransition(trackId, itemId, patch),
+    timelineContext.updateClipTransition(trackId, itemId, patch),
 });
 
 const { contextMenuItems } = useClipContextMenu({
   track: computed(() => props.track),
   item: computed(() => props.item),
   canEditClipContent: computed(() => props.canEditClipContent),
-  timelineDoc: computed(() => timelineStore.timelineDoc),
-  projectSettings: computed(() => projectStore.projectSettings),
+  timelineDoc: computed(() => timelineContext.timelineDoc.value),
+  projectSettings: computed(() => timelineContext.projectSettings.value),
   defaultTransitionDurationUs: computed(
-    () => workspaceStore.userSettings.timeline.defaultTransitionDurationUs,
+    () => timelineContext.userSettings.value.timeline.defaultTransitionDurationUs,
   ),
-  selectedItemIds: computed(() => timelineStore.selectedItemIds),
-  applyTimelineCommand: (cmd) => timelineStore.applyTimeline(cmd),
-  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
+  selectedItemIds: computed(() => timelineContext.selectedItemIds.value),
+  applyTimelineCommand: (cmd) => timelineContext.applyTimeline(cmd),
+  batchApplyTimeline: (cmds) => timelineContext.batchApplyTimeline(cmds),
   updateClipProperties: (trackId, itemId, p) =>
-    timelineStore.updateClipProperties(trackId, itemId, p),
+    timelineContext.updateClipProperties(trackId, itemId, p),
   updateClipTransition: (trackId, itemId, p) =>
-    timelineStore.updateClipTransition(trackId, itemId, p),
-  requestTimelineSave: (opts) => timelineStore.requestTimelineSave(opts),
-  selectTransition: (p) => timelineStore.selectTransition(p),
-  clearSelection: () => selectionStore.clearSelection(),
+    timelineContext.updateClipTransition(trackId, itemId, p),
+  requestTimelineSave: (opts) => timelineContext.requestTimelineSave(opts),
+  selectTransition: (p) => timelineContext.selectTransition(p),
+  clearSelection: () => timelineContext.clearSelection(),
   selectTimelineTransition: (trackId, itemId, edge) =>
-    selectionStore.selectTimelineTransition(trackId, itemId, edge),
+    timelineContext.selectTimelineTransition(trackId, itemId, edge),
   emitOpenSpeedModal: (p) => emit('openSpeedModal', p),
   emitClipAction: (p) => emit('clipAction', p),
   copySelectedClips: () => {
-    clipboardStore.setClipboardPayload({
+    timelineContext.setClipboardPayload({
       source: 'timeline',
       operation: 'copy',
-      items: (timelineStore.copySelectedClips() || []).map((item) => ({
+      items: (timelineContext.copySelectedClips() || []).map((item) => ({
         sourceTrackId: item.sourceTrackId,
         clip: item.clip,
       })),
     });
   },
   cutSelectedClips: () => {
-    clipboardStore.setClipboardPayload({
+    timelineContext.setClipboardPayload({
       source: 'timeline',
       operation: 'cut',
-      items: (timelineStore.cutSelectedClips() || []).map((item) => ({
+      items: (timelineContext.cutSelectedClips() || []).map((item) => ({
         sourceTrackId: item.sourceTrackId,
         clip: item.clip,
       })),
     });
   },
   pasteClips: (insertStartUs?: number) => {
-    const payload = clipboardStore.clipboardPayload;
+    const payload = timelineContext.clipboardPayload.value;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-    void timelineStore.pasteClips(payload.items, { insertStartUs });
-    if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
+    void timelineContext.pasteClips({ insertStartUs });
+    if (payload.operation === 'cut') timelineContext.setClipboardPayload(null);
   },
   get hasTimelineClipboard() {
-    return clipboardStore.hasTimelinePayload;
+    return timelineContext.hasTimelinePayload.value;
   },
   copyClipParameters,
   pasteClipParameters: openPasteClipParameters,
   getClipParametersSnapshot: () => {
-    const payload = clipboardStore.clipboardPayload;
+    const payload = timelineContext.clipboardPayload.value;
     return payload?.source === 'clipParameters' ? payload.snapshot : null;
   },
   t,
 });
 
 const isFreePosition = computed(() =>
-  isClipFreePosition(clipItem.value, timelineStore.timelineDoc, timelineStore.fps || 30),
+  isClipFreePosition(clipItem.value, timelineContext.timelineDoc.value, timelineContext.fps.value || 30),
 );
 
 const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(() => {
@@ -548,7 +526,7 @@ const transitionInOverlayGuideStyle = computed<Record<string, string> | null>(()
     clipItem.value,
     'in',
     clipWidthPx.value,
-    (us) => timeUsToPx(us, timelineStore.timelineZoom),
+    (us) => timeUsToPx(us, timelineContext.zoom.value),
   );
   if (offsetPx === null) return null;
 
@@ -563,7 +541,7 @@ const transitionOutOverlayGuideStyle = computed<Record<string, string> | null>((
     clipItem.value,
     'out',
     clipWidthPx.value,
-    (us) => timeUsToPx(us, timelineStore.timelineZoom),
+    (us) => timeUsToPx(us, timelineContext.zoom.value),
   );
   if (offsetPx === null) return null;
 
@@ -577,8 +555,13 @@ function getClipPointerTimeUs(e: MouseEvent): number | null {
   if (!el) return null;
 
   const rect = el.getBoundingClientRect();
-  const localX = Math.min(rect.width, Math.max(0, e.clientX - rect.left));
-  return props.item.timelineRange.startUs + pxToTimeUs(localX, timelineStore.timelineZoom);
+  return calculatePointerTimeUs({
+    clientX: e.clientX,
+    rectLeft: rect.left,
+    rectWidth: rect.width,
+    clipStartUs: props.item.timelineRange.startUs,
+    zoom: timelineContext.zoom.value,
+  });
 }
 
 function handleTransitionCreate(
@@ -590,7 +573,7 @@ function handleTransitionCreate(
   const defaultUs = Math.max(
     0,
     Math.round(
-      Number(workspaceStore.userSettings.timeline.defaultTransitionDurationUs ?? 1_000_000),
+      Number(timelineContext.userSettings.value.timeline.defaultTransitionDurationUs ?? 1_000_000),
     ),
   );
   const defaultDurationUs = Math.min(
@@ -603,7 +586,7 @@ function handleTransitionCreate(
     // Capture snapshot BEFORE creating so undo restores to "no transition" state.
     // History will be recorded on drag release by startResizeTransition.
     // Clone upfront so the snapshot is independent of subsequent doc mutations.
-    const docBeforeDrag = cloneValue(timelineStore.timelineDoc);
+    const docBeforeDrag = cloneValue(timelineContext.timelineDoc.value);
 
     const transitionPatch = {
       type: 'dissolve',
@@ -612,7 +595,7 @@ function handleTransitionCreate(
       curve: 'linear' as const,
     };
 
-    timelineStore.updateClipTransition(
+    timelineContext.updateClipTransition(
       props.track.id,
       props.item.id,
       payload.edge === 'in'
@@ -652,7 +635,7 @@ function handleTransitionCreate(
       curve: 'linear' as const,
     };
 
-    timelineStore.updateClipTransition(
+    timelineContext.updateClipTransition(
       props.track.id,
       props.item.id,
       payload.edge === 'in'
@@ -678,7 +661,7 @@ function handleTransitionCreate(
         width: `${clipWidthPx}px`,
         zIndex: isHovered
           ? 'var(--z-clip-handles)'
-          : timelineStore.selectedItemIds.includes(item.id)
+          : timelineContext.selectedItemIds.value.includes(item.id)
             ? 'var(--z-clip-selected)'
             : isDraggingOver
               ? 'var(--z-clip-dragging-over)'
@@ -687,7 +670,7 @@ function handleTransitionCreate(
       }"
       :class="[
         getClipClass(item, track),
-        timelineStore.selectedItemIds.includes(item.id)
+        timelineContext.selectedItemIds.value.includes(item.id)
           ? 'outline-(--color-primary) outline-2 z-10 shadow-lg'
           : 'outline-transparent',
         clipItem && typeof clipItem.freezeFrameSourceUs === 'number'
@@ -696,7 +679,7 @@ function handleTransitionCreate(
         clipItem &&
         (Boolean(clipItem.disabled) ||
           Boolean(track.videoHidden) ||
-          (timelineStore.isAnyTrackSoloed && !track.audioSolo))
+          (timelineContext.timelineDoc.value?.tracks.some((t) => t.audioSolo) && !track.audioSolo))
           ? 'opacity-40'
           : '',
         isMediaMissing ? 'bg-red-600! border-red-800! text-white!' : '',
@@ -753,7 +736,7 @@ function handleTransitionCreate(
           v-if="clipItem"
           :clip="clipItem"
           :track="track"
-          :zoom="timelineStore.timelineZoom"
+          :zoom="timelineContext.zoom.value"
           :clip-width-px="clipWidthPx"
           :track-height="trackHeight"
           :selected-transition="selectedTransition"
@@ -774,19 +757,19 @@ function handleTransitionCreate(
         />
 
         <ClipAudioFades
-          v-if="clipItem && clipHasAudio(item, track, mediaStore.mediaMetadata)"
+          v-if="clipItem && clipHasAudio(item, track, timelineContext.mediaMetadata.value)"
           :clip="clipItem"
           :item="item"
           :track="track"
           :track-height="trackHeight"
-          :zoom="timelineStore.timelineZoom"
+          :zoom="timelineContext.zoom.value"
           :clip-width-px="clipWidthPx"
           :can-edit="canEditClipContent"
           :is-dragging="isDraggingCurrentItem || isMovePreviewCurrentItem"
           :is-resizing-volume="resizeVolume?.itemId === item.id"
           :is-mobile="isMobile"
           :is-hovered="isHovered"
-          :is-selected="timelineStore.selectedItemIds.includes(item.id)"
+          :is-selected="timelineContext.selectedItemIds.value.includes(item.id)"
           :scroll-left="scrollLeft"
           :viewport-width="viewportWidth"
           @start-resize-fade="
@@ -826,14 +809,14 @@ function handleTransitionCreate(
             :width="clipWidthPx"
             :scroll-left="scrollLeft ?? 0"
             :viewport-width="viewportWidth ?? 0"
-            :clip-start-px="timeUsToPx(effectiveTimelineRange.startUs, timelineStore.timelineZoom)"
+            :clip-start-px="timeUsToPx(effectiveTimelineRange.startUs, timelineContext.zoom.value)"
           />
           <TimelineAudioWaveform
             v-if="
               effectiveClipItem &&
               effectiveClipItem.showWaveform !== false &&
               (isAudio(item, track) ||
-                (isVideo(item, track) && clipHasAudio(item, track, mediaStore.mediaMetadata)))
+                (isVideo(item, track) && clipHasAudio(item, track, timelineContext.mediaMetadata.value)))
             "
             :item="effectiveClipItem"
           />

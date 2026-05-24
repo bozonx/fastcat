@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, toRefs, watch } from 'vue';
+import { ref, computed, toRefs, watch, provide } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -19,6 +19,11 @@ import { timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry'
 import { useTimelineClipHandleResize } from '~/composables/timeline/useTimelineClipHandleResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
 import { useFocusStore } from '~/stores/focus.store';
+import { useProjectStore } from '~/stores/project.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
@@ -40,6 +45,82 @@ const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const focusStore = useFocusStore();
 const mediaStore = useMediaStore();
+const projectStore = useProjectStore();
+const projectTabsStore = useProjectTabsStore();
+const fileManagerStore = useFileManagerStore();
+const fileManager = useFileManager();
+const uiStore = useUiStore();
+const clipboardStore = useAppClipboard();
+const settingsStore = useTimelineSettingsStore();
+
+provide('timelineContext', {
+  zoom: computed(() => timelineStore.timelineZoom),
+  fps: computed(() => timelineStore.fps),
+  currentTime: computed(() => timelineStore.currentTime),
+  isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
+  selectedItemIds: computed(() => timelineStore.selectedItemIds),
+  userSettings: computed(() => workspaceStore.userSettings),
+  missingPaths: computed(() => mediaStore.missingPaths),
+  mediaMetadata: computed(() => mediaStore.mediaMetadata),
+  clipboardPayload: computed(() => clipboardStore.clipboardPayload),
+  hasTimelinePayload: computed(() => clipboardStore.hasTimelinePayload),
+  timelineDoc: computed(() => timelineStore.timelineDoc),
+  projectSettings: computed(() => projectStore?.projectSettings ?? {}),
+  currentView: computed(() => projectStore?.currentView ?? ''),
+  toolbarDragModeEnabled: computed(() => settingsStore.toolbarDragModeEnabled),
+  toolbarDragMode: computed(() => settingsStore.toolbarDragMode),
+
+  updateClipProperties: (trackId, itemId, props, options) =>
+    timelineStore.updateClipProperties(trackId, itemId, props, options),
+  updateClipTransition: (trackId, itemId, patch, options) =>
+    timelineStore.updateClipTransition(trackId, itemId, patch, options),
+  requestTimelineSave: (options) => timelineStore.requestTimelineSave(options),
+  splitClipAtTime: (target, atUs) => timelineStore.splitClipAtTime(target, atUs),
+  splitClipAtPlayhead: (target) => timelineStore.splitClipAtPlayhead(target),
+  selectTimelineItems: (items) => timelineStore.selectTimelineItems(items),
+  trimToPlayheadLeftNoRipple: (target) => timelineStore.trimToPlayheadLeftNoRipple(target),
+  trimToPlayheadRightNoRipple: (target) => timelineStore.trimToPlayheadRightNoRipple(target),
+  applyTimeline: (cmd) => timelineStore.applyTimeline(cmd),
+  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
+  selectTransition: (payload) => timelineStore.selectTransition(payload),
+  selectTimelineTransition: (trackId, itemId, edge) =>
+    selectionStore.selectTimelineTransition(trackId, itemId, edge),
+  selectTimelineItem: (trackId, itemId, kind) =>
+    selectionStore.selectTimelineItem(trackId, itemId, kind),
+  clearSelection: () => selectionStore.clearSelection(),
+  setClipboardPayload: (payload) => clipboardStore.setClipboardPayload(payload),
+  triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
+  copySelectedClips: () => timelineStore.copySelectedClips() || [],
+  cutSelectedClips: () => timelineStore.cutSelectedClips() || [],
+  pasteClips: (options) => timelineStore.pasteClips(clipboardStore.clipboardPayload?.items || [], options),
+
+  unlinkAudioFromVideo: (input) => timelineStore.unlinkAudioFromVideo(input),
+  renameItem: (trackId, itemId, name) => timelineStore.renameItem(trackId, itemId, name),
+  updateTrackProperties: (trackId, patch) => timelineStore.updateTrackProperties(trackId, patch),
+  goToFiles: () => projectStore.goToFiles(),
+  openTimelineFile: (path) => projectStore.openTimelineFile(path),
+  goToCut: () => projectStore.goToCut(),
+  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
+  triggerScrollToFileTreeEntry: (path) => uiStore.triggerScrollToFileTreeEntry(path),
+  openFolder: (entry) => fileManagerStore.openFolder(entry),
+  selectFsEntry: (entry) => selectionStore.selectFsEntry(entry),
+  setTempFocus: (panel) => focusStore.setTempFocus(panel),
+  setPanelFocus: (panel) => focusStore.setPanelFocus(panel),
+  loadProjectDirectory: () => fileManager.loadProjectDirectory(),
+  findEntryByPath: (path) => fileManager.findEntryByPath(path),
+  toggleDirectory: (entry) => fileManager.toggleDirectory(entry),
+  setActiveTab: (tabId) => projectTabsStore.setActiveTab(tabId),
+
+  mediaReplaceTarget: computed({
+    get: () => uiStore.mediaReplaceTarget,
+    set: (val) => { uiStore.mediaReplaceTarget = val; },
+  }),
+  isMediaReplaceModalOpen: computed({
+    get: () => uiStore.isMediaReplaceModalOpen,
+    set: (val) => { uiStore.isMediaReplaceModalOpen = val; },
+  }),
+});
+
 const { selectedTransition } = storeToRefs(timelineStore);
 
 const { isTrackVisuallySelected } = selectionStore;
@@ -370,7 +451,6 @@ async function applyAutoMontage(settings: {
   });
 }
 
-const uiStore = useUiStore();
 
 watch(
   () => uiStore.openAutoMontageTrigger,
@@ -457,7 +537,6 @@ function handleRenameTrack(name: string) {
   trackToRename.value = null;
 }
 
-const clipboardStore = useAppClipboard();
 const { getTrackContextMenuItems } = useTrackContextMenu({
   onRequestDelete: (track) => timelineStore.deleteTrack(track.id, { allowNonEmpty: true }),
   onRequestRename: (track) => {
