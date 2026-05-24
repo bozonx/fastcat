@@ -1439,6 +1439,8 @@
         "focus": "Focus",
         "fullscreen": "Fullscreen",
         "mute": "Toggle Monitor Mute",
+        "navigateBack": "Back",
+        "navigateForward": "Forward",
         "newTimeline": "Create new timeline",
         "recent": "Recent",
         "redo": "Redo",
