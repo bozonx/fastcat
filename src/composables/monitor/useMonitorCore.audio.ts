@@ -2,6 +2,7 @@ import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 import type { AudioClipEffect, ClipEffect } from '~/timeline/types';
 import type { WorkerTimelineClip } from './types';
 import { getAudioSourceKey } from './useMonitorCore.helpers';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export type MonitorAudioClipDescriptor = AudioEngineClip;
 
@@ -23,7 +24,7 @@ export async function getFileHandleForAudio(params: {
   const cached = params.audioHandleCache.get(cacheKey);
   if (cached) {
     try {
-      await cached.getFile();
+      await withFileIoSlot(() => cached.getFile());
       return cached;
     } catch {
       params.audioHandleCache.delete(cacheKey);

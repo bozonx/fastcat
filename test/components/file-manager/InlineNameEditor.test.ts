@@ -73,8 +73,9 @@ describe('InlineNameEditor', () => {
     expect(input.classes()).toContain('border-red-500');
   });
 
-  it('does not cancel and refocusses when blur relatedTarget is parent', async () => {
+  it('does not cancel and refocusses when blur relatedTarget is parent with data-entry-path', async () => {
     const container = document.createElement('div');
+    container.setAttribute('data-entry-path', 'some-path');
     const wrapper = mount(InlineNameEditor, {
       props: {
         initialName: 'test.mp4',
@@ -97,6 +98,33 @@ describe('InlineNameEditor', () => {
     expect(focusSpy).toHaveBeenCalled();
     expect(wrapper.emitted('cancel')).toBeFalsy();
     wrapper.unmount();
+  });
+
+  it('cancels on blur when relatedTarget is general container (contains input but has no data-entry-path)', async () => {
+    vi.useFakeTimers();
+    const container = document.createElement('div');
+    const wrapper = mount(InlineNameEditor, {
+      props: {
+        initialName: 'test.mp4',
+        isFolder: false,
+        existingNames: [],
+      },
+      attachTo: container,
+    });
+
+    await nextTick();
+    vi.advanceTimersByTime(150);
+
+    const inputWrapper = wrapper.find('input');
+    await inputWrapper.trigger('blur', {
+      relatedTarget: container,
+    });
+
+    vi.advanceTimersByTime(200);
+
+    expect(wrapper.emitted('cancel')).toBeTruthy();
+    wrapper.unmount();
+    vi.useRealTimers();
   });
 
   it('cancels on blur when relatedTarget is not parent and ready', async () => {

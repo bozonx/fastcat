@@ -214,7 +214,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         })) as FileSystemFileHandle | null;
         if (!handle) throw new VfsNotFoundError(path);
         try {
-          return await handle.getFile();
+          return await withFileIoSlot(() => handle.getFile());
         } catch (e) {
           throw wrapPlatformError(e, path);
         }
@@ -522,7 +522,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
         if (handle.kind === 'file') {
           try {
-            const file = await (handle as FileSystemFileHandle).getFile();
+            const file = await withFileIoSlot(() => (handle as FileSystemFileHandle).getFile());
             return {
               size: file.size,
               lastModified: file.lastModified,
@@ -563,7 +563,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         })) as FileSystemFileHandle | null;
         if (!handle) return null;
         try {
-          return await handle.getFile();
+          return await withFileIoSlot(() => handle.getFile());
         } catch (e) {
           throw wrapPlatformError(e, path);
         }

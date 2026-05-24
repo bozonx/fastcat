@@ -10,6 +10,7 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export interface ExtendedFsEntry extends FsEntry {
   size?: number;
@@ -60,7 +61,7 @@ export function useFileBrowserEntries({
             if (visitedEntries >= maxEntries) return;
             if (entry.kind === 'file') {
               try {
-                const file = await entry.getFile();
+                const file = await withFileIoSlot(() => entry.getFile());
                 totalSize += file.size;
               } catch {
                 // skip

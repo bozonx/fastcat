@@ -77,7 +77,13 @@ function onBlur(event: FocusEvent) {
 
   // Если фокус переходит на родительский контейнер (карточку/строку файла), который содержит наш инпут,
   // то это, скорее всего, контекстное меню восстанавливает фокус при закрытии. Возвращаем фокус на инпут.
-  if (relatedTarget && (relatedTarget.contains(inputRef.value) || inputRef.value?.contains(relatedTarget))) {
+  // Мы также проверяем наличие атрибута data-entry-path, чтобы отличить карточку файла от общих контейнеров
+  // файлового менеджера, по пустому месту которых пользователь кликнул для закрытия переименования.
+  if (
+    relatedTarget &&
+    relatedTarget.hasAttribute('data-entry-path') &&
+    relatedTarget.contains(inputRef.value)
+  ) {
     focusAndSelectName();
     return;
   }

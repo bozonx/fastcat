@@ -116,7 +116,7 @@ export async function transcribeAudioFile(
   const file =
     input.file instanceof File
       ? input.file
-      : await withFileIoSlot(() => input.file.getFile());
+      : await withFileIoSlot(async () => (input.file as FileSystemFileHandle).getFile());
   const language = normalizeLanguage(input.language);
   const models = normalizeModels(input.userSettings.integrations.stt.models);
   const contentType = normalizeFileType(input.fileType, file);

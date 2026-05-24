@@ -1,7 +1,7 @@
 import { rasterizeSvgToBlob } from '~/utils/svg';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
 
@@ -85,7 +85,7 @@ export async function ensureVectorImageRaster(
 ): Promise<FileSystemFileHandle> {
   const width = normalizeDimension(params.width);
   const height = normalizeDimension(params.height);
-  const sourceFile = await params.sourceFileHandle.getFile();
+  const sourceFile = await withFileIoSlot(() => params.sourceFileHandle.getFile());
 
   const cacheRoot = await ensureVectorImageCacheRoot({
     projectId: params.projectId,

@@ -9,6 +9,7 @@ import { getSttModelsDir, isModelDownloaded } from './model-storage';
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import SttWorker from '~/workers/stt.worker.ts?worker';
 import AudioDecodeWorker from '~/workers/audio-decode.worker.ts?worker';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export type { LocalTranscriptionProgress };
 
@@ -141,7 +142,10 @@ export async function transcribeLocally(
 
   onProgress?.({ status: 'decoding' });
 
-  const file = input.file instanceof File ? input.file : await input.file.getFile();
+  const file =
+    input.file instanceof File
+      ? input.file
+      : await withFileIoSlot(async () => (input.file as FileSystemFileHandle).getFile());
   const finalAudio = await decodeAudioForStt(file, input.signal);
 
   const worker = getSttWorker();
