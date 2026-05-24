@@ -1,7 +1,7 @@
 import type { AnyPanelFocus } from '~/stores/focus.store';
 import type { HotkeyCommandId, HotkeyCombo } from './defaultHotkeys';
 import { DEFAULT_HOTKEYS } from './defaultHotkeys';
-import { hotkeyFromKeyboardEvent } from './hotkeyUtils';
+import { hotkeyFromKeyboardEvent, parseHotkeyCombo } from './hotkeyUtils';
 import type { FastCatUserSettings } from '../settings/defaults';
 
 export interface HotkeyCommandPolicy {
@@ -19,6 +19,20 @@ export const DEFAULT_HOTKEY_COMMAND_POLICY: Readonly<HotkeyCommandPolicy> = {
   repeatable: false,
   blurActiveElementOnExecute: false,
 };
+
+const EDITABLE_OVERRIDE_COMMANDS: readonly HotkeyCommandId[] = [
+  'general.save',
+  'general.mute',
+  'general.volumeUp',
+  'general.volumeDown',
+];
+
+function comboHasCtrl(combo: HotkeyCombo | null | undefined): boolean {
+  if (!combo) return false;
+  const parsed = parseHotkeyCombo(combo);
+  if (!parsed) return false;
+  return parsed.ctrl;
+}
 
 export const HOTKEY_COMMAND_POLICIES: Readonly<
   Partial<Record<HotkeyCommandId, HotkeyCommandPolicy>>
@@ -124,8 +138,9 @@ export function canExecuteHotkeyCommand(params: {
   hasBlockingModalState: boolean;
   isEditableEventTarget: boolean;
   isEditableActiveElement: boolean;
+  pressedCombo?: HotkeyCombo | null;
 }): boolean {
-  const { cmdId, hasBlockingModalState, isEditableEventTarget, isEditableActiveElement } = params;
+  const { cmdId, hasBlockingModalState, isEditableEventTarget, isEditableActiveElement, pressedCombo } = params;
   const policy = getHotkeyCommandPolicy(cmdId);
 
   if (hasBlockingModalState && !policy.allowWhenModalOpen) {
@@ -133,6 +148,9 @@ export function canExecuteHotkeyCommand(params: {
   }
 
   if (!policy.allowInEditable && (isEditableEventTarget || isEditableActiveElement)) {
+    if (EDITABLE_OVERRIDE_COMMANDS.includes(cmdId) && comboHasCtrl(pressedCombo)) {
+      return true;
+    }
     return false;
   }
 

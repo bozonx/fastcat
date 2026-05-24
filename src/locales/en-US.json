@@ -1434,7 +1434,7 @@
       "general": {
         "addMarker": "Create marker at playhead",
         "delete": "Delete",
-        "deselect": "Deselect",
+        "deselect": "Deselect / Close modals",
         "focus": "Focus",
         "fullscreen": "Fullscreen",
         "mute": "Toggle Monitor Mute",

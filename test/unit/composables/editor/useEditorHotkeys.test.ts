@@ -471,4 +471,87 @@ describe('useEditorHotkeys', () => {
       togglePlaybackSpy.mockClear();
     }
   });
+
+  it('blurs button elements on pointerdown', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    button.focus();
+    expect(document.activeElement).toBe(button);
+
+    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(document.activeElement).not.toBe(button);
+
+    button.remove();
+  });
+
+  it('blurs input button elements on pointerdown', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const input = document.createElement('input');
+    input.type = 'submit';
+    document.body.appendChild(input);
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    input.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    expect(document.activeElement).not.toBe(input);
+
+    input.remove();
+  });
+
+  it('allows Ctrl+S save in editable inputs', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    const saveTimelineSpy = vi.fn();
+    timelineStore.saveTimeline = saveTimelineSpy;
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 's',
+        code: 'KeyS',
+        ctrlKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(saveTimelineSpy).toHaveBeenCalled();
+    input.remove();
+  });
+
+  it('blocks Shift+S save in editable inputs', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'general.save': ['Shift+S'],
+    };
+
+    projectStore.setView('cut');
+    const saveTimelineSpy = vi.fn();
+    timelineStore.saveTimeline = saveTimelineSpy;
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 's',
+        code: 'KeyS',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(saveTimelineSpy).not.toHaveBeenCalled();
+    input.remove();
+  });
 });

@@ -143,6 +143,58 @@ describe('canExecuteHotkeyCommand', () => {
       }),
     ).toBe(true);
   });
+
+  it('allows save/mute/volume in editable only with Ctrl combo', () => {
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'general.save',
+        hasBlockingModalState: false,
+        isEditableEventTarget: true,
+        isEditableActiveElement: false,
+        pressedCombo: 'Ctrl+S',
+      }),
+    ).toBe(true);
+
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'general.save',
+        hasBlockingModalState: false,
+        isEditableEventTarget: true,
+        isEditableActiveElement: false,
+        pressedCombo: 'Shift+S',
+      }),
+    ).toBe(false);
+
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'general.mute',
+        hasBlockingModalState: false,
+        isEditableEventTarget: false,
+        isEditableActiveElement: true,
+        pressedCombo: 'Ctrl+Q',
+      }),
+    ).toBe(true);
+
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'general.volumeUp',
+        hasBlockingModalState: false,
+        isEditableEventTarget: true,
+        isEditableActiveElement: false,
+        pressedCombo: 'R',
+      }),
+    ).toBe(false);
+
+    expect(
+      canExecuteHotkeyCommand({
+        cmdId: 'general.volumeDown',
+        hasBlockingModalState: false,
+        isEditableEventTarget: true,
+        isEditableActiveElement: false,
+        pressedCombo: 'Ctrl+E',
+      }),
+    ).toBe(true);
+  });
 });
 
 describe('shouldHandleRepeatForMatchedCommands', () => {

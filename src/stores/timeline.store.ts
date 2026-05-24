@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, toRef, computed, watch } from 'vue';
+import { ref, toRef, computed } from 'vue';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import { runResilientFileWrite } from '~/utils/io/io-governor';
@@ -87,21 +87,6 @@ export const useTimelineStore = defineStore('timeline', () => {
   const playbackSpeed = ref(TIMELINE_DEFAULTS.PLAYBACK_SPEED);
   const currentTime = ref(0);
   const duration = ref(0);
-
-  // TEMP DEBUG (playhead-reset-to-0): logs the exact call site that drops the
-  // playhead from a positive position to 0. `flush: 'sync'` keeps the mutator in
-  // the captured stack. Remove once the culprit is identified.
-  watch(
-    currentTime,
-    (val, old) => {
-      if (val === 0 && (old ?? 0) > 0) {
-        console.trace(
-          `[playhead-reset] currentTime ${old} -> 0 | duration=${duration.value} | path=${currentTimelinePath.value}`,
-        );
-      }
-    },
-    { flush: 'sync' },
-  );
   const masterGain = ref(TIMELINE_DEFAULTS.MASTER_GAIN);
   const audioMuted = ref(false);
   const audioLevels = ref<Record<string, { rmsDb: number; peakDb: number }>>({});

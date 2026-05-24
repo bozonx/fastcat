@@ -308,7 +308,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         }
         if (timelineStore.timelineDoc !== null) {
           timelineStore.duration = 0;
-          updateStoreTime(0);
+          // Do NOT reset the playhead here. It is editor/user state, not derived
+          // from the clip set. An empty timeline (no compositable clips, e.g. a
+          // brand-new or trackless timeline) must not clobber the playhead the
+          // persistence layer just restored — otherwise, on initial load, the
+          // monitor's first build drops the restored position to 0 once it
+          // finishes (the save watcher then persists that 0, making it sticky).
         }
         isLoading.value = false;
         return;

@@ -5,7 +5,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import { hotkeyFromKeyboardEvent, isEditableTarget } from '~/utils/hotkeys/hotkeyUtils';
-import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import { DEFAULT_HOTKEYS, type HotkeyCommandId, type HotkeyCombo } from '~/utils/hotkeys/defaultHotkeys';
 import { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
   canExecuteHotkeyCommand,
@@ -89,6 +89,7 @@ export function useEditorHotkeys() {
 
     // Step 1: Check literal match in effective hotkeys
     let matched = getMatchedHotkeyCommands({ combo: literalCombo, lookup: hotkeyLookup.value });
+    let matchedCombo: HotkeyCombo | null = literalCombo;
 
     // Step 2: If no literal match, check layered match in default hotkeys
     if (matched.length === 0 && layeredCombo && layeredCombo !== literalCombo) {
@@ -96,6 +97,7 @@ export function useEditorHotkeys() {
         combo: layeredCombo,
         lookup: defaultHotkeyLookup.value,
       });
+      matchedCombo = layeredCombo;
     }
 
     if (matched.length === 0) return;
@@ -147,6 +149,7 @@ export function useEditorHotkeys() {
           hasBlockingModalState: modalOpen || (fullscreen && !isPlayback && !isZoom),
           isEditableEventTarget,
           isEditableActiveElement,
+          pressedCombo: matchedCombo,
         })
       ) {
         continue;
@@ -188,6 +191,17 @@ export function useEditorHotkeys() {
     playbackStepHoldRunner.handleKeyup(e.code);
   }
 
+  function onGlobalPointerDown(e: PointerEvent) {
+    const target = e.target as HTMLElement;
+    if (
+      target instanceof HTMLButtonElement ||
+      (target instanceof HTMLInputElement &&
+        ['button', 'submit', 'reset'].includes((target.type || '').toLowerCase()))
+    ) {
+      target.blur();
+    }
+  }
+
   function onGlobalBlur() {
     suppressedKeyupCodes.clear();
     volumeHoldRunner.clearTimers();
@@ -213,6 +227,7 @@ export function useEditorHotkeys() {
     window.addEventListener('keyup', onGlobalKeyup);
     window.addEventListener('blur', onGlobalBlur);
     document.addEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener('pointerdown', onGlobalPointerDown);
   });
 
   onUnmounted(() => {
@@ -220,6 +235,7 @@ export function useEditorHotkeys() {
     window.removeEventListener('keyup', onGlobalKeyup);
     window.removeEventListener('blur', onGlobalBlur);
     document.removeEventListener('visibilitychange', onVisibilityChange);
+    document.removeEventListener('pointerdown', onGlobalPointerDown);
     volumeHoldRunner.clearTimers();
     zoomHoldRunner.clearTimers();
     navigationHoldRunner.clearTimers();
