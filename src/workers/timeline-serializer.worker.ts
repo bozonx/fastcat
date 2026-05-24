@@ -1,3 +1,7 @@
+import { installWorkerIoBudgetListener } from '~/utils/io/io-budget-worker';
+
+installWorkerIoBudgetListener();
+
 import { serializeTimelineToOtio } from '../timeline/otio-serializer';
 import type { TimelineDocument } from '../timeline/types';
 

@@ -66,7 +66,9 @@ async function check() {
     'videoEditor.backgroundTasks.uploadFailed',
   ]);
 
-  const files = (await getFiles('src')).filter((f) => ['.vue', '.ts', '.js'].includes(extname(f)));
+  const srcFiles = (await getFiles('src')).filter((f) => ['.vue', '.ts', '.js'].includes(extname(f)));
+  const testFiles = (await getFiles('test')).filter((f) => ['.vue', '.ts', '.js'].includes(extname(f)));
+  const files = [...srcFiles, ...testFiles];
   const keyPrefixes = [
     'common.',
     'fastcat.',
