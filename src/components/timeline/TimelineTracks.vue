@@ -1,161 +1,53 @@
 <script setup lang="ts">
-import { ref, computed, toRefs, watch, provide } from 'vue';
+import { ref, computed, toRefs, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { storeToRefs } from 'pinia';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useMediaStore } from '~/stores/media.store';
 import type {
   TimelineClipActionPayload,
-  TimelineClipItem,
   TimelineMoveItemPayload,
   TimelineOpenSpeedModalPayload,
   TimelineTrack,
   TimelineTrackItem,
   TimelineTrimItemPayload,
-  TrackKind,
 } from '~/timeline/types';
-import { timelineRangeToRoundedPx, timeUsToPx } from '~/utils/timeline/geometry';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 import { useTimelineClipHandleResize } from '~/composables/timeline/useTimelineClipHandleResize';
 import { useTimelineMarquee } from '~/composables/timeline/useTimelineMarquee';
-import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
-import { useProjectStore } from '~/stores/project.store';
-import { useProjectTabsStore } from '~/stores/project-tabs.store';
-import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
-import type { FsEntry } from '~/types/fs';
-import type { TimelineCommand } from '~/timeline/commands';
-import type { TimelineContext } from './context';
+import { useFocusStore } from '~/stores/focus.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 import TimelineGap from './TimelineGap.vue';
 import TimelineSpeedModal from './TimelineSpeedModal.vue';
 import AutoMontageModal from './AutoMontageModal.vue';
 import UiContextMenuPortal from '~/components/ui/UiContextMenuPortal.vue';
-import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
-import { useTrackContextMenu } from '~/composables/timeline/useTrackContextMenu';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
-import { useSilenceTrimming } from '~/composables/timeline/useSilenceTrimming';
-import { useAppClipboard } from '~/composables/useAppClipboard';
-import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 
+import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+import { useProvideTimelineContext } from '~/composables/timeline/useProvideTimelineContext';
+import { useTimelineTrackVirtualization } from '~/composables/timeline/useTimelineTrackVirtualization';
+import { useTimelineMovePreviews } from '~/composables/timeline/useTimelineMovePreviews';
+import { useTimelineSpeedModal } from '~/composables/timeline/useTimelineSpeedModal';
+import { useTimelineAutoMontage } from '~/composables/timeline/useTimelineAutoMontage';
+import { useTimelineTrackContextMenu } from '~/composables/timeline/useTimelineTrackContextMenu';
+import { useTimelinePasteParameters } from '~/composables/timeline/useTimelinePasteParameters';
+
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
-import { useWorkspaceStore } from '~/stores/workspace.store';
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 const focusStore = useFocusStore();
-const mediaStore = useMediaStore();
-const projectStore = useProjectStore();
-const projectTabsStore = useProjectTabsStore();
-const fileManagerStore = useFileManagerStore();
-const fileManager = useFileManager();
 const uiStore = useUiStore();
-const clipboardStore = useAppClipboard();
-const settingsStore = useTimelineSettingsStore();
+const workspaceStore = useWorkspaceStore();
 
-provide<TimelineContext>('timelineContext', {
-  zoom: computed(() => timelineStore.timelineZoom),
-  fps: computed(() => timelineStore.fps),
-  currentTime: computed(() => timelineStore.currentTime),
-  isTrimModeActive: computed(() => timelineStore.isTrimModeActive),
-  selectedItemIds: computed(() => timelineStore.selectedItemIds),
-  userSettings: computed(() => workspaceStore.userSettings),
-  missingPaths: computed(() => mediaStore.missingPaths),
-  mediaMetadata: computed(() => mediaStore.mediaMetadata),
-  clipboardPayload: computed(() => clipboardStore.clipboardPayload),
-  hasTimelinePayload: computed(() => clipboardStore.hasTimelinePayload),
-  timelineDoc: computed(() => timelineStore.timelineDoc),
-  projectSettings: computed(() => projectStore?.projectSettings ?? {}),
-  currentView: computed(() => projectStore?.currentView ?? ''),
-  toolbarDragModeEnabled: computed(() => settingsStore.toolbarDragModeEnabled),
-  toolbarDragMode: computed(() => settingsStore.toolbarDragMode),
-
-  updateClipProperties: (trackId: string, itemId: string, props: Record<string, unknown>) =>
-    timelineStore.updateClipProperties(trackId, itemId, props),
-  updateClipTransition: (
-    trackId: string,
-    itemId: string,
-    patch: Record<string, unknown>,
-    options?: Record<string, unknown>,
-  ) => timelineStore.updateClipTransition(trackId, itemId, patch, options),
-  requestTimelineSave: (options?: { immediate?: boolean }) =>
-    timelineStore.requestTimelineSave(options),
-  splitClipAtTime: (target: { trackId: string; itemId: string }, atUs: number) =>
-    timelineStore.splitClipAtTime(target, atUs),
-  splitClipAtPlayhead: (target: { trackId: string; itemId: string }) =>
-    timelineStore.splitClipAtPlayhead(target),
-  selectTimelineItems: (items: Array<{ trackId: string; itemId: string }>) =>
-    timelineStore.selectTimelineItems(items),
-  trimToPlayheadLeftNoRipple: (target: { trackId: string; itemId: string }) =>
-    timelineStore.trimToPlayheadLeftNoRipple(target),
-  trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) =>
-    timelineStore.trimToPlayheadRightNoRipple(target),
-  applyTimeline: (cmd: TimelineCommand) => timelineStore.applyTimeline(cmd),
-  batchApplyTimeline: (cmds: TimelineCommand[]) => timelineStore.batchApplyTimeline(cmds),
-  selectTransition: (payload: { trackId: string; itemId: string; edge: 'in' | 'out' } | null) =>
-    timelineStore.selectTransition(payload),
-  selectTimelineTransition: (trackId: string, itemId: string, edge: 'in' | 'out') =>
-    selectionStore.selectTimelineTransition(trackId, itemId, edge),
-  selectTimelineItem: (trackId: string, itemId: string, kind: 'clip' | 'gap') =>
-    selectionStore.selectTimelineItem(trackId, itemId, kind),
-  clearSelection: () => selectionStore.clearSelection(),
-  setClipboardPayload: (payload: unknown) => clipboardStore.setClipboardPayload(payload),
-  triggerScrollToEffects: () => uiStore.triggerScrollToEffects(),
-  copySelectedClips: () => timelineStore.copySelectedClips() || [],
-  cutSelectedClips: () => timelineStore.cutSelectedClips() || [],
-  pasteClips: (options?: { insertStartUs?: number }) =>
-    timelineStore.pasteClips(
-      clipboardStore.clipboardPayload?.source === 'timeline'
-        ? clipboardStore.clipboardPayload.items
-        : [],
-      options,
-    ),
-
-  unlinkAudioFromVideo: (input: {
-    videoItemId?: string;
-    audioTrackId?: string;
-    audioItemId?: string;
-  }) => timelineStore.unlinkAudioFromVideo(input),
-  renameItem: (trackId: string, itemId: string, name: string) =>
-    timelineStore.renameItem(trackId, itemId, name),
-  updateTrackProperties: (trackId: string, patch: Record<string, unknown>) =>
-    timelineStore.updateTrackProperties(trackId, patch),
-  goToFiles: () => projectStore.goToFiles(),
-  openTimelineFile: (path: string) => projectStore.openTimelineFile(path),
-  goToCut: () => projectStore.goToCut(),
-  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
-  triggerScrollToFileTreeEntry: (path: string) => uiStore.triggerScrollToFileTreeEntry(path),
-  openFolder: (entry: FsEntry) => fileManagerStore.openFolder(entry),
-  selectFsEntry: (entry: FsEntry) => selectionStore.selectFsEntry(entry),
-  setTempFocus: (panel: 'files-sidebar' | 'files-main') => focusStore.setTempFocus(panel),
-  setPanelFocus: (panel: PanelFocusId) => focusStore.setPanelFocus(panel),
-  loadProjectDirectory: () => fileManager.loadProjectDirectory(),
-  findEntryByPath: (path: string) => fileManager.findEntryByPath(path),
-  toggleDirectory: (entry: FsEntry) => fileManager.toggleDirectory(entry),
-  setActiveTab: (tabId: string) => projectTabsStore.setActiveTab(tabId),
-
-  mediaReplaceTarget: computed({
-    get: () => uiStore.mediaReplaceTarget,
-    set: (val) => {
-      uiStore.mediaReplaceTarget = val;
-    },
-  }),
-  isMediaReplaceModalOpen: computed({
-    get: () => uiStore.isMediaReplaceModalOpen,
-    set: (val) => {
-      uiStore.isMediaReplaceModalOpen = val;
-    },
-  }),
-});
+// Provide the shared TimelineContext consumed by descendant clip/gap components.
+useProvideTimelineContext();
 
 const { selectedTransition } = storeToRefs(timelineStore);
-
 const { isTrackVisuallySelected } = selectionStore;
-
-const OVERSCAN_PX = 480;
 
 const props = defineProps<{
   tracks: TimelineTrack[];
@@ -197,215 +89,25 @@ const emit = defineEmits<{
   (e: 'long-press-item', itemId: string): void;
 }>();
 
-const DEFAULT_TRACK_HEIGHT = 40;
 const containerRef = ref<HTMLElement | null>(null);
-
 const { tracks, trackHeights } = toRefs(props);
 
-interface TrackVisibilityIndexEntry {
-  isSortedByStart: boolean;
-  prefixMaxEndPositions: number[];
-  startPositions: number[];
+/** True only when the track header itself is selected (not a clip/gap/transition on it). */
+function isTrackDirectlySelected(trackId: string): boolean {
+  const entity = selectionStore.selectedEntity;
+  return entity?.source === 'timeline' && entity.kind === 'track' && entity.trackId === trackId;
 }
 
-function buildClipRenderMemo(item: TimelineTrackItem): string {
-  if (item.kind !== 'clip') {
-    return [item.id, item.timelineRange.startUs, item.timelineRange.durationUs].join(':');
-  }
-
-  const clip = item as TimelineClipItem;
-  return [
-    clip.id,
-    clip.timelineRange.startUs,
-    clip.timelineRange.durationUs,
-    clip.sourceRange?.startUs ?? '',
-    clip.sourceRange?.durationUs ?? '',
-    clip.name,
-    clip.locked ? 1 : 0,
-    clip.disabled ? 1 : 0,
-    clip.audioMuted ? 1 : 0,
-    clip.showWaveform !== false ? 1 : 0,
-    clip.showThumbnails !== false ? 1 : 0,
-    clip.audioWaveformMode ?? 'half',
-    clip.audioGain ?? 1,
-    clip.audioBalance ?? 0,
-    clip.audioFadeInUs ?? 0,
-    clip.audioFadeOutUs ?? 0,
-    clip.audioFadeInCurve ?? 'linear',
-    clip.audioFadeOutCurve ?? 'linear',
-    clip.speed ?? 1,
-    clip.freezeFrameSourceUs ?? '',
-    clip.transitionIn?.type ?? '',
-    clip.transitionIn?.durationUs ?? 0,
-    clip.transitionIn?.curve ?? '',
-    clip.transitionOut?.type ?? '',
-    clip.transitionOut?.durationUs ?? 0,
-    clip.transitionOut?.curve ?? '',
-  ].join(':');
-}
-
-function lowerBound(values: number[], target: number): number {
-  let low = 0;
-  let high = values.length;
-
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2);
-    if (values[mid]! < target) {
-      low = mid + 1;
-    } else {
-      high = mid;
-    }
-  }
-
-  return low;
-}
-
-function upperBound(values: number[], target: number): number {
-  let low = 0;
-  let high = values.length;
-
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2);
-    if (values[mid]! <= target) {
-      low = mid + 1;
-    } else {
-      high = mid;
-    }
-  }
-
-  return low;
-}
-
-/** Pre-calculate pixel geometries for items to avoid recalculating on every scroll/render frame */
-const itemGeometries = computed(() => {
-  const zoom = timelineStore.timelineZoom;
-  const map = new Map<string, { startPx: number; widthPx: number; endPx: number }>();
-  for (const track of props.tracks) {
-    for (const item of track.items) {
-      const geometry = timelineRangeToRoundedPx(item.timelineRange, zoom, 2);
-      map.set(item.id, {
-        startPx: geometry.leftPx,
-        widthPx: geometry.widthPx,
-        endPx: geometry.endPx,
-      });
-    }
-  }
-  return map;
-});
-
-const trackVisibilityIndexByTrack = computed<Record<string, TrackVisibilityIndexEntry>>(() => {
-  const result: Record<string, TrackVisibilityIndexEntry> = {};
-  const geos = itemGeometries.value;
-
-  for (const track of props.tracks) {
-    const startPositions: number[] = [];
-    const prefixMaxEndPositions: number[] = [];
-    let isSortedByStart = true;
-    let lastStart = Number.NEGATIVE_INFINITY;
-    let maxEnd = Number.NEGATIVE_INFINITY;
-
-    for (const item of track.items) {
-      const geo = geos.get(item.id);
-      if (!geo) {
-        isSortedByStart = false;
-        break;
-      }
-
-      startPositions.push(geo.startPx);
-      if (geo.startPx < lastStart) {
-        isSortedByStart = false;
-      }
-      lastStart = geo.startPx;
-      maxEnd = Math.max(maxEnd, geo.endPx);
-      prefixMaxEndPositions.push(maxEnd);
-    }
-
-    result[track.id] = {
-      isSortedByStart,
-      prefixMaxEndPositions,
-      startPositions,
-    };
-  }
-
-  return result;
-});
-
-const visibleStartPx = computed(() => Math.max(0, (props.scrollLeft ?? 0) - OVERSCAN_PX));
-const visibleEndPx = computed(() => {
-  const vw = props.viewportWidth ?? 0;
-  if (vw <= 0) return Infinity;
-  return (props.scrollLeft ?? 0) + vw + OVERSCAN_PX;
-});
-
-const visibleItemsByTrack = computed(() => {
-  const result: Record<string, TimelineTrackItem[]> = {};
-  const vStart = visibleStartPx.value;
-  const vEnd = visibleEndPx.value;
-  const geos = itemGeometries.value;
-  const visibilityIndexByTrack = trackVisibilityIndexByTrack.value;
-
-  for (const track of props.tracks) {
-    if (vEnd === Infinity) {
-      result[track.id] = track.items;
-      continue;
-    }
-
-    const visibilityIndex = visibilityIndexByTrack[track.id];
-    if (visibilityIndex?.isSortedByStart) {
-      const startIndex = lowerBound(visibilityIndex.prefixMaxEndPositions, vStart);
-      const endIndex = upperBound(visibilityIndex.startPositions, vEnd);
-
-      if (startIndex >= endIndex) {
-        result[track.id] = [];
-        continue;
-      }
-
-      result[track.id] = track.items.slice(startIndex, endIndex).filter((item) => {
-        const geo = geos.get(item.id);
-        if (!geo) return true;
-        return geo.endPx >= vStart && geo.startPx <= vEnd;
-      });
-      continue;
-    }
-
-    result[track.id] = track.items.filter((item) => {
-      const geo = geos.get(item.id);
-      if (!geo) return true;
-      return geo.endPx >= vStart && geo.startPx <= vEnd;
-    });
-  }
-  return result;
-});
-
-const trackViewModels = computed(() => {
-  const hoveredTrackId = timelineStore.hoveredTrackId;
-  const visibleItemsMap = visibleItemsByTrack.value;
-
-  return props.tracks.map((track) => {
-    const isDirectlySelected = isTrackDirectlySelected(track.id);
-    const isVisuallySelected = isTrackVisuallySelected(track.id);
-    const isHovered = hoveredTrackId === track.id;
-    const height = props.trackHeights[track.id] ?? DEFAULT_TRACK_HEIGHT;
-
-    return {
-      track,
-      height,
-      isDirectlySelected,
-      isVisuallySelected,
-      isHovered,
-      visibleItems: visibleItemsMap[track.id] ?? [],
-      clipRenderMemo: (visibleItemsMap[track.id] ?? []).map(buildClipRenderMemo).join('|'),
-      selectionColor: track.color && track.color !== '#2a2a2a' ? `${track.color}80` : undefined,
-      backgroundColor:
-        track.color && track.color !== '#2a2a2a'
-          ? isDirectlySelected
-            ? `${track.color}40`
-            : `${track.color}1a`
-          : isDirectlySelected
-            ? 'color-mix(in srgb, var(--selection-accent-500) 8%, transparent)'
-            : undefined,
-    };
-  });
+// Windowing + render-ready track view models (geometry, visibility, selection).
+const { trackViewModels } = useTimelineTrackVirtualization({
+  tracks: () => props.tracks,
+  trackHeights: () => props.trackHeights,
+  scrollLeft: () => props.scrollLeft ?? 0,
+  viewportWidth: () => props.viewportWidth ?? 0,
+  zoom: () => timelineStore.timelineZoom,
+  hoveredTrackId: () => timelineStore.hoveredTrackId,
+  isTrackDirectlySelected,
+  isTrackVisuallySelected: (id) => isTrackVisuallySelected(id),
 });
 
 const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
@@ -414,8 +116,6 @@ const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   trackHeights,
   () => props.scrollLeft ?? 0,
 );
-
-const workspaceStore = useWorkspaceStore();
 
 function resolveTimelineDragAction(e: PointerEvent): string {
   const settings = workspaceStore.userSettings.mouse.timeline;
@@ -464,194 +164,34 @@ const selectionRangeStyle = computed(() => {
   };
 });
 
-// Auto Montage State
-const autoMontageModal = ref<{ open: boolean; itemIds: string[] } | null>(null);
-const { applySilenceTrimming } = useSilenceTrimming();
-
-async function applyAutoMontage(settings: {
-  trimStart: boolean;
-  trimEnd: boolean;
-  trimMiddle: boolean;
-  mode: 'cut' | 'mark';
-}) {
-  if (!autoMontageModal.value) return;
-  await applySilenceTrimming({
-    clipIds: autoMontageModal.value.itemIds,
-    settings,
-  });
-}
-
-watch(
-  () => uiStore.openAutoMontageTrigger,
-  (val) => {
-    if (!val) return;
-    const hasAnyItem = props.tracks.some((track) =>
-      track.items.some((item) => val.itemIds.includes(item.id)),
-    );
-    if (!hasAnyItem) return;
-    autoMontageModal.value = {
-      open: true,
-      itemIds: val.itemIds,
-    };
+const { movePreviewItemsByTrack, movePreviewIds, movePreviewMemoByTrack } = useTimelineMovePreviews(
+  {
+    tracks: () => props.tracks,
+    movePreview: () => props.movePreview,
+    draggingMode: () => props.draggingMode,
   },
 );
 
-function openAutoMontage(payload: TimelineClipActionPayload) {
-  const entity = selectionStore.selectedEntity;
-  let itemIds: string[] = [payload.itemId];
+const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
+  useTimelineSpeedModal(() => props.tracks);
 
-  if (entity?.source === 'timeline' && entity.kind === 'clips') {
-    const ids = entity.items.map((it) => it.itemId);
-    if (ids.includes(payload.itemId)) {
-      itemIds = ids;
-    }
-  }
-
-  autoMontageModal.value = {
-    open: true,
-    itemIds,
-  };
-}
-
-// Speed Modal State
-const speedModal = ref<{ open: boolean; trackId: string; itemId: string; speed: number } | null>(
-  null,
+const { autoMontageModal, applyAutoMontage, openAutoMontage } = useTimelineAutoMontage(
+  () => props.tracks,
 );
-
-function openSpeedModal(trackId: string, itemId: string, currentSpeed: number | null | undefined) {
-  speedModal.value = {
-    open: true,
-    trackId,
-    itemId,
-    speed: typeof currentSpeed === 'number' ? currentSpeed : 1,
-  };
-}
-
-async function saveSpeedModal() {
-  if (!speedModal.value) return;
-  const { trackId, itemId, speed } = speedModal.value;
-  if (Math.abs(speed) < 0.1) return;
-  timelineStore.updateClipProperties(trackId, itemId, { speed });
-  speedModal.value.open = false;
-  await timelineStore.requestTimelineSave({ immediate: true });
-}
-
-const speedModalTargetHasAudio = computed(() => {
-  if (!speedModal.value) return false;
-  const track = props.tracks.find((t) => t.id === speedModal.value!.trackId);
-  const clip = track?.items.find(
-    (it): it is TimelineClipItem => it.id === speedModal.value!.itemId && it.kind === 'clip',
-  );
-  if (!clip || (track?.kind === 'video' && clip.audioFromVideoDisabled)) return false;
-  if (track?.kind === 'audio') return true;
-  return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
-});
 
 const { emptyAreaContextMenuItems: timelineEmptyAreaContextMenuItems } =
   useTimelineEmptyAreaContextMenu({
     onZoomToFit: () => props.onZoomToFit?.(),
   });
 
-const isTrackRenameModalOpen = ref(false);
-const trackToRename = ref<TimelineTrack | null>(null);
-
-function handleRenameTrack(name: string) {
-  if (trackToRename.value) {
-    const trimmed = name.trim();
-    if (trimmed && trimmed !== trackToRename.value.name) {
-      timelineStore.renameTrack(trackToRename.value.id, trimmed);
-    }
-  }
-  isTrackRenameModalOpen.value = false;
-  trackToRename.value = null;
-}
-
-const { getTrackContextMenuItems } = useTrackContextMenu({
-  onRequestDelete: (track) => timelineStore.deleteTrack(track.id, { allowNonEmpty: true }),
-  onRequestRename: (track) => {
-    trackToRename.value = track;
-    isTrackRenameModalOpen.value = true;
-  },
-  onPaste: (_trackId) => {
-    const payload = clipboardStore.clipboardPayload;
-    if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
-    void timelineStore.pasteClips(payload.items, {
-      insertStartUs: timelineStore.currentTime,
-    });
-    if (payload.operation === 'cut') clipboardStore.setClipboardPayload(null);
-  },
-});
-
-const trackContextMenuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
-const activeTrackForContextMenu = ref<TimelineTrack | null>(null);
-
-function onTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
-  activeTrackForContextMenu.value = track;
-  trackContextMenuRef.value?.open(e);
-}
-
-function handleTrackContextMenu(e: MouseEvent, track: TimelineTrack) {
-  const target = e.target as HTMLElement | null;
-  if (target?.closest('[data-clip-id], [data-gap-id]')) {
-    e.stopPropagation();
-    return;
-  }
-  e.preventDefault();
-  e.stopPropagation();
-  onTrackContextMenu(e, track);
-}
-
-const activeTrackContextMenuItems = computed(() => {
-  if (!activeTrackForContextMenu.value) return [];
-  return getTrackContextMenuItems(activeTrackForContextMenu.value, props.tracks);
-});
-
-const activeMovePreviews = computed(() =>
-  props.draggingMode === 'slip' ? [] : (props.movePreview ?? []),
-);
-
-const movePreviewItemsByTrack = computed(() => {
-  const previews = activeMovePreviews.value;
-  const itemMap = new Map<string, TimelineTrackItem>();
-
-  for (const track of props.tracks) {
-    for (const item of track.items) {
-      itemMap.set(item.id, item);
-    }
-  }
-
-  const result: Record<
-    string,
-    Array<{ preview: (typeof previews)[number]; item: TimelineTrackItem }>
-  > = {};
-
-  for (const preview of previews) {
-    const item = itemMap.get(preview.itemId);
-    if (!item) continue;
-    if (!result[preview.trackId]) {
-      result[preview.trackId] = [];
-    }
-    result[preview.trackId]!.push({ preview, item });
-  }
-
-  return result;
-});
-const movePreviewIds = computed(
-  () => new Set(activeMovePreviews.value.map((preview) => preview.itemId)),
-);
-const movePreviewMemoByTrack = computed(() => {
-  const result: Record<string, string> = {};
-
-  for (const preview of activeMovePreviews.value) {
-    if (!result[preview.trackId]) {
-      result[preview.trackId] = '';
-    }
-    result[preview.trackId] +=
-      `${preview.itemId}:${preview.startUs}:${preview.isCollision ? 1 : 0}|`;
-  }
-
-  return result;
-});
+const {
+  isTrackRenameModalOpen,
+  trackToRename,
+  handleRenameTrack,
+  trackContextMenuRef,
+  activeTrackContextMenuItems,
+  handleTrackContextMenu,
+} = useTimelineTrackContextMenu(() => props.tracks);
 
 function selectTransition(
   e: MouseEvent | PointerEvent,
@@ -681,15 +221,10 @@ function selectTransition(
   timelineStore.selectTransition(payload);
   selectionStore.selectTimelineTransition(payload.trackId, payload.itemId, payload.edge);
 }
+
 function selectTrackById(trackId: string) {
   timelineStore.selectTrack(trackId);
   selectionStore.selectTimelineTrack(trackId);
-}
-
-/** True only when the track header itself is selected (not a clip/gap/transition on it). */
-function isTrackDirectlySelected(trackId: string): boolean {
-  const entity = selectionStore.selectedEntity;
-  return entity?.source === 'timeline' && entity.kind === 'track' && entity.trackId === trackId;
 }
 
 let trackPointerStartX = 0;
@@ -743,43 +278,12 @@ function onTrackClick(e: MouseEvent, trackId: string) {
   timelineStore.clearSelection();
 }
 
-// Paste Parameters Modal logic
-const activeClipForPasteParameters = ref<TimelineClipItem | null>(null);
-const activeTrackKindForPasteParameters = ref<TrackKind>('video');
-
 const {
   isPasteParametersModalOpen,
   selectedParameterGroups,
   clipParameterGroupOptions,
-  openPasteClipParameters,
   applyClipParameters,
-} = useClipParametersClipboard({
-  clip: computed(() => activeClipForPasteParameters.value || ({} as TimelineClipItem)),
-  trackKind: computed(() => activeTrackKindForPasteParameters.value),
-  updateClipProperties: (trackId, itemId, props) =>
-    timelineStore.updateClipProperties(trackId, itemId, props),
-  updateClipTransition: (trackId, itemId, patch) =>
-    timelineStore.updateClipTransition(trackId, itemId, patch),
-});
-
-watch(
-  () => uiStore.clipPasteParametersTrigger,
-  (val) => {
-    if (!val) return;
-    const track = props.tracks.find((t) => t.id === val.trackId);
-    if (!track) return;
-    const clip = track.items.find(
-      (it) => it.id === val.itemId && it.kind === 'clip',
-    ) as TimelineClipItem;
-    if (clip) {
-      activeClipForPasteParameters.value = clip;
-      activeTrackKindForPasteParameters.value = track.kind;
-      // Opening is deferred to a macrotask inside the composable so it survives
-      // being invoked from a closing context menu / dropdown layer.
-      openPasteClipParameters(clip, track.kind);
-    }
-  },
-);
+} = useTimelinePasteParameters(() => props.tracks);
 
 watch(
   () => focusStore.effectiveFocus,
