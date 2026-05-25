@@ -54,6 +54,7 @@ function createOptions(
     copyClipParameters: vi.fn(),
     pasteClipParameters: vi.fn(),
     getClipParametersSnapshot: vi.fn(() => null),
+    getHotkeyKbds: vi.fn(() => undefined),
     t: (key: string) => key,
     ...overrides,
   };

@@ -49,6 +49,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       ? options.t('fastcat.timeline.enableClip')
       : options.t('fastcat.timeline.disableClip'),
     icon: clipItem.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+    kbds: options.getHotkeyKbds('timeline.toggleDisableClip'),
     onSelect: async () => {
       options.updateClipProperties(track.id, clipItem.id, {
         disabled: !clipItem.disabled,
@@ -64,6 +65,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
         ? options.t('fastcat.timeline.unmuteClip')
         : options.t('fastcat.timeline.muteClip'),
       icon: clipItem.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+      kbds: options.getHotkeyKbds('timeline.toggleMuteClip'),
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
           audioMuted: !clipItem.audioMuted,
@@ -79,6 +81,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
           ? options.t('fastcat.timeline.showFullWaveform')
           : options.t('fastcat.timeline.showHalfWaveform'),
       icon: 'i-heroicons-chart-bar',
+      kbds: options.getHotkeyKbds('timeline.toggleWaveformMode'),
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
           audioWaveformMode: currentMode === 'half' ? 'full' : 'half',
@@ -93,6 +96,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
           ? options.t('fastcat.timeline.showWaveform')
           : options.t('fastcat.timeline.hideWaveform'),
       icon: clipItem.showWaveform === false ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+      kbds: options.getHotkeyKbds('timeline.toggleShowWaveform'),
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
           showWaveform: clipItem.showWaveform === false,
@@ -109,6 +113,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
           ? options.t('fastcat.timeline.showThumbnails')
           : options.t('fastcat.timeline.hideThumbnails'),
       icon: 'i-heroicons-photo',
+      kbds: options.getHotkeyKbds('timeline.toggleShowThumbnails'),
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
           showThumbnails: clipItem.showThumbnails === false,
@@ -123,6 +128,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       ? options.t('fastcat.timeline.unlockClip')
       : options.t('fastcat.timeline.lockClip'),
     icon: clipItem.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+    kbds: options.getHotkeyKbds('timeline.toggleLockClip'),
     onSelect: async () => {
       options.updateClipProperties(track.id, clipItem.id, {
         locked: !clipItem.locked,
@@ -257,6 +263,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     mediaGroup.push({
       label: options.t('fastcat.timeline.freezeFrame'),
       icon: 'i-heroicons-pause-circle',
+      kbds: options.getHotkeyKbds('timeline.toggleFreezeFrame'),
       onSelect: () =>
         options.emitClipAction({
           action: 'freezeFrame',
@@ -270,6 +277,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     mediaGroup.push({
       label: options.t('fastcat.timeline.resetFreezeFrame'),
       icon: 'i-heroicons-play-circle',
+      kbds: options.getHotkeyKbds('timeline.toggleFreezeFrame'),
       onSelect: () =>
         options.emitClipAction({
           action: 'resetFreezeFrame',
@@ -318,6 +326,7 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
             label: options.t('common.rename'),
             icon: 'i-heroicons-pencil',
             disabled: isTrackLocked || isLocked,
+            kbds: options.getHotkeyKbds('general.rename'),
             onSelect: () =>
               options.requestRenameClip({
                 trackId: track.id,
@@ -330,18 +339,21 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
     {
       label: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
+      kbds: options.getHotkeyKbds('general.copy'),
       onSelect: () => options.copySelectedClips(),
     },
     {
       label: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
       disabled: isTrackLocked || isLocked,
+      kbds: options.getHotkeyKbds('general.cut'),
       onSelect: () => options.cutSelectedClips(),
     },
     {
       label: options.t('fastcat.timeline.delete'),
       icon: 'i-heroicons-trash',
       disabled: isTrackLocked || isLocked,
+      kbds: options.getHotkeyKbds('general.delete'),
       onSelect: () => {
         options.clearSelection();
         options.applyTimelineCommand({
@@ -360,12 +372,14 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
       {
         label: options.t('fastcat.clip.parameters.copy'),
         icon: 'i-heroicons-clipboard-document',
+        kbds: options.getHotkeyKbds('timeline.copyClipParameters'),
         onSelect: () => options.copyClipParameters(clip, track.kind),
       },
       {
         label: options.t('fastcat.clip.parameters.paste'),
         icon: 'i-heroicons-clipboard-document-check',
         disabled: isTrackLocked || isLocked || !hasApplicableClipParameters,
+        kbds: options.getHotkeyKbds('timeline.pasteClipParameters'),
         onSelect: () => options.pasteClipParameters(clip, track.kind),
       },
     );

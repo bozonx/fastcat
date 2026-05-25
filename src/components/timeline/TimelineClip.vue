@@ -26,6 +26,7 @@ import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import { cloneValue } from '~/utils/clone';
 import { useClipContextMenu } from '~/composables/timeline/useClipContextMenu';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import {
   getClipClass,
   getOverlayGuideOffsetPx,
@@ -476,10 +477,13 @@ const {
     timelineContext.updateClipTransition(trackId, itemId, patch),
 });
 
+const { getHotkeyKbds } = useHotkeyLabel();
+
 const { contextMenuItems } = useClipContextMenu({
   track: computed(() => props.track),
   item: computed(() => props.item),
   canEditClipContent: computed(() => props.canEditClipContent),
+  getHotkeyKbds,
   timelineDoc: computed(() => timelineContext.timelineDoc.value),
   projectSettings: computed(
     () => timelineContext.projectSettings.value as unknown as FastCatProjectSettings,

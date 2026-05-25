@@ -1,3 +1,4 @@
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { Ref } from 'vue';
 import type {
   ClipTransition,
@@ -15,6 +16,7 @@ export interface ContextMenuAction {
   icon: string;
   onSelect: () => void | Promise<void>;
   disabled?: boolean;
+  kbds?: string[];
 }
 
 export type ContextMenuGroup = ContextMenuAction[];
@@ -27,6 +29,7 @@ export interface UseClipContextMenuOptions {
   projectSettings: Ref<FastCatProjectSettings>;
   defaultTransitionDurationUs: Ref<number>;
   selectedItemIds: Ref<string[]>;
+  getHotkeyKbds: (commandId: HotkeyCommandId) => string[] | undefined;
   applyTimelineCommand: (cmd: TimelineCommand) => string[];
   batchApplyTimeline: (cmds: TimelineCommand[]) => string[];
   updateClipProperties: (

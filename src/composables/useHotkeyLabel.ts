@@ -32,6 +32,15 @@ export function useHotkeyLabel() {
     return bindings.map(formatHotkey).join(', ');
   }
 
+  function getHotkeyKbds(commandId: HotkeyCommandId): string[] | undefined {
+    const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
+    const bindings = effective[commandId];
+    if (!bindings || bindings.length === 0) return undefined;
+    const firstBinding = bindings[0];
+    if (!firstBinding) return undefined;
+    return firstBinding.split('+').map(formatHotkey);
+  }
+
   function getHotkeyTitle(baseTitle: string, commandId: HotkeyCommandId): string {
     const label = getHotkeyLabel(commandId);
     if (!label) return baseTitle;
@@ -40,6 +49,7 @@ export function useHotkeyLabel() {
 
   return {
     getHotkeyLabel,
+    getHotkeyKbds,
     getHotkeyTitle,
     isMac,
   };

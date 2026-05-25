@@ -20,6 +20,7 @@ export function buildMultiSelectionContextMenu(
       ? options.t('fastcat.timeline.enableClips')
       : options.t('fastcat.timeline.disableClips'),
     icon: state.allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+    kbds: options.getHotkeyKbds('timeline.toggleDisableClip'),
     onSelect: async () => {
       const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
         type: 'update_clip_properties' as const,
@@ -38,6 +39,7 @@ export function buildMultiSelectionContextMenu(
       ? options.t('fastcat.timeline.unlockClips')
       : options.t('fastcat.timeline.lockClips'),
     icon: allLocked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+    kbds: options.getHotkeyKbds('timeline.toggleLockClip'),
     onSelect: async () => {
       const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
         type: 'update_clip_properties' as const,
@@ -56,6 +58,7 @@ export function buildMultiSelectionContextMenu(
         ? options.t('fastcat.timeline.unmuteClips')
         : options.t('fastcat.timeline.muteClips'),
       icon: state.allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+      kbds: options.getHotkeyKbds('timeline.toggleMuteClip'),
       onSelect: async () => {
         const cmds = state.audioItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
@@ -73,6 +76,7 @@ export function buildMultiSelectionContextMenu(
         ? options.t('fastcat.timeline.showFullWaveform')
         : options.t('fastcat.timeline.showHalfWaveform'),
       icon: 'i-heroicons-chart-bar',
+      kbds: options.getHotkeyKbds('timeline.toggleWaveformMode'),
       onSelect: async () => {
         const cmds = state.waveformItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
@@ -189,6 +193,7 @@ export function buildMultiSelectionContextMenu(
         ? options.t('fastcat.timeline.hideWaveform')
         : options.t('fastcat.timeline.showWaveform'),
       icon: state.allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
+      kbds: options.getHotkeyKbds('timeline.toggleShowWaveform'),
       onSelect: async () => {
         const cmds = state.waveformItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
@@ -208,6 +213,7 @@ export function buildMultiSelectionContextMenu(
         ? options.t('fastcat.timeline.hideThumbnails')
         : options.t('fastcat.timeline.showThumbnails'),
       icon: 'i-heroicons-photo',
+      kbds: options.getHotkeyKbds('timeline.toggleShowThumbnails'),
       onSelect: async () => {
         const cmds = state.thumbnailItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
@@ -239,18 +245,21 @@ export function buildMultiSelectionContextMenu(
     {
       label: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
+      kbds: options.getHotkeyKbds('general.copy'),
       onSelect: () => options.copySelectedClips(),
     },
     {
       label: options.t('common.cut'),
       icon: 'i-heroicons-scissors',
       disabled: state.hasLockedTrack,
+      kbds: options.getHotkeyKbds('general.cut'),
       onSelect: () => options.cutSelectedClips(),
     },
     {
       label: options.t('fastcat.timeline.delete'),
       icon: 'i-heroicons-trash',
       disabled: state.hasLockedTrack,
+      kbds: options.getHotkeyKbds('general.delete'),
       onSelect: () => {
         options.clearSelection();
         const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
