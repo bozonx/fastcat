@@ -1,0 +1,353 @@
+import { withFileIoSlot } from '~/utils/io/io-governor';
+import type { AudioChunk, AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
+import {
+  DecodeWorkerClient,
+  DECODE_CANCELLED_MESSAGE,
+} from '~/utils/video-editor/decode-worker-client';
+
+export interface AudioChunkDecoderOptions {
+  getContext: () => AudioContext | null;
+  collectPinnedBuffers: () => Set<AudioBuffer>;
+  chunkSizeS?: number;
+  maxChunkCount?: number;
+}
+
+export interface ExtractAudioPeaksParams {
+  fileHandle: FileSystemFileHandle;
+  sourceKey: string;
+  options?: { maxLength?: number; precision?: number };
+}
+
+export interface EnsureAudioChunkDecodedParams {
+  sourceKey: string;
+  fileHandle: FileSystemFileHandle;
+  chunkIndex: number;
+}
+
+export interface GetAudioChunksForRangeParams {
+  sourceKey: string;
+  fileHandle: FileSystemFileHandle;
+  startTimeS: number;
+  durationS: number;
+}
+
+const DEFAULT_CHUNK_SIZE_S = 5;
+const DEFAULT_MAX_CHUNK_COUNT = 100;
+
+export class AudioChunkDecoder {
+  private readonly getContext: AudioChunkDecoderOptions['getContext'];
+  private readonly collectPinnedBuffers: AudioChunkDecoderOptions['collectPinnedBuffers'];
+  private readonly chunkSizeS: number;
+  private readonly maxChunkCount: number;
+  private chunkCache = new Map<string, AudioChunk[]>();
+  private chunkDecodeInFlight = new Map<string, Promise<AudioChunk | null>>();
+  private failedChunkKeys = new Set<string>();
+  private chunkRetryCounts = new Map<string, number>();
+  private chunkLruKeys = new Map<string, true>();
+  private fileBlobCache = new Map<string, Blob>();
+  private readonly decodeClient = new DecodeWorkerClient();
+
+  constructor(options: AudioChunkDecoderOptions) {
+    this.getContext = options.getContext;
+    this.collectPinnedBuffers = options.collectPinnedBuffers;
+    this.chunkSizeS = options.chunkSizeS ?? DEFAULT_CHUNK_SIZE_S;
+    this.maxChunkCount = options.maxChunkCount ?? DEFAULT_MAX_CHUNK_COUNT;
+  }
+
+  getChunkIndex(timeS: number): number {
+    return Math.floor(timeS / this.chunkSizeS);
+  }
+
+  async extractPeaks(params: ExtractAudioPeaksParams): Promise<Float32Array[] | null> {
+    const { fileHandle, sourceKey, options } = params;
+    return this.decodeClient.withSlot(async () => {
+      try {
+        const file = await withFileIoSlot(() => fileHandle.getFile());
+        const decoded = await this.decodeClient.extractPeaks(file, sourceKey, options);
+        if (!decoded?.peaks) {
+          console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`);
+          return null;
+        }
+
+        return decoded.peaks;
+      } catch (err) {
+        if (err instanceof Error && err.message === DECODE_CANCELLED_MESSAGE) {
+          return null;
+        }
+        console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`, err);
+        return null;
+      }
+    });
+  }
+
+  async prefetchHeadChunks(clips: AudioEngineClip[]) {
+    const chunksAhead = 2;
+    for (const clip of clips) {
+      const sourceKey = clip.sourcePath;
+      if (!sourceKey) continue;
+
+      const startOffsetS = clip.sourceStartUs / 1_000_000;
+      const sourceEndS = startOffsetS + clip.sourceRangeDurationUs / 1_000_000;
+      const startChunkIndex = this.getChunkIndex(startOffsetS);
+      const lastChunkIndex = this.getChunkIndex(Math.max(startOffsetS, sourceEndS - 1e-6));
+      for (let offset = 0; offset < chunksAhead; offset += 1) {
+        const targetIndex = startChunkIndex + offset;
+        if (targetIndex > lastChunkIndex) break;
+        const chunkKey = this.getChunkKey(sourceKey, targetIndex);
+        if (this.chunkCache.get(sourceKey)?.some((c) => c.chunkIndex === targetIndex)) continue;
+        if (this.chunkDecodeInFlight.has(chunkKey)) continue;
+        await this.ensureDecoded({
+          sourceKey,
+          fileHandle: clip.fileHandle,
+          chunkIndex: targetIndex,
+        });
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  cleanup(activeSourcePaths: Set<string>) {
+    for (const key of this.chunkCache.keys()) {
+      if (!activeSourcePaths.has(key)) {
+        this.chunkCache.delete(key);
+        for (const chunkKey of this.chunkLruKeys.keys()) {
+          if (chunkKey.startsWith(`${key}:`)) {
+            this.chunkLruKeys.delete(chunkKey);
+          }
+        }
+      }
+    }
+    for (const key of this.failedChunkKeys) {
+      const sourceKey = this.getSourceKeyFromChunkKey(key);
+      if (!activeSourcePaths.has(sourceKey)) {
+        this.failedChunkKeys.delete(key);
+      }
+    }
+    for (const key of this.fileBlobCache.keys()) {
+      if (!activeSourcePaths.has(key)) {
+        this.fileBlobCache.delete(key);
+      }
+    }
+    for (const key of this.chunkRetryCounts.keys()) {
+      const sourceKey = this.getSourceKeyFromChunkKey(key);
+      if (!activeSourcePaths.has(sourceKey)) {
+        this.chunkRetryCounts.delete(key);
+      }
+    }
+  }
+
+  async ensureDecoded(params: EnsureAudioChunkDecodedParams): Promise<AudioChunk | null> {
+    const { sourceKey, fileHandle, chunkIndex } = params;
+    const chunkKey = this.getChunkKey(sourceKey, chunkIndex);
+
+    if (this.failedChunkKeys.has(chunkKey)) {
+      return null;
+    }
+
+    const inFlight = this.chunkDecodeInFlight.get(chunkKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const existingChunks = this.chunkCache.get(sourceKey);
+    if (existingChunks) {
+      const cached = existingChunks.find((c) => c.chunkIndex === chunkIndex);
+      if (cached) {
+        this.touchLru(chunkKey);
+        return cached;
+      }
+    }
+
+    const task = this.decodeClient.withSlot(async () => {
+      try {
+        let blob = this.fileBlobCache.get(sourceKey);
+        if (!blob) {
+          blob = await withFileIoSlot(() => fileHandle.getFile());
+          this.fileBlobCache.set(sourceKey, blob);
+        }
+
+        const ctx = this.getContext();
+        if (!ctx) return null;
+
+        const requestedStartTimeS = chunkIndex * this.chunkSizeS;
+        const decoded = await this.decodeClient.decodeRange(
+          blob,
+          sourceKey,
+          requestedStartTimeS,
+          this.chunkSizeS,
+        );
+
+        if (!decoded?.channelBuffers?.length) {
+          console.warn(`[AudioEngine] Worker returned null for chunk ${chunkKey}`);
+          return null;
+        }
+
+        const numChannels = Math.max(1, Math.round(Number(decoded.numberOfChannels) || 1));
+        const sampleRate = Math.max(8000, Math.round(Number(decoded.sampleRate) || 48000));
+        const totalFrames = decoded.totalFrames ?? 0;
+
+        if (totalFrames <= 0) {
+          console.warn(`[AudioEngine] Decoded audio chunk has 0 frames for ${chunkKey}`);
+          return null;
+        }
+
+        const audioBuffer = ctx.createBuffer(numChannels, totalFrames, sampleRate);
+        for (let ch = 0; ch < numChannels; ch += 1) {
+          const buf = decoded.channelBuffers[ch];
+          if (!buf) continue;
+          const data = new Float32Array(buf);
+          audioBuffer.copyToChannel(data, ch, 0);
+        }
+
+        const chunk: AudioChunk = {
+          chunkIndex,
+          startTimeS: decoded.actualStartTimeS ?? requestedStartTimeS,
+          durationS: totalFrames / sampleRate,
+          buffer: audioBuffer,
+        };
+
+        this.addChunk(sourceKey, chunk, chunkKey);
+        return chunk;
+      } catch (err) {
+        this.handleDecodeError({ err, chunkKey, sourceKey });
+        return null;
+      } finally {
+        this.chunkDecodeInFlight.delete(chunkKey);
+      }
+    });
+
+    this.chunkDecodeInFlight.set(chunkKey, task);
+    return task;
+  }
+
+  async getForRange(params: GetAudioChunksForRangeParams): Promise<AudioChunk[]> {
+    const { sourceKey, fileHandle, startTimeS, durationS } = params;
+    if (durationS <= 0) return [];
+
+    const startIndex = this.getChunkIndex(startTimeS);
+    const endIndex = this.getChunkIndex(startTimeS + durationS);
+    const requests: Promise<AudioChunk | null>[] = [];
+    for (let i = startIndex; i <= endIndex; i += 1) {
+      requests.push(this.ensureDecoded({ sourceKey, fileHandle, chunkIndex: i }));
+    }
+
+    const settled = await Promise.all(requests);
+    return settled.filter((chunk): chunk is AudioChunk => chunk != null);
+  }
+
+  clear() {
+    this.chunkCache.clear();
+    this.chunkDecodeInFlight.clear();
+    this.failedChunkKeys.clear();
+    this.chunkRetryCounts.clear();
+    this.chunkLruKeys.clear();
+    this.fileBlobCache.clear();
+  }
+
+  destroy() {
+    this.clear();
+    this.decodeClient.destroy();
+  }
+
+  private getChunkKey(sourceKey: string, chunkIndex: number): string {
+    return `${sourceKey}:${chunkIndex}`;
+  }
+
+  private getSourceKeyFromChunkKey(chunkKey: string): string {
+    return chunkKey.slice(0, chunkKey.lastIndexOf(':'));
+  }
+
+  private touchLru(chunkKey: string) {
+    this.chunkLruKeys.delete(chunkKey);
+    this.chunkLruKeys.set(chunkKey, true);
+  }
+
+  private addChunk(sourceKey: string, chunk: AudioChunk, chunkKey: string) {
+    let sourceChunks = this.chunkCache.get(sourceKey);
+    if (!sourceChunks) {
+      sourceChunks = [];
+      this.chunkCache.set(sourceKey, sourceChunks);
+    }
+    sourceChunks.push(chunk);
+    sourceChunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
+
+    this.touchLru(chunkKey);
+    this.evictOldestChunksIfNeeded();
+  }
+
+  private evictOldestChunksIfNeeded() {
+    if (this.chunkLruKeys.size <= this.maxChunkCount) return;
+
+    const pinned = this.collectPinnedBuffers();
+    let scanned = 0;
+    while (this.chunkLruKeys.size > this.maxChunkCount && scanned < this.chunkLruKeys.size) {
+      const oldestKey = this.chunkLruKeys.keys().next().value;
+      if (!oldestKey) break;
+      scanned += 1;
+
+      const colonIdx = oldestKey.lastIndexOf(':');
+      if (colonIdx < 0) {
+        this.chunkLruKeys.delete(oldestKey);
+        continue;
+      }
+
+      const sourceKey = oldestKey.slice(0, colonIdx);
+      const chunkIndex = parseInt(oldestKey.slice(colonIdx + 1), 10);
+      const chunks = this.chunkCache.get(sourceKey);
+      if (!chunks) {
+        this.chunkLruKeys.delete(oldestKey);
+        continue;
+      }
+
+      const idx = chunks.findIndex((c) => c.chunkIndex === chunkIndex);
+      if (idx < 0) {
+        this.chunkLruKeys.delete(oldestKey);
+        continue;
+      }
+
+      const chunk = chunks[idx];
+      if (chunk && pinned.has(chunk.buffer)) {
+        this.chunkLruKeys.delete(oldestKey);
+        this.chunkLruKeys.set(oldestKey, true);
+        continue;
+      }
+
+      chunks.splice(idx, 1);
+      if (chunks.length === 0) {
+        this.chunkCache.delete(sourceKey);
+      }
+      this.chunkLruKeys.delete(oldestKey);
+    }
+  }
+
+  private handleDecodeError(params: { err: unknown; chunkKey: string; sourceKey: string }) {
+    const { err, chunkKey, sourceKey } = params;
+    const name = (err as Error)?.name;
+    const message = (err as Error)?.message || '';
+    const isTransient = name === 'NotReadableError' || /network error/i.test(message);
+
+    if (name === 'NoAudioTrackError' || name === 'UnsupportedFormatError') {
+      this.failedChunkKeys.add(chunkKey);
+    } else if (isTransient) {
+      const retries = (this.chunkRetryCounts.get(chunkKey) ?? 0) + 1;
+      if (retries >= 3) {
+        this.failedChunkKeys.add(chunkKey);
+        this.chunkRetryCounts.delete(chunkKey);
+        console.warn(
+          `[AudioEngine] Chunk ${chunkKey} failed after ${retries} transient retries; marking as permanently failed`,
+          err,
+        );
+      } else {
+        this.chunkRetryCounts.set(chunkKey, retries);
+        console.warn(
+          `[AudioEngine] Failed to decode chunk ${chunkKey} (transient, retry ${retries}/3)`,
+          err,
+        );
+      }
+      this.fileBlobCache.delete(sourceKey);
+    } else {
+      console.warn(`[AudioEngine] Failed to decode chunk ${chunkKey}`, err);
+      this.fileBlobCache.delete(sourceKey);
+    }
+  }
+}
