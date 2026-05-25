@@ -75,7 +75,7 @@ export class WorkerIoBudget {
         console.warn('[io-budget] Worker io-init not received within 1s — using local budget');
         const fallbackIsTauri = isTauriRuntime();
         this.state = {
-          budget: createLocalBudget({ isTauri: fallbackIsTauri }),
+          budget: createLocalBudget({ isTauri: fallbackIsTauri, realm: 'worker' }),
           isTauri: fallbackIsTauri,
           isFallback: true,
         };
@@ -116,7 +116,7 @@ export class WorkerIoBudget {
       };
     } else {
       this.state = {
-        budget: createLocalBudget({ isTauri }),
+        budget: createLocalBudget({ isTauri, realm: 'worker' }),
         isTauri,
       };
     }

@@ -23,6 +23,14 @@ import { FILE_IO_LIMITS } from '~/utils/constants';
 
 export type BudgetPool = 'interactive' | 'streaming';
 
+/**
+ * Which realm a {@link LocalBudget} belongs to. Only meaningful on the local
+ * fallback path (no shared SAB): the worker realms are capped tighter than the
+ * main thread so the uncoordinated sum across realms stays within the
+ * renderer-wide datapipe ceiling. See `FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER`.
+ */
+export type BudgetRealm = 'main' | 'worker';
+
 export interface IoBudget {
   acquire(pool: BudgetPool): Promise<() => void>;
   getSnapshot(): { interactiveAvailable: number; streamingAvailable: number };
@@ -81,7 +89,9 @@ function nowMs(): number {
 }
 
 /**
- * Resolve interactive/streaming concurrency from {@link FILE_IO_LIMITS}.
+ * Resolve interactive/streaming concurrency for the SHARED (cross-thread) budget
+ * from {@link FILE_IO_LIMITS}. This is the single coordinated budget for the
+ * whole renderer, so it uses the full pool ceiling.
  */
 export function resolveBudgetCapacity(isTauriRuntime: boolean): {
   interactive: number;
@@ -94,6 +104,41 @@ export function resolveBudgetCapacity(isTauriRuntime: boolean): {
   return {
     interactive: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO)),
     streaming: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_STREAMING)),
+  };
+}
+
+/**
+ * Resolve per-realm concurrency for the LOCAL fallback budget (no shared SAB).
+ *
+ * Unlike the shared budget, each realm here runs an INDEPENDENT counter against
+ * the same renderer datapipe pool, so the caps are split by role: worker realms
+ * get the smaller {@link FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER} so
+ * that `main + video-worker + audio-worker` sums to the renderer-wide ceiling
+ * (see the constant's doc) instead of over-subscribing the pool.
+ */
+export function resolveLocalBudgetCapacity(
+  isTauriRuntime: boolean,
+  realm: BudgetRealm,
+): {
+  interactive: number;
+  streaming: number;
+} {
+  if (isTauriRuntime) {
+    // Tauri reads/writes go to the native FS — there is no datapipe pool — so
+    // every realm gets the full native cap regardless of role.
+    const native = Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE));
+    return { interactive: native, streaming: native };
+  }
+  const streaming = Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_STREAMING));
+  if (realm === 'main') {
+    return {
+      interactive: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO)),
+      streaming,
+    };
+  }
+  return {
+    interactive: Math.max(1, Math.round(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER)),
+    streaming,
   };
 }
 
@@ -269,9 +314,13 @@ export function createSharedBudget(buffer: SharedArrayBuffer): IoBudget {
 /**
  * Build a context-local fallback budget. Used when `SharedArrayBuffer` is
  * unavailable (e.g. JSDOM tests, environments without COOP/COEP).
+ *
+ * `realm` selects the per-realm cap so the uncoordinated sum across realms stays
+ * within the renderer ceiling; it defaults to `'main'` (the full cap) to
+ * preserve prior behaviour for callers that don't specify a role.
  */
-export function createLocalBudget(input: { isTauri: boolean }): IoBudget {
-  const capacity = resolveBudgetCapacity(input.isTauri);
+export function createLocalBudget(input: { isTauri: boolean; realm?: BudgetRealm }): IoBudget {
+  const capacity = resolveLocalBudgetCapacity(input.isTauri, input.realm ?? 'main');
   return new LocalBudget({
     isTauri: input.isTauri,
     interactive: capacity.interactive,

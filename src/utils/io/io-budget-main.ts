@@ -54,7 +54,7 @@ function initState(): MainBudgetState {
   }
   return {
     buffer: null,
-    budget: createLocalBudget({ isTauri: tauri }),
+    budget: createLocalBudget({ isTauri: tauri, realm: 'main' }),
     isTauri: tauri,
   };
 }

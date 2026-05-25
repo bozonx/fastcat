@@ -136,14 +136,17 @@ describe('WorkerIoBudget', () => {
     release();
   });
 
-  it('allows up to MAX_CONCURRENT_FILE_IO interactive slots', async () => {
+  it('caps worker realm at MAX_CONCURRENT_FILE_IO_LOCAL_WORKER interactive slots', async () => {
+    // Workers run the local fallback at a tighter per-realm cap than the main
+    // thread so the uncoordinated sum across realms stays within the renderer
+    // datapipe ceiling. A worker budget must NOT hand out the full main cap.
     budget.installListener();
     const bPromise = budget.getBudget();
     worker.dispatch({ type: 'io-init', sab: null, isTauri: false });
     const b = await bPromise;
 
     const releases: (() => void)[] = [];
-    for (let i = 0; i < FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO; i += 1) {
+    for (let i = 0; i < FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER; i += 1) {
       releases.push(await b.acquire('interactive'));
     }
 

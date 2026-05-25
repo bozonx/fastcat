@@ -25,6 +25,28 @@ export const FILE_IO_LIMITS = {
    */
   MAX_CONCURRENT_FILE_IO_STREAMING: 1,
   /**
+   * Per-realm interactive cap for the **local fallback** budget (browser without
+   * COOP/COEP, so a `SharedArrayBuffer` can't coordinate the realms — each runs
+   * its OWN `LocalBudget` against the SAME renderer datapipe pool).
+   *
+   * Because the realms don't coordinate in this mode, the worker caps are kept
+   * below the main-thread cap so the UNCOORDINATED SUM across the realms that do
+   * editing-time OPFS I/O stays within the renderer-wide ceiling:
+   *
+   *   main (MAX_CONCURRENT_FILE_IO = 2)
+   *   + video-core worker (MAX_CONCURRENT_FILE_IO_LOCAL_WORKER = 1)
+   *   + audio-decode worker (MAX_CONCURRENT_FILE_IO_LOCAL_WORKER = 1)
+   *   = 4 concurrent interactive ops — the historically-safe pool size the
+   *     original single-thread governor used. Without this, three realms at the
+   *     full cap of 2 reach 6 and can exhaust the pool ("Failed to create
+   *     datapipe") → editor freeze under heavy editing.
+   *
+   * The main thread keeps the full cap (it is the busy writer and its ops are
+   * short). On the shared (cross-origin isolated) path this is unused — the SAB
+   * holds one coordinated budget for the whole renderer.
+   */
+  MAX_CONCURRENT_FILE_IO_LOCAL_WORKER: 1,
+  /**
    * Unified I/O cap for the **Tauri** runtime. Same rationale as writes: in
    * Tauri this is only a light guard against FD thrash, so the value is high
    * enough not to throttle desktop I/O.

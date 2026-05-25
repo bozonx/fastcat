@@ -5,6 +5,7 @@ import {
   createLocalBudget,
   createSharedBudget,
   createSharedBudgetBuffer,
+  resolveLocalBudgetCapacity,
 } from '~/utils/io/io-budget';
 import { FILE_IO_LIMITS } from '~/utils/constants';
 
@@ -33,6 +34,42 @@ describe('io-budget local budget', () => {
     (await extra)();
 
     releases.slice(1).forEach((r) => r());
+  });
+
+  it('defaults to the main-realm (full) cap when no realm is given', () => {
+    const budget = createLocalBudget({ isTauri: false });
+    expect(budget.getSnapshot().interactiveAvailable).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO);
+  });
+
+  it('caps a worker realm tighter than the main realm', () => {
+    const main = createLocalBudget({ isTauri: false, realm: 'main' });
+    const worker = createLocalBudget({ isTauri: false, realm: 'worker' });
+
+    expect(main.getSnapshot().interactiveAvailable).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO);
+    expect(worker.getSnapshot().interactiveAvailable).toBe(
+      FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER,
+    );
+    expect(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER).toBeLessThan(
+      FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO,
+    );
+  });
+
+  it('keeps the uncoordinated editing-realm sum within the historically-safe ceiling', () => {
+    // No shared SAB → main + video-worker + audio-worker each run their own
+    // LocalBudget against the same datapipe pool. Their interactive caps must sum
+    // to at most 4 (the pool size the original single-thread governor used);
+    // otherwise heavy editing can exhaust the pool and freeze the editor.
+    const main = resolveLocalBudgetCapacity(false, 'main').interactive;
+    const worker = resolveLocalBudgetCapacity(false, 'worker').interactive;
+    const editingSum = main + worker + worker; // main + video + audio
+    expect(editingSum).toBeLessThanOrEqual(4);
+  });
+
+  it('gives every realm the full native cap under Tauri (no datapipe pool)', () => {
+    const main = resolveLocalBudgetCapacity(true, 'main');
+    const worker = resolveLocalBudgetCapacity(true, 'worker');
+    expect(main.interactive).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE);
+    expect(worker.interactive).toBe(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_NATIVE);
   });
 
   it('allows up to MAX_CONCURRENT_FILE_IO_STREAMING streaming slots', async () => {
