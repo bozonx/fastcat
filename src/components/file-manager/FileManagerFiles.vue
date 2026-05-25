@@ -22,6 +22,7 @@ import { useVfs } from '~/composables/useVfs';
 import { useFileManagerSelection } from '~/composables/file-manager/useFileManagerSelection';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
 import { FILE_MANAGER_ROOT_SPACER_HEIGHT, DOCUMENTS_DIR_NAME } from '~/utils/constants';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
   editingEntryPath?: string | null;
@@ -109,6 +110,7 @@ const focusStore = useFocusStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const clipboardStore = useAppClipboard();
+const { getHotkeyLabel } = useHotkeyLabel();
 const { loadTimeline } = useProjectActions();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -358,7 +360,7 @@ const rootContextMenuItems = computed(() => {
     const menu: Record<string, unknown>[][] = [
       [
         {
-          label: t('videoEditor.fileManager.actions.createFolder'),
+          label: `${t('videoEditor.fileManager.actions.createFolder')}${getHotkeyLabel('general.createFolder') ? ` (${getHotkeyLabel('general.createFolder')})` : ''}`,
           icon: 'i-heroicons-folder-plus',
           onSelect: async () => emit('action', 'createFolder', rootEntry),
         },
@@ -389,7 +391,7 @@ const rootContextMenuItems = computed(() => {
         onSelect: async () => emit('action', 'upload', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createFolder'),
+        label: `${t('videoEditor.fileManager.actions.createFolder')}${getHotkeyLabel('general.createFolder') ? ` (${getHotkeyLabel('general.createFolder')})` : ''}`,
         icon: 'i-heroicons-folder-plus',
         onSelect: async () => emit('action', 'createFolder', rootEntry),
       },

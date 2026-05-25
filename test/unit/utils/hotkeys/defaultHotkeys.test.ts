@@ -47,6 +47,11 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.addMarker']).toContain('M');
   });
 
+  it('has binding for general.createFolder as Ctrl+Shift+N', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toEqual(['Ctrl+Shift+N']);
+  });
+
   it('has bindings for general.volumeUp including Control+R', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toBeDefined();
     expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Control+R');

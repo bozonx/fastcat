@@ -85,6 +85,7 @@ const ACTION_TO_HOTKEY: Record<string, HotkeyCommandId> = {
   'addMarker': 'general.addMarker',
   'prevMarker': 'general.prevMarker',
   'nextMarker': 'general.nextMarker',
+  'createSubfolder': 'general.createFolder',
 };
 
 function getActionTitle(action: PropertyAction): string {

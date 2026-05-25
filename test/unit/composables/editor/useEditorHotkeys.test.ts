@@ -12,6 +12,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
+import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
@@ -554,6 +555,85 @@ describe('useEditorHotkeys', () => {
         },
       ],
       sourceInstanceId: 'main',
+    });
+  });
+
+  it('creates a folder in the current file-manager directory with Ctrl+Shift+N', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const fileManagerStore = useFileManagerStore();
+    const uiStore = useUiStore();
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:file-manager:detached-files');
+    fileManagerStore.selectedFolder = {
+      kind: 'directory',
+      name: 'assets',
+      path: 'media/assets',
+      source: 'local',
+    } as any;
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'N',
+        code: 'KeyN',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(uiStore.pendingFsEntryCreateFolder).toEqual({
+      kind: 'directory',
+      name: 'assets',
+      path: 'media/assets',
+      source: 'local',
+    });
+  });
+
+  it('creates a folder in the current directory from file properties focus', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const fileManagerStore = useFileManagerStore();
+    const selectionStore = useSelectionStore();
+    const uiStore = useUiStore();
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    fileManagerStore.selectedFolder = {
+      kind: 'directory',
+      name: 'docs',
+      path: 'docs',
+      source: 'local',
+    } as any;
+    selectionStore.selectFsEntry(
+      {
+        kind: 'file',
+        name: 'readme.md',
+        path: 'docs/readme.md',
+        parentPath: 'docs',
+        source: 'local',
+      } as any,
+      'main',
+    );
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'N',
+        code: 'KeyN',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(uiStore.pendingFsEntryCreateFolder).toEqual({
+      kind: 'directory',
+      name: 'docs',
+      path: 'docs',
+      source: 'local',
     });
   });
 

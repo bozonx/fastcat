@@ -477,7 +477,7 @@ const menuItems = computed(() => [
       onSelect: triggerFileUpload,
     },
     {
-      label: t('videoEditor.fileManager.actions.createFolder'),
+      label: `${t('videoEditor.fileManager.actions.createFolder')}${getHotkeyLabel('general.createFolder') ? ` (${getHotkeyLabel('general.createFolder')})` : ''}`,
       icon: 'i-heroicons-folder-plus',
       onSelect: handleCreateFolderRequest,
     },

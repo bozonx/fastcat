@@ -125,7 +125,8 @@ export type HotkeyCommandId =
   | 'playback.backward1'
   | 'general.navigateBack'
   | 'general.navigateForward'
-  | 'general.navigateUp';
+  | 'general.navigateUp'
+  | 'general.createFolder';
   // Note: ArrowUp, ArrowDown, ArrowLeft, and ArrowRight keys for list selection
   // are handled locally inside the file browser components and are intentionally
   // excluded from global customizable hotkeys to avoid breaking standard inputs/dropdowns.
@@ -205,6 +206,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.navigateBack', groupId: 'fileManager', title: 'Navigate back' },
     { id: 'general.navigateForward', groupId: 'fileManager', title: 'Navigate forward' },
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
+    { id: 'general.createFolder', groupId: 'fileManager', title: 'Create folder' },
 
     { id: 'timeline.addTextClipAtPlayhead', groupId: 'timeline', title: 'Create text clip at playhead' },
     {
@@ -461,6 +463,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.navigateBack': ['Backspace', 'z', 'MouseBack'],
     'general.navigateForward': ['Shift+Backspace', 'MouseForward'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
+    'general.createFolder': ['Ctrl+Shift+N'],
 
     'timeline.addTextClipAtPlayhead': ['N'],
     'timeline.addBackgroundClipAtPlayhead': ['U'],

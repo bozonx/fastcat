@@ -1445,6 +1445,7 @@
         "backgroundTasks": "Background tasks",
         "projectSettings": "Open project settings",
         "appSettings": "Open application settings",
+        "createFolder": "Create folder",
         "projectTabFiles": "Switch to Files tab",
         "projectTabHistory": "Switch to History tab",
         "projectTabEffects": "Switch to Effects tab",

@@ -104,6 +104,37 @@ export function useGeneralHotkeys(
     return true;
   }
 
+  function getCurrentFileManagerFolderTargetEntry(): FsEntry | null {
+    if (!isFileManagerFocus()) {
+      return null;
+    }
+
+    const currentFolder = fileManagerStore.selectedFolder;
+    if (currentFolder?.kind === 'directory') {
+      if (currentFolder.source === 'remote') {
+        return null;
+      }
+      return currentFolder;
+    }
+
+    return {
+      kind: 'directory',
+      name: projectStore.currentProjectName ?? '',
+      path: '',
+      source: 'local',
+    };
+  }
+
+  function handleFileManagerCreateFolder() {
+    const target = getCurrentFileManagerFolderTargetEntry();
+    if (!target) {
+      return false;
+    }
+
+    uiStore.pendingFsEntryCreateFolder = target;
+    return true;
+  }
+
   function createMarkerAtPlayhead() {
     const existing = timelineStore.getMarkers();
     timelineStore.addMarkerAtPlayhead();
@@ -498,6 +529,9 @@ export function useGeneralHotkeys(
     'general.appSettings': () => {
       uiStore.isEditorSettingsOpen = true;
       return true;
+    },
+    'general.createFolder': () => {
+      return handleFileManagerCreateFolder();
     },
     'general.selectAll': () => {
       if (focusStore.effectiveFocus === 'timeline') {

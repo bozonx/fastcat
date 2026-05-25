@@ -193,7 +193,7 @@ const rootContextMenuItems = computed(() => {
         onSelect: () => onFileAction('upload', rootEntry),
       },
       {
-        label: t('videoEditor.fileManager.actions.createFolder'),
+        label: getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder'),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => onFileAction('createFolder', rootEntry),
       },

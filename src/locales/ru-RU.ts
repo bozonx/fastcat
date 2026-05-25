@@ -1445,6 +1445,7 @@ export default {
         "backgroundTasks": "Фоновые задачи",
         "projectSettings": "Настройки проекта",
         "appSettings": "Настройки приложения",
+        "createFolder": "Создать папку",
         "projectTabFiles": "Переключить на файловый менеджер",
         "projectTabHistory": "Переключить на историю",
         "projectTabEffects": "Переключить на эффекты",

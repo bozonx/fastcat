@@ -31,7 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { getHotkeyLabel } = useHotkeyLabel();
+const { getHotkeyLabel, getHotkeyTitle } = useHotkeyLabel();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
@@ -172,7 +172,7 @@ const toolbarMenuItems = computed(() => {
         variant="ghost"
         color="neutral"
         size="sm"
-        :title="t('videoEditor.fileManager.actions.createFolder')"
+        :title="getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder')"
         @click="emit('createFolder')"
       />
     </div>
