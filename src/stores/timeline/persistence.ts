@@ -86,6 +86,7 @@ export interface TimelinePersistenceDeps {
   exitPreview?: () => void;
   onSaveSuccess?: (serialized: string) => void;
   onSaveError?: (error: unknown) => void;
+  onSaveBlockedReadOnly?: () => void;
 }
 
 export interface TimelinePersistenceModule {
@@ -357,6 +358,7 @@ export function createTimelinePersistenceModule(
   // clean state arms a single timer; further edits within the window do not
   // reset it; when it fires the accumulated state is written to the sidecar.
   let autosaveTimer: number | null = null;
+  let autosaveGeneration = 0;
 
   function clearAutosaveTimer() {
     if (typeof window === 'undefined') return;
@@ -372,6 +374,8 @@ export function createTimelinePersistenceModule(
   }
 
   function scheduleAutosave() {
+    if (!deps.timelineDoc.value || !isDirty()) return;
+    if (deps.isReadOnly?.value) return;
     if (typeof window === 'undefined') {
       void flushTimelineAutosave();
       return;
@@ -396,6 +400,7 @@ export function createTimelinePersistenceModule(
 
       const currentProjectId = deps.currentProjectName.value;
       const currentTimelinePath = deps.currentTimelinePath.value;
+      const generation = autosaveGeneration;
 
       if (!currentProjectId || !currentTimelinePath) return false;
 
@@ -415,7 +420,14 @@ export function createTimelinePersistenceModule(
         });
         if (!handle) return false;
 
-        await writeSerializedToHandle(handle, await serializeValidatedTimeline(doc));
+        const serialized = await serializeValidatedTimeline(doc);
+        if (generation !== autosaveGeneration || !isDirty()) return false;
+
+        await writeSerializedToHandle(handle, serialized);
+        if (generation !== autosaveGeneration || !isDirty()) {
+          await deps.deleteAutosaveFile?.(currentTimelinePath);
+          return false;
+        }
         return true;
       } catch (e: unknown) {
         deps.timelineSaveError.value =
@@ -439,6 +451,7 @@ export function createTimelinePersistenceModule(
     mainSavedRevision = 0;
     setDirtyState();
     loadTimelineRequestId += 1;
+    autosaveGeneration += 1;
   }
 
   function getLoadRequestId() {
@@ -455,17 +468,11 @@ export function createTimelinePersistenceModule(
     currentRevision += 1;
     setDirtyState();
     autoSave.markDirty();
-    scheduleAutosave();
   }
 
-  async function requestTimelineSave(options?: { immediate?: boolean }) {
+  async function requestTimelineSave(_options?: { immediate?: boolean }) {
     if (!deps.timelineDoc.value) return;
-    if (options?.immediate) {
-      clearAutosaveTimer();
-      await saveTimeline();
-    } else {
-      scheduleAutosave();
-    }
+    scheduleAutosave();
   }
 
   async function loadTimeline() {
@@ -539,6 +546,13 @@ export function createTimelinePersistenceModule(
             restoredAutosave = true;
           } else {
             deps.onRecoveryChoice?.(choice);
+            if (choice === 'open-saved') {
+              try {
+                await deps.deleteAutosaveFile?.(deps.currentTimelinePath.value);
+              } catch (e) {
+                console.warn('Failed to remove discarded autosave sidecar', e);
+              }
+            }
           }
         } else {
           const shouldRestore =
@@ -612,13 +626,17 @@ export function createTimelinePersistenceModule(
   async function saveTimeline() {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
-    if (deps.isReadOnly?.value) return;
+    if (deps.isReadOnly?.value) {
+      deps.onSaveBlockedReadOnly?.();
+      return;
+    }
 
     const currentProjectId = deps.currentProjectName.value;
     const currentTimelinePath = deps.currentTimelinePath.value;
     if (!currentProjectId || !currentTimelinePath) return;
 
     const revisionToSave = currentRevision;
+    autosaveGeneration += 1;
     deps.isSavingTimeline.value = true;
     deps.timelineSaveError.value = null;
 
@@ -656,6 +674,7 @@ export function createTimelinePersistenceModule(
       ) {
         if (!isDirty()) {
           clearAutosaveTimer();
+          autoSave.markCleanForCurrentRevision();
           try {
             await deps.deleteAutosaveFile?.(currentTimelinePath);
           } catch (e) {

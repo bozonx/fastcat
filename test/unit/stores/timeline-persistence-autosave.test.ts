@@ -110,6 +110,7 @@ describe('Timeline Persistence and AutoSave', () => {
     } as any;
 
     timelineStore.markTimelineAsDirty();
+    await timelineStore.requestTimelineSave();
     expect(timelineStore.isTimelineDirty).toBe(true);
 
     // Should not save immediately
@@ -159,6 +160,34 @@ describe('Timeline Persistence and AutoSave', () => {
     });
     expect(timelineStore.isSavingTimeline).toBe(false);
     expect(timelineStore.isTimelineDirty).toBe(false);
+  });
+
+  it('immediate save request still waits for the configured autosave interval', async () => {
+    const timelineStore = useTimelineStore();
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+
+    timelineStore.markTimelineAsDirty();
+    await timelineStore.requestTimelineSave({ immediate: true });
+
+    expect(mockFileHandle.createWritable).not.toHaveBeenCalled();
+
+    await vi.runAllTimersAsync();
+    await Promise.resolve();
+
+    expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalledWith({
+      relativePath: '.fastcat/autosave/timelines/main.otio',
+      create: true,
+    });
+    expect(mockProjectStore.getProjectFileHandleByRelativePath).not.toHaveBeenCalledWith({
+      relativePath: 'timelines/main.otio',
+      create: true,
+    });
+    expect(timelineStore.isTimelineDirty).toBe(true);
   });
 
   it('posts a serializable timeline document to the serializer worker', async () => {

@@ -27,7 +27,7 @@ const workerMocks: Array<{
 
 beforeAll(() => {
   originalWorker = (globalThis as any).Worker;
-  (globalThis as any).Worker = vi.fn().mockImplementation(() => {
+  (globalThis as any).Worker = vi.fn().mockImplementation(function () {
     const worker = {
       onmessage: null as ((e: MessageEvent) => void) | null,
       onerror: null as ((e: ErrorEvent) => void) | null,
@@ -276,15 +276,18 @@ describe('TimelinePersistenceModule', () => {
   });
 
   it('saveTimeline skips when read-only', async () => {
+    const onSaveBlockedReadOnly = vi.fn();
     const deps = createMockDeps({
       timelineDoc: ref({ ...fallbackDoc }),
       isTimelineDirty: ref(true),
       isReadOnly: ref(true),
+      onSaveBlockedReadOnly,
     });
     const mod = createTimelinePersistenceModule(deps);
 
     await mod.saveTimeline();
     expect(deps.ensureTimelineFileHandle).not.toHaveBeenCalled();
+    expect(onSaveBlockedReadOnly).toHaveBeenCalled();
   });
 
   it('loadTimeline calls exitPreview at the beginning', async () => {
@@ -299,6 +302,7 @@ describe('TimelinePersistenceModule', () => {
   it('loadTimeline handles showRecoveryDialog for open-saved and view-backups', async () => {
     const showRecoveryDialog = vi.fn().mockResolvedValue('open-saved');
     const onRecoveryChoice = vi.fn();
+    const deleteAutosaveFile = vi.fn().mockResolvedValue(undefined);
     const mainFile = { text: async () => '{"id":"main"}', lastModified: 100 } as any;
     const autosaveFile = { text: async () => '{"id":"autosave"}', lastModified: 200 } as any;
     const ensureTimelineFileHandle = vi.fn(
@@ -313,6 +317,7 @@ describe('TimelinePersistenceModule', () => {
     const deps = createMockDeps({
       showRecoveryDialog,
       onRecoveryChoice,
+      deleteAutosaveFile,
       ensureTimelineFileHandle,
     });
     const mod = createTimelinePersistenceModule(deps);
@@ -320,6 +325,7 @@ describe('TimelinePersistenceModule', () => {
 
     expect(showRecoveryDialog).toHaveBeenCalled();
     expect(onRecoveryChoice).toHaveBeenCalledWith('open-saved');
+    expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');
     expect(parseTimelineFromOtio).toHaveBeenCalledWith('{"id":"main"}', expect.any(Object));
   });
 
@@ -348,5 +354,55 @@ describe('TimelinePersistenceModule', () => {
     expect(showRecoveryDialog).toHaveBeenCalled();
     expect(onRecoveryChoice).not.toHaveBeenCalled();
     expect(parseTimelineFromOtio).toHaveBeenCalledWith('{"id":"autosave"}', expect.any(Object));
+  });
+
+  it('removes an in-flight autosave if an explicit save wins the race', async () => {
+    let resolveAutosaveWrite: (() => void) | null = null;
+    const autosaveWritable = {
+      write: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveAutosaveWrite = resolve;
+          }),
+      ),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const mainWritable = {
+      write: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    const autosaveHandle = {
+      createWritable: vi.fn().mockResolvedValue(autosaveWritable),
+    };
+    const mainHandle = {
+      createWritable: vi.fn().mockResolvedValue(mainWritable),
+    };
+    const deleteAutosaveFile = vi.fn().mockResolvedValue(undefined);
+    const deps = createMockDeps({
+      timelineDoc: ref({ ...fallbackDoc }),
+      ensureTimelineFileHandle: vi.fn(
+        async (options?: { create?: boolean; relativePath?: string }) =>
+          options?.relativePath?.startsWith('.fastcat/autosave/') ? autosaveHandle : mainHandle,
+      ),
+      deleteAutosaveFile,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    mod.markDirty();
+    const autosavePromise = mod.flushTimelineAutosave();
+
+    for (let i = 0; i < 10 && !autosaveWritable.write.mock.calls.length; i++) {
+      await Promise.resolve();
+    }
+    expect(autosaveWritable.write).toHaveBeenCalled();
+
+    await mod.saveTimeline();
+    expect(mainWritable.write).toHaveBeenCalled();
+    expect(deps.isTimelineDirty.value).toBe(false);
+
+    resolveAutosaveWrite?.();
+    await autosavePromise;
+
+    expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');
   });
 });

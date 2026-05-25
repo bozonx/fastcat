@@ -436,7 +436,6 @@ export const useTimelineStore = defineStore('timeline', () => {
           title: t('videoEditor.timeline.backups.toastUnsavedTitle'),
           description: t('videoEditor.timeline.backups.toastUnsavedDesc'),
           color: 'warning',
-          timeout: 8000,
         });
       } else if (choice === 'view-backups') {
         const projectTabsStore = useProjectTabsStore();
@@ -455,6 +454,15 @@ export const useTimelineStore = defineStore('timeline', () => {
       toast.add({
         title: t('common.saveError'),
         color: 'error',
+      });
+    },
+    onSaveBlockedReadOnly: () => {
+      toast.add({
+        title: t('videoEditor.timeline.saveBlockedReadOnlyTitle'),
+        description: previewMode.value
+          ? t('videoEditor.timeline.saveBlockedPreviewDesc')
+          : t('videoEditor.timeline.saveBlockedLockedDesc'),
+        color: 'warning',
       });
     },
   });
@@ -745,6 +753,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     if (currentTimelinePath.value) {
       await deleteTimelineAutosaveFile(currentTimelinePath.value);
     }
+    await lifecycle.requestTimelineSave({ immediate: true });
     toast.add({
       title: t('videoEditor.timeline.backups.versionRestored'),
       color: 'success',
@@ -838,6 +847,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (currentTimelinePath.value) {
         await deleteTimelineAutosaveFile(currentTimelinePath.value);
       }
+      await lifecycle.requestTimelineSave({ immediate: true });
 
       toast.add({
         title: t('videoEditor.timeline.backups.versionRestored'),
@@ -1009,6 +1019,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   return {
     timelineDoc,
+    currentTimelinePath,
     dirtyPaths,
     hasAnyDirtyTimeline,
     isPathDirty,

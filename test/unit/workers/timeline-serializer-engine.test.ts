@@ -1,6 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
-import { handleTimelineSerializeMessage } from '~/workers/timeline-serializer-engine';
+import {
+  handleTimelineSerializeMessage,
+  isTimelineSerializeMessage,
+} from '~/workers/timeline-serializer-engine';
 import * as otioSerializer from '~/timeline/otio-serializer';
 import type { TimelineDocument } from '~/timeline/types';
 
@@ -9,6 +12,19 @@ vi.mock('~/timeline/otio-serializer', () => ({
 }));
 
 describe('handleTimelineSerializeMessage', () => {
+  it('accepts only timeline document messages', () => {
+    expect(isTimelineSerializeMessage({ type: 'io-init', sab: null, isTauri: false })).toBe(false);
+    expect(
+      isTimelineSerializeMessage({
+        OTIO_SCHEMA: 'Timeline.1',
+        id: '1',
+        name: 'Timeline',
+        timebase: { fps: 30 },
+        tracks: [],
+      }),
+    ).toBe(true);
+  });
+
   it('returns serialized document on success', () => {
     const doc = { OTIO_SCHEMA: 'Timeline.1' as const, id: '1', name: 'Test' } as TimelineDocument;
     vi.mocked(otioSerializer.serializeTimelineToOtio).mockReturnValue('serialized-json');

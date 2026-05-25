@@ -1829,6 +1829,9 @@
         "sound": "Sound"
       },
       "unsavedChanges": "Unsaved changes",
+      "saveBlockedReadOnlyTitle": "Timeline is read-only",
+      "saveBlockedPreviewDesc": "Exit backup preview before saving changes.",
+      "saveBlockedLockedDesc": "Project lock was not acquired. Return to the editable project tab before saving.",
       "versionCreated": "Version created: {name}",
       "versionSaveError": "Version save error",
       "backups": {
@@ -1846,7 +1849,7 @@
         "recoveryTitle": "Project Recovery",
         "recoveryDescription": "A newer auto-save was found for timeline {name}. Please choose an action:",
         "openSavedTitle": "Open Saved Version",
-        "openSavedDesc": "Load the main file. The auto-save copy will be kept in backups.",
+        "openSavedDesc": "Load the main file and discard the auto-save copy.",
         "restoreAutosaveTitle": "Restore Auto-Save",
         "restoreAutosaveDesc": "Load the auto-save copy. The main file remains untouched on disk.",
         "viewBackupsTitle": "View Options",
