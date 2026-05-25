@@ -276,7 +276,9 @@ export default {
         "noApplicableGroups": "No applicable parameter groups for this clip.",
         "paste": "Paste parameters",
         "pasteDescription": "Select the parameter groups you want to paste.",
-        "pasteTitle": "Paste Clip Parameters"
+        "pasteTitle": "Paste Clip Parameters",
+        "transitionIn": "Transition in",
+        "transitionOut": "Transition out"
       }
     },
     "dynamicPanels": {
@@ -656,6 +658,7 @@ export default {
       "baseLength": "Base Length (%)",
       "cornerRadius": "Corner Radius (%)",
       "fillColor": "Fill Color",
+      "geometry": "Geometry",
       "height": "Height (%)",
       "innerRadius": "Inner Radius (%)",
       "pointerAngle": "Pointer Angle (%)",
@@ -664,6 +667,7 @@ export default {
       "shape": "Shape",
       "squashX": "Squash X (%)",
       "squashY": "Squash Y (%)",
+      "stroke": "Stroke",
       "strokeColor": "Stroke Color",
       "strokeWidth": "Stroke Width",
       "type": "Type",
@@ -694,6 +698,7 @@ export default {
       "borderColor": "Border color",
       "borderWidthPx": "Border width (px)",
       "colorPicker": "Color and hue",
+      "content": "Content",
       "fontFamily": "Font family",
       "fontSizePx": "Font size (px)",
       "fontWeight": "Font weight",

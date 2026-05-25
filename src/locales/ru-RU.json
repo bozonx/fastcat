@@ -276,7 +276,9 @@
         "noApplicableGroups": "Нет применимых групп параметров для этого клипа.",
         "paste": "Вставить параметры",
         "pasteDescription": "Выберите группы параметров, которые хотите вставить.",
-        "pasteTitle": "Вставить параметры клипа"
+        "pasteTitle": "Вставить параметры клипа",
+        "transitionIn": "Входной переход",
+        "transitionOut": "Выходной переход"
       }
     },
     "dynamicPanels": {
@@ -656,6 +658,7 @@
       "baseLength": "Длина основания (%)",
       "cornerRadius": "Радиус углов (%)",
       "fillColor": "Цвет заливки",
+      "geometry": "Геометрия",
       "height": "Высота (%)",
       "innerRadius": "Внутренний радиус (%)",
       "pointerAngle": "Угол указателя (%)",
@@ -664,6 +667,7 @@
       "shape": "Фигура",
       "squashX": "Сжатие X (%)",
       "squashY": "Сжатие Y (%)",
+      "stroke": "Контур",
       "strokeColor": "Цвет контура",
       "strokeWidth": "Толщина контура",
       "type": "Тип",
@@ -694,6 +698,7 @@
       "borderColor": "Цвет бордера",
       "borderWidthPx": "Толщина бордера (px)",
       "colorPicker": "Цвет и оттенок",
+      "content": "Содержимое",
       "fontFamily": "Шрифт",
       "fontSizePx": "Размер шрифта (px)",
       "fontWeight": "Начертание",

@@ -44,6 +44,7 @@ export interface ClipParameterGroupOption {
 
 export const GROUP_SUB_PROPERTIES: Record<string, ClipParameterSubProperty[]> = {
   text: [
+    { id: 'text:content', labelKey: 'fastcat.textClip.content' },
     { id: 'text:textStyle', labelKey: 'fastcat.textClip.textBlock' },
     { id: 'text:textShadow', labelKey: 'fastcat.textClip.textShadow' },
     { id: 'text:background', labelKey: 'fastcat.textClip.backgroundBlock' },
@@ -56,11 +57,32 @@ export const GROUP_SUB_PROPERTIES: Record<string, ClipParameterSubProperty[]> = 
     { id: 'transform:rotation', labelKey: 'fastcat.clip.transform.rotation' },
     { id: 'transform:position', labelKey: 'fastcat.clip.transform.position' },
     { id: 'transform:crop', labelKey: 'fastcat.clip.transform.crop' },
+    { id: 'transform:sourceOrientation', labelKey: 'fastcat.clip.transform.sourceOrientation' },
+  ],
+  mask: [
+    { id: 'mask:source', labelKey: 'fastcat.clip.mask.file' },
+    { id: 'mask:mode', labelKey: 'fastcat.clip.mask.mode' },
+    { id: 'mask:invert', labelKey: 'fastcat.clip.mask.invert' },
   ],
   audio: [
     { id: 'audio:volume', labelKey: 'fastcat.clip.audio.volume' },
     { id: 'audio:balance', labelKey: 'fastcat.clip.audio.balance' },
     { id: 'audio:fades', labelKey: 'fastcat.clip.audioFade.title' },
+  ],
+  shape: [
+    { id: 'shape:type', labelKey: 'fastcat.shapeClip.type' },
+    { id: 'shape:fill', labelKey: 'fastcat.shapeClip.fillColor' },
+    { id: 'shape:stroke', labelKey: 'fastcat.shapeClip.stroke' },
+    { id: 'shape:config', labelKey: 'fastcat.shapeClip.geometry' },
+  ],
+  hud: [
+    { id: 'hud:background', labelKey: 'fastcat.hudClip.background' },
+    { id: 'hud:content', labelKey: 'fastcat.hudClip.content' },
+    { id: 'hud:frame', labelKey: 'fastcat.hudClip.frame' },
+  ],
+  transitions: [
+    { id: 'transitions:in', labelKey: 'fastcat.clip.parameters.transitionIn' },
+    { id: 'transitions:out', labelKey: 'fastcat.clip.parameters.transitionOut' },
   ],
 };
 
@@ -143,6 +165,7 @@ function splitEffects(clip: TimelineClipItem) {
 }
 
 function canHaveAudioParams(clip: TimelineClipItem, trackKind: TrackKind) {
+  if (trackKind === 'video' && clip.audioFromVideoDisabled) return false;
   return trackKind === 'audio' || clip.clipType === 'media' || clip.clipType === 'timeline';
 }
 
@@ -158,7 +181,7 @@ export function createClipParametersSnapshot(input: {
   const source = clip as unknown as Record<string, unknown>;
   const groups: ClipParametersSnapshot['groups'] = {};
 
-  const transform = pickDefined(source, ['transform', 'transformActive']);
+  const transform = pickDefined(source, ['transform', 'transformActive', 'sourceOrientation']);
   if (transform) groups.transform = transform;
 
   const opacity = pickDefined(source, ['opacity', 'opacityActive']);
@@ -191,13 +214,10 @@ export function createClipParametersSnapshot(input: {
   const transitions = pickDefined(source, ['transitionIn', 'transitionOut']);
   if (transitions) groups.transitions = transitions;
 
-  const sourceOrientation = pickDefined(source, ['sourceOrientation']);
-  if (sourceOrientation) groups.sourceOrientation = sourceOrientation;
-
   const background = pickDefined(source, ['backgroundColor']);
   if (background) groups.background = background;
 
-  const text = pickDefined(source, ['style']);
+  const text = pickDefined(source, ['text', 'style']);
   if (text) groups.text = text;
 
   const shape = pickDefined(source, [
@@ -209,7 +229,7 @@ export function createClipParametersSnapshot(input: {
   ]);
   if (shape) groups.shape = shape;
 
-  const hud = pickDefined(source, ['background', 'content', 'frame']);
+  const hud = pickDefined(source, ['hudType', 'background', 'content', 'frame']);
   if (hud) groups.hud = hud;
 
   return {
@@ -226,15 +246,110 @@ export function getApplicableClipParameterGroups(input: {
 }): ClipParameterGroupOption[] {
   if (!input.snapshot) return [];
 
-  const available = Object.keys(input.snapshot.groups) as ClipParameterGroup[];
+  const snapshot = input.snapshot;
+  const available = Object.keys(snapshot.groups) as ClipParameterGroup[];
   return available
     .filter((group) => isGroupApplicable(group, input.targetClip, input.targetTrackKind))
-    .map((group) => ({
-      id: group,
-      labelKey: GROUP_LABEL_KEYS[group],
-      selectedByDefault: group !== 'speed',
-      subProperties: GROUP_SUB_PROPERTIES[group],
-    }));
+    .map((group) => {
+      const subProperties = getAvailableSubProperties({
+        group,
+        groupValue: snapshot.groups[group],
+        targetClip: input.targetClip,
+      });
+      return {
+        id: group,
+        labelKey: GROUP_LABEL_KEYS[group],
+        selectedByDefault: group !== 'speed',
+        subProperties,
+      };
+    })
+    .filter((group) => !GROUP_SUB_PROPERTIES[group.id] || group.subProperties?.length !== 0);
+}
+
+function getAvailableSubProperties(input: {
+  group: ClipParameterGroup;
+  groupValue: Record<string, unknown> | undefined;
+  targetClip: TimelineClipItem;
+}): ClipParameterSubProperty[] | undefined {
+  const subProperties = GROUP_SUB_PROPERTIES[input.group];
+  if (!subProperties || !input.groupValue) return subProperties;
+
+  const groupValue = input.groupValue;
+  switch (input.group) {
+    case 'transform': {
+      const sourceTransform = groupValue.transform as ClipTransform | undefined;
+      return subProperties.filter((sub) => {
+        if (sub.id === 'transform:sourceOrientation') {
+          return input.targetClip.clipType === 'media' && 'sourceOrientation' in groupValue;
+        }
+        if (!sourceTransform) return false;
+        if (sub.id === 'transform:anchor') return 'anchor' in sourceTransform;
+        if (sub.id === 'transform:scale') return 'scale' in sourceTransform;
+        if (sub.id === 'transform:rotation') return 'rotationDeg' in sourceTransform;
+        if (sub.id === 'transform:position') return 'position' in sourceTransform;
+        if (sub.id === 'transform:crop') return 'crop' in sourceTransform;
+        return true;
+      });
+    }
+    case 'text': {
+      const sourceStyle = groupValue.style as Record<string, unknown> | undefined;
+      return subProperties.filter((sub) => {
+        if (sub.id === 'text:content') return 'text' in groupValue;
+        const keys = TEXT_SUB_PROP_KEYS[sub.id];
+        if (!keys || !sourceStyle) return false;
+        return keys.some((key) => key in sourceStyle);
+      });
+    }
+    case 'mask': {
+      const sourceMask = groupValue.mask as Record<string, unknown> | undefined;
+      return subProperties.filter((sub) => {
+        if (!sourceMask) return false;
+        if (sub.id === 'mask:source') return 'source' in sourceMask;
+        if (sub.id === 'mask:mode') return 'mode' in sourceMask;
+        if (sub.id === 'mask:invert') return 'invert' in sourceMask;
+        return true;
+      });
+    }
+    case 'audio':
+      return subProperties.filter((sub) => {
+        if (sub.id === 'audio:volume') return 'audioGain' in groupValue;
+        if (sub.id === 'audio:balance') return 'audioBalance' in groupValue;
+        if (sub.id === 'audio:fades') {
+          return [
+            'audioFadeInUs',
+            'audioFadeOutUs',
+            'audioFadeInCurve',
+            'audioFadeOutCurve',
+            'audioFadesActive',
+          ].some((key) => key in groupValue);
+        }
+        return true;
+      });
+    case 'shape':
+      return subProperties.filter((sub) => {
+        if (sub.id === 'shape:type') return 'shapeType' in groupValue;
+        if (sub.id === 'shape:fill') return 'fillColor' in groupValue;
+        if (sub.id === 'shape:stroke')
+          return 'strokeColor' in groupValue || 'strokeWidth' in groupValue;
+        if (sub.id === 'shape:config') return 'shapeConfig' in groupValue;
+        return true;
+      });
+    case 'hud':
+      return subProperties.filter((sub) => {
+        if (sub.id === 'hud:background') return 'background' in groupValue;
+        if (sub.id === 'hud:content') return 'content' in groupValue;
+        if (sub.id === 'hud:frame') return 'frame' in groupValue;
+        return true;
+      });
+    case 'transitions':
+      return subProperties.filter((sub) => {
+        if (sub.id === 'transitions:in') return 'transitionIn' in groupValue;
+        if (sub.id === 'transitions:out') return 'transitionOut' in groupValue;
+        return true;
+      });
+    default:
+      return subProperties;
+  }
 }
 
 export function buildClipParametersPatch(input: {
@@ -267,11 +382,21 @@ export function buildClipParametersPatch(input: {
     if (!groupValue) continue;
 
     if (group === 'transitions') {
-      if ('transitionIn' in groupValue) {
-        patch.transitionIn = cloneValue(groupValue.transitionIn as ClipTransition | null);
-      }
-      if ('transitionOut' in groupValue) {
-        patch.transitionOut = cloneValue(groupValue.transitionOut as ClipTransition | null);
+      const hasSubProps = GROUP_SUB_PROPERTIES.transitions!.some((sub) => selected.has(sub.id));
+      if (hasSubProps) {
+        if (selected.has('transitions:in') && 'transitionIn' in groupValue) {
+          patch.transitionIn = cloneValue(groupValue.transitionIn as ClipTransition | null);
+        }
+        if (selected.has('transitions:out') && 'transitionOut' in groupValue) {
+          patch.transitionOut = cloneValue(groupValue.transitionOut as ClipTransition | null);
+        }
+      } else if (selected.has('transitions')) {
+        if ('transitionIn' in groupValue) {
+          patch.transitionIn = cloneValue(groupValue.transitionIn as ClipTransition | null);
+        }
+        if ('transitionOut' in groupValue) {
+          patch.transitionOut = cloneValue(groupValue.transitionOut as ClipTransition | null);
+        }
       }
       continue;
     }
@@ -283,24 +408,41 @@ export function buildClipParametersPatch(input: {
       if (hasSubProps) {
         const targetTransform = cloneValue(input.targetClip.transform ?? {});
         const sourceTransform = groupValue.transform as ClipTransform | undefined;
+        let hasTransformPatch = false;
         if (sourceTransform) {
           if (selected.has('transform:anchor')) {
-            targetTransform.anchor = cloneValue(sourceTransform.anchor);
+            setOrDelete(targetTransform, 'anchor', sourceTransform.anchor);
+            hasTransformPatch = true;
           }
           if (selected.has('transform:scale')) {
-            targetTransform.scale = cloneValue(sourceTransform.scale);
+            setOrDelete(targetTransform, 'scale', sourceTransform.scale);
+            hasTransformPatch = true;
           }
           if (selected.has('transform:rotation')) {
-            targetTransform.rotationDeg = sourceTransform.rotationDeg;
+            setOrDelete(targetTransform, 'rotationDeg', sourceTransform.rotationDeg);
+            hasTransformPatch = true;
           }
           if (selected.has('transform:position')) {
-            targetTransform.position = cloneValue(sourceTransform.position);
+            setOrDelete(targetTransform, 'position', sourceTransform.position);
+            hasTransformPatch = true;
           }
           if (selected.has('transform:crop')) {
-            targetTransform.crop = cloneValue(sourceTransform.crop);
+            setOrDelete(targetTransform, 'crop', sourceTransform.crop);
+            hasTransformPatch = true;
           }
         }
-        patch.properties.transform = targetTransform;
+        if (hasTransformPatch) {
+          patch.properties.transform = targetTransform;
+        }
+        if (
+          selected.has('transform:sourceOrientation') &&
+          input.targetClip.clipType === 'media' &&
+          'sourceOrientation' in groupValue
+        ) {
+          patch.properties.sourceOrientation = cloneValue(
+            groupValue.sourceOrientation as TimelineClipItem['sourceOrientation'],
+          );
+        }
         if ('transformActive' in groupValue) {
           patch.properties.transformActive = groupValue.transformActive as boolean | undefined;
         }
@@ -313,9 +455,15 @@ export function buildClipParametersPatch(input: {
     if (group === 'text') {
       const hasSubProps = GROUP_SUB_PROPERTIES.text!.some((sub) => selected.has(sub.id));
       if (hasSubProps) {
-        const targetStyle = cloneValue(input.targetClip.style ?? {});
-        const sourceStyle = groupValue.style as Record<string, unknown> | undefined;
-        if (sourceStyle) {
+        if (selected.has('text:content') && 'text' in groupValue) {
+          patch.properties.text = cloneValue(groupValue.text as string | undefined);
+        }
+        const hasStyleSubProps = Object.keys(TEXT_SUB_PROP_KEYS).some((subId) =>
+          selected.has(subId),
+        );
+        if (hasStyleSubProps) {
+          const targetStyle = cloneValue(input.targetClip.style ?? {});
+          const sourceStyle = (groupValue.style ?? {}) as Record<string, unknown>;
           for (const subId of Object.keys(TEXT_SUB_PROP_KEYS)) {
             if (selected.has(subId)) {
               const keys = TEXT_SUB_PROP_KEYS[subId];
@@ -329,9 +477,35 @@ export function buildClipParametersPatch(input: {
               }
             }
           }
+          patch.properties.style = targetStyle;
         }
-        patch.properties.style = targetStyle;
       } else if (selected.has('text')) {
+        Object.assign(patch.properties, cloneValue(groupValue));
+      }
+      continue;
+    }
+
+    if (group === 'mask') {
+      const hasSubProps = GROUP_SUB_PROPERTIES.mask!.some((sub) => selected.has(sub.id));
+      if (hasSubProps) {
+        const targetMask = cloneValue(input.targetClip.mask ?? {});
+        const sourceMask = groupValue.mask as Record<string, unknown> | undefined;
+        if (sourceMask) {
+          if (selected.has('mask:source')) {
+            setOrDelete(targetMask, 'source', sourceMask.source);
+          }
+          if (selected.has('mask:mode')) {
+            setOrDelete(targetMask, 'mode', sourceMask.mode);
+          }
+          if (selected.has('mask:invert')) {
+            setOrDelete(targetMask, 'invert', sourceMask.invert);
+          }
+        }
+        patch.properties.mask = targetMask;
+        if ('maskActive' in groupValue) {
+          patch.properties.maskActive = groupValue.maskActive as boolean | undefined;
+        }
+      } else if (selected.has('mask')) {
         Object.assign(patch.properties, cloneValue(groupValue));
       }
       continue;
@@ -366,6 +540,59 @@ export function buildClipParametersPatch(input: {
       continue;
     }
 
+    if (group === 'shape') {
+      const hasSubProps = GROUP_SUB_PROPERTIES.shape!.some((sub) => selected.has(sub.id));
+      if (hasSubProps) {
+        if (selected.has('shape:type') && 'shapeType' in groupValue) {
+          patch.properties.shapeType = cloneValue(
+            groupValue.shapeType as TimelineClipItem['shapeType'],
+          );
+        }
+        if (selected.has('shape:fill') && 'fillColor' in groupValue) {
+          patch.properties.fillColor = cloneValue(groupValue.fillColor as string | undefined);
+        }
+        if (selected.has('shape:stroke')) {
+          if ('strokeColor' in groupValue) {
+            patch.properties.strokeColor = cloneValue(groupValue.strokeColor as string | undefined);
+          }
+          if ('strokeWidth' in groupValue) {
+            patch.properties.strokeWidth = cloneValue(groupValue.strokeWidth as number | undefined);
+          }
+        }
+        if (selected.has('shape:config') && 'shapeConfig' in groupValue) {
+          patch.properties.shapeConfig = cloneValue(
+            groupValue.shapeConfig as TimelineClipItem['shapeConfig'],
+          );
+        }
+      } else if (selected.has('shape')) {
+        Object.assign(patch.properties, cloneValue(groupValue));
+      }
+      continue;
+    }
+
+    if (group === 'hud') {
+      const hasSubProps = GROUP_SUB_PROPERTIES.hud!.some((sub) => selected.has(sub.id));
+      if (hasSubProps) {
+        if ('hudType' in groupValue) {
+          patch.properties.hudType = cloneValue(groupValue.hudType as TimelineClipItem['hudType']);
+        }
+        if (selected.has('hud:background') && 'background' in groupValue) {
+          patch.properties.background = cloneValue(
+            groupValue.background as TimelineClipItem['background'],
+          );
+        }
+        if (selected.has('hud:content') && 'content' in groupValue) {
+          patch.properties.content = cloneValue(groupValue.content as TimelineClipItem['content']);
+        }
+        if (selected.has('hud:frame') && 'frame' in groupValue) {
+          patch.properties.frame = cloneValue(groupValue.frame as TimelineClipItem['frame']);
+        }
+      } else if (selected.has('hud')) {
+        Object.assign(patch.properties, cloneValue(groupValue));
+      }
+      continue;
+    }
+
     Object.assign(patch.properties, cloneValue(groupValue));
   }
 
@@ -377,6 +604,15 @@ export function buildClipParametersPatch(input: {
   }
 
   return patch;
+}
+
+function setOrDelete(target: object, key: string, value: unknown) {
+  const targetRecord = target as Record<string, unknown>;
+  if (value === undefined) {
+    Reflect.deleteProperty(targetRecord, key);
+    return;
+  }
+  targetRecord[key] = cloneValue(value);
 }
 
 export function hasClipParametersPatch(patch: ClipParametersPatch) {

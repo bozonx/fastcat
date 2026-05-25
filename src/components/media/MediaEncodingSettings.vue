@@ -282,7 +282,7 @@ watch(
         v-model:audio-sample-rate="audioSampleRate"
         :original-sample-rate="props.originalAudioSampleRate"
         :original-channels="props.originalAudioChannels"
-        :allow-original-audio-sample-rate="props.allowOriginalAudioSampleRate"
+        :allow-original-sample-rate="props.allowOriginalAudioSampleRate"
         :hide-sample-rate="props.hideAudioSampleRate"
         :disabled="props.disabled"
       />
