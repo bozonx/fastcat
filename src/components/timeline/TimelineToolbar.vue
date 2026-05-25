@@ -286,7 +286,10 @@ function onToolbarContextMenu(e: MouseEvent) {
         <UFieldGroup class="inline-flex">
           <UiTooltip
             :text="
-              getHotkeyTitle(t('fastcat.timeline.snapModeFullDescription'), 'timeline.toggleSnap')
+              getHotkeyTitle(
+                t('fastcat.timeline.snapModeFullDescription'),
+                'timeline.selectSnapModeSnap',
+              )
             "
           >
             <UButton
@@ -298,7 +301,14 @@ function onToolbarContextMenu(e: MouseEvent) {
               @click="selectToolbarSnapMode('snap')"
             />
           </UiTooltip>
-          <UiTooltip :text="t('fastcat.timeline.snapModeFramesDescription')">
+          <UiTooltip
+            :text="
+              getHotkeyTitle(
+                t('fastcat.timeline.snapModeFramesDescription'),
+                'timeline.selectSnapModeNoSnap',
+              )
+            "
+          >
             <UButton
               size="xs"
               :variant="settingsStore.toolbarSnapMode === 'no_snap' ? 'solid' : 'ghost'"
@@ -312,7 +322,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             :text="
               getHotkeyTitle(
                 t('fastcat.timeline.snapModeFreeDescription'),
-                'timeline.toggleSnapFree',
+                'timeline.selectSnapModeFree',
               )
             "
           >

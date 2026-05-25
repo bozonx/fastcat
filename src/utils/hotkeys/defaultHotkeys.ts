@@ -49,8 +49,6 @@ export type HotkeyCommandId =
   | 'general.snapshot'
   | 'general.newTimeline'
   | 'timeline.duplicate'
-  | 'timeline.toggleSnap'
-  | 'timeline.toggleSnapFree'
   | 'timeline.addTextClipAtPlayhead'
   | 'timeline.addBackgroundClipAtPlayhead'
   | 'timeline.addAdjustmentClipAtPlayhead'
@@ -208,8 +206,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.navigateForward', groupId: 'fileManager', title: 'Navigate forward' },
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
 
-    { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
-    { id: 'timeline.toggleSnapFree', groupId: 'timeline', title: 'Toggle snap free mode' },
     { id: 'timeline.addTextClipAtPlayhead', groupId: 'timeline', title: 'Create text clip at playhead' },
     {
       id: 'timeline.addBackgroundClipAtPlayhead',
@@ -466,8 +462,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.navigateForward': ['Shift+Backspace', 'MouseForward'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
 
-    'timeline.toggleSnap': [],
-    'timeline.toggleSnapFree': [],
     'timeline.addTextClipAtPlayhead': ['N'],
     'timeline.addBackgroundClipAtPlayhead': ['U'],
     'timeline.addAdjustmentClipAtPlayhead': ['Y'],

@@ -113,11 +113,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.selectDragModeSlip']).toEqual(["'"]);
   });
 
-  it('has updated defaults for lock and legacy snap toggles', () => {
+  it('has updated defaults for lock shortcuts', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockClip']).toEqual(['T']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockTrack']).toEqual(['Shift+T']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSnap']).toEqual([]);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSnapFree']).toEqual([]);
   });
 
   it('has defaults for project panel, settings and background task shortcuts', () => {

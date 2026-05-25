@@ -57,18 +57,6 @@ export function useTimelineHotkeys(
   }
 
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
-    'timeline.toggleSnap': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-      settingsStore.toggleToolbarSnapMode();
-      return true;
-    },
-
-    'timeline.toggleSnapFree': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-      settingsStore.toggleToolbarSnapModeFree();
-      return true;
-    },
-
     'timeline.addTextClipAtPlayhead': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.addTextClipAtPlayhead();
