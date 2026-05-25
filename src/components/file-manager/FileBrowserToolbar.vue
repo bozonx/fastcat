@@ -201,7 +201,7 @@ const toolbarMenuItems = computed(() => {
     <UiTooltip
       v-if="props.isRemotePanel || fileManagerStore.viewMode === 'grid'"
       :text="gridScaleTooltip"
-      class="flex items-center gap-2 ml-2 w-24"
+      class="flex items-center gap-2 ml-2 w-full max-w-24"
     >
       <UiWheelSlider
         :model-value="gridSizes.indexOf(props.gridCardSize)"
