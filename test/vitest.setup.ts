@@ -8,6 +8,9 @@ import { createPinia, setActivePinia } from 'pinia';
 // Initialize Pinia for all tests
 setActivePinia(createPinia());
 
+// Mock global $fetch to prevent ReferenceError during Nuxt manifest prefetching
+globalThis.$fetch = vi.fn().mockImplementation(() => Promise.resolve({})) as any;
+
 // i18n mock factory
 const createI18nMock = () => ({
   mode: 'composition',
