@@ -8,6 +8,14 @@ vi.stubGlobal('useI18n', () => ({
   t: (_key: string, fallback?: string) => fallback ?? _key,
 }));
 
+vi.mock('~/composables/useHotkeyLabel', () => ({
+  useHotkeyLabel: () => ({
+    getHotkeyKbds: () => undefined,
+    getHotkeyLabel: () => null,
+    getHotkeyTitle: (title: string) => title,
+  }),
+}));
+
 function flattenLabels(items: any[][]): string[] {
   return items.flat().map((item) => item.label);
 }

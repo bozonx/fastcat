@@ -101,10 +101,12 @@ describe('FileBrowserToolbar', () => {
     const selectionSection = items[1];
 
     expect(selectionSection?.map((item) => item.label)).toEqual([
-      'common.selectAll (Ctrl+A)',
+      'common.selectAll',
       'common.selectUnused',
       'common.invertSelection',
     ]);
+
+    expect(selectionSection?.[0]?.kbds).toEqual(['Ctrl', 'A']);
   });
 
   it('shows configured zoom hotkeys in the grid scale tooltip', () => {

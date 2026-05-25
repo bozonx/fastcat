@@ -32,7 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { getHotkeyLabel, getHotkeyTitle } = useHotkeyLabel();
+const { getHotkeyLabel, getHotkeyKbds, getHotkeyTitle } = useHotkeyLabel();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
@@ -94,8 +94,9 @@ const toolbarMenuItems = computed(() => {
   if (!props.isRemotePanel) {
     const selectionItems = [
       {
-        label: `${t('common.selectAll')}${getHotkeyLabel('general.selectAll') ? ` (${getHotkeyLabel('general.selectAll')})` : ''}`,
+        label: t('common.selectAll'),
         icon: 'i-heroicons-check-circle',
+        kbds: getHotkeyKbds('general.selectAll'),
         onSelect: () => emit('selectAll'),
       },
       {

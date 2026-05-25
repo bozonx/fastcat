@@ -6,6 +6,7 @@ import {
   canCutBloggerDogEntry,
   canPasteIntoBloggerDogEntry,
 } from '~/utils/bloggerdog-file-manager';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 export type FileAction =
   | 'createFolder'
@@ -64,6 +65,7 @@ type ContextMenuItem = {
   onSelect: () => void;
   color?: string;
   disabled?: boolean;
+  kbds?: string[];
 };
 
 export function useFileContextMenu(
@@ -71,6 +73,7 @@ export function useFileContextMenu(
   onAction: (action: FileAction, entry: FsEntry | FsEntry[]) => void,
 ) {
   const { t } = useI18n();
+  const { getHotkeyKbds } = useHotkeyLabel();
 
   function buildManagementItems(entry: FsEntry): ContextMenuItem[] {
     const isProjectRoot = entry.kind === 'directory' && (entry.path === '' || entry.path === '/');
@@ -99,6 +102,7 @@ export function useFileContextMenu(
       items.push({
         label: t('common.copy'),
         icon: 'i-heroicons-document-duplicate',
+        kbds: getHotkeyKbds('general.copy'),
         onSelect: () => onAction('copy', entry),
       });
     }
@@ -116,6 +120,7 @@ export function useFileContextMenu(
       items.push({
         label: t('common.cut'),
         icon: 'i-heroicons-scissors',
+        kbds: getHotkeyKbds('general.cut'),
         onSelect: () => onAction('cut', entry),
       });
     }
@@ -129,6 +134,7 @@ export function useFileContextMenu(
         label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
         disabled: !deps.hasClipboardItems,
+        kbds: getHotkeyKbds('general.paste'),
         onSelect: () => onAction('paste', entry),
       });
     }
@@ -138,12 +144,14 @@ export function useFileContextMenu(
         {
           label: t('common.rename'),
           icon: 'i-heroicons-pencil',
+          kbds: getHotkeyKbds('general.rename'),
           onSelect: () => onAction('rename', entry),
         },
         {
           label: t('common.delete'),
           icon: 'i-heroicons-trash',
           color: 'error',
+          kbds: getHotkeyKbds('general.delete'),
           onSelect: () => onAction('delete', entry),
         },
       );
@@ -169,6 +177,7 @@ export function useFileContextMenu(
           {
             label: t('videoEditor.fileManager.actions.createFolder'),
             icon: 'i-heroicons-folder-plus',
+            kbds: getHotkeyKbds('general.createFolder'),
             onSelect: () => onAction('createFolder', entry),
           },
           {
@@ -339,6 +348,7 @@ export function useFileContextMenu(
       managementItems.push({
         label: t('common.copy'),
         icon: 'i-heroicons-document-duplicate',
+        kbds: getHotkeyKbds('general.copy'),
         onSelect: () => onAction('copy', selectedEntries),
       });
     }
@@ -347,6 +357,7 @@ export function useFileContextMenu(
       managementItems.push({
         label: t('common.cut'),
         icon: 'i-heroicons-scissors',
+        kbds: getHotkeyKbds('general.cut'),
         onSelect: () => onAction('cut', selectedEntries),
       });
     }
@@ -357,6 +368,7 @@ export function useFileContextMenu(
         label: t('common.paste'),
         icon: 'i-heroicons-clipboard',
         disabled: !deps.hasClipboardItems,
+        kbds: getHotkeyKbds('general.paste'),
         onSelect: () => onAction('paste', entry),
       });
     }
@@ -408,6 +420,7 @@ export function useFileContextMenu(
         {
           label: t('videoEditor.fileManager.actions.createFolder'),
           icon: 'i-heroicons-folder-plus',
+          kbds: getHotkeyKbds('general.createFolder'),
           onSelect: () => onAction('createFolder', entry),
         },
       ];
