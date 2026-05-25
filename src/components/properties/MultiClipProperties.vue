@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { computed, toRef } from 'vue';
-import PropertySection from '~/components/properties/PropertySection.vue';
-import PropertyTimecode from '~/components/properties/PropertyTimecode.vue';
-import PropertyField from '~/components/properties/PropertyField.vue';
-import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
-import UiSliderInput from '~/components/ui/UiSliderInput.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
-import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
 import ClipTransitionsSection from '~/components/properties/clip/ClipTransitionsSection.vue';
 import ClipTransformSection from '~/components/properties/clip/ClipTransformSection.vue';
 import ClipAudioSection from '~/components/properties/clip/ClipAudioSection.vue';
+import MultiClipActionsSection from '~/components/properties/multi-clip/MultiClipActionsSection.vue';
+import MultiClipBlendOpacitySection from '~/components/properties/multi-clip/MultiClipBlendOpacitySection.vue';
+import MultiClipTimingSection from '~/components/properties/multi-clip/MultiClipTimingSection.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useClipAudio } from '~/composables/properties/useClipAudio';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -605,47 +601,22 @@ const otherActions = computed(() => {
 <template>
   <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
   <div class="flex flex-col gap-2 w-full text-ui-text">
-    <PropertySection :title="t('fastcat.clip.actions')">
-      <div class="flex flex-col w-full">
-        <span class="text-sm text-ui-text-muted mb-2">
-          {{ selectedCountLabel }}
-        </span>
+    <MultiClipActionsSection
+      :selected-count-label="selectedCountLabel"
+      :common-actions="commonActions"
+      :other-actions="otherActions"
+    />
 
-        <PropertyActionsBlock :quick-actions="commonActions" :additional-actions="otherActions" />
-      </div>
-    </PropertySection>
-
-    <PropertySection :title="t('fastcat.clip.info')">
-      <PropertyTimecode
-        :label="t('common.duration')"
-        :model-value="firstClip?.timelineRange.durationUs ?? 0"
-        @update:model-value="handleSetUniformDuration"
-      />
-
-      <PropertyField :label="t('fastcat.timeline.durationShift')" class="mt-2">
-        <UiTimecode
-          :model-value="durationShiftAccumulator"
-          allow-negative
-          @update:model-value="onDurationShiftChange"
-        />
-      </PropertyField>
-
-      <PropertyField :label="t('fastcat.timeline.startShift')" class="mt-2">
-        <UiTimecode
-          :model-value="startShiftAccumulator"
-          allow-negative
-          @update:model-value="onStartShiftChange"
-        />
-      </PropertyField>
-
-      <PropertyField :label="t('fastcat.timeline.endShift')" class="mt-2">
-        <UiTimecode
-          :model-value="endShiftAccumulator"
-          allow-negative
-          @update:model-value="onEndShiftChange"
-        />
-      </PropertyField>
-    </PropertySection>
+    <MultiClipTimingSection
+      :first-clip="firstClip"
+      :duration-shift-accumulator="durationShiftAccumulator"
+      :start-shift-accumulator="startShiftAccumulator"
+      :end-shift-accumulator="endShiftAccumulator"
+      @set-uniform-duration="handleSetUniformDuration"
+      @duration-shift-change="onDurationShiftChange"
+      @start-shift-change="onStartShiftChange"
+      @end-shift-change="onEndShiftChange"
+    />
 
     <ClipTransitionsSection
       v-if="hasVideoOrImage && firstVideoClip"
@@ -661,33 +632,12 @@ const otherActions = computed(() => {
       @update-type="({ edge, type }) => handleBatchUpdateTransitionType(edge, type)"
     />
 
-    <div
+    <MultiClipBlendOpacitySection
       v-if="hasVideoOrImage"
-      class="space-y-1.5 bg-ui-bg-elevated p-2 rounded border border-ui-border"
-    >
-      <div class="flex flex-col gap-0.5">
-        <span class="text-xs text-ui-text-muted">{{ t('fastcat.clip.blendMode.title') }}</span>
-        <UiSelect
-          v-model="batchBlendMode"
-          :items="blendModeOptions"
-          value-key="value"
-          label-key="label"
-          size="sm"
-        />
-      </div>
-
-      <UiSliderInput
-        :label="t('fastcat.clip.opacity')"
-        unit="%"
-        :model-value="batchOpacity"
-        :min="0"
-        :max="1"
-        :step="0.01"
-        :default-value="1"
-        :wheel-step-multiplier="10"
-        @update:model-value="batchOpacity = $event"
-      />
-    </div>
+      v-model:opacity="batchOpacity"
+      v-model:blend-mode="batchBlendMode"
+      :blend-mode-options="blendModeOptions"
+    />
 
     <ClipAudioSection
       :can-edit-audio-fades="canEditAudioFades"

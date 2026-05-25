@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, inject } from 'vue';
-import type { ComponentPublicInstance } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -8,13 +7,10 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
-import { getBdPayload } from '~/types/bloggerdog';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
 import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
-import { useFileContextMenu } from '~/composables/file-manager/useFileContextMenu';
-import type { FileAction as ContextMenuFileAction } from '~/composables/file-manager/useFileContextMenu';
 import { useFileBrowserDragAndDrop } from '~/composables/file-manager/useFileBrowserDragAndDrop';
 import { useFileBrowserMarquee } from '~/composables/file-manager/useFileBrowserMarquee';
 import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
@@ -30,16 +26,13 @@ import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBro
 import { useFileBrowserRemoteCreate } from '~/composables/file-manager/useFileBrowserRemoteCreate';
 import { useFileBrowserLifecycle } from '~/composables/file-manager/useFileBrowserLifecycle';
 import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
+import { useFileBrowserContainer } from '~/composables/file-manager/useFileBrowserContainer';
+import { useFileBrowserContextMenuState } from '~/composables/file-manager/useFileBrowserContextMenuState';
+import { useFileBrowserViewSettings } from '~/composables/file-manager/useFileBrowserViewSettings';
 import { handleFilesCommand } from '~/file-manager/application/fileManagerCommands';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
-import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
-import { FILE_MANAGER_ROOT_SPACER_HEIGHT } from '~/utils/constants';
-import {
-  isGeneratingProxyInDirectory as hasGeneratingProxyInDirectory,
-  folderHasVideos,
-} from '~/utils/fs-entry-utils';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import FileBrowserToolbar from '~/components/file-manager/FileBrowserToolbar.vue';
 import FileBrowserBreadcrumbs from '~/components/file-manager/FileBrowserBreadcrumbs.vue';
@@ -165,29 +158,13 @@ const {
 } = entries;
 
 // --- Scroll helper (used by navigation) ---
-const rootContainer = ref<HTMLElement | null>(null);
-const pendingScrollToEntryPath = ref<string | null>(null);
-const rootSpacerStyle = {
-  width: '100%',
-  minWidth: '100%',
-  height: FILE_MANAGER_ROOT_SPACER_HEIGHT,
-  flexShrink: 0,
-} as const;
-
-function setRootContainerRef(element: Element | ComponentPublicInstance | null) {
-  rootContainer.value = element instanceof HTMLElement ? element : null;
-}
-
-function scrollToEntryPath(path: string): boolean {
-  const container = rootContainer.value;
-  if (!container) return false;
-  const targetNode = container.querySelector<HTMLElement>(
-    `[data-entry-path="${CSS.escape(path)}"]`,
-  );
-  if (!targetNode) return false;
-  targetNode.scrollIntoView({ block: 'nearest' });
-  return true;
-}
+const {
+  rootContainer,
+  pendingScrollToEntryPath,
+  rootSpacerStyle,
+  setRootContainerRef,
+  scrollToEntryPath,
+} = useFileBrowserContainer();
 
 // --- setSelectedFsEntry (shared between remote & navigation) ---
 function setSelectedFsEntry(entry: FsEntry | null) {
@@ -568,98 +545,23 @@ const { onFileAction } = useFileBrowserFileActions({
   isExternal: isExternal.value,
 });
 
-function isVideo(entry: FsEntry): boolean {
-  return (
-    entry.kind === 'file' && canUseFile(entry) && getMediaTypeFromFilename(entry.name) === 'video'
-  );
-}
-
-function getFileStatus(entry: FsEntry) {
-  if (entry.kind !== 'file' || !entry.path) return 'ok';
-  return fileCompatibility.value[entry.path]?.status ?? 'ok';
-}
-
-function canUseFile(entry: FsEntry): boolean {
-  const status = getFileStatus(entry);
-  return status !== 'checking' && status !== 'fully_unsupported' && status !== 'corrupt';
-}
-
-function isDirectoryGeneratingProxy(entry: FsEntry): boolean {
-  return hasGeneratingProxyInDirectory(entry, proxyStore.generatingProxies);
-}
-
 // --- Context menu ---
-const { getContextMenuItems } = useFileContextMenu(
-  {
-    isGeneratingProxyInDirectory: isDirectoryGeneratingProxy,
-    folderHasVideos,
-    isOpenableMediaFile: (entry: FsEntry) => {
-      if (entry.kind !== 'file' || !entry.path) return false;
-      if (!canUseFile(entry)) return false;
-      return isOpenableProjectFileName(entry.name);
-    },
-    isConvertibleMediaFile: (entry: FsEntry) => {
-      if (entry.kind !== 'file' || !entry.path) return false;
-      if (!canUseFile(entry)) return false;
-      const type = getMediaTypeFromFilename(entry.name);
-      return type === 'video' || type === 'audio' || type === 'image';
-    },
+const { canUseFile, isDirectoryGeneratingProxy, getContextMenuItems, emptySpaceContextMenuItems } =
+  useFileBrowserContextMenuState({
+    isRemoteMode,
+    selectedFolder: () => fileManagerStore.selectedFolder,
+    selectedEntity: () => selectionStore.selectedEntity,
+    fileCompatibility,
+    mediaMetadata: mediaStore.mediaMetadata,
+    generatingProxies: proxyStore.generatingProxies,
+    hasProxy: (path) => fileManager.mediaCache.hasProxy(path),
+    hasClipboardItems: () => clipboardStore.hasFileManagerPayload,
     isTranscribableMediaFile,
-    isVideo,
-    hasAudioTrack: (entry) => {
-      if (entry.kind !== 'file' || !entry.path) return false;
-      const meta = mediaStore.mediaMetadata[entry.path];
-      return !!meta?.audio;
-    },
-    getEntryMeta: (entry: FsEntry) => ({
-      hasProxy: entry.path ? fileManager.mediaCache.hasProxy(entry.path) : false,
-      generatingProxy: entry.path ? proxyStore.generatingProxies.has(entry.path) : false,
-    }),
+    onFileAction,
     isFilesPage: props.isFilesPage,
-    instanceId: instanceId,
+    instanceId,
     isExternal: isExternal.value,
-    isBloggerDogProject: (entry: FsEntry) => getBdPayload(entry)?.type === 'project',
-    isBloggerDogGroup: (entry: FsEntry) => getBdPayload(entry)?.type === 'collection',
-    isBloggerDogContentItem: (entry: FsEntry) => getBdPayload(entry)?.type === 'content-item',
-    isBloggerDogVirtualFolder: (entry: FsEntry) => getBdPayload(entry)?.type === 'virtual-folder',
-    isBloggerDogMedia: (entry: FsEntry) => {
-      const payload = getBdPayload(entry);
-      return payload?.type === 'media' && !!payload?.mediaId;
-    },
-    isBloggerDogTextWrapper: (entry: FsEntry) => {
-      const payload = getBdPayload(entry);
-      return payload?.type === 'media' && !payload?.mediaId;
-    },
-    getSelectedEntries: () => {
-      const selected = selectionStore.selectedEntity;
-      if (selected?.source === 'fileManager') {
-        if (selected.kind === 'multiple') return selected.entries;
-        if ('entry' in selected) return [selected.entry];
-      }
-      return [];
-    },
-    get hasClipboardItems() {
-      return clipboardStore.hasFileManagerPayload;
-    },
-  },
-  (action: ContextMenuFileAction, entry: FsEntry | FsEntry[]) => onFileAction(action, entry),
-);
-
-const emptySpaceContextMenuItems = computed(() => {
-  if (isRemoteMode.value) return [];
-  const selected = selectionStore.selectedEntity;
-  if (
-    selected?.source === 'fileManager' &&
-    selected.kind === 'multiple' &&
-    selected.entries.length > 1
-  ) {
-    const first = selected.entries[0];
-    if (!first) return [];
-    return getContextMenuItems(first);
-  }
-  if (!fileManagerStore.selectedFolder) return [];
-  return getContextMenuItems(fileManagerStore.selectedFolder);
-});
+  });
 
 // --- Marquee selection ---
 function focusBrowserPanel() {
@@ -721,16 +623,12 @@ function handleScroll(e: Event) {
 }
 
 // --- Grid size ---
-const GRID_SIZES = [80, 100, 130, 160, 200];
-const GRID_SIZE_NAMES = ['xs', 's', 'm', 'l', 'xl'];
-
-const effectiveGridCardSize = computed(() => {
-  return fileManagerStore.gridCardSize;
-});
-
-const currentGridSizeName = computed(() => {
-  const index = GRID_SIZES.indexOf(effectiveGridCardSize.value);
-  return GRID_SIZE_NAMES[index] || 'm';
+const {
+  gridSizes: fileBrowserGridSizes,
+  effectiveGridCardSize,
+  currentGridSizeName,
+} = useFileBrowserViewSettings({
+  gridCardSize: () => fileManagerStore.gridCardSize,
 });
 
 useFileBrowserPendingActions({
@@ -847,7 +745,7 @@ async function onDirectoryUploadChange(e: Event) {
     <!-- Toolbar -->
     <FileBrowserToolbar
       v-if="!(remoteModeOnly && (!isRemoteAvailable || remoteError))"
-      :grid-sizes="GRID_SIZES"
+      :grid-sizes="fileBrowserGridSizes"
       :current-grid-size-name="currentGridSizeName"
       :grid-card-size="effectiveGridCardSize"
       :remote-available="isRemoteAvailable"

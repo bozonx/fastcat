@@ -12,6 +12,10 @@ import type {
   TimelineTrimItemPayload,
   TrackKind,
 } from '~/timeline/types';
+import type { AppClipboardPayload } from '~/stores/clipboard.store';
+import type { MediaMetadata } from '~/stores/media.store';
+import type { TimelineClipClipboardItem } from '~/stores/timeline/clips';
+import type { FastCatProjectSettings } from '~/utils/project-settings';
 import type { TimelineContext } from './context';
 import {
   timelineRangeToRoundedPx,
@@ -41,8 +45,8 @@ import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
 import ClipTransitions from './ClipTransitions.vue';
 import ClipAudioFades from './ClipAudioFades.vue';
 import ClipMetadata from './ClipMetadata.vue';
-import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
-import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
+import TimelineClipContent from './TimelineClipContent.vue';
+import TimelineClipTrimHandles from './TimelineClipTrimHandles.vue';
 import ClipParametersPasteModal from '~/components/properties/clip/ClipParametersPasteModal.vue';
 import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
 
@@ -439,7 +443,7 @@ const isMediaMissing = computed(() => {
 const isUnsupported = computed(() => {
   if (!clipItem.value || clipItem.value.clipType !== 'media') return false;
   const path = clipItem.value.source.path;
-  const meta = timelineContext.mediaMetadata.value[path];
+  const meta = timelineContext.mediaMetadata.value[path] as MediaMetadata | undefined;
   if (!meta) return false;
 
   const isVideoType = isVideo(props.item, props.track);
@@ -477,17 +481,19 @@ const { contextMenuItems } = useClipContextMenu({
   item: computed(() => props.item),
   canEditClipContent: computed(() => props.canEditClipContent),
   timelineDoc: computed(() => timelineContext.timelineDoc.value),
-  projectSettings: computed(() => timelineContext.projectSettings.value),
+  projectSettings: computed(
+    () => timelineContext.projectSettings.value as unknown as FastCatProjectSettings,
+  ),
   defaultTransitionDurationUs: computed(
     () => timelineContext.userSettings.value.timeline.defaultTransitionDurationUs,
   ),
   selectedItemIds: computed(() => timelineContext.selectedItemIds.value),
-  applyTimelineCommand: (cmd) => timelineContext.applyTimeline(cmd),
-  batchApplyTimeline: (cmds) => timelineContext.batchApplyTimeline(cmds),
+  applyTimelineCommand: (cmd) => timelineContext.applyTimeline(cmd) as string[],
+  batchApplyTimeline: (cmds) => timelineContext.batchApplyTimeline(cmds) as string[],
   updateClipProperties: (trackId, itemId, p) =>
-    timelineContext.updateClipProperties(trackId, itemId, p),
+    timelineContext.updateClipProperties(trackId, itemId, p) as string[],
   updateClipTransition: (trackId, itemId, p) =>
-    timelineContext.updateClipTransition(trackId, itemId, p),
+    timelineContext.updateClipTransition(trackId, itemId, p) as string[],
   requestTimelineSave: (opts) => timelineContext.requestTimelineSave(opts),
   selectTransition: (p) => timelineContext.selectTransition(p),
   clearSelection: () => timelineContext.clearSelection(),
@@ -499,24 +505,28 @@ const { contextMenuItems } = useClipContextMenu({
     timelineContext.setClipboardPayload({
       source: 'timeline',
       operation: 'copy',
-      items: (timelineContext.copySelectedClips() || []).map((item) => ({
-        sourceTrackId: item.sourceTrackId,
-        clip: item.clip,
-      })),
+      items: ((timelineContext.copySelectedClips() || []) as TimelineClipClipboardItem[]).map(
+        (item) => ({
+          sourceTrackId: item.sourceTrackId,
+          clip: item.clip,
+        }),
+      ),
     });
   },
   cutSelectedClips: () => {
     timelineContext.setClipboardPayload({
       source: 'timeline',
       operation: 'cut',
-      items: (timelineContext.cutSelectedClips() || []).map((item) => ({
-        sourceTrackId: item.sourceTrackId,
-        clip: item.clip,
-      })),
+      items: ((timelineContext.cutSelectedClips() || []) as TimelineClipClipboardItem[]).map(
+        (item) => ({
+          sourceTrackId: item.sourceTrackId,
+          clip: item.clip,
+        }),
+      ),
     });
   },
   pasteClips: (insertStartUs?: number) => {
-    const payload = timelineContext.clipboardPayload.value;
+    const payload = timelineContext.clipboardPayload.value as AppClipboardPayload | null;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
     void timelineContext.pasteClips({ insertStartUs });
     if (payload.operation === 'cut') timelineContext.setClipboardPayload(null);
@@ -527,7 +537,7 @@ const { contextMenuItems } = useClipContextMenu({
   copyClipParameters,
   pasteClipParameters: openPasteClipParameters,
   getClipParametersSnapshot: () => {
-    const payload = timelineContext.clipboardPayload.value;
+    const payload = timelineContext.clipboardPayload.value as AppClipboardPayload | null;
     return payload?.source === 'clipParameters' ? payload.snapshot : null;
   },
   t,
@@ -815,155 +825,30 @@ function handleTransitionCreate(
           @reset-volume="emit('resetVolume', { trackId: track.id, itemId: item.id })"
         />
 
-        <!-- Content Area (Thumbnails / Waveform) -->
-        <div
-          class="flex-1 flex w-full min-h-0 relative"
-          :style="{ zIndex: 'var(--z-clip-content)' }"
-        >
-          <TimelineClipThumbnails
-            v-if="
-              effectiveClipItem &&
-              isVideo(item, track) &&
-              effectiveClipItem.showThumbnails !== false
-            "
-            :item="effectiveClipItem"
-            :width="clipWidthPx"
-            :scroll-left="scrollLeft ?? 0"
-            :viewport-width="viewportWidth ?? 0"
-            :clip-start-px="timeUsToPx(effectiveTimelineRange.startUs, timelineContext.zoom.value)"
-          />
-          <TimelineAudioWaveform
-            v-if="
-              effectiveClipItem &&
-              effectiveClipItem.showWaveform !== false &&
-              (isAudio(item, track) ||
-                (isVideo(item, track) &&
-                  clipHasAudio(item, track, timelineContext.mediaMetadata.value)))
-            "
-            :item="effectiveClipItem"
-          />
-
-          <div
-            v-if="clipItem"
-            class="absolute bottom-0 left-0 right-0 flex items-end justify-center px-2 pb-0.5 pointer-events-none"
-            :style="{ zIndex: 'var(--z-clip-name)' }"
-          >
-            <span class="truncate text-2xs leading-tight opacity-70" :title="clipItem.name">{{
-              clipItem.name
-            }}</span>
-          </div>
-
-          <div
-            v-if="slipOverlay"
-            class="absolute inset-0 rounded bg-cyan-950/35 ring-1 ring-cyan-300/70 pointer-events-none overflow-hidden"
-            :style="{ zIndex: 'var(--z-clip-guide)' }"
-            :title="t('fastcat.timeline.slipMode')"
-            data-slip-overlay
-          >
-            <div
-              class="absolute inset-x-1.5 top-1 h-1.5 rounded-full bg-black/45 ring-1 ring-white/15"
-            >
-              <div
-                v-if="slipOverlay.hasSourceRange"
-                class="absolute top-0 bottom-0 min-w-2 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,0.75)]"
-                :style="slipOverlay.rangeStyle"
-                data-slip-source-range
-              />
-              <div v-else class="absolute inset-0 rounded-full bg-cyan-300/85" />
-            </div>
-            <div
-              class="absolute left-1/2 top-1/2 flex max-w-[calc(100%-8px)] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border border-cyan-200/35 bg-black/85 px-2 py-1 text-2xs font-semibold tabular-nums text-white shadow-lg whitespace-nowrap"
-              :class="slipOverlay.deltaClass"
-              data-slip-timecode
-            >
-              <span v-if="slipOverlay.direction" class="text-cyan-300">{{
-                slipOverlay.direction
-              }}</span>
-              <span>{{ slipOverlay.timecode }}</span>
-            </div>
-            <div class="absolute inset-x-1.5 bottom-1 flex justify-between">
-              <span class="h-2 w-px rounded-full bg-cyan-200/80" />
-              <span class="h-2 w-px rounded-full bg-cyan-200/80" />
-            </div>
-          </div>
-
-          <div
-            v-if="trimOverlay"
-            class="absolute inset-0 rounded bg-amber-950/35 ring-1 ring-amber-300/70 pointer-events-none overflow-hidden"
-            :style="{ zIndex: 'var(--z-clip-guide)' }"
-            :title="t('fastcat.timeline.trimOverlayMode')"
-            data-trim-overlay
-          >
-            <div
-              class="absolute inset-x-1.5 top-1 h-1.5 rounded-full bg-black/45 ring-1 ring-white/15"
-            >
-              <div
-                v-if="trimOverlay.hasSourceRange"
-                class="absolute top-0 bottom-0 min-w-2 rounded-full bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.75)]"
-                :style="trimOverlay.rangeStyle"
-                data-trim-source-range
-              />
-              <div v-else class="absolute inset-0 rounded-full bg-amber-300/85" />
-            </div>
-            <div
-              class="absolute left-1/2 top-1/2 flex max-w-[calc(100%-8px)] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded border border-amber-200/35 bg-black/85 px-2 py-1 text-2xs font-semibold tabular-nums text-white shadow-lg whitespace-nowrap"
-              data-trim-timecode
-            >
-              <span v-if="trimOverlay.direction" class="text-amber-300">{{
-                trimOverlay.direction
-              }}</span>
-              <span>{{ trimOverlay.timecode }}</span>
-            </div>
-            <div class="absolute inset-x-1.5 bottom-1 flex justify-between">
-              <span class="h-2 w-px rounded-full bg-amber-200/80" />
-              <span class="h-2 w-px rounded-full bg-amber-200/80" />
-            </div>
-          </div>
-
-          <div
-            v-if="transitionInOverlayGuideStyle"
-            class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-yellow-400/95 pointer-events-none"
-            :style="{ ...transitionInOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
-          />
-
-          <div
-            v-if="transitionOutOverlayGuideStyle"
-            class="absolute top-0 bottom-0 w-0 border-l-2 border-dashed border-cyan-400/95 pointer-events-none"
-            :style="{ ...transitionOutOverlayGuideStyle, zIndex: 'var(--z-clip-guide)' }"
-          />
-        </div>
+        <TimelineClipContent
+          :item="item"
+          :track="track"
+          :clip-item="clipItem"
+          :effective-clip-item="effectiveClipItem"
+          :effective-timeline-start-us="effectiveTimelineRange.startUs"
+          :clip-width-px="clipWidthPx"
+          :zoom="timelineContext.zoom.value"
+          :scroll-left="scrollLeft ?? 0"
+          :viewport-width="viewportWidth ?? 0"
+          :media-metadata="timelineContext.mediaMetadata.value"
+          :slip-overlay="slipOverlay"
+          :trim-overlay="trimOverlay"
+          :transition-in-overlay-guide-style="transitionInOverlayGuideStyle"
+          :transition-out-overlay-guide-style="transitionOutOverlayGuideStyle"
+        />
 
         <!-- Trim Handles -->
-        <template
+        <TimelineClipTrimHandles
           v-if="clipItem && canEditClipContent && !clipItem.locked && !track.locked && !isMobile"
-        >
-          <div
-            class="absolute left-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-start pl-0.5"
-            :style="{ zIndex: 'var(--z-clip-trim)' }"
-            :class="[
-              isMobile ? 'w-4' : 'w-4',
-              isTransitionCreateHandleActive ? '' : 'hover:bg-white/15',
-            ]"
-            @pointerdown="onTrimHandlePointerDown($event, 'start')"
-          >
-            <div
-              class="w-[3px] h-6 rounded-full bg-white opacity-0 group-hover/trim:opacity-75 transition-opacity duration-150"
-            />
-          </div>
-          <div
-            class="absolute right-0 top-0 bottom-0 cursor-ew-resize bg-white/0 transition-colors group/trim flex items-center justify-end pr-0.5"
-            :style="{ zIndex: 'var(--z-clip-trim)' }"
-            :class="[
-              isMobile ? 'w-4' : 'w-4',
-              isTransitionCreateHandleActive ? '' : 'hover:bg-white/15',
-            ]"
-            @pointerdown="onTrimHandlePointerDown($event, 'end')"
-          >
-            <div
-              class="w-[3px] h-6 rounded-full bg-white opacity-0 group-hover/trim:opacity-75 transition-opacity duration-150"
-            />
-          </div>
-        </template>
+          :is-transition-create-handle-active="isTransitionCreateHandleActive"
+          @trim-start="onTrimHandlePointerDown($event, 'start')"
+          @trim-end="onTrimHandlePointerDown($event, 'end')"
+        />
       </template>
     </div>
   </UContextMenu>
