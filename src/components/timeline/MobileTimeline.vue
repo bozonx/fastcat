@@ -47,6 +47,11 @@ import { useMobileTimelineSelection } from '~/composables/timeline/useMobileTime
 import { useMobileTimelineZoom } from '~/composables/timeline/useMobileTimelineZoom';
 import { useMobileTimelineEdgeScroll } from '~/composables/timeline/useMobileTimelineEdgeScroll';
 import { useScrollRectCache } from '~/composables/timeline/useScrollRectCache';
+import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
+
+const CLICK_MOVE_THRESHOLD_PX = 8;
+const TIMELINE_RULER_HEIGHT_PX = 32;
+const TOUCH_LONG_PRESS_RESET_DELAY_MS = 100;
 
 const { target: teleportTarget } = useTeleportTarget();
 
@@ -64,10 +69,8 @@ const clipboardStore = useAppClipboard();
 
 const { currentView } = storeToRefs(projectStore);
 
-const canEditClipContent = computed(
-  () =>
-    currentView.value === 'cut' || currentView.value === 'files' || currentView.value === 'sound',
-);
+const editableClipContentViews = new Set(['cut', 'files', 'sound']);
+const canEditClipContent = computed(() => editableClipContentViews.has(currentView.value));
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -231,6 +234,8 @@ const {
   scheduleDragReapply,
 } = useTimelineInteraction(scrollEl, tracks);
 
+const { applyClipAction } = useTimelineClipActions();
+
 const { updateEdgeScroll, stopEdgeScroll } = useMobileTimelineEdgeScroll(
   scrollEl,
   draggingMode,
@@ -291,7 +296,7 @@ function onMobilePointerUp(e: PointerEvent) {
 
   setTimeout(() => {
     isLongPress.value = false;
-  }, 100);
+  }, TOUCH_LONG_PRESS_RESET_DELAY_MS);
 }
 
 function onMobilePointerCancel(e: PointerEvent) {
@@ -389,7 +394,7 @@ function onTimelineClick(e: MouseEvent) {
   if (e.button !== 0) return;
   const dx = Math.abs(e.clientX - clickStartX.value);
   const dy = Math.abs(e.clientY - clickStartY.value);
-  if (dx > 8 || dy > 8 || isLongPress.value) {
+  if (dx > CLICK_MOVE_THRESHOLD_PX || dy > CLICK_MOVE_THRESHOLD_PX || isLongPress.value) {
     isLongPress.value = false;
     return;
   }
@@ -408,7 +413,7 @@ function onTimelineClick(e: MouseEvent) {
   const tracksHeight = Object.values(trackHeights.value).reduce((a, b) => a + b, 0);
   const scrollerRectY = getCachedScrollRect(el);
   const y = e.clientY - scrollerRectY.top + el.scrollTop;
-  if (y > tracksHeight + 32) {
+  if (y > tracksHeight + TIMELINE_RULER_HEIGHT_PX) {
     timelineStore.selectTimelineProperties();
     return;
   }
@@ -436,25 +441,7 @@ function onTimelineClick(e: MouseEvent) {
 
 async function onClipAction(payload: TimelineClipActionPayload) {
   try {
-    if (payload.action === 'extractAudio') {
-      await timelineStore.extractAudioToTrack({
-        videoTrackId: payload.trackId,
-        videoItemId: payload.itemId,
-      });
-    } else if (payload.action === 'freezeFrame') {
-      timelineStore.setClipFreezeFrameFromPlayhead({
-        trackId: payload.trackId,
-        itemId: payload.itemId,
-      });
-    } else if (payload.action === 'resetFreezeFrame') {
-      timelineStore.resetClipFreezeFrame({
-        trackId: payload.trackId,
-        itemId: payload.itemId,
-      });
-    } else {
-      timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
-    }
-    await timelineStore.requestTimelineSave({ immediate: true });
+    await applyClipAction(payload);
   } catch (err: unknown) {
     toast.add({
       title: t('common.error'),

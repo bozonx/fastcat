@@ -33,6 +33,7 @@ import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPre
 import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropHandling';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
+import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
 import TextPresetSelectionModal from '~/components/timeline/TextPresetSelectionModal.vue';
 
 const { t } = useI18n();
@@ -77,6 +78,50 @@ const anyMuted = computed(() => tracks.value.some((t) => t.audioMuted));
 const anyLocked = computed(() => tracks.value.some((t) => t.locked));
 const anyHidden = computed(() => tracks.value.some((t) => t.videoHidden));
 const { isAnyTrackSoloed } = storeToRefs(timelineStore);
+const trackResetButtons = computed(() =>
+  [
+    {
+      active: anyLocked.value,
+      icon: 'i-heroicons-lock-closed',
+      tooltip: t('fastcat.track.resetLocked'),
+      shortcuts: ['L'],
+      color: '#3b82f6',
+      textColor: '#ffffff',
+      class: '',
+      onClick: () => timelineStore.unlockAllTracks(),
+    },
+    {
+      active: anyHidden.value,
+      icon: 'i-heroicons-eye-slash',
+      tooltip: t('fastcat.track.resetHidden'),
+      shortcuts: ['H'],
+      color: '#ffffff',
+      textColor: '#000000',
+      class: 'ring-1 ring-ui-border',
+      onClick: () => timelineStore.showAllTracks(),
+    },
+    {
+      active: anyMuted.value,
+      icon: 'i-heroicons-speaker-x-mark',
+      tooltip: t('fastcat.track.resetMuted'),
+      shortcuts: ['M'],
+      color: '#ef4444',
+      textColor: '#ffffff',
+      class: '',
+      onClick: () => timelineStore.unmuteAllTracks(),
+    },
+    {
+      active: isAnyTrackSoloed.value,
+      icon: 'i-heroicons-musical-note',
+      tooltip: t('fastcat.track.resetSolo'),
+      shortcuts: ['S'],
+      color: '#22c55e',
+      textColor: '#ffffff',
+      class: '',
+      onClick: () => timelineStore.unsoloAllTracks(),
+    },
+  ].filter((button) => button.active),
+);
 
 const timelineWidthStyle = computed(() => {
   const maxUs = Math.max(timelineStore.duration, timelineStore.currentTime) + 30_000_000;
@@ -180,6 +225,8 @@ const {
   startMoveItem,
   startTrimItem,
 } = useTimelineInteraction(scrollEl, tracks);
+
+const { applyClipAction } = useTimelineClipActions();
 
 // --- Context menu ---
 const { emptyAreaContextMenuItems } = useTimelineEmptyAreaContextMenu({
@@ -318,22 +365,7 @@ function onTrackAreaAuxClick(e: MouseEvent) {
 
 async function onClipAction(payload: TimelineClipActionPayload) {
   try {
-    if (payload.action === 'extractAudio') {
-      await timelineStore.extractAudioToTrack({
-        videoTrackId: payload.trackId,
-        videoItemId: payload.itemId,
-      });
-    } else if (payload.action === 'freezeFrame') {
-      timelineStore.setClipFreezeFrameFromPlayhead({
-        trackId: payload.trackId,
-        itemId: payload.itemId,
-      });
-    } else if (payload.action === 'resetFreezeFrame') {
-      timelineStore.resetClipFreezeFrame({ trackId: payload.trackId, itemId: payload.itemId });
-    } else {
-      timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
-    }
-    await timelineStore.requestTimelineSave({ immediate: true });
+    await applyClipAction(payload);
   } catch (err: unknown) {
     toast.add({
       title: t('common.error'),
@@ -511,52 +543,19 @@ function onDragVirtualEnd() {
           />
 
           <div class="flex items-center gap-1">
-            <UTooltip v-if="anyLocked" :text="t('fastcat.track.resetLocked')" :shortcuts="['L']">
-              <UButton
-                icon="i-heroicons-lock-closed"
-                color="primary"
-                variant="solid"
-                size="xs"
-                class="w-5 h-5 p-0! rounded-full"
-                :style="{ backgroundColor: '#3b82f6', color: '#ffffff' }"
-                @click="timelineStore.unlockAllTracks()"
-              />
-            </UTooltip>
-            <UTooltip v-if="anyHidden" :text="t('fastcat.track.resetHidden')" :shortcuts="['H']">
-              <UButton
-                icon="i-heroicons-eye-slash"
-                color="white"
-                variant="solid"
-                size="xs"
-                class="w-5 h-5 p-0! rounded-full ring-1 ring-ui-border"
-                :style="{ backgroundColor: '#ffffff', color: '#000000' }"
-                @click="timelineStore.showAllTracks()"
-              />
-            </UTooltip>
-            <UTooltip v-if="anyMuted" :text="t('fastcat.track.resetMuted')" :shortcuts="['M']">
-              <UButton
-                icon="i-heroicons-speaker-x-mark"
-                color="error"
-                variant="solid"
-                size="xs"
-                class="w-5 h-5 p-0! rounded-full"
-                :style="{ backgroundColor: '#ef4444', color: '#ffffff' }"
-                @click="timelineStore.unmuteAllTracks()"
-              />
-            </UTooltip>
             <UTooltip
-              v-if="isAnyTrackSoloed"
-              :text="t('fastcat.track.resetSolo')"
-              :shortcuts="['S']"
+              v-for="button in trackResetButtons"
+              :key="button.icon"
+              :text="button.tooltip"
+              :shortcuts="button.shortcuts"
             >
               <UButton
-                icon="i-heroicons-musical-note"
-                color="success"
+                :icon="button.icon"
                 variant="solid"
                 size="xs"
-                class="w-5 h-5 p-0! rounded-full"
-                :style="{ backgroundColor: '#22c55e', color: '#ffffff' }"
-                @click="timelineStore.unsoloAllTracks()"
+                :class="['w-5 h-5 p-0! rounded-full', button.class]"
+                :style="{ backgroundColor: button.color, color: button.textColor }"
+                @click="button.onClick"
               />
             </UTooltip>
           </div>

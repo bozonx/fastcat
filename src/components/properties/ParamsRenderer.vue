@@ -40,9 +40,13 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const _setTimeout = (...args: Parameters<typeof setTimeout>) => setTimeout(...args);
+const LINKED_SCALE_UPDATE_DELAY_MS = 10;
 
 const dragOverKey = ref<string | null>(null);
+
+function scheduleValueUpdate(key: string | undefined, value: unknown) {
+  window.setTimeout(() => updateValue(key, value), LINKED_SCALE_UPDATE_DELAY_MS);
+}
 
 function getLabel(control: ParamControl): string {
   if ('labelKey' in control && typeof control.labelKey === 'string') {
@@ -91,7 +95,7 @@ function getSelectItems(control: SelectParamControl | ButtonGroupParamControl) {
   }));
 }
 
-function getDisplayFileValue(control: FileParamControl): string {
+function getDisplayFileValue(control: FileParamControl | RenderableParamControl): string {
   const value = getValue(control.key);
   if (typeof value === 'string' && value.trim().length > 0) {
     return value;
@@ -108,7 +112,7 @@ function getDisplayFileValue(control: FileParamControl): string {
   return t('fastcat.hudClip.emptyLayer');
 }
 
-function handleFileDrop(event: DragEvent, control: FileParamControl) {
+function handleFileDrop(event: DragEvent, control: RenderableParamControl) {
   dragOverKey.value = null;
   const raw = event.dataTransfer?.getData('application/json');
   if (!raw) {
@@ -135,10 +139,6 @@ function handleFileDrop(event: DragEvent, control: FileParamControl) {
     return;
   }
 }
-function handleAction(action: string, key: string) {
-  emit('action', action, key);
-}
-
 function buildScaleXYState(control: ScaleXYParamControl) {
   const isLinked = Boolean(getValue(control.keyLinked) ?? control.defaultLinked ?? true);
   const xValue = Number(getValue(control.keyX) ?? control.defaultValueX ?? 100);
@@ -160,11 +160,48 @@ function buildScaleXYState(control: ScaleXYParamControl) {
   };
 }
 
+interface RenderableParamControl {
+  action?: string;
+  addLabel?: string;
+  addLabelKey?: string;
+  buttonLabel?: string;
+  buttonLabelKey?: string;
+  columns?: 1 | 2;
+  controls?: ParamControl[];
+  defaultItem?: Record<string, unknown>;
+  defaultLinked?: boolean;
+  defaultValue?: number;
+  defaultValueX?: number;
+  defaultValueY?: number;
+  disabled?: boolean;
+  emptyLabel?: string;
+  emptyLabelKey?: string;
+  format?: (value: number) => string;
+  icon?: string;
+  itemTemplate?: ParamControl[];
+  key?: string;
+  keyLinked?: string;
+  keyX?: string;
+  keyY?: string;
+  kind: ParamControl['kind'];
+  kindKey?: string;
+  label?: string;
+  labelKey?: string;
+  labelXKey?: string;
+  labelYKey?: string;
+  layout?: 'vertical' | 'horizontal';
+  max?: number;
+  min?: number;
+  multiline?: boolean;
+  placeholder?: string;
+  rows?: number;
+  step?: number;
+}
+
 interface VisibleControlEntry {
   actionLabel: string;
   arrayItems: Record<string, unknown>[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  control: any;
+  control: RenderableParamControl;
   disabled: boolean;
   fileDisplayValue: string;
   hasValue: boolean;
@@ -176,6 +213,11 @@ interface VisibleControlEntry {
   selectItems: ReturnType<typeof getSelectItems>;
   stringValue: string;
   value: unknown;
+}
+
+function getArrayItems(control: RenderableParamControl): Record<string, unknown>[] {
+  const value = getValue(control.key);
+  return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 }
 
 const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
@@ -214,7 +256,7 @@ const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
           ? t(control.buttonLabelKey)
           : (control.buttonLabel ?? label);
       } else if (control.kind === 'array') {
-        arrayItems = Array.isArray(rawValue) ? (rawValue as Record<string, unknown>[]) : [];
+        arrayItems = getArrayItems(control);
       }
 
       return {
@@ -236,36 +278,82 @@ const visibleControlEntries = computed<VisibleControlEntry[]>(() => {
     });
 });
 
-function handleArrayAdd(control: ParamControl) {
-  if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key))
-    ? [...(getValue(control.key) as unknown[])]
-    : [];
-  current.push({ ...control.defaultItem });
+function handleAction(action: string | undefined, key: string | undefined) {
+  if (!action || !key) return;
+  emit('action', action, key);
+}
+
+function handleScaleReset(control: RenderableParamControl) {
+  updateValue(control.keyX, control.defaultValueX ?? 100);
+  scheduleValueUpdate(control.keyY, control.defaultValueY ?? 100);
+}
+
+function handleScaleXUpdate(
+  control: RenderableParamControl,
+  state: ReturnType<typeof buildScaleXYState>,
+  value: number,
+) {
+  const numValue = Number(value);
+  updateValue(control.keyX, numValue);
+  if (state.isLinked) {
+    scheduleValueUpdate(control.keyY, numValue);
+  }
+}
+
+function handleScaleYUpdate(
+  control: RenderableParamControl,
+  state: ReturnType<typeof buildScaleXYState>,
+  value: number,
+) {
+  const numValue = Number(value);
+  updateValue(control.keyY, numValue);
+  if (state.isLinked) {
+    scheduleValueUpdate(control.keyX, numValue);
+  }
+}
+
+function toggleScaleLink(
+  control: RenderableParamControl,
+  state: ReturnType<typeof buildScaleXYState>,
+) {
+  const isLinked = !state.isLinked;
+  updateValue(control.keyLinked, isLinked);
+  if (isLinked) {
+    scheduleValueUpdate(control.keyY, state.xValue);
+  }
+}
+
+function clearFileValue(control: RenderableParamControl) {
+  updateValue(control.key, undefined);
+  if (control.kindKey) updateValue(control.kindKey, undefined);
+}
+
+function getArrayValue(control: RenderableParamControl): unknown[] {
+  const value = getValue(control.key);
+  return Array.isArray(value) ? [...value] : [];
+}
+
+function handleArrayAdd(control: RenderableParamControl) {
+  const current = getArrayValue(control);
+  current.push({ ...(control.defaultItem ?? {}) });
   updateValue(control.key, current);
 }
 
-function handleArrayRemove(control: ParamControl, index: number) {
-  if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key))
-    ? [...(getValue(control.key) as unknown[])]
-    : [];
+function handleArrayRemove(control: RenderableParamControl, index: number) {
+  const current = getArrayValue(control);
   current.splice(index, 1);
   updateValue(control.key, current);
 }
 
 function handleArrayItemUpdate(
-  control: ParamControl,
+  control: RenderableParamControl,
   index: number,
   itemKey: string,
   value: unknown,
 ) {
-  if (control.kind !== 'array') return;
-  const current = Array.isArray(getValue(control.key))
-    ? [...(getValue(control.key) as unknown[])]
-    : [];
+  const current = getArrayValue(control);
   if (current[index]) {
-    current[index] = { ...current[index], [itemKey]: value };
+    current[index] = { ...(current[index] as Record<string, unknown>), [itemKey]: value };
     updateValue(control.key, current);
   }
 }
@@ -280,7 +368,7 @@ function handleArrayItemUpdate(
         :class="entry.control.columns === 1 ? 'grid-cols-1' : 'grid-cols-2'"
       >
         <ParamsRenderer
-          :controls="entry.control.controls"
+          :controls="entry.control.controls ?? []"
           :values="values"
           :size="size"
           as-contents
@@ -298,9 +386,9 @@ function handleArrayItemUpdate(
         </div>
         <UiWheelSlider
           :model-value="entry.numberValue"
-          :min="entry.control.min"
-          :max="entry.control.max"
-          :step="entry.control.step"
+          :min="entry.control.min ?? 0"
+          :max="entry.control.max ?? 100"
+          :step="entry.control.step ?? 1"
           :default-value="entry.control.defaultValue"
           :disabled="entry.disabled"
           @update:model-value="(value: number) => updateValue(entry.control.key, value)"
@@ -313,9 +401,9 @@ function handleArrayItemUpdate(
       >
         <UiKnob
           :model-value="entry.numberValue"
-          :min="entry.control.min"
-          :max="entry.control.max"
-          :step="entry.control.step"
+          :min="entry.control.min ?? 0"
+          :max="entry.control.max ?? 100"
+          :step="entry.control.step ?? 1"
           :default-value="entry.control.defaultValue"
           :disabled="entry.disabled"
           size="md"
@@ -358,14 +446,7 @@ function handleArrayItemUpdate(
             variant="ghost"
             color="gray"
             class="opacity-50 hover:opacity-100 transition-opacity"
-            @click="
-              () => {
-                updateValue(entry.control.keyX, entry.control.defaultValueX ?? 100);
-                _setTimeout(() => {
-                  updateValue(entry.control.keyY, entry.control.defaultValueY ?? 100);
-                }, 10);
-              }
-            "
+            @click="handleScaleReset(entry.control)"
           />
         </div>
         <div class="flex items-center gap-2">
@@ -379,15 +460,7 @@ function handleArrayItemUpdate(
             :disabled="entry.disabled"
             full-width
             @update:model-value="
-              (value: number) => {
-                const numValue = Number(value);
-                updateValue(entry.control.keyX, numValue);
-                if (entry.scaleXYState?.isLinked) {
-                  _setTimeout(() => {
-                    updateValue(entry.control.keyY, numValue);
-                  }, 10);
-                }
-              }
+              (value: number) => handleScaleXUpdate(entry.control, entry.scaleXYState!, value)
             "
           />
           <UButton
@@ -396,17 +469,7 @@ function handleArrayItemUpdate(
             color="gray"
             :icon="entry.scaleXYState.isLinked ? 'i-heroicons-link' : 'i-heroicons-link-slash'"
             :class="[entry.scaleXYState.isLinked ? 'text-ui-primary' : 'text-ui-text-muted']"
-            @click="
-              () => {
-                const isLinked = !entry.scaleXYState?.isLinked;
-                updateValue(entry.control.keyLinked, isLinked);
-                if (isLinked) {
-                  _setTimeout(() => {
-                    updateValue(entry.control.keyY, entry.scaleXYState?.xValue);
-                  }, 10);
-                }
-              }
-            "
+            @click="toggleScaleLink(entry.control, entry.scaleXYState)"
           />
         </div>
         <div v-if="!entry.scaleXYState.isLinked" class="flex flex-col gap-0.5 mt-2">
@@ -420,15 +483,7 @@ function handleArrayItemUpdate(
             :disabled="entry.disabled"
             full-width
             @update:model-value="
-              (value: number) => {
-                const numValue = Number(value);
-                updateValue(entry.control.keyY, numValue);
-                if (entry.scaleXYState?.isLinked) {
-                  _setTimeout(() => {
-                    updateValue(entry.control.keyX, numValue);
-                  }, 10);
-                }
-              }
+              (value: number) => handleScaleYUpdate(entry.control, entry.scaleXYState!, value)
             "
           />
         </div>
@@ -524,7 +579,7 @@ function handleArrayItemUpdate(
               ? 'border-primary-500 bg-primary-500/10'
               : 'border-ui-border bg-ui-bg-muted'
           "
-          @dragover.prevent.stop="dragOverKey = entry.control.key"
+          @dragover.prevent.stop="dragOverKey = entry.control.key ?? null"
           @dragleave.prevent.stop="
             dragOverKey = dragOverKey === entry.control.key ? null : dragOverKey
           "
@@ -543,12 +598,7 @@ function handleArrayItemUpdate(
             size="2xs"
             color="gray"
             variant="ghost"
-            @click="
-              () => {
-                updateValue(entry.control.key, undefined);
-                if (entry.control.kindKey) updateValue(entry.control.kindKey, undefined);
-              }
-            "
+            @click="clearFileValue(entry.control)"
           />
         </div>
       </div>
@@ -634,7 +684,7 @@ function handleArrayItemUpdate(
               :class="['flex flex-col gap-2', entry.control.layout === 'horizontal' ? 'p-2' : '']"
             >
               <ParamsRenderer
-                :controls="entry.control.itemTemplate"
+                :controls="entry.control.itemTemplate ?? []"
                 :values="item"
                 :size="size"
                 as-contents
