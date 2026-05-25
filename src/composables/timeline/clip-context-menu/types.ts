@@ -64,6 +64,10 @@ export interface MultiSelectionItemRef {
 export interface MultiSelectionState {
   doc: TimelineDocument | null;
   itemsToUpdate: MultiSelectionItemRef[];
+  audioItemsToUpdate: MultiSelectionItemRef[];
+  waveformItemsToUpdate: MultiSelectionItemRef[];
+  thumbnailItemsToUpdate: MultiSelectionItemRef[];
+  autoMontageItemsToUpdate: MultiSelectionItemRef[];
   selectedClips: TimelineClipItem[];
   selectedIds: Set<string>;
   selectedVideoIds: string[];

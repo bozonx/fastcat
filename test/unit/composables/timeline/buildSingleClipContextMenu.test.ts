@@ -63,10 +63,56 @@ describe('buildSingleClipContextMenu', () => {
   it('uses explicit waveform actions and exposes waveform visibility toggle', () => {
     const options = createOptions();
 
-    const labels = buildSingleClipMainGroup(options).map((action) => action.label);
+    const labels = buildSingleClipMainGroup(options).flatMap((group) =>
+      group.map((action) => action.label),
+    );
 
     expect(labels).toContain('fastcat.timeline.showFullWaveform');
     expect(labels).toContain('fastcat.timeline.hideWaveform');
+  });
+
+  it('does not expose speed for image clips', () => {
+    const options = createOptions({
+      item: ref({
+        id: 'clip-1',
+        kind: 'clip',
+        trackId: 'track-1',
+        clipType: 'media',
+        name: 'Image 1',
+        timelineRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceDurationUs: 5_000_000,
+        isImage: true,
+      } as any),
+    });
+
+    const labels = buildSingleClipMainGroup(options).flatMap((group) =>
+      group.map((action) => action.label),
+    );
+
+    expect(labels.some((label) => label.startsWith('fastcat.timeline.speed'))).toBe(false);
+  });
+
+  it('does not expose audio controls for text clips', () => {
+    const options = createOptions({
+      item: ref({
+        id: 'clip-1',
+        kind: 'clip',
+        trackId: 'track-1',
+        clipType: 'text',
+        name: 'Text 1',
+        timelineRange: { startUs: 0, durationUs: 5_000_000 },
+        sourceRange: { startUs: 0, durationUs: 5_000_000 },
+      } as any),
+    });
+
+    const labels = buildSingleClipMainGroup(options).flatMap((group) =>
+      group.map((action) => action.label),
+    );
+
+    expect(labels).not.toContain('fastcat.timeline.muteClip');
+    expect(labels).not.toContain('fastcat.timeline.showWaveform');
+    expect(labels).not.toContain('fastcat.timeline.showFullWaveform');
   });
 
   it('adds rename action for a single clip', () => {

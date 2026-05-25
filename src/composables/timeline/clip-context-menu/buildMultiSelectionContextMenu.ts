@@ -40,7 +40,7 @@ export function buildMultiSelectionContextMenu(
         : options.t('fastcat.timeline.muteClips'),
       icon: state.allMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
       onSelect: async () => {
-        const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
+        const cmds = state.audioItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
           trackId,
           itemId,
@@ -57,7 +57,7 @@ export function buildMultiSelectionContextMenu(
         : options.t('fastcat.timeline.showHalfWaveform'),
       icon: 'i-heroicons-chart-bar',
       onSelect: async () => {
-        const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
+        const cmds = state.waveformItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
           trackId,
           itemId,
@@ -173,7 +173,7 @@ export function buildMultiSelectionContextMenu(
         : options.t('fastcat.timeline.showWaveform'),
       icon: state.allShowWaveform ? 'i-heroicons-eye-slash' : 'i-heroicons-eye',
       onSelect: async () => {
-        const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
+        const cmds = state.waveformItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
           trackId,
           itemId,
@@ -190,7 +190,7 @@ export function buildMultiSelectionContextMenu(
         : options.t('fastcat.timeline.showThumbnails'),
       icon: 'i-heroicons-photo',
       onSelect: async () => {
-        const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
+        const cmds = state.thumbnailItemsToUpdate.map(({ trackId, itemId }) => ({
           type: 'update_clip_properties' as const,
           trackId,
           itemId,
@@ -202,8 +202,8 @@ export function buildMultiSelectionContextMenu(
     });
   }
 
-  if (state.hasAudioOrVideoWithAudio && state.itemsToUpdate.length > 0) {
-    const first = state.itemsToUpdate[0]!;
+  if (state.autoMontageItemsToUpdate.length > 0) {
+    const first = state.autoMontageItemsToUpdate[0]!;
     mainGroup.push({
       label: options.t('fastcat.timeline.autoMontage.title'),
       icon: 'i-heroicons-sparkles',

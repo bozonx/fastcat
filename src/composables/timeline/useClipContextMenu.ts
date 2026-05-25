@@ -21,11 +21,11 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
     const gapMenu = buildGapContextMenu(options);
     if (gapMenu) return gapMenu;
 
-    const mainGroup = buildSingleClipMainGroup(options);
+    const mainGroups = buildSingleClipMainGroup(options);
     const actionGroup = buildSingleItemActionGroup(options);
     const transitionGroups = buildTransitionContextMenu(options) ?? [];
     const result = [];
-    if (mainGroup.length > 0) result.push(mainGroup);
+    result.push(...mainGroups);
     result.push(...transitionGroups);
     result.push(actionGroup);
 

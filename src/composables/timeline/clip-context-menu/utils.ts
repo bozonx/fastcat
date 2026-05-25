@@ -1,5 +1,5 @@
 import { sanitizeFps } from '~/timeline/commands/utils';
-import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
+import type { TimelineClipItem, TimelineDocument, TimelineTrack } from '~/timeline/types';
 import type { MultiSelectionItemRef, MultiSelectionState } from './types';
 
 export function isClipFreePosition(clip: TimelineClipItem, doc: TimelineDocument | null): boolean {
@@ -14,12 +14,46 @@ export function isClipFreePosition(clip: TimelineClipItem, doc: TimelineDocument
   return !isStartQuantized || !isDurationQuantized;
 }
 
+export function clipSupportsAudioControls(
+  track: Pick<TimelineTrack, 'kind'>,
+  clip: Pick<TimelineClipItem, 'clipType' | 'isImage' | 'audioFromVideoDisabled'>,
+): boolean {
+  if (track.kind === 'audio') return true;
+  if (track.kind !== 'video') return false;
+  if (clip.audioFromVideoDisabled) return false;
+  if (clip.clipType === 'timeline') return true;
+  return clip.clipType === 'media' && !clip.isImage;
+}
+
+export function clipSupportsThumbnails(
+  track: Pick<TimelineTrack, 'kind'>,
+  clip: Pick<TimelineClipItem, 'clipType'>,
+): boolean {
+  return (
+    track.kind === 'video' && (clip.clipType === 'media' || clip.clipType === 'timeline')
+  );
+}
+
+export function clipSupportsSpeedControls(
+  track: Pick<TimelineTrack, 'kind'>,
+  clip: Pick<TimelineClipItem, 'clipType' | 'isImage'>,
+): boolean {
+  if (track.kind === 'audio') return true;
+  if (track.kind !== 'video') return false;
+  if (clip.clipType === 'timeline') return true;
+  return clip.clipType === 'media' && !clip.isImage;
+}
+
 export function collectMultiSelectionState(
   doc: TimelineDocument | null,
   selectedItemIds: string[],
 ): MultiSelectionState {
   const selectedClips: TimelineClipItem[] = [];
   const itemsToUpdate: MultiSelectionItemRef[] = [];
+  const audioItemsToUpdate: MultiSelectionItemRef[] = [];
+  const waveformItemsToUpdate: MultiSelectionItemRef[] = [];
+  const thumbnailItemsToUpdate: MultiSelectionItemRef[] = [];
+  const autoMontageItemsToUpdate: MultiSelectionItemRef[] = [];
   const lockedTrackIds = new Set<string>();
 
   if (doc) {
@@ -108,25 +142,39 @@ export function collectMultiSelectionState(
       const clip = track.items.find((candidateItem) => candidateItem.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
 
-      if (track.kind === 'video') hasVideo = true;
+      if (clipSupportsThumbnails(track, clip)) {
+        hasVideo = true;
+        thumbnailItemsToUpdate.push({ trackId, itemId });
+      }
 
-      const hasAudio =
-        track.kind === 'audio' ||
-        (track.kind === 'video' &&
-          clip.clipType === 'media' &&
-          (clip.linkedVideoClipId || (clip.source as { hasAudio?: boolean }).hasAudio));
-      if (hasAudio) hasAudioOrVideoWithAudio = true;
+      const hasAudio = clipSupportsAudioControls(track, clip);
+      if (hasAudio) {
+        hasAudioOrVideoWithAudio = true;
+        audioItemsToUpdate.push({ trackId, itemId });
+        waveformItemsToUpdate.push({ trackId, itemId });
 
-      if (!clip.audioMuted) allMuted = false;
-      if (clip.showWaveform === false) allShowWaveform = false;
-      if (clip.showThumbnails === false) allShowThumbnails = false;
-      if (clip.audioWaveformMode === 'full') allWaveformHalf = false;
+        if (!clip.audioMuted) allMuted = false;
+        if (clip.showWaveform === false) allShowWaveform = false;
+        if (clip.audioWaveformMode === 'full') allWaveformHalf = false;
+      }
+
+      if (clipSupportsThumbnails(track, clip) && clip.showThumbnails === false) {
+        allShowThumbnails = false;
+      }
+
+      if (track.kind === 'video' && clip.clipType === 'media' && !clip.isImage) {
+        autoMontageItemsToUpdate.push({ trackId, itemId });
+      }
     }
   }
 
   return {
     doc,
     itemsToUpdate,
+    audioItemsToUpdate,
+    waveformItemsToUpdate,
+    thumbnailItemsToUpdate,
+    autoMontageItemsToUpdate,
     selectedClips,
     selectedIds,
     selectedVideoIds,

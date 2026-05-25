@@ -1,15 +1,23 @@
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
-import { isClipFreePosition } from './utils';
+import {
+  clipSupportsAudioControls,
+  clipSupportsSpeedControls,
+  clipSupportsThumbnails,
+  isClipFreePosition,
+} from './utils';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 
-export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup {
+export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup[] {
   const track = options.track.value;
   const item = options.item.value;
   if (item.kind !== 'clip') return [];
 
   const clipItem = item as TimelineClipItem;
-  const mainGroup: ContextMenuGroup = [];
+  const stateGroup: ContextMenuGroup = [];
+  const timingGroup: ContextMenuGroup = [];
+  const relationGroup: ContextMenuGroup = [];
+  const mediaGroup: ContextMenuGroup = [];
   const isFree = isClipFreePosition(clipItem, options.timelineDoc.value);
   const doc = options.timelineDoc.value;
   const lockedLinkedAudioClips =
@@ -35,7 +43,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     Boolean(clipItem.linkedVideoClipId) &&
     Boolean(clipItem.lockToLinkedVideo);
 
-  mainGroup.push({
+  stateGroup.push({
     label: clipItem.disabled
       ? options.t('fastcat.timeline.enableClip')
       : options.t('fastcat.timeline.disableClip'),
@@ -48,10 +56,9 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     },
   });
 
-  const hasAudio =
-    track.kind === 'audio' || clipItem.clipType === 'media' || clipItem.clipType === 'timeline';
+  const hasAudio = clipSupportsAudioControls(track, clipItem);
   if (hasAudio) {
-    mainGroup.push({
+    stateGroup.push({
       label: clipItem.audioMuted
         ? options.t('fastcat.timeline.unmuteClip')
         : options.t('fastcat.timeline.muteClip'),
@@ -65,7 +72,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
 
     const currentMode = clipItem.audioWaveformMode || 'half';
-    mainGroup.push({
+    stateGroup.push({
       label:
         currentMode === 'half'
           ? options.t('fastcat.timeline.showFullWaveform')
@@ -79,7 +86,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       },
     });
 
-    mainGroup.push({
+    stateGroup.push({
       label:
         clipItem.showWaveform === false
           ? options.t('fastcat.timeline.showWaveform')
@@ -94,8 +101,37 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
+  if (clipSupportsThumbnails(track, clipItem)) {
+    stateGroup.push({
+      label:
+        clipItem.showThumbnails === false
+          ? options.t('fastcat.timeline.showThumbnails')
+          : options.t('fastcat.timeline.hideThumbnails'),
+      icon: 'i-heroicons-photo',
+      onSelect: async () => {
+        options.updateClipProperties(track.id, clipItem.id, {
+          showThumbnails: clipItem.showThumbnails === false,
+        });
+        await options.requestTimelineSave({ immediate: true });
+      },
+    });
+  }
+
+  stateGroup.push({
+    label: clipItem.locked
+      ? options.t('fastcat.timeline.unlockClip')
+      : options.t('fastcat.timeline.lockClip'),
+    icon: clipItem.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+    onSelect: async () => {
+      options.updateClipProperties(track.id, clipItem.id, {
+        locked: !clipItem.locked,
+      });
+      await options.requestTimelineSave({ immediate: true });
+    },
+  });
+
   if (isFree && !clipItem.locked) {
-    mainGroup.push({
+    timingGroup.push({
       label: options.t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onSelect: async () => {
@@ -113,7 +149,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   }
 
   if (isLockedAudioClip) {
-    mainGroup.push({
+    relationGroup.push({
       label: options.t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onSelect: async () => {
@@ -126,7 +162,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       },
     });
   } else if (linkedAudioForThisVideo.length > 0) {
-    mainGroup.push({
+    relationGroup.push({
       label: options.t('fastcat.timeline.unlinkAudio'),
       icon: 'i-heroicons-link-slash',
       onSelect: async () => {
@@ -139,51 +175,24 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  mainGroup.push({
-    label: clipItem.locked
-      ? options.t('fastcat.timeline.unlockClip')
-      : options.t('fastcat.timeline.lockClip'),
-    icon: clipItem.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
-    onSelect: async () => {
-      options.updateClipProperties(track.id, clipItem.id, {
-        locked: !clipItem.locked,
-      });
-      await options.requestTimelineSave({ immediate: true });
-    },
-  });
-
-  if (track.kind === 'video') {
-    mainGroup.push({
-      label:
-        clipItem.showThumbnails === false
-          ? options.t('fastcat.timeline.showThumbnails')
-          : options.t('fastcat.timeline.hideThumbnails'),
-      icon: 'i-heroicons-photo',
-      onSelect: async () => {
-        options.updateClipProperties(track.id, clipItem.id, {
-          showThumbnails: clipItem.showThumbnails === false,
-        });
-        await options.requestTimelineSave({ immediate: true });
-      },
+  const currentSpeed = clipItem.speed ?? 1;
+  if (clipSupportsSpeedControls(track, clipItem)) {
+    timingGroup.push({
+      label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
+      icon: 'i-heroicons-forward',
+      onSelect: () =>
+        options.emitOpenSpeedModal({
+          trackId: track.id,
+          itemId: clipItem.id,
+          speed: currentSpeed,
+        }),
     });
   }
-
-  const currentSpeed = clipItem.speed ?? 1;
-  mainGroup.push({
-    label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
-    icon: 'i-heroicons-forward',
-    onSelect: () =>
-      options.emitOpenSpeedModal({
-        trackId: track.id,
-        itemId: clipItem.id,
-        speed: currentSpeed,
-      }),
-  });
 
   const canExtract =
     track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.audioFromVideoDisabled;
   if (canExtract) {
-    mainGroup.push({
+    relationGroup.push({
       label: options.t('fastcat.timeline.extractAudio'),
       icon: 'i-heroicons-musical-note',
       onSelect: () =>
@@ -216,7 +225,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     Boolean(clipItem.lockToLinkedVideo);
 
   if (hasReturnFromVideoClip) {
-    mainGroup.push({
+    relationGroup.push({
       label: options.t('fastcat.timeline.returnAudio'),
       icon: 'i-heroicons-arrow-uturn-left',
       onSelect: () =>
@@ -227,7 +236,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
         }),
     });
   } else if (hasReturnFromLockedAudioClip) {
-    mainGroup.push({
+    relationGroup.push({
       label: options.t('fastcat.timeline.returnAudio'),
       icon: 'i-heroicons-arrow-uturn-left',
       onSelect: () =>
@@ -244,7 +253,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const hasFreezeFrame = typeof clipItem.freezeFrameSourceUs === 'number';
 
   if (isMediaVideoClip && !hasFreezeFrame) {
-    mainGroup.push({
+    mediaGroup.push({
       label: options.t('fastcat.timeline.freezeFrame'),
       icon: 'i-heroicons-pause-circle',
       onSelect: () =>
@@ -257,7 +266,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   }
 
   if (isMediaVideoClip && hasFreezeFrame) {
-    mainGroup.push({
+    mediaGroup.push({
       label: options.t('fastcat.timeline.resetFreezeFrame'),
       icon: 'i-heroicons-play-circle',
       onSelect: () =>
@@ -269,8 +278,8 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  if (clipItem.clipType === 'media') {
-    mainGroup.push({
+  if (clipItem.clipType === 'media' && !clipItem.isImage) {
+    mediaGroup.push({
       label: options.t('fastcat.timeline.autoMontage.title'),
       icon: 'i-heroicons-sparkles',
       onSelect: () =>
@@ -282,7 +291,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  return mainGroup;
+  return [stateGroup, timingGroup, relationGroup, mediaGroup].filter((group) => group.length > 0);
 }
 
 export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): ContextMenuGroup {
