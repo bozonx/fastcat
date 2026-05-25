@@ -1,4 +1,5 @@
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
+import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 export function isClipFreePosition(
   clipItem: TimelineClipItem | null,
@@ -6,10 +7,5 @@ export function isClipFreePosition(
   fps: number,
 ): boolean {
   if (!clipItem || !timelineDoc) return false;
-  const startFrame = (clipItem.timelineRange.startUs * fps) / 1_000_000;
-  const durFrame = (clipItem.timelineRange.durationUs * fps) / 1_000_000;
-  return (
-    Math.abs(startFrame - Math.round(startFrame)) > 0.001 ||
-    Math.abs(durFrame - Math.round(durFrame)) > 0.001
-  );
+  return !isClipFrameAligned(clipItem, fps);
 }

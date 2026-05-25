@@ -4,19 +4,15 @@ import {
   clipSupportsAudioControls,
   clipSupportsAutoMontage,
   clipSupportsThumbnailControls,
+  isClipFrameAligned,
 } from '~/utils/timeline/clip-capabilities';
 import type { MultiSelectionItemRef, MultiSelectionState } from './types';
 
 export function isClipFreePosition(clip: TimelineClipItem, doc: TimelineDocument | null): boolean {
   if (!doc) return false;
 
-  const fps = sanitizeFps((doc as { timebase?: { fps?: number } }).timebase?.fps);
-  const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
-  const durFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
-  const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
-  const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
-
-  return !isStartQuantized || !isDurationQuantized;
+  const fps = sanitizeFps(doc.timebase?.fps);
+  return !isClipFrameAligned(clip, fps);
 }
 
 export function collectMultiSelectionState(
@@ -40,7 +36,7 @@ export function collectMultiSelectionState(
         if (!selectedItemIds.includes(item.id)) continue;
 
         if (item.kind === 'clip') {
-          selectedClips.push(item as TimelineClipItem);
+          selectedClips.push(item);
         }
 
         itemsToUpdate.push({ trackId: track.id, itemId: item.id });

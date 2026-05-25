@@ -2,43 +2,72 @@ import { ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
+import type {
+  TimelineClipItem,
+  TimelineDocument,
+  TimelineMediaClipItem,
+  TimelineTrack,
+} from '~/timeline/types';
 
-function makeClip(overrides: Record<string, unknown> = {}): any {
-  return {
+function makeClip(overrides: Partial<TimelineClipItem> = {}): TimelineClipItem {
+  const base: TimelineMediaClipItem = {
     id: 'clip-1',
     kind: 'clip',
-    trackId: 'v1',
     clipType: 'media',
+    trackId: 'v1',
     name: 'Clip 1',
     timelineRange: { startUs: 0, durationUs: 5_000_000 },
     sourceRange: { startUs: 0, durationUs: 5_000_000 },
     sourceDurationUs: 5_000_000,
     source: { path: '/video.mp4' },
+  };
+  return { ...base, ...overrides } as TimelineClipItem;
+}
+
+function makeTrack(
+  overrides: Partial<TimelineTrack> & Pick<TimelineTrack, 'id' | 'kind'>,
+): TimelineTrack {
+  return {
+    name: overrides.id,
+    items: [],
     ...overrides,
   };
 }
 
-function build() {
+function build(
+  options: {
+    docOverrides?: Partial<TimelineDocument>;
+    tracks?: TimelineTrack[];
+    selection?: Array<{ trackId: string; itemId: string }>;
+  } = {},
+) {
   const videoClip = makeClip({ id: 'video-1', trackId: 'v1' });
   const imageClip = makeClip({ id: 'image-1', trackId: 'v1', isImage: true });
   const textClip = makeClip({ id: 'text-1', trackId: 'v1', clipType: 'text', source: undefined });
   const audioClip = makeClip({ id: 'audio-1', trackId: 'a1' });
-  const timelineDoc = ref<any>({
+
+  const tracks = options.tracks ?? [
+    makeTrack({ id: 'v1', kind: 'video', name: 'Video', items: [videoClip, imageClip, textClip] }),
+    makeTrack({ id: 'a1', kind: 'audio', name: 'Audio', items: [audioClip] }),
+  ];
+
+  const timelineDoc = ref<TimelineDocument | null>({
     OTIO_SCHEMA: 'Timeline.1',
     id: 'doc-1',
     name: 'Timeline',
     timebase: { fps: 30 },
-    tracks: [
-      { id: 'v1', kind: 'video', name: 'Video', items: [videoClip, imageClip, textClip] },
-      { id: 'a1', kind: 'audio', name: 'Audio', items: [audioClip] },
-    ],
+    tracks,
+    ...options.docOverrides,
   });
-  const items = ref([
-    { trackId: 'v1', itemId: 'video-1' },
-    { trackId: 'v1', itemId: 'image-1' },
-    { trackId: 'v1', itemId: 'text-1' },
-    { trackId: 'a1', itemId: 'audio-1' },
-  ]);
+
+  const items = ref(
+    options.selection ?? [
+      { trackId: 'v1', itemId: 'video-1' },
+      { trackId: 'v1', itemId: 'image-1' },
+      { trackId: 'v1', itemId: 'text-1' },
+      { trackId: 'a1', itemId: 'audio-1' },
+    ],
+  );
   const batchApplyTimeline = vi.fn();
   const actions = useClipBatchActions(items, {
     timelineDoc,
@@ -115,5 +144,82 @@ describe('useClipBatchActions', () => {
       ],
       { labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties' },
     );
+  });
+
+  it('shifts only unlocked clips on unlocked tracks', () => {
+    const lockedClip = makeClip({ id: 'video-1', trackId: 'v1', locked: true });
+    const freeClip = makeClip({ id: 'video-2', trackId: 'v1' });
+    const lockedTrackClip = makeClip({ id: 'video-3', trackId: 'v2' });
+    const { actions, batchApplyTimeline } = build({
+      tracks: [
+        makeTrack({ id: 'v1', kind: 'video', name: 'Video', items: [lockedClip, freeClip] }),
+        makeTrack({
+          id: 'v2',
+          kind: 'video',
+          name: 'Locked',
+          locked: true,
+          items: [lockedTrackClip],
+        }),
+      ],
+      selection: [
+        { trackId: 'v1', itemId: 'video-1' },
+        { trackId: 'v1', itemId: 'video-2' },
+        { trackId: 'v2', itemId: 'video-3' },
+      ],
+    });
+
+    actions.handleRelativeStartShift(1_000_000);
+
+    expect(batchApplyTimeline).toHaveBeenCalledTimes(1);
+    expect(batchApplyTimeline).toHaveBeenCalledWith(
+      [
+        {
+          type: 'move_item',
+          trackId: 'v1',
+          itemId: 'video-2',
+          startUs: 1_000_000,
+        },
+      ],
+      { labelKey: 'videoEditor.fileManager.history.entries.moveItems' },
+    );
+  });
+
+  it('quantizes only frame-free clips and reports them via hasFreeClip', () => {
+    // 5333us start at 30fps lands between frame boundaries → not aligned.
+    const freeClip = makeClip({
+      id: 'free-1',
+      trackId: 'v1',
+      timelineRange: { startUs: 5_333, durationUs: 5_000_000 },
+    });
+    const alignedClip = makeClip({
+      id: 'aligned-1',
+      trackId: 'v1',
+      timelineRange: { startUs: 0, durationUs: 5_000_000 },
+    });
+    const { actions, batchApplyTimeline } = build({
+      tracks: [
+        makeTrack({ id: 'v1', kind: 'video', name: 'Video', items: [freeClip, alignedClip] }),
+      ],
+      selection: [
+        { trackId: 'v1', itemId: 'free-1' },
+        { trackId: 'v1', itemId: 'aligned-1' },
+      ],
+    });
+
+    expect(actions.hasFreeClip.value).toBe(true);
+
+    actions.handleQuantizeSelected();
+
+    expect(batchApplyTimeline).toHaveBeenCalledTimes(1);
+    expect(batchApplyTimeline).toHaveBeenCalledWith([
+      {
+        type: 'trim_item',
+        trackId: 'v1',
+        itemId: 'free-1',
+        edge: 'end',
+        deltaUs: 0,
+        quantizeToFrames: true,
+      },
+    ]);
   });
 });

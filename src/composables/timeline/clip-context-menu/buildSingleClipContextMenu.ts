@@ -14,7 +14,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const item = options.item.value;
   if (item.kind !== 'clip') return [];
 
-  const clipItem = item as TimelineClipItem;
+  const clipItem = item;
   const stateGroup: ContextMenuGroup = [];
   const timingGroup: ContextMenuGroup = [];
   const relationGroup: ContextMenuGroup = [];
@@ -299,8 +299,8 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
   const track = options.track.value;
   const item = options.item.value;
   const isTrackLocked = Boolean(track.locked);
-  const isLocked = item.kind === 'clip' && Boolean((item as TimelineClipItem).locked);
-  const clip = item.kind === 'clip' ? (item as TimelineClipItem) : null;
+  const isLocked = item.kind === 'clip' && Boolean(item.locked);
+  const clip = item.kind === 'clip' ? item : null;
   const clipParametersSnapshot = options.getClipParametersSnapshot();
   const hasApplicableClipParameters =
     clip !== null &&

@@ -382,10 +382,7 @@ export function useTimelineClipHandleResize(
       const item = track?.items.find((i) => i.id === payload.itemId);
       if (!item || item.kind !== 'clip') return;
 
-      const current =
-        payload.edge === 'in'
-          ? (item as TimelineClipItem).transitionIn
-          : (item as TimelineClipItem).transitionOut;
+      const current = payload.edge === 'in' ? item.transitionIn : item.transitionOut;
       if (!current) return;
 
       const maxUsRaw = computeMaxResizableTransitionDurationUs({
@@ -400,8 +397,8 @@ export function useTimelineClipHandleResize(
         0,
         Math.round(
           payload.edge === 'in'
-            ? ((item as TimelineClipItem).transitionOut?.durationUs ?? 0)
-            : ((item as TimelineClipItem).transitionIn?.durationUs ?? 0),
+            ? (item.transitionOut?.durationUs ?? 0)
+            : (item.transitionIn?.durationUs ?? 0),
         ),
       );
       const hardMaxUs = Math.max(0, clipDurationUs - oppositeTransitionUs);
@@ -539,10 +536,7 @@ export function useTimelineClipHandleResize(
         const track = tracks.find((t) => t.id === payload.trackId);
         const item = track?.items.find((i) => i.id === payload.itemId);
         if (item && item.kind === 'clip') {
-          const current =
-            payload.edge === 'in'
-              ? (item as TimelineClipItem).transitionIn
-              : (item as TimelineClipItem).transitionOut;
+          const current = payload.edge === 'in' ? item.transitionIn : item.transitionOut;
           if (current) {
             const finalPatch =
               payload.edge === 'in'
@@ -607,10 +601,7 @@ export function useTimelineClipHandleResize(
           const track = tracks.find((t) => t.id === payload.trackId);
           const item = track?.items.find((i) => i.id === payload.itemId);
           if (item && item.kind === 'clip') {
-            const current =
-              payload.edge === 'in'
-                ? (item as TimelineClipItem).transitionIn
-                : (item as TimelineClipItem).transitionOut;
+            const current = payload.edge === 'in' ? item.transitionIn : item.transitionOut;
             if (current) {
               const restorePatch =
                 payload.edge === 'in'

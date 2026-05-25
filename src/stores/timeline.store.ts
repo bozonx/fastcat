@@ -46,6 +46,19 @@ import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
 
+/**
+ * A restorable timeline snapshot listed in the backups UI: the main file, the
+ * autosave copy, or a numbered backup.
+ */
+export interface TimelineBackupVersion {
+  type: 'main' | 'autosave' | 'backup';
+  name: string;
+  path: string;
+  date: Date | null;
+  size: number | null;
+  label: string;
+}
+
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
   const mediaStore = useMediaStore();
@@ -80,16 +93,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     timestamp: number;
   } | null>(null);
 
-  const backupVersions = ref<
-    Array<{
-      type: 'main' | 'autosave' | 'backup';
-      name: string;
-      path: string;
-      date: Date | null;
-      size: number | null;
-      label: string;
-    }>
-  >([]);
+  const backupVersions = ref<TimelineBackupVersion[]>([]);
 
   const isTimelineDirty = ref(false);
   const isSavingTimeline = ref(false);
@@ -761,7 +765,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
   }
 
-  async function openVersionForPreview(version: any) {
+  async function openVersionForPreview(version: TimelineBackupVersion) {
     if (!currentTimelinePath.value) return;
     try {
       let file: File | null = null;
@@ -809,7 +813,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
-  async function restoreVersion(version: any) {
+  async function restoreVersion(version: TimelineBackupVersion) {
     try {
       let file: File | null = null;
       if (version.type === 'main') {
@@ -864,7 +868,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
-  async function deleteBackupVersion(version: any) {
+  async function deleteBackupVersion(version: TimelineBackupVersion) {
     try {
       if (version.type === 'autosave') {
         if (currentTimelinePath.value) {
@@ -899,7 +903,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       backupVersions.value = [];
       return;
     }
-    const list: any[] = [];
+    const list: TimelineBackupVersion[] = [];
     try {
       // 1. Main file
       const mainHandle = await ensureTimelineFileHandle({ create: false });

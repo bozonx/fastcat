@@ -105,22 +105,19 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
   if (!origin) return [itemId];
 
   const result = new Set<string>([origin.item.id]);
-  const linkedGroupId = String((origin.item as TimelineClipItem).linkedGroupId ?? '').trim();
+  const linkedGroupId = String(origin.item.linkedGroupId ?? '').trim();
 
   if (linkedGroupId) {
     for (const track of doc.tracks) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
-        if (String((item as TimelineClipItem).linkedGroupId ?? '').trim() !== linkedGroupId)
-          continue;
+        if (String(item.linkedGroupId ?? '').trim() !== linkedGroupId) continue;
         result.add(item.id);
       }
     }
   }
 
-  const originLinkedVideoId = String(
-    (origin.item as TimelineClipItem).linkedVideoClipId ?? '',
-  ).trim();
+  const originLinkedVideoId = String(origin.item.linkedVideoClipId ?? '').trim();
   if (originLinkedVideoId) {
     result.add(originLinkedVideoId);
   }
@@ -128,7 +125,7 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
   for (const track of doc.tracks) {
     for (const item of track.items) {
       if (item.kind !== 'clip') continue;
-      const linkedVideoId = String((item as TimelineClipItem).linkedVideoClipId ?? '').trim();
+      const linkedVideoId = String(item.linkedVideoClipId ?? '').trim();
       if (!linkedVideoId) continue;
       if (
         linkedVideoId === origin.item.id ||

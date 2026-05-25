@@ -73,7 +73,22 @@ export function getSelectedClipRefs(
         );
     const clip = track?.items.find((candidateItem) => candidateItem.id === itemId);
     if (!track || !clip || clip.kind !== 'clip') continue;
-    refs.push({ track, clip: clip as TimelineClipItem });
+    refs.push({ track, clip });
   }
   return refs;
+}
+
+/**
+ * Whether both edges of the clip land exactly on frame boundaries for the given fps.
+ * Shared by quantization checks and the "has free (non-quantized) clip" predicate.
+ */
+export function isClipFrameAligned(
+  clip: Pick<TimelineClipItem, 'timelineRange'>,
+  fps: number,
+): boolean {
+  const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
+  const durationFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
+  const isStartAligned = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
+  const isDurationAligned = Math.abs(durationFrame - Math.round(durationFrame)) < 0.001;
+  return isStartAligned && isDurationAligned;
 }

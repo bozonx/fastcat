@@ -1,5 +1,4 @@
 import type { TimelineCommand } from '~/timeline/commands';
-import type { TimelineClipItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { collectMultiSelectionState, isClipFreePosition } from './utils';
 import { createLinkedGroupId } from '~/timeline/id';
@@ -101,7 +100,7 @@ export function buildMultiSelectionContextMenu(
           const track = state.doc.tracks.find((candidateTrack) => candidateTrack.id === trackId);
           const clip = track?.items.find((candidateItem) => candidateItem.id === itemId);
           if (!clip || clip.kind !== 'clip') continue;
-          if ((clip as TimelineClipItem).locked) continue;
+          if (clip.locked) continue;
           if (!isClipFreePosition(clip, state.doc)) continue;
 
           cmds.push({
@@ -136,8 +135,8 @@ export function buildMultiSelectionContextMenu(
           for (const item of track.items) {
             if (item.kind !== 'clip') continue;
 
-            const linked = String((item as TimelineClipItem).linkedVideoClipId ?? '');
-            const isLocked = Boolean((item as TimelineClipItem).lockToLinkedVideo);
+            const linked = String(item.linkedVideoClipId ?? '');
+            const isLocked = Boolean(item.lockToLinkedVideo);
             const shouldUnlink =
               (state.selectedIds.has(item.id) && linked && isLocked) ||
               (state.selectedVideoIds.length > 0 &&

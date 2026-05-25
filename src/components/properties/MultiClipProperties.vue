@@ -103,8 +103,7 @@ const {
 } = useClipBatchActions(itemsRef, {
   timelineDoc: computed(() => timelineStore.timelineDoc),
   mediaMetadata: computed(() => mediaStore.mediaMetadata),
-  batchApplyTimeline: (cmds) =>
-    timelineStore.batchApplyTimeline(cmds as import('~/timeline/commands').TimelineCommand[]),
+  batchApplyTimeline: (cmds) => timelineStore.batchApplyTimeline(cmds),
   clearSelection: () => timelineStore.clearSelection(),
 });
 
@@ -198,10 +197,7 @@ const {
   updateAudioFadeOutSec,
   updateAudioGain,
 } = useClipAudio({
-  clip: computed(
-    () =>
-      (firstWaveformClip.value || props.items[0]) as import('~/timeline/types').TimelineClipItem,
-  ),
+  clip: computed(() => (firstWaveformClip.value || props.items[0]) as TimelineClipItem),
   tracks: computed(() => timelineStore.timelineDoc?.tracks),
   mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
   updateAudio: (patch) => {

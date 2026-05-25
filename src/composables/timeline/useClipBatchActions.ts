@@ -1,6 +1,8 @@
 import { computed, type Ref } from 'vue';
 import { sanitizeFps } from '~/timeline/commands/utils';
+import type { TimelineCommand, UpdateClipPropertiesCommand } from '~/timeline/commands';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
+import { isClipItem } from '~/timeline/types';
 import { createLinkedGroupId } from '~/timeline/id';
 import {
   clipSupportsAudioControls,
@@ -11,12 +13,15 @@ import {
   clipSupportsVisualControls,
   clipSupportsWaveformControls,
   getSelectedClipRefs,
+  isClipFrameAligned,
 } from '~/utils/timeline/clip-capabilities';
+
+type ClipPropertiesPatch = UpdateClipPropertiesCommand['properties'];
 
 export interface ClipBatchActionsContext {
   timelineDoc: Ref<TimelineDocument | null>;
   mediaMetadata: Ref<Record<string, unknown>>;
-  batchApplyTimeline: (cmds: unknown[], options?: { labelKey?: string }) => void;
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: { labelKey?: string }) => void;
   clearSelection: () => void;
 }
 
@@ -30,6 +35,12 @@ export function useClipBatchActions(
   const selectedClips = computed(() => {
     return selectedClipRefs.value.map(({ clip }) => clip);
   });
+
+  // Selected clips whose track and clip are both unlocked — the only ones that
+  // timing edits (move/trim/quantize) are allowed to touch.
+  const editableClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track, clip }) => !track.locked && !clip.locked),
+  );
 
   const audioClipRefs = computed(() =>
     selectedClipRefs.value.filter(({ track, clip }) => clipSupportsAudioControls(track, clip)),
@@ -65,8 +76,8 @@ export function useClipBatchActions(
         if (it.kind !== 'clip') continue;
         if (
           track.kind === 'audio' &&
-          Boolean((it as TimelineClipItem).linkedVideoClipId) &&
-          Boolean((it as TimelineClipItem).lockToLinkedVideo)
+          Boolean(it.linkedVideoClipId) &&
+          Boolean(it.lockToLinkedVideo)
         ) {
           return true;
         }
@@ -78,9 +89,9 @@ export function useClipBatchActions(
               t.items.some(
                 (a) =>
                   a.kind === 'clip' &&
-                  Boolean((a as TimelineClipItem).linkedVideoClipId) &&
-                  Boolean((a as TimelineClipItem).lockToLinkedVideo) &&
-                  String((a as TimelineClipItem).linkedVideoClipId) === videoId,
+                  Boolean(a.linkedVideoClipId) &&
+                  Boolean(a.lockToLinkedVideo) &&
+                  String(a.linkedVideoClipId) === videoId,
               ),
             );
           if (hasLinkedAudio) return true;
@@ -100,13 +111,7 @@ export function useClipBatchActions(
     const doc = ctx.timelineDoc.value;
     if (!doc) return false;
     const fps = sanitizeFps(doc.timebase?.fps);
-    return selectedClips.value.some((clip) => {
-      const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
-      const durFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
-      const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
-      const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
-      return !isStartQuantized || !isDurationQuantized;
-    });
+    return selectedClips.value.some((clip) => !isClipFrameAligned(clip, fps));
   });
 
   const allDisabled = computed(() => {
@@ -153,25 +158,15 @@ export function useClipBatchActions(
   const hasAutoMontageControls = computed(() => autoMontageClipRefs.value.length > 0);
 
   function handleRelativeStartShift(deltaUs: number) {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return;
-
     const safeDeltaUs = Math.round(Number(deltaUs));
     if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
 
-    const cmds: unknown[] = [];
-
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track || track.locked) continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as TimelineClipItem).locked) continue;
-
+    const cmds: TimelineCommand[] = [];
+    for (const { track, clip } of editableClipRefs.value) {
       cmds.push({
         type: 'move_item',
-        trackId,
-        itemId,
+        trackId: track.id,
+        itemId: clip.id,
         startUs: Math.max(0, clip.timelineRange.startUs + safeDeltaUs),
       });
     }
@@ -181,25 +176,15 @@ export function useClipBatchActions(
   }
 
   function handleRelativeEndShift(deltaUs: number) {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return;
-
     const safeDeltaUs = Math.round(Number(deltaUs));
     if (!Number.isFinite(safeDeltaUs) || safeDeltaUs === 0) return;
 
-    const cmds: unknown[] = [];
-
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track || track.locked) continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as TimelineClipItem).locked) continue;
-
+    const cmds: TimelineCommand[] = [];
+    for (const { track, clip } of editableClipRefs.value) {
       cmds.push({
         type: 'trim_item',
-        trackId,
-        itemId,
+        trackId: track.id,
+        itemId: clip.id,
         edge: 'end',
         deltaUs: safeDeltaUs,
       });
@@ -211,8 +196,8 @@ export function useClipBatchActions(
 
   function toggleLocked() {
     const nextVal = !allLocked.value;
-    const cmds = items.value.map(({ trackId, itemId }) => ({
-      type: 'update_clip_properties' as const,
+    const cmds: TimelineCommand[] = items.value.map(({ trackId, itemId }) => ({
+      type: 'update_clip_properties',
       trackId,
       itemId,
       properties: { locked: nextVal },
@@ -227,8 +212,8 @@ export function useClipBatchActions(
     if (!doc) return;
     const nextVal = !allSoloed.value;
     const trackIds = new Set(items.value.map((x) => x.trackId));
-    const cmds = Array.from(trackIds).map((trackId) => ({
-      type: 'update_track_properties' as const,
+    const cmds: TimelineCommand[] = Array.from(trackIds).map((trackId) => ({
+      type: 'update_track_properties',
       trackId,
       properties: { audioSolo: nextVal },
     }));
@@ -252,23 +237,17 @@ export function useClipBatchActions(
       }
     }
 
-    const cmds: Array<{
-      type: 'unlink_audio_from_video';
-      audioTrackId: string;
-      audioItemId: string;
-    }> = [];
+    const cmds: TimelineCommand[] = [];
 
     for (const track of doc.tracks) {
       if (track.kind !== 'audio') continue;
       for (const it of track.items) {
         if (it.kind !== 'clip') continue;
-        const linked = String((it as TimelineClipItem).linkedVideoClipId ?? '');
-        const isLocked = Boolean((it as TimelineClipItem).lockToLinkedVideo);
+        const linked = String(it.linkedVideoClipId ?? '');
+        const isLocked = Boolean(it.lockToLinkedVideo);
 
         const shouldUnlink =
-          (selectedIds.has(it.id) &&
-            Boolean((it as TimelineClipItem).linkedVideoClipId) &&
-            isLocked) ||
+          (selectedIds.has(it.id) && Boolean(it.linkedVideoClipId) && isLocked) ||
           (videoIds.length > 0 && isLocked && linked && videoIds.includes(linked));
 
         if (!shouldUnlink) continue;
@@ -291,8 +270,8 @@ export function useClipBatchActions(
     if (items.value.length < 2) return;
 
     const nextGroupId = generatedGroupId();
-    const cmds = items.value.map(({ trackId, itemId }) => ({
-      type: 'update_clip_properties' as const,
+    const cmds: TimelineCommand[] = items.value.map(({ trackId, itemId }) => ({
+      type: 'update_clip_properties',
       trackId,
       itemId,
       properties: {
@@ -306,8 +285,8 @@ export function useClipBatchActions(
   }
 
   function handleUngroupSelected() {
-    const cmds = items.value.map(({ trackId, itemId }) => ({
-      type: 'update_clip_properties' as const,
+    const cmds: TimelineCommand[] = items.value.map(({ trackId, itemId }) => ({
+      type: 'update_clip_properties',
       trackId,
       itemId,
       properties: {
@@ -321,8 +300,8 @@ export function useClipBatchActions(
   }
 
   function handleDelete() {
-    const cmds = items.value.map(({ trackId, itemId }) => ({
-      type: 'delete_items' as const,
+    const cmds: TimelineCommand[] = items.value.map(({ trackId, itemId }) => ({
+      type: 'delete_items',
       trackId,
       itemIds: [itemId],
     }));
@@ -334,7 +313,7 @@ export function useClipBatchActions(
 
   function toggleDisabled() {
     const nextVal = !allDisabled.value;
-    const cmds = selectedClipRefs.value.map(({ track, clip }) => ({
+    const cmds: TimelineCommand[] = selectedClipRefs.value.map(({ track, clip }) => ({
       type: 'update_clip_properties',
       trackId: track.id,
       itemId: clip.id,
@@ -349,7 +328,7 @@ export function useClipBatchActions(
 
   function toggleMuted() {
     const nextVal = !allMuted.value;
-    const cmds = audioClipRefs.value.map(({ track, clip }) => ({
+    const cmds: TimelineCommand[] = audioClipRefs.value.map(({ track, clip }) => ({
       type: 'update_clip_properties',
       trackId: track.id,
       itemId: clip.id,
@@ -364,8 +343,8 @@ export function useClipBatchActions(
 
   function toggleShowWaveform() {
     const nextVal = !isWaveformShown.value;
-    const cmds = waveformClipRefs.value.map(({ track, clip }) => ({
-      type: 'update_clip_properties' as const,
+    const cmds: TimelineCommand[] = waveformClipRefs.value.map(({ track, clip }) => ({
+      type: 'update_clip_properties',
       trackId: track.id,
       itemId: clip.id,
       properties: { showWaveform: nextVal },
@@ -378,8 +357,8 @@ export function useClipBatchActions(
 
   function toggleWaveformMode() {
     const nextVal: 'full' | 'half' = isWaveformFull.value ? 'half' : 'full';
-    const cmds = waveformClipRefs.value.map(({ track, clip }) => ({
-      type: 'update_clip_properties' as const,
+    const cmds: TimelineCommand[] = waveformClipRefs.value.map(({ track, clip }) => ({
+      type: 'update_clip_properties',
       trackId: track.id,
       itemId: clip.id,
       properties: { audioWaveformMode: nextVal },
@@ -392,8 +371,8 @@ export function useClipBatchActions(
 
   function toggleShowThumbnails() {
     const nextVal = !isThumbnailsShown.value;
-    const cmds = thumbnailClipRefs.value.map(({ track, clip }) => ({
-      type: 'update_clip_properties' as const,
+    const cmds: TimelineCommand[] = thumbnailClipRefs.value.map(({ track, clip }) => ({
+      type: 'update_clip_properties',
       trackId: track.id,
       itemId: clip.id,
       properties: { showThumbnails: nextVal },
@@ -405,29 +384,19 @@ export function useClipBatchActions(
   }
 
   function handleSetUniformDuration(durationUs: number) {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return;
-
     const nextDurationUs = Math.max(1, Math.round(Number(durationUs)));
     if (!Number.isFinite(nextDurationUs)) return;
 
-    const cmds: unknown[] = [];
-
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track || track.locked) continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as TimelineClipItem).locked) continue;
-
+    const cmds: TimelineCommand[] = [];
+    for (const { track, clip } of editableClipRefs.value) {
       const currentDurationUs = Math.max(0, Math.round(Number(clip.timelineRange.durationUs)));
       const deltaUs = nextDurationUs - currentDurationUs;
       if (deltaUs === 0) continue;
 
       cmds.push({
         type: 'trim_item',
-        trackId,
-        itemId,
+        trackId: track.id,
+        itemId: clip.id,
         edge: 'end',
         deltaUs,
       });
@@ -440,20 +409,22 @@ export function useClipBatchActions(
   }
 
   function handleBatchUpdateProperties(
-    properties: Partial<TimelineClipItem> | ((clip: TimelineClipItem) => Partial<TimelineClipItem>),
+    properties: ClipPropertiesPatch | ((clip: TimelineClipItem) => ClipPropertiesPatch),
     targets: Array<{ trackId: string; itemId: string }> = items.value,
   ) {
     const doc = ctx.timelineDoc.value;
-    const cmds = targets
-      .map(({ trackId, itemId }) => {
-        let props = properties;
+    const cmds: TimelineCommand[] = targets
+      .map(({ trackId, itemId }): UpdateClipPropertiesCommand => {
+        let props: ClipPropertiesPatch;
         if (typeof properties === 'function') {
           const track = doc?.tracks.find((t) => t.id === trackId);
-          const clip = track?.items.find((it) => it.id === itemId) as TimelineClipItem;
-          props = clip ? properties(clip) : {};
+          const clip = track?.items.find((it) => it.id === itemId);
+          props = clip && isClipItem(clip) ? properties(clip) : {};
+        } else {
+          props = properties;
         }
         return {
-          type: 'update_clip_properties' as const,
+          type: 'update_clip_properties',
           trackId,
           itemId,
           properties: props,
@@ -471,33 +442,14 @@ export function useClipBatchActions(
     if (!doc) return;
     const fps = sanitizeFps(doc.timebase?.fps);
 
-    const cmds: Array<{
-      type: 'trim_item';
-      trackId: string;
-      itemId: string;
-      edge: 'end';
-      deltaUs: number;
-      quantizeToFrames: true;
-    }> = [];
-
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track || track.locked) continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (!clip || clip.kind !== 'clip') continue;
-      if ((clip as TimelineClipItem).locked) continue;
-
-      const startFrame = (clip.timelineRange.startUs * fps) / 1_000_000;
-      const durFrame = (clip.timelineRange.durationUs * fps) / 1_000_000;
-      const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
-      const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
-      const isFree = !isStartQuantized || !isDurationQuantized;
-      if (!isFree) continue;
+    const cmds: TimelineCommand[] = [];
+    for (const { track, clip } of editableClipRefs.value) {
+      if (isClipFrameAligned(clip, fps)) continue;
 
       cmds.push({
         type: 'trim_item',
-        trackId,
-        itemId,
+        trackId: track.id,
+        itemId: clip.id,
         edge: 'end',
         deltaUs: 0,
         quantizeToFrames: true,

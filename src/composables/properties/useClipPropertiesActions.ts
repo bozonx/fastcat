@@ -13,6 +13,7 @@ import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
+import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -120,13 +121,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     const safeFps =
       typeof timelineStore.fps === 'number' && timelineStore.fps > 0 ? timelineStore.fps : 30;
 
-    const startFrame = (options.clip.value.timelineRange.startUs * safeFps) / 1_000_000;
-    const durFrame = (options.clip.value.timelineRange.durationUs * safeFps) / 1_000_000;
-
-    const isStartQuantized = Math.abs(startFrame - Math.round(startFrame)) < 0.001;
-    const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
-
-    return !isStartQuantized || !isDurationQuantized;
+    return !isClipFrameAligned(options.clip.value, safeFps);
   });
 
   const hasLockedLinkedAudio = computed(() => {
@@ -139,16 +134,16 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         t.items.some(
           (it) =>
             it.kind === 'clip' &&
-            Boolean((it as TimelineClipItem).linkedVideoClipId) &&
-            Boolean((it as TimelineClipItem).lockToLinkedVideo) &&
-            String((it as TimelineClipItem).linkedVideoClipId) === options.clip.value.id,
+            Boolean(it.linkedVideoClipId) &&
+            Boolean(it.lockToLinkedVideo) &&
+            String(it.linkedVideoClipId) === options.clip.value.id,
         ),
       );
   });
 
   const isLockedLinkedAudioClip = computed(() => {
     if (options.trackKind.value !== 'audio') return false;
-    const clip = options.clip.value as TimelineClipItem;
+    const clip = options.clip.value;
     return Boolean(clip.linkedVideoClipId) && Boolean(clip.lockToLinkedVideo);
   });
 
@@ -164,11 +159,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     for (const track of doc.tracks) {
       if (track.kind !== 'audio') continue;
       for (const item of track.items) {
-        if (
-          item.kind === 'clip' &&
-          (item as TimelineClipItem).linkedVideoClipId === options.clip.value.id
-        ) {
-          return item as TimelineClipItem;
+        if (item.kind === 'clip' && item.linkedVideoClipId === options.clip.value.id) {
+          return item;
         }
       }
     }
@@ -184,7 +176,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       if (track.kind !== 'video') continue;
       for (const item of track.items) {
         if (item.kind === 'clip' && item.id === videoId) {
-          return item as TimelineClipItem;
+          return item;
         }
       }
     }
@@ -682,7 +674,22 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   });
 
   const commonActionsList = computed(() => {
-    const actions: any[] = [
+    const actions: Array<{
+      id: string;
+      label: string;
+      icon: string;
+      onClick: () => void;
+      color?:
+        | 'neutral'
+        | 'error'
+        | 'success'
+        | 'warning'
+        | 'info'
+        | 'primary'
+        | 'secondary'
+        | 'danger';
+      variant?: 'solid' | 'outline' | 'soft' | 'ghost' | 'subtle' | 'link';
+    }> = [
       {
         id: 'delete',
         label: t('common.delete'),
