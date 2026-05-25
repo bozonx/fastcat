@@ -9,6 +9,7 @@ import {
   pxToDeltaUs,
   computeAnchoredScrollLeft,
   computeTimelinePlaybackAutoScrollLeft,
+  computeTimelineScrollLeftForPlayhead,
   sanitizeFps,
   quantizeDeltaUsToFrames,
   quantizeStartUsToFrames,
@@ -130,6 +131,39 @@ describe('computeTimelinePlaybackAutoScrollLeft', () => {
       viewportWidth: 1000,
     });
     expect(result).toBe(900 - 1000 * 0.3);
+  });
+});
+
+describe('computeTimelineScrollLeftForPlayhead', () => {
+  it('returns null when playhead is already visible', () => {
+    const result = computeTimelineScrollLeftForPlayhead({
+      playheadPx: 150,
+      scrollLeft: 100,
+      viewportWidth: 200,
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('centers the playhead when it is outside the viewport', () => {
+    const result = computeTimelineScrollLeftForPlayhead({
+      playheadPx: 500,
+      scrollLeft: 0,
+      viewportWidth: 200,
+    });
+
+    expect(result).toBe(400);
+  });
+
+  it('clamps to available scroll range', () => {
+    const result = computeTimelineScrollLeftForPlayhead({
+      playheadPx: 900,
+      scrollLeft: 0,
+      viewportWidth: 200,
+      maxScrollLeft: 650,
+    });
+
+    expect(result).toBe(650);
   });
 });
 

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, toRef, computed } from 'vue';
+import { ref, computed } from 'vue';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
@@ -323,6 +323,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   async function loadTimeline() {
     await lifecycle.loadTimeline();
+    scrollToPlayheadRequest.value++;
   }
 
   // eslint-disable-next-line prefer-const -- late-initialized before createTimelineLifecycleModule call

@@ -11,6 +11,7 @@ import { useDraggedFile } from '~/composables/useDraggedFile';
 
 import type { TimelineClipActionPayload, TimelineTrack } from '~/timeline/types';
 import {
+  computeTimelineScrollLeftForPlayhead,
   computeTimelinePlaybackAutoScrollLeft,
   timeUsToPx,
   pxToTimeUs,
@@ -375,21 +376,42 @@ async function onClipAction(payload: TimelineClipActionPayload) {
   }
 }
 
+function scrollPlayheadIntoView() {
+  const el = scrollEl.value;
+  if (!el) return;
+
+  const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
+  const nextScrollLeft = computeTimelineScrollLeftForPlayhead({
+    playheadPx,
+    scrollLeft: el.scrollLeft,
+    viewportWidth: el.clientWidth,
+    maxScrollLeft: el.scrollWidth - el.clientWidth,
+  });
+
+  if (nextScrollLeft === null) {
+    timelineStore.timelineScrollLeftPx = el.scrollLeft;
+    return;
+  }
+
+  el.scrollLeft = nextScrollLeft;
+  timelineStore.timelineScrollLeftPx = el.scrollLeft;
+}
+
 // Scroll the timeline so the playhead is visible (used after rewind to start/end)
 watch(
   () => timelineStore.scrollToPlayheadRequest,
   () => {
-    nextTick(() => {
-      const el = scrollEl.value;
-      if (!el) return;
-      const playheadPx = timeUsToPx(timelineStore.currentTime, timelineStore.timelineZoom);
-      const vw = el.clientWidth;
-      if (playheadPx < el.scrollLeft || playheadPx > el.scrollLeft + vw) {
-        el.scrollLeft = Math.max(0, playheadPx - vw / 2);
-        timelineStore.timelineScrollLeftPx = el.scrollLeft;
-      }
-    });
+    nextTick(scrollPlayheadIntoView);
   },
+);
+
+watch(
+  masterScrollEl,
+  (el) => {
+    if (!el) return;
+    nextTick(scrollPlayheadIntoView);
+  },
+  { immediate: true },
 );
 
 watch(

@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useFocusStore } from '~/stores/focus.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 describe('FocusStore', () => {
   beforeEach(() => {
@@ -103,6 +104,24 @@ describe('FocusStore', () => {
     expect(store.canUseTimelineHotkeys).toBe(false);
     expect(store.canUsePreviewHotkeys).toBe(true);
     expect(store.isPropertiesFocus).toBe(true);
+
+    const selectionStore = useSelectionStore();
+
+    // With timeline selection
+    selectionStore.selectedEntity = { source: 'timeline', kind: 'clip', trackId: '1', itemId: '1' };
+    expect(store.canUseTimelineHotkeys).toBe(true);
+
+    // With fileManager selection
+    selectionStore.selectedEntity = {
+      source: 'fileManager',
+      kind: 'file',
+      name: 'test.mp4',
+      entry: { kind: 'file', name: 'test.mp4', path: '/test.mp4', source: 'local' },
+    };
+    expect(store.canUseTimelineHotkeys).toBe(false);
+
+    // Reset selection
+    selectionStore.clearSelection();
 
     store.setPanelFocus('dynamic:file-manager:detached-files');
     expect(store.canUsePlaybackHotkeys).toBe(true);

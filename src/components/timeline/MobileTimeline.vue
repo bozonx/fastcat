@@ -15,7 +15,11 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import { resolvePlayheadClickTimeUs } from '~/composables/timeline/timelineInteractionUtils';
-import { timeUsToPx, pxToTimeUs } from '~/utils/timeline/geometry';
+import {
+  computeTimelineScrollLeftForPlayhead,
+  timeUsToPx,
+  pxToTimeUs,
+} from '~/utils/timeline/geometry';
 import MultiClipProperties from '~/components/properties/MultiClipProperties.vue';
 import { useClipBatchActions } from '~/composables/timeline/useClipBatchActions';
 import { useMediaStore } from '~/stores/media.store';
@@ -169,6 +173,26 @@ function handleCutClips() {
 
 const scrollEl = ref<HTMLElement | null>(null);
 
+function scrollPlayheadIntoView() {
+  const el = scrollEl.value;
+  if (!el) return;
+
+  const nextScrollLeft = computeTimelineScrollLeftForPlayhead({
+    playheadPx: playheadPx.value,
+    scrollLeft: el.scrollLeft,
+    viewportWidth: el.clientWidth,
+    maxScrollLeft: el.scrollWidth - el.clientWidth,
+  });
+
+  if (nextScrollLeft === null) {
+    timelineStore.timelineScrollLeftPx = el.scrollLeft;
+    return;
+  }
+
+  el.scrollLeft = nextScrollLeft;
+  timelineStore.timelineScrollLeftPx = el.scrollLeft;
+}
+
 // Keep the store's scroll position in sync with the mobile scrollEl so ruler/grid/playhead align.
 watch(
   scrollEl,
@@ -178,7 +202,7 @@ watch(
       timelineStore.timelineScrollLeftPx = el.scrollLeft;
     };
     el.addEventListener('scroll', onScroll, { passive: true });
-    timelineStore.timelineScrollLeftPx = el.scrollLeft;
+    nextTick(scrollPlayheadIntoView);
     onCleanup(() => el.removeEventListener('scroll', onScroll));
   },
   { immediate: true },
@@ -187,18 +211,7 @@ watch(
 watch(
   () => timelineStore.scrollToPlayheadRequest,
   () => {
-    nextTick(() => {
-      const el = scrollEl.value;
-      if (!el) return;
-
-      const playheadX = playheadPx.value;
-      const viewportStart = el.scrollLeft;
-      const viewportEnd = viewportStart + el.clientWidth;
-      if (playheadX >= viewportStart && playheadX <= viewportEnd) return;
-
-      el.scrollLeft = Math.max(0, playheadX - el.clientWidth / 2);
-      timelineStore.timelineScrollLeftPx = el.scrollLeft;
-    });
+    nextTick(scrollPlayheadIntoView);
   },
 );
 

@@ -124,6 +124,36 @@ export function computeTimelinePlaybackAutoScrollLeft(
   return Math.min(maxScrollLeft, Math.max(0, rawNextScrollLeft));
 }
 
+export interface TimelineRevealPlayheadParams {
+  playheadPx: number;
+  scrollLeft: number;
+  viewportWidth: number;
+  maxScrollLeft?: number;
+}
+
+export function computeTimelineScrollLeftForPlayhead(
+  params: TimelineRevealPlayheadParams,
+): number | null {
+  const playheadPx = Number.isFinite(params.playheadPx) ? Math.max(0, params.playheadPx) : 0;
+  const scrollLeft = Number.isFinite(params.scrollLeft) ? Math.max(0, params.scrollLeft) : 0;
+  const viewportWidth = Number.isFinite(params.viewportWidth)
+    ? Math.max(0, params.viewportWidth)
+    : 0;
+
+  if (viewportWidth <= 0) return null;
+
+  if (playheadPx >= scrollLeft && playheadPx <= scrollLeft + viewportWidth) {
+    return null;
+  }
+
+  const maxScrollLeft = Number.isFinite(params.maxScrollLeft)
+    ? Math.max(0, params.maxScrollLeft ?? 0)
+    : Number.POSITIVE_INFINITY;
+  const rawNextScrollLeft = playheadPx - viewportWidth / 2;
+
+  return Math.min(maxScrollLeft, Math.max(0, rawNextScrollLeft));
+}
+
 /**
  * Sanitize fps preserving non-integer rates (29.97, 23.976, 59.94 …) so NTSC timebases survive.
  * Clamped to [1, 240] and quantized to 3 decimals; mirror of `sanitizeFps` in commands/utils.

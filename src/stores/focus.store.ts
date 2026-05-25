@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { useSelectionStore } from './selection.store';
 
 export type MainPanelFocus = 'monitor' | 'timeline';
 export type PanelFocusId =
@@ -193,7 +194,17 @@ export const useFocusStore = defineStore('focus', () => {
     return effectiveFocus.value === panel;
   }
 
-  const canUseTimelineHotkeys = computed(() => isTimelineHotkeyPanelFocus(effectiveFocus.value));
+  const canUseTimelineHotkeys = computed(() => {
+    const focus = effectiveFocus.value;
+    if (isTimelineHotkeyPanelFocus(focus)) return true;
+
+    if (isPropertiesPanelFocus(focus)) {
+      const selectionStore = useSelectionStore();
+      return selectionStore.selectedEntity?.source === 'timeline';
+    }
+
+    return false;
+  });
   const canUsePlaybackHotkeys = computed(() => isPlaybackPanelFocus(effectiveFocus.value));
 
   const canUsePreviewHotkeys = computed(() => isPreviewPanelFocus(effectiveFocus.value));
