@@ -36,6 +36,12 @@ const dropdownStub = {
   template: '<div class="dropdown-stub"><slot /></div>',
 };
 
+const tooltipStub = {
+  name: 'UiTooltip',
+  props: ['text'],
+  template: '<div class="tooltip-stub" :data-text="text"><slot /></div>',
+};
+
 describe('FileBrowserToolbar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,6 +60,7 @@ describe('FileBrowserToolbar', () => {
           UiWheelSlider: true,
           UiSelect: true,
           UiActionButton: true,
+          UiTooltip: tooltipStub,
           UDropdownMenu: dropdownStub,
         },
       },
@@ -83,6 +90,7 @@ describe('FileBrowserToolbar', () => {
           UiWheelSlider: true,
           UiSelect: true,
           UiActionButton: true,
+          UiTooltip: tooltipStub,
           UDropdownMenu: dropdownStub,
         },
       },
@@ -97,5 +105,35 @@ describe('FileBrowserToolbar', () => {
       'common.selectUnused',
       'common.invertSelection',
     ]);
+  });
+
+  it('shows configured zoom hotkeys in the grid scale tooltip', () => {
+    const wrapper = mount(FileBrowserToolbar, {
+      props: {
+        gridSizes: [100, 130, 160],
+        currentGridSizeName: 'm',
+        gridCardSize: 130,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: true,
+          UiWheelSlider: true,
+          UiSelect: true,
+          UiActionButton: true,
+          UiTooltip: tooltipStub,
+          UDropdownMenu: dropdownStub,
+        },
+      },
+    });
+
+    const sliderContainer = wrapper.find(
+      '.tooltip-stub[data-text*="videoEditor.fileManager.cardScale"]',
+    );
+    const tooltip = sliderContainer.attributes('data-text');
+
+    expect(tooltip).toContain('videoEditor.fileManager.cardScale: m');
+    expect(tooltip).toContain('Zoom in (=)');
+    expect(tooltip).toContain('Zoom out (-)');
+    expect(tooltip).toContain('Reset zoom (0)');
   });
 });

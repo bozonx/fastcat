@@ -635,6 +635,26 @@ describe('useEditorHotkeys', () => {
     });
   });
 
+  it('routes global zoom hotkeys to file-manager tile scale when file manager is focused', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const fileManagerStore = useFileManagerStore();
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:file-manager:detached-files');
+    fileManagerStore.gridCardSize = 130 as any;
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '=', code: 'Equal', bubbles: true }));
+    expect(fileManagerStore.gridCardSize).toBe(160);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '-', code: 'Minus', bubbles: true }));
+    expect(fileManagerStore.gridCardSize).toBe(130);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '0', code: 'Digit0', bubbles: true }));
+    expect(fileManagerStore.gridCardSize).toBe(80);
+  });
+
   it('routes paste from file properties focus to the selected directory', async () => {
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();

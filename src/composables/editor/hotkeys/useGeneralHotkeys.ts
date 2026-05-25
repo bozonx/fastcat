@@ -12,6 +12,7 @@ import { useMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import { DEFAULT_TIMELINE_ZOOM_POSITION, stepTimelineZoomPosition } from '~/utils/zoom';
+import { FILE_BROWSER_GRID_SIZES } from '~/composables/file-manager/useFileBrowserViewSettings';
 import type { FsEntry } from '~/types/fs';
 import type { TimelineClipItem } from '~/timeline/types';
 
@@ -149,7 +150,18 @@ export function useGeneralHotkeys(
     zoomHoldRunner.startHold({
       keyCode: params.keyCode,
       action: () => {
-        if (focusStore.effectiveFocus === 'timeline') {
+        if (isFileManagerFocus()) {
+          const currentIndex = FILE_BROWSER_GRID_SIZES.indexOf(fileManagerStore.gridCardSize);
+          const safeIndex = currentIndex === -1 ? 0 : currentIndex;
+          const nextIndex = Math.max(
+            0,
+            Math.min(FILE_BROWSER_GRID_SIZES.length - 1, safeIndex + params.direction),
+          );
+          const nextSize = FILE_BROWSER_GRID_SIZES[nextIndex];
+          if (nextSize && nextSize !== fileManagerStore.gridCardSize) {
+            fileManagerStore.setGridCardSize(nextSize);
+          }
+        } else if (focusStore.effectiveFocus === 'timeline') {
           timelineStore.setTimelineZoom(
             stepTimelineZoomPosition(timelineStore.timelineZoom, params.direction),
           );
@@ -473,7 +485,9 @@ export function useGeneralHotkeys(
     },
 
     'general.zoomReset': () => {
-      if (focusStore.effectiveFocus === 'timeline') {
+      if (isFileManagerFocus()) {
+        fileManagerStore.setGridCardSize(FILE_BROWSER_GRID_SIZES[0] ?? 80);
+      } else if (focusStore.effectiveFocus === 'timeline') {
         timelineStore.setTimelineZoom(DEFAULT_TIMELINE_ZOOM_POSITION);
       } else if (focusStore.effectiveFocus === 'monitor') {
         uiStore.triggerMonitorZoomReset();

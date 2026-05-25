@@ -4,6 +4,7 @@ import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.s
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiToggleButton from '~/components/ui/UiToggleButton.vue';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
@@ -43,6 +44,26 @@ const sortFields: { label: string; value: FileSortField }[] = [
   { label: t('common.created'), value: 'created' },
   { label: t('common.modified'), value: 'modified' },
 ];
+
+const gridScaleTooltip = computed(() => {
+  const zoomInLabel = getHotkeyLabel('general.zoomIn');
+  const zoomOutLabel = getHotkeyLabel('general.zoomOut');
+  const zoomResetLabel = getHotkeyLabel('general.zoomReset');
+
+  const parts = [`${t('videoEditor.fileManager.cardScale')}: ${props.currentGridSizeName}`];
+
+  if (zoomInLabel) {
+    parts.push(`${t('videoEditor.hotkeys.general.zoomIn', 'Zoom in')} (${zoomInLabel})`);
+  }
+  if (zoomOutLabel) {
+    parts.push(`${t('videoEditor.hotkeys.general.zoomOut', 'Zoom out')} (${zoomOutLabel})`);
+  }
+  if (zoomResetLabel) {
+    parts.push(`${t('videoEditor.hotkeys.general.zoomReset', 'Reset zoom')} (${zoomResetLabel})`);
+  }
+
+  return parts.join(' | ');
+});
 
 const toolbarMenuItems = computed(() => {
   const items = [];
@@ -177,10 +198,10 @@ const toolbarMenuItems = computed(() => {
       />
     </div>
 
-    <div
+    <UiTooltip
       v-if="props.isRemotePanel || fileManagerStore.viewMode === 'grid'"
+      :text="gridScaleTooltip"
       class="flex items-center gap-2 ml-2 w-24"
-      :title="`${t('videoEditor.fileManager.cardScale')}: ${currentGridSizeName}`"
     >
       <UiWheelSlider
         :model-value="gridSizes.indexOf(props.gridCardSize)"
@@ -196,7 +217,7 @@ const toolbarMenuItems = computed(() => {
           }
         "
       />
-    </div>
+    </UiTooltip>
 
     <div class="ml-auto flex items-center gap-2">
       <div v-if="toolbarMenuItems.length > 0" class="w-px h-4 bg-ui-border mx-1"></div>
