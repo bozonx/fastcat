@@ -2,13 +2,12 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
-import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
+import { runResilientFileWrite } from '~/utils/io/io-governor';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
-import { getNextBackupName, getBackupsToDelete, getBackupNumber } from '~/utils/timeline-backup';
 
 import { createTimelinePersistenceModule } from '~/stores/timeline/persistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
@@ -25,6 +24,8 @@ import { createTimelineSelectionRangeModule } from '~/stores/timeline/selection-
 import { createTimelineCaptionsModule } from '~/stores/timeline/captions';
 import { createTimelineCommandsModule } from '~/stores/timeline/commands';
 import { createTimelineLifecycleModule } from '~/stores/timeline/lifecycle';
+import { createTimelineBackupModule } from '~/stores/timeline/backup';
+import type { TimelinePreviewBackupInfo } from '~/stores/timeline/backup';
 
 import { getDocFps } from '~/timeline/commands/utils';
 import { getTimelineFormat, setTimelineFormat, type TimelineFormatInput } from '~/timeline/format';
@@ -46,18 +47,7 @@ import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
 
-/**
- * A restorable timeline snapshot listed in the backups UI: the main file, the
- * autosave copy, or a numbered backup.
- */
-export interface TimelineBackupVersion {
-  type: 'main' | 'autosave' | 'backup';
-  name: string;
-  path: string;
-  date: Date | null;
-  size: number | null;
-  label: string;
-}
+export type { TimelineBackupVersion } from '~/stores/timeline/backup';
 
 export const useTimelineStore = defineStore('timeline', () => {
   const projectStore = useProjectStore();
@@ -86,14 +76,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const timelineDoc = ref<TimelineDocument | null>(null);
   const previewMode = ref(false);
-  const previewBackupInfo = ref<{
-    type: 'main' | 'autosave' | 'backup';
-    name: string;
-    path: string;
-    timestamp: number;
-  } | null>(null);
-
-  const backupVersions = ref<TimelineBackupVersion[]>([]);
+  const previewBackupInfo = ref<TimelinePreviewBackupInfo | null>(null);
 
   const isTimelineDirty = ref(false);
   const isSavingTimeline = ref(false);
@@ -333,6 +316,27 @@ export const useTimelineStore = defineStore('timeline', () => {
   // eslint-disable-next-line prefer-const -- late-initialized before createTimelineLifecycleModule call
   let lifecycle!: ReturnType<typeof createTimelineLifecycleModule>;
 
+  // Backup history + version preview/restore. `lifecycle` is created later in
+  // setup, so its methods are forwarded through closures that resolve at call
+  // time (the same late-binding pattern the persistence save callbacks use).
+  const backup = createTimelineBackupModule({
+    timelineDoc,
+    currentTimelinePath,
+    duration,
+    currentTime,
+    previewMode,
+    previewBackupInfo,
+    projectStore,
+    workspaceStore,
+    toast,
+    t,
+    loadTimeline,
+    deleteTimelineAutosaveFile,
+    ensureTimelineFileHandle,
+    markTimelineAsDirty: () => lifecycle.markTimelineAsDirty(),
+    requestTimelineSave: (options) => lifecycle.requestTimelineSave(options),
+  });
+
   async function ensureTimelineFileHandle(options?: {
     create?: boolean;
     relativePath?: string;
@@ -453,7 +457,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
     onSaveSuccess: (serialized) => {
       void lifecycle.handleSaveSuccess();
-      void handleBackup(serialized);
+      void backup.handleBackup(serialized);
     },
     onSaveError: () => {
       toast.add({
@@ -471,77 +475,6 @@ export const useTimelineStore = defineStore('timeline', () => {
       });
     },
   });
-
-  // Backups are a history of EXPLICIT saves (for rollback), so one is taken on
-  // every manual save — `handleBackup` is only wired into `onSaveSuccess`, which
-  // fires from `saveTimeline`, never from the periodic crash-recovery autosave.
-  // `backup.enabled` is the on/off toggle; `backup.count` controls rotation.
-  async function handleBackup(serialized: string) {
-    if (!currentTimelinePath.value) return;
-    const backupSettings = workspaceStore.userSettings.backup;
-    if (!backupSettings || !backupSettings.enabled) return;
-
-    try {
-      const pathParts = currentTimelinePath.value.split('/');
-      const fileName = pathParts.pop();
-      if (!fileName) return;
-
-      const baseName = fileName.replace(/\.otio$/, '');
-      const dirPath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
-
-      const backupDirStr = `.fastcat/backups/${dirPath}`;
-
-      const backupDirHandle = await projectStore.getDirectoryHandleByPath(backupDirStr, {
-        create: true,
-      });
-      if (!backupDirHandle) return;
-
-      const existingBackupNames: string[] = [];
-      for await (const [name, handle] of (
-        backupDirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
-      ).entries()) {
-        if (
-          handle.kind === 'file' &&
-          name.startsWith(baseName + '__bak') &&
-          name.endsWith('.otio')
-        ) {
-          existingBackupNames.push(name);
-        }
-      }
-
-      const nextName = getNextBackupName(baseName, existingBackupNames);
-
-      const newHandle = await backupDirHandle.getFileHandle(nextName, { create: true });
-      await runResilientFileWrite(async () => {
-        const writable = await (
-          newHandle as unknown as {
-            createWritable: () => Promise<{
-              write: (data: string) => Promise<void>;
-              close: () => Promise<void>;
-            }>;
-          }
-        ).createWritable();
-        await writable.write(serialized);
-        await writable.close();
-      });
-
-      const toDelete = getBackupsToDelete(existingBackupNames, backupSettings.count);
-      for (const name of toDelete) {
-        try {
-          await backupDirHandle.removeEntry(name);
-        } catch (e) {
-          console.warn('Failed to delete old backup', e);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to create timeline backup', e);
-      toast.add({
-        title: t('videoEditor.timeline.backupError'),
-        description: t('videoEditor.timeline.backupErrorDesc'),
-        color: 'warning',
-      });
-    }
-  }
 
   lifecycle = createTimelineLifecycleModule({
     timelineDoc,
@@ -744,253 +677,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
-  async function exitPreviewAndReload() {
-    previewMode.value = false;
-    previewBackupInfo.value = null;
-    await loadTimeline();
-  }
-
-  async function restorePreviewVersion() {
-    if (!timelineDoc.value) return;
-    previewMode.value = false;
-    previewBackupInfo.value = null;
-    lifecycle.markTimelineAsDirty();
-    if (currentTimelinePath.value) {
-      await deleteTimelineAutosaveFile(currentTimelinePath.value);
-    }
-    await lifecycle.requestTimelineSave({ immediate: true });
-    toast.add({
-      title: t('videoEditor.timeline.backups.versionRestored'),
-      color: 'success',
-    });
-  }
-
-  async function openVersionForPreview(version: TimelineBackupVersion) {
-    if (!currentTimelinePath.value) return;
-    try {
-      let file: File | null = null;
-      if (version.type === 'main') {
-        const handle = await ensureTimelineFileHandle({ create: false });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
-      } else if (version.type === 'autosave') {
-        const handle = await ensureTimelineFileHandle({
-          create: false,
-          relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
-        });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
-      } else {
-        const handle = await projectStore.getFileHandleByPath(version.path);
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
-      }
-
-      if (!file) throw new Error('File not found');
-      const text = await withFileIoSlot(() => file.text());
-
-      const fallback = projectStore.createFallbackTimelineDoc();
-      const parsed = parseTimelineFromOtio(text, {
-        id: fallback.id,
-        name: fallback.name,
-        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
-      });
-
-      timelineDoc.value = parsed;
-      previewMode.value = true;
-      previewBackupInfo.value = {
-        type: version.type,
-        name: version.label,
-        path: version.path,
-        timestamp: version.date?.getTime() || Date.now(),
-      };
-
-      duration.value = selectTimelineDurationUs(parsed);
-      currentTime.value = 0;
-    } catch (e) {
-      console.error('Failed to open version for preview', e);
-      toast.add({
-        title: t('videoEditor.timeline.backups.previewLoadError'),
-        color: 'error',
-      });
-    }
-  }
-
-  async function restoreVersion(version: TimelineBackupVersion) {
-    try {
-      let file: File | null = null;
-      if (version.type === 'main') {
-        const handle = await ensureTimelineFileHandle({ create: false });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
-      } else if (version.type === 'autosave') {
-        const handle = await ensureTimelineFileHandle({
-          create: false,
-          relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
-        });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
-      } else {
-        const handle = await projectStore.getFileHandleByPath(version.path);
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
-      }
-
-      if (!file) throw new Error('File not found');
-      const text = await withFileIoSlot(() => file.text());
-
-      const fallback = projectStore.createFallbackTimelineDoc();
-      const parsed = parseTimelineFromOtio(text, {
-        id: fallback.id,
-        name: fallback.name,
-        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
-      });
-
-      timelineDoc.value = parsed;
-      previewMode.value = false;
-      previewBackupInfo.value = null;
-
-      duration.value = selectTimelineDurationUs(parsed);
-      currentTime.value = 0;
-
-      lifecycle.markTimelineAsDirty();
-
-      if (currentTimelinePath.value) {
-        await deleteTimelineAutosaveFile(currentTimelinePath.value);
-      }
-      await lifecycle.requestTimelineSave({ immediate: true });
-
-      toast.add({
-        title: t('videoEditor.timeline.backups.versionRestored'),
-        color: 'success',
-      });
-      await loadBackupVersions();
-    } catch (e) {
-      console.error('Failed to restore version', e);
-      toast.add({
-        title: t('videoEditor.timeline.backups.restoreError'),
-        color: 'error',
-      });
-    }
-  }
-
-  async function deleteBackupVersion(version: TimelineBackupVersion) {
-    try {
-      if (version.type === 'autosave') {
-        if (currentTimelinePath.value) {
-          await deleteTimelineAutosaveFile(currentTimelinePath.value);
-        }
-      } else if (version.type === 'backup') {
-        const pathParts = version.path.split('/');
-        const fileName = pathParts.pop();
-        if (!fileName) return;
-        const dirPath = pathParts.join('/');
-        const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath, { create: false });
-        if (dirHandle) {
-          await dirHandle.removeEntry(fileName);
-        }
-      }
-      toast.add({
-        title: t('videoEditor.timeline.backups.versionDeleted'),
-        color: 'success',
-      });
-      await loadBackupVersions();
-    } catch (e) {
-      console.error('Failed to delete version', e);
-      toast.add({
-        title: t('videoEditor.timeline.backups.deleteError'),
-        color: 'error',
-      });
-    }
-  }
-
-  async function loadBackupVersions() {
-    if (!currentTimelinePath.value) {
-      backupVersions.value = [];
-      return;
-    }
-    const list: TimelineBackupVersion[] = [];
-    try {
-      // 1. Main file
-      const mainHandle = await ensureTimelineFileHandle({ create: false });
-      if (mainHandle) {
-        const file = await withFileIoSlot(() => mainHandle.getFile());
-        list.push({
-          type: 'main',
-          name: currentTimelinePath.value.split('/').pop() || currentTimelinePath.value,
-          path: currentTimelinePath.value,
-          date: new Date(file.lastModified),
-          size: file.size,
-          label: t('videoEditor.timeline.backups.mainFile'),
-        });
-      }
-
-      // 2. Autosave
-      const autosaveHandle = await ensureTimelineFileHandle({
-        create: false,
-        relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
-      });
-      if (autosaveHandle) {
-        const file = await withFileIoSlot(() => autosaveHandle.getFile());
-        list.push({
-          type: 'autosave',
-          name: 'autosave',
-          path: `.fastcat/autosave/${currentTimelinePath.value}`,
-          date: new Date(file.lastModified),
-          size: file.size,
-          label: t('videoEditor.timeline.backups.autosave'),
-        });
-      }
-
-      // 3. Backups
-      const pathParts = currentTimelinePath.value.split('/');
-      const fileName = pathParts.pop();
-      if (fileName) {
-        const baseName = fileName.replace(/\.otio$/, '');
-        const dirPath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
-        const backupDirStr = `.fastcat/backups/${dirPath}`;
-        const backupDirHandle = await projectStore.getDirectoryHandleByPath(backupDirStr, {
-          create: false,
-        });
-
-        if (backupDirHandle) {
-          const files: { name: string; handle: FileSystemFileHandle }[] = [];
-          for await (const [name, handle] of (
-            backupDirHandle as unknown as {
-              entries: () => AsyncIterable<[string, FileSystemHandle]>;
-            }
-          ).entries()) {
-            if (
-              handle.kind === 'file' &&
-              name.startsWith(baseName + '__bak') &&
-              name.endsWith('.otio')
-            ) {
-              files.push({ name, handle: handle as FileSystemFileHandle });
-            }
-          }
-
-          files.sort((a, b) => {
-            const numA = getBackupNumber(a.name) || 0;
-            const numB = getBackupNumber(b.name) || 0;
-            return numB - numA;
-          });
-
-          for (const item of files) {
-            const file = await withFileIoSlot(() => item.handle.getFile());
-            const num = getBackupNumber(item.name);
-            list.push({
-              type: 'backup',
-              name: item.name,
-              path: `${backupDirStr}${item.name}`,
-              date: new Date(file.lastModified),
-              size: file.size,
-              label: t('videoEditor.timeline.backups.backupNum', {
-                num: num !== null ? `#${num}` : item.name,
-              }),
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load backup versions', e);
-    }
-    backupVersions.value = list;
-  }
-
   // True when any open timeline (active or background tab) has uncommitted
   // changes. Used by the close handler to warn about unsaved work across tabs.
   const hasAnyDirtyTimeline = computed(() => Object.values(dirtyPaths.value).some(Boolean));
@@ -1174,12 +860,12 @@ export const useTimelineStore = defineStore('timeline', () => {
     duplicateCurrentTimeline,
     previewMode,
     previewBackupInfo,
-    backupVersions,
-    exitPreviewAndReload,
-    restorePreviewVersion,
-    openVersionForPreview,
-    restoreVersion,
-    deleteBackupVersion,
-    loadBackupVersions,
+    backupVersions: backup.backupVersions,
+    exitPreviewAndReload: backup.exitPreviewAndReload,
+    restorePreviewVersion: backup.restorePreviewVersion,
+    openVersionForPreview: backup.openVersionForPreview,
+    restoreVersion: backup.restoreVersion,
+    deleteBackupVersion: backup.deleteBackupVersion,
+    loadBackupVersions: backup.loadBackupVersions,
   };
 });
