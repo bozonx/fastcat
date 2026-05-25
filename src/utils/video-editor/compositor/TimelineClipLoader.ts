@@ -1,4 +1,5 @@
 import { parseHexColor, sanitizeTimelineColor } from '../utils';
+import { cloneValue } from '~/utils/clone';
 import type { VideoClipEffect } from '~/timeline/types';
 import {
   areShapeConfigsEqual,
@@ -307,20 +308,16 @@ export class TimelineClipLoader {
           nextConfig as Record<string, unknown>,
         )
       ) {
-        reusable.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
+        reusable.shapeConfig = nextConfig ? cloneValue(nextConfig) : undefined;
       }
       reusable.shapeDirty = true;
     }
 
     if (reusable.clipKind === 'hud') {
       reusable.hudType = (clipData.hudType ?? reusable.hudType ?? 'media_frame') as 'media_frame';
-      reusable.background = clipData.background
-        ? JSON.parse(JSON.stringify(clipData.background))
-        : undefined;
-      reusable.content = clipData.content
-        ? JSON.parse(JSON.stringify(clipData.content))
-        : undefined;
-      reusable.frame = clipData.frame ? JSON.parse(JSON.stringify(clipData.frame)) : undefined;
+      reusable.background = clipData.background ? cloneValue(clipData.background) : undefined;
+      reusable.content = clipData.content ? cloneValue(clipData.content) : undefined;
+      reusable.frame = clipData.frame ? cloneValue(clipData.frame) : undefined;
       reusable.hudDirty = true;
     }
 

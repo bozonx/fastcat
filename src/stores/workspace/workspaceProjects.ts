@@ -75,8 +75,10 @@ export function createWorkspaceProjectsModule(params: {
         : [workspaceTopology.tempRootDirName]) {
         currentDir = await currentDir.getDirectoryHandle(segment, { create: true });
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      // Mirrors the warn on the clear step above; recreating the temp root is
+      // best-effort but a failure is worth surfacing for debugging.
+      console.warn('Failed to recreate temp root', e);
     }
   }
 

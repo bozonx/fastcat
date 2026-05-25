@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import { useWorkspaceStore } from './workspace.store';
 import { getVideoEffectManifest, getAudioEffectManifest, registerEffect } from '~/effects';
 import { getTransitionManifest, registerTransition } from '~/transitions';
+import { cloneValue } from '~/utils/clone';
 
 export interface CustomPreset {
   id: string; // Used as the type in registry
@@ -72,7 +73,7 @@ export const usePresetsStore = defineStore('presets', () => {
   // Save to user settings
   function savePresets() {
     void workspaceStore.batchUpdateUserSettings((draft) => {
-      draft.presets.custom = JSON.parse(JSON.stringify(customPresets.value));
+      draft.presets.custom = cloneValue(customPresets.value);
       draft.presets.defaultTextPresetId = defaultTextPresetId.value;
       draft.presets.collapsed = {
         effectsStandardCollapsed: effectsStandardCollapsed.value,

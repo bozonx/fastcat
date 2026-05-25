@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { cloneValue } from '~/utils/clone';
 import type { EffectManifest } from '~/effects/core/registry';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 
@@ -253,7 +254,7 @@ function handleUpdateValue(key: string, value: unknown) {
   const rootKey = keys[0];
   if (!rootKey) return;
   const updates: Record<string, unknown> = {
-    [rootKey]: JSON.parse(JSON.stringify(effectValues.value[rootKey] ?? {})),
+    [rootKey]: cloneValue(effectValues.value[rootKey] ?? {}),
   };
 
   // Traverse and set

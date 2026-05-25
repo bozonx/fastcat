@@ -1,5 +1,6 @@
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, toRaw } from 'vue';
 import { storeToRefs } from 'pinia';
+import { cloneValue } from '~/utils/clone';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -51,7 +52,7 @@ export function useTimelineTextPreset() {
 
     if (preset) {
       const update: Record<string, unknown> = {
-        style: JSON.parse(JSON.stringify(toRaw(preset.style))),
+        style: cloneValue(toRaw(preset.style)),
       };
       if (preset.text) {
         update.text = preset.text;

@@ -1,4 +1,5 @@
 import { clampNumber } from '~/utils/audio/envelope';
+import { cloneValue } from '~/utils/clone';
 import {
   VIDEO_DIR_NAME,
   AUDIO_DIR_NAME,
@@ -6,22 +7,15 @@ import {
   TIMELINES_DIR_NAME,
 } from '~/utils/constants';
 
+// Deep clone of a clip's effects array before it crosses into a worker payload.
+// Named separately from `clonePlain` to document intent at call sites; both
+// delegate to the single shared `cloneValue` (structuredClone, JSON fallback).
 export function cloneEffects<T>(effects: T): T {
-  if (effects === null || effects === undefined) return effects;
-  try {
-    return JSON.parse(JSON.stringify(effects)) as T;
-  } catch {
-    return effects;
-  }
+  return cloneValue(effects);
 }
 
 export function clonePlain<T>(value: T): T {
-  if (value === null || value === undefined) return value;
-  try {
-    return JSON.parse(JSON.stringify(value)) as T;
-  } catch {
-    return value;
-  }
+  return cloneValue(value);
 }
 
 export function mergeFadeInUs(input: {

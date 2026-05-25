@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import { cloneValue } from '~/utils/clone';
 import { usePresetsStore } from '~/stores/presets.store';
 import { getHudManifest } from '~/hud/registry';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
@@ -103,7 +104,7 @@ watch(
   () => [props.itemKind, props.itemId, props.presetParams],
   () => {
     if (props.presetParams) {
-      params.value = JSON.parse(JSON.stringify(props.presetParams));
+      params.value = cloneValue(props.presetParams);
     } else {
       params.value = {};
     }

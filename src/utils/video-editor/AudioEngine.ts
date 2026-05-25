@@ -9,7 +9,6 @@ import {
 import { AudioGraphBuilder } from '~/utils/video-editor/AudioGraphBuilder';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
 
-import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import type {
   AudioChunk,
   AudioEngineClip,
@@ -18,7 +17,10 @@ import type {
 } from '~/utils/video-editor/audio-engine.types';
 
 import { withFileIoSlot } from '~/utils/io/io-governor';
-import { postIoInitMessage } from '~/utils/io/io-budget-main';
+import {
+  DecodeWorkerClient,
+  DECODE_CANCELLED_MESSAGE,
+} from '~/utils/video-editor/decode-worker-client';
 
 export type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 
@@ -66,15 +68,7 @@ export class AudioEngine {
     onStopNodes: () => this.stopAllNodes(),
   });
 
-  private decodeWorker: Worker | null = null;
-  private decodeCallId = 0;
-  private decodePending = new Map<
-    number,
-    { resolve: (value: DecodeResponse['result']) => void; reject: (reason?: unknown) => void }
-  >();
-  private decodeQueue: Array<() => void> = [];
-  private decodeInFlightCount = 0;
-  private readonly maxDecodeConcurrency = 2;
+  private readonly decodeClient = new DecodeWorkerClient();
   private currentMasterVolume = 1;
   private currentMonitorVolume = 1;
   private schedulingClipIds = new Set<string>();
@@ -82,124 +76,6 @@ export class AudioEngine {
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
-
-  private ensureDecodeWorker() {
-    if (this.decodeWorker) return this.decodeWorker;
-
-    const worker = new Worker(new URL('../../workers/audio-decode.worker.ts', import.meta.url), {
-      type: 'module',
-      name: 'audio-decode',
-    });
-    // Wire the worker to the shared I/O budget *before* any other message can be
-    // posted to it — the worker applies the first io-init it sees. A dynamic
-    // import here would defer this to a later microtask and risk losing the
-    // race, so it's imported statically and called synchronously.
-    postIoInitMessage(worker as unknown as Worker);
-
-    worker.addEventListener('message', (event: MessageEvent<DecodeResponse>) => {
-      const data = event.data;
-      if (!data || data.type !== 'decode-result') return;
-      const pending = this.decodePending.get(data.id);
-      if (!pending) return;
-      this.decodePending.delete(data.id);
-
-      if (!data.ok) {
-        const err = new Error(data.error?.message || 'Audio decode failed');
-        if (data.error?.name) (err as Error).name = data.error.name;
-        if (data.error?.stack) (err as Error).stack = data.error.stack;
-        pending.reject(err);
-        return;
-      }
-
-      pending.resolve(data.result);
-    });
-
-    worker.addEventListener('error', (event) => {
-      console.error('[AudioEngine] Decode worker error', event);
-      for (const [, pending] of this.decodePending.entries()) {
-        pending.reject(new Error('Audio decode worker crashed'));
-      }
-      this.decodePending.clear();
-      this.decodeWorker = null;
-    });
-
-    this.decodeWorker = worker;
-    return worker;
-  }
-
-  private extractPeaksInWorker(
-    blob: Blob,
-    sourceKey: string,
-    options?: { maxLength?: number; precision?: number },
-  ) {
-    if (this.destroyed) {
-      return Promise.reject(new Error('AudioEngine destroyed'));
-    }
-    const worker = this.ensureDecodeWorker();
-    return new Promise<DecodeResponse['result']>((resolve, reject) => {
-      const id = ++this.decodeCallId;
-      this.decodePending.set(id, { resolve, reject });
-      const req: DecodeRequest = { type: 'extract-peaks', id, sourceKey, blob, options };
-      worker.postMessage(req);
-    });
-  }
-
-  private decodeInWorker(arrayBuffer: ArrayBuffer, sourceKey: string) {
-    if (this.destroyed) {
-      return Promise.reject(new Error('AudioEngine destroyed'));
-    }
-    const worker = this.ensureDecodeWorker();
-    return new Promise<DecodeResponse['result']>((resolve, reject) => {
-      const id = ++this.decodeCallId;
-      this.decodePending.set(id, { resolve, reject });
-      const req: DecodeRequest = { type: 'decode', id, sourceKey, arrayBuffer };
-      worker.postMessage(req, [arrayBuffer]);
-    });
-  }
-
-  private decodeRangeInWorker(
-    source: Blob | ArrayBuffer,
-    sourceKey: string,
-    startTimeS: number,
-    durationS: number,
-  ) {
-    if (this.destroyed) {
-      return Promise.reject(new Error('AudioEngine destroyed'));
-    }
-    const worker = this.ensureDecodeWorker();
-    return new Promise<DecodeResponse['result']>((resolve, reject) => {
-      const id = ++this.decodeCallId;
-      this.decodePending.set(id, { resolve, reject });
-      const req: DecodeRequest = {
-        type: 'decode-range',
-        id,
-        sourceKey,
-        startTimeS,
-        durationS,
-      };
-      if (source instanceof ArrayBuffer) {
-        req.arrayBuffer = source;
-        worker.postMessage(req, [source]);
-      } else {
-        req.blob = source;
-        worker.postMessage(req);
-      }
-    });
-  }
-
-  private async withDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
-    if (this.decodeInFlightCount >= this.maxDecodeConcurrency) {
-      await new Promise<void>((resolve) => this.decodeQueue.push(resolve));
-    }
-    this.decodeInFlightCount += 1;
-    try {
-      return await task();
-    } finally {
-      this.decodeInFlightCount = Math.max(0, this.decodeInFlightCount - 1);
-      const next = this.decodeQueue.shift();
-      if (next) next();
-    }
-  }
 
   private getChunkIndex(timeS: number): number {
     return Math.floor(timeS / this.chunkSizeS);
@@ -276,11 +152,11 @@ export class AudioEngine {
     sourceKey: string,
     options?: { maxLength?: number; precision?: number },
   ): Promise<Float32Array[] | null> {
-    const task = this.withDecodeSlot(async () => {
+    const task = this.decodeClient.withSlot(async () => {
       try {
         const file = await withFileIoSlot(() => fileHandle.getFile());
 
-        const decoded = await this.extractPeaksInWorker(file, sourceKey, options);
+        const decoded = await this.decodeClient.extractPeaks(file, sourceKey, options);
         if (!decoded || !decoded.peaks) {
           console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`);
           return null;
@@ -288,7 +164,7 @@ export class AudioEngine {
 
         return decoded.peaks;
       } catch (err) {
-        if (err instanceof Error && err.message === 'AudioEngine destroyed') {
+        if (err instanceof Error && err.message === DECODE_CANCELLED_MESSAGE) {
           return null;
         }
         console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`, err);
@@ -516,7 +392,7 @@ export class AudioEngine {
       }
     }
 
-    const task = this.withDecodeSlot(async () => {
+    const task = this.decodeClient.withSlot(async () => {
       try {
         let blob = this.fileBlobCache.get(sourceKey);
         if (!blob) {
@@ -526,7 +402,7 @@ export class AudioEngine {
         if (!this.ctx) return null;
 
         const requestedStartTimeS = chunkIndex * this.chunkSizeS;
-        const decoded = await this.decodeRangeInWorker(
+        const decoded = await this.decodeClient.decodeRange(
           blob,
           sourceKey,
           requestedStartTimeS,
@@ -631,8 +507,8 @@ export class AudioEngine {
       requests.push(this.ensureChunkDecoded(sourceKey, fileHandle, i));
     }
 
-    // Concurrency is still bounded by withDecodeSlot; Promise.all just lets
-    // the worker pick up the next index as soon as a slot frees up.
+    // Concurrency is still bounded by the decode client's slot gate; Promise.all
+    // just lets the worker pick up the next index as soon as a slot frees up.
     const settled = await Promise.all(requests);
     return settled.filter((chunk): chunk is AudioChunk => chunk != null);
   }
@@ -1669,13 +1545,6 @@ export class AudioEngine {
     this.fileBlobCache.clear();
     this.analyserNodes.clear();
 
-    if (this.decodeWorker) {
-      this.decodeWorker.terminate();
-      this.decodeWorker = null;
-    }
-    for (const [, pending] of this.decodePending.entries()) {
-      pending.reject(new Error('AudioEngine destroyed'));
-    }
-    this.decodePending.clear();
+    this.decodeClient.destroy();
   }
 }

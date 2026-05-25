@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineDocument } from '~/timeline/types';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
+import { cloneValue } from '~/utils/clone';
 
 export function generateTimelineThumbnail(params: {
   timelinePath: string;
@@ -15,7 +16,7 @@ export function generateTimelineThumbnail(params: {
 
   const projectId = projectStore.currentProjectId;
   const timelinePath = params.timelinePath;
-  const timelineDoc = JSON.parse(JSON.stringify(params.timelineDoc)) as TimelineDocument;
+  const timelineDoc = cloneValue(params.timelineDoc);
 
   // We still need to run buildVideoWorkerPayloadFromTracks asynchronously
   // outside the critical path, but before dispatching the thumbnail task

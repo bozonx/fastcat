@@ -4,6 +4,7 @@ import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 import { ref, watch, computed } from 'vue';
+import { cloneValue } from '~/utils/clone';
 import { getEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
@@ -27,7 +28,7 @@ watch(
   (type) => {
     const man = getEffectManifest(type);
     if (man) {
-      params.value = JSON.parse(JSON.stringify(man.defaultValues || {}));
+      params.value = cloneValue(man.defaultValues || {});
     } else {
       params.value = {};
     }

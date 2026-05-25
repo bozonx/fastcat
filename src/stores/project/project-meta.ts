@@ -45,8 +45,10 @@ export function createProjectMetaModule(params: {
         params.currentProjectId.value = meta.id;
         return;
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      // A genuine read failure (e.g. corrupt meta file) must be surfaced — we
+      // still fall through to minting a fresh id so the project stays usable.
+      console.warn('Failed to load project meta', e);
     }
 
     const nextId = createProjectId();

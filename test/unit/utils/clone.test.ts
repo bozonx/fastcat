@@ -26,4 +26,28 @@ describe('cloneValue', () => {
     expect(cloned).not.toBe(obj);
     expect(cloned.b).not.toBe(obj.b);
   });
+
+  it('should preserve structured types a JSON round-trip would mangle', () => {
+    const date = new Date('2020-01-02T03:04:05.000Z');
+    const obj = { date, map: new Map([['k', 1]]), keep: undefined as number | undefined };
+    const cloned = cloneValue(obj);
+    expect(cloned.date).toBeInstanceOf(Date);
+    expect(cloned.date.getTime()).toBe(date.getTime());
+    expect(cloned.date).not.toBe(date);
+    expect(cloned.map).toBeInstanceOf(Map);
+    expect(cloned.map.get('k')).toBe(1);
+    // explicit undefined keys survive (JSON.stringify would drop them)
+    expect('keep' in cloned).toBe(true);
+  });
+
+  it('should fall back to a JSON copy for values structuredClone cannot handle', () => {
+    // Functions make structuredClone throw; the fallback strips them like the
+    // previous JSON-based clones did, instead of crashing the caller.
+    const obj = { a: 1, fn: () => 42, nested: { b: 2 } };
+    const cloned = cloneValue(obj);
+    expect(cloned.a).toBe(1);
+    expect(cloned.nested).toEqual({ b: 2 });
+    expect(cloned.nested).not.toBe(obj.nested);
+    expect(cloned.fn).toBeUndefined();
+  });
 });

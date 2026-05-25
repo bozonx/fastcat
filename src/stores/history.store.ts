@@ -3,6 +3,7 @@ import { computed, ref, toRaw } from 'vue';
 
 import { useWorkspaceStore } from './workspace.store';
 import { genUuid } from '~/utils/ids';
+import { cloneValue } from '~/utils/clone';
 
 export interface HistoryEntry<T = unknown> {
   id: string;
@@ -21,18 +22,12 @@ function generateHistoryEntryId(): string {
   return genUuid();
 }
 
-/** Deep plain copy. structuredClone is ~3-5x faster than JSON round-trip on
- *  large timeline documents. toRaw strips the top-level proxy; nested reactive
- *  proxies are walked via their handlers and clone fine for plain-data shapes
- *  like TimelineDocument. JSON fallback handles unexpected non-cloneable
- *  values (e.g. inadvertent class instance) without breaking undo. */
+/** Deep plain copy for history snapshots. toRaw strips the top-level proxy
+ *  (nested reactive proxies are walked via their handlers and clone fine for
+ *  plain-data shapes like TimelineDocument); cloneValue then does the
+ *  structuredClone-first / JSON-fallback copy shared across the app. */
 function cloneHistorySnapshot<T>(snapshot: T): T {
-  const raw = toRaw(snapshot as object);
-  try {
-    return structuredClone(raw) as T;
-  } catch {
-    return JSON.parse(JSON.stringify(raw)) as T;
-  }
+  return cloneValue(toRaw(snapshot as object)) as T;
 }
 
 export const useHistoryStore = defineStore('history', () => {

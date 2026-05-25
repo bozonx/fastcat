@@ -65,8 +65,10 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
         create: true,
       });
       await tempRootDir.getDirectoryHandle(workspaceTopology.tempProjectsDirName, { create: true });
-    } catch {
-      // ignore
+    } catch (e) {
+      // Non-fatal: temp dirs are recreated lazily, but a failure here usually
+      // signals a permissions/quota problem worth seeing in logs.
+      console.warn('Failed to ensure temp directories during workspace init', e);
     }
 
     await deps.loadProjects();

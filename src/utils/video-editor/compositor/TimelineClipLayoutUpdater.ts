@@ -1,4 +1,5 @@
 import { parseHexColor, sanitizeTimelineColor } from '../utils';
+import { cloneValue } from '~/utils/clone';
 import {
   areShapeConfigsEqual,
   areTextClipStylesEqual,
@@ -134,7 +135,7 @@ export class TimelineClipLayoutUpdater {
       clip.fillColor = nextFill;
       clip.strokeColor = nextStroke;
       clip.strokeWidth = nextStrokeWidth;
-      clip.shapeConfig = nextConfig ? JSON.parse(JSON.stringify(nextConfig)) : undefined;
+      clip.shapeConfig = nextConfig ? cloneValue(nextConfig) : undefined;
     }
 
     if (clip.clipKind === 'hud') {
@@ -151,9 +152,9 @@ export class TimelineClipLayoutUpdater {
 
       if (hudChanged || clip.hudDirty === true) {
         clip.hudType = nextHudType as typeof clip.hudType;
-        clip.background = nextBg ? JSON.parse(JSON.stringify(nextBg)) : undefined;
-        clip.content = nextContent ? JSON.parse(JSON.stringify(nextContent)) : undefined;
-        clip.frame = nextFrame ? JSON.parse(JSON.stringify(nextFrame)) : undefined;
+        clip.background = nextBg ? cloneValue(nextBg) : undefined;
+        clip.content = nextContent ? cloneValue(nextContent) : undefined;
+        clip.frame = nextFrame ? cloneValue(nextFrame) : undefined;
         clip.hudDirty = true;
       }
     }
