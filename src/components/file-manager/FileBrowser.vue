@@ -19,7 +19,6 @@ import { useFileBrowserNavigation } from '~/composables/file-manager/useFileBrow
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
-import { useFocusableListNavigation } from '~/composables/file-manager/useFocusableListNavigation';
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
 import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
@@ -597,19 +596,162 @@ function handleContainerClick() {
 }
 
 // --- Keyboard navigation ---
-const { onKeyDown: onContainerKeyDown, moveSelection } = useFocusableListNavigation({
-  containerRef: rootContainer,
-  horizontal: true,
-  getColumnCount: () => {
-    if (fileManagerStore.viewMode !== 'grid' || !rootContainer.value) return 1;
-    const items = Array.from(rootContainer.value.querySelectorAll<HTMLElement>('[tabindex="0"]'));
-    if (items.length === 0) return 1;
-    const firstTop = items[0]?.offsetTop;
-    let cols = 0;
-    while (cols < items.length && items[cols]?.offsetTop === firstTop) cols++;
-    return cols || 1;
+const selectionAnchor = ref<FsEntry | null>(null);
+
+// Automatically track the selection anchor when selection changes
+watch(
+  () => selectionStore.selectedEntity,
+  (selected) => {
+    if (!selected || selected.source !== 'fileManager' || selected.instanceId !== instanceId) {
+      selectionAnchor.value = null;
+      return;
+    }
+    if (selected.kind === 'file' || selected.kind === 'directory') {
+      selectionAnchor.value = selected.entry;
+    } else if (selected.kind === 'multiple' && selected.entries.length > 0) {
+      if (
+        !selectionAnchor.value ||
+        !selected.entries.some((e) => e.path === selectionAnchor.value?.path)
+      ) {
+        selectionAnchor.value = selected.entries[0] ?? null;
+      }
+    }
   },
-});
+  { immediate: true }
+);
+
+function getColumnCount(): number {
+  if (fileManagerStore.viewMode !== 'grid' || !rootContainer.value) return 1;
+  const items = Array.from(
+    rootContainer.value.querySelectorAll<HTMLElement>('[data-entry-path]')
+  );
+  if (items.length === 0) return 1;
+  const firstTop = items[0]?.offsetTop ?? 0;
+  let cols = 0;
+  while (cols < items.length && (items[cols]?.offsetTop ?? 0) === firstTop) cols++;
+  return cols || 1;
+}
+
+function isTextInputElement(element: Element | null): boolean {
+  if (!(element instanceof HTMLElement)) return false;
+  return (
+    element.tagName === 'INPUT' ||
+    element.tagName === 'TEXTAREA' ||
+    element.isContentEditable
+  );
+}
+
+function onContainerKeyDown(event: KeyboardEvent) {
+  const container = rootContainer.value;
+  if (!container) return;
+
+  const activeEl = document.activeElement;
+  if (isTextInputElement(activeEl)) return;
+
+  const allowedKeys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];
+  if (!allowedKeys.includes(event.key)) return;
+
+  // Let Alt/Ctrl/Cmd combinations pass through (e.g. navigation / browser shortcuts)
+  if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+  const items = Array.from(
+    container.querySelectorAll<HTMLElement>('[data-entry-path]')
+  );
+  if (items.length === 0) return;
+
+  const currentIndex = items.indexOf(activeEl as HTMLElement);
+  event.preventDefault();
+
+  let nextIndex = currentIndex;
+
+  if (event.key === 'ArrowRight') {
+    nextIndex = Math.min(currentIndex + 1, items.length - 1);
+  } else if (event.key === 'ArrowLeft') {
+    nextIndex = Math.max(currentIndex - 1, 0);
+  } else {
+    const step = getColumnCount();
+    nextIndex =
+      event.key === 'ArrowDown'
+        ? Math.min(currentIndex + step, items.length - 1)
+        : Math.max(currentIndex - step, 0);
+  }
+
+  // Handle case where nothing was focused/selected yet
+  if (currentIndex === -1) {
+    const selected = selectionStore.selectedEntity;
+    if (selected?.source === 'fileManager' && selected.instanceId === instanceId) {
+      const selectedPath =
+        selected.kind === 'multiple'
+          ? selected.entries[0]?.path
+          : selected.entry?.path;
+      if (selectedPath) {
+        const foundIdx = sortedEntries.value.findIndex(
+          (e) => e.path === selectedPath
+        );
+        if (foundIdx !== -1) {
+          nextIndex = foundIdx;
+        } else {
+          nextIndex = 0;
+        }
+      } else {
+        nextIndex = 0;
+      }
+    } else {
+      nextIndex = 0;
+    }
+  }
+
+  if (nextIndex >= 0 && nextIndex < items.length) {
+    const targetEntry = sortedEntries.value[nextIndex];
+    if (!targetEntry) return;
+
+    // Focus the target DOM element
+    const targetEl = items[nextIndex];
+    targetEl?.focus();
+
+    if (event.shiftKey) {
+      // Range selection
+      if (!selectionAnchor.value) {
+        const currentEntry =
+          currentIndex >= 0 ? sortedEntries.value[currentIndex] : null;
+        selectionAnchor.value = currentEntry ?? sortedEntries.value[0] ?? null;
+      }
+
+      if (selectionAnchor.value) {
+        const anchorIdx = sortedEntries.value.findIndex(
+          (e) => e.path === selectionAnchor.value?.path
+        );
+        if (anchorIdx !== -1) {
+          const start = Math.min(anchorIdx, nextIndex);
+          const end = Math.max(anchorIdx, nextIndex);
+          const range = sortedEntries.value.slice(start, end + 1);
+          selectionStore.selectFsEntries(range, instanceId, isExternal.value);
+        } else {
+          setSelectedFsEntry(targetEntry);
+        }
+      } else {
+        setSelectedFsEntry(targetEntry);
+      }
+    } else {
+      // Single selection
+      selectionAnchor.value = targetEntry;
+      setSelectedFsEntry(targetEntry);
+    }
+  }
+}
+
+function moveSelection(dir: 'up' | 'down' | 'left' | 'right') {
+  const keyMap: Record<string, string> = {
+    up: 'ArrowUp',
+    down: 'ArrowDown',
+    left: 'ArrowLeft',
+    right: 'ArrowRight',
+  };
+  onContainerKeyDown({
+    key: keyMap[dir],
+    preventDefault: () => {},
+  } as KeyboardEvent);
+}
 
 function handleScroll(e: Event) {
   if (!isRemoteMode.value || !remoteHasMore.value || isLoadingMore.value) return;

@@ -138,31 +138,6 @@ export function useGeneralHotkeys(
     });
   }
 
-  function startNavigationHotkeyHold(params: {
-    dir: 'up' | 'down' | 'left' | 'right';
-    keyCode: string;
-  }) {
-    navigationHoldRunner.startHold({
-      keyCode: params.keyCode,
-      action: () => {
-        if (params.dir === 'up' || params.dir === 'down') {
-          if (isFileManagerFocus()) {
-            uiStore.fileBrowserMoveSelectionTrigger = {
-              dir: params.dir,
-              timestamp: Date.now(),
-            };
-          }
-        } else {
-          if (focusStore.effectiveFocus === 'filesBrowser') {
-            uiStore.fileBrowserMoveSelectionTrigger = {
-              dir: params.dir,
-              timestamp: Date.now(),
-            };
-          }
-        }
-      },
-    });
-  }
 
   function isPreviewFocus() {
     return focusStore.canUsePreviewHotkeys;
@@ -438,37 +413,6 @@ export function useGeneralHotkeys(
       return false;
     },
 
-    'general.navigateSelectionUp': (e) => {
-      if (isFileManagerFocus()) {
-        startNavigationHotkeyHold({ dir: 'up', keyCode: e.code });
-        return true;
-      }
-      return false;
-    },
-
-    'general.navigateSelectionDown': (e) => {
-      if (isFileManagerFocus()) {
-        startNavigationHotkeyHold({ dir: 'down', keyCode: e.code });
-        return true;
-      }
-      return false;
-    },
-
-    'general.navigateSelectionLeft': (e) => {
-      if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
-        startNavigationHotkeyHold({ dir: 'left', keyCode: e.code });
-        return true;
-      }
-      return false;
-    },
-
-    'general.navigateSelectionRight': (e) => {
-      if (isFileManagerPanelFocus(focusStore.effectiveFocus)) {
-        startNavigationHotkeyHold({ dir: 'right', keyCode: e.code });
-        return true;
-      }
-      return false;
-    },
 
     'general.zoomIn': (e) => {
       startZoomHotkeyHold({ direction: 1, keyCode: e.code });

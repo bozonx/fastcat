@@ -109,11 +109,10 @@ export type HotkeyCommandId =
   | 'playback.backward1'
   | 'general.navigateBack'
   | 'general.navigateForward'
-  | 'general.navigateUp'
-  | 'general.navigateSelectionUp'
-  | 'general.navigateSelectionDown'
-  | 'general.navigateSelectionLeft'
-  | 'general.navigateSelectionRight';
+  | 'general.navigateUp';
+  // Note: ArrowUp, ArrowDown, ArrowLeft, and ArrowRight keys for list selection
+  // are handled locally inside the file browser components and are intentionally
+  // excluded from global customizable hotkeys to avoid breaking standard inputs/dropdowns.
 
 export type HotkeyCombo = string;
 
@@ -181,22 +180,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.navigateBack', groupId: 'fileManager', title: 'Navigate back' },
     { id: 'general.navigateForward', groupId: 'fileManager', title: 'Navigate forward' },
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
-    { id: 'general.navigateSelectionUp', groupId: 'fileManager', title: 'Navigate selection up' },
-    {
-      id: 'general.navigateSelectionDown',
-      groupId: 'fileManager',
-      title: 'Navigate selection down',
-    },
-    {
-      id: 'general.navigateSelectionLeft',
-      groupId: 'fileManager',
-      title: 'Navigate selection left',
-    },
-    {
-      id: 'general.navigateSelectionRight',
-      groupId: 'fileManager',
-      title: 'Navigate selection right',
-    },
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     { id: 'timeline.toggleSnapFree', groupId: 'timeline', title: 'Toggle snap free mode' },
@@ -425,10 +408,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.navigateBack': ['Backspace', 'z', 'MouseBack'],
     'general.navigateForward': ['Shift+Backspace', 'MouseForward'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
-    'general.navigateSelectionUp': ['ArrowUp'],
-    'general.navigateSelectionDown': ['ArrowDown'],
-    'general.navigateSelectionLeft': ['ArrowLeft'],
-    'general.navigateSelectionRight': ['ArrowRight'],
 
     'timeline.toggleSnap': ['T'],
     'timeline.toggleSnapFree': ['Shift+T'],
