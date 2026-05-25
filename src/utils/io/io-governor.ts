@@ -1,5 +1,7 @@
 import { getMainIoBudget, isTauriRuntime as isTauriRuntimeImpl } from './io-budget-main';
 import { isTransientIoError, isTransientWriteError } from './transient-errors';
+import { watchHeldSlot } from './slot-watchdog';
+import { FILE_IO_LIMITS } from '~/utils/constants';
 
 /**
  * Process-wide governor for file-system reads and writes on the main thread.
@@ -37,7 +39,10 @@ let inFlightCount = 0;
  * `getFile()` calls and small `createWritable()`+write+close sequences.
  */
 export async function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
-  const release = await getMainIoBudget().acquire('interactive');
+  const release = watchHeldSlot(await getMainIoBudget().acquire('interactive'), {
+    label: 'interactive',
+    warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_INTERACTIVE,
+  });
   inFlightCount += 1;
   try {
     return await task();
@@ -53,7 +58,10 @@ export async function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
  * `close()`/`abort()`); otherwise the slot leaks and other writers stall.
  */
 export async function acquireStreamingFileIoSlot(): Promise<() => void> {
-  return getMainIoBudget().acquire('streaming');
+  return watchHeldSlot(await getMainIoBudget().acquire('streaming'), {
+    label: 'streaming',
+    warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_STREAMING,
+  });
 }
 
 /**

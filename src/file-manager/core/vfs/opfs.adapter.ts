@@ -459,7 +459,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
     const readStream = sourceFile.stream();
     const writeStream = await this.writeStream(targetPath, options);
-    await readStream.pipeTo(writeStream, { signal: options?.signal });
+    // The source `stream()` drains OPFS datapipes as it's pulled, so account the
+    // read against the interactive pool for the duration of the copy. The write
+    // side already holds a streaming slot (acquired inside `writeStream`), and
+    // streaming is a separate pool, so this can't deadlock against it.
+    await withFileIoSlot(() => readStream.pipeTo(writeStream, { signal: options?.signal }));
   }
 
   async copyDirectory(

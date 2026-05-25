@@ -51,6 +51,31 @@ function isSharedArrayBufferSupported(): boolean {
   return typeof SharedArrayBuffer !== 'undefined' && typeof Atomics !== 'undefined';
 }
 
+/**
+ * Whether the current realm is cross-origin isolated. This is the *real*
+ * precondition for sharing a `SharedArrayBuffer` across threads: Chromium
+ * exposes the `SharedArrayBuffer` constructor even without isolation (for
+ * same-thread wasm), but `postMessage`-ing one to a worker throws
+ * `DataCloneError` unless the page is cross-origin isolated.
+ */
+function isCrossOriginIsolated(): boolean {
+  return (
+    typeof globalThis !== 'undefined' &&
+    (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true
+  );
+}
+
+/**
+ * Whether the shared (cross-thread) budget can actually be used. Requires both
+ * the `SharedArrayBuffer`/`Atomics` API *and* cross-origin isolation — checking
+ * only the former (as the previous code did) selected the shared path on
+ * Chromium pages without COOP/COEP, where the SAB cannot be shared with workers
+ * and the whole coordination silently breaks.
+ */
+export function canUseSharedBudget(): boolean {
+  return isSharedArrayBufferSupported() && isCrossOriginIsolated();
+}
+
 function nowMs(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
@@ -181,17 +206,31 @@ class LocalBudget implements IoBudget {
     const state = this.pools[pool];
     if (state.available > 0) {
       state.available -= 1;
-    } else {
-      await new Promise<void>((resolve) => state.waiters.push(resolve));
-      state.available -= 1;
+      return this.makeRelease(state);
     }
+    // No slot free: queue and wait. When we are woken the releaser has handed
+    // its slot directly to us (it did NOT return it to `available`), so we must
+    // NOT decrement again here.
+    await new Promise<void>((resolve) => state.waiters.push(resolve));
+    return this.makeRelease(state);
+  }
+
+  private makeRelease(state: LocalPoolState): () => void {
     let released = false;
     return () => {
       if (released) return;
       released = true;
-      state.available += 1;
       const next = state.waiters.shift();
-      if (next) next();
+      if (next) {
+        // Hand the slot straight to the next waiter without bumping
+        // `available`. Returning the slot to the pool first would let a
+        // freshly-arriving `acquire()` grab it in the microtask gap before the
+        // woken waiter resumes, over-subscribing the pool (and driving
+        // `available` negative).
+        next();
+      } else {
+        state.available += 1;
+      }
     };
   }
 }

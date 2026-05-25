@@ -94,6 +94,37 @@ describe('WorkerIoBudget', () => {
     expect(b2.isTauri()).toBe(true);
   });
 
+  it('lets a real io-init replace a grace-period fallback', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    budget.installListener();
+    const p = budget.getBudget();
+
+    vi.advanceTimersByTime(1500);
+    const fallback = await p;
+    expect(fallback.isTauri()).toBe(false); // fallback assumes browser
+
+    // A genuine io-init arrives late (slow worker startup) with isTauri=true.
+    worker.dispatch({ type: 'io-init', sab: null, isTauri: true });
+    vi.useRealTimers();
+
+    const upgraded = await budget.getBudget();
+    expect(upgraded.isTauri()).toBe(true);
+    expect(upgraded).not.toBe(fallback);
+  });
+
+  it('ignores a second real io-init after the first authoritative one', async () => {
+    budget.installListener();
+    const p = budget.getBudget();
+    worker.dispatch({ type: 'io-init', sab: null, isTauri: true });
+    const first = await p;
+    expect(first.isTauri()).toBe(true);
+
+    worker.dispatch({ type: 'io-init', sab: null, isTauri: false });
+    const second = await budget.getBudget();
+    expect(second).toBe(first); // unchanged
+    expect(second.isTauri()).toBe(true);
+  });
+
   it('acquire returns release function', async () => {
     budget.installListener();
     const bPromise = budget.getBudget();

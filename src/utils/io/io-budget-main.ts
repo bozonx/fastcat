@@ -12,6 +12,7 @@
  */
 
 import {
+  canUseSharedBudget,
   createLocalBudget,
   createSharedBudget,
   createSharedBudgetBuffer,
@@ -35,7 +36,11 @@ let state: MainBudgetState | null = null;
 
 function initState(): MainBudgetState {
   const tauri = isTauriRuntime();
-  if (typeof SharedArrayBuffer !== 'undefined' && typeof Atomics !== 'undefined') {
+  // Only take the shared path when the realm is cross-origin isolated. Without
+  // COOP/COEP a SharedArrayBuffer can be *constructed* on Chromium but can't be
+  // posted to a worker, so the shared budget would be a private counter nobody
+  // else sees (and `postIoInitMessage` would throw DataCloneError).
+  if (canUseSharedBudget()) {
     try {
       const buffer = createSharedBudgetBuffer({ isTauri: tauri });
       return {
@@ -77,11 +82,25 @@ export function getMainIoBudget(): IoBudget {
  */
 export function postIoInitMessage(worker: Worker): void {
   const current = ensureState();
-  worker.postMessage({
-    type: 'io-init',
-    sab: current.buffer,
-    isTauri: current.isTauri,
-  });
+  try {
+    worker.postMessage({
+      type: 'io-init',
+      sab: current.buffer,
+      isTauri: current.isTauri,
+    });
+  } catch (err) {
+    // Posting a SharedArrayBuffer to a worker throws DataCloneError on realms
+    // that aren't cross-origin isolated. `canUseSharedBudget()` should prevent
+    // us from ever holding a buffer in that case, but guard defensively so a
+    // stray throw can't break worker bootstrap — re-send without the buffer so
+    // the worker falls back to a local budget instead of timing out.
+    console.warn('[io-budget] io-init with SAB failed; retrying local-only:', err);
+    try {
+      worker.postMessage({ type: 'io-init', sab: null, isTauri: current.isTauri });
+    } catch (innerErr) {
+      console.warn('[io-budget] io-init postMessage failed entirely:', innerErr);
+    }
+  }
 }
 
 /**

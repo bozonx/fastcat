@@ -18,6 +18,7 @@ import type {
 } from '~/utils/video-editor/audio-engine.types';
 
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { postIoInitMessage } from '~/utils/io/io-budget-main';
 
 export type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 
@@ -89,11 +90,11 @@ export class AudioEngine {
       type: 'module',
       name: 'audio-decode',
     });
-    if (typeof worker !== 'undefined') {
-      import('../io/io-budget-main').then(({ postIoInitMessage }) => {
-        postIoInitMessage(worker as unknown as Worker);
-      });
-    }
+    // Wire the worker to the shared I/O budget *before* any other message can be
+    // posted to it — the worker applies the first io-init it sees. A dynamic
+    // import here would defer this to a later microtask and risk losing the
+    // race, so it's imported statically and called synchronously.
+    postIoInitMessage(worker as unknown as Worker);
 
     worker.addEventListener('message', (event: MessageEvent<DecodeResponse>) => {
       const data = event.data;
@@ -277,7 +278,7 @@ export class AudioEngine {
   ): Promise<Float32Array[] | null> {
     const task = this.withDecodeSlot(async () => {
       try {
-        const file = await fileHandle.getFile();
+        const file = await withFileIoSlot(() => fileHandle.getFile());
 
         const decoded = await this.extractPeaksInWorker(file, sourceKey, options);
         if (!decoded || !decoded.peaks) {

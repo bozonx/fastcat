@@ -1,5 +1,21 @@
 import { getWorkerIoBudget, installWorkerIoBudgetListener } from '~/utils/io/io-budget-worker';
 import { isTransientIoError } from '~/utils/io/transient-errors';
+import { watchHeldSlot } from '~/utils/io/slot-watchdog';
+import { FILE_IO_LIMITS } from '~/utils/constants';
+
+function watchInteractive(release: () => void): () => void {
+  return watchHeldSlot(release, {
+    label: 'worker-interactive',
+    warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_INTERACTIVE,
+  });
+}
+
+function watchStreaming(release: () => void): () => void {
+  return watchHeldSlot(release, {
+    label: 'worker-streaming',
+    warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_STREAMING,
+  });
+}
 
 /**
  * Detects whether a handle is a native OPFS `FileSystemFileHandle`.
@@ -28,7 +44,7 @@ async function getBudget() {
  * Shared with every worker and the main thread through the SAB semaphore.
  */
 export async function withWorkerFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
-  const release = await (await getBudget()).acquire('interactive');
+  const release = watchInteractive(await (await getBudget()).acquire('interactive'));
   try {
     return await task();
   } finally {
@@ -43,7 +59,7 @@ export async function withWorkerFileIoSlot<T>(task: () => Promise<T>): Promise<T
  * metadata reads.
  */
 export async function withWorkerStreamingFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
-  const release = await (await getBudget()).acquire('streaming');
+  const release = watchStreaming(await (await getBudget()).acquire('streaming'));
   try {
     return await task();
   } finally {
@@ -56,7 +72,7 @@ export async function withWorkerStreamingFileIoSlot<T>(task: () => Promise<T>): 
  * invoke the returned release function after `close()`/`abort()`.
  */
 export async function acquireStreamingWorkerFileIoSlot(): Promise<() => void> {
-  return (await getBudget()).acquire('streaming');
+  return watchStreaming(await (await getBudget()).acquire('streaming'));
 }
 
 /**
@@ -150,7 +166,7 @@ export async function runResilientWorkerFileWrite<T>(
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
       if (!isOpfs) return await task();
-      const release = await (await getBudget()).acquire('streaming');
+      const release = watchStreaming(await (await getBudget()).acquire('streaming'));
       try {
         return await task();
       } finally {

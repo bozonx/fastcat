@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, toRef, computed } from 'vue';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
-import { runResilientFileWrite } from '~/utils/io/io-governor';
+import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
@@ -766,20 +766,20 @@ export const useTimelineStore = defineStore('timeline', () => {
       let file: File | null = null;
       if (version.type === 'main') {
         const handle = await ensureTimelineFileHandle({ create: false });
-        if (handle) file = await handle.getFile();
+        if (handle) file = await withFileIoSlot(() => handle.getFile());
       } else if (version.type === 'autosave') {
         const handle = await ensureTimelineFileHandle({
           create: false,
           relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
         });
-        if (handle) file = await handle.getFile();
+        if (handle) file = await withFileIoSlot(() => handle.getFile());
       } else {
         const handle = await projectStore.getFileHandleByPath(version.path);
-        if (handle) file = await handle.getFile();
+        if (handle) file = await withFileIoSlot(() => handle.getFile());
       }
 
       if (!file) throw new Error('File not found');
-      const text = await file.text();
+      const text = await withFileIoSlot(() => file.text());
 
       const fallback = projectStore.createFallbackTimelineDoc();
       const parsed = parseTimelineFromOtio(text, {
@@ -813,20 +813,20 @@ export const useTimelineStore = defineStore('timeline', () => {
       let file: File | null = null;
       if (version.type === 'main') {
         const handle = await ensureTimelineFileHandle({ create: false });
-        if (handle) file = await handle.getFile();
+        if (handle) file = await withFileIoSlot(() => handle.getFile());
       } else if (version.type === 'autosave') {
         const handle = await ensureTimelineFileHandle({
           create: false,
           relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
         });
-        if (handle) file = await handle.getFile();
+        if (handle) file = await withFileIoSlot(() => handle.getFile());
       } else {
         const handle = await projectStore.getFileHandleByPath(version.path);
-        if (handle) file = await handle.getFile();
+        if (handle) file = await withFileIoSlot(() => handle.getFile());
       }
 
       if (!file) throw new Error('File not found');
-      const text = await file.text();
+      const text = await withFileIoSlot(() => file.text());
 
       const fallback = projectStore.createFallbackTimelineDoc();
       const parsed = parseTimelineFromOtio(text, {
@@ -903,7 +903,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       // 1. Main file
       const mainHandle = await ensureTimelineFileHandle({ create: false });
       if (mainHandle) {
-        const file = await mainHandle.getFile();
+        const file = await withFileIoSlot(() => mainHandle.getFile());
         list.push({
           type: 'main',
           name: currentTimelinePath.value.split('/').pop() || currentTimelinePath.value,
@@ -920,7 +920,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
       });
       if (autosaveHandle) {
-        const file = await autosaveHandle.getFile();
+        const file = await withFileIoSlot(() => autosaveHandle.getFile());
         list.push({
           type: 'autosave',
           name: 'autosave',
@@ -965,7 +965,7 @@ export const useTimelineStore = defineStore('timeline', () => {
           });
 
           for (const item of files) {
-            const file = await item.handle.getFile();
+            const file = await withFileIoSlot(() => item.handle.getFile());
             const num = getBackupNumber(item.name);
             list.push({
               type: 'backup',

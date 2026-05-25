@@ -12,6 +12,7 @@
  */
 
 import { createLocalBudget, createSharedBudget, type IoBudget } from './io-budget';
+import { isTauriRuntime } from '~/utils/runtime';
 
 interface IoInitMessage {
   type: 'io-init';
@@ -27,6 +28,13 @@ function isIoInitMessage(value: unknown): value is IoInitMessage {
 interface WorkerBudgetState {
   budget: IoBudget;
   isTauri: boolean;
+  /**
+   * True when this state was created by the grace-period fallback (no `io-init`
+   * arrived in time) rather than a real init message. A genuine `io-init` that
+   * arrives later is allowed to replace a fallback so a slow worker startup
+   * doesn't permanently freeze us on a local, possibly-mis-capped budget.
+   */
+  isFallback?: boolean;
 }
 
 export interface WorkerLike {
@@ -65,9 +73,11 @@ export class WorkerIoBudget {
           return;
         }
         console.warn('[io-budget] Worker io-init not received within 1s — using local budget');
+        const fallbackIsTauri = isTauriRuntime();
         this.state = {
-          budget: createLocalBudget({ isTauri: false }),
-          isTauri: false,
+          budget: createLocalBudget({ isTauri: fallbackIsTauri }),
+          isTauri: fallbackIsTauri,
+          isFallback: true,
         };
         this.readyResolve?.(this.state);
         this.readyResolve = null;
@@ -94,7 +104,10 @@ export class WorkerIoBudget {
   }
 
   private applyInit(message: IoInitMessage): void {
-    if (this.state) return;
+    // A real init replaces a grace-period fallback, but never another real init
+    // (the first authoritative init wins; later ones are ignored, e.g. on worker
+    // reuse across host reloads).
+    if (this.state && !this.state.isFallback) return;
     const isTauri = !!message.isTauri;
     if (message.sab && typeof Atomics !== 'undefined') {
       this.state = {

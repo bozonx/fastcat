@@ -30,6 +30,22 @@ export const FILE_IO_LIMITS = {
    * enough not to throttle desktop I/O.
    */
   MAX_CONCURRENT_FILE_IO_NATIVE: 32,
+  /**
+   * How long an *interactive* io-budget slot may be held before the governor
+   * logs a leak warning. Interactive ops (getFile, small writes, governed
+   * reads) are short, so this is generous enough to never fire on a normal—even
+   * large—operation, but low enough to surface a leaked slot (a slot that would
+   * otherwise stall the small interactive pool forever). Warn-only: it never
+   * force-releases, since a slow-but-alive op must not be double-counted.
+   */
+  SLOT_HOLD_WARN_MS_INTERACTIVE: 120_000,
+  /**
+   * Same, for *streaming* slots. Long-lived by design (an export writable can
+   * stay open for minutes), so the threshold is much higher and only meant to
+   * catch a genuinely leaked streaming slot — which is severe because the
+   * streaming pool is tiny.
+   */
+  SLOT_HOLD_WARN_MS_STREAMING: 1_800_000,
 } as const;
 
 export const VIDEO_CORE_LIMITS = {
