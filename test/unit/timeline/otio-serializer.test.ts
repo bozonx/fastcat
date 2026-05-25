@@ -79,6 +79,31 @@ describe('serializeTimelineToOtio', () => {
     expect(result).toContain('Timeline.1');
     expect(result).toContain('Test');
   });
+
+  it('serializes a partial timeline document without tracks', () => {
+    const result = serializeTimelineToOtio({
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Partial',
+      timebase: { fps: 30 },
+    } as any);
+    const raw = JSON.parse(result);
+
+    expect(raw.tracks.children).toEqual([]);
+  });
+
+  it('serializes a partial track without items', () => {
+    const result = serializeTimelineToOtio({
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'doc-1',
+      name: 'Partial',
+      timebase: { fps: 30 },
+      tracks: [{ id: 'v1', kind: 'video', name: 'Video 1' }],
+    } as any);
+    const raw = JSON.parse(result);
+
+    expect(raw.tracks.children[0].children).toEqual([]);
+  });
 });
 
 describe('parseTimelineFromOtio', () => {

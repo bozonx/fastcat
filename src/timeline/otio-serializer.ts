@@ -41,9 +41,10 @@ import { getTimelineFormat, normalizeTimelineFormat, type TimelineFormatInput } 
 // Public API
 // ---------------------------------------------------------------------------
 
-function sortTracksForOtioStack(tracks: TimelineTrack[]): TimelineTrack[] {
-  const videoTracks = tracks.filter((track) => track.kind === 'video').reverse();
-  const audioTracks = tracks.filter((track) => track.kind === 'audio');
+function sortTracksForOtioStack(tracks: TimelineTrack[] | undefined): TimelineTrack[] {
+  const safeTracks = Array.isArray(tracks) ? tracks : [];
+  const videoTracks = safeTracks.filter((track) => track.kind === 'video').reverse();
+  const audioTracks = safeTracks.filter((track) => track.kind === 'audio');
 
   return [...videoTracks, ...audioTracks];
 }
@@ -349,7 +350,8 @@ export function serializeTimelineToOtio(doc: TimelineDocument): string {
   const fps = format.fps;
 
   const tracks: OtioTrack[] = sortTracksForOtioStack(doc.tracks).map((t) => {
-    const children = serializeTrackItems(t.items, t.id, fps);
+    const trackItems = Array.isArray(t.items) ? t.items : [];
+    const children = serializeTrackItems(trackItems, t.id, fps);
 
     return {
       OTIO_SCHEMA: 'Track.1',
