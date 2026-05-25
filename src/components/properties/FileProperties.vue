@@ -6,7 +6,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { formatBytes, formatBitrate, formatDurationSeconds } from '~/utils/format';
-import { BROWSER_NATIVE_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from '~/utils/media-types';
+import { VIDEO_EXTENSIONS } from '~/utils/media-types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
@@ -14,12 +14,7 @@ import MediaPropertiesSection from '~/components/properties/file/MediaProperties
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
 import FileTimelineUsageSection from '~/components/properties/file/FileTimelineUsageSection.vue';
-import type {
-  RemoteVfsFileEntry,
-  RemoteVfsEntry,
-  RemoteVfsDirectoryEntry,
-} from '~/types/remote-vfs';
-import type { BloggerDogEntryPayload } from '~/types/bloggerdog';
+import type { RemoteVfsFileEntry, RemoteVfsDirectoryEntry } from '~/types/remote-vfs';
 import ImageFilePropertiesSection from '~/components/properties/file/ImageFilePropertiesSection.vue';
 import OtioPropertiesSection from '~/components/properties/file/OtioPropertiesSection.vue';
 import FileProjectRootSection from '~/components/properties/file/FileProjectRootSection.vue';
@@ -41,23 +36,15 @@ import { useFilePropertiesHandlers } from '~/composables/properties/useFilePrope
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
-import { useAppClipboard } from '~/composables/useAppClipboard';
-import { isWorkspaceCommonPath, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import {
-  canCopyBloggerDogEntry,
-  canCutBloggerDogEntry,
-  canPasteIntoBloggerDogEntry,
-  isBloggerDogAllContentRoot,
-  isBloggerDogPersonalLibraryRoot,
-  isBloggerDogProjectLibrariesRoot,
-  isBloggerDogTextWrapper,
-} from '~/utils/bloggerdog-file-manager';
-import type {
-  PrimaryEntryAction,
-  SecondaryEntryAction,
-} from '~/composables/properties/useFilePropertiesActions';
+
+import { useFilePropertiesContext } from '~/composables/properties/useFilePropertiesContext';
+import { useFileMediaSupport } from '~/composables/properties/useFileMediaSupport';
+import { useFilePropertiesClipboard } from '~/composables/properties/useFilePropertiesClipboard';
+import { useBloggerDogEntryInfo } from '~/composables/properties/useBloggerDogEntryInfo';
+import { useFilePropertiesProxy } from '~/composables/properties/useFilePropertiesProxy';
+import { useFilePropertiesActionGroups } from '~/composables/properties/useFilePropertiesActionGroups';
 import type { FsEntry } from '~/types/fs';
 
 const props = defineProps<{
@@ -84,14 +71,12 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const uiStore = useUiStore();
-const selectionStore = useSelectionStore();
 const workspaceStore = useWorkspaceStore();
 const toast = useToast();
 const { extractAudio } = useAudioExtraction();
 const fileManager = useFileManager();
 const { vfs: computerVfs } = useComputerVfs();
 const runtimeConfig = useRuntimeConfig();
-const clipboardStore = useAppClipboard();
 
 const isMetaExpanded = ref(false);
 const isExifExpanded = ref(false);
@@ -115,8 +100,6 @@ const remoteFilesConfig = computed(() =>
   }),
 );
 
-// canUploadToRemote removed
-
 const sttConfig = computed(() =>
   resolveExternalServiceConfig({
     service: 'stt',
@@ -131,41 +114,25 @@ const uploadInputRef = ref<HTMLInputElement | null>(null);
 const selectedFsEntryRef = computed(() => props.selectedFsEntry);
 const previewModeRef = computed(() => props.previewMode);
 const hasProxyRef = computed(() => props.hasProxy);
-const isRemoteEntry = computed(() => props.selectedFsEntry?.source === 'remote');
-const isRemoteFileEntry = computed(
-  () => isRemoteEntry.value && props.selectedFsEntry?.kind === 'file',
-);
-const hasAbsoluteLocalPath = computed(() => {
-  if (isRemoteEntry.value) return false;
-  const path = props.selectedFsEntry?.path;
-  if (typeof path !== 'string' || path.length === 0) return false;
-  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
-});
-const isExternalContext = computed(
-  () =>
-    (!isRemoteEntry.value && props.isExternal) ||
-    (!isRemoteEntry.value &&
-      (props.selectionOrigin === 'workspace-browser' ||
-        props.selectionOrigin === 'remote-browser' ||
-        props.instanceId === 'computer' ||
-        props.instanceId === 'sidebar' ||
-        hasAbsoluteLocalPath.value)),
-);
-const isRootDirectory = computed(() => {
-  const entry = props.selectedFsEntry;
-  return entry?.kind === 'directory' && (entry.path === '' || entry.path === '/');
-});
-const isWorkspaceRootProperties = computed(
-  () =>
-    isRootDirectory.value && isExternalContext.value && props.selectedFsEntry?.kind === 'directory',
-);
-const effectiveVfs = computed(() =>
-  isExternalContext.value ? (computerVfs.value ?? fileManager.vfs) : fileManager.vfs,
-);
-const metadataCacheKey = computed(() => {
-  const path = props.selectedFsEntry?.path;
-  if (!path) return null;
-  return isRemoteFileEntry.value ? `external:${path}` : path;
+
+// Entry context: remote/local, external browsing, root/common classification, VFS.
+const {
+  isRemoteFileEntry,
+  isExternalContext,
+  isRootDirectory,
+  isWorkspaceRootProperties,
+  effectiveVfs,
+  metadataCacheKey,
+  isCommonRoot,
+  isCommonPath,
+  isRemoteRoot,
+} = useFilePropertiesContext({
+  selectedFsEntry: () => props.selectedFsEntry,
+  isExternal: () => props.isExternal,
+  selectionOrigin: () => props.selectionOrigin,
+  instanceId: () => props.instanceId,
+  computerVfs,
+  fileManagerVfs: () => fileManager.vfs,
 });
 
 const { isProjectRootDir, storageFreeBytes, projectStats } = useFileStorageInfo({
@@ -178,27 +145,6 @@ const { isProjectRootDir, storageFreeBytes, projectStats } = useFileStorageInfo(
 const isProjectRootDirInContext = computed(
   () => isProjectRootDir.value && !isExternalContext.value,
 );
-
-const isCommonRoot = computed(() => {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory') return false;
-  return (
-    entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
-    (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === ''))
-  );
-});
-
-// isCommonPath matches all items within common, used for visual indicators but not for blocking actions anymore
-const isCommonPath = computed(() => isWorkspaceCommonPath(props.selectedFsEntry?.path));
-
-const isRemoteRoot = computed(() => {
-  const entry = props.selectedFsEntry;
-  const path = entry?.path || '';
-  return (
-    entry?.source === 'remote' &&
-    (path === '' || path === '/' || path === '/remote' || path === '/remote/')
-  );
-});
 
 function triggerDirectoryUpload() {
   uploadInputRef.value?.click();
@@ -221,18 +167,6 @@ async function onDirectoryFileSelect(e: Event) {
   await fileManager.loadProjectDirectory();
   uiStore.notifyFileManagerUpdate();
 }
-
-const isVirtualAll = computed(() => {
-  return isBloggerDogAllContentRoot(props.selectedFsEntry);
-});
-
-const isPersonalLibrary = computed(() => {
-  return isBloggerDogPersonalLibraryRoot(props.selectedFsEntry);
-});
-
-const isProjectLibraries = computed(() => {
-  return isBloggerDogProjectLibrariesRoot(props.selectedFsEntry);
-});
 
 const {
   currentUrl,
@@ -314,6 +248,23 @@ const {
   resolveDirectoryHandle: (path) => projectStore.getDirectoryHandleByPath(path),
 });
 
+const {
+  isVirtualAll,
+  isPersonalLibrary,
+  isProjectLibraries,
+  isRemoteContent,
+  castedRemoteRecord,
+  remoteMediaCount,
+  remoteItemsCount,
+} = useBloggerDogEntryInfo({
+  selectedFsEntry: () => props.selectedFsEntry,
+  fileInfo,
+  isBloggerDogContentItem,
+  isBloggerDogGroup,
+  isBloggerDogProject,
+  isBloggerDogMedia,
+});
+
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -323,112 +274,38 @@ async function copyToClipboard(text: string) {
   }
 }
 
-const isVideoFile = computed(() => mediaType.value === 'video');
-
-const isVideoWithAudio = computed(() => Boolean(mediaMeta.value?.audio));
-
-const isFormatUnsupported = computed(() =>
-  Boolean(metadataCacheKey.value && mediaStore.metadataLoadFailed[metadataCacheKey.value]),
-);
-
-const isVideoCodecUnsupported = computed(
-  () => (mediaMeta.value?.video as unknown as Record<string, unknown>)?.canDecode === false,
-);
-
-const isAudioCodecUnsupported = computed(
-  () => (mediaMeta.value?.audio as unknown as Record<string, unknown>)?.canDecode === false,
-);
-
-const isImageUnsupported = computed(() => {
-  if (mediaType.value !== 'image') return false;
-  const ext = props.selectedFsEntry?.name.split('.').pop()?.toLowerCase() ?? '';
-  if (
-    BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) &&
-    (mediaMeta.value?.image as unknown as Record<string, unknown>)?.canDisplay === false
-  ) {
-    return true;
-  }
-  return false;
+// Media type / codec support derivations (preview, unsupported banners, convert).
+const {
+  isVideoFile,
+  isAudioFile,
+  isVideoWithAudio,
+  isFormatUnsupported,
+  isVideoCodecUnsupported,
+  isAudioCodecUnsupported,
+  isImageUnsupported,
+  isMediaFullyUnsupported,
+  videoCodecLabel,
+  audioCodecLabel,
+  canConvertFile,
+  showPreviewSection,
+} = useFileMediaSupport({
+  selectedFsEntry: () => props.selectedFsEntry,
+  mediaType,
+  mediaMeta,
+  fileInfo,
+  isOtio,
+  isRemoteRoot,
+  metadataCacheKey,
+  mediaStore,
 });
 
-const isMediaFullyUnsupported = computed(
-  () => isFormatUnsupported.value || isVideoCodecUnsupported.value || isImageUnsupported.value,
-);
-
-const videoCodecLabel = computed(() => {
-  const v = mediaMeta.value?.video as unknown as Record<string, unknown> | undefined;
-  return String(v?.parsedCodec || v?.codec || '');
-});
-
-const audioCodecLabel = computed(() => {
-  const a = mediaMeta.value?.audio as unknown as Record<string, unknown> | undefined;
-  return String(a?.parsedCodec || a?.codec || '');
-});
-
-const showPreviewSection = computed(() => {
-  if (fileInfo.value?.kind === 'directory' || isRemoteRoot.value) return false;
-  return (
-    mediaType.value === 'image' ||
-    mediaType.value === 'video' ||
-    mediaType.value === 'audio' ||
-    (mediaType.value === 'text' && !isOtio.value)
-  );
-});
-
-const isRemoteContent = computed(
-  () =>
-    isBloggerDogContentItem.value ||
-    isBloggerDogGroup.value ||
-    isBloggerDogProject.value ||
-    isBloggerDogMedia.value,
-);
-
-const castedRemoteRecord = computed(() => {
-  if (!isRemoteContent.value || !props.selectedFsEntry?.adapterPayload) return null;
-  const payload = props.selectedFsEntry.adapterPayload as BloggerDogEntryPayload;
-  return payload?.remoteData as RemoteVfsEntry | undefined;
-});
-
-const remoteMediaCount = computed(() => {
-  if (fileInfo.value?.kind === 'file') return undefined;
-  const record = castedRemoteRecord.value;
-  if (record && 'media' in record) {
-    return (record as RemoteVfsFileEntry).media?.length;
-  }
-  return undefined;
-});
-
-const remoteItemsCount = computed(() => {
-  const record = castedRemoteRecord.value;
-  if (record && 'itemsCount' in record) {
-    return (record as RemoteVfsDirectoryEntry).itemsCount;
-  }
-  return undefined;
-});
-
-const showVideoProxyActions = computed(() => {
-  if (isRootDirectory.value || isExternalContext.value) return false;
-  if (!isVideoFile.value) return false;
-  if (!selectedPath.value) return false;
-  return true;
-});
-
-const isGeneratingProxyForFile = computed(() => {
-  if (!showVideoProxyActions.value) return false;
-  return proxyStore.generatingProxies.has(selectedPath.value!);
-});
-
-const isAudioFile = computed(() => mediaType.value === 'audio');
-
-const hasExistingProxyForFile = computed(() => {
-  if (!showVideoProxyActions.value) return false;
-  return proxyStore.existingProxies.has(selectedPath.value!);
-});
-
-const canConvertFile = computed(() => {
-  if (isMediaFullyUnsupported.value) return false;
-  return mediaType.value === 'video' || mediaType.value === 'audio' || mediaType.value === 'image';
-});
+const { showVideoProxyActions, isGeneratingProxyForFile, hasExistingProxyForFile } =
+  useFilePropertiesProxy({
+    isRootDirectory,
+    isExternalContext,
+    isVideoFile,
+    selectedPath,
+  });
 
 const {
   canTranscribeMedia,
@@ -477,69 +354,10 @@ const {
   isExternalContext,
 });
 
-const canCopy = computed(() => {
-  if (isRootDirectory.value || isCommonRoot.value) return false;
-  return canCopyBloggerDogEntry(props.selectedFsEntry);
-});
-
-const canCut = computed(() => {
-  if (isRootDirectory.value || isCommonRoot.value) return false;
-  return canCutBloggerDogEntry(props.selectedFsEntry);
-});
-
-function onCopy() {
-  const entry = props.selectedFsEntry;
-  if (!entry || !entry.path) return;
-  const sourceInstanceId =
-    selectionStore.selectedEntity?.source === 'fileManager'
-      ? selectionStore.selectedEntity.instanceId
-      : undefined;
-  clipboardStore.setClipboardPayload({
-    source: 'fileManager',
-    operation: 'copy',
-    items: [
-      {
-        path: entry.path,
-        kind: entry.kind,
-        name: entry.name,
-        source: entry.source,
-      },
-    ],
-    sourceInstanceId,
-  });
-}
-
-function onCut() {
-  const entry = props.selectedFsEntry;
-  if (!entry || !entry.path) return;
-  const sourceInstanceId =
-    selectionStore.selectedEntity?.source === 'fileManager'
-      ? selectionStore.selectedEntity.instanceId
-      : undefined;
-  clipboardStore.setClipboardPayload({
-    source: 'fileManager',
-    operation: 'cut',
-    items: [
-      {
-        path: entry.path,
-        kind: entry.kind,
-        name: entry.name,
-        source: entry.source,
-      },
-    ],
-    sourceInstanceId,
-  });
-}
-
-function onPaste() {
-  const entry = props.selectedFsEntry;
-  if (!entry || entry.kind !== 'directory') return;
-  if (entry.source === 'remote' && !canPasteIntoBloggerDogEntry(entry)) return;
-  uiStore.pendingFsEntryPaste = entry;
-}
-
-const hasClipboardItems = computed(() => {
-  return clipboardStore.hasFileManagerPayload;
+const { canCopy, canCut, onCopy, onCut, onPaste, hasClipboardItems } = useFilePropertiesClipboard({
+  selectedFsEntry: () => props.selectedFsEntry,
+  isRootDirectory,
+  isCommonRoot,
 });
 
 const {
@@ -624,91 +442,34 @@ const {
   isExternal: isExternalContext,
 });
 
-const filteredDirectoryPrimaryActions = computed(() => {
-  if (isPersonalLibrary.value) return [];
-
-  if (!isRemoteContent.value) {
-    return directoryPrimaryActions.value.filter(
-      (a: PrimaryEntryAction) => !['createSubgroup', 'createContentItem'].includes(a.id),
-    );
-  }
-
-  return directoryPrimaryActions.value;
+const {
+  filteredDirectoryPrimaryActions,
+  filteredFilePrimaryActions,
+  filteredFileSecondaryActions,
+  virtualAllPrimaryActions,
+  virtualAllSecondaryActions,
+  personalLibraryPrimaryActions,
+  personalLibrarySecondaryActions,
+  projectPrimaryActions,
+  projectSecondaryActions,
+  workspaceRootPrimaryActions,
+  workspaceRootSecondaryActions,
+} = useFilePropertiesActionGroups({
+  directoryPrimaryActions,
+  directorySecondaryActions,
+  filePrimaryActions,
+  fileSecondaryActions,
+  isPersonalLibrary,
+  isRemoteContent,
+  isRemoteFileEntry,
+  isExternalContext,
+  hasClipboardItems,
+  selectedFsEntry: () => props.selectedFsEntry,
+  onPaste,
+  createSubfolder,
+  createMarkdownInFolder,
+  t,
 });
-
-const filteredFilePrimaryActions = computed(() => {
-  if (isBloggerDogTextWrapper(props.selectedFsEntry)) {
-    return filePrimaryActions.value.filter((action) => action.id === 'copy');
-  }
-
-  return filePrimaryActions.value;
-});
-
-const filteredFileSecondaryActions = computed<SecondaryEntryAction[]>(() => {
-  if (isRemoteFileEntry.value) return [];
-
-  if (!isExternalContext.value) return fileSecondaryActions.value;
-
-  return fileSecondaryActions.value.filter(
-    (action) =>
-      action.id !== 'openAsPanelCut' &&
-      action.id !== 'openAsPanelSound' &&
-      action.id !== 'openAsProjectTab',
-  );
-});
-
-const virtualAllPrimaryActions = computed<PrimaryEntryAction[]>(() =>
-  directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
-);
-
-const virtualAllSecondaryActions = computed<SecondaryEntryAction[]>(() =>
-  directorySecondaryActions.value.filter((action) => action.id === 'createContentItem'),
-);
-
-const personalLibraryPrimaryActions = computed<PrimaryEntryAction[]>(() =>
-  directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
-);
-
-const personalLibrarySecondaryActions = computed<SecondaryEntryAction[]>(() =>
-  directorySecondaryActions.value.filter(
-    (action) => action.id === 'createSubgroup' || action.id === 'createContentItem',
-  ),
-);
-
-const projectPrimaryActions = computed<PrimaryEntryAction[]>(() =>
-  directoryPrimaryActions.value.filter((action) => action.id === 'paste'),
-);
-
-const projectSecondaryActions = computed<SecondaryEntryAction[]>(() =>
-  directorySecondaryActions.value.filter(
-    (action) => action.id === 'createContentItem' || action.id === 'createSubgroup',
-  ),
-);
-
-const workspaceRootPrimaryActions = computed<PrimaryEntryAction[]>(() => [
-  {
-    id: 'paste',
-    title: t('common.paste'),
-    icon: 'i-heroicons-clipboard',
-    disabled: !hasClipboardItems.value,
-    onClick: onPaste,
-  },
-]);
-
-const workspaceRootSecondaryActions = computed<SecondaryEntryAction[]>(() => [
-  {
-    id: 'createSubfolder',
-    label: t('videoEditor.fileManager.actions.createFolder'),
-    icon: 'i-heroicons-folder-plus',
-    onClick: createSubfolder,
-  },
-  {
-    id: 'createMarkdown',
-    label: t('videoEditor.fileManager.actions.createMarkdown'),
-    icon: 'i-heroicons-document-text',
-    onClick: createMarkdownInFolder,
-  },
-]);
 </script>
 
 <template>
