@@ -85,6 +85,7 @@ export const useUiStore = defineStore('ui', () => {
   const fileManagerUpdateCounter = ref(0);
   const isProjectSettingsOpen = ref(false);
   const isEditorSettingsOpen = ref(false);
+  const isBackgroundTasksOpen = ref(false);
   const editorSettingsActiveSection = ref<string>('user.general');
   const activeModalsCount = ref(0);
 
@@ -312,6 +313,7 @@ export const useUiStore = defineStore('ui', () => {
     monitorMuted,
     isProjectSettingsOpen,
     isEditorSettingsOpen,
+    isBackgroundTasksOpen,
     activeModalsCount,
     activeLibraryTab,
     isTextPresetModalOpen,

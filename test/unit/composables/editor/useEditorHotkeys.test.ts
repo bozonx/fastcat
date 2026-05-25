@@ -11,6 +11,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useClipboardStore } from '~/stores/clipboard.store';
@@ -226,21 +227,191 @@ describe('useEditorHotkeys', () => {
     }
   });
 
-  it('toggles current toolbar snap mode with T when timeline hotkeys are active', async () => {
+  it('toggles lock states with the updated T shortcuts when timeline hotkeys are active', async () => {
     wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+
+    const toggleLockTrackSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.toggleLockTargetTrack = toggleLockTrackSpy;
+    timelineStore.updateClipProperties = vi.fn();
+    timelineStore.selectedItemIds = ['clip-1'];
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          items: [{ id: 'clip-1', kind: 'clip', locked: false }],
+        },
+      ],
+    };
+    timelineStore.requestTimelineSave = vi.fn().mockResolvedValue(undefined);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
+    expect(timelineStore.updateClipProperties).toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'T', code: 'KeyT', shiftKey: true, bubbles: true }),
+    );
+    expect(toggleLockTrackSpy).toHaveBeenCalledOnce();
+  });
+
+  it('switches the active project tab in cut view with the new general shortcuts', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const projectTabsStore = useProjectTabsStore();
+
+    projectTabsStore.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'history', label: 'History', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'effects', label: 'Effects', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'library', label: 'Library', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'markers', label: 'Markers', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'backups', label: 'Backups', component: {} as any });
+    projectTabsStore.initDefaultTab();
+
+    projectStore.setView('cut');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'J',
+        code: 'KeyJ',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(projectTabsStore.activeTabId).toBe('history');
+    expect(focusStore.activePanelId).toBe('project');
+  });
+
+  it('creates virtual clips at playhead with the new timeline shortcuts', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+    const uiStore = useUiStore();
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+
+    const addTextClipSpy = vi.fn(() => []);
+    const addBackgroundClipSpy = vi.fn(() => []);
+    const addAdjustmentClipSpy = vi.fn(() => []);
+    timelineStore.addTextClipAtPlayhead = addTextClipSpy;
+    timelineStore.addBackgroundClipAtPlayhead = addBackgroundClipSpy;
+    timelineStore.addAdjustmentClipAtPlayhead = addAdjustmentClipSpy;
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', code: 'KeyN', bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'u', code: 'KeyU', bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'y', code: 'KeyY', bubbles: true }));
+
+    expect(addTextClipSpy).toHaveBeenCalledOnce();
+    expect(addBackgroundClipSpy).toHaveBeenCalledOnce();
+    expect(addAdjustmentClipSpy).toHaveBeenCalledOnce();
+    expect(uiStore.isProjectSettingsOpen).toBe(false);
+    expect(uiStore.isEditorSettingsOpen).toBe(false);
+  });
+
+  it('switches timeline snap and drag modes with the new shortcuts', async () => {
+    wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
     const settingsStore = useTimelineSettingsStore();
 
     projectStore.setView('cut');
     focusStore.setMainFocus('timeline');
-    settingsStore.selectToolbarSnapMode('snap');
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
+    settingsStore.selectToolbarSnapMode('snap');
+    settingsStore.selectToolbarDragMode('pseudo_overlap');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j', code: 'KeyJ', bubbles: true }));
     expect(settingsStore.toolbarSnapMode).toBe('no_snap');
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', bubbles: true }));
+    expect(settingsStore.toolbarSnapMode).toBe('free_mode');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', code: 'KeyH', bubbles: true }));
     expect(settingsStore.toolbarSnapMode).toBe('snap');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: "'", code: 'Quote', bubbles: true }),
+    );
+    expect(settingsStore.toolbarDragMode).toBe('slip');
+    expect(settingsStore.toolbarDragModeEnabled).toBe(true);
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: ';', code: 'Semicolon', bubbles: true }),
+    );
+    expect(settingsStore.toolbarDragMode).toBe('pseudo_overlap');
+    expect(settingsStore.toolbarDragModeEnabled).toBe(true);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', code: 'KeyL', bubbles: true }));
+    expect(settingsStore.toolbarDragModeEnabled).toBe(false);
+  });
+
+  it('does not switch project tabs outside cut view', async () => {
+    wrapper = mount(HotkeysHarness);
+    const projectStore = useProjectStore();
+    const projectTabsStore = useProjectTabsStore();
+
+    projectTabsStore.registerProjectTab({ id: 'files', label: 'Files', component: {} as any });
+    projectTabsStore.registerProjectTab({ id: 'history', label: 'History', component: {} as any });
+    projectTabsStore.initDefaultTab();
+
+    projectStore.setView('files');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'J',
+        code: 'KeyJ',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+
+    expect(projectTabsStore.activeTabId).toBe('files');
+  });
+
+  it('opens background tasks and settings with the new general shortcuts', async () => {
+    wrapper = mount(HotkeysHarness);
+    const uiStore = useUiStore();
+    const focusStore = useFocusStore();
+
+    focusStore.setPanelFocus('project');
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Y',
+        code: 'KeyY',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(uiStore.isBackgroundTasksOpen).toBe(true);
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'U',
+        code: 'KeyU',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(uiStore.isProjectSettingsOpen).toBe(true);
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'I',
+        code: 'KeyI',
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(uiStore.isEditorSettingsOpen).toBe(true);
   });
 
   it('runs global ripple delete by selected clip bounds with Shift+Z', async () => {

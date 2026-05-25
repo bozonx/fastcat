@@ -86,4 +86,49 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toContain('S');
     expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toContain('MouseBack');
   });
+
+  it('has updated defaults for timeline creation and monitor snapshot', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual(['Control+N']);
+    expect(DEFAULT_HOTKEYS.bindings['general.snapshot']).toEqual(['Ctrl+H']);
+  });
+
+  it('has updated defaults for timeline trim and selection actions', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsLeftOfPlayhead']).toEqual(['E']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual(['R']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimLeft']).toEqual(['Shift+D']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimRight']).toEqual(['Shift+F']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['Shift+E']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual(['Shift+R']);
+  });
+
+  it('has defaults for timeline creation and mode shortcuts', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.addTextClipAtPlayhead']).toEqual(['N']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.addBackgroundClipAtPlayhead']).toEqual(['U']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.addAdjustmentClipAtPlayhead']).toEqual(['Y']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectSnapModeSnap']).toEqual(['H']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectSnapModeNoSnap']).toEqual(['J']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectSnapModeFree']).toEqual(['K']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectDragModeMove']).toEqual(['L']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectDragModePseudoOverlap']).toEqual([';']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectDragModeSlip']).toEqual(["'"]);
+  });
+
+  it('has updated defaults for lock and legacy snap toggles', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockClip']).toEqual(['T']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockTrack']).toEqual(['Shift+T']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSnap']).toEqual([]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleSnapFree']).toEqual([]);
+  });
+
+  it('has defaults for project panel, settings and background task shortcuts', () => {
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabFiles']).toEqual(['Shift+H']);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabHistory']).toEqual(['Shift+J']);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabEffects']).toEqual(['Shift+K']);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabLibrary']).toEqual(['Shift+L']);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabMarkers']).toEqual(['Shift+;']);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectTabBackups']).toEqual(["Shift+'"]);
+    expect(DEFAULT_HOTKEYS.bindings['general.backgroundTasks']).toEqual(['Shift+Y']);
+    expect(DEFAULT_HOTKEYS.bindings['general.projectSettings']).toEqual(['Shift+U']);
+    expect(DEFAULT_HOTKEYS.bindings['general.appSettings']).toEqual(['Shift+I']);
+  });
 });

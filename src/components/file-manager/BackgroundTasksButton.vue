@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
+import { useUiStore } from '~/stores/ui.store';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 import BackgroundTasksModal from './BackgroundTasksModal.vue';
 
@@ -15,7 +16,14 @@ withDefaults(
 );
 
 const backgroundTasksStore = useBackgroundTasksStore();
-const isModalOpen = ref(false);
+const uiStore = useUiStore();
+
+const modalOpen = computed({
+  get: () => uiStore.isBackgroundTasksOpen,
+  set: (value: boolean) => {
+    uiStore.isBackgroundTasksOpen = value;
+  },
+});
 
 const { t } = useI18n();
 </script>
@@ -28,7 +36,7 @@ const { t } = useI18n();
       :size="size"
       class="relative"
       :title="t('videoEditor.backgroundTasks.title')"
-      @click="isModalOpen = true"
+      @click="modalOpen = true"
     >
       <UiProgressSpinner
         v-if="backgroundTasksStore.hasActiveTasks"
@@ -38,6 +46,6 @@ const { t } = useI18n();
       <UIcon v-else name="i-mdi-progress-helper" class="w-4 h-4 text-ui-text-muted" />
     </UButton>
 
-    <BackgroundTasksModal v-model:open="isModalOpen" />
+    <BackgroundTasksModal v-model:open="modalOpen" />
   </div>
 </template>

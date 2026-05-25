@@ -36,12 +36,30 @@ export type HotkeyCommandId =
   | 'general.switchViewEffects'
   | 'general.switchViewSound'
   | 'general.switchViewExport'
+  | 'general.projectTabFiles'
+  | 'general.projectTabHistory'
+  | 'general.projectTabEffects'
+  | 'general.projectTabLibrary'
+  | 'general.projectTabMarkers'
+  | 'general.projectTabBackups'
+  | 'general.backgroundTasks'
+  | 'general.projectSettings'
+  | 'general.appSettings'
   | 'general.selectAll'
   | 'general.snapshot'
   | 'general.newTimeline'
   | 'timeline.duplicate'
   | 'timeline.toggleSnap'
   | 'timeline.toggleSnapFree'
+  | 'timeline.addTextClipAtPlayhead'
+  | 'timeline.addBackgroundClipAtPlayhead'
+  | 'timeline.addAdjustmentClipAtPlayhead'
+  | 'timeline.selectSnapModeSnap'
+  | 'timeline.selectSnapModeNoSnap'
+  | 'timeline.selectSnapModeFree'
+  | 'timeline.selectDragModeMove'
+  | 'timeline.selectDragModePseudoOverlap'
+  | 'timeline.selectDragModeSlip'
   | 'timeline.selectClipsLeftOfPlayhead'
   | 'timeline.selectClipsRightOfPlayhead'
   | 'timeline.trimToPlayheadLeft'
@@ -167,6 +185,15 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.switchViewEffects', groupId: 'general', title: 'Switch to Effects' },
     { id: 'general.switchViewSound', groupId: 'general', title: 'Switch to Sound' },
     { id: 'general.switchViewExport', groupId: 'general', title: 'Switch to Export' },
+    { id: 'general.projectTabFiles', groupId: 'general', title: 'Switch to Files tab' },
+    { id: 'general.projectTabHistory', groupId: 'general', title: 'Switch to History tab' },
+    { id: 'general.projectTabEffects', groupId: 'general', title: 'Switch to Effects tab' },
+    { id: 'general.projectTabLibrary', groupId: 'general', title: 'Switch to Library tab' },
+    { id: 'general.projectTabMarkers', groupId: 'general', title: 'Switch to Markers tab' },
+    { id: 'general.projectTabBackups', groupId: 'general', title: 'Switch to Backups tab' },
+    { id: 'general.backgroundTasks', groupId: 'general', title: 'Show background tasks' },
+    { id: 'general.projectSettings', groupId: 'general', title: 'Open project settings' },
+    { id: 'general.appSettings', groupId: 'general', title: 'Open application settings' },
     { id: 'general.tab1', groupId: 'general', title: 'Switch to tab 1' },
     { id: 'general.tab2', groupId: 'general', title: 'Switch to tab 2' },
     { id: 'general.tab3', groupId: 'general', title: 'Switch to tab 3' },
@@ -183,6 +210,27 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
 
     { id: 'timeline.toggleSnap', groupId: 'timeline', title: 'Toggle snap' },
     { id: 'timeline.toggleSnapFree', groupId: 'timeline', title: 'Toggle snap free mode' },
+    { id: 'timeline.addTextClipAtPlayhead', groupId: 'timeline', title: 'Create text clip at playhead' },
+    {
+      id: 'timeline.addBackgroundClipAtPlayhead',
+      groupId: 'timeline',
+      title: 'Create background clip at playhead',
+    },
+    {
+      id: 'timeline.addAdjustmentClipAtPlayhead',
+      groupId: 'timeline',
+      title: 'Create adjustment clip at playhead',
+    },
+    { id: 'timeline.selectSnapModeSnap', groupId: 'timeline', title: 'Switch to clip snapping' },
+    { id: 'timeline.selectSnapModeNoSnap', groupId: 'timeline', title: 'Switch to no snapping' },
+    { id: 'timeline.selectSnapModeFree', groupId: 'timeline', title: 'Switch to free mode' },
+    { id: 'timeline.selectDragModeMove', groupId: 'timeline', title: 'Switch to normal move mode' },
+    {
+      id: 'timeline.selectDragModePseudoOverlap',
+      groupId: 'timeline',
+      title: 'Switch to pseudo-overlap mode',
+    },
+    { id: 'timeline.selectDragModeSlip', groupId: 'timeline', title: 'Switch to slip mode' },
     {
       id: 'timeline.selectClipsLeftOfPlayhead',
       groupId: 'timeline',
@@ -371,12 +419,12 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.focus': ['Tab'],
     'general.rename': ['F2'],
     'general.save': [`${Mod}+S`],
-    'general.newTimeline': ['N', `${Mod}+N`],
+    'general.newTimeline': [`${Mod}+N`],
 
     'general.mute': ['Control+Q'],
     'general.volumeUp': ['Control+R'],
     'general.volumeDown': ['Control+E'],
-    'general.snapshot': ['H'],
+    'general.snapshot': ['Ctrl+H'],
     'general.fullscreen': ['`'],
 
     'general.zoomIn': ['='],
@@ -393,6 +441,15 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.switchViewEffects': ['3'],
     'general.switchViewSound': ['4'],
     'general.switchViewExport': ['5'],
+    'general.projectTabFiles': ['Shift+H'],
+    'general.projectTabHistory': ['Shift+J'],
+    'general.projectTabEffects': ['Shift+K'],
+    'general.projectTabLibrary': ['Shift+L'],
+    'general.projectTabMarkers': ['Shift+;'],
+    'general.projectTabBackups': ["Shift+'"],
+    'general.backgroundTasks': ['Shift+Y'],
+    'general.projectSettings': ['Shift+U'],
+    'general.appSettings': ['Shift+I'],
 
     'general.tab1': ['Shift+1'],
     'general.tab2': ['Shift+2'],
@@ -409,14 +466,23 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.navigateForward': ['Shift+Backspace', 'MouseForward'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
 
-    'timeline.toggleSnap': ['T'],
-    'timeline.toggleSnapFree': ['Shift+T'],
-    'timeline.selectClipsLeftOfPlayhead': ['Shift+D'],
-    'timeline.selectClipsRightOfPlayhead': ['Shift+F'],
+    'timeline.toggleSnap': [],
+    'timeline.toggleSnapFree': [],
+    'timeline.addTextClipAtPlayhead': ['N'],
+    'timeline.addBackgroundClipAtPlayhead': ['U'],
+    'timeline.addAdjustmentClipAtPlayhead': ['Y'],
+    'timeline.selectSnapModeSnap': ['H'],
+    'timeline.selectSnapModeNoSnap': ['J'],
+    'timeline.selectSnapModeFree': ['K'],
+    'timeline.selectDragModeMove': ['L'],
+    'timeline.selectDragModePseudoOverlap': [';'],
+    'timeline.selectDragModeSlip': ["'"],
+    'timeline.selectClipsLeftOfPlayhead': ['E'],
+    'timeline.selectClipsRightOfPlayhead': ['R'],
     'timeline.trimToPlayheadLeft': ['C'],
     'timeline.trimToPlayheadRight': ['V'],
-    'timeline.rippleTrimLeft': ['E'],
-    'timeline.rippleTrimRight': ['R'],
+    'timeline.rippleTrimLeft': ['Shift+D'],
+    'timeline.rippleTrimRight': ['Shift+F'],
     'timeline.advancedRippleTrimLeft': ['D'],
     'timeline.advancedRippleTrimRight': ['F'],
     'timeline.rippleDeleteSelectedClipRange': ['Z'],
@@ -446,8 +512,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.toggleShowWaveform': ['Shift+E'],
     'timeline.toggleShowThumbnails': ['Shift+R'],
     'timeline.toggleFreezeFrame': ['Shift+B'],
-    'timeline.toggleLockClip': ['Y'],
-    'timeline.toggleLockTrack': ['Shift+Y'],
+    'timeline.toggleLockClip': ['T'],
+    'timeline.toggleLockTrack': ['Shift+T'],
     'timeline.setSelectionIn': ['I'],
     'timeline.setSelectionOut': ['O'],
     'timeline.centerPlayhead': ['Shift+/'],

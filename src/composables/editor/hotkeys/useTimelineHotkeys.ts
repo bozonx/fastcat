@@ -69,6 +69,60 @@ export function useTimelineHotkeys(
       return true;
     },
 
+    'timeline.addTextClipAtPlayhead': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.addTextClipAtPlayhead();
+      return true;
+    },
+
+    'timeline.addBackgroundClipAtPlayhead': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.addBackgroundClipAtPlayhead();
+      return true;
+    },
+
+    'timeline.addAdjustmentClipAtPlayhead': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.addAdjustmentClipAtPlayhead();
+      return true;
+    },
+
+    'timeline.selectSnapModeSnap': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      settingsStore.selectToolbarSnapMode('snap');
+      return true;
+    },
+
+    'timeline.selectSnapModeNoSnap': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      settingsStore.selectToolbarSnapMode('no_snap');
+      return true;
+    },
+
+    'timeline.selectSnapModeFree': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      settingsStore.selectToolbarSnapMode('free_mode');
+      return true;
+    },
+
+    'timeline.selectDragModeMove': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      settingsStore.toolbarDragModeEnabled = false;
+      return true;
+    },
+
+    'timeline.selectDragModePseudoOverlap': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      settingsStore.selectToolbarDragMode('pseudo_overlap');
+      return true;
+    },
+
+    'timeline.selectDragModeSlip': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      settingsStore.selectToolbarDragMode('slip');
+      return true;
+    },
+
     'general.copy': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       if (timelineStore.selectedItemIds.length === 0) return false;

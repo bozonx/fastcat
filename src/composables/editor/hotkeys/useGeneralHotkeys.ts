@@ -5,6 +5,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMonitorActions } from '~/composables/editor/hotkeys/monitorActions';
@@ -27,6 +28,7 @@ export function useGeneralHotkeys(
 
   const { createStopFrameSnapshot, createNewTimeline } = useMonitorActions();
   const fileManagerStore = useFileManagerStore();
+  const projectTabsStore = useProjectTabsStore();
   const clipboardStore = useAppClipboard();
   const { loadTimeline } = useProjectActions();
 
@@ -141,6 +143,21 @@ export function useGeneralHotkeys(
 
   function isPreviewFocus() {
     return focusStore.canUsePreviewHotkeys;
+  }
+
+  function switchProjectTab(tabId: string) {
+    if (projectStore.currentView !== 'cut') {
+      return false;
+    }
+
+    const prevActiveTabId = projectTabsStore.activeTabId;
+    projectTabsStore.setActiveTab(tabId);
+    if (projectTabsStore.activeTabId === prevActiveTabId && prevActiveTabId !== tabId) {
+      return false;
+    }
+
+    focusStore.setPanelFocus('project');
+    return projectTabsStore.activeTabId === tabId;
   }
 
   function toggleTimelineSelectAll() {
@@ -462,6 +479,24 @@ export function useGeneralHotkeys(
     },
     'general.switchViewExport': () => {
       projectStore.setView('export');
+      return true;
+    },
+    'general.projectTabFiles': () => switchProjectTab('files'),
+    'general.projectTabHistory': () => switchProjectTab('history'),
+    'general.projectTabEffects': () => switchProjectTab('effects'),
+    'general.projectTabLibrary': () => switchProjectTab('library'),
+    'general.projectTabMarkers': () => switchProjectTab('markers'),
+    'general.projectTabBackups': () => switchProjectTab('backups'),
+    'general.backgroundTasks': () => {
+      uiStore.isBackgroundTasksOpen = true;
+      return true;
+    },
+    'general.projectSettings': () => {
+      uiStore.isProjectSettingsOpen = true;
+      return true;
+    },
+    'general.appSettings': () => {
+      uiStore.isEditorSettingsOpen = true;
       return true;
     },
     'general.selectAll': () => {
