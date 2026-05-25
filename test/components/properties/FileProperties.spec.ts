@@ -740,10 +740,13 @@ describe('FileProperties.vue', () => {
     expect(component.get('[data-testid="text-editor-stub"]').text()).toContain(
       'Sunset.txt|/personal/item-1/Sunset.txt',
     );
-    expect(component.find('button[title="Copy"]').exists()).toBe(true);
-    expect(component.find('button[title="Cut"]').exists()).toBe(false);
-    expect(component.find('button[title="Delete"]').exists()).toBe(false);
-    expect(component.find('button[title="Rename"]').exists()).toBe(false);
+    const findButtonByTitlePrefix = (prefix: string) => {
+      return component.findAll('button').find(b => b.attributes('title')?.startsWith(prefix));
+    };
+    expect(findButtonByTitlePrefix('Copy')).toBeTruthy();
+    expect(findButtonByTitlePrefix('Cut')).toBeUndefined();
+    expect(findButtonByTitlePrefix('Delete')).toBeUndefined();
+    expect(findButtonByTitlePrefix('Rename')).toBeUndefined();
     expect(component.text()).not.toContain('Open in cut');
     expect(component.text()).not.toContain('Open as tab');
   });

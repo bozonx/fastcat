@@ -5,11 +5,14 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { storeToRefs } from 'pinia';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
 const { currentTimelinePath, projectSettings } = storeToRefs(projectStore);
 const { loadTimeline } = useProjectActions();
+const { getHotkeyTitle } = useHotkeyLabel();
 
 const scrollContainer = ref<HTMLElement | null>(null);
 
@@ -135,7 +138,7 @@ onBeforeUnmount(() => {
           ghost-class="tab-ghost"
         >
           <div
-            v-for="path in openPaths"
+            v-for="(path, index) in openPaths"
             :key="path"
             :data-path="path"
             class="group relative flex items-center h-full px-4 gap-2 border-r border-ui-border cursor-pointer min-w-[120px] max-w-[220px] transition-all duration-200 border-b"
@@ -144,7 +147,7 @@ onBeforeUnmount(() => {
                 ? 'active-tab text-selection-accent-400 border-b-transparent'
                 : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
             ]"
-            :title="path"
+            :title="index < 9 ? getHotkeyTitle(path, ('general.tab' + (index + 1)) as HotkeyCommandId) : path"
             @mousedown="onTabMouseDown($event)"
             @auxclick="onTabAuxClick($event, path)"
             @click="selectTab(path)"

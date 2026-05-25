@@ -493,8 +493,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     const list: {
       label: string;
       icon: string;
-      id?: string;
-      onClick?: () => void;
+      id: string;
+      onClick: () => void;
       onSelect?: () => void;
       color?:
         | 'neutral'
@@ -682,7 +682,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   });
 
   const commonActionsList = computed(() => {
-    const actions = [
+    const actions: any[] = [
       {
         id: 'delete',
         label: t('common.delete'),

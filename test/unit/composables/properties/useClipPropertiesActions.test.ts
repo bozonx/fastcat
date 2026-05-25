@@ -284,5 +284,23 @@ describe('useClipPropertiesActions', () => {
         false,
       );
     });
+
+    it('updates labels and values reactively when clip props change', () => {
+      const clip = ref(makeClip({ disabled: false, audioMuted: false, locked: false }));
+      const { actions } = build({ clip });
+
+      const getAction = (id: string) => actions.commonActionsList.value.find((a) => a.id === id);
+
+      expect(getAction('toggle-disabled')?.label).toBe('fastcat.timeline.disableClip');
+      expect(getAction('toggle-muted')?.label).toBe('fastcat.timeline.muteClip');
+      expect(getAction('toggle-locked')?.label).toBe('fastcat.timeline.lockClip');
+
+      // Update ref value
+      clip.value = makeClip({ disabled: true, audioMuted: true, locked: true });
+
+      expect(getAction('toggle-disabled')?.label).toBe('fastcat.timeline.enableClip');
+      expect(getAction('toggle-muted')?.label).toBe('fastcat.timeline.unmuteClip');
+      expect(getAction('toggle-locked')?.label).toBe('fastcat.timeline.unlockClip');
+    });
   });
 });

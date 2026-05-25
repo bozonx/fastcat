@@ -147,4 +147,69 @@ describe('PropertiesPanel', () => {
 
     wrapper.unmount();
   });
+
+  it('updates clip prop reactively when timelineDoc clip properties change', async () => {
+    const initialClip = {
+      id: 'clip-1',
+      kind: 'clip' as const,
+      trackId: 'track-1',
+      clipType: 'media' as const,
+      name: 'Initial Clip',
+      disabled: false,
+      timelineRange: { startUs: 0, durationUs: 5_000_000 },
+    };
+
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video' as const,
+          items: [initialClip],
+        },
+      ],
+    } as any;
+
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clip',
+      itemId: 'clip-1',
+      trackId: 'track-1',
+    };
+
+    const wrapper = await mountSuspended(PropertiesPanel, {
+      global: {
+        stubs: {
+          UiButtonGroup: true,
+          FileDeleteConfirmModal: true,
+          ClipProperties: {
+            name: 'ClipProperties',
+            props: ['clip'],
+            template: '<div data-testid="clip-properties" :data-disabled="clip.disabled"></div>',
+          },
+        },
+      },
+    });
+
+    await nextTick();
+
+    const clipPropsEl = wrapper.find('[data-testid="clip-properties"]');
+    expect(clipPropsEl.exists()).toBe(true);
+    expect(clipPropsEl.attributes('data-disabled')).toBe('false');
+
+    // Simulate timelineDoc update
+    const updatedClip = { ...initialClip, disabled: true };
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video' as const,
+          items: [updatedClip],
+        },
+      ],
+    } as any;
+
+    await nextTick();
+
+    expect(clipPropsEl.attributes('data-disabled')).toBe('true');
+  });
 });

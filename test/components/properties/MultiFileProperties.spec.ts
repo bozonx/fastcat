@@ -56,10 +56,12 @@ describe('MultiFileProperties.vue', () => {
     });
 
     expect(component.text()).toContain('videoEditor.fileManager.actions.title');
-    // Primary actions have title but no label text
-    expect(component.find('button[title="common.copy"]').exists()).toBe(true);
-    expect(component.find('button[title="common.cut"]').exists()).toBe(true);
-    expect(component.find('button[title="common.delete"]').exists()).toBe(true);
+    const findButtonByTitlePrefix = (prefix: string) => {
+      return component.findAll('button').find(b => b.attributes('title')?.startsWith(prefix));
+    };
+    expect(findButtonByTitlePrefix('common.copy')).toBeTruthy();
+    expect(findButtonByTitlePrefix('common.cut')).toBeTruthy();
+    expect(findButtonByTitlePrefix('common.delete')).toBeTruthy();
     expect(component.text()).toContain('videoEditor.fileManager.proxy.create');
     expect(component.text()).toContain('videoEditor.fileManager.actions.extractAudio');
   });

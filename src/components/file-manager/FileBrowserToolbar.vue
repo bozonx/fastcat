@@ -4,6 +4,7 @@ import { useFileManagerStore, type FileSortField } from '~/stores/file-manager.s
 import UiWheelSlider from '~/components/ui/UiWheelSlider.vue';
 import UiToggleButton from '~/components/ui/UiToggleButton.vue';
 import UiActionButton from '~/components/ui/UiActionButton.vue';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
   gridSizes: number[];
@@ -30,6 +31,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { getHotkeyLabel } = useHotkeyLabel();
 const fileManagerStore =
   (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
   useFileManagerStore();
@@ -71,7 +73,7 @@ const toolbarMenuItems = computed(() => {
   if (!props.isRemotePanel) {
     const selectionItems = [
       {
-        label: t('common.selectAll'),
+        label: `${t('common.selectAll')}${getHotkeyLabel('general.selectAll') ? ` (${getHotkeyLabel('general.selectAll')})` : ''}`,
         icon: 'i-heroicons-check-circle',
         onSelect: () => emit('selectAll'),
       },

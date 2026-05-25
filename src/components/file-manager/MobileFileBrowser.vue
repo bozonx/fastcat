@@ -37,6 +37,7 @@ import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileB
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 type MobileDrawerAction =
   | FileManagerAction
@@ -52,6 +53,7 @@ const clipboardStore = useClipboardStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const toast = useToast();
 const { t } = useI18n();
+const { getHotkeyLabel } = useHotkeyLabel();
 const { target: teleportTarget } = useTeleportTarget();
 const runtimeConfig = useRuntimeConfig();
 
@@ -453,7 +455,7 @@ const menuItems = computed(() => [
   ],
   [
     {
-      label: t('common.selectAll'),
+      label: `${t('common.selectAll')}${getHotkeyLabel('general.selectAll') ? ` (${getHotkeyLabel('general.selectAll')})` : ''}`,
       icon: 'i-heroicons-check-circle',
       onSelect: bulkSelection.selectAll,
     },

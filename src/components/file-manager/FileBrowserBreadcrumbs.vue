@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { FsEntry } from '~/types/fs';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 
 defineProps<{
   parentFolders: FsEntry[];
@@ -14,37 +16,43 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { getHotkeyTitle } = useHotkeyLabel();
 </script>
 
 <template>
   <div
     class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
   >
-    <UButton
-      variant="ghost"
-      color="neutral"
-      size="xs"
-      icon="i-heroicons-arrow-left"
-      :disabled="!canNavigateBack"
-      @click="emit('navigateBack')"
-    />
-    <UButton
-      variant="ghost"
-      color="neutral"
-      size="xs"
-      icon="i-heroicons-arrow-right"
-      :disabled="!canNavigateForward"
-      @click="emit('navigateForward')"
-    />
-    <UButton
-      variant="ghost"
-      color="neutral"
-      size="xs"
-      icon="i-heroicons-arrow-up"
-      :disabled="isAtRoot"
-      :title="t('videoEditor.fileManager.actions.navigateUp')"
-      @click="emit('navigateUp')"
-    />
+    <UiTooltip :text="getHotkeyTitle(t('videoEditor.hotkeys.general.navigateBack', 'Back'), 'general.navigateBack')">
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        icon="i-heroicons-arrow-left"
+        :disabled="!canNavigateBack"
+        @click="emit('navigateBack')"
+      />
+    </UiTooltip>
+    <UiTooltip :text="getHotkeyTitle(t('videoEditor.hotkeys.general.navigateForward', 'Forward'), 'general.navigateForward')">
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        icon="i-heroicons-arrow-right"
+        :disabled="!canNavigateForward"
+        @click="emit('navigateForward')"
+      />
+    </UiTooltip>
+    <UiTooltip :text="getHotkeyTitle(t('videoEditor.fileManager.actions.navigateUp'), 'general.navigateUp')">
+      <UButton
+        variant="ghost"
+        color="neutral"
+        size="xs"
+        icon="i-heroicons-arrow-up"
+        :disabled="isAtRoot"
+        @click="emit('navigateUp')"
+      />
+    </UiTooltip>
 
     <div class="flex items-center gap-1 ml-2 overflow-x-auto">
       <template v-for="(folder, index) in parentFolders" :key="folder.path">

@@ -23,10 +23,12 @@ import type { TextClipStyle } from '~/timeline/types';
 import { useTimelineTextPreset } from '~/composables/timeline/useTimelineTextPreset';
 import { useUiStore } from '~/stores/ui.store';
 import TimelineSnapSettingsModal from './TimelineSnapSettingsModal.vue';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 import { useTimelineEmptyAreaContextMenu } from '~/composables/timeline/useTimelineEmptyAreaContextMenu';
 
 const { t } = useI18n();
+const { getHotkeyTitle, getHotkeyLabel } = useHotkeyLabel();
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const focusStore = useFocusStore();
@@ -115,6 +117,21 @@ const timelineZoom = computed({
 const timelineZoomScale = computed(() => timelineZoomPositionToScale(timelineZoom.value));
 
 const timelineZoomMultiplierInput = computed(() => formatZoomPercent(timelineZoomScale.value));
+
+const zoomCombinedTooltip = computed(() => {
+  const zoomInLabel = getHotkeyLabel('general.zoomIn');
+  const zoomOutLabel = getHotkeyLabel('general.zoomOut');
+  const zoomResetLabel = getHotkeyLabel('general.zoomReset');
+  const zoomFitLabel = getHotkeyLabel('general.zoomFit');
+
+  const parts = [];
+  if (zoomInLabel) parts.push(`${t('videoEditor.hotkeys.general.zoomIn', 'Zoom in')} (${zoomInLabel})`);
+  if (zoomOutLabel) parts.push(`${t('videoEditor.hotkeys.general.zoomOut', 'Zoom out')} (${zoomOutLabel})`);
+  if (zoomResetLabel) parts.push(`${t('videoEditor.hotkeys.general.zoomReset', 'Reset zoom')} (${zoomResetLabel})`);
+  if (zoomFitLabel) parts.push(`${t('fastcat.timeline.zoomToFit', 'Fit to window')} (${zoomFitLabel})`);
+
+  return parts.join(' | ');
+});
 
 function selectToolbarSnapMode(mode: ToolbarSnapMode) {
   settingsStore.selectToolbarSnapMode(mode);
@@ -262,7 +279,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         @click.self="timelineStore.selectTimelineProperties()"
       >
         <UFieldGroup class="inline-flex">
-          <UiTooltip :text="t('fastcat.timeline.snapModeFullDescription')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.snapModeFullDescription'), 'timeline.toggleSnap')">
             <UButton
               size="xs"
               :variant="settingsStore.toolbarSnapMode === 'snap' ? 'solid' : 'ghost'"
@@ -282,7 +299,7 @@ function onToolbarContextMenu(e: MouseEvent) {
               @click="selectToolbarSnapMode('no_snap')"
             />
           </UiTooltip>
-          <UiTooltip :text="t('fastcat.timeline.snapModeFreeDescription')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.snapModeFreeDescription'), 'timeline.toggleSnapFree')">
             <UButton
               size="xs"
               :variant="settingsStore.toolbarSnapMode === 'free_mode' ? 'solid' : 'ghost'"
@@ -428,7 +445,7 @@ function onToolbarContextMenu(e: MouseEvent) {
 
         <!-- Marker controls -->
         <div class="flex items-center gap-1">
-          <UiTooltip :text="t('fastcat.timeline.previousMarker')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.previousMarker'), 'general.prevMarker')">
             <UButton
               size="xs"
               variant="ghost"
@@ -439,7 +456,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             />
           </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.timeline.addMarker')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.addMarker'), 'general.addMarker')">
             <UButton
               size="xs"
               variant="ghost"
@@ -450,7 +467,7 @@ function onToolbarContextMenu(e: MouseEvent) {
             />
           </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.timeline.nextMarker')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.nextMarker'), 'general.nextMarker')">
             <UButton
               size="xs"
               variant="ghost"
@@ -468,7 +485,7 @@ function onToolbarContextMenu(e: MouseEvent) {
         class="w-[240px] flex items-center gap-2 pl-4 border-l border-ui-border/30"
         @click.self="timelineStore.selectTimelineProperties()"
       >
-        <UiTooltip :text="t('fastcat.timeline.zoomToFit')">
+        <UiTooltip :text="getHotkeyTitle(t('fastcat.timeline.zoomToFit'), 'general.zoomFit')">
           <UButton
             size="xs"
             color="neutral"
@@ -479,7 +496,7 @@ function onToolbarContextMenu(e: MouseEvent) {
           />
         </UiTooltip>
 
-        <div class="flex-1 min-w-0">
+        <UiTooltip :text="zoomCombinedTooltip" class="flex-1 min-w-0">
           <UiWheelSlider
             v-model="timelineZoom"
             :min="MIN_TIMELINE_ZOOM_POSITION"
@@ -488,14 +505,16 @@ function onToolbarContextMenu(e: MouseEvent) {
             :default-value="DEFAULT_TIMELINE_ZOOM_POSITION"
             wheel-without-focus
           />
-        </div>
+        </UiTooltip>
 
-        <span
-          class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-12 text-center shrink-0 cursor-pointer hover:text-ui-text transition-colors"
-          @click="timelineZoom = DEFAULT_TIMELINE_ZOOM_POSITION"
-        >
-          {{ timelineZoomMultiplierInput }}
-        </span>
+        <UiTooltip :text="zoomCombinedTooltip">
+          <span
+            class="text-2xs font-mono tabular-nums text-ui-text-muted select-none leading-none w-12 text-center shrink-0 cursor-pointer hover:text-ui-text transition-colors"
+            @click="timelineZoom = DEFAULT_TIMELINE_ZOOM_POSITION"
+          >
+            {{ timelineZoomMultiplierInput }}
+          </span>
+        </UiTooltip>
 
         <div class="w-px h-4 bg-ui-border mx-1 opacity-50" />
 

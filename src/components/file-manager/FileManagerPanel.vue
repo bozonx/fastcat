@@ -21,6 +21,8 @@ import { useSttTranscription } from '~/composables/file-manager/useSttTranscript
 import { useFileManagerPanelActions } from '~/composables/file-manager/useFileManagerPanelActions';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 const props = defineProps<{
   foldersOnly?: boolean;
@@ -59,6 +61,7 @@ const { extractAudio } = useAudioExtraction();
 const { addFileTab, setActiveTab } = useProjectTabsStore();
 const clipboardStore = useAppClipboard();
 
+const { getHotkeyTitle } = useHotkeyLabel();
 const fileManager = useFileManager();
 
 const {
@@ -416,14 +419,15 @@ useFileManagerPanelBootstrap({
         v-if="projectStore.currentProjectName && !props.hideActions"
         class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
       >
-        <UButton
-          icon="i-heroicons-document-plus"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          :title="`${t('videoEditor.fileManager.actions.createTimeline')} (In _timelines folder)`"
-          @click="onCreateTimeline"
-        />
+        <UiTooltip :text="getHotkeyTitle(`${t('videoEditor.fileManager.actions.createTimeline')} (In _timelines folder)`, 'general.newTimeline')">
+          <UButton
+            icon="i-heroicons-document-plus"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            @click="onCreateTimeline"
+          />
+        </UiTooltip>
         <UButton
           icon="i-heroicons-document-text"
           variant="ghost"

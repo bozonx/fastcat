@@ -5,6 +5,9 @@
  * A unified component for rendering lists of action buttons in property panels.
  * Supports primary/secondary grouping and consistent styling with Nuxt UI.
  */
+import { computed } from 'vue';
+import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 
 export interface PropertyAction {
   id: string;
@@ -54,6 +57,53 @@ const props = withDefaults(
   },
 );
 
+const { getHotkeyLabel, getHotkeyTitle } = useHotkeyLabel();
+
+const ACTION_TO_HOTKEY: Record<string, HotkeyCommandId> = {
+  // Common / Clip Actions
+  'delete': 'general.delete',
+  'rename': 'general.rename',
+  'copy': 'general.copy',
+  'cut': 'general.cut',
+  'toggle-disabled': 'timeline.toggleDisableClip',
+  'toggle-muted': 'timeline.toggleMuteClip',
+  'toggle-locked': 'timeline.toggleLockClip',
+  'copy-parameters': 'timeline.copyClipParameters',
+  'paste-parameters': 'timeline.pasteClipParameters',
+  'toggleAudioWaveformMode': 'timeline.toggleWaveformMode',
+  'toggleShowWaveform': 'timeline.toggleShowWaveform',
+  'toggleShowThumbnails': 'timeline.toggleShowThumbnails',
+  'freezeFrame': 'timeline.toggleFreezeFrame',
+  'resetFreezeFrame': 'timeline.toggleFreezeFrame',
+  'createOtioVersion': 'timeline.duplicate',
+  
+  // Track Actions
+  'toggle-video-hidden': 'timeline.toggleVisibilityTrack',
+  'toggle-solo': 'timeline.toggleSoloTrack',
+  
+  // Marker Actions
+  'addMarker': 'general.addMarker',
+  'prevMarker': 'general.prevMarker',
+  'nextMarker': 'general.nextMarker',
+};
+
+function getActionTitle(action: PropertyAction): string {
+  const cmdId = ACTION_TO_HOTKEY[action.id];
+  const baseTitle = action.title || action.label || '';
+  if (!cmdId) return baseTitle;
+  return getHotkeyTitle(baseTitle, cmdId);
+}
+
+function getActionLabel(action: PropertyAction): string | undefined {
+  const baseLabel = action.label;
+  if (!baseLabel) return undefined;
+  const cmdId = ACTION_TO_HOTKEY[action.id];
+  if (!cmdId) return baseLabel;
+  const label = getHotkeyLabel(cmdId);
+  if (!label) return baseLabel;
+  return `${baseLabel} (${label})`;
+}
+
 const visibleActions = computed(() => props.actions.filter((action) => !action.hidden));
 
 const justifyClass = computed(() => {
@@ -76,7 +126,7 @@ const justifyClass = computed(() => {
     <UButton
       v-for="action in visibleActions"
       :key="action.id"
-      :label="action.label"
+      :label="vertical ? getActionLabel(action) : action.label"
       :icon="action.icon"
       :color="
         (action.color === 'danger' ? 'error' : action.color) ||
@@ -86,7 +136,7 @@ const justifyClass = computed(() => {
       :variant="action.variant || props.variant || 'soft'"
       :disabled="action.disabled"
       :loading="action.loading"
-      :title="action.title || action.label"
+      :title="vertical ? (action.title || action.label) : getActionTitle(action)"
       :size="size"
       class="transition-all duration-200 hover:bg-ui-bg-hover hover:text-ui-text"
       :class="[vertical ? 'w-full' : '', !action.label && !vertical ? 'px-2' : '', justifyClass]"

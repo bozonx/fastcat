@@ -4,6 +4,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 import TimelineTabs from '~/components/timeline/TimelineTabs.vue';
 import BackgroundTasksButton from '~/components/file-manager/BackgroundTasksButton.vue';
+import UiTooltip from '~/components/ui/UiTooltip.vue';
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -99,50 +100,58 @@ const menuItems = computed(() => {
 
       <!-- Window Switcher -->
       <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mr-2">
-        <button
-          class="px-3 py-1 rounded text-sm font-medium transition-colors"
-          :class="
-            projectStore.currentView === 'files'
-              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
-          "
-          @click="projectStore.goToFiles()"
-        >
-          {{ t('videoEditor.fileManager.tabs.files') }}
-        </button>
-        <button
-          class="px-3 py-1 rounded text-sm font-medium transition-colors"
-          :class="
-            projectStore.currentView === 'cut'
-              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
-          "
-          @click="projectStore.goToCut()"
-        >
-          {{ t('videoEditor.timeline.tabs.cut') }}
-        </button>
-        <button
-          class="px-3 py-1 rounded text-sm font-medium transition-colors"
-          :class="
-            projectStore.currentView === 'sound'
-              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
-          "
-          @click="projectStore.goToSound()"
-        >
-          {{ t('videoEditor.timeline.tabs.sound') }}
-        </button>
-        <button
-          class="px-3 py-1 rounded text-sm font-medium transition-colors"
-          :class="
-            projectStore.currentView === 'export'
-              ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
-              : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
-          "
-          @click="projectStore.goToExport()"
-        >
-          {{ t('videoEditor.export.title') }}
-        </button>
+        <UiTooltip :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')">
+          <button
+            class="px-3 py-1 rounded text-sm font-medium transition-colors"
+            :class="
+              projectStore.currentView === 'files'
+                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+            "
+            @click="projectStore.goToFiles()"
+          >
+            {{ t('videoEditor.fileManager.tabs.files') }}
+          </button>
+        </UiTooltip>
+        <UiTooltip :text="getHotkeyTitle(t('videoEditor.timeline.tabs.cut'), 'general.switchViewCut')">
+          <button
+            class="px-3 py-1 rounded text-sm font-medium transition-colors"
+            :class="
+              projectStore.currentView === 'cut'
+                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+            "
+            @click="projectStore.goToCut()"
+          >
+            {{ t('videoEditor.timeline.tabs.cut') }}
+          </button>
+        </UiTooltip>
+        <UiTooltip :text="getHotkeyTitle(t('videoEditor.timeline.tabs.sound'), 'general.switchViewSound')">
+          <button
+            class="px-3 py-1 rounded text-sm font-medium transition-colors"
+            :class="
+              projectStore.currentView === 'sound'
+                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+            "
+            @click="projectStore.goToSound()"
+          >
+            {{ t('videoEditor.timeline.tabs.sound') }}
+          </button>
+        </UiTooltip>
+        <UiTooltip :text="getHotkeyTitle(t('videoEditor.export.title'), 'general.switchViewExport')">
+          <button
+            class="px-3 py-1 rounded text-sm font-medium transition-colors"
+            :class="
+              projectStore.currentView === 'export'
+                ? 'bg-ui-bg-elevated text-selection-accent-500 shadow-sm'
+                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-elevated/50'
+            "
+            @click="projectStore.goToExport()"
+          >
+            {{ t('videoEditor.export.title') }}
+          </button>
+        </UiTooltip>
       </div>
 
       <BackgroundTasksButton size="sm" />

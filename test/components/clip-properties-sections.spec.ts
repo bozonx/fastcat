@@ -41,7 +41,7 @@ describe('clip properties sections', () => {
     const buttons = wrapper.findAll('button');
 
     expect(buttons[0]?.text()).toBe('');
-    expect(buttons[1]?.attributes('title')).toBe('Rename');
+    expect(buttons[1]?.attributes('title')).toContain('Rename');
     expect(wrapper.text()).toContain('Quantize');
     expect(wrapper.text()).not.toContain('Rename');
 

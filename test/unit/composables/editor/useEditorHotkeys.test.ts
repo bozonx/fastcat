@@ -554,4 +554,45 @@ describe('useEditorHotkeys', () => {
     expect(saveTimelineSpy).not.toHaveBeenCalled();
     input.remove();
   });
+
+  it('allows timeline hotkeys (toggleDisableClip, toggleMuteClip) from properties focus', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'timeline.toggleDisableClip': ['W'],
+      'timeline.toggleMuteClip': ['Q'],
+    };
+
+    projectStore.setView('cut');
+    focusStore.setPanelFocus('dynamic:properties:files-main');
+    
+    // Set selection source as timeline so focusStore allows timeline hotkeys
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clip',
+      itemId: 'clip-1',
+      trackId: 'track-1',
+    };
+
+    const toggleDisableSpy = vi.fn().mockResolvedValue(undefined);
+    const toggleMuteSpy = vi.fn().mockResolvedValue(undefined);
+    timelineStore.toggleDisableTargetClip = toggleDisableSpy;
+    timelineStore.toggleMuteTargetClip = toggleMuteSpy;
+
+    // Send W key (Disable)
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'w', code: 'KeyW', bubbles: true }),
+    );
+    expect(toggleDisableSpy).toHaveBeenCalledOnce();
+
+    // Send Q key (Mute)
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'q', code: 'KeyQ', bubbles: true }),
+    );
+    expect(toggleMuteSpy).toHaveBeenCalledOnce();
+  });
 });

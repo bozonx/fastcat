@@ -197,7 +197,7 @@ describe('MobileFileBrowser', () => {
     const menuItems = navbar.props('menuItems') as Array<Array<{ label: string }>>;
 
     expect(menuItems[1]?.map((item) => item.label)).toEqual([
-      'common.selectAll',
+      'common.selectAll (Ctrl+A)',
       'common.selectUnused',
       'common.invertSelection',
     ]);

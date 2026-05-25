@@ -27,10 +27,9 @@ export function useHotkeyLabel() {
 
   function getHotkeyLabel(commandId: HotkeyCommandId): string | null {
     const effective = getEffectiveHotkeyBindings(workspaceStore.userSettings.hotkeys);
-    const fromUser = effective[commandId]?.[0];
-    const binding = fromUser ?? getDefaultBinding(commandId);
-    if (!binding) return null;
-    return formatHotkey(binding);
+    const bindings = effective[commandId];
+    if (!bindings || bindings.length === 0) return null;
+    return bindings.map(formatHotkey).join(', ');
   }
 
   function getHotkeyTitle(baseTitle: string, commandId: HotkeyCommandId): string {

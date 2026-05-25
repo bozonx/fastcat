@@ -150,10 +150,18 @@ vi.mock('~/composables/properties/useClipTransitions', () => ({
 
 const mockHandleDeleteClip = vi.fn();
 vi.mock('~/composables/properties/useClipPropertiesActions', () => ({
-  useClipPropertiesActions: vi.fn(() => ({
+  useClipPropertiesActions: vi.fn((options: any) => ({
     handleDeleteClip: mockHandleDeleteClip,
     otherActionsList: ref([]),
-    commonActionsList: ref([]),
+    commonActionsList: computed(() => [
+      {
+        id: 'toggle-disabled',
+        label: options.clip.value.disabled ? 'Enable' : 'Disable',
+        icon: options.clip.value.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+        color: options.clip.value.disabled ? 'warning' : 'neutral',
+        variant: options.clip.value.disabled ? 'solid' : 'ghost',
+      },
+    ]),
   })),
 }));
 
@@ -387,5 +395,28 @@ describe('ClipProperties.vue', () => {
     expect(mockTimelineStore.updateClipProperties).toHaveBeenCalledWith('track-1', 'clip-1', {
       speedActive: false,
     });
+  });
+
+  it('updates actions reactively when the clip prop is updated', async () => {
+    const clip = createClip({ disabled: false });
+    const wrapper = await mountComponent({ clip });
+
+    const actionsSection = wrapper.findComponent({ name: 'ClipActionsSection' });
+    expect(actionsSection.exists()).toBe(true);
+    
+    // Check initial state (disabled = false)
+    let commonActions = actionsSection.props('commonActions');
+    let toggleDisabledAction = commonActions.find((a: any) => a.id === 'toggle-disabled');
+    expect(toggleDisabledAction.label).toBe('Disable');
+
+    // Update the clip prop
+    const updatedClip = createClip({ disabled: true });
+    await wrapper.setProps({ clip: updatedClip });
+    await nextTick();
+
+    // Check updated state (disabled = true)
+    commonActions = actionsSection.props('commonActions');
+    toggleDisabledAction = commonActions.find((a: any) => a.id === 'toggle-disabled');
+    expect(toggleDisabledAction.label).toBe('Enable');
   });
 });

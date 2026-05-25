@@ -93,7 +93,7 @@ describe('FileBrowserToolbar', () => {
     const selectionSection = items[1];
 
     expect(selectionSection?.map((item) => item.label)).toEqual([
-      'common.selectAll',
+      'common.selectAll (Ctrl+A)',
       'common.selectUnused',
       'common.invertSelection',
     ]);

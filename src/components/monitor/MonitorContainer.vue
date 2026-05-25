@@ -364,7 +364,7 @@ watch(viewportRef, (vp) => {
             </UiTooltip>
           </template>
 
-          <UiTooltip :text="t('fastcat.monitor.resetZoom')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.resetZoom'), 'general.zoomReset')">
             <UiActionButton
               size="xs"
               color="neutral"
@@ -473,7 +473,7 @@ watch(viewportRef, (vp) => {
             </UButton>
           </UiTooltip>
 
-          <UiTooltip :text="t('fastcat.monitor.end')">
+          <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.end'), 'playback.toEnd')">
             <UButton
               size="md"
               variant="ghost"

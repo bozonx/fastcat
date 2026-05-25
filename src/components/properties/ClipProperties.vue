@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, inject } from 'vue';
+import { computed, ref, watch, inject, toRef } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
@@ -141,7 +141,7 @@ const isSpeedEnabled = computed({
     timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { speedActive: val }),
 });
 
-const clipRef = computed(() => props.clip);
+const clipRef = toRef(props, 'clip');
 
 const clipTrack = computed<TimelineTrack | undefined>(() =>
   timelineStore.timelineDoc?.tracks.find((t) => t.id === props.clip.trackId),
@@ -425,8 +425,8 @@ defineExpose({
   <div class="w-full flex flex-col gap-2 text-ui-text">
     <ClipActionsSection
       v-if="!hideActions"
-      :common-actions="commonActionsList as any"
-      :other-actions="otherActionsList as any"
+      :common-actions="commonActionsList"
+      :other-actions="otherActionsList"
       @rename="isUiRenameModalOpen = true"
       @copy="handleCopyClip"
       @cut="handleCutClip"
