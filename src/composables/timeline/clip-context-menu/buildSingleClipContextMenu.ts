@@ -1,11 +1,12 @@
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
+import { isClipFreePosition } from './utils';
 import {
   clipSupportsAudioControls,
+  clipSupportsAutoMontage,
   clipSupportsSpeedControls,
-  clipSupportsThumbnails,
-  isClipFreePosition,
-} from './utils';
+  clipSupportsThumbnailControls,
+} from '~/utils/timeline/clip-capabilities';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
 
 export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): ContextMenuGroup[] {
@@ -101,7 +102,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  if (clipSupportsThumbnails(track, clipItem)) {
+  if (clipSupportsThumbnailControls(track, clipItem)) {
     stateGroup.push({
       label:
         clipItem.showThumbnails === false
@@ -278,7 +279,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  if (clipItem.clipType === 'media' && !clipItem.isImage) {
+  if (clipSupportsAutoMontage(track, clipItem)) {
     mediaGroup.push({
       label: options.t('fastcat.timeline.autoMontage.title'),
       icon: 'i-heroicons-sparkles',

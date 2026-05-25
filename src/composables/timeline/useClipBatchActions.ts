@@ -2,6 +2,16 @@ import { computed, type Ref } from 'vue';
 import { sanitizeFps } from '~/timeline/commands/utils';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { createLinkedGroupId } from '~/timeline/id';
+import {
+  clipSupportsAudioControls,
+  clipSupportsAutoMontage,
+  clipSupportsSourceOrientation,
+  clipSupportsSpeedControls,
+  clipSupportsThumbnailControls,
+  clipSupportsVisualControls,
+  clipSupportsWaveformControls,
+  getSelectedClipRefs,
+} from '~/utils/timeline/clip-capabilities';
 
 export interface ClipBatchActionsContext {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -16,21 +26,32 @@ export function useClipBatchActions(
 ) {
   const generatedGroupId = () => createLinkedGroupId();
 
+  const selectedClipRefs = computed(() => getSelectedClipRefs(ctx.timelineDoc.value, items.value));
   const selectedClips = computed(() => {
-    const clips: TimelineClipItem[] = [];
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return clips;
-
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track) continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (clip && clip.kind === 'clip') {
-        clips.push(clip as TimelineClipItem);
-      }
-    }
-    return clips;
+    return selectedClipRefs.value.map(({ clip }) => clip);
   });
+
+  const audioClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track, clip }) => clipSupportsAudioControls(track, clip)),
+  );
+  const waveformClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track, clip }) => clipSupportsWaveformControls(track, clip)),
+  );
+  const thumbnailClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track, clip }) => clipSupportsThumbnailControls(track, clip)),
+  );
+  const visualClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track }) => clipSupportsVisualControls(track)),
+  );
+  const speedClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track, clip }) => clipSupportsSpeedControls(track, clip)),
+  );
+  const sourceOrientationClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track, clip }) => clipSupportsSourceOrientation(track, clip)),
+  );
+  const autoMontageClipRefs = computed(() =>
+    selectedClipRefs.value.filter(({ track, clip }) => clipSupportsAutoMontage(track, clip)),
+  );
 
   const hasLockedLinks = computed(() => {
     const doc = ctx.timelineDoc.value;
@@ -89,34 +110,13 @@ export function useClipBatchActions(
   });
 
   const allDisabled = computed(() => {
-    const nonAudioClips = selectedClips.value.filter((clip) => {
-      const track = ctx.timelineDoc.value?.tracks.find((t) => t.id === clip.trackId);
-      return track?.kind !== 'audio';
-    });
-    if (nonAudioClips.length === 0) return false;
-    return nonAudioClips.every((c) => c.disabled);
+    if (selectedClips.value.length === 0) return false;
+    return selectedClips.value.every((c) => c.disabled);
   });
 
   const allMuted = computed(() => {
-    const clipsWithAudio = selectedClips.value.filter((clip) => {
-      const track = ctx.timelineDoc.value?.tracks.find((t) => t.id === clip.trackId);
-      if (!track) return false;
-      return (
-        track.kind === 'audio' ||
-        (track.kind === 'video' &&
-          clip.clipType === 'media' &&
-          (Boolean(clip.linkedVideoClipId) ||
-            Boolean(
-              (
-                ctx.mediaMetadata.value[clip.source?.path ?? ''] as
-                  | Record<string, unknown>
-                  | undefined
-              )?.audio,
-            )))
-      );
-    });
-    if (clipsWithAudio.length === 0) return false;
-    return clipsWithAudio.every((c) => c.audioMuted);
+    if (audioClipRefs.value.length === 0) return false;
+    return audioClipRefs.value.every(({ clip }) => clip.audioMuted);
   });
 
   const allLocked = computed(() => selectedClips.value.every((c) => c.locked));
@@ -131,64 +131,26 @@ export function useClipBatchActions(
   });
 
   const firstWaveformClip = computed(() => {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return undefined;
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track) continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (!clip || clip.kind !== 'clip') continue;
-
-      const isAudioTrack = track.kind === 'audio';
-      const isVideoWithAudio =
-        track.kind === 'video' &&
-        clip.clipType === 'media' &&
-        (Boolean((clip as TimelineClipItem).linkedVideoClipId) ||
-          Boolean(
-            (
-              ctx.mediaMetadata.value[clip.source?.path ?? ''] as
-                | Record<string, unknown>
-                | undefined
-            )?.audio,
-          ));
-
-      if (isAudioTrack || isVideoWithAudio) return clip as TimelineClipItem;
-    }
-    return undefined;
+    return waveformClipRefs.value[0]?.clip;
   });
 
   const firstVideoClip = computed(() => {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return undefined;
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track) continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (!clip || clip.kind !== 'clip') continue;
-
-      if (track.kind === 'video') return clip as TimelineClipItem;
-    }
-    return undefined;
+    return visualClipRefs.value[0]?.clip;
   });
+
+  const firstSpeedClip = computed(() => speedClipRefs.value[0]?.clip);
+  const firstSourceOrientationClip = computed(() => sourceOrientationClipRefs.value[0]?.clip);
 
   const isWaveformShown = computed(() => firstWaveformClip.value?.showWaveform !== false);
   const isWaveformFull = computed(() => firstWaveformClip.value?.audioWaveformMode !== 'half');
   const isThumbnailsShown = computed(() => firstVideoClip.value?.showThumbnails !== false);
 
-  const hasAudioOrVideoWithAudio = computed(() => Boolean(firstWaveformClip.value));
-  const hasVideo = computed(() => Boolean(firstVideoClip.value));
-  const hasVideoOrImage = computed(() => {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return false;
-    for (const { trackId, itemId } of items.value) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track || track.kind !== 'video') continue;
-      const clip = track.items.find((it) => it.id === itemId);
-      if (!clip || clip.kind !== 'clip') continue;
-      return true;
-    }
-    return false;
-  });
+  const hasAudioOrVideoWithAudio = computed(() => audioClipRefs.value.length > 0);
+  const hasVideo = computed(() => thumbnailClipRefs.value.length > 0);
+  const hasVisual = computed(() => visualClipRefs.value.length > 0);
+  const hasSpeedControls = computed(() => speedClipRefs.value.length > 0);
+  const hasSourceOrientationControls = computed(() => sourceOrientationClipRefs.value.length > 0);
+  const hasAutoMontageControls = computed(() => autoMontageClipRefs.value.length > 0);
 
   function handleRelativeStartShift(deltaUs: number) {
     const doc = ctx.timelineDoc.value;
@@ -372,18 +334,12 @@ export function useClipBatchActions(
 
   function toggleDisabled() {
     const nextVal = !allDisabled.value;
-    const doc = ctx.timelineDoc.value;
-    const cmds: unknown[] = [];
-    for (const { trackId, itemId } of items.value) {
-      const track = doc?.tracks.find((t) => t.id === trackId);
-      if (track?.kind === 'audio') continue;
-      cmds.push({
-        type: 'update_clip_properties',
-        trackId,
-        itemId,
-        properties: { disabled: nextVal },
-      });
-    }
+    const cmds = selectedClipRefs.value.map(({ track, clip }) => ({
+      type: 'update_clip_properties',
+      trackId: track.id,
+      itemId: clip.id,
+      properties: { disabled: nextVal },
+    }));
     if (cmds.length > 0) {
       ctx.batchApplyTimeline(cmds, {
         labelKey: 'videoEditor.fileManager.history.entries.toggleDisabled',
@@ -393,35 +349,12 @@ export function useClipBatchActions(
 
   function toggleMuted() {
     const nextVal = !allMuted.value;
-    const doc = ctx.timelineDoc.value;
-    const cmds: unknown[] = [];
-    for (const { trackId, itemId } of items.value) {
-      const track = doc?.tracks.find((t) => t.id === trackId);
-      const clip = track?.items.find((it) => it.id === itemId);
-      if (!track || !clip || clip.kind !== 'clip') continue;
-
-      const isAudioTrack = track.kind === 'audio';
-      const isVideoWithAudio =
-        track.kind === 'video' &&
-        clip.clipType === 'media' &&
-        (Boolean((clip as TimelineClipItem).linkedVideoClipId) ||
-          Boolean(
-            (
-              ctx.mediaMetadata.value[clip.source?.path ?? ''] as
-                | Record<string, unknown>
-                | undefined
-            )?.audio,
-          ));
-
-      if (isAudioTrack || isVideoWithAudio) {
-        cmds.push({
-          type: 'update_clip_properties',
-          trackId,
-          itemId,
-          properties: { audioMuted: nextVal },
-        });
-      }
-    }
+    const cmds = audioClipRefs.value.map(({ track, clip }) => ({
+      type: 'update_clip_properties',
+      trackId: track.id,
+      itemId: clip.id,
+      properties: { audioMuted: nextVal },
+    }));
     if (cmds.length > 0) {
       ctx.batchApplyTimeline(cmds, {
         labelKey: 'videoEditor.fileManager.history.entries.toggleMute',
@@ -431,12 +364,13 @@ export function useClipBatchActions(
 
   function toggleShowWaveform() {
     const nextVal = !isWaveformShown.value;
-    const cmds = items.value.map(({ trackId, itemId }) => ({
+    const cmds = waveformClipRefs.value.map(({ track, clip }) => ({
       type: 'update_clip_properties' as const,
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       properties: { showWaveform: nextVal },
     }));
+    if (cmds.length === 0) return;
     ctx.batchApplyTimeline(cmds, {
       labelKey: 'videoEditor.fileManager.history.entries.toggleWaveform',
     });
@@ -444,12 +378,13 @@ export function useClipBatchActions(
 
   function toggleWaveformMode() {
     const nextVal: 'full' | 'half' = isWaveformFull.value ? 'half' : 'full';
-    const cmds = items.value.map(({ trackId, itemId }) => ({
+    const cmds = waveformClipRefs.value.map(({ track, clip }) => ({
       type: 'update_clip_properties' as const,
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       properties: { audioWaveformMode: nextVal },
     }));
+    if (cmds.length === 0) return;
     ctx.batchApplyTimeline(cmds, {
       labelKey: 'videoEditor.fileManager.history.entries.toggleWaveformMode',
     });
@@ -457,12 +392,13 @@ export function useClipBatchActions(
 
   function toggleShowThumbnails() {
     const nextVal = !isThumbnailsShown.value;
-    const cmds = items.value.map(({ trackId, itemId }) => ({
+    const cmds = thumbnailClipRefs.value.map(({ track, clip }) => ({
       type: 'update_clip_properties' as const,
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       properties: { showThumbnails: nextVal },
     }));
+    if (cmds.length === 0) return;
     ctx.batchApplyTimeline(cmds, {
       labelKey: 'videoEditor.fileManager.history.entries.toggleThumbnails',
     });
@@ -505,22 +441,26 @@ export function useClipBatchActions(
 
   function handleBatchUpdateProperties(
     properties: Partial<TimelineClipItem> | ((clip: TimelineClipItem) => Partial<TimelineClipItem>),
+    targets: Array<{ trackId: string; itemId: string }> = items.value,
   ) {
     const doc = ctx.timelineDoc.value;
-    const cmds = items.value.map(({ trackId, itemId }) => {
-      let props = properties;
-      if (typeof properties === 'function') {
-        const track = doc?.tracks.find((t) => t.id === trackId);
-        const clip = track?.items.find((it) => it.id === itemId) as TimelineClipItem;
-        props = clip ? properties(clip) : {};
-      }
-      return {
-        type: 'update_clip_properties' as const,
-        trackId,
-        itemId,
-        properties: props,
-      };
-    });
+    const cmds = targets
+      .map(({ trackId, itemId }) => {
+        let props = properties;
+        if (typeof properties === 'function') {
+          const track = doc?.tracks.find((t) => t.id === trackId);
+          const clip = track?.items.find((it) => it.id === itemId) as TimelineClipItem;
+          props = clip ? properties(clip) : {};
+        }
+        return {
+          type: 'update_clip_properties' as const,
+          trackId,
+          itemId,
+          properties: props,
+        };
+      })
+      .filter((cmd) => Object.keys(cmd.properties).length > 0);
+    if (cmds.length === 0) return;
     ctx.batchApplyTimeline(cmds, {
       labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
     });
@@ -582,7 +522,17 @@ export function useClipBatchActions(
     isThumbnailsShown,
     hasAudioOrVideoWithAudio,
     hasVideo,
-    hasVideoOrImage,
+    hasVisual,
+    hasSpeedControls,
+    hasSourceOrientationControls,
+    hasAutoMontageControls,
+    audioClipRefs,
+    waveformClipRefs,
+    thumbnailClipRefs,
+    visualClipRefs,
+    speedClipRefs,
+    sourceOrientationClipRefs,
+    autoMontageClipRefs,
     handleUnlinkSelected,
     handleGroupSelected,
     handleUngroupSelected,
@@ -601,5 +551,7 @@ export function useClipBatchActions(
     handleBatchUpdateProperties,
     firstVideoClip,
     firstWaveformClip,
+    firstSpeedClip,
+    firstSourceOrientationClip,
   };
 }

@@ -137,7 +137,6 @@ const {
   toggleLocked,
   toggleSolo,
   hasAudioOrVideoWithAudio,
-  hasVideoOrImage,
 } = useClipBatchActions(
   computed(() => selectedClips.value ?? []),
   {
@@ -563,7 +562,6 @@ async function onClipAction(payload: TimelineClipActionPayload) {
             @click="handleCutClips"
           />
           <MobileDrawerToolbarButton
-            v-if="hasVideoOrImage"
             :icon="allDisabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
             :label="allDisabled ? t('fastcat.timeline.enable') : t('fastcat.timeline.disable')"
             @click="toggleDisabled"

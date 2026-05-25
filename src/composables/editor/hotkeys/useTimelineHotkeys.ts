@@ -9,6 +9,11 @@ import { getDocFps } from '~/timeline/commands/utils';
 import type { TimelineClipItem } from '~/timeline/types';
 import { createClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
+import {
+  clipSupportsThumbnailControls,
+  clipSupportsWaveformControls,
+  getSelectedClipRefs,
+} from '~/utils/timeline/clip-capabilities';
 
 const AUDIO_MIXER_GAIN_STEP = 0.05;
 
@@ -465,29 +470,19 @@ export function useTimelineHotkeys(
       const doc = timelineStore.timelineDoc;
       if (!doc) return false;
 
-      const selectedSet = new Set(timelineStore.selectedItemIds);
-      let currentMode: 'half' | 'full' | undefined;
-      for (const track of doc.tracks) {
-        for (const item of track.items) {
-          if (selectedSet.has(item.id) && item.kind === 'clip') {
-            currentMode = item.audioWaveformMode || 'half';
-            break;
-          }
-        }
-        if (currentMode) break;
-      }
+      const targets = getSelectedClipRefs(
+        doc,
+        timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
+      ).filter(({ track, clip }) => clipSupportsWaveformControls(track, clip));
+      const currentMode = targets[0]?.clip.audioWaveformMode || 'half';
 
-      if (!currentMode) return false;
+      if (targets.length === 0) return false;
       const nextMode = currentMode === 'half' ? 'full' : 'half';
 
-      for (const track of doc.tracks) {
-        for (const item of track.items) {
-          if (selectedSet.has(item.id) && item.kind === 'clip') {
-            timelineStore.updateClipProperties(track.id, item.id, {
-              audioWaveformMode: nextMode,
-            });
-          }
-        }
+      for (const { track, clip } of targets) {
+        timelineStore.updateClipProperties(track.id, clip.id, {
+          audioWaveformMode: nextMode,
+        });
       }
       void timelineStore.requestTimelineSave({ immediate: true });
       return true;
@@ -500,27 +495,19 @@ export function useTimelineHotkeys(
       const doc = timelineStore.timelineDoc;
       if (!doc) return false;
 
-      const selectedSet = new Set(timelineStore.selectedItemIds);
-      let currentShow = true;
-      for (const track of doc.tracks) {
-        for (const item of track.items) {
-          if (selectedSet.has(item.id) && item.kind === 'clip') {
-            currentShow = item.showWaveform !== false;
-            break;
-          }
-        }
-      }
+      const targets = getSelectedClipRefs(
+        doc,
+        timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
+      ).filter(({ track, clip }) => clipSupportsWaveformControls(track, clip));
+      if (targets.length === 0) return false;
 
+      const currentShow = targets[0]?.clip.showWaveform !== false;
       const nextShow = !currentShow;
 
-      for (const track of doc.tracks) {
-        for (const item of track.items) {
-          if (selectedSet.has(item.id) && item.kind === 'clip') {
-            timelineStore.updateClipProperties(track.id, item.id, {
-              showWaveform: nextShow,
-            });
-          }
-        }
+      for (const { track, clip } of targets) {
+        timelineStore.updateClipProperties(track.id, clip.id, {
+          showWaveform: nextShow,
+        });
       }
       void timelineStore.requestTimelineSave({ immediate: true });
       return true;
@@ -533,27 +520,19 @@ export function useTimelineHotkeys(
       const doc = timelineStore.timelineDoc;
       if (!doc) return false;
 
-      const selectedSet = new Set(timelineStore.selectedItemIds);
-      let currentShow = true;
-      for (const track of doc.tracks) {
-        for (const item of track.items) {
-          if (selectedSet.has(item.id) && item.kind === 'clip') {
-            currentShow = item.showThumbnails !== false;
-            break;
-          }
-        }
-      }
+      const targets = getSelectedClipRefs(
+        doc,
+        timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
+      ).filter(({ track, clip }) => clipSupportsThumbnailControls(track, clip));
+      if (targets.length === 0) return false;
 
+      const currentShow = targets[0]?.clip.showThumbnails !== false;
       const nextShow = !currentShow;
 
-      for (const track of doc.tracks) {
-        for (const item of track.items) {
-          if (selectedSet.has(item.id) && item.kind === 'clip') {
-            timelineStore.updateClipProperties(track.id, item.id, {
-              showThumbnails: nextShow,
-            });
-          }
-        }
+      for (const { track, clip } of targets) {
+        timelineStore.updateClipProperties(track.id, clip.id, {
+          showThumbnails: nextShow,
+        });
       }
       void timelineStore.requestTimelineSave({ immediate: true });
       return true;

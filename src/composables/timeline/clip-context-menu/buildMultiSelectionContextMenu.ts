@@ -166,7 +166,7 @@ export function buildMultiSelectionContextMenu(
     },
   });
 
-  if (state.hasVideo) {
+  if (state.waveformItemsToUpdate.length > 0) {
     mainGroup.push({
       label: state.allShowWaveform
         ? options.t('fastcat.timeline.hideWaveform')
@@ -183,7 +183,9 @@ export function buildMultiSelectionContextMenu(
         await options.requestTimelineSave({ immediate: true });
       },
     });
+  }
 
+  if (state.hasVideo) {
     mainGroup.push({
       label: state.allShowThumbnails
         ? options.t('fastcat.timeline.hideThumbnails')

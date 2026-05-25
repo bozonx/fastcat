@@ -72,9 +72,19 @@ const {
   isThumbnailsShown,
   hasAudioOrVideoWithAudio,
   hasVideo,
-  hasVideoOrImage,
+  hasVisual,
+  hasSpeedControls,
+  hasSourceOrientationControls,
+  hasAutoMontageControls,
   firstVideoClip,
   firstWaveformClip,
+  firstSpeedClip,
+  firstSourceOrientationClip,
+  audioClipRefs,
+  visualClipRefs,
+  speedClipRefs,
+  sourceOrientationClipRefs,
+  autoMontageClipRefs,
   handleUnlinkSelected,
   handleGroupSelected,
   handleUngroupSelected,
@@ -147,15 +157,26 @@ function onDurationShiftChange(newVal: number) {
 }
 
 const firstClip = computed(() => selectedClips.value[0]);
+const transformReferenceClip = computed(
+  () => firstSourceOrientationClip.value ?? firstVideoClip.value,
+);
 
 const batchOpacity = computed({
-  get: () => firstClip.value?.opacity ?? 1,
-  set: (val: number) => handleBatchUpdateProperties({ opacity: val }),
+  get: () => firstVideoClip.value?.opacity ?? 1,
+  set: (val: number) =>
+    handleBatchUpdateProperties(
+      { opacity: val },
+      visualClipRefs.value.map(({ track, clip }) => ({ trackId: track.id, itemId: clip.id })),
+    ),
 });
 
 const batchBlendMode = computed({
-  get: () => firstClip.value?.blendMode ?? 'normal',
-  set: (val: TimelineBlendMode) => handleBatchUpdateProperties({ blendMode: val }),
+  get: () => firstVideoClip.value?.blendMode ?? 'normal',
+  set: (val: TimelineBlendMode) =>
+    handleBatchUpdateProperties(
+      { blendMode: val },
+      visualClipRefs.value.map(({ track, clip }) => ({ trackId: track.id, itemId: clip.id })),
+    ),
 });
 
 const {
@@ -184,30 +205,14 @@ const {
   tracks: computed(() => timelineStore.timelineDoc?.tracks),
   mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
   updateAudio: (patch) => {
-    const doc = timelineStore.timelineDoc;
-    if (!doc) return;
-    const cmds: import('~/timeline/commands').TimelineCommand[] = [];
-    for (const { trackId, itemId } of props.items) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      const clip = track?.items.find((it) => it.id === itemId);
-      if (!track || !clip || clip.kind !== 'clip') continue;
-
-      const isAudioTrack = track.kind === 'audio';
-      const isVideoWithAudio =
-        track.kind === 'video' &&
-        clip.clipType === 'media' &&
-        (Boolean(clip.linkedVideoClipId) ||
-          Boolean(mediaStore.mediaMetadata[clip.source?.path ?? '']?.audio));
-
-      if (isAudioTrack || isVideoWithAudio) {
-        cmds.push({
-          type: 'update_clip_properties',
-          trackId,
-          itemId,
-          properties: patch,
-        });
-      }
-    }
+    const cmds: import('~/timeline/commands').TimelineCommand[] = audioClipRefs.value.map(
+      ({ track, clip }) => ({
+        type: 'update_clip_properties',
+        trackId: track.id,
+        itemId: clip.id,
+        properties: patch,
+      }),
+    );
     if (cmds.length > 0) {
       timelineStore.batchApplyTimeline(cmds);
     }
@@ -224,13 +229,11 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
 
   if (current) {
-    for (const { trackId, itemId } of props.items) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track || track.kind === 'audio') continue;
+    for (const { track, clip } of visualClipRefs.value) {
       cmds.push({
         type: 'update_clip_transition',
-        trackId,
-        itemId,
+        trackId: track.id,
+        itemId: clip.id,
         ...(edge === 'in' ? { transitionIn: null } : { transitionOut: null }),
       });
     }
@@ -242,12 +245,7 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
       ),
     );
 
-    for (const { trackId, itemId } of props.items) {
-      const track = doc.tracks.find((t) => t.id === trackId);
-      if (!track || track.kind === 'audio') continue;
-      const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
-      if (!clip || clip.kind !== 'clip') continue;
-
+    for (const { track, clip } of visualClipRefs.value) {
       const clipDurationUs = Math.max(0, Math.round(Number(clip.timelineRange?.durationUs ?? 0)));
       const suggestedDurationUs =
         clipDurationUs > 0 && clipDurationUs < safeDefaultDurationUs
@@ -263,8 +261,8 @@ function handleBatchToggleTransition(edge: 'in' | 'out') {
 
       cmds.push({
         type: 'update_clip_transition',
-        trackId,
-        itemId,
+        trackId: track.id,
+        itemId: clip.id,
         ...(edge === 'in' ? { transitionIn: transition } : { transitionOut: transition }),
       });
     }
@@ -280,19 +278,14 @@ function handleBatchUpdateTransitionDuration(edge: 'in' | 'out', durationSec: nu
   if (!doc) return;
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
   const durationUs = Math.round(durationSec * 1_000_000);
-  for (const { trackId, itemId } of props.items) {
-    const track = doc.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind === 'audio') continue;
-    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
-    if (!clip || clip.kind !== 'clip') continue;
-
+  for (const { track, clip } of visualClipRefs.value) {
     const current = edge === 'in' ? clip.transitionIn : clip.transitionOut;
     if (!current) continue;
 
     cmds.push({
       type: 'update_clip_transition',
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       ...(edge === 'in'
         ? { transitionIn: { ...current, durationUs } }
         : { transitionOut: { ...current, durationUs } }),
@@ -305,19 +298,14 @@ function handleBatchUpdateTransitionType(edge: 'in' | 'out', type: string) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
-  for (const { trackId, itemId } of props.items) {
-    const track = doc.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind === 'audio') continue;
-    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
-    if (!clip || clip.kind !== 'clip') continue;
-
+  for (const { track, clip } of visualClipRefs.value) {
     const current = edge === 'in' ? clip.transitionIn : clip.transitionOut;
     if (!current) continue;
 
     cmds.push({
       type: 'update_clip_transition',
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       ...(edge === 'in'
         ? { transitionIn: { ...current, type } }
         : { transitionOut: { ...current, type } }),
@@ -338,7 +326,7 @@ function clampNumber(value: number, min: number, max: number): number {
 }
 
 function handleBatchTransform(next: ClipTransform) {
-  const baseTransform = firstVideoClip.value?.transform || {};
+  const baseTransform = transformReferenceClip.value?.transform || {};
 
   const newAnchor = next.anchor;
 
@@ -369,12 +357,7 @@ function handleBatchTransform(next: ClipTransform) {
 
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
 
-  for (const { trackId, itemId } of props.items) {
-    const track = doc.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind !== 'video') continue;
-    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
-    if (!clip || clip.kind !== 'clip') continue;
-
+  for (const { track, clip } of visualClipRefs.value) {
     const curr = clip.transform || {};
 
     const currScaleXMag = Math.abs(curr.scale?.x ?? 1);
@@ -385,8 +368,8 @@ function handleBatchTransform(next: ClipTransform) {
 
     cmds.push({
       type: 'update_clip_properties',
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       properties: {
         transform: {
           ...curr,
@@ -422,13 +405,11 @@ function handleBatchUpdateSpeed(speed: number) {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
-  for (const { trackId, itemId } of props.items) {
-    const track = doc.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind !== 'video') continue;
+  for (const { track, clip } of speedClipRefs.value) {
     cmds.push({
       type: 'update_clip_properties',
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       properties: { speed },
     });
   }
@@ -436,23 +417,25 @@ function handleBatchUpdateSpeed(speed: number) {
 }
 
 function handleBatchUpdateSourceOrientation(sourceOrientation: ClipSourceOrientation) {
-  handleBatchUpdateProperties({ sourceOrientation });
+  handleBatchUpdateProperties(
+    { sourceOrientation },
+    sourceOrientationClipRefs.value.map(({ track, clip }) => ({
+      trackId: track.id,
+      itemId: clip.id,
+    })),
+  );
 }
 
 function handleBatchToggleReversed() {
   const doc = timelineStore.timelineDoc;
   if (!doc) return;
   const cmds: import('~/timeline/commands').TimelineCommand[] = [];
-  for (const { trackId, itemId } of props.items) {
-    const track = doc.tracks.find((t) => t.id === trackId);
-    if (!track || track.kind !== 'video') continue;
-    const clip = track.items.find((it) => it.id === itemId) as TimelineClipItem;
-    if (!clip || clip.kind !== 'clip') continue;
+  for (const { track, clip } of speedClipRefs.value) {
     const currentSpeed = typeof clip.speed === 'number' ? clip.speed : 1;
     cmds.push({
       type: 'update_clip_properties',
-      trackId,
-      itemId,
+      trackId: track.id,
+      itemId: clip.id,
       properties: { speed: -currentSpeed },
     });
   }
@@ -556,14 +539,17 @@ const otherActions = computed(() => {
     });
   }
 
-  if (hasAudioOrVideoWithAudio.value) {
+  if (hasAutoMontageControls.value) {
     result.push({
       id: 'autoMontage',
       label: t('fastcat.timeline.autoMontage.title'),
       icon: 'i-heroicons-sparkles',
-      onClick: () => uiStore.triggerOpenAutoMontage(props.items.map((it) => it.itemId)),
+      onClick: () =>
+        uiStore.triggerOpenAutoMontage(autoMontageClipRefs.value.map(({ clip }) => clip.id)),
     });
+  }
 
+  if (hasAudioOrVideoWithAudio.value) {
     result.push({
       id: 'toggle-waveform',
       label: isWaveformShown.value
@@ -576,8 +562,8 @@ const otherActions = computed(() => {
     result.push({
       id: 'waveform-mode',
       label: isWaveformFull.value
-        ? t('fastcat.timeline.waveformHalf')
-        : t('fastcat.timeline.waveformFull'),
+        ? t('fastcat.timeline.showHalfWaveform')
+        : t('fastcat.timeline.showFullWaveform'),
       icon: 'i-heroicons-chart-bar',
       onClick: toggleWaveformMode,
     });
@@ -619,7 +605,7 @@ const otherActions = computed(() => {
     />
 
     <ClipTransitionsSection
-      v-if="hasVideoOrImage && firstVideoClip"
+      v-if="hasVisual && firstVideoClip"
       :is-video-track="true"
       :transition-in="firstVideoClip.transitionIn ?? null"
       :transition-out="firstVideoClip.transitionOut ?? null"
@@ -633,13 +619,14 @@ const otherActions = computed(() => {
     />
 
     <MultiClipBlendOpacitySection
-      v-if="hasVideoOrImage"
+      v-if="hasVisual"
       v-model:opacity="batchOpacity"
       v-model:blend-mode="batchBlendMode"
       :blend-mode-options="blendModeOptions"
     />
 
     <ClipAudioSection
+      v-if="hasAudioOrVideoWithAudio && firstWaveformClip"
       :can-edit-audio-fades="canEditAudioFades"
       :can-edit-audio-balance="canEditAudioBalance"
       :can-edit-audio-gain="canEditAudioGain"
@@ -666,17 +653,17 @@ const otherActions = computed(() => {
     />
 
     <ClipTransformSection
-      v-if="hasVideoOrImage && firstVideoClip"
-      :clip="firstVideoClip"
+      v-if="hasVisual && transformReferenceClip"
+      :clip="transformReferenceClip"
       track-kind="video"
-      :can-edit-reversed="
-        firstVideoClip.clipType === 'media' || firstVideoClip.clipType === 'timeline'
-      "
-      :is-reversed="typeof firstVideoClip.speed === 'number' && firstVideoClip.speed < 0"
+      :can-edit-reversed="hasSpeedControls"
+      :is-reversed="typeof firstSpeedClip?.speed === 'number' && firstSpeedClip.speed < 0"
       :media-meta="mediaMeta"
       @update-transform="handleBatchTransform"
-      @update-source-orientation="handleBatchUpdateSourceOrientation"
-      @toggle-reversed="handleBatchToggleReversed"
+      @update-source-orientation="
+        hasSourceOrientationControls ? handleBatchUpdateSourceOrientation($event) : undefined
+      "
+      @toggle-reversed="hasSpeedControls ? handleBatchToggleReversed() : undefined"
       @update-speed="handleBatchUpdateSpeed"
     />
   </div>

@@ -1,5 +1,10 @@
 import { sanitizeFps } from '~/timeline/commands/utils';
-import type { TimelineClipItem, TimelineDocument, TimelineTrack } from '~/timeline/types';
+import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
+import {
+  clipSupportsAudioControls,
+  clipSupportsAutoMontage,
+  clipSupportsThumbnailControls,
+} from '~/utils/timeline/clip-capabilities';
 import type { MultiSelectionItemRef, MultiSelectionState } from './types';
 
 export function isClipFreePosition(clip: TimelineClipItem, doc: TimelineDocument | null): boolean {
@@ -12,36 +17,6 @@ export function isClipFreePosition(clip: TimelineClipItem, doc: TimelineDocument
   const isDurationQuantized = Math.abs(durFrame - Math.round(durFrame)) < 0.001;
 
   return !isStartQuantized || !isDurationQuantized;
-}
-
-export function clipSupportsAudioControls(
-  track: Pick<TimelineTrack, 'kind'>,
-  clip: Pick<TimelineClipItem, 'clipType' | 'isImage' | 'audioFromVideoDisabled'>,
-): boolean {
-  if (track.kind === 'audio') return true;
-  if (track.kind !== 'video') return false;
-  if (clip.audioFromVideoDisabled) return false;
-  if (clip.clipType === 'timeline') return true;
-  return clip.clipType === 'media' && !clip.isImage;
-}
-
-export function clipSupportsThumbnails(
-  track: Pick<TimelineTrack, 'kind'>,
-  clip: Pick<TimelineClipItem, 'clipType'>,
-): boolean {
-  return (
-    track.kind === 'video' && (clip.clipType === 'media' || clip.clipType === 'timeline')
-  );
-}
-
-export function clipSupportsSpeedControls(
-  track: Pick<TimelineTrack, 'kind'>,
-  clip: Pick<TimelineClipItem, 'clipType' | 'isImage'>,
-): boolean {
-  if (track.kind === 'audio') return true;
-  if (track.kind !== 'video') return false;
-  if (clip.clipType === 'timeline') return true;
-  return clip.clipType === 'media' && !clip.isImage;
 }
 
 export function collectMultiSelectionState(
@@ -142,7 +117,7 @@ export function collectMultiSelectionState(
       const clip = track.items.find((candidateItem) => candidateItem.id === itemId);
       if (!clip || clip.kind !== 'clip') continue;
 
-      if (clipSupportsThumbnails(track, clip)) {
+      if (clipSupportsThumbnailControls(track, clip)) {
         hasVideo = true;
         thumbnailItemsToUpdate.push({ trackId, itemId });
       }
@@ -158,11 +133,11 @@ export function collectMultiSelectionState(
         if (clip.audioWaveformMode === 'full') allWaveformHalf = false;
       }
 
-      if (clipSupportsThumbnails(track, clip) && clip.showThumbnails === false) {
+      if (clipSupportsThumbnailControls(track, clip) && clip.showThumbnails === false) {
         allShowThumbnails = false;
       }
 
-      if (track.kind === 'video' && clip.clipType === 'media' && !clip.isImage) {
+      if (clipSupportsAutoMontage(track, clip)) {
         autoMontageItemsToUpdate.push({ trackId, itemId });
       }
     }

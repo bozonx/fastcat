@@ -106,9 +106,21 @@ const mockClipBatchActions = {
   isThumbnailsShown: ref(false),
   hasAudioOrVideoWithAudio: ref(false),
   hasVideo: ref(false),
-  hasVideoOrImage: ref(false),
+  hasVisual: ref(false),
+  hasSpeedControls: ref(false),
+  hasSourceOrientationControls: ref(false),
+  hasAutoMontageControls: ref(false),
   firstVideoClip: ref(null as any),
   firstWaveformClip: ref(null as any),
+  firstSpeedClip: ref(null as any),
+  firstSourceOrientationClip: ref(null as any),
+  audioClipRefs: ref([] as any[]),
+  waveformClipRefs: ref([] as any[]),
+  thumbnailClipRefs: ref([] as any[]),
+  visualClipRefs: ref([] as any[]),
+  speedClipRefs: ref([] as any[]),
+  sourceOrientationClipRefs: ref([] as any[]),
+  autoMontageClipRefs: ref([] as any[]),
   handleUnlinkSelected: vi.fn(),
   handleGroupSelected: vi.fn(),
   handleUngroupSelected: vi.fn(),
@@ -162,8 +174,21 @@ describe('MultiClipProperties.vue', () => {
 
     // Reset batch actions defaults
     mockClipBatchActions.selectedClips.value = [];
-    mockClipBatchActions.hasVideoOrImage.value = false;
+    mockClipBatchActions.hasVisual.value = false;
+    mockClipBatchActions.hasSpeedControls.value = false;
+    mockClipBatchActions.hasSourceOrientationControls.value = false;
+    mockClipBatchActions.hasAutoMontageControls.value = false;
     mockClipBatchActions.firstVideoClip.value = null;
+    mockClipBatchActions.firstWaveformClip.value = null;
+    mockClipBatchActions.firstSpeedClip.value = null;
+    mockClipBatchActions.firstSourceOrientationClip.value = null;
+    mockClipBatchActions.audioClipRefs.value = [];
+    mockClipBatchActions.waveformClipRefs.value = [];
+    mockClipBatchActions.thumbnailClipRefs.value = [];
+    mockClipBatchActions.visualClipRefs.value = [];
+    mockClipBatchActions.speedClipRefs.value = [];
+    mockClipBatchActions.sourceOrientationClipRefs.value = [];
+    mockClipBatchActions.autoMontageClipRefs.value = [];
   });
 
   const defaultProps = {
@@ -174,6 +199,14 @@ describe('MultiClipProperties.vue', () => {
   };
 
   async function mountComponent(props = defaultProps) {
+    if (
+      mockClipBatchActions.firstVideoClip.value &&
+      mockClipBatchActions.visualClipRefs.value.length === 0
+    ) {
+      mockClipBatchActions.hasVisual.value = true;
+      const track = mockTimelineStore.timelineDoc.tracks[0];
+      mockClipBatchActions.visualClipRefs.value = track.items.map((clip: any) => ({ track, clip }));
+    }
     return await mountSuspended(MultiClipProperties, {
       props,
     });
@@ -192,13 +225,16 @@ describe('MultiClipProperties.vue', () => {
     expect(wrapper.find('[data-testid="blend-opacity-section"]').exists()).toBe(false);
 
     // Set video or image selection active
-    mockClipBatchActions.hasVideoOrImage.value = true;
+    mockClipBatchActions.hasVisual.value = true;
     mockClipBatchActions.firstVideoClip.value = {
       id: 'clip-1',
       trackId: 'track-1',
       clipType: 'media',
       timelineRange: { durationUs: 5000000 },
     };
+    mockClipBatchActions.visualClipRefs.value = [
+      { track: { id: 'track-1', kind: 'video' }, clip: mockClipBatchActions.firstVideoClip.value },
+    ];
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="transitions-section"]').exists()).toBe(true);
