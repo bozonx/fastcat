@@ -164,8 +164,8 @@ describe('useTimelineRulerDraw', () => {
     scheduleDraw?.();
 
     const renderStartPx = Math.max(0, scrollLeft - 512);
-    const expectedCanvasX = Math.round(tickAbsPx - renderStartPx) + 0.5;
-    const oldRealSecondCanvasX = Math.round(timeUsToPx(600_000_000, zoom) - renderStartPx) + 0.5;
+    const expectedCanvasX = Math.round(tickAbsPx) - renderStartPx + 0.5;
+    const oldRealSecondCanvasX = Math.round(timeUsToPx(600_000_000, zoom)) - renderStartPx + 0.5;
     const majorTickXs = fillText.mock.calls.map((call) => call[1]);
 
     expect(majorTickXs).toContain(expectedCanvasX);

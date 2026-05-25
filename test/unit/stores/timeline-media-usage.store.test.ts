@@ -13,8 +13,12 @@ const workspaceStoreMock = reactive({
   projectsHandle: { getDirectoryHandle: vi.fn() } as any,
 });
 
-const { mockGetFile } = vi.hoisted(() => ({
+const { mockGetFile, parseTimelineFromOtioMock } = vi.hoisted(() => ({
   mockGetFile: vi.fn(),
+  parseTimelineFromOtioMock: vi.fn((text: string) => ({
+    name: text,
+    tracks: [{ id: 'v1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip' }] }],
+  })),
 }));
 
 vi.mock('~/stores/project.store', () => ({
@@ -30,7 +34,7 @@ vi.mock('~/composables/useVfs', () => ({
 }));
 
 vi.mock('~/timeline/otio-serializer', () => ({
-  parseTimelineFromOtio: vi.fn((text: string) => ({ name: text, tracks: [] })),
+  parseTimelineFromOtio: parseTimelineFromOtioMock,
 }));
 
 vi.mock('~/timeline/id', () => ({
@@ -118,5 +122,29 @@ describe('TimelineMediaUsageStore', () => {
     expect(mockGetFile).toHaveBeenCalledWith('timeline1.otio');
     expect(mockGetFile).toHaveBeenCalledWith('subfolder/timeline2.otio');
     expect(mockGetFile).not.toHaveBeenCalledWith('.fastcat/autosave/timeline1.otio');
+    expect(parseTimelineFromOtioMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Object),
+      { logWarnings: false },
+    );
+  });
+
+  it('skips empty or invalid timelines during background media usage scan', async () => {
+    const projectDir = createMockDirEntry('test-project', [createMockFileEntry('broken.otio')]);
+    workspaceStoreMock.projectsHandle = {
+      getDirectoryHandle: vi.fn().mockResolvedValue(projectDir),
+    };
+    mockGetFile.mockResolvedValue({
+      text: () => Promise.resolve(JSON.stringify({ OTIO_SCHEMA: 'Timeline.1', name: 'broken' })),
+    } as unknown as File);
+    parseTimelineFromOtioMock.mockReturnValueOnce({
+      name: 'broken',
+      tracks: [{ id: 'v1', kind: 'video', items: [] }],
+    });
+
+    const store = useTimelineMediaUsageStore();
+    await store.refreshUsage();
+
+    expect(store.mediaPathToTimelines).toEqual({});
   });
 });

@@ -470,15 +470,17 @@ function parseDocumentMetadata(raw: unknown): {
 export function parseTimelineFromOtio(
   text: string,
   fallback: { id: string; name: string; format: TimelineFormatInput },
+  options?: { logWarnings?: boolean },
 ): TimelineDocument {
   const report = new OtioValidationReport();
+  const shouldLogWarnings = options?.logWarnings ?? true;
 
   let parsed: OtioTimeline | null = null;
   try {
     parsed = JSON.parse(text);
   } catch {
     report.warn('invalid_json', 'Failed to parse OTIO JSON.');
-    report.log();
+    if (shouldLogWarnings) report.log();
     return createDefaultTimelineDocument({
       id: fallback.id,
       name: fallback.name,
@@ -491,7 +493,7 @@ export function parseTimelineFromOtio(
       'invalid_schema',
       `Expected Timeline.1, got ${(parsed as { OTIO_SCHEMA?: string })?.OTIO_SCHEMA}.`,
     );
-    report.log();
+    if (shouldLogWarnings) report.log();
     return createDefaultTimelineDocument({
       id: fallback.id,
       name: fallback.name,
@@ -743,11 +745,11 @@ export function parseTimelineFromOtio(
         masterMuted,
       },
     };
-    report.log();
+    if (shouldLogWarnings) report.log();
     return base;
   }
 
-  report.log();
+  if (shouldLogWarnings) report.log();
 
   return {
     OTIO_SCHEMA: 'Timeline.1',

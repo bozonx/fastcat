@@ -159,14 +159,24 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
       ? createTimelineDocId(projectStore.currentProjectName)
       : createTimelineDocId('unknown');
 
-    return {
-      timelinePath: params.timelinePath,
-      timelineName: nameFromPath,
-      timelineDoc: parseTimelineFromOtio(text, {
+    const timelineDoc = parseTimelineFromOtio(
+      text,
+      {
         id,
         name: nameFromPath,
         format: projectStore.projectSettings.project,
-      }),
+      },
+      { logWarnings: false },
+    );
+
+    if (timelineDoc.tracks.every((track) => track.items.length === 0)) {
+      return null;
+    }
+
+    return {
+      timelinePath: params.timelinePath,
+      timelineName: nameFromPath,
+      timelineDoc,
     };
   }
 

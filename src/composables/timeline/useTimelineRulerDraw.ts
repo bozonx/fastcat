@@ -1,7 +1,14 @@
 import { computed, ref, watch, type Ref } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
-import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { frameToUs, usToFrame } from '~/timeline/commands/utils';
+import {
+  getFirstTimelineRulerMajorFrame,
+  getTimelineFrameTickCanvasX,
+  getTimelineRulerMainStepS,
+  getTimelineRulerSubStepFrames,
+  getTimelineTickCanvasX,
+} from '~/utils/timeline/ruler-ticks';
 import { formatRulerTime } from './useTimelineRulerPresentation';
 
 interface TimelineRulerDrawOptions {
@@ -128,15 +135,10 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     const startUs = pxToTimeUs(startPx, currentZoom);
     const endUs = pxToTimeUs(endPx, currentZoom);
 
-    const MIN_DIST_PX = 90 * scale;
-    const timeStepsS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
-    let mainStepS = timeStepsS[timeStepsS.length - 1]!;
-    for (const step of timeStepsS) {
-      if (step * pxPerSec >= MIN_DIST_PX) {
-        mainStepS = step;
-        break;
-      }
-    }
+    const mainStepS = getTimelineRulerMainStepS({
+      pxPerSecond: pxPerSec,
+      interfaceScale: options.interfaceScale.value,
+    });
 
     ctx.fillStyle = options.textColor;
     ctx.strokeStyle = options.tickColor;
@@ -148,7 +150,11 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
     const startFrame = usToFrame(startUs, currentFps, 'floor');
     const endFrame = usToFrame(endUs, currentFps, 'ceil');
-    const firstMajorFrame = Math.floor(startFrame / mainStepFrames) * mainStepFrames;
+    const firstMajorFrame = getFirstTimelineRulerMajorFrame({
+      startFrame,
+      endFrame,
+      mainStepFrames,
+    });
 
     const majorTickHeight = 12 * scale;
     const subTickHeight = 5 * scale;
@@ -157,7 +163,11 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
     ctx.beginPath();
     for (let frame = firstMajorFrame; frame <= endFrame; frame += mainStepFrames) {
       const tickUs = frameToUs(frame, currentFps);
-      const x = Math.round(timeUsToPx(tickUs, currentZoom) - startPx) + 0.5;
+      const x = getTimelineTickCanvasX({
+        timeUs: tickUs,
+        zoom: currentZoom,
+        renderStartPx: startPx,
+      });
 
       if (x >= -50 && x <= nextRenderWidthPx + 50) {
         ctx.moveTo(x, h - majorTickHeight);
@@ -183,27 +193,34 @@ export function useTimelineRulerDraw(options: TimelineRulerDrawOptions) {
           subFrame < frame + mainStepFrames;
           subFrame += frameStep
         ) {
-          const frameX =
-            Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
+          const frameX = getTimelineFrameTickCanvasX({
+            frame: subFrame,
+            fps: currentFps,
+            zoom: currentZoom,
+            renderStartPx: startPx,
+          });
           if (frameX >= -50 && frameX <= nextRenderWidthPx + 50) {
             ctx.moveTo(frameX, h - subTickHeight);
             ctx.lineTo(frameX, h);
           }
         }
       } else {
-        let subStepS = 1;
-        if (mainStepS >= 60) subStepS = 10;
-        else if (mainStepS >= 10) subStepS = 5;
-        else if (mainStepS >= 5) subStepS = 1;
-        const subStepFrames = Math.max(1, Math.round(subStepS * currentFps));
+        const subStepFrames = getTimelineRulerSubStepFrames({
+          mainStepS,
+          fps: currentFps,
+        });
 
         for (
           let subFrame = frame + subStepFrames;
           subFrame < frame + mainStepFrames;
           subFrame += subStepFrames
         ) {
-          const subX =
-            Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
+          const subX = getTimelineFrameTickCanvasX({
+            frame: subFrame,
+            fps: currentFps,
+            zoom: currentZoom,
+            renderStartPx: startPx,
+          });
           if (subX >= -50 && subX <= nextRenderWidthPx + 50) {
             ctx.moveTo(subX, h - subTickHeight);
             ctx.lineTo(subX, h);

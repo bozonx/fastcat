@@ -2,8 +2,14 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { pxToTimeUs, timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
-import { frameToUs, usToFrame } from '~/timeline/commands/utils';
+import { pxToTimeUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
+import { usToFrame } from '~/timeline/commands/utils';
+import {
+  getFirstTimelineRulerMajorFrame,
+  getTimelineFrameTickCanvasX,
+  getTimelineRulerMainStepS,
+  getTimelineRulerSubStepFrames,
+} from '~/utils/timeline/ruler-ticks';
 import { useResizeObserver } from '@vueuse/core';
 
 const props = defineProps<{
@@ -103,8 +109,9 @@ onUnmounted(() => {
 
 const fps = computed(() => timelineStore.timelineFormat.fps || 30);
 const zoom = computed(() => timelineStore.timelineZoom);
+const interfaceScale = computed(() => workspaceStore.userSettings.ui.interfaceScale);
 
-watch([fps, zoom, width, height], () => {
+watch([fps, zoom, width, height, interfaceScale], () => {
   scheduleDraw();
 });
 
@@ -127,8 +134,16 @@ function draw() {
   renderStartPx.value = nextRenderStartPx;
   renderWidthPx.value = nextRenderWidthPx;
 
-  canvas.width = nextRenderWidthPx * dpr;
-  canvas.height = h * dpr;
+  const targetCanvasWidth = Math.round(nextRenderWidthPx * dpr);
+  const targetCanvasHeight = Math.round(h * dpr);
+
+  if (canvas.width !== targetCanvasWidth) {
+    canvas.width = targetCanvasWidth;
+  }
+  if (canvas.height !== targetCanvasHeight) {
+    canvas.height = targetCanvasHeight;
+  }
+
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, nextRenderWidthPx, h);
@@ -143,30 +158,32 @@ function draw() {
   const startUs = pxToTimeUs(startPx, currentZoom);
   const endUs = pxToTimeUs(endPx, currentZoom);
 
-  const scale = workspaceStore.userSettings.ui.interfaceScale / 14;
-
-  // Same step calculation as TimelineRuler for perfect sync
-  const MIN_DIST_PX = 90 * scale;
-  const timeStepsS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800, 3600];
-  let mainStepS = timeStepsS[timeStepsS.length - 1]!;
-  for (const step of timeStepsS) {
-    if (step * pxPerSec >= MIN_DIST_PX) {
-      mainStepS = step;
-      break;
-    }
-  }
+  const scale = interfaceScale.value / 14;
+  const mainStepS = getTimelineRulerMainStepS({
+    pxPerSecond: pxPerSec,
+    interfaceScale: interfaceScale.value,
+  });
 
   const mainStepFrames = Math.max(1, Math.round(mainStepS * currentFps));
   const startFrame = usToFrame(startUs, currentFps, 'floor');
   const endFrame = usToFrame(endUs, currentFps, 'ceil');
-  const firstMajorFrame = Math.floor(startFrame / mainStepFrames) * mainStepFrames;
+  const firstMajorFrame = getFirstTimelineRulerMajorFrame({
+    startFrame,
+    endFrame,
+    mainStepFrames,
+  });
 
   // Major tick lines (at labeled ruler marks)
   ctx.strokeStyle = majorTickColor;
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let frame = firstMajorFrame; frame <= endFrame; frame += mainStepFrames) {
-    const x = Math.round(timeUsToPx(frameToUs(frame, currentFps), currentZoom) - startPx) + 0.5;
+    const x = getTimelineFrameTickCanvasX({
+      frame,
+      fps: currentFps,
+      zoom: currentZoom,
+      renderStartPx: startPx,
+    });
     if (x >= -1 && x <= nextRenderWidthPx + 1) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, h);
@@ -182,8 +199,9 @@ function draw() {
     if (mainStepS === 1) {
       // Frame-level ticks at high zoom
       let frameStep = 1;
-      if (pxPerFrame < 5) {
-        frameStep = Math.ceil(5 / pxPerFrame);
+      const minFrameDistancePx = 5 * scale;
+      if (pxPerFrame < minFrameDistancePx) {
+        frameStep = Math.ceil(minFrameDistancePx / pxPerFrame);
       }
 
       const frameColor = `rgba(${tickColor.match(/(\d+),\s*(\d+),\s*(\d+)/)?.[0] || '255,255,255'}, 0.65)`;
@@ -196,8 +214,12 @@ function draw() {
         subFrame < frame + mainStepFrames;
         subFrame += frameStep
       ) {
-        const frameX =
-          Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
+        const frameX = getTimelineFrameTickCanvasX({
+          frame: subFrame,
+          fps: currentFps,
+          zoom: currentZoom,
+          renderStartPx: startPx,
+        });
         if (frameX >= -1 && frameX <= nextRenderWidthPx + 1) {
           ctx.moveTo(frameX, 0);
           ctx.lineTo(frameX, h);
@@ -208,19 +230,22 @@ function draw() {
     } else {
       ctx.strokeStyle = tickColor;
       ctx.lineWidth = 1;
-      let subStepS = 1;
-      if (mainStepS >= 60) subStepS = 10;
-      else if (mainStepS >= 10) subStepS = 5;
-      else if (mainStepS >= 5) subStepS = 1;
-      const subStepFrames = Math.max(1, Math.round(subStepS * currentFps));
+      const subStepFrames = getTimelineRulerSubStepFrames({
+        mainStepS,
+        fps: currentFps,
+      });
 
       for (
         let subFrame = frame + subStepFrames;
         subFrame < frame + mainStepFrames;
         subFrame += subStepFrames
       ) {
-        const subX =
-          Math.round(timeUsToPx(frameToUs(subFrame, currentFps), currentZoom) - startPx) + 0.5;
+        const subX = getTimelineFrameTickCanvasX({
+          frame: subFrame,
+          fps: currentFps,
+          zoom: currentZoom,
+          renderStartPx: startPx,
+        });
         if (subX >= -1 && subX <= nextRenderWidthPx + 1) {
           ctx.moveTo(subX, 0);
           ctx.lineTo(subX, h);
