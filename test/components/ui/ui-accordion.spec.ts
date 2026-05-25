@@ -2,6 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import UiAccordion from '~/components/ui/UiAccordion.vue';
 
+function isElementVisible(wrapper: any): boolean {
+  let el = wrapper.element;
+  while (el) {
+    if (el.style?.display === 'none') {
+      return false;
+    }
+    el = el.parentElement;
+  }
+  return true;
+}
+
 describe('UiAccordion', () => {
   it('renders correctly when collapsed', async () => {
     const component = await mountSuspended(UiAccordion, {
@@ -15,9 +26,9 @@ describe('UiAccordion', () => {
     });
 
     expect(component.exists()).toBe(true);
-    expect(component.find('h3').isVisible()).toBe(false);
-    expect(component.find('span').isVisible()).toBe(true);
-    expect(component.find('.accordion-content').isVisible()).toBe(false);
+    expect(isElementVisible(component.find('h3'))).toBe(false);
+    expect(isElementVisible(component.find('span'))).toBe(true);
+    expect(isElementVisible(component.find('.accordion-content'))).toBe(false);
     expect(component.find('span').text()).toBe('Test Summary');
   });
 
@@ -33,10 +44,10 @@ describe('UiAccordion', () => {
       },
     });
 
-    expect(component.find('h3').isVisible()).toBe(true);
+    expect(isElementVisible(component.find('h3'))).toBe(true);
     expect(component.find('h3').text()).toBe('Test Title');
-    expect(component.find('span').isVisible()).toBe(false);
-    expect(component.find('.accordion-content').isVisible()).toBe(true);
+    expect(isElementVisible(component.find('span'))).toBe(false);
+    expect(isElementVisible(component.find('.accordion-content'))).toBe(true);
   });
 
   it('toggles open state on button click', async () => {
@@ -50,13 +61,13 @@ describe('UiAccordion', () => {
       },
     });
 
-    expect(component.find('.accordion-content').isVisible()).toBe(false);
+    expect(isElementVisible(component.find('.accordion-content'))).toBe(false);
 
     await component.find('button').trigger('click');
     await component.vm.$nextTick();
 
-    expect(component.find('.accordion-content').isVisible()).toBe(true);
-    expect(component.find('h3').isVisible()).toBe(true);
+    expect(isElementVisible(component.find('.accordion-content'))).toBe(true);
+    expect(isElementVisible(component.find('h3'))).toBe(true);
   });
 
   it('uses defaultOpen prop when no v-model is provided', async () => {
@@ -70,8 +81,8 @@ describe('UiAccordion', () => {
       },
     });
 
-    expect(component.find('.accordion-content').isVisible()).toBe(true);
-    expect(component.find('h3').isVisible()).toBe(true);
+    expect(isElementVisible(component.find('.accordion-content'))).toBe(true);
+    expect(isElementVisible(component.find('h3'))).toBe(true);
   });
 
   it('falls back to title when summary is not provided', async () => {
@@ -81,7 +92,7 @@ describe('UiAccordion', () => {
       },
     });
 
-    expect(component.find('span').isVisible()).toBe(true);
+    expect(isElementVisible(component.find('span'))).toBe(true);
     expect(component.find('span').text()).toBe('Only Title');
   });
 

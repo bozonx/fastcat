@@ -79,6 +79,11 @@ export interface TimelinePersistenceDeps {
     timelinePath: string;
     autosavePath: string;
   }) => boolean | Promise<boolean>;
+  showRecoveryDialog?: (input: {
+    timelinePath: string;
+  }) => Promise<'open-saved' | 'restore-autosave' | 'view-backups'>;
+  onRecoveryChoice?: (choice: 'open-saved' | 'view-backups') => void;
+  exitPreview?: () => void;
   onSaveSuccess?: (serialized: string) => void;
   onSaveError?: (error: unknown) => void;
 }
@@ -453,16 +458,22 @@ export function createTimelinePersistenceModule(
     scheduleAutosave();
   }
 
-  // Under the periodic model an edit only ensures the autosave timer is armed;
-  // it never forces an immediate sidecar write. Explicit flush points (blur,
-  // tab switch, shutdown) call `flushTimelineAutosave` directly instead.
-  async function requestTimelineSave(_options?: { immediate?: boolean }) {
+  async function requestTimelineSave(options?: { immediate?: boolean }) {
     if (!deps.timelineDoc.value) return;
-    scheduleAutosave();
+    if (options?.immediate) {
+      clearAutosaveTimer();
+      await saveTimeline();
+    } else {
+      scheduleAutosave();
+    }
   }
 
   async function loadTimeline() {
     if (!deps.currentProjectName.value || !deps.currentTimelinePath.value) return;
+
+    if (deps.exitPreview) {
+      deps.exitPreview();
+    }
 
     // Preserve the outgoing tab's live edits in memory before its doc is
     // replaced, and drop any cache entries for tabs that were closed meanwhile.
@@ -516,17 +527,30 @@ export function createTimelinePersistenceModule(
         !!autosaveFile && (!mainFile || autosaveFile.lastModified > mainFile.lastModified);
 
       if (shouldOfferAutosave) {
-        const shouldRestore =
-          deps.shouldRestoreAutosaveSilently?.() ??
-          (await deps.confirmRestoreAutosave?.({
-            timelinePath: deps.currentTimelinePath.value,
-            autosavePath,
-          })) ??
-          false;
-
-        if (shouldRestore) {
+        if (deps.shouldRestoreAutosaveSilently?.()) {
           text = await autosaveFile.text();
           restoredAutosave = true;
+        } else if (deps.showRecoveryDialog) {
+          const choice = await deps.showRecoveryDialog({
+            timelinePath: deps.currentTimelinePath.value,
+          });
+          if (choice === 'restore-autosave') {
+            text = await autosaveFile.text();
+            restoredAutosave = true;
+          } else {
+            deps.onRecoveryChoice?.(choice);
+          }
+        } else {
+          const shouldRestore =
+            (await deps.confirmRestoreAutosave?.({
+              timelinePath: deps.currentTimelinePath.value,
+              autosavePath,
+            })) ?? false;
+
+          if (shouldRestore) {
+            text = await autosaveFile.text();
+            restoredAutosave = true;
+          }
         }
       }
 

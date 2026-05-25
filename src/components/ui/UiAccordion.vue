@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref, getCurrentInstance } from 'vue';
 /**
  * Unified Accordion Component
  *
@@ -27,10 +28,16 @@ const props = withDefaults(defineProps<Props>(), {
 const isOpen = defineModel<boolean>('open');
 const localOpen = ref(props.defaultOpen);
 
+const instance = getCurrentInstance();
+const hasVModel = computed(() => {
+  const vnodeProps = instance?.vnode.props;
+  return !!(vnodeProps && ('open' in vnodeProps || 'onUpdate:open' in vnodeProps));
+});
+
 const isCurrentlyOpen = computed({
-  get: () => (isOpen.value !== undefined ? isOpen.value : localOpen.value),
+  get: () => (hasVModel.value ? !!isOpen.value : localOpen.value),
   set: (value) => {
-    if (isOpen.value !== undefined) {
+    if (hasVModel.value) {
       isOpen.value = value;
     } else {
       localOpen.value = value;

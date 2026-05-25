@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { ref } from 'vue';
+import { reactive } from 'vue';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 
-const mockWorkspaceStore = {
-  workspaceProviderId: ref('web'),
-  isApiSupported: ref(true),
-  isLoading: ref(false),
-  error: ref(''),
+const mockWorkspaceStore = reactive({
+  workspaceProviderId: 'web',
+  isApiSupported: true,
+  isLoading: false,
+  error: '',
   openWorkspace: vi.fn(),
-};
+});
 
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => mockWorkspaceStore,
@@ -18,10 +18,10 @@ vi.mock('~/stores/workspace.store', () => ({
 describe('WelcomeScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockWorkspaceStore.workspaceProviderId.value = 'web';
-    mockWorkspaceStore.isApiSupported.value = true;
-    mockWorkspaceStore.isLoading.value = false;
-    mockWorkspaceStore.error.value = '';
+    mockWorkspaceStore.workspaceProviderId = 'web';
+    mockWorkspaceStore.isApiSupported = true;
+    mockWorkspaceStore.isLoading = false;
+    mockWorkspaceStore.error = '';
   });
 
   it('renders welcome screen with title', async () => {
@@ -34,15 +34,19 @@ describe('WelcomeScreen', () => {
   it('shows web workspace message by default', async () => {
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain('fastcat.welcome.selectWebWorkspace');
+    expect(component.text()).toContain(
+      'Select a workspace folder on your computer. Your browser will ask for access to store project files, media proxies, and cache.',
+    );
   });
 
   it('shows tauri workspace message when provider is tauri', async () => {
-    mockWorkspaceStore.workspaceProviderId.value = 'tauri';
+    mockWorkspaceStore.workspaceProviderId = 'tauri';
 
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain('fastcat.welcome.selectTauriWorkspace');
+    expect(component.text()).toContain(
+      'Select a workspace folder on your computer. FastCat Video Editor will store projects, source media, proxies, and cache in this folder.',
+    );
   });
 
   it('shows open workspace button when API is supported', async () => {
@@ -52,11 +56,11 @@ describe('WelcomeScreen', () => {
   });
 
   it('shows unsupported message when API is not supported', async () => {
-    mockWorkspaceStore.isApiSupported.value = false;
+    mockWorkspaceStore.isApiSupported = false;
 
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain('fastcat.fileManager.unsupported');
+    expect(component.text()).toContain('Workspace selection is not supported in this environment');
   });
 
   it('calls openWorkspace when button is clicked', async () => {
@@ -69,7 +73,7 @@ describe('WelcomeScreen', () => {
   });
 
   it('shows loading state on button when isLoading is true', async () => {
-    mockWorkspaceStore.isLoading.value = true;
+    mockWorkspaceStore.isLoading = true;
 
     const component = await mountSuspended(WelcomeScreen);
 
@@ -78,7 +82,7 @@ describe('WelcomeScreen', () => {
   });
 
   it('displays error message when error exists', async () => {
-    mockWorkspaceStore.error.value = 'Failed to open workspace';
+    mockWorkspaceStore.error = 'Failed to open workspace';
 
     const component = await mountSuspended(WelcomeScreen);
 

@@ -68,6 +68,10 @@ export const useUiStore = defineStore('ui', () => {
   const pendingBloggerDogCreateItem = ref<FsEntry | null>(null);
   const pendingFsEntryPaste = ref<FsEntry | null>(null);
   const pendingClipRename = ref<{ trackId: string; itemId: string; name: string } | null>(null);
+  const pendingRecoveryDialog = ref<{
+    timelinePath: string;
+    resolve: (choice: 'open-saved' | 'restore-autosave' | 'view-backups') => void;
+  } | null>(null);
   const clipPasteParametersTrigger = ref<{
     trackId: string;
     itemId: string;
@@ -260,6 +264,7 @@ export const useUiStore = defineStore('ui', () => {
     triggerClipPasteParameters,
     remoteExchangeModalOpen,
     remoteExchangeLocalEntry,
+    pendingRecoveryDialog,
 
     previewZoomTrigger,
     previewZoomResetTrigger,

@@ -2,6 +2,7 @@
 import BackgroundTaskToasts from '~/components/file-manager/BackgroundTaskToasts.vue';
 // import RemoteFileExchangeModal from '~/components/file-manager/RemoteFileExchangeModal.vue';
 import DesktopMediaReplaceModal from '~/components/timeline/DesktopMediaReplaceModal.vue';
+import RecoveryDialog from '~/components/timeline/RecoveryDialog.vue';
 import MobileMediaPickerDrawer from '~/components/timeline/MobileMediaPickerDrawer.vue';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useConfirmClose } from '~/composables/useConfirmClose';
@@ -59,6 +60,7 @@ if (colorMode.preference === 'system') {
       <NuxtPage />
     </NuxtLayout>
     <BackgroundTaskToasts />
+    <RecoveryDialog />
     <!-- <RemoteFileExchangeModal /> -->
     <DesktopMediaReplaceModal v-if="!isMobileLayout" />
     <MobileMediaPickerDrawer

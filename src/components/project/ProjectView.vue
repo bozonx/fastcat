@@ -6,6 +6,7 @@ import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ProjectLibrary from '~/components/project/ProjectLibrary.vue';
 import ProjectTabBar from '~/components/project/ProjectTabBar.vue';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
+import ProjectBackups from '~/components/project/ProjectBackups.vue';
 import ProjectTabFileViewer from '~/components/project/ProjectTabFileViewer.vue';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 import { useFocusStore } from '~/stores/focus.store';
@@ -76,6 +77,13 @@ onMounted(() => {
     label: t('videoEditor.fileManager.tabs.markers'),
     icon: 'i-heroicons-tag',
     component: markRaw(ProjectMarkers),
+  });
+
+  registerProjectTab({
+    id: 'backups',
+    label: t('videoEditor.timeline.backups.tabLabel'),
+    icon: 'i-heroicons-archive-box',
+    component: markRaw(ProjectBackups),
   });
 
   initDefaultTab();

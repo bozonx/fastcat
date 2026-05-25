@@ -286,4 +286,67 @@ describe('TimelinePersistenceModule', () => {
     await mod.saveTimeline();
     expect(deps.ensureTimelineFileHandle).not.toHaveBeenCalled();
   });
+
+  it('loadTimeline calls exitPreview at the beginning', async () => {
+    const exitPreview = vi.fn();
+    const deps = createMockDeps({ exitPreview });
+    const mod = createTimelinePersistenceModule(deps);
+
+    await mod.loadTimeline();
+    expect(exitPreview).toHaveBeenCalled();
+  });
+
+  it('loadTimeline handles showRecoveryDialog for open-saved and view-backups', async () => {
+    const showRecoveryDialog = vi.fn().mockResolvedValue('open-saved');
+    const onRecoveryChoice = vi.fn();
+    const mainFile = { text: async () => '{"id":"main"}', lastModified: 100 } as any;
+    const autosaveFile = { text: async () => '{"id":"autosave"}', lastModified: 200 } as any;
+    const ensureTimelineFileHandle = vi.fn(
+      async (options?: { create?: boolean; relativePath?: string }) => {
+        if (options?.relativePath?.includes('autosave')) {
+          return { getFile: async () => autosaveFile } as any;
+        }
+        return { getFile: async () => mainFile } as any;
+      },
+    );
+
+    const deps = createMockDeps({
+      showRecoveryDialog,
+      onRecoveryChoice,
+      ensureTimelineFileHandle,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+    await mod.loadTimeline();
+
+    expect(showRecoveryDialog).toHaveBeenCalled();
+    expect(onRecoveryChoice).toHaveBeenCalledWith('open-saved');
+    expect(parseTimelineFromOtio).toHaveBeenCalledWith('{"id":"main"}', expect.any(Object));
+  });
+
+  it('loadTimeline handles showRecoveryDialog for restore-autosave', async () => {
+    const showRecoveryDialog = vi.fn().mockResolvedValue('restore-autosave');
+    const onRecoveryChoice = vi.fn();
+    const mainFile = { text: async () => '{"id":"main"}', lastModified: 100 } as any;
+    const autosaveFile = { text: async () => '{"id":"autosave"}', lastModified: 200 } as any;
+    const ensureTimelineFileHandle = vi.fn(
+      async (options?: { create?: boolean; relativePath?: string }) => {
+        if (options?.relativePath?.includes('autosave')) {
+          return { getFile: async () => autosaveFile } as any;
+        }
+        return { getFile: async () => mainFile } as any;
+      },
+    );
+
+    const deps = createMockDeps({
+      showRecoveryDialog,
+      onRecoveryChoice,
+      ensureTimelineFileHandle,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+    await mod.loadTimeline();
+
+    expect(showRecoveryDialog).toHaveBeenCalled();
+    expect(onRecoveryChoice).not.toHaveBeenCalled();
+    expect(parseTimelineFromOtio).toHaveBeenCalledWith('{"id":"autosave"}', expect.any(Object));
+  });
 });

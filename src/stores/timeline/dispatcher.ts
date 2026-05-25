@@ -27,6 +27,7 @@ export interface TimelineDispatcherDeps {
   selectGlobalTimelineItems: (itemIds: string[], doc: TimelineDocument) => void;
   pruneSelection?: (doc: TimelineDocument) => void;
   notifyWarning?: (messageKey: string) => void;
+  isReadOnly?: Ref<boolean>;
 }
 
 export interface TimelineDispatcherModule {
@@ -67,6 +68,11 @@ export function createTimelineDispatcherModule(
       labelKey?: string;
     },
   ): string[] {
+    if (deps.isReadOnly?.value) {
+      console.warn('Timeline command ignored: timeline is read-only');
+      return [];
+    }
+
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
     }
@@ -127,6 +133,11 @@ export function createTimelineDispatcherModule(
       labelKey?: string;
     },
   ): string[] {
+    if (deps.isReadOnly?.value) {
+      console.warn('Timeline command ignored: timeline is read-only');
+      return [];
+    }
+
     if (cmds.length === 0) return [];
     if (!deps.timelineDoc.value) {
       deps.timelineDoc.value = deps.createFallbackTimelineDoc();
@@ -206,6 +217,7 @@ export function createTimelineDispatcherModule(
   }
 
   function applyRestoredSnapshot(snapshot: TimelineDocument) {
+    if (deps.isReadOnly?.value) return;
     if (!snapshot) return;
     deps.timelineDoc.value = snapshot;
     deps.duration.value = selectTimelineDurationUs(snapshot);
@@ -215,6 +227,7 @@ export function createTimelineDispatcherModule(
   }
 
   function undoTimeline() {
+    if (deps.isReadOnly?.value) return;
     if (!deps.timelineDoc.value || !deps.historyStore.canUndo('timeline')) return;
 
     // Discard any pending debounced history before undoing so the undo targets
@@ -227,6 +240,7 @@ export function createTimelineDispatcherModule(
   }
 
   function redoTimeline() {
+    if (deps.isReadOnly?.value) return;
     if (!deps.timelineDoc.value || !deps.historyStore.canRedo('timeline')) return;
 
     // Discard any pending debounced history before redoing

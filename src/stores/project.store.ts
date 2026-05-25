@@ -4,7 +4,7 @@ import { ref, computed } from 'vue';
 import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
 import { runResilientFileWrite } from '~/utils/io/io-governor';
-import { createDefaultTimelineDocument } from '~/timeline/otio-serializer';
+import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 import { createDefaultProjectSettings } from '~/utils/project-settings';
@@ -237,37 +237,6 @@ export const useProjectStore = defineStore('project', () => {
         console.warn('Failed to create project settings file', e);
       }
 
-      const otioFileName = `${name}_001.otio`;
-      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, {
-        create: true,
-      });
-      const otioFile = await timelinesDir.getFileHandle(otioFileName, { create: true });
-      if (typeof (otioFile as FileSystemFileHandle).createWritable !== 'function') {
-        throw new Error('Failed to create timeline: createWritable is not available');
-      }
-      const payload = {
-        OTIO_SCHEMA: 'Timeline.1',
-        name,
-        tracks: {
-          OTIO_SCHEMA: 'Stack.1',
-          children: [],
-          name: 'tracks',
-        },
-      };
-      await runResilientFileWrite(async () => {
-        const writable = await (otioFile as FileSystemFileHandle).createWritable();
-        await writable.write(`${JSON.stringify(payload, null, 2)}\n`);
-        await writable.close();
-      });
-
-      const initialTimeline = `${TIMELINES_DIR_NAME}/${otioFileName}`;
-
-      currentProjectName.value = name;
-      await loadProjectMeta();
-
-      currentTimelinePath.value = initialTimeline;
-      currentFileName.value = initialTimeline;
-
       const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings);
       initialSettings.project.isAutoSettings = true;
 
@@ -304,6 +273,35 @@ export const useProjectStore = defineStore('project', () => {
         if (options.sampleRate !== undefined)
           initialSettings.project.sampleRate = options.sampleRate;
       }
+
+      const otioFileName = `${name}_001.otio`;
+      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, {
+        create: true,
+      });
+      const otioFile = await timelinesDir.getFileHandle(otioFileName, { create: true });
+      if (typeof (otioFile as FileSystemFileHandle).createWritable !== 'function') {
+        throw new Error('Failed to create timeline: createWritable is not available');
+      }
+
+      const payload = createDefaultTimelineDocument({
+        id: name,
+        name,
+        format: createTimelineFormatFromProjectDefaults(initialSettings.project),
+      });
+
+      await runResilientFileWrite(async () => {
+        const writable = await (otioFile as FileSystemFileHandle).createWritable();
+        await writable.write(serializeTimelineToOtio(payload));
+        await writable.close();
+      });
+
+      const initialTimeline = `${TIMELINES_DIR_NAME}/${otioFileName}`;
+
+      currentProjectName.value = name;
+      await loadProjectMeta();
+
+      currentTimelinePath.value = initialTimeline;
+      currentFileName.value = initialTimeline;
 
       initialSettings.timelines.openPaths = [initialTimeline];
       projectSettings.value = initialSettings;

@@ -508,6 +508,41 @@ function onDragVirtualEnd() {
       @drag-virtual-end="onDragVirtualEnd"
     />
 
+    <!-- Backup Preview Banner -->
+    <div
+      v-if="timelineStore.previewMode"
+      class="bg-amber-950/90 border-b border-amber-800/40 px-4 py-2 flex items-center justify-between text-xs text-amber-200 backdrop-blur-sm shrink-0"
+    >
+      <div class="flex items-center gap-2">
+        <UIcon name="i-heroicons-information-circle" class="w-4 h-4 text-amber-400 shrink-0" />
+        <span>{{
+          t('videoEditor.timeline.backups.previewBanner', {
+            name: timelineStore.previewBackupInfo?.name,
+          })
+        }}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <UButton
+          size="xs"
+          color="amber"
+          variant="outline"
+          class="cursor-pointer"
+          @click="timelineStore.exitPreviewAndReload"
+        >
+          {{ t('videoEditor.timeline.backups.actionsLabel.return') }}
+        </UButton>
+        <UButton
+          size="xs"
+          color="amber"
+          variant="solid"
+          class="cursor-pointer"
+          @click="timelineStore.restorePreviewVersion"
+        >
+          {{ t('videoEditor.timeline.backups.actionsLabel.restore') }}
+        </UButton>
+      </div>
+    </div>
+
     <FileManagerRemoteTransferProgressModal
       :open="isImporting"
       :title="t('videoEditor.fileManager.actions.importing')"

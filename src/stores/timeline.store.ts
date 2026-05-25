@@ -8,7 +8,7 @@ import { createTimelineEditService } from '~/timeline/application/timelineEditSe
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { pxPerSecondToZoom } from '~/utils/timeline/geometry';
-import { getNextBackupName, getBackupsToDelete } from '~/utils/timeline-backup';
+import { getNextBackupName, getBackupsToDelete, getBackupNumber } from '~/utils/timeline-backup';
 
 import { createTimelinePersistenceModule } from '~/stores/timeline/persistence';
 import { createTimelineMarkerService } from '~/timeline/application/timelineMarkerService';
@@ -72,6 +72,24 @@ export const useTimelineStore = defineStore('timeline', () => {
     });
 
   const timelineDoc = ref<TimelineDocument | null>(null);
+  const previewMode = ref(false);
+  const previewBackupInfo = ref<{
+    type: 'main' | 'autosave' | 'backup';
+    name: string;
+    path: string;
+    timestamp: number;
+  } | null>(null);
+
+  const backupVersions = ref<
+    Array<{
+      type: 'main' | 'autosave' | 'backup';
+      name: string;
+      path: string;
+      date: Date | null;
+      size: number | null;
+      label: string;
+    }>
+  >([]);
 
   const isTimelineDirty = ref(false);
   const isSavingTimeline = ref(false);
@@ -364,7 +382,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     isSavingTimeline,
     timelineSaveError,
 
-    isReadOnly: toRef(projectStore, 'isReadOnly'),
+    isReadOnly: computed(() => projectStore.isReadOnly || previewMode.value),
 
     currentProjectName,
     currentTimelinePath,
@@ -404,13 +422,30 @@ export const useTimelineStore = defineStore('timeline', () => {
     // the `?? confirm()` fallthrough actually runs — returning `false` would
     // short-circuit `??` and silently skip crash recovery on first/startup load.
     shouldRestoreAutosaveSilently: () => isMobileEditorRoute() || undefined,
-    confirmRestoreAutosave: ({ timelinePath }) => {
-      if (typeof window === 'undefined') return false;
-      return window.confirm(
-        t('videoEditor.timeline.restoreAutosaveConfirm', {
-          name: timelinePath.split('/').pop() ?? timelinePath,
-        }),
-      );
+    showRecoveryDialog: ({ timelinePath }) => {
+      return new Promise((resolve) => {
+        uiStore.pendingRecoveryDialog = {
+          timelinePath,
+          resolve,
+        };
+      });
+    },
+    onRecoveryChoice: (choice) => {
+      if (choice === 'open-saved') {
+        toast.add({
+          title: t('videoEditor.timeline.backups.toastUnsavedTitle'),
+          description: t('videoEditor.timeline.backups.toastUnsavedDesc'),
+          color: 'warning',
+          timeout: 8000,
+        });
+      } else if (choice === 'view-backups') {
+        const projectTabsStore = useProjectTabsStore();
+        projectTabsStore.setActiveTab('backups');
+      }
+    },
+    exitPreview: () => {
+      previewMode.value = false;
+      previewBackupInfo.value = null;
     },
     onSaveSuccess: (serialized) => {
       void lifecycle.handleSaveSuccess();
@@ -530,6 +565,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     requestTimelineSave: lifecycle.requestTimelineSave,
     markTimelineAsDirty: lifecycle.markTimelineAsDirty,
     selectTimelineItems: selection.selectTimelineItems,
+    isReadOnly: computed(() => projectStore.isReadOnly || previewMode.value),
     selectGlobalTimelineItems: (itemIds, doc) => {
       const itemIdSet = new Set(itemIds);
       const items = doc.tracks.flatMap((track) =>
@@ -693,6 +729,251 @@ export const useTimelineStore = defineStore('timeline', () => {
         color: 'error',
       });
     }
+  }
+
+  async function exitPreviewAndReload() {
+    previewMode.value = false;
+    previewBackupInfo.value = null;
+    await loadTimeline();
+  }
+
+  async function restorePreviewVersion() {
+    if (!timelineDoc.value) return;
+    previewMode.value = false;
+    previewBackupInfo.value = null;
+    lifecycle.markTimelineAsDirty();
+    if (currentTimelinePath.value) {
+      await deleteTimelineAutosaveFile(currentTimelinePath.value);
+    }
+    toast.add({
+      title: t('videoEditor.timeline.backups.versionRestored'),
+      color: 'success',
+    });
+  }
+
+  async function openVersionForPreview(version: any) {
+    if (!currentTimelinePath.value) return;
+    try {
+      let file: File | null = null;
+      if (version.type === 'main') {
+        const handle = await ensureTimelineFileHandle({ create: false });
+        if (handle) file = await handle.getFile();
+      } else if (version.type === 'autosave') {
+        const handle = await ensureTimelineFileHandle({
+          create: false,
+          relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
+        });
+        if (handle) file = await handle.getFile();
+      } else {
+        const handle = await projectStore.getFileHandleByPath(version.path);
+        if (handle) file = await handle.getFile();
+      }
+
+      if (!file) throw new Error('File not found');
+      const text = await file.text();
+
+      const fallback = projectStore.createFallbackTimelineDoc();
+      const parsed = parseTimelineFromOtio(text, {
+        id: fallback.id,
+        name: fallback.name,
+        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
+      });
+
+      timelineDoc.value = parsed;
+      previewMode.value = true;
+      previewBackupInfo.value = {
+        type: version.type,
+        name: version.label,
+        path: version.path,
+        timestamp: version.date?.getTime() || Date.now(),
+      };
+
+      duration.value = selectTimelineDurationUs(parsed);
+      currentTime.value = 0;
+    } catch (e) {
+      console.error('Failed to open version for preview', e);
+      toast.add({
+        title: t('videoEditor.timeline.backups.previewLoadError'),
+        color: 'error',
+      });
+    }
+  }
+
+  async function restoreVersion(version: any) {
+    try {
+      let file: File | null = null;
+      if (version.type === 'main') {
+        const handle = await ensureTimelineFileHandle({ create: false });
+        if (handle) file = await handle.getFile();
+      } else if (version.type === 'autosave') {
+        const handle = await ensureTimelineFileHandle({
+          create: false,
+          relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
+        });
+        if (handle) file = await handle.getFile();
+      } else {
+        const handle = await projectStore.getFileHandleByPath(version.path);
+        if (handle) file = await handle.getFile();
+      }
+
+      if (!file) throw new Error('File not found');
+      const text = await file.text();
+
+      const fallback = projectStore.createFallbackTimelineDoc();
+      const parsed = parseTimelineFromOtio(text, {
+        id: fallback.id,
+        name: fallback.name,
+        format: fallback.metadata?.fastcat?.format ?? { fps: fallback.timebase.fps },
+      });
+
+      timelineDoc.value = parsed;
+      previewMode.value = false;
+      previewBackupInfo.value = null;
+
+      duration.value = selectTimelineDurationUs(parsed);
+      currentTime.value = 0;
+
+      lifecycle.markTimelineAsDirty();
+
+      if (currentTimelinePath.value) {
+        await deleteTimelineAutosaveFile(currentTimelinePath.value);
+      }
+
+      toast.add({
+        title: t('videoEditor.timeline.backups.versionRestored'),
+        color: 'success',
+      });
+      await loadBackupVersions();
+    } catch (e) {
+      console.error('Failed to restore version', e);
+      toast.add({
+        title: t('videoEditor.timeline.backups.restoreError'),
+        color: 'error',
+      });
+    }
+  }
+
+  async function deleteBackupVersion(version: any) {
+    try {
+      if (version.type === 'autosave') {
+        if (currentTimelinePath.value) {
+          await deleteTimelineAutosaveFile(currentTimelinePath.value);
+        }
+      } else if (version.type === 'backup') {
+        const pathParts = version.path.split('/');
+        const fileName = pathParts.pop();
+        if (!fileName) return;
+        const dirPath = pathParts.join('/');
+        const dirHandle = await projectStore.getDirectoryHandleByPath(dirPath, { create: false });
+        if (dirHandle) {
+          await dirHandle.removeEntry(fileName);
+        }
+      }
+      toast.add({
+        title: t('videoEditor.timeline.backups.versionDeleted'),
+        color: 'success',
+      });
+      await loadBackupVersions();
+    } catch (e) {
+      console.error('Failed to delete version', e);
+      toast.add({
+        title: t('videoEditor.timeline.backups.deleteError'),
+        color: 'error',
+      });
+    }
+  }
+
+  async function loadBackupVersions() {
+    if (!currentTimelinePath.value) {
+      backupVersions.value = [];
+      return;
+    }
+    const list: any[] = [];
+    try {
+      // 1. Main file
+      const mainHandle = await ensureTimelineFileHandle({ create: false });
+      if (mainHandle) {
+        const file = await mainHandle.getFile();
+        list.push({
+          type: 'main',
+          name: currentTimelinePath.value.split('/').pop() || currentTimelinePath.value,
+          path: currentTimelinePath.value,
+          date: new Date(file.lastModified),
+          size: file.size,
+          label: t('videoEditor.timeline.backups.mainFile'),
+        });
+      }
+
+      // 2. Autosave
+      const autosaveHandle = await ensureTimelineFileHandle({
+        create: false,
+        relativePath: `.fastcat/autosave/${currentTimelinePath.value}`,
+      });
+      if (autosaveHandle) {
+        const file = await autosaveHandle.getFile();
+        list.push({
+          type: 'autosave',
+          name: 'autosave',
+          path: `.fastcat/autosave/${currentTimelinePath.value}`,
+          date: new Date(file.lastModified),
+          size: file.size,
+          label: t('videoEditor.timeline.backups.autosave'),
+        });
+      }
+
+      // 3. Backups
+      const pathParts = currentTimelinePath.value.split('/');
+      const fileName = pathParts.pop();
+      if (fileName) {
+        const baseName = fileName.replace(/\.otio$/, '');
+        const dirPath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
+        const backupDirStr = `.fastcat/backups/${dirPath}`;
+        const backupDirHandle = await projectStore.getDirectoryHandleByPath(backupDirStr, {
+          create: false,
+        });
+
+        if (backupDirHandle) {
+          const files: { name: string; handle: FileSystemFileHandle }[] = [];
+          for await (const [name, handle] of (
+            backupDirHandle as unknown as {
+              entries: () => AsyncIterable<[string, FileSystemHandle]>;
+            }
+          ).entries()) {
+            if (
+              handle.kind === 'file' &&
+              name.startsWith(baseName + '__bak') &&
+              name.endsWith('.otio')
+            ) {
+              files.push({ name, handle: handle as FileSystemFileHandle });
+            }
+          }
+
+          files.sort((a, b) => {
+            const numA = getBackupNumber(a.name) || 0;
+            const numB = getBackupNumber(b.name) || 0;
+            return numB - numA;
+          });
+
+          for (const item of files) {
+            const file = await item.handle.getFile();
+            const num = getBackupNumber(item.name);
+            list.push({
+              type: 'backup',
+              name: item.name,
+              path: `${backupDirStr}${item.name}`,
+              date: new Date(file.lastModified),
+              size: file.size,
+              label: t('videoEditor.timeline.backups.backupNum', {
+                num: num !== null ? `#${num}` : item.name,
+              }),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load backup versions', e);
+    }
+    backupVersions.value = list;
   }
 
   // True when any open timeline (active or background tab) has uncommitted
@@ -875,5 +1156,14 @@ export const useTimelineStore = defineStore('timeline', () => {
     getHotkeyTargetClip: selection.getHotkeyTargetClip,
     setTimelineZoomExact,
     duplicateCurrentTimeline,
+    previewMode,
+    previewBackupInfo,
+    backupVersions,
+    exitPreviewAndReload,
+    restorePreviewVersion,
+    openVersionForPreview,
+    restoreVersion,
+    deleteBackupVersion,
+    loadBackupVersions,
   };
 });

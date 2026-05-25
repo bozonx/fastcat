@@ -467,6 +467,41 @@ async function onClipAction(payload: TimelineClipActionPayload) {
       @open-markers="isMarkersDrawerOpen = true"
     />
 
+    <!-- Backup Preview Banner (Mobile) -->
+    <div
+      v-if="timelineStore.previewMode"
+      class="bg-amber-950/95 border-b border-amber-800/50 px-4 py-2.5 flex items-center justify-between text-xs text-amber-200 z-50 shrink-0"
+    >
+      <div class="flex items-center gap-1.5 min-w-0 flex-1">
+        <UIcon name="i-heroicons-information-circle" class="w-4 h-4 text-amber-400 shrink-0" />
+        <span class="truncate">{{
+          t('videoEditor.timeline.backups.previewBannerMobile', {
+            name: timelineStore.previewBackupInfo?.name,
+          })
+        }}</span>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <UButton
+          size="xs"
+          color="amber"
+          variant="outline"
+          class="cursor-pointer"
+          @click="timelineStore.exitPreviewAndReload"
+        >
+          {{ t('videoEditor.timeline.backups.actionsLabel.returnMobile') }}
+        </UButton>
+        <UButton
+          size="xs"
+          color="amber"
+          variant="solid"
+          class="cursor-pointer"
+          @click="timelineStore.restorePreviewVersion"
+        >
+          {{ t('videoEditor.timeline.backups.actionsLabel.restoreMobile') }}
+        </UButton>
+      </div>
+    </div>
+
     <MobileClipPropertiesDrawer
       v-model:active-snap-point="drawerActiveSnapPoint"
       :is-open="isClipPropertiesDrawerOpen"

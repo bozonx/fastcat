@@ -1824,14 +1824,50 @@ export default {
       "settings": "Timeline settings",
       "confirmCloseUnsavedMessage": "This timeline has unsaved changes. Close without saving to the main file?",
       "confirmCloseUnsavedTitle": "Unsaved changes",
-      "restoreAutosaveConfirm": "Found a newer auto-save for {name}. Restore the unsaved version?",
       "tabs": {
         "cut": "Cut",
         "sound": "Sound"
       },
       "unsavedChanges": "Unsaved changes",
       "versionCreated": "Version created: {name}",
-      "versionSaveError": "Version save error"
+      "versionSaveError": "Version save error",
+      "backups": {
+        "title": "Backups",
+        "tabLabel": "Backups",
+        "version": "Version",
+        "date": "Date",
+        "size": "Size",
+        "actions": "Actions",
+        "mainFile": "Main File",
+        "autosave": "Auto-Save",
+        "backupNum": "Backup {num}",
+        "previewBanner": "Viewing backup version: {name} (Read-Only)",
+        "previewBannerMobile": "Backup: {name} (Read-Only)",
+        "recoveryTitle": "Project Recovery",
+        "recoveryDescription": "A newer auto-save was found for timeline {name}. Please choose an action:",
+        "openSavedTitle": "Open Saved Version",
+        "openSavedDesc": "Load the main file. The auto-save copy will be kept in backups.",
+        "restoreAutosaveTitle": "Restore Auto-Save",
+        "restoreAutosaveDesc": "Load the auto-save copy. The main file remains untouched on disk.",
+        "viewBackupsTitle": "View Options",
+        "viewBackupsDesc": "Load the main file and open the Backups tab to inspect and compare versions.",
+        "toastUnsavedTitle": "Unsaved Changes Found",
+        "toastUnsavedDesc": "An unsaved backup was detected. Open the Backups tab to view it.",
+        "versionRestored": "Version restored successfully",
+        "versionDeleted": "Version deleted",
+        "restoreError": "Failed to restore version",
+        "deleteError": "Failed to delete version",
+        "previewLoadError": "Failed to load preview",
+        "empty": "No backup versions available",
+        "actionsLabel": {
+          "open": "Open",
+          "restore": "Restore",
+          "delete": "Delete",
+          "return": "Return",
+          "returnMobile": "Return",
+          "restoreMobile": "Restore"
+        }
+      }
     }
   },
   "navigation": {
