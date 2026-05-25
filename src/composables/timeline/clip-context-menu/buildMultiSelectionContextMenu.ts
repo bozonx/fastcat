@@ -53,8 +53,8 @@ export function buildMultiSelectionContextMenu(
 
     mainGroup.push({
       label: state.allWaveformHalf
-        ? options.t('fastcat.timeline.waveformFull')
-        : options.t('fastcat.timeline.waveformHalf'),
+        ? options.t('fastcat.timeline.showFullWaveform')
+        : options.t('fastcat.timeline.showHalfWaveform'),
       icon: 'i-heroicons-chart-bar',
       onSelect: async () => {
         const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({

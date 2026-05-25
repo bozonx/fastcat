@@ -534,6 +534,9 @@ const { contextMenuItems } = useClipContextMenu({
   get hasTimelineClipboard() {
     return timelineContext.hasTimelinePayload.value;
   },
+  requestRenameClip: (payload) => {
+    uiStore.pendingClipRename = payload;
+  },
   copyClipParameters,
   pasteClipParameters: openPasteClipParameters,
   getClipParametersSnapshot: () => {

@@ -49,6 +49,7 @@ export interface UseClipContextMenuOptions {
   cutSelectedClips: () => void;
   pasteClips: (insertStartUs?: number) => void;
   hasTimelineClipboard: boolean;
+  requestRenameClip: (payload: { trackId: string; itemId: string; name: string }) => void;
   copyClipParameters: (clip: TimelineClipItem, trackKind: TimelineTrack['kind']) => void;
   pasteClipParameters: (clip: TimelineClipItem, trackKind: TimelineTrack['kind']) => void;
   getClipParametersSnapshot: () => ClipParametersSnapshot | null;

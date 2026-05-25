@@ -611,8 +611,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         id: 'toggleAudioWaveformMode',
         label:
           (clip.audioWaveformMode || 'half') === 'full'
-            ? t('fastcat.clip.halfWaveform')
-            : t('fastcat.clip.fullWaveform'),
+            ? t('fastcat.clip.showHalfWaveform')
+            : t('fastcat.clip.showFullWaveform'),
         icon: 'i-heroicons-chart-bar',
         onClick: toggleAudioWaveformMode,
       });

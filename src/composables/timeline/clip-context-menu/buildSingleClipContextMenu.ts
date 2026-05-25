@@ -64,16 +64,30 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
       },
     });
 
-    const currentMode = clipItem.audioWaveformMode || 'full';
+    const currentMode = clipItem.audioWaveformMode || 'half';
     mainGroup.push({
       label:
         currentMode === 'half'
-          ? options.t('fastcat.timeline.waveformFull')
-          : options.t('fastcat.timeline.waveformHalf'),
+          ? options.t('fastcat.timeline.showFullWaveform')
+          : options.t('fastcat.timeline.showHalfWaveform'),
       icon: 'i-heroicons-chart-bar',
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
           audioWaveformMode: currentMode === 'half' ? 'full' : 'half',
+        });
+        await options.requestTimelineSave({ immediate: true });
+      },
+    });
+
+    mainGroup.push({
+      label:
+        clipItem.showWaveform === false
+          ? options.t('fastcat.timeline.showWaveform')
+          : options.t('fastcat.timeline.hideWaveform'),
+      icon: clipItem.showWaveform === false ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+      onSelect: async () => {
+        options.updateClipProperties(track.id, clipItem.id, {
+          showWaveform: clipItem.showWaveform === false,
         });
         await options.requestTimelineSave({ immediate: true });
       },
@@ -288,6 +302,21 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
     }).length > 0;
 
   const actions: ContextMenuGroup = [
+    ...(clip
+      ? [
+          {
+            label: options.t('common.rename'),
+            icon: 'i-heroicons-pencil',
+            disabled: isTrackLocked || isLocked,
+            onSelect: () =>
+              options.requestRenameClip({
+                trackId: track.id,
+                itemId: clip.id,
+                name: clip.name,
+              }),
+          },
+        ]
+      : []),
     {
       label: options.t('common.copy'),
       icon: 'i-heroicons-document-duplicate',
