@@ -51,23 +51,11 @@ async function loadContent() {
     saveError.value = 'Failed to read file';
   } finally {
     isLoading.value = false;
-    // Manual focus after loading for desktop version
-    nextTick(() => {
-      textareaRef.value?.focus();
-    });
   }
 }
 
 onMounted(loadContent);
 watch(() => props.filePath, loadContent);
-
-watch(isLoading, (loading) => {
-  if (!loading) {
-    nextTick(() => {
-      textareaRef.value?.focus();
-    });
-  }
-});
 
 function clearTimer() {
   if (saveTimer) {
@@ -134,7 +122,6 @@ function focusPanel() {
       class="flex-1"
       :ui="{ root: 'ring-0', base: 'h-full resize-none font-mono ring-0 border border-ui-border' }"
       :spellcheck="false"
-      data-primary-focus="true"
       full-width
       @focus="focusPanel"
     />
