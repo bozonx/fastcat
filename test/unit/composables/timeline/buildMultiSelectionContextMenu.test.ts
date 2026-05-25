@@ -93,4 +93,55 @@ describe('buildMultiSelectionContextMenu', () => {
       },
     ]);
   });
+
+  it('shows lock option when clips are unlocked', () => {
+    const options = createOptions(['audio-1', 'text-1']);
+
+    const groups = buildMultiSelectionContextMenu(options) ?? [];
+    const labels = groups.flatMap((group) => group.map((action) => action.label));
+
+    expect(labels).toContain('fastcat.timeline.lockClips');
+    expect(labels).not.toContain('fastcat.timeline.unlockClips');
+  });
+
+  it('shows unlock option when clips are locked', () => {
+    const options = createOptions(['audio-1', 'text-1']);
+    for (const track of options.timelineDoc.value.tracks) {
+      for (const item of track.items) {
+        item.locked = true;
+      }
+    }
+
+    const groups = buildMultiSelectionContextMenu(options) ?? [];
+    const labels = groups.flatMap((group) => group.map((action) => action.label));
+
+    expect(labels).toContain('fastcat.timeline.unlockClips');
+    expect(labels).not.toContain('fastcat.timeline.lockClips');
+  });
+
+  it('applies lock/unlock to all selected items when selected', async () => {
+    const options = createOptions(['audio-1', 'text-1']);
+
+    const groups = buildMultiSelectionContextMenu(options) ?? [];
+    const lockAction = groups
+      .flat()
+      .find((action) => action.label === 'fastcat.timeline.lockClips');
+
+    await lockAction?.onSelect();
+
+    expect(options.batchApplyTimeline).toHaveBeenCalledWith([
+      {
+        type: 'update_clip_properties',
+        trackId: 'a1',
+        itemId: 'audio-1',
+        properties: { locked: true },
+      },
+      {
+        type: 'update_clip_properties',
+        trackId: 'v1',
+        itemId: 'text-1',
+        properties: { locked: true },
+      },
+    ]);
+  });
 });

@@ -63,8 +63,9 @@ export function useTimelineMarquee(
   function updateLiveMarqueeSelection() {
     if (!isMarqueeSelecting.value) return;
 
-    const left = Math.min(marqueeStart.value.x, marqueeCurrent.value.x);
-    const right = Math.max(marqueeStart.value.x, marqueeCurrent.value.x);
+    const scrollLeft = getScrollLeft();
+    const left = Math.min(marqueeStart.value.x, marqueeCurrent.value.x) + scrollLeft;
+    const right = Math.max(marqueeStart.value.x, marqueeCurrent.value.x) + scrollLeft;
     const top = Math.min(marqueeStart.value.y, marqueeCurrent.value.y);
     const bottom = Math.max(marqueeStart.value.y, marqueeCurrent.value.y);
 

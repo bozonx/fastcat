@@ -33,6 +33,24 @@ export function buildMultiSelectionContextMenu(
     },
   });
 
+  const allLocked = state.selectedClips.length > 0 && state.selectedClips.every((c) => c.locked);
+  mainGroup.push({
+    label: allLocked
+      ? options.t('fastcat.timeline.unlockClips')
+      : options.t('fastcat.timeline.lockClips'),
+    icon: allLocked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed',
+    onSelect: async () => {
+      const cmds = state.itemsToUpdate.map(({ trackId, itemId }) => ({
+        type: 'update_clip_properties' as const,
+        trackId,
+        itemId,
+        properties: { locked: !allLocked },
+      }));
+      options.batchApplyTimeline(cmds);
+      await options.requestTimelineSave({ immediate: true });
+    },
+  });
+
   if (state.hasAudioOrVideoWithAudio) {
     mainGroup.push({
       label: state.allMuted
