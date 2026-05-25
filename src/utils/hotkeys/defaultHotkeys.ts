@@ -133,7 +133,7 @@ export type HotkeyCommandId =
 
 export type HotkeyCombo = string;
 
-const Mod = 'Control'; // Placeholder for actual mod detection logic if used here, or handled by a composable
+const Mod = 'Ctrl';
 
 export interface HotkeyCommand {
   id: HotkeyCommandId;
@@ -419,10 +419,10 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.save': [`${Mod}+S`],
     'general.newTimeline': [`${Mod}+N`],
 
-    'general.mute': ['Control+Q'],
-    'general.volumeUp': ['Control+R'],
-    'general.volumeDown': ['Control+E'],
-    'general.snapshot': ['Ctrl+H'],
+    'general.mute': [`${Mod}+Q`],
+    'general.volumeUp': [`${Mod}+R`],
+    'general.volumeDown': [`${Mod}+E`],
+    'general.snapshot': [`${Mod}+H`],
     'general.fullscreen': ['`'],
 
     'general.zoomIn': ['='],
@@ -463,7 +463,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'general.navigateBack': ['Backspace', 'z', 'MouseBack'],
     'general.navigateForward': ['Shift+Backspace', 'MouseForward'],
     'general.navigateUp': [`${Mod}+ArrowUp`],
-    'general.createFolder': ['Ctrl+Shift+N'],
+    'general.createFolder': ['Ctrl+\\'],
 
     'timeline.addTextClipAtPlayhead': ['N'],
     'timeline.addBackgroundClipAtPlayhead': ['U'],

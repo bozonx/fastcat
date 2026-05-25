@@ -13,7 +13,7 @@ describe('DEFAULT_HOTKEYS', () => {
 
   it('has binding for general.copy', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.copy']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.copy']).toContain('Control+C');
+    expect(DEFAULT_HOTKEYS.bindings['general.copy']).toContain('Ctrl+C');
   });
 
   it('has binding for playback.toggle', () => {
@@ -37,9 +37,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.delete']).toContain('X');
   });
 
-  it('has binding for general.mute as Control+Q', () => {
+  it('has binding for general.mute as Ctrl+Q', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.mute']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.mute']).toContain('Control+Q');
+    expect(DEFAULT_HOTKEYS.bindings['general.mute']).toContain('Ctrl+Q');
   });
 
   it('has binding for general.addMarker as M', () => {
@@ -47,19 +47,19 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.addMarker']).toContain('M');
   });
 
-  it('has binding for general.createFolder as Ctrl+Shift+N', () => {
+  it('has binding for general.createFolder as Ctrl+\\', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toEqual(['Ctrl+Shift+N']);
+    expect(DEFAULT_HOTKEYS.bindings['general.createFolder']).toEqual(['Ctrl+\\']);
   });
 
-  it('has bindings for general.volumeUp including Control+R', () => {
+  it('has bindings for general.volumeUp including Ctrl+R', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Control+R');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeUp']).toContain('Ctrl+R');
   });
 
-  it('has bindings for general.volumeDown including Control+E', () => {
+  it('has bindings for general.volumeDown including Ctrl+E', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Control+E');
+    expect(DEFAULT_HOTKEYS.bindings['general.volumeDown']).toContain('Ctrl+E');
   });
 
   it('has binding for timeline.centerPlayhead as Shift+/', () => {
@@ -93,7 +93,7 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has updated defaults for timeline creation and monitor snapshot', () => {
-    expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual(['Control+N']);
+    expect(DEFAULT_HOTKEYS.bindings['general.newTimeline']).toEqual(['Ctrl+N']);
     expect(DEFAULT_HOTKEYS.bindings['general.snapshot']).toEqual(['Ctrl+H']);
   });
 

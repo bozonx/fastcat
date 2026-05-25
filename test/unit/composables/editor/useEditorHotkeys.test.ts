@@ -558,7 +558,7 @@ describe('useEditorHotkeys', () => {
     });
   });
 
-  it('creates a folder in the current file-manager directory with Ctrl+Shift+N', async () => {
+  it('creates a folder in the current file-manager directory with Ctrl+\\', async () => {
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();
     const projectStore = useProjectStore();
@@ -576,10 +576,9 @@ describe('useEditorHotkeys', () => {
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', {
-        key: 'N',
-        code: 'KeyN',
+        key: '\\',
+        code: 'Backslash',
         ctrlKey: true,
-        shiftKey: true,
         bubbles: true,
       }),
     );
@@ -621,10 +620,9 @@ describe('useEditorHotkeys', () => {
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', {
-        key: 'N',
-        code: 'KeyN',
+        key: '\\',
+        code: 'Backslash',
         ctrlKey: true,
-        shiftKey: true,
         bubbles: true,
       }),
     );
