@@ -1,7 +1,6 @@
-import { safeDispose } from './utils';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
-import { Application, DOMAdapter, WebWorkerAdapter, Texture, Container } from 'pixi.js';
-import type { Filter, RenderTexture } from 'pixi.js';
+import { Texture, Container } from 'pixi.js';
+import type { Application, Filter, RenderTexture } from 'pixi.js';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
@@ -42,6 +41,9 @@ import { RenderingEngine } from './compositor/RenderingEngine';
 import { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
 import { StageManager } from './compositor/StageManager';
 import { TransitionRenderer } from './compositor/TransitionRenderer';
+import { CompositorOperationQueue } from './compositor/CompositorOperationQueue';
+import { createPixiCompositorApplication } from './compositor/PixiCompositorBootstrap';
+import { resetCompositorClipsAfterContextRestored } from './compositor/contextRestore';
 
 export interface VideoCompositorInitOptions {
   rendererPreference?: 'webgl' | 'webgpu';
@@ -86,7 +88,7 @@ export class VideoCompositor {
   // clearClips, loadTimeline, the context-restore rebuild). The disposing cores
   // are private (`*Locked`) so they can only be reached via the queue; `destroy`
   // is the sole exception and instead *drains* the queue before tearing down.
-  private opQueue: Promise<unknown> = Promise.resolve();
+  private opQueue = new CompositorOperationQueue();
   // Set the moment destroy() begins so queued/late entry points bail instead of
   // touching resources that teardown is about to free.
   private disposed = false;
@@ -547,19 +549,19 @@ export class VideoCompositor {
       getLayoutApplier: () => this.layoutApplier,
     });
 
-    if (typeof window === 'undefined') {
-      DOMAdapter.set(WebWorkerAdapter);
-    }
-
-    if (externalCanvas) {
-      this.canvas = externalCanvas;
-    } else if (offscreen) {
-      this.canvas = new OffscreenCanvas(width, height);
-    } else {
-      this.canvas = document.createElement('canvas');
-      this.canvas.width = width;
-      this.canvas.height = height;
-    }
+    const preferredRenderer = options.rendererPreference ?? 'webgl';
+    const rendererPreferences: PixiRendererPreference[] =
+      preferredRenderer === 'webgl' ? ['webgl', 'webgpu'] : ['webgpu', 'webgl'];
+    const { app, canvas } = await createPixiCompositorApplication({
+      width,
+      height,
+      bgColor,
+      offscreen,
+      externalCanvas,
+      rendererPreferences,
+    });
+    this.app = app;
+    this.canvas = canvas;
 
     if (this.canvas && 'addEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)) {
       (this.canvas as HTMLCanvasElement).addEventListener(
@@ -572,60 +574,6 @@ export class VideoCompositor {
         this.onContextRestored,
         false,
       );
-    }
-
-    const preferredRenderer = options.rendererPreference ?? 'webgl';
-    const rendererPreferences: PixiRendererPreference[] =
-      preferredRenderer === 'webgl' ? ['webgl', 'webgpu'] : ['webgpu', 'webgl'];
-    let initError: unknown = null;
-
-    for (const rendererPreference of rendererPreferences) {
-      const app = new Application();
-      try {
-        const initPromise = app.init({
-          width,
-          height,
-          canvas: this.canvas as import('pixi.js').ICanvas,
-          backgroundColor: bgColor,
-          preference: rendererPreference,
-          clearBeforeRender: true,
-        });
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          const timeoutMs = 5000;
-          setTimeout(
-            () =>
-              reject(
-                new Error(
-                  `Pixi ${rendererPreference} renderer init timed out after ${timeoutMs}ms`,
-                ),
-              ),
-            timeoutMs,
-          );
-        });
-        await Promise.race([initPromise, timeoutPromise]);
-        this.app = app;
-        initError = null;
-        break;
-      } catch (error) {
-        initError = error;
-        try {
-          app.destroy(true);
-        } catch (cleanupError) {
-          void cleanupError;
-        }
-        if (rendererPreference === preferredRenderer) {
-          console.warn(
-            `[VideoCompositor] ${rendererPreference} renderer failed, trying alternate Pixi renderer`,
-            error,
-          );
-        }
-      }
-    }
-
-    if (!this.app) {
-      throw initError instanceof Error
-        ? initError
-        : new Error('Failed to initialize Pixi renderer');
     }
 
     // Stop the automatic ticker, we will render manually
@@ -658,71 +606,7 @@ export class VideoCompositor {
     this.contextLost = false;
     this.stageSortDirty = true;
     this.videoFrameCache.clear();
-    for (const clip of this.clips) {
-      clip.textDirty = true;
-      clip.shapeDirty = true;
-      if (clip.lastVideoFrame) {
-        safeDispose(clip.lastVideoFrame);
-        clip.lastVideoFrame = null;
-      }
-      if (clip.hudMediaStates) {
-        const resetState = (s: unknown) => {
-          if (!s) return;
-          const state = s as Record<string, unknown>;
-          if (state.lastVideoFrame) {
-            safeDispose(state.lastVideoFrame as VideoFrame | ImageBitmap | null);
-            state.lastVideoFrame = null;
-          }
-          if (state.bitmap) {
-            try {
-              (state.bitmap as { close: () => void }).close();
-            } catch {
-              /* no-op */
-            }
-            state.bitmap = null;
-          }
-        };
-        resetState(clip.hudMediaStates.background);
-        resetState(clip.hudMediaStates.content);
-        resetState(clip.hudMediaStates.frame);
-        clip.hudDirty = true;
-      }
-      clip.canvas = null;
-      if (clip.bitmap) {
-        try {
-          clip.bitmap.close();
-        } catch {
-          /* no-op */
-        }
-        clip.bitmap = null;
-      }
-      try {
-        if (
-          clip.imageSource?.resource &&
-          typeof (clip.imageSource.resource as { update?: () => void }).update === 'function'
-        ) {
-          (clip.imageSource.resource as { update?: () => void }).update?.();
-        }
-      } catch {
-        /* no-op */
-      }
-      if (clip.transitionFilter) {
-        try {
-          clip.transitionFilter.destroy();
-        } catch {
-          /* no-op */
-        }
-        clip.transitionFilter = null;
-      }
-      if (clip.adjustmentSourceTexture) {
-        try {
-          clip.adjustmentSourceTexture.destroy(true);
-        } catch {
-          /* no-op */
-        }
-        clip.adjustmentSourceTexture = null;
-      }
-    }
+    resetCompositorClipsAfterContextRestored(this.clips);
   }
 
   async loadTimeline(
@@ -778,27 +662,7 @@ export class VideoCompositor {
    * next op concurrently, so the no-interleave invariant is preserved.
    */
   private runExclusive<T>(fn: (signal: AbortSignal) => Promise<T> | T, label = 'op'): Promise<T> {
-    const run = async (): Promise<T> => {
-      const controller = new AbortController();
-      const watchdog = setTimeout(() => {
-        controller.abort();
-        console.warn(
-          `[VideoCompositor] opQueue watchdog: "${label}" exceeded ` +
-            `${VIDEO_CORE_LIMITS.OP_QUEUE_WATCHDOG_MS}ms; aborting to release the queue`,
-        );
-      }, VIDEO_CORE_LIMITS.OP_QUEUE_WATCHDOG_MS);
-      try {
-        return await fn(controller.signal);
-      } finally {
-        clearTimeout(watchdog);
-      }
-    };
-    const result = this.opQueue.then(run, run);
-    this.opQueue = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    return result;
+    return this.opQueue.run(fn, label);
   }
 
   private async loadTimelineLocked(
@@ -1192,7 +1056,7 @@ export class VideoCompositor {
     // Drain the queue so we never tear down pixi while an in-flight render is
     // still reading a sink or uploading a VideoFrame. The watchdog guarantees
     // the in-flight op settles in bounded time, so this can't hang teardown.
-    await this.opQueue.catch(() => undefined);
+    await this.opQueue.drain();
     // Terminal teardown: run the clear synchronously (not through the queue) so
     // pixi resources are gone before we dispose the renderer below.
     this.clearClipsLocked();
