@@ -77,7 +77,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
           const isTimeline = entry.name.toLowerCase().endsWith('.otio');
           const hasProjectContext = Boolean(projectId && workspaceHandle);
 
-          if (hasProjectContext && (type === 'video' || type === 'image' || isTimeline)) {
+          if (projectId && hasProjectContext && (type === 'video' || type === 'image' || isTimeline)) {
             // Timeline previews are NOT supported in external FM (without projectId context)
             // But here we have projectId, so it's likely the project FM or a compatible view.
             if (mediaStore.metadataLoadFailed[path]) {
