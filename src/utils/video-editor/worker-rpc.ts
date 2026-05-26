@@ -64,6 +64,13 @@ export const MediaMetadataSchema = z.object({
       bitrate: z.number().finite().nonnegative().optional(),
     })
     .optional(),
+  image: z
+    .object({
+      canDisplay: z.boolean().optional(),
+      width: z.number().finite().nonnegative().optional(),
+      height: z.number().finite().nonnegative().optional(),
+    })
+    .optional(),
   // audioPeaks are persisted to a separate OPFS file and converted to
   // Float32Array on read (see media.store.ts). They never travel through
   // this schema, so we don't validate them here.

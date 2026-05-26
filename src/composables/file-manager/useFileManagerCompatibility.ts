@@ -22,9 +22,24 @@ function computeStatus(
   metadataLoadFailed: Record<string, boolean>,
   metadataLoading: Record<string, boolean>,
 ): FileCompatibilityStatus {
-  const meta = mediaMetadata[path] as Record<string, unknown> | undefined;
-  if ((meta as Record<string, unknown> | null)?.error || metadataLoadFailed[path]) return 'corrupt';
-  if (!meta || metadataLoading[path]) return 'checking';
+  const cacheKey = path;
+  const externalKey = `external:${path}`;
+
+  const meta = (mediaMetadata[cacheKey] ?? mediaMetadata[externalKey]) as Record<string, unknown> | undefined;
+  const isFailed = metadataLoadFailed[cacheKey] || metadataLoadFailed[externalKey];
+  const isLoading = metadataLoading[cacheKey] || metadataLoading[externalKey];
+
+  if (meta?.error || isFailed) return 'corrupt';
+
+  if (!meta) {
+    if (isLoading) return 'checking';
+    const isRemote = entry.source === 'remote';
+    const isExternal = path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
+    if (isRemote || isExternal) {
+      return 'ok';
+    }
+    return 'checking';
+  }
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';

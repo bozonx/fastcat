@@ -10,6 +10,7 @@ interface UseFilePropertiesHandlersOptions {
   mediaType: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   textContent: Ref<string | null | undefined> | ComputedRef<string | null | undefined>;
   isExternalContext?: Ref<boolean> | ComputedRef<boolean>;
+  isMediaFullyUnsupported?: Ref<boolean> | ComputedRef<boolean>;
 }
 
 export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOptions) {
@@ -30,6 +31,7 @@ export function useFilePropertiesHandlers(options: UseFilePropertiesHandlersOpti
     const entry = options.selectedFsEntry.value;
     if (!entry || entry.kind !== 'file') return false;
     if (options.isExternalContext?.value || hasAbsoluteLocalPath.value) return false;
+    if (options.isMediaFullyUnsupported?.value) return false;
     return isOpenableProjectFileName(entry.name);
   });
 

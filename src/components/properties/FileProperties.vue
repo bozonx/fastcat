@@ -352,6 +352,7 @@ const {
   mediaType,
   textContent,
   isExternalContext,
+  isMediaFullyUnsupported,
 });
 
 const { canCopy, canCut, onCopy, onCut, onPaste, hasClipboardItems } = useFilePropertiesClipboard({

@@ -28,9 +28,10 @@ describe('useFilePropertiesContext', () => {
     expect(ctx.metadataCacheKey.value).toBe('video/a.mp4');
   });
 
-  it('treats absolute local paths as external context', () => {
+  it('treats absolute local paths as external context and uses external: prefix for cache key', () => {
     const ctx = build({ kind: 'file', name: 'a', path: '/abs/a.mp4' });
     expect(ctx.isExternalContext.value).toBe(true);
+    expect(ctx.metadataCacheKey.value).toBe('external:/abs/a.mp4');
   });
 
   it('treats workspace-browser / computer instances as external', () => {

@@ -69,7 +69,7 @@ export function useFilePropertiesContext(deps: FilePropertiesContextDeps) {
   const metadataCacheKey = computed(() => {
     const path = deps.selectedFsEntry()?.path;
     if (!path) return null;
-    return isRemoteFileEntry.value ? `external:${path}` : path;
+    return isExternalContext.value || isRemoteFileEntry.value ? `external:${path}` : path;
   });
 
   const isCommonRoot = computed(() => {

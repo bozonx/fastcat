@@ -94,4 +94,21 @@ describe('useFilePropertiesHandlers', () => {
     expect(api.canOpenAsPanel.value).toBe(false);
     expect(api.canOpenAsProjectTab.value).toBe(false);
   });
+
+  it('disables open-as actions when isMediaFullyUnsupported is true', () => {
+    const api = useFilePropertiesHandlers({
+      selectedFsEntry: ref({
+        kind: 'file',
+        name: 'clip.mp4',
+        path: 'media/clip.mp4',
+      }),
+      mediaType: ref('video'),
+      textContent: ref(null),
+      isExternalContext: ref(false),
+      isMediaFullyUnsupported: ref(true),
+    });
+
+    expect(api.canOpenAsPanel.value).toBe(false);
+    expect(api.canOpenAsProjectTab.value).toBe(false);
+  });
 });
