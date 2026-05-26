@@ -184,11 +184,9 @@
         "title": "Режим наложения"
       },
       "cloudType": "Тип облаков",
-      "fullWaveform": "Полная вейвформа",
       "goToLinkedAudio": "Перейти к связанному аудио",
       "goToLinkedVideo": "Перейти к связанному видео",
       "goToTimeline": "Перейти к таймлайну",
-      "halfWaveform": "Половина вейвформы",
       "showFullWaveform": "Показать полную вейвформу",
       "showHalfWaveform": "Показать половинную вейвформу",
       "hideThumbnails": "Скрыть миниатюры",

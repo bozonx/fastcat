@@ -184,11 +184,9 @@
         "title": "Blend mode"
       },
       "cloudType": "Cloud Type",
-      "fullWaveform": "Full waveform",
       "goToLinkedAudio": "Go to linked audio",
       "goToLinkedVideo": "Go to linked video",
       "goToTimeline": "Go to timeline",
-      "halfWaveform": "Half waveform",
       "showFullWaveform": "Show full waveform",
       "showHalfWaveform": "Show half waveform",
       "hideThumbnails": "Hide thumbnails",
