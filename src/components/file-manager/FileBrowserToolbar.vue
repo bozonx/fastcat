@@ -194,7 +194,9 @@ const toolbarMenuItems = computed(() => {
         variant="ghost"
         color="neutral"
         size="sm"
-        :title="getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder')"
+        :title="
+          getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder')
+        "
         @click="emit('createFolder')"
       />
     </div>

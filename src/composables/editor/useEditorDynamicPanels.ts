@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { computed, ref, watch, type Ref } from 'vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
@@ -7,6 +8,7 @@ import { readLocalStorageJson, getPlatformSuffix } from '~/stores/ui/uiLocalStor
 import type { DynamicPanel } from '~/stores/editor-view.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import { genUuid } from '~/utils/ids';
+const log = createDevLogger('useEditorDynamicPanels');
 
 interface UseEditorDynamicPanelsOptions {
   currentProjectId: Ref<string | null>;
@@ -305,7 +307,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
         const tabsStore = useProjectTabsStore();
         tabsStore.hideStaticTab(payload.tabId);
       } catch (err) {
-        console.warn('Failed to parse static-tab-drag payload', err);
+        log.warn('Failed to parse static-tab-drag payload', err);
       }
 
       resetDragState();
@@ -340,7 +342,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
           view,
         );
       } catch (err) {
-        console.warn('Failed to parse file-tab-drag payload', err);
+        log.warn('Failed to parse file-tab-drag payload', err);
       }
 
       resetDragState();
@@ -399,7 +401,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
           return;
         }
       } catch (err) {
-        console.warn('Failed to parse file drag payload', err);
+        log.warn('Failed to parse file drag payload', err);
       }
     }
 

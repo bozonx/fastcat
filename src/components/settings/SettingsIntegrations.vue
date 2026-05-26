@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings';
@@ -7,6 +9,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import FastcatAccountSection from './integrations/FastcatAccountSection.vue';
 import BloggerDogSection from './integrations/BloggerDogSection.vue';
 import SttIntegrationSection from './integrations/SttIntegrationSection.vue';
+const log = createDevLogger('SettingsIntegrations');
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -38,10 +41,7 @@ watch(
     const target = (route.query.target || route.query.state) as string;
 
     if (!target) {
-      console.warn(
-        '[Integrations] Received token but no target/state found in query:',
-        route.query,
-      );
+      log.warn('[Integrations] Received token but no target/state found in query:', route.query);
     }
 
     await workspaceStore.batchUpdateUserSettings(

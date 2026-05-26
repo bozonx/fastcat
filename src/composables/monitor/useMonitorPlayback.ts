@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { sanitizeFps } from '~/utils/monitor-time';
@@ -13,6 +14,7 @@ import { syncMonitorPlaybackVisibility } from './useMonitorPlayback.visibility';
 import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+const log = createDevLogger('useMonitorPlayback');
 
 export interface UseMonitorPlaybackOptions {
   isLoading: { value: boolean };
@@ -277,7 +279,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
               .previewScrubForward(previousTimeUs, normalizedTimeUs, SCRUB_PREVIEW_DURATION_US)
               .catch((error) => {
                 if (requestId !== scrubPreviewRequestId || isUnmounted) return;
-                console.warn('[Monitor] Failed to preview audio scrub', error);
+                log.warn('[Monitor] Failed to preview audio scrub', error);
               });
           }
         } else {

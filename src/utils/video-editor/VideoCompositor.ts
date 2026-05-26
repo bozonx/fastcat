@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { Texture, Container } from 'pixi.js';
 import type { Application, Filter, RenderTexture } from 'pixi.js';
@@ -44,6 +45,7 @@ import { TransitionRenderer } from './compositor/TransitionRenderer';
 import { CompositorOperationQueue } from './compositor/CompositorOperationQueue';
 import { createPixiCompositorApplication } from './compositor/PixiCompositorBootstrap';
 import { resetCompositorClipsAfterContextRestored } from './compositor/contextRestore';
+const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
   rendererPreference?: 'webgl' | 'webgpu';
@@ -485,7 +487,7 @@ export class VideoCompositor {
       try {
         await this.destroy();
       } catch (err) {
-        console.error('[VideoCompositor] Failed to destroy previous application instance', err);
+        log.error('Failed to destroy previous application instance', err);
         this.app = null;
       }
     }
@@ -588,7 +590,7 @@ export class VideoCompositor {
 
   private onContextLost = (event: Event) => {
     event.preventDefault();
-    console.warn('[VideoCompositor] WebGL/WebGPU context lost!');
+    log.warn('WebGL/WebGPU context lost!');
     this.contextLost = true;
   };
 
@@ -602,7 +604,7 @@ export class VideoCompositor {
   };
 
   private rebuildAfterContextRestoredLocked() {
-    console.warn('[VideoCompositor] WebGL/WebGPU context restored!');
+    log.warn('WebGL/WebGPU context restored!');
     this.contextLost = false;
     this.stageSortDirty = true;
     this.videoFrameCache.clear();
@@ -1088,7 +1090,7 @@ export class VideoCompositor {
           },
         );
       } catch (err) {
-        console.error('[VideoCompositor] Application destroy failed', err);
+        log.error('Application destroy failed', err);
       }
       this.app = null;
     }

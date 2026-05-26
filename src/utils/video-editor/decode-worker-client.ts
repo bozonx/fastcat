@@ -1,5 +1,7 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { DecodeRequest, DecodeResponse } from '~/utils/audio/types';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
+const log = createDevLogger('decode-worker-client');
 
 /**
  * Rejection message used when a decode is abandoned because the client was
@@ -14,6 +16,11 @@ type PendingCall = {
   reject: (reason?: unknown) => void;
 };
 
+type QueuedSlot = {
+  resolve: () => void;
+  reject: (reason?: unknown) => void;
+};
+
 /**
  * Thin RPC client around the audio-decode web worker. Owns the worker lifecycle,
  * the request/response correlation by id, and a small concurrency gate so only a
@@ -24,7 +31,7 @@ export class DecodeWorkerClient {
   private worker: Worker | null = null;
   private callId = 0;
   private pending = new Map<number, PendingCall>();
-  private queue: Array<() => void> = [];
+  private queue: QueuedSlot[] = [];
   private inFlightCount = 0;
   private readonly maxConcurrency = 2;
   private destroyed = false;
@@ -61,7 +68,7 @@ export class DecodeWorkerClient {
     });
 
     worker.addEventListener('error', (event) => {
-      console.error('[AudioEngine] Decode worker error', event);
+      log.error('[AudioEngine] Decode worker error', event);
       for (const [, pending] of this.pending.entries()) {
         pending.reject(new Error('Audio decode worker crashed'));
       }
@@ -122,8 +129,15 @@ export class DecodeWorkerClient {
 
   /** Runs `task` once a concurrency slot is free, bounding parallel decodes. */
   async withSlot<T>(task: () => Promise<T>): Promise<T> {
+    if (this.destroyed) {
+      throw new Error(DECODE_CANCELLED_MESSAGE);
+    }
+
     if (this.inFlightCount >= this.maxConcurrency) {
-      await new Promise<void>((resolve) => this.queue.push(resolve));
+      await new Promise<void>((resolve, reject) => this.queue.push({ resolve, reject }));
+      if (this.destroyed) {
+        throw new Error(DECODE_CANCELLED_MESSAGE);
+      }
     }
     this.inFlightCount += 1;
     try {
@@ -131,7 +145,7 @@ export class DecodeWorkerClient {
     } finally {
       this.inFlightCount = Math.max(0, this.inFlightCount - 1);
       const next = this.queue.shift();
-      if (next) next();
+      if (next) next.resolve();
     }
   }
 
@@ -145,5 +159,9 @@ export class DecodeWorkerClient {
       pending.reject(new Error(DECODE_CANCELLED_MESSAGE));
     }
     this.pending.clear();
+
+    for (const queued of this.queue.splice(0)) {
+      queued.reject(new Error(DECODE_CANCELLED_MESSAGE));
+    }
   }
 }

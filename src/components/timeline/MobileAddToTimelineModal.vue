@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { computed, ref, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import { formatDurationSeconds } from '~/utils/format';
+const log = createDevLogger('MobileAddToTimelineModal');
 
 const props = defineProps<{
   open: boolean;
@@ -146,7 +149,7 @@ async function handleAdd() {
     emit('added');
     isOpen.value = false;
   } catch (err) {
-    console.error('Failed to add to timeline:', err);
+    log.error('Failed to add to timeline:', err);
   } finally {
     isAdding.value = false;
   }

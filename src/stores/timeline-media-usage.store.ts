@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -13,6 +14,7 @@ import {
   computeMediaUsageByTimelineDocs,
   type MediaPathToTimelinesMap,
 } from '~/utils/timeline-media-usage';
+const log = createDevLogger('timeline-media-usage.store');
 
 class TimelineScanError extends Error {
   constructor(
@@ -145,7 +147,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
   async function readTimelineDocByPath(params: { timelinePath: string }) {
     const vfs = useVfs();
     if (!vfs) {
-      console.warn(
+      log.warn(
         '[TimelineMediaUsage] VFS is not available yet, skipping scan for:',
         params.timelinePath,
       );
@@ -214,7 +216,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
       scannedMediaUsage.value = computeMediaUsageByTimelineDocs(timelines).mediaPathToTimelines;
       lastScanAt.value = Date.now();
     } catch (e: unknown) {
-      console.error('[TimelineMediaUsage] Error scanning timelines:', e);
+      log.error('[TimelineMediaUsage] Error scanning timelines:', e);
       scannedMediaUsage.value = {};
       if (e instanceof TimelineScanError) {
         error.value = `Scan failed: ${e.message} (${e.code})`;

@@ -127,6 +127,34 @@ describe('DecodeWorkerClient', () => {
     expect(workerInstances[0]!.terminated).toBe(true);
   });
 
+  it('rejects queued slot waiters on destroy', async () => {
+    const client = new DecodeWorkerClient();
+    const release: Array<() => void> = [];
+
+    const first = client.withSlot(
+      () =>
+        new Promise<void>((resolve) => {
+          release.push(resolve);
+        }),
+    );
+    const second = client.withSlot(
+      () =>
+        new Promise<void>((resolve) => {
+          release.push(resolve);
+        }),
+    );
+    const queued = client.withSlot(async () => undefined);
+
+    await Promise.resolve();
+    expect(release).toHaveLength(2);
+
+    client.destroy();
+
+    await expect(queued).rejects.toThrow(DECODE_CANCELLED_MESSAGE);
+    release.forEach((resolve) => resolve());
+    await Promise.all([first, second]);
+  });
+
   it('rejects immediately once destroyed without creating a worker', async () => {
     const client = new DecodeWorkerClient();
     client.destroy();

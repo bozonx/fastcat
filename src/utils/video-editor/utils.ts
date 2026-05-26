@@ -1,10 +1,12 @@
+import { createDevLogger } from '~/utils/dev-logger';
+const log = createDevLogger('utils');
 export function safeDispose(resource: unknown): void {
   if (!resource || typeof resource !== 'object') return;
   if ('dispose' in resource && typeof (resource as { dispose?: unknown }).dispose === 'function') {
     try {
       (resource as { dispose: () => void }).dispose();
     } catch (e) {
-      console.warn('[safeDispose] Error during dispose:', e);
+      log.warn('[safeDispose] Error during dispose:', e);
     }
     return;
   }
@@ -12,7 +14,7 @@ export function safeDispose(resource: unknown): void {
     try {
       (resource as { close: () => void }).close();
     } catch (e) {
-      console.warn('[safeDispose] Error during close:', e);
+      log.warn('[safeDispose] Error during close:', e);
     }
   }
 }

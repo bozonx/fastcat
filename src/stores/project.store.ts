@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore, storeToRefs } from 'pinia';
 import { ref, computed } from 'vue';
 
@@ -32,6 +33,7 @@ import { createProjectMetaModule } from '~/stores/project/project-meta';
 import { createProjectTimelinesModule } from '~/stores/project/project-timelines';
 import { useProjectLock } from '~/composables/editor/useProjectLock';
 import { getErrorMessage } from '~/utils/errors';
+const log = createDevLogger('project.store');
 
 export const useProjectStore = defineStore('project', () => {
   const workspaceStore = useWorkspaceStore();
@@ -234,7 +236,7 @@ export const useProjectStore = defineStore('project', () => {
         await projectDir.getDirectoryHandle('.fastcat', { create: true });
         await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectDir });
       } catch (e) {
-        console.warn('Failed to create project settings file', e);
+        log.warn('Failed to create project settings file', e);
       }
 
       const initialSettings = createDefaultProjectSettings(workspaceStore.userSettings);
@@ -348,7 +350,7 @@ export const useProjectStore = defineStore('project', () => {
       const lockAcquired = await projectLock.acquireLock(currentProjectId.value);
       isReadOnly.value = !lockAcquired;
     } else {
-      console.warn('Cannot acquire lock: projectId is unknown');
+      log.warn('Cannot acquire lock: projectId is unknown');
       isReadOnly.value = false;
     }
 

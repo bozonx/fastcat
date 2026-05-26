@@ -12,18 +12,20 @@
  * slot, because a slow-but-alive operation (a large copy, a long export) is
  * still using its datapipe, and returning its slot early would over-subscribe
  * the pool — the exact condition the budget exists to prevent.
- */
+ */ import { createDevLogger } from '~/utils/dev-logger';
+const log = createDevLogger('slot-watchdog');
+
 export interface SlotWatchdogOptions {
   /** Human-readable label for the warning, e.g. `'interactive'`. */
   label: string;
   /** Hold duration (ms) after which to warn. `<= 0` disables the watchdog. */
   warnMs: number;
-  /** Warning sink. Defaults to `console.warn`. */
+  /** Warning sink. Defaults to `log.warn`. */
   warn?: (message: string) => void;
 }
 
 function defaultWarn(message: string): void {
-  console.warn(message);
+  log.warn(message);
 }
 
 /**

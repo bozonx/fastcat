@@ -1,8 +1,10 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
+const log = createDevLogger('useProjectActions');
 
 export function useProjectActions() {
   const projectStore = useProjectStore();
@@ -17,7 +19,7 @@ export function useProjectActions() {
     try {
       await projectStore.saveProjectSettings();
     } catch (e) {
-      console.warn('Failed to save project settings during reset:', e);
+      log.warn('Failed to save project settings during reset:', e);
     }
     timelineStore.resetTimelineState();
     mediaStore.resetMediaState();
@@ -31,7 +33,7 @@ export function useProjectActions() {
       // Затем переходим на указанный путь
       await router.push(redirectPath);
     } catch (e) {
-      console.warn('Failed to leave project:', e);
+      log.warn('Failed to leave project:', e);
     }
   }
 

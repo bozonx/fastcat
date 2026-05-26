@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { computed, ref, watch } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -13,6 +15,7 @@ import { useAudioExtraction } from '~/composables/file-manager/useAudioExtractio
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EntryActions from '~/components/properties/file/EntryActions.vue';
 import { useI18n } from 'vue-i18n';
+const log = createDevLogger('MultiFileProperties');
 
 const props = defineProps<{
   entries: FsEntry[];
@@ -52,7 +55,7 @@ watch(
               }
             }
           } catch (err) {
-            console.warn('Failed to calculate directory size for properties:', e.path, err);
+            log.warn('Failed to calculate directory size for properties:', e.path, err);
           }
         }
       }

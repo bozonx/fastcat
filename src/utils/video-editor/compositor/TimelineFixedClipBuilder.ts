@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { parseHexColor, sanitizeTimelineColor } from '../utils';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { ClipFactory } from './ClipFactory';
@@ -6,6 +7,7 @@ import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoad
 import { resolveBlendMode, type CompositorClip, type HudMediaState } from './types';
 import { Sprite, Texture } from 'pixi.js';
 import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
+const log = createDevLogger('TimelineFixedClipBuilder');
 
 export interface TimelineFixedClipDescriptor {
   clipType: 'background' | 'adjustment' | 'text' | 'shape' | 'hud';
@@ -179,7 +181,7 @@ export class TimelineFixedClipBuilder {
       } catch (err: unknown) {
         const e = err instanceof Error ? err : null;
         if (e?.message !== 'Input has an unsupported or unrecognizable format.') {
-          console.error('[VideoCompositor] Failed to load HUD video state', err);
+          log.error('[VideoCompositor] Failed to load HUD video state', err);
         }
       }
       return null;
@@ -195,7 +197,7 @@ export class TimelineFixedClipBuilder {
         const state = await loadState({ path: bgPath, sourceKind: clip.background?.sourceKind });
         if (state && clip.hudMediaStates) clip.hudMediaStates.background = state;
       } catch (e) {
-        console.error('[VideoCompositor] Failed to load HUD background', e);
+        log.error('[VideoCompositor] Failed to load HUD background', e);
       }
     }
 
@@ -212,7 +214,7 @@ export class TimelineFixedClipBuilder {
         });
         if (state && clip.hudMediaStates) clip.hudMediaStates.content = state;
       } catch (e) {
-        console.error('[VideoCompositor] Failed to load HUD content', e);
+        log.error('[VideoCompositor] Failed to load HUD content', e);
       }
     }
 
@@ -226,7 +228,7 @@ export class TimelineFixedClipBuilder {
         const state = await loadState({ path: framePath, sourceKind: clip.frame?.sourceKind });
         if (state && clip.hudMediaStates) clip.hudMediaStates.frame = state;
       } catch (e) {
-        console.error('[VideoCompositor] Failed to load HUD frame', e);
+        log.error('[VideoCompositor] Failed to load HUD frame', e);
       }
     }
   }
@@ -286,7 +288,7 @@ export class TimelineFixedClipBuilder {
         }
       }
     } catch (e) {
-      console.error('[VideoCompositor] Failed to load clip mask', e);
+      log.error('[VideoCompositor] Failed to load clip mask', e);
     }
   }
 }

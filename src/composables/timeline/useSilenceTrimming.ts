@@ -1,8 +1,10 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { loadTranscriptionSidecar } from '~/utils/transcription/persistence';
 import { extractTranscriptionWords } from '~/utils/transcription/captions';
 import type { TimelineMediaClipItem } from '~/timeline/types';
+const log = createDevLogger('useSilenceTrimming');
 
 /**
  * Composable for performing silence trimming on timeline clips using STT data.
@@ -27,7 +29,7 @@ export function useSilenceTrimming() {
 
     const workspaceHandle = workspaceStore.workspaceHandle;
     if (!workspaceHandle) {
-      console.error('Workspace handle not available');
+      log.error('Workspace handle not available');
       return;
     }
 

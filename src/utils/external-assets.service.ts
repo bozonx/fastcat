@@ -1,6 +1,8 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
+const log = createDevLogger('external-assets.service');
 
 export interface ExternalAsset {
   id?: string;
@@ -89,7 +91,7 @@ export async function loadExternalAssets(params: {
         success: true,
       };
     } catch (e) {
-      console.error(`Failed to load asset ${asset.url}:`, e);
+      log.error(`Failed to load asset ${asset.url}:`, e);
       return {
         asset,
         path: '',

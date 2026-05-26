@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, type Ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
@@ -22,6 +23,7 @@ import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+const log = createDevLogger('useTimelineDropHandling');
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -825,7 +827,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         } catch (err) {
           // One file failing (e.g. unsupported codec, broken metadata) must not
           // abort placement of the remaining successfully imported files.
-          console.warn('[timeline] Failed to place file on timeline:', res.fileName, err);
+          log.warn('[timeline] Failed to place file on timeline:', res.fileName, err);
           const message = err instanceof Error ? err.message : String(err);
           toast.add({
             color: 'warning',

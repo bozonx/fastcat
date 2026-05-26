@@ -741,7 +741,7 @@ describe('FileProperties.vue', () => {
       'Sunset.txt|/personal/item-1/Sunset.txt',
     );
     const findButtonByTitlePrefix = (prefix: string) => {
-      return component.findAll('button').find(b => b.attributes('title')?.startsWith(prefix));
+      return component.findAll('button').find((b) => b.attributes('title')?.startsWith(prefix));
     };
     expect(findButtonByTitlePrefix('Copy')).toBeTruthy();
     expect(findButtonByTitlePrefix('Cut')).toBeUndefined();

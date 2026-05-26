@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Sprite } from 'pixi.js';
 import { RenderTexture } from 'pixi.js';
 import { safeDispose } from '../utils';
@@ -13,6 +14,7 @@ import {
   estimateVideoFrameSizeBytes,
 } from './VideoFrameCache';
 import type { CanvasFallbackRenderer } from './renderers/CanvasFallbackRenderer';
+const log = createDevLogger('ClipResourceManager');
 
 export interface ClipResourceManagerContext {
   width: number;
@@ -310,7 +312,7 @@ export class ClipResourceManager {
         }
       }
     } catch (err) {
-      console.warn('[VideoCompositor] VideoFrame path failed, falling back to canvas:', err);
+      log.warn('[VideoCompositor] VideoFrame path failed, falling back to canvas:', err);
     }
 
     await this.context.canvasFallbackRenderer.drawSampleToCanvas(sample, clip);

@@ -471,6 +471,51 @@ describe('AudioEngine', () => {
     expect(getDecodePostMessageCalls(workerInstance).length).toBe(2);
   });
 
+  it('stops stale head prefetch after a newer timeline layout arrives', async () => {
+    workerResponseDelayMs = 50;
+    const engine = new AudioEngine();
+    await engine.init();
+
+    engine.updateTimelineLayout([
+      createClip({
+        id: 'old-1',
+        sourcePath: 'old-1.mp3',
+        durationUs: 10_000_000,
+        sourceRangeDurationUs: 10_000_000,
+        sourceDurationUs: 10_000_000,
+      }),
+      createClip({
+        id: 'old-2',
+        sourcePath: 'old-2.mp3',
+        durationUs: 10_000_000,
+        sourceRangeDurationUs: 10_000_000,
+        sourceDurationUs: 10_000_000,
+      }),
+    ]);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    engine.updateTimelineLayout([
+      createClip({
+        id: 'new-1',
+        sourcePath: 'new-1.mp3',
+        durationUs: 10_000_000,
+        sourceRangeDurationUs: 10_000_000,
+        sourceDurationUs: 10_000_000,
+      }),
+    ]);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 200));
+
+    const sourceKeys = getDecodePostMessageCalls(workerInstance)
+      .map(([req]) => (req as DecodeRequest).sourceKey)
+      .filter(Boolean);
+
+    expect(sourceKeys).toContain('old-1.mp3');
+    expect(sourceKeys).toContain('new-1.mp3');
+    expect(sourceKeys).not.toContain('old-2.mp3');
+  });
+
   it('gives up after 3 transient NotReadableError retries', async () => {
     workerOk = false;
     workerErrorName = 'NotReadableError';

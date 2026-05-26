@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -13,6 +15,7 @@ import {
   normalizeProjectPath,
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
+const log = createDevLogger('TimelineAudioWaveform');
 
 const props = defineProps<{
   item: TimelineClipItem;
@@ -123,7 +126,7 @@ async function ensureMediaPeaks(params: {
         }
         return null;
       } catch (err) {
-        console.error('Failed to extract peaks:', err);
+        log.error('Failed to extract peaks:', err);
         return null;
       }
     },
@@ -353,7 +356,7 @@ const extractPeaks = async () => {
       void redrawMountedChunks();
     }
   } catch (err) {
-    console.error('Failed to extract audio peaks:', err);
+    log.error('Failed to extract audio peaks:', err);
   } finally {
     isExtracting.value = false;
   }

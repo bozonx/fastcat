@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
@@ -30,6 +31,7 @@ import type {
   WorkerTimelineTrack,
   WorkerTimelineMeta,
 } from './types';
+const log = createDevLogger('payloadBuilder');
 
 const MAX_NESTED_TIMELINE_DEPTH = 32;
 
@@ -214,14 +216,14 @@ async function buildVideoTrackTree(
           : normalizeProjectPath(rawPath);
 
         if (visitedPaths.has(path)) {
-          console.warn(
+          log.warn(
             `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`,
           );
           continue;
         }
 
         if (nestedPathStack.length >= MAX_NESTED_TIMELINE_DEPTH) {
-          console.warn(
+          log.warn(
             `Nested timeline depth limit reached at ${[...nestedPathStack, path].join(' -> ')}`,
           );
           continue;
@@ -235,7 +237,7 @@ async function buildVideoTrackTree(
             cache: nestedDocCache,
           });
           if (!nestedDoc) {
-            console.warn(`Nested timeline file not found: ${path}`);
+            log.warn(`Nested timeline file not found: ${path}`);
             continue;
           }
 
@@ -290,7 +292,7 @@ async function buildVideoTrackTree(
         } catch (error) {
           const reason = error instanceof Error ? error.message : String(error);
           const message = `Failed to expand nested timeline "${path}": ${reason}`;
-          console.error(message, error);
+          log.error(message, error);
           params.onWarning?.(message);
         }
 
@@ -624,14 +626,14 @@ export async function toWorkerTimelineClips(
 
       if (clipType === 'timeline') {
         if (visitedPaths.has(path)) {
-          console.warn(
+          log.warn(
             `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`,
           );
           continue;
         }
 
         if (nestedPathStack.length >= MAX_NESTED_TIMELINE_DEPTH) {
-          console.warn(
+          log.warn(
             `Nested timeline depth limit reached at ${[...nestedPathStack, path].join(' -> ')}`,
           );
           continue;
@@ -645,7 +647,7 @@ export async function toWorkerTimelineClips(
             cache: nestedDocCache,
           });
           if (!nestedDoc) {
-            console.warn(`Nested timeline file not found: ${path}`);
+            log.warn(`Nested timeline file not found: ${path}`);
             continue;
           }
 
@@ -814,7 +816,7 @@ export async function toWorkerTimelineClips(
         } catch (e) {
           const reason = e instanceof Error ? e.message : String(e);
           const message = `Failed to expand nested timeline "${path}": ${reason}`;
-          console.error(message, e);
+          log.error(message, e);
           options?.onWarning?.(message);
         }
       }

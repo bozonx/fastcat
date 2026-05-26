@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import {
@@ -15,6 +16,7 @@ import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-edi
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
+const log = createDevLogger('file-thumbnail-generator');
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
@@ -112,7 +114,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       return url;
     } catch (e) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
-        console.warn('Failed to load file thumbnail from OPFS', task.id, e);
+        log.warn('Failed to load file thumbnail from OPFS', task.id, e);
       }
       return null;
     }
@@ -297,7 +299,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       await dir.removeEntry(`${hash}.webp`);
     } catch (e) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
-        console.warn('Failed to clear file thumbnail for', hash, e);
+        log.warn('Failed to clear file thumbnail for', hash, e);
       }
     }
   }
@@ -362,7 +364,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       }
     } catch (e) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
-        console.warn('Failed to get marker thumbnail from OPFS', input.markerId, e);
+        log.warn('Failed to get marker thumbnail from OPFS', input.markerId, e);
       }
     }
 
@@ -414,7 +416,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       this.cache.set(cacheKey, url);
       this.cacheProjectIds.set(cacheKey, input.projectId);
     } catch (e) {
-      console.error('Failed to save marker thumbnail to OPFS', input.markerId, e);
+      log.error('Failed to save marker thumbnail to OPFS', input.markerId, e);
     }
   }
 
@@ -446,7 +448,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       }
     } catch (e) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
-        console.warn('Failed to clear all file thumbnails for project', projectId, e);
+        log.warn('Failed to clear all file thumbnails for project', projectId, e);
       }
     }
   }

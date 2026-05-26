@@ -61,31 +61,31 @@ const { getHotkeyLabel, getHotkeyTitle } = useHotkeyLabel();
 
 const ACTION_TO_HOTKEY: Record<string, HotkeyCommandId> = {
   // Common / Clip Actions
-  'delete': 'general.delete',
-  'rename': 'general.rename',
-  'copy': 'general.copy',
-  'cut': 'general.cut',
+  delete: 'general.delete',
+  rename: 'general.rename',
+  copy: 'general.copy',
+  cut: 'general.cut',
   'toggle-disabled': 'timeline.toggleDisableClip',
   'toggle-muted': 'timeline.toggleMuteClip',
   'toggle-locked': 'timeline.toggleLockClip',
   'copy-parameters': 'timeline.copyClipParameters',
   'paste-parameters': 'timeline.pasteClipParameters',
-  'toggleAudioWaveformMode': 'timeline.toggleWaveformMode',
-  'toggleShowWaveform': 'timeline.toggleShowWaveform',
-  'toggleShowThumbnails': 'timeline.toggleShowThumbnails',
-  'freezeFrame': 'timeline.toggleFreezeFrame',
-  'resetFreezeFrame': 'timeline.toggleFreezeFrame',
-  'createOtioVersion': 'timeline.duplicate',
-  
+  toggleAudioWaveformMode: 'timeline.toggleWaveformMode',
+  toggleShowWaveform: 'timeline.toggleShowWaveform',
+  toggleShowThumbnails: 'timeline.toggleShowThumbnails',
+  freezeFrame: 'timeline.toggleFreezeFrame',
+  resetFreezeFrame: 'timeline.toggleFreezeFrame',
+  createOtioVersion: 'timeline.duplicate',
+
   // Track Actions
   'toggle-video-hidden': 'timeline.toggleVisibilityTrack',
   'toggle-solo': 'timeline.toggleSoloTrack',
-  
+
   // Marker Actions
-  'addMarker': 'general.addMarker',
-  'prevMarker': 'general.prevMarker',
-  'nextMarker': 'general.nextMarker',
-  'createSubfolder': 'general.createFolder',
+  addMarker: 'general.addMarker',
+  prevMarker: 'general.prevMarker',
+  nextMarker: 'general.nextMarker',
+  createSubfolder: 'general.createFolder',
 };
 
 function getActionTitle(action: PropertyAction): string {
@@ -137,7 +137,7 @@ const justifyClass = computed(() => {
       :variant="action.variant || props.variant || 'soft'"
       :disabled="action.disabled"
       :loading="action.loading"
-      :title="vertical ? (action.title || action.label) : getActionTitle(action)"
+      :title="vertical ? action.title || action.label : getActionTitle(action)"
       :size="size"
       class="transition-all duration-200 hover:bg-ui-bg-hover hover:text-ui-text"
       :class="[vertical ? 'w-full' : '', !action.label && !vertical ? 'px-2' : '', justifyClass]"

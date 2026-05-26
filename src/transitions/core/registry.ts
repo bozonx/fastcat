@@ -1,5 +1,7 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter, Texture } from 'pixi.js';
 import type { ParamControl, ParamOption } from '~/components/properties/params';
+const log = createDevLogger('registry');
 
 export type TransitionType = string;
 
@@ -194,7 +196,7 @@ const registry = new Map<TransitionType, TransitionManifest<Record<string, unkno
 export function registerTransition<T>(manifest: TransitionManifest<T>): void {
   const existing = registry.get(manifest.type);
   if (existing && existing !== manifest) {
-    console.warn(`[Transitions] Transition type "${manifest.type}" is already registered.`);
+    log.warn(`[Transitions] Transition type "${manifest.type}" is already registered.`);
   }
   registry.set(manifest.type, manifest as TransitionManifest<Record<string, unknown>>);
 }

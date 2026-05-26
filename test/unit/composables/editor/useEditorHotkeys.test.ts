@@ -338,9 +338,7 @@ describe('useEditorHotkeys', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'h', code: 'KeyH', bubbles: true }));
     expect(settingsStore.toolbarSnapMode).toBe('snap');
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: "'", code: 'Quote', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: "'", code: 'Quote', bubbles: true }));
     expect(settingsStore.toolbarDragMode).toBe('slip');
     expect(settingsStore.toolbarDragModeEnabled).toBe(true);
 
@@ -838,7 +836,7 @@ describe('useEditorHotkeys', () => {
 
     projectStore.setView('cut');
     focusStore.setPanelFocus('dynamic:properties:files-main');
-    
+
     // Set selection source as timeline so focusStore allows timeline hotkeys
     selectionStore.selectedEntity = {
       source: 'timeline',
@@ -853,15 +851,11 @@ describe('useEditorHotkeys', () => {
     timelineStore.toggleMuteTargetClip = toggleMuteSpy;
 
     // Send W key (Disable)
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'w', code: 'KeyW', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', code: 'KeyW', bubbles: true }));
     expect(toggleDisableSpy).toHaveBeenCalledOnce();
 
     // Send Q key (Mute)
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'q', code: 'KeyQ', bubbles: true }),
-    );
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', code: 'KeyQ', bubbles: true }));
     expect(toggleMuteSpy).toHaveBeenCalledOnce();
   });
 });

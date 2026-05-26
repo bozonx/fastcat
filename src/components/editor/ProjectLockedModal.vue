@@ -54,7 +54,7 @@ async function handleStealLock() {
     await projectStore.stealProjectLock();
     log.log('Steal sequence finished.');
   } catch (e) {
-    console.error('[ProjectLockedModal] Error steal lock:', e);
+    log.error('Error steal lock:', e);
   } finally {
     // If stealing failed or took too long, we must allow the user to try again
     // If it succeeded, the isReadOnly watcher will close the modal anyway

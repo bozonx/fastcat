@@ -128,7 +128,7 @@ describe('io-budget local budget', () => {
     while ((!w2 || !barge) && guard < 50) {
       const r = releases.shift();
       if (r) r();
-      // eslint-disable-next-line no-await-in-loop
+
       await flush();
       guard += 1;
     }

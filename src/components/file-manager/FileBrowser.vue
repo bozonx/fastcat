@@ -617,14 +617,12 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 function getColumnCount(): number {
   if (fileManagerStore.viewMode !== 'grid' || !rootContainer.value) return 1;
-  const items = Array.from(
-    rootContainer.value.querySelectorAll<HTMLElement>('[data-entry-path]')
-  );
+  const items = Array.from(rootContainer.value.querySelectorAll<HTMLElement>('[data-entry-path]'));
   if (items.length === 0) return 1;
   const firstTop = items[0]?.offsetTop ?? 0;
   let cols = 0;
@@ -634,11 +632,7 @@ function getColumnCount(): number {
 
 function isTextInputElement(element: Element | null): boolean {
   if (!(element instanceof HTMLElement)) return false;
-  return (
-    element.tagName === 'INPUT' ||
-    element.tagName === 'TEXTAREA' ||
-    element.isContentEditable
-  );
+  return element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.isContentEditable;
 }
 
 function onContainerKeyDown(event: KeyboardEvent) {
@@ -654,9 +648,7 @@ function onContainerKeyDown(event: KeyboardEvent) {
   // Let Alt/Ctrl/Cmd combinations pass through (e.g. navigation / browser shortcuts)
   if (event.ctrlKey || event.altKey || event.metaKey) return;
 
-  const items = Array.from(
-    container.querySelectorAll<HTMLElement>('[data-entry-path]')
-  );
+  const items = Array.from(container.querySelectorAll<HTMLElement>('[data-entry-path]'));
   if (items.length === 0) return;
 
   const currentIndex = items.indexOf(activeEl as HTMLElement);
@@ -681,13 +673,9 @@ function onContainerKeyDown(event: KeyboardEvent) {
     const selected = selectionStore.selectedEntity;
     if (selected?.source === 'fileManager' && selected.instanceId === instanceId) {
       const selectedPath =
-        selected.kind === 'multiple'
-          ? selected.entries[0]?.path
-          : selected.entry?.path;
+        selected.kind === 'multiple' ? selected.entries[0]?.path : selected.entry?.path;
       if (selectedPath) {
-        const foundIdx = sortedEntries.value.findIndex(
-          (e) => e.path === selectedPath
-        );
+        const foundIdx = sortedEntries.value.findIndex((e) => e.path === selectedPath);
         if (foundIdx !== -1) {
           nextIndex = foundIdx;
         } else {
@@ -712,14 +700,13 @@ function onContainerKeyDown(event: KeyboardEvent) {
     if (event.shiftKey) {
       // Range selection
       if (!selectionAnchor.value) {
-        const currentEntry =
-          currentIndex >= 0 ? sortedEntries.value[currentIndex] : null;
+        const currentEntry = currentIndex >= 0 ? sortedEntries.value[currentIndex] : null;
         selectionAnchor.value = currentEntry ?? sortedEntries.value[0] ?? null;
       }
 
       if (selectionAnchor.value) {
         const anchorIdx = sortedEntries.value.findIndex(
-          (e) => e.path === selectionAnchor.value?.path
+          (e) => e.path === selectionAnchor.value?.path,
         );
         if (anchorIdx !== -1) {
           const start = Math.min(anchorIdx, nextIndex);

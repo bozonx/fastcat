@@ -9,7 +9,7 @@
  * Workers receive the buffer via `postIoInitMessage(worker, ...)` immediately
  * after construction. They install a listener in their own io-budget bootstrap
  * before any other message arrives.
- */
+ */ import { createDevLogger } from '~/utils/dev-logger';
 
 import {
   canUseSharedBudget,
@@ -19,6 +19,7 @@ import {
   type IoBudget,
 } from './io-budget';
 import { isTauriRuntime } from '~/utils/runtime';
+const log = createDevLogger('io-budget-main');
 
 /**
  * Re-export the canonical Tauri detector (see `~/utils/runtime`) so the legacy
@@ -49,7 +50,7 @@ function initState(): MainBudgetState {
         isTauri: tauri,
       };
     } catch (err) {
-      console.warn('[io-budget] Falling back to local budget — SAB init failed:', err);
+      log.warn('[io-budget] Falling back to local budget — SAB init failed:', err);
     }
   }
   return {
@@ -94,11 +95,11 @@ export function postIoInitMessage(worker: Worker): void {
     // us from ever holding a buffer in that case, but guard defensively so a
     // stray throw can't break worker bootstrap — re-send without the buffer so
     // the worker falls back to a local budget instead of timing out.
-    console.warn('[io-budget] io-init with SAB failed; retrying local-only:', err);
+    log.warn('[io-budget] io-init with SAB failed; retrying local-only:', err);
     try {
       worker.postMessage({ type: 'io-init', sab: null, isTauri: current.isTauri });
     } catch (innerErr) {
-      console.warn('[io-budget] io-init postMessage failed entirely:', innerErr);
+      log.warn('[io-budget] io-init postMessage failed entirely:', innerErr);
     }
   }
 }

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { useResizeObserver } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
@@ -27,6 +28,7 @@ import {
   prepareMonitorTimelineState,
 } from './useMonitorCore.timeline';
 import { registerMonitorCoreWatchers } from './useMonitorCore.wiring';
+const log = createDevLogger('useMonitorCore');
 
 export function useMonitorCore(options: UseMonitorCoreOptions) {
   const { t } = useI18n();
@@ -180,7 +182,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         scheduleRender(getRenderTimeForLayoutUpdate());
       }
     } catch (error) {
-      console.error('[Monitor] Failed to update timeline layout', error);
+      log.error('[Monitor] Failed to update timeline layout', error);
       toast.add({
         color: 'error',
         title: t('fastcat.monitor.playbackStopped'),
@@ -382,7 +384,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       if (err?.name === 'AbortError' && requestId !== buildRequestId) {
         return;
       }
-      console.error('Failed to build timeline components', e);
+      log.error('Failed to build timeline components', e);
       if (requestId === buildRequestId) {
         loadError.value = err?.message || t('fastcat.monitor.loadError');
       }

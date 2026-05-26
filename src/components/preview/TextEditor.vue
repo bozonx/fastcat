@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
+import { createDevLogger } from '~/utils/dev-logger';
+
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+const log = createDevLogger('TextEditor');
 
 const props = defineProps<{
   filePath: string;
@@ -47,7 +50,7 @@ async function loadContent() {
     content.value = text;
     lastSavedContent.value = text;
   } catch (e) {
-    console.error('TextEditor: failed to read file', e);
+    log.error('failed to read file', e);
     saveError.value = 'Failed to read file';
   } finally {
     isLoading.value = false;
@@ -77,7 +80,7 @@ async function saveNow() {
     lastSavedContent.value = content.value;
     lastSavedAt.value = new Date();
   } catch (e) {
-    console.error('TextEditor: failed to save file', e);
+    log.error('failed to save file', e);
     saveError.value = 'Failed to save file';
   } finally {
     isSaving.value = false;

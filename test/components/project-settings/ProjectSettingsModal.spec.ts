@@ -93,7 +93,8 @@ vi.mock('~/components/ui/UiModal.vue', () => ({
   default: {
     name: 'UiModal',
     props: ['open', 'title'],
-    template: '<div v-if="open" class="ui-modal-mock"><h3>{{ title }}</h3><slot /><slot name="footer" /></div>',
+    template:
+      '<div v-if="open" class="ui-modal-mock"><h3>{{ title }}</h3><slot /><slot name="footer" /></div>',
   },
 }));
 
@@ -168,7 +169,7 @@ describe('ProjectSettingsModal.vue', () => {
     expect(component.exists()).toBe(true);
     expect(component.find('.ui-modal-mock').exists()).toBe(true);
     expect(component.find('.ui-modal-mock h3').text()).toContain('My Awesome Video');
-    
+
     // Subsections should be rendered
     expect(component.find('.resolution-settings-mock').exists()).toBe(true);
     expect(component.find('.export-settings-mock').exists()).toBe(true);

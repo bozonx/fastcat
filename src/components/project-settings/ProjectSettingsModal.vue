@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import UiModal from '~/components/ui/UiModal.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import { ref, computed } from 'vue';
@@ -17,6 +19,7 @@ import AdvancedSettings from './AdvancedSettings.vue';
 import MetadataSettings from './MetadataSettings.vue';
 import StorageSettings from './StorageSettings.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+const log = createDevLogger('ProjectSettingsModal');
 const props = defineProps<{
   open: boolean;
 }>();
@@ -58,7 +61,7 @@ async function confirmClearBackups() {
       }
     }
   } catch (e) {
-    console.error('Failed to clear backups', e);
+    log.error('Failed to clear backups', e);
   }
 }
 

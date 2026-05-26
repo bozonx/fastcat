@@ -1,4 +1,6 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import PQueue from 'p-queue';
+const log = createDevLogger('auto-save');
 
 export interface AutoSaveOptions {
   /**
@@ -75,7 +77,7 @@ export function createAutoSave(options: AutoSaveOptions) {
       if (options.onError) {
         options.onError(e);
       } else {
-        console.warn('AutoSave failed', e);
+        log.warn('AutoSave failed', e);
       }
     }
   }

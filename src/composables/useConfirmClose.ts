@@ -1,7 +1,9 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { onMounted, onUnmounted } from 'vue';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { isTauriRuntime } from '~/utils/runtime';
+const log = createDevLogger('useConfirmClose');
 
 export function useConfirmClose() {
   const backgroundTasksStore = useBackgroundTasksStore();
@@ -60,7 +62,7 @@ export function useConfirmClose() {
         try {
           await timelineStore.deleteAllOpenAutosaves();
         } catch (e) {
-          console.warn('Failed to clean autosaves on close', e);
+          log.warn('Failed to clean autosaves on close', e);
         }
 
         isClosing = true;
@@ -69,7 +71,7 @@ export function useConfirmClose() {
         await appWindow.destroy();
       });
     } catch (err) {
-      console.error('Failed to setup Tauri close handler:', err);
+      log.error('Failed to setup Tauri close handler:', err);
     }
   }
 

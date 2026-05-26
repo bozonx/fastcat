@@ -53,11 +53,29 @@ describe('ProjectHistory.vue', () => {
 
   it('renders history entries when they exist', async () => {
     mockHistoryStore.past = [
-      { id: '1', scope: 'timeline', snapshot: {}, labelKey: 'videoEditor.fileManager.history.entries.addClip', timestamp: Date.now() - 1000 },
-      { id: '2', scope: 'timeline', snapshot: {}, labelKey: 'videoEditor.fileManager.history.entries.moveItem', timestamp: Date.now() },
+      {
+        id: '1',
+        scope: 'timeline',
+        snapshot: {},
+        labelKey: 'videoEditor.fileManager.history.entries.addClip',
+        timestamp: Date.now() - 1000,
+      },
+      {
+        id: '2',
+        scope: 'timeline',
+        snapshot: {},
+        labelKey: 'videoEditor.fileManager.history.entries.moveItem',
+        timestamp: Date.now(),
+      },
     ];
     mockHistoryStore.future = [
-      { id: '3', scope: 'timeline', snapshot: {}, labelKey: 'videoEditor.fileManager.history.entries.deleteItems', timestamp: Date.now() + 1000 },
+      {
+        id: '3',
+        scope: 'timeline',
+        snapshot: {},
+        labelKey: 'videoEditor.fileManager.history.entries.deleteItems',
+        timestamp: Date.now() + 1000,
+      },
     ];
 
     const component = await mountWithNuxt(ProjectHistory);

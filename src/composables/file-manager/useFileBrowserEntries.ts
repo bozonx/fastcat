@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, watch, inject, onScopeDispose } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -11,6 +12,7 @@ import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+const log = createDevLogger('useFileBrowserEntries');
 
 export interface ExtendedFsEntry extends FsEntry {
   size?: number;
@@ -75,7 +77,7 @@ export function useFileBrowserEntries({
         await calc(resolvedHandle);
         folderSizes.value[path] = totalSize;
       } catch (error) {
-        console.error('Failed to calculate folder size:', error);
+        log.error('Failed to calculate folder size:', error);
       } finally {
         folderSizesLoading.value[path] = false;
       }

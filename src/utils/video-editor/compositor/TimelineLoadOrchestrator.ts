@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ImageSource } from 'pixi.js';
 import PQueue from 'p-queue';
 import { getMediaTypeFromFilename } from '../../media-types';
@@ -10,6 +11,7 @@ import type { TimelineClipDescriptor, TimelineClipLoader } from './TimelineClipL
 import type { TimelineFixedClipBuilder } from './TimelineFixedClipBuilder';
 import type { TimelineMediaClipBuilder } from './TimelineMediaClipBuilder';
 import type { CompositorClip, CompositorTrack } from './types';
+const log = createDevLogger('TimelineLoadOrchestrator');
 
 export interface TimelineLoadOrchestratorDeps {
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
@@ -378,7 +380,7 @@ export class TimelineLoadOrchestrator {
         err instanceof Error &&
         err.message !== 'Input has an unsupported or unrecognizable format.'
       ) {
-        console.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
+        log.error(`[VideoCompositor] Failed to load video clip ${itemId}:`, err);
       }
       return {
         sequentialTimeUs: Math.max(sequentialTimeUs, endUsFallback),

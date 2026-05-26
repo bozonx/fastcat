@@ -1,8 +1,10 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import type { TransitionManager } from './TransitionManager';
 import type { CompositorClip, CompositorTrack } from './types';
 import type { StageTextureRenderer } from './StageTextureRenderer';
+const log = createDevLogger('TransitionRenderer');
 
 export interface TransitionRendererParams {
   app: Application;
@@ -351,7 +353,7 @@ export class TransitionRenderer {
       try {
         (sample as { close?: () => void }).close?.();
       } catch (error) {
-        console.error(
+        log.error(
           '[VideoCompositor] Failed to close VideoSample in renderClipToTextureForTransition',
           error,
         );

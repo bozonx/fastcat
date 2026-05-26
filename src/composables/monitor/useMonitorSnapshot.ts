@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, type Ref } from 'vue';
 import type {
   WorkerTimelineClip,
@@ -14,6 +15,7 @@ import { IMAGES_DIR_NAME } from '~/utils/constants';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 import { cloneValue } from '~/utils/clone';
+const log = createDevLogger('useMonitorSnapshot');
 
 export function useMonitorSnapshot(input: {
   projectStore: ReturnType<typeof useProjectStore>;
@@ -202,7 +204,7 @@ export function useMonitorSnapshot(input: {
 
       uiStore.notifyFileManagerUpdate();
     } catch (err) {
-      console.error('[Monitor] Failed to create stop frame snapshot', err);
+      log.error('[Monitor] Failed to create stop frame snapshot', err);
       toast.add({
         color: 'error',
         title: 'Snapshot failed',

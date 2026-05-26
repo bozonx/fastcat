@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Ref, ComputedRef } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -29,6 +30,7 @@ import {
   DEFAULT_VIDEO_FPS,
   DEFAULT_IMAGE_QUALITY,
 } from '~/utils/conversion/constants';
+const log = createDevLogger('useFileConversionActions');
 
 const METADATA_TIMEOUT_MS = 15000;
 
@@ -115,7 +117,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
   }
 
   function notifyMetadataWarning(message: string, error: unknown) {
-    console.warn(message, error);
+    log.warn(message, error);
     toast.add({
       title: t('videoEditor.fileManager.convert.metadataWarning'),
       description: message,
@@ -361,7 +363,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
         props.imageSettings.aspectRatio = bitmap.height > 0 ? bitmap.width / bitmap.height : 1;
         bitmap.close();
       } catch (err) {
-        console.warn('Failed to extract image metadata', err);
+        log.warn('Failed to extract image metadata', err);
         props.imageSettings.width = 0;
         props.imageSettings.height = 0;
         props.imageSettings.aspectRatio = 1;
@@ -484,7 +486,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
               const { client } = getExportWorkerClient();
               await client.cancelExport(taskId);
             } catch (cancelErr) {
-              console.warn('cancelExport failed', cancelErr);
+              log.warn('cancelExport failed', cancelErr);
             }
           },
         });
@@ -523,7 +525,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
               await removeCreatedFile({ dirHandle: createdDirHandle, fileName: createdFileName });
             } else {
               backgroundTasksStore.updateTaskStatus(bgTaskId, 'failed', err.message);
-              console.error('Conversion failed', err);
+              log.error('Conversion failed', err);
               toast.add({
                 title: t('videoEditor.fileManager.convert.failed'),
                 description: err instanceof Error ? err.message : String(err),
@@ -579,7 +581,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       }
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
-      console.error('Conversion initiation failed', err);
+      log.error('Conversion initiation failed', err);
       props.isModalOpen.value = false;
       toast.add({
         title: t('videoEditor.fileManager.convert.failed'),

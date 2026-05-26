@@ -60,7 +60,7 @@ export function useProjectLock() {
     log.log(`Attempting to acquire lock: ${projectId} (Tab: ${tabId.value})`);
 
     if (typeof navigator === 'undefined' || !navigator.locks) {
-      console.warn('[ProjectLock] Web Locks API not supported');
+      log.warn('[ProjectLock] Web Locks API not supported');
       lockedProjectId.value = projectId;
       return true;
     }
@@ -73,7 +73,7 @@ export function useProjectLock() {
       navigator.locks
         .request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock) => {
           if (!lock) {
-            console.warn(`[ProjectLock] Lock ${lockName} is unavailable`);
+            log.warn(`[ProjectLock] Lock ${lockName} is unavailable`);
             resolveAcquire(false);
             return;
           }
@@ -87,7 +87,7 @@ export function useProjectLock() {
           });
         })
         .catch((error) => {
-          console.error('[ProjectLock] Lock acquisition error:', error);
+          log.error('[ProjectLock] Lock acquisition error:', error);
           resolveAcquire(false);
         });
     });

@@ -1,9 +1,11 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { inject, watch } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
+const log = createDevLogger('useFileManagerPanelPendingActions');
 
 export interface FileManagerPanelPendingActionsOptions {
   openDeleteConfirmModal: (entries: FsEntry[]) => void;
@@ -115,7 +117,7 @@ export function useFileManagerPanelPendingActions({
       try {
         await createTimelineInDirectory(entry);
       } catch (e) {
-        console.warn('Failed to create timeline in directory', entry.path, e);
+        log.warn('Failed to create timeline in directory', entry.path, e);
       }
     },
   );
@@ -131,7 +133,7 @@ export function useFileManagerPanelPendingActions({
       try {
         await createMarkdownInDirectory(entry);
       } catch (e) {
-        console.warn('Failed to create markdown in directory', entry.path, e);
+        log.warn('Failed to create markdown in directory', entry.path, e);
       }
     },
   );
@@ -147,7 +149,7 @@ export function useFileManagerPanelPendingActions({
       try {
         await createOtioVersion(entry);
       } catch (e) {
-        console.warn('Failed to create OTIO version', entry.path, e);
+        log.warn('Failed to create OTIO version', entry.path, e);
       }
     },
   );

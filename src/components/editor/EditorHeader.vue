@@ -100,7 +100,9 @@ const menuItems = computed(() => {
 
       <!-- Window Switcher -->
       <div class="flex items-center bg-ui-bg/50 p-1 rounded-lg border border-ui-border gap-1 mr-2">
-        <UiTooltip :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')">
+        <UiTooltip
+          :text="getHotkeyTitle(t('videoEditor.fileManager.tabs.files'), 'general.switchViewFiles')"
+        >
           <button
             class="px-3 py-1 rounded text-sm font-medium transition-colors"
             :class="
@@ -113,7 +115,9 @@ const menuItems = computed(() => {
             {{ t('videoEditor.fileManager.tabs.files') }}
           </button>
         </UiTooltip>
-        <UiTooltip :text="getHotkeyTitle(t('videoEditor.timeline.tabs.cut'), 'general.switchViewCut')">
+        <UiTooltip
+          :text="getHotkeyTitle(t('videoEditor.timeline.tabs.cut'), 'general.switchViewCut')"
+        >
           <button
             class="px-3 py-1 rounded text-sm font-medium transition-colors"
             :class="
@@ -126,7 +130,9 @@ const menuItems = computed(() => {
             {{ t('videoEditor.timeline.tabs.cut') }}
           </button>
         </UiTooltip>
-        <UiTooltip :text="getHotkeyTitle(t('videoEditor.timeline.tabs.sound'), 'general.switchViewSound')">
+        <UiTooltip
+          :text="getHotkeyTitle(t('videoEditor.timeline.tabs.sound'), 'general.switchViewSound')"
+        >
           <button
             class="px-3 py-1 rounded text-sm font-medium transition-colors"
             :class="
@@ -139,7 +145,9 @@ const menuItems = computed(() => {
             {{ t('videoEditor.timeline.tabs.sound') }}
           </button>
         </UiTooltip>
-        <UiTooltip :text="getHotkeyTitle(t('videoEditor.export.title'), 'general.switchViewExport')">
+        <UiTooltip
+          :text="getHotkeyTitle(t('videoEditor.export.title'), 'general.switchViewExport')"
+        >
           <button
             class="px-3 py-1 rounded text-sm font-medium transition-colors"
             :class="

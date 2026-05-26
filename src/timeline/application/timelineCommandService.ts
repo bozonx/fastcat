@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { VIDEO_DIR_NAME } from '~/utils/constants';
 import type { TimelineCommand } from '~/timeline/commands';
 import type {
@@ -18,6 +19,7 @@ import {
   normalizeProjectPath,
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
+const log = createDevLogger('timelineCommandService');
 
 export interface TimelineMediaMetadata {
   duration?: number;
@@ -334,7 +336,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         file,
         projectRelativePath: input.path,
       }).catch((err) => {
-        console.warn('[timeline] Auto proxy creation failed', err);
+        log.warn('[timeline] Auto proxy creation failed', err);
       });
     }
 

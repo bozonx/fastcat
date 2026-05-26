@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore, skipHydrate } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
@@ -17,6 +18,7 @@ import { useProxyStore } from './proxy.store';
 
 import { getErrorMessage } from '~/utils/errors';
 import { useRuntimeConfig } from 'nuxt/app';
+const log = createDevLogger('workspace.store');
 
 export interface RecentProject {
   projectName: string;
@@ -244,7 +246,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     resetSettingsState();
     resetWorkspaceState();
 
-    workspaceProvider.clearWorkspace().catch(console.warn);
+    workspaceProvider.clearWorkspace().catch(log.warn);
 
     // Reset dependent stores when workspace is closed
     const projectStore = useProjectStore();
@@ -298,7 +300,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       }
       resetWorkspace();
     } catch (e) {
-      console.warn('Failed to wipe workspace:', e);
+      log.warn('Failed to wipe workspace:', e);
     } finally {
       isLoading.value = false;
     }

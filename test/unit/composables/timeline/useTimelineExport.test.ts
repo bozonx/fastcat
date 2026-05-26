@@ -791,6 +791,7 @@ describe('useTimelineExport pure functions', () => {
       expect(clips).toEqual([]);
       expect(requestedPaths).toEqual(['_timelines/sub/a.otio', '_timelines/root.otio']);
       expect(warnSpy).toHaveBeenCalledWith(
+        '[payloadBuilder]',
         expect.stringContaining('Circular dependency in nested timeline'),
       );
     } finally {

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, watch, onBeforeUnmount, type Ref } from 'vue';
 import { safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import type { FsEntry } from '~/types/fs';
@@ -7,6 +8,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+const log = createDevLogger('useFileManagerThumbnails');
 
 const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
 
@@ -104,11 +106,11 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
                     };
                   } catch {
                     // Not a valid or supported image, don't generate thumbnail
-                    console.warn('Image file is corrupt or not displayable:', path);
+                    log.warn('Image file is corrupt or not displayable:', path);
                   }
                 }
               } catch (e) {
-                console.warn('Failed to get image file for thumbnail:', path, e);
+                log.warn('Failed to get image file for thumbnail:', path, e);
               }
             }
           }

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed, onMounted } from 'vue';
 import {
   BASE_VIDEO_CODEC_OPTIONS,
@@ -5,6 +6,7 @@ import {
   resolveVideoCodecOptions,
   type VideoCodecOptionResolved,
 } from '~/utils/webcodecs';
+const log = createDevLogger('useVideoCodecs');
 
 export function useVideoCodecs() {
   const videoCodecSupport = ref<Record<string, boolean>>({});
@@ -20,7 +22,7 @@ export function useVideoCodecs() {
     try {
       videoCodecSupport.value = await checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS);
     } catch (error) {
-      console.warn('Failed to check video codec support', error);
+      log.warn('Failed to check video codec support', error);
     } finally {
       isLoadingCodecSupport.value = false;
     }

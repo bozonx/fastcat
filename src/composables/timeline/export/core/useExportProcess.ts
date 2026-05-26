@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -22,6 +23,7 @@ import {
   toWorkerTimelineClips,
   trimWorkerClipToRange,
 } from '../payloadBuilder';
+const log = createDevLogger('useExportProcess');
 
 let timelineExportInFlight = false;
 const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
@@ -189,13 +191,13 @@ export function useExportProcess(
       const { client } = getExportWorkerClient();
       await client.cancelExport(exportTaskId);
     } catch (e) {
-      console.warn('Failed to request cooperative export cancel', e);
+      log.warn('Failed to request cooperative export cancel', e);
     }
 
     setTimeout(() => {
       if (!cancelRequested.value) return;
       if (activeExportTaskId.value !== exportTaskId) return;
-      console.warn(
+      log.warn(
         `[Export] Cooperative cancel did not complete within ${CANCEL_FORCE_TERMINATE_TIMEOUT_MS}ms; terminating export worker.`,
       );
       terminateExportWorker('Export cancelled (forced)');

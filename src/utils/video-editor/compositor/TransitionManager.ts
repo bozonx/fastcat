@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter } from 'pixi.js';
 import { safeDispose } from '../utils';
 import {
@@ -6,6 +7,7 @@ import {
   DEFAULT_TRANSITION_CURVE,
 } from '~/transitions';
 import type { CompositorClip } from './types';
+const log = createDevLogger('TransitionManager');
 
 export class TransitionManager {
   private transitionFilters = new Map<string, Filter>();
@@ -254,7 +256,7 @@ export class TransitionManager {
       this.transitionFilters.set(clip.itemId, filter);
       return filter;
     } catch (error) {
-      console.error('[TransitionManager] Failed to recreate transition filter', error);
+      log.error('Failed to recreate transition filter', error);
       clip.transitionFilterType = null;
       return null;
     }
@@ -275,7 +277,7 @@ export class TransitionManager {
     try {
       return applyUpdate(filter);
     } catch (error) {
-      console.error('[TransitionManager] Failed to update transition filter', error);
+      log.error('Failed to update transition filter', error);
     }
 
     const recreatedFilter = this.recreateTransitionFilter(clip, manifest);
@@ -286,7 +288,7 @@ export class TransitionManager {
     try {
       return applyUpdate(recreatedFilter);
     } catch (error) {
-      console.error('[TransitionManager] Failed to update recreated transition filter', error);
+      log.error('Failed to update recreated transition filter', error);
       return null;
     }
   }

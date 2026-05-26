@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed, watch, onMounted, inject } from 'vue';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { FsEntry } from '~/types/fs';
@@ -10,6 +11,7 @@ import {
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
+const log = createDevLogger('useMobileFileBrowserNavigation');
 
 interface NavigationDeps {
   readDirectory: (path: string) => Promise<FsEntry[]>;
@@ -85,14 +87,14 @@ export function useMobileFileBrowserNavigation({
                 return { ...entry, size: metadata.size, lastModified: metadata.lastModified };
               }
             } catch (e) {
-              console.warn('Failed to get metadata for:', entry.path, e);
+              log.warn('Failed to get metadata for:', entry.path, e);
             }
           }
           return entry;
         }),
       );
     } catch (error) {
-      console.error('Failed to load mobile folder content:', error);
+      log.error('Failed to load mobile folder content:', error);
     } finally {
       isLoading.value = false;
     }

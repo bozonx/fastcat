@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
@@ -6,6 +7,7 @@ import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-qu
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
+const log = createDevLogger('marker-thumbnail.service');
 
 export interface MarkerThumbnailParams {
   projectId: string;
@@ -63,7 +65,7 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
         const url = URL.createObjectURL(blob);
         params.onComplete?.(url);
       } catch (error) {
-        console.error('Failed to generate marker thumbnail:', params.markerId, error);
+        log.error('Failed to generate marker thumbnail:', params.markerId, error);
       }
     },
     priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy,

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import { VideoCompositor } from '../../utils/video-editor/VideoCompositor';
 import { loadFonts } from '../../utils/video-editor/load-fonts';
@@ -23,6 +24,7 @@ import { runResilientWorkerFileIo, acquireStreamingWorkerFileIoSlot } from './io
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
+const log = createDevLogger('export');
 
 export async function extractMetadata(
   fileOrHandle: File | FileSystemFileHandle,
@@ -137,7 +139,7 @@ export async function extractMetadata(
       safeDispose(input);
     }
   } catch (err) {
-    console.warn(
+    log.warn(
       '[Worker Export] Failed to extract metadata (unsupported format):',
       (err as Error)?.message,
     );
@@ -714,7 +716,7 @@ export async function runExport(
       await runExportWithHardwareAcceleration('prefer-hardware', true);
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') throw e;
-      console.warn('[Worker Export] Hardware acceleration export with exact profile failed:', e);
+      log.warn('[Worker Export] Hardware acceleration export with exact profile failed:', e);
       await reportExportWarning(
         '[Worker Export] Hardware acceleration export with exact profile failed, retrying with default HW profile.',
       );
@@ -722,7 +724,7 @@ export async function runExport(
         await runExportWithHardwareAcceleration('prefer-hardware', false);
       } catch (e2) {
         if (e2 instanceof Error && e2.name === 'AbortError') throw e2;
-        console.warn(
+        log.warn(
           '[Worker Export] Hardware acceleration export failed completely, retrying with software:',
           e2,
         );
@@ -834,7 +836,7 @@ export async function extractAudioStream(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (output as any).finalize();
   } catch (err) {
-    console.error('[Worker Export] Failed to extract audio:', err);
+    log.error('[Worker Export] Failed to extract audio:', err);
     throw err;
   } finally {
     release();

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, watch, type Ref } from 'vue';
 
 import { createAutoSave } from '~/utils/auto-save';
@@ -12,6 +13,7 @@ import {
   normalizeUserSettings,
 } from '~/utils/settings';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+const log = createDevLogger('workspaceSettings');
 
 export interface WorkspaceSettingsModule {
   userSettings: Ref<FastCatUserSettings>;
@@ -71,14 +73,14 @@ export function createWorkspaceSettingsModule(params: {
         await params.settingsRepo.value.saveUserSettings(userSettings.value);
       } catch (e) {
         userSettingsSaveError.value = getErrorMessage(e, 'Failed to save user settings');
-        console.warn('Failed to save user settings', e);
+        log.warn('Failed to save user settings', e);
         throw e;
       } finally {
         isSavingUserSettings.value = false;
       }
     },
     onError: (e) => {
-      console.error('Failed to save user settings', e);
+      log.error('Failed to save user settings', e);
     },
   });
 
@@ -95,14 +97,14 @@ export function createWorkspaceSettingsModule(params: {
         await params.settingsRepo.value.saveAppSettings(appSettings.value);
       } catch (e) {
         appSettingsSaveError.value = getErrorMessage(e, 'Failed to save app settings');
-        console.warn('Failed to save app settings', e);
+        log.warn('Failed to save app settings', e);
         throw e;
       } finally {
         isSavingAppSettings.value = false;
       }
     },
     onError: (e) => {
-      console.error('Failed to save app settings', e);
+      log.error('Failed to save app settings', e);
     },
   });
 

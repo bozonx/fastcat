@@ -1,7 +1,9 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { rasterizeSvgToBlob } from '~/utils/svg';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
+const log = createDevLogger('vectorImageCache');
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
 
@@ -136,7 +138,7 @@ export async function clearVectorImageRaster(params: ClearVectorImageRasterParam
   } catch (error) {
     const err = error as { name?: string };
     if (err?.name !== 'NotFoundError') {
-      console.warn('Failed to clear vector image cache', error);
+      log.warn('Failed to clear vector image cache', error);
     }
   }
 }

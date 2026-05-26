@@ -25,8 +25,18 @@ describe('ProjectTabBar.vue', () => {
     });
 
     const store = useProjectTabsStore();
-    store.registerProjectTab({ id: 'files', label: 'Files', icon: 'i-heroicons-folder', component: markRaw(MockComponent) });
-    store.registerProjectTab({ id: 'history', label: 'History', icon: 'i-heroicons-clock', component: markRaw(MockComponent) });
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
+    store.registerProjectTab({
+      id: 'history',
+      label: 'History',
+      icon: 'i-heroicons-clock',
+      component: markRaw(MockComponent),
+    });
 
     await component.vm.$nextTick();
 
@@ -53,13 +63,23 @@ describe('ProjectTabBar.vue', () => {
     });
 
     const store = useProjectTabsStore();
-    store.registerProjectTab({ id: 'files', label: 'Files', icon: 'i-heroicons-folder', component: markRaw(MockComponent) });
-    store.registerProjectTab({ id: 'history', label: 'History', icon: 'i-heroicons-clock', component: markRaw(MockComponent) });
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
+    store.registerProjectTab({
+      id: 'history',
+      label: 'History',
+      icon: 'i-heroicons-clock',
+      component: markRaw(MockComponent),
+    });
 
     await component.vm.$nextTick();
 
     const historyTab = component.findAll('[data-tab-id]')[1];
-    
+
     // Click on history tab
     await historyTab.trigger('click');
     expect(store.activeTabId).toBe('history');
@@ -85,7 +105,12 @@ describe('ProjectTabBar.vue', () => {
     });
 
     const store = useProjectTabsStore();
-    store.registerProjectTab({ id: 'files', label: 'Files', icon: 'i-heroicons-folder', component: markRaw(MockComponent) });
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
 
     await component.vm.$nextTick();
 

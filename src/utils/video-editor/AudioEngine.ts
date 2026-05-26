@@ -60,6 +60,7 @@ export class AudioEngine {
   private currentMonitorVolume = 1;
   private schedulingClipIds = new Set<string>();
   private scheduleGeneration = 0;
+  private layoutGeneration = 0;
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
@@ -126,19 +127,21 @@ export class AudioEngine {
     try {
       this.ctx.destination.channelCount = channelCount;
     } catch (err) {
-      console.warn('[AudioEngine] Failed to set destination channelCount', err);
+      logger.warn('Failed to set destination channelCount', err);
     }
   }
 
   async resumeContext() {
     if (this.ctx && this.ctx.state === 'suspended') {
       await this.ctx.resume().catch((err) => {
-        console.warn('[AudioEngine] resumeContext: Failed to resume', err);
+        logger.warn('resumeContext: Failed to resume', err);
       });
     }
   }
 
   async loadClips(clips: AudioEngineClip[]) {
+    this.layoutGeneration += 1;
+    const generation = this.layoutGeneration;
     logger.info(
       'loadClips',
       clips.map((c) => ({
@@ -152,13 +155,19 @@ export class AudioEngine {
     );
     this.currentClips = clips;
     this.cleanupCache();
-    await this.chunkDecoder.prefetchHeadChunks(clips);
+    await this.chunkDecoder.prefetchHeadChunks(clips, {
+      shouldContinue: () => generation === this.layoutGeneration && !this.destroyed,
+    });
   }
 
   updateTimelineLayout(clips: AudioEngineClip[]) {
+    this.layoutGeneration += 1;
+    const generation = this.layoutGeneration;
     this.currentClips = clips;
     this.cleanupCache();
-    void this.chunkDecoder.prefetchHeadChunks(clips);
+    void this.chunkDecoder.prefetchHeadChunks(clips, {
+      shouldContinue: () => generation === this.layoutGeneration && !this.destroyed,
+    });
     if (this.scheduler.isPlayingActive()) {
       // Re-evaluate playing nodes
       const currentTimeUs = this.getCurrentTimeUs();
@@ -526,7 +535,7 @@ export class AudioEngine {
     // can take ~100ms on Safari/iOS, hence we do it before measuring kickoff.
     if (this.ctx?.state === 'suspended') {
       await this.ctx.resume().catch((err) => {
-        console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
+        logger.warn('play: Failed to resume AudioContext', err);
       });
     }
 
@@ -606,7 +615,7 @@ export class AudioEngine {
 
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume().catch((err) => {
-        console.warn('[AudioEngine] previewScrubForward: Failed to resume AudioContext', err);
+        logger.warn('previewScrubForward: Failed to resume AudioContext', err);
       });
     }
 
@@ -1110,6 +1119,7 @@ export class AudioEngine {
       return;
     }
     this.destroyed = true;
+    this.layoutGeneration += 1;
     this.scheduler.destroy();
     this.stopAllNodes();
     this.stopScrubPreview();

@@ -1,4 +1,6 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { buildAudioEffectGraph } from '~/utils/audio/effect-graph';
+const log = createDevLogger('apply-audio-effects-offline');
 
 /**
  * Audio effects processing via native Web Audio API.
@@ -71,7 +73,7 @@ export async function applyAudioEffects({
     }
     return out;
   } catch (err) {
-    console.warn('[applyAudioEffects] Failed to apply effects, using raw audio', err);
+    log.warn('[applyAudioEffects] Failed to apply effects, using raw audio', err);
     return buffer;
   }
 }
@@ -102,7 +104,7 @@ export async function applyAudioEffectsOffline({
       effects: enabledEffects,
     });
   } catch (err) {
-    console.warn('[applyAudioEffectsOffline] Failed to apply effects, using raw audio', err);
+    log.warn('[applyAudioEffectsOffline] Failed to apply effects, using raw audio', err);
     return { planes, frames };
   }
 }

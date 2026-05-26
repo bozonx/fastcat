@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, inject, onMounted, onUnmounted } from 'vue';
 import type { ComputedRef } from 'vue';
 import {
@@ -49,6 +51,7 @@ import {
   syncFileManagerDragCursor,
 } from '~/composables/file-manager/dragCursor';
 import { crossVfsCopy, crossVfsMove } from '~/file-manager/core/vfs/crossVfs';
+const log = createDevLogger('FileManagerTree');
 
 interface Props {
   editingEntryPath?: string | null;
@@ -538,7 +541,7 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
         }
         uiStore.notifyFileManagerUpdate();
       } catch (err) {
-        console.error('[FileManagerTree] Cross-VFS operation failed:', err);
+        log.error('Cross-VFS operation failed:', err);
       }
     } else {
       for (const item of itemsToMove) {

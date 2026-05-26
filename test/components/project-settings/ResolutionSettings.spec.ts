@@ -65,7 +65,8 @@ vi.mock('~/components/project-settings/SettingsSection.vue', () => ({
   default: {
     name: 'SettingsSection',
     props: ['title', 'summary'],
-    template: '<div class="settings-section"><h2>{{ title }}</h2><p>{{ summary }}</p><slot /></div>',
+    template:
+      '<div class="settings-section"><h2>{{ title }}</h2><p>{{ summary }}</p><slot /></div>',
   },
 }));
 
@@ -95,7 +96,8 @@ vi.mock('~/components/media/MediaResolutionSettings.vue', () => ({
   default: {
     name: 'MediaResolutionSettings',
     props: ['width', 'height', 'fps'],
-    template: '<div class="resolution-inputs">Inputs: {{ width }}x{{ height }} at {{ fps }}FPS</div>',
+    template:
+      '<div class="resolution-inputs">Inputs: {{ width }}x{{ height }} at {{ fps }}FPS</div>',
   },
 }));
 
@@ -113,7 +115,9 @@ describe('ResolutionSettings.vue', () => {
 
     expect(component.exists()).toBe(true);
     expect(component.find('.settings-section').exists()).toBe(true);
-    expect(component.find('.settings-section h2').text()).toContain('videoEditor.projectSettings.resolutionAndFps');
+    expect(component.find('.settings-section h2').text()).toContain(
+      'videoEditor.projectSettings.resolutionAndFps',
+    );
     expect(component.find('.settings-section p').text()).toBe('1920x1080, 30FPS, 48kHz');
   });
 

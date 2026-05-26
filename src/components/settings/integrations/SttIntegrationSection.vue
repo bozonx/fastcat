@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
@@ -7,6 +9,7 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 
 import { runModelDownloadTask } from '~/utils/transcription/model-download-task';
+const log = createDevLogger('SttIntegrationSection');
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
@@ -67,7 +70,7 @@ async function startDownload() {
       }),
     });
   } catch (e) {
-    console.error(e);
+    log.error(e);
   }
 }
 </script>

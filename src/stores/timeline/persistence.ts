@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
 import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
@@ -6,6 +7,7 @@ import { TIMELINE_DEFAULTS } from '~/utils/constants';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
+const log = createDevLogger('persistence');
 
 export interface TimelinePersistenceDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -210,8 +212,8 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
     } catch (e) {
       const raw = deepToRaw(doc);
       const path = findNonCloneablePath(raw);
-      console.error('[timeline persistence] non-cloneable value in TimelineDocument at', path, e);
-      console.error('[timeline persistence] raw doc snapshot:', raw);
+      log.error('[timeline persistence] non-cloneable value in TimelineDocument at', path, e);
+      log.error('[timeline persistence] raw doc snapshot:', raw);
       worker.terminate();
       reject(e instanceof Error ? e : new Error(String(e)));
     }
@@ -347,7 +349,7 @@ export function createTimelinePersistenceModule(
     try {
       JSON.parse(serialized);
     } catch (e) {
-      console.error('Invalid timeline serialization', e, serialized.substring(0, 100));
+      log.error('Invalid timeline serialization', e, serialized.substring(0, 100));
       throw new Error('Refusing to save: Invalid timeline JSON structure');
     }
 
@@ -432,12 +434,12 @@ export function createTimelinePersistenceModule(
       } catch (e: unknown) {
         deps.timelineSaveError.value =
           e instanceof Error ? e.message : 'Failed to auto-save timeline file';
-        console.warn('Failed to auto-save timeline file', e);
+        log.warn('Failed to auto-save timeline file', e);
         throw e;
       }
     },
     onError: (e) => {
-      console.error('Failed to save timeline', e);
+      log.error('Failed to save timeline', e);
       deps.onSaveError?.(e);
     },
   });
@@ -550,7 +552,7 @@ export function createTimelinePersistenceModule(
               try {
                 await deps.deleteAutosaveFile?.(deps.currentTimelinePath.value);
               } catch (e) {
-                console.warn('Failed to remove discarded autosave sidecar', e);
+                log.warn('Failed to remove discarded autosave sidecar', e);
               }
             }
           }
@@ -605,7 +607,7 @@ export function createTimelinePersistenceModule(
           : null;
       }
     } catch (e: unknown) {
-      console.warn('Failed to load timeline file, fallback to default', e);
+      log.warn('Failed to load timeline file, fallback to default', e);
       if (requestId !== loadTimelineRequestId) return;
       deps.timelineDoc.value = fallback;
     } finally {
@@ -678,7 +680,7 @@ export function createTimelinePersistenceModule(
           try {
             await deps.deleteAutosaveFile?.(currentTimelinePath);
           } catch (e) {
-            console.warn('Failed to remove autosave sidecar after save', e);
+            log.warn('Failed to remove autosave sidecar after save', e);
           }
         } else {
           scheduleAutosave();
@@ -689,7 +691,7 @@ export function createTimelinePersistenceModule(
     } catch (e: unknown) {
       deps.timelineSaveError.value =
         e instanceof Error ? e.message : 'Failed to save timeline file';
-      console.warn('Failed to save timeline file', e);
+      log.warn('Failed to save timeline file', e);
       deps.onSaveError?.(e);
       throw e;
     } finally {

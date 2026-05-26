@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { computed, ref, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -16,6 +17,7 @@ import { copyFile } from '@tauri-apps/plugin-fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
+const log = createDevLogger('useExportForm');
 
 export interface ExportRangeOption {
   id: string;
@@ -382,7 +384,7 @@ export function useExportForm() {
           try {
             await saveProjectSettingsAsDefault();
           } catch (e) {
-            console.warn('Failed to persist export defaults', e);
+            log.warn('Failed to persist export defaults', e);
           }
         }
 
@@ -415,7 +417,7 @@ export function useExportForm() {
             try {
               await copyFile(tauriFileHandle.path, customExportPath.value);
             } catch (e) {
-              console.warn('Failed to copy exported file to custom location', e);
+              log.warn('Failed to copy exported file to custom location', e);
             }
           }
         }
@@ -423,14 +425,14 @@ export function useExportForm() {
         try {
           await exportDir.removeEntry(tempFilename);
         } catch (e) {
-          console.warn('Failed to clean up temporary export file', e);
+          log.warn('Failed to clean up temporary export file', e);
         }
         if (!exportSuccess) {
           await validateFilename();
         }
       }
     } catch (err: unknown) {
-      console.error('Export failed:', err);
+      log.error('Export failed:', err);
       if (err instanceof Error && err.name === 'AbortError') {
         exportError.value = t('videoEditor.export.errorCancelled');
       } else {
@@ -454,7 +456,7 @@ export function useExportForm() {
         customExportPath.value = path;
       }
     } catch (e) {
-      console.warn('Failed to pick export location', e);
+      log.warn('Failed to pick export location', e);
     }
   }
 

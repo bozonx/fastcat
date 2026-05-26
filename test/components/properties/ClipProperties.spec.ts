@@ -403,7 +403,7 @@ describe('ClipProperties.vue', () => {
 
     const actionsSection = wrapper.findComponent({ name: 'ClipActionsSection' });
     expect(actionsSection.exists()).toBe(true);
-    
+
     // Check initial state (disabled = false)
     let commonActions = actionsSection.props('commonActions');
     let toggleDisabledAction = commonActions.find((a: any) => a.id === 'toggle-disabled');

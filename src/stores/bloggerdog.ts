@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { BdPagination } from '~/types/bloggerdog';
@@ -21,6 +22,7 @@ import {
   renameRemoteItem,
   type RemoteVfsClientConfig,
 } from '~/utils/remote-vfs';
+const log = createDevLogger('bloggerdog');
 
 export const useBloggerDogStore = defineStore('bloggerDog', () => {
   const workspaceStore = useWorkspaceStore();
@@ -105,7 +107,7 @@ export const useBloggerDogStore = defineStore('bloggerDog', () => {
       };
     } catch (e: unknown) {
       error.value = e instanceof Error ? e.message : 'Failed to load entries';
-      console.error('[BloggerDogStore] loadEntries error:', e);
+      log.error('Store] loadEntries error:', e);
     } finally {
       isLoading.value = false;
     }

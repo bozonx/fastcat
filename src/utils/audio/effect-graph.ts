@@ -1,4 +1,6 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { getAudioEffectManifest, isAudioEffectNodeGraph } from '~/effects/core/registry';
+const log = createDevLogger('effect-graph');
 
 export interface AudioEffectGraphEffectData {
   id: string;
@@ -56,10 +58,7 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
         try {
           manifest.destroyNode(effectNode, effectContext);
         } catch (err) {
-          console.warn(
-            `[buildAudioEffectGraph] Failed to destroy effect node: ${effect.type}`,
-            err,
-          );
+          log.warn(`[buildAudioEffectGraph] Failed to destroy effect node: ${effect.type}`, err);
         }
       }
 

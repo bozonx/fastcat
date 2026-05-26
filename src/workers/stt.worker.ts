@@ -75,7 +75,7 @@ self.fetch = (async (url: string | URL, options?: RequestInit) => {
     );
     return new Response(file);
   } catch {
-    console.warn(`[STT Worker] Local file not found: ${escapedCurrentModelName}/${filePath}`);
+    log.warn(`[STT Worker] Local file not found: ${escapedCurrentModelName}/${filePath}`);
     return new Response('Not Found', { status: 404 });
   }
 }) as typeof self.fetch;
@@ -118,7 +118,7 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
       log.log('Pipeline initialized with WebGPU');
       return transcriber;
     } catch (err: unknown) {
-      console.warn('[STT Worker] WebGPU initialization failed, falling back to WASM:', err);
+      log.warn('[STT Worker] WebGPU initialization failed, falling back to WASM:', err);
       isWebGpuAvailable = false;
       transcriber = null;
       currentModelName = null;
@@ -188,7 +188,7 @@ self.onmessage = async (event: MessageEvent<SttWorkerInitMessage | SttWorkerTran
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : String(err);
-        console.error(`[STT Worker] Transcription error:`, err);
+        log.error(`[STT Worker] Transcription error:`, err);
         self.postMessage({ type: 'error', id, error: message } satisfies SttWorkerResponse);
       });
   }

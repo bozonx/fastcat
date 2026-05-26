@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, watch, nextTick, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -12,6 +13,7 @@ import {
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
 import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
+const log = createDevLogger('useFileBrowserNavigation');
 
 export function useFileBrowserNavigation({
   rootContainer,
@@ -87,7 +89,7 @@ export function useFileBrowserNavigation({
       );
       folderEntries.value = await supplementEntries(filteredEntries);
     } catch (error) {
-      console.error('Failed to load folder content:', error);
+      log.error('Failed to load folder content:', error);
       folderEntries.value = [];
     }
 

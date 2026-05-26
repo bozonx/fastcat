@@ -1,3 +1,5 @@
+import { createDevLogger } from '~/utils/dev-logger';
+const log = createDevLogger('AudioScheduler');
 export interface AudioSchedulerOptions {
   getContext: () => AudioContext | null;
   onScheduleLookahead: () => void;
@@ -47,7 +49,7 @@ export class AudioScheduler {
   async play(timeUs: number, speed = 1) {
     if (this.destroyed) {
       if (import.meta.dev) {
-        console.warn('[AudioScheduler] play() called on destroyed instance');
+        log.warn('play() called on destroyed instance');
       }
       return;
     }
@@ -63,7 +65,7 @@ export class AudioScheduler {
 
     if (ctx.state === 'suspended') {
       await ctx.resume().catch((err) => {
-        console.warn('[AudioEngine] play: Failed to resume AudioContext', err);
+        log.warn('[AudioEngine] play: Failed to resume AudioContext', err);
       });
     }
 
@@ -113,7 +115,7 @@ export class AudioScheduler {
   seek(timeUs: number) {
     if (this.destroyed) {
       if (import.meta.dev) {
-        console.warn('[AudioScheduler] seek() called on destroyed instance');
+        log.warn('seek() called on destroyed instance');
       }
       return;
     }
@@ -140,7 +142,7 @@ export class AudioScheduler {
   destroy() {
     if (this.destroyed) {
       if (import.meta.dev) {
-        console.warn('[AudioScheduler] destroy() called twice');
+        log.warn('destroy() called twice');
       }
       return;
     }
@@ -200,7 +202,7 @@ export class AudioScheduler {
   private startLookahead() {
     if (this.destroyed) {
       if (import.meta.dev) {
-        console.warn('[AudioScheduler] startLookahead() called on destroyed instance');
+        log.warn('startLookahead() called on destroyed instance');
       }
       return;
     }

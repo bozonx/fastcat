@@ -9,10 +9,11 @@
  * If `io-init` never arrives (for example when running in a unit-test harness
  * that mocks workers) we transparently fall back to an in-context local budget
  * so behaviour stays correct, just without cross-worker coordination.
- */
+ */ import { createDevLogger } from '~/utils/dev-logger';
 
 import { createLocalBudget, createSharedBudget, type IoBudget } from './io-budget';
 import { isTauriRuntime } from '~/utils/runtime';
+const log = createDevLogger('io-budget-worker');
 
 interface IoInitMessage {
   type: 'io-init';
@@ -72,7 +73,7 @@ export class WorkerIoBudget {
           resolve(this.state);
           return;
         }
-        console.warn('[io-budget] Worker io-init not received within 1s — using local budget');
+        log.warn('[io-budget] Worker io-init not received within 1s — using local budget');
         const fallbackIsTauri = isTauriRuntime();
         this.state = {
           budget: createLocalBudget({ isTauri: fallbackIsTauri, realm: 'worker' }),

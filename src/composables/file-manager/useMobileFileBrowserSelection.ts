@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed, watch, inject } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useSelectionStore } from '~/stores/selection.store';
@@ -5,6 +6,7 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { computeDirectoryStats } from '~/utils/fs';
+const log = createDevLogger('useMobileFileBrowserSelection');
 
 export function useMobileFileBrowserSelection() {
   const selectionStore = useSelectionStore();
@@ -47,7 +49,7 @@ export function useMobileFileBrowserSelection() {
         fileManagerStore.folderSizes[path] = stats.size;
       }
     } catch (err) {
-      console.warn('Failed to calculate folder size:', path, err);
+      log.warn('Failed to calculate folder size:', path, err);
     }
   }
 

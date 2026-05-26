@@ -127,9 +127,9 @@ export type HotkeyCommandId =
   | 'general.navigateForward'
   | 'general.navigateUp'
   | 'general.createFolder';
-  // Note: ArrowUp, ArrowDown, ArrowLeft, and ArrowRight keys for list selection
-  // are handled locally inside the file browser components and are intentionally
-  // excluded from global customizable hotkeys to avoid breaking standard inputs/dropdowns.
+// Note: ArrowUp, ArrowDown, ArrowLeft, and ArrowRight keys for list selection
+// are handled locally inside the file browser components and are intentionally
+// excluded from global customizable hotkeys to avoid breaking standard inputs/dropdowns.
 
 export type HotkeyCombo = string;
 
@@ -208,7 +208,11 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
     { id: 'general.createFolder', groupId: 'fileManager', title: 'Create folder' },
 
-    { id: 'timeline.addTextClipAtPlayhead', groupId: 'timeline', title: 'Create text clip at playhead' },
+    {
+      id: 'timeline.addTextClipAtPlayhead',
+      groupId: 'timeline',
+      title: 'Create text clip at playhead',
+    },
     {
       id: 'timeline.addBackgroundClipAtPlayhead',
       groupId: 'timeline',

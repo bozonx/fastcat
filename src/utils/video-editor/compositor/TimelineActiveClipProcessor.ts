@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { CompositorClip } from './types';
 import {
   clampToLastReadableSourceUs,
@@ -5,6 +6,7 @@ import {
   normalizeClipSpeed,
   resolveClipSourceTimeUs,
 } from '../source-time';
+const log = createDevLogger('TimelineActiveClipProcessor');
 
 export interface ActiveClipSampleRequest {
   clip: CompositorClip;
@@ -110,7 +112,7 @@ export class TimelineActiveClipProcessor {
                     // Cache may close the frame between get() and use; drop it
                     // for this round instead of failing the whole render.
                     state.lastVideoFrame = null;
-                    console.warn('[TimelineActiveClipProcessor] HUD toVideoFrame failed', err);
+                    log.warn('HUD toVideoFrame failed', err);
                   }
                 }
                 try {
@@ -219,7 +221,7 @@ export class TimelineActiveClipProcessor {
                   state.lastVideoFrame = sampleAny.toVideoFrame();
                 } catch (err) {
                   state.lastVideoFrame = null;
-                  console.warn('[TimelineActiveClipProcessor] mask toVideoFrame failed', err);
+                  log.warn('mask toVideoFrame failed', err);
                 }
               }
               try {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, computed, watch } from 'vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
@@ -9,6 +11,7 @@ import { getMediaTypeFromFilename } from '~/utils/media-types';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from '~/components/file-manager/MobileFileBrowserGrid.vue';
 import { useUiStore } from '~/stores/ui.store';
+const log = createDevLogger('MobileMediaPickerDrawer');
 
 const props = defineProps<{ isOpen: boolean; isReplaceMode?: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -65,7 +68,7 @@ async function loadEntries(path: string) {
       return !e.name.startsWith('.') && isMediaEntry(e) && !isCurrentTimeline;
     });
   } catch (err) {
-    console.error('MobileMediaPickerDrawer: failed to load', path, err);
+    log.error('failed to load', path, err);
     entries.value = [];
   } finally {
     isLoading.value = false;
@@ -150,7 +153,7 @@ async function addToTimeline() {
     selectedFiles.value = [];
     emit('close');
   } catch (err) {
-    console.error('MobileMediaPickerDrawer: addToTimeline / replace failed', err);
+    log.error('addToTimeline / replace failed', err);
   } finally {
     isAdding.value = false;
   }

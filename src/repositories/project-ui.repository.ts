@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import {
   ensureAppFileHandle,
   readJsonFromFileHandle,
@@ -6,6 +7,7 @@ import {
 } from './app-fs.repository';
 
 import { z } from 'zod';
+const log = createDevLogger('project-ui.repository');
 
 // Per-view monitor (pan/zoom). Allows passthrough of legacy fields so they can
 // be migrated upward into the project-wide block by `normalizeProjectSettings`.
@@ -140,7 +142,7 @@ export function createProjectUiRepository(input: {
       });
 
       if (!parsed.success) {
-        console.warn(`[ProjectUi] Invalid UI settings`, parsed.error);
+        log.warn(`[ProjectUi] Invalid UI settings`, parsed.error);
         return null;
       }
       return parsed.data;

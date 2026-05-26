@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, type Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
@@ -7,6 +8,7 @@ import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { getNextBackupName, getBackupsToDelete, getBackupNumber } from '~/utils/timeline-backup';
+const log = createDevLogger('backup');
 
 /**
  * A restorable timeline snapshot listed in the backups UI: the main file, the
@@ -136,11 +138,11 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         try {
           await backupDirHandle.removeEntry(name);
         } catch (e) {
-          console.warn('Failed to delete old backup', e);
+          log.warn('Failed to delete old backup', e);
         }
       }
     } catch (e) {
-      console.error('Failed to create timeline backup', e);
+      log.error('Failed to create timeline backup', e);
       deps.toast.add({
         title: deps.t('videoEditor.timeline.backupError'),
         description: deps.t('videoEditor.timeline.backupErrorDesc'),
@@ -210,7 +212,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       deps.duration.value = selectTimelineDurationUs(parsed);
       deps.currentTime.value = 0;
     } catch (e) {
-      console.error('Failed to open version for preview', e);
+      log.error('Failed to open version for preview', e);
       deps.toast.add({
         title: deps.t('videoEditor.timeline.backups.previewLoadError'),
         color: 'error',
@@ -265,7 +267,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       });
       await loadBackupVersions();
     } catch (e) {
-      console.error('Failed to restore version', e);
+      log.error('Failed to restore version', e);
       deps.toast.add({
         title: deps.t('videoEditor.timeline.backups.restoreError'),
         color: 'error',
@@ -297,7 +299,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       });
       await loadBackupVersions();
     } catch (e) {
-      console.error('Failed to delete version', e);
+      log.error('Failed to delete version', e);
       deps.toast.add({
         title: deps.t('videoEditor.timeline.backups.deleteError'),
         color: 'error',
@@ -393,7 +395,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         }
       }
     } catch (e) {
-      console.warn('Failed to load backup versions', e);
+      log.warn('Failed to load backup versions', e);
     }
     backupVersions.value = list;
   }

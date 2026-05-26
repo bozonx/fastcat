@@ -1,9 +1,11 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { AudioChunk, AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 import {
   DecodeWorkerClient,
   DECODE_CANCELLED_MESSAGE,
 } from '~/utils/video-editor/decode-worker-client';
+const log = createDevLogger('AudioChunkDecoder');
 
 export interface AudioChunkDecoderOptions {
   getContext: () => AudioContext | null;
@@ -29,6 +31,10 @@ export interface GetAudioChunksForRangeParams {
   fileHandle: FileSystemFileHandle;
   startTimeS: number;
   durationS: number;
+}
+
+export interface PrefetchAudioChunksOptions {
+  shouldContinue?: () => boolean;
 }
 
 const DEFAULT_CHUNK_SIZE_S = 5;
@@ -65,7 +71,7 @@ export class AudioChunkDecoder {
         const file = await withFileIoSlot(() => fileHandle.getFile());
         const decoded = await this.decodeClient.extractPeaks(file, sourceKey, options);
         if (!decoded?.peaks) {
-          console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`);
+          log.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`);
           return null;
         }
 
@@ -74,15 +80,17 @@ export class AudioChunkDecoder {
         if (err instanceof Error && err.message === DECODE_CANCELLED_MESSAGE) {
           return null;
         }
-        console.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`, err);
+        log.warn(`[AudioEngine] Failed to extract peaks for ${sourceKey}`, err);
         return null;
       }
     });
   }
 
-  async prefetchHeadChunks(clips: AudioEngineClip[]) {
+  async prefetchHeadChunks(clips: AudioEngineClip[], options?: PrefetchAudioChunksOptions) {
     const chunksAhead = 2;
     for (const clip of clips) {
+      if (options?.shouldContinue?.() === false) return;
+
       const sourceKey = clip.sourcePath;
       if (!sourceKey) continue;
 
@@ -91,6 +99,8 @@ export class AudioChunkDecoder {
       const startChunkIndex = this.getChunkIndex(startOffsetS);
       const lastChunkIndex = this.getChunkIndex(Math.max(startOffsetS, sourceEndS - 1e-6));
       for (let offset = 0; offset < chunksAhead; offset += 1) {
+        if (options?.shouldContinue?.() === false) return;
+
         const targetIndex = startChunkIndex + offset;
         if (targetIndex > lastChunkIndex) break;
         const chunkKey = this.getChunkKey(sourceKey, targetIndex);
@@ -102,6 +112,7 @@ export class AudioChunkDecoder {
           chunkIndex: targetIndex,
         });
       }
+      if (options?.shouldContinue?.() === false) return;
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
@@ -178,7 +189,7 @@ export class AudioChunkDecoder {
         );
 
         if (!decoded?.channelBuffers?.length) {
-          console.warn(`[AudioEngine] Worker returned null for chunk ${chunkKey}`);
+          log.warn(`[AudioEngine] Worker returned null for chunk ${chunkKey}`);
           return null;
         }
 
@@ -187,7 +198,7 @@ export class AudioChunkDecoder {
         const totalFrames = decoded.totalFrames ?? 0;
 
         if (totalFrames <= 0) {
-          console.warn(`[AudioEngine] Decoded audio chunk has 0 frames for ${chunkKey}`);
+          log.warn(`[AudioEngine] Decoded audio chunk has 0 frames for ${chunkKey}`);
           return null;
         }
 
@@ -333,20 +344,20 @@ export class AudioChunkDecoder {
       if (retries >= 3) {
         this.failedChunkKeys.add(chunkKey);
         this.chunkRetryCounts.delete(chunkKey);
-        console.warn(
+        log.warn(
           `[AudioEngine] Chunk ${chunkKey} failed after ${retries} transient retries; marking as permanently failed`,
           err,
         );
       } else {
         this.chunkRetryCounts.set(chunkKey, retries);
-        console.warn(
+        log.warn(
           `[AudioEngine] Failed to decode chunk ${chunkKey} (transient, retry ${retries}/3)`,
           err,
         );
       }
       this.fileBlobCache.delete(sourceKey);
     } else {
-      console.warn(`[AudioEngine] Failed to decode chunk ${chunkKey}`, err);
+      log.warn(`[AudioEngine] Failed to decode chunk ${chunkKey}`, err);
       this.fileBlobCache.delete(sourceKey);
     }
   }

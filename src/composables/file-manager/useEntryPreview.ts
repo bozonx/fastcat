@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
 import { useSafeObjectUrl, safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import yaml from 'js-yaml';
@@ -10,6 +11,7 @@ import type { FsEntry } from '~/types/fs';
 import type { MediaMetadata } from '~/stores/media.store';
 import { getBdPayload } from '~/types/bloggerdog';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+const log = createDevLogger('useEntryPreview');
 
 export type PreviewMode = 'original' | 'proxy';
 export type MediaType = 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
@@ -195,7 +197,7 @@ export function useEntryPreview(params: {
         imageDimensions: nextImageDimensions,
       };
     } catch (e) {
-      console.error('Failed to load preview media:', e);
+      log.error('Failed to load preview media:', e);
       return {
         currentUrl: null,
         imageDimensions: null,
@@ -420,7 +422,7 @@ export function useEntryPreview(params: {
           timelineDocSummary: nextTimelineDocSummary,
         });
       } catch (e) {
-        console.error('Failed to preview file:', e);
+        log.error('Failed to preview file:', e);
       }
     },
     { immediate: true },

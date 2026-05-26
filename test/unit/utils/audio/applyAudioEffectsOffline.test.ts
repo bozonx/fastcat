@@ -149,6 +149,7 @@ describe('applyAudioEffectsOffline', () => {
 
       expect(result).toBe(buffer);
       expect(consoleSpy).toHaveBeenCalledWith(
+        '[apply-audio-effects-offline]',
         '[applyAudioEffects] Failed to apply effects, using raw audio',
         expect.any(Error),
       );
@@ -220,6 +221,7 @@ describe('applyAudioEffectsOffline', () => {
       expect(result.planes).toBe(planes);
       expect(result.frames).toBe(10);
       expect(consoleSpy).toHaveBeenCalledWith(
+        '[apply-audio-effects-offline]',
         '[applyAudioEffectsOffline] Failed to apply effects, using raw audio',
         expect.any(Error),
       );

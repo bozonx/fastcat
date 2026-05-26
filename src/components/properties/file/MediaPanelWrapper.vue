@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { watch, computed, onUnmounted } from 'vue';
 import EntryPreviewBox from '~/components/properties/file/EntryPreviewBox.vue';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
 import type { PanelFocusId } from '~/stores/focus.store';
+const log = createDevLogger('MediaPanelWrapper');
 
 const props = defineProps<{
   filePath: string;
@@ -40,7 +43,7 @@ async function loadPreviewMedia() {
       setCurrentUrl(URL.createObjectURL(fileToPlay));
     }
   } catch (e) {
-    console.error('Failed to load media for panel:', e);
+    log.error('Failed to load media for panel:', e);
   }
 }
 

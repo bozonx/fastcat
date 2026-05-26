@@ -9,9 +9,7 @@ const mockTimelineStore = reactive({
       {
         id: 'track-1',
         kind: 'audio',
-        items: [
-          { id: 'clip-1', kind: 'clip' },
-        ],
+        items: [{ id: 'clip-1', kind: 'clip' }],
       },
     ],
   },
@@ -54,7 +52,8 @@ vi.mock('~/components/audio/AudioMixerTrack.vue', () => ({
   default: {
     name: 'AudioMixerTrack',
     props: ['track', 'isSelected'],
-    template: '<div class="mock-mixer-track" :class="{ selected: isSelected }">Track: {{ track.id }}</div>',
+    template:
+      '<div class="mock-mixer-track" :class="{ selected: isSelected }">Track: {{ track.id }}</div>',
   },
 }));
 

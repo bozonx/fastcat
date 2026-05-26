@@ -1,6 +1,8 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { WorkspaceProvider } from './types';
 import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 import type { WorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
+const log = createDevLogger('web');
 
 export class WebWorkspaceProvider implements WorkspaceProvider {
   id = 'web';
@@ -44,7 +46,7 @@ export class WebWorkspaceProvider implements WorkspaceProvider {
         return handle;
       }
     } catch (e) {
-      console.warn('Failed to restore web workspace handle:', e);
+      log.warn('Failed to restore web workspace handle:', e);
     }
     return null;
   }
@@ -54,6 +56,6 @@ export class WebWorkspaceProvider implements WorkspaceProvider {
   }
 
   async clearWorkspace(): Promise<void> {
-    await this.storage.clear().catch(console.warn);
+    await this.storage.clear().catch(log.warn);
   }
 }

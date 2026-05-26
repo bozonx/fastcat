@@ -1,6 +1,8 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { CompositorClip } from '../types';
 import { CanvasSource, Texture } from 'pixi.js';
 import type { LayoutApplier } from '../LayoutApplier';
+const log = createDevLogger('CanvasFallbackRenderer');
 
 export interface CanvasFallbackRendererContext {
   width: number;
@@ -84,10 +86,7 @@ export class CanvasFallbackRenderer {
         return;
       } catch (err) {
         this.context.clipPreferBitmapFallback.set(clip.itemId, true);
-        console.warn(
-          '[CanvasFallbackRenderer] drawImage failed, trying createImageBitmap fallback:',
-          err,
-        );
+        log.warn('drawImage failed, trying createImageBitmap fallback:', err);
         try {
           const bmp = await createImageBitmap(imageSource as ImageBitmapSource);
           try {
@@ -101,12 +100,12 @@ export class CanvasFallbackRenderer {
           }
           return;
         } catch (innerErr) {
-          console.error('[CanvasFallbackRenderer] Fallback createImageBitmap failed:', innerErr);
+          log.error('Fallback createImageBitmap failed:', innerErr);
           throw innerErr;
         }
       }
     } catch (err) {
-      console.error('[CanvasFallbackRenderer] drawSampleToCanvas failed to draw image:', err);
+      log.error('drawSampleToCanvas failed to draw image:', err);
     }
 
     if (typeof (sample as { draw?: unknown }).draw === 'function') {
@@ -126,7 +125,7 @@ export class CanvasFallbackRenderer {
           (clip.sprite as import('pixi.js').Sprite).texture.source as { update?: () => void }
         ).update?.();
       } catch (err) {
-        console.error('[CanvasFallbackRenderer] sample.draw failed:', err);
+        log.error('sample.draw failed:', err);
       }
       return;
     }

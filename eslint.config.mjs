@@ -29,9 +29,8 @@ export default withNuxt(eslintPluginPrettierRecommended)
       'no-empty': 'warn',
       'no-unsafe-finally': 'warn',
       // Diagnostic logging must go through ~/utils/dev-logger (gated by env and
-      // mockable in tests). console.warn/error stay allowed because the logger
-      // forwards them unconditionally anyway.
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      // mockable in tests).
+      'no-console': 'error',
     },
   })
   .append({

@@ -122,11 +122,9 @@ describe('TimelineMediaUsageStore', () => {
     expect(mockGetFile).toHaveBeenCalledWith('timeline1.otio');
     expect(mockGetFile).toHaveBeenCalledWith('subfolder/timeline2.otio');
     expect(mockGetFile).not.toHaveBeenCalledWith('.fastcat/autosave/timeline1.otio');
-    expect(parseTimelineFromOtioMock).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(Object),
-      { logWarnings: false },
-    );
+    expect(parseTimelineFromOtioMock).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
+      logWarnings: false,
+    });
   });
 
   it('skips empty or invalid timelines during background media usage scan', async () => {

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, inject, nextTick } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { getExportWorkerClient, setExportHostApi } from '~/utils/video-editor/worker-client';
@@ -8,6 +9,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+const log = createDevLogger('useAudioExtraction');
 
 interface AudioExtractionSelectionContext {
   instanceId?: string;
@@ -227,7 +229,7 @@ export function useAudioExtraction() {
       // Scroll the tree view to make the new entry visible
       uiStore.triggerScrollToFileTreeEntry(targetPath);
     } catch (err: unknown) {
-      console.error('Audio extraction failed', err);
+      log.error('Audio extraction failed', err);
       const e = err instanceof Error ? err : null;
       toast.add({
         title: t('videoEditor.fileManager.extractAudio.failed'),

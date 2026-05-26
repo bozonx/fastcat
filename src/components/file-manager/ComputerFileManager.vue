@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, computed, provide, onMounted, shallowRef, inject } from 'vue';
 import { Pane, Splitpanes } from 'splitpanes';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
@@ -12,6 +14,7 @@ import {
 import FileManagerPanel from '~/components/file-manager/FileManagerPanel.vue';
 import FileBrowser from '~/components/file-manager/FileBrowser.vue';
 import type { FsEntry } from '~/types/fs';
+const log = createDevLogger('ComputerFileManager');
 
 const props = defineProps<{
   instanceId?: string;
@@ -116,7 +119,7 @@ onMounted(async () => {
         restored = true;
       }
     } catch (e) {
-      console.warn('Failed to validate last computer folder', e);
+      log.warn('Failed to validate last computer folder', e);
     }
   }
 

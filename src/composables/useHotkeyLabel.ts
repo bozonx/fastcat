@@ -1,5 +1,5 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { DEFAULT_HOTKEYS, type HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
+import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 
 const isMac =
@@ -14,12 +14,6 @@ function formatHotkey(combo: string): string {
     .replace(/\bAlt\b/g, '⌥')
     .replace(/\bShift\b/g, '⇧')
     .replace(/\bSpace\b/g, '␣');
-}
-
-function getDefaultBinding(commandId: HotkeyCommandId): string | null {
-  const bindings = DEFAULT_HOTKEYS.bindings[commandId];
-  if (!bindings || bindings.length === 0) return null;
-  return bindings[0] ?? null;
 }
 
 export function useHotkeyLabel() {

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import {
   DEFAULT_TRANSITION_CURVE,
   DEFAULT_TRANSITION_MODE,
@@ -9,6 +10,7 @@ import {
   clampToLastReadableSourceUs,
   type TimelineActiveClipProcessor,
 } from './TimelineActiveClipProcessor';
+const log = createDevLogger('FrameSampleOrchestrator');
 
 export interface FrameSampleOrchestratorParams {
   activeClips: CompositorClip[];
@@ -68,7 +70,7 @@ export class FrameSampleOrchestrator {
           })
           .catch((error) => {
             params.removeAbortController?.(key);
-            console.error('[VideoCompositor] Failed to render sample', error);
+            log.error('[VideoCompositor] Failed to render sample', error);
             return { clip, sample: null };
           });
       },
@@ -85,7 +87,7 @@ export class FrameSampleOrchestrator {
         updateClipTextureFromSample: params.updateClipTextureFromSample,
         setClipSpriteVisible: params.setClipSpriteVisible,
         onError: (error) => {
-          console.warn('[VideoCompositor] Failed to update shadow clip texture:', error);
+          log.warn('[VideoCompositor] Failed to update shadow clip texture:', error);
         },
       });
     }
@@ -100,7 +102,7 @@ export class FrameSampleOrchestrator {
         updateClipTextureFromSample: params.updateClipTextureFromSample,
         setClipSpriteVisible: params.setClipSpriteVisible,
         onError: (error) => {
-          console.error('[VideoCompositor] Failed to update clip texture', error);
+          log.error('[VideoCompositor] Failed to update clip texture', error);
         },
       });
     }
@@ -256,7 +258,7 @@ export class FrameSampleOrchestrator {
       })
       .catch((error) => {
         params.removeAbortController?.(params.key);
-        console.warn('[VideoCompositor] Failed to get shadow sample:', error);
+        log.warn('[VideoCompositor] Failed to get shadow sample:', error);
         return { clip: params.clip, sample: null };
       });
   }

@@ -1,4 +1,6 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { inject } from 'vue';
+const log = createDevLogger('lib-compat');
 
 /**
  * Mock for Nuxt's useNuxtApp to support standalone builds.
@@ -9,8 +11,8 @@ export function useNuxtApp() {
     $isEmbedded: inject('isEmbedded', false),
     $notificationService: inject('notificationService', {
       // Intentional fallback output when the host provides no notification service.
-      // eslint-disable-next-line no-console
-      add: (msg: unknown) => console.log('Notification:', msg),
+
+      add: (msg: unknown) => log.log('Notification:', msg),
     }),
     $i18nService: inject('i18nService', {
       t: (key: string, defaultValue?: string) => defaultValue || key,

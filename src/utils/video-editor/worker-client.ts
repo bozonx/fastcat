@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type {
   VideoCoreHostRpcMessage,
   VideoCoreWorkerAPI,
@@ -6,6 +7,7 @@ import type {
 } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
+const log = createDevLogger('worker-client');
 
 interface WorkerTaskHostApi {
   onExportProgress?: VideoCoreHostAPI['onExportProgress'];
@@ -263,14 +265,14 @@ function createWorker(channel: WorkerChannel): Worker {
   });
 
   worker.addEventListener('error', (event) => {
-    console.error('[WorkerClient] Worker error', event);
+    log.error('[WorkerClient] Worker error', event);
     if (state.workerInstance === worker) {
       terminateChannel(channel, 'Worker crashed. Please retry the operation.');
     }
   });
 
   worker.addEventListener('messageerror', (event) => {
-    console.error('[WorkerClient] Worker message error', event);
+    log.error('[WorkerClient] Worker message error', event);
     if (state.workerInstance === worker) {
       terminateChannel(channel, 'Worker message channel failed. Please retry the operation.');
     }

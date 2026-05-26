@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue';
 import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
 import type { TimelineClipItem } from '~/timeline/types';
@@ -11,6 +12,7 @@ import { timeUsToPx } from '~/utils/timeline/geometry';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-generator';
 import { fileThumbnailGenerator, getFileThumbnailHash } from '~/utils/file-thumbnail-generator';
+const log = createDevLogger('useTimelineClipThumbnails');
 
 export interface ThumbnailTile {
   key: number;
@@ -105,7 +107,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
           if (!file) return;
           setImageUrl(URL.createObjectURL(file));
         } catch (e) {
-          console.error('Failed to load image for thumbnail:', e);
+          log.error('Failed to load image for thumbnail:', e);
         }
       } else {
         revokeImageUrl();
@@ -425,7 +427,7 @@ export function useTimelineClipThumbnails(options: UseTimelineClipThumbnailsOpti
       },
       onError: (err) => {
         if (isUnmounted) return;
-        console.error('Thumbnail generation error:', err);
+        log.error('Thumbnail generation error:', err);
         isGenerating.value = false;
       },
     });

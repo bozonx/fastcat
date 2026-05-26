@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
@@ -46,6 +47,7 @@ import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
+const log = createDevLogger('timeline.store');
 
 export type { TimelineBackupVersion } from '~/stores/timeline/backup';
 
@@ -372,7 +374,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       await dirHandle.removeEntry(fileName);
     } catch (e) {
       if ((e as { name?: string })?.name !== 'NotFoundError') {
-        console.warn('Failed to delete autosave sidecar', timelinePath, e);
+        log.warn('Failed to delete autosave sidecar', timelinePath, e);
       }
     }
   }
@@ -605,7 +607,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     try {
       await lifecycle.saveTimeline();
     } catch (e) {
-      console.error('Failed to save timeline before creating version', e);
+      log.error('Failed to save timeline before creating version', e);
       toast.add({
         title: t('videoEditor.timeline.versionSaveError'),
         color: 'error',
@@ -669,7 +671,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       await loadTimeline();
       void lifecycle.loadTimelineMetadata();
     } catch (e) {
-      console.error('Failed to duplicate timeline', e);
+      log.error('Failed to duplicate timeline', e);
       toast.add({
         title: t('common.saveError'),
         color: 'error',
@@ -702,7 +704,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       try {
         await deleteTimelineAutosaveFile(path);
       } catch (e) {
-        console.warn('Failed to delete autosave on shutdown', path, e);
+        log.warn('Failed to delete autosave on shutdown', path, e);
       }
       dirtyPaths.value[path] = false;
     }

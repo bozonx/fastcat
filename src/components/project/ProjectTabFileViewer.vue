@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, computed, watch, onUnmounted } from 'vue';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useSafeObjectUrl } from '~/composables/useSafeObjectUrl';
 import FilePreview from '~/components/preview/FilePreview.vue';
+const log = createDevLogger('ProjectTabFileViewer');
 
 const props = defineProps<{
   filePath: string;
@@ -66,7 +69,7 @@ async function loadFile() {
       setCurrentUrl(URL.createObjectURL(file));
     }
   } catch (e) {
-    console.error('ProjectTabFileViewer: failed to load file:', e);
+    log.error('failed to load file:', e);
     loadError.value = 'Failed to load file';
   } finally {
     isLoading.value = false;

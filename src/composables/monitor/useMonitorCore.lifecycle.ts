@@ -1,3 +1,5 @@
+import { createDevLogger } from '~/utils/dev-logger';
+const log = createDevLogger('useMonitorCore.lifecycle');
 export function initializeMonitorCoreRuntime(params: {
   setUnmounted: (value: boolean) => void;
   updateCanvasDisplaySize: () => void;
@@ -24,10 +26,10 @@ export async function disposeMonitorCoreRuntime(params: {
   try {
     params.destroyAudioEngine();
   } catch (error) {
-    console.error('[Monitor] Failed to destroy AudioEngine', error);
+    log.error('[Monitor] Failed to destroy AudioEngine', error);
   }
 
   await params.destroyCompositor().catch((error) => {
-    console.error('[Monitor] Failed to destroy compositor on unmount', error);
+    log.error('[Monitor] Failed to destroy compositor on unmount', error);
   });
 }

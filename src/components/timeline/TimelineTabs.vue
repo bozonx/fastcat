@@ -147,7 +147,11 @@ onBeforeUnmount(() => {
                 ? 'active-tab text-selection-accent-400 border-b-transparent'
                 : 'text-ui-text-muted bg-black/10 hover:bg-black/5 hover:text-ui-text border-b-ui-border',
             ]"
-            :title="index < 9 ? getHotkeyTitle(path, ('general.tab' + (index + 1)) as HotkeyCommandId) : path"
+            :title="
+              index < 9
+                ? getHotkeyTitle(path, ('general.tab' + (index + 1)) as HotkeyCommandId)
+                : path
+            "
             @mousedown="onTabMouseDown($event)"
             @auxclick="onTabAuxClick($event, path)"
             @click="selectTab(path)"

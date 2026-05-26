@@ -193,7 +193,10 @@ const rootContextMenuItems = computed(() => {
         onSelect: () => onFileAction('upload', rootEntry),
       },
       {
-        label: getHotkeyTitle(t('videoEditor.fileManager.actions.createFolder'), 'general.createFolder'),
+        label: getHotkeyTitle(
+          t('videoEditor.fileManager.actions.createFolder'),
+          'general.createFolder',
+        ),
         icon: 'i-heroicons-folder-plus',
         onSelect: () => onFileAction('createFolder', rootEntry),
       },
@@ -419,7 +422,14 @@ useFileManagerPanelBootstrap({
         v-if="projectStore.currentProjectName && !props.hideActions"
         class="flex items-center gap-1 px-2 py-1 bg-ui-bg-accent/30 border-b border-ui-border/50"
       >
-        <UiTooltip :text="getHotkeyTitle(`${t('videoEditor.fileManager.actions.createTimeline')} (In _timelines folder)`, 'general.newTimeline')">
+        <UiTooltip
+          :text="
+            getHotkeyTitle(
+              `${t('videoEditor.fileManager.actions.createTimeline')} (In _timelines folder)`,
+              'general.newTimeline',
+            )
+          "
+        >
           <UButton
             icon="i-heroicons-document-plus"
             variant="ghost"

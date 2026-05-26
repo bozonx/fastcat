@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Ref } from 'vue';
 import {
   isWorkspaceCommonPath,
@@ -7,6 +8,7 @@ import {
 } from '~/utils/workspace-common';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+const log = createDevLogger('project-fs');
 
 export interface ProjectFsModule {
   toProjectRelativePath: (path: string) => string;
@@ -82,7 +84,7 @@ export function createProjectFsModule(params: {
         });
       } catch (e: unknown) {
         if ((e as { name?: unknown }).name !== 'NotFoundError') {
-          console.error('Failed to get common file handle by path:', input.relativePath, e);
+          log.error('Failed to get common file handle by path:', input.relativePath, e);
         }
         return null;
       }
@@ -130,7 +132,7 @@ export function createProjectFsModule(params: {
       });
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.error('Failed to get workspace file handle by path:', input.relativePath, e);
+        log.error('Failed to get workspace file handle by path:', input.relativePath, e);
       }
       return null;
     }
@@ -148,7 +150,7 @@ export function createProjectFsModule(params: {
       return await withFileIoSlot(() => fileHandle.getFile());
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.error('Failed to read file by path:', path, e);
+        log.error('Failed to read file by path:', path, e);
       }
       return null;
     }
@@ -184,7 +186,7 @@ export function createProjectFsModule(params: {
         return currentDir;
       } catch (e: unknown) {
         if ((e as { name?: unknown }).name !== 'NotFoundError') {
-          console.error('Failed to get common directory handle by path:', path, e);
+          log.error('Failed to get common directory handle by path:', path, e);
         }
         return null;
       }
@@ -219,7 +221,7 @@ export function createProjectFsModule(params: {
       return currentDir;
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.error('Failed to get workspace directory handle by path:', path, e);
+        log.error('Failed to get workspace directory handle by path:', path, e);
       }
       return null;
     }

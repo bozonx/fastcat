@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Ref } from 'vue';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { RecentProject } from '~/stores/workspace.store';
@@ -6,6 +7,7 @@ import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { toStoragePathSegments } from '~/utils/storage-topology';
 import { ensureDirectoryChain, resolveStorageRootHandle } from '~/utils/storage-handles';
 import { renameDirectoryFallback } from '~/file-manager/fs/ops';
+const log = createDevLogger('workspaceProjects');
 
 export interface WorkspaceProjectsModule {
   loadProjects: () => Promise<void>;
@@ -65,7 +67,7 @@ export function createWorkspaceProjectsModule(params: {
       });
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.warn('Failed to clear vardata', e);
+        log.warn('Failed to clear vardata', e);
       }
     }
     try {
@@ -78,7 +80,7 @@ export function createWorkspaceProjectsModule(params: {
     } catch (e) {
       // Mirrors the warn on the clear step above; recreating the temp root is
       // best-effort but a failure is worth surfacing for debugging.
-      console.warn('Failed to recreate temp root', e);
+      log.warn('Failed to recreate temp root', e);
     }
   }
 
@@ -130,7 +132,7 @@ export function createWorkspaceProjectsModule(params: {
       );
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        console.warn('Failed to delete project', name, e);
+        log.warn('Failed to delete project', name, e);
         throw e;
       }
     }

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -13,6 +14,7 @@ import {
 } from '~/utils/hotkeys/runtime';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { isTauriRuntime } from '~/utils/runtime';
+const log = createDevLogger('useGlobalDragAndDrop');
 
 const isDropInProgress = ref(false);
 const isCurrentDragCancelled = ref(false);
@@ -210,14 +212,14 @@ export function useGlobalDragAndDrop() {
                 await fm.handleFiles(files);
               }
             } catch (err) {
-              console.error('Failed to handle Tauri file drop:', err);
+              log.error('Failed to handle Tauri file drop:', err);
             } finally {
               isDropInProgress.value = false;
             }
           }
         });
       } catch (err) {
-        console.error('Failed to setup Tauri drop listener:', err);
+        log.error('Failed to setup Tauri drop listener:', err);
       }
     }
   });

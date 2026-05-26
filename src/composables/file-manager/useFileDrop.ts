@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, onMounted, onUnmounted, getCurrentInstance } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
@@ -28,6 +29,7 @@ import {
   canPasteIntoBloggerDogEntry,
   canTransferClipboardItemToOrFromBloggerDog,
 } from '~/utils/bloggerdog-file-manager';
+const log = createDevLogger('useFileDrop');
 
 export interface UseFileDropOptions {
   resolveEntryByPath: (path: string) => Promise<FsEntry | null>;
@@ -242,7 +244,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     try {
       parsed = JSON.parse(internalRaw);
     } catch (err) {
-      console.warn('[useFileDrop] Failed to parse internal drag data:', err);
+      log.warn('Failed to parse internal drag data:', err);
       return;
     }
 
@@ -286,7 +288,7 @@ export function useFileDrop(options: UseFileDropOptions) {
         }
         uiStore.notifyFileManagerUpdate();
       } catch (err) {
-        console.error('[useFileDrop] Cross-VFS operation failed:', err);
+        log.error('Cross-VFS operation failed:', err);
       }
     } else {
       for (const item of itemsToMove) {

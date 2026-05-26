@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
@@ -6,6 +7,7 @@ import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-qu
 import { useUiStore } from '~/stores/ui.store';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
+const log = createDevLogger('timeline-thumbnail.service');
 
 export interface GenerateTimelineThumbnailParams {
   projectId: string;
@@ -64,7 +66,7 @@ export function dispatchTimelineThumbnailGeneration(params: GenerateTimelineThum
           uiStore.notifyFileManagerUpdate();
         }
       } catch (error) {
-        console.error('Failed to generate background timeline thumbnail:', error);
+        log.error('Failed to generate background timeline thumbnail:', error);
       }
     },
     priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy,

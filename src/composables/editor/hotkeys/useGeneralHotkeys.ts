@@ -19,7 +19,7 @@ import type { TimelineClipItem } from '~/timeline/types';
 export function useGeneralHotkeys(
   zoomHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
   volumeHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
-  navigationHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
+  _navigationHoldRunner: ReturnType<typeof createHotkeyHoldRunner>,
 ) {
   const timelineStore = useTimelineStore();
   const uiStore = useUiStore();
@@ -182,7 +182,6 @@ export function useGeneralHotkeys(
       },
     });
   }
-
 
   function isPreviewFocus() {
     return focusStore.canUsePreviewHotkeys;
@@ -472,7 +471,6 @@ export function useGeneralHotkeys(
       }
       return false;
     },
-
 
     'general.zoomIn': (e) => {
       startZoomHotkeyHold({ direction: 1, keyCode: e.code });

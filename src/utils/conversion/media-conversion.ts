@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import {
   getExportWorkerClient,
@@ -19,6 +20,7 @@ import {
   AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
 } from './constants';
 import type { ExportOptions } from '~/composables/timeline/export/types';
+const log = createDevLogger('media-conversion');
 
 const METADATA_TIMEOUT_MS = 30000;
 
@@ -93,7 +95,7 @@ export async function executeMediaConversion(params: {
           }
         },
         onExportWarning: (message) => {
-          console.warn(message);
+          log.warn(message);
         },
       });
 

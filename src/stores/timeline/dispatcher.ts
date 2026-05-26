@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Ref } from 'vue';
 
 import type { TimelineDocument } from '~/timeline/types';
@@ -8,6 +9,7 @@ import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './history-labels';
 
 import type { TimelineHydrationModule } from './hydration';
 import type { TimelineHistoryDebounceModule } from './history-debounce';
+const log = createDevLogger('dispatcher');
 
 export interface TimelineDispatcherDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -69,7 +71,7 @@ export function createTimelineDispatcherModule(
     },
   ): string[] {
     if (deps.isReadOnly?.value) {
-      console.warn('Timeline command ignored: timeline is read-only');
+      log.warn('Timeline command ignored: timeline is read-only');
       return [];
     }
 
@@ -88,15 +90,15 @@ export function createTimelineDispatcherModule(
       createdItemIds = result.createdItemIds;
     } catch (error) {
       if (error instanceof Error && error.message === 'Item overlaps with another item') {
-        console.warn('Timeline command rejected: item overlaps with another item', cmd);
+        log.warn('Timeline command rejected: item overlaps with another item', cmd);
         return [];
       }
       if (error instanceof Error && error.message === 'Marker already exists at this time') {
-        console.warn('Timeline command rejected: marker already exists at this time', cmd);
+        log.warn('Timeline command rejected: marker already exists at this time', cmd);
         deps.notifyWarning?.('fastcat.timeline.markerAlreadyExists');
         return [];
       }
-      console.warn('Failed to apply timeline command:', error, cmd);
+      log.warn('Failed to apply timeline command:', error, cmd);
       return [];
     }
 
@@ -134,7 +136,7 @@ export function createTimelineDispatcherModule(
     },
   ): string[] {
     if (deps.isReadOnly?.value) {
-      console.warn('Timeline command ignored: timeline is read-only');
+      log.warn('Timeline command ignored: timeline is read-only');
       return [];
     }
 
@@ -162,12 +164,12 @@ export function createTimelineDispatcherModule(
         const markerExists =
           error instanceof Error && error.message === 'Marker already exists at this time';
         if (overlap) {
-          console.warn('Timeline batch command rejected: item overlaps with another item', cmd);
+          log.warn('Timeline batch command rejected: item overlaps with another item', cmd);
         } else if (markerExists) {
-          console.warn('Timeline batch command rejected: marker already exists at this time', cmd);
+          log.warn('Timeline batch command rejected: marker already exists at this time', cmd);
           deps.notifyWarning?.('fastcat.timeline.markerAlreadyExists');
         } else {
-          console.warn('Failed to apply timeline command in batch:', error, cmd);
+          log.warn('Failed to apply timeline command in batch:', error, cmd);
         }
         // The batch is atomic: any failure rolls back to the document state
         // that existed before the first command ran, so we never leave a

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed, onMounted, onUnmounted, inject } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -41,6 +42,7 @@ import {
   canPasteIntoBloggerDogEntry,
   canTransferClipboardItemToOrFromBloggerDog,
 } from '~/utils/bloggerdog-file-manager';
+const log = createDevLogger('useFileBrowserDragAndDrop');
 
 interface UseFileBrowserDragAndDropOptions {
   findEntryByPath: (path: string) => FsEntry | null;
@@ -453,10 +455,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       try {
         parsed = JSON.parse(internalRaw);
       } catch (err) {
-        console.warn(
-          '[useFileBrowserDragAndDrop] Failed to parse internal drag data on entry:',
-          err,
-        );
+        log.warn('Failed to parse internal drag data on entry:', err);
         return;
       }
 
@@ -500,7 +499,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
             }
           }
         } catch (err) {
-          console.error('[useFileBrowserDragAndDrop] Cross-VFS operation failed:', err);
+          log.error('Cross-VFS operation failed:', err);
           toast.add({
             color: 'error',
             title: t('videoEditor.fileManager.errors.crossVfsFailedTitle'),
@@ -529,7 +528,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
             }
           }
         } catch (err) {
-          console.error('[useFileBrowserDragAndDrop] D&D operation failed:', err);
+          log.error('D&D operation failed:', err);
           toast.add({
             color: 'error',
             title: t('videoEditor.fileManager.errors.dragDropFailedTitle'),
@@ -672,10 +671,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       try {
         parsed = JSON.parse(internalRaw);
       } catch (err) {
-        console.warn(
-          '[useFileBrowserDragAndDrop] Failed to parse internal drag data on panel:',
-          err,
-        );
+        log.warn('Failed to parse internal drag data on panel:', err);
         return;
       }
 
@@ -724,7 +720,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
             }
           }
         } catch (err) {
-          console.error('[useFileBrowserDragAndDrop] Cross-VFS panel operation failed:', err);
+          log.error('Cross-VFS panel operation failed:', err);
           toast.add({
             color: 'error',
             title: t('videoEditor.fileManager.errors.crossVfsFailedTitle'),
@@ -753,7 +749,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
             }
           }
         } catch (err) {
-          console.error('[useFileBrowserDragAndDrop] D&D panel operation failed:', err);
+          log.error('D&D panel operation failed:', err);
           toast.add({
             color: 'error',
             title: t('videoEditor.fileManager.errors.dragDropFailedTitle'),

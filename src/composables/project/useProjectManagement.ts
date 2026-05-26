@@ -1,7 +1,9 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { resolveLastUsedProjectPreset } from '~/utils/settings';
+const log = createDevLogger('useProjectManagement');
 
 function createProjectCreationState(workspaceStore: ReturnType<typeof useWorkspaceStore>) {
   const preset = resolveLastUsedProjectPreset(workspaceStore.userSettings.projectPresets);
@@ -139,7 +141,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       await workspaceStore.renameProject(oldName, renameValue.value.trim());
       closeRenameModal();
     } catch (e) {
-      console.error('Failed to rename project', e);
+      log.error('Failed to rename project', e);
     }
   }
 
@@ -166,7 +168,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     try {
       await workspaceStore.deleteProject(name);
     } catch (e) {
-      console.error('Failed to delete project', e);
+      log.error('Failed to delete project', e);
     } finally {
       closeDeleteModal();
     }

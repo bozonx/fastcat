@@ -1,8 +1,10 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter, Container, TextureSource } from 'pixi.js';
 import { getVideoEffectManifest } from '../../../effects';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { CompositorClip, CompositorTrack } from './types';
 import { ClipMaskFilter } from './filters/ClipMaskFilter';
+const log = createDevLogger('EffectManager');
 
 export interface EffectManagerContext {
   previewEffectsEnabled: boolean;
@@ -193,7 +195,7 @@ export class EffectManager {
       try {
         manifest.updateFilter(filter, effect);
       } catch (err) {
-        console.error('[EffectManager] Failed to update effect filter', err);
+        log.error('Failed to update effect filter', err);
         continue;
       }
 

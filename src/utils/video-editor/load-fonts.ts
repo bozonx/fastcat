@@ -1,3 +1,5 @@
+import { createDevLogger } from '~/utils/dev-logger';
+const log = createDevLogger('load-fonts');
 let fontsLoaded = false;
 
 const GOOGLE_FONTS_URL =
@@ -34,7 +36,7 @@ export async function loadFonts(): Promise<void> {
       }
     }
   } catch (e) {
-    console.warn('[FontLoader] Font loading failed:', e);
+    log.warn('[FontLoader] Font loading failed:', e);
   }
 }
 

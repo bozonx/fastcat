@@ -1,4 +1,6 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { VIDEO_CORE_LIMITS } from '../../constants';
+const log = createDevLogger('CompositorOperationQueue');
 
 export class CompositorOperationQueue {
   private queue: Promise<unknown> = Promise.resolve();
@@ -8,7 +10,7 @@ export class CompositorOperationQueue {
       const controller = new AbortController();
       const watchdog = setTimeout(() => {
         controller.abort();
-        console.warn(
+        log.warn(
           `[VideoCompositor] opQueue watchdog: "${label}" exceeded ` +
             `${VIDEO_CORE_LIMITS.OP_QUEUE_WATCHDOG_MS}ms; aborting to release the queue`,
         );

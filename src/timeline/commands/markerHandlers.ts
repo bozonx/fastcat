@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { TimelineDocument, TimelineMarker } from '../types';
 import type {
   AddMarkerCommand,
@@ -6,6 +7,7 @@ import type {
   UpdateMarkerCommand,
 } from '../commands';
 import { sanitizeFps, quantizeTimeUsToFrames } from './utils';
+const log = createDevLogger('markerHandlers');
 
 /** Markers always live on the frame grid, regardless of the entry path. */
 function snapMarkerTimeUs(value: number, fps: number): number {
@@ -66,7 +68,7 @@ export function updateMarker(
   const markers = getMarkers(doc);
   const idx = markers.findIndex((m) => m.id === cmd.id);
   if (idx === -1) {
-    console.warn('Marker not found for update, skipping:', cmd.id);
+    log.warn('Marker not found for update, skipping:', cmd.id);
     return { next: doc };
   }
 

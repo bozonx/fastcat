@@ -1,9 +1,11 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { computed, ref, toRaw } from 'vue';
 
 import { useWorkspaceStore } from './workspace.store';
 import { genUuid } from '~/utils/ids';
 import { cloneValue } from '~/utils/clone';
+const log = createDevLogger('history.store');
 
 export interface HistoryEntry<T = unknown> {
   id: string;
@@ -180,7 +182,7 @@ export const useHistoryStore = defineStore('history', () => {
         snapshot,
       };
     } catch (error) {
-      console.error(`Failed to undo global action for scope ${scope}:`, error);
+      log.error(`Failed to undo global action for scope ${scope}:`, error);
       return null;
     }
   }
@@ -208,7 +210,7 @@ export const useHistoryStore = defineStore('history', () => {
         snapshot,
       };
     } catch (error) {
-      console.error(`Failed to redo global action for scope ${scope}:`, error);
+      log.error(`Failed to redo global action for scope ${scope}:`, error);
       return null;
     }
   }

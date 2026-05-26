@@ -1,6 +1,8 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 import { addMediaTask } from '~/utils/media-task-queue';
+const log = createDevLogger('base-thumbnail-generator');
 
 export interface BaseThumbnailTask {
   id: string;
@@ -104,7 +106,7 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
         try {
           await this.executeTask(task);
         } catch (e) {
-          console.error(`Task ${task.id} failed:`, e);
+          log.error(`Task ${task.id} failed:`, e);
         } finally {
           this.activeTasks.delete(task.id);
           this.cancelledTasks.delete(task.id);
@@ -114,7 +116,7 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
     ).catch((e) => {
       this.queuedTasks.delete(task.id);
       this.cancelledTasks.delete(task.id);
-      console.error(`Task ${task.id} failed:`, e);
+      log.error(`Task ${task.id} failed:`, e);
     });
   }
 

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, onMounted, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -6,6 +8,7 @@ import { computeDirectoryStats, type DirectoryStats } from '~/utils/fs';
 import { formatBytes } from '~/utils/format';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { resolveStorageRootHandle, ensureDirectoryChain } from '~/utils/storage-handles';
+const log = createDevLogger('StorageSettings');
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
@@ -69,7 +72,7 @@ async function updateStats() {
       }
     }
   } catch (e) {
-    console.error('Failed to update storage stats', e);
+    log.error('Failed to update storage stats', e);
   } finally {
     isLoadingStats.value = false;
   }

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type {
   TimelineTimebase,
   TimelineRange,
@@ -7,6 +8,7 @@ import type {
   ClipAnchorPreset,
 } from '../types';
 import type { OtioRationalTime, OtioTimeRange, OtioColor } from './types';
+const log = createDevLogger('utils');
 
 export const TIME_RATE_US = 1_000_000;
 
@@ -315,9 +317,9 @@ export class OtioValidationReport {
   log(): void {
     if (this.warnings.length === 0) return;
 
-    console.warn(`[fastcat:otio] Import produced ${this.warnings.length} warning(s):`);
+    log.warn(`[fastcat:otio] Import produced ${this.warnings.length} warning(s):`);
     for (const w of this.warnings) {
-      console.warn(`  [${w.type}] ${w.message}${w.path ? ` at ${w.path}` : ''}`);
+      log.warn(`  [${w.type}] ${w.message}${w.path ? ` at ${w.path}` : ''}`);
     }
   }
 }

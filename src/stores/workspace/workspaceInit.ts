@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { Ref } from 'vue';
 
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
@@ -5,6 +6,7 @@ import type { WorkspaceSettingsRepository } from '~/repositories/workspace-setti
 import { getErrorMessage, isAbortError } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import type { WorkspaceProvider } from './provider';
+const log = createDevLogger('workspaceInit');
 
 export interface WorkspaceInitDeps {
   workspaceHandle: Ref<FileSystemDirectoryHandle | null>;
@@ -68,7 +70,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     } catch (e) {
       // Non-fatal: temp dirs are recreated lazily, but a failure here usually
       // signals a permissions/quota problem worth seeing in logs.
-      console.warn('Failed to ensure temp directories during workspace init', e);
+      log.warn('Failed to ensure temp directories during workspace init', e);
     }
 
     await deps.loadProjects();
@@ -108,7 +110,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     deps.error.value = null;
 
     deps.resetSettingsState();
-    deps.workspaceProvider.clearWorkspace().catch(console.warn);
+    deps.workspaceProvider.clearWorkspace().catch(log.warn);
   }
 
   async function init() {
@@ -131,7 +133,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
 
       await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);
     } catch (e) {
-      console.warn('Failed to restore workspace handle:', e);
+      log.warn('Failed to restore workspace handle:', e);
     } finally {
       deps.isInitializing.value = false;
     }

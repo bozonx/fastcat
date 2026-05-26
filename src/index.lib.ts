@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineCustomElement, h, provide } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { createI18n, I18nInjectionKey } from 'vue-i18n';
@@ -7,6 +8,7 @@ import mainCss from '~/assets/css/main.css?inline';
 // Locales
 import enUS from './locales/en-US.json';
 import ruRU from './locales/ru-RU.json';
+const log = createDevLogger('index.lib');
 
 const i18n = createI18n({
   legacy: false,
@@ -43,8 +45,8 @@ const FastcatElement = defineCustomElement({
     provide('isEmbedded', true);
     provide('notificationService', {
       // Intentional fallback output when the embedding host provides no service.
-      // eslint-disable-next-line no-console
-      add: (msg: unknown) => console.log('[Embedded Editor] Notification:', msg),
+
+      add: (msg: unknown) => log.log('[Embedded Editor] Notification:', msg),
     });
     provide('i18nService', {
       t: (key: string, defaultValue?: string) => i18n.global.t(key) || defaultValue || key,

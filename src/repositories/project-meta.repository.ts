@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import {
   ensureAppFileHandle,
   readJsonFromFileHandle,
@@ -6,6 +7,7 @@ import {
 } from './app-fs.repository';
 
 import { z } from 'zod';
+const log = createDevLogger('project-meta.repository');
 
 export const ProjectMetaSchema = z.object({
   id: z.string().trim().min(1),
@@ -42,7 +44,7 @@ export function createProjectMetaRepository(input: {
 
       const parsed = ProjectMetaSchema.safeParse(raw);
       if (!parsed.success) {
-        console.warn(`[ProjectMeta] Invalid project metadata`, parsed.error);
+        log.warn(`[ProjectMeta] Invalid project metadata`, parsed.error);
         return null;
       }
       return parsed.data;

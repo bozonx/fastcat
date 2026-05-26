@@ -1,9 +1,11 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { watch } from 'vue';
 import type { Ref } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
+const log = createDevLogger('useFileBrowserPendingActions');
 
 export interface FileBrowserPendingActionsOptions {
   folderEntries: Ref<FsEntry[]>;
@@ -93,7 +95,7 @@ export function useFileBrowserPendingActions({
       try {
         await createTimelineInDirectory(entry);
       } catch (e) {
-        console.warn('Failed to create timeline in directory', entry.path, e);
+        log.warn('Failed to create timeline in directory', entry.path, e);
       }
     },
   );
@@ -113,7 +115,7 @@ export function useFileBrowserPendingActions({
       try {
         await createMarkdownInDirectory(entry);
       } catch (e) {
-        console.warn('Failed to create markdown in directory', entry.path, e);
+        log.warn('Failed to create markdown in directory', entry.path, e);
       }
     },
   );

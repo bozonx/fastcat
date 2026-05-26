@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type PQueue from 'p-queue';
 import type { Ref } from 'vue';
 
@@ -7,6 +8,7 @@ import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/work
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import type { BackgroundTasksStore } from '~/stores/background-tasks.store';
+const log = createDevLogger('proxyService');
 
 export interface ProxyService {
   checkExistingProxies: (paths: string[]) => Promise<void>;
@@ -95,7 +97,7 @@ export function createProxyService(params: {
         }
       },
       onExportWarning: (msg: string, taskId?: string) => {
-        console.warn(`[Proxy Worker] Warning: ${msg} for task ${taskId}`);
+        log.warn(`[Proxy Worker] Warning: ${msg} for task ${taskId}`);
       },
     }),
   );
@@ -121,7 +123,7 @@ export function createProxyService(params: {
 
           tasks.push(
             generateProxy(handle as FileSystemFileHandle, fullPath).catch((e) => {
-              console.warn('Failed to generate proxy for file', fullPath, e);
+              log.warn('Failed to generate proxy for file', fullPath, e);
             }),
           );
         }
@@ -454,7 +456,7 @@ export function createProxyService(params: {
       await dir.removeEntry(proxyFilename);
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
-        console.warn('Failed to delete proxy', e);
+        log.warn('Failed to delete proxy', e);
         return;
       }
     }
@@ -527,7 +529,7 @@ export function createProxyService(params: {
       }
       params.existingProxies.value = next;
     } catch (e) {
-      console.warn('Failed to rename proxy', e);
+      log.warn('Failed to rename proxy', e);
       // Clean up if rename failed
       const next = new Set(params.existingProxies.value);
       next.delete(input.oldPath);

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { computed, ref } from 'vue';
 import type { RemoteVfsFileEntry } from '~/types/remote-vfs';
 import PropertySection from '~/components/properties/PropertySection.vue';
@@ -6,6 +8,7 @@ import PropertyRow from '~/components/properties/PropertyRow.vue';
 import ExpandableYamlSection from '~/components/properties/file/ExpandableYamlSection.vue';
 import { formatDurationSeconds } from '~/utils/format';
 import yaml from 'js-yaml';
+const log = createDevLogger('BloggerDogItemPropertiesSection');
 
 const props = defineProps<{
   item: RemoteVfsFileEntry;
@@ -42,7 +45,7 @@ async function copyToClipboard(text: string) {
     await navigator.clipboard.writeText(text);
     toast.add({ title: t('common.copiedToClipboard') });
   } catch (e) {
-    console.error('Failed to copy to clipboard', e);
+    log.error('Failed to copy to clipboard', e);
   }
 }
 </script>

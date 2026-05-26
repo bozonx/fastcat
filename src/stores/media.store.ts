@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
@@ -12,6 +13,7 @@ import { withFileIoSlot } from '~/utils/io/io-governor';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/waveform';
+const log = createDevLogger('media.store');
 
 interface VideoColorSpaceInit {
   fullRange?: boolean;
@@ -277,7 +279,7 @@ export const useMediaStore = defineStore('media', () => {
           throw new Error('Worker returned null metadata');
         }
       } catch (e) {
-        console.warn('Failed to fetch metadata for', projectRelativePath, (e as Error)?.message);
+        log.warn('Failed to fetch metadata for', projectRelativePath, (e as Error)?.message);
         metadataLoadFailed.value[projectRelativePath] = true;
 
         // Persist failure state so we don't try again until file changes
@@ -364,7 +366,7 @@ export const useMediaStore = defineStore('media', () => {
             });
           });
         } catch (e) {
-          console.warn('Failed to write peaks', e);
+          log.warn('Failed to write peaks', e);
         }
       })
       .finally(() => {
@@ -454,7 +456,7 @@ export const useMediaStore = defineStore('media', () => {
     });
 
     sharedAudioDecodeWorker.addEventListener('error', (event) => {
-      console.error('[SharedAudioDecodeWorker] Worker error', event);
+      log.error('[SharedAudioDecodeWorker] Worker error', event);
       for (const [, pending] of decodePending.entries()) {
         pending.reject(new Error('Audio decode worker crashed'));
       }
@@ -479,7 +481,7 @@ export const useMediaStore = defineStore('media', () => {
           resolve(res?.peaks || null);
         },
         reject: (err: unknown) => {
-          console.warn('Failed to extract peaks in shared worker', err);
+          log.warn('Failed to extract peaks in shared worker', err);
           resolve(null);
         },
       });

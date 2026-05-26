@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 
@@ -28,6 +29,7 @@ import {
   useFilesPageFileManagerStore,
   useFilesPageSidebarFileManagerStore,
 } from './file-manager.store';
+const log = createDevLogger('project-settings.store');
 
 interface ProjectSettingsRepo {
   load(): Promise<unknown | null>;
@@ -241,7 +243,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       }
     },
     onError: (e) => {
-      console.warn('Failed to save project settings', e);
+      log.warn('Failed to save project settings', e);
     },
   });
 
@@ -421,7 +423,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         return;
       }
 
-      console.warn('Failed to load project settings, fallback to defaults', e);
+      log.warn('Failed to load project settings, fallback to defaults', e);
       projectSettings.value = createDefaultProjectSettings(workspaceStore.userSettings);
     } finally {
       isLoadingProjectSettings.value = false;
@@ -505,7 +507,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         ui: initial.ui as any,
       });
     } catch (e) {
-      console.warn('Failed to create project settings/ui files', e);
+      log.warn('Failed to create project settings/ui files', e);
     }
 
     autoSave.reset();

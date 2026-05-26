@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -9,6 +10,7 @@ import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 import { getMediaTypeFromFilename, isOpenableProjectFileName } from '~/utils/media-types';
 import type { FileAction as FileActionBase } from '~/composables/file-manager/useFileManagerActions';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+const log = createDevLogger('useFileManagerPanelActions');
 
 export interface FileManagerPanelActionsOptions {
   vfs: IFileSystemAdapter;
@@ -86,7 +88,7 @@ export function useFileManagerPanelActions({
         void timelineStore.loadTimelineMetadata();
       }
     } catch (e: unknown) {
-      console.error('[FileManagerPanel] Failed to create timeline', e);
+      log.error('[FileManagerPanel] Failed to create timeline', e);
       toast.add({
         color: 'error',
         title: t('timelineCreation.errorTitle'),

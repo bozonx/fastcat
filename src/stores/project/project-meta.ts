@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, type Ref } from 'vue';
 
 import {
@@ -6,6 +7,7 @@ import {
   type ProjectMeta,
 } from '~/repositories/project-meta.repository';
 import { genUuid } from '~/utils/ids';
+const log = createDevLogger('project-meta');
 
 function createProjectId(): string {
   return genUuid();
@@ -48,7 +50,7 @@ export function createProjectMetaModule(params: {
     } catch (e) {
       // A genuine read failure (e.g. corrupt meta file) must be surfaced — we
       // still fall through to minting a fresh id so the project stays usable.
-      console.warn('Failed to load project meta', e);
+      log.warn('Failed to load project meta', e);
     }
 
     const nextId = createProjectId();
@@ -71,7 +73,7 @@ export function createProjectMetaModule(params: {
       await ensureRepo();
       await projectMetaRepo.value?.save(newMeta);
     } catch (e) {
-      console.warn('Failed to write project meta file', e);
+      log.warn('Failed to write project meta file', e);
     }
   }
 
@@ -90,7 +92,7 @@ export function createProjectMetaModule(params: {
       await ensureRepo();
       await projectMetaRepo.value?.save(updatedMeta);
     } catch (e) {
-      console.warn('Failed to save project meta', e);
+      log.warn('Failed to save project meta', e);
     }
   }
 

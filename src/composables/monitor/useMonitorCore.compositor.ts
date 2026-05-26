@@ -1,5 +1,7 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { normalizeTimeUs } from '~/utils/monitor-time';
 import type { PreviewRenderOptions, VideoCoreWorkerAPI } from '~/utils/video-editor/worker-rpc';
+const log = createDevLogger('useMonitorCore.compositor');
 
 export interface CreateMonitorCompositorRuntimeOptions {
   client: VideoCoreWorkerAPI;
@@ -107,7 +109,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
           await options.client.renderFrame(nextTimeUs, options.getPreviewRenderOptions());
         }
       } catch (err) {
-        console.error('[Monitor] Render failed', err);
+        log.error('[Monitor] Render failed', err);
       } finally {
         renderLoopInFlight = false;
         if (latestRenderTimeUs !== null) {

@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import type { WorkspaceProvider } from './types';
 import type { DirectoryHandleLike } from '~/repositories/app-fs.repository';
 import type { WorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
@@ -5,6 +6,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { exists } from '@tauri-apps/plugin-fs';
 import { TauriDirectoryHandle } from './tauri-handle';
 import { isTauriRuntime } from '~/utils/runtime';
+const log = createDevLogger('tauri');
 
 export class TauriWorkspaceProvider implements WorkspaceProvider {
   id = 'tauri';
@@ -49,7 +51,7 @@ export class TauriWorkspaceProvider implements WorkspaceProvider {
         ) as unknown as DirectoryHandleLike;
       }
     } catch (e) {
-      console.warn('Failed to restore tauri workspace handle:', e);
+      log.warn('Failed to restore tauri workspace handle:', e);
     }
     return null;
   }
@@ -59,6 +61,6 @@ export class TauriWorkspaceProvider implements WorkspaceProvider {
   }
 
   async clearWorkspace(): Promise<void> {
-    await this.storage.clear().catch(console.warn);
+    await this.storage.clear().catch(log.warn);
   }
 }

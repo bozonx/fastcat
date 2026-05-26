@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, onMounted, watch } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -6,6 +8,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { dispatchMarkerThumbnailGeneration } from '~/timeline/services/marker-thumbnail.service';
 import { buildVideoWorkerPayloadFromTracks } from '~/composables/timeline/export';
+const log = createDevLogger('MarkerThumbnail');
 
 const props = defineProps<{
   markerId: string;
@@ -70,7 +73,7 @@ async function loadThumbnail() {
       },
     });
   } catch (error) {
-    console.error('Failed to load marker thumbnail:', props.markerId, error);
+    log.error('Failed to load marker thumbnail:', props.markerId, error);
     isLoading.value = false;
   }
 }

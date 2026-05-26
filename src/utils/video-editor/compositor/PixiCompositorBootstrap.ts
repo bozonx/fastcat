@@ -1,5 +1,7 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { Application, DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 import type { ICanvas } from 'pixi.js';
+const log = createDevLogger('PixiCompositorBootstrap');
 
 export interface PixiCompositorBootstrapOptions {
   width: number;
@@ -79,7 +81,7 @@ export async function createPixiCompositorApplication(
       }
 
       if (rendererPreference === options.rendererPreferences[0]) {
-        console.warn(
+        log.warn(
           `[VideoCompositor] ${rendererPreference} renderer failed, trying alternate Pixi renderer`,
           error,
         );

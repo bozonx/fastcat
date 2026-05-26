@@ -57,7 +57,7 @@ describe('MultiFileProperties.vue', () => {
 
     expect(component.text()).toContain('videoEditor.fileManager.actions.title');
     const findButtonByTitlePrefix = (prefix: string) => {
-      return component.findAll('button').find(b => b.attributes('title')?.startsWith(prefix));
+      return component.findAll('button').find((b) => b.attributes('title')?.startsWith(prefix));
     };
     expect(findButtonByTitlePrefix('common.copy')).toBeTruthy();
     expect(findButtonByTitlePrefix('common.cut')).toBeTruthy();

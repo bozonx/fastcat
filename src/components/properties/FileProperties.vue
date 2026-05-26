@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { createDevLogger } from '~/utils/dev-logger';
+
 import { ref, computed } from 'vue';
 import { useMediaStore } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
@@ -46,6 +48,8 @@ import { useBloggerDogEntryInfo } from '~/composables/properties/useBloggerDogEn
 import { useFilePropertiesProxy } from '~/composables/properties/useFilePropertiesProxy';
 import { useFilePropertiesActionGroups } from '~/composables/properties/useFilePropertiesActionGroups';
 import type { FsEntry } from '~/types/fs';
+
+const log = createDevLogger('FileProperties');
 
 const props = defineProps<{
   selectedFsEntry: FsEntry;
@@ -270,7 +274,7 @@ async function copyToClipboard(text: string) {
     await navigator.clipboard.writeText(text);
     toast.add({ title: t('common.copiedToClipboard') });
   } catch (e) {
-    console.error('Failed to copy to clipboard', e);
+    log.error('Failed to copy to clipboard', e);
   }
 }
 

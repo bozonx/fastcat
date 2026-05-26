@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
@@ -12,6 +13,7 @@ import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHost
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
+const log = createDevLogger('thumbnail-generator');
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
@@ -274,7 +276,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
           });
         } catch (e) {
           const err = e instanceof Error ? e : new Error(String(e));
-          console.error(`Task ${task.id} failed:`, err);
+          log.error(`Task ${task.id} failed:`, err);
           this.emitError(task.id, err);
         } finally {
           this.activeTasks.delete(task.id);
@@ -286,7 +288,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       const err = e instanceof Error ? e : new Error(String(e));
       this.queuedTasks.delete(task.id);
       this.cancelledTasks.delete(task.id);
-      console.error(`Task ${task.id} failed:`, err);
+      log.error(`Task ${task.id} failed:`, err);
       this.emitError(task.id, err);
     });
   }
@@ -383,7 +385,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       return urls;
     } catch (e: unknown) {
       if (!isDomExceptionName(e, 'NotFoundError')) {
-        console.warn('Failed to load thumbnails from OPFS', task.id, e);
+        log.warn('Failed to load thumbnails from OPFS', task.id, e);
       }
       return null;
     }
@@ -548,7 +550,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       await dir.removeEntry(input.hash, { recursive: true });
     } catch (e: unknown) {
       if (!isDomExceptionName(e, 'NotFoundError')) {
-        console.warn('Failed to clear thumbnails for', input.hash, e);
+        log.warn('Failed to clear thumbnails for', input.hash, e);
       }
     }
   }

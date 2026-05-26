@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import './worker-polyfill';
 import { DOMAdapter, WebWorkerAdapter } from 'pixi.js';
 
@@ -21,6 +22,7 @@ import { extractMetadata, runExport, extractAudioStream } from './core/export';
 import { runTranscode } from './core/transcode';
 import { VIDEO_CORE_LIMITS } from '../utils/constants';
 import { loadFonts } from '../utils/video-editor/load-fonts';
+const log = createDevLogger('video-core.worker');
 
 DOMAdapter.set(WebWorkerAdapter);
 initEffects();
@@ -153,7 +155,7 @@ function createHostRpcCall(method: keyof VideoCoreHostAPI, args: unknown[]) {
 }
 
 async function reportExportWarning(message: string, taskId?: string) {
-  console.warn(message, taskId ? `[task:${taskId}]` : '');
+  log.warn(message, taskId ? `[task:${taskId}]` : '');
   if (!hostClient) return;
   try {
     await hostClient.onExportWarning?.(message, taskId);
@@ -275,7 +277,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
           presented = (await compositor.renderFrame(next, opt)) != null;
         } catch (err) {
           if (err instanceof Error && err.name === 'AbortError') break;
-          console.error('[Worker] renderFrame error at time', next, err);
+          log.error('[Worker] renderFrame error at time', next, err);
         }
 
         // Presented, or a newer seek arrived while we rendered — either way the screen ends
@@ -405,7 +407,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
         rendererPreference: pixiRendererPreference,
       });
     } catch (initErr) {
-      console.warn('[Worker] extractFrameToBlob: compositor init failed', initErr);
+      log.warn('[Worker] extractFrameToBlob: compositor init failed', initErr);
       await localCompositor.destroy().catch(() => {});
       return null;
     }
@@ -513,7 +515,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
             );
           }
         } catch (err) {
-          console.error('[Worker] Failed to get video sample at time', safeTimeS, err);
+          log.error('[Worker] Failed to get video sample at time', safeTimeS, err);
           results.push(null);
           continue;
         }
@@ -800,9 +802,9 @@ self.addEventListener('message', async (e: MessageEvent<VideoCoreWorkerRpcMessag
         error.message?.includes('unsupported') || error.message?.includes('unrecognizable');
       if (error?.name !== 'AbortError') {
         if (isUnsupportedFormat) {
-          console.warn(`[Worker] Unsupported format in method ${data.method}:`, error.message);
+          log.warn(`[Worker] Unsupported format in method ${data.method}:`, error.message);
         } else {
-          console.error(`[Worker] Error in method ${data.method}:`, err);
+          log.error(`[Worker] Error in method ${data.method}:`, err);
         }
       }
       self.postMessage({

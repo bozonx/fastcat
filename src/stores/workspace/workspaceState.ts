@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, watch, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
 import { getErrorMessage } from '~/utils/errors';
@@ -7,6 +8,7 @@ import {
   normalizeWorkspaceState,
 } from '~/utils/workspace-state';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+const log = createDevLogger('workspaceState');
 
 export interface WorkspaceStateModule {
   workspaceState: Ref<WorkspaceState>;
@@ -41,14 +43,14 @@ export function createWorkspaceStateModule(params: {
         await params.settingsRepo.value.saveWorkspaceState(workspaceState.value);
       } catch (e) {
         workspaceStateSaveError.value = getErrorMessage(e, 'Failed to save workspace state');
-        console.warn('Failed to save workspace state', e);
+        log.warn('Failed to save workspace state', e);
         throw e;
       } finally {
         isSavingWorkspaceState.value = false;
       }
     },
     onError: (e) => {
-      console.error('Failed to save workspace state', e);
+      log.error('Failed to save workspace state', e);
     },
   });
 

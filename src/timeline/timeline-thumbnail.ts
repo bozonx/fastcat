@@ -1,9 +1,11 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineDocument } from '~/timeline/types';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 import { cloneValue } from '~/utils/clone';
+const log = createDevLogger('timeline-thumbnail');
 
 export function generateTimelineThumbnail(params: {
   timelinePath: string;
@@ -51,7 +53,7 @@ export function generateTimelineThumbnail(params: {
         notifyUi: false,
       });
     } catch (error) {
-      console.error('Failed to prepare background timeline thumbnail generation:', error);
+      log.error('Failed to prepare background timeline thumbnail generation:', error);
     }
   })();
 }

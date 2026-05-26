@@ -1,3 +1,4 @@
+import { createDevLogger } from '~/utils/dev-logger';
 import { ref, computed, inject } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -25,6 +26,7 @@ import {
   canPasteIntoBloggerDogEntry,
   canTransferClipboardItemToOrFromBloggerDog,
 } from '~/utils/bloggerdog-file-manager';
+const log = createDevLogger('useFileManagerActions');
 
 export type FileAction =
   | 'createFolder'
@@ -499,7 +501,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     if (handler) {
       await handler(entry, getExistingNames);
     } else {
-      console.warn(`[useFileManagerActions] Unhandled file action: ${action}`);
+      log.warn(`Unhandled file action: ${action}`);
     }
   }
 
