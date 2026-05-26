@@ -267,7 +267,9 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'transcribe',
       label: options.t('videoEditor.fileManager.actions.transcribe'),
       icon: 'i-heroicons-microphone',
-      hidden: (!options.isVideoFile.value && !options.isAudioFile.value) || options.isMediaFullyUnsupported?.value,
+      hidden:
+        (!options.isVideoFile.value && !options.isAudioFile.value) ||
+        options.isMediaFullyUnsupported?.value,
       disabled: !options.canTranscribeMedia.value,
       onClick: options.openTranscriptionModal,
     },

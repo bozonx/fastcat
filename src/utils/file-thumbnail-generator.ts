@@ -32,9 +32,7 @@ export function getFileThumbnailHash(input: {
     lastModified: number;
   };
 }): string {
-  const sourceKey = input.source
-    ? `:${input.source.size}:${input.source.lastModified}`
-    : '';
+  const sourceKey = input.source ? `:${input.source.size}:${input.source.lastModified}` : '';
   return hashString(`file:${input.projectId}:${input.projectRelativePath}${sourceKey}`);
 }
 

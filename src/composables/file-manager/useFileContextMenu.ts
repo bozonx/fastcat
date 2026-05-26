@@ -240,7 +240,10 @@ export function useFileContextMenu(
           ]);
         }
 
-        if ((mediaType === 'audio' || mediaType === 'video') && (!deps.canUseFile || deps.canUseFile(entry))) {
+        if (
+          (mediaType === 'audio' || mediaType === 'video') &&
+          (!deps.canUseFile || deps.canUseFile(entry))
+        ) {
           items.push([
             {
               label: t('videoEditor.fileManager.actions.transcribe'),
@@ -504,7 +507,10 @@ export function useFileContextMenu(
     }
 
     const mediaType = entry.kind === 'file' ? getMediaTypeFromFilename(entry.name) : null;
-    if ((mediaType === 'audio' || mediaType === 'video') && (!deps.canUseFile || deps.canUseFile(entry))) {
+    if (
+      (mediaType === 'audio' || mediaType === 'video') &&
+      (!deps.canUseFile || deps.canUseFile(entry))
+    ) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.transcribe'),
