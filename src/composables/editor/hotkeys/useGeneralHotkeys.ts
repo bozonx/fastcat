@@ -245,7 +245,11 @@ export function useGeneralHotkeys(
 
   const handlers: Partial<Record<HotkeyCommandId, (e: KeyboardEvent) => boolean>> = {
     'general.focus': () => {
-      focusStore.handleFocusHotkey();
+      if (projectStore.currentView === 'files') {
+        focusStore.handleFilesViewFocusHotkey();
+      } else {
+        focusStore.handleFocusHotkey();
+      }
       return true;
     },
 

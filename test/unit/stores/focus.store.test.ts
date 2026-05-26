@@ -57,6 +57,31 @@ describe('FocusStore', () => {
     expect(store.mainFocus).toBe('timeline');
   });
 
+  it('files view focus hotkey toggles between external and project file managers', () => {
+    const store = useFocusStore();
+
+    store.handleFilesViewFocusHotkey();
+    expect(store.activePanelId).toBe('dynamic:file-manager:main');
+
+    store.handleFilesViewFocusHotkey();
+    expect(store.activePanelId).toBe('dynamic:file-manager:sidebar');
+
+    store.handleFilesViewFocusHotkey();
+    expect(store.activePanelId).toBe('dynamic:file-manager:main');
+  });
+
+  it('files view focus hotkey returns from timeline and other panels to project file manager', () => {
+    const store = useFocusStore();
+
+    store.setPanelFocus('timeline');
+    store.handleFilesViewFocusHotkey();
+    expect(store.activePanelId).toBe('dynamic:file-manager:main');
+
+    store.setPanelFocus('dynamic:properties:files-main');
+    store.handleFilesViewFocusHotkey();
+    expect(store.activePanelId).toBe('dynamic:file-manager:main');
+  });
+
   it('temporary sidebar focus stays active', () => {
     const store = useFocusStore();
 

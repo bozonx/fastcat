@@ -84,6 +84,9 @@ export function isTimelineHotkeyPanelFocus(panelId: string | null | undefined): 
 
 export type FileManagerSurface = 'tree' | 'list';
 
+const FILES_VIEW_SIDEBAR_FOCUS_ID = 'dynamic:file-manager:sidebar';
+const FILES_VIEW_MAIN_FOCUS_ID = 'dynamic:file-manager:main';
+
 export const useFocusStore = defineStore('focus', () => {
   const activeTimelinePath = ref<string | null>(null);
 
@@ -190,6 +193,15 @@ export const useFocusStore = defineStore('focus', () => {
     restoreLastCutMainPanel();
   }
 
+  function handleFilesViewFocusHotkey() {
+    if (activePanelId.value === FILES_VIEW_MAIN_FOCUS_ID) {
+      setPanelFocus(FILES_VIEW_SIDEBAR_FOCUS_ID);
+      return;
+    }
+
+    setPanelFocus(FILES_VIEW_MAIN_FOCUS_ID);
+  }
+
   function isPanelFocused(panel: AnyPanelFocus) {
     return effectiveFocus.value === panel;
   }
@@ -238,5 +250,6 @@ export const useFocusStore = defineStore('focus', () => {
     restoreLastCutMainPanel,
 
     handleFocusHotkey,
+    handleFilesViewFocusHotkey,
   };
 });

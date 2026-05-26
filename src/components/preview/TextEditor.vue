@@ -104,9 +104,13 @@ watch(
 
 watch(isModalOpen, (isOpen, oldIsOpen) => {
   if (!isOpen && oldIsOpen) {
-    nextTick(() => {
+    textareaRef.value?.focus();
+    setTimeout(() => {
       textareaRef.value?.focus();
-    });
+    }, 50);
+    setTimeout(() => {
+      textareaRef.value?.focus();
+    }, 150);
   }
 });
 

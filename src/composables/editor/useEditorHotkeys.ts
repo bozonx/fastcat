@@ -82,7 +82,20 @@ export function useEditorHotkeys() {
 
   function canHandleFocusTab() {
     if (hasBlockingModalState()) return false;
-    return projectStore.currentView === 'cut' || projectStore.currentView === 'sound';
+    return (
+      projectStore.currentView === 'files' ||
+      projectStore.currentView === 'cut' ||
+      projectStore.currentView === 'sound'
+    );
+  }
+
+  function handleFocusCommand() {
+    if (projectStore.currentView === 'files') {
+      focusStore.handleFilesViewFocusHotkey();
+      return;
+    }
+
+    focusStore.handleFocusHotkey();
   }
 
   function dispatchMatchedCommands(
@@ -103,7 +116,7 @@ export function useEditorHotkeys() {
       if (isEditableTarget((e as KeyboardEvent).target)) return false;
 
       e.preventDefault();
-      focusStore.handleFocusHotkey();
+      handleFocusCommand();
       return true;
     }
 

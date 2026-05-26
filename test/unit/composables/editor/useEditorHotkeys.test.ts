@@ -118,6 +118,48 @@ describe('useEditorHotkeys', () => {
     expect(focusStore.activePanelId).toBe('monitor');
   });
 
+  it('restores timeline focus to timeline in non-files editor views', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+
+    projectStore.setView('export');
+    focusStore.setMainFocus('timeline');
+    focusStore.setPanelFocus('exportForm');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+
+    expect(focusStore.activePanelId).toBe('timeline');
+  });
+
+  it('toggles file manager focus on Tab when editor is in files view', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+
+    projectStore.setView('files');
+    expect(focusStore.activePanelId).toBe('timeline');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+    expect(focusStore.activePanelId).toBe('dynamic:file-manager:main');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+    expect(focusStore.activePanelId).toBe('dynamic:file-manager:sidebar');
+  });
+
+  it('returns from timeline to project file manager on Tab in files view', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+
+    projectStore.setView('files');
+    focusStore.setPanelFocus('timeline');
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', code: 'Tab', bubbles: true }));
+
+    expect(focusStore.activePanelId).toBe('dynamic:file-manager:main');
+  });
+
   it('ignores non-repeatable commands on repeated keydown', async () => {
     wrapper = mount(HotkeysHarness);
     const focusStore = useFocusStore();
