@@ -19,7 +19,12 @@ const content = defineModel<string>('content', { default: '' });
 </script>
 
 <template>
-  <UiModal v-model:open="isOpen" :title="props.fileName" :ui="{ content: 'max-w-4xl h-[80vh]' }">
+  <UiModal
+    v-model:open="isOpen"
+    :title="props.fileName"
+    :restore-focus="false"
+    :ui="{ content: 'max-w-4xl h-[80vh]' }"
+  >
     <div class="flex flex-col h-full min-h-0 pt-2">
       <UiTextarea
         v-model="content"

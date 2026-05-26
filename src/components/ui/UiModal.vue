@@ -16,6 +16,8 @@ interface Props {
   closeButton?: boolean;
   /** Whether to prevent closing when clicking outside or pressing ESC */
   preventClose?: boolean;
+  /** Whether to restore focus to the trigger element when closed */
+  restoreFocus?: boolean;
   /** Nuxt UI modal configuration */
   ui?: {
     overlay?: string;
@@ -35,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
   description: undefined,
   closeButton: true,
   preventClose: false,
+  restoreFocus: true,
   ui: () => ({}),
 });
 
@@ -74,6 +77,11 @@ const modalContent = {
   },
   onPointerDownOutside: (event: Event) => {
     suppressNextOutsideClick(event);
+  },
+  onCloseAutoFocus: (event: Event) => {
+    if (props.restoreFocus === false) {
+      event.preventDefault();
+    }
   },
 };
 
