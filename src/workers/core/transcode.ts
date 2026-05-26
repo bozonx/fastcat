@@ -2,8 +2,36 @@ import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
 import type { ExportOptions } from '~/composables/timeline/export/types';
 import { runResilientWorkerFileIo, acquireStreamingWorkerFileIoSlot } from './io-governor';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
+import { createDevLogger } from '~/utils/dev-logger';
 import { getBunnyVideoCodec, getBunnyAudioCodec } from './utils';
 import { createAudioProcessConfig, ensureNotCancelled, notifyPhase } from './transcode-engine';
+
+const log = createDevLogger('Worker Transcode');
+
+type FileSystemWritableLike = WritableStream<never>;
+
+interface FileSystemWritableHandleLike {
+  createWritable: (opts?: { keepExistingData?: boolean }) => Promise<FileSystemWritableLike>;
+}
+
+interface BunnyFormatLike {
+  supportsVideoRotationMetadata?: boolean;
+  getSupportedVideoCodecs?: () => string[];
+  getSupportedAudioCodecs?: () => string[];
+}
+
+interface BunnyOutputLike {
+  addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void;
+  cancel?: () => Promise<void>;
+}
+
+interface BunnyConversionProcess {
+  isValid: boolean;
+  discardedTracks?: { reason: string }[];
+  onProgress?: (progress: number) => void;
+  execute?: () => Promise<void>;
+  cancel?: () => void | Promise<void>;
+}
 
 export async function runTranscode(
   sourceFile: File | FileSystemFileHandle,
@@ -50,44 +78,30 @@ export async function runTranscode(
         : new Mp4OutputFormat();
 
   const release = await acquireStreamingWorkerFileIoSlot();
-  const writable = await (
-    targetHandle as unknown as {
-      createWritable: (opts?: {
-        keepExistingData?: boolean;
-      }) => Promise<{ abort?: () => Promise<void> }>;
-    }
-  ).createWritable({ keepExistingData: false });
-  const target = new StreamTarget(writable as unknown as WritableStream<unknown>, {
+  const writable = await (targetHandle as FileSystemWritableHandleLike).createWritable({
+    keepExistingData: false,
+  });
+  const target = new StreamTarget(writable, {
     chunked: true,
     chunkSize: 16 * 1024 * 1024,
   });
   const output = new Output({ target, format });
+  const bunnyOutput = output as BunnyOutputLike;
+  const bunnyFormat = format as BunnyFormatLike;
 
   // WORKAROUND: mediabunny's Conversion._processVideoTrack accidentally passes rotation synchronously
   // to addVideoTrack before its async block resets outputTrackRotation to 0.
   // When exporting to MKV, this causes a crash since MKV doesn't support rotation metadata.
   // We intercept addVideoTrack and strip the rotation.
-  const originalAddVideoTrack = (
-    output as unknown as {
-      addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void;
-    }
-  ).addVideoTrack.bind(output);
-  (
-    output as unknown as {
-      addVideoTrack: (source: unknown, metadata?: Record<string, unknown>) => void;
-    }
-  ).addVideoTrack = (source, metadata = {}) => {
-    if (
-      'rotation' in metadata &&
-      !(format as unknown as { supportsVideoRotationMetadata?: boolean })
-        .supportsVideoRotationMetadata
-    ) {
+  const originalAddVideoTrack = bunnyOutput.addVideoTrack.bind(output);
+  bunnyOutput.addVideoTrack = (source, metadata = {}) => {
+    if ('rotation' in metadata && !bunnyFormat.supportsVideoRotationMetadata) {
       metadata.rotation = 0;
     }
     return originalAddVideoTrack(source, metadata);
   };
 
-  let conversionProcess: { isValid: boolean; discardedTracks?: { reason: string }[] } | null = null;
+  let conversionProcess: BunnyConversionProcess | null = null;
   let outputCancelled = false;
 
   async function safeCancelOutput() {
@@ -95,7 +109,7 @@ export async function runTranscode(
     outputCancelled = true;
 
     try {
-      (output as { cancel?: () => Promise<void> }).cancel?.();
+      await bunnyOutput.cancel?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!message.includes('already been canceled')) {
@@ -114,12 +128,8 @@ export async function runTranscode(
     const sourceVideoTrackAny = sourceVideoTrack as { frameRate?: number } | null;
     const sourceFrameRate = Number(sourceVideoTrackAny?.frameRate || 0);
 
-    const supportedVideoCodecs = (
-      format as unknown as { getSupportedVideoCodecs?: () => string[] }
-    ).getSupportedVideoCodecs?.();
-    const supportedAudioCodecs = (
-      format as unknown as { getSupportedAudioCodecs?: () => string[] }
-    ).getSupportedAudioCodecs?.();
+    const supportedVideoCodecs = bunnyFormat.getSupportedVideoCodecs?.();
+    const supportedAudioCodecs = bunnyFormat.getSupportedAudioCodecs?.();
 
     const preferredVideoCodec =
       options.videoCodec === 'none' ? null : getBunnyVideoCodec(options.videoCodec);
@@ -224,9 +234,7 @@ export async function runTranscode(
     const progressIntervalMs = 250;
     const yieldIntervalMs = 32;
 
-    (conversionProcess as unknown as { onProgress?: (progress: number) => void }).onProgress = (
-      progress: number,
-    ) => {
+    conversionProcess.onProgress = (progress: number) => {
       ensureNotCancelled(checkCancel);
 
       const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -246,13 +254,13 @@ export async function runTranscode(
     const cancelInterval = setInterval(() => {
       if (checkCancel()) {
         if (conversionProcess) {
-          (conversionProcess as unknown as { cancel?: () => void }).cancel?.();
+          void conversionProcess.cancel?.();
         }
       }
     }, yieldIntervalMs);
 
     try {
-      await (conversionProcess as unknown as { execute?: () => Promise<void> }).execute?.();
+      await conversionProcess.execute?.();
     } finally {
       clearInterval(cancelInterval);
     }
@@ -261,20 +269,20 @@ export async function runTranscode(
   } catch (e) {
     try {
       if (conversionProcess) {
-        await (conversionProcess as unknown as { cancel?: () => Promise<void> }).cancel?.();
+        await conversionProcess.cancel?.();
       }
-    } catch {
-      /* no-op */
+    } catch (cleanupError) {
+      log.debug('Ignored conversion cancel failure during transcode cleanup', cleanupError);
     }
     try {
       await safeCancelOutput();
-    } catch {
-      /* no-op */
+    } catch (cleanupError) {
+      log.debug('Ignored output cancel failure during transcode cleanup', cleanupError);
     }
     try {
-      (writable as { abort?: () => Promise<void> }).abort?.();
-    } catch {
-      /* no-op */
+      writable.abort?.();
+    } catch (cleanupError) {
+      log.debug('Ignored writable abort failure during transcode cleanup', cleanupError);
     }
     throw e;
   } finally {
@@ -282,8 +290,8 @@ export async function runTranscode(
     if (input && typeof input.dispose === 'function') {
       try {
         input.dispose();
-      } catch {
-        /* no-op */
+      } catch (cleanupError) {
+        log.debug('Ignored input dispose failure during transcode cleanup', cleanupError);
       }
     }
   }

@@ -13,7 +13,11 @@ installWorkerIoBudgetListener();
 
 export { copyPlanarSampleToChannelBuffers, resample };
 
-const engine = new AudioDecodeEngine(
+type BunnyInput = InstanceType<typeof Input>;
+type BunnyAudioTrack = NonNullable<Awaited<ReturnType<BunnyInput['getPrimaryAudioTrack']>>>;
+type BunnyInputOptions = ConstructorParameters<typeof Input>[0];
+
+const engine = new AudioDecodeEngine<BunnyAudioTrack, BunnyInputOptions>(
   { AudioSampleSink, Input, BlobSource, ALL_FORMATS, governedBlobWorker },
   16,
   2,
@@ -27,7 +31,7 @@ if (typeof self !== 'undefined')
 
     const response = await engine.handleRequest(data);
 
-    const scope = self as unknown as WorkerGlobalScope & {
+    const scope = self as WorkerGlobalScope & {
       postMessage: (msg: unknown, transfer?: Transferable[]) => void;
     };
     if (response.ok && response.result) {

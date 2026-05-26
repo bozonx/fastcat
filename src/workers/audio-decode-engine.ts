@@ -1,8 +1,8 @@
 import type { DecodeRequest, DecodeResponse } from '../utils/audio/types';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 
-interface InputLike {
-  getPrimaryAudioTrack(): Promise<unknown>;
+interface InputLike<TAudioTrack = unknown> {
+  getPrimaryAudioTrack(): Promise<TAudioTrack | null>;
   computeDuration(): Promise<number>;
   dispose?(): void;
   close?(): void;
@@ -14,27 +14,42 @@ interface AudioSampleSinkLike {
   dispose?(): void;
 }
 
-export interface AudioDecodeEngineDeps {
-  AudioSampleSink: new (...args: unknown[]) => AudioSampleSinkLike;
-  Input: new (...args: unknown[]) => InputLike;
-  BlobSource: new (...args: unknown[]) => unknown;
+interface AudioTrackLike {
+  canDecode(): Promise<boolean>;
+}
+
+interface AudioInputOptionsLike {
+  source: unknown;
+  formats: unknown;
+}
+
+export interface AudioDecodeEngineDeps<
+  TAudioTrack extends AudioTrackLike = AudioTrackLike,
+  TInputOptions extends AudioInputOptionsLike = AudioInputOptionsLike,
+> {
+  AudioSampleSink: new (audioTrack: TAudioTrack) => AudioSampleSinkLike;
+  Input: new (options: TInputOptions) => InputLike<TAudioTrack>;
+  BlobSource: new (blob: Blob) => unknown;
   ALL_FORMATS: unknown;
   governedBlobWorker?: (blob: Blob) => Blob;
 }
 
-interface CachedDecodeSource {
-  input: InputLike;
+interface CachedDecodeSource<TAudioTrack = unknown> {
+  input: InputLike<TAudioTrack>;
   sink: AudioSampleSinkLike;
 }
 
-export class AudioDecodeEngine {
-  private readonly decodeSourceCache = new Map<string, CachedDecodeSource>();
+export class AudioDecodeEngine<
+  TAudioTrack extends AudioTrackLike = AudioTrackLike,
+  TInputOptions extends AudioInputOptionsLike = AudioInputOptionsLike,
+> {
+  private readonly decodeSourceCache = new Map<string, CachedDecodeSource<TAudioTrack>>();
   private readonly decodeSourceLocks = new Map<string, Promise<void>>();
   private activeGlobalDecodes = 0;
   private readonly globalDecodeQueue: Array<() => void> = [];
 
   constructor(
-    private readonly deps: AudioDecodeEngineDeps,
+    private readonly deps: AudioDecodeEngineDeps<TAudioTrack, TInputOptions>,
     private readonly maxCachedSources = 16,
     private readonly maxGlobalDecodeSlots = 2,
   ) {}
@@ -176,16 +191,17 @@ export class AudioDecodeEngine {
     const input = new this.deps.Input({
       source: new this.deps.BlobSource((this.deps.governedBlobWorker ?? governedBlobWorker)(blob)),
       formats: this.deps.ALL_FORMATS,
-    });
-    let aTrack: unknown;
+    } as TInputOptions);
+    let aTrack: TAudioTrack;
     try {
-      aTrack = await input.getPrimaryAudioTrack();
-      if (!aTrack) {
+      const primaryAudioTrack = await input.getPrimaryAudioTrack();
+      if (!primaryAudioTrack) {
         const err = new Error('No audio track');
         (err as Error).name = 'NoAudioTrackError';
         throw err;
       }
-      if (!(await (aTrack as { canDecode(): Promise<boolean> }).canDecode())) {
+      aTrack = primaryAudioTrack;
+      if (!(await aTrack.canDecode())) {
         throw new Error('Audio track cannot be decoded');
       }
     } catch (err) {
@@ -195,7 +211,10 @@ export class AudioDecodeEngine {
       throw err;
     }
 
-    const entry: CachedDecodeSource = { input, sink: new this.deps.AudioSampleSink(aTrack) };
+    const entry: CachedDecodeSource<TAudioTrack> = {
+      input,
+      sink: new this.deps.AudioSampleSink(aTrack),
+    };
     if (sourceKey) {
       this.decodeSourceCache.set(sourceKey, entry);
       while (this.decodeSourceCache.size > this.maxCachedSources) {
@@ -358,7 +377,7 @@ export class AudioDecodeEngine {
     const input = new this.deps.Input({
       source: new this.deps.BlobSource((this.deps.governedBlobWorker ?? governedBlobWorker)(blob)),
       formats: this.deps.ALL_FORMATS,
-    });
+    } as TInputOptions);
 
     try {
       const aTrack = await input.getPrimaryAudioTrack();
@@ -367,7 +386,7 @@ export class AudioDecodeEngine {
         (err as Error).name = 'NoAudioTrackError';
         throw err;
       }
-      if (!(await (aTrack as { canDecode(): Promise<boolean> }).canDecode())) {
+      if (!(await aTrack.canDecode())) {
         throw new Error('Audio track cannot be decoded');
       }
 
@@ -489,14 +508,14 @@ export class AudioDecodeEngine {
     const input = new this.deps.Input({
       source: new this.deps.BlobSource((this.deps.governedBlobWorker ?? governedBlobWorker)(blob)),
       formats: this.deps.ALL_FORMATS,
-    });
+    } as TInputOptions);
 
     try {
       const aTrack = await input.getPrimaryAudioTrack();
       if (!aTrack) {
         throw new Error('No audio track found in media');
       }
-      if (!(await (aTrack as { canDecode(): Promise<boolean> }).canDecode())) {
+      if (!(await aTrack.canDecode())) {
         throw new Error('Audio track cannot be decoded');
       }
 

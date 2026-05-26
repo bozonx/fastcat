@@ -42,6 +42,20 @@ import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePoi
 import type { TimelineCommand } from '~/timeline/commands';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 
+interface DragApplyContext {
+  mode: 'move' | 'slip' | 'trim_start' | 'trim_end';
+  trackId: string;
+  itemId: string;
+  clientX: number;
+  clientY: number;
+  fps: number;
+  zoom: number;
+  enableFrameSnap: boolean;
+  enableClipSnap: boolean;
+  snapThresholdPx: number;
+  overlapMode: 'pseudo' | 'none';
+}
+
 export interface TimelineMovePreview {
   itemId: string;
   trackId: string;
@@ -413,218 +427,212 @@ export function useTimelineItemDrag(
     scheduleDragReapplyFromLastPointerPosition();
   }
 
-  function applyDragFromPendingClientX() {
-    const mode = draggingMode.value;
-    const trackId = draggingTrackId.value;
-    const itemId = draggingItemId.value;
-    const clientX = pendingDragClientX.value;
-    const clientY = pendingDragClientY.value;
-
-    pendingDragClientX.value = null;
-    pendingDragClientY.value = null;
-
-    if (!mode || !trackId || !itemId || clientX === null || clientY === null) return;
-
-    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
-    const zoom = timelineStore.timelineZoom;
-    const enableFrameSnap =
-      settingsStore.frameSnapMode === 'frames' &&
-      !dragIsFreeOverride.value &&
-      !dragDisableFrameSnapOverride.value;
-    const enableClipSnapBase = settingsStore.toolbarSnapMode === 'snap';
-    const enableClipSnap = dragToggleSnapOverride.value ? !enableClipSnapBase : enableClipSnapBase;
-    const snapThresholdPx = settingsStore.snapThresholdPx;
-    const overlapMode = dragUsePseudoOverlapOverride.value ? 'pseudo' : 'none';
-
-    if (mode === 'slip') {
-      const track = tracks.value.find((value) => value.id === trackId);
-      const item = track?.items.find((value) => value.id === itemId);
-      if (!item || item.kind !== 'clip') return;
-
-      const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
-      const dxPx =
-        clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
-      const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
-
-      const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
-      const absSpeed = Math.abs(speed);
-      const sourceDeltaUs = rawDeltaUs * absSpeed;
-
-      const maxSourceStartUs = Math.max(
-        0,
-        Math.round(Number(item.sourceDurationUs ?? 0) - dragAnchorSourceDurationUs.value),
-      );
-      const nextSourceStartUs = Math.min(
-        maxSourceStartUs,
-        Math.max(0, Math.round(dragAnchorSourceStartUs.value - sourceDeltaUs)),
-      );
-      const deltaUs = nextSourceStartUs - dragAnchorSourceStartUs.value;
-
-      slipPreview.value = {
-        itemId,
-        trackId,
-        deltaUs,
-        timecode: `${deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
-          timeUs: Math.abs(deltaUs),
-          fps,
-          frameDigits: 1,
-        })}`,
-      };
-
-      const cmd = {
-        type: 'update_clip_properties',
-        trackId,
-        itemId,
-        properties: {
-          sourceRange: {
-            ...item.sourceRange,
-            startUs: nextSourceStartUs,
-            durationUs: dragAnchorSourceDurationUs.value,
-          },
-        },
-      } as const;
-
-      timelineStore.applyTimeline(cmd as unknown as import('~/timeline/commands').TimelineCommand, {
-        saveMode: 'none',
-        skipHistory: true,
-      });
-      lastDragAppliedCmd.value = cmd as unknown as import('~/timeline/commands').TimelineCommand;
-      hasPendingTimelinePersist.value = true;
-      return;
-    }
-
-    if (mode === 'move') {
-      const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
-      const dxPx =
-        clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
-      const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
-      const rawStartUs = Math.max(0, dragAnchorStartUs.value + rawDeltaUs);
-
-      const selectedMovableItemIds = getSelectedMovableItemIds({
-        selectedItemIds: timelineStore.selectedItemIds,
-        tracks: tracks.value,
-      });
-
-      const startUs = computeSnappedStartUs({
-        rawStartUs,
-        draggingItemDurationUs: dragAnchorDurationUs.value,
-        fps,
-        zoom,
-        snapThresholdPx,
-        snapTargetsUs: dragSnapTargetsUs.value,
-        enableFrameSnap,
-        enableClipSnap,
-        frameOffsetUs: dragFrameOffsetUs.value,
-      });
-
-      const targetTrackId = resolveMoveTargetTrackId({
-        clientX,
-        clientY,
-        draggingTrackId: trackId,
-        tracks: tracks.value,
-      });
-
-      const isMulti = selectedMovableItemIds.includes(itemId) && selectedMovableItemIds.length > 1;
-
-      if (isMulti && dragStartSnapshot.value) {
-        const deltaUs = startUs - dragAnchorStartUs.value;
-        const moves = buildMultiItemMoves({
-          currentTracks: tracks.value,
-          dragStartSnapshot: dragStartSnapshot.value,
-          dragOriginTrackId: dragOriginTrackId.value,
-          targetTrackId,
-          selectedMovableItemIds,
-          deltaUs,
-        });
-
-        if (moves.length > 0) {
-          let isCollision = false;
-          if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
-            const movingIds = new Set(moves.map((move) => move.itemId));
-            for (const move of moves) {
-              const targetTrack = dragStartSnapshot.value.tracks.find(
-                (t) => t.id === move.toTrackId,
-              );
-              const previewItem = dragStartSnapshot.value.tracks
-                .flatMap((track) => track.items)
-                .find((trackItem) => trackItem.id === move.itemId);
-              if (!targetTrack || !previewItem || previewItem.kind !== 'clip') continue;
-              const endUs = move.startUs + previewItem.timelineRange.durationUs;
-              for (const it of targetTrack.items) {
-                if (movingIds.has(it.id) || it.kind !== 'clip') continue;
-                const itStart = it.timelineRange.startUs;
-                const itEnd = itStart + it.timelineRange.durationUs;
-                if (move.startUs < itEnd && itStart < endUs) {
-                  isCollision = true;
-                  break;
-                }
-              }
-              if (isCollision) break;
-            }
-          }
-
-          movePreview.value = moves.map((move) => ({
-            itemId: move.itemId,
-            trackId: move.toTrackId,
-            startUs: move.startUs,
-            isCollision,
-          }));
-          pendingMoveCommit.value = { moves, isCollision };
-          draggingTrackId.value = targetTrackId;
-        }
-
-        return;
-      }
-
-      if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
-        timelineStore.timelineDoc =
-          dragStartSnapshot.value as import('~/timeline/types').TimelineDocument;
-        timelineStore.duration = selectTimelineDurationUs(
-          dragStartSnapshot.value as import('~/timeline/types').TimelineDocument,
-        );
-        lastDragAppliedCmd.value = null;
-        draggingTrackId.value = dragOriginTrackId.value ?? trackId;
-      }
-
-      let isCollision = false;
-      if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
-        const targetTrack = dragStartSnapshot.value.tracks.find((t) => t.id === targetTrackId);
-        if (targetTrack) {
-          const endUs = startUs + dragAnchorDurationUs.value;
-          for (const it of targetTrack.items) {
-            if (it.id === itemId) continue;
-            if (it.kind !== 'clip') continue;
-            const itStart = it.timelineRange.startUs;
-            const itEnd = itStart + it.timelineRange.durationUs;
-            if (startUs < itEnd && itStart < endUs) {
-              isCollision = true;
-              break;
-            }
-          }
-        }
-      }
-
-      movePreview.value = [{ itemId, trackId: targetTrackId, startUs, isCollision }];
-      pendingMoveCommit.value = {
-        moves: [
-          {
-            fromTrackId: dragOriginTrackId.value ?? trackId,
-            toTrackId: targetTrackId,
-            itemId,
-            startUs,
-          },
-        ],
-        isCollision,
-      };
-
-      return;
-    }
-
-    // Trim modes
+  function getDragDeltaUs(clientX: number, zoom: number): number {
     const currentScrollLeft = scrollEl.value?.scrollLeft ?? 0;
     const dxPx =
       clientX - dragAnchorClientX.value + (currentScrollLeft - dragAnchorScrollLeft.value);
-    const rawDeltaUs = pxToDeltaUs(dxPx, zoom);
+
+    return pxToDeltaUs(dxPx, zoom);
+  }
+
+  function applySlipDrag(ctx: DragApplyContext) {
+    const { trackId, itemId, clientX, fps, zoom } = ctx;
+    const track = tracks.value.find((value) => value.id === trackId);
+    const item = track?.items.find((value) => value.id === itemId);
+    if (!item || item.kind !== 'clip') return;
+
+    const rawDeltaUs = getDragDeltaUs(clientX, zoom);
+    const speed = typeof item.speed === 'number' && Number.isFinite(item.speed) ? item.speed : 1;
+    const absSpeed = Math.abs(speed);
+    const sourceDeltaUs = rawDeltaUs * absSpeed;
+
+    const maxSourceStartUs = Math.max(
+      0,
+      Math.round(Number(item.sourceDurationUs ?? 0) - dragAnchorSourceDurationUs.value),
+    );
+    const nextSourceStartUs = Math.min(
+      maxSourceStartUs,
+      Math.max(0, Math.round(dragAnchorSourceStartUs.value - sourceDeltaUs)),
+    );
+    const deltaUs = nextSourceStartUs - dragAnchorSourceStartUs.value;
+
+    slipPreview.value = {
+      itemId,
+      trackId,
+      deltaUs,
+      timecode: `${deltaUs >= 0 ? '+' : '-'}${formatStopFrameTimecode({
+        timeUs: Math.abs(deltaUs),
+        fps,
+        frameDigits: 1,
+      })}`,
+    };
+
+    const cmd: Extract<TimelineCommand, { type: 'update_clip_properties' }> = {
+      type: 'update_clip_properties',
+      trackId,
+      itemId,
+      properties: {
+        sourceRange: {
+          ...item.sourceRange,
+          startUs: nextSourceStartUs,
+          durationUs: dragAnchorSourceDurationUs.value,
+        },
+      },
+    };
+
+    timelineStore.applyTimeline(cmd, {
+      saveMode: 'none',
+      skipHistory: true,
+    });
+    lastDragAppliedCmd.value = cmd;
+    hasPendingTimelinePersist.value = true;
+  }
+
+  function applyMoveDrag(ctx: DragApplyContext) {
+    const {
+      trackId,
+      itemId,
+      clientX,
+      clientY,
+      fps,
+      zoom,
+      enableFrameSnap,
+      enableClipSnap,
+      snapThresholdPx,
+      overlapMode,
+    } = ctx;
+
+    const rawDeltaUs = getDragDeltaUs(clientX, zoom);
+    const rawStartUs = Math.max(0, dragAnchorStartUs.value + rawDeltaUs);
+
+    const selectedMovableItemIds = getSelectedMovableItemIds({
+      selectedItemIds: timelineStore.selectedItemIds,
+      tracks: tracks.value,
+    });
+
+    const startUs = computeSnappedStartUs({
+      rawStartUs,
+      draggingItemDurationUs: dragAnchorDurationUs.value,
+      fps,
+      zoom,
+      snapThresholdPx,
+      snapTargetsUs: dragSnapTargetsUs.value,
+      enableFrameSnap,
+      enableClipSnap,
+      frameOffsetUs: dragFrameOffsetUs.value,
+    });
+
+    const targetTrackId = resolveMoveTargetTrackId({
+      clientX,
+      clientY,
+      draggingTrackId: trackId,
+      tracks: tracks.value,
+    });
+
+    const isMulti = selectedMovableItemIds.includes(itemId) && selectedMovableItemIds.length > 1;
+
+    if (isMulti && dragStartSnapshot.value) {
+      const deltaUs = startUs - dragAnchorStartUs.value;
+      const moves = buildMultiItemMoves({
+        currentTracks: tracks.value,
+        dragStartSnapshot: dragStartSnapshot.value,
+        dragOriginTrackId: dragOriginTrackId.value,
+        targetTrackId,
+        selectedMovableItemIds,
+        deltaUs,
+      });
+
+      if (moves.length > 0) {
+        let isCollision = false;
+        if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
+          const movingIds = new Set(moves.map((move) => move.itemId));
+          for (const move of moves) {
+            const targetTrack = dragStartSnapshot.value.tracks.find((t) => t.id === move.toTrackId);
+            const previewItem = dragStartSnapshot.value.tracks
+              .flatMap((track) => track.items)
+              .find((trackItem) => trackItem.id === move.itemId);
+            if (!targetTrack || !previewItem || previewItem.kind !== 'clip') continue;
+            const endUs = move.startUs + previewItem.timelineRange.durationUs;
+            for (const it of targetTrack.items) {
+              if (movingIds.has(it.id) || it.kind !== 'clip') continue;
+              const itStart = it.timelineRange.startUs;
+              const itEnd = itStart + it.timelineRange.durationUs;
+              if (move.startUs < itEnd && itStart < endUs) {
+                isCollision = true;
+                break;
+              }
+            }
+            if (isCollision) break;
+          }
+        }
+
+        movePreview.value = moves.map((move) => ({
+          itemId: move.itemId,
+          trackId: move.toTrackId,
+          startUs: move.startUs,
+          isCollision,
+        }));
+        pendingMoveCommit.value = { moves, isCollision };
+        draggingTrackId.value = targetTrackId;
+      }
+
+      return;
+    }
+
+    if (lastDragAppliedCmd.value && dragStartSnapshot.value) {
+      timelineStore.timelineDoc = dragStartSnapshot.value;
+      timelineStore.duration = selectTimelineDurationUs(dragStartSnapshot.value);
+      lastDragAppliedCmd.value = null;
+      draggingTrackId.value = dragOriginTrackId.value ?? trackId;
+    }
+
+    let isCollision = false;
+    if (overlapMode !== 'pseudo' && dragStartSnapshot.value) {
+      const targetTrack = dragStartSnapshot.value.tracks.find((t) => t.id === targetTrackId);
+      if (targetTrack) {
+        const endUs = startUs + dragAnchorDurationUs.value;
+        for (const it of targetTrack.items) {
+          if (it.id === itemId) continue;
+          if (it.kind !== 'clip') continue;
+          const itStart = it.timelineRange.startUs;
+          const itEnd = itStart + it.timelineRange.durationUs;
+          if (startUs < itEnd && itStart < endUs) {
+            isCollision = true;
+            break;
+          }
+        }
+      }
+    }
+
+    movePreview.value = [{ itemId, trackId: targetTrackId, startUs, isCollision }];
+    pendingMoveCommit.value = {
+      moves: [
+        {
+          fromTrackId: dragOriginTrackId.value ?? trackId,
+          toTrackId: targetTrackId,
+          itemId,
+          startUs,
+        },
+      ],
+      isCollision,
+    };
+  }
+
+  function applyTrimDrag(ctx: DragApplyContext) {
+    const {
+      mode,
+      trackId,
+      itemId,
+      clientX,
+      fps,
+      zoom,
+      enableFrameSnap,
+      enableClipSnap,
+      snapThresholdPx,
+      overlapMode,
+    } = ctx;
+
+    const rawDeltaUs = getDragDeltaUs(clientX, zoom);
 
     const thresholdUs = Math.round((snapThresholdPx / zoomToPxPerSecond(zoom)) * 1e6);
     const anchorStartUs = Math.max(0, Math.round(dragAnchorStartUs.value));
@@ -732,7 +740,7 @@ export function useTimelineItemDrag(
       snappedEdgeUs = quantizeStartUsToFrames(baseUs, fps);
     }
 
-    // Re-clamp after snap/frame snap to enforce media boundaries
+    // Re-clamp after snap/frame snap to enforce media boundaries.
     snappedEdgeUs = Math.max(minEdgeUs, Math.min(maxEdgeUs, snappedEdgeUs));
 
     const desiredDeltaUs =
@@ -768,6 +776,56 @@ export function useTimelineItemDrag(
       quantizeToFrames: enableFrameSnap,
       commandType: overlapMode === 'pseudo' ? 'overlay_trim_item' : 'trim_item',
     };
+  }
+
+  function applyDragFromPendingClientX() {
+    const mode = draggingMode.value;
+    const trackId = draggingTrackId.value;
+    const itemId = draggingItemId.value;
+    const clientX = pendingDragClientX.value;
+    const clientY = pendingDragClientY.value;
+
+    pendingDragClientX.value = null;
+    pendingDragClientY.value = null;
+
+    if (!mode || !trackId || !itemId || clientX === null || clientY === null) return;
+
+    const fps = sanitizeFps(timelineStore.timelineDoc?.timebase?.fps);
+    const zoom = timelineStore.timelineZoom;
+    const enableFrameSnap =
+      settingsStore.frameSnapMode === 'frames' &&
+      !dragIsFreeOverride.value &&
+      !dragDisableFrameSnapOverride.value;
+    const enableClipSnapBase = settingsStore.toolbarSnapMode === 'snap';
+    const enableClipSnap = dragToggleSnapOverride.value ? !enableClipSnapBase : enableClipSnapBase;
+    const snapThresholdPx = settingsStore.snapThresholdPx;
+    const overlapMode = dragUsePseudoOverlapOverride.value ? 'pseudo' : 'none';
+
+    const ctx: DragApplyContext = {
+      mode,
+      trackId,
+      itemId,
+      clientX,
+      clientY,
+      fps,
+      zoom,
+      enableFrameSnap,
+      enableClipSnap,
+      snapThresholdPx,
+      overlapMode,
+    };
+
+    if (mode === 'slip') {
+      applySlipDrag(ctx);
+      return;
+    }
+
+    if (mode === 'move') {
+      applyMoveDrag(ctx);
+      return;
+    }
+
+    applyTrimDrag(ctx);
   }
 
   function scheduleDragApply() {
@@ -894,7 +952,7 @@ export function useTimelineItemDrag(
         }
 
         if (movedVideoIds.length > 0) {
-          const cmds: import('~/timeline/commands').TimelineCommand[] = [];
+          const cmds: TimelineCommand[] = [];
           for (const t of doc.tracks) {
             if (t.kind !== 'audio') continue;
             for (const it of t.items) {
@@ -934,38 +992,33 @@ export function useTimelineItemDrag(
           !dragDisableFrameSnapOverride.value;
 
         const docBeforeApply = timelineStore.timelineDoc;
-        let appliedCmdLocal: import('~/timeline/commands').TimelineCommand | null = null;
+        let appliedCmdLocal: TimelineCommand | null = null;
         if (overlapMode === 'pseudo') {
-          const cmds = commit.moves.map((move) => ({
-            type: 'overlay_place_item' as const,
-            fromTrackId: move.fromTrackId,
-            toTrackId: move.toTrackId,
-            itemId: move.itemId,
-            startUs: move.startUs,
-            quantizeToFrames: enableFrameSnap,
-            ignoreLinks: usePseudoOverlap,
-          }));
-          timelineStore.batchApplyTimeline(
-            cmds as unknown as import('~/timeline/commands').TimelineCommand[],
-            {
-              saveMode: 'none',
-              skipHistory: true,
-            },
+          const cmds: Extract<TimelineCommand, { type: 'overlay_place_item' }>[] = commit.moves.map(
+            (move) => ({
+              type: 'overlay_place_item' as const,
+              fromTrackId: move.fromTrackId,
+              toTrackId: move.toTrackId,
+              itemId: move.itemId,
+              startUs: move.startUs,
+              quantizeToFrames: enableFrameSnap,
+              ignoreLinks: usePseudoOverlap,
+            }),
           );
-          appliedCmdLocal = (cmds[cmds.length - 1] ??
-            null) as unknown as import('~/timeline/commands').TimelineCommand;
+          timelineStore.batchApplyTimeline(cmds, {
+            saveMode: 'none',
+            skipHistory: true,
+          });
+          appliedCmdLocal = cmds[cmds.length - 1] ?? null;
         } else {
-          const cmd = {
+          const cmd: Extract<TimelineCommand, { type: 'move_items' }> = {
             type: 'move_items',
             moves: commit.moves,
             quantizeToFrames: enableFrameSnap,
             ignoreLinks: usePseudoOverlap,
-          } as const;
-          timelineStore.applyTimeline(
-            cmd as unknown as import('~/timeline/commands').TimelineCommand,
-            { saveMode: 'none', skipHistory: true },
-          );
-          appliedCmdLocal = cmd as unknown as import('~/timeline/commands').TimelineCommand;
+          };
+          timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
+          appliedCmdLocal = cmd;
         }
         // Only record an applied command if the document actually changed.
         // A click-without-drag (or drag back to original position) leaves the doc
@@ -980,22 +1033,28 @@ export function useTimelineItemDrag(
     if (!cancel && (draggingMode.value === 'trim_start' || draggingMode.value === 'trim_end')) {
       const commit = pendingTrimCommit.value;
       if (commit && commit.deltaUs !== 0) {
-        const cmd = {
-          type: commit.commandType as string,
-          trackId: commit.trackId,
-          itemId: commit.itemId,
-          edge: commit.edge,
-          deltaUs: commit.deltaUs,
-          quantizeToFrames: commit.quantizeToFrames,
-        } as const;
+        const cmd: Extract<TimelineCommand, { type: 'trim_item' | 'overlay_trim_item' }> =
+          commit.commandType === 'overlay_trim_item'
+            ? {
+                type: 'overlay_trim_item',
+                trackId: commit.trackId,
+                itemId: commit.itemId,
+                edge: commit.edge,
+                deltaUs: commit.deltaUs,
+                quantizeToFrames: commit.quantizeToFrames,
+              }
+            : {
+                type: 'trim_item',
+                trackId: commit.trackId,
+                itemId: commit.itemId,
+                edge: commit.edge,
+                deltaUs: commit.deltaUs,
+                quantizeToFrames: commit.quantizeToFrames,
+              };
         const docBeforeApply = timelineStore.timelineDoc;
-        timelineStore.applyTimeline(
-          cmd as unknown as import('~/timeline/commands').TimelineCommand,
-          { saveMode: 'none', skipHistory: true },
-        );
+        timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
         if (timelineStore.timelineDoc !== docBeforeApply) {
-          lastDragAppliedCmd.value =
-            cmd as unknown as import('~/timeline/commands').TimelineCommand;
+          lastDragAppliedCmd.value = cmd;
           hasPendingTimelinePersist.value = true;
         }
       }
@@ -1022,17 +1081,13 @@ export function useTimelineItemDrag(
     }
 
     if (cancel && snapshot) {
-      timelineStore.timelineDoc = snapshot as import('~/timeline/types').TimelineDocument;
-      timelineStore.duration = selectTimelineDurationUs(
-        snapshot as import('~/timeline/types').TimelineDocument,
-      );
+      timelineStore.timelineDoc = snapshot;
+      timelineStore.duration = selectTimelineDurationUs(snapshot);
     }
 
     if (!cancel && shouldCopyDraggedClip && snapshot && copiedSingleClipPayload) {
-      timelineStore.timelineDoc = snapshot as import('~/timeline/types').TimelineDocument;
-      timelineStore.duration = selectTimelineDurationUs(
-        snapshot as import('~/timeline/types').TimelineDocument,
-      );
+      timelineStore.timelineDoc = snapshot;
+      timelineStore.duration = selectTimelineDurationUs(snapshot);
       const copyClip = copiedSingleClipPayload.clip;
       void timelineStore.pasteClips(
         [{ sourceTrackId: copiedSingleClipPayload.sourceTrackId, clip: copyClip }],

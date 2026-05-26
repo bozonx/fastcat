@@ -8,8 +8,16 @@ export interface ReversibleAudioSample {
   sampleRate: number;
 }
 
+interface AudioSampleInitLike {
+  data: Float32Array;
+  format: 'f32';
+  numberOfChannels: number;
+  sampleRate: number;
+  timestamp: number;
+}
+
 export function createReversedAudioSamples(
-  AudioSample: new (...args: unknown[]) => unknown,
+  AudioSample: new (init: AudioSampleInitLike) => unknown,
   samples: ReversibleAudioSample[],
 ): unknown[] {
   const firstSample = samples[0];
@@ -77,7 +85,7 @@ export interface AudioProcessSample {
 
 export function createAudioProcessConfig(
   options: ExportOptions,
-  AudioSample: new (...args: unknown[]) => unknown,
+  AudioSample: new (init: AudioSampleInitLike) => unknown,
 ) {
   if (
     !options.audioReverse ||
