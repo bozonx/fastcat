@@ -9,7 +9,6 @@ import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
-import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { useFileBrowserDragAndDrop } from '~/composables/file-manager/useFileBrowserDragAndDrop';
 import { useFileBrowserMarquee } from '~/composables/file-manager/useFileBrowserMarquee';
@@ -75,9 +74,6 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const clipboardStore = useAppClipboard();
 const { t } = useI18n();
 const toast = useToast();
-const runtimeConfig = useRuntimeConfig();
-const bloggerDogStore = useBloggerDogStore();
-
 const fileManager = useFileManager();
 const {
   readDirectory,

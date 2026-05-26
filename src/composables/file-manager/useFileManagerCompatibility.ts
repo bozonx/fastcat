@@ -25,7 +25,9 @@ function computeStatus(
   const cacheKey = path;
   const externalKey = `external:${path}`;
 
-  const meta = (mediaMetadata[cacheKey] ?? mediaMetadata[externalKey]) as Record<string, unknown> | undefined;
+  const meta = (mediaMetadata[cacheKey] ?? mediaMetadata[externalKey]) as
+    | Record<string, unknown>
+    | undefined;
   const isFailed = metadataLoadFailed[cacheKey] || metadataLoadFailed[externalKey];
   const isLoading = metadataLoading[cacheKey] || metadataLoading[externalKey];
 

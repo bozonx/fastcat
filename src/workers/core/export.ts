@@ -111,7 +111,9 @@ export async function extractMetadata(
             const firstTs =
               typeof vTrack.getFirstTimestamp === 'function' ? await vTrack.getFirstTimestamp() : 0;
             const firstSample = await (
-              vSink as { getSample: (t: number) => Promise<any> }
+              vSink as {
+                getSample: (t: number) => Promise<{ close?: () => void } | null | undefined>;
+              }
             ).getSample(firstTs);
             if (!firstSample) {
               throw new Error('No video sample decoded');
@@ -151,7 +153,12 @@ export async function extractMetadata(
             const aSink = new AudioSampleSink(aTrack);
             let decodedAny = false;
             for await (const sampleRaw of (
-              aSink as { samples: (start: number, end: number) => AsyncIterable<any> }
+              aSink as {
+                samples: (
+                  start: number,
+                  end: number,
+                ) => AsyncIterable<{ close?: () => void } | null | undefined>;
+              }
             ).samples(0, 0.1)) {
               if (sampleRaw) {
                 decodedAny = true;

@@ -4,7 +4,6 @@ import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
 import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileSorting } from '~/composables/file-manager/useFileSorting';
@@ -47,14 +46,12 @@ type MobileDrawerAction =
 const fileManagerStore = useFileManagerStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
-const uiStore = useUiStore();
 const clipboardStore = useClipboardStore();
 const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const toast = useToast();
 const { t } = useI18n();
 const { getHotkeyLabel } = useHotkeyLabel();
 const { target: teleportTarget } = useTeleportTarget();
-const runtimeConfig = useRuntimeConfig();
 
 const {
   findEntryByPath,

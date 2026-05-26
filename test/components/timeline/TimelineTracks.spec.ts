@@ -607,6 +607,7 @@ describe('TimelineTracks', () => {
             {
               id: 'clip-1',
               kind: 'clip',
+              clipType: 'media',
               timelineRange: { startUs: 0, durationUs: 5000000 },
             },
           ],
@@ -618,6 +619,7 @@ describe('TimelineTracks', () => {
             {
               id: 'clip-2',
               kind: 'clip',
+              clipType: 'media',
               timelineRange: { startUs: 0, durationUs: 5000000 },
             },
           ],
@@ -640,7 +642,9 @@ describe('TimelineTracks', () => {
         clipType: 'media',
         groups: {
           transform: {
-            transform: {},
+            transform: {
+              position: [0, 0],
+            },
           },
         },
       },
