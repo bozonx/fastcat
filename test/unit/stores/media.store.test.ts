@@ -421,4 +421,46 @@ describe('MediaStore', () => {
       hash: 'hash:test-project:video/a.mp4',
     });
   });
+
+  it('removeMediaCacheForDirectory clears cache for all files in that directory', async () => {
+    const store = useMediaStore();
+    store.mediaMetadata = {
+      'video/sub/a.mp4': { duration: 10 },
+      'video/sub/b.mp4': { duration: 20 },
+      'video/other.mp4': { duration: 30 },
+    } as any;
+    store.missingPaths = {
+      'video/sub/a.mp4': true,
+      'video/sub/b.mp4': true,
+      'video/other.mp4': true,
+    } as any;
+    store.metadataLoadFailed = {
+      'video/sub/a.mp4': true,
+      'video/sub/b.mp4': true,
+      'video/other.mp4': true,
+    } as any;
+    store.metadataLoading = {
+      'video/sub/a.mp4': true,
+      'video/sub/b.mp4': true,
+      'video/other.mp4': true,
+    } as any;
+
+    await store.removeMediaCacheForDirectory('video/sub');
+
+    expect(store.mediaMetadata['video/sub/a.mp4']).toBeUndefined();
+    expect(store.mediaMetadata['video/sub/b.mp4']).toBeUndefined();
+    expect(store.mediaMetadata['video/other.mp4']).toBeDefined();
+
+    expect(store.missingPaths['video/sub/a.mp4']).toBeUndefined();
+    expect(store.missingPaths['video/sub/b.mp4']).toBeUndefined();
+    expect(store.missingPaths['video/other.mp4']).toBe(true);
+
+    expect(store.metadataLoadFailed['video/sub/a.mp4']).toBeUndefined();
+    expect(store.metadataLoadFailed['video/sub/b.mp4']).toBeUndefined();
+    expect(store.metadataLoadFailed['video/other.mp4']).toBe(true);
+
+    expect(store.metadataLoading['video/sub/a.mp4']).toBeUndefined();
+    expect(store.metadataLoading['video/sub/b.mp4']).toBeUndefined();
+    expect(store.metadataLoading['video/other.mp4']).toBe(true);
+  });
 });

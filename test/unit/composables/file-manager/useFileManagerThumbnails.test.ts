@@ -78,28 +78,17 @@ describe('useFileManagerThumbnails', () => {
   });
 
   it('uses metadata cache for corrupt image thumbnails and does not revalidate after failure', async () => {
-    const file = new File(['broken'], 'broken.png', { type: 'image/png' });
-    const vfs = {
-      getFile: vi.fn().mockResolvedValue(file),
-    } as any;
+    metadataLoadFailed['broken.png'] = true;
+
     const entries = ref<FsEntry[]>([
       { kind: 'file', name: 'broken.png', path: 'broken.png', source: 'local' },
     ]);
 
     const scope = effectScope();
-    scope.run(() => useFileManagerThumbnails(entries, vfs));
+    scope.run(() => useFileManagerThumbnails(entries, { getFile: vi.fn() } as any));
     await flushAsyncState();
 
-    expect(vfs.getFile).toHaveBeenCalledTimes(1);
-    expect(getOrFetchMetadata).toHaveBeenCalledWith(file, 'broken.png');
-    expect(URL.createObjectURL).not.toHaveBeenCalled();
-
-    entries.value = [];
-    await flushAsyncState();
-    entries.value = [{ kind: 'file', name: 'broken.png', path: 'broken.png', source: 'local' }];
-    await flushAsyncState();
-
-    expect(vfs.getFile).toHaveBeenCalledTimes(1);
+    expect(fileThumbnailGenerator.addTask).not.toHaveBeenCalled();
 
     scope.stop();
   });

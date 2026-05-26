@@ -16,6 +16,7 @@ import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-edi
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 const log = createDevLogger('file-thumbnail-generator');
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
@@ -50,6 +51,58 @@ async function ensureThumbnailDir(input: {
     subDir: input.dirName,
     create: input.create,
   })) as FileSystemDirectoryHandle;
+}
+
+async function resizeImage(file: File, maxWidth: number, maxHeight: number): Promise<Blob> {
+  const imageBitmap = await createImageBitmap(file);
+  try {
+    let width = imageBitmap.width;
+    let height = imageBitmap.height;
+
+    if (width > maxWidth || height > maxHeight) {
+      if (width > height) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      } else {
+        width = Math.round((width * maxHeight) / height);
+        height = maxHeight;
+      }
+    }
+
+    let canvas: HTMLCanvasElement | OffscreenCanvas;
+    if (typeof OffscreenCanvas !== 'undefined') {
+      canvas = new OffscreenCanvas(width, height);
+    } else {
+      canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Failed to get 2d context for image resize');
+    ctx.drawImage(imageBitmap, 0, 0, width, height);
+
+    let blob: Blob | null = null;
+    if (canvas instanceof OffscreenCanvas) {
+      blob = await canvas.convertToBlob({
+        type: 'image/webp',
+        quality: FILE_MANAGER_THUMBNAILS.QUALITY,
+      });
+    } else {
+      blob = await new Promise<Blob | null>((resolve) => {
+        (canvas as HTMLCanvasElement).toBlob(
+          (b) => resolve(b),
+          'image/webp',
+          FILE_MANAGER_THUMBNAILS.QUALITY,
+        );
+      });
+    }
+
+    if (!blob) throw new Error('Failed to generate image thumbnail blob');
+    return blob;
+  } finally {
+    imageBitmap.close();
+  }
 }
 
 class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, string> {
@@ -155,36 +208,53 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       return;
     }
 
-    setThumbnailHostApi(
-      createVideoCoreHostApi({
-        getCurrentProjectId: () => projectStore.currentProjectId,
-        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-        getFileByPath: async (path) => projectStore.getFileByPath(path),
-        onExportProgress: () => {},
-      }),
-    );
-
-    const { client } = getThumbnailWorkerClient();
-
+    const type = getMediaTypeFromFilename(task.projectRelativePath);
     let blob: Blob | null = null;
-    try {
-      const blobs = await client.extractVideoFrameBlobs(file, {
-        timesS: [FILE_MANAGER_THUMBNAILS.POSITION_FRACTION],
-        maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-        maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-        quality: FILE_MANAGER_THUMBNAILS.QUALITY,
-        mimeType: 'image/webp',
-        taskId: task.id,
-        keepAlive: false,
-      });
-      blob = blobs[0] ?? null;
-    } catch (e) {
-      if (!this.isCancelled(task.id)) {
-        task.onError?.(e instanceof Error ? e : new Error(String(e)));
+
+    if (type === 'image') {
+      try {
+        blob = await resizeImage(
+          file,
+          FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+          FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+        );
+      } catch (e) {
+        if (!this.isCancelled(task.id)) {
+          task.onError?.(e instanceof Error ? e : new Error(String(e)));
+        }
+        return;
       }
-      return;
+    } else {
+      setThumbnailHostApi(
+        createVideoCoreHostApi({
+          getCurrentProjectId: () => projectStore.currentProjectId,
+          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+          getFileByPath: async (path) => projectStore.getFileByPath(path),
+          onExportProgress: () => {},
+        }),
+      );
+
+      const { client } = getThumbnailWorkerClient();
+
+      try {
+        const blobs = await client.extractVideoFrameBlobs(file, {
+          timesS: [FILE_MANAGER_THUMBNAILS.POSITION_FRACTION],
+          maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+          maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+          quality: FILE_MANAGER_THUMBNAILS.QUALITY,
+          mimeType: 'image/webp',
+          taskId: task.id,
+          keepAlive: false,
+        });
+        blob = blobs[0] ?? null;
+      } catch (e) {
+        if (!this.isCancelled(task.id)) {
+          task.onError?.(e instanceof Error ? e : new Error(String(e)));
+        }
+        return;
+      }
     }
 
     if (!blob || this.isCancelled(task.id)) return;

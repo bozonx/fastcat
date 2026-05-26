@@ -459,6 +459,38 @@ export const useMediaStore = defineStore('media', () => {
     }
   }
 
+  async function removeMediaCacheForDirectory(dirPath: string) {
+    const prefix = dirPath ? `${dirPath}/` : '';
+    const pathsToRemove: string[] = [];
+
+    // Find all keys starting with dirPath/ or equal to dirPath
+    for (const path of Object.keys(mediaMetadata.value)) {
+      if (path === dirPath || (prefix && path.startsWith(prefix))) {
+        pathsToRemove.push(path);
+      }
+    }
+
+    for (const path of Object.keys(metadataLoadFailed.value)) {
+      if (path === dirPath || (prefix && path.startsWith(prefix))) {
+        if (!pathsToRemove.includes(path)) pathsToRemove.push(path);
+      }
+    }
+
+    for (const path of Object.keys(metadataLoading.value)) {
+      if (path === dirPath || (prefix && path.startsWith(prefix))) {
+        if (!pathsToRemove.includes(path)) pathsToRemove.push(path);
+      }
+    }
+
+    for (const path of Object.keys(missingPaths.value)) {
+      if (path === dirPath || (prefix && path.startsWith(prefix))) {
+        if (!pathsToRemove.includes(path)) pathsToRemove.push(path);
+      }
+    }
+
+    await Promise.all(pathsToRemove.map((path) => removeMediaCache(path)));
+  }
+
   let sharedAudioDecodeWorker: Worker | null = null;
   const decodePending = new Map<
     number,
@@ -543,6 +575,7 @@ export const useMediaStore = defineStore('media', () => {
     setAudioPeaks,
     revalidateMissingMedia,
     removeMediaCache,
+    removeMediaCacheForDirectory,
     extractPeaks,
   };
 });

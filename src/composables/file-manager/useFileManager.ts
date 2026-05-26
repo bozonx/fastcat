@@ -972,7 +972,7 @@ export function useFileManager(options?: {
       }
     },
     onDirectoryMoved: async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
-      mediaStore.resetMediaState();
+      await mediaStore.removeMediaCacheForDirectory(oldPath);
       updateSelectionForDirectoryMove({ oldPath, newPath });
       await syncTimelinePathsOnMove({ oldPath, newPath });
 
@@ -1023,7 +1023,7 @@ export function useFileManager(options?: {
       oldPath: string;
       newPath: string;
     }) => {
-      mediaStore.resetMediaState();
+      // No need to clear cache for existing files. New copied files don't have cache yet.
     },
     onDirectoryLoaded: () => {
       uiStore.notifyFileManagerUpdate();

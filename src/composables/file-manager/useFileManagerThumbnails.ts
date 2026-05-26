@@ -75,11 +75,21 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
           const path = entry.path;
           const type = getMediaTypeFromFilename(entry.name);
           const isTimeline = entry.name.toLowerCase().endsWith('.otio');
+          const hasProjectContext = Boolean(projectId && workspaceHandle);
 
-          if (projectId && workspaceHandle && (type === 'video' || isTimeline)) {
+          if (hasProjectContext && (type === 'video' || type === 'image' || isTimeline)) {
             // Timeline previews are NOT supported in external FM (without projectId context)
             // But here we have projectId, so it's likely the project FM or a compatible view.
             if (mediaStore.metadataLoadFailed[path]) {
+              continue;
+            }
+
+            const cacheKey = resolveMetadataCacheKey(entry);
+            const cachedMeta = cacheKey ? mediaStore.mediaMetadata[cacheKey] : null;
+            if (cacheKey && (mediaStore.metadataLoadFailed[cacheKey] || cachedMeta?.error)) {
+              continue;
+            }
+            if (cachedMeta?.image?.canDisplay === false) {
               continue;
             }
 
@@ -103,8 +113,8 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
                 };
               },
             });
-          } else if (vfs && type === 'image') {
-            // For local images we own the object URL — skip if already created.
+          } else if (!hasProjectContext && vfs && type === 'image') {
+            // Fallback for image when project context is missing (load full file)
             if (thumbnails.value[path]) continue;
             const ext = entry.name.split('.').pop()?.toLowerCase();
             if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {

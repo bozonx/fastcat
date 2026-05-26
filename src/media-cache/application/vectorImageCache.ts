@@ -100,6 +100,55 @@ export async function ensureVectorImageRaster(
   ]);
   const fileName = getVectorImageRasterFileName({ sourceFile, width, height });
 
+  const sourceStamp = `${sourceFile.lastModified}:${sourceFile.size}`;
+  const versionFileName = 'version.json';
+  let isSameVersion = false;
+
+  try {
+    const versionHandle = await sourceDir.getFileHandle(versionFileName);
+    const versionFile = await withFileIoSlot(() => versionHandle.getFile());
+    const versionText = await withFileIoSlot(() => versionFile.text());
+    const versionData = JSON.parse(versionText) as { sourceStamp: string };
+    if (versionData.sourceStamp === sourceStamp) {
+      isSameVersion = true;
+    }
+  } catch {
+    // version file does not exist or is invalid
+  }
+
+  if (!isSameVersion) {
+    try {
+      const entriesToDelete: string[] = [];
+      for await (const entry of (
+        sourceDir as unknown as {
+          values: () => AsyncIterable<{ kind: string; name: string }>;
+        }
+      ).values()) {
+        entriesToDelete.push(entry.name);
+      }
+      for (const name of entriesToDelete) {
+        await sourceDir.removeEntry(name, { recursive: true }).catch(() => {});
+      }
+    } catch (e) {
+      log.warn('Failed to clean stale vector image cache files', e);
+    }
+
+    try {
+      const versionHandle = await sourceDir.getFileHandle(versionFileName, { create: true });
+      await withFileWriteSlot(async () => {
+        const writable = await (
+          versionHandle as unknown as {
+            createWritable: () => Promise<FileSystemWritableFileStream>;
+          }
+        ).createWritable();
+        await writable.write(JSON.stringify({ sourceStamp }));
+        await writable.close();
+      });
+    } catch (e) {
+      log.warn('Failed to write vector cache version file', e);
+    }
+  }
+
   try {
     return await sourceDir.getFileHandle(fileName);
   } catch (error) {
