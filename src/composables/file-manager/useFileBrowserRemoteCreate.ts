@@ -47,13 +47,17 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
   const resolveToast = params.toast || toast;
   const notifyUpdate = params.notifyFileManagerUpdate || (() => uiStore.notifyFileManagerUpdate());
 
-  const clearSubgroup = params.clearPendingCreateSubgroup || (() => {
-    uiStore.pendingBloggerDogCreateSubgroup = null;
-  });
+  const clearSubgroup =
+    params.clearPendingCreateSubgroup ||
+    (() => {
+      uiStore.pendingBloggerDogCreateSubgroup = null;
+    });
 
-  const clearItem = params.clearPendingCreateItem || (() => {
-    uiStore.pendingBloggerDogCreateItem = null;
-  });
+  const clearItem =
+    params.clearPendingCreateItem ||
+    (() => {
+      uiStore.pendingBloggerDogCreateItem = null;
+    });
 
   function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
     pendingSubgroupParent.value = entry;

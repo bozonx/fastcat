@@ -74,7 +74,8 @@ export async function extractMetadata(
   }
 
   try {
-    const { Input, BlobSource, ALL_FORMATS, VideoSampleSink, AudioSampleSink } = await import('mediabunny');
+    const { Input, BlobSource, ALL_FORMATS, VideoSampleSink, AudioSampleSink } =
+      await import('mediabunny');
     const source = new BlobSource(governedBlobWorker(file));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const input = new Input({ source, formats: ALL_FORMATS } as any);
@@ -107,8 +108,11 @@ export async function extractMetadata(
         if (canDecodeVideo) {
           try {
             const vSink = new VideoSampleSink(vTrack);
-            const firstTs = typeof vTrack.getFirstTimestamp === 'function' ? await vTrack.getFirstTimestamp() : 0;
-            const firstSample = await (vSink as { getSample: (t: number) => Promise<any> }).getSample(firstTs);
+            const firstTs =
+              typeof vTrack.getFirstTimestamp === 'function' ? await vTrack.getFirstTimestamp() : 0;
+            const firstSample = await (
+              vSink as { getSample: (t: number) => Promise<any> }
+            ).getSample(firstTs);
             if (!firstSample) {
               throw new Error('No video sample decoded');
             }
@@ -146,7 +150,9 @@ export async function extractMetadata(
           try {
             const aSink = new AudioSampleSink(aTrack);
             let decodedAny = false;
-            for await (const sampleRaw of (aSink as { samples: (start: number, end: number) => AsyncIterable<any> }).samples(0, 0.1)) {
+            for await (const sampleRaw of (
+              aSink as { samples: (start: number, end: number) => AsyncIterable<any> }
+            ).samples(0, 0.1)) {
               if (sampleRaw) {
                 decodedAny = true;
                 if (typeof sampleRaw.close === 'function') sampleRaw.close();

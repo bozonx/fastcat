@@ -228,9 +228,7 @@ export const useMediaStore = defineStore('media', () => {
             parsed.audio !== undefined &&
             parsed.audio.canDecode === undefined;
           const lacksImageCompat =
-            !parsed.error &&
-            mediaType === 'image' &&
-            parsed.image === undefined;
+            !parsed.error && mediaType === 'image' && parsed.image === undefined;
 
           if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat) {
             parsedMeta = parsed;
