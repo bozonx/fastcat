@@ -529,20 +529,20 @@ export function createTimelinePersistenceModule(
       const autosaveFile = autosaveHandle
         ? await withFileIoSlot(() => autosaveHandle.getFile())
         : null;
-      let text = mainFile ? await mainFile.text() : '';
+      let text = mainFile ? await withFileIoSlot(() => mainFile.text()) : '';
       const shouldOfferAutosave =
         !!autosaveFile && (!mainFile || autosaveFile.lastModified > mainFile.lastModified);
 
       if (shouldOfferAutosave) {
         if (deps.shouldRestoreAutosaveSilently?.()) {
-          text = await autosaveFile.text();
+          text = await withFileIoSlot(() => autosaveFile.text());
           restoredAutosave = true;
         } else if (deps.showRecoveryDialog) {
           const choice = await deps.showRecoveryDialog({
             timelinePath: deps.currentTimelinePath.value,
           });
           if (choice === 'restore-autosave') {
-            text = await autosaveFile.text();
+            text = await withFileIoSlot(() => autosaveFile.text());
             restoredAutosave = true;
           } else {
             deps.onRecoveryChoice?.(choice);
@@ -562,7 +562,7 @@ export function createTimelinePersistenceModule(
             })) ?? false;
 
           if (shouldRestore) {
-            text = await autosaveFile.text();
+            text = await withFileIoSlot(() => autosaveFile.text());
             restoredAutosave = true;
           }
         }

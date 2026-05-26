@@ -210,7 +210,7 @@ export const useMediaStore = defineStore('media', () => {
         const text = await runCacheFileAccess('metadata', cacheFileName, async () => {
           const cacheHandle = await metaDir.getFileHandle(cacheFileName);
           const cacheFile = await withFileIoSlot(() => cacheHandle.getFile());
-          return await cacheFile.text();
+          return await withFileIoSlot(() => cacheFile.text());
         });
         const parsed = JSON.parse(text) as MediaMetadata;
         if (parsed.source.size === file.size && parsed.source.lastModified === file.lastModified) {
@@ -314,7 +314,7 @@ export const useMediaStore = defineStore('media', () => {
           const arrayBuffer = await runCacheFileAccess('waveform', cacheFileName, async () => {
             const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
             const peaksFile = await withFileIoSlot(() => peaksHandle.getFile());
-            return await peaksFile.arrayBuffer();
+            return await withFileIoSlot(() => peaksFile.arrayBuffer());
           });
           const uint8 = new Uint8Array(arrayBuffer);
           if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {

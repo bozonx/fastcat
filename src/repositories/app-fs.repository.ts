@@ -58,7 +58,7 @@ export function createAppFsRepository(): AppFsRepository {
 
   async function readJsonFromFileHandle<T>(handle: FileHandleLike): Promise<T | null> {
     const file = await withFileIoSlot(() => handle.getFile());
-    const text = await file.text();
+    const text = await withFileIoSlot(() => file.text());
     const trimmed = text.trim();
     if (!trimmed) return null;
     return JSON.parse(trimmed) as T;

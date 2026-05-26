@@ -50,7 +50,7 @@ export async function loadTranscriptionSidecar(
 
     const fileHandle = await currentDir.getFileHandle(fileName, { create: false });
     const file = await withFileIoSlot(() => fileHandle.getFile());
-    const text = await file.text();
+    const text = await withFileIoSlot(() => file.text());
     return JSON.parse(text) as TranscriptionRecord;
   } catch {
     return null;

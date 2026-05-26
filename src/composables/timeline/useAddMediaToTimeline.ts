@@ -5,6 +5,7 @@ import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export function useAddMediaToTimeline() {
   const timelineStore = useTimelineStore();
@@ -82,7 +83,7 @@ export function useAddMediaToTimeline() {
       if (mediaType === 'text') {
         const file = await vfs.getFile(entry.path);
         if (file) {
-          const text = await file.text();
+          const text = await withFileIoSlot(() => file.text());
           await timelineStore.addVirtualClipToTrack({
             trackId,
             startUs,

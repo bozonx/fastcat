@@ -22,6 +22,7 @@ import {
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 import type {
   WorkerTimelineClip,
   WorkerTrackPayloadSource,
@@ -107,7 +108,7 @@ async function readNestedTimelineDoc(params: {
   const file = await params.projectStore.getFileByPath(path);
   if (!file) return null;
 
-  const text = await file.text();
+  const text = await withFileIoSlot(() => file.text());
   const doc = parseTimelineFromOtio(text, {
     id: 'nested',
     name: path.split('/').pop() ?? 'nested',

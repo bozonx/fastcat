@@ -1,3 +1,5 @@
+import { withFileIoSlot } from '~/utils/io/io-governor';
+
 export interface SvgDimensions {
   width: number;
   height: number;
@@ -173,7 +175,7 @@ export async function rasterizeSvgToBlob(
     throw new Error('SVG to PNG conversion requires a browser environment');
   }
 
-  const svgText = await file.text();
+  const svgText = await withFileIoSlot(() => file.text());
   const intrinsic = parseSvgDimensions(svgText);
   const computedSize = computeSvgRasterSize({
     intrinsic,

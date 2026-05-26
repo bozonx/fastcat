@@ -7,6 +7,7 @@ import {
   runResilientWorkerFileIo,
   runResilientWorkerFileWrite,
 } from '~/workers/core/io-governor';
+import { FILE_IO_LIMITS } from '~/utils/constants';
 
 let originalFileSystemFileHandle: typeof FileSystemFileHandle | undefined;
 
@@ -39,9 +40,10 @@ describe('withWorkerFileWriteSlot', () => {
     await expect(withWorkerFileWriteSlot(async () => 42)).resolves.toBe(42);
   });
 
-  it('never runs more than 2 tasks concurrently', async () => {
+  it('never runs more than the local worker fallback cap concurrently', async () => {
     let inFlight = 0;
     let peak = 0;
+    const expectedCap = FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER;
 
     const gates = Array.from({ length: 5 }, () => deferred());
     const tasks = gates.map((gate, index) =>
@@ -54,14 +56,17 @@ describe('withWorkerFileWriteSlot', () => {
       }),
     );
 
-    await flush();
-    expect(inFlight).toBe(2);
-    expect(peak).toBe(2);
+    try {
+      await flush();
+      expect(inFlight).toBe(expectedCap);
+      expect(peak).toBe(expectedCap);
+    } finally {
+      gates.forEach((gate) => gate.resolve());
+    }
 
-    gates.forEach((gate) => gate.resolve());
     const results = await Promise.all(tasks);
     expect(results).toEqual([0, 1, 2, 3, 4]);
-    expect(peak).toBe(2);
+    expect(peak).toBe(expectedCap);
   });
 
   it('propagates task errors and keeps the queue usable afterwards', async () => {
@@ -111,7 +116,7 @@ describe('withWorkerFileWriteSlotForHandle', () => {
     const p2 = withWorkerFileWriteSlotForHandle(mockHandle, task);
 
     await flush();
-    expect(inFlight).toBeLessThanOrEqual(2);
+    expect(inFlight).toBeLessThanOrEqual(FILE_IO_LIMITS.MAX_CONCURRENT_FILE_IO_LOCAL_WORKER);
 
     const [r1, r2] = await Promise.all([p1, p2]);
     expect(r1).toBe('queued');

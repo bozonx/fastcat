@@ -97,7 +97,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       const fileName = `${task.id}.webp`;
       const fileHandle = await dir.getFileHandle(fileName);
       const file = await withFileIoSlot(() => fileHandle.getFile());
-      const buffer = await file.arrayBuffer();
+      const buffer = await withFileIoSlot(() => file.arrayBuffer());
       const blob = new Blob([buffer], { type: file.type });
       const url = URL.createObjectURL(blob);
 
@@ -349,7 +349,8 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
       if (foundHandle) {
         const file = await withFileIoSlot(() => foundHandle.getFile());
-        const blob = new Blob([await file.arrayBuffer()], { type: 'image/webp' });
+        const buffer = await withFileIoSlot(() => file.arrayBuffer());
+        const blob = new Blob([buffer], { type: 'image/webp' });
         const url = URL.createObjectURL(blob);
         const previousUrl = this.cache.get(cacheKey);
         if (previousUrl && previousUrl !== url) {

@@ -21,6 +21,7 @@ import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/applicat
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export interface UseTimelineDropHandlingOptions {
   scrollEl: Ref<HTMLElement | null>;
@@ -154,7 +155,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       const file = await fileManager.vfs.getFile(params.path);
       if (file) {
         try {
-          const text = await file.text();
+          const text = await withFileIoSlot(() => file.text());
           const doc = parseTimelineFromOtio(text, {
             id: 'preview',
             name: getWorkspacePathFileName(params.path),
@@ -441,7 +442,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     }
 
     const durationUs = workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
-    const text = await file.text();
+    const text = await withFileIoSlot(() => file.text());
     const nextStartUs = resolveInsertStartUs({
       trackId: targetTrackId,
       startUs: context.currentStartUs,

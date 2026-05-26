@@ -4,6 +4,7 @@ import { computed, ref } from 'vue';
 import { useProjectStore } from './project.store';
 import { useWorkspaceStore } from './workspace.store';
 import { useVfs } from '~/composables/useVfs';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { createTimelineDocId } from '~/timeline/id';
@@ -152,7 +153,7 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
     }
     const file = await vfs.getFile(params.timelinePath);
     if (!file) return null;
-    const text = await file.text();
+    const text = await withFileIoSlot(() => file.text());
 
     const nameFromPath = params.timelinePath.split('/').pop() ?? params.timelinePath;
     const id = projectStore.currentProjectName

@@ -9,6 +9,7 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import type { MediaMetadata } from '~/stores/media.store';
 import { getBdPayload } from '~/types/bloggerdog';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 
 export type PreviewMode = 'original' | 'proxy';
 export type MediaType = 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
@@ -328,7 +329,7 @@ export function useEntryPreview(params: {
         if (fileExt === 'otio' || extBasedType === 'timeline') {
           nextMediaType = 'text';
           try {
-            const text = await file.text();
+            const text = await withFileIoSlot(() => file.text());
             if (requestId !== loadRequestId) return;
             nextLineCount = text.split('\n').length;
             const parsedDoc = parseTimelineFromOtio(text, {
@@ -349,7 +350,7 @@ export function useEntryPreview(params: {
         } else if (extBasedType === 'text') {
           nextMediaType = 'text';
           const textSlice = file.slice(0, 1024 * 1024);
-          const fullText = await textSlice.text();
+          const fullText = await withFileIoSlot(() => textSlice.text());
           if (requestId !== loadRequestId) return;
           nextTextContent = fullText;
           nextLineCount = fullText.split('\n').length;
