@@ -218,14 +218,19 @@ export const useMediaStore = defineStore('media', () => {
         if (parsed.source.size === file.size && parsed.source.lastModified === file.lastModified) {
           const mediaType = getMediaTypeFromFilename(projectRelativePath);
           const lacksVideoCompat =
+            !parsed.error &&
             mediaType === 'video' &&
             parsed.video !== undefined &&
             parsed.video.canDecode === undefined;
           const lacksAudioCompat =
+            !parsed.error &&
             (mediaType === 'video' || mediaType === 'audio') &&
             parsed.audio !== undefined &&
             parsed.audio.canDecode === undefined;
-          const lacksImageCompat = mediaType === 'image' && parsed.image === undefined;
+          const lacksImageCompat =
+            !parsed.error &&
+            mediaType === 'image' &&
+            parsed.image === undefined;
 
           if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat) {
             parsedMeta = parsed;

@@ -308,6 +308,28 @@ describe('MediaStore', () => {
     expect(extractMetadataMock).not.toHaveBeenCalled();
   });
 
+  it('restores failed metadata state from OPFS cache for images', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'image%2Fa.jpg.json';
+    mediaFsMock.metaFiles.set(
+      cacheFileName,
+      JSON.stringify({
+        source: { size: 100, lastModified: 100 },
+        duration: 0,
+        error: true,
+      }),
+    );
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'a.jpg' } as File,
+      'image/a.jpg',
+    );
+
+    expect(result?.error).toBe(true);
+    expect(store.metadataLoadFailed['image/a.jpg']).toBe(true);
+    expect(extractMetadataMock).not.toHaveBeenCalled();
+  });
+
   it('removeMediaCache clears metadata and related state', async () => {
     const store = useMediaStore();
     store.mediaMetadata = { 'video/a.mp4': { duration: 10 } } as any;
