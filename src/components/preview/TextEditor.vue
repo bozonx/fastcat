@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createDevLogger } from '~/utils/dev-logger';
 
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
@@ -101,6 +101,14 @@ watch(
   },
   { flush: 'post' },
 );
+
+watch(isModalOpen, (isOpen, oldIsOpen) => {
+  if (!isOpen && oldIsOpen) {
+    nextTick(() => {
+      textareaRef.value?.focus();
+    });
+  }
+});
 
 onBeforeUnmount(() => {
   clearTimer();
