@@ -83,4 +83,16 @@ describe('useFileManagerCompatibility', () => {
     metadataLoadFailed[`external:${path}`] = true;
     expect(compatibility.value[path]?.status).toBe('corrupt');
   });
+
+  it('identifies image as corrupt when image.canDisplay is false', () => {
+    const entries = ref<FsEntry[]>([
+      { kind: 'file', name: 'failed.png', path: 'failed.png', source: 'local' },
+    ]);
+
+    const { compatibility } = useFileManagerCompatibility(entries);
+
+    // Metadata is loaded but has canDisplay: false
+    mediaMetadata['failed.png'] = { image: { canDisplay: false } };
+    expect(compatibility.value['failed.png']?.status).toBe('corrupt');
+  });
 });
