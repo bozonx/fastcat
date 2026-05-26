@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref, reactive } from 'vue';
+import { nextTick, ref, reactive } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useMediaStore } from '~/stores/media.store';
@@ -15,6 +15,14 @@ describe('useFileManagerCompatibility', () => {
   let metadataLoadFailed: any;
   let metadataLoading: any;
   let getOrFetchMetadataByPathMock: any;
+  let getOrFetchMetadataMock: any;
+
+  async function flushAsyncState() {
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+      await nextTick();
+    }
+  }
 
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -24,12 +32,14 @@ describe('useFileManagerCompatibility', () => {
     metadataLoadFailed = reactive({});
     metadataLoading = reactive({});
     getOrFetchMetadataByPathMock = vi.fn();
+    getOrFetchMetadataMock = vi.fn();
 
     vi.mocked(useMediaStore).mockReturnValue({
       mediaMetadata,
       metadataLoadFailed,
       metadataLoading,
       getOrFetchMetadataByPath: getOrFetchMetadataByPathMock,
+      getOrFetchMetadata: getOrFetchMetadataMock,
     } as any);
   });
 
@@ -82,6 +92,21 @@ describe('useFileManagerCompatibility', () => {
     // Mark as failed under external: prefix
     metadataLoadFailed[`external:${path}`] = true;
     expect(compatibility.value[path]?.status).toBe('corrupt');
+  });
+
+  it('loads external metadata through provided vfs and stores it under external key', async () => {
+    const path = '/abs/image.png';
+    const file = new File([], 'image.png');
+    const getFileByPath = vi.fn().mockResolvedValue(file);
+    const entries = ref<FsEntry[]>([{ kind: 'file', name: 'image.png', path, source: 'local' }]);
+
+    useFileManagerCompatibility(entries, { getFileByPath });
+
+    await flushAsyncState();
+
+    expect(getFileByPath).toHaveBeenCalledWith(path);
+    expect(getOrFetchMetadataMock).toHaveBeenCalledWith(file, `external:${path}`);
+    expect(getOrFetchMetadataByPathMock).not.toHaveBeenCalled();
   });
 
   it('identifies image as corrupt when image.canDisplay is false', () => {

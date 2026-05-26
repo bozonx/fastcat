@@ -123,7 +123,11 @@ function focusPanel() {
       ref="textareaRef"
       v-model="content"
       class="flex-1"
-      :ui="{ root: 'ring-0', base: 'h-full resize-none font-mono ring-0 border border-ui-border' }"
+      variant="none"
+      :ui="{
+        root: 'ring-0 focus-within:ring-0',
+        base: 'h-full resize-none font-mono ring-0 focus:ring-0 border-none focus:outline-none focus-visible:outline-none',
+      }"
       :spellcheck="false"
       full-width
       @focus="focusPanel"

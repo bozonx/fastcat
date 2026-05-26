@@ -11,6 +11,7 @@ interface UiTextareaProps {
   placeholder?: string;
   disabled?: boolean;
   size?: '2xs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  variant?: 'outline' | 'soft' | 'subtle' | 'ghost' | 'none';
   rows?: number;
   maxrows?: number;
   autoresize?: boolean;
@@ -24,6 +25,7 @@ const props = withDefaults(defineProps<UiTextareaProps>(), {
   placeholder: undefined,
   disabled: false,
   size: 'sm',
+  variant: undefined,
   rows: undefined,
   maxrows: undefined,
   autoresize: false,
@@ -56,6 +58,7 @@ defineExpose({
     :placeholder="placeholder"
     :disabled="disabled"
     :size="size"
+    :variant="variant"
     :rows="rows"
     :maxrows="maxrows"
     :autoresize="autoresize"

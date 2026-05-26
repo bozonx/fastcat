@@ -14,6 +14,12 @@ export interface FileCompatibility {
   status: FileCompatibilityStatus;
 }
 
+function resolveMetadataCacheKey(entry: FsEntry, path: string): string {
+  if (entry.source === 'remote') return `external:${path}`;
+  if (path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path)) return `external:${path}`;
+  return path;
+}
+
 function computeStatus(
   entry: FsEntry,
   path: string,
@@ -70,7 +76,12 @@ function computeStatus(
   return 'ok';
 }
 
-export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
+export function useFileManagerCompatibility(
+  entries: Ref<FsEntry[]>,
+  options?: {
+    getFileByPath?: (path: string) => Promise<File | null>;
+  },
+) {
   const mediaStore = useMediaStore();
 
   const compatibility = computed<Record<string, FileCompatibility>>(() => {
@@ -108,12 +119,23 @@ export function useFileManagerCompatibility(entries: Ref<FsEntry[]>) {
         if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
 
         const path = entry.path;
+        const cacheKey = resolveMetadataCacheKey(entry, path);
         if (
-          !mediaStore.mediaMetadata[path] &&
-          !mediaStore.metadataLoadFailed[path] &&
-          !mediaStore.metadataLoading[path]
+          !mediaStore.mediaMetadata[cacheKey] &&
+          !mediaStore.metadataLoadFailed[cacheKey] &&
+          !mediaStore.metadataLoading[cacheKey]
         ) {
-          void mediaStore.getOrFetchMetadataByPath(path);
+          if (cacheKey === path) {
+            void mediaStore.getOrFetchMetadataByPath(path);
+          } else if (options?.getFileByPath) {
+            void options
+              .getFileByPath(path)
+              .then(async (file) => {
+                if (!file) return null;
+                return await mediaStore.getOrFetchMetadata(file, cacheKey);
+              })
+              .catch(() => null);
+          }
         }
       }
     },

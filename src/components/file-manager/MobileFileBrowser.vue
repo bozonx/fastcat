@@ -177,7 +177,9 @@ const { extractAudio } = useAudioExtraction();
 
 const { sortedEntries } = useFileSorting(entries);
 const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
-const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries);
+const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries, {
+  getFileByPath: (path) => vfs.getFile(path),
+});
 
 const {
   modalOpen: transcriptionModalOpen,

@@ -75,11 +75,10 @@ const timelineMediaUsageStore = useTimelineMediaUsageStore();
 const proxyStore = useProxyStore();
 const fileManager = useFileManager();
 const clipboardPaths = useClipboardPaths();
-const mediaStore = useMediaStore();
 
-function handleImageError(entry: FsEntry) {
-  if (entry.path) {
-    mediaStore.metadataLoadFailed[entry.path] = true;
+function handleImageError(entry: ExtendedFsEntry) {
+  if (entry.objectUrl) {
+    entry.objectUrl = undefined;
   }
 }
 

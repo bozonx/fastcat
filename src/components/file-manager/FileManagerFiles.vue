@@ -121,6 +121,15 @@ const visibleFiles = computed(() => {
   return getVisibleEntries(props.rootEntries).filter((entry) => entry.kind === 'file');
 });
 
+function resolveMetadataCacheKey(entry: FsEntry): string | null {
+  if (!entry.path) return null;
+  if (entry.source === 'remote') return `external:${entry.path}`;
+  if (entry.path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(entry.path)) {
+    return `external:${entry.path}`;
+  }
+  return entry.path;
+}
+
 watch(
   visibleFiles,
   (files) => {
@@ -128,12 +137,24 @@ watch(
       if (!entry.path) continue;
       const mediaType = getMediaTypeFromFilename(entry.name);
       if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
+      const cacheKey = resolveMetadataCacheKey(entry);
+      if (!cacheKey) continue;
       if (
-        !mediaStore.mediaMetadata[entry.path] &&
-        !mediaStore.metadataLoadFailed[entry.path] &&
-        !mediaStore.metadataLoading[entry.path]
+        !mediaStore.mediaMetadata[cacheKey] &&
+        !mediaStore.metadataLoadFailed[cacheKey] &&
+        !mediaStore.metadataLoading[cacheKey]
       ) {
-        void mediaStore.getOrFetchMetadataByPath(entry.path);
+        if (cacheKey === entry.path) {
+          void mediaStore.getOrFetchMetadataByPath(entry.path);
+        } else if (props.vfs) {
+          void props.vfs
+            .getFile(entry.path)
+            .then(async (file) => {
+              if (!file) return null;
+              return await mediaStore.getOrFetchMetadata(file, cacheKey);
+            })
+            .catch(() => null);
+        }
       }
     }
   },
@@ -265,11 +286,14 @@ function getFileCompatibilityStatus(entry: FsEntry): FileCompatibilityStatus {
   if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') return 'ok';
 
   const path = entry.path;
+  const cacheKey = resolveMetadataCacheKey(entry) ?? path;
 
-  if (mediaStore.metadataLoadFailed[path]) return 'corrupt';
+  if (mediaStore.metadataLoadFailed[cacheKey]) return 'corrupt';
 
-  const meta = mediaStore.mediaMetadata[path];
-  if (!meta || mediaStore.metadataLoading[path]) return 'checking';
+  const meta = mediaStore.mediaMetadata[cacheKey];
+  if (!meta || mediaStore.metadataLoading[cacheKey]) {
+    return cacheKey !== path && !props.vfs ? 'ok' : 'checking';
+  }
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';

@@ -26,8 +26,15 @@ export interface FileThumbnailTask extends BaseThumbnailTask {
 export function getFileThumbnailHash(input: {
   projectId: string;
   projectRelativePath: string;
+  source?: {
+    size: number;
+    lastModified: number;
+  };
 }): string {
-  return hashString(`file:${input.projectId}:${input.projectRelativePath}`);
+  const sourceKey = input.source
+    ? `:${input.source.size}:${input.source.lastModified}`
+    : '';
+  return hashString(`file:${input.projectId}:${input.projectRelativePath}${sourceKey}`);
 }
 
 async function ensureThumbnailDir(input: {

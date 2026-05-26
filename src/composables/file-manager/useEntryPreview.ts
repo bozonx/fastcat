@@ -79,6 +79,7 @@ export function useEntryPreview(params: {
     version: number | null;
   } | null>(null);
   let loadRequestId = 0;
+  let suppressNextPreviewModeReload = false;
 
   const exifYaml = computed(() => {
     if (!exifData.value) return null;
@@ -108,6 +109,41 @@ export function useEntryPreview(params: {
       return String(fileInfo.value.metadata);
     }
   });
+
+  function resolveMediaTypeFromEntry(entry: FsEntry): MediaType {
+    if (entry.kind !== 'file') return null;
+
+    const mediaKind = getMediaTypeFromFilename(entry.name);
+    if (mediaKind === 'unknown') return 'unknown';
+    if (mediaKind === 'timeline') return 'text';
+    return mediaKind;
+  }
+
+  function createBaseFileInfo(entry: FsEntry): EntryPreviewInfo {
+    if (entry.kind === 'directory') {
+      return {
+        name: entry.name,
+        kind: 'directory',
+        path: entry.path,
+        size: typeof entry.size === 'number' ? entry.size : undefined,
+        filesCount: entry.children?.filter((child) => child.kind === 'file').length,
+        lastModified: entry.lastModified,
+        createdAt: entry.createdAt,
+      };
+    }
+
+    const fileExt = entry.name.split('.').pop()?.toLowerCase() || '';
+    return {
+      name: entry.name,
+      kind: 'file',
+      path: entry.path,
+      size: typeof entry.size === 'number' ? entry.size : undefined,
+      createdAt: entry.createdAt,
+      lastModified: entry.lastModified,
+      mimeType: getMimeTypeFromFilename(entry.name),
+      ext: fileExt,
+    };
+  }
 
   function applyResolvedState(next: {
     currentUrl: string | null;
@@ -235,7 +271,11 @@ export function useEntryPreview(params: {
 
   watch(
     () => params.previewMode.value,
-    () => {
+    (mode) => {
+      if (suppressNextPreviewModeReload) {
+        suppressNextPreviewModeReload = false;
+        if (mode === 'original') return;
+      }
       void loadPreviewMedia();
     },
   );
@@ -244,14 +284,16 @@ export function useEntryPreview(params: {
     () => params.selectedFsEntry.value,
     async (entry) => {
       const requestId = ++loadRequestId;
+      if (params.previewMode.value !== 'original') {
+        suppressNextPreviewModeReload = true;
+      }
       params.onResetPreviewMode('original');
 
-      // Clear previous state immediately to avoid showing stale data during async load
       applyResolvedState({
         currentUrl: null,
-        mediaType: null,
+        mediaType: entry ? resolveMediaTypeFromEntry(entry) : null,
         textContent: '',
-        fileInfo: null,
+        fileInfo: entry ? createBaseFileInfo(entry) : null,
         exifData: null,
         imageDimensions: null,
         lineCount: null,
@@ -263,7 +305,7 @@ export function useEntryPreview(params: {
       }
 
       if (entry.kind === 'directory') {
-        let size = 0;
+        let size = typeof entry.size === 'number' ? entry.size : undefined;
         let filesCount = entry.children?.filter((c) => c.kind === 'file').length ?? 0;
 
         if (entry.path && params.getDirectoryHandleByPath) {
@@ -277,10 +319,6 @@ export function useEntryPreview(params: {
               // Fall back to entry metadata below if stats can't be computed.
             }
           }
-        }
-
-        if (size === 0 && typeof entry.size === 'number') {
-          size = entry.size;
         }
 
         if (requestId !== loadRequestId) return;

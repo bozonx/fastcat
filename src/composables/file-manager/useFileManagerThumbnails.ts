@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { ref, watch, onBeforeUnmount, type Ref } from 'vue';
+import { ref, watch, onScopeDispose, type Ref } from 'vue';
 import { safeRevokeObjectURL } from '~/composables/useSafeObjectUrl';
 import type { FsEntry } from '~/types/fs';
 import { useProjectStore } from '~/stores/project.store';
@@ -11,6 +11,23 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 const log = createDevLogger('useFileManagerThumbnails');
 
 const SUPPORTED_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', 'svg'];
+
+function resolveMetadataCacheKey(entry: FsEntry): string | null {
+  if (!entry.path) return null;
+  if (entry.source === 'remote') return `external:${entry.path}`;
+  if (entry.path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(entry.path)) {
+    return `external:${entry.path}`;
+  }
+  return entry.path;
+}
+
+function getSourceFingerprint(entry: FsEntry): { size: number; lastModified: number } | undefined {
+  if (typeof entry.size !== 'number' || typeof entry.lastModified !== 'number') return undefined;
+  return {
+    size: entry.size,
+    lastModified: entry.lastModified,
+  };
+}
 
 export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSystemAdapter) {
   const projectStore = useProjectStore();
@@ -69,6 +86,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
             const hash = getFileThumbnailHash({
               projectId,
               projectRelativePath: path,
+              source: getSourceFingerprint(entry),
             });
             newHashes.add(hash);
 
@@ -90,24 +108,37 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
             if (thumbnails.value[path]) continue;
             const ext = entry.name.split('.').pop()?.toLowerCase();
             if (ext && SUPPORTED_IMAGE_EXTS.includes(ext)) {
+              const cacheKey = resolveMetadataCacheKey(entry);
+              const cachedMeta = cacheKey ? mediaStore.mediaMetadata[cacheKey] : null;
+              if (cacheKey && (mediaStore.metadataLoadFailed[cacheKey] || cachedMeta?.error)) {
+                continue;
+              }
+              if (cachedMeta?.image?.canDisplay === false) {
+                continue;
+              }
+
               try {
                 const file = await vfs.getFile(path);
                 if (file && !isUnmounted) {
-                  // Verify if the image can actually be displayed
-                  try {
-                    const bitmap = await createImageBitmap(file);
-                    bitmap.close();
+                  const metadata =
+                    cachedMeta ??
+                    (cacheKey ? await mediaStore.getOrFetchMetadata(file, cacheKey) : null);
 
-                    const url = URL.createObjectURL(file);
-                    activeImageUrls.set(path, url);
-                    thumbnails.value = {
-                      ...thumbnails.value,
-                      [path]: url,
-                    };
-                  } catch {
-                    // Not a valid or supported image, don't generate thumbnail
+                  if (
+                    metadata?.error ||
+                    metadata?.image?.canDisplay === false ||
+                    (cacheKey && mediaStore.metadataLoadFailed[cacheKey])
+                  ) {
                     log.warn('Image file is corrupt or not displayable:', path);
+                    continue;
                   }
+
+                  const url = URL.createObjectURL(file);
+                  activeImageUrls.set(path, url);
+                  thumbnails.value = {
+                    ...thumbnails.value,
+                    [path]: url,
+                  };
                 }
               } catch (e) {
                 log.warn('Failed to get image file for thumbnail:', path, e);
@@ -128,7 +159,7 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
     { immediate: true, deep: true },
   );
 
-  onBeforeUnmount(() => {
+  onScopeDispose(() => {
     isUnmounted = true;
     cleanupAll();
   });

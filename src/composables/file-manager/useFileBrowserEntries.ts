@@ -115,7 +115,9 @@ export function useFileBrowserEntries({
   const { sortedEntries } = useFileSorting(folderEntries, folderSizes);
 
   const { thumbnails: videoThumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
-  const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries);
+  const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries, {
+    getFileByPath: (path) => vfs.getFile(path),
+  });
 
   // Calculate size for directories in list view
   watch(

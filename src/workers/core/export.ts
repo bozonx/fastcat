@@ -26,6 +26,11 @@ import type { ExportOptions, WorkerTimelineClip } from '~/composables/timeline/e
 import type { MediaMetadata } from '~/stores/media.store';
 const log = createDevLogger('export');
 
+interface DisposableSampleSink {
+  dispose?: () => void;
+  close?: () => void;
+}
+
 export async function extractMetadata(
   fileOrHandle: File | FileSystemFileHandle,
 ): Promise<MediaMetadata> {
@@ -119,8 +124,9 @@ export async function extractMetadata(
               throw new Error('No video sample decoded');
             }
             if (typeof firstSample.close === 'function') firstSample.close();
-            if (typeof vSink.dispose === 'function') vSink.dispose();
-            else if (typeof vSink.close === 'function') vSink.close();
+            const disposableSink = vSink as DisposableSampleSink;
+            if (typeof disposableSink.dispose === 'function') disposableSink.dispose();
+            else if (typeof disposableSink.close === 'function') disposableSink.close();
           } catch (e) {
             log.warn('[Worker Export] Video decoding validation failed:', (e as Error)?.message);
             canDecodeVideo = false;
@@ -166,8 +172,9 @@ export async function extractMetadata(
                 break;
               }
             }
-            if (typeof aSink.dispose === 'function') aSink.dispose();
-            else if (typeof aSink.close === 'function') aSink.close();
+            const disposableSink = aSink as DisposableSampleSink;
+            if (typeof disposableSink.dispose === 'function') disposableSink.dispose();
+            else if (typeof disposableSink.close === 'function') disposableSink.close();
 
             if (!decodedAny) {
               throw new Error('No audio samples decoded');

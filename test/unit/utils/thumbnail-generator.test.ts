@@ -133,6 +133,21 @@ describe('Thumbnail Generators', () => {
       expect(hash1).toBe(hash2);
       expect(hash1.startsWith('file:')).toBe(false); // getFileThumbnailHash uses prefix "file:" but it's hashed
     });
+
+    it('should include source fingerprint when provided', () => {
+      const base = getFileThumbnailHash({
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        source: { size: 100, lastModified: 100 },
+      });
+      const changed = getFileThumbnailHash({
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        source: { size: 101, lastModified: 100 },
+      });
+
+      expect(base).not.toBe(changed);
+    });
   });
 
   describe('fileThumbnailGenerator', () => {
