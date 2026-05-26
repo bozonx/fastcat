@@ -269,8 +269,8 @@ function getFileCompatibilityStatus(entry: FsEntry): FileCompatibilityStatus {
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-    if (BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) && meta.image?.canDisplay === false) {
-      return 'fully_unsupported';
+    if (meta.image?.canDisplay === false) {
+      return BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) ? 'corrupt' : 'fully_unsupported';
     }
     return 'ok';
   }

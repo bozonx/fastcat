@@ -6,6 +6,8 @@ import { extractMetadata, isPassthroughCompatibleClip } from '~/workers/core/exp
 const mockFunctions = {
   getPrimaryVideoTrack: vi.fn(),
   computeDuration: vi.fn(),
+  videoGetSample: vi.fn(),
+  audioSamples: vi.fn(),
 };
 
 vi.mock('mediabunny', () => ({
@@ -27,12 +29,28 @@ vi.mock('mediabunny', () => ({
     constructor(public blob: Blob) {}
   },
   ALL_FORMATS: {},
+  VideoSampleSink: class {
+    constructor(public track: any) {}
+    getSample = (...args: any[]) => mockFunctions.videoGetSample(...args);
+    dispose = vi.fn();
+    close = vi.fn();
+  },
+  AudioSampleSink: class {
+    constructor(public track: any) {}
+    samples = (...args: any[]) => mockFunctions.audioSamples(...args);
+    dispose = vi.fn();
+    close = vi.fn();
+  },
 }));
 
 describe('extractMetadata', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFunctions.computeDuration.mockResolvedValue(10);
+    mockFunctions.videoGetSample.mockResolvedValue({ close: vi.fn() });
+    mockFunctions.audioSamples.mockImplementation(async function* () {
+      yield { close: vi.fn() };
+    });
     mockFunctions.getPrimaryVideoTrack.mockResolvedValue({
       codedWidth: 1920,
       codedHeight: 1080,
@@ -90,6 +108,25 @@ describe('extractMetadata', () => {
     mockFunctions.computeDuration.mockRejectedValue(new Error('Decode error'));
 
     await expect(extractMetadata(file)).rejects.toThrow('Decode error');
+  });
+
+  it('sets video.canDecode to false if video sample decoding fails', async () => {
+    const file = new File([], 'test.mp4');
+    mockFunctions.videoGetSample.mockResolvedValue(null);
+
+    const meta = await extractMetadata(file);
+    expect(meta.video?.canDecode).toBe(false);
+  });
+
+  it('sets audio.canDecode to false if audio sample decoding fails', async () => {
+    const file = new File([], 'test.mp3');
+    mockFunctions.getPrimaryVideoTrack.mockResolvedValue(null);
+    mockFunctions.audioSamples.mockImplementation(async function* () {
+      // Yield nothing (empty)
+    });
+
+    const meta = await extractMetadata(file);
+    expect(meta.audio?.canDecode).toBe(false);
   });
 });
 

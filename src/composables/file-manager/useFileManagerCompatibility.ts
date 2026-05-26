@@ -28,11 +28,9 @@ function computeStatus(
 
   if (mediaType === 'image') {
     const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
-    if (
-      BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) &&
-      (meta.image as Record<string, unknown> | undefined)?.canDisplay === false
-    ) {
-      return 'corrupt';
+    const canDisplay = (meta.image as Record<string, unknown> | undefined)?.canDisplay;
+    if (canDisplay === false) {
+      return BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext) ? 'corrupt' : 'fully_unsupported';
     }
     return 'ok';
   }

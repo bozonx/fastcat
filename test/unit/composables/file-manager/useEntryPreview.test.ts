@@ -3,10 +3,11 @@ import { nextTick, ref } from 'vue';
 import { useEntryPreview } from '~/composables/file-manager/useEntryPreview';
 import type { FsEntry } from '~/types/fs';
 
-function flushAsyncState() {
-  return Promise.resolve()
-    .then(() => Promise.resolve())
-    .then(() => nextTick());
+async function flushAsyncState() {
+  for (let i = 0; i < 20; i++) {
+    await Promise.resolve();
+    await nextTick();
+  }
 }
 
 function createDeferred<T>() {

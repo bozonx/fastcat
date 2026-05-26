@@ -74,7 +74,7 @@ export async function extractMetadata(
   }
 
   try {
-    const { Input, BlobSource, ALL_FORMATS } = await import('mediabunny');
+    const { Input, BlobSource, ALL_FORMATS, VideoSampleSink, AudioSampleSink } = await import('mediabunny');
     const source = new BlobSource(governedBlobWorker(file));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const input = new Input({ source, formats: ALL_FORMATS } as any);
@@ -102,7 +102,24 @@ export async function extractMetadata(
         const codecParam = await vTrack.getCodecParameterString();
         const colorSpace =
           typeof vTrack.getColorSpace === 'function' ? await vTrack.getColorSpace() : undefined;
-        const canDecodeVideo = await vTrack.canDecode();
+        let canDecodeVideo = await vTrack.canDecode();
+
+        if (canDecodeVideo) {
+          try {
+            const vSink = new VideoSampleSink(vTrack);
+            const firstTs = typeof vTrack.getFirstTimestamp === 'function' ? await vTrack.getFirstTimestamp() : 0;
+            const firstSample = await (vSink as { getSample: (t: number) => Promise<any> }).getSample(firstTs);
+            if (!firstSample) {
+              throw new Error('No video sample decoded');
+            }
+            if (typeof firstSample.close === 'function') firstSample.close();
+            if (typeof vSink.dispose === 'function') vSink.dispose();
+            else if (typeof vSink.close === 'function') vSink.close();
+          } catch (e) {
+            log.warn('[Worker Export] Video decoding validation failed:', (e as Error)?.message);
+            canDecodeVideo = false;
+          }
+        }
 
         meta.video = {
           width: vTrack.codedWidth,
@@ -123,7 +140,31 @@ export async function extractMetadata(
       if (aTrack) {
         const stats = await aTrack.computePacketStats(100);
         const codecParam = await aTrack.getCodecParameterString();
-        const canDecodeAudio = await aTrack.canDecode();
+        let canDecodeAudio = await aTrack.canDecode();
+
+        if (canDecodeAudio) {
+          try {
+            const aSink = new AudioSampleSink(aTrack);
+            let decodedAny = false;
+            for await (const sampleRaw of (aSink as { samples: (start: number, end: number) => AsyncIterable<any> }).samples(0, 0.1)) {
+              if (sampleRaw) {
+                decodedAny = true;
+                if (typeof sampleRaw.close === 'function') sampleRaw.close();
+                break;
+              }
+            }
+            if (typeof aSink.dispose === 'function') aSink.dispose();
+            else if (typeof aSink.close === 'function') aSink.close();
+
+            if (!decodedAny) {
+              throw new Error('No audio samples decoded');
+            }
+          } catch (e) {
+            log.warn('[Worker Export] Audio decoding validation failed:', (e as Error)?.message);
+            canDecodeAudio = false;
+          }
+        }
+
         meta.audio = {
           codec: codecParam || aTrack.codec || '',
           parsedCodec: parseAudioCodec(codecParam || aTrack.codec || ''),

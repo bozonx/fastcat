@@ -196,13 +196,9 @@ const {
   getObjectUrlByPath: (path) => effectiveVfs.value.getObjectUrl(path),
   getMetadata: async ({ file, path }) => {
     if (isExternalContext.value || isRemoteFileEntry.value) {
-      return await mediaStore.getOrFetchMetadata(file, `external:${path}`, {
-        forceRefresh: true,
-      });
+      return await mediaStore.getOrFetchMetadata(file, `external:${path}`);
     }
-    return await mediaStore.getOrFetchMetadataByPath(path, {
-      forceRefresh: true,
-    });
+    return await mediaStore.getOrFetchMetadataByPath(path);
   },
   getDirectoryHandleByPath: (path) =>
     isExternalContext.value ? Promise.resolve(null) : projectStore.getDirectoryHandleByPath(path),

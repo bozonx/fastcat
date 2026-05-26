@@ -398,9 +398,7 @@ export function useEntryPreview(params: {
                     entry,
                     path: entry.path,
                   })
-                : await params.mediaStore.getOrFetchMetadataByPath(entry.path, {
-                    forceRefresh: true,
-                  })
+                : await params.mediaStore.getOrFetchMetadataByPath(entry.path)
               : undefined,
         };
         if (requestId !== loadRequestId) return;
