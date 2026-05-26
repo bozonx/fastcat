@@ -34,10 +34,8 @@ export function createProjectSettingsRepository(input: {
       if (!handle) return;
 
       // Strip UI/session state from technical settings file (persisted in project.ui.json)
-      const { monitors, timelines, ui, timeline, ...technicalData } = data as unknown as Record<
-        string,
-        unknown
-      >;
+      const { monitor, monitors, timelines, ui, timeline, ...technicalData } =
+        data as unknown as Record<string, unknown>;
       await writeJsonToFileHandle({ handle, data: technicalData });
     },
   };

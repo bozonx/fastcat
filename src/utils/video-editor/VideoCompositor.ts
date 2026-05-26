@@ -23,9 +23,8 @@ import { MediaClipLoader } from './compositor/MediaClipLoader';
 import { RasterImageLoader } from './compositor/RasterImageLoader';
 import { TimelineApplyLifecycle } from './compositor/TimelineApplyLifecycle';
 import { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdater';
-import { TimelineFixedClipBuilder } from './compositor/TimelineFixedClipBuilder';
+import { TimelineClipAssetLoader } from './compositor/TimelineClipAssetLoader';
 import { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
-import { TimelineMediaClipBuilder } from './compositor/TimelineMediaClipBuilder';
 import { TimelineActiveClipProcessor } from './compositor/TimelineActiveClipProcessor';
 import { TimelineTrackRebinder } from './compositor/TimelineTrackRebinder';
 import { TimelineUpdateLifecycle } from './compositor/TimelineUpdateLifecycle';
@@ -130,19 +129,16 @@ export class VideoCompositor {
     height: this.height,
     layoutApplier: this.layoutApplier,
   });
-  private timelineFixedClipBuilder = new TimelineFixedClipBuilder({
+  private timelineClipAssetLoader = new TimelineClipAssetLoader({
     clipFactory: this.clipFactory,
     hudMediaLoader: this.hudMediaLoader,
     mediaClipLoader: this.mediaClipLoader,
   });
-  private timelineMediaClipBuilder = new TimelineMediaClipBuilder({
-    clipFactory: this.clipFactory,
-    layoutApplier: this.layoutApplier,
-  });
   private timelineLoadOrchestrator = new TimelineLoadOrchestrator({
     timelineClipLoader: this.timelineClipLoader,
-    timelineFixedClipBuilder: this.timelineFixedClipBuilder,
-    timelineMediaClipBuilder: this.timelineMediaClipBuilder,
+    timelineClipAssetLoader: this.timelineClipAssetLoader,
+    clipFactory: this.clipFactory,
+    layoutApplier: this.layoutApplier,
     mediaClipLoader: this.mediaClipLoader,
     rasterImageLoader: this.rasterImageLoader,
   });
@@ -520,19 +516,16 @@ export class VideoCompositor {
       height: this.height,
       layoutApplier: this.layoutApplier,
     });
-    this.timelineFixedClipBuilder = new TimelineFixedClipBuilder({
+    this.timelineClipAssetLoader = new TimelineClipAssetLoader({
       clipFactory: this.clipFactory,
       hudMediaLoader: this.hudMediaLoader,
       mediaClipLoader: this.mediaClipLoader,
     });
-    this.timelineMediaClipBuilder = new TimelineMediaClipBuilder({
-      clipFactory: this.clipFactory,
-      layoutApplier: this.layoutApplier,
-    });
     this.timelineLoadOrchestrator = new TimelineLoadOrchestrator({
       timelineClipLoader: this.timelineClipLoader,
-      timelineFixedClipBuilder: this.timelineFixedClipBuilder,
-      timelineMediaClipBuilder: this.timelineMediaClipBuilder,
+      timelineClipAssetLoader: this.timelineClipAssetLoader,
+      clipFactory: this.clipFactory,
+      layoutApplier: this.layoutApplier,
       mediaClipLoader: this.mediaClipLoader,
       rasterImageLoader: this.rasterImageLoader,
     });

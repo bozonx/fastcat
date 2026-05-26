@@ -497,6 +497,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
       await projectSettingsRepo.value.save(projectSettings.value);
       await projectUiRepo.value.save({
         version: 1,
+        monitor: initial.monitor,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         monitors: initial.monitors as Record<string, any>,
         timelines: {

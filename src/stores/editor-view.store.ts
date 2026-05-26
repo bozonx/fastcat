@@ -154,6 +154,15 @@ export function createEditorViewModule(
   // Counter instead of boolean so that overlapping loads don't prematurely clear the flag.
   let internalLoadCount = 0;
 
+  function runInternalLayoutLoad(load: () => void) {
+    internalLoadCount++;
+    try {
+      load();
+    } finally {
+      internalLoadCount = Math.max(0, internalLoadCount - 1);
+    }
+  }
+
   const storedCutPanelsSnapshot = computed(() =>
     JSON.stringify(getStoredLayout()?.cutPanels ?? null),
   );
@@ -182,9 +191,7 @@ export function createEditorViewModule(
         return;
       }
 
-      internalLoadCount++;
-      const loadId = internalLoadCount;
-      try {
+      runInternalLayoutLoad(() => {
         const fallback = buildDefaultCutPanelsForOrientation(orientation);
         const stored = getStoredLayout()?.cutPanels ?? null;
 
@@ -209,12 +216,7 @@ export function createEditorViewModule(
           }
         }
         isInitialized.value = true;
-      } finally {
-        setTimeout(() => {
-          if (internalLoadCount === loadId) internalLoadCount = 0;
-          else internalLoadCount = Math.max(0, internalLoadCount - 1);
-        }, 50);
-      }
+      });
     },
     { immediate: true },
   );
@@ -225,9 +227,7 @@ export function createEditorViewModule(
     ([projectId]) => {
       if (!projectId) return;
 
-      internalLoadCount++;
-      const loadId = internalLoadCount;
-      try {
+      runInternalLayoutLoad(() => {
         const stored = getStoredLayout()?.soundPanels ?? null;
         if (stored && Array.isArray(stored) && stored.length > 0) {
           soundPanels.value = sanitizePanelColumns(stored, defaultSoundPanels);
@@ -236,12 +236,7 @@ export function createEditorViewModule(
             soundPanels.value = sanitizePanelColumns(defaultSoundPanels, defaultSoundPanels);
           }
         }
-      } finally {
-        setTimeout(() => {
-          if (internalLoadCount === loadId) internalLoadCount = 0;
-          else internalLoadCount = Math.max(0, internalLoadCount - 1);
-        }, 50);
-      }
+      });
     },
     { immediate: true },
   );

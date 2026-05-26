@@ -292,7 +292,7 @@ export class ClipResourceManager {
 
           if (clip.sourceKind !== 'videoFrame' && clip.sprite) {
             (clip.sprite as Sprite).texture.source = clip.imageSource;
-            clip.sourceKind = 'videoFrame';
+            (clip as { sourceKind: CompositorClip['sourceKind'] }).sourceKind = 'videoFrame';
           }
 
           if (clip.imageSource.width !== frameW || clip.imageSource.height !== frameH) {

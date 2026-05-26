@@ -9,7 +9,7 @@ import {
 } from '~/timeline/commands/utils';
 import { formatTimecode } from '~/utils/timecode';
 import { sanitizeFps as sanitizeMonitorFps } from '~/utils/monitor-time';
-import { buildMonitorTimecodeText } from '~/composables/monitor/useMonitorPlayback.timecode';
+import { buildMonitorTimecodeText } from '~/composables/monitor/useMonitorPlayback';
 
 /**
  * These tests pin down the timeline's time-accuracy guarantees so regressions

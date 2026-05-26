@@ -7,7 +7,7 @@ import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoad
 import { resolveBlendMode, type CompositorClip, type HudMediaState } from './types';
 import { Sprite, Texture } from 'pixi.js';
 import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
-const log = createDevLogger('TimelineFixedClipBuilder');
+const log = createDevLogger('TimelineClipAssetLoader');
 
 export interface TimelineFixedClipDescriptor {
   clipType: 'background' | 'adjustment' | 'text' | 'shape' | 'hud';
@@ -27,14 +27,14 @@ export interface BuildFixedClipParams {
   toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined;
 }
 
-export interface TimelineFixedClipBuilderContext {
+export interface TimelineClipAssetLoaderContext {
   clipFactory: ClipFactory;
   hudMediaLoader: HudMediaLoader;
   mediaClipLoader: MediaClipLoader;
 }
 
-export class TimelineFixedClipBuilder {
-  constructor(private readonly context: TimelineFixedClipBuilderContext) {}
+export class TimelineClipAssetLoader {
+  constructor(private readonly context: TimelineClipAssetLoaderContext) {}
 
   public build(params: BuildFixedClipParams): CompositorClip {
     const { clipData, descriptor, toVideoEffects } = params;

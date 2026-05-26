@@ -8,9 +8,11 @@ import type { VideoClipEffect } from '~/timeline/types';
 import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';
 import type { RasterImageLoader } from './RasterImageLoader';
 import type { TimelineClipDescriptor, TimelineClipLoader } from './TimelineClipLoader';
-import type { TimelineFixedClipBuilder } from './TimelineFixedClipBuilder';
-import type { TimelineMediaClipBuilder } from './TimelineMediaClipBuilder';
+import type { TimelineClipAssetLoader } from './TimelineClipAssetLoader';
+import type { ClipFactory } from './ClipFactory';
+import type { LayoutApplier } from './LayoutApplier';
 import type { CompositorClip, CompositorTrack } from './types';
+import { resolveBlendMode } from './types';
 const log = createDevLogger('TimelineLoadOrchestrator');
 
 export interface TimelineLoadOrchestratorDeps {
@@ -28,8 +30,9 @@ export interface TimelineLoadOrchestratorDeps {
 
 export interface TimelineLoadOrchestratorContext {
   timelineClipLoader: TimelineClipLoader;
-  timelineFixedClipBuilder: TimelineFixedClipBuilder;
-  timelineMediaClipBuilder: TimelineMediaClipBuilder;
+  timelineClipAssetLoader: TimelineClipAssetLoader;
+  clipFactory: ClipFactory;
+  layoutApplier: LayoutApplier;
   mediaClipLoader: MediaClipLoader;
   rasterImageLoader: RasterImageLoader;
 }
@@ -171,7 +174,7 @@ export class TimelineLoadOrchestrator {
       });
 
       if (updated.clip.clipKind === 'hud' && updated.clip.hudDirty) {
-        await this.context.timelineFixedClipBuilder.initializeHudMediaStates({
+        await this.context.timelineClipAssetLoader.initializeHudMediaStates({
           clip: updated.clip,
           deps,
           mediabunny,
@@ -200,7 +203,7 @@ export class TimelineLoadOrchestrator {
       sequentialTimeUs = fixedDuration.sequentialTimeUs;
 
       callbacks.replaceExistingClip({ reusable, itemId });
-      const compositorClip = this.context.timelineFixedClipBuilder.build({
+      const compositorClip = this.context.timelineClipAssetLoader.build({
         clipData: clipData as Record<string, unknown>,
         descriptor: {
           clipType,
@@ -220,14 +223,14 @@ export class TimelineLoadOrchestrator {
         nextClipById,
       });
       if (clipType === 'hud') {
-        await this.context.timelineFixedClipBuilder.initializeHudMediaStates({
+        await this.context.timelineClipAssetLoader.initializeHudMediaStates({
           clip: compositorClip,
           deps,
           mediabunny,
         });
       }
       if (descriptor.maskPath) {
-        await this.context.timelineFixedClipBuilder.initializeMaskState({
+        await this.context.timelineClipAssetLoader.initializeMaskState({
           clip: compositorClip,
           deps,
           mediabunny,
@@ -283,30 +286,51 @@ export class TimelineLoadOrchestrator {
         (imageSource as { resource?: unknown }).resource = bitmap as unknown;
         imageSource.update();
       }
-      const compositorClip = this.context.timelineMediaClipBuilder.createImageClip({
-        clipData: clipData as Record<string, unknown>,
-        descriptor: {
-          itemId,
-          trackId,
-          layer,
-          sourcePath,
-          fileHandle,
-          startUs,
-          endUs: fixedDuration.endUs,
-          requestedTimelineDurationUs,
-          speed,
-        },
+      const compositorClip = this.context.clipFactory.createImageClip({
+        itemId,
+        trackId,
+        layer,
+        sourcePath,
+        fileHandle,
+        startUs,
+        endUs: fixedDuration.endUs,
+        durationUs: Math.max(0, requestedTimelineDurationUs),
+        sourceStartUs: 0,
+        sourceRangeDurationUs: Math.max(0, requestedTimelineDurationUs),
+        sourceDurationUs: Math.max(0, requestedTimelineDurationUs),
+        speed,
         bitmap,
         imageSource,
-        toVideoEffects: callbacks.toVideoEffects,
+        opacity: (clipData as Record<string, unknown>).opacity as number | undefined,
+        blendMode: resolveBlendMode((clipData as Record<string, unknown>).blendMode),
+        effects: callbacks.toVideoEffects((clipData as Record<string, unknown>).effects),
+        transform: (clipData as Record<string, unknown>).transform as
+          | import('~/timeline/types').ClipTransform
+          | undefined,
+        sourceOrientation: (clipData as Record<string, unknown>)
+          .sourceOrientation as CompositorClip['sourceOrientation'],
+        transitionIn: (clipData as Record<string, unknown>).transitionIn as
+          | import('~/timeline/types').ClipTransition
+          | undefined,
+        transitionOut: (clipData as Record<string, unknown>).transitionOut as
+          | import('~/timeline/types').ClipTransition
+          | undefined,
+        mask: (clipData as Record<string, unknown>).mask as
+          | import('~/timeline/types').ClipMask
+          | undefined,
       });
+      if (bitmap) {
+        const frameW = Math.max(1, Math.round(bitmap.width ?? 1));
+        const frameH = Math.max(1, Math.round(bitmap.height ?? 1));
+        this.context.layoutApplier.applySpriteLayout(frameW, frameH, compositorClip);
+      }
       callbacks.registerLoadedClip({
         clip: compositorClip,
         nextClips,
         nextClipById,
       });
       if (descriptor.maskPath) {
-        await this.context.timelineFixedClipBuilder.initializeMaskState({
+        await this.context.timelineClipAssetLoader.initializeMaskState({
           clip: compositorClip,
           deps,
           mediabunny,
@@ -335,23 +359,20 @@ export class TimelineLoadOrchestrator {
       }
 
       sequentialTimeUs = Math.max(sequentialTimeUs, loadedVideo.endUs);
-      const compositorClip = this.context.timelineMediaClipBuilder.createVideoClip({
-        clipData: clipData as Record<string, unknown>,
-        descriptor: {
-          itemId,
-          trackId,
-          layer,
-          sourcePath,
-          fileHandle,
-          startUs,
-          endUs: loadedVideo.endUs,
-          durationUs: loadedVideo.durationUs,
-          sourceStartUs,
-          sourceRangeDurationUs: loadedVideo.sourceRangeDurationUs,
-          sourceDurationUs: loadedVideo.sourceDurationUs,
-          speed,
-          freezeFrameSourceUs,
-        },
+      const compositorClip = this.context.clipFactory.createVideoClip({
+        itemId,
+        trackId,
+        layer,
+        sourcePath,
+        fileHandle,
+        startUs,
+        endUs: loadedVideo.endUs,
+        durationUs: loadedVideo.durationUs,
+        sourceStartUs,
+        sourceRangeDurationUs: loadedVideo.sourceRangeDurationUs,
+        sourceDurationUs: loadedVideo.sourceDurationUs,
+        speed,
+        freezeFrameSourceUs,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         input: loadedVideo.input as any,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -360,7 +381,23 @@ export class TimelineLoadOrchestrator {
         frameRate: loadedVideo.frameRate,
         imageSource: loadedVideo.imageSource,
         sourceRotation: loadedVideo.sourceRotation,
-        toVideoEffects: callbacks.toVideoEffects,
+        opacity: (clipData as Record<string, unknown>).opacity as number | undefined,
+        blendMode: resolveBlendMode((clipData as Record<string, unknown>).blendMode),
+        effects: callbacks.toVideoEffects((clipData as Record<string, unknown>).effects),
+        transform: (clipData as Record<string, unknown>).transform as
+          | import('~/timeline/types').ClipTransform
+          | undefined,
+        sourceOrientation: (clipData as Record<string, unknown>)
+          .sourceOrientation as CompositorClip['sourceOrientation'],
+        transitionIn: (clipData as Record<string, unknown>).transitionIn as
+          | import('~/timeline/types').ClipTransition
+          | undefined,
+        transitionOut: (clipData as Record<string, unknown>).transitionOut as
+          | import('~/timeline/types').ClipTransition
+          | undefined,
+        mask: (clipData as Record<string, unknown>).mask as
+          | import('~/timeline/types').ClipMask
+          | undefined,
       });
       callbacks.registerLoadedClip({
         clip: compositorClip,
@@ -368,7 +405,7 @@ export class TimelineLoadOrchestrator {
         nextClipById,
       });
       if (descriptor.maskPath) {
-        await this.context.timelineFixedClipBuilder.initializeMaskState({
+        await this.context.timelineClipAssetLoader.initializeMaskState({
           clip: compositorClip,
           deps,
           mediabunny,

@@ -30,7 +30,7 @@ export interface HudMediaState {
   bitmap: ImageBitmap | null;
 }
 
-export interface CompositorClip {
+export interface BaseCompositorClip {
   itemId: string;
   trackId?: string;
   layer: number;
@@ -52,26 +52,11 @@ export interface CompositorClip {
 
   freezeFrameSourceUs?: number;
   sprite: Sprite | Graphics | null;
-  clipType?: 'background' | 'adjustment' | 'media' | 'text' | 'shape' | 'hud';
-  clipKind: 'video' | 'image' | 'solid' | 'adjustment' | 'text' | 'shape' | 'hud';
-  sourceKind: 'videoFrame' | 'canvas' | 'bitmap' | 'graphics';
   imageSource: ImageSource;
   lastVideoFrame: VideoFrame | null;
   canvas: OffscreenCanvas | null;
   ctx: OffscreenCanvasRenderingContext2D | null;
   bitmap: ImageBitmap | null;
-  backgroundColor?: string;
-  text?: string;
-  style?: TextClipStyle;
-  shapeType?: ShapeType;
-  fillColor?: string;
-  strokeColor?: string;
-  strokeWidth?: number;
-  shapeConfig?: ShapeConfig;
-  hudType?: HudType;
-  background?: HudMediaParams;
-  content?: HudMediaParams;
-  frame?: HudMediaParams;
   opacity?: number;
   blendMode?: TimelineBlendMode;
   effects?: VideoClipEffect[];
@@ -90,6 +75,20 @@ export interface CompositorClip {
   adjustmentSourceTexture?: RenderTexture | null;
   cropMask?: import('pixi.js').Graphics;
   cropMaskKey?: string;
+  mask?: ClipMask;
+  maskState?: HudMediaState | null;
+  backgroundColor?: string;
+  text?: string;
+  style?: TextClipStyle;
+  shapeType?: ShapeType;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  shapeConfig?: ShapeConfig;
+  hudType?: HudType;
+  background?: HudMediaParams;
+  content?: HudMediaParams;
+  frame?: HudMediaParams;
   textDirty?: boolean;
   shapeDirty?: boolean;
   hudDirty?: boolean;
@@ -98,11 +97,91 @@ export interface CompositorClip {
     content?: HudMediaState;
     frame?: HudMediaState;
   };
-  mask?: ClipMask;
-  maskState?: HudMediaState | null;
   /** Intrinsic video rotation from source metadata (e.g. 90 for phone vertical video). Applied automatically by LayoutApplier. */
   sourceRotation?: number;
 }
+
+export interface MediaCompositorClipBase extends BaseCompositorClip {
+  clipType: 'media';
+  sourcePath: string;
+  fileHandle: FileSystemFileHandle;
+}
+
+export interface VideoCompositorClip extends MediaCompositorClipBase {
+  clipKind: 'video';
+  sourceKind: 'videoFrame';
+  input?: Input;
+  sink?: VideoSampleSink;
+  firstTimestampS?: number;
+  frameRate?: number;
+  /** Intrinsic video rotation from source metadata (e.g. 90 for phone vertical video). Applied automatically by LayoutApplier. */
+  sourceRotation?: number;
+}
+
+export interface ImageCompositorClip extends MediaCompositorClipBase {
+  clipKind: 'image';
+  sourceKind: 'bitmap';
+}
+
+export interface SolidCompositorClip extends BaseCompositorClip {
+  clipType: 'background';
+  clipKind: 'solid';
+  sourceKind: 'bitmap';
+  backgroundColor: string;
+}
+
+export interface AdjustmentCompositorClip extends BaseCompositorClip {
+  clipType: 'adjustment';
+  clipKind: 'adjustment';
+  sourceKind: 'bitmap';
+  adjustmentSourceTexture?: RenderTexture | null;
+}
+
+export interface TextCompositorClip extends BaseCompositorClip {
+  clipType: 'text';
+  clipKind: 'text';
+  sourceKind: 'canvas';
+  text: string;
+  style?: TextClipStyle;
+  textDirty?: boolean;
+}
+
+export interface ShapeCompositorClip extends BaseCompositorClip {
+  clipType: 'shape';
+  clipKind: 'shape';
+  sourceKind: 'graphics';
+  shapeType: ShapeType;
+  fillColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  shapeConfig?: ShapeConfig;
+  shapeDirty?: boolean;
+}
+
+export interface HudCompositorClip extends BaseCompositorClip {
+  clipType: 'hud';
+  clipKind: 'hud';
+  sourceKind: 'bitmap';
+  hudType: HudType;
+  background?: HudMediaParams;
+  content?: HudMediaParams;
+  frame?: HudMediaParams;
+  hudDirty?: boolean;
+  hudMediaStates?: {
+    background?: HudMediaState;
+    content?: HudMediaState;
+    frame?: HudMediaState;
+  };
+}
+
+export type CompositorClip =
+  | VideoCompositorClip
+  | ImageCompositorClip
+  | SolidCompositorClip
+  | AdjustmentCompositorClip
+  | TextCompositorClip
+  | ShapeCompositorClip
+  | HudCompositorClip;
 
 export interface CompositorTrack {
   id: string;

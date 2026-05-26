@@ -1,20 +1,185 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { sanitizeFps } from '~/utils/monitor-time';
-import { syncMonitorAudioLevels } from './useMonitorPlayback.audioLevels';
-import {
-  advanceMonitorPlaybackLoop,
-  resetMonitorPlaybackLoopState,
-} from './useMonitorPlayback.loop';
-import { canPlayMonitorScrubPreview } from './useMonitorPlayback.scrub';
-import { syncMonitorTimecodeText } from './useMonitorPlayback.timecode';
-import { syncMonitorPlaybackVisibility } from './useMonitorPlayback.visibility';
+import { normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
+import { formatTimecode } from '~/utils/timecode';
 
 import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 const log = createDevLogger('useMonitorPlayback');
+
+interface MonitorPlaybackLoopState {
+  lastFrameTimeMs: number;
+  renderAccumulatorMs: number;
+  storeSyncAccumulatorMs: number;
+  audioLevelsAccumulatorMs: number;
+}
+
+interface MonitorScrubPreviewState {
+  lastScrubPreviewAtMs: number;
+}
+
+function resetMonitorPlaybackLoopState(state: MonitorPlaybackLoopState) {
+  state.lastFrameTimeMs = 0;
+  state.renderAccumulatorMs = 0;
+  state.storeSyncAccumulatorMs = 0;
+  state.audioLevelsAccumulatorMs = 0;
+}
+
+function advanceMonitorPlaybackLoop(params: {
+  timestamp: number;
+  state: MonitorPlaybackLoopState;
+}) {
+  const deltaMsRaw = params.timestamp - params.state.lastFrameTimeMs;
+  const deltaMs = Number.isFinite(deltaMsRaw) && deltaMsRaw > 0 ? deltaMsRaw : 0;
+
+  params.state.lastFrameTimeMs = params.timestamp;
+  params.state.renderAccumulatorMs += deltaMs;
+  params.state.storeSyncAccumulatorMs += deltaMs;
+  params.state.audioLevelsAccumulatorMs += deltaMs;
+}
+
+function canPlayMonitorScrubPreview(params: {
+  fromUs: number;
+  toUs: number;
+  state: MonitorScrubPreviewState;
+  isUnmounted: boolean;
+  isPlaying: boolean;
+  isLoading: boolean;
+  hasLoadError: boolean;
+  minDeltaUs: number;
+  maxDeltaUs: number;
+  throttleMs: number;
+  nowMs?: number;
+}): boolean {
+  if (params.isUnmounted || params.isPlaying || params.isLoading || params.hasLoadError) {
+    return false;
+  }
+
+  const deltaUs = params.toUs - params.fromUs;
+  if (deltaUs < params.minDeltaUs || deltaUs > params.maxDeltaUs) {
+    return false;
+  }
+
+  const now = params.nowMs ?? performance.now();
+  if (now - params.state.lastScrubPreviewAtMs < params.throttleMs) {
+    return false;
+  }
+
+  params.state.lastScrubPreviewAtMs = now;
+  return true;
+}
+
+function approxEqual(a: number, b: number) {
+  return Math.abs(a - b) <= 0.2;
+}
+
+function syncMonitorAudioLevels(params: {
+  timelineStore: ReturnType<typeof useTimelineStore>;
+  audioEngine: AudioEngine;
+}) {
+  const prevLevels = params.timelineStore.audioLevels;
+  const nextLevels = { ...prevLevels };
+  const masterLevels = params.audioEngine.getLevels();
+  nextLevels.master = masterLevels;
+
+  const tracks = params.timelineStore.timelineDoc?.tracks ?? [];
+  for (const track of tracks) {
+    if (track.kind === 'audio' || track.kind === 'video') {
+      nextLevels[track.id] = params.audioEngine.getLevels(track.id);
+    }
+  }
+
+  let changed = false;
+  for (const [id, levels] of Object.entries(nextLevels)) {
+    const prev = prevLevels[id];
+    if (!prev) {
+      changed = true;
+      break;
+    }
+
+    if (!approxEqual(prev.rmsDb, levels.rmsDb) || !approxEqual(prev.peakDb, levels.peakDb)) {
+      changed = true;
+      break;
+    }
+  }
+
+  if (!changed && Object.keys(prevLevels).length === Object.keys(nextLevels).length) {
+    return;
+  }
+
+  params.timelineStore.audioLevels = nextLevels;
+}
+
+function syncMonitorPlaybackVisibility(params: {
+  isPlaying: boolean;
+  isMobile: boolean;
+  clampToTimeline: (timeUs: number) => number;
+  audioEngine: AudioEngine;
+  onPauseHiddenPlayback: () => void;
+  onRestoreVisiblePlayback: (timeUs: number) => void;
+}) {
+  if (document.hidden) {
+    if (params.isMobile && params.isPlaying) {
+      params.onPauseHiddenPlayback();
+    }
+    return;
+  }
+
+  if (!params.isPlaying) {
+    return;
+  }
+
+  const timeUs = params.clampToTimeline(params.audioEngine.getCurrentTimeUs());
+  params.onRestoreVisiblePlayback(timeUs);
+}
+
+export function formatMonitorTimecode(params: { timeUs: number; fps: number }): string {
+  if (!Number.isFinite(params.timeUs) || params.timeUs <= 0) {
+    return '00:00:00:00';
+  }
+
+  return formatTimecode(params.timeUs, params.fps);
+}
+
+export function buildMonitorTimecodeText(params: {
+  currentTimeUs: number;
+  durationUs: number;
+  fps: number;
+}): string {
+  const current = formatMonitorTimecode({
+    timeUs: params.currentTimeUs,
+    fps: params.fps,
+  });
+  const total = formatMonitorTimecode({
+    timeUs: normalizeTimeUs(params.durationUs),
+    fps: params.fps,
+  });
+
+  return `${current} / ${total}`;
+}
+
+function syncMonitorTimecodeText(params: {
+  element: HTMLElement | null;
+  currentTimeUs: number;
+  durationUs: number;
+  fps: number;
+}) {
+  if (!params.element) {
+    return;
+  }
+
+  const nextText = buildMonitorTimecodeText({
+    currentTimeUs: params.currentTimeUs,
+    durationUs: params.durationUs,
+    fps: params.fps,
+  });
+
+  if (params.element.textContent !== nextText) {
+    params.element.textContent = nextText;
+  }
+}
 
 export interface UseMonitorPlaybackOptions {
   isLoading: { value: boolean };
