@@ -11,6 +11,7 @@ import {
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs } from '~/utils/monitor-time';
+import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 
 import type { WorkerTimelineClip } from './types';
 import type { UseMonitorCoreOptions } from './useMonitorCore.types';
@@ -75,7 +76,21 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let resizeScheduled = false;
   let workerTimelineOperation: Promise<void> = Promise.resolve();
 
-  const audioEngine = new AudioEngine();
+  const audioEngine = new AudioEngine({
+    getAudioCacheRoot: async () => {
+      const workspaceHandle = workspaceStore.workspaceHandle;
+      const projectId = currentProjectStore.currentProjectId;
+      if (!workspaceHandle || !projectId) return null;
+
+      return (await ensureResolvedProjectTempDir({
+        workspaceHandle,
+        topology: workspaceStore.resolvedStorageTopology,
+        projectId,
+        leafSegments: ['audio-cache'],
+        create: true,
+      })) as FileSystemDirectoryHandle;
+    },
+  });
   const { client } = getPreviewWorkerClient();
   const compositorRuntime = createMonitorCompositorRuntime({
     client,

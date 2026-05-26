@@ -5,11 +5,16 @@ import {
   DecodeWorkerClient,
   DECODE_CANCELLED_MESSAGE,
 } from '~/utils/video-editor/decode-worker-client';
+import {
+  readAudioChunkFromFileCache,
+  writeAudioChunkToFileCache,
+} from '~/utils/video-editor/audio-chunk-file-cache';
 const log = createDevLogger('AudioChunkDecoder');
 
 export interface AudioChunkDecoderOptions {
   getContext: () => AudioContext | null;
   collectPinnedBuffers: () => Set<AudioBuffer>;
+  getCacheRoot?: () => Promise<FileSystemDirectoryHandle | null>;
   chunkSizeS?: number;
   maxChunkCount?: number;
 }
@@ -43,6 +48,7 @@ const DEFAULT_MAX_CHUNK_COUNT = 100;
 export class AudioChunkDecoder {
   private readonly getContext: AudioChunkDecoderOptions['getContext'];
   private readonly collectPinnedBuffers: AudioChunkDecoderOptions['collectPinnedBuffers'];
+  private readonly getCacheRoot?: AudioChunkDecoderOptions['getCacheRoot'];
   private readonly chunkSizeS: number;
   private readonly maxChunkCount: number;
   private chunkCache = new Map<string, AudioChunk[]>();
@@ -50,12 +56,13 @@ export class AudioChunkDecoder {
   private failedChunkKeys = new Set<string>();
   private chunkRetryCounts = new Map<string, number>();
   private chunkLruKeys = new Map<string, true>();
-  private fileBlobCache = new Map<string, Blob>();
+  private fileBlobCache = new Map<string, File>();
   private readonly decodeClient = new DecodeWorkerClient();
 
   constructor(options: AudioChunkDecoderOptions) {
     this.getContext = options.getContext;
     this.collectPinnedBuffers = options.collectPinnedBuffers;
+    this.getCacheRoot = options.getCacheRoot;
     this.chunkSizeS = options.chunkSizeS ?? DEFAULT_CHUNK_SIZE_S;
     this.maxChunkCount = options.maxChunkCount ?? DEFAULT_MAX_CHUNK_COUNT;
   }
@@ -181,6 +188,21 @@ export class AudioChunkDecoder {
         if (!ctx) return null;
 
         const requestedStartTimeS = chunkIndex * this.chunkSizeS;
+        const persistentCacheRoot = await this.getPersistentCacheRoot();
+        const cachedChunk = await readAudioChunkFromFileCache({
+          cacheRoot: persistentCacheRoot,
+          sourceKey,
+          chunkIndex,
+          chunkSizeS: this.chunkSizeS,
+          sourceFile: blob,
+          context: ctx,
+        });
+        if (cachedChunk) {
+          const chunk: AudioChunk = cachedChunk;
+          this.addChunk(sourceKey, chunk, chunkKey);
+          return chunk;
+        }
+
         const decoded = await this.decodeClient.decodeRange(
           blob,
           sourceKey,
@@ -218,6 +240,16 @@ export class AudioChunkDecoder {
         };
 
         this.addChunk(sourceKey, chunk, chunkKey);
+        void writeAudioChunkToFileCache({
+          cacheRoot: persistentCacheRoot,
+          sourceKey,
+          chunkIndex,
+          chunkSizeS: this.chunkSizeS,
+          sourceFile: blob,
+          chunk,
+        }).catch((err) => {
+          log.warn(`[AudioEngine] Failed to persist audio chunk ${chunkKey}`, err);
+        });
         return chunk;
       } catch (err) {
         this.handleDecodeError({ err, chunkKey, sourceKey });
@@ -266,6 +298,17 @@ export class AudioChunkDecoder {
 
   private getSourceKeyFromChunkKey(chunkKey: string): string {
     return chunkKey.slice(0, chunkKey.lastIndexOf(':'));
+  }
+
+  private async getPersistentCacheRoot(): Promise<FileSystemDirectoryHandle | null> {
+    if (!this.getCacheRoot) return null;
+
+    try {
+      return await this.getCacheRoot();
+    } catch (err) {
+      log.warn('[AudioEngine] Failed to resolve audio chunk cache root', err);
+      return null;
+    }
   }
 
   private touchLru(chunkKey: string) {

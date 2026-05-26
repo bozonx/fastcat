@@ -3,8 +3,12 @@ const log = createDevLogger('AudioScheduler');
 export interface AudioSchedulerOptions {
   getContext: () => AudioContext | null;
   onScheduleLookahead: () => void;
-  onStopNodes: () => void;
+  onStopNodes: (options?: AudioSchedulerStopOptions) => void;
   kickoffLatencyS?: number;
+}
+
+export interface AudioSchedulerStopOptions {
+  fadeOutS?: number;
 }
 
 // Time we hold off before audio actually starts emitting sound, to absorb
@@ -13,6 +17,7 @@ export interface AudioSchedulerOptions {
 // glitch or get dropped; scheduling at ctx.currentTime + this delta gives us
 // a stable kickoff for synchronous video/audio start.
 const DEFAULT_KICKOFF_LATENCY_S = 0.05;
+const TRANSITION_FADE_OUT_S = 0.02;
 
 function normalizeKickoffLatency(value: number | undefined): number {
   const parsed = Number(value);
@@ -101,7 +106,7 @@ export class AudioScheduler {
       return;
     }
 
-    this.onStopNodes();
+    this.onStopNodes({ fadeOutS: TRANSITION_FADE_OUT_S });
     this.stopLookahead();
     this.scheduledClipIds.clear();
     this.baseTimeS = currentTimeS;
@@ -123,7 +128,7 @@ export class AudioScheduler {
       return;
     }
 
-    this.onStopNodes();
+    this.onStopNodes({ fadeOutS: TRANSITION_FADE_OUT_S });
     this.scheduledClipIds.clear();
     this.baseTimeS = timeUs / 1_000_000;
 

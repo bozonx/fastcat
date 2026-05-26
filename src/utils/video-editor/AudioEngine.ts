@@ -21,6 +21,12 @@ import type {
 export type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
 
 const logger = createDevLogger('AudioEngine');
+const TRANSITION_FADE_IN_S = 0.02;
+const CHUNK_EDGE_FADE_S = 0.005;
+
+export interface AudioEngineOptions {
+  getAudioCacheRoot?: () => Promise<FileSystemDirectoryHandle | null>;
+}
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -31,8 +37,10 @@ export class AudioEngine {
   private readonly schedulingLookaheadS = 30;
   private activeNodes = new Set<AudioBufferSourceNode>();
   private activeCleanups = new Map<AudioBufferSourceNode, () => void>();
+  private activeGains = new Map<AudioBufferSourceNode, GainNode>();
   private activeScrubNodes = new Set<AudioBufferSourceNode>();
   private activeScrubCleanups = new Map<AudioBufferSourceNode, () => void>();
+  private activeScrubGains = new Map<AudioBufferSourceNode, GainNode>();
   private masterGain: GainNode | null = null;
   private monitorGain: GainNode | null = null;
   private currentClips: AudioEngineClip[] = [];
@@ -40,20 +48,19 @@ export class AudioEngine {
   private readonly activePlaybackCollection: AudioNodeCollection = {
     nodes: this.activeNodes,
     cleanups: this.activeCleanups,
+    gains: this.activeGains,
   };
   private readonly activeScrubCollection: AudioNodeCollection = {
     nodes: this.activeScrubNodes,
     cleanups: this.activeScrubCleanups,
+    gains: this.activeScrubGains,
   };
   private readonly graphBuilder = new AudioGraphBuilder();
-  private readonly chunkDecoder = new AudioChunkDecoder({
-    getContext: () => this.ctx,
-    collectPinnedBuffers: () => this.collectPinnedBuffers(),
-  });
+  private readonly chunkDecoder: AudioChunkDecoder;
   private readonly scheduler = new AudioScheduler({
     getContext: () => this.ctx,
     onScheduleLookahead: () => this.scheduleLookahead(),
-    onStopNodes: () => this.stopAllNodes(),
+    onStopNodes: (options) => this.stopAllNodes(options),
   });
 
   private currentMasterVolume = 1;
@@ -64,6 +71,14 @@ export class AudioEngine {
 
   private analyserNodes = new Map<string, AnalyserNode>(); // map by trackId or "master"
   private analyserData = new Float32Array(2048);
+
+  constructor(options: AudioEngineOptions = {}) {
+    this.chunkDecoder = new AudioChunkDecoder({
+      getContext: () => this.ctx,
+      collectPinnedBuffers: () => this.collectPinnedBuffers(),
+      getCacheRoot: options.getAudioCacheRoot,
+    });
+  }
 
   private collectPinnedBuffers(): Set<AudioBuffer> {
     const pinned = new Set<AudioBuffer>();
@@ -265,6 +280,7 @@ export class AudioEngine {
       maxPlaybackDurationS?: number;
       nodeSet?: Set<AudioBufferSourceNode>;
       cleanupMap?: Map<AudioBufferSourceNode, () => void>;
+      gainMap?: Map<AudioBufferSourceNode, GainNode>;
       requirePlayingActive?: boolean;
     },
   ) {
@@ -419,7 +435,7 @@ export class AudioEngine {
       chunkGainNode.connect(clipInputNode);
 
       const actualPlayDurationS = playDurationS / window.effectiveSpeed;
-      const fadeDurationS = Math.min(0.005, actualPlayDurationS / 2);
+      const fadeDurationS = Math.min(CHUNK_EDGE_FADE_S, actualPlayDurationS / 2);
       if (fadeDurationS > 0) {
         chunkGainNode.gain.setValueAtTime(0, scheduledTimeS);
         chunkGainNode.gain.linearRampToValueAtTime(1, scheduledTimeS + fadeDurationS);
@@ -441,6 +457,7 @@ export class AudioEngine {
 
     const targetNodeSet = options?.nodeSet ?? this.activePlaybackCollection.nodes;
     const targetCleanupMap = options?.cleanupMap ?? this.activePlaybackCollection.cleanups;
+    const targetGainMap = options?.gainMap ?? this.activePlaybackCollection.gains;
 
     const cleanupAll = () => {
       destroyEffects();
@@ -456,6 +473,7 @@ export class AudioEngine {
       }
       for (const node of chunkNodes) {
         targetNodeSet.delete(node);
+        targetGainMap.delete(node);
         try {
           node.disconnect();
         } catch {
@@ -481,9 +499,11 @@ export class AudioEngine {
       const node = chunkNodes[i];
       if (!node) continue;
       targetNodeSet.add(node);
+      targetGainMap.set(node, chunkGainNodes[i]!);
 
       node.onended = () => {
         targetNodeSet.delete(node);
+        targetGainMap.delete(node);
         if (i === lastIndex) {
           cleanupAll();
         }
@@ -665,13 +685,16 @@ export class AudioEngine {
           maxPlaybackDurationS,
           nodeSet: this.activeScrubCollection.nodes,
           cleanupMap: this.activeScrubCollection.cleanups,
+          gainMap: this.activeScrubCollection.gains,
         },
       );
     }
   }
 
   stopScrubPreview() {
-    stopNodeCollection(this.activeScrubNodes, this.activeScrubCleanups);
+    stopNodeCollection(this.activeScrubNodes, this.activeScrubCleanups, {
+      gains: this.activeScrubGains,
+    });
   }
 
   setGlobalSpeed(speed: number) {
@@ -901,6 +924,7 @@ export class AudioEngine {
     // Streaming state shared across chunk schedules.
     const targetNodeSet = this.activePlaybackCollection.nodes;
     const targetCleanupMap = this.activePlaybackCollection.cleanups;
+    const targetGainMap = this.activePlaybackCollection.gains;
     const state = {
       scheduledCtxTimeS: playStartS,
       currentSourceTimeS,
@@ -930,6 +954,7 @@ export class AudioEngine {
       for (const node of state.chunkNodes) {
         targetNodeSet.delete(node);
         targetCleanupMap.delete(node);
+        targetGainMap.delete(node);
         try {
           node.disconnect();
         } catch {
@@ -993,7 +1018,12 @@ export class AudioEngine {
       chunkGainNode.connect(clipInputNode);
 
       const actualPlayDurationS = playDurationS / window.effectiveSpeed;
-      const fadeDurationS = Math.min(0.005, actualPlayDurationS / 2);
+      const startsAtKickoff =
+        Math.abs(state.scheduledCtxTimeS - this.scheduler.getPlaybackStartCtxTimeS()) < 1e-4;
+      const fadeDurationS = Math.min(
+        startsAtKickoff ? TRANSITION_FADE_IN_S : CHUNK_EDGE_FADE_S,
+        actualPlayDurationS / 2,
+      );
       if (fadeDurationS > 0) {
         chunkGainNode.gain.setValueAtTime(0, state.scheduledCtxTimeS);
         chunkGainNode.gain.linearRampToValueAtTime(1, state.scheduledCtxTimeS + fadeDurationS);
@@ -1015,6 +1045,7 @@ export class AudioEngine {
       state.chunkGainNodes.push(chunkGainNode);
       state.scheduledTotal += 1;
       targetNodeSet.add(sourceNode);
+      targetGainMap.set(sourceNode, chunkGainNode);
       // Every chunk node maps to the same teardown function. Stop() iterates
       // these via stopNodeCollection — teardown is idempotent via the flag.
       targetCleanupMap.set(sourceNode, teardown);
@@ -1022,6 +1053,7 @@ export class AudioEngine {
       sourceNode.onended = () => {
         targetNodeSet.delete(sourceNode);
         targetCleanupMap.delete(sourceNode);
+        targetGainMap.delete(sourceNode);
         state.endedTotal += 1;
         maybeTeardown();
       };
@@ -1110,8 +1142,12 @@ export class AudioEngine {
     }
   }
 
-  private stopAllNodes() {
-    stopNodeCollection(this.activeNodes, this.activeCleanups);
+  private stopAllNodes(options?: { fadeOutS?: number }) {
+    stopNodeCollection(this.activeNodes, this.activeCleanups, {
+      audioContext: this.ctx,
+      fadeOutS: options?.fadeOutS,
+      gains: this.activeGains,
+    });
   }
 
   destroy() {

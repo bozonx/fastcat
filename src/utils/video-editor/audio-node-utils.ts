@@ -10,6 +10,12 @@ export interface ScheduleGainCurveParams {
   getGainAtClipTime: (clipTimeS: number) => number;
 }
 
+export interface StopNodeCollectionOptions {
+  audioContext?: AudioContext | null;
+  fadeOutS?: number;
+  gains?: Map<AudioBufferSourceNode, GainNode>;
+}
+
 export function scheduleGainCurve(params: ScheduleGainCurveParams) {
   const durationS = params.endAtS - params.startAtS;
   const clipDurationS = params.endClipS - params.startClipS;
@@ -36,25 +42,95 @@ export function scheduleGainCurve(params: ScheduleGainCurveParams) {
 export function stopNodeCollection(
   nodes: Set<AudioBufferSourceNode>,
   cleanups: Map<AudioBufferSourceNode, () => void>,
+  options: StopNodeCollectionOptions = {},
 ) {
-  for (const node of nodes) {
-    try {
-      node.stop();
-      node.disconnect();
-    } catch {
-      /* no-op */
-    }
+  const fadeOutS = Math.max(0, options.fadeOutS ?? 0);
+  const stopAtS =
+    options.audioContext && fadeOutS > 0 ? options.audioContext.currentTime + fadeOutS : 0;
+  const pendingStops: Array<{
+    node: AudioBufferSourceNode;
+    cleanup?: () => void;
+  }> = [];
 
+  for (const node of nodes) {
     const cleanup = cleanups.get(node);
-    if (cleanup) {
+
+    if (stopAtS > 0) {
+      const gain = options.gains?.get(node);
+      if (gain) {
+        const gainParam = gain.gain;
+        try {
+          if (typeof gainParam.cancelAndHoldAtTime === 'function') {
+            gainParam.cancelAndHoldAtTime(options.audioContext?.currentTime ?? 0);
+          } else {
+            gainParam.cancelScheduledValues?.(options.audioContext?.currentTime ?? 0);
+            gainParam.setValueAtTime?.(gainParam.value, options.audioContext?.currentTime ?? 0);
+          }
+          gainParam.linearRampToValueAtTime?.(0, stopAtS);
+        } catch {
+          /* no-op */
+        }
+      }
       try {
-        cleanup();
+        node.stop(stopAtS);
       } catch {
         /* no-op */
       }
-      cleanups.delete(node);
+      pendingStops.push({ node, cleanup });
+      continue;
     }
+
+    stopNode(node, cleanup);
   }
+
   nodes.clear();
   cleanups.clear();
+  options.gains?.clear();
+
+  if (pendingStops.length === 0 || stopAtS <= 0) {
+    return;
+  }
+
+  globalThis.setTimeout(() => {
+    for (const pending of pendingStops) {
+      cleanupNode(pending.node, pending.cleanup);
+    }
+  }, fadeOutS * 1000);
+}
+
+function stopNode(node: AudioBufferSourceNode, cleanup?: () => void) {
+  try {
+    node.stop();
+    node.disconnect();
+  } catch {
+    /* no-op */
+  }
+
+  if (!cleanup) {
+    return;
+  }
+
+  runCleanup(cleanup);
+}
+
+function cleanupNode(node: AudioBufferSourceNode, cleanup?: () => void) {
+  try {
+    node.disconnect();
+  } catch {
+    /* no-op */
+  }
+
+  if (!cleanup) {
+    return;
+  }
+
+  runCleanup(cleanup);
+}
+
+function runCleanup(cleanup: () => void) {
+  try {
+    cleanup();
+  } catch {
+    /* no-op */
+  }
 }

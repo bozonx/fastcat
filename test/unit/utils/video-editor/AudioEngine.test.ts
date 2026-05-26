@@ -87,6 +87,9 @@ class GainNodeMock {
     cancelScheduledValues: vi.fn().mockImplementation(function (this: any) {
       return this;
     }),
+    cancelAndHoldAtTime: vi.fn().mockImplementation(function (this: any) {
+      return this;
+    }),
   };
   connect = vi.fn();
   disconnect = vi.fn();
@@ -260,6 +263,7 @@ describe('AudioEngine', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -355,6 +359,70 @@ describe('AudioEngine', () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     expect(audioContextInstance?.createdSources.length).toBeGreaterThan(initialSources);
+  });
+
+  it('fades out active playback before stopping nodes on seek', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip();
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 10;
+
+    await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+    const source = audioContextInstance.createdSources[0];
+    if (!source) throw new Error('Source was not scheduled');
+    const chunkGain = source.connect.mock.calls[0]?.[0] as GainNodeMock | undefined;
+    if (!chunkGain) throw new Error('Chunk gain was not connected');
+    source.stop.mockClear();
+    source.disconnect.mockClear();
+
+    engine.seek(500_000);
+
+    expect(source.stop).toHaveBeenCalledWith(10.02);
+    expect(source.disconnect).not.toHaveBeenCalled();
+    expect(chunkGain.gain.cancelAndHoldAtTime).toHaveBeenCalledWith(10);
+    expect(chunkGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, 10.02);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 30));
+
+    expect(source.disconnect).toHaveBeenCalled();
+  });
+
+  it('fades out active playback before stopping nodes on speed changes', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip();
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 20;
+
+    await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+    const source = audioContextInstance.createdSources[0];
+    if (!source) throw new Error('Source was not scheduled');
+    const chunkGain = source.connect.mock.calls[0]?.[0] as GainNodeMock | undefined;
+    if (!chunkGain) throw new Error('Chunk gain was not connected');
+    source.stop.mockClear();
+    source.disconnect.mockClear();
+
+    engine.setGlobalSpeed(2);
+
+    expect(source.stop).toHaveBeenCalledWith(20.02);
+    expect(source.disconnect).not.toHaveBeenCalled();
+    expect(chunkGain.gain.cancelAndHoldAtTime).toHaveBeenCalledWith(20);
+    expect(chunkGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, 20.02);
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 30));
+
+    expect(source.disconnect).toHaveBeenCalled();
   });
 
   it('does not schedule stale playback after stopping while decode is in flight', async () => {
@@ -587,6 +655,32 @@ describe('AudioEngine', () => {
     // First arg is `when` in AudioContext time. Must be strictly greater than
     // currentTime so audio kicks off after the latency window (KICKOFF_LATENCY_S).
     expect(startArgs?.[0]).toBeGreaterThan(5);
+  });
+
+  it('fades in the first source at the kickoff boundary', async () => {
+    const engine = new AudioEngine();
+    await engine.init();
+
+    const clip = createClip();
+    await engine.loadClips([clip]);
+
+    if (!audioContextInstance) throw new Error('AudioContext not initialized');
+    audioContextInstance.currentTime = 5;
+
+    await engine.play(0);
+    await new Promise<void>((resolve) => setTimeout(resolve, 20));
+
+    const source = audioContextInstance.createdSources[0];
+    if (!source) throw new Error('Source was not scheduled');
+    const chunkGain = source.connect.mock.calls[0]?.[0] as GainNodeMock | undefined;
+    if (!chunkGain) throw new Error('Chunk gain was not connected');
+
+    expect(source.start.mock.calls[0]?.[0]).toBe(5.05);
+    expect(chunkGain.gain.setValueAtTime).toHaveBeenCalledWith(0, 5.05);
+    const fadeInCall = chunkGain.gain.linearRampToValueAtTime.mock.calls.find(
+      ([value]) => value === 1,
+    );
+    expect(fadeInCall?.[1]).toBeCloseTo(5.07, 5);
   });
 
   it('keeps getCurrentTimeUs clamped to the requested start until kickoff is reached', async () => {
