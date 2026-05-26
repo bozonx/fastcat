@@ -71,6 +71,7 @@ interface UseFilePropertiesActionsOptions {
   isPersonalLibrary?: Ref<boolean>;
   instanceId?: Ref<string | undefined>;
   isExternal?: Ref<boolean | undefined>;
+  isMediaFullyUnsupported?: Ref<boolean>;
 }
 
 export function useFilePropertiesActions(options: UseFilePropertiesActionsOptions) {
@@ -266,7 +267,7 @@ export function useFilePropertiesActions(options: UseFilePropertiesActionsOption
       id: 'transcribe',
       label: options.t('videoEditor.fileManager.actions.transcribe'),
       icon: 'i-heroicons-microphone',
-      hidden: !options.isVideoFile.value && !options.isAudioFile.value,
+      hidden: (!options.isVideoFile.value && !options.isAudioFile.value) || options.isMediaFullyUnsupported?.value,
       disabled: !options.canTranscribeMedia.value,
       onClick: options.openTranscriptionModal,
     },

@@ -305,6 +305,7 @@ const { showVideoProxyActions, isGeneratingProxyForFile, hasExistingProxyForFile
     isExternalContext,
     isVideoFile,
     selectedPath,
+    isMediaFullyUnsupported,
   });
 
 const {
@@ -441,6 +442,7 @@ const {
   isPersonalLibrary,
   instanceId: computed(() => props.instanceId),
   isExternal: isExternalContext,
+  isMediaFullyUnsupported,
 });
 
 const {

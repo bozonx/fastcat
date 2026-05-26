@@ -6,6 +6,7 @@ export interface FilePropertiesProxyDeps {
   isExternalContext: Ref<boolean>;
   isVideoFile: Ref<boolean>;
   selectedPath: Ref<string | null | undefined>;
+  isMediaFullyUnsupported?: Ref<boolean>;
 }
 
 /**
@@ -19,6 +20,7 @@ export function useFilePropertiesProxy(deps: FilePropertiesProxyDeps) {
     if (deps.isRootDirectory.value || deps.isExternalContext.value) return false;
     if (!deps.isVideoFile.value) return false;
     if (!deps.selectedPath.value) return false;
+    if (deps.isMediaFullyUnsupported?.value) return false;
     return true;
   });
 

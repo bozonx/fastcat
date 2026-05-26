@@ -78,6 +78,7 @@ export function useFileBrowserContextMenuState(params: FileBrowserContextMenuSta
         return type === 'video' || type === 'audio' || type === 'image';
       },
       isTranscribableMediaFile: params.isTranscribableMediaFile,
+      canUseFile,
       isVideo,
       hasAudioTrack: (entry) => {
         if (entry.kind !== 'file' || !entry.path) return false;

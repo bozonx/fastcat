@@ -13,6 +13,8 @@ import { withFileIoSlot } from '~/utils/io/io-governor';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/waveform';
+import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
+import { thumbnailGenerator, getClipThumbnailsHash } from '~/utils/thumbnail-generator';
 const log = createDevLogger('media.store');
 
 interface VideoColorSpaceInit {
@@ -237,7 +239,7 @@ export const useMediaStore = defineStore('media', () => {
             }
           }
         } else {
-          // File changed! Drop stale peaks cache
+          // File changed! Drop stale peaks and thumbnail caches
           try {
             const waveformsDir = await fsModule.ensureWaveformsDir();
             if (waveformsDir) {
@@ -247,6 +249,22 @@ export const useMediaStore = defineStore('media', () => {
             }
           } catch {
             // ignore
+          }
+
+          try {
+            const projectId = projectStore.currentProjectId;
+            if (projectId) {
+              await fileThumbnailGenerator.clearThumbnail({
+                projectId,
+                projectRelativePath,
+              });
+              await thumbnailGenerator.clearThumbnails({
+                projectId,
+                hash: getClipThumbnailsHash({ projectId, projectRelativePath }),
+              });
+            }
+          } catch (e) {
+            log.warn('Failed to clear thumbnails on file change:', e);
           }
         }
       } catch {
@@ -422,6 +440,22 @@ export const useMediaStore = defineStore('media', () => {
       }
     } catch {
       // ignore
+    }
+
+    try {
+      const projectId = projectStore.currentProjectId;
+      if (projectId) {
+        await fileThumbnailGenerator.clearThumbnail({
+          projectId,
+          projectRelativePath,
+        });
+        await thumbnailGenerator.clearThumbnails({
+          projectId,
+          hash: getClipThumbnailsHash({ projectId, projectRelativePath }),
+        });
+      }
+    } catch (e) {
+      log.warn('Failed to clear thumbnails on removeMediaCache:', e);
     }
   }
 

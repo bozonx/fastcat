@@ -7,6 +7,24 @@ import { useProjectStore } from '~/stores/project.store';
 import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 vi.mock('#app-manifest', () => ({}));
 
+const { clearThumbnailMock, clearThumbnailsMock } = vi.hoisted(() => ({
+  clearThumbnailMock: vi.fn(),
+  clearThumbnailsMock: vi.fn(),
+}));
+
+vi.mock('~/utils/file-thumbnail-generator', () => ({
+  fileThumbnailGenerator: {
+    clearThumbnail: clearThumbnailMock,
+  },
+}));
+
+vi.mock('~/utils/thumbnail-generator', () => ({
+  thumbnailGenerator: {
+    clearThumbnails: clearThumbnailsMock,
+  },
+  getClipThumbnailsHash: (input: any) => `hash:${input.projectId}:${input.projectRelativePath}`,
+}));
+
 const { mediaFsMock, extractMetadataMock } = vi.hoisted(() => {
   const metaFiles = new Map<string, any>();
   const waveformFiles = new Map<string, any>();
@@ -120,6 +138,8 @@ describe('MediaStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     mediaFsMock.reset();
+    clearThumbnailMock.mockReset();
+    clearThumbnailsMock.mockReset();
     vi.mocked(useProjectStore).mockReturnValue({
       currentProjectId: 'test-project',
       getFileHandleByPath: vi.fn(),
@@ -359,5 +379,46 @@ describe('MediaStore', () => {
 
     expect(store.missingPaths['video/exists.mp4']).toBe(false);
     expect(store.missingPaths['video/missing.mp4']).toBe(true);
+  });
+
+  it('clears thumbnail caches when file is modified', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'video%2Fa.mp4.json';
+    mediaFsMock.metaFiles.set(
+      cacheFileName,
+      JSON.stringify({
+        source: { size: 100, lastModified: 100 },
+        duration: 10,
+      }),
+    );
+
+    // Call getOrFetchMetadata with a modified file (size/modified change)
+    await store.getOrFetchMetadata(
+      { size: 200, lastModified: 200, name: 'a.mp4' } as File,
+      'video/a.mp4',
+    );
+
+    expect(clearThumbnailMock).toHaveBeenCalledWith({
+      projectId: 'test-project',
+      projectRelativePath: 'video/a.mp4',
+    });
+    expect(clearThumbnailsMock).toHaveBeenCalledWith({
+      projectId: 'test-project',
+      hash: 'hash:test-project:video/a.mp4',
+    });
+  });
+
+  it('clears thumbnail caches in removeMediaCache', async () => {
+    const store = useMediaStore();
+    await store.removeMediaCache('video/a.mp4');
+
+    expect(clearThumbnailMock).toHaveBeenCalledWith({
+      projectId: 'test-project',
+      projectRelativePath: 'video/a.mp4',
+    });
+    expect(clearThumbnailsMock).toHaveBeenCalledWith({
+      projectId: 'test-project',
+      hash: 'hash:test-project:video/a.mp4',
+    });
   });
 });

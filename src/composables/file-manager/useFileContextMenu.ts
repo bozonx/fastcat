@@ -57,6 +57,7 @@ interface ContextMenuDeps {
   isBloggerDogTextWrapper?: (entry: FsEntry) => boolean;
   instanceId?: string;
   isExternal?: boolean;
+  canUseFile?: (entry: FsEntry) => boolean;
 }
 
 type ContextMenuItem = {
@@ -239,7 +240,7 @@ export function useFileContextMenu(
           ]);
         }
 
-        if (mediaType === 'audio' || mediaType === 'video') {
+        if ((mediaType === 'audio' || mediaType === 'video') && (!deps.canUseFile || deps.canUseFile(entry))) {
           items.push([
             {
               label: t('videoEditor.fileManager.actions.transcribe'),
@@ -503,7 +504,7 @@ export function useFileContextMenu(
     }
 
     const mediaType = entry.kind === 'file' ? getMediaTypeFromFilename(entry.name) : null;
-    if (mediaType === 'audio' || mediaType === 'video') {
+    if ((mediaType === 'audio' || mediaType === 'video') && (!deps.canUseFile || deps.canUseFile(entry))) {
       items.push([
         {
           label: t('videoEditor.fileManager.actions.transcribe'),

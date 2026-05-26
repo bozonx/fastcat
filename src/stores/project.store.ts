@@ -33,6 +33,8 @@ import { createProjectMetaModule } from '~/stores/project/project-meta';
 import { createProjectTimelinesModule } from '~/stores/project/project-timelines';
 import { useProjectLock } from '~/composables/editor/useProjectLock';
 import { getErrorMessage } from '~/utils/errors';
+import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
+import { thumbnailGenerator } from '~/utils/thumbnail-generator';
 const log = createDevLogger('project.store');
 
 export const useProjectStore = defineStore('project', () => {
@@ -108,6 +110,9 @@ export const useProjectStore = defineStore('project', () => {
     selectionStore.clearSelection();
     fileManagerStore.resetFileManagerState();
     historyStore.clearAll();
+
+    fileThumbnailGenerator.reset();
+    thumbnailGenerator.reset();
 
     await projectLock.releaseLock();
     clearProjectMetaState();

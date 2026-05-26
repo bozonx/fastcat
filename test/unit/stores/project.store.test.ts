@@ -19,6 +19,23 @@ vi.mock('pinia', async (importOriginal) => {
   };
 });
 
+const { mockFileThumbnailGeneratorReset, mockThumbnailGeneratorReset } = vi.hoisted(() => ({
+  mockFileThumbnailGeneratorReset: vi.fn(),
+  mockThumbnailGeneratorReset: vi.fn(),
+}));
+
+vi.mock('~/utils/file-thumbnail-generator', () => ({
+  fileThumbnailGenerator: {
+    reset: mockFileThumbnailGeneratorReset,
+  },
+}));
+
+vi.mock('~/utils/thumbnail-generator', () => ({
+  thumbnailGenerator: {
+    reset: mockThumbnailGeneratorReset,
+  },
+}));
+
 const mockResetMediaState = vi.fn();
 const mockResetTimelineState = vi.fn();
 const mockClearSelection = vi.fn();
@@ -146,6 +163,8 @@ describe('ProjectStore', () => {
     expect(mockClearSelection).toHaveBeenCalled();
     expect(mockResetFileManagerState).toHaveBeenCalled();
     expect(mockClearAllHistory).toHaveBeenCalled();
+    expect(mockFileThumbnailGeneratorReset).toHaveBeenCalled();
+    expect(mockThumbnailGeneratorReset).toHaveBeenCalled();
     expect(mockReleaseLock).toHaveBeenCalled();
   });
 

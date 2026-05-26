@@ -117,11 +117,15 @@ const fileManagerStore =
   useFileManagerStore();
 const mediaStore = useMediaStore();
 
+const visibleFiles = computed(() => {
+  return getVisibleEntries(props.rootEntries).filter((entry) => entry.kind === 'file');
+});
+
 watch(
-  () => props.rootEntries,
-  (entries) => {
-    for (const entry of entries) {
-      if (entry.kind !== 'file' || !entry.path) continue;
+  visibleFiles,
+  (files) => {
+    for (const entry of files) {
+      if (!entry.path) continue;
       const mediaType = getMediaTypeFromFilename(entry.name);
       if (mediaType !== 'video' && mediaType !== 'audio' && mediaType !== 'image') continue;
       if (

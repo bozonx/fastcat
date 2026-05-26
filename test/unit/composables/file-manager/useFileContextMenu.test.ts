@@ -311,4 +311,25 @@ describe('useFileContextMenu', () => {
     expect(labels).not.toContain('common.rename');
     expect(labels).not.toContain('common.delete');
   });
+
+  it('hides transcribe action for corrupt media files', () => {
+    const { getContextMenuItems } = useFileContextMenu(
+      {
+        isGeneratingProxyInDirectory: () => false,
+        folderHasVideos: () => false,
+        isOpenableMediaFile: () => false,
+        isConvertibleMediaFile: () => false,
+        isVideo: () => false,
+        getEntryMeta: () => ({
+          hasProxy: false,
+          generatingProxy: false,
+        }),
+        canUseFile: () => false, // битый файл
+      },
+      vi.fn(),
+    );
+
+    const labels = flattenLabels(getContextMenuItems(videoEntry));
+    expect(labels).not.toContain('videoEditor.fileManager.actions.transcribe');
+  });
 });
