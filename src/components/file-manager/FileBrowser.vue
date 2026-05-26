@@ -101,32 +101,7 @@ const { extractAudio } = useAudioExtraction();
 
 // --- STT ---
 const stt = useSttTranscription({
-  fastcatAccountApiUrl: computed(() =>
-    typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
-      ? runtimeConfig.public.fastcatAccountApiUrl
-      : '',
-  ),
   vfs: props.vfs || fileManager.vfs,
-  onSuccess: ({ cached, mediaType }) => {
-    toast.add({
-      title: cached
-        ? t('videoEditor.fileManager.audio.transcriptionCached')
-        : t('videoEditor.fileManager.audio.transcriptionCompleted'),
-      description: cached
-        ? t('videoEditor.fileManager.audio.transcriptionCachedDescription')
-        : mediaType === 'video'
-          ? t('videoEditor.fileManager.audio.transcriptionSavedVideoDescription')
-          : t('videoEditor.fileManager.audio.transcriptionSavedDescription'),
-      color: 'success',
-    });
-  },
-  onError: (message) => {
-    toast.add({
-      title: t('videoEditor.fileManager.audio.transcriptionFailed'),
-      description: message,
-      color: 'error',
-    });
-  },
 });
 const {
   modalOpen: transcriptionModalOpen,
@@ -473,20 +448,10 @@ const {
   onItemCreateConfirm,
 } = useFileBrowserRemoteCreate({
   vfs,
-  bloggerDogStore,
   buildRemoteDirectoryEntry,
   remoteCurrentFolder,
   loadFolderContent,
   loadParentFolders,
-  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
-  clearPendingCreateSubgroup: () => {
-    uiStore.pendingBloggerDogCreateSubgroup = null;
-  },
-  clearPendingCreateItem: () => {
-    uiStore.pendingBloggerDogCreateItem = null;
-  },
-  t,
-  toast,
 });
 
 // --- File manager actions (CRUD, rename, delete) ---

@@ -15,7 +15,6 @@ import {
   useFileManagerActions,
   type FileAction as FileManagerAction,
 } from '~/composables/file-manager/useFileManagerActions';
-import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useFileBrowserRemoteCreate } from '~/composables/file-manager/useFileBrowserRemoteCreate';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
@@ -132,8 +131,6 @@ async function onCreateTextFile(targetPath?: string) {
   }
 }
 
-const bloggerDogStore = useBloggerDogStore();
-
 const {
   isSubgroupModalOpen,
   isItemModalOpen,
@@ -143,7 +140,6 @@ const {
   onItemCreateConfirm,
 } = useFileBrowserRemoteCreate({
   vfs,
-  bloggerDogStore,
   buildRemoteDirectoryEntry: (path) =>
     ({
       path,
@@ -155,15 +151,6 @@ const {
   remoteCurrentFolder: ref(null),
   loadFolderContent,
   loadParentFolders: async () => {},
-  notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
-  clearPendingCreateSubgroup: () => {
-    uiStore.pendingBloggerDogCreateSubgroup = null;
-  },
-  clearPendingCreateItem: () => {
-    uiStore.pendingBloggerDogCreateItem = null;
-  },
-  t,
-  toast,
 });
 
 const {
@@ -205,32 +192,7 @@ const {
   openModal: openTranscriptionModal,
   submitTranscription,
 } = useSttTranscription({
-  fastcatAccountApiUrl: computed(() =>
-    typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
-      ? runtimeConfig.public.fastcatAccountApiUrl
-      : '',
-  ),
   vfs,
-  onSuccess: ({ cached, mediaType }) => {
-    toast.add({
-      title: cached
-        ? t('videoEditor.fileManager.audio.transcriptionCached')
-        : t('videoEditor.fileManager.audio.transcriptionCompleted'),
-      description: cached
-        ? t('videoEditor.fileManager.audio.transcriptionCachedDescription')
-        : mediaType === 'video'
-          ? t('videoEditor.fileManager.audio.transcriptionSavedVideoDescription')
-          : t('videoEditor.fileManager.audio.transcriptionSavedDescription'),
-      color: 'success',
-    });
-  },
-  onError: (message) => {
-    toast.add({
-      title: t('videoEditor.fileManager.audio.transcriptionFailed'),
-      description: message,
-      color: 'error',
-    });
-  },
 });
 
 const { onFileAction } = useFileBrowserFileActions({

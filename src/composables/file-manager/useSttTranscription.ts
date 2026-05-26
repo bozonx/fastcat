@@ -34,12 +34,18 @@ export function useSttTranscription(
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
   const { t } = useI18n();
+  const toast = useToast();
+  const runtimeConfig = useRuntimeConfig();
 
   const fastcatApiUrl = computed(() => {
-    if (!options.fastcatAccountApiUrl) return '';
-    return typeof options.fastcatAccountApiUrl === 'string'
-      ? options.fastcatAccountApiUrl
-      : options.fastcatAccountApiUrl.value;
+    if (options.fastcatAccountApiUrl) {
+      return typeof options.fastcatAccountApiUrl === 'string'
+        ? options.fastcatAccountApiUrl
+        : options.fastcatAccountApiUrl.value;
+    }
+    return typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
+      ? runtimeConfig.public.fastcatAccountApiUrl
+      : '';
   });
 
   const modalOpen = ref(false);
@@ -106,7 +112,15 @@ export function useSttTranscription(
       );
       if (existing) {
         modalOpen.value = false;
-        options.onSuccess?.({ mediaType, cached: true });
+        if (options.onSuccess) {
+          options.onSuccess({ mediaType, cached: true });
+        } else {
+          toast.add({
+            title: t('videoEditor.fileManager.audio.transcriptionCached'),
+            description: t('videoEditor.fileManager.audio.transcriptionCachedDescription'),
+            color: 'success',
+          });
+        }
         return;
       }
 
@@ -139,7 +153,17 @@ export function useSttTranscription(
       });
 
       modalOpen.value = false;
-      options.onSuccess?.({ mediaType, cached: false });
+      if (options.onSuccess) {
+        options.onSuccess({ mediaType, cached: false });
+      } else {
+        toast.add({
+          title: t('videoEditor.fileManager.audio.transcriptionCompleted'),
+          description: mediaType === 'video'
+            ? t('videoEditor.fileManager.audio.transcriptionSavedVideoDescription')
+            : t('videoEditor.fileManager.audio.transcriptionSavedDescription'),
+          color: 'success',
+        });
+      }
     } catch (error: unknown) {
       if (
         (error as Error).name === 'AbortError' ||
@@ -149,7 +173,15 @@ export function useSttTranscription(
       }
       const message = error instanceof Error ? error.message : 'Failed to transcribe media';
       errorMessage.value = message;
-      options.onError?.(message);
+      if (options.onError) {
+        options.onError(message);
+      } else {
+        toast.add({
+          title: t('videoEditor.fileManager.audio.transcriptionFailed'),
+          description: message,
+          color: 'error',
+        });
+      }
     } finally {
       isTranscribing.value = false;
     }

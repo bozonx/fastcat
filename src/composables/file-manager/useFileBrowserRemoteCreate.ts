@@ -1,5 +1,7 @@
 import { ref } from 'vue';
 import type { Ref } from 'vue';
+import { useBloggerDogStore } from '~/stores/bloggerdog';
+import { useUiStore } from '~/stores/ui.store';
 import { getBdPayload, type BdEntryType } from '~/types/bloggerdog';
 import type { FsEntry } from '~/types/fs';
 import type { RemoteFsEntry } from '~/utils/remote-vfs';
@@ -9,7 +11,7 @@ interface UseFileBrowserRemoteCreateParams {
   vfs: {
     createDirectory: (path: string) => Promise<void>;
   };
-  bloggerDogStore: {
+  bloggerDogStore?: {
     createItem: (params: {
       title: string;
       scope: RemoteVfsScope;
@@ -21,11 +23,11 @@ interface UseFileBrowserRemoteCreateParams {
   remoteCurrentFolder: Ref<RemoteFsEntry | null>;
   loadFolderContent: () => Promise<void>;
   loadParentFolders: () => Promise<void>;
-  notifyFileManagerUpdate: () => void;
-  clearPendingCreateSubgroup: () => void;
-  clearPendingCreateItem: () => void;
-  t: (key: string) => string;
-  toast: {
+  notifyFileManagerUpdate?: () => void;
+  clearPendingCreateSubgroup?: () => void;
+  clearPendingCreateItem?: () => void;
+  t?: (key: string) => string;
+  toast?: {
     add: (params: { color: string; title: string; description: string }) => void;
   };
 }
@@ -36,10 +38,27 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
   const isItemModalOpen = ref(false);
   const pendingItemParent = ref<FsEntry | null>(null);
 
+  const bloggerDogStore = params.bloggerDogStore || useBloggerDogStore();
+  const uiStore = useUiStore();
+  const { t } = useI18n();
+  const toast = useToast();
+
+  const resolveT = params.t || t;
+  const resolveToast = params.toast || toast;
+  const notifyUpdate = params.notifyFileManagerUpdate || (() => uiStore.notifyFileManagerUpdate());
+
+  const clearSubgroup = params.clearPendingCreateSubgroup || (() => {
+    uiStore.pendingBloggerDogCreateSubgroup = null;
+  });
+
+  const clearItem = params.clearPendingCreateItem || (() => {
+    uiStore.pendingBloggerDogCreateItem = null;
+  });
+
   function handlePendingBloggerDogCreateSubgroup(entry: FsEntry) {
     pendingSubgroupParent.value = entry;
     isSubgroupModalOpen.value = true;
-    params.clearPendingCreateSubgroup();
+    clearSubgroup();
   }
 
   async function onSubgroupCreateConfirm(name: string) {
@@ -53,11 +72,11 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
       params.remoteCurrentFolder.value = params.buildRemoteDirectoryEntry(newPath, 'collection');
       await params.loadFolderContent();
       await params.loadParentFolders();
-      params.notifyFileManagerUpdate();
+      notifyUpdate();
     } catch (error) {
-      params.toast.add({
+      resolveToast.add({
         color: 'error',
-        title: params.t('common.error'),
+        title: resolveT('common.error'),
         description: error instanceof Error ? error.message : 'Failed to create subgroup',
       });
     } finally {
@@ -69,7 +88,7 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
   function handlePendingBloggerDogCreateItem(entry: FsEntry) {
     pendingItemParent.value = entry;
     isItemModalOpen.value = true;
-    params.clearPendingCreateItem();
+    clearItem();
   }
 
   async function onItemCreateConfirm(name: string) {
@@ -113,7 +132,7 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
         groupId = itemRemoteData?.groupId || itemRemoteData?.collectionId;
       }
 
-      await params.bloggerDogStore.createItem({
+      await bloggerDogStore.createItem({
         title: name,
         scope,
         projectId,
@@ -125,11 +144,11 @@ export function useFileBrowserRemoteCreate(params: UseFileBrowserRemoteCreatePar
 
       await params.loadFolderContent();
       await params.loadParentFolders();
-      params.notifyFileManagerUpdate();
+      notifyUpdate();
     } catch (error) {
-      params.toast.add({
+      resolveToast.add({
         color: 'error',
-        title: params.t('common.error'),
+        title: resolveT('common.error'),
         description: error instanceof Error ? error.message : 'Failed to create item',
       });
     } finally {
