@@ -1,25 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
-import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
-import { useFileSorting } from '~/composables/file-manager/useFileSorting';
 import { useClipboardStore } from '~/stores/clipboard.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import { isOpenableProjectFileName } from '~/utils/media-types';
-import {
-  useFileManagerActions,
-  type FileAction as FileManagerAction,
-} from '~/composables/file-manager/useFileManagerActions';
+import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
+import { useFileBrowserData } from '~/composables/file-manager/useFileBrowserData';
 import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
 import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
-import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
 import type { FsEntry } from '~/types/fs';
+import type { FileAction as FileManagerAction } from '~/composables/file-manager/useFileManagerActions';
 import MobileFileBrowserGrid from './MobileFileBrowserGrid.vue';
 import MobileFileBrowserDrawer from './MobileFileBrowserDrawer.vue';
 import MobileFileBrowserNavbar from './MobileFileBrowserNavbar.vue';
@@ -31,11 +26,8 @@ import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
-import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { useFileConversionStore } from '~/stores/file-conversion.store';
-import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
 
 type MobileDrawerAction =
@@ -127,37 +119,10 @@ const { isPulling, pullDistance, isRefreshing, onTouchStart, onTouchMove, onTouc
   });
 
 const {
-  onFileAction: onFileActionInternal,
+  onFileAction,
   isDeleteConfirmModalOpen,
   deleteTargets,
   handleDeleteConfirm,
-} = useFileManagerActions({
-  createFolder,
-  renameEntry,
-  deleteEntry,
-  loadProjectDirectory: async () => {
-    await loadFolderContent();
-  },
-  handleFiles,
-  mediaCache,
-  vfs,
-  findEntryByPath,
-  readDirectory,
-  reloadDirectory,
-  copyEntry,
-  moveEntry,
-});
-
-const conversionStore = useFileConversionStore();
-const { extractAudio } = useAudioExtraction();
-
-const { sortedEntries } = useFileSorting(entries);
-const { thumbnails } = useFileManagerThumbnails(sortedEntries, vfs);
-const { compatibility: fileCompatibility } = useFileManagerCompatibility(sortedEntries, {
-  getFileByPath: (path) => vfs.getFile(path),
-});
-
-const {
   modalOpen: transcriptionModalOpen,
   language: transcriptionLanguage,
   errorMessage: transcriptionError,
@@ -166,20 +131,27 @@ const {
   pendingEntry: transcriptionEntry,
   openModal: openTranscriptionModal,
   submitTranscription,
-} = useSttTranscription({
+} = useFileBrowserShared({
   vfs,
-});
-
-const { onFileAction } = useFileBrowserFileActions({
   folderEntries: entries,
   loadFolderContent,
-  onFileActionBase: onFileActionInternal,
-  conversionStore,
-  openTranscriptionModal,
-  extractAudio: (entry) => extractAudio(entry),
-  vfs,
+  createFolder,
+  renameEntry,
+  deleteEntry,
+  loadProjectDirectory: async () => {
+    await loadFolderContent();
+  },
+  handleFiles,
+  mediaCache,
+  findEntryByPath,
+  readDirectory,
+  reloadDirectory,
+  copyEntry,
+  moveEntry,
   isExternal: false,
 });
+
+const { sortedEntries, thumbnails, fileCompatibility } = useFileBrowserData(entries, vfs);
 
 // Lazily calculate sizes of newly appeared folders only
 watch(
@@ -517,7 +489,9 @@ const menuItems = computed(() => [
         class="absolute top-0 left-0 right-0 flex items-center justify-center z-10 pointer-events-none transition-transform"
         :style="{ transform: `translateY(${pullDistance}px)` }"
       >
-        <div class="bg-ui-bg-elevated/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-ui-border/50">
+        <div
+          class="bg-ui-bg-elevated/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-ui-border/50"
+        >
           <Icon
             :name="isRefreshing ? 'lucide:loader-2' : 'lucide:arrow-down'"
             class="w-5 h-5 text-ui-text-muted"
@@ -644,6 +618,5 @@ const menuItems = computed(() => [
       :entries="addToTimelineEntries"
       @added="onAddedToTimeline"
     />
-
   </div>
 </template>

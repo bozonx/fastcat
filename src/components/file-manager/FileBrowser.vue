@@ -8,16 +8,13 @@ import { useFocusStore } from '~/stores/focus.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useFileManagerActions } from '~/composables/file-manager/useFileManagerActions';
-import { useFileConversionStore } from '~/stores/file-conversion.store';
+import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
 import { useFileBrowserDragAndDrop } from '~/composables/file-manager/useFileBrowserDragAndDrop';
 import { useFileBrowserMarquee } from '~/composables/file-manager/useFileBrowserMarquee';
 import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
 import { useFileBrowserRemote } from '~/composables/file-manager/useFileBrowserRemote';
 import { useFileBrowserNavigation } from '~/composables/file-manager/useFileBrowserNavigation';
-import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
-import { useFileBrowserFileActions } from '~/composables/file-manager/useFileBrowserFileActions';
-import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
+
 import { useFileBrowserPendingActions } from '~/composables/file-manager/useFileBrowserPendingActions';
 import { useFileBrowserCreateActions } from '~/composables/file-manager/useFileBrowserCreateActions';
 import { useFileBrowserInteraction } from '~/composables/file-manager/useFileBrowserInteraction';
@@ -91,25 +88,6 @@ const {
 
 const vfs = props.vfs || fileManager.vfs;
 clipboardStore.registerFileManagerVfs(instanceId, vfs);
-
-const conversionStore = useFileConversionStore();
-const { extractAudio } = useAudioExtraction();
-
-// --- STT ---
-const stt = useSttTranscription({
-  vfs: props.vfs || fileManager.vfs,
-});
-const {
-  modalOpen: transcriptionModalOpen,
-  language: transcriptionLanguage,
-  errorMessage: transcriptionError,
-  isTranscribing,
-  isModelReady: isSttModelReady,
-  pendingEntry: transcriptionEntry,
-  isTranscribableMediaFile,
-  openModal: openTranscriptionModal,
-  submitTranscription,
-} = stt;
 
 const isRemoteMode = ref(!!props.remoteModeOnly);
 const remoteCurrentFolder = ref<RemoteFsEntry | null>(null);
@@ -450,8 +428,10 @@ const {
   loadParentFolders,
 });
 
-// --- File manager actions (CRUD, rename, delete) ---
+// --- File manager actions + file actions dispatcher + STT ---
 const {
+  onFileAction,
+  onFileActionBase,
   isDeleteConfirmModalOpen,
   isCreateFolderModalOpen,
   createFolderDefaultName,
@@ -465,44 +445,43 @@ const {
   directoryUploadInput,
   openDeleteConfirmModal,
   handleDeleteConfirm,
-  onFileAction: onFileActionBase,
-} = useFileManagerActions({
+  modalOpen: transcriptionModalOpen,
+  language: transcriptionLanguage,
+  errorMessage: transcriptionError,
+  isTranscribing,
+  isModelReady: isSttModelReady,
+  pendingEntry: transcriptionEntry,
+  isTranscribableMediaFile,
+  openModal: _openTranscriptionModal,
+  submitTranscription,
+} = useFileBrowserShared({
+  vfs,
+  folderEntries,
+  loadFolderContent,
   createFolder,
   renameEntry,
   deleteEntry,
   loadProjectDirectory,
   handleFiles,
   mediaCache: fileManager.mediaCache,
-  vfs,
   findEntryByPath: fileManager.findEntryByPath,
   readDirectory: fileManager.readDirectory,
   reloadDirectory: fileManager.reloadDirectory,
   copyEntry,
   moveEntry,
   instanceId,
+  isExternal: isExternal.value,
   notifyFileManagerUpdate: () => uiStore.notifyFileManagerUpdate(),
-  setFileTreePathExpanded: (path, expanded) => {
+  setFileTreePathExpanded: (path: string, expanded: boolean) => {
     fileManager.setFileTreePathExpanded(path, expanded);
   },
-  onFileSelect: (entry) => setSelectedFsEntry(entry),
+  onFileSelect: (entry: FsEntry) => setSelectedFsEntry(entry),
   onAfterRename: () => {
     void loadFolderContent();
   },
   onAfterDelete: () => {
     void loadFolderContent();
   },
-});
-
-// --- File actions dispatcher ---
-const { onFileAction } = useFileBrowserFileActions({
-  folderEntries,
-  loadFolderContent,
-  onFileActionBase,
-  conversionStore,
-  openTranscriptionModal,
-  extractAudio: (entry) => extractAudio(entry, { instanceId, isExternal: isExternal.value }),
-  vfs,
-  isExternal: isExternal.value,
 });
 
 // --- Context menu ---
