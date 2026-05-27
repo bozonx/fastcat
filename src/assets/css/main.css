@@ -458,6 +458,8 @@ select {
 
   /* 2. Стилизация триггеров селектов (USelectMenu / UiSelect) */
   .ui-select-menu button,
+  button.ui-select-menu,
+  .ui-select-menu,
   button[role="combobox"],
   button.ui-select-trigger,
   .ui-select-menu-trigger {
@@ -481,6 +483,8 @@ select {
 
   /* Фокус-состояние для кнопок-селектов */
   .ui-select-menu button:focus-visible,
+  button.ui-select-menu:focus-visible,
+  .ui-select-menu:focus-visible,
   button[role="combobox"]:focus-visible,
   button.ui-select-trigger:focus-visible {
     border-color: var(--color-primary-500) !important;
