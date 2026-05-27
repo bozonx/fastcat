@@ -1,6 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
-import { Texture, Container } from 'pixi.js';
+import { Texture } from 'pixi.js';
 import type { Application, Filter, RenderTexture } from 'pixi.js';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import type { PreviewRenderOptions } from './worker-rpc';
@@ -13,44 +13,41 @@ import { ResourceManager } from './compositor/ResourceManager';
 import { VideoFrameCache } from './compositor/VideoFrameCache';
 import { EffectManager } from './compositor/EffectManager';
 import { TransitionManager } from './compositor/TransitionManager';
-import { LayoutApplier } from './compositor/LayoutApplier';
-import { ClipResourceManager } from './compositor/ClipResourceManager';
+import type { LayoutApplier } from './compositor/LayoutApplier';
+import type { ClipResourceManager } from './compositor/ClipResourceManager';
 import { StageTextureRenderer } from './compositor/StageTextureRenderer';
-import { ClipFactory } from './compositor/ClipFactory';
-import { TimelineClipLoader } from './compositor/TimelineClipLoader';
-import { HudMediaLoader } from './compositor/HudMediaLoader';
-import { MediaClipLoader } from './compositor/MediaClipLoader';
-import { RasterImageLoader } from './compositor/RasterImageLoader';
-import { TimelineApplyLifecycle } from './compositor/TimelineApplyLifecycle';
-import { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdater';
-import { TimelineClipAssetLoader } from './compositor/TimelineClipAssetLoader';
-import { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
-import { TimelineActiveClipProcessor } from './compositor/TimelineActiveClipProcessor';
-import { TimelineTrackRebinder } from './compositor/TimelineTrackRebinder';
-import { TimelineUpdateLifecycle } from './compositor/TimelineUpdateLifecycle';
-import { TimelineLayoutOrchestrator } from './compositor/TimelineLayoutOrchestrator';
-import { TextRenderer } from './compositor/renderers/TextRenderer';
-import { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
-import { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
-import {
-  buildPrevClipByIdIndex,
-  buildNextClipByIdIndex,
-  buildTrackRuntimeList,
-} from './compositor/trackRuntime';
+import type { ClipFactory } from './compositor/ClipFactory';
+import type { TimelineClipLoader } from './compositor/TimelineClipLoader';
+import type { HudMediaLoader } from './compositor/HudMediaLoader';
+import type { MediaClipLoader } from './compositor/MediaClipLoader';
+import type { RasterImageLoader } from './compositor/RasterImageLoader';
+import type { TimelineApplyLifecycle } from './compositor/TimelineApplyLifecycle';
+import type { TimelineClipLayoutUpdater } from './compositor/TimelineClipLayoutUpdater';
+import type { TimelineClipAssetLoader } from './compositor/TimelineClipAssetLoader';
+import type { TimelineLoadOrchestrator } from './compositor/TimelineLoadOrchestrator';
+import type { TimelineActiveClipProcessor } from './compositor/TimelineActiveClipProcessor';
+import type { TimelineTrackRebinder } from './compositor/TimelineTrackRebinder';
+import type { TimelineUpdateLifecycle } from './compositor/TimelineUpdateLifecycle';
+import type { TimelineLayoutOrchestrator } from './compositor/TimelineLayoutOrchestrator';
+import type { TextRenderer } from './compositor/renderers/TextRenderer';
+import type { ShapeRenderer } from './compositor/renderers/ShapeRenderer';
+import type { CanvasFallbackRenderer } from './compositor/renderers/CanvasFallbackRenderer';
+import { buildPrevClipByIdIndex, buildNextClipByIdIndex } from './compositor/trackRuntime';
 import { RenderingEngine } from './compositor/RenderingEngine';
-import { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
+import type { FrameSampleOrchestrator } from './compositor/FrameSampleOrchestrator';
 import { StageManager } from './compositor/StageManager';
 import { TransitionRenderer } from './compositor/TransitionRenderer';
 import { CompositorOperationQueue } from './compositor/CompositorOperationQueue';
-import { createPixiCompositorApplication } from './compositor/PixiCompositorBootstrap';
 import { resetCompositorClipsAfterContextRestored } from './compositor/contextRestore';
+import { TrackRuntimeManager } from './compositor/TrackRuntimeManager';
+import { createCompositorRuntime } from './compositor/CompositorRuntimeFactory';
+import { CompositorRenderContextBuilder } from './compositor/CompositorRenderContextBuilder';
+import { PixiCompositorLifecycle } from './compositor/PixiCompositorLifecycle';
 const log = createDevLogger('VideoCompositor');
 
 export interface VideoCompositorInitOptions {
   rendererPreference?: 'webgl' | 'webgpu';
 }
-
-type PixiRendererPreference = NonNullable<VideoCompositorInitOptions['rendererPreference']>;
 
 export class VideoCompositor {
   public app: Application | null = null;
@@ -63,9 +60,6 @@ export class VideoCompositor {
   private clipById = new Map<string, CompositorClip>();
   private prevClipById = new Map<string, CompositorClip | null>();
   private nextClipById = new Map<string, CompositorClip | null>();
-  private trackById = new Map<string, CompositorTrack>();
-  private trackByLayer = new Map<number, CompositorTrack>();
-  private tracks: CompositorTrack[] = [];
   private replacedClipIds = new Set<string>();
   private lastRenderedTimeUs = 0;
   private contextLost = false;
@@ -103,70 +97,104 @@ export class VideoCompositor {
   private resourceManager = new ResourceManager();
   private effectManager = new EffectManager();
   private transitionManager = new TransitionManager();
-  private layoutApplier = new LayoutApplier({ width: this.width, height: this.height });
+  private layoutApplier!: LayoutApplier;
 
   // Renderers
-  private textRenderer = new TextRenderer();
-  private shapeRenderer = new ShapeRenderer();
-  private canvasFallbackRenderer = new CanvasFallbackRenderer({
-    width: this.width,
-    height: this.height,
-    layoutApplier: this.layoutApplier,
-    clipPreferBitmapFallback: this.clipPreferBitmapFallback,
-  });
-  private timelineClipLoader = new TimelineClipLoader();
-  private hudMediaLoader = new HudMediaLoader({
-    width: this.width,
-    height: this.height,
-  });
-  private mediaClipLoader = new MediaClipLoader();
-  private rasterImageLoader = new RasterImageLoader({
-    width: this.width,
-    height: this.height,
-  });
-  private clipFactory = new ClipFactory({
-    width: this.width,
-    height: this.height,
-    layoutApplier: this.layoutApplier,
-  });
-  private timelineClipAssetLoader = new TimelineClipAssetLoader({
-    clipFactory: this.clipFactory,
-    hudMediaLoader: this.hudMediaLoader,
-    mediaClipLoader: this.mediaClipLoader,
-  });
-  private timelineLoadOrchestrator = new TimelineLoadOrchestrator({
-    timelineClipLoader: this.timelineClipLoader,
-    timelineClipAssetLoader: this.timelineClipAssetLoader,
-    clipFactory: this.clipFactory,
-    layoutApplier: this.layoutApplier,
-    mediaClipLoader: this.mediaClipLoader,
-    rasterImageLoader: this.rasterImageLoader,
-  });
-  private timelineActiveClipProcessor = new TimelineActiveClipProcessor();
-  private timelineApplyLifecycle = new TimelineApplyLifecycle();
-  private timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
-  private timelineTrackRebinder = new TimelineTrackRebinder();
-  private timelineUpdateLifecycle = new TimelineUpdateLifecycle();
-  private timelineLayoutOrchestrator = new TimelineLayoutOrchestrator();
+  private textRenderer!: TextRenderer;
+  private shapeRenderer!: ShapeRenderer;
+  private canvasFallbackRenderer!: CanvasFallbackRenderer;
+  private timelineClipLoader!: TimelineClipLoader;
+  private hudMediaLoader!: HudMediaLoader;
+  private mediaClipLoader!: MediaClipLoader;
+  private rasterImageLoader!: RasterImageLoader;
+  private clipFactory!: ClipFactory;
+  private timelineClipAssetLoader!: TimelineClipAssetLoader;
+  private timelineLoadOrchestrator!: TimelineLoadOrchestrator;
+  private timelineActiveClipProcessor!: TimelineActiveClipProcessor;
+  private timelineApplyLifecycle!: TimelineApplyLifecycle;
+  private timelineClipLayoutUpdater!: TimelineClipLayoutUpdater;
+  private timelineTrackRebinder!: TimelineTrackRebinder;
+  private timelineUpdateLifecycle!: TimelineUpdateLifecycle;
+  private timelineLayoutOrchestrator!: TimelineLayoutOrchestrator;
   private renderingEngine = new RenderingEngine();
-  private frameSampleOrchestrator = new FrameSampleOrchestrator();
+  private frameSampleOrchestrator!: FrameSampleOrchestrator;
   private stageManager = new StageManager();
   private transitionRenderer = new TransitionRenderer();
-  private clipResourceManager = new ClipResourceManager({
-    width: this.width,
-    height: this.height,
-    resourceManager: this.resourceManager,
-    videoFrameCache: this.videoFrameCache,
-    canvasFallbackRenderer: this.canvasFallbackRenderer,
-    getLayoutApplier: () => this.layoutApplier,
-  });
+  private clipResourceManager!: ClipResourceManager;
   private stageTextureRenderer: StageTextureRenderer | null = null;
+  private trackRuntimeManager = new TrackRuntimeManager({
+    toVideoEffects: (value) => this.toVideoEffects(value),
+  });
+  private renderContextBuilder = new CompositorRenderContextBuilder();
+  private pixiLifecycle = new PixiCompositorLifecycle();
 
   private readonly activeTracker = new TimelineActiveTracker<CompositorClip>({
     getId: (clip) => clip.itemId,
     getStartUs: (clip) => clip.startUs,
     getEndUs: (clip) => clip.endUs,
   });
+
+  constructor() {
+    this.resetRuntimeDependencies();
+  }
+
+  public get tracks(): CompositorTrack[] {
+    return this.trackRuntimeManager.all;
+  }
+
+  public set tracks(tracks: CompositorTrack[]) {
+    this.trackRuntimeManager.setAll(tracks);
+  }
+
+  public get trackById(): Map<string, CompositorTrack> {
+    return this.trackRuntimeManager.byId;
+  }
+
+  public set trackById(trackById: Map<string, CompositorTrack>) {
+    this.trackRuntimeManager.setById(trackById);
+  }
+
+  private resetRuntimeDependencies() {
+    const runtime = createCompositorRuntime({
+      width: this.width,
+      height: this.height,
+      clipPreferBitmapFallback: this.clipPreferBitmapFallback,
+      resourceManager: this.resourceManager,
+      videoFrameCache: this.videoFrameCache,
+    });
+
+    this.layoutApplier = runtime.layoutApplier;
+    this.textRenderer = runtime.textRenderer;
+    this.shapeRenderer = runtime.shapeRenderer;
+    this.canvasFallbackRenderer = runtime.canvasFallbackRenderer;
+    this.timelineClipLoader = runtime.timelineClipLoader;
+    this.hudMediaLoader = runtime.hudMediaLoader;
+    this.mediaClipLoader = runtime.mediaClipLoader;
+    this.rasterImageLoader = runtime.rasterImageLoader;
+    this.clipFactory = runtime.clipFactory;
+    this.timelineClipAssetLoader = runtime.timelineClipAssetLoader;
+    this.timelineLoadOrchestrator = runtime.timelineLoadOrchestrator;
+    this.timelineActiveClipProcessor = runtime.timelineActiveClipProcessor;
+    this.timelineApplyLifecycle = runtime.timelineApplyLifecycle;
+    this.timelineClipLayoutUpdater = runtime.timelineClipLayoutUpdater;
+    this.timelineTrackRebinder = runtime.timelineTrackRebinder;
+    this.timelineUpdateLifecycle = runtime.timelineUpdateLifecycle;
+    this.timelineLayoutOrchestrator = runtime.timelineLayoutOrchestrator;
+    this.frameSampleOrchestrator = runtime.frameSampleOrchestrator;
+    this.clipResourceManager = runtime.clipResourceManager;
+  }
+
+  private ensureStageTextureRenderer(app: Application): StageTextureRenderer {
+    if (!this.stageTextureRenderer) {
+      this.stageTextureRenderer = new StageTextureRenderer({
+        app,
+        width: this.width,
+        height: this.height,
+        getTrackById: (trackId) => this.trackRuntimeManager.getById(trackId),
+      });
+    }
+    return this.stageTextureRenderer;
+  }
 
   private ensureClipRenderTexture(texture: RenderTexture | null): RenderTexture {
     return this.clipResourceManager.ensureClipRenderTexture(texture);
@@ -247,7 +275,7 @@ export class VideoCompositor {
   }
 
   public buildTrackRuntimeList(timelineItems: unknown[]) {
-    return buildTrackRuntimeList(timelineItems, (value) => this.toVideoEffects(value));
+    return this.trackRuntimeManager.buildList(timelineItems);
   }
 
   public async applyShaderTransitions(activeClips: CompositorClip[], currentTimeUs: number) {
@@ -278,7 +306,7 @@ export class VideoCompositor {
       transitionManager: this.transitionManager,
       stageTextureRenderer:
         stageTextureRenderer as import('./compositor/StageTextureRenderer').StageTextureRenderer,
-      getTrackById: (trackId) => this.trackById.get(trackId),
+      getTrackById: (trackId) => this.trackRuntimeManager.getById(trackId),
       getActiveTransitionState: (clip, timeUs) =>
         this.getActiveTransitionState(clip, timeUs) as {
           opacity: number;
@@ -296,68 +324,10 @@ export class VideoCompositor {
     });
   }
 
-  private syncTrackRuntimes(timelineItems: unknown[]) {
-    if (!this.app) return;
-
-    const nextDefs = buildTrackRuntimeList(timelineItems, (value) => this.toVideoEffects(value));
-    const nextTrackById = new Map<string, CompositorTrack>();
-    const nextTrackByLayer = new Map<number, CompositorTrack>();
-    const nextTracks: CompositorTrack[] = [];
-
-    for (const def of nextDefs) {
-      const existing = this.trackById.get(def.id) ?? this.trackByLayer.get(def.layer);
-      const track: CompositorTrack = existing ?? {
-        id: def.id,
-        layer: def.layer,
-        container: new Container(),
-      };
-
-      track.id = def.id;
-      track.layer = def.layer;
-      track.opacity = def.opacity;
-      track.blendMode = def.blendMode;
-      track.effects = def.effects;
-      track.container.alpha = def.opacity ?? 1;
-      track.container.blendMode = def.blendMode ?? 'normal';
-      (track.container as unknown as Record<string, unknown>).__trackId = def.id;
-
-      if (track.container.parent !== this.app.stage) {
-        this.app.stage.addChild(track.container);
-      }
-
-      nextTrackById.set(track.id, track);
-      nextTrackByLayer.set(track.layer, track);
-      nextTracks.push(track);
-    }
-
-    for (const [trackId, track] of this.trackById.entries()) {
-      if (nextTrackById.has(trackId)) continue;
-      if (track.container.parent) {
-        track.container.parent.removeChild(track.container);
-      }
-      if (track.effectFilters) {
-        for (const filter of track.effectFilters.values()) {
-          try {
-            (filter as { destroy?: () => void })?.destroy?.();
-          } catch {
-            // ignore
-          }
-        }
-      }
-    }
-
-    this.trackById = nextTrackById;
-    this.trackByLayer = nextTrackByLayer;
-    this.tracks = nextTracks.sort((a, b) => a.layer - b.layer);
-  }
-
   private getTrackRuntimeForClip(
     clip: Pick<CompositorClip, 'trackId' | 'layer'>,
   ): CompositorTrack | null {
-    if (clip.trackId) {
-      return this.trackById.get(clip.trackId) ?? this.trackByLayer.get(clip.layer) ?? null;
-    }
-    return this.trackByLayer.get(clip.layer) ?? null;
+    return this.trackRuntimeManager.getForClip(clip);
   }
 
   private rebuildPrevClipIndex() {
@@ -494,91 +464,22 @@ export class VideoCompositor {
     this.width = width;
     this.height = height;
     this.contextLost = false;
-    this.layoutApplier = new LayoutApplier({ width: this.width, height: this.height });
-    this.canvasFallbackRenderer = new CanvasFallbackRenderer({
-      width: this.width,
-      height: this.height,
-      layoutApplier: this.layoutApplier,
-      clipPreferBitmapFallback: this.clipPreferBitmapFallback,
-    });
-    this.timelineClipLoader = new TimelineClipLoader();
-    this.hudMediaLoader = new HudMediaLoader({
-      width: this.width,
-      height: this.height,
-    });
-    this.mediaClipLoader = new MediaClipLoader();
-    this.rasterImageLoader = new RasterImageLoader({
-      width: this.width,
-      height: this.height,
-    });
-    this.clipFactory = new ClipFactory({
-      width: this.width,
-      height: this.height,
-      layoutApplier: this.layoutApplier,
-    });
-    this.timelineClipAssetLoader = new TimelineClipAssetLoader({
-      clipFactory: this.clipFactory,
-      hudMediaLoader: this.hudMediaLoader,
-      mediaClipLoader: this.mediaClipLoader,
-    });
-    this.timelineLoadOrchestrator = new TimelineLoadOrchestrator({
-      timelineClipLoader: this.timelineClipLoader,
-      timelineClipAssetLoader: this.timelineClipAssetLoader,
-      clipFactory: this.clipFactory,
-      layoutApplier: this.layoutApplier,
-      mediaClipLoader: this.mediaClipLoader,
-      rasterImageLoader: this.rasterImageLoader,
-    });
-    this.timelineActiveClipProcessor = new TimelineActiveClipProcessor();
-    this.timelineApplyLifecycle = new TimelineApplyLifecycle();
-    this.timelineClipLayoutUpdater = new TimelineClipLayoutUpdater();
-    this.timelineTrackRebinder = new TimelineTrackRebinder();
-    this.timelineUpdateLifecycle = new TimelineUpdateLifecycle();
-    this.timelineLayoutOrchestrator = new TimelineLayoutOrchestrator();
-    this.clipResourceManager = new ClipResourceManager({
-      width: this.width,
-      height: this.height,
-      resourceManager: this.resourceManager,
-      videoFrameCache: this.videoFrameCache,
-      canvasFallbackRenderer: this.canvasFallbackRenderer,
-      getLayoutApplier: () => this.layoutApplier,
-    });
+    this.resetRuntimeDependencies();
 
-    const preferredRenderer = options.rendererPreference ?? 'webgl';
-    const rendererPreferences: PixiRendererPreference[] =
-      preferredRenderer === 'webgl' ? ['webgl', 'webgpu'] : ['webgpu', 'webgl'];
-    const { app, canvas } = await createPixiCompositorApplication({
+    const { app, canvas } = await this.pixiLifecycle.init({
       width,
       height,
       bgColor,
       offscreen,
       externalCanvas,
-      rendererPreferences,
+      options,
+      onContextLost: this.onContextLost,
+      onContextRestored: this.onContextRestored,
     });
     this.app = app;
     this.canvas = canvas;
 
-    if (this.canvas && 'addEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)) {
-      (this.canvas as HTMLCanvasElement).addEventListener(
-        'webglcontextlost',
-        this.onContextLost,
-        false,
-      );
-      (this.canvas as HTMLCanvasElement).addEventListener(
-        'webglcontextrestored',
-        this.onContextRestored,
-        false,
-      );
-    }
-
-    // Stop the automatic ticker, we will render manually
-    this.app.ticker.stop();
-    this.stageTextureRenderer = new StageTextureRenderer({
-      app: this.app,
-      width: this.width,
-      height: this.height,
-      getTrackById: (trackId) => this.trackById.get(trackId),
-    });
+    this.ensureStageTextureRenderer(this.app);
   }
 
   private onContextLost = (event: Event) => {
@@ -683,7 +584,7 @@ export class VideoCompositor {
       ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null)
       : null;
     this.masterEffects = nextMaster;
-    this.syncTrackRuntimes(timelineClips);
+    this.trackRuntimeManager.sync(timelineClips, this.app);
     this.stageSortDirty = true;
 
     const { Input, BlobSource, VideoSampleSink, ALL_FORMATS } = await import('mediabunny');
@@ -751,7 +652,7 @@ export class VideoCompositor {
       : null;
     this.masterEffects = nextMaster;
 
-    this.syncTrackRuntimes(timelineClips);
+    this.trackRuntimeManager.sync(timelineClips, this.app);
 
     const updated = this.timelineLayoutOrchestrator.apply({
       clips: this.clips,
@@ -790,6 +691,7 @@ export class VideoCompositor {
     // this.canvas does not survive into the runExclusive closure below.
     const app = this.app;
     const canvas = this.canvas;
+    const stageTextureRenderer = this.ensureStageTextureRenderer(app);
 
     // Render holds an exclusive queue slot for its full async lifetime (decode +
     // shader transitions + GPU upload). updateTimelineLayout / loadTimeline /
@@ -804,28 +706,21 @@ export class VideoCompositor {
         signal.addEventListener('abort', () => this.resourceManager.abortInFlight(), {
           once: true,
         });
-      return this.renderingEngine.renderFrame(timeUs, options, {
+      const context = this.renderContextBuilder.build({
         app,
         canvas,
-        width: this.width,
-        height: this.height,
-        clips: this.clips,
-        tracks: this.tracks,
-        lastRenderedTimeUs: this.lastRenderedTimeUs,
-        stageSortDirty: this.stageSortDirty,
-        activeSortDirty: this.activeSortDirty,
-        contextLost: this.contextLost,
-        previewEffectsEnabled: this.previewEffectsEnabled,
-        setPreviewEffectsEnabled: (enabled) => {
-          this.previewEffectsEnabled = enabled;
+        state: {
+          width: this.width,
+          height: this.height,
+          clips: this.clips,
+          lastRenderedTimeUs: this.lastRenderedTimeUs,
+          stageSortDirty: this.stageSortDirty,
+          activeSortDirty: this.activeSortDirty,
+          contextLost: this.contextLost,
+          previewEffectsEnabled: this.previewEffectsEnabled,
+          masterEffects: this.masterEffects,
         },
-        applyVideoFrameCacheLimit: (limitMb) => {
-          this.videoFrameCache.applyLimitMb(limitMb);
-        },
-        abortInFlightResources: () => {
-          this.resourceManager.abortInFlight();
-        },
-        updateActiveClips: (currentTimeUs, lastTimeUs) =>
+        activeTrackerUpdate: (currentTimeUs, lastTimeUs) =>
           this.activeTracker.update({
             clips: this.clips,
             timeUs: currentTimeUs,
@@ -837,87 +732,15 @@ export class VideoCompositor {
             },
           }),
         hideInactiveClipSprites: (activeClips) => this.hideInactiveClipSprites(activeClips),
-        applyTrackState: (track) => {
-          this.applyTrackEffects(track);
-        },
-        processFrameSamples: ({ activeClips, timeUs: currentTimeUs }) =>
-          this.frameSampleOrchestrator.process({
-            activeClips,
-            timeUs: currentTimeUs,
-            width: this.width,
-            height: this.height,
-            activeClipProcessor: this.timelineActiveClipProcessor,
-            syncTransitionFilter: (clip, clipTimeUs) => this.syncTransitionFilter(clip, clipTimeUs),
-            computeTransitionOpacity: (clip, clipTimeUs) =>
-              this.computeTransitionOpacity(clip, clipTimeUs),
-            applyClipEffects: (clip) => this.applyClipEffects(clip),
-            drawHudClip: (clip, timeUs) => this.canvasFallbackRenderer.drawHudClip(clip, timeUs),
-            drawShapeClip: (clip, size) => {
-              this.shapeRenderer.draw({
-                graphics: clip.sprite as import('pixi.js').Graphics,
-                type: clip.shapeType ?? 'square',
-                fill: clip.fillColor ?? '#ffffff',
-                stroke: clip.strokeColor ?? '#000000',
-                strokeWidth: clip.strokeWidth ?? 0,
-                config: clip.shapeConfig ?? {},
-                canvasWidth: size.width,
-                canvasHeight: size.height,
-              });
-            },
-            drawTextClip: (clip, size) => {
-              this.textRenderer.draw(clip, size.width, size.height);
-              this.layoutApplier.applyTextLayout(clip);
-            },
-            createAbortController: (key) => this.resourceManager.createAbortController(key),
-            removeAbortController: (key) => this.resourceManager.removeAbortController(key),
-            getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
-            getPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
-            updateClipTextureFromSample: (sample, clip) =>
-              this.updateClipTextureFromSample(sample, clip),
-            setClipSpriteVisible: (clip, visible) => this.setClipSpriteVisible(clip, visible),
-          }),
-        sortStage: () => {
-          if (!this.app) {
-            return;
-          }
-
-          this.stageManager.sortStage({
-            app: this.app,
-            tracks: this.tracks,
-            getClipById: (clipId) => this.clipById.get(clipId),
-            getTrackById: (trackId) => this.trackById.get(trackId),
-          });
-        },
-        prepareAdjustmentClips: (activeClips) => {
-          this.prepareAdjustmentClips(activeClips);
-        },
-        applyShaderTransitions: (activeClips, currentTimeUs) =>
-          this.transitionRenderer.applyShaderTransitions(activeClips, currentTimeUs, {
-            app: this.app!,
-            clips: this.clips,
-            width: this.width,
-            height: this.height,
-            transitionManager: this.transitionManager,
-            stageTextureRenderer: this.stageTextureRenderer!,
-            getTrackById: (trackId) => this.trackById.get(trackId),
-            getActiveTransitionState: (clip, timeUs) =>
-              this.getActiveTransitionState(clip, timeUs) as {
-                opacity: number;
-                progress: number;
-                mode?: string;
-              } | null,
-            ensureTransitionRenderTexture: (texture) =>
-              this.clipResourceManager.ensureTransitionRenderTexture(texture),
-            findPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
-            findNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
-            createAbortController: (key) => this.resourceManager.createAbortController(key),
-            removeAbortController: (key) => this.resourceManager.removeAbortController(key),
-            getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
-            updateClipTextureFromSample: (sample, clip) =>
-              this.updateClipTextureFromSample(sample, clip),
-          }),
-        applyMasterEffects: () => {
-          this.applyMasterEffects();
+        prepareAdjustmentClips: (activeClips) => this.prepareAdjustmentClips(activeClips),
+        getVideoSampleForClip: (params) => this.getVideoSampleForClip(params),
+        getClipById: (clipId) => this.clipById.get(clipId),
+        getPrevClipOnLayer: (clip) => this.findPrevClipOnLayer(clip),
+        getNextClipOnLayer: (clip) => this.findNextClipOnLayer(clip),
+        setClipSpriteVisible: (clip, visible) => this.setClipSpriteVisible(clip, visible),
+        getPreviewEffectsEnabled: () => this.previewEffectsEnabled,
+        setPreviewEffectsEnabled: (enabled) => {
+          this.previewEffectsEnabled = enabled;
         },
         setStageSortDirty: (value) => {
           this.stageSortDirty = value;
@@ -928,7 +751,24 @@ export class VideoCompositor {
         setLastRenderedTimeUs: (value) => {
           this.lastRenderedTimeUs = value;
         },
+        resourceManager: this.resourceManager,
+        videoFrameCache: this.videoFrameCache,
+        effectManager: this.effectManager,
+        transitionManager: this.transitionManager,
+        clipResourceManager: this.clipResourceManager,
+        transitionRenderer: this.transitionRenderer,
+        stageTextureRenderer,
+        stageManager: this.stageManager,
+        frameSampleOrchestrator: this.frameSampleOrchestrator,
+        timelineActiveClipProcessor: this.timelineActiveClipProcessor,
+        canvasFallbackRenderer: this.canvasFallbackRenderer,
+        shapeRenderer: this.shapeRenderer,
+        textRenderer: this.textRenderer,
+        layoutApplier: this.layoutApplier,
+        trackRuntimeManager: this.trackRuntimeManager,
+        masterEffectFilters: this.masterEffectFilters,
       });
+      return this.renderingEngine.renderFrame(timeUs, options, context);
     }, 'renderFrame');
   }
 
@@ -950,49 +790,11 @@ export class VideoCompositor {
     this.stageTextureRenderer?.renderLowerLayersToTexture(layer, texture);
   }
 
-  private ensureCanvasFallback(clip: CompositorClip) {
-    this.canvasFallbackRenderer.ensureCanvasFallback(clip);
-  }
-
-  private computeTransitionOpacity(clip: CompositorClip, timeUs: number): number {
-    return this.transitionManager.computeTransitionOpacity(
-      clip,
-      timeUs,
-      this.previewEffectsEnabled,
-    );
-  }
-
   private getActiveTransitionState(clip: CompositorClip, timeUs: number) {
     return this.transitionManager.getActiveTransitionState(
       clip,
       timeUs,
       this.previewEffectsEnabled,
-    );
-  }
-
-  private syncTransitionFilter(clip: CompositorClip, timeUs: number) {
-    this.transitionManager.syncTransitionFilter(clip, timeUs, this.previewEffectsEnabled);
-  }
-
-  private applyClipEffects(clip: CompositorClip) {
-    this.effectManager.applyClipEffects(clip, {
-      previewEffectsEnabled: this.previewEffectsEnabled,
-    });
-  }
-
-  private applyTrackEffects(track: CompositorTrack) {
-    this.effectManager.applyTrackEffects(track, {
-      previewEffectsEnabled: this.previewEffectsEnabled,
-    });
-  }
-
-  private applyMasterEffects() {
-    if (!this.app) return;
-    this.effectManager.applyMasterEffects(
-      this.app.stage,
-      this.masterEffects,
-      this.masterEffectFilters,
-      { previewEffectsEnabled: this.previewEffectsEnabled },
     );
   }
 
@@ -1011,31 +813,11 @@ export class VideoCompositor {
     for (const clip of this.clips) {
       this.destroyClip(clip);
     }
-    for (const track of this.tracks) {
-      if (track.effectFilters) {
-        for (const filter of track.effectFilters.values()) {
-          try {
-            (filter as { destroy?: () => void })?.destroy?.();
-          } catch {
-            // ignore
-          }
-        }
-        track.effectFilters.clear();
-      }
-      track.container.filters = null;
-      if (track.container.parent) {
-        track.container.parent.removeChild(track.container);
-      }
-      track.container.removeChildren();
-      track.container.destroy({ children: false });
-    }
+    this.trackRuntimeManager.clear();
     this.clips = [];
-    this.tracks = [];
     this.clipById.clear();
     this.prevClipById.clear();
     this.nextClipById.clear();
-    this.trackById.clear();
-    this.trackByLayer.clear();
     this.replacedClipIds.clear();
     this.lastRenderedTimeUs = 0;
     this.activeTracker.reset();
@@ -1061,52 +843,16 @@ export class VideoCompositor {
       this.stageTextureRenderer.destroy();
       this.stageTextureRenderer = null;
     }
-    if (this.app) {
-      const pixiApp = this.app as unknown as Record<string, unknown>;
-
-      // Pixi v8 ResizePlugin teardown may call an internal _cancelResize callback.
-      // Guard it because some lifecycle interleavings leave it unset.
-      if (typeof pixiApp._cancelResize !== 'function') {
-        pixiApp._cancelResize = () => {};
-      }
-      if (typeof pixiApp.cancelResize === 'function') {
-        pixiApp.cancelResize();
-      }
-
-      try {
-        this.app.destroy(
-          { removeView: false },
-          {
-            children: true,
-            texture: true,
-            textureSource: true,
-          },
-        );
-      } catch (err) {
+    this.pixiLifecycle.destroy({
+      app: this.app,
+      canvas: this.canvas,
+      onContextLost: this.onContextLost,
+      onContextRestored: this.onContextRestored,
+      onDestroyError: (err) => {
         log.error('Application destroy failed', err);
-      }
-      this.app = null;
-    }
-
-    if (
-      this.canvas &&
-      'removeEventListener' in (this.canvas as HTMLCanvasElement | OffscreenCanvas)
-    ) {
-      try {
-        (this.canvas as HTMLCanvasElement).removeEventListener(
-          'webglcontextlost',
-          this.onContextLost,
-          false,
-        );
-        (this.canvas as HTMLCanvasElement).removeEventListener(
-          'webglcontextrestored',
-          this.onContextRestored,
-          false,
-        );
-      } catch {
-        // ignore
-      }
-    }
+      },
+    });
+    this.app = null;
     this.canvas = null;
   }
 
