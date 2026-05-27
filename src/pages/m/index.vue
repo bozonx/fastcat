@@ -98,8 +98,16 @@ const formatDate = (dateStr?: string) => {
 
 <template>
   <div class="h-screen w-full">
+    <!-- Если идет инициализация или загрузка данных воркспейса -->
+    <div
+      v-if="workspaceStore.isInitializing || workspaceStore.isLoading"
+      class="flex h-full w-full items-center justify-center bg-ui-bg"
+    >
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+    </div>
+
     <!-- Если рабочая область не выбрана -->
-    <WelcomeScreen v-if="!workspaceStore.workspaceHandle" />
+    <WelcomeScreen v-else-if="!workspaceStore.workspaceHandle" />
 
     <template v-else>
       <div class="flex h-screen w-full flex-col bg-ui-bg overflow-hidden text-ui-text font-sans">
@@ -144,17 +152,9 @@ const formatDate = (dateStr?: string) => {
 
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto bg-ui-bg custom-scrollbar relative">
-          <!-- Loading state -->
-          <div
-            v-if="workspaceStore.isInitializing || workspaceStore.isLoading"
-            class="flex items-center justify-center min-h-[70vh]"
-          >
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-          </div>
-
           <!-- 1. Completely Empty State (No projects at all) -->
           <div
-            v-else-if="sortedProjects.length === 0 && !searchQuery"
+            v-if="sortedProjects.length === 0 && !searchQuery"
             class="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center gap-6"
           >
             <div class="relative w-36 h-36 flex items-center justify-center">
