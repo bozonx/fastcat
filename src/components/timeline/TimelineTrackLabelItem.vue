@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, onBeforeUnmount, nextTick } from 'vue';
 import type { TimelineTrack } from '~/timeline/types';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { getAudioMeterColorClass, getAudioMeterPercent, isAudioClipping } from '~/utils/audio';
@@ -11,6 +11,7 @@ const props = defineProps<{
   /** True only when the track header itself is selected, not just a clip/gap/transition on it. */
   isDirectlySelected: boolean;
   isHovered: boolean;
+  isRenaming?: boolean;
   hasAudio?: boolean;
   levelDb?: number;
   trackNumber: number;
@@ -19,12 +20,17 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select'): void;
   (e: 'request-rename'): void;
+  (e: 'rename', name: string): void;
+  (e: 'cancelRename'): void;
   (e: 'resizeStart', event: MouseEvent): void;
   (e: 'contextMenu'): void;
   (e: 'middleClick', event: MouseEvent): void;
 }>();
 
 const timelineStore = useTimelineStore();
+
+const renameValue = ref(props.track.name);
+const renameInput = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
 const hasClipped = ref(false);
 let clipResetTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -56,6 +62,10 @@ function scheduleClipReset() {
 const levelPercent = computed(() => getAudioMeterPercent(props.levelDb, -60, 12));
 const levelColorClass = computed(() => getAudioMeterColorClass(props.levelDb));
 
+// Calculate available space for text wrap and the maximum number of lines that can fit
+const remainingHeight = computed(() => props.height - 28 - (props.hasAudio ? 16 : 8));
+const lineCount = computed(() => Math.max(1, Math.floor(remainingHeight.value / 13)));
+
 watch(
   () => props.levelDb,
   (value) => {
@@ -65,6 +75,28 @@ watch(
     clipResetDeadlineMs = Date.now() + 1400;
     scheduleClipReset();
   },
+);
+
+watch(
+  () => props.isRenaming,
+  async (newVal) => {
+    if (newVal) {
+      renameValue.value = props.track.name;
+      await nextTick();
+      if (renameInput.value) {
+        renameInput.value.focus();
+        renameInput.value.select();
+        // Use timeout fallback to guarantee focus after visual transitions settle
+        setTimeout(() => {
+          if (renameInput.value) {
+            renameInput.value.focus();
+            renameInput.value.select();
+          }
+        }, 50);
+      }
+    }
+  },
+  { immediate: true },
 );
 
 function resetClipIndicator(event: MouseEvent) {
@@ -82,11 +114,21 @@ function startRenaming() {
   }
 }
 
+function confirmRename() {
+  const trimmed = renameValue.value.trim();
+  if (trimmed && trimmed !== props.track.name) {
+    emit('rename', trimmed);
+  } else {
+    emit('cancelRename');
+  }
+}
+
 function toggleVideoHidden(e: MouseEvent) {
   e.stopPropagation();
   timelineStore.toggleVideoHidden(props.track.id);
 }
 
+// Ensure single line comments are strictly above the commented line as per guidelines.
 function toggleAudioMuted(e: MouseEvent) {
   e.stopPropagation();
   timelineStore.toggleTrackAudioMuted(props.track.id);
@@ -178,12 +220,37 @@ onBeforeUnmount(() => {
         <!-- Truncated Name in first row when height is small -->
         <div
           v-if="height < 52"
-          class="min-w-[20px] flex items-center overflow-hidden rounded px-0.5 hover:bg-ui-bg-accent/30"
-          @click.stop="startRenaming"
+          class="min-w-[20px] max-w-[150px] flex items-center overflow-hidden"
         >
-          <span class="truncate block text-[10px] font-medium leading-tight" :title="track.name">
-            {{ track.name }}
-          </span>
+          <!-- Inline Grid to size input precisely to text width -->
+          <div
+            v-if="isRenaming"
+            class="inline-grid items-center grid-cols-1 w-full bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1"
+          >
+            <span
+              class="invisible col-start-1 row-start-1 text-[10px] font-medium leading-tight px-0.5 whitespace-pre min-w-[20px]"
+            >
+              {{ renameValue || ' ' }}
+            </span>
+            <input
+              ref="renameInput"
+              v-model="renameValue"
+              class="col-start-1 row-start-1 w-full bg-transparent border-none outline-none ring-0 p-0 text-[10px] font-medium leading-tight px-0.5 select-text text-ui-text focus:outline-none min-w-[20px]"
+              @click.stop
+              @keydown.enter.stop="confirmRename"
+              @keydown.esc.stop="emit('cancelRename')"
+              @blur="confirmRename"
+            />
+          </div>
+          <div
+            v-else
+            class="rounded px-0.5 hover:bg-ui-bg-accent/30 cursor-pointer overflow-hidden max-w-full"
+            @click.stop="startRenaming"
+          >
+            <span class="truncate block text-[10px] font-medium leading-tight" :title="track.name">
+              {{ track.name }}
+            </span>
+          </div>
         </div>
 
         <div class="flex-1" />
@@ -247,13 +314,41 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Row 2: Multi-line Name / Description (when height >= 52) -->
-      <div v-if="height >= 52" class="mt-1 flex-1 min-w-0 overflow-hidden relative">
+      <div
+        v-if="height >= 52"
+        class="mt-1 min-w-0 overflow-hidden relative"
+        :class="
+          isRenaming
+            ? 'flex-1 h-full w-full'
+            : 'flex flex-col items-start max-h-[calc(100%-1.5rem)]'
+        "
+      >
         <div
-          class="w-full h-full px-0.5 pt-0.5 hover:bg-ui-bg-accent/30 rounded"
+          v-if="isRenaming"
+          class="w-full h-full bg-ui-bg-elevated border border-ui-border-accent rounded-sm px-1 py-0.5"
+        >
+          <textarea
+            ref="renameInput"
+            v-model="renameValue"
+            class="w-full h-full bg-transparent border-none outline-none ring-0 p-0 text-[10px] leading-tight font-medium resize-none select-text text-ui-text focus:outline-none overflow-y-auto"
+            @click.stop
+            @keydown.esc.stop="emit('cancelRename')"
+            @blur="confirmRename"
+          />
+        </div>
+        <div
+          v-else
+          class="max-w-full px-0.5 pt-0.5 hover:bg-ui-bg-accent/30 rounded cursor-pointer"
           @click.stop="startRenaming"
         >
           <span
             class="text-[10px] text-ui-text-muted leading-tight wrap-break-word block whitespace-pre-wrap"
+            :style="{
+              display: '-webkit-box',
+              '-webkit-box-orient': 'vertical',
+              '-webkit-line-clamp': lineCount,
+              overflow: 'hidden',
+            }"
           >
             {{ track.name }}
           </span>

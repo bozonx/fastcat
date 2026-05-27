@@ -106,4 +106,123 @@ describe('TimelineTrackLabelItem', () => {
 
     expect(component.find('button[type="button"]').attributes('title')).toBe('');
   });
+
+  it('emits request-rename when trying to rename while selected', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        isSelected: true,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const nameSpan = component.find('.cursor-pointer span');
+    await nameSpan.trigger('click');
+
+    expect(component.emitted('request-rename')).toBeTruthy();
+  });
+
+  it('emits select when trying to rename while not selected', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        isSelected: false,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const nameSpan = component.find('.cursor-pointer span');
+    await nameSpan.trigger('click');
+
+    expect(component.emitted('select')).toBeTruthy();
+    expect(component.emitted('request-rename')).toBeFalsy();
+  });
+
+  it('renders input in small height when isRenaming is true', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        height: 40,
+        isRenaming: true,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    expect(component.find('input').exists()).toBe(true);
+    expect(component.find('textarea').exists()).toBe(false);
+  });
+
+  it('renders textarea in tall height when isRenaming is true', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        height: 64,
+        isRenaming: true,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    expect(component.find('input').exists()).toBe(false);
+    expect(component.find('textarea').exists()).toBe(true);
+  });
+
+  it('emits rename with trimmed value when input is blurred', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        height: 40,
+        isRenaming: true,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const input = component.find('input');
+    await input.setValue('   New Track Name   ');
+    await input.trigger('blur');
+
+    expect(component.emitted('rename')).toBeTruthy();
+    expect(component.emitted('rename')?.[0]).toEqual(['New Track Name']);
+  });
+
+  it('emits cancelRename when input is blurred with unchanged name', async () => {
+    const component = await mountSuspended(TimelineTrackLabelItem, {
+      props: {
+        ...baseProps,
+        height: 40,
+        isRenaming: true,
+      },
+      global: {
+        stubs: {
+          UiToggleButton: { template: '<div class="toggle-stub"></div>' },
+        },
+      },
+    });
+
+    const input = component.find('input');
+    await input.setValue('Audio 1');
+    await input.trigger('blur');
+
+    expect(component.emitted('cancelRename')).toBeTruthy();
+    expect(component.emitted('rename')).toBeFalsy();
+  });
 });
