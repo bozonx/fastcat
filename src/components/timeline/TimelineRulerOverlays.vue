@@ -99,7 +99,7 @@ function getMarkerButtonClass(marker: MarkerPoint) {
       >
         <button
           type="button"
-          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_rgba(var(--color-selection-range),0.15)] opacity-60"
+          class="absolute inset-y-0 left-0 right-0 border-l border-r bg-selection-range-bg border-selection-range-border shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-selection-range)_15%,transparent)] opacity-60"
           :class="isSelectionRangeSelected ? 'ring-2 ring-selection-range/60' : ''"
           @click="emit('select-selection-range', $event)"
           @pointerdown.stop="emit('selection-range-pointerdown', $event, 'move')"

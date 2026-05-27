@@ -402,7 +402,7 @@ defineExpose({
             stroke="currentColor"
             stroke-width="5"
             stroke-linecap="round"
-            class="drop-shadow-[0_0_8px_rgba(var(--color-primary-400),0.3)]"
+            class="drop-shadow-[0_0_8px_color-mix(in_srgb,var(--color-primary-400)_30%,transparent)]"
           />
         </svg>
       </div>

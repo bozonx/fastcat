@@ -201,7 +201,7 @@ onBeforeUnmount(() => {
 
 .tab-ghost {
   opacity: 0.3;
-  background: rgba(var(--color-primary-500), 0.1);
+  background: color-mix(in srgb, var(--color-primary-500) 10%, transparent);
 }
 
 .tab-close-btn {

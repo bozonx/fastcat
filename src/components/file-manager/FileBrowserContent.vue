@@ -272,11 +272,11 @@ function emitResizeStart(event: MouseEvent, column: string) {
 }
 
 .content-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(var(--color-neutral-500), 0.1);
+  background: color-mix(in srgb, var(--color-neutral-500) 10%, transparent);
   border-radius: 3px;
 }
 
 .content-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--color-neutral-500), 0.2);
+  background: color-mix(in srgb, var(--color-neutral-500) 20%, transparent);
 }
 </style>
