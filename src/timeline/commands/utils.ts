@@ -159,7 +159,6 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
   return finalResult;
 }
 
-
 export function updateLinkedLockedAudio(
   doc: TimelineDocument,
   videoItemId: string,

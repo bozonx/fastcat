@@ -66,7 +66,11 @@ describe('buildAudioEffectGraph', () => {
   it('passes source through when no effects', async () => {
     const ctx = createMockContext();
     const source = new MockAudioNode();
-    const result = await buildAudioEffectGraph({ audioContext: ctx, sourceNode: source, effects: [] });
+    const result = await buildAudioEffectGraph({
+      audioContext: ctx,
+      sourceNode: source,
+      effects: [],
+    });
     expect(result.outputNode).toBe(source);
   });
 

@@ -1,5 +1,5 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
-import type { ExportOptions } from '~/composables/timeline/export/types';
+import type { TranscodeOptions } from '~/composables/timeline/export/types';
 import { runResilientWorkerFileIo, acquireStreamingWorkerFileIoSlot } from './io-governor';
 import { governedBlobWorker } from '~/utils/io/governed-blob-worker';
 import { createDevLogger } from '~/utils/dev-logger';
@@ -36,7 +36,7 @@ interface BunnyConversionProcess {
 export async function runTranscode(
   sourceFile: File | FileSystemFileHandle,
   targetHandle: FileSystemFileHandle,
-  options: ExportOptions,
+  options: TranscodeOptions,
   hostClient: VideoCoreHostAPI | null,
   reportExportWarning: (msg: string, taskId?: string) => Promise<void>,
   checkCancel: () => boolean,

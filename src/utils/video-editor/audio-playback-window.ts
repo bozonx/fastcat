@@ -48,8 +48,6 @@ export function buildClipPlaybackWindow(
     return null;
   }
 
-
-
   const { previousClip, nextClip } = adjacentClips;
   const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({
     clipDurationS,

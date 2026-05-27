@@ -44,6 +44,7 @@ export const ExportOptionsSchema = z.object({
     .object({ startUs: z.number().finite().min(0), endUs: z.number().finite().min(0) })
     .refine((range) => range.endUs > range.startUs)
     .optional(),
+  audioPassthrough: z.boolean().optional(),
 });
 
 export type ExportOptions = z.infer<typeof ExportOptionsSchema>;

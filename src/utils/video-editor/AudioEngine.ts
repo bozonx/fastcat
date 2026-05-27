@@ -603,7 +603,7 @@ export class AudioEngine {
 
       if (reversed) {
         const clipDurationS = clip.durationUs / 1_000_000;
-        const sourceTimeRaw = (sourceStartS + clipDurationS * clipSpeed) - clipLocalS * clipSpeed;
+        const sourceTimeRaw = sourceStartS + clipDurationS * clipSpeed - clipLocalS * clipSpeed;
         sourceTimeS = Math.max(0, sourceTimeRaw - LOOKAHEAD_S * clipSpeed);
         sourceEndS = Math.max(0, sourceTimeRaw);
       } else {
@@ -847,7 +847,8 @@ export class AudioEngine {
     lastChunkIndex: number;
     firstChunk: AudioChunk;
   }) {
-    if (!this.ctx || !this.masterGain) return;
+    const ctx = this.ctx;
+    if (!ctx || !this.masterGain) return;
 
     const {
       clip,
@@ -862,12 +863,12 @@ export class AudioEngine {
     } = args;
 
     // Per-clip audio graph (shared by every chunk source we schedule below).
-    const clipInputNode = this.ctx.createGain();
-    const clipGain = this.ctx.createGain();
+    const clipInputNode = ctx.createGain();
+    const clipGain = ctx.createGain();
     let destroyEffects: () => Promise<void>;
     try {
       const graph = await this.graphBuilder.buildClipGraph({
-        audioContext: this.ctx,
+        audioContext: ctx,
         sourceNode: clipInputNode,
         audioBalance: window.audioBalance,
         effects: clip.audioEffects ?? [],
@@ -917,7 +918,7 @@ export class AudioEngine {
     const t1 = window.currentClipLocalS + window.remainingInClipS;
     const gainParam: AudioParam = clipGain.gain;
 
-    gainParam.cancelScheduledValues?.(this.ctx.currentTime);
+    gainParam.cancelScheduledValues?.(ctx.currentTime);
     gainParam.setValueAtTime?.(gainAtClipTime(t0), playStartS);
 
     if (window.fadeInS > 0 && t0 < window.fadeInS && t1 > 0) {
@@ -1008,8 +1009,8 @@ export class AudioEngine {
     // We drop the audio that "should have played" during the gap — silence is
     // preferable to losing video/audio sync.
     const compensateForRealTimeGap = () => {
-      if (!this.ctx) return;
-      const ctxNow = this.ctx.currentTime;
+      if (!ctx) return;
+      const ctxNow = ctx.currentTime;
       if (state.scheduledCtxTimeS >= ctxNow) return;
       const lostCtxS = ctxNow - state.scheduledCtxTimeS;
       const lostSourceS = lostCtxS * window.effectiveSpeed;
@@ -1019,59 +1020,53 @@ export class AudioEngine {
     };
 
     const scheduleSource = (chunk: AudioChunk) => {
-
       compensateForRealTimeGap();
       if (state.remainingToPlayS <= 0) return;
 
       const chunkStartS = chunk.startTimeS;
       const chunkEndS = chunk.startTimeS + chunk.durationS;
-      
+
       if (window.reversed) {
         if (state.currentSourceTimeS <= chunkStartS) return;
       } else {
         if (state.currentSourceTimeS >= chunkEndS) return;
       }
 
-      let offsetInChunkS: number;
+      let offsetInChunkS = 0;
       let availableInChunkS: number;
-      
+
       if (window.reversed) {
         availableInChunkS = state.currentSourceTimeS - chunkStartS;
       } else {
         offsetInChunkS = Math.max(0, state.currentSourceTimeS - chunkStartS);
         availableInChunkS = chunk.durationS - offsetInChunkS;
       }
-      
+
       const playDurationS = Math.min(state.remainingToPlayS, availableInChunkS);
       if (playDurationS <= 0) return;
-      
+
       if (window.reversed) {
         offsetInChunkS = state.currentSourceTimeS - playDurationS - chunkStartS;
       }
 
-      const sourceNode = this.ctx.createBufferSource();
-      
+      const sourceNode = ctx.createBufferSource();
+
       let bufferToPlay: AudioBuffer;
       let startOffsetS: number;
       if (window.reversed) {
-        bufferToPlay = createReversedAudioBuffer(
-          this.ctx,
-          chunk.buffer,
-          offsetInChunkS,
-          playDurationS
-        );
+        bufferToPlay = createReversedAudioBuffer(ctx, chunk.buffer, offsetInChunkS, playDurationS);
         startOffsetS = 0;
       } else {
         bufferToPlay = chunk.buffer;
-        startOffsetS = offsetInChunkS!;
+        startOffsetS = offsetInChunkS;
       }
-      
+
       sourceNode.buffer = bufferToPlay;
       if (sourceNode.playbackRate) {
         sourceNode.playbackRate.value = window.effectiveSpeed;
       }
 
-      const chunkGainNode = this.ctx.createGain();
+      const chunkGainNode = ctx.createGain();
       sourceNode.connect(chunkGainNode);
       chunkGainNode.connect(clipInputNode);
 
@@ -1248,7 +1243,7 @@ function createReversedAudioBuffer(
   const reversedBuffer = ctx.createBuffer(
     sourceBuffer.numberOfChannels,
     durationSamples,
-    sampleRate
+    sampleRate,
   );
 
   for (let channel = 0; channel < sourceBuffer.numberOfChannels; channel++) {

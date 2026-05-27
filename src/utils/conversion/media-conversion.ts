@@ -19,7 +19,7 @@ import {
   AUDIO_ONLY_EXPORT_PLACEHOLDER_DIMENSION,
   AUDIO_ONLY_EXPORT_PLACEHOLDER_FPS,
 } from './constants';
-import type { ExportOptions } from '~/composables/timeline/export/types';
+import type { TranscodeOptions } from '~/composables/timeline/export/types';
 const log = createDevLogger('media-conversion');
 
 const METADATA_TIMEOUT_MS = 30000;
@@ -122,7 +122,7 @@ export async function executeMediaConversion(params: {
           throw new Error('Invalid media duration');
         }
 
-        let exportOptions: ExportOptions = {} as ExportOptions;
+        let exportOptions: TranscodeOptions = {} as TranscodeOptions;
 
         if (params.request.type === 'video' && params.request.video) {
           exportOptions = {

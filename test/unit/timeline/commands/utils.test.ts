@@ -121,7 +121,9 @@ describe('getLinkedClipGroupItemIds', () => {
         {
           id: 'track-temp',
           kind: 'video',
-          items: [{ id: 'clip-temp', kind: 'clip', timelineRange: { startUs: 0, durationUs: 100 } }],
+          items: [
+            { id: 'clip-temp', kind: 'clip', timelineRange: { startUs: 0, durationUs: 100 } },
+          ],
         },
       ],
     };
@@ -129,7 +131,11 @@ describe('getLinkedClipGroupItemIds', () => {
     expect(result1).toEqual(['clip-temp']);
 
     // Mutate the document illegally to prove cache is used
-    tempDoc.tracks[0].items.push({ id: 'clip-temp-2', kind: 'clip', timelineRange: { startUs: 0, durationUs: 100 } } as any);
+    tempDoc.tracks[0].items.push({
+      id: 'clip-temp-2',
+      kind: 'clip',
+      timelineRange: { startUs: 0, durationUs: 100 },
+    } as any);
     const result2 = getLinkedClipGroupItemIds(tempDoc as any, 'clip-temp');
     // Result should still be the cached one, ignoring the new clip
     expect(result2).toEqual(['clip-temp']);
@@ -141,7 +147,6 @@ describe('getLinkedClipGroupItemIds', () => {
     expect(result3).toEqual(['clip-temp']);
   });
 });
-
 
 describe('rangesOverlap', () => {
   it('detects overlapping ranges', () => {

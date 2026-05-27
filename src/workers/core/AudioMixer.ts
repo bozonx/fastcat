@@ -778,7 +778,7 @@ async function* processClipAudio(args: {
     const targetFrames = Math.min(blockFrames + overlapFrames, remainingFrames);
     const blockStartS = blockStartFrame / targetSampleRate;
     const outputDurationS = targetFrames / targetSampleRate;
-    
+
     let sourceStartS: number;
     let sourceEndS: number;
     if (clip.reversed) {

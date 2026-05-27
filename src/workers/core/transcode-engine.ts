@@ -1,5 +1,5 @@
 import type { VideoCoreHostAPI } from '../../utils/video-editor/worker-client';
-import type { ExportOptions } from '~/composables/timeline/export/types';
+import type { TranscodeOptions } from '~/composables/timeline/export/types';
 
 export interface ReversibleAudioSample {
   data: Float32Array;
@@ -84,7 +84,7 @@ export interface AudioProcessSample {
 }
 
 export function createAudioProcessConfig(
-  options: ExportOptions,
+  options: TranscodeOptions,
   AudioSample: new (init: AudioSampleInitLike) => unknown,
 ) {
   if (
