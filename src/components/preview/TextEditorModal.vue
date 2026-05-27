@@ -32,7 +32,7 @@ const content = defineModel<string>('content', { default: '' });
         variant="none"
         :ui="{
           root: 'ring-0 focus-within:ring-0',
-          base: 'h-full resize-none font-mono ring-0 focus:ring-0 border border-ui-border focus:outline-none focus-visible:outline-none',
+          base: 'h-full resize-none font-mono ring-0 focus:ring-0 border border-ui-border focus:outline-none focus-visible:outline-none text-editor-textarea',
         }"
         :spellcheck="false"
         data-primary-focus="true"

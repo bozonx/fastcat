@@ -206,7 +206,6 @@ const hasAudio = computed(() => {
         />
 
         <MobileDrawerToolbarButton
-          primary
           icon="i-heroicons-arrows-right-left"
           :label="t('fastcat.timeline.trimMode')"
           :disabled="isLocked"
@@ -230,13 +229,6 @@ const hasAudio = computed(() => {
             "
             :active="clip?.audioMuted"
             @click="handleToggleMuted"
-          />
-
-          <MobileDrawerToolbarButton
-            :icon="isSoloed ? 'i-heroicons-musical-note-solid' : 'i-heroicons-musical-note'"
-            :label="isSoloed ? t('fastcat.timeline.unsolo') : t('fastcat.timeline.solo')"
-            :active="isSoloed"
-            @click="toggleSolo"
           />
         </template>
 

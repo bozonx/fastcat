@@ -406,17 +406,6 @@ const containerHeightClass = computed(() => {
             :label="monitorZoomLabel"
             @click="resetZoom"
           />
-
-          <UDropdownMenu :items="mobileSpeedMenuItems" :ui="{ content: 'min-w-20' }">
-            <UButton
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
-              :label="speedButtonLabel"
-              :aria-label="t('fastcat.monitor.playbackSpeed')"
-            />
-          </UDropdownMenu>
         </div>
 
         <div class="flex items-center gap-4" :class="[showSideControls ? 'flex-col' : 'h-full']">
@@ -448,6 +437,17 @@ const containerHeightClass = computed(() => {
             :disabled="!canInteractPlayback"
             @click="togglePlayback"
           />
+
+          <UDropdownMenu :items="mobileSpeedMenuItems" :ui="{ content: 'min-w-20' }">
+            <UButton
+              size="xs"
+              variant="ghost"
+              color="neutral"
+              class="font-mono tabular-nums text-[10px] min-w-10 justify-center h-6 px-1 text-ui-text-muted hover:text-ui-text"
+              :label="speedButtonLabel"
+              :aria-label="t('fastcat.monitor.playbackSpeed')"
+            />
+          </UDropdownMenu>
 
           <UDropdownMenu v-model:open="isContextMenuOpen" :items="contextMenuItems">
             <UButton

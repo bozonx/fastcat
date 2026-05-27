@@ -61,6 +61,7 @@ onMounted(async () => {
 
     if (
       route.path === '/' &&
+      route.query.mode !== 'desktop' &&
       workspaceStore.workspaceHandle &&
       workspaceStore.userSettings.openLastProjectOnStart &&
       workspaceStore.lastProjectName &&

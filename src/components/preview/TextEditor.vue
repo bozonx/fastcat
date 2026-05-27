@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createDevLogger } from '~/utils/dev-logger';
 
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue';
 import TextEditorModal from '~/components/preview/TextEditorModal.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
@@ -114,6 +114,14 @@ watch(isModalOpen, (isOpen, oldIsOpen) => {
   }
 });
 
+watch(isLoading, (loading) => {
+  if (!loading) {
+    nextTick(() => {
+      textareaRef.value?.focus();
+    });
+  }
+}, { immediate: true });
+
 onBeforeUnmount(() => {
   clearTimer();
   void saveNow();
@@ -134,11 +142,11 @@ function focusPanel() {
       v-if="!isLoading"
       ref="textareaRef"
       v-model="content"
-      class="flex-1"
+      class="flex-1 h-full"
       variant="none"
       :ui="{
-        root: 'ring-0 focus-within:ring-0',
-        base: 'h-full resize-none font-mono ring-0 focus:ring-0 border-none focus:outline-none focus-visible:outline-none',
+        root: 'h-full items-stretch ring-0 focus-within:ring-0',
+        base: 'h-full resize-none font-mono ring-0 focus:ring-0 border-none focus:outline-none focus-visible:outline-none text-editor-textarea',
       }"
       :spellcheck="false"
       full-width

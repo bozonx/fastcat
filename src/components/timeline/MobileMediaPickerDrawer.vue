@@ -14,7 +14,10 @@ import { useUiStore } from '~/stores/ui.store';
 const log = createDevLogger('MobileMediaPickerDrawer');
 
 const props = defineProps<{ isOpen: boolean; isReplaceMode?: boolean }>();
-const emit = defineEmits<{ (e: 'close'): void }>();
+const emit = defineEmits<{
+  (e: 'close'): void;
+  (e: 'added'): void;
+}>();
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -151,6 +154,7 @@ async function addToTimeline() {
       }
     }
     selectedFiles.value = [];
+    emit('added');
     emit('close');
   } catch (err) {
     log.error('addToTimeline / replace failed', err);

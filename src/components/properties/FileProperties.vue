@@ -477,7 +477,7 @@ const {
 
 <template>
   <!-- IMPORTANT: NO LOADING INDICATORS ALLOWED HERE. ALL PROPERTIES MUST LOAD SILENTLY. -->
-  <div class="w-full flex flex-col" :class="mobileTextMode ? 'h-full gap-0' : 'gap-4'">
+  <div class="w-full flex flex-col" :class="mobileTextMode ? 'flex-1 min-h-0 gap-0' : 'gap-4'">
     <input
       ref="uploadInputRef"
       type="file"
@@ -524,7 +524,7 @@ const {
       :thumbnail-url="thumbnailUrl"
       :is-otio="isOtio"
       :vfs="effectiveVfs"
-      :class="[mobileTextMode && mediaType === 'text' ? 'flex-1 border-none' : '']"
+      :flexible="mobileTextMode && mediaType === 'text'"
     />
 
     <template v-if="!mobileTextMode || mediaType !== 'text'">

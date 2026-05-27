@@ -370,7 +370,7 @@ const topActions = computed(() => {
   }
 
   // Transcribe (Video or Audio)
-  if (isVideo.value || isAudio.value) {
+  if ((isVideo.value || isAudio.value) && !isFullyUnsupported.value) {
     actions.push({
       id: 'transcribe',
       label: t('videoEditor.fileManager.actions.transcribe'),
@@ -381,7 +381,7 @@ const topActions = computed(() => {
   }
 
   // Proxy (Video only)
-  if (isVideo.value && path) {
+  if (isVideo.value && path && !isFullyUnsupported.value) {
     const isGenerating = proxyStore.generatingProxies.has(path);
     const hasProxy = proxyStore.existingProxies.has(path);
 
@@ -416,7 +416,7 @@ const topActions = computed(() => {
   }
 
   // Extract Audio (Video only)
-  if (isVideo.value && hasAudioTrack.value) {
+  if (isVideo.value && hasAudioTrack.value && !isFullyUnsupported.value) {
     actions.push({
       id: 'extract-audio',
       label: t('videoEditor.fileManager.actions.extractAudio'),
@@ -433,29 +433,6 @@ const topActions = computed(() => {
       icon: 'i-heroicons-document-duplicate',
       onClick: actionHandlers.createOtioVersion,
     });
-  }
-
-  if (canOpenInPanels.value) {
-    actions.push(
-      {
-        id: 'openAsPanelCut',
-        label: t('videoEditor.fileManager.actions.openAsPanelCut'),
-        icon: 'i-heroicons-window',
-        onClick: actionHandlers.openAsPanelCut,
-      },
-      {
-        id: 'openAsPanelSound',
-        label: t('videoEditor.fileManager.actions.openAsPanelSound'),
-        icon: 'i-heroicons-window',
-        onClick: actionHandlers.openAsPanelSound,
-      },
-      {
-        id: 'openAsProjectTab',
-        label: t('videoEditor.fileManager.actions.openAsProjectTab'),
-        icon: 'i-heroicons-squares-plus',
-        onClick: actionHandlers.openAsProjectTab,
-      },
-    );
   }
 
   // Directory actions
@@ -561,7 +538,11 @@ const topActions = computed(() => {
   <UiMobileDrawer v-model:open="isOpenLocal" :show-close="false" :ui="{ container: 'h-[85dvh]' }">
     <div class="flex flex-col h-full relative overflow-hidden">
       <!-- Scrollable content -->
-      <div class="flex-1 min-h-0 overflow-y-auto px-4 pb-24" data-vaul-no-drag>
+      <div
+        class="flex-1 min-h-0 px-4"
+        :class="isTextDocument ? 'flex flex-col overflow-hidden pb-4' : 'overflow-y-auto pb-24'"
+        data-vaul-no-drag
+      >
         <div class="mb-4 pt-1">
           <MobileDrawerToolbar
             v-if="selectedEntriesList.length > 0"
@@ -614,7 +595,7 @@ const topActions = computed(() => {
           </div>
         </div>
 
-        <div v-if="selectedFsEntry" class="h-full py-2">
+        <div v-if="selectedFsEntry" :class="isTextDocument ? 'flex-1 flex flex-col min-h-0 py-2' : 'h-full py-2'">
           <FileProperties
             :selected-fs-entry="selectedFsEntry.entry"
             preview-mode="original"

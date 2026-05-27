@@ -115,10 +115,13 @@ const {
 async function onCreateTextFile(targetPath?: string) {
   const path = await runCreateTextFile(targetPath);
   if (path) {
-    const entry = folderEntries.value.find((e) => e.path === path);
-    if (entry) {
-      handleEntryClick(entry);
-    }
+    const name = path.split('/').pop() || '';
+    const entry: FsEntry = {
+      name,
+      path,
+      kind: 'file',
+    };
+    handleEntryClick(entry);
   }
 }
 
@@ -161,6 +164,8 @@ const {
   copyEntry,
   moveEntry,
   isExternal: false,
+  onAfterRename: loadFolderContent,
+  onAfterDelete: loadFolderContent,
 });
 
 // Lazily calculate sizes of newly appeared folders only

@@ -429,7 +429,7 @@ select {
 .is-mobile-layout {
   /* 1. Стилизация полей ввода (text, number, email, и т.д.) и textarea */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  textarea {
+  textarea:not(.text-editor-textarea) {
     font-size: 0.95rem !important; /* Читаемый размер шрифта, предотвращает автозум на iOS */
     border-radius: var(--radius-ui-md) !important; /* Закругление углов 8px */
     border: 1px solid var(--ui-border) !important;
@@ -443,14 +443,14 @@ select {
     padding-right: 0.875rem !important;
   }
 
-  textarea {
+  textarea:not(.text-editor-textarea) {
     height: auto !important;
     min-height: 80px !important;
   }
 
   /* Фокус-состояние для инпутов и текстовых зон */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible,
-  textarea:focus-visible {
+  textarea:not(.text-editor-textarea):focus-visible {
     border-color: var(--color-primary-500) !important;
     outline: none !important;
     box-shadow: 0 0 0 1px var(--color-primary-500) !important;

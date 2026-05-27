@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
+import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
@@ -11,6 +12,9 @@ import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 const { t } = useI18n();
+const { isMobile } = useDevice();
+const modalWrapper = computed(() => isMobile ? UiMobileDrawer : UiModal);
+const modalUi = computed(() => isMobile ? {} : { content: 'sm:max-w-3xl' });
 
 const fileConversionStore = useFileConversionStore();
 
@@ -107,10 +111,11 @@ const isFormValid = computed(() => {
 </script>
 
 <template>
-  <UiModal
+  <component
+    :is="modalWrapper"
     v-model:open="isOpen"
     :title="t('videoEditor.export.convertFile', { file: fileName })"
-    class="max-w-3xl"
+    :ui="modalUi"
   >
     <div class="flex flex-col gap-6">
       <div v-if="isExtractingMetadata" class="flex items-center gap-2 text-sm text-ui-text-muted">
@@ -247,5 +252,5 @@ const isFormValid = computed(() => {
         </UButton>
       </div>
     </template>
-  </UiModal>
+  </component>
 </template>

@@ -16,14 +16,21 @@ const { isMobile } = useDevice();
 resetProjectState();
 
 onMounted(() => {
-  const alreadyLaunched = readLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED) === 'true';
+  if (route.query.mode === 'desktop') {
+    writeLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP, 'true');
+  }
 
+  const preferDesktop = readLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP) === 'true';
+
+  // Если мобильное устройство и не выбран принудительный десктопный режим
+  if (isMobile && !preferDesktop) {
+    router.replace('/m');
+    return;
+  }
+
+  const alreadyLaunched = readLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED) === 'true';
   if (!alreadyLaunched) {
     writeLocalStorageString(STORAGE_KEYS.APP.ALREADY_LAUNCHED, 'true');
-    // Если мобильное устройство и не выбран принудительный десктопный режим
-    if (isMobile && route.query.mode !== 'desktop') {
-      router.replace('/m');
-    }
   }
 });
 </script>

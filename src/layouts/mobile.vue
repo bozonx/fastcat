@@ -2,6 +2,7 @@
 import { onMounted } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import ProjectLockedModal from '~/components/editor/ProjectLockedModal.vue';
+import FileConversionModal from '~/components/file-manager/FileConversionModal.vue';
 
 const workspaceStore = useWorkspaceStore();
 
@@ -25,5 +26,6 @@ onMounted(async () => {
     </main>
 
     <ProjectLockedModal />
+    <FileConversionModal />
   </div>
 </template>

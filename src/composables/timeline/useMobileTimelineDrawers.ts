@@ -66,6 +66,8 @@ export function useMobileTimelineDrawers() {
       gap: selectedGap.value,
     }),
     (state) => {
+      if (isTrimDrawerOpen.value) return;
+
       const { trackId, itemIds, entity, transition, markerId, gap } = state;
 
       if (isLongPress.value) return;

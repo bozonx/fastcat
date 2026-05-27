@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import MobileMediaPickerDrawer from './MobileMediaPickerDrawer.vue';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
@@ -73,7 +74,32 @@ async function onFilesSelected(e: Event) {
   const files = Array.from(input.files);
   input.value = '';
   emit('close');
-  await handleFiles(files);
+  const results = await handleFiles(files);
+  if (results && results.length > 0) {
+    for (const r of results) {
+      const mediaType = getMediaTypeFromFilename(r.fileName);
+      if (mediaType === 'timeline') {
+        await timelineStore.addTimelineClipToTimelineFromPath({
+          trackId: timelineStore.resolveMobileTargetTrackId('video'),
+          name: r.fileName,
+          path: r.targetPath,
+          startUs: timelineStore.currentTime,
+          pseudo: true,
+        });
+      } else if (['video', 'audio', 'image'].includes(mediaType)) {
+        const kind = mediaType === 'audio' ? 'audio' : 'video';
+        const trackId = timelineStore.resolveMobileTargetTrackId(kind);
+
+        await timelineStore.addClipToTimelineFromPath({
+          trackId,
+          name: r.fileName,
+          path: r.targetPath,
+          startUs: timelineStore.currentTime,
+          pseudo: true,
+        });
+      }
+    }
+  }
 }
 
 function openMediaPicker() {
@@ -271,5 +297,9 @@ function addAudioTrack() {
     @change="onFilesSelected"
   />
 
-  <MobileMediaPickerDrawer :is-open="isMediaPickerOpen" @close="isMediaPickerOpen = false" />
+  <MobileMediaPickerDrawer
+    :is-open="isMediaPickerOpen"
+    @close="isMediaPickerOpen = false"
+    @added="emit('close')"
+  />
 </template>

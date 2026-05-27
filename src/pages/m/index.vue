@@ -2,6 +2,8 @@
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { useProjectManagement } from '~/composables/project/useProjectManagement';
+import { onMounted } from 'vue';
+import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
 import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
@@ -24,6 +26,10 @@ const { resetProjectState } = useProjectActions();
 
 // Сбрасываем состояние открытого проекта при попадании на список
 resetProjectState();
+
+onMounted(() => {
+  writeLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP, 'false');
+});
 
 const {
   searchQuery,
@@ -136,7 +142,7 @@ const formatDate = (dateStr?: string) => {
                 color="neutral"
                 icon="i-heroicons-computer-desktop"
                 class="rounded-full w-10 h-10 p-0 flex items-center justify-center bg-white/5 text-ui-text-muted"
-                @click="router.push('/')"
+                @click="router.push('/?mode=desktop')"
               />
               <UButton
                 size="sm"
@@ -518,13 +524,12 @@ const formatDate = (dateStr?: string) => {
         <MobileSettingsView hide-title />
       </UiMobileDrawer>
 
-      <!-- Rename Project Modal (iOS Style Sheet) -->
-      <UiModal
+      <!-- Rename Project Drawer -->
+      <UiMobileDrawer
         v-model:open="isRenameModalOpen"
         :title="t('common.rename')"
-        :ui="{ content: 'sm:max-w-md' }"
       >
-        <div class="space-y-6">
+        <div class="space-y-6 px-6 pt-2 pb-6">
           <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
             <UiTextInput
               v-model="renameValue"
@@ -541,31 +546,39 @@ const formatDate = (dateStr?: string) => {
         </div>
 
         <template #footer>
-          <UButton variant="ghost" color="neutral" @click="isRenameModalOpen = false">
-            {{ t('common.cancel') }}
-          </UButton>
-          <UButton color="primary" :disabled="!renameValue.trim()" @click="renameProject">
-            {{ t('common.rename') }}
-          </UButton>
+          <div class="flex justify-end gap-3 w-full pb-safe">
+            <UButton variant="ghost" color="neutral" @click="isRenameModalOpen = false">
+              {{ t('common.cancel') }}
+            </UButton>
+            <UButton color="primary" :disabled="!renameValue.trim()" @click="renameProject">
+              {{ t('common.rename') }}
+            </UButton>
+          </div>
         </template>
-      </UiModal>
+      </UiMobileDrawer>
 
-      <!-- Delete Project Confirmation Modal (iOS Style Sheet) -->
-      <UiModal
+      <!-- Delete Project Confirmation Drawer -->
+      <UiMobileDrawer
         v-model:open="isDeleteModalOpen"
         :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
-        :description="t('videoEditor.projectSettings.deleteProjectConfirmDescription')"
-        :ui="{ content: 'sm:max-w-md' }"
       >
+        <div class="space-y-4 px-6 pt-2 pb-6">
+          <p class="text-sm text-ui-text-muted">
+            {{ t('videoEditor.projectSettings.deleteProjectConfirmDescription') }}
+          </p>
+        </div>
+
         <template #footer>
-          <UButton variant="ghost" color="neutral" @click="closeDeleteModal">
-            {{ t('common.cancel') }}
-          </UButton>
-          <UButton color="error" :loading="workspaceStore.isLoading" @click="confirmDelete">
-            {{ t('videoEditor.projectSettings.deleteProjectAction') }}
-          </UButton>
+          <div class="flex justify-end gap-3 w-full pb-safe">
+            <UButton variant="ghost" color="neutral" @click="closeDeleteModal">
+              {{ t('common.cancel') }}
+            </UButton>
+            <UButton color="error" :loading="workspaceStore.isLoading" @click="confirmDelete">
+              {{ t('videoEditor.projectSettings.deleteProjectAction') }}
+            </UButton>
+          </div>
         </template>
-      </UiModal>
+      </UiMobileDrawer>
     </template>
   </div>
 </template>

@@ -1,6 +1,7 @@
 export const STORAGE_KEYS = {
   APP: {
     ALREADY_LAUNCHED: 'fastcat:app:already-launched',
+    PREFER_DESKTOP: 'fastcat:app:prefer-desktop',
   },
   UI: {
     MONITOR_VOLUME: 'fastcat:ui:monitor-volume',

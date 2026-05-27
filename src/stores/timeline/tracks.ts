@@ -1,6 +1,7 @@
 import { computed, type Ref, type ComputedRef } from 'vue';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
+import { useTimelineStore } from '~/stores/timeline.store';
 
 export interface TimelineTracksDeps {
   timelineDoc: Ref<TimelineDocument | null>;
@@ -108,12 +109,18 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
       if (selectedTrack && selectedTrack.kind === kind) return selectedTrack.id;
     }
 
-    // 3. Search backwards for an empty track (no clips)
+    // 3. Search for a track of the same kind that is free at currentTimeUs
+    const timelineStore = useTimelineStore();
+    const currentTimeUs = timelineStore.currentTime;
     const sameKindTracks = doc.tracks.filter((t) => t.kind === kind);
-    for (let i = sameKindTracks.length - 1; i >= 0; i--) {
-      const t = sameKindTracks[i]!;
-      const hasClips = t.items.some((it) => it.kind === 'clip');
-      if (!hasClips) return t.id;
+    for (const t of sameKindTracks) {
+      const isOccupied = t.items.some((it) => {
+        if (it.kind !== 'clip') return false;
+        const start = it.timelineRange.startUs;
+        const end = start + it.timelineRange.durationUs;
+        return currentTimeUs >= start && currentTimeUs < end;
+      });
+      if (!isOccupied) return t.id;
     }
 
     // 4. Create a new track

@@ -18,7 +18,9 @@ const props = defineProps<{
   thumbnailUrl?: string | null;
   focusPanelId?: PanelFocusId;
   vfs?: IFileSystemAdapter;
+  flexible?: boolean;
 }>();
+
 </script>
 
 <template>
@@ -29,7 +31,7 @@ const props = defineProps<{
       props.mediaType === 'text' && !props.isOtio
         ? 'justify-start items-start text-left'
         : 'items-center justify-center',
-      String($attrs.class ?? '').indexOf('flex-1') !== -1 ? 'flex-1' : 'shrink-0',
+      props.flexible ? 'flex-1' : 'shrink-0',
     ]"
   >
     <div
@@ -86,7 +88,7 @@ const props = defineProps<{
     <div
       v-else
       class="w-full h-64"
-      :class="String($attrs.class ?? '').indexOf('flex-1') !== -1 ? 'flex-1 h-full' : 'h-64'"
+      :class="props.flexible ? 'flex-1 h-full' : 'h-64'"
     >
       <FilePreview
         :url="props.currentUrl"
