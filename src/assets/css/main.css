@@ -422,3 +422,124 @@ select {
     transparent 12px
   );
 }
+
+/* ==========================================================================
+   Mobile Layout Form Overrides (.is-mobile-layout)
+   ========================================================================== */
+.is-mobile-layout {
+  /* 1. Стилизация полей ввода (text, number, email, и т.д.) и textarea */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea {
+    font-size: 0.95rem !important; /* Читаемый размер шрифта, предотвращает автозум на iOS */
+    border-radius: var(--radius-ui-md) !important; /* Закругление углов 8px */
+    border: 1px solid var(--ui-border) !important;
+    background-color: var(--ui-bg) !important; /* Темный контрастный фон полей */
+    color: var(--ui-text) !important;
+    box-shadow: none !important;
+    height: 38px !important; /* Увеличенная высота для мобильных */
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    padding-left: 0.875rem !important;
+    padding-right: 0.875rem !important;
+  }
+
+  textarea {
+    height: auto !important;
+    min-height: 80px !important;
+  }
+
+  /* Фокус-состояние для инпутов и текстовых зон */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible,
+  textarea:focus-visible {
+    border-color: var(--color-primary-500) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 1px var(--color-primary-500) !important;
+  }
+
+  /* 2. Стилизация триггеров селектов (USelectMenu / UiSelect) */
+  .ui-select-menu button,
+  button[role="combobox"],
+  button.ui-select-trigger,
+  .ui-select-menu-trigger {
+    font-size: 0.95rem !important;
+    border-radius: var(--radius-ui-md) !important;
+    border: 1px solid var(--ui-border) !important;
+    background-color: var(--ui-bg) !important;
+    color: var(--ui-text) !important;
+    box-shadow: none !important;
+    height: 38px !important; /* Совпадает с инпутами */
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+    padding-left: 0.875rem !important;
+    padding-right: 2rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    text-align: left !important;
+    width: 100% !important;
+  }
+
+  /* Фокус-состояние для кнопок-селектов */
+  .ui-select-menu button:focus-visible,
+  button[role="combobox"]:focus-visible,
+  button.ui-select-trigger:focus-visible {
+    border-color: var(--color-primary-500) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 1px var(--color-primary-500) !important;
+  }
+
+  /* 3. Опции в выпадающем списке (роли option / menuitem) */
+  [role='listbox'] [role='option'],
+  [role='menu'] [role^='menuitem'] {
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* 4. Вспомогательные кнопки в формах (например, кнопка шеврона рядом с FPS пресетами) */
+  .flex.items-center.gap-1 > button,
+  .flex.items-center.gap-1.5 > button {
+    height: 38px !important;
+    width: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: var(--radius-ui-md) !important;
+    border: 1px solid var(--ui-border) !important;
+    background-color: var(--ui-bg) !important;
+  }
+
+  /* 5. Группы кнопок (например, выбор ориентации: альбомная/портретная) */
+  .inline-flex.w-full.h-8,
+  .inline-flex.h-8 {
+    height: 38px !important;
+  }
+
+  .inline-flex.h-8 button,
+  .inline-flex.w-full.h-8 button {
+    height: 100% !important;
+    font-size: 0.9rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* 6. Поля отображения и другие контейнеры со статичной высотой h-8 */
+  div.font-mono.bg-ui-bg-accent.h-8 {
+    height: 38px !important;
+    font-size: 0.95rem !important;
+    border-radius: var(--radius-ui-md) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* 7. Метки полей (labels) */
+  label,
+  .ui-form-field-label {
+    font-size: 0.85rem !important;
+    margin-bottom: 0.25rem !important;
+    color: var(--ui-text-muted) !important;
+    font-weight: 500 !important;
+  }
+}

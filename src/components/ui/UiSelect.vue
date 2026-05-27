@@ -43,6 +43,7 @@ function onUpdate(val: unknown) {
 <template>
   <USelectMenu
     v-bind="$attrs as object"
+    class="ui-select-menu"
     :model-value="props.modelValue as never"
     :items="props.items as never[]"
     :placeholder="props.placeholder"
