@@ -184,24 +184,24 @@ const formatDate = (dateStr?: string) => {
                   <template #actions="{ close }">
                     <div class="flex h-full items-stretch pl-2 pr-1 py-0">
                       <button
-                        class="bg-blue-600 active:bg-blue-700 text-white font-semibold text-xs w-16 rounded-2xl h-full flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer"
+                        class="bg-blue-600 active:bg-blue-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors cursor-pointer"
+                        :aria-label="t('common.rename')"
                         @click.stop="
                           startRename(project.projectName);
                           close();
                         "
                       >
-                        <UIcon name="i-heroicons-pencil-square" class="w-5 h-5" />
-                        <span class="text-[10px]">{{ t('common.rename') }}</span>
+                        <UIcon name="i-heroicons-pencil-square" class="w-6 h-6" />
                       </button>
                       <button
-                        class="bg-red-600 active:bg-red-700 text-white font-semibold text-xs w-16 rounded-2xl h-full flex flex-col items-center justify-center gap-1 transition-colors ml-1 cursor-pointer"
+                        class="bg-red-600 active:bg-red-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors ml-1 cursor-pointer"
+                        :aria-label="t('common.delete')"
                         @click.stop="
                           startDelete(project.projectName);
                           close();
                         "
                       >
-                        <UIcon name="i-heroicons-trash" class="w-5 h-5" />
-                        <span class="text-[10px]">{{ t('common.delete') }}</span>
+                        <UIcon name="i-heroicons-trash" class="w-6 h-6" />
                       </button>
                     </div>
                   </template>
