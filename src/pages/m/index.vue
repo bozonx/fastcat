@@ -441,22 +441,12 @@ const formatDate = (dateStr?: string) => {
         </div>
 
         <template #footer>
-          <div class="flex gap-4 w-full pb-safe">
-            <UButton
-              variant="ghost"
-              color="neutral"
-              class="flex-1 h-16 rounded-[1.5rem] font-bold text-ui-text-muted active:bg-white/5"
-              :label="t('common.cancel')"
-              @click="isRenameModalOpen = false"
-            />
-            <UButton
-              color="primary"
-              class="flex-2 h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-primary-500/20 active:scale-95 transition-transform"
-              :disabled="!renameValue.trim()"
-              :label="t('common.rename')"
-              @click="renameProject"
-            />
-          </div>
+          <UButton variant="ghost" color="neutral" @click="isRenameModalOpen = false">
+            {{ t('common.cancel') }}
+          </UButton>
+          <UButton color="primary" :disabled="!renameValue.trim()" @click="renameProject">
+            {{ t('common.rename') }}
+          </UButton>
         </template>
       </UiModal>
 
@@ -468,22 +458,12 @@ const formatDate = (dateStr?: string) => {
         :ui="{ content: 'sm:max-w-md' }"
       >
         <template #footer>
-          <div class="flex gap-4 w-full pb-safe">
-            <UButton
-              variant="ghost"
-              color="neutral"
-              class="flex-1 h-16 rounded-[1.5rem] font-bold text-ui-text-muted active:bg-white/5"
-              :label="t('common.cancel')"
-              @click="closeDeleteModal"
-            />
-            <UButton
-              color="error"
-              class="flex-2 h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-red-500/20 active:scale-95 transition-transform"
-              :label="t('videoEditor.projectSettings.deleteProjectAction')"
-              :loading="workspaceStore.isLoading"
-              @click="confirmDelete"
-            />
-          </div>
+          <UButton variant="ghost" color="neutral" @click="closeDeleteModal">
+            {{ t('common.cancel') }}
+          </UButton>
+          <UButton color="error" :loading="workspaceStore.isLoading" @click="confirmDelete">
+            {{ t('videoEditor.projectSettings.deleteProjectAction') }}
+          </UButton>
         </template>
       </UiModal>
     </template>

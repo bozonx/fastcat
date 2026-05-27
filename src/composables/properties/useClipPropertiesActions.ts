@@ -258,15 +258,19 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   }
 
   function handleDeleteClip() {
+    const clipId = options.clip.value?.id;
+    const trackId = options.clip.value?.trackId;
+    if (!clipId || !trackId) return;
+
     timelineStore.applyTimeline({
       type: 'delete_items',
-      trackId: options.clip.value.trackId,
-      itemIds: [options.clip.value.id],
+      trackId,
+      itemIds: [clipId],
     });
 
     if (Array.isArray(timelineStore.selectedItemIds)) {
       timelineStore.selectedItemIds = timelineStore.selectedItemIds.filter(
-        (itemId: string) => itemId !== options.clip.value.id,
+        (itemId: string) => itemId !== clipId,
       );
     }
   }

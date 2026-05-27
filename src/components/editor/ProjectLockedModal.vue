@@ -7,9 +7,6 @@ import { createDevLogger } from '~/utils/dev-logger';
 const log = createDevLogger('ProjectLockedModal');
 const projectStore = useProjectStore();
 const { t } = useI18n();
-const route = useRoute();
-
-const isMobile = computed(() => route.path.startsWith('/m'));
 
 const isOpen = ref(false);
 const isStealing = ref(false);
@@ -93,27 +90,18 @@ async function handleStealLock() {
     </div>
 
     <template #footer>
-      <div class="flex flex-col sm:flex-row justify-end gap-3 w-full">
-        <UButton
-          color="neutral"
-          variant="ghost"
-          :class="isMobile ? 'h-14 rounded-2xl order-2 sm:order-1' : ''"
-          :disabled="isStealing"
-          @click="handleClose"
-        >
-          {{ t('videoEditor.project.lockedAcknowledge') }}
-        </UButton>
-        <UButton
-          color="primary"
-          variant="solid"
-          data-primary-focus="true"
-          :class="isMobile ? 'h-14 rounded-2xl order-1 sm:order-2' : ''"
-          :loading="isStealing"
-          @click="handleStealLock"
-        >
-          {{ t('videoEditor.project.takeControl') }}
-        </UButton>
-      </div>
+      <UButton color="neutral" variant="ghost" :disabled="isStealing" @click="handleClose">
+        {{ t('videoEditor.project.lockedAcknowledge') }}
+      </UButton>
+      <UButton
+        color="primary"
+        variant="solid"
+        data-primary-focus="true"
+        :loading="isStealing"
+        @click="handleStealLock"
+      >
+        {{ t('videoEditor.project.takeControl') }}
+      </UButton>
     </template>
   </UiModal>
 </template>
