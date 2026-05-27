@@ -15,16 +15,9 @@ const isOpen = ref(false);
 const isStealing = ref(false);
 
 const modalUi = computed(() => {
-  if (isMobile.value) {
-    return {
-      content:
-        'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[40vh] bg-zinc-950 border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
-      body: 'pb-12 pt-8 px-6',
-      header: 'pt-6 px-6 border-none text-xl font-bold',
-      footer: 'px-6 pb-12 pt-0 bg-transparent border-none',
-    };
-  }
-  return {};
+  return {
+    content: 'sm:max-w-md',
+  };
 });
 
 watch(

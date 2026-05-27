@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed, onMounted } from 'vue';
-import { useWindowSize } from '@vueuse/core';
+import { ref, watch, nextTick, onMounted } from 'vue';
 import UiModal from '~/components/ui/UiModal.vue';
-import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 const props = defineProps<{
@@ -23,8 +21,6 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { width } = useWindowSize();
-const isMobile = computed(() => width.value < 768);
 
 const name = ref(props.defaultValue || '');
 const inputRef = ref<HTMLElement | null>(null);
@@ -79,12 +75,7 @@ function handleCancel() {
 </script>
 
 <template>
-  <component
-    :is="isMobile ? UiMobileDrawer : UiModal"
-    v-model:open="isOpen"
-    :title="title"
-    @close="handleCancel"
-  >
+  <UiModal v-model:open="isOpen" :title="title" @close="handleCancel">
     <div class="py-2 px-1">
       <form @submit.prevent="handleConfirm">
         <UiFormField :label="label || t('common.name')">
@@ -116,5 +107,5 @@ function handleCancel() {
         </UButton>
       </div>
     </template>
-  </component>
+  </UiModal>
 </template>

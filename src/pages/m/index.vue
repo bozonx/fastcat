@@ -310,17 +310,8 @@ const formatDate = (dateStr?: string) => {
       </div>
 
       <!-- Create Project Modal (iOS Style Sheet) -->
-      <UiModal
-        v-model:open="isCreateModalOpen"
-        :title="t('fastcat.projects.newProject')"
-        :ui="{
-          content:
-            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[50vh] bg-ui-bg border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
-          body: 'pb-12 pt-8 px-6',
-          header: 'pt-6 px-6 border-none',
-        }"
-      >
-        <div class="space-y-8">
+      <UiMobileDrawer v-model:open="isCreateModalOpen" :title="t('fastcat.projects.newProject')">
+        <div class="space-y-6 px-6 pt-2 pb-6">
           <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
             <UiTextInput
               v-model="projectCreationSettings.name"
@@ -368,7 +359,7 @@ const formatDate = (dateStr?: string) => {
             />
 
             <template #content>
-              <div class="pt-8 border-t border-white/5 mt-6 space-y-8">
+              <div class="pt-6 border-t border-white/5 mt-4 space-y-6">
                 <UiFormField :label="t('videoEditor.export.presetLabel')">
                   <UiSelect
                     v-model="projectCreationSettings.presetId"
@@ -402,7 +393,7 @@ const formatDate = (dateStr?: string) => {
         </div>
 
         <template #footer>
-          <div class="flex gap-4 w-full pb-safe mt-4">
+          <div class="flex gap-4 w-full pb-safe">
             <UButton
               variant="ghost"
               color="neutral"
@@ -420,7 +411,7 @@ const formatDate = (dateStr?: string) => {
             />
           </div>
         </template>
-      </UiModal>
+      </UiMobileDrawer>
 
       <!-- Settings Drawer -->
       <UiMobileDrawer v-model:open="isSettingsOpen" :title="t('videoEditor.settings.title')">
@@ -431,14 +422,9 @@ const formatDate = (dateStr?: string) => {
       <UiModal
         v-model:open="isRenameModalOpen"
         :title="t('common.rename')"
-        :ui="{
-          content:
-            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[40vh] bg-ui-bg border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
-          body: 'pb-12 pt-8 px-6',
-          header: 'pt-6 px-6 border-none',
-        }"
+        :ui="{ content: 'sm:max-w-md' }"
       >
-        <div class="space-y-8">
+        <div class="space-y-6">
           <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
             <UiTextInput
               v-model="renameValue"
@@ -455,7 +441,7 @@ const formatDate = (dateStr?: string) => {
         </div>
 
         <template #footer>
-          <div class="flex gap-4 w-full pb-safe mt-4">
+          <div class="flex gap-4 w-full pb-safe">
             <UButton
               variant="ghost"
               color="neutral"
@@ -479,15 +465,10 @@ const formatDate = (dateStr?: string) => {
         v-model:open="isDeleteModalOpen"
         :title="t('videoEditor.projectSettings.deleteProjectConfirmTitle')"
         :description="t('videoEditor.projectSettings.deleteProjectConfirmDescription')"
-        :ui="{
-          content:
-            'max-w-full m-0 rounded-t-[2.5rem] rounded-b-none fixed bottom-0 top-auto h-auto min-h-[35vh] bg-ui-bg border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]',
-          body: 'pb-12 pt-8 px-6',
-          header: 'pt-6 px-6 border-none',
-        }"
+        :ui="{ content: 'sm:max-w-md' }"
       >
         <template #footer>
-          <div class="flex gap-4 w-full pb-safe mt-4">
+          <div class="flex gap-4 w-full pb-safe">
             <UButton
               variant="ghost"
               color="neutral"
