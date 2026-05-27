@@ -1,7 +1,8 @@
 import { watch, onBeforeUnmount, type Ref } from 'vue';
-
-const EDGE_ZONE_PX = 60;
-const MAX_SCROLL_SPEED = 14;
+import {
+  MOBILE_EDGE_SCROLL_ZONE_PX,
+  MOBILE_EDGE_SCROLL_MAX_SPEED_PX,
+} from '~/utils/mobile/timeline';
 
 export function useMobileTimelineEdgeScroll(
   scrollEl: Ref<HTMLElement | null>,
@@ -47,18 +48,27 @@ export function useMobileTimelineEdgeScroll(
 
     const distLeft = e.clientX - rect.left;
     const distRight = rect.right - e.clientX;
-    if (distLeft >= 0 && distLeft < EDGE_ZONE_PX) {
-      dx = -Math.round(MAX_SCROLL_SPEED * (1 - distLeft / EDGE_ZONE_PX));
-    } else if (distRight >= 0 && distRight < EDGE_ZONE_PX) {
-      dx = Math.round(MAX_SCROLL_SPEED * (1 - distRight / EDGE_ZONE_PX));
+    if (distLeft < MOBILE_EDGE_SCROLL_ZONE_PX) {
+      dx = -Math.round(
+        MOBILE_EDGE_SCROLL_MAX_SPEED_PX * (1 - Math.max(0, distLeft) / MOBILE_EDGE_SCROLL_ZONE_PX),
+      );
+    } else if (distRight < MOBILE_EDGE_SCROLL_ZONE_PX) {
+      dx = Math.round(
+        MOBILE_EDGE_SCROLL_MAX_SPEED_PX * (1 - Math.max(0, distRight) / MOBILE_EDGE_SCROLL_ZONE_PX),
+      );
     }
 
     const distTop = e.clientY - rect.top;
     const distBottom = rect.bottom - e.clientY;
-    if (distTop >= 0 && distTop < EDGE_ZONE_PX) {
-      dy = -Math.round(MAX_SCROLL_SPEED * (1 - distTop / EDGE_ZONE_PX));
-    } else if (distBottom >= 0 && distBottom < EDGE_ZONE_PX) {
-      dy = Math.round(MAX_SCROLL_SPEED * (1 - distBottom / EDGE_ZONE_PX));
+    if (distTop < MOBILE_EDGE_SCROLL_ZONE_PX) {
+      dy = -Math.round(
+        MOBILE_EDGE_SCROLL_MAX_SPEED_PX * (1 - Math.max(0, distTop) / MOBILE_EDGE_SCROLL_ZONE_PX),
+      );
+    } else if (distBottom < MOBILE_EDGE_SCROLL_ZONE_PX) {
+      dy = Math.round(
+        MOBILE_EDGE_SCROLL_MAX_SPEED_PX *
+          (1 - Math.max(0, distBottom) / MOBILE_EDGE_SCROLL_ZONE_PX),
+      );
     }
 
     if (dx !== 0 || dy !== 0) {

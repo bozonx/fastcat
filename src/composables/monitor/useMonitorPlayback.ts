@@ -114,14 +114,14 @@ function syncMonitorAudioLevels(params: {
 
 function syncMonitorPlaybackVisibility(params: {
   isPlaying: boolean;
-  isMobile: boolean;
+  isMobile: { readonly value: boolean };
   clampToTimeline: (timeUs: number) => number;
   audioEngine: AudioEngine;
   onPauseHiddenPlayback: () => void;
   onRestoreVisiblePlayback: (timeUs: number) => void;
 }) {
   if (document.hidden) {
-    if (params.isMobile && params.isPlaying) {
+    if (params.isMobile.value && params.isPlaying) {
       params.onPauseHiddenPlayback();
     }
     return;
@@ -193,7 +193,7 @@ export interface UseMonitorPlaybackOptions {
   updateStoreTime: (timeUs: number) => void;
   scheduleRender: (timeUs: number) => void;
   audioEngine: AudioEngine;
-  isMobile: boolean;
+  isMobile: { value: boolean };
 }
 
 export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
@@ -489,7 +489,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
           isPlaying.value = false;
         },
         onRestoreVisiblePlayback: (timeUs) => {
-          if (!isMobile && hiddenAtMs > 0 && isPlaying.value) {
+          if (!isMobile.value && hiddenAtMs > 0 && isPlaying.value) {
             const elapsedMs = performance.now() - hiddenAtMs;
             const audioDeltaUs = timeUs - hiddenAtAudioUs;
             const audioDeltaMs = audioDeltaUs / 1000;
@@ -520,7 +520,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         },
       });
 
-      if (document.hidden && !isMobile && isPlaying.value) {
+      if (document.hidden && !isMobile.value && isPlaying.value) {
         hiddenAtMs = performance.now();
         hiddenAtAudioUs = audioEngine.getCurrentTimeUs();
       }

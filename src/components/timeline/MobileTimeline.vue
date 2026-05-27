@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
+import {
+  MOBILE_CLICK_MOVE_THRESHOLD_PX,
+  MOBILE_LONG_PRESS_RESET_DELAY_MS,
+} from '~/utils/mobile/timeline';
 import { storeToRefs } from 'pinia';
 import type {
   TimelineClipActionPayload,
@@ -53,9 +57,7 @@ import { useMobileTimelineEdgeScroll } from '~/composables/timeline/useMobileTim
 import { useScrollRectCache } from '~/composables/timeline/useScrollRectCache';
 import { useTimelineClipActions } from '~/composables/timeline/useTimelineClipActions';
 
-const CLICK_MOVE_THRESHOLD_PX = 8;
 const TIMELINE_RULER_HEIGHT_PX = 32;
-const TOUCH_LONG_PRESS_RESET_DELAY_MS = 100;
 
 const { target: teleportTarget } = useTeleportTarget();
 
@@ -307,7 +309,7 @@ function onMobilePointerUp(e: PointerEvent) {
 
   setTimeout(() => {
     isLongPress.value = false;
-  }, TOUCH_LONG_PRESS_RESET_DELAY_MS);
+  }, MOBILE_LONG_PRESS_RESET_DELAY_MS);
 }
 
 function onMobilePointerCancel(e: PointerEvent) {
@@ -332,19 +334,17 @@ function onStartTrimItem(event: PointerEvent, payload: TimelineTrimItemPayload) 
 function createSyntheticTouchPointerEvent(position: {
   clientX: number;
   clientY: number;
-  currentTarget?: EventTarget | null;
 }): PointerEvent {
-  return {
+  return new PointerEvent('pointermove', {
     button: 0,
     buttons: 1,
     clientX: position.clientX,
     clientY: position.clientY,
     pointerId: 1,
     pointerType: 'touch',
-    currentTarget: position.currentTarget ?? scrollEl.value,
-    preventDefault: () => {},
-    stopPropagation: () => {},
-  } as PointerEvent;
+    bubbles: false,
+    cancelable: false,
+  });
 }
 
 function onTrimToolbarStart(payload: {
@@ -405,7 +405,11 @@ function onTimelineClick(e: MouseEvent) {
   if (e.button !== 0) return;
   const dx = Math.abs(e.clientX - clickStartX.value);
   const dy = Math.abs(e.clientY - clickStartY.value);
-  if (dx > CLICK_MOVE_THRESHOLD_PX || dy > CLICK_MOVE_THRESHOLD_PX || isLongPress.value) {
+  if (
+    dx > MOBILE_CLICK_MOVE_THRESHOLD_PX ||
+    dy > MOBILE_CLICK_MOVE_THRESHOLD_PX ||
+    isLongPress.value
+  ) {
     isLongPress.value = false;
     return;
   }

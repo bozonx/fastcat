@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick, watch } from 'vue';
+import { computed, ref, nextTick, watch, onBeforeUnmount } from 'vue';
 import { useFullscreen, useMediaQuery } from '@vueuse/core';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
@@ -116,6 +116,15 @@ let longPressStartY = 0;
 
 const DOUBLE_TAP_MS = 280;
 let viewportTapTimer: ReturnType<typeof setTimeout> | null = null;
+
+onBeforeUnmount(() => {
+  clearLongPressTimer();
+  if (viewportTapTimer !== null) {
+    clearTimeout(viewportTapTimer);
+    viewportTapTimer = null;
+  }
+  stopMarkerLongPress();
+});
 
 function clearLongPressTimer() {
   if (longPressTimer !== null) {
@@ -246,13 +255,19 @@ function blurActiveElement() {
   (document.activeElement as HTMLElement | null)?.blur?.();
 }
 
+let consecutivePlayErrors = 0;
+
 function togglePlayback() {
   if (isLoading.value) return;
   if (loadError.value) {
-    loadError.value = null;
-    scheduleBuild();
+    if (consecutivePlayErrors < 3) {
+      consecutivePlayErrors += 1;
+      loadError.value = null;
+      scheduleBuild();
+    }
     return;
   }
+  consecutivePlayErrors = 0;
   timelineStore.togglePlayback();
   blurActiveElement();
 }

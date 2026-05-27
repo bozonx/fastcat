@@ -19,7 +19,6 @@ const volumePercent = computed(() => {
 
 const volumeIcon = computed(() => {
   if (monitorMuted.value || monitorVolume.value === 0) return 'i-heroicons-speaker-x-mark';
-  if (monitorVolume.value < 0.5) return 'i-heroicons-speaker-wave';
   return 'i-heroicons-speaker-wave';
 });
 

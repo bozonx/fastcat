@@ -127,7 +127,7 @@ export function useMonitorRuntime() {
     updateStoreTime,
     scheduleRender,
     audioEngine,
-    isMobile: isMobile.value,
+    isMobile,
   });
 
   setCurrentTimeProvider(getLocalCurrentTimeUs);

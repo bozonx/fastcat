@@ -130,11 +130,15 @@ function onDividerPointerDown(e: PointerEvent) {
 
   const onMove = (ev: PointerEvent) => {
     if (isLandscapeMode.value) {
+      if (!rect.width) return;
       // In flex-row, the monitor is on the left
       const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      if (!Number.isFinite(pct)) return;
       landscapeMonitorWidth.value = Math.min(Math.max(pct, 20), 70);
     } else {
+      if (!rect.height) return;
       const pct = ((ev.clientY - rect.top) / rect.height) * 100;
+      if (!Number.isFinite(pct)) return;
       portraitMonitorHeight.value = Math.min(Math.max(pct, 20), 65);
     }
   };

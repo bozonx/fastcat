@@ -68,7 +68,7 @@ describe('useMonitorPlayback', () => {
           updateStoreTime: vi.fn(),
           scheduleRender: vi.fn(),
           audioEngine,
-          isMobile: true,
+          isMobile: { value: true },
         });
         return () => h('div');
       },

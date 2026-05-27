@@ -52,29 +52,39 @@ export function useMobileTimelineSelection(
     return { track, clip };
   });
 
+  const itemToTrackMap = computed(() => {
+    const map = new Map<string, { trackId: string; item: TimelineTrack['items'][number] }>();
+    for (const track of tracks.value) {
+      for (const item of track.items) {
+        map.set(item.id, { trackId: track.id, item });
+      }
+    }
+    return map;
+  });
+
   const selectedClips = computed(() => {
-    const items = timelineStore.selectedItemIds.flatMap((itemId) => {
-      const track = tracks.value.find((t) => t.items.some((it) => it.id === itemId));
-      const item = track?.items.find((it) => it.id === itemId);
-      if (!item || item.kind !== 'clip') return [];
-      return [{ trackId: track?.id ?? '', itemId }];
-    });
+    const map = itemToTrackMap.value;
+    const items: { trackId: string; itemId: string }[] = [];
+    for (const itemId of timelineStore.selectedItemIds) {
+      const entry = map.get(itemId);
+      if (entry && entry.item.kind === 'clip') {
+        items.push({ trackId: entry.trackId, itemId });
+      }
+    }
     return items.length > 0 ? items : null;
   });
 
   const isMultiSelectionMode = computed(() => Boolean(selectedClips.value?.length));
 
   function syncSelectionStoreFromItemIds() {
-    const selectedIdSet = new Set(timelineStore.selectedItemIds);
-    const items = tracks.value.flatMap((track) =>
-      track.items
-        .filter((item) => selectedIdSet.has(item.id))
-        .map((item) => ({
-          trackId: track.id,
-          itemId: item.id,
-          kind: item.kind as 'clip' | 'gap',
-        })),
-    );
+    const map = itemToTrackMap.value;
+    const items: { trackId: string; itemId: string; kind: 'clip' | 'gap' }[] = [];
+    for (const itemId of timelineStore.selectedItemIds) {
+      const entry = map.get(itemId);
+      if (entry) {
+        items.push({ trackId: entry.trackId, itemId, kind: entry.item.kind as 'clip' | 'gap' });
+      }
+    }
 
     if (items.length === 0) {
       selectionStore.clearSelection();

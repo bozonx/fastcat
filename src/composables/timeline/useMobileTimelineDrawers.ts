@@ -1,4 +1,4 @@
-import { ref, watch, computed, onBeforeUnmount } from 'vue';
+import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 
@@ -43,7 +43,6 @@ export function useMobileTimelineDrawers() {
 
   const isLongPress = ref(false);
   const suppressDrawerSelectionClear = ref(false);
-  let suppressDrawerSelectionClearResetTimer: ReturnType<typeof setTimeout> | null = null;
 
   function closeAllDrawers() {
     isTrackPropertiesDrawerOpen.value = false;
@@ -67,6 +66,7 @@ export function useMobileTimelineDrawers() {
     }),
     (state) => {
       if (isTrimDrawerOpen.value) return;
+      if (suppressDrawerSelectionClear.value) return;
 
       const { trackId, itemIds, entity, transition, markerId, gap } = state;
 
@@ -137,20 +137,14 @@ export function useMobileTimelineDrawers() {
     { immediate: true, deep: false },
   );
 
-  function suppressDrawerSelectionClearTemporarily(callback?: () => void) {
+  async function suppressDrawerSelectionClearTemporarily(callback?: () => void) {
     suppressDrawerSelectionClear.value = true;
-
-    if (suppressDrawerSelectionClearResetTimer !== null) {
-      clearTimeout(suppressDrawerSelectionClearResetTimer);
-    }
 
     try {
       callback?.();
     } finally {
-      suppressDrawerSelectionClearResetTimer = setTimeout(() => {
-        suppressDrawerSelectionClear.value = false;
-        suppressDrawerSelectionClearResetTimer = null;
-      }, 0);
+      await nextTick();
+      suppressDrawerSelectionClear.value = false;
     }
   }
 
@@ -244,9 +238,7 @@ export function useMobileTimelineDrawers() {
   }
 
   onBeforeUnmount(() => {
-    if (suppressDrawerSelectionClearResetTimer !== null) {
-      clearTimeout(suppressDrawerSelectionClearResetTimer);
-    }
+    // no-op: cleanup handled by nextTick lifecycle
   });
 
   return {
@@ -268,7 +260,6 @@ export function useMobileTimelineDrawers() {
     isLongPress,
     suppressDrawerSelectionClear,
     suppressDrawerSelectionClearTemporarily,
-    suppressDrawerSelectionClearResetTimer,
     closeAllDrawers,
     onUpdateDrawerOpen,
     onClipPropertiesDrawerClose,

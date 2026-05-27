@@ -48,9 +48,7 @@ interface UseMonitorContainerControlsOptions {
 function formatSpeedLabel(speed: number): string {
   const abs = Math.abs(speed);
   const prefix = speed < 0 ? '-' : '';
-  // Show "x" suffix only for ±1
-  if (abs === 1) return `${prefix}1x`;
-  return `${prefix}${abs}`;
+  return `${prefix}${abs}x`;
 }
 
 export function useMonitorContainerControls(options: UseMonitorContainerControlsOptions) {

@@ -9,6 +9,8 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 
+import { MOBILE_LONG_PRESS_MS } from '~/utils/mobile/timeline';
+
 const timelineStore = useTimelineStore();
 const settingsStore = useTimelineSettingsStore();
 const workspaceStore = useWorkspaceStore();
@@ -24,7 +26,6 @@ const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
 const isSnapDrawerOpen = ref(false);
 
 const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
-const IS_LONG_PRESS_MS = 500;
 const wasLastPressLong = ref(false);
 
 const emit = defineEmits<{
@@ -126,7 +127,7 @@ function startLongPress() {
     wasLastPressLong.value = true;
     longPressTimer.value = null;
     if (navigator.vibrate) navigator.vibrate(50);
-  }, IS_LONG_PRESS_MS);
+  }, MOBILE_LONG_PRESS_MS);
 }
 
 function stopLongPress() {
@@ -181,7 +182,7 @@ function handleRippleTrimRight() {
           icon="lucide:undo"
           color="neutral"
           size="sm"
-          title="Undo"
+          :title="t('common.undo')"
           :disabled="!timelineStore.historyStore.canUndo('timeline')"
           @click="handleUndo"
           @pointerdown="startLongPress"
@@ -192,7 +193,7 @@ function handleRippleTrimRight() {
           icon="lucide:redo"
           color="neutral"
           size="sm"
-          title="Redo"
+          :title="t('common.redo')"
           :disabled="!timelineStore.historyStore.canRedo('timeline')"
           @click="handleRedo"
           @pointerdown="startLongPress"
@@ -229,7 +230,7 @@ function handleRippleTrimRight() {
           icon="i-lucide-scissors"
           color="neutral"
           size="sm"
-          title="Split"
+          :title="t('fastcat.timeline.split')"
           @click="handleSplit"
         />
         <UiActionButton
@@ -238,7 +239,7 @@ function handleRippleTrimRight() {
           color="primary"
           variant="soft"
           size="sm"
-          title="Paste"
+          :title="t('common.paste')"
           @click="handlePaste"
         />
         <UiActionButton
@@ -282,14 +283,14 @@ function handleRippleTrimRight() {
         icon="lucide:sliders"
         color="neutral"
         size="sm"
-        title="Mixer & Tracks"
+        :title="t('fastcat.timeline.mixerAndTracks')"
         @click="emit('open-track-mixer')"
       />
       <UiActionButton
         icon="lucide:settings"
         color="neutral"
         size="sm"
-        title="Timeline settings"
+        :title="t('fastcat.timeline.timelineSettings')"
         class="ml-1"
         @click="timelineStore.selectTimelineProperties()"
       />
