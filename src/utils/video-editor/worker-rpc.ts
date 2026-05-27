@@ -1,6 +1,7 @@
 import type {
   WorkerTimelineClip,
   ExportOptions,
+  TranscodeOptions,
   WorkerVideoPayloadItem,
 } from '~/composables/timeline/export/types';
 import type { MediaMetadata } from '~/stores/media.store';
@@ -160,7 +161,7 @@ export interface VideoCoreWorkerAPI {
   transcodeMedia(
     sourceFile: File | FileSystemFileHandle,
     targetHandle: FileSystemFileHandle,
-    options: ExportOptions,
+    options: TranscodeOptions,
     taskId?: string,
   ): Promise<void>;
 

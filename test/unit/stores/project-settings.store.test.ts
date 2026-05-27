@@ -129,6 +129,12 @@ vi.mock('~/utils/auto-save', () => ({
   }),
 }));
 
+vi.mock('~/composables/useVfs', () => ({
+  useVfs: vi.fn(() => ({
+    exists: vi.fn().mockResolvedValue(true),
+  })),
+}));
+
 const focusStoreMock = { activeTimelinePath: null };
 const projectTabsStoreMock = {
   setTabsState: vi.fn(),

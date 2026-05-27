@@ -49,12 +49,18 @@ describe('useTimelineExport pure functions', () => {
     expect(sanitizeBaseName('special!@#$%^&*()chars')).toBe('special_chars');
     expect(sanitizeBaseName('___leading_and_trailing___')).toBe('leading_and_trailing');
     expect(sanitizeBaseName('multiple___underscores')).toBe('multiple_underscores');
+    expect(sanitizeBaseName('русское видео 123.mp4')).toBe('русское_видео_123');
+    expect(sanitizeBaseName('CON')).toBe('CON_');
+    expect(sanitizeBaseName('NUL.mp4')).toBe('NUL_');
   });
 
   it('normalizes and validates export filenames', () => {
     expect(normalizeExportFilename('  video.mp4  ')).toBe('video.mp4');
     expect(hasInvalidExportFilenameChars('nested/video.mp4')).toBe(true);
     expect(hasInvalidExportFilenameChars('nested\\video.mp4')).toBe(true);
+    expect(hasInvalidExportFilenameChars('video?.mp4')).toBe(true);
+    expect(hasInvalidExportFilenameChars('video*.mp4')).toBe(true);
+    expect(hasInvalidExportFilenameChars('video:1.mp4')).toBe(true);
     expect(hasInvalidExportFilenameChars('video.mp4')).toBe(false);
   });
 

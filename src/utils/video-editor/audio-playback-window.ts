@@ -24,6 +24,9 @@ export function isReversedClip(clip: AudioEngineClip): boolean {
 }
 
 export function getSourceTimeForClipLocal(window: ClipPlaybackWindow, clipLocalS: number): number {
+  if (window.reversed) {
+    return window.effectiveSourceEndS - clipLocalS * window.clipSpeed;
+  }
   return window.effectiveSourceStartS + clipLocalS * window.clipSpeed;
 }
 
@@ -45,9 +48,7 @@ export function buildClipPlaybackWindow(
     return null;
   }
 
-  if (reversed) {
-    return null;
-  }
+
 
   const { previousClip, nextClip } = adjacentClips;
   const { fadeInS, fadeOutS, fadeInCurve, fadeOutCurve } = resolveEffectiveFadeDurationsSeconds({

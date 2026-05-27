@@ -40,16 +40,45 @@ export const ExportOptionsSchema = z.object({
     .max(16_384)
     .refine((value) => value % 2 === 0),
   fps: z.number().finite().min(1).max(240),
-  audioReverse: z.boolean().optional(),
-  audioDurationSec: z.number().finite().positive().optional(),
   exportRangeUs: z
     .object({ startUs: z.number().finite().min(0), endUs: z.number().finite().min(0) })
     .refine((range) => range.endUs > range.startUs)
     .optional(),
-  audioPassthrough: z.boolean().optional(),
 });
 
 export type ExportOptions = z.infer<typeof ExportOptionsSchema>;
+
+export const TranscodeOptionsSchema = z.object({
+  format: z.enum(['mp4', 'webm', 'mkv']),
+  videoCodec: z.string().trim().min(1),
+  bitrate: z.number().finite().min(1),
+  bitrateMode: z.enum(['constant', 'variable']).optional(),
+  keyframeIntervalSec: z.number().finite().positive().max(1_000).optional(),
+  exportAlpha: z.boolean().optional(),
+  audioBitrate: z.number().finite().min(1),
+  audio: z.boolean(),
+  audioCodec: z.string().trim().min(1).optional(),
+  audioSampleRate: z.number().finite().min(8_000).max(192_000).optional(),
+  audioChannels: z.enum(['stereo', 'mono']).optional(),
+  width: z
+    .number()
+    .int()
+    .min(2)
+    .max(16_384)
+    .refine((value) => value % 2 === 0),
+  height: z
+    .number()
+    .int()
+    .min(2)
+    .max(16_384)
+    .refine((value) => value % 2 === 0),
+  fps: z.number().finite().min(1).max(240),
+  audioReverse: z.boolean().optional(),
+  audioDurationSec: z.number().finite().positive().optional(),
+  audioPassthrough: z.boolean().optional(),
+});
+
+export type TranscodeOptions = z.infer<typeof TranscodeOptionsSchema>;
 export interface WorkerTimelineClip {
   kind: 'clip';
   clipType: 'media' | 'adjustment' | 'background' | 'text' | 'shape' | 'hud';

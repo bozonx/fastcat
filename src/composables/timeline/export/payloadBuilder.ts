@@ -161,204 +161,30 @@ async function buildVideoTrackTree(
       effects: trackEffects.length > 0 ? trackEffects : undefined,
     });
 
-    for (const item of track.items) {
-      if (!isClipItem(item)) continue;
-      if (item.disabled) continue;
-
-      const clipType = item.clipType ?? 'media';
-      const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
-
-      const baseClip: WorkerTimelineClip = {
-        kind: 'clip',
-        clipType: clipType === 'timeline' ? 'media' : clipType,
-        id: item.id,
-        trackId: runtimeTrackId,
+    const trackClips = await toWorkerTimelineClips(
+      track.items,
+      params.projectStore,
+      params.workspaceStore,
+      {
         layer,
-        speed: item.speedActive !== false ? item.speed : undefined,
-        audioGain: item.audioGain,
-        audioBalance: item.audioBalance,
-        audioFadeInUs: item.audioFadesActive !== false ? item.audioFadeInUs : undefined,
-        audioFadeOutUs: item.audioFadesActive !== false ? item.audioFadeOutUs : undefined,
-        audioFadeInCurve: item.audioFadesActive !== false ? item.audioFadeInCurve : undefined,
-        audioFadeOutCurve: item.audioFadesActive !== false ? item.audioFadeOutCurve : undefined,
-        audioDeclickDurationUs: params.projectStore.projectSettings.project.audioDeclickDurationUs,
-        defaultAudioFadeCurve:
-          params.workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve,
-        opacity: item.opacityActive !== false ? item.opacity : undefined,
-        blendMode: item.blendModeActive !== false ? item.blendMode : undefined,
-        effects: itemEffects.length > 0 ? itemEffects : undefined,
-        mask: item.maskActive !== false ? clonePlain(item.mask) : undefined,
-        transform: item.transformActive !== false ? clonePlain(item.transform) : undefined,
-        sourceOrientation: item.sourceOrientation,
-        transitionIn: clonePlain(item.transitionIn),
-        transitionOut: clonePlain(item.transitionOut),
-        freezeFrameSourceUs: item.freezeFrameSourceUs,
-        sourceDurationUs:
-          typeof item.sourceDurationUs === 'number' ? item.sourceDurationUs : undefined,
-        timelineRange: {
-          startUs: item.timelineRange.startUs,
-          durationUs: item.timelineRange.durationUs,
+        trackKind: 'video',
+        visitedPaths,
+        nestedPathStack,
+        parentOpacity: trackOpacity,
+        parentBlendMode: trackBlendMode,
+        parentEffects: trackEffects,
+        fallbackFormat: params.fallbackFormat,
+        onWarning: params.onWarning,
+        nestedTimelinePath: params.nestedTimelinePath,
+        nestedDocCache,
+        trackIdPrefix: params.trackIdPrefix ? `${params.trackIdPrefix}::` : undefined,
+        onTrackBuilt: (builtTrack) => {
+          result.tracks.push(builtTrack);
         },
-        sourceRange: {
-          startUs: item.sourceRange.startUs,
-          durationUs: item.sourceRange.durationUs,
-        },
-      };
+      },
+    );
 
-      if (clipType === 'timeline') {
-        const rawPath = item.source?.path;
-        if (!rawPath) continue;
-        const path = params.nestedTimelinePath
-          ? resolveNestedMediaPath({
-              nestedTimelinePath: params.nestedTimelinePath,
-              mediaPath: rawPath,
-            })
-          : normalizeProjectPath(rawPath);
-
-        if (visitedPaths.has(path)) {
-          log.warn(
-            `Circular dependency in nested timeline: ${[...nestedPathStack, path].join(' -> ')}`,
-          );
-          continue;
-        }
-
-        if (nestedPathStack.length >= MAX_NESTED_TIMELINE_DEPTH) {
-          log.warn(
-            `Nested timeline depth limit reached at ${[...nestedPathStack, path].join(' -> ')}`,
-          );
-          continue;
-        }
-
-        try {
-          const nestedDoc = await readNestedTimelineDoc({
-            path,
-            projectStore: params.projectStore,
-            fallbackFormat: params.fallbackFormat,
-            cache: nestedDocCache,
-          });
-          if (!nestedDoc) {
-            log.warn(`Nested timeline file not found: ${path}`);
-            continue;
-          }
-
-          const nestedResult = await buildVideoTrackTree({
-            tracks: nestedDoc.tracks,
-            projectStore: params.projectStore,
-            workspaceStore: params.workspaceStore,
-            layerOffset: layer,
-            trackIdPrefix: `${runtimeTrackId}::${item.id}`,
-            visitedPaths: new Set(visitedPaths).add(path),
-            nestedPathStack: [...nestedPathStack, path],
-            nestedTimelinePath: path,
-            inheritedTrackOpacity: trackOpacity * (item.opacity ?? 1),
-            inheritedTrackBlendMode: item.blendMode ?? trackBlendMode,
-            inheritedTrackEffects:
-              trackEffects.length > 0 ? [...itemEffects, ...trackEffects] : itemEffects,
-            fallbackFormat: { fps: nestedDoc.timebase.fps },
-            onWarning: params.onWarning,
-            nestedDocCache,
-          });
-
-          result.tracks.push(...nestedResult.tracks);
-
-          for (const nestedClip of nestedResult.clips) {
-            const window = getNestedClipWindow({ nestedClip, parentItem: item });
-            const trimmedNestedClip = trimNestedClipToParentWindow({
-              nestedClip,
-              parentItem: item,
-            });
-            if (!window || !trimmedNestedClip) continue;
-
-            result.clips.push({
-              ...trimmedNestedClip,
-              id: `${item.id}_nested_${nestedClip.id}`,
-              audioGain: mergeGain(item.audioGain, nestedClip.audioGain),
-              audioBalance: mergeBalance(item.audioBalance, nestedClip.audioBalance),
-              audioFadeInUs: mergeFadeInUs({
-                childFadeInUs: nestedClip.audioFadeInUs,
-                parentFadeInUs: item.audioFadeInUs,
-                parentLocalStartUs: window.parentLocalStartUs,
-              }),
-              audioFadeOutUs: mergeFadeOutUs({
-                childFadeOutUs: nestedClip.audioFadeOutUs,
-                parentFadeOutUs: item.audioFadeOutUs,
-                parentLocalEndUs: window.parentLocalEndUs,
-                parentDurationUs: Math.max(0, Math.round(item.timelineRange.durationUs)),
-              }),
-              audioFadeInCurve: nestedClip.audioFadeInCurve ?? item.audioFadeInCurve,
-              audioFadeOutCurve: nestedClip.audioFadeOutCurve ?? item.audioFadeOutCurve,
-            });
-          }
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
-          const message = `Failed to expand nested timeline "${path}": ${reason}`;
-          log.error(message, error);
-          params.onWarning?.(message);
-        }
-
-        continue;
-      }
-
-      if (clipType === 'media') {
-        const rawPath = item.source?.path;
-        if (!rawPath) continue;
-
-        result.clips.push({
-          ...baseClip,
-          source: {
-            path: params.nestedTimelinePath
-              ? resolveNestedMediaPath({
-                  nestedTimelinePath: params.nestedTimelinePath,
-                  mediaPath: rawPath,
-                })
-              : rawPath,
-          },
-        });
-        continue;
-      }
-
-      if (clipType === 'background') {
-        result.clips.push({
-          ...baseClip,
-          backgroundColor: sanitizeTimelineColor(item.backgroundColor, '#000000'),
-        });
-        continue;
-      }
-
-      if (clipType === 'text') {
-        result.clips.push({
-          ...baseClip,
-          text: String(item.text ?? ''),
-          style: clonePlain(item.style),
-        });
-        continue;
-      }
-
-      if (clipType === 'shape') {
-        result.clips.push({
-          ...baseClip,
-          shapeType: item.shapeType ?? 'square',
-          fillColor: typeof item.fillColor === 'string' ? item.fillColor : undefined,
-          strokeColor: typeof item.strokeColor === 'string' ? item.strokeColor : undefined,
-          strokeWidth: typeof item.strokeWidth === 'number' ? item.strokeWidth : undefined,
-          shapeConfig: clonePlain(item.shapeConfig),
-        });
-        continue;
-      }
-
-      if (clipType === 'hud') {
-        result.clips.push({
-          ...baseClip,
-          hudType: item.hudType ?? 'media_frame',
-          background: clonePlain(item.background),
-          content: clonePlain(item.content),
-          frame: clonePlain(item.frame),
-        });
-        continue;
-      }
-
-      result.clips.push(baseClip);
-    }
+    result.clips.push(...trackClips);
   }
 
   return result;
@@ -539,6 +365,8 @@ export async function toWorkerTimelineClips(
     onWarning?: (message: string) => void;
     nestedTimelinePath?: string;
     nestedDocCache?: Map<string, TimelineDocument>;
+    trackIdPrefix?: string;
+    onTrackBuilt?: (track: WorkerTrackPayloadSource) => void;
   },
 ): Promise<WorkerTimelineClip[]> {
   const clips: WorkerTimelineClip[] = [];
@@ -667,6 +495,19 @@ export async function toWorkerTimelineClips(
               const combinedTrackEffects =
                 combinedEffects.length > 0 ? [...trackEffects, ...combinedEffects] : trackEffects;
 
+              const nextTrackIdPrefix = `${options?.trackIdPrefix ?? ''}${item.trackId}::${item.id}::`;
+              const nestedTrackId = `${nextTrackIdPrefix}${track.id}`;
+
+              if (options?.onTrackBuilt) {
+                options.onTrackBuilt({
+                  id: nestedTrackId,
+                  layer: nestedLayer,
+                  opacity: combinedOpacity * (track.opacity ?? 1),
+                  blendMode: track.blendMode ?? combinedBlendMode,
+                  effects: combinedTrackEffects.length > 0 ? combinedTrackEffects : undefined,
+                });
+              }
+
               const nestedWorkerClips = await toWorkerTimelineClips(
                 track.items,
                 projectStore,
@@ -683,6 +524,8 @@ export async function toWorkerTimelineClips(
                   onWarning: options?.onWarning,
                   nestedTimelinePath: path,
                   nestedDocCache,
+                  trackIdPrefix: nextTrackIdPrefix,
+                  onTrackBuilt: options?.onTrackBuilt,
                 },
               );
 

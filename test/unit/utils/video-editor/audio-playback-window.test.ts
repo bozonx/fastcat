@@ -62,18 +62,20 @@ describe('audio playback window', () => {
     expect(window?.effectiveSourceEndS).toBeCloseTo(9.5);
   });
 
-  it('rejects reversed clips', () => {
-    const clip = createClip({ speed: -1 });
+  it('handles reversed clips', () => {
+    const clip = createClip({ speed: -1, audioGain: 0.8 });
 
     expect(isReversedClip(clip)).toBe(true);
-    expect(
-      buildClipPlaybackWindow({
-        clip,
-        currentTimeS: 1,
-        speed: 1,
-        startAtS: 0,
-        adjacentClips: { previousClip: null, nextClip: null },
-      }),
-    ).toBeNull();
+    const window = buildClipPlaybackWindow({
+      clip,
+      currentTimeS: 1,
+      speed: 1,
+      startAtS: 0,
+      adjacentClips: { previousClip: null, nextClip: null },
+    });
+    expect(window).not.toBeNull();
+    expect(window?.reversed).toBe(true);
+    expect(window?.audioGain).toBe(0.8);
+    expect(window ? getSourceTimeForClipLocal(window, 0.5) : 0).toBeCloseTo(6.5);
   });
 });

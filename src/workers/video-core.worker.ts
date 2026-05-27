@@ -13,7 +13,7 @@ import type {
   WorkerRpcErrorShape,
 } from '../utils/video-editor/worker-rpc';
 import type { MediaMetadata } from '../stores/media.store';
-import { ExportOptionsSchema } from '../composables/timeline/export/types';
+import { ExportOptionsSchema, TranscodeOptionsSchema } from '../composables/timeline/export/types';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
@@ -357,7 +357,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   async transcodeMedia(
     sourceFile: File | FileSystemFileHandle,
     targetHandle: FileSystemFileHandle,
-    options: import('../composables/timeline/export/types').ExportOptions,
+    options: import('../composables/timeline/export/types').TranscodeOptions,
     taskId?: string,
   ) {
     if (taskId) {
@@ -369,7 +369,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     await runTranscode(
       sourceFile,
       targetHandle,
-      ExportOptionsSchema.parse(options),
+      TranscodeOptionsSchema.parse(options),
       hostClient,
       (msg) => reportExportWarning(msg, taskId),
       () => {

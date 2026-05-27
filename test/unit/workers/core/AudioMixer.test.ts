@@ -438,7 +438,7 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[48000]).toBeCloseTo(0);
   });
 
-  it('skips reversed clips entirely (no audio rendered)', async () => {
+  it('mixes reversed clips correctly (audio rendered reversed)', async () => {
     const sampleRate = 1000;
     const numberOfChannels = 1;
     const durationS = 1;
@@ -493,9 +493,9 @@ describe('AudioMixer.writeMixedToSource', () => {
 
     const resultInstance = audioSource.add.mock.calls[0][0];
     const mixedData = resultInstance.data.data;
-    for (let i = 0; i < mixedData.length; i += 1) {
-      expect(mixedData[i]).toBe(0);
-    }
+    expect(mixedData[0]).toBeCloseTo(0.999);
+    expect(mixedData[500]).toBeCloseTo(0.499);
+    expect(mixedData[999]).toBeCloseTo(0.0);
   });
 
   it('applies audio effects if present', async () => {
@@ -634,7 +634,7 @@ describe('AudioMixer.writeMixedToSource', () => {
     expect(mixedData[24_999]).toBeCloseTo(0.5);
   });
 
-  it('drops audio on negative-speed clips even when fades are set', async () => {
+  it('mixes negative-speed clips with fades correctly', async () => {
     const sampleRate = 1000;
     const numberOfChannels = 1;
     const durationS = 1;
@@ -687,9 +687,10 @@ describe('AudioMixer.writeMixedToSource', () => {
     });
 
     const mixedData = audioSource.add.mock.calls[0][0].data.data;
-    for (let i = 0; i < mixedData.length; i += 1) {
-      expect(mixedData[i]).toBe(0);
-    }
+    expect(mixedData[0]).toBeCloseTo(0.0);
+    expect(mixedData[250]).toBeCloseTo(0.5);
+    expect(mixedData[500]).toBeCloseTo(1.0, 1);
+    expect(mixedData[999]).toBeCloseTo(1.0);
   });
 });
 

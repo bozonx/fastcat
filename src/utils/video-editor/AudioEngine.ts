@@ -578,9 +578,6 @@ export class AudioEngine {
     const windowEndS = timeS + LOOKAHEAD_S;
 
     const activeClips = this.currentClips.filter((clip) => {
-      // Reversed clips don't emit audio (see buildClipPlaybackWindow); skip
-      // their decode entirely so we don't pin chunks that won't be used.
-      if (isReversedClip(clip)) return false;
       const startS = clip.startUs / 1_000_000;
       const endS = startS + clip.durationUs / 1_000_000;
       return endS > timeS && startS <= windowEndS;
@@ -599,10 +596,21 @@ export class AudioEngine {
           ? Math.min(10, Math.abs(clip.speed))
           : 1;
       const sourceStartS = clip.sourceStartUs / 1_000_000;
-      const sourceTimeS = sourceStartS + clipLocalS * clipSpeed;
-      // Decode every chunk that overlaps the kickoff lookahead window so the
-      // streamer never blocks on the first chunk boundary right after play().
-      const sourceEndS = sourceTimeS + LOOKAHEAD_S * clipSpeed;
+      const reversed = isReversedClip(clip);
+
+      let sourceTimeS: number;
+      let sourceEndS: number;
+
+      if (reversed) {
+        const clipDurationS = clip.durationUs / 1_000_000;
+        const sourceTimeRaw = (sourceStartS + clipDurationS * clipSpeed) - clipLocalS * clipSpeed;
+        sourceTimeS = Math.max(0, sourceTimeRaw - LOOKAHEAD_S * clipSpeed);
+        sourceEndS = Math.max(0, sourceTimeRaw);
+      } else {
+        sourceTimeS = sourceStartS + clipLocalS * clipSpeed;
+        sourceEndS = sourceTimeS + LOOKAHEAD_S * clipSpeed;
+      }
+
       const startChunkIndex = this.chunkDecoder.getChunkIndex(sourceTimeS);
       const endChunkIndex = this.chunkDecoder.getChunkIndex(Math.max(sourceTimeS, sourceEndS));
       const tasks: Array<Promise<unknown>> = [];
@@ -806,9 +814,11 @@ export class AudioEngine {
         ? audioNowS + (window.effectiveStartS - currentTimeS) / this.scheduler.getGlobalSpeed()
         : audioNowS;
 
-    const sourceEndS = currentSourceTimeS + window.remainingInClipS * window.clipSpeed;
+    const sourceEndS = window.reversed
+      ? currentSourceTimeS - window.remainingInClipS * window.clipSpeed
+      : currentSourceTimeS + window.remainingInClipS * window.clipSpeed;
     const lastChunkIndex = this.chunkDecoder.getChunkIndex(
-      Math.max(currentSourceTimeS, sourceEndS - 1e-6),
+      Math.max(0, window.reversed ? sourceEndS : sourceEndS - 1e-6),
     );
 
     this.streamClipPlayback({
@@ -1009,23 +1019,54 @@ export class AudioEngine {
     };
 
     const scheduleSource = (chunk: AudioChunk) => {
-      if (!this.ctx || state.teardownDone) return;
-      if (state.remainingToPlayS <= 0) return;
 
       compensateForRealTimeGap();
       if (state.remainingToPlayS <= 0) return;
 
       const chunkStartS = chunk.startTimeS;
       const chunkEndS = chunk.startTimeS + chunk.durationS;
-      if (state.currentSourceTimeS >= chunkEndS) return;
+      
+      if (window.reversed) {
+        if (state.currentSourceTimeS <= chunkStartS) return;
+      } else {
+        if (state.currentSourceTimeS >= chunkEndS) return;
+      }
 
-      const offsetInChunkS = Math.max(0, state.currentSourceTimeS - chunkStartS);
-      const availableInChunkS = chunk.durationS - offsetInChunkS;
+      let offsetInChunkS: number;
+      let availableInChunkS: number;
+      
+      if (window.reversed) {
+        availableInChunkS = state.currentSourceTimeS - chunkStartS;
+      } else {
+        offsetInChunkS = Math.max(0, state.currentSourceTimeS - chunkStartS);
+        availableInChunkS = chunk.durationS - offsetInChunkS;
+      }
+      
       const playDurationS = Math.min(state.remainingToPlayS, availableInChunkS);
       if (playDurationS <= 0) return;
+      
+      if (window.reversed) {
+        offsetInChunkS = state.currentSourceTimeS - playDurationS - chunkStartS;
+      }
 
       const sourceNode = this.ctx.createBufferSource();
-      sourceNode.buffer = chunk.buffer;
+      
+      let bufferToPlay: AudioBuffer;
+      let startOffsetS: number;
+      if (window.reversed) {
+        bufferToPlay = createReversedAudioBuffer(
+          this.ctx,
+          chunk.buffer,
+          offsetInChunkS,
+          playDurationS
+        );
+        startOffsetS = 0;
+      } else {
+        bufferToPlay = chunk.buffer;
+        startOffsetS = offsetInChunkS!;
+      }
+      
+      sourceNode.buffer = bufferToPlay;
       if (sourceNode.playbackRate) {
         sourceNode.playbackRate.value = window.effectiveSpeed;
       }
@@ -1056,15 +1097,13 @@ export class AudioEngine {
         chunkGainNode.gain.setValueAtTime(1, state.scheduledCtxTimeS);
       }
 
-      sourceNode.start(state.scheduledCtxTimeS, offsetInChunkS, playDurationS);
+      sourceNode.start(state.scheduledCtxTimeS, startOffsetS, playDurationS);
 
       state.chunkNodes.push(sourceNode);
       state.chunkGainNodes.push(chunkGainNode);
       state.scheduledTotal += 1;
       targetNodeSet.add(sourceNode);
       targetGainMap.set(sourceNode, chunkGainNode);
-      // Every chunk node maps to the same teardown function. Stop() iterates
-      // these via stopNodeCollection — teardown is idempotent via the flag.
       targetCleanupMap.set(sourceNode, teardown);
 
       sourceNode.onended = () => {
@@ -1076,7 +1115,11 @@ export class AudioEngine {
       };
 
       state.scheduledCtxTimeS += playDurationS / window.effectiveSpeed;
-      state.currentSourceTimeS += playDurationS;
+      if (window.reversed) {
+        state.currentSourceTimeS -= playDurationS;
+      } else {
+        state.currentSourceTimeS += playDurationS;
+      }
       state.remainingToPlayS -= playDurationS;
     };
 
@@ -1093,8 +1136,8 @@ export class AudioEngine {
     // out — it only tears down when the user stops, the generation flips, or
     // the clip is fully scheduled and all sources have ended (maybeTeardown).
     void (async () => {
-      let i = firstChunkIndex + 1;
-      while (i <= lastChunkIndex) {
+      let i = window.reversed ? firstChunkIndex - 1 : firstChunkIndex + 1;
+      while (window.reversed ? i >= lastChunkIndex : i <= lastChunkIndex) {
         if (state.teardownDone) return;
         if (state.remainingToPlayS <= 0) break;
 
@@ -1104,14 +1147,20 @@ export class AudioEngine {
           return;
         }
 
-        // After waking up, real time may have outrun us — re-anchor and skip
-        // any chunks that fall entirely behind the new cursor.
         compensateForRealTimeGap();
         if (state.remainingToPlayS <= 0) break;
+
         const expectedChunkIdx = this.chunkDecoder.getChunkIndex(state.currentSourceTimeS);
-        if (expectedChunkIdx > i) {
-          i = expectedChunkIdx;
-          continue;
+        if (window.reversed) {
+          if (expectedChunkIdx < i) {
+            i = expectedChunkIdx;
+            continue;
+          }
+        } else {
+          if (expectedChunkIdx > i) {
+            i = expectedChunkIdx;
+            continue;
+          }
         }
 
         const chunk = await this.chunkDecoder.ensureDecoded({
@@ -1131,7 +1180,7 @@ export class AudioEngine {
         if (chunk) {
           scheduleSource(chunk);
         }
-        i += 1;
+        i = window.reversed ? i - 1 : i + 1;
       }
 
       state.streamingDone = true;
@@ -1184,4 +1233,33 @@ export class AudioEngine {
 
     this.chunkDecoder.destroy();
   }
+}
+
+function createReversedAudioBuffer(
+  ctx: BaseAudioContext,
+  sourceBuffer: AudioBuffer,
+  offsetS: number,
+  durationS: number,
+): AudioBuffer {
+  const sampleRate = sourceBuffer.sampleRate;
+  const startSample = Math.floor(offsetS * sampleRate);
+  const durationSamples = Math.floor(durationS * sampleRate);
+
+  const reversedBuffer = ctx.createBuffer(
+    sourceBuffer.numberOfChannels,
+    durationSamples,
+    sampleRate
+  );
+
+  for (let channel = 0; channel < sourceBuffer.numberOfChannels; channel++) {
+    const sourceData = sourceBuffer.getChannelData(channel);
+    const targetData = reversedBuffer.getChannelData(channel);
+
+    for (let i = 0; i < durationSamples; i++) {
+      const sourceIndex = startSample + durationSamples - 1 - i;
+      targetData[i] = sourceData[sourceIndex] ?? 0;
+    }
+  }
+
+  return reversedBuffer;
 }

@@ -29,6 +29,7 @@ import {
   useFilesPageFileManagerStore,
   useFilesPageSidebarFileManagerStore,
 } from './file-manager.store';
+import { useVfs } from '~/composables/useVfs';
 const log = createDevLogger('project-settings.store');
 
 interface ProjectSettingsRepo {
@@ -411,10 +412,17 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         'filesPage-sidebar': useFilesPageSidebarFileManagerStore(),
       };
 
+      const vfs = useVfs();
       for (const [key, store] of Object.entries(internalFmStores)) {
         const savedPath = settings.ui.fileManagerPaths[key];
         if (savedPath && (!store.selectedFolder || store.selectedFolder.path !== savedPath)) {
-          store.openFolderByPath(savedPath);
+          try {
+            if (await vfs.exists(savedPath)) {
+              store.openFolderByPath(savedPath);
+            }
+          } catch (err) {
+            log.warn(`Failed to check VFS path existence: ${savedPath}`, err);
+          }
         }
       }
     } catch (e: unknown) {

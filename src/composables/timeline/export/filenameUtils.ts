@@ -5,11 +5,22 @@ export function getExt(fmt: 'mp4' | 'webm' | 'mkv'): 'mp4' | 'webm' | 'mkv' {
 }
 
 export function sanitizeBaseName(name: string): string {
-  return name
-    .replace(/\.[^.]+$/, '')
-    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+  const base = name.replace(/\.[^.]+$/, '');
+  const sanitized = base
+    .replace(/[^\p{L}\p{N}._-]+/gu, '_')
     .replace(/_+/g, '_')
     .replace(/^_+|_+$/g, '');
+
+  if (!sanitized) {
+    return 'untitled';
+  }
+
+  const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i;
+  if (reservedNames.test(sanitized)) {
+    return `${sanitized}_`;
+  }
+
+  return sanitized;
 }
 
 export function normalizeExportFilename(name: string): string {
@@ -18,7 +29,7 @@ export function normalizeExportFilename(name: string): string {
 
 export function hasInvalidExportFilenameChars(name: string): boolean {
   // eslint-disable-next-line no-control-regex -- intentional check for control characters in filenames
-  return /[\\/\0-\x1f\x7f]/.test(name);
+  return /[<>:"/\\|?*\x00-\x1f\x7f]/.test(name);
 }
 
 export function resolveNextAvailableFilename(

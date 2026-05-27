@@ -753,10 +753,6 @@ async function* processClipAudio(args: {
   checkCancel?: () => boolean;
 }): AsyncGenerator<ProcessedClipChunk> {
   const { clip, targetSampleRate, numberOfChannels, reportExportWarning, checkCancel } = args;
-  // Defense in depth: prepareClips already skips reversed clips. This guard
-  // keeps writeMixedToSource correct for any caller that hands in prepared
-  // clips directly (tests, future re-entry).
-  if (clip.reversed) return;
   const expectedOutFrames = Math.max(0, Math.round(clip.playDurationS * targetSampleRate));
   if (expectedOutFrames <= 0) return;
 
@@ -782,8 +778,18 @@ async function* processClipAudio(args: {
     const targetFrames = Math.min(blockFrames + overlapFrames, remainingFrames);
     const blockStartS = blockStartFrame / targetSampleRate;
     const outputDurationS = targetFrames / targetSampleRate;
-    const sourceStartS = Math.max(0, clip.offsetS + blockStartS * clip.speed);
-    const sourceEndS = Math.max(sourceStartS, sourceStartS + outputDurationS * clip.speed);
+    
+    let sourceStartS: number;
+    let sourceEndS: number;
+    if (clip.reversed) {
+      const clipDurationSourceS = clip.playDurationS * clip.speed;
+      const blockEndS = blockStartS + outputDurationS;
+      sourceStartS = Math.max(0, clip.offsetS + clipDurationSourceS - blockEndS * clip.speed);
+      sourceEndS = Math.max(0, clip.offsetS + clipDurationSourceS - blockStartS * clip.speed);
+    } else {
+      sourceStartS = Math.max(0, clip.offsetS + blockStartS * clip.speed);
+      sourceEndS = Math.max(sourceStartS, sourceStartS + outputDurationS * clip.speed);
+    }
 
     const loaded = await loadClipSourcePlanes({
       sink: clip.sink,
@@ -839,6 +845,15 @@ async function* processClipAudio(args: {
       frames: targetFrames,
     });
     blockOutputFrames = targetFrames;
+
+    if (clip.reversed && blockPlanes) {
+      for (let channel = 0; channel < numberOfChannels; channel++) {
+        const data = blockPlanes[channel];
+        if (data) {
+          data.reverse();
+        }
+      }
+    }
 
     if (clip.audioEffects.length > 0) {
       const processed = await applyAudioEffectsOffline({
@@ -1004,9 +1019,6 @@ export class AudioMixer {
           ? Math.max(0.0001, Math.min(10, Math.abs(speedRaw)))
           : 1;
       const reversed = Number.isFinite(speedRaw) && speedRaw < 0;
-
-      // Reversed clips emit no audio — keeps preview and export in sync.
-      if (reversed) continue;
 
       const previousClip = adjacency.prev.get(clipData) ?? null;
       const nextClip = adjacency.next.get(clipData) ?? null;
