@@ -67,7 +67,6 @@ export default {
     "position": "Позиция",
     "properties": "Свойства",
     "quickCreateDefault": "Быстрое создание",
-    "recent": "Недавние",
     "redo": "Вернуть",
     "refresh": "Обновить",
     "remove": "Удалить",

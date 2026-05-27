@@ -176,56 +176,94 @@ const formatDate = (dateStr?: string) => {
               </div>
 
               <div v-if="filteredProjects.length > 0" class="flex flex-col gap-3">
-                <div
+                <UiSwipeableRow
                   v-for="project in sortedProjects"
                   :key="project.projectName"
-                  class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
-                  @click="handleOpenProject(project.projectName)"
+                  class="rounded-2xl overflow-hidden"
                 >
-                  <div class="w-20 h-full relative shrink-0">
-                    <ProjectThumbnail
-                      :project-id="project.projectId"
-                      :project-relative-path="project.lastTimelinePath"
-                      :project-name="project.projectName"
-                      variant="mobile"
-                    />
-                    <div class="absolute inset-0 bg-black/20" />
-                  </div>
+                  <template #actions="{ close }">
+                    <div class="flex h-full items-stretch pl-2 pr-1 py-0">
+                      <button
+                        class="bg-blue-600 active:bg-blue-700 text-white font-semibold text-xs w-16 rounded-2xl h-full flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer"
+                        @click.stop="
+                          startRename(project.projectName);
+                          close();
+                        "
+                      >
+                        <UIcon name="i-heroicons-pencil-square" class="w-5 h-5" />
+                        <span class="text-[10px]">{{ t('common.rename') }}</span>
+                      </button>
+                      <button
+                        class="bg-red-600 active:bg-red-700 text-white font-semibold text-xs w-16 rounded-2xl h-full flex flex-col items-center justify-center gap-1 transition-colors ml-1 cursor-pointer"
+                        @click.stop="
+                          startDelete(project.projectName);
+                          close();
+                        "
+                      >
+                        <UIcon name="i-heroicons-trash" class="w-5 h-5" />
+                        <span class="text-[10px]">{{ t('common.delete') }}</span>
+                      </button>
+                    </div>
+                  </template>
 
-                  <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
-                    <div class="flex flex-col min-w-0">
-                      <span
-                        class="font-bold text-ui-text truncate text-sm tracking-tight leading-tight"
-                        >{{ project.projectName }}</span
-                      >
-                      <span
-                        class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
-                      >
-                        <UIcon name="i-heroicons-clock" class="w-3 h-3" />
-                        {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
-                      </span>
+                  <div
+                    class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
+                    @click="handleOpenProject(project.projectName)"
+                  >
+                    <div class="w-20 h-full relative shrink-0">
+                      <ProjectThumbnail
+                        :project-id="project.projectId"
+                        :project-relative-path="project.lastTimelinePath"
+                        :project-name="project.projectName"
+                        variant="mobile"
+                      />
+                      <div class="absolute inset-0 bg-black/20" />
                     </div>
 
-                    <div class="flex items-center gap-2 shrink-0">
-                      <UButton
-                        size="sm"
-                        variant="ghost"
-                        color="neutral"
-                        icon="lucide:edit-2"
-                        class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
-                        @click.stop="startRename(project.projectName)"
-                      />
-                      <UButton
-                        size="sm"
-                        variant="ghost"
-                        color="neutral"
-                        icon="i-heroicons-trash"
-                        class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
-                        @click.stop="startDelete(project.projectName)"
-                      />
+                    <div class="px-4 flex items-center justify-between flex-1 min-w-0 h-full">
+                      <div class="flex flex-col min-w-0">
+                        <span
+                          class="font-bold text-ui-text truncate text-sm tracking-tight leading-tight"
+                          >{{ project.projectName }}</span
+                        >
+                        <span
+                          class="text-[10px] text-ui-text-muted font-medium flex items-center gap-1 mt-1"
+                        >
+                          <UIcon name="i-heroicons-clock" class="w-3 h-3" />
+                          {{ project.updatedAt ? formatDate(project.updatedAt) : '---' }}
+                        </span>
+                      </div>
+
+                      <div class="flex items-center gap-2 shrink-0">
+                        <UDropdownMenu
+                          :items="[
+                            [
+                              {
+                                label: t('common.rename'),
+                                icon: 'i-heroicons-pencil-square',
+                                onSelect: () => startRename(project.projectName),
+                              },
+                              {
+                                label: t('common.delete'),
+                                icon: 'i-heroicons-trash',
+                                onSelect: () => startDelete(project.projectName),
+                              },
+                            ],
+                          ]"
+                        >
+                          <UButton
+                            size="sm"
+                            variant="ghost"
+                            color="neutral"
+                            icon="i-heroicons-ellipsis-vertical"
+                            class="rounded-full w-9 h-9 p-0 text-ui-text-muted active:text-white active:bg-white/5 transition-colors"
+                            @click.stop
+                          />
+                        </UDropdownMenu>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </UiSwipeableRow>
               </div>
 
               <!-- Empty State -->

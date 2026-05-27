@@ -30,6 +30,7 @@ import FileDeleteConfirmModal from './modals/FileDeleteConfirmModal.vue';
 import FileSttTranscriptionModal from './modals/FileTranscriptionModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
+import MobileAddToTimelineModal from '~/components/timeline/MobileAddToTimelineModal.vue';
 import { useSttTranscription } from '~/composables/file-manager/useSttTranscription';
 import { useFileBrowserBulkSelection } from '~/composables/file-manager/useFileBrowserBulkSelection';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';

@@ -67,7 +67,6 @@ export default {
     "position": "Position",
     "properties": "Properties",
     "quickCreateDefault": "Quick create",
-    "recent": "Recent",
     "redo": "Redo",
     "refresh": "Refresh",
     "remove": "Remove",
