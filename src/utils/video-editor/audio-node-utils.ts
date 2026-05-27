@@ -41,7 +41,7 @@ export function scheduleGainCurve(params: ScheduleGainCurveParams) {
 
 export function stopNodeCollection(
   nodes: Set<AudioBufferSourceNode>,
-  cleanups: Map<AudioBufferSourceNode, () => void>,
+  cleanups: Map<AudioBufferSourceNode, () => void | Promise<void>>,
   options: StopNodeCollectionOptions = {},
 ) {
   const fadeOutS = Math.max(0, options.fadeOutS ?? 0);
@@ -49,7 +49,7 @@ export function stopNodeCollection(
     options.audioContext && fadeOutS > 0 ? options.audioContext.currentTime + fadeOutS : 0;
   const pendingStops: Array<{
     node: AudioBufferSourceNode;
-    cleanup?: () => void;
+    cleanup?: () => void | Promise<void>;
   }> = [];
 
   for (const node of nodes) {
@@ -98,7 +98,7 @@ export function stopNodeCollection(
   }, fadeOutS * 1000);
 }
 
-function stopNode(node: AudioBufferSourceNode, cleanup?: () => void) {
+function stopNode(node: AudioBufferSourceNode, cleanup?: () => void | Promise<void>) {
   try {
     node.stop();
     node.disconnect();
@@ -113,7 +113,7 @@ function stopNode(node: AudioBufferSourceNode, cleanup?: () => void) {
   runCleanup(cleanup);
 }
 
-function cleanupNode(node: AudioBufferSourceNode, cleanup?: () => void) {
+function cleanupNode(node: AudioBufferSourceNode, cleanup?: () => void | Promise<void>) {
   try {
     node.disconnect();
   } catch {
@@ -127,9 +127,14 @@ function cleanupNode(node: AudioBufferSourceNode, cleanup?: () => void) {
   runCleanup(cleanup);
 }
 
-function runCleanup(cleanup: () => void) {
+function runCleanup(cleanup: () => void | Promise<void>) {
   try {
-    cleanup();
+    const res = cleanup();
+    if (res instanceof Promise) {
+      res.catch(() => {
+        /* no-op */
+      });
+    }
   } catch {
     /* no-op */
   }

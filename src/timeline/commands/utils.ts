@@ -100,9 +100,27 @@ export function findClipById(
   return null;
 }
 
+// WeakMap to cache linked clip group IDs per TimelineDocument instance
+const groupCache = new WeakMap<TimelineDocument, Map<string, string[]>>();
+
 export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string): string[] {
+  let docCache = groupCache.get(doc);
+  if (!docCache) {
+    docCache = new Map<string, string[]>();
+    groupCache.set(doc, docCache);
+  }
+
+  const cached = docCache.get(itemId);
+  if (cached) {
+    return cached;
+  }
+
   const origin = findClipById(doc, itemId);
-  if (!origin) return [itemId];
+  if (!origin) {
+    const result = [itemId];
+    docCache.set(itemId, result);
+    return result;
+  }
 
   const result = new Set<string>([origin.item.id]);
   const linkedGroupId = String(origin.item.linkedGroupId ?? '').trim();
@@ -136,8 +154,11 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
     }
   }
 
-  return [...result];
+  const finalResult = [...result];
+  docCache.set(itemId, finalResult);
+  return finalResult;
 }
+
 
 export function updateLinkedLockedAudio(
   doc: TimelineDocument,

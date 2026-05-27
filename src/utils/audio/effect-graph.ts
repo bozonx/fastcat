@@ -23,16 +23,16 @@ function normalizeWet(value: unknown): number {
 
 export interface BuildAudioEffectGraphResult {
   outputNode: AudioNode;
-  destroy: () => void;
+  destroy: () => Promise<void>;
 }
 
-export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
+export async function buildAudioEffectGraph<TContext extends BaseAudioContext>({
   audioContext,
   sourceNode,
   effects,
-}: BuildAudioEffectGraphParams<TContext>): BuildAudioEffectGraphResult {
+}: BuildAudioEffectGraphParams<TContext>): Promise<BuildAudioEffectGraphResult> {
   let currentNode = sourceNode;
-  const cleanups: Array<() => void> = [];
+  const cleanups: Array<() => Promise<void>> = [];
 
   for (const effect of effects) {
     if (!effect.enabled || effect.target !== 'audio') {
@@ -47,16 +47,16 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
     const effectContext = {
       audioContext,
     };
-    const effectNode = manifest.createNode(effectContext);
+    const effectNode = await manifest.createNode(effectContext);
 
     if (manifest.updateNode) {
-      manifest.updateNode(effectNode, effect, effectContext);
+      await manifest.updateNode(effectNode, effect, effectContext);
     }
 
-    cleanups.push(() => {
+    cleanups.push(async () => {
       if (manifest.destroyNode) {
         try {
-          manifest.destroyNode(effectNode, effectContext);
+          await manifest.destroyNode(effectNode, effectContext);
         } catch (err) {
           log.warn(`[buildAudioEffectGraph] Failed to destroy effect node: ${effect.type}`, err);
         }
@@ -111,10 +111,11 @@ export function buildAudioEffectGraph<TContext extends BaseAudioContext>({
 
   return {
     outputNode: currentNode,
-    destroy: () => {
+    destroy: async () => {
       for (const cleanup of cleanups) {
-        cleanup();
+        await cleanup();
       }
     },
   };
 }
+

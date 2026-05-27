@@ -62,6 +62,6 @@ export interface AudioChunk {
 
 export interface AudioNodeCollection {
   nodes: Set<AudioBufferSourceNode>;
-  cleanups: Map<AudioBufferSourceNode, () => void>;
+  cleanups: Map<AudioBufferSourceNode, () => void | Promise<void>>;
   gains: Map<AudioBufferSourceNode, GainNode>;
 }

@@ -139,7 +139,7 @@ async function applyEffectsThroughOfflineContext({
   const source = offlineCtx.createBufferSource();
   source.buffer = buffer;
 
-  const { outputNode, destroy } = buildAudioEffectGraph({
+  const { outputNode, destroy } = await buildAudioEffectGraph({
     audioContext: offlineCtx,
     sourceNode: source,
     effects,
@@ -150,7 +150,7 @@ async function applyEffectsThroughOfflineContext({
 
   const rendered = await offlineCtx.startRendering();
 
-  destroy();
+  await destroy();
   try {
     source.disconnect();
   } catch {

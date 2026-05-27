@@ -77,7 +77,7 @@ describe('applyAudioEffectsOffline', () => {
     originalOfflineCtx = globalThis.OfflineAudioContext;
     (globalThis as any).OfflineAudioContext = MockOfflineAudioContext;
 
-    vi.mocked(buildAudioEffectGraph).mockReturnValue({
+    vi.mocked(buildAudioEffectGraph).mockResolvedValue({
       outputNode: { connect: vi.fn() },
       destroy: vi.fn(),
     } as any);
@@ -137,9 +137,7 @@ describe('applyAudioEffectsOffline', () => {
 
     it('returns original buffer on error', async () => {
       const buffer = new MockAudioBuffer(2, 44100, 44100) as unknown as AudioBuffer;
-      vi.mocked(buildAudioEffectGraph).mockImplementation(() => {
-        throw new Error('Graph error');
-      });
+      vi.mocked(buildAudioEffectGraph).mockRejectedValue(new Error('Graph error'));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const result = await applyAudioEffects({
@@ -205,9 +203,7 @@ describe('applyAudioEffectsOffline', () => {
 
     it('returns original planes on error', async () => {
       const planes = [new Float32Array(10)];
-      vi.mocked(buildAudioEffectGraph).mockImplementation(() => {
-        throw new Error('Graph error');
-      });
+      vi.mocked(buildAudioEffectGraph).mockRejectedValue(new Error('Graph error'));
 
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const result = await applyAudioEffectsOffline({

@@ -14,11 +14,11 @@ export interface BuildClipAudioGraphParams {
 }
 
 export interface BuildClipAudioGraphResult {
-  destroy: () => void;
+  destroy: () => Promise<void>;
 }
 
 export class AudioGraphBuilder {
-  buildClipGraph(params: BuildClipAudioGraphParams): BuildClipAudioGraphResult {
+  async buildClipGraph(params: BuildClipAudioGraphParams): Promise<BuildClipAudioGraphResult> {
     const {
       audioContext,
       sourceNode,
@@ -42,7 +42,7 @@ export class AudioGraphBuilder {
       sourceOutput = panner;
     }
 
-    const { outputNode, destroy } = buildAudioEffectGraph({
+    const { outputNode, destroy } = await buildAudioEffectGraph({
       audioContext,
       sourceNode: sourceOutput,
       effects,
@@ -63,6 +63,10 @@ export class AudioGraphBuilder {
       clipGain.connect(masterGain);
     }
 
-    return { destroy };
+    return {
+      destroy: async () => {
+        await destroy();
+      },
+    };
   }
 }

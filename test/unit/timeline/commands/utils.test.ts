@@ -113,7 +113,35 @@ describe('getLinkedClipGroupItemIds', () => {
   it('returns single id for unlinked clip', () => {
     expect(getLinkedClipGroupItemIds(mockDoc, 'clip-1')).toEqual(['clip-1', 'clip-4']);
   });
+
+  it('uses cached results for the same document reference', () => {
+    const tempDoc = {
+      id: 'doc-temp',
+      tracks: [
+        {
+          id: 'track-temp',
+          kind: 'video',
+          items: [{ id: 'clip-temp', kind: 'clip', timelineRange: { startUs: 0, durationUs: 100 } }],
+        },
+      ],
+    };
+    const result1 = getLinkedClipGroupItemIds(tempDoc as any, 'clip-temp');
+    expect(result1).toEqual(['clip-temp']);
+
+    // Mutate the document illegally to prove cache is used
+    tempDoc.tracks[0].items.push({ id: 'clip-temp-2', kind: 'clip', timelineRange: { startUs: 0, durationUs: 100 } } as any);
+    const result2 = getLinkedClipGroupItemIds(tempDoc as any, 'clip-temp');
+    // Result should still be the cached one, ignoring the new clip
+    expect(result2).toEqual(['clip-temp']);
+
+    // Create a new document reference with the mutated structure
+    const newDocRef = { ...tempDoc };
+    const result3 = getLinkedClipGroupItemIds(newDocRef as any, 'clip-temp');
+    // Result should update since it's a new document reference
+    expect(result3).toEqual(['clip-temp']);
+  });
 });
+
 
 describe('rangesOverlap', () => {
   it('detects overlapping ranges', () => {

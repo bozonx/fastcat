@@ -44,9 +44,9 @@ export interface AudioEffectManifest<T = Record<string, unknown>> extends BaseEf
   target: 'audio';
   category?: AudioEffectCategory;
   disableGlobalWet?: boolean; // If true, effectGraph won't apply wet/dry crossfade
-  createNode?: (context: AudioEffectContext) => AudioEffectNode;
-  updateNode?: (node: AudioEffectNode, values: T, context: AudioEffectContext) => void;
-  destroyNode?: (node: AudioEffectNode, context: AudioEffectContext) => void;
+  createNode?: (context: AudioEffectContext) => AudioEffectNode | Promise<AudioEffectNode>;
+  updateNode?: (node: AudioEffectNode, values: T, context: AudioEffectContext) => void | Promise<void>;
+  destroyNode?: (node: AudioEffectNode, context: AudioEffectContext) => void | Promise<void>;
 }
 
 export type EffectManifest<T = Record<string, unknown>> =

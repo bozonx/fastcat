@@ -335,7 +335,7 @@ export class AudioEngine {
     const clipInputNode = this.ctx.createGain();
     const clipGain = this.ctx.createGain();
 
-    const { destroy: destroyEffects } = this.graphBuilder.buildClipGraph({
+    const { destroy: destroyEffects } = await this.graphBuilder.buildClipGraph({
       audioContext: this.ctx,
       sourceNode: clipInputNode,
       audioBalance: window.audioBalance,
@@ -459,8 +459,8 @@ export class AudioEngine {
     const targetCleanupMap = options?.cleanupMap ?? this.activePlaybackCollection.cleanups;
     const targetGainMap = options?.gainMap ?? this.activePlaybackCollection.gains;
 
-    const cleanupAll = () => {
-      destroyEffects();
+    const cleanupAll = async () => {
+      await destroyEffects();
       try {
         clipInputNode.disconnect();
       } catch {
@@ -490,7 +490,7 @@ export class AudioEngine {
     };
 
     if (chunkNodes.length === 0) {
-      cleanupAll();
+      await cleanupAll();
       return;
     }
 
@@ -826,7 +826,7 @@ export class AudioEngine {
     return true;
   }
 
-  private streamClipPlayback(args: {
+  private async streamClipPlayback(args: {
     clip: AudioEngineClip;
     sourceKey: string;
     generation: number;
@@ -854,16 +854,33 @@ export class AudioEngine {
     // Per-clip audio graph (shared by every chunk source we schedule below).
     const clipInputNode = this.ctx.createGain();
     const clipGain = this.ctx.createGain();
-    const { destroy: destroyEffects } = this.graphBuilder.buildClipGraph({
-      audioContext: this.ctx,
-      sourceNode: clipInputNode,
-      audioBalance: window.audioBalance,
-      effects: clip.audioEffects ?? [],
-      clipGain,
-      masterGain: this.masterGain,
-      trackId: clip.trackId,
-      analyserNodes: this.analyserNodes,
-    });
+    let destroyEffects: () => Promise<void>;
+    try {
+      const graph = await this.graphBuilder.buildClipGraph({
+        audioContext: this.ctx,
+        sourceNode: clipInputNode,
+        audioBalance: window.audioBalance,
+        effects: clip.audioEffects ?? [],
+        clipGain,
+        masterGain: this.masterGain,
+        trackId: clip.trackId,
+        analyserNodes: this.analyserNodes,
+      });
+      destroyEffects = graph.destroy;
+    } catch (err) {
+      logger.error('Failed to build clip audio graph', err);
+      try {
+        clipInputNode.disconnect();
+      } catch {
+        /* no-op */
+      }
+      try {
+        clipGain.disconnect();
+      } catch {
+        /* no-op */
+      }
+      return;
+    }
 
     const totalSafeDurationS = window.remainingInClipS * window.clipSpeed;
     const playedClipDurationS = totalSafeDurationS / window.effectiveSpeed;
@@ -937,10 +954,10 @@ export class AudioEngine {
       teardownDone: false,
     };
 
-    const teardown = () => {
+    const teardown = async () => {
       if (state.teardownDone) return;
       state.teardownDone = true;
-      destroyEffects();
+      await destroyEffects();
       try {
         clipInputNode.disconnect();
       } catch {
@@ -970,9 +987,9 @@ export class AudioEngine {
       }
     };
 
-    const maybeTeardown = () => {
+    const maybeTeardown = async () => {
       if (state.streamingDone && state.endedTotal >= state.scheduledTotal) {
-        teardown();
+        await teardown();
       }
     };
 
@@ -1055,7 +1072,7 @@ export class AudioEngine {
         targetCleanupMap.delete(sourceNode);
         targetGainMap.delete(sourceNode);
         state.endedTotal += 1;
-        maybeTeardown();
+        void maybeTeardown();
       };
 
       state.scheduledCtxTimeS += playDurationS / window.effectiveSpeed;
@@ -1067,7 +1084,7 @@ export class AudioEngine {
     scheduleSource(firstChunk);
 
     if (state.scheduledTotal === 0) {
-      teardown();
+      await teardown();
       return;
     }
 
@@ -1083,7 +1100,7 @@ export class AudioEngine {
 
         const canProceed = await this.waitForSchedulingSlot(state, generation);
         if (!canProceed) {
-          if (!state.teardownDone) teardown();
+          if (!state.teardownDone) await teardown();
           return;
         }
 
@@ -1104,11 +1121,11 @@ export class AudioEngine {
         });
         if (state.teardownDone) return;
         if (generation !== this.scheduleGeneration) {
-          teardown();
+          await teardown();
           return;
         }
         if (!this.scheduler.isPlayingActive()) {
-          teardown();
+          await teardown();
           return;
         }
         if (chunk) {
@@ -1118,7 +1135,7 @@ export class AudioEngine {
       }
 
       state.streamingDone = true;
-      maybeTeardown();
+      await maybeTeardown();
     })();
   }
 
