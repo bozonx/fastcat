@@ -1,5 +1,5 @@
-import { createDevLogger } from '~/utils/dev-logger';
-import { ref, computed, watch, onMounted, inject } from 'vue';
+import { computed, watch, onMounted, inject } from 'vue';
+import type { Ref } from 'vue';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { FsEntry } from '~/types/fs';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -11,53 +11,22 @@ import {
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
-
-const log = createDevLogger('useMobileFileBrowserNavigation');
+import { useFileBrowserFolderLoader } from '~/composables/file-manager/useFileBrowserFolderLoader';
 
 interface NavigationDeps {
-  readDirectory: (path: string) => Promise<FsEntry[]>;
+  readDirectory: (path?: string) => Promise<FsEntry[]>;
   vfs: IFileSystemAdapter;
   findEntryByPath: (path: string) => FsEntry | undefined;
-}
-
-const METADATA_CONCURRENCY = 10;
-
-async function mapEntriesWithMetadata(
-  entries: FsEntry[],
-  vfs: IFileSystemAdapter,
-): Promise<FsEntry[]> {
-  const queue = [...entries];
-  const results: FsEntry[] = [];
-
-  async function worker() {
-    while (queue.length > 0) {
-      const entry = queue.shift()!;
-      if (entry.kind !== 'file') {
-        results.push(entry);
-        continue;
-      }
-      try {
-        const metadata = await vfs.getMetadata(entry.path);
-        if (metadata && metadata.kind === 'file') {
-          results.push({ ...entry, size: metadata.size, lastModified: metadata.lastModified });
-          continue;
-        }
-      } catch (e) {
-        log.warn('Failed to get metadata for:', entry.path, e);
-      }
-      results.push(entry);
-    }
-  }
-
-  const workers = Array.from({ length: Math.min(METADATA_CONCURRENCY, entries.length) }, worker);
-  await Promise.all(workers);
-  return results;
+  folderEntries: Ref<FsEntry[]>;
+  supplementEntries: (entries: FsEntry[]) => Promise<FsEntry[]>;
 }
 
 export function useMobileFileBrowserNavigation({
   readDirectory,
   vfs,
   findEntryByPath: _findEntryByPath,
+  folderEntries,
+  supplementEntries,
 }: NavigationDeps) {
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
@@ -66,10 +35,6 @@ export function useMobileFileBrowserNavigation({
   const projectStore = useProjectStore();
   const toast = useToast();
   const { t } = useI18n();
-
-  const entries = ref<FsEntry[]>([]);
-  const isLoading = ref(false);
-  const error = ref<string | null>(null);
 
   function navigateToRoot() {
     fileManagerStore.openFolder({
@@ -87,51 +52,26 @@ export function useMobileFileBrowserNavigation({
     });
   }
 
-  async function loadFolderContent() {
-    const folder = fileManagerStore.selectedFolder;
-    if (!folder) {
-      navigateToRoot();
-      return;
-    }
+  const { isLoading, error, loadFolderContent } = useFileBrowserFolderLoader({
+    vfs,
+    readDirectory,
+    folderEntries,
+    supplementEntries,
+  });
 
-    isLoading.value = true;
-    error.value = null;
-    try {
-      let content = (await readDirectory(folder.path)) || [];
-      if (!folder.path) {
-        const commonMetadata = await vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
-        if (commonMetadata?.kind === 'directory') {
-          const commonEntry: FsEntry = {
-            kind: 'directory',
-            name: WORKSPACE_COMMON_DIR_NAME,
-            path: WORKSPACE_COMMON_PATH_PREFIX,
-          };
-          content = [
-            commonEntry,
-            ...content.filter((entry: FsEntry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX),
-          ];
-        }
-      }
-
-      const filteredContent = content.filter(
-        (e) => fileManagerStore.showHiddenFiles || !e.name.startsWith('.'),
-      );
-
-      entries.value = await mapEntriesWithMetadata(filteredContent, vfs);
-      error.value = null;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error('Failed to load mobile folder content:', err);
-      error.value = message;
+  // Mobile-specific: show toast on load error
+  const wrappedLoadFolderContent = async () => {
+    await loadFolderContent();
+    if (error.value) {
       toast.add({
         title: t('common.error'),
-        description: t('videoEditor.fileManager.errors.loadFolderFailed', { message }),
+        description: t('videoEditor.fileManager.errors.loadFolderFailed', {
+          message: error.value,
+        }),
         color: 'error',
       });
-    } finally {
-      isLoading.value = false;
     }
-  }
+  };
 
   const breadcrumbs = computed(() => {
     const folder = fileManagerStore.selectedFolder;
@@ -163,8 +103,6 @@ export function useMobileFileBrowserNavigation({
     } else if (parentPath === WORKSPACE_COMMON_PATH_PREFIX) {
       navigateToWorkspaceCommonRoot();
     } else {
-      // Construction of a parent entry is more reliable than findEntryByPath,
-      // as the tree might not be fully loaded on mobile.
       const parentName = getWorkspacePathFileName(parentPath) || parentPath;
       fileManagerStore.openFolder({
         kind: 'directory',
@@ -177,7 +115,7 @@ export function useMobileFileBrowserNavigation({
   watch(
     () => fileManagerStore.selectedFolder?.path,
     () => {
-      void loadFolderContent();
+      void wrappedLoadFolderContent();
     },
     { immediate: true },
   );
@@ -185,7 +123,7 @@ export function useMobileFileBrowserNavigation({
   watch(
     () => fileManagerStore.showHiddenFiles,
     () => {
-      void loadFolderContent();
+      void wrappedLoadFolderContent();
     },
   );
 
@@ -193,17 +131,14 @@ export function useMobileFileBrowserNavigation({
     void timelineMediaUsageStore.refreshUsage();
     if (!fileManagerStore.selectedFolder) {
       void navigateToRoot();
-    } else {
-      void loadFolderContent();
     }
   });
 
   return {
-    entries,
     isLoading,
     error,
     breadcrumbs,
-    loadFolderContent,
+    loadFolderContent: wrappedLoadFolderContent,
     navigateToRoot,
     navigateToWorkspaceCommonRoot,
     goBack,

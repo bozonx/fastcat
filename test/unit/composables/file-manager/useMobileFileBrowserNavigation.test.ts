@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { WORKSPACE_COMMON_DIR_NAME, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 
@@ -48,12 +48,6 @@ describe('useMobileFileBrowserNavigation', () => {
   };
   const mockFindEntryByPath = vi.fn();
 
-  const deps = {
-    readDirectory: mockReadDirectory,
-    vfs: mockVfs as any,
-    findEntryByPath: mockFindEntryByPath,
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockFileManagerStore.selectedFolder = null;
@@ -62,8 +56,20 @@ describe('useMobileFileBrowserNavigation', () => {
     mockUiStore.showHiddenFiles = false;
   });
 
+  function createDeps() {
+    const folderEntries = ref<any[]>([]);
+    const supplementEntries = async (entries: any[]) => entries;
+    return {
+      readDirectory: mockReadDirectory,
+      vfs: mockVfs as any,
+      findEntryByPath: mockFindEntryByPath,
+      folderEntries,
+      supplementEntries,
+    };
+  }
+
   it('navigates to root correctly', () => {
-    const { navigateToRoot } = useMobileFileBrowserNavigation(deps);
+    const { navigateToRoot } = useMobileFileBrowserNavigation(createDeps());
     navigateToRoot();
 
     expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
@@ -74,7 +80,7 @@ describe('useMobileFileBrowserNavigation', () => {
   });
 
   it('navigates to workspace common correctly', () => {
-    const { navigateToWorkspaceCommonRoot } = useMobileFileBrowserNavigation(deps);
+    const { navigateToWorkspaceCommonRoot } = useMobileFileBrowserNavigation(createDeps());
     navigateToWorkspaceCommonRoot();
 
     expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
@@ -86,13 +92,13 @@ describe('useMobileFileBrowserNavigation', () => {
 
   it('generates breadcrumbs correctly for root', () => {
     mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
-    const { breadcrumbs } = useMobileFileBrowserNavigation(deps);
+    const { breadcrumbs } = useMobileFileBrowserNavigation(createDeps());
     expect(breadcrumbs.value).toEqual([]);
   });
 
   it('generates breadcrumbs correctly for deep path', () => {
     mockFileManagerStore.selectedFolder = { name: 'bar', kind: 'directory', path: 'foo/bar' };
-    const { breadcrumbs } = useMobileFileBrowserNavigation(deps);
+    const { breadcrumbs } = useMobileFileBrowserNavigation(createDeps());
     expect(breadcrumbs.value).toEqual([
       { name: 'foo', path: 'foo' },
       { name: 'bar', path: 'foo/bar' },
@@ -105,14 +111,13 @@ describe('useMobileFileBrowserNavigation', () => {
       { name: 'visible.txt', kind: 'file', path: 'visible.txt' },
       { name: '.hidden', kind: 'file', path: '.hidden' },
     ]);
-    mockVfs.getMetadata.mockResolvedValue({ kind: 'file', size: 100, lastModified: 1000 });
 
-    const { entries, loadFolderContent } = useMobileFileBrowserNavigation(deps);
+    const deps = createDeps();
+    const { loadFolderContent } = useMobileFileBrowserNavigation(deps);
     await loadFolderContent();
 
-    expect(entries.value).toHaveLength(1);
-    expect(entries.value[0].name).toBe('visible.txt');
-    expect(entries.value[0].size).toBe(100);
+    expect(deps.folderEntries.value).toHaveLength(1);
+    expect(deps.folderEntries.value[0].name).toBe('visible.txt');
   });
 
   it('shows hidden files when enabled', async () => {
@@ -122,17 +127,17 @@ describe('useMobileFileBrowserNavigation', () => {
       { name: 'visible.txt', kind: 'file', path: 'visible.txt' },
       { name: '.hidden', kind: 'file', path: '.hidden' },
     ]);
-    mockVfs.getMetadata.mockResolvedValue({ kind: 'file', size: 100, lastModified: 1000 });
 
-    const { entries, loadFolderContent } = useMobileFileBrowserNavigation(deps);
+    const deps = createDeps();
+    const { loadFolderContent } = useMobileFileBrowserNavigation(deps);
     await loadFolderContent();
 
-    expect(entries.value).toHaveLength(2);
+    expect(deps.folderEntries.value).toHaveLength(2);
   });
 
   it('handles goBack correctly from subfolder', () => {
     mockFileManagerStore.selectedFolder = { name: 'bar', kind: 'directory', path: 'foo/bar' };
-    const { goBack } = useMobileFileBrowserNavigation(deps);
+    const { goBack } = useMobileFileBrowserNavigation(createDeps());
     goBack();
 
     expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
@@ -144,7 +149,7 @@ describe('useMobileFileBrowserNavigation', () => {
 
   it('handles goBack to root correctly', () => {
     mockFileManagerStore.selectedFolder = { name: 'foo', kind: 'directory', path: 'foo' };
-    const { goBack } = useMobileFileBrowserNavigation(deps);
+    const { goBack } = useMobileFileBrowserNavigation(createDeps());
     goBack();
 
     expect(mockFileManagerStore.openFolder).toHaveBeenCalledWith({
@@ -158,7 +163,7 @@ describe('useMobileFileBrowserNavigation', () => {
     mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
     mockReadDirectory.mockRejectedValue(new Error('Network error'));
 
-    const { error, loadFolderContent } = useMobileFileBrowserNavigation(deps);
+    const { error, loadFolderContent } = useMobileFileBrowserNavigation(createDeps());
     await loadFolderContent();
 
     expect(error.value).toBe('Network error');
@@ -168,15 +173,15 @@ describe('useMobileFileBrowserNavigation', () => {
     mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
     mockReadDirectory.mockRejectedValue(new Error('First error'));
 
-    const { error, entries, loadFolderContent } = useMobileFileBrowserNavigation(deps);
+    const deps = createDeps();
+    const { error, loadFolderContent } = useMobileFileBrowserNavigation(deps);
     await loadFolderContent();
     expect(error.value).toBe('First error');
 
     mockReadDirectory.mockReset();
     mockReadDirectory.mockResolvedValue([{ name: 'ok.txt', kind: 'file', path: 'ok.txt' }]);
-    mockVfs.getMetadata.mockResolvedValue({ kind: 'file', size: 10, lastModified: 1 });
     await loadFolderContent();
     expect(error.value).toBeNull();
-    expect(entries.value).toHaveLength(1);
+    expect(deps.folderEntries.value).toHaveLength(1);
   });
 });

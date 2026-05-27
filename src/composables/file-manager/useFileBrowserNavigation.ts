@@ -1,4 +1,3 @@
-import { createDevLogger } from '~/utils/dev-logger';
 import { ref, watch, nextTick, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
@@ -13,7 +12,9 @@ import {
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
 import type { ExtendedFsEntry } from '~/composables/file-manager/useFileBrowserEntries';
-const log = createDevLogger('useFileBrowserNavigation');
+import { useFileBrowserFolderLoader } from '~/composables/file-manager/useFileBrowserFolderLoader';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+// const log = createDevLogger('useFileBrowserNavigation');
 
 export function useFileBrowserNavigation({
   rootContainer,
@@ -50,6 +51,13 @@ export function useFileBrowserNavigation({
   const uiStore = useUiStore();
   const parentFolders = ref<FsEntry[]>([]);
 
+  const { loadFolderContent: baseLoadFolderContent } = useFileBrowserFolderLoader({
+    vfs: vfs as IFileSystemAdapter,
+    readDirectory,
+    folderEntries,
+    supplementEntries,
+  });
+
   async function loadFolderContent(options: { append?: boolean } = {}) {
     const savedScrollTop =
       pendingScrollToEntryPath.value && !options.append
@@ -60,38 +68,7 @@ export function useFileBrowserNavigation({
       return;
     }
 
-    if (!fileManagerStore.selectedFolder) {
-      folderEntries.value = [];
-      return;
-    }
-
-    try {
-      const path = fileManagerStore.selectedFolder.path || '';
-      let entries = await readDirectory(path);
-
-      if (!path) {
-        const commonMetadata = await vfs.getMetadata(WORKSPACE_COMMON_PATH_PREFIX);
-        if (commonMetadata?.kind === 'directory') {
-          const commonEntry: FsEntry = {
-            kind: 'directory',
-            name: WORKSPACE_COMMON_DIR_NAME,
-            path: WORKSPACE_COMMON_PATH_PREFIX,
-          };
-          entries = [
-            commonEntry,
-            ...entries.filter((entry) => entry.path !== WORKSPACE_COMMON_PATH_PREFIX),
-          ];
-        }
-      }
-
-      const filteredEntries = entries.filter(
-        (e) => fileManagerStore.showHiddenFiles || !e.name.startsWith('.'),
-      );
-      folderEntries.value = await supplementEntries(filteredEntries);
-    } catch (error) {
-      log.error('Failed to load folder content:', error);
-      folderEntries.value = [];
-    }
+    await baseLoadFolderContent();
 
     if (savedScrollTop !== null) {
       await nextTick();

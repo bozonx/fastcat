@@ -8,7 +8,7 @@ import { useClipboardStore } from '~/stores/clipboard.store';
 import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import { useFileBrowserShared } from '~/composables/file-manager/useFileBrowserShared';
-import { useFileBrowserData } from '~/composables/file-manager/useFileBrowserData';
+import { useFileBrowserEntries } from '~/composables/file-manager/useFileBrowserEntries';
 import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
@@ -62,20 +62,32 @@ const {
   readDirectory,
 } = useFileManager({ shouldRecordFileManagerHistory: () => false });
 
-const { entries, isLoading, error, breadcrumbs, loadFolderContent, navigateToRoot, goBack } =
+const isRemoteMode = ref(false);
+
+const {
+  folderEntries,
+  sortedEntries,
+  videoThumbnails: thumbnails,
+  fileCompatibility,
+  folderSizes: browserFolderSizes,
+  calculateFolderSize: browserCalculateFolderSize,
+  supplementEntries,
+} = useFileBrowserEntries({ isRemoteMode, vfs });
+
+const { isLoading, error, breadcrumbs, loadFolderContent, navigateToRoot, goBack } =
   useMobileFileBrowserNavigation({
     readDirectory,
     vfs,
     findEntryByPath: (path: string) => findEntryByPath(path) || undefined,
+    folderEntries,
+    supplementEntries,
   });
 
 const {
   isSelectionMode,
   isDrawerOpen,
   selectedEntries,
-  folderSizes,
   totalSelectedSize,
-  calculateFolderSize,
   toggleSelectionMode,
   handleLongPress,
   handleToggleSelection,
@@ -103,7 +115,7 @@ const {
 async function onCreateTextFile(targetPath?: string) {
   const path = await runCreateTextFile(targetPath);
   if (path) {
-    const entry = entries.value.find((e) => e.path === path);
+    const entry = folderEntries.value.find((e) => e.path === path);
     if (entry) {
       handleEntryClick(entry);
     }
@@ -133,7 +145,7 @@ const {
   submitTranscription,
 } = useFileBrowserShared({
   vfs,
-  folderEntries: entries,
+  folderEntries,
   loadFolderContent,
   createFolder,
   renameEntry,
@@ -151,16 +163,14 @@ const {
   isExternal: false,
 });
 
-const { sortedEntries, thumbnails, fileCompatibility } = useFileBrowserData(entries, vfs);
-
 // Lazily calculate sizes of newly appeared folders only
 watch(
-  () => entries.value.filter((e) => e.kind === 'directory').map((e) => e.path),
+  () => folderEntries.value.filter((e) => e.kind === 'directory').map((e) => e.path),
   (newPaths, oldPaths) => {
     const prevSet = new Set(oldPaths ?? []);
     for (const path of newPaths) {
-      if (path && !prevSet.has(path) && folderSizes.value[path] === undefined) {
-        void calculateFolderSize(path);
+      if (path && !prevSet.has(path) && browserFolderSizes.value[path] === undefined) {
+        void browserCalculateFolderSize(path);
       }
     }
   },
@@ -514,7 +524,7 @@ const menuItems = computed(() => [
         :is-selection-mode="isSelectionMode"
         :is-loading="isLoading"
         :error="error"
-        :folder-sizes="folderSizes"
+        :folder-sizes="browserFolderSizes"
         @entry-click="handleEntryClick"
         @long-press="handleLongPress"
         @toggle-selection="handleToggleSelection"
