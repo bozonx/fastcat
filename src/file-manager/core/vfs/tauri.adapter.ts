@@ -36,6 +36,7 @@ import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-
 import { normalizeFsPath } from '~/file-manager/core/path';
 import { withFileWriteSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
+import { randomToken } from '~/utils/ids';
 
 /** Marker string for the Tauri AppData base directory. */
 export const TAURI_APP_DATA_BASE_PATH = 'app-data';

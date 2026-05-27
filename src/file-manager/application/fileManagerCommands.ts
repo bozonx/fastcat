@@ -15,7 +15,9 @@ import {
 } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
 import { generateUniqueFsEntryName } from '~/utils/fs';
+import { VfsConflictError } from '~/file-manager/core/vfs/errors';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { createDevLogger } from '~/utils/dev-logger';
 import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import type { TimelineFormatInput } from '~/timeline/format';
 
@@ -261,6 +263,8 @@ export interface DeleteEntryDeps {
   onFileDeleted?: (params: { path: string }) => Promise<void> | void;
 }
 
+const deleteLogger = createDevLogger('fileManagerCommands:delete');
+
 async function collectDeletedFilePaths(params: {
   vfs: IFileSystemAdapter;
   entry: FsEntry;
@@ -273,31 +277,37 @@ async function collectDeletedFilePaths(params: {
     throw new Error(`Maximum delete cleanup depth exceeded (${MAX_TREE_TRAVERSAL_DEPTH})`);
   }
 
-  const entries = await params.vfs.readDirectory(params.entry.path);
+  let entries: Awaited<ReturnType<IFileSystemAdapter['readDirectory']>> = [];
+  try {
+    entries = await params.vfs.readDirectory(params.entry.path);
+  } catch (err) {
+    deleteLogger.warn('Failed to read directory during delete cleanup:', params.entry.path, err);
+    return [];
+  }
+
   const paths: string[] = [];
   for (const entry of entries) {
     if (entry.kind === 'file') {
       paths.push(entry.path);
       continue;
     }
-    paths.push(
-      ...(await collectDeletedFilePaths({
-        vfs: params.vfs,
-        entry: entry as FsEntry,
-        depth: depth + 1,
-      })),
-    );
+    try {
+      paths.push(
+        ...(await collectDeletedFilePaths({
+          vfs: params.vfs,
+          entry: entry as FsEntry,
+          depth: depth + 1,
+        })),
+      );
+    } catch (err) {
+      deleteLogger.warn('Failed to traverse subtree during delete cleanup:', entry.path, err);
+    }
   }
   return paths;
 }
 
 export async function deleteEntryCommand(target: FsEntry, deps: DeleteEntryDeps): Promise<void> {
-  let deletedFilePaths: string[] = [];
-  try {
-    deletedFilePaths = await collectDeletedFilePaths({ vfs: deps.vfs, entry: target });
-  } catch {
-    // Traversal failed (e.g. transient I/O); proceed with delete and skip per-file notifications.
-  }
+  const deletedFilePaths = await collectDeletedFilePaths({ vfs: deps.vfs, entry: target });
 
   await deps.vfs.deleteEntry(target.path, true);
 
@@ -322,11 +332,14 @@ export async function renameEntryCommand(
   const parentPath = target.parentPath ?? target.path.split('/').slice(0, -1).join('/');
   const nextPath = parentPath ? `${parentPath}/${params.newName}` : params.newName;
 
-  if (await deps.vfs.exists(nextPath)) {
-    throw new Error(`Target name already exists: ${params.newName}`);
+  try {
+    await deps.vfs.moveEntry(target.path, nextPath);
+  } catch (e) {
+    if (e instanceof VfsConflictError) {
+      throw new Error(`Target name already exists: ${params.newName}`);
+    }
+    throw e;
   }
-
-  await deps.vfs.moveEntry(target.path, nextPath);
 }
 
 export interface MoveEntryDeps {

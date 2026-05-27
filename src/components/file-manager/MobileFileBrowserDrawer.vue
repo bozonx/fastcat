@@ -238,48 +238,36 @@ const canTranscribe = computed(() => {
   return isModelReady && Boolean(workspaceStore.workspaceHandle) && Boolean(entry.path);
 });
 
-const canCopySelection = computed(
-  () =>
-    selectedEntriesList.value.length > 0 &&
-    selectedEntriesList.value.every((entry) => {
-      const payload = getBdPayload(entry);
-      return (
-        !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
-        !(
-          entry.kind === 'directory' &&
-          (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
-            (entry.name.toLowerCase() === 'common' &&
-              (entry.path === 'common' || entry.path === '')))
-        ) &&
-        payload?.type !== 'virtual-folder' &&
-        payload?.type !== 'project' &&
-        payload?.type !== 'collection' &&
-        payload?.type !== 'content-item' &&
-        canCopyBloggerDogEntry(entry)
-      );
-    }),
+function canTransferSelection(
+  entries: FsEntry[],
+  checkEntry: (entry: FsEntry) => boolean,
+): boolean {
+  if (entries.length === 0) return false;
+  return entries.every((entry) => {
+    const payload = getBdPayload(entry);
+    return (
+      !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
+      !(
+        entry.kind === 'directory' &&
+        (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
+          (entry.name.toLowerCase() === 'common' &&
+            (entry.path === 'common' || entry.path === '')))
+      ) &&
+      payload?.type !== 'virtual-folder' &&
+      payload?.type !== 'project' &&
+      payload?.type !== 'collection' &&
+      payload?.type !== 'content-item' &&
+      checkEntry(entry)
+    );
+  });
+}
+
+const canCopySelection = computed(() =>
+  canTransferSelection(selectedEntriesList.value, canCopyBloggerDogEntry),
 );
 
-const canCutSelection = computed(
-  () =>
-    selectedEntriesList.value.length > 0 &&
-    selectedEntriesList.value.every((entry) => {
-      const payload = getBdPayload(entry);
-      return (
-        !(entry.kind === 'directory' && (entry.path === '' || entry.path === '/')) &&
-        !(
-          entry.kind === 'directory' &&
-          (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
-            (entry.name.toLowerCase() === 'common' &&
-              (entry.path === 'common' || entry.path === '')))
-        ) &&
-        payload?.type !== 'virtual-folder' &&
-        payload?.type !== 'project' &&
-        payload?.type !== 'collection' &&
-        payload?.type !== 'content-item' &&
-        canCutBloggerDogEntry(entry)
-      );
-    }),
+const canCutSelection = computed(() =>
+  canTransferSelection(selectedEntriesList.value, canCutBloggerDogEntry),
 );
 
 const canPasteIntoSelection = computed(() => {
@@ -297,7 +285,12 @@ const hasDirectVideoChildren = ref(false);
 
 watch(
   selectedFsEntry,
-  async (selected) => {
+  async (selected, _, onCleanup) => {
+    let cancelled = false;
+    onCleanup(() => {
+      cancelled = true;
+    });
+
     if (!selected || selected.entry.kind !== 'directory') {
       hasDirectVideoChildren.value = false;
       return;
@@ -310,12 +303,53 @@ watch(
 
     const folderPath = selected.entry.path ?? '';
     const children = await readDirectory(folderPath).catch(() => []);
+    if (cancelled || selectedFsEntry.value?.entry.path !== selected.entry.path) return;
     hasDirectVideoChildren.value = children.some(
       (child) => child.kind === 'file' && getMediaTypeFromFilename(child.name) === 'video',
     );
   },
   { immediate: true },
 );
+
+function handleAction(actionId: DrawerAction) {
+  if (onAction?.value) {
+    const list = selectedEntriesList.value;
+    if (list.length === 1 && list[0]) {
+      void onAction.value(actionId, list[0]);
+    } else if (list.length > 0) {
+      void onAction.value(actionId, list);
+    }
+  }
+}
+
+// Pre-bound action handlers to avoid recreating arrow functions on every topActions recompute.
+const actionHandlers: Record<DrawerAction, () => void> = {
+  convertFile: () => handleAction('convertFile'),
+  transcribe: () => handleAction('transcribe'),
+  createProxy: () => handleAction('createProxy'),
+  cancelProxy: () => handleAction('cancelProxy'),
+  deleteProxy: () => handleAction('deleteProxy'),
+  extractAudio: () => handleAction('extractAudio'),
+  createOtioVersion: () => handleAction('createOtioVersion'),
+  openAsPanel: () => handleAction('openAsPanel'),
+  openAsPanelCut: () => handleAction('openAsPanelCut'),
+  openAsPanelSound: () => handleAction('openAsPanelSound'),
+  openAsProjectTab: () => handleAction('openAsProjectTab'),
+  createFolder: () => handleAction('createFolder'),
+  upload: () => handleAction('upload'),
+  createTimeline: () => handleAction('createTimeline'),
+  createMarkdown: () => handleAction('createMarkdown'),
+  createSubgroup: () => handleAction('createSubgroup'),
+  createContentItem: () => handleAction('createContentItem'),
+  createProxyForFolder: () => handleAction('createProxyForFolder'),
+  cancelProxyForFolder: () => handleAction('cancelProxyForFolder'),
+  rename: () => handleAction('rename'),
+  delete: () => handleAction('delete'),
+  copy: () => handleAction('copy'),
+  cut: () => handleAction('cut'),
+  paste: () => handleAction('paste'),
+  openInNewTab: () => handleAction('openInNewTab'),
+};
 
 const topActions = computed(() => {
   const entry = selectedFsEntry.value?.entry;
@@ -331,7 +365,7 @@ const topActions = computed(() => {
       id: 'convert',
       label: t('videoEditor.fileManager.actions.convertFile'),
       icon: 'lucide:replace',
-      onClick: () => handleAction('convertFile'),
+      onClick: actionHandlers.convertFile,
     });
   }
 
@@ -342,7 +376,7 @@ const topActions = computed(() => {
       label: t('videoEditor.fileManager.actions.transcribe'),
       icon: 'i-heroicons-language',
       disabled: !canTranscribe.value,
-      onClick: () => handleAction('transcribe'),
+      onClick: actionHandlers.transcribe,
     });
   }
 
@@ -363,20 +397,20 @@ const topActions = computed(() => {
         id: 'regenerateProxy',
         label: t('videoEditor.fileManager.actions.regenerateProxy'),
         icon: 'i-heroicons-arrow-path',
-        onClick: () => handleAction('createProxy'),
+        onClick: actionHandlers.createProxy,
       });
       actions.push({
         id: 'deleteProxy',
         label: t('videoEditor.fileManager.actions.deleteProxy'),
         icon: 'i-heroicons-trash',
-        onClick: () => handleAction('deleteProxy'),
+        onClick: actionHandlers.deleteProxy,
       });
     } else {
       actions.push({
         id: 'createProxy',
         label: t('videoEditor.fileManager.actions.createProxy'),
         icon: 'i-heroicons-video-camera',
-        onClick: () => handleAction('createProxy'),
+        onClick: actionHandlers.createProxy,
       });
     }
   }
@@ -387,7 +421,7 @@ const topActions = computed(() => {
       id: 'extract-audio',
       label: t('videoEditor.fileManager.actions.extractAudio'),
       icon: 'i-heroicons-musical-note',
-      onClick: () => handleAction('extractAudio'),
+      onClick: actionHandlers.extractAudio,
     });
   }
 
@@ -397,7 +431,7 @@ const topActions = computed(() => {
       id: 'createOtioVersion',
       label: t('fastcat.timeline.createVersion'),
       icon: 'i-heroicons-document-duplicate',
-      onClick: () => handleAction('createOtioVersion'),
+      onClick: actionHandlers.createOtioVersion,
     });
   }
 
@@ -407,19 +441,19 @@ const topActions = computed(() => {
         id: 'openAsPanelCut',
         label: t('videoEditor.fileManager.actions.openAsPanelCut'),
         icon: 'i-heroicons-window',
-        onClick: () => handleAction('openAsPanelCut'),
+        onClick: actionHandlers.openAsPanelCut,
       },
       {
         id: 'openAsPanelSound',
         label: t('videoEditor.fileManager.actions.openAsPanelSound'),
         icon: 'i-heroicons-window',
-        onClick: () => handleAction('openAsPanelSound'),
+        onClick: actionHandlers.openAsPanelSound,
       },
       {
         id: 'openAsProjectTab',
         label: t('videoEditor.fileManager.actions.openAsProjectTab'),
         icon: 'i-heroicons-squares-plus',
-        onClick: () => handleAction('openAsProjectTab'),
+        onClick: actionHandlers.openAsProjectTab,
       },
     );
   }
@@ -432,25 +466,25 @@ const topActions = computed(() => {
           id: 'createFolder',
           label: t('videoEditor.fileManager.actions.createFolder'),
           icon: 'i-heroicons-folder-plus',
-          onClick: () => handleAction('createFolder'),
+          onClick: actionHandlers.createFolder,
         },
         {
           id: 'upload',
           label: t('videoEditor.fileManager.actions.uploadFiles'),
           icon: 'i-heroicons-arrow-up-tray',
-          onClick: () => handleAction('upload'),
+          onClick: actionHandlers.upload,
         },
         {
           id: 'createTimeline',
           label: t('videoEditor.fileManager.actions.createTimeline'),
           icon: 'i-heroicons-document-plus',
-          onClick: () => handleAction('createTimeline'),
+          onClick: actionHandlers.createTimeline,
         },
         {
           id: 'createMarkdown',
           label: t('videoEditor.fileManager.actions.createMarkdown'),
           icon: 'i-heroicons-document-text',
-          onClick: () => handleAction('createMarkdown'),
+          onClick: actionHandlers.createMarkdown,
         },
       );
     } else if (!isBdContentItem.value) {
@@ -460,13 +494,13 @@ const topActions = computed(() => {
             id: 'createFolder',
             label: t('videoEditor.fileManager.actions.createFolder'),
             icon: 'i-heroicons-folder-plus',
-            onClick: () => handleAction('createFolder'),
+            onClick: actionHandlers.createFolder,
           },
           {
             id: 'createMarkdown',
             label: t('videoEditor.fileManager.actions.createMarkdown'),
             icon: 'i-heroicons-document-text',
-            onClick: () => handleAction('createMarkdown'),
+            onClick: actionHandlers.createMarkdown,
           },
         );
       }
@@ -480,14 +514,14 @@ const topActions = computed(() => {
           label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
           icon: 'i-heroicons-x-circle',
           color: 'error',
-          onClick: () => handleAction('cancelProxyForFolder'),
+          onClick: actionHandlers.cancelProxyForFolder,
         });
       } else {
         actions.push({
           id: 'createProxyForFolder',
           label: t('videoEditor.fileManager.actions.createProxyForAll'),
           icon: 'i-heroicons-film',
-          onClick: () => handleAction('createProxyForFolder'),
+          onClick: actionHandlers.createProxyForFolder,
         });
       }
     }
@@ -505,7 +539,7 @@ const topActions = computed(() => {
         id: 'createSubgroup',
         label: t('fastcat.bloggerDog.actions.createSubgroup'),
         icon: 'i-heroicons-folder-plus',
-        onClick: () => handleAction('createSubgroup'),
+        onClick: actionHandlers.createSubgroup,
       });
     }
 
@@ -514,24 +548,13 @@ const topActions = computed(() => {
         id: 'createContentItem',
         label: t('fastcat.bloggerDog.actions.createItem'),
         icon: 'i-heroicons-document-plus',
-        onClick: () => handleAction('createContentItem'),
+        onClick: actionHandlers.createContentItem,
       });
     }
   }
 
   return actions;
 });
-
-function handleAction(actionId: DrawerAction) {
-  if (onAction?.value) {
-    const list = selectedEntriesList.value;
-    if (list.length === 1 && list[0]) {
-      void onAction.value(actionId, list[0]);
-    } else if (list.length > 0) {
-      void onAction.value(actionId, list);
-    }
-  }
-}
 </script>
 
 <template>

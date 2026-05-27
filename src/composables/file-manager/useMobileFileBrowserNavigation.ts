@@ -11,12 +11,47 @@ import {
   WORKSPACE_COMMON_DIR_NAME,
   WORKSPACE_COMMON_PATH_PREFIX,
 } from '~/utils/workspace-common';
+
 const log = createDevLogger('useMobileFileBrowserNavigation');
 
 interface NavigationDeps {
   readDirectory: (path: string) => Promise<FsEntry[]>;
   vfs: IFileSystemAdapter;
   findEntryByPath: (path: string) => FsEntry | undefined;
+}
+
+const METADATA_CONCURRENCY = 10;
+
+async function mapEntriesWithMetadata(
+  entries: FsEntry[],
+  vfs: IFileSystemAdapter,
+): Promise<FsEntry[]> {
+  const queue = [...entries];
+  const results: FsEntry[] = [];
+
+  async function worker() {
+    while (queue.length > 0) {
+      const entry = queue.shift()!;
+      if (entry.kind !== 'file') {
+        results.push(entry);
+        continue;
+      }
+      try {
+        const metadata = await vfs.getMetadata(entry.path);
+        if (metadata && metadata.kind === 'file') {
+          results.push({ ...entry, size: metadata.size, lastModified: metadata.lastModified });
+          continue;
+        }
+      } catch (e) {
+        log.warn('Failed to get metadata for:', entry.path, e);
+      }
+      results.push(entry);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(METADATA_CONCURRENCY, entries.length) }, worker);
+  await Promise.all(workers);
+  return results;
 }
 
 export function useMobileFileBrowserNavigation({
@@ -29,9 +64,12 @@ export function useMobileFileBrowserNavigation({
     useFileManagerStore();
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
   const projectStore = useProjectStore();
+  const toast = useToast();
+  const { t } = useI18n();
 
   const entries = ref<FsEntry[]>([]);
   const isLoading = ref(false);
+  const error = ref<string | null>(null);
 
   function navigateToRoot() {
     fileManagerStore.openFolder({
@@ -57,6 +95,7 @@ export function useMobileFileBrowserNavigation({
     }
 
     isLoading.value = true;
+    error.value = null;
     try {
       let content = (await readDirectory(folder.path)) || [];
       if (!folder.path) {
@@ -78,23 +117,17 @@ export function useMobileFileBrowserNavigation({
         (e) => fileManagerStore.showHiddenFiles || !e.name.startsWith('.'),
       );
 
-      entries.value = await Promise.all(
-        filteredContent.map(async (entry) => {
-          if (entry.kind === 'file') {
-            try {
-              const metadata = await vfs.getMetadata(entry.path);
-              if (metadata && metadata.kind === 'file') {
-                return { ...entry, size: metadata.size, lastModified: metadata.lastModified };
-              }
-            } catch (e) {
-              log.warn('Failed to get metadata for:', entry.path, e);
-            }
-          }
-          return entry;
-        }),
-      );
-    } catch (error) {
-      log.error('Failed to load mobile folder content:', error);
+      entries.value = await mapEntriesWithMetadata(filteredContent, vfs);
+      error.value = null;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('Failed to load mobile folder content:', err);
+      error.value = message;
+      toast.add({
+        title: t('common.error'),
+        description: t('videoEditor.fileManager.errors.loadFolderFailed', { message }),
+        color: 'error',
+      });
     } finally {
       isLoading.value = false;
     }
@@ -168,6 +201,7 @@ export function useMobileFileBrowserNavigation({
   return {
     entries,
     isLoading,
+    error,
     breadcrumbs,
     loadFolderContent,
     navigateToRoot,

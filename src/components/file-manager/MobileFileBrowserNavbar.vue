@@ -57,6 +57,7 @@ const projectStore = useProjectStore();
         class="flex items-center gap-1 text-xs text-ui-text-muted overflow-x-auto no-scrollbar"
       >
         <button
+          :title="projectStore.currentProjectName || '/'"
           class="shrink-0 transition-colors py-1 px-1.5 -ml-1 rounded-md hover:bg-ui-bg-muted hover:text-ui-text truncate max-w-[100px]"
           @click="emit('navigate-root')"
         >
@@ -65,6 +66,7 @@ const projectStore = useProjectStore();
         <template v-for="bc in breadcrumbs" :key="bc.path">
           <Icon name="lucide:chevron-right" class="w-2.5 h-2.5 opacity-30 shrink-0" />
           <button
+            :title="bc.name"
             class="shrink-0 transition-colors py-1 px-1.5 rounded-md hover:bg-ui-bg-muted hover:text-ui-text last:text-ui-text last:font-medium truncate max-w-[100px]"
             @click="emit('navigate-breadcrumb', bc.name, bc.path)"
           >

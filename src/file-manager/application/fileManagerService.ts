@@ -309,20 +309,17 @@ export function createFileManagerService(deps: FileManagerServiceDeps): FileMana
       return;
     }
 
-    for (const entry of deps.rootEntries.value) {
-      if (
+    const mediaDirs = deps.rootEntries.value.filter(
+      (entry) =>
         entry.kind === 'directory' &&
         (entry.name === VIDEO_DIR_NAME ||
           entry.name === AUDIO_DIR_NAME ||
           entry.name === FILES_DIR_NAME ||
           entry.name === DOCUMENTS_DIR_NAME ||
-          entry.name === IMAGES_DIR_NAME)
-      ) {
-        if (!entry.expanded) {
-          await toggleDirectory(entry);
-        }
-      }
-    }
+          entry.name === IMAGES_DIR_NAME) &&
+        !entry.expanded,
+    );
+    await Promise.all(mediaDirs.map((entry) => toggleDirectory(entry)));
 
     deps.onDirectoryLoaded?.();
   }

@@ -1,33 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive, ref } from 'vue';
+import { reactive, ref, nextTick } from 'vue';
 import MobileFileBrowser from '~/components/file-manager/MobileFileBrowser.vue';
 
-// --- Mocks ---
-
-// --- Mocks ---
+// --- Store Mocks ---
 
 const mockFileManagerStore = reactive({
   selectedFolder: { name: 'Root', path: '' } as any,
   openFolder: vi.fn(),
   folderSizes: {},
-  sortFields: [],
+  sortFields: [
+    { labelKey: 'common.name', value: 'name' },
+    { labelKey: 'common.type', value: 'type' },
+  ],
   sortOption: { field: 'name', order: 'asc' },
+  setShowHiddenFiles: vi.fn(),
+  showHiddenFiles: false,
 });
 
 const mockProjectStore = reactive({
   currentProjectName: 'MyProject',
   setView: vi.fn(),
+  getDirectoryHandleByPath: vi.fn(async () => null),
+  openTimelineFile: vi.fn(),
 });
 
 const mockSelectionStore = reactive({
   selectedEntity: null as any,
+  selectFsEntry: vi.fn(),
   selectFsEntries: vi.fn(),
   clearSelection: vi.fn(),
-});
-
-const mockUiStore = reactive({
-  showHiddenFiles: false,
 });
 
 const mockClipboardStore = reactive({
@@ -35,29 +37,42 @@ const mockClipboardStore = reactive({
   clearClipboardPayload: vi.fn(),
 });
 
+const mockTimelineMediaUsageStore = reactive({
+  mediaPathToTimelines: {},
+  refreshUsage: vi.fn(async () => {}),
+  setLiveUsage: vi.fn(),
+});
+
 vi.mock('~/stores/file-manager.store', () => ({
   useFileManagerStore: () => mockFileManagerStore,
 }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
-vi.mock('~/stores/ui.store', () => ({ useUiStore: () => mockUiStore }));
 vi.mock('~/stores/clipboard.store', () => ({ useClipboardStore: () => mockClipboardStore }));
 vi.mock('~/stores/timeline-media-usage.store', () => ({
-  useTimelineMediaUsageStore: () => ({
-    mediaPathToTimelines: {},
-    refreshUsage: vi.fn(async () => {}),
-    setLiveUsage: vi.fn(),
-  }),
+  useTimelineMediaUsageStore: () => mockTimelineMediaUsageStore,
 }));
 
-// Mock composables to avoid side effects and complex setup
+// --- Composable Mocks ---
+
+const mockEntries = ref<any[]>([]);
+const mockIsLoading = ref(false);
+const mockError = ref<string | null>(null);
+const mockBreadcrumbs = ref<any[]>([]);
+const mockLoadFolderContent = vi.fn(async () => {});
+const mockIsSelectionMode = ref(false);
+const mockIsDrawerOpen = ref(false);
+const mockSelectedEntries = ref<any[]>([]);
+const mockFolderSizes = ref<Record<string, number>>({});
+const mockIsCreateMenuOpen = ref(false);
+
 vi.mock('~/composables/file-manager/useFileManager', () => ({
-  useFileManager: () => ({
+  useFileManager: vi.fn(() => ({
     readDirectory: vi.fn(async () => []),
-    getFileIcon: vi.fn(() => 'icon'),
+    getFileIcon: vi.fn(() => 'i-heroicons-document'),
     findEntryByPath: vi.fn(),
     mediaCache: {},
-    vfs: { getMetadata: vi.fn() },
+    vfs: { getMetadata: vi.fn(async () => null) },
     handleFiles: vi.fn(),
     createFolder: vi.fn(),
     createTimeline: vi.fn(),
@@ -67,83 +82,126 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
     renameEntry: vi.fn(),
     copyEntry: vi.fn(),
     moveEntry: vi.fn(),
-  }),
+  })),
 }));
 
 vi.mock('~/composables/file-manager/useMobileFileBrowserNavigation', () => ({
-  useMobileFileBrowserNavigation: () => ({
-    entries: ref([]),
-    isLoading: ref(false),
-    breadcrumbs: ref([]),
-    loadFolderContent: vi.fn(),
+  useMobileFileBrowserNavigation: vi.fn(() => ({
+    entries: mockEntries,
+    isLoading: mockIsLoading,
+    error: mockError,
+    breadcrumbs: mockBreadcrumbs,
+    loadFolderContent: mockLoadFolderContent,
     navigateToRoot: vi.fn(),
     goBack: vi.fn(),
-  }),
+  })),
 }));
 
 vi.mock('~/composables/file-manager/useMobileFileBrowserSelection', () => ({
-  useMobileFileBrowserSelection: () => ({
-    isSelectionMode: ref(false),
-    isDrawerOpen: ref(false),
-    selectedEntries: ref([]),
-    folderSizes: ref({}),
+  useMobileFileBrowserSelection: vi.fn(() => ({
+    isSelectionMode: mockIsSelectionMode,
+    isDrawerOpen: mockIsDrawerOpen,
+    selectedEntries: mockSelectedEntries,
+    folderSizes: mockFolderSizes,
     totalSelectedSize: ref(0),
     calculateFolderSize: vi.fn(),
-    toggleSelectionMode: vi.fn(),
+    toggleSelectionMode: vi.fn(() => {
+      mockIsSelectionMode.value = !mockIsSelectionMode.value;
+    }),
     handleLongPress: vi.fn(),
     handleToggleSelection: vi.fn(),
     handleEntryClick: vi.fn(),
     closeAllUI: vi.fn(),
-  }),
+  })),
 }));
 
 vi.mock('~/composables/file-manager/useMobileFileBrowserCreate', () => ({
-  useMobileFileBrowserCreate: () => ({
+  useMobileFileBrowserCreate: vi.fn(() => ({
     fileInput: ref(null),
-    isCreateMenuOpen: ref(false),
+    isCreateMenuOpen: mockIsCreateMenuOpen,
     triggerFileUpload: vi.fn(),
     onFileSelect: vi.fn(),
     onCreateFolder: vi.fn(),
     onCreateTimeline: vi.fn(),
     onCreateTextFile: vi.fn(),
-  }),
+  })),
 }));
 
 vi.mock('~/composables/file-manager/useFileManagerActions', () => ({
-  useFileManagerActions: () => ({
+  useFileManagerActions: vi.fn(() => ({
     onFileAction: vi.fn(),
     isDeleteConfirmModalOpen: ref(false),
     deleteTargets: ref([]),
     handleDeleteConfirm: vi.fn(),
-  }),
+  })),
 }));
 
 vi.mock('~/composables/file-manager/useSttTranscription', () => ({
-  useSttTranscription: () => ({
+  useSttTranscription: vi.fn(() => ({
     modalOpen: ref(false),
     language: ref('en'),
     errorMessage: ref(null),
     isTranscribing: ref(false),
     isModelReady: ref(true),
     pendingEntry: ref(null),
-    isTranscribableMediaFile: vi.fn(() => false),
     openModal: vi.fn(),
     submitTranscription: vi.fn(),
-  }),
+  })),
 }));
 
-vi.mock('~/components/file-manager/MobileFileBrowserSelectionToolbar.vue', () => ({
-  default: { template: '<div id="selection-toolbar" />' },
+vi.mock('~/composables/file-manager/useFileBrowserFileActions', () => ({
+  useFileBrowserFileActions: vi.fn(() => ({ onFileAction: vi.fn() })),
 }));
 
-vi.mock('~/components/file-manager/MobileFileBrowserPasteToolbar.vue', () => ({
-  default: { template: '<div id="paste-toolbar" />' },
+vi.mock('~/composables/file-manager/useAudioExtraction', () => ({
+  useAudioExtraction: vi.fn(() => ({ extractAudio: vi.fn() })),
+}));
+
+vi.mock('~/composables/file-manager/useFileConversionStore', () => ({
+  useFileConversionStore: vi.fn(() => ({ openConversionModal: vi.fn() })),
+}));
+
+vi.mock('~/composables/ui/useTeleportTarget', () => ({
+  useTeleportTarget: vi.fn(() => ({ target: ref('body') })),
+}));
+
+vi.mock('~/composables/useHotkeyLabel', () => ({
+  useHotkeyLabel: vi.fn(() => ({ getHotkeyLabel: vi.fn(() => '') })),
+}));
+
+vi.mock('~/composables/file-manager/useFileManagerThumbnails', () => ({
+  useFileManagerThumbnails: vi.fn(() => ({ thumbnails: ref({}) })),
+}));
+
+vi.mock('~/composables/file-manager/useFileManagerCompatibility', () => ({
+  useFileManagerCompatibility: vi.fn(() => ({ compatibility: ref({}) })),
+}));
+
+vi.mock('~/composables/file-manager/useFileSorting', () => ({
+  useFileSorting: vi.fn((entries: any) => ({ sortedEntries: entries })),
+}));
+
+vi.mock('~/composables/file-manager/useFileBrowserBulkSelection', () => ({
+  useFileBrowserBulkSelection: vi.fn(() => ({
+    selectAll: vi.fn(),
+    selectUnused: vi.fn(),
+    invertSelection: vi.fn(),
+  })),
 }));
 
 describe('MobileFileBrowser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSelectionStore.selectedEntity = null;
+    mockEntries.value = [];
+    mockIsLoading.value = false;
+    mockError.value = null;
+    mockBreadcrumbs.value = [];
+    mockIsSelectionMode.value = false;
+    mockIsDrawerOpen.value = false;
+    mockSelectedEntries.value = [];
+    mockFolderSizes.value = {};
+    mockIsCreateMenuOpen.value = false;
   });
 
   it('renders navbar and grid', async () => {
@@ -161,21 +219,119 @@ describe('MobileFileBrowser', () => {
     expect(wrapper.find('#grid-mock').exists()).toBe(true);
   });
 
-  it('shows selection toolbar when in selection mode', async () => {
-    // We need to re-mock or use a reactive ref that we can control
-    // For simplicity in this test, we can use the default mock which returns a ref
-    const wrapper = await mountSuspended(MobileFileBrowser);
+  it('displays pull-to-refresh indicator while pulling', async () => {
+    const wrapper = await mountSuspended(MobileFileBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserNavbar: { template: '<div />' },
+          MobileFileBrowserGrid: { template: '<div id="grid-mock" />' },
+          Teleport: true,
+        },
+      },
+    });
 
-    // Since we mocked the composable to return a ref, we can't easily change it from outside
-    // without returning the same ref object.
-    // In a real scenario, we might want to export the refs from the mock.
+    const gridContainer = wrapper.find('.overflow-y-auto');
+    expect(gridContainer.exists()).toBe(true);
+
+    await gridContainer.trigger('touchstart', {
+      touches: [{ clientY: 100 }],
+    });
+
+    await gridContainer.trigger('touchmove', {
+      touches: [{ clientY: 180 }],
+    });
+
+    const indicator = wrapper.find('.absolute.top-0');
+    expect(indicator.exists()).toBe(true);
+
+    await gridContainer.trigger('touchend');
   });
 
-  it('contains the create FAB', async () => {
-    const wrapper = await mountSuspended(MobileFileBrowser);
-    // FAB is teleported to body, so we might not find it in wrapper if not careful,
-    // but mountSuspended should handle it for common cases or we check the component existence.
-    // Actually it's in a Teleport, so it might not be in wrapper.html().
+  it('shows error state in grid when folder loading fails', async () => {
+    mockError.value = 'Network error';
+
+    const wrapper = await mountSuspended(MobileFileBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserNavbar: { template: '<div />' },
+          MobileFileBrowserGrid: {
+            name: 'MobileFileBrowserGrid',
+            props: ['error'],
+            template: '<div id="grid-mock">{{ error }}</div>',
+          },
+          Teleport: true,
+        },
+      },
+    });
+
+    const grid = wrapper.findComponent({ name: 'MobileFileBrowserGrid' });
+    expect(grid.exists()).toBe(true);
+    expect(grid.props('error')).toBe('Network error');
+    expect(grid.text()).toContain('Network error');
+  });
+
+  it('shows selection toolbar when in selection mode', async () => {
+    mockIsSelectionMode.value = true;
+    mockSelectedEntries.value = [{ name: 'a.txt', kind: 'file', path: 'a.txt' }];
+
+    const wrapper = await mountSuspended(MobileFileBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserNavbar: { template: '<div />' },
+          MobileFileBrowserGrid: { template: '<div />' },
+          MobileFileBrowserDrawer: { template: '<div />' },
+          MobileFileBrowserSelectionToolbar: {
+            name: 'MobileFileBrowserSelectionToolbar',
+            props: ['selectedEntries'],
+            template: '<div id="toolbar-mock" />',
+          },
+          Teleport: true,
+        },
+      },
+    });
+
+    const toolbar = wrapper.findComponent({ name: 'MobileFileBrowserSelectionToolbar' });
+    expect(toolbar.exists()).toBe(true);
+    expect(toolbar.props('selectedEntries')).toEqual(mockSelectedEntries.value);
+  });
+
+  it('hides create FAB when in selection mode', async () => {
+    mockIsSelectionMode.value = true;
+
+    const wrapper = await mountSuspended(MobileFileBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserNavbar: { template: '<div />' },
+          MobileFileBrowserGrid: { template: '<div />' },
+          MobileFileBrowserDrawer: { template: '<div />' },
+          MobileFileBrowserSelectionToolbar: { template: '<div />' },
+          Teleport: false,
+        },
+      },
+    });
+
+    const fabContainer = wrapper.find('.fixed.bottom-20');
+    expect(fabContainer.exists()).toBe(false);
+  });
+
+  it('shows create FAB when not in selection or paste mode', async () => {
+    mockIsSelectionMode.value = false;
+    mockClipboardStore.hasFileManagerPayload = false;
+
+    const wrapper = await mountSuspended(MobileFileBrowser, {
+      global: {
+        stubs: {
+          MobileFileBrowserNavbar: { template: '<div />' },
+          MobileFileBrowserGrid: { template: '<div />' },
+          MobileFileBrowserDrawer: { template: '<div />' },
+          Teleport: { template: '<div class="teleport-stub"><slot /></div>' },
+        },
+      },
+    });
+
+    const fabContainer = wrapper.find('.fixed.bottom-20');
+    expect(fabContainer.exists()).toBe(true);
+    expect(fabContainer.find('button').exists()).toBe(true);
   });
 
   it('passes bulk selection actions to the navbar menu', async () => {
@@ -197,7 +353,7 @@ describe('MobileFileBrowser', () => {
     const menuItems = navbar.props('menuItems') as Array<Array<{ label: string }>>;
 
     expect(menuItems[1]?.map((item) => item.label)).toEqual([
-      'common.selectAll (Ctrl+A)',
+      'common.selectAll',
       'common.selectUnused',
       'common.invertSelection',
     ]);

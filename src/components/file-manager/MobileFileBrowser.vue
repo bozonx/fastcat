@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue';
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useProjectStore } from '~/stores/project.store';
@@ -14,7 +14,7 @@ import {
   useFileManagerActions,
   type FileAction as FileManagerAction,
 } from '~/composables/file-manager/useFileManagerActions';
-import { useFileBrowserRemoteCreate } from '~/composables/file-manager/useFileBrowserRemoteCreate';
+import { usePullToRefresh } from '~/composables/file-manager/usePullToRefresh';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { useMobileFileBrowserSelection } from '~/composables/file-manager/useMobileFileBrowserSelection';
 import { useMobileFileBrowserCreate } from '~/composables/file-manager/useMobileFileBrowserCreate';
@@ -68,9 +68,9 @@ const {
   copyEntry,
   moveEntry,
   readDirectory,
-} = useFileManager();
+} = useFileManager({ shouldRecordFileManagerHistory: () => false });
 
-const { entries, isLoading, breadcrumbs, loadFolderContent, navigateToRoot, goBack } =
+const { entries, isLoading, error, breadcrumbs, loadFolderContent, navigateToRoot, goBack } =
   useMobileFileBrowserNavigation({
     readDirectory,
     vfs,
@@ -111,45 +111,20 @@ const {
 async function onCreateTextFile(targetPath?: string) {
   const path = await runCreateTextFile(targetPath);
   if (path) {
-    // Wait for the next tick for entries to be updated
-    await nextTick();
-    // Sometimes VFS needs a moment to reflect changes even after reload
     const entry = entries.value.find((e) => e.path === path);
     if (entry) {
       handleEntryClick(entry);
-    } else {
-      // Fallback: try one more time after a short delay
-      setTimeout(() => {
-        const retryEntry = entries.value.find((e) => e.path === path);
-        if (retryEntry) {
-          handleEntryClick(retryEntry);
-        }
-      }, 300);
     }
   }
 }
 
-const {
-  isSubgroupModalOpen,
-  isItemModalOpen,
-  handlePendingBloggerDogCreateSubgroup,
-  handlePendingBloggerDogCreateItem,
-  onSubgroupCreateConfirm,
-  onItemCreateConfirm,
-} = useFileBrowserRemoteCreate({
-  vfs,
-  buildRemoteDirectoryEntry: (path) =>
-    ({
-      path,
-      kind: 'directory',
-      name: path.split('/').pop() || '',
-      source: 'remote',
-      remoteType: 'directory',
-    }) as import('~/utils/remote-vfs').RemoteFsEntry,
-  remoteCurrentFolder: ref(null),
-  loadFolderContent,
-  loadParentFolders: async () => {},
-});
+// Pull-to-refresh for mobile file grid
+const { isPulling, pullDistance, isRefreshing, onTouchStart, onTouchMove, onTouchEnd } =
+  usePullToRefresh(async () => {
+    const path = fileManagerStore.selectedFolder?.path || '';
+    await reloadDirectory(path);
+    await loadFolderContent();
+  });
 
 const {
   onFileAction: onFileActionInternal,
@@ -206,17 +181,18 @@ const { onFileAction } = useFileBrowserFileActions({
   isExternal: false,
 });
 
-// Lazily calculate sizes of all folders in current directory
+// Lazily calculate sizes of newly appeared folders only
 watch(
-  entries,
-  (newEntries) => {
-    for (const entry of newEntries) {
-      if (entry.kind === 'directory' && entry.path && folderSizes.value[entry.path] === undefined) {
-        void calculateFolderSize(entry.path);
+  () => entries.value.filter((e) => e.kind === 'directory').map((e) => e.path),
+  (newPaths, oldPaths) => {
+    const prevSet = new Set(oldPaths ?? []);
+    for (const path of newPaths) {
+      if (path && !prevSet.has(path) && folderSizes.value[path] === undefined) {
+        void calculateFolderSize(path);
       }
     }
   },
-  { deep: true },
+  { immediate: true },
 );
 
 onUnmounted(() => {
@@ -293,6 +269,14 @@ function handleCreateFolderRequest() {
 
 async function onCreateFolderConfirm(name: string) {
   await runCreateFolder(name);
+}
+
+function handlePendingBloggerDogCreateSubgroup(_entry: FsEntry) {
+  // BloggerDog subgroup creation is not supported in mobile file browser
+}
+
+function handlePendingBloggerDogCreateItem(_entry: FsEntry) {
+  // BloggerDog content item creation is not supported in mobile file browser
 }
 
 async function onRenameConfirm(newName: string) {
@@ -397,13 +381,29 @@ async function wrappedHandleDeleteConfirm() {
   closeAllUI();
 }
 
+function onSortFieldSelect(field: string) {
+  fileManagerStore.sortOption.field = field as typeof fileManagerStore.sortOption.field;
+}
+
+function toggleSortOrder() {
+  fileManagerStore.sortOption.order = fileManagerStore.sortOption.order === 'asc' ? 'desc' : 'asc';
+}
+
+async function refreshFolder() {
+  const path = fileManagerStore.selectedFolder?.path || '';
+  await reloadDirectory(path);
+  await loadFolderContent();
+}
+
+function toggleHiddenFiles() {
+  fileManagerStore.setShowHiddenFiles(!fileManagerStore.showHiddenFiles);
+}
+
 const sortItems = computed(() =>
   fileManagerStore.sortFields.map((f) => ({
     label: t(f.labelKey),
     icon: fileManagerStore.sortOption.field === f.value ? 'lucide:check' : undefined,
-    onSelect: () => {
-      fileManagerStore.sortOption.field = f.value;
-    },
+    onSelect: () => onSortFieldSelect(f.value),
   })),
 );
 
@@ -462,21 +462,14 @@ const menuItems = computed(() => [
           ? t('common.sortOrder.asc')
           : t('common.sortOrder.desc'),
       icon: fileManagerStore.sortOption.order === 'asc' ? 'lucide:sort-asc' : 'lucide:sort-desc',
-      onSelect: () => {
-        fileManagerStore.sortOption.order =
-          fileManagerStore.sortOption.order === 'asc' ? 'desc' : 'asc';
-      },
+      onSelect: toggleSortOrder,
     },
   ],
   [
     {
       label: t('common.refresh'),
       icon: 'i-heroicons-arrow-path',
-      onSelect: async () => {
-        const path = fileManagerStore.selectedFolder?.path || '';
-        await reloadDirectory(path);
-        await loadFolderContent();
-      },
+      onSelect: refreshFolder,
     },
   ],
   [
@@ -485,9 +478,7 @@ const menuItems = computed(() => [
         ? t('common.hideHiddenFiles')
         : t('common.showHiddenFiles'),
       icon: fileManagerStore.showHiddenFiles ? 'lucide:eye-off' : 'lucide:eye',
-      onSelect: () => {
-        fileManagerStore.setShowHiddenFiles(!fileManagerStore.showHiddenFiles);
-      },
+      onSelect: toggleHiddenFiles,
     },
   ],
 ]);
@@ -514,7 +505,27 @@ const menuItems = computed(() => [
     />
 
     <!-- File Grid -->
-    <div class="flex-1 overflow-y-auto min-h-0">
+    <div
+      class="flex-1 overflow-y-auto min-h-0 relative"
+      @touchstart="onTouchStart"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd"
+    >
+      <!-- Pull-to-refresh indicator -->
+      <div
+        v-if="isPulling || isRefreshing"
+        class="absolute top-0 left-0 right-0 flex items-center justify-center z-10 pointer-events-none transition-transform"
+        :style="{ transform: `translateY(${pullDistance}px)` }"
+      >
+        <div class="bg-ui-bg-elevated/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-ui-border/50">
+          <Icon
+            :name="isRefreshing ? 'lucide:loader-2' : 'lucide:arrow-down'"
+            class="w-5 h-5 text-ui-text-muted"
+            :class="{ 'animate-spin': isRefreshing }"
+          />
+        </div>
+      </div>
+
       <MobileFileBrowserGrid
         :entries="sortedEntries"
         :thumbnails="thumbnails"
@@ -528,10 +539,12 @@ const menuItems = computed(() => [
         :selected-entries="selectedEntries"
         :is-selection-mode="isSelectionMode"
         :is-loading="isLoading"
+        :error="error"
         :folder-sizes="folderSizes"
         @entry-click="handleEntryClick"
         @long-press="handleLongPress"
         @toggle-selection="handleToggleSelection"
+        @retry="loadFolderContent"
       />
     </div>
 
@@ -632,18 +645,5 @@ const menuItems = computed(() => [
       @added="onAddedToTimeline"
     />
 
-    <!-- BloggerDog Subgroup Modal -->
-    <UiEntityCreationModal
-      v-model:open="isSubgroupModalOpen"
-      :title="t('fastcat.bloggerDog.actions.createSubgroup')"
-      @confirm="onSubgroupCreateConfirm"
-    />
-
-    <!-- BloggerDog Content Item Modal -->
-    <UiEntityCreationModal
-      v-model:open="isItemModalOpen"
-      :title="t('fastcat.bloggerDog.actions.createItem')"
-      @confirm="onItemCreateConfirm"
-    />
   </div>
 </template>

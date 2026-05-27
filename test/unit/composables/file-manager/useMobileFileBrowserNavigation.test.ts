@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
 import { useMobileFileBrowserNavigation } from '~/composables/file-manager/useMobileFileBrowserNavigation';
 import { WORKSPACE_COMMON_DIR_NAME, WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
 
@@ -152,5 +152,31 @@ describe('useMobileFileBrowserNavigation', () => {
       name: 'TestProject',
       path: '',
     });
+  });
+
+  it('exposes error when folder loading fails', async () => {
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    mockReadDirectory.mockRejectedValue(new Error('Network error'));
+
+    const { error, loadFolderContent } = useMobileFileBrowserNavigation(deps);
+    await loadFolderContent();
+
+    expect(error.value).toBe('Network error');
+  });
+
+  it('clears previous error on successful load', async () => {
+    mockFileManagerStore.selectedFolder = { name: 'Root', kind: 'directory', path: '' };
+    mockReadDirectory.mockRejectedValue(new Error('First error'));
+
+    const { error, entries, loadFolderContent } = useMobileFileBrowserNavigation(deps);
+    await loadFolderContent();
+    expect(error.value).toBe('First error');
+
+    mockReadDirectory.mockReset();
+    mockReadDirectory.mockResolvedValue([{ name: 'ok.txt', kind: 'file', path: 'ok.txt' }]);
+    mockVfs.getMetadata.mockResolvedValue({ kind: 'file', size: 10, lastModified: 1 });
+    await loadFolderContent();
+    expect(error.value).toBeNull();
+    expect(entries.value).toHaveLength(1);
   });
 });

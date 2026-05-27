@@ -585,9 +585,11 @@ function getColumnCount(): number {
   if (fileManagerStore.viewMode !== 'grid' || !rootContainer.value) return 1;
   const items = Array.from(rootContainer.value.querySelectorAll<HTMLElement>('[data-entry-path]'));
   if (items.length === 0) return 1;
-  const firstTop = items[0]?.offsetTop ?? 0;
+  // Batch layout reads to avoid forced synchronous layout
+  const tops = items.map((item) => item.getBoundingClientRect().top);
+  const firstTop = tops[0] ?? 0;
   let cols = 0;
-  while (cols < items.length && (items[cols]?.offsetTop ?? 0) === firstTop) cols++;
+  while (cols < items.length && tops[cols] === firstTop) cols++;
   return cols || 1;
 }
 

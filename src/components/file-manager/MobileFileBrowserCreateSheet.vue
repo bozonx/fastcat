@@ -107,21 +107,6 @@ const isOpen = computed({
 
         <div class="grid grid-cols-2 gap-3">
           <button
-            class="col-span-2 flex items-center justify-center gap-4 p-4 rounded-2xl bg-primary-600/10 border border-primary-500/20 hover:bg-primary-600/20 active:scale-[0.98] transition-all group"
-            @click="emit('upload', '')"
-          >
-            <Icon name="lucide:upload" class="w-6 h-6 text-primary-400" />
-            <div class="flex flex-col items-start">
-              <span class="font-bold text-primary-100 text-base leading-tight">{{
-                t('videoEditor.fileManager.actions.uploadFiles')
-              }}</span>
-              <span class="text-[10px] text-primary-400/80 font-medium tracking-tight uppercase">{{
-                t('common.autoRecognition')
-              }}</span>
-            </div>
-          </button>
-
-          <button
             class="flex flex-col items-center gap-1.5 p-5 rounded-2xl bg-ui-bg-muted/40 border border-ui-border/50 hover:bg-ui-bg-elevated active:scale-95 transition-all text-center group"
             @click="emit('create-timeline')"
           >

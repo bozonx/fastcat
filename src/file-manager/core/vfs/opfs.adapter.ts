@@ -361,10 +361,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     });
   }
 
-  private supportsHandleMoveCache: boolean | undefined;
+  private supportsHandleMoveCache = new WeakMap<FileSystemDirectoryHandle, boolean>();
 
   private async supportsHandleMove(parent: FileSystemDirectoryHandle): Promise<boolean> {
-    if (this.supportsHandleMoveCache !== undefined) return this.supportsHandleMoveCache;
+    const cached = this.supportsHandleMoveCache.get(parent);
+    if (cached !== undefined) return cached;
     try {
       // Probe with a throwaway handle. `move` lives on FileSystemHandle in the
       // spec — touch a real handle to avoid false positives from polyfills.
@@ -372,10 +373,10 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       const probe = await parent.getFileHandle(probeName, { create: true });
       const has = typeof (probe as ExtendedHandle).move === 'function';
       await (parent as ExtendedDirectoryHandle).removeEntry(probeName).catch(() => {});
-      this.supportsHandleMoveCache = has;
+      this.supportsHandleMoveCache.set(parent, has);
       return has;
     } catch {
-      this.supportsHandleMoveCache = false;
+      this.supportsHandleMoveCache.set(parent, false);
       return false;
     }
   }
@@ -416,13 +417,20 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
 
   private trackObjectUrl(path: string, url: string): void {
     // Bump LRU position: delete + reinsert puts this entry at the tail.
+    const previousUrl = this.objectUrlsByPath.get(path);
     this.objectUrlsByPath.delete(path);
     this.objectUrlsByPath.set(path, url);
+
+    // Revoke asynchronously so any in-flight render can finish using the URL.
+    if (previousUrl) {
+      requestAnimationFrame(() => URL.revokeObjectURL(previousUrl));
+    }
+
     while (this.objectUrlsByPath.size > MAX_TRACKED_OBJECT_URLS) {
       const oldestKey = this.objectUrlsByPath.keys().next().value;
       if (oldestKey === undefined) break;
       const oldestUrl = this.objectUrlsByPath.get(oldestKey)!;
-      URL.revokeObjectURL(oldestUrl);
+      requestAnimationFrame(() => URL.revokeObjectURL(oldestUrl));
       this.objectUrlsByPath.delete(oldestKey);
     }
   }
@@ -430,11 +438,19 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
   private revokeObjectUrlsUnder(path: string): void {
     if (!path) return;
     const prefix = `${path}/`;
+    const toRevoke: string[] = [];
     for (const [key, url] of this.objectUrlsByPath) {
       if (key === path || key.startsWith(prefix)) {
-        URL.revokeObjectURL(url);
+        toRevoke.push(url);
         this.objectUrlsByPath.delete(key);
       }
+    }
+    if (toRevoke.length > 0) {
+      requestAnimationFrame(() => {
+        for (const url of toRevoke) {
+          URL.revokeObjectURL(url);
+        }
+      });
     }
   }
 

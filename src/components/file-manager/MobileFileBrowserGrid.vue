@@ -22,11 +22,13 @@ const props = defineProps<{
   selectedEntries: FsEntry[];
   isSelectionMode: boolean;
   isLoading?: boolean;
+  error?: string | null;
   folderSizes: Record<string, number>;
 }>();
 
 const emit = defineEmits<{
   (e: 'entryClick' | 'entryPrimaryAction' | 'longPress' | 'toggleSelection', entry: FsEntry): void;
+  (e: 'retry'): void;
 }>();
 
 const { t } = useI18n();
@@ -168,6 +170,24 @@ onBeforeUnmount(clearLongPress);
     </div>
 
     <div
+      v-else-if="props.error"
+      class="flex flex-col items-center justify-center h-64 px-6 text-center"
+    >
+      <div class="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-200 max-w-sm mb-4">
+        <Icon name="lucide:alert-circle" class="w-8 h-8 mb-2 mx-auto text-red-400" />
+        <p class="text-sm font-semibold">{{ t('common.error') }}</p>
+        <p class="mt-2 text-xs text-red-200/80">{{ props.error }}</p>
+      </div>
+      <UButton
+        color="neutral"
+        variant="soft"
+        icon="lucide:arrow-path"
+        :label="t('common.retry')"
+        @click="emit('retry')"
+      />
+    </div>
+
+    <div
       v-else-if="entries.length === 0"
       class="flex flex-col items-center justify-center h-64 opacity-30 px-6 text-center"
     >
@@ -180,7 +200,7 @@ onBeforeUnmount(clearLongPress);
     <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
       <div v-for="entry in entries" :key="entry.path" class="relative group">
         <button
-          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-ui-bg-elevated border-2 transition-all active:scale-95"
+          class="flex flex-col w-full aspect-square rounded-2xl overflow-hidden bg-ui-bg-elevated border-2 transition-transform will-change-transform active:scale-95"
           :class="[
             isSelected(entry)
               ? 'border-selection-accent-500 ring-2 ring-selection-accent-500/20 shadow-[0_0_15px_rgba(59,130,246,0.3)]'
@@ -190,9 +210,6 @@ onBeforeUnmount(clearLongPress);
           @touchmove="handleTouchMove($event)"
           @touchend="handleTouchEnd(entry, $event)"
           @touchcancel="clearLongPress"
-          @mousedown="startLongPress(entry)"
-          @mouseup="clearLongPress"
-          @mouseleave="clearLongPress"
           @click="handleClick(entry)"
         >
           <!-- Thumbnail / Icon Area -->

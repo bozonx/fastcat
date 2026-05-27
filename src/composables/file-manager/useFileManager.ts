@@ -4,7 +4,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useMediaStore } from '~/stores/media.store';
-import type { useI18n } from 'vue-i18n';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useNuxtApp } from 'nuxt/app';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
@@ -792,9 +792,6 @@ export function createFileManager(deps: FileManagerCreateDeps) {
   };
 }
 
-const sharedRootEntries = shallowRef<FsEntry[]>([]);
-const sharedSortMode = ref<FileTreeSortMode>('name');
-
 export const FILE_MANAGER_INJECTION_KEY: InjectionKey<ReturnType<typeof createFileManager>> =
   Symbol('FileManager');
 
@@ -802,22 +799,19 @@ export function useFileManager(options?: {
   rootEntries?: Ref<FsEntry[]>;
   sortMode?: Ref<FileTreeSortMode>;
   vfs?: IFileSystemAdapter;
+  shouldRecordFileManagerHistory?: () => boolean;
 }) {
   const injected = inject(FILE_MANAGER_INJECTION_KEY, null);
   if (injected && !options?.vfs && !options?.rootEntries) {
     return injected;
   }
 
-  const _useNuxtApp: () => unknown = ((globalThis as { useNuxtApp?: typeof useNuxtApp })
-    .useNuxtApp || useNuxtApp) as () => unknown;
-  const nuxtApp = _useNuxtApp();
-  const t =
-    (nuxtApp as { $i18n?: { t: (key: string) => string } })?.$i18n?.t || ((key: string) => key);
+  const { t } = useI18n();
   const toast = useToast();
   const defaultVfs = useVfs();
   const vfs = options?.vfs || defaultVfs;
-  const rootEntries = options?.rootEntries || sharedRootEntries;
-  const sortMode = options?.sortMode || sharedSortMode;
+  const rootEntries = options?.rootEntries ?? shallowRef<FsEntry[]>([]);
+  const sortMode = options?.sortMode ?? ref<FileTreeSortMode>('name');
 
   const workspaceStore = useWorkspaceStore();
 
@@ -887,7 +881,7 @@ export function useFileManager(options?: {
 
     mediaStore,
     historyStore,
-    shouldRecordFileManagerHistory: () => !(route.path === '/m' || route.path.startsWith('/m/')),
+    shouldRecordFileManagerHistory: options?.shouldRecordFileManagerHistory ?? (() => true),
     mediaCache,
     isFileTreePathExpanded: (path) => uiStore.isFileTreePathExpanded(path),
     setFileTreePathExpanded: function setFileTreePathExpanded(path: string, expanded: boolean) {

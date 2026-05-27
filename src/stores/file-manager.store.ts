@@ -86,38 +86,33 @@ function createFileManagerStoreSetup(contextId: string) {
           }
         });
       },
-      { deep: true },
     );
 
     // Sync from WorkspaceState (e.g. if loaded from disk later or another component updates it)
-    watch(
-      workspaceInstance,
-      (val) => {
-        if (!val) return;
-        if (val.viewMode !== viewMode.value) viewMode.value = val.viewMode;
-        if (val.gridCardSize !== gridCardSize.value) gridCardSize.value = val.gridCardSize;
-        if (val.columnWidths && val.columnWidths !== columnWidths.value) {
-          columnWidths.value = val.columnWidths;
-        }
-        if (
-          typeof val.showHiddenFiles === 'boolean' &&
-          val.showHiddenFiles !== showHiddenFiles.value
-        ) {
-          showHiddenFiles.value = val.showHiddenFiles;
-        }
-        if (val.treeSize !== treeSize.value) {
-          treeSize.value = val.treeSize;
-        }
-        if (
-          val.sortOption &&
-          (val.sortOption.field !== sortOption.value.field ||
-            val.sortOption.order !== sortOption.value.order)
-        ) {
-          sortOption.value = { ...val.sortOption };
-        }
-      },
-      { deep: true },
-    );
+    watch(workspaceInstance, (val) => {
+      if (!val) return;
+      if (val.viewMode !== viewMode.value) viewMode.value = val.viewMode;
+      if (val.gridCardSize !== gridCardSize.value) gridCardSize.value = val.gridCardSize;
+      if (val.columnWidths && val.columnWidths !== columnWidths.value) {
+        columnWidths.value = val.columnWidths;
+      }
+      if (
+        typeof val.showHiddenFiles === 'boolean' &&
+        val.showHiddenFiles !== showHiddenFiles.value
+      ) {
+        showHiddenFiles.value = val.showHiddenFiles;
+      }
+      if (val.treeSize !== treeSize.value) {
+        treeSize.value = val.treeSize;
+      }
+      if (
+        val.sortOption &&
+        (val.sortOption.field !== sortOption.value.field ||
+          val.sortOption.order !== sortOption.value.order)
+      ) {
+        sortOption.value = { ...val.sortOption };
+      }
+    });
 
     // Initial folder load from workspace
     if (workspaceInstance.value?.lastPath && !selectedFolder.value) {
