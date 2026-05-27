@@ -285,6 +285,10 @@ const {
   applyClipParameters,
 } = useTimelinePasteParameters(() => props.tracks);
 
+defineOptions({
+  inheritAttrs: false,
+});
+
 watch(
   () => focusStore.effectiveFocus,
   (val) => {
@@ -300,6 +304,7 @@ watch(
     <div
       ref="containerRef"
       tabindex="-1"
+      v-bind="$attrs"
       class="flex flex-col min-h-full relative outline-none"
       :style="timelineContentStyle"
       @pointerdown="

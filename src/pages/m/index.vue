@@ -12,9 +12,6 @@ import MobileSettingsView from '~/components/settings/MobileSettingsView.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import MobileBottomNav from '~/components/layout/MobileBottomNav.vue';
-import { useTeleportTarget } from '~/composables/ui/useTeleportTarget';
-
-const { target: teleportTarget } = useTeleportTarget();
 
 definePageMeta({
   layout: 'mobile',
@@ -56,27 +53,29 @@ const projectPresetOptions = computed(() =>
   })),
 );
 
-// Список последних проектов для Hero-секции
-const recentProjects = computed(() => workspaceStore.recentProjects);
+// Сортировка для основного списка по дате изменения (сначала новые)
+const sortedProjects = computed(() => {
+  const recentMap = new Map(workspaceStore.recentProjects.map((p) => [p.projectName, p]));
+  const projects = filteredProjects.value.map((name) => {
+    const recent = recentMap.get(name);
+    return {
+      projectName: name,
+      projectId: recent?.projectId,
+      lastTimelinePath: recent?.lastTimelinePath,
+      updatedAt: recent?.updatedAt,
+    };
+  });
 
-// Умная сортировка для основного списка
-const smartSortedProjects = computed(() => {
-  const recentNames = recentProjects.value.map((p: { projectName: string }) => p.projectName);
-  const others = filteredProjects.value
-    .filter((p: string) => !recentNames.includes(p))
-    .sort((a: string, b: string) => a.localeCompare(b));
+  projects.sort((a, b) => {
+    const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+    const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    if (dateA === dateB) {
+      return a.projectName.localeCompare(b.projectName);
+    }
+    return dateB - dateA;
+  });
 
-  return [
-    ...recentProjects.value.filter((p: { projectName: string }) =>
-      filteredProjects.value.includes(p.projectName),
-    ),
-    ...others.map((p: string) => ({
-      projectName: p,
-      projectId: undefined,
-      lastTimelinePath: undefined,
-      updatedAt: undefined,
-    })),
-  ];
+  return projects;
 });
 
 const formatDate = (dateStr?: string) => {
@@ -149,48 +148,19 @@ const formatDate = (dateStr?: string) => {
           </div>
 
           <div class="flex flex-col gap-8 pb-24">
-            <!-- Recent Projects Horizontal Scroll -->
-            <section v-if="recentProjects.length > 0 && !searchQuery" class="space-y-4">
-              <div class="px-5 flex items-center justify-between">
-                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-ui-text-muted">
-                  {{ t('common.recent') }}
-                </h2>
-              </div>
-
-              <div class="flex overflow-x-auto gap-4 px-5 pb-2 no-scrollbar scroll-smooth">
-                <div
-                  v-for="project in recentProjects.slice(0, 5)"
-                  :key="project.projectName"
-                  class="shrink-0 w-64 group relative active:scale-95 transition-transform duration-200"
-                  @click="handleOpenProject(project.projectName)"
-                >
-                  <div
-                    class="aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative bg-ui-bg-elevated"
-                  >
-                    <ProjectThumbnail
-                      :project-id="project.projectId"
-                      :project-relative-path="project.lastTimelinePath"
-                      :project-name="project.projectName"
-                      variant="mobile"
-                    />
-                    <div
-                      class="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent pointer-events-none"
-                    />
-                    <div class="absolute bottom-4 left-4 right-4">
-                      <h3 class="font-bold text-white text-sm truncate">
-                        {{ project.projectName }}
-                      </h3>
-                      <p
-                        class="text-[10px] text-ui-text-muted font-medium mt-1 flex items-center gap-1"
-                      >
-                        <UIcon name="i-heroicons-calendar" class="w-3 h-3" />
-                        {{ formatDate(project.updatedAt) }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
+            <!-- New Project Button -->
+            <div class="px-5">
+              <UButton
+                block
+                size="xl"
+                color="primary"
+                icon="i-heroicons-plus"
+                class="shadow-lg shadow-ui-action/20 py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-action! hover:bg-ui-action-hover! text-white! border-none transition-all active:scale-[0.98]"
+                @click="startCreateProject"
+              >
+                {{ t('fastcat.projects.newProject') }}
+              </UButton>
+            </div>
 
             <!-- All Projects List -->
             <section class="space-y-4 px-5">
@@ -207,7 +177,7 @@ const formatDate = (dateStr?: string) => {
 
               <div v-if="filteredProjects.length > 0" class="flex flex-col gap-3">
                 <div
-                  v-for="project in smartSortedProjects"
+                  v-for="project in sortedProjects"
                   :key="project.projectName"
                   class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
                   @click="handleOpenProject(project.projectName)"
@@ -497,20 +467,6 @@ const formatDate = (dateStr?: string) => {
           </div>
         </template>
       </UiModal>
-
-      <!-- FAB -->
-      <Teleport :to="teleportTarget">
-        <div class="fixed bottom-24 right-6 z-40 transition-all duration-300">
-          <UButton
-            icon="lucide:plus"
-            size="xl"
-            class="rounded-full shadow-2xl w-14 h-14 flex items-center justify-center bg-ui-action hover:bg-ui-action-hover text-white border-none shadow-ui-action/20"
-            :ui="{ icon: 'w-7 h-7' }"
-            :aria-label="t('fastcat.projects.newProject')"
-            @click="startCreateProject"
-          />
-        </div>
-      </Teleport>
     </template>
   </div>
 </template>
