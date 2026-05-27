@@ -168,7 +168,7 @@ onBeforeUnmount(() => {
             ? `${track.color}33`
             : `${track.color}1a`
           : isDirectlySelected
-            ? 'color-mix(in srgb, var(--selection-accent-500) 12%, transparent)'
+            ? 'color-mix(in srgb, var(--color-primary-500) 12%, transparent)'
             : undefined,
     }"
     @click.stop="emit('select')"
@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
       class="absolute left-0 top-0 bottom-0 w-1 transition-colors z-10"
       :class="[
         isDirectlySelected && (!track.color || track.color === '#2a2a2a')
-          ? 'bg-(--selection-accent-500)'
+          ? 'bg-primary-500'
           : isHovered && (!track.color || track.color === '#2a2a2a')
             ? 'bg-ui-border/50'
             : '',
