@@ -326,23 +326,14 @@ const formatDate = (dateStr?: string) => {
             />
           </UiFormField>
 
-          <div
-            v-if="!projectCreationSettings.isAdvancedSettingsOpen"
-            class="text-[11px] text-ui-text-muted bg-ui-bg-elevated/30 p-5 rounded-3xl flex gap-4 border border-white/5 leading-relaxed"
-          >
-            <UIcon
-              name="i-heroicons-information-circle"
-              class="w-5 h-5 shrink-0 text-primary-500"
-            />
-            <p>
-              {{
-                t(
-                  'fastcat.projects.autoDetectHint',
-                  'Project resolution and framerate will be automatically detected from the first video added to the timeline.',
-                )
-              }}
-            </p>
-          </div>
+          <UiAlert v-if="!projectCreationSettings.isAdvancedSettingsOpen">
+            {{
+              t(
+                'fastcat.projects.autoDetectHint',
+                'Project resolution and framerate will be automatically detected from the first video added to the timeline.',
+              )
+            }}
+          </UiAlert>
 
           <UCollapsible v-model:open="projectCreationSettings.isAdvancedSettingsOpen">
             <UButton
@@ -393,17 +384,15 @@ const formatDate = (dateStr?: string) => {
         </div>
 
         <template #footer>
-          <div class="flex gap-4 w-full pb-safe">
+          <div class="flex justify-end gap-3 w-full pb-safe">
             <UButton
               variant="ghost"
               color="neutral"
-              class="flex-1 h-16 rounded-[1.5rem] font-bold text-ui-text-muted active:bg-white/5"
               :label="t('common.cancel')"
               @click="isCreateModalOpen = false"
             />
             <UButton
-              color="primary"
-              class="flex-2 h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-primary-500/20 active:scale-95 transition-transform"
+              color="success"
               :disabled="!projectCreationSettings.name.trim()"
               :loading="workspaceStore.isLoading"
               :label="t('common.create')"
