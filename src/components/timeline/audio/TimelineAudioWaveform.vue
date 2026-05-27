@@ -11,6 +11,7 @@ import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { computeWaveformWindowMetrics, resolveWaveformSourceUs } from '~/utils/audio/waveform';
 import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
+import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
   normalizeProjectPath,
   resolveNestedMediaPath,
@@ -19,6 +20,8 @@ const log = createDevLogger('TimelineAudioWaveform');
 
 const props = defineProps<{
   item: TimelineClipItem;
+  scrollLeft?: number;
+  viewportWidth?: number;
 }>();
 
 const timelineStore = useTimelineStore();
@@ -27,11 +30,9 @@ const mediaStore = useMediaStore();
 const fileManager = useFileManager();
 
 const rootEl = ref<HTMLElement | null>(null);
-const chunkEls = ref<(HTMLElement | null)[]>([]);
-const chunkCanvases = ref<(HTMLCanvasElement | null)[]>([]);
-const visibleChunks = ref(new Set<number>());
+const chunkEls = new Map<number, HTMLElement>();
+const chunkCanvases = new Map<number, HTMLCanvasElement>();
 
-let chunkObserver: IntersectionObserver | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
 const fileUrl = computed(() => {
@@ -405,11 +406,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   isUnmounted = true;
   extractCallId += 1;
-  chunkObserver?.disconnect();
-  chunkObserver = null;
   resizeObserver?.disconnect();
   resizeObserver = null;
-  visibleChunks.value.clear();
+  chunkEls.clear();
+  chunkCanvases.clear();
 });
 
 const isReversed = computed(() => (props.item.speed ?? 1) < 0);
@@ -424,8 +424,15 @@ const waveformMetrics = computed(() =>
   }),
 );
 
+interface WaveformChunk {
+  chunkIndex: number;
+  widthPx: number;
+  startPx: number;
+}
+
 // Chunking logic (similar to video thumbnails but for waveform rendering)
 const CHUNK_WIDTH_PX = 1000; // Fixed chunk width in pixels for canvas
+const CHUNK_OVERSCAN_PX = CHUNK_WIDTH_PX * 2;
 
 const totalWidthPx = computed(() => {
   return waveformMetrics.value.totalWidthPx;
@@ -447,37 +454,83 @@ const isMuted = computed(() => {
   );
 });
 
-const chunks = computed(() => {
+const chunkCount = computed(() => {
   const totalW = totalWidthPx.value;
-  if (totalW <= 0) return [];
-
-  const count = Math.ceil(totalW / CHUNK_WIDTH_PX);
-  return Array.from({ length: count }, (_, chunkIndex) => {
-    const isLast = chunkIndex === count - 1;
-    const widthPx = isLast ? totalW - chunkIndex * CHUNK_WIDTH_PX : CHUNK_WIDTH_PX;
-    const startPx = chunkIndex * CHUNK_WIDTH_PX;
-    return {
-      chunkIndex,
-      widthPx,
-      startPx,
-    };
-  });
+  if (totalW <= 0) return 0;
+  return Math.ceil(totalW / CHUNK_WIDTH_PX);
 });
 
+const clipStartPx = computed(() => {
+  return timeUsToPx(props.item.timelineRange.startUs, timelineStore.timelineZoom);
+});
+
+function buildWaveformChunk(chunkIndex: number): WaveformChunk {
+  const totalW = totalWidthPx.value;
+  const isLast = chunkIndex === chunkCount.value - 1;
+  const startPx = chunkIndex * CHUNK_WIDTH_PX;
+  return {
+    chunkIndex,
+    widthPx: isLast ? totalW - startPx : CHUNK_WIDTH_PX,
+    startPx,
+  };
+}
+
+const visibleWaveformChunks = computed<WaveformChunk[]>(() => {
+  const count = chunkCount.value;
+  const totalW = totalWidthPx.value;
+  if (count <= 0 || totalW <= 0) return [];
+
+  const viewportWidth = props.viewportWidth ?? timelineStore.timelineViewportWidth;
+  if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) {
+    return [buildWaveformChunk(0)];
+  }
+
+  const scrollLeft = props.scrollLeft ?? timelineStore.timelineScrollLeftPx;
+  const stripStartInTimeline = clipStartPx.value + waveformLeftPx.value;
+  const visibleLeft = scrollLeft - stripStartInTimeline;
+  const visibleRight = visibleLeft + viewportWidth;
+  const overscanPx = Math.max(CHUNK_OVERSCAN_PX, viewportWidth * 0.5);
+
+  const firstIndex = Math.max(0, Math.floor((visibleLeft - overscanPx) / CHUNK_WIDTH_PX));
+  const lastIndex = Math.min(count - 1, Math.ceil((visibleRight + overscanPx) / CHUNK_WIDTH_PX));
+
+  if (lastIndex < firstIndex) return [];
+
+  return Array.from({ length: lastIndex - firstIndex + 1 }, (_, index) =>
+    buildWaveformChunk(firstIndex + index),
+  );
+});
+
+function pruneUnmountedChunkRefs() {
+  const visibleIndexes = new Set(visibleWaveformChunks.value.map((chunk) => chunk.chunkIndex));
+  for (const index of chunkEls.keys()) {
+    if (!visibleIndexes.has(index)) chunkEls.delete(index);
+  }
+  for (const index of chunkCanvases.keys()) {
+    if (!visibleIndexes.has(index)) chunkCanvases.delete(index);
+  }
+}
+
 function setChunkEl(el: unknown, chunkIndex: number) {
-  if (!chunkEls.value) chunkEls.value = [];
-  chunkEls.value[chunkIndex] = el instanceof HTMLElement ? el : null;
+  if (el instanceof HTMLElement) {
+    chunkEls.set(chunkIndex, el);
+  } else {
+    chunkEls.delete(chunkIndex);
+  }
 }
 
 function setChunkCanvas(el: unknown, chunkIndex: number) {
-  if (!chunkCanvases.value) chunkCanvases.value = [];
-  chunkCanvases.value[chunkIndex] = el instanceof HTMLCanvasElement ? el : null;
+  if (el instanceof HTMLCanvasElement) {
+    chunkCanvases.set(chunkIndex, el);
+  } else {
+    chunkCanvases.delete(chunkIndex);
+  }
 }
 
 function drawChunk(chunkIndex: number) {
-  const chunk = chunks.value.find((c) => c.chunkIndex === chunkIndex);
+  const chunk = visibleWaveformChunks.value.find((c) => c.chunkIndex === chunkIndex);
   if (!chunk) return;
-  const canvas = chunkCanvases.value[chunkIndex];
+  const canvas = chunkCanvases.get(chunkIndex);
   const root = rootEl.value;
   if (!canvas || !root) return;
   if (!audioPeaks.value || audioPeaks.value.length === 0) return;
@@ -584,20 +637,14 @@ function drawChunk(chunkIndex: number) {
 
 async function redrawVisibleChunks() {
   await nextTick();
-  const toDraw = Array.from(visibleChunks.value.values());
-  for (const idx of toDraw) {
-    drawChunk(idx);
-  }
-}
-
-async function redrawMountedChunks() {
-  await nextTick();
-  for (const chunk of chunks.value) {
-    const canvas = chunkCanvases.value[chunk.chunkIndex];
+  for (const chunk of visibleWaveformChunks.value) {
+    const canvas = chunkCanvases.get(chunk.chunkIndex);
     if (!canvas) continue;
     drawChunk(chunk.chunkIndex);
   }
 }
+
+const redrawMountedChunks = redrawVisibleChunks;
 
 watch(
   () => [props.item.audioWaveformMode, props.item.audioGain, isMuted.value],
@@ -616,39 +663,10 @@ watch(audioPeaks, () => {
 });
 
 watch(
-  [chunks],
+  visibleWaveformChunks,
   () => {
     void nextTick().then(() => {
-      chunkObserver?.disconnect();
-      visibleChunks.value.clear();
-
-      chunkObserver = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            const el = entry.target as HTMLElement;
-            const idxRaw = el.dataset['chunkIndex'];
-            const idx = idxRaw ? Number(idxRaw) : NaN;
-            if (!Number.isFinite(idx)) continue;
-
-            if (entry.isIntersecting) {
-              visibleChunks.value.add(idx);
-              drawChunk(idx);
-            } else {
-              visibleChunks.value.delete(idx);
-            }
-          }
-        },
-        {
-          root: null,
-          rootMargin: '200px',
-          threshold: 0.01,
-        },
-      );
-
-      for (const chunk of chunks.value) {
-        const el = chunkEls.value[chunk.chunkIndex];
-        if (el) chunkObserver.observe(el);
-      }
+      pruneUnmountedChunkRefs();
 
       resizeObserver?.disconnect();
       resizeObserver = new ResizeObserver(() => {
@@ -698,12 +716,13 @@ watch(
       }"
     >
       <div
-        v-for="chunk in chunks"
+        v-for="chunk in visibleWaveformChunks"
         :key="chunk.chunkIndex"
         :ref="(el) => setChunkEl(el, chunk.chunkIndex)"
-        class="relative h-full flex-none overflow-hidden"
+        class="absolute top-0 h-full overflow-hidden"
         :data-chunk-index="chunk.chunkIndex"
         :style="{
+          left: `${chunk.startPx}px`,
           width: `${chunk.widthPx}px`,
         }"
       >

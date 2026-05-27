@@ -52,6 +52,8 @@ defineProps<{
         (isAudio(item, track) || (isVideo(item, track) && clipHasAudio(item, track, mediaMetadata)))
       "
       :item="effectiveClipItem"
+      :scroll-left="scrollLeft"
+      :viewport-width="viewportWidth"
     />
 
     <div
