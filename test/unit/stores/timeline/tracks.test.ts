@@ -10,7 +10,7 @@ const mockDoc = {
       id: 'v1',
       kind: 'video',
       name: 'Video 1',
-      items: [{ id: 'c1', kind: 'clip' }],
+      items: [{ id: 'c1', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } }],
       videoHidden: false,
       audioMuted: false,
       audioSolo: false,
@@ -40,7 +40,7 @@ const mockDoc = {
       id: 'a2',
       kind: 'audio',
       name: 'Audio 2',
-      items: [{ id: 'c2', kind: 'clip' }],
+      items: [{ id: 'c2', kind: 'clip', timelineRange: { startUs: 0, durationUs: 1_000_000 } }],
       videoHidden: false,
       audioMuted: true,
       audioSolo: false,
@@ -54,6 +54,7 @@ function createMockDeps() {
   const batchApplyTimeline = vi.fn();
   return {
     timelineDoc: ref<any>(mockDoc),
+    currentTime: ref(0),
     selectedTrackId: ref<string | null>(null),
     applyTimeline,
     batchApplyTimeline,
@@ -94,15 +95,60 @@ describe('TimelineTracksModule', () => {
 
   it('resolveMobileTargetTrackId uses selected item track when kind matches', () => {
     const deps = createMockDeps();
+    deps.currentTime.value = 2_000_000;
     deps.selectedItemIds.value = ['c2'];
     const mod = createTimelineTracksModule(deps);
     expect(mod.resolveMobileTargetTrackId('audio')).toBe('a2');
   });
 
-  it('resolveMobileTargetTrackId falls back to empty track', () => {
+  it('resolveMobileTargetTrackId uses selected track when the full insertion range fits', () => {
     const deps = createMockDeps();
+    deps.currentTime.value = 1_000_000;
+    deps.selectedTrackId.value = 'v1';
     const mod = createTimelineTracksModule(deps);
-    expect(mod.resolveMobileTargetTrackId('audio')).toBe('a1');
+    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v1');
+    expect(deps.applyTimeline).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'add_track' }),
+    );
+  });
+
+  it('resolveMobileTargetTrackId creates a track when selected track has no room', () => {
+    const deps = createMockDeps();
+    deps.currentTime.value = 500_000;
+    deps.selectedTrackId.value = 'v1';
+    const mod = createTimelineTracksModule(deps);
+
+    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v3');
+    expect(deps.applyTimeline).toHaveBeenCalledWith({
+      type: 'add_track',
+      kind: 'video',
+      name: 'Video 3',
+      insertBeforeId: undefined,
+      insertAfterId: undefined,
+    });
+  });
+
+  it('resolveMobileTargetTrackId uses top track when no track is selected and it has room', () => {
+    const deps = createMockDeps();
+    deps.currentTime.value = 1_000_000;
+    const mod = createTimelineTracksModule(deps);
+
+    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v1');
+  });
+
+  it('resolveMobileTargetTrackId creates a track when no track is selected and top track has no room', () => {
+    const deps = createMockDeps();
+    deps.currentTime.value = 500_000;
+    const mod = createTimelineTracksModule(deps);
+
+    expect(mod.resolveMobileTargetTrackId('video', { durationUs: 500_000 })).toBe('v3');
+    expect(deps.applyTimeline).toHaveBeenCalledWith({
+      type: 'add_track',
+      kind: 'video',
+      name: 'Video 3',
+      insertBeforeId: undefined,
+      insertAfterId: undefined,
+    });
   });
 
   it('renameTrack delegates to applyTimeline', () => {

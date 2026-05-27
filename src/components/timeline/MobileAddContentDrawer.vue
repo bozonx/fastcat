@@ -4,6 +4,9 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import MobileMediaPickerDrawer from './MobileMediaPickerDrawer.vue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { useMediaStore } from '~/stores/media.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+import { secondsToUs } from '~/utils/time';
 
 import { useAppClipboard } from '~/composables/useAppClipboard';
 
@@ -15,6 +18,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
+const mediaStore = useMediaStore();
+const workspaceStore = useWorkspaceStore();
 const { handleFiles } = useFileManager();
 const clipboardStore = useAppClipboard();
 
@@ -29,6 +34,19 @@ const isMediaPickerOpen = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const hasClipboard = computed(() => clipboardStore.hasTimelinePayload);
+
+async function resolveInsertDurationUs(
+  path: string,
+  mediaType: string,
+): Promise<number | undefined> {
+  if (mediaType === 'image' || mediaType === 'timeline') {
+    return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+  }
+
+  const meta = await mediaStore.getOrFetchMetadataByPath(path);
+  const duration = Number(meta?.duration);
+  return Number.isFinite(duration) && duration > 0 ? secondsToUs(duration) : undefined;
+}
 
 async function handlePaste() {
   const payload = clipboardStore.clipboardPayload;
@@ -48,13 +66,17 @@ async function handlePaste() {
 }
 
 function addAdjustment() {
-  const trackId = timelineStore.resolveMobileTargetTrackId('video');
+  const trackId = timelineStore.resolveMobileTargetTrackId('video', {
+    durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+  });
   timelineStore.addAdjustmentClipAtPlayhead({ pseudo: true, trackId });
   emit('close');
 }
 
 function addBackground() {
-  const trackId = timelineStore.resolveMobileTargetTrackId('video');
+  const trackId = timelineStore.resolveMobileTargetTrackId('video', {
+    durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+  });
   timelineStore.addBackgroundClipAtPlayhead({ pseudo: true, trackId });
   emit('close');
 }
@@ -79,8 +101,9 @@ async function onFilesSelected(e: Event) {
     for (const r of results) {
       const mediaType = getMediaTypeFromFilename(r.fileName);
       if (mediaType === 'timeline') {
+        const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
         await timelineStore.addTimelineClipToTimelineFromPath({
-          trackId: timelineStore.resolveMobileTargetTrackId('video'),
+          trackId: timelineStore.resolveMobileTargetTrackId('video', { durationUs }),
           name: r.fileName,
           path: r.targetPath,
           startUs: timelineStore.currentTime,
@@ -88,7 +111,8 @@ async function onFilesSelected(e: Event) {
         });
       } else if (['video', 'audio', 'image'].includes(mediaType)) {
         const kind = mediaType === 'audio' ? 'audio' : 'video';
-        const trackId = timelineStore.resolveMobileTargetTrackId(kind);
+        const durationUs = await resolveInsertDurationUs(r.targetPath, mediaType);
+        const trackId = timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
 
         await timelineStore.addClipToTimelineFromPath({
           trackId,

@@ -71,13 +71,9 @@ export function useAddMediaToTimeline() {
       if (mediaType === 'unknown') continue;
 
       const targetTrackKind = mediaType === 'audio' ? 'audio' : 'video';
-      const tracks = timelineStore.timelineDoc?.tracks || [];
-      const trackId = tracks.find((t) => t.kind === targetTrackKind)?.id;
-
-      if (!trackId) continue;
-
       const durationUs = await getInsertDurationUs(entry.path, mediaType);
       if (durationUs === null) continue;
+      const trackId = timelineStore.resolveMobileTargetTrackId(targetTrackKind, { durationUs });
       const startUs = resolveInsertStartUs({ trackId, startUs: currentStartUs, durationUs });
 
       if (mediaType === 'text') {

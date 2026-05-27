@@ -1,10 +1,10 @@
 import { computed, type Ref, type ComputedRef } from 'vue';
 import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { useTimelineStore } from '~/stores/timeline.store';
 
 export interface TimelineTracksDeps {
   timelineDoc: Ref<TimelineDocument | null>;
+  currentTime: Ref<number>;
   selectedTrackId: Ref<string | null>;
   applyTimeline: (
     cmd: TimelineCommand,
@@ -23,7 +23,10 @@ export interface TimelineTracksModule {
     options?: { insertBeforeId?: string; insertAfterId?: string },
   ) => void;
   resolveTargetVideoTrackIdForInsert: () => string;
-  resolveMobileTargetTrackId: (kind: 'video' | 'audio') => string;
+  resolveMobileTargetTrackId: (
+    kind: 'video' | 'audio',
+    options?: { durationUs?: number },
+  ) => string;
   renameTrack: (trackId: string, name: string) => void;
   updateTrackProperties: (
     trackId: string,
@@ -92,44 +95,74 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     return topVideo.id;
   }
 
-  function resolveMobileTargetTrackId(kind: 'video' | 'audio'): string {
+  function trackHasSpaceAtPlayhead(track: TimelineTrack, durationUs?: number): boolean {
+    const startUs = Math.max(0, deps.currentTime.value);
+    const safeDurationUs =
+      typeof durationUs === 'number' && Number.isFinite(durationUs) && durationUs > 0
+        ? durationUs
+        : 1;
+    const endUs = startUs + safeDurationUs;
+
+    return !track.items.some((it) => {
+      if (it.kind !== 'clip') return false;
+      const itemStartUs = it.timelineRange.startUs;
+      const itemEndUs = itemStartUs + it.timelineRange.durationUs;
+      return startUs < itemEndUs && endUs > itemStartUs;
+    });
+  }
+
+  function createMobileTargetTrack(kind: 'video' | 'audio'): string {
     const doc = deps.timelineDoc.value;
-    if (!doc) return kind === 'video' ? 'v1' : 'a1';
-
-    // 1. If a clip or gap is selected, use its track (if kind matches)
-    if (deps.selectedItemIds.value.length > 0) {
-      const selectedId = deps.selectedItemIds.value[0]!;
-      const track = doc.tracks.find((t) => t.items.some((it) => it.id === selectedId));
-      if (track && track.kind === kind) return track.id;
-    }
-
-    // 2. If a track is selected and its type matches, use it
-    if (deps.selectedTrackId.value) {
-      const selectedTrack = doc.tracks.find((t) => t.id === deps.selectedTrackId.value);
-      if (selectedTrack && selectedTrack.kind === kind) return selectedTrack.id;
-    }
-
-    // 3. Search for a track of the same kind that is free at currentTimeUs
-    const timelineStore = useTimelineStore();
-    const currentTimeUs = timelineStore.currentTime;
-    const sameKindTracks = doc.tracks.filter((t) => t.kind === kind);
-    for (const t of sameKindTracks) {
-      const isOccupied = t.items.some((it) => {
-        if (it.kind !== 'clip') return false;
-        const start = it.timelineRange.startUs;
-        const end = start + it.timelineRange.durationUs;
-        return currentTimeUs >= start && currentTimeUs < end;
-      });
-      if (!isOccupied) return t.id;
-    }
-
-    // 4. Create a new track
+    const sameKindTracks = doc?.tracks.filter((t) => t.kind === kind) ?? [];
+    const existingIds = new Set(doc?.tracks.map((track) => track.id) ?? []);
     const count = sameKindTracks.length + 1;
-    const trackId = kind === 'video' ? `v${count}` : `a${count}`;
     const name = kind === 'video' ? `Video ${count}` : `Audio ${count}`;
 
     addTrack(kind, name);
-    return trackId;
+
+    const createdTrack = deps.timelineDoc.value?.tracks.find(
+      (track) => track.kind === kind && !existingIds.has(track.id),
+    );
+
+    return createdTrack?.id ?? (kind === 'video' ? `v${count}` : `a${count}`);
+  }
+
+  function resolveMobileTargetTrackId(
+    kind: 'video' | 'audio',
+    options?: { durationUs?: number },
+  ): string {
+    const doc = deps.timelineDoc.value;
+    if (!doc) return kind === 'video' ? 'v1' : 'a1';
+
+    const durationUs = options?.durationUs;
+
+    // 1. If a clip or gap is selected, use its track only when the insertion range fits.
+    if (deps.selectedItemIds.value.length > 0) {
+      const selectedId = deps.selectedItemIds.value[0]!;
+      const track = doc.tracks.find((t) => t.items.some((it) => it.id === selectedId));
+      if (track?.kind === kind) {
+        return trackHasSpaceAtPlayhead(track, durationUs)
+          ? track.id
+          : createMobileTargetTrack(kind);
+      }
+    }
+
+    // 2. If a track is selected and its type matches, use it only when the insertion range fits.
+    if (deps.selectedTrackId.value) {
+      const selectedTrack = doc.tracks.find((t) => t.id === deps.selectedTrackId.value);
+      if (selectedTrack?.kind === kind) {
+        return trackHasSpaceAtPlayhead(selectedTrack, durationUs)
+          ? selectedTrack.id
+          : createMobileTargetTrack(kind);
+      }
+    }
+
+    // 3. With no selected track, try the top track of the requested kind.
+    const topTrack = doc.tracks.find((t) => t.kind === kind);
+    if (topTrack && trackHasSpaceAtPlayhead(topTrack, durationUs)) return topTrack.id;
+
+    // 4. Otherwise create a new track.
+    return createMobileTargetTrack(kind);
   }
 
   function renameTrack(trackId: string, name: string) {

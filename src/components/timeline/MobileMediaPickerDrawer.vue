@@ -7,7 +7,9 @@ import { useFileManagerThumbnails } from '~/composables/file-manager/useFileMana
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useMediaStore } from '~/stores/media.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { secondsToUs } from '~/utils/time';
 import type { FsEntry } from '~/types/fs';
 import MobileFileBrowserGrid from '~/components/file-manager/MobileFileBrowserGrid.vue';
 import { useUiStore } from '~/stores/ui.store';
@@ -23,6 +25,8 @@ const { t } = useI18n();
 const uiStore = useUiStore();
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
+const mediaStore = useMediaStore();
+const workspaceStore = useWorkspaceStore();
 const { readDirectory, vfs } = useFileManager();
 
 const isOpenLocal = computed({
@@ -39,6 +43,20 @@ const selectedFiles = ref<FsEntry[]>([]);
 const isAdding = ref(false);
 
 const { thumbnails } = useFileManagerThumbnails(entries, vfs);
+
+async function resolveInsertDurationUs(
+  entry: FsEntry,
+  mediaType: string,
+): Promise<number | undefined> {
+  if (!entry.path) return undefined;
+  if (mediaType === 'image' || mediaType === 'timeline') {
+    return workspaceStore.userSettings.timeline.defaultStaticClipDurationUs;
+  }
+
+  const meta = await mediaStore.getOrFetchMetadataByPath(entry.path);
+  const duration = Number(meta?.duration);
+  return Number.isFinite(duration) && duration > 0 ? secondsToUs(duration) : undefined;
+}
 
 const breadcrumbs = computed(() => {
   if (!currentPath.value) return [];
@@ -85,7 +103,6 @@ function handleToggleSelection(entry: FsEntry) {
   }
 
   // Block selection of fully unsupported files
-  const mediaStore = useMediaStore();
   if (entry.path) {
     if (mediaStore.metadataLoadFailed[entry.path]) return;
     const meta = mediaStore.mediaMetadata[entry.path];
@@ -132,8 +149,9 @@ async function addToTimeline() {
         if (!entry.path) continue;
         const mediaType = getMediaTypeFromFilename(entry.name);
         if (mediaType === 'timeline') {
+          const durationUs = await resolveInsertDurationUs(entry, mediaType);
           await timelineStore.addTimelineClipToTimelineFromPath({
-            trackId: timelineStore.resolveMobileTargetTrackId('video'),
+            trackId: timelineStore.resolveMobileTargetTrackId('video', { durationUs }),
             name: entry.name,
             path: entry.path,
             startUs: timelineStore.currentTime,
@@ -141,7 +159,8 @@ async function addToTimeline() {
           });
         } else {
           const kind = mediaType === 'audio' ? 'audio' : 'video';
-          const trackId = timelineStore.resolveMobileTargetTrackId(kind);
+          const durationUs = await resolveInsertDurationUs(entry, mediaType);
+          const trackId = timelineStore.resolveMobileTargetTrackId(kind, { durationUs });
 
           await timelineStore.addClipToTimelineFromPath({
             trackId,

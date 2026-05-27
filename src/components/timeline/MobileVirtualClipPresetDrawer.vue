@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { usePresetsStore } from '~/stores/presets.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ShapeType, HudType, TextClipStyle } from '~/timeline/types';
 
 const props = defineProps<{
@@ -14,6 +15,7 @@ const emit = defineEmits<{ (e: 'close'): void }>();
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const presetsStore = usePresetsStore();
+const workspaceStore = useWorkspaceStore();
 
 const isOpenLocal = computed({
   get: () => props.isOpen,
@@ -30,13 +32,19 @@ interface PresetItem {
   apply: () => void;
 }
 
+function resolveVideoTrackForVirtualClip() {
+  return timelineStore.resolveMobileTargetTrackId('video', {
+    durationUs: workspaceStore.userSettings.timeline.defaultStaticClipDurationUs,
+  });
+}
+
 const textStandard: PresetItem[] = [
   {
     id: 'default',
     name: t('fastcat.library.texts.default'),
     icon: 'i-heroicons-document-text',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addTextClipAtPlayhead({
         text: t('fastcat.timeline.textClipDefaultText'),
         style: { fontSize: 64, color: '#ffffff', fontFamily: 'sans-serif' } as TextClipStyle,
@@ -50,7 +58,7 @@ const textStandard: PresetItem[] = [
     name: t('fastcat.library.texts.title'),
     icon: 'i-heroicons-h1',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addTextClipAtPlayhead({
         text: 'TITLE',
         style: {
@@ -69,7 +77,7 @@ const textStandard: PresetItem[] = [
     name: t('fastcat.library.texts.subtitle'),
     icon: 'i-heroicons-h2',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addTextClipAtPlayhead({
         text: 'Subtitle',
         style: {
@@ -91,7 +99,7 @@ const shapeStandard: PresetItem[] = [
     name: t('fastcat.library.shapes.square'),
     icon: 'i-heroicons-stop',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Square',
@@ -106,7 +114,7 @@ const shapeStandard: PresetItem[] = [
     name: t('fastcat.library.shapes.circle'),
     icon: 'i-ph-circle',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Circle',
@@ -121,7 +129,7 @@ const shapeStandard: PresetItem[] = [
     name: t('fastcat.library.shapes.triangle'),
     icon: 'i-ph-triangle',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Triangle',
@@ -136,7 +144,7 @@ const shapeStandard: PresetItem[] = [
     name: t('fastcat.library.shapes.star'),
     icon: 'i-heroicons-star',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Star',
@@ -151,7 +159,7 @@ const shapeStandard: PresetItem[] = [
     name: t('fastcat.library.shapes.cloud'),
     icon: 'i-heroicons-cloud',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Cloud',
@@ -166,7 +174,7 @@ const shapeStandard: PresetItem[] = [
     name: t('fastcat.library.shapes.speech_bubble'),
     icon: 'i-heroicons-chat-bubble-left',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Speech Bubble',
@@ -181,7 +189,7 @@ const shapeStandard: PresetItem[] = [
     name: t('fastcat.library.shapes.bang'),
     icon: 'i-heroicons-bolt',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'shape',
         name: 'Bang',
@@ -199,7 +207,7 @@ const hudStandard: PresetItem[] = [
     name: t('fastcat.library.huds.media_frame'),
     icon: 'i-heroicons-photo',
     apply: () => {
-      const trackId = timelineStore.resolveMobileTargetTrackId('video');
+      const trackId = resolveVideoTrackForVirtualClip();
       timelineStore.addVirtualClipAtPlayhead({
         clipType: 'hud',
         name: 'Media Frame',
@@ -235,7 +243,7 @@ const customItems = computed<PresetItem[]>(() =>
         icon: standardIcon,
         isCustom: true,
         apply: () => {
-          const trackId = timelineStore.resolveMobileTargetTrackId('video');
+          const trackId = resolveVideoTrackForVirtualClip();
           if (props.type === 'text') {
             timelineStore.addTextClipAtPlayhead({
               text: p.params?.text as string | undefined,

@@ -206,6 +206,7 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   const tracks = createTimelineTracksModule({
     timelineDoc,
+    currentTime,
     selectedTrackId,
     applyTimeline,
     batchApplyTimeline,
