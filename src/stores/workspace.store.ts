@@ -41,9 +41,21 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const error = ref<string | null>(null);
   const isInitializing = ref(true);
   const isEphemeral = ref(false);
-  const lastProjectName = ref<string | null>(null);
+  const lastProjectName = ref<string | null>(
+    typeof window !== 'undefined' ? localStorage.getItem('fastcat_last_project_name') : null,
+  );
 
   const recentProjects = ref<RecentProject[]>([]);
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('fastcat_recent_projects');
+    if (saved) {
+      try {
+        recentProjects.value = JSON.parse(saved);
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   const settingsModule = createWorkspaceSettingsModule({ settingsRepo });
   const {
@@ -116,6 +128,13 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     projectsModule;
 
   watch(lastProjectName, (v) => {
+    if (typeof window !== 'undefined') {
+      if (v) {
+        localStorage.setItem('fastcat_last_project_name', v);
+      } else {
+        localStorage.removeItem('fastcat_last_project_name');
+      }
+    }
     if (isEphemeral.value) return;
     void batchUpdateWorkspaceState((draft) => {
       draft.ui.lastProjectName = v;
@@ -125,6 +144,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   watch(
     recentProjects,
     (v) => {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('fastcat_recent_projects', JSON.stringify(v));
+      }
       if (isEphemeral.value) return;
       void batchUpdateWorkspaceState((draft) => {
         draft.ui.recentProjects = [...v];
@@ -242,6 +264,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     recentProjects.value = [];
     lastProjectName.value = null;
     error.value = null;
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('fastcat_last_project_name');
+      localStorage.removeItem('fastcat_recent_projects');
+    }
 
     resetSettingsState();
     resetWorkspaceState();

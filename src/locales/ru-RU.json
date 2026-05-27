@@ -631,7 +631,12 @@
       "searchPlaceholder": "Поиск проектов...",
       "switchToMobile": "Мобильная версия",
       "title": "Проекты",
-      "workspaceTitle": "Рабочая область"
+      "workspaceTitle": "Рабочая область",
+      "resumeEditing": "Продолжить редактирование",
+      "activeProject": "Активный проект",
+      "otherProjects": "Другие проекты",
+      "welcomeTitle": "Создайте свой первый шедевр",
+      "welcomeSubtitle": "Ваша монтажная панель пуста. Создайте первый проект, чтобы начать."
     },
     "properties": {
       "blur": "Размытие",

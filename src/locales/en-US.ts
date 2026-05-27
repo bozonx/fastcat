@@ -631,7 +631,12 @@ export default {
       "searchPlaceholder": "Search projects...",
       "switchToMobile": "Mobile version",
       "title": "Projects",
-      "workspaceTitle": "Workspace"
+      "workspaceTitle": "Workspace",
+      "resumeEditing": "Resume Editing",
+      "activeProject": "Active Project",
+      "otherProjects": "Other Projects",
+      "welcomeTitle": "Create Your First Masterpiece",
+      "welcomeSubtitle": "Your dashboard is empty. Create a new project to start."
     },
     "properties": {
       "blur": "Blur",
