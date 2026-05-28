@@ -12,12 +12,15 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 
 vi.mock('@tauri-apps/api/path', () => ({
   appConfigDir: vi.fn().mockResolvedValue('/mock-config'),
+  appDataDir: vi.fn().mockResolvedValue('/mock-data'),
   appCacheDir: vi.fn().mockResolvedValue('/mock-cache'),
+  tempDir: vi.fn().mockResolvedValue('/mock-temp'),
   documentDir: vi.fn().mockResolvedValue('/mock-documents'),
   isAbsolute: vi.fn().mockResolvedValue(false),
   resourceDir: vi.fn().mockResolvedValue('/mock-resource'),
   resolve: vi.fn().mockImplementation(async (path: string) => `/absolute/${path}`),
   join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
+  basename: vi.fn().mockImplementation(async (path: string) => path.split('/').pop() || path.split('\\').pop() || ''),
 }));
 
 vi.mock('~/stores/workspace/provider/tauri-handle', () => ({

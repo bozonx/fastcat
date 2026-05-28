@@ -112,17 +112,28 @@ function createTauriWorkspaceAdapters(
   const handle = workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle | null;
   const workspacePath = handle?.path;
 
+  async function resolveAppDataDir(): Promise<{ type: 'absolute'; path: string }> {
+    const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
+    const paths = await resolveTauriAppPaths(fastcatDevDir);
+    if (paths) {
+      return { type: 'absolute', path: paths.dataDir };
+    }
+    const { appDataDir } = await import('@tauri-apps/api/path');
+    return { type: 'absolute', path: await appDataDir() };
+  }
+
   const project = new TauriFileSystemAdapter(async () => {
     const projectHandle = await projectStore.getProjectDirHandle();
     const projectPath = (projectHandle as unknown as TauriDirectoryHandle | null)?.path;
     if (projectPath) return { type: 'absolute', path: projectPath };
     if (workspacePath) return { type: 'absolute', path: workspacePath };
-    return { type: 'app-data' };
+    return resolveAppDataDir();
   });
 
-  const workspace = new TauriFileSystemAdapter(
-    workspacePath ? { type: 'absolute', path: workspacePath } : TAURI_APP_DATA_BASE_PATH,
-  );
+  const workspace = new TauriFileSystemAdapter(async () => {
+    if (workspacePath) return { type: 'absolute', path: workspacePath };
+    return resolveAppDataDir();
+  });
 
   const vardata = new TauriFileSystemAdapter(async () => {
     const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
@@ -132,7 +143,9 @@ function createTauriWorkspaceAdapters(
       const vardataPath = await join(paths.cacheDir, 'vardata');
       return { type: 'absolute', path: vardataPath };
     }
-    return { type: 'app-data' };
+    const { appDataDir } = await import('@tauri-apps/api/path');
+    const { join } = await import('@tauri-apps/api/path');
+    return { type: 'absolute', path: await join(await appDataDir(), 'vardata') };
   });
 
   return { project, workspace, vardata };

@@ -113,6 +113,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
         recursive: true,
       });
     } catch (e) {
+      console.error('[TauriFileSystemAdapter] mkdir failed:', { tauriPath, options, error: e });
       throw wrapPlatformError(e, tauriPath);
     }
   }
@@ -134,7 +135,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const tauriPath = normalizedPath ? await join(basePath, normalizedPath) : basePath;
     return {
       tauriPath,
-      options: { baseDir: undefined },
+      options: {},
     };
   }
 

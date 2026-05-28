@@ -4,11 +4,7 @@ import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { RecentProject } from '~/stores/workspace.store';
 import { getErrorMessage } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
-import { toStoragePathSegments } from '~/utils/storage-topology';
-import {
-  ensureDirectoryChain,
-  resolveStorageRootHandle,
-} from '~/utils/storage-handles';
+import { ensureDirectoryChain, resolveStorageRootHandle } from '~/utils/storage-handles';
 import { renameDirectoryFallback } from '~/file-manager/fs/ops';
 const log = createDevLogger('workspaceProjects');
 

@@ -13,7 +13,9 @@ vi.mock('~/utils/runtime', () => ({
 
 vi.mock('@tauri-apps/api/path', () => ({
   appConfigDir: vi.fn().mockResolvedValue('/mock-config'),
+  appDataDir: vi.fn().mockResolvedValue('/mock-data'),
   appCacheDir: vi.fn().mockResolvedValue('/mock-cache'),
+  tempDir: vi.fn().mockResolvedValue('/mock-temp'),
   documentDir: vi.fn().mockResolvedValue('/mock-documents'),
   isAbsolute: vi.fn().mockResolvedValue(false),
   resourceDir: vi.fn().mockResolvedValue('/mock-resource'),

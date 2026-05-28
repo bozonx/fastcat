@@ -52,10 +52,9 @@ export class TauriWorkspaceProvider implements WorkspaceProvider {
         await mkdir(path, { recursive: true });
       }
 
-      return new TauriDirectoryHandle(
-        path,
-        path.split('/').pop() || path.split('\\').pop() || 'workspace',
-      ) as unknown as DirectoryHandleLike;
+      const { basename } = await import('@tauri-apps/api/path');
+      const name = await basename(path);
+      return new TauriDirectoryHandle(path, name || 'workspace') as unknown as DirectoryHandleLike;
     } catch (e) {
       log.warn('Failed to restore tauri workspace handle:', e);
     }

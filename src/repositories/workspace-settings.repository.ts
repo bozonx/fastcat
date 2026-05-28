@@ -65,7 +65,7 @@ async function readTauriConfigJson(
   const paths = await resolveTauriAppPaths(fastcatDevDir);
   if (!paths) return null;
 
-  await mkdir(paths.configDir, { recursive: true }).catch(() => undefined);
+  await mkdir(paths.configDir, { recursive: true });
   const filePath = await join(paths.configDir, filename);
   const fileExists = await exists(filePath);
   if (!fileExists) return null;
@@ -85,7 +85,7 @@ async function writeTauriConfigJson(
   const paths = await resolveTauriAppPaths(fastcatDevDir);
   if (!paths) return;
 
-  await mkdir(paths.configDir, { recursive: true }).catch(() => undefined);
+  await mkdir(paths.configDir, { recursive: true });
   const filePath = await join(paths.configDir, filename);
   await writeTextFile(filePath, `${JSON.stringify(data, null, 2)}\n`);
 }

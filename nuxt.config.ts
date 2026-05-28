@@ -1,7 +1,42 @@
 import { defineNuxtConfig } from 'nuxt/config';
 import { resolve } from 'node:path';
+import { mkdirSync } from 'node:fs';
 
-const fastcatDevDir = resolve(process.env.FASTCAT_DEV_DIR || './.dev-files');
+const fastcatDevDir = resolve(import.meta.dirname, process.env.FASTCAT_DEV_DIR || './.dev-files');
+
+// Ensure dev-mode OS-like directory tree exists before Tauri starts.
+// This avoids I/O errors when Tauri plugin-fs mkdir hits missing parents.
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  const platform = process.platform;
+  const user = 'user';
+  const app = 'fastcat';
+
+  const ensureDir = (subPath: string) => {
+    try {
+      mkdirSync(resolve(fastcatDevDir, subPath), { recursive: true });
+    } catch {
+      // ignore
+    }
+  };
+
+  if (platform === 'win32') {
+    ensureDir(`Users/${user}/AppData/Roaming/${app}`);
+    ensureDir(`Users/${user}/AppData/Local/${app}`);
+    ensureDir(`Users/${user}/AppData/Local/Temp/${app}`);
+    ensureDir(`Users/${user}/Documents`);
+  } else if (platform === 'darwin') {
+    ensureDir(`Users/${user}/Library/Application Support/${app}`);
+    ensureDir(`Users/${user}/Library/Caches/${app}`);
+    ensureDir(`tmp/${app}`);
+    ensureDir(`Users/${user}/Documents`);
+  } else {
+    ensureDir(`home/${user}/config/${app}`);
+    ensureDir(`home/${user}/local/share/${app}`);
+    ensureDir(`home/${user}/cache/${app}`);
+    ensureDir(`tmp/${app}`);
+    ensureDir(`home/${user}/Documents`);
+  }
+}
 
 export default defineNuxtConfig({
   ssr: false,

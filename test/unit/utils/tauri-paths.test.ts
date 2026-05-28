@@ -18,8 +18,21 @@ vi.mock('@tauri-apps/api/path', () => ({
   documentDir: vi.fn().mockResolvedValue('/mock-documents'),
   isAbsolute: vi.fn().mockImplementation(async (path: string) => path.startsWith('/')),
   resourceDir: vi.fn().mockResolvedValue('/mock-resource'),
-  resolve: vi.fn().mockImplementation(async (path: string) => `/absolute/${path}`),
+  resolve: vi.fn().mockImplementation(async (path: string) => {
+    if (path.startsWith('/') || /^[A-Za-z]:/.test(path)) return path;
+    return `/absolute/${path}`;
+  }),
   join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
+}));
+
+import { platform } from '@tauri-apps/plugin-os';
+
+vi.mock('@tauri-apps/plugin-os', () => ({
+  platform: vi.fn().mockReturnValue('linux'),
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -27,9 +40,14 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 describe('tauri-paths utility', () => {
+  beforeEach(() => {
+    vi.mocked(platform).mockReturnValue('linux');
+  });
+
   afterEach(() => {
     clearTauriGlobal();
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns null when not in Tauri runtime', async () => {
@@ -54,7 +72,7 @@ describe('tauri-paths utility', () => {
     });
   });
 
-  it('resolves relative dev paths from the Tauri dev working directory', async () => {
+  it('mirrors Linux directory layout in dev mode by default', async () => {
     (globalThis as TauriGlobal).__TAURI_INTERNALS__ = {};
     expect(isTauriRuntime()).toBe(true);
 
@@ -63,28 +81,49 @@ describe('tauri-paths utility', () => {
       path: '/absolute/./.dev-files',
     });
     expect(paths).toEqual({
-      configDir: '/absolute/./.dev-files/config',
-      dataDir: '/absolute/./.dev-files/data',
-      cacheDir: '/absolute/./.dev-files/cache',
-      tempDir: '/absolute/./.dev-files/tmp',
-      documentsDir: '/absolute/./.dev-files/Documents',
+      configDir: '/absolute/./.dev-files/home/user/config/fastcat',
+      dataDir: '/absolute/./.dev-files/home/user/local/share/fastcat',
+      cacheDir: '/absolute/./.dev-files/home/user/cache/fastcat',
+      tempDir: '/absolute/./.dev-files/tmp/fastcat',
+      documentsDir: '/absolute/./.dev-files/home/user/Documents',
     });
   });
 
-  it('resolves absolute dev paths directly in dev mode', async () => {
+  it('mirrors Windows directory layout when platform is windows', async () => {
+    const { platform } = await import('@tauri-apps/plugin-os');
+    vi.mocked(platform).mockReturnValue('windows');
+    (globalThis as TauriGlobal).__TAURI_INTERNALS__ = {};
+    expect(isTauriRuntime()).toBe(true);
+
+    const paths = await resolveTauriAppPaths('C:/fastcat-dev', true);
+    expect(invoke).toHaveBeenCalledWith('allow_dev_directory_scope', {
+      path: 'C:/fastcat-dev',
+    });
+    expect(paths).toEqual({
+      configDir: 'C:/fastcat-dev/Users/user/AppData/Roaming/fastcat',
+      dataDir: 'C:/fastcat-dev/Users/user/AppData/Roaming/fastcat',
+      cacheDir: 'C:/fastcat-dev/Users/user/AppData/Local/fastcat',
+      tempDir: 'C:/fastcat-dev/Users/user/AppData/Local/Temp/fastcat',
+      documentsDir: 'C:/fastcat-dev/Users/user/Documents',
+    });
+  });
+
+  it('mirrors macOS directory layout when platform is macos', async () => {
+    const { platform } = await import('@tauri-apps/plugin-os');
+    vi.mocked(platform).mockReturnValue('macos');
     (globalThis as TauriGlobal).__TAURI_INTERNALS__ = {};
     expect(isTauriRuntime()).toBe(true);
 
     const paths = await resolveTauriAppPaths('/tmp/fastcat-dev', true);
     expect(invoke).toHaveBeenCalledWith('allow_dev_directory_scope', {
-      path: '/absolute//tmp/fastcat-dev',
+      path: '/tmp/fastcat-dev',
     });
     expect(paths).toEqual({
-      configDir: '/absolute//tmp/fastcat-dev/config',
-      dataDir: '/absolute//tmp/fastcat-dev/data',
-      cacheDir: '/absolute//tmp/fastcat-dev/cache',
-      tempDir: '/absolute//tmp/fastcat-dev/tmp',
-      documentsDir: '/absolute//tmp/fastcat-dev/Documents',
+      configDir: '/tmp/fastcat-dev/Users/user/Library/Application Support/fastcat',
+      dataDir: '/tmp/fastcat-dev/Users/user/Library/Application Support/fastcat',
+      cacheDir: '/tmp/fastcat-dev/Users/user/Library/Caches/fastcat',
+      tempDir: '/tmp/fastcat-dev/tmp/fastcat',
+      documentsDir: '/tmp/fastcat-dev/Users/user/Documents',
     });
   });
 
@@ -96,11 +135,11 @@ describe('tauri-paths utility', () => {
     const paths = await resolveTauriAppPaths('./.dev-files', true);
 
     expect(paths).toEqual({
-      configDir: '/absolute/./.dev-files/config',
-      dataDir: '/absolute/./.dev-files/data',
-      cacheDir: '/absolute/./.dev-files/cache',
-      tempDir: '/absolute/./.dev-files/tmp',
-      documentsDir: '/absolute/./.dev-files/Documents',
+      configDir: '/absolute/./.dev-files/home/user/config/fastcat',
+      dataDir: '/absolute/./.dev-files/home/user/local/share/fastcat',
+      cacheDir: '/absolute/./.dev-files/home/user/cache/fastcat',
+      tempDir: '/absolute/./.dev-files/tmp/fastcat',
+      documentsDir: '/absolute/./.dev-files/home/user/Documents',
     });
   });
 });
