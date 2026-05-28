@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeWaveformPeakBins,
+  computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
   resolveWaveformSourceUs,
   serializeWaveformPeaks,
@@ -98,6 +99,30 @@ describe('audio waveform utilities', () => {
     expect(bins).toHaveLength(2);
     expect(bins[0]).toBeCloseTo(0.4);
     expect(bins[1]).toBeCloseTo(0.8);
+  });
+
+  it('uses a lower render budget for low timeline zoom', () => {
+    const budget = computeWaveformRenderBudget({
+      cssWidth: 1000,
+      devicePixelRatio: 2,
+      zoom: 38,
+      maxPointsPerChunk: 2048,
+    });
+
+    expect(budget.effectiveDevicePixelRatio).toBe(1);
+    expect(budget.outputBins).toBe(500);
+  });
+
+  it('keeps full css-width bins at detailed timeline zoom while capping device pixel ratio', () => {
+    const budget = computeWaveformRenderBudget({
+      cssWidth: 1000,
+      devicePixelRatio: 3,
+      zoom: 60,
+      maxPointsPerChunk: 2048,
+    });
+
+    expect(budget.effectiveDevicePixelRatio).toBe(2);
+    expect(budget.outputBins).toBe(1000);
   });
 
   it('serializes and deserializes peaks to/from binary ArrayBuffer correctly', () => {

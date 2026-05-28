@@ -11,6 +11,7 @@ import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import {
   computeWaveformPeakBins,
+  computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
   resolveWaveformSourceUs,
 } from '~/utils/audio/waveform';
@@ -38,6 +39,7 @@ const chunkEls = new Map<number, HTMLElement>();
 const chunkCanvases = new Map<number, HTMLCanvasElement>();
 
 let resizeObserver: ResizeObserver | null = null;
+let redrawFrameId = 0;
 
 const fileUrl = computed(() => {
   if (props.item.source) {
@@ -410,6 +412,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   isUnmounted = true;
   extractCallId += 1;
+  if (redrawFrameId) {
+    window.cancelAnimationFrame(redrawFrameId);
+    redrawFrameId = 0;
+  }
   resizeObserver?.disconnect();
   resizeObserver = null;
   chunkEls.clear();
@@ -542,10 +548,15 @@ function drawChunk(chunkIndex: number) {
 
   const cssHeight = Math.max(1, canvas.parentElement?.clientHeight || root.clientHeight);
   const cssWidth = Math.max(1, Math.round(chunk.widthPx));
+  const renderBudget = computeWaveformRenderBudget({
+    cssWidth,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    zoom: timelineStore.timelineZoom,
+    maxPointsPerChunk: MAX_WAVEFORM_DRAW_POINTS_PER_CHUNK,
+  });
 
-  const dpr = window.devicePixelRatio || 1;
-  const targetWidth = Math.max(1, Math.round(cssWidth * dpr));
-  const targetHeight = Math.max(1, Math.round(cssHeight * dpr));
+  const targetWidth = Math.max(1, Math.round(cssWidth * renderBudget.effectiveDevicePixelRatio));
+  const targetHeight = Math.max(1, Math.round(cssHeight * renderBudget.effectiveDevicePixelRatio));
 
   if (canvas.width !== targetWidth) canvas.width = targetWidth;
   if (canvas.height !== targetHeight) canvas.height = targetHeight;
@@ -573,12 +584,11 @@ function drawChunk(chunkIndex: number) {
 
   const startIndex = Math.floor(startRatio * peaksCount);
   const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount) + 1);
-  const outputBins = Math.min(MAX_WAVEFORM_DRAW_POINTS_PER_CHUNK, targetWidth);
   const peakBins = computeWaveformPeakBins({
     channels,
     startIndex,
     endIndex,
-    outputBins,
+    outputBins: renderBudget.outputBins,
     gain: props.item.audioGain ?? 1,
   });
 
@@ -638,10 +648,18 @@ async function redrawVisibleChunks() {
 
 const redrawMountedChunks = redrawVisibleChunks;
 
+function requestRedrawMountedChunks() {
+  if (redrawFrameId) return;
+  redrawFrameId = window.requestAnimationFrame(() => {
+    redrawFrameId = 0;
+    void redrawMountedChunks();
+  });
+}
+
 watch(
   () => [props.item.audioWaveformMode, props.item.audioGain, isMuted.value],
   () => {
-    void redrawMountedChunks();
+    requestRedrawMountedChunks();
   },
 );
 
@@ -651,7 +669,7 @@ watch(audioPeaks, () => {
   if (audioPeaks.value) {
     hasDeferredExtraction.value = false;
   }
-  void redrawMountedChunks();
+  requestRedrawMountedChunks();
 });
 
 watch(
@@ -662,16 +680,14 @@ watch(
 
       resizeObserver?.disconnect();
       resizeObserver = new ResizeObserver(() => {
-        requestAnimationFrame(() => {
-          void redrawVisibleChunks();
-        });
+        requestRedrawMountedChunks();
       });
 
       if (rootEl.value) {
         resizeObserver.observe(rootEl.value);
       }
 
-      void redrawMountedChunks();
+      requestRedrawMountedChunks();
     });
   },
   { immediate: true, flush: 'post' },

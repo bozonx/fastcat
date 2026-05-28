@@ -1,4 +1,4 @@
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
 export interface WaveformWindowMetricsParams {
   sourceStartUs: number;
@@ -31,6 +31,18 @@ export interface WaveformPeakBinsParams {
   endIndex: number;
   outputBins: number;
   gain?: number;
+}
+
+export interface WaveformRenderBudgetParams {
+  cssWidth: number;
+  devicePixelRatio: number;
+  zoom: number;
+  maxPointsPerChunk?: number;
+}
+
+export interface WaveformRenderBudget {
+  effectiveDevicePixelRatio: number;
+  outputBins: number;
 }
 
 export function normalizeWaveformSpeed(speed: unknown): number {
@@ -110,6 +122,30 @@ export function computeWaveformPeakBins(params: WaveformPeakBinsParams): Float32
   }
 
   return bins;
+}
+
+export function computeWaveformRenderBudget(
+  params: WaveformRenderBudgetParams,
+): WaveformRenderBudget {
+  const cssWidth = Math.max(1, Math.round(params.cssWidth));
+  const maxPointsPerChunk = Math.max(1, Math.floor(params.maxPointsPerChunk ?? 2048));
+  const rawDpr =
+    typeof params.devicePixelRatio === 'number' && Number.isFinite(params.devicePixelRatio)
+      ? params.devicePixelRatio
+      : 1;
+  const pxPerSecond = zoomToPxPerSecond(params.zoom);
+
+  const effectiveDevicePixelRatio = pxPerSecond < 6 ? 1 : Math.min(2, Math.max(1, rawDpr));
+  const pointsPerCssPixel = pxPerSecond < 6 ? 0.5 : pxPerSecond < 12 ? 0.75 : 1;
+  const outputBins = Math.max(
+    1,
+    Math.min(maxPointsPerChunk, Math.ceil(cssWidth * pointsPerCssPixel)),
+  );
+
+  return {
+    effectiveDevicePixelRatio,
+    outputBins,
+  };
 }
 
 export function serializeWaveformPeaks(peaks: Float32Array[]): ArrayBuffer {
