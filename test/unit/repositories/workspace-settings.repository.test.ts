@@ -1,6 +1,34 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+import { isTauriRuntime } from '~/utils/runtime';
+
+const tauriFsState = vi.hoisted(() => ({
+  files: new Map<string, string>(),
+}));
+
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: vi.fn(() => false),
+}));
+
+vi.mock('@tauri-apps/api/path', () => ({
+  appConfigDir: vi.fn().mockResolvedValue('/mock-config'),
+  appCacheDir: vi.fn().mockResolvedValue('/mock-cache'),
+  documentDir: vi.fn().mockResolvedValue('/mock-documents'),
+  isAbsolute: vi.fn().mockResolvedValue(false),
+  resourceDir: vi.fn().mockResolvedValue('/mock-resource'),
+  resolve: vi.fn().mockImplementation(async (path: string) => `/absolute/${path}`),
+  join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  exists: vi.fn().mockImplementation(async (path: string) => tauriFsState.files.has(path)),
+  readTextFile: vi.fn().mockImplementation(async (path: string) => tauriFsState.files.get(path)),
+  writeTextFile: vi.fn().mockImplementation(async (path: string, text: string) => {
+    tauriFsState.files.set(path, text);
+  }),
+}));
 
 function createFileHandleMock(input: { text: string }) {
   let bytes = new TextEncoder().encode(input.text);
@@ -75,6 +103,11 @@ function createDirMock() {
 }
 
 describe('workspace-settings.repository', () => {
+  beforeEach(() => {
+    vi.mocked(isTauriRuntime).mockReturnValue(false);
+    tauriFsState.files.clear();
+  });
+
   it('returns null on missing files', async () => {
     const root = createDirMock();
     const repo = createWorkspaceSettingsRepository({ workspaceDir: root as any });
@@ -142,5 +175,45 @@ describe('workspace-settings.repository', () => {
     const loaded = await repo.loadUserSettings();
     expect(loaded).toBeTruthy();
     expect((loaded as any).openLastProjectOnStart).toBe(true);
+  });
+
+  it('keeps Tauri global app settings separate from workspace settings', async () => {
+    vi.mocked(isTauriRuntime).mockReturnValue(true);
+    const root = createDirMock();
+    const repo = createWorkspaceSettingsRepository({ workspaceDir: root as any });
+
+    await repo.saveAppSettings({
+      ui: { locale: 'en-US', theme: 'dark' },
+      storage: { mode: 'system' },
+      integrations: {
+        bloggerDog: { enabled: false },
+        fastcatAccount: { enabled: false },
+        stt: { enabled: false, models: [] },
+      },
+    } as any);
+    await repo.saveWorkspaceSettings({
+      projectDefaults: {
+        width: 1280,
+        height: 720,
+        fps: 30,
+        resolutionFormat: '720p',
+        orientation: 'landscape',
+        aspectRatio: '16:9',
+        isCustomResolution: false,
+        sampleRate: 48000,
+      },
+    } as any);
+
+    expect(tauriFsState.files.has('/mock-config/app.settings.json')).toBe(true);
+
+    const workspaceConfigDir = root.__debug.dirs.get('.fastcat-config');
+    expect(workspaceConfigDir).toBeTruthy();
+    expect(workspaceConfigDir.__debug.files.has('app.settings.json')).toBe(true);
+
+    const loadedAppSettings = await repo.loadAppSettings();
+    const loadedWorkspaceSettings = await repo.loadWorkspaceSettings();
+
+    expect((loadedAppSettings as any).storage.mode).toBe('system');
+    expect((loadedWorkspaceSettings as any).projectDefaults.width).toBe(1280);
   });
 });

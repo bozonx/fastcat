@@ -94,10 +94,10 @@ export function createWorkspaceSettingsRepository(input: {
   workspaceDir: DirectoryHandleLike;
   fastcatDevDir?: string;
 }): WorkspaceSettingsRepository {
-  async function loadSettings(filename: string, _isGlobal: boolean): Promise<unknown | null> {
+  async function loadSettings(filename: string, isGlobal: boolean): Promise<unknown | null> {
     const isAppOrUserSettings =
       filename === 'user.settings.json' || filename === 'app.settings.json';
-    if (isTauriRuntime() && isAppOrUserSettings) {
+    if (isTauriRuntime() && isGlobal && isAppOrUserSettings) {
       return await readTauriConfigJson(filename, input.fastcatDevDir);
     }
 
@@ -108,10 +108,10 @@ export function createWorkspaceSettingsRepository(input: {
     });
   }
 
-  async function saveSettings(filename: string, _isGlobal: boolean, data: unknown): Promise<void> {
+  async function saveSettings(filename: string, isGlobal: boolean, data: unknown): Promise<void> {
     const isAppOrUserSettings =
       filename === 'user.settings.json' || filename === 'app.settings.json';
-    if (isTauriRuntime() && isAppOrUserSettings) {
+    if (isTauriRuntime() && isGlobal && isAppOrUserSettings) {
       await writeTauriConfigJson(filename, data, input.fastcatDevDir);
       return;
     }
@@ -134,11 +134,11 @@ export function createWorkspaceSettingsRepository(input: {
     },
 
     async loadAppSettings() {
-      return await loadSettings('app.settings.json', false);
+      return await loadSettings('app.settings.json', true);
     },
 
     async saveAppSettings(data) {
-      await saveSettings('app.settings.json', false, data);
+      await saveSettings('app.settings.json', true, data);
     },
 
     async loadWorkspaceSettings() {

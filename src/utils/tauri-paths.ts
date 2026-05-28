@@ -16,38 +16,20 @@ export async function resolveTauriAppPaths(
     return null;
   }
 
-  const { appConfigDir, appCacheDir, documentDir, resolve, join } =
+  const { appConfigDir, appCacheDir, documentDir, isAbsolute, join, resolve, resourceDir } =
     await import('@tauri-apps/api/path');
 
   if ((isDevMode() || forceDev) && fastcatDevDir) {
-    const devRoot = await resolve(fastcatDevDir);
-    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-    const isMac = userAgent.includes('Macintosh') || userAgent.includes('Mac OS X');
-    const isWindows = userAgent.includes('Windows') || userAgent.includes('Win32');
-
-    let configDir: string;
-    let cacheDir: string;
-    let documentsDir: string;
-
-    if (isMac) {
-      configDir = await join(devRoot, 'Library', 'Application Support', 'com.bozonx.fastcat');
-      cacheDir = await join(devRoot, 'Library', 'Caches', 'com.bozonx.fastcat');
-      documentsDir = await join(devRoot, 'Documents');
-    } else if (isWindows) {
-      configDir = await join(devRoot, 'AppData', 'Roaming', 'com.bozonx.fastcat');
-      cacheDir = await join(devRoot, 'AppData', 'Local', 'com.bozonx.fastcat');
-      documentsDir = await join(devRoot, 'Documents');
-    } else {
-      // Linux / Default
-      configDir = await join(devRoot, '.config', 'com.bozonx.fastcat');
-      cacheDir = await join(devRoot, '.cache', 'com.bozonx.fastcat');
-      documentsDir = await join(devRoot, 'Documents');
-    }
+    const devRoot = (await isAbsolute(fastcatDevDir))
+      ? await resolve(fastcatDevDir)
+      : await join(await resourceDir(), fastcatDevDir);
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('allow_dev_directory_scope', { path: devRoot });
 
     return {
-      configDir,
-      cacheDir,
-      documentsDir,
+      configDir: await join(devRoot, 'config'),
+      cacheDir: await join(devRoot, 'cache'),
+      documentsDir: await join(devRoot, 'Documents'),
     };
   }
 
