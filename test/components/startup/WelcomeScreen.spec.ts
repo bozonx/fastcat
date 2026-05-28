@@ -34,19 +34,17 @@ describe('WelcomeScreen', () => {
   it('shows web workspace message by default', async () => {
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain(
-      'Select a workspace folder on your computer. Your browser will ask for access to store project files, media proxies, and cache.',
-    );
+    expect(component.text()).toContain('fastcat.welcome.selectWebWorkspace');
   });
 
-  it('shows tauri workspace message when provider is tauri', async () => {
+  it('shows tauri initialization message and no selection button when provider is tauri', async () => {
     mockWorkspaceStore.workspaceProviderId = 'tauri';
 
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain(
-      'Select a workspace folder on your computer. FastCat Video Editor will store projects, source media, proxies, and cache in this folder.',
-    );
+    expect(component.text()).toContain('fastcat.welcome.initializingTauriWorkspace');
+    expect(component.text()).not.toContain('fastcat.welcome.openWorkspace');
+    expect(component.find('button').exists()).toBe(false);
   });
 
   it('shows open workspace button when API is supported', async () => {
@@ -60,7 +58,7 @@ describe('WelcomeScreen', () => {
 
     const component = await mountSuspended(WelcomeScreen);
 
-    expect(component.text()).toContain('Workspace selection is not supported in this environment');
+    expect(component.text()).toContain('fastcat.fileManager.unsupported');
   });
 
   it('calls openWorkspace when button is clicked', async () => {

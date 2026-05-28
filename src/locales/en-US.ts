@@ -1119,8 +1119,8 @@ export default {
       }
     },
     "welcome": {
+      "initializingTauriWorkspace": "Initializing the default desktop workspace.",
       "openWorkspace": "Select Workspace Folder",
-      "selectTauriWorkspace": "Select Tauri Workspace",
       "selectWebWorkspace": "Select Web Workspace"
     }
   },

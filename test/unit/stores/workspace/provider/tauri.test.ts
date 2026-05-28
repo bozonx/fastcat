@@ -1,15 +1,9 @@
 /** @vitest-environment node */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TauriWorkspaceProvider } from '~/stores/workspace/provider/tauri';
-import { open } from '@tauri-apps/plugin-dialog';
 import { exists } from '@tauri-apps/plugin-fs';
 import { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import type { WorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
-
-// Mock dependencies
-vi.mock('@tauri-apps/plugin-dialog', () => ({
-  open: vi.fn(),
-}));
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   exists: vi.fn(),
@@ -42,6 +36,7 @@ describe('TauriWorkspaceProvider', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(exists).mockReset();
 
     // Mock window to simulate Tauri environment being supported
     (globalThis as any).window = {
@@ -50,8 +45,8 @@ describe('TauriWorkspaceProvider', () => {
 
     mockStorage = {
       get: vi.fn(),
-      set: vi.fn(),
-      clear: vi.fn(),
+      set: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
     } as unknown as WorkspaceHandleStorage<string>;
   });
 
@@ -88,47 +83,18 @@ describe('TauriWorkspaceProvider', () => {
       expect(result).toBeNull();
     });
 
-    it('returns null if open dialog is cancelled', async () => {
-      vi.mocked(open).mockResolvedValue(null);
-      const provider = new TauriWorkspaceProvider(mockStorage);
-      const result = await provider.openWorkspace();
-      expect(result).toBeNull();
-    });
-
-    it('returns null if open dialog returns empty array', async () => {
-      vi.mocked(open).mockResolvedValue([]);
-      const provider = new TauriWorkspaceProvider(mockStorage);
-      const result = await provider.openWorkspace();
-      expect(result).toBeNull();
-    });
-
-    it('returns handle and saves to storage if path is selected (string)', async () => {
-      vi.mocked(open).mockResolvedValue('/mock/path/project');
+    it('uses the default workspace instead of opening a folder dialog', async () => {
+      vi.mocked(exists).mockResolvedValue(true);
       const provider = new TauriWorkspaceProvider(mockStorage);
 
       const result = await provider.openWorkspace();
 
-      expect(mockStorage.set).toHaveBeenCalledWith('/mock/path/project');
-      expect(TauriDirectoryHandle).toHaveBeenCalledWith('/mock/path/project', 'project');
+      expect(exists).toHaveBeenCalledWith('/mock-documents/FastCat');
+      expect(TauriDirectoryHandle).toHaveBeenCalledWith('/mock-documents/FastCat', 'FastCat');
       expect(result).toEqual({
         kind: 'directory',
-        path: '/mock/path/project',
-        name: 'project',
-      });
-    });
-
-    it('returns handle and saves to storage if path is selected (array)', async () => {
-      vi.mocked(open).mockResolvedValue(['/mock/path/project2']);
-      const provider = new TauriWorkspaceProvider(mockStorage);
-
-      const result = await provider.openWorkspace();
-
-      expect(mockStorage.set).toHaveBeenCalledWith('/mock/path/project2');
-      expect(TauriDirectoryHandle).toHaveBeenCalledWith('/mock/path/project2', 'project2');
-      expect(result).toEqual({
-        kind: 'directory',
-        path: '/mock/path/project2',
-        name: 'project2',
+        path: '/mock-documents/FastCat',
+        name: 'FastCat',
       });
     });
   });
@@ -150,7 +116,6 @@ describe('TauriWorkspaceProvider', () => {
 
       expect(exists).toHaveBeenCalledWith('/mock-documents/FastCat');
       expect(mkdir).toHaveBeenCalledWith('/mock-documents/FastCat', { recursive: true });
-      expect(mockStorage.set).toHaveBeenCalledWith('/mock-documents/FastCat');
       expect(TauriDirectoryHandle).toHaveBeenCalledWith('/mock-documents/FastCat', 'FastCat');
       expect(result).toEqual({
         kind: 'directory',
@@ -159,15 +124,41 @@ describe('TauriWorkspaceProvider', () => {
       });
     });
 
-    it('returns null if path does not exist', async () => {
+    it('ignores stored paths and uses the default workspace', async () => {
       vi.mocked(mockStorage.get).mockResolvedValue('/mock/path');
       vi.mocked(exists).mockResolvedValue(false);
+      const { mkdir } = await import('@tauri-apps/plugin-fs');
       const provider = new TauriWorkspaceProvider(mockStorage);
 
       const result = await provider.restoreWorkspace();
 
-      expect(exists).toHaveBeenCalledWith('/mock/path');
-      expect(result).toBeNull();
+      expect(mockStorage.clear).toHaveBeenCalled();
+      expect(exists).toHaveBeenCalledWith('/mock-documents/FastCat');
+      expect(mkdir).toHaveBeenCalledWith('/mock-documents/FastCat', { recursive: true });
+      expect(result).toEqual({
+        kind: 'directory',
+        path: '/mock-documents/FastCat',
+        name: 'FastCat',
+      });
+    });
+
+    it('does not probe a stored path even if it would be forbidden', async () => {
+      vi.mocked(mockStorage.get).mockResolvedValue('/mock/forbidden-workspace');
+      vi.mocked(exists).mockResolvedValueOnce(false);
+      const { mkdir } = await import('@tauri-apps/plugin-fs');
+      const provider = new TauriWorkspaceProvider(mockStorage);
+
+      const result = await provider.restoreWorkspace();
+
+      expect(mockStorage.clear).toHaveBeenCalled();
+      expect(exists).not.toHaveBeenCalledWith('/mock/forbidden-workspace');
+      expect(exists).toHaveBeenCalledWith('/mock-documents/FastCat');
+      expect(mkdir).toHaveBeenCalledWith('/mock-documents/FastCat', { recursive: true });
+      expect(result).toEqual({
+        kind: 'directory',
+        path: '/mock-documents/FastCat',
+        name: 'FastCat',
+      });
     });
 
     it('returns handle if path exists', async () => {
@@ -177,36 +168,39 @@ describe('TauriWorkspaceProvider', () => {
 
       const result = await provider.restoreWorkspace();
 
-      expect(TauriDirectoryHandle).toHaveBeenCalledWith(
-        '/mock/path/project_restored',
-        'project_restored',
-      );
+      expect(TauriDirectoryHandle).toHaveBeenCalledWith('/mock-documents/FastCat', 'FastCat');
       expect(result).toEqual({
         kind: 'directory',
-        path: '/mock/path/project_restored',
-        name: 'project_restored',
+        path: '/mock-documents/FastCat',
+        name: 'FastCat',
       });
     });
 
-    it('returns null and catches error if storage get fails', async () => {
-      vi.mocked(mockStorage.get).mockRejectedValue(new Error('Storage error'));
+    it('still uses the default workspace if clearing old storage fails', async () => {
+      vi.mocked(mockStorage.clear).mockRejectedValueOnce(new Error('Storage error'));
+      vi.mocked(exists).mockResolvedValue(true);
       const provider = new TauriWorkspaceProvider(mockStorage);
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const result = await provider.restoreWorkspace();
 
-      expect(result).toBeNull();
+      expect(result).toEqual({
+        kind: 'directory',
+        path: '/mock-documents/FastCat',
+        name: 'FastCat',
+      });
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
   });
 
   describe('saveWorkspace', () => {
-    it('saves handle path to storage', async () => {
+    it('does not persist custom workspace paths', async () => {
       const provider = new TauriWorkspaceProvider(mockStorage);
       const handle = { path: '/some/saved/path' } as any;
       await provider.saveWorkspace(handle);
-      expect(mockStorage.set).toHaveBeenCalledWith('/some/saved/path');
+      expect(mockStorage.set).not.toHaveBeenCalled();
+      expect(mockStorage.clear).toHaveBeenCalled();
     });
   });
 

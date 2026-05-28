@@ -1119,8 +1119,8 @@ export default {
       }
     },
     "welcome": {
+      "initializingTauriWorkspace": "Инициализация стандартной рабочей области desktop-версии.",
       "openWorkspace": "Выбрать папку рабочей области",
-      "selectTauriWorkspace": "Выбрать Tauri Workspace",
       "selectWebWorkspace": "Выбрать Web Workspace"
     }
   },

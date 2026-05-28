@@ -29,14 +29,8 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
       <p class="text-ui-text-muted">
         {{
           isTauriWorkspace
-            ? t(
-                'fastcat.welcome.selectTauriWorkspace',
-                'Select a workspace folder on your computer. FastCat Video Editor will store projects, source media, proxies, and cache in this folder.',
-              )
-            : t(
-                'fastcat.welcome.selectWebWorkspace',
-                'Select a workspace folder on your computer. Your browser will ask for access to store project files, media proxies, and cache.',
-              )
+            ? t('fastcat.welcome.initializingTauriWorkspace')
+            : t('fastcat.welcome.selectWebWorkspace')
         }}
       </p>
 
@@ -48,7 +42,7 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
       </div>
 
       <UButton
-        v-if="workspaceStore.isApiSupported"
+        v-if="workspaceStore.isApiSupported && !isTauriWorkspace"
         size="lg"
         variant="solid"
         color="primary"
@@ -59,13 +53,8 @@ const isTauriWorkspace = computed(() => workspaceStore.workspaceProviderId === '
         :disabled="workspaceStore.isLoading"
         @click="workspaceStore.openWorkspace"
       />
-      <div v-else class="text-orange-400 text-sm">
-        {{
-          t(
-            'fastcat.fileManager.unsupported',
-            'Workspace selection is not supported in this environment',
-          )
-        }}
+      <div v-else-if="!isTauriWorkspace" class="text-orange-400 text-sm">
+        {{ t('fastcat.fileManager.unsupported') }}
       </div>
     </div>
   </div>

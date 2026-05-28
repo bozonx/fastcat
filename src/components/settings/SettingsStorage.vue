@@ -175,7 +175,7 @@ function resetPathDefaults() {
     </UiFormField>
 
     <div
-      v-if="isBrowserWorkspaceMode || isDesktopPortableMode"
+      v-if="isBrowserWorkspaceMode"
       class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border"
     >
       <div class="flex flex-col gap-1 min-w-0">

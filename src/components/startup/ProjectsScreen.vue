@@ -14,6 +14,7 @@ import EditorSettingsModal from '~/components/settings/EditorSettingsModal.vue';
 const { t, locale } = useI18n();
 const workspaceStore = useWorkspaceStore();
 const isSettingsOpen = ref(false);
+const canChangeWorkspace = computed(() => workspaceStore.workspaceProviderId !== 'tauri');
 
 const {
   searchQuery,
@@ -144,6 +145,7 @@ const formatDate = (dateStr?: string) => {
 
         <div class="space-y-1">
           <UButton
+            v-if="canChangeWorkspace"
             block
             variant="ghost"
             color="primary"
