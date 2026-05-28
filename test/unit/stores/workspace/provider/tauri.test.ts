@@ -20,7 +20,11 @@ vi.mock('@tauri-apps/api/path', () => ({
   resourceDir: vi.fn().mockResolvedValue('/mock-resource'),
   resolve: vi.fn().mockImplementation(async (path: string) => `/absolute/${path}`),
   join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
-  basename: vi.fn().mockImplementation(async (path: string) => path.split('/').pop() || path.split('\\').pop() || ''),
+  basename: vi
+    .fn()
+    .mockImplementation(
+      async (path: string) => path.split('/').pop() || path.split('\\').pop() || '',
+    ),
 }));
 
 vi.mock('~/stores/workspace/provider/tauri-handle', () => ({

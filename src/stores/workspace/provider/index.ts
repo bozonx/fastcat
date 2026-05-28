@@ -4,9 +4,7 @@ import { TauriWorkspaceProvider } from './tauri';
 import { createIndexedDbWorkspaceHandleStorage } from '~/repositories/workspace-handle.repository';
 import { isTauriRuntime } from '~/utils/runtime';
 
-export function createWorkspaceProvider(
-  fastcatDevDir?: string,
-): WorkspaceProvider {
+export function createWorkspaceProvider(fastcatDevDir?: string): WorkspaceProvider {
   const isTauri = isTauriRuntime();
 
   if (isTauri) {

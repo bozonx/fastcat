@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { isTauriRuntime } from '~/utils/runtime';
 import { resolveTauriAppPaths } from '~/utils/tauri-paths';
 
+import { platform } from '@tauri-apps/plugin-os';
+
 type TauriGlobal = { __TAURI_INTERNALS__?: unknown };
 
 function clearTauriGlobal() {
@@ -24,8 +26,6 @@ vi.mock('@tauri-apps/api/path', () => ({
   }),
   join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
 }));
-
-import { platform } from '@tauri-apps/plugin-os';
 
 vi.mock('@tauri-apps/plugin-os', () => ({
   platform: vi.fn().mockReturnValue('linux'),
