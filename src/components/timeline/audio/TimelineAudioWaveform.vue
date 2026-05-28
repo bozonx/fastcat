@@ -37,9 +37,12 @@ const fileManager = useFileManager();
 const rootEl = ref<HTMLElement | null>(null);
 const chunkEls = new Map<number, HTMLElement>();
 const chunkCanvases = new Map<number, HTMLCanvasElement>();
+const chunkDrawSignatures = new Map<number, string>();
+const waveformPeakIds = new WeakMap<readonly Float32Array[], number>();
 
 let resizeObserver: ResizeObserver | null = null;
 let redrawFrameId = 0;
+let nextWaveformPeakId = 1;
 
 const fileUrl = computed(() => {
   if (props.item.source) {
@@ -420,6 +423,7 @@ onBeforeUnmount(() => {
   resizeObserver = null;
   chunkEls.clear();
   chunkCanvases.clear();
+  chunkDrawSignatures.clear();
 });
 
 const isReversed = computed(() => (props.item.speed ?? 1) < 0);
@@ -512,6 +516,22 @@ const visibleWaveformChunks = computed<WaveformChunk[]>(() => {
   );
 });
 
+const visibleWaveformChunkKey = computed(() => {
+  const chunks = visibleWaveformChunks.value;
+  if (chunks.length === 0) return 'empty';
+  const firstChunk = chunks[0]!;
+  const lastChunk = chunks[chunks.length - 1]!;
+  return `${chunks.length}:${firstChunk.chunkIndex}:${lastChunk.chunkIndex}:${firstChunk.widthPx}:${lastChunk.widthPx}`;
+});
+
+function getWaveformPeakId(channels: readonly Float32Array[]) {
+  const existing = waveformPeakIds.get(channels);
+  if (existing) return existing;
+  const id = nextWaveformPeakId++;
+  waveformPeakIds.set(channels, id);
+  return id;
+}
+
 function pruneUnmountedChunkRefs() {
   const visibleIndexes = new Set(visibleWaveformChunks.value.map((chunk) => chunk.chunkIndex));
   for (const index of chunkEls.keys()) {
@@ -535,6 +555,7 @@ function setChunkCanvas(el: unknown, chunkIndex: number) {
     chunkCanvases.set(chunkIndex, el);
   } else {
     chunkCanvases.delete(chunkIndex);
+    chunkDrawSignatures.delete(chunkIndex);
   }
 }
 
@@ -566,8 +587,6 @@ function drawChunk(chunkIndex: number) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   const channels = audioPeaks.value;
   if (!channels || channels.length === 0) return;
 
@@ -584,6 +603,29 @@ function drawChunk(chunkIndex: number) {
 
   const startIndex = Math.floor(startRatio * peaksCount);
   const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount) + 1);
+  const mode = props.item.audioWaveformMode || 'half';
+  const muted = isMuted.value;
+  const peakId = getWaveformPeakId(channels);
+  const drawSignature = [
+    peakId,
+    peaksCount,
+    chunk.startPx,
+    chunk.widthPx,
+    totalW,
+    startIndex,
+    endIndex,
+    renderBudget.outputBins,
+    targetWidth,
+    targetHeight,
+    props.item.audioGain ?? 1,
+    mode,
+    muted ? 1 : 0,
+  ].join(':');
+
+  if (chunkDrawSignatures.get(chunkIndex) === drawSignature) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   const peakBins = computeWaveformPeakBins({
     channels,
     startIndex,
@@ -596,9 +638,6 @@ function drawChunk(chunkIndex: number) {
 
   const halfH = targetHeight / 2;
   const step = peakBins.length > 1 ? targetWidth / (peakBins.length - 1) : targetWidth;
-
-  const mode = props.item.audioWaveformMode || 'half';
-  const muted = isMuted.value;
 
   if (muted) {
     ctx.fillStyle = '#ffffff66';
@@ -635,6 +674,7 @@ function drawChunk(chunkIndex: number) {
 
   ctx.closePath();
   ctx.fill();
+  chunkDrawSignatures.set(chunkIndex, drawSignature);
 }
 
 async function redrawVisibleChunks() {
@@ -656,9 +696,31 @@ function requestRedrawMountedChunks() {
   });
 }
 
+function invalidateDrawCache() {
+  chunkDrawSignatures.clear();
+}
+
 watch(
   () => [props.item.audioWaveformMode, props.item.audioGain, isMuted.value],
   () => {
+    invalidateDrawCache();
+    requestRedrawMountedChunks();
+  },
+);
+
+watch(
+  () => [
+    totalWidthPx.value,
+    waveformLeftPx.value,
+    timelineStore.timelineZoom,
+    props.item.timelineRange.startUs,
+    props.item.timelineRange.durationUs,
+    props.item.sourceRange.startUs,
+    props.item.sourceRange.durationUs,
+    props.item.speed,
+  ],
+  () => {
+    invalidateDrawCache();
     requestRedrawMountedChunks();
   },
 );
@@ -669,29 +731,31 @@ watch(audioPeaks, () => {
   if (audioPeaks.value) {
     hasDeferredExtraction.value = false;
   }
+  invalidateDrawCache();
   requestRedrawMountedChunks();
 });
 
 watch(
-  visibleWaveformChunks,
+  visibleWaveformChunkKey,
   () => {
     void nextTick().then(() => {
       pruneUnmountedChunkRefs();
-
-      resizeObserver?.disconnect();
-      resizeObserver = new ResizeObserver(() => {
-        requestRedrawMountedChunks();
-      });
-
-      if (rootEl.value) {
-        resizeObserver.observe(rootEl.value);
-      }
-
       requestRedrawMountedChunks();
     });
   },
   { immediate: true, flush: 'post' },
 );
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => {
+    invalidateDrawCache();
+    requestRedrawMountedChunks();
+  });
+
+  if (rootEl.value) {
+    resizeObserver.observe(rootEl.value);
+  }
+});
 </script>
 
 <template>

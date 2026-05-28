@@ -17,6 +17,8 @@ interface SlipOverlayView extends ClipPreviewOverlay {
   deltaClass: string;
 }
 
+const MIN_WAVEFORM_WIDTH_PX = 30;
+
 defineProps<{
   item: TimelineTrackItem;
   track: TimelineTrack;
@@ -49,6 +51,7 @@ defineProps<{
       v-if="
         effectiveClipItem &&
         effectiveClipItem.showWaveform !== false &&
+        clipWidthPx >= MIN_WAVEFORM_WIDTH_PX &&
         (isAudio(item, track) || (isVideo(item, track) && clipHasAudio(item, track, mediaMetadata)))
       "
       :item="effectiveClipItem"
