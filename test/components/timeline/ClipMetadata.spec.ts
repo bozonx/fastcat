@@ -31,4 +31,14 @@ describe('ClipMetadata', () => {
 
     expect(component.html()).toContain('bg-black');
   });
+
+  it('prioritizes disabled icon over muted icon when both are true', async () => {
+    const disabledAndMutedItem = { kind: 'clip', id: 'c1', disabled: true, audioMuted: true } as any;
+    const component = await mountSuspended(ClipMetadata, {
+      props: { item: disabledAndMutedItem, track, clipWidthPx: 100 },
+    });
+
+    expect(component.html()).toContain('w-4 h-4');
+    expect(component.html()).not.toContain('w-6 h-6');
+  });
 });

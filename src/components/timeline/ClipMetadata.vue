@@ -65,14 +65,14 @@ const clipItem = computed(() =>
       "
       class="absolute inset-0 flex items-center justify-center z-30"
     >
-      <div v-if="clipItem.audioMuted" class="bg-black/30 rounded-full p-1.5">
-        <UIcon name="i-heroicons-speaker-x-mark" class="w-6 h-6 text-white/90" />
-      </div>
-      <div v-else-if="clipItem.disabled" class="bg-black/30 rounded-full p-1">
+      <div v-if="clipItem.disabled" class="bg-black/30 rounded-full p-1">
         <UIcon
           :name="track.kind === 'audio' ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-eye-slash'"
           class="w-4 h-4 text-white/80"
         />
+      </div>
+      <div v-else-if="clipItem.audioMuted" class="bg-black/30 rounded-full p-1.5">
+        <UIcon name="i-heroicons-speaker-x-mark" class="w-6 h-6 text-white/90" />
       </div>
     </div>
   </div>
