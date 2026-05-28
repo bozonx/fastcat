@@ -10,7 +10,6 @@ export function useTimelineMarquee(
   containerRef: Ref<HTMLElement | null>,
   tracks: Ref<TimelineTrack[]>,
   trackHeights: Ref<Record<string, number>>,
-  getScrollLeft: () => number,
 ) {
   const timelineStore = useTimelineStore();
   const selectionStore = useSelectionStore();
@@ -21,7 +20,6 @@ export function useTimelineMarquee(
   const marqueeCurrent = ref({ x: 0, y: 0 });
   let activePointerMove: ((event: PointerEvent) => void) | null = null;
   let activePointerUp: ((event: PointerEvent) => void) | null = null;
-  const startScrollLeft = ref(0);
 
   const DEFAULT_TRACK_HEIGHT = 40;
 
@@ -63,9 +61,8 @@ export function useTimelineMarquee(
   function updateLiveMarqueeSelection() {
     if (!isMarqueeSelecting.value) return;
 
-    const scrollLeft = getScrollLeft();
-    const left = Math.min(marqueeStart.value.x, marqueeCurrent.value.x) + scrollLeft;
-    const right = Math.max(marqueeStart.value.x, marqueeCurrent.value.x) + scrollLeft;
+    const left = Math.min(marqueeStart.value.x, marqueeCurrent.value.x);
+    const right = Math.max(marqueeStart.value.x, marqueeCurrent.value.x);
     const top = Math.min(marqueeStart.value.y, marqueeCurrent.value.y);
     const bottom = Math.max(marqueeStart.value.y, marqueeCurrent.value.y);
 
@@ -111,7 +108,6 @@ export function useTimelineMarquee(
     const coords = getPointerCoords(e);
     marqueeStart.value = coords;
     marqueeCurrent.value = coords;
-    startScrollLeft.value = getScrollLeft();
     let didMove = false;
 
     try {

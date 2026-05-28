@@ -114,7 +114,6 @@ const { isMarqueeSelecting, marqueeStyle, startMarquee } = useTimelineMarquee(
   containerRef,
   tracks,
   trackHeights,
-  () => props.scrollLeft ?? 0,
 );
 
 function resolveTimelineDragAction(e: PointerEvent): string {
