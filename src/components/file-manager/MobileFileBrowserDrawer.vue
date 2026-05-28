@@ -218,13 +218,6 @@ const hasAudioTrack = computed(() => {
   return Boolean(mediaStore.mediaMetadata[entry.path]?.audio);
 });
 
-const canOpenInPanels = computed(() => {
-  const entry = selectedFsEntry.value?.entry;
-  if (!entry || entry.kind !== 'file' || entry.source === 'remote') return false;
-  if (isFullyUnsupported.value) return false;
-  return isOpenableProjectFileName(entry.name);
-});
-
 const canTranscribe = computed(() => {
   const entry = selectedFsEntry.value?.entry;
   if (!entry || entry.kind !== 'file' || entry.source === 'remote') return false;
@@ -250,8 +243,7 @@ function canTransferSelection(
       !(
         entry.kind === 'directory' &&
         (entry.path === WORKSPACE_COMMON_PATH_PREFIX ||
-          (entry.name.toLowerCase() === 'common' &&
-            (entry.path === 'common' || entry.path === '')))
+          (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === '')))
       ) &&
       payload?.type !== 'virtual-folder' &&
       payload?.type !== 'project' &&
@@ -595,7 +587,10 @@ const topActions = computed(() => {
           </div>
         </div>
 
-        <div v-if="selectedFsEntry" :class="isTextDocument ? 'flex-1 flex flex-col min-h-0 py-2' : 'h-full py-2'">
+        <div
+          v-if="selectedFsEntry"
+          :class="isTextDocument ? 'flex-1 flex flex-col min-h-0 py-2' : 'h-full py-2'"
+        >
           <FileProperties
             :selected-fs-entry="selectedFsEntry.entry"
             preview-mode="original"

@@ -5,7 +5,6 @@ import { useProjectManagement } from '~/composables/project/useProjectManagement
 import { onMounted } from 'vue';
 import { writeLocalStorageString, STORAGE_KEYS } from '~/stores/ui/uiLocalStorage';
 import WelcomeScreen from '~/components/startup/WelcomeScreen.vue';
-import UiModal from '~/components/ui/UiModal.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiSearchInput from '~/components/ui/UiSearchInput.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
@@ -525,10 +524,7 @@ const formatDate = (dateStr?: string) => {
       </UiMobileDrawer>
 
       <!-- Rename Project Drawer -->
-      <UiMobileDrawer
-        v-model:open="isRenameModalOpen"
-        :title="t('common.rename')"
-      >
+      <UiMobileDrawer v-model:open="isRenameModalOpen" :title="t('common.rename')">
         <div class="space-y-6 px-6 pt-2 pb-6">
           <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
             <UiTextInput

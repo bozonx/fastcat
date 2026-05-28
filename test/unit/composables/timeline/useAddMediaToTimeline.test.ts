@@ -79,6 +79,9 @@ describe('useAddMediaToTimeline', () => {
     timelineStoreMock.requestTimelineSave.mockReset();
     mediaStoreMock.getOrFetchMetadataByPath.mockReset();
     vfsGetFileMock.mockReset();
+    timelineStoreMock.resolveMobileTargetTrackId = vi.fn((kind) =>
+      kind === 'video' ? 'v1' : 'a1',
+    );
   });
 
   it('places multiple media files sequentially instead of reusing the playhead time', async () => {

@@ -355,10 +355,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
     }
   }
 
-  const fileActionHandlers: Partial<Record<
-    FileAction,
-    (entry: FsEntry | FsEntry[], getExistingNames?: () => string[]) => void | Promise<void>
-  >> = {
+  const fileActionHandlers: Partial<
+    Record<
+      FileAction,
+      (entry: FsEntry | FsEntry[], getExistingNames?: () => string[]) => void | Promise<void>
+    >
+  > = {
     createFolder: async (entry, getExistingNames) => {
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (!e) return;

@@ -173,7 +173,9 @@ onBeforeUnmount(clearLongPress);
       v-else-if="props.error"
       class="flex flex-col items-center justify-center h-64 px-6 text-center"
     >
-      <div class="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-200 max-w-sm mb-4">
+      <div
+        class="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-200 max-w-sm mb-4"
+      >
         <Icon name="lucide:alert-circle" class="w-8 h-8 mb-2 mx-auto text-red-400" />
         <p class="text-sm font-semibold">{{ t('common.error') }}</p>
         <p class="mt-2 text-xs text-red-200/80">{{ props.error }}</p>

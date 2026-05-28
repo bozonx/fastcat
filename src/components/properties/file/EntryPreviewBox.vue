@@ -20,7 +20,6 @@ const props = defineProps<{
   vfs?: IFileSystemAdapter;
   flexible?: boolean;
 }>();
-
 </script>
 
 <template>
@@ -85,11 +84,7 @@ const props = defineProps<{
     <!-- No loading state here to avoid flickering. While properties are loading, nothing should happen in the UI. -->
     <div v-else-if="!props.mediaType" class="w-full h-full min-h-12"></div>
 
-    <div
-      v-else
-      class="w-full h-64"
-      :class="props.flexible ? 'flex-1 h-full' : 'h-64'"
-    >
+    <div v-else class="w-full h-64" :class="props.flexible ? 'flex-1 h-full' : 'h-64'">
       <FilePreview
         :url="props.currentUrl"
         :media-type="props.mediaType"

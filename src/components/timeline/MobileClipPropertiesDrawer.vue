@@ -69,8 +69,6 @@ const {
   handleToggleDisabled,
   handleToggleLocked,
   handleToggleMuted,
-  toggleSolo,
-  isSoloed,
   otherActionsList: rawOtherActionsList,
 } = useClipPropertiesActions({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

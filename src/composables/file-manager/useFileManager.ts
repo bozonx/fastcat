@@ -5,7 +5,6 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useI18n } from 'vue-i18n';
-import { useRoute, useNuxtApp } from 'nuxt/app';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
 import type { TimelineClipItem } from '~/timeline/types';
@@ -822,7 +821,6 @@ export function useFileManager(options?: {
 
   const timelineStore = useTimelineStore();
   const historyStore = useHistoryStore();
-  const route = useRoute();
 
   const isApiSupported = computed(() => workspaceStore.isApiSupported);
   const fileManagerStore = useFileManagerStore();

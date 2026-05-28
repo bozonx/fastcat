@@ -114,13 +114,17 @@ watch(isModalOpen, (isOpen, oldIsOpen) => {
   }
 });
 
-watch(isLoading, (loading) => {
-  if (!loading) {
-    nextTick(() => {
-      textareaRef.value?.focus();
-    });
-  }
-}, { immediate: true });
+watch(
+  isLoading,
+  (loading) => {
+    if (!loading) {
+      nextTick(() => {
+        textareaRef.value?.focus();
+      });
+    }
+  },
+  { immediate: true },
+);
 
 onBeforeUnmount(() => {
   clearTimer();

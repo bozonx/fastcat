@@ -83,7 +83,9 @@ describe('useTimelineMarquee', () => {
       { trackId: 'track-1', itemId: 'clip-visible' },
     ]);
 
-    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 130, clientY: 20 }));
+    window.dispatchEvent(
+      new PointerEvent('pointerup', { pointerId: 1, clientX: 130, clientY: 20 }),
+    );
     wrapper.unmount();
   });
 });

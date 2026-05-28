@@ -13,8 +13,8 @@ import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
 
 const { t } = useI18n();
 const { isMobile } = useDevice();
-const modalWrapper = computed(() => isMobile ? UiMobileDrawer : UiModal);
-const modalUi = computed(() => isMobile ? {} : { content: 'sm:max-w-3xl' });
+const modalWrapper = computed(() => (isMobile ? UiMobileDrawer : UiModal));
+const modalUi = computed(() => (isMobile ? {} : { content: 'sm:max-w-3xl' }));
 
 const fileConversionStore = useFileConversionStore();
 
