@@ -183,7 +183,11 @@ export function useTimelineItemDrag(
       return;
     }
 
-    const rect = el.getBoundingClientRect();
+    const rect = el.getBoundingClientRect?.();
+    if (!rect) {
+      stopEdgeScroll();
+      return;
+    }
     let dx = 0;
 
     const distLeft = e.clientX - rect.left;
