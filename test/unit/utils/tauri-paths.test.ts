@@ -79,4 +79,18 @@ describe('tauri-paths utility', () => {
       documentsDir: '/absolute//tmp/fastcat-dev/Documents',
     });
   });
+
+  it('still resolves dev paths if runtime scope extension fails', async () => {
+    vi.mocked(invoke).mockRejectedValueOnce(new Error('command not allowed'));
+    (globalThis as TauriGlobal).__TAURI_INTERNALS__ = {};
+    expect(isTauriRuntime()).toBe(true);
+
+    const paths = await resolveTauriAppPaths('./.dev-files', true);
+
+    expect(paths).toEqual({
+      configDir: '/mock-resource/./.dev-files/config',
+      cacheDir: '/mock-resource/./.dev-files/cache',
+      documentsDir: '/mock-resource/./.dev-files/Documents',
+    });
+  });
 });

@@ -24,7 +24,7 @@ export async function resolveTauriAppPaths(
       ? await resolve(fastcatDevDir)
       : await join(await resourceDir(), fastcatDevDir);
     const { invoke } = await import('@tauri-apps/api/core');
-    await invoke('allow_dev_directory_scope', { path: devRoot });
+    await invoke('allow_dev_directory_scope', { path: devRoot }).catch(() => undefined);
 
     return {
       configDir: await join(devRoot, 'config'),

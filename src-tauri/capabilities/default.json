@@ -24,6 +24,8 @@
         "$APPCONFIG/**/*",
         "$APPCACHE/**/*",
         "$TEMP/**/*",
+        "$DOCUMENT/FastCat",
+        "$DOCUMENT/FastCat/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*"
       ]
@@ -35,6 +37,8 @@
         "$APPCONFIG/**/*",
         "$APPCACHE/**/*",
         "$TEMP/**/*",
+        "$DOCUMENT/FastCat",
+        "$DOCUMENT/FastCat/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*"
       ]
@@ -46,6 +50,8 @@
         "$APPCONFIG/**/*",
         "$APPCACHE/**/*",
         "$TEMP/**/*",
+        "$DOCUMENT/FastCat",
+        "$DOCUMENT/FastCat/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*"
       ]

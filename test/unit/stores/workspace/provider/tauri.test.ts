@@ -13,6 +13,17 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   exists: vi.fn(),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@tauri-apps/api/path', () => ({
+  appConfigDir: vi.fn().mockResolvedValue('/mock-config'),
+  appCacheDir: vi.fn().mockResolvedValue('/mock-cache'),
+  documentDir: vi.fn().mockResolvedValue('/mock-documents'),
+  isAbsolute: vi.fn().mockResolvedValue(false),
+  resourceDir: vi.fn().mockResolvedValue('/mock-resource'),
+  resolve: vi.fn().mockImplementation(async (path: string) => `/absolute/${path}`),
+  join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
 }));
 
 vi.mock('~/stores/workspace/provider/tauri-handle', () => ({
@@ -130,11 +141,22 @@ describe('TauriWorkspaceProvider', () => {
       expect(result).toBeNull();
     });
 
-    it('returns null if no path in storage', async () => {
+    it('creates and returns the default workspace if no path is stored', async () => {
       vi.mocked(mockStorage.get).mockResolvedValue(undefined as any);
+      vi.mocked(exists).mockResolvedValue(false);
+      const { mkdir } = await import('@tauri-apps/plugin-fs');
       const provider = new TauriWorkspaceProvider(mockStorage);
       const result = await provider.restoreWorkspace();
-      expect(result).toBeNull();
+
+      expect(exists).toHaveBeenCalledWith('/mock-documents/FastCat');
+      expect(mkdir).toHaveBeenCalledWith('/mock-documents/FastCat', { recursive: true });
+      expect(mockStorage.set).toHaveBeenCalledWith('/mock-documents/FastCat');
+      expect(TauriDirectoryHandle).toHaveBeenCalledWith('/mock-documents/FastCat', 'FastCat');
+      expect(result).toEqual({
+        kind: 'directory',
+        path: '/mock-documents/FastCat',
+        name: 'FastCat',
+      });
     });
 
     it('returns null if path does not exist', async () => {
