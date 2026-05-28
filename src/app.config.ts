@@ -52,6 +52,13 @@ export default defineAppConfig({
       slots: {
         base: 'font-mono text-2xs rounded-sm',
       },
+      variants: {
+        size: {
+          xs: {
+            base: 'leading-6 py-0.5 md:leading-6',
+          },
+        },
+      },
       defaultVariants: {
         size: 'xs',
         variant: 'outline',

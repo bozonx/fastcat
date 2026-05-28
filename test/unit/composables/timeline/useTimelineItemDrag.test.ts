@@ -447,4 +447,174 @@ describe('useTimelineItemDrag', () => {
     );
     expect(requestTimelineSaveMock).toHaveBeenCalledWith({ immediate: true });
   });
+
+  describe('edge scroll during drag', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['requestAnimationFrame'] });
+    });
+
+    function createScrollEl() {
+      const el = document.createElement('div');
+      let scrollLeft = 100;
+      Object.defineProperty(el, 'scrollLeft', {
+        get: () => scrollLeft,
+        set: (v: number) => {
+          scrollLeft = v;
+        },
+        configurable: true,
+      });
+      el.getBoundingClientRect = () =>
+        ({
+          width: 500,
+          height: 300,
+          top: 0,
+          right: 500,
+          bottom: 300,
+          left: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect;
+      return { el, getScrollLeft: () => scrollLeft };
+    }
+
+    it('scrolls left when pointer is near the left edge during move', () => {
+      const { el, getScrollLeft } = createScrollEl();
+      const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+      const { startMoveItem } = useTimelineItemDrag(ref(el), tracks);
+
+      const pointerTarget = {
+        setPointerCapture: vi.fn(),
+        releasePointerCapture: vi.fn(),
+      };
+
+      startMoveItem(
+        {
+          button: 0,
+          buttons: 1,
+          clientX: 100,
+          clientY: 20,
+          pointerId: 1,
+          pointerType: 'mouse',
+          currentTarget: pointerTarget,
+          preventDefault: vi.fn(),
+          stopPropagation: vi.fn(),
+        } as unknown as PointerEvent,
+        {
+          trackId: 'track-1',
+          itemId: 'clip-1',
+          startUs: 1_000_000,
+          mode: 'move',
+        },
+      );
+
+      const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+      handlers.onPointerMove({
+        buttons: 1,
+        button: 0,
+        clientX: 10,
+        clientY: 20,
+      } as PointerEvent);
+
+      vi.advanceTimersByTime(100);
+      expect(getScrollLeft()).toBeLessThan(100);
+    });
+
+    it('scrolls right when pointer is near the right edge during trim', () => {
+      const { el, getScrollLeft } = createScrollEl();
+      const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+      const { startTrimItem } = useTimelineItemDrag(ref(el), tracks);
+
+      const pointerTarget = {
+        setPointerCapture: vi.fn(),
+        releasePointerCapture: vi.fn(),
+      };
+
+      startTrimItem(
+        {
+          button: 0,
+          buttons: 1,
+          clientX: 100,
+          clientY: 20,
+          pointerId: 2,
+          pointerType: 'mouse',
+          currentTarget: pointerTarget,
+          preventDefault: vi.fn(),
+          stopPropagation: vi.fn(),
+        } as unknown as PointerEvent,
+        {
+          trackId: 'track-1',
+          itemId: 'clip-1',
+          edge: 'end',
+          startUs: 1_000_000,
+        },
+      );
+
+      const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+      handlers.onPointerMove({
+        buttons: 1,
+        button: 0,
+        clientX: 490,
+        clientY: 20,
+      } as PointerEvent);
+
+      vi.advanceTimersByTime(100);
+      expect(getScrollLeft()).toBeGreaterThan(100);
+    });
+
+    it('stops scrolling when pointer moves to the center', () => {
+      const { el, getScrollLeft } = createScrollEl();
+      const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+      const { startMoveItem } = useTimelineItemDrag(ref(el), tracks);
+
+      const pointerTarget = {
+        setPointerCapture: vi.fn(),
+        releasePointerCapture: vi.fn(),
+      };
+
+      startMoveItem(
+        {
+          button: 0,
+          buttons: 1,
+          clientX: 100,
+          clientY: 20,
+          pointerId: 3,
+          pointerType: 'mouse',
+          currentTarget: pointerTarget,
+          preventDefault: vi.fn(),
+          stopPropagation: vi.fn(),
+        } as unknown as PointerEvent,
+        {
+          trackId: 'track-1',
+          itemId: 'clip-1',
+          startUs: 1_000_000,
+          mode: 'move',
+        },
+      );
+
+      const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+      handlers.onPointerMove({
+        buttons: 1,
+        button: 0,
+        clientX: 10,
+        clientY: 20,
+      } as PointerEvent);
+
+      vi.advanceTimersByTime(16);
+      const scrollAfterEdge = getScrollLeft();
+
+      handlers.onPointerMove({
+        buttons: 1,
+        button: 0,
+        clientX: 250,
+        clientY: 20,
+      } as PointerEvent);
+
+      vi.advanceTimersByTime(16);
+      expect(getScrollLeft()).toBe(scrollAfterEdge);
+    });
+  });
 });
