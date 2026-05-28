@@ -260,31 +260,27 @@ export function updateClipProperties(
       );
     }
 
-    if (
-      'audioGain' in nextProps ||
-      'audioBalance' in nextProps ||
-      'audioFadeInUs' in nextProps ||
-      'audioFadeOutUs' in nextProps ||
-      'audioFadeInCurve' in nextProps ||
-      'audioFadeOutCurve' in nextProps ||
-      'audioMuted' in nextProps ||
-      'audioWaveformMode' in nextProps ||
-      'showWaveform' in nextProps
-    ) {
+    const audioPatch: Record<string, unknown> = {};
+    if ('audioGain' in nextProps) audioPatch.audioGain = updated.item.audioGain;
+    if ('audioBalance' in nextProps) audioPatch.audioBalance = updated.item.audioBalance;
+    if ('audioFadeInUs' in nextProps) audioPatch.audioFadeInUs = updated.item.audioFadeInUs;
+    if ('audioFadeOutUs' in nextProps) audioPatch.audioFadeOutUs = updated.item.audioFadeOutUs;
+    if ('audioFadeInCurve' in nextProps)
+      audioPatch.audioFadeInCurve = updated.item.audioFadeInCurve;
+    if ('audioFadeOutCurve' in nextProps)
+      audioPatch.audioFadeOutCurve = updated.item.audioFadeOutCurve;
+    if ('audioMuted' in nextProps) audioPatch.audioMuted = updated.item.audioMuted;
+    if ('audioWaveformMode' in nextProps)
+      audioPatch.audioWaveformMode = updated.item.audioWaveformMode;
+    if ('showWaveform' in nextProps) audioPatch.showWaveform = updated.item.showWaveform;
+
+    if (Object.keys(audioPatch).length > 0) {
       finalTracks = updateLinkedLockedAudio(
         { ...doc, tracks: finalTracks },
         updated.item.id,
         (a) => ({
           ...a,
-          audioGain: updated.item.audioGain,
-          audioBalance: updated.item.audioBalance,
-          audioFadeInUs: updated.item.audioFadeInUs,
-          audioFadeOutUs: updated.item.audioFadeOutUs,
-          audioFadeInCurve: updated.item.audioFadeInCurve,
-          audioFadeOutCurve: updated.item.audioFadeOutCurve,
-          audioMuted: updated.item.audioMuted,
-          audioWaveformMode: updated.item.audioWaveformMode,
-          showWaveform: updated.item.showWaveform,
+          ...audioPatch,
         }),
       );
     }

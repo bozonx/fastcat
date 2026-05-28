@@ -75,6 +75,7 @@
     "save": "Save",
     "saveError": "Failed to save",
     "saveSuccess": "Saved successfully",
+    "dontSave": "Don't Save",
     "scroll_for_more": "Scroll for more",
     "search": "Search",
     "selectAll": "Select all",
@@ -1857,6 +1858,9 @@
       "settings": "Timeline settings",
       "confirmCloseUnsavedMessage": "This timeline has unsaved changes. Close without saving to the main file?",
       "confirmCloseUnsavedTitle": "Unsaved changes",
+      "closeUnsavedTitle": "Unsaved changes",
+      "closeUnsavedMessage": "There are unsaved changes in timeline \"{name}\". Do you want to save them before closing?",
+      "closeUnsavedMessageMultiple": "Some timelines have unsaved changes. Do you want to save them before closing?",
       "tabs": {
         "cut": "Cut",
         "sound": "Sound"

@@ -33,7 +33,12 @@ describe('ClipMetadata', () => {
   });
 
   it('prioritizes disabled icon over muted icon when both are true', async () => {
-    const disabledAndMutedItem = { kind: 'clip', id: 'c1', disabled: true, audioMuted: true } as any;
+    const disabledAndMutedItem = {
+      kind: 'clip',
+      id: 'c1',
+      disabled: true,
+      audioMuted: true,
+    } as any;
     const component = await mountSuspended(ClipMetadata, {
       props: { item: disabledAndMutedItem, track, clipWidthPx: 100 },
     });

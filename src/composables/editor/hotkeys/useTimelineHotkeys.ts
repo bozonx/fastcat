@@ -7,6 +7,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 import type { TimelineClipItem } from '~/timeline/types';
+import type { TimelineCommand } from '~/timeline/commands';
 import { createClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
@@ -474,16 +475,18 @@ export function useTimelineHotkeys(
         doc,
         timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
       ).filter(({ track, clip }) => clipSupportsWaveformControls(track, clip));
-      const currentMode = targets[0]?.clip.audioWaveformMode || 'half';
-
       if (targets.length === 0) return false;
-      const nextMode = currentMode === 'half' ? 'full' : 'half';
 
-      for (const { track, clip } of targets) {
-        timelineStore.updateClipProperties(track.id, clip.id, {
-          audioWaveformMode: nextMode,
-        });
-      }
+      const currentMode = targets[0]?.clip.audioWaveformMode || 'half';
+      const nextMode: 'full' | 'half' = currentMode === 'half' ? 'full' : 'half';
+
+      const cmds: TimelineCommand[] = targets.map(({ track, clip }) => ({
+        type: 'update_clip_properties' as const,
+        trackId: track.id,
+        itemId: clip.id,
+        properties: { audioWaveformMode: nextMode },
+      }));
+      timelineStore.batchApplyTimeline(cmds);
       void timelineStore.requestTimelineSave({ immediate: true });
       return true;
     },
@@ -504,11 +507,13 @@ export function useTimelineHotkeys(
       const currentShow = targets[0]?.clip.showWaveform !== false;
       const nextShow = !currentShow;
 
-      for (const { track, clip } of targets) {
-        timelineStore.updateClipProperties(track.id, clip.id, {
-          showWaveform: nextShow,
-        });
-      }
+      const cmds = targets.map(({ track, clip }) => ({
+        type: 'update_clip_properties' as const,
+        trackId: track.id,
+        itemId: clip.id,
+        properties: { showWaveform: nextShow },
+      }));
+      timelineStore.batchApplyTimeline(cmds);
       void timelineStore.requestTimelineSave({ immediate: true });
       return true;
     },
@@ -529,11 +534,13 @@ export function useTimelineHotkeys(
       const currentShow = targets[0]?.clip.showThumbnails !== false;
       const nextShow = !currentShow;
 
-      for (const { track, clip } of targets) {
-        timelineStore.updateClipProperties(track.id, clip.id, {
-          showThumbnails: nextShow,
-        });
-      }
+      const cmds = targets.map(({ track, clip }) => ({
+        type: 'update_clip_properties' as const,
+        trackId: track.id,
+        itemId: clip.id,
+        properties: { showThumbnails: nextShow },
+      }));
+      timelineStore.batchApplyTimeline(cmds);
       void timelineStore.requestTimelineSave({ immediate: true });
       return true;
     },
@@ -581,14 +588,22 @@ export function useTimelineHotkeys(
 
       const nextLocked = !currentLocked;
 
+      const cmds: TimelineCommand[] = [];
       for (const track of doc.tracks) {
         for (const item of track.items) {
           if (selectedSet.has(item.id) && item.kind === 'clip') {
-            timelineStore.updateClipProperties(track.id, item.id, {
-              locked: nextLocked,
+            cmds.push({
+              type: 'update_clip_properties',
+              trackId: track.id,
+              itemId: item.id,
+              properties: { locked: nextLocked },
             });
           }
         }
+      }
+
+      if (cmds.length > 0) {
+        timelineStore.batchApplyTimeline(cmds);
       }
       void timelineStore.requestTimelineSave({ immediate: true });
       return true;

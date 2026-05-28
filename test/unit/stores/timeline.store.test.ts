@@ -391,6 +391,68 @@ describe('TimelineStore', () => {
     expect(store.timelineDoc.name).toBe('Default');
   });
 
+  it('toggles disabled state on multiple clips', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          clips: [
+            { id: 'c1', startUs: 0, durationUs: 5_000_000 },
+            { id: 'c2', startUs: 6_000_000, durationUs: 5_000_000 },
+          ],
+        },
+      ],
+    });
+    store.timelineDoc = timeline;
+    store.selectedItemIds = ['c1', 'c2'];
+
+    await store.toggleDisableTargetClip();
+
+    let c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    let c2 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c2');
+    expect(c1.disabled).toBe(true);
+    expect(c2.disabled).toBe(true);
+
+    await store.toggleDisableTargetClip();
+
+    c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    c2 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c2');
+    expect(c1.disabled).toBe(false);
+    expect(c2.disabled).toBe(false);
+  });
+
+  it('toggles mute state on multiple clips', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'a1',
+          kind: 'audio',
+          clips: [
+            { id: 'c1', startUs: 0, durationUs: 5_000_000 },
+            { id: 'c2', startUs: 6_000_000, durationUs: 5_000_000 },
+          ],
+        },
+      ],
+    });
+    store.timelineDoc = timeline;
+    store.selectedItemIds = ['c1', 'c2'];
+
+    await store.toggleMuteTargetClip();
+
+    let c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    let c2 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c2');
+    expect(c1.audioMuted).toBe(true);
+    expect(c2.audioMuted).toBe(true);
+
+    await store.toggleMuteTargetClip();
+
+    c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    c2 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c2');
+    expect(c1.audioMuted).toBe(false);
+    expect(c2.audioMuted).toBe(false);
+  });
+
   it('adds marker at playhead', () => {
     store.currentTime = 1_000_000;
     const marker = store.addMarkerAtPlayhead();
@@ -407,5 +469,36 @@ describe('TimelineStore', () => {
     const marker = store.addMarkerAtPlayhead();
     expect(marker).toBeUndefined();
     expect(store.markers).toHaveLength(1);
+  });
+
+  it('adjusts audio volume on multiple clips', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'a1',
+          kind: 'audio',
+          clips: [
+            { id: 'c1', startUs: 0, durationUs: 5_000_000, audioGain: 0.5 },
+            { id: 'c2', startUs: 6_000_000, durationUs: 5_000_000, audioGain: 0.8 },
+          ],
+        },
+      ],
+    });
+    store.timelineDoc = timeline;
+    store.selectedItemIds = ['c1', 'c2'];
+
+    store.adjustSelectedClipsVolume(0.1);
+
+    let c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    let c2 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c2');
+    expect(c1.audioGain).toBeCloseTo(0.6);
+    expect(c2.audioGain).toBeCloseTo(0.9);
+
+    store.adjustSelectedClipsVolume(-0.2);
+
+    c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    c2 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c2');
+    expect(c1.audioGain).toBeCloseTo(0.4);
+    expect(c2.audioGain).toBeCloseTo(0.7);
   });
 });

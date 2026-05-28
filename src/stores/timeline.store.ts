@@ -83,6 +83,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   const isTimelineDirty = ref(false);
   const isSavingTimeline = ref(false);
   const timelineSaveError = ref<string | null>(null);
+  const skipRecoveryDialog = ref(false);
 
   // Per-path (per-tab) dirty state. Only one timeline doc lives in memory at a
   // time, so this map remembers which open timelines have uncommitted changes
@@ -433,7 +434,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     // Mobile restores silently; on desktop return `undefined` (not `false`) so
     // the `?? confirm()` fallthrough actually runs — returning `false` would
     // short-circuit `??` and silently skip crash recovery on first/startup load.
-    shouldRestoreAutosaveSilently: () => isMobileEditorRoute() || undefined,
+    shouldRestoreAutosaveSilently: () => {
+      if (skipRecoveryDialog.value) return true;
+      return isMobileEditorRoute() || undefined;
+    },
     showRecoveryDialog: ({ timelinePath }) => {
       return new Promise((resolve) => {
         uiStore.pendingRecoveryDialog = {
@@ -719,6 +723,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     isPathDirty,
     flushTimelineAutosave,
     deleteAllOpenAutosaves,
+    deleteTimelineAutosaveFile,
+    skipRecoveryDialog,
     markers: computed(() => markerService.getMarkers()),
     selectionRange: computed(() => selectionRangeModule.getSelectionRange()),
     getMarkers: markerService.getMarkers,

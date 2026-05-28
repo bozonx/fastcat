@@ -928,6 +928,33 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
   async function toggleDisableTargetClip() {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
+
+    const selectedIds = deps.selectedItemIds.value;
+    if (selectedIds.length > 0) {
+      const selectedSet = new Set(selectedIds);
+      const clipsToUpdate: { trackId: string; clip: TimelineClipItem }[] = [];
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (item.kind === 'clip' && selectedSet.has(item.id)) {
+            clipsToUpdate.push({ trackId: track.id, clip: item });
+          }
+        }
+      }
+      if (clipsToUpdate.length > 0) {
+        const allDisabled = clipsToUpdate.every(({ clip }) => clip.disabled);
+        const nextVal = !allDisabled;
+        const cmds: TimelineCommand[] = clipsToUpdate.map(({ trackId, clip }) => ({
+          type: 'update_clip_properties',
+          trackId,
+          itemId: clip.id,
+          properties: { disabled: nextVal },
+        }));
+        deps.batchApplyTimeline(cmds);
+        await deps.requestTimelineSave({ immediate: true });
+        return;
+      }
+    }
+
     const target = deps.getHotkeyTargetClip();
     if (!target) return;
 
@@ -942,6 +969,33 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
   async function toggleMuteTargetClip() {
     const doc = deps.timelineDoc.value;
     if (!doc) return;
+
+    const selectedIds = deps.selectedItemIds.value;
+    if (selectedIds.length > 0) {
+      const selectedSet = new Set(selectedIds);
+      const clipsToUpdate: { trackId: string; clip: TimelineClipItem }[] = [];
+      for (const track of doc.tracks) {
+        for (const item of track.items) {
+          if (item.kind === 'clip' && selectedSet.has(item.id)) {
+            clipsToUpdate.push({ trackId: track.id, clip: item });
+          }
+        }
+      }
+      if (clipsToUpdate.length > 0) {
+        const allMuted = clipsToUpdate.every(({ clip }) => clip.audioMuted);
+        const nextVal = !allMuted;
+        const cmds: TimelineCommand[] = clipsToUpdate.map(({ trackId, clip }) => ({
+          type: 'update_clip_properties',
+          trackId,
+          itemId: clip.id,
+          properties: { audioMuted: nextVal },
+        }));
+        deps.batchApplyTimeline(cmds);
+        await deps.requestTimelineSave({ immediate: true });
+        return;
+      }
+    }
+
     const target = deps.getHotkeyTargetClip();
     if (!target) return;
     const track = doc.tracks.find((t) => t.id === target.trackId) ?? null;
@@ -991,17 +1045,26 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     if (!doc || deps.selectedItemIds.value.length === 0) return;
 
     const selectedSet = new Set(deps.selectedItemIds.value);
+    const cmds: TimelineCommand[] = [];
     for (const track of doc.tracks) {
       for (const item of track.items) {
         if (selectedSet.has(item.id) && item.kind === 'clip') {
           const currentGain = item.audioGain ?? 1;
           const nextGain = currentGain + deltaLinear;
 
-          updateClipProperties(track.id, item.id, {
-            audioGain: Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, nextGain)),
+          cmds.push({
+            type: 'update_clip_properties',
+            trackId: track.id,
+            itemId: item.id,
+            properties: {
+              audioGain: Math.max(0, Math.min(CLIP_AUDIO_GAIN_MAX, nextGain)),
+            },
           });
         }
       }
+    }
+    if (cmds.length > 0) {
+      deps.batchApplyTimeline(cmds);
     }
   }
 

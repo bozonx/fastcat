@@ -13,12 +13,42 @@ const timelineStore = useTimelineStore();
 const { currentTimelinePath, projectSettings } = storeToRefs(projectStore);
 const { loadTimeline } = useProjectActions();
 const { getHotkeyTitle } = useHotkeyLabel();
+const { t } = useI18n();
 
 const scrollContainer = ref<HTMLElement | null>(null);
 
 const openPaths = computed({
   get: () => projectSettings.value.timelines.openPaths,
   set: (val) => projectStore.reorderTimelines(val),
+});
+
+interface PendingClose {
+  type: 'single' | 'others' | 'all';
+  path?: string;
+  dirtyPaths: string[];
+}
+
+const pendingClose = ref<PendingClose | null>(null);
+
+const isConfirmOpen = computed({
+  get: () => pendingClose.value !== null,
+  set: (val) => {
+    if (!val) pendingClose.value = null;
+  },
+});
+
+const confirmTitle = computed(() => {
+  return t('videoEditor.timeline.closeUnsavedTitle');
+});
+
+const confirmDescription = computed(() => {
+  if (!pendingClose.value) return '';
+  if (pendingClose.value.type === 'single' && pendingClose.value.path) {
+    return t('videoEditor.timeline.closeUnsavedMessage', {
+      name: getFileName(pendingClose.value.path),
+    });
+  }
+  return t('videoEditor.timeline.closeUnsavedMessageMultiple');
 });
 
 function getFileName(path: string) {
@@ -38,9 +68,97 @@ function selectTab(path: string) {
   loadTimeline(path);
 }
 
+function confirmCloseTab(path: string) {
+  if (isDirty(path)) {
+    pendingClose.value = {
+      type: 'single',
+      path,
+      dirtyPaths: [path],
+    };
+  } else {
+    projectStore.closeTimelineFile(path);
+  }
+}
+
+function confirmCloseOthers(activePath: string) {
+  const dirty = openPaths.value.filter((p) => p !== activePath && isDirty(p));
+  if (dirty.length > 0) {
+    pendingClose.value = {
+      type: 'others',
+      path: activePath,
+      dirtyPaths: dirty,
+    };
+  } else {
+    projectStore.closeOtherTimelineFiles(activePath);
+  }
+}
+
+function confirmCloseAll() {
+  const dirty = openPaths.value.filter((p) => isDirty(p));
+  if (dirty.length > 0) {
+    pendingClose.value = {
+      type: 'all',
+      dirtyPaths: dirty,
+    };
+  } else {
+    projectStore.closeAllTimelineFiles();
+  }
+}
+
+async function handleConfirmClose() {
+  if (!pendingClose.value) return;
+  const { type, path, dirtyPaths } = pendingClose.value;
+  pendingClose.value = null;
+
+  timelineStore.skipRecoveryDialog = true;
+  try {
+    for (const p of dirtyPaths) {
+      if (currentTimelinePath.value === p) {
+        await timelineStore.saveTimeline();
+      } else {
+        await loadTimeline(p);
+        await timelineStore.saveTimeline();
+      }
+    }
+
+    if (type === 'single' && path) {
+      await projectStore.closeTimelineFile(path);
+    } else if (type === 'others' && path) {
+      await projectStore.closeOtherTimelineFiles(path);
+    } else if (type === 'all') {
+      await projectStore.closeAllTimelineFiles();
+    }
+  } finally {
+    timelineStore.skipRecoveryDialog = false;
+  }
+}
+
+async function handleDiscardClose() {
+  if (!pendingClose.value) return;
+  const { type, path, dirtyPaths } = pendingClose.value;
+  pendingClose.value = null;
+
+  timelineStore.skipRecoveryDialog = true;
+  try {
+    for (const p of dirtyPaths) {
+      await timelineStore.deleteTimelineAutosaveFile(p);
+    }
+
+    if (type === 'single' && path) {
+      await projectStore.closeTimelineFile(path);
+    } else if (type === 'others' && path) {
+      await projectStore.closeOtherTimelineFiles(path);
+    } else if (type === 'all') {
+      await projectStore.closeAllTimelineFiles();
+    }
+  } finally {
+    timelineStore.skipRecoveryDialog = false;
+  }
+}
+
 function closeTab(path: string, event: Event) {
   event.stopPropagation();
-  projectStore.closeTimelineFile(path);
+  confirmCloseTab(path);
 }
 
 function isMiddleClick(event: MouseEvent) {
@@ -55,7 +173,7 @@ function onTabMouseDown(event: MouseEvent) {
 function onTabAuxClick(event: MouseEvent, path: string) {
   if (!isMiddleClick(event)) return;
   event.preventDefault();
-  void projectStore.closeTimelineFile(path);
+  void confirmCloseTab(path);
 }
 
 const timelineTabContextMenuItems = computed(() => {
@@ -68,17 +186,17 @@ const timelineTabContextMenuItems = computed(() => {
       {
         label: 'Close',
         icon: 'i-heroicons-x-mark',
-        onSelect: () => projectStore.closeTimelineFile(activePath),
+        onSelect: () => confirmCloseTab(activePath),
       },
       {
         label: 'Close Others',
         icon: 'i-heroicons-minus-circle',
-        onSelect: () => projectStore.closeOtherTimelineFiles(activePath),
+        onSelect: () => confirmCloseOthers(activePath),
       },
       {
         label: 'Close All',
         icon: 'i-heroicons-x-circle',
-        onSelect: () => projectStore.closeAllTimelineFiles(),
+        onSelect: () => confirmCloseAll(),
       },
     ],
   ];
@@ -188,6 +306,20 @@ onBeforeUnmount(() => {
         </VueDraggable>
       </UContextMenu>
     </div>
+
+    <UiConfirmModal
+      v-model:open="isConfirmOpen"
+      :title="confirmTitle"
+      :description="confirmDescription"
+      :confirm-text="$t('common.save')"
+      :secondary-text="$t('common.dontSave')"
+      :cancel-text="$t('common.cancel')"
+      color="primary"
+      secondary-color="error"
+      icon="i-heroicons-exclamation-triangle"
+      @confirm="handleConfirmClose"
+      @secondary="handleDiscardClose"
+    />
   </div>
 </template>
 

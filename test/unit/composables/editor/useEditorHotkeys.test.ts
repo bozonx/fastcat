@@ -389,7 +389,8 @@ describe('useEditorHotkeys', () => {
 
     const toggleLockTrackSpy = vi.fn().mockResolvedValue(undefined);
     timelineStore.toggleLockTargetTrack = toggleLockTrackSpy;
-    timelineStore.updateClipProperties = vi.fn();
+    const batchApplyTimelineSpy = vi.fn();
+    timelineStore.batchApplyTimeline = batchApplyTimelineSpy;
     timelineStore.selectedItemIds = ['clip-1'];
     timelineStore.timelineDoc = {
       tracks: [
@@ -402,12 +403,131 @@ describe('useEditorHotkeys', () => {
     timelineStore.requestTimelineSave = vi.fn().mockResolvedValue(undefined);
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true }));
-    expect(timelineStore.updateClipProperties).toHaveBeenCalled();
+    expect(batchApplyTimelineSpy).toHaveBeenCalledWith([
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        properties: { locked: true },
+      },
+    ]);
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'T', code: 'KeyT', shiftKey: true, bubbles: true }),
     );
     expect(toggleLockTrackSpy).toHaveBeenCalledOnce();
+  });
+
+  it('toggles waveform mode on multiple selected clips with shortcuts', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'timeline.toggleWaveformMode': ['Alt+W'],
+    };
+
+    const batchApplyTimelineSpy = vi.fn();
+    timelineStore.batchApplyTimeline = batchApplyTimelineSpy;
+    timelineStore.selectedItemIds = ['clip-1', 'clip-2'];
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'audio',
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip',
+              clipType: 'media',
+              isImage: false,
+              audioWaveformMode: 'half',
+            },
+            {
+              id: 'clip-2',
+              kind: 'clip',
+              clipType: 'media',
+              isImage: false,
+              audioWaveformMode: 'half',
+            },
+          ],
+        },
+      ],
+    };
+    timelineStore.requestTimelineSave = vi.fn().mockResolvedValue(undefined);
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'w', code: 'KeyW', altKey: true, bubbles: true }),
+    );
+
+    expect(batchApplyTimelineSpy).toHaveBeenCalledWith([
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        properties: { audioWaveformMode: 'full' },
+      },
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-2',
+        properties: { audioWaveformMode: 'full' },
+      },
+    ]);
+  });
+
+  it('toggles show waveform on multiple selected clips with shortcuts', async () => {
+    wrapper = mount(HotkeysHarness, { attachTo: document.body });
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'timeline.toggleShowWaveform': ['Alt+S'],
+    };
+
+    const batchApplyTimelineSpy = vi.fn();
+    timelineStore.batchApplyTimeline = batchApplyTimelineSpy;
+    timelineStore.selectedItemIds = ['clip-1', 'clip-2'];
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'audio',
+          items: [
+            { id: 'clip-1', kind: 'clip', clipType: 'media', isImage: false, showWaveform: true },
+            { id: 'clip-2', kind: 'clip', clipType: 'media', isImage: false, showWaveform: true },
+          ],
+        },
+      ],
+    };
+    timelineStore.requestTimelineSave = vi.fn().mockResolvedValue(undefined);
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', code: 'KeyS', altKey: true, bubbles: true }),
+    );
+
+    expect(batchApplyTimelineSpy).toHaveBeenCalledWith([
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        properties: { showWaveform: false },
+      },
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-2',
+        properties: { showWaveform: false },
+      },
+    ]);
   });
 
   it('switches the active project tab in cut view with the new general shortcuts', async () => {
