@@ -502,7 +502,7 @@ select {
 
   /* 4. Вспомогательные кнопки в формах (например, кнопка шеврона рядом с FPS пресетами) */
   .flex.items-center.gap-1 > button,
-  .flex.items-center.gap-1.5 > button {
+  .flex.items-center.gap-1\.5 > button {
     height: 38px !important;
     width: 38px !important;
     display: inline-flex !important;

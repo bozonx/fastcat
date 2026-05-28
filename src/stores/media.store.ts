@@ -145,6 +145,12 @@ export const useMediaStore = defineStore('media', () => {
           if (cached.error) {
             metadataLoadFailed.value[cacheKey] = true;
           }
+          await loadCachedAudioPeaks({
+            cacheKey,
+            cacheFileName: fsModule.getCacheFileName(projectRelativePath),
+            metadata: cached,
+            mediaType,
+          });
           return cached;
         }
       }
@@ -331,33 +337,59 @@ export const useMediaStore = defineStore('media', () => {
 
     // Try to load cached peaks for whatever metadata we ended up with
     if (parsedMeta && !parsedMeta.error) {
-      const waveformsDir = await fsModule.ensureWaveformsDir();
-      if (waveformsDir) {
-        try {
-          const arrayBuffer = await runCacheFileAccess('waveform', cacheFileName, async () => {
-            const peaksHandle = await waveformsDir.getFileHandle(cacheFileName);
-            const peaksFile = await withFileIoSlot(() => peaksHandle.getFile());
-            return await withFileIoSlot(() => peaksFile.arrayBuffer());
-          });
-          const uint8 = new Uint8Array(arrayBuffer);
-          if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {
-            const decoder = new TextDecoder();
-            const text = decoder.decode(uint8);
-            const peaksData = JSON.parse(text) as number[][];
-            parsedMeta.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
-          } else {
-            const deserialized = deserializeWaveformPeaks(arrayBuffer);
-            if (deserialized) {
-              parsedMeta.audioPeaks = deserialized;
-            }
-          }
-        } catch {
-          // No cached peaks
-        }
-      }
+      await loadCachedAudioPeaks({
+        cacheKey,
+        cacheFileName,
+        metadata: parsedMeta,
+        mediaType: getMediaTypeFromFilename(projectRelativePath),
+      });
     }
 
     return parsedMeta;
+  }
+
+  async function loadCachedAudioPeaks(params: {
+    cacheKey: string;
+    cacheFileName: string;
+    metadata: MediaMetadata;
+    mediaType: ReturnType<typeof getMediaTypeFromFilename>;
+  }): Promise<boolean> {
+    if (params.metadata.error || params.metadata.audioPeaks) {
+      return Boolean(params.metadata.audioPeaks);
+    }
+    if (params.mediaType !== 'video' && params.mediaType !== 'audio') return false;
+
+    const waveformsDir = await fsModule.ensureWaveformsDir();
+    if (!waveformsDir) return false;
+
+    try {
+      const arrayBuffer = await runCacheFileAccess('waveform', params.cacheFileName, async () => {
+        const peaksHandle = await waveformsDir.getFileHandle(params.cacheFileName);
+        const peaksFile = await withFileIoSlot(() => peaksHandle.getFile());
+        return await withFileIoSlot(() => peaksFile.arrayBuffer());
+      });
+      const uint8 = new Uint8Array(arrayBuffer);
+      if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {
+        const decoder = new TextDecoder();
+        const text = decoder.decode(uint8);
+        const peaksData = JSON.parse(text) as number[][];
+        params.metadata.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
+      } else {
+        const deserialized = deserializeWaveformPeaks(arrayBuffer);
+        if (deserialized) {
+          params.metadata.audioPeaks = deserialized;
+        }
+      }
+    } catch {
+      return false;
+    }
+
+    if (params.metadata.audioPeaks) {
+      mediaMetadata.value[params.cacheKey] = params.metadata;
+      return true;
+    }
+
+    return false;
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {

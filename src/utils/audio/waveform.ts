@@ -25,6 +25,14 @@ export interface WaveformSourceTimeParams {
   speed?: number;
 }
 
+export interface WaveformPeakBinsParams {
+  channels: readonly Float32Array[];
+  startIndex: number;
+  endIndex: number;
+  outputBins: number;
+  gain?: number;
+}
+
 export function normalizeWaveformSpeed(speed: unknown): number {
   const parsed = typeof speed === 'number' && Number.isFinite(speed) ? speed : 1;
   const abs = Math.abs(parsed || 1);
@@ -69,6 +77,39 @@ export function resolveWaveformSourceUs(params: WaveformSourceTimeParams): numbe
       : Math.round(localUs * speed);
 
   return sourceStartUs + Math.min(sourceRangeDurationUs, Math.max(0, sourceOffsetUs));
+}
+
+export function computeWaveformPeakBins(params: WaveformPeakBinsParams): Float32Array {
+  const peaksCount = params.channels[0]?.length ?? 0;
+  if (params.channels.length === 0 || peaksCount <= 0) return new Float32Array();
+
+  const startIndex = Math.max(0, Math.min(peaksCount, Math.floor(params.startIndex)));
+  const endIndex = Math.max(startIndex, Math.min(peaksCount, Math.ceil(params.endIndex)));
+  const sourceLength = endIndex - startIndex;
+  if (sourceLength <= 0) return new Float32Array();
+
+  const binCount = Math.max(1, Math.min(sourceLength, Math.floor(params.outputBins)));
+  const gain = typeof params.gain === 'number' && Number.isFinite(params.gain) ? params.gain : 1;
+  const bins = new Float32Array(binCount);
+
+  for (let binIndex = 0; binIndex < binCount; binIndex++) {
+    const binStart = startIndex + Math.floor((binIndex * sourceLength) / binCount);
+    const binEnd = Math.max(
+      binStart + 1,
+      startIndex + Math.ceil(((binIndex + 1) * sourceLength) / binCount),
+    );
+
+    let peak = 0;
+    for (let sampleIndex = binStart; sampleIndex < binEnd; sampleIndex++) {
+      for (let channelIndex = 0; channelIndex < params.channels.length; channelIndex++) {
+        const value = Math.abs(params.channels[channelIndex]?.[sampleIndex] ?? 0);
+        if (value > peak) peak = value;
+      }
+    }
+    bins[binIndex] = peak * gain;
+  }
+
+  return bins;
 }
 
 export function serializeWaveformPeaks(peaks: Float32Array[]): ArrayBuffer {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  computeWaveformPeakBins,
   computeWaveformWindowMetrics,
   resolveWaveformSourceUs,
   serializeWaveformPeaks,
@@ -66,6 +67,37 @@ describe('audio waveform utilities', () => {
     });
 
     expect(sourceUs).toBe(5_000_000);
+  });
+
+  it('downsamples waveform peaks to visible bins using max amplitude', () => {
+    const bins = computeWaveformPeakBins({
+      channels: [
+        new Float32Array([0.1, -0.7, 0.2, 0.3, 0.8, 0.1]),
+        new Float32Array([0.2, 0.4, -0.9, 0.1, 0.2, -0.6]),
+      ],
+      startIndex: 0,
+      endIndex: 6,
+      outputBins: 3,
+    });
+
+    expect(bins).toHaveLength(3);
+    expect(bins[0]).toBeCloseTo(0.7);
+    expect(bins[1]).toBeCloseTo(0.9);
+    expect(bins[2]).toBeCloseTo(0.8);
+  });
+
+  it('keeps source peak count when there are fewer peaks than output bins', () => {
+    const bins = computeWaveformPeakBins({
+      channels: [new Float32Array([0.2, 0.4])],
+      startIndex: 0,
+      endIndex: 2,
+      outputBins: 100,
+      gain: 2,
+    });
+
+    expect(bins).toHaveLength(2);
+    expect(bins[0]).toBeCloseTo(0.4);
+    expect(bins[1]).toBeCloseTo(0.8);
   });
 
   it('serializes and deserializes peaks to/from binary ArrayBuffer correctly', () => {

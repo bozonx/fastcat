@@ -9,7 +9,11 @@ import { useFileManager } from '~/composables/file-manager/useFileManager';
 import type { TimelineClipItem, TimelineDocument } from '~/timeline/types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import { computeWaveformWindowMetrics, resolveWaveformSourceUs } from '~/utils/audio/waveform';
+import {
+  computeWaveformPeakBins,
+  computeWaveformWindowMetrics,
+  resolveWaveformSourceUs,
+} from '~/utils/audio/waveform';
 import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 import {
@@ -433,6 +437,7 @@ interface WaveformChunk {
 // Chunking logic (similar to video thumbnails but for waveform rendering)
 const CHUNK_WIDTH_PX = 1000; // Fixed chunk width in pixels for canvas
 const CHUNK_OVERSCAN_PX = CHUNK_WIDTH_PX * 2;
+const MAX_WAVEFORM_DRAW_POINTS_PER_CHUNK = 2048;
 
 const totalWidthPx = computed(() => {
   return waveformMetrics.value.totalWidthPx;
@@ -555,7 +560,6 @@ function drawChunk(chunkIndex: number) {
   const channels = audioPeaks.value;
   if (!channels || channels.length === 0) return;
 
-  const numChannels = channels.length;
   const peaksCount = channels[0]?.length || 0;
   if (peaksCount === 0) return;
 
@@ -569,15 +573,21 @@ function drawChunk(chunkIndex: number) {
 
   const startIndex = Math.floor(startRatio * peaksCount);
   const endIndex = Math.min(peaksCount, Math.ceil(endRatio * peaksCount) + 1);
-  const chunkLength = endIndex - startIndex;
+  const outputBins = Math.min(MAX_WAVEFORM_DRAW_POINTS_PER_CHUNK, targetWidth);
+  const peakBins = computeWaveformPeakBins({
+    channels,
+    startIndex,
+    endIndex,
+    outputBins,
+    gain: props.item.audioGain ?? 1,
+  });
 
-  if (chunkLength <= 0) return;
+  if (peakBins.length <= 0) return;
 
   const halfH = targetHeight / 2;
-  const step = chunkLength > 1 ? targetWidth / (chunkLength - 1) : targetWidth;
+  const step = peakBins.length > 1 ? targetWidth / (peakBins.length - 1) : targetWidth;
 
   const mode = props.item.audioWaveformMode || 'half';
-  const gain = props.item.audioGain ?? 1;
   const muted = isMuted.value;
 
   if (muted) {
@@ -590,43 +600,25 @@ function drawChunk(chunkIndex: number) {
 
   if (mode === 'half') {
     ctx.moveTo(0, targetHeight);
-    for (let i = 0; i < chunkLength; i++) {
+    for (let i = 0; i < peakBins.length; i++) {
       const x = i * step;
-      let peak = 0;
-      for (let ch = 0; ch < numChannels; ch++) {
-        const p = Math.abs(channels[ch]?.[startIndex + i] || 0);
-        if (p > peak) peak = p;
-      }
-      peak *= gain;
-      const y = targetHeight - Math.min(1, peak) * targetHeight;
+      const y = targetHeight - Math.min(1, peakBins[i] ?? 0) * targetHeight;
       ctx.lineTo(x, y);
     }
     ctx.lineTo(targetWidth, targetHeight);
   } else {
     // Draw top half
     ctx.moveTo(0, halfH);
-    for (let i = 0; i < chunkLength; i++) {
+    for (let i = 0; i < peakBins.length; i++) {
       const x = i * step;
-      let peak = 0;
-      for (let ch = 0; ch < numChannels; ch++) {
-        const p = Math.abs(channels[ch]?.[startIndex + i] || 0);
-        if (p > peak) peak = p;
-      }
-      peak *= gain;
-      const y = halfH - Math.min(1, peak) * halfH;
+      const y = halfH - Math.min(1, peakBins[i] ?? 0) * halfH;
       ctx.lineTo(x, y);
     }
 
     // Draw bottom half (mirrored)
-    for (let i = chunkLength - 1; i >= 0; i--) {
+    for (let i = peakBins.length - 1; i >= 0; i--) {
       const x = i * step;
-      let peak = 0;
-      for (let ch = 0; ch < numChannels; ch++) {
-        const p = Math.abs(channels[ch]?.[startIndex + i] || 0);
-        if (p > peak) peak = p;
-      }
-      peak *= gain;
-      const y = halfH + Math.min(1, peak) * halfH;
+      const y = halfH + Math.min(1, peakBins[i] ?? 0) * halfH;
       ctx.lineTo(x, y);
     }
   }

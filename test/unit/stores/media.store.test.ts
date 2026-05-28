@@ -250,6 +250,28 @@ describe('MediaStore', () => {
     expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1]);
   });
 
+  it('loads cached audio peaks for already in-memory metadata without refetching metadata', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'some%2Fpath.mp4.json';
+    store.mediaMetadata = {
+      'some/path.mp4': {
+        source: { size: 100, lastModified: 100 },
+        duration: 10,
+      },
+    } as any;
+    mediaFsMock.waveformFiles.set(cacheFileName, JSON.stringify([[0.5, -0.25], [1]]));
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'path.mp4' } as File,
+      'some/path.mp4',
+    );
+
+    expect(extractMetadataMock).not.toHaveBeenCalled();
+    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
+    expect(Array.from(store.mediaMetadata['some/path.mp4'].audioPeaks?.[1] ?? [])).toEqual([1]);
+  });
+
   it('returns null when file is missing', async () => {
     const store = useMediaStore();
     const result = await store.getOrFetchMetadataByPath('video/missing.mp4');
