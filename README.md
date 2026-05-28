@@ -85,7 +85,7 @@ The application will be available at `http://localhost:3000`.
 - The desktop VFS adapter stores its local app-managed data in `BaseDirectory.AppData`.
 - FastCat stores global `user.settings.json` and `app.settings.json` in the OS-recommended Tauri `BaseDirectory.AppConfig` location. Workspace settings stay in the selected workspace.
 - Desktop startup automatically restores the saved workspace path, or creates and uses the default `Documents/FastCat` workspace when no path was saved yet.
-- In Tauri dev mode, app config/cache/default documents resolve under the configured `.dev-files` directory in the Tauri resource directory. The debug shell extends the runtime FS scope for that dev directory.
+- In Tauri dev mode, app config/cache/default documents resolve under `FASTCAT_DEV_DIR`, which defaults to the project-root `./.dev-files`. The directory mirrors the user's OS root layout, for example `Documents/FastCat`, `config`, and `cache`. The debug shell extends the runtime FS scope for that dev directory.
 - Tauri capabilities are scoped to app-managed directories (`$APPDATA`, `$APPCONFIG`, `$APPCACHE`, `$TEMP`) and dev resource paths. User-selected folders are added to the runtime scope by the dialog plugin and restored by persisted scope.
 - Desktop production builds use `tauri build` with Linux `deb` and `rpm` bundle targets enabled. Add `appimage` back when the build environment provides a working `linuxdeploy`.
 

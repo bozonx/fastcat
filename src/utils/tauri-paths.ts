@@ -16,13 +16,11 @@ export async function resolveTauriAppPaths(
     return null;
   }
 
-  const { appConfigDir, appCacheDir, documentDir, isAbsolute, join, resolve, resourceDir } =
+  const { appConfigDir, appCacheDir, documentDir, join, resolve } =
     await import('@tauri-apps/api/path');
 
   if ((isDevMode() || forceDev) && fastcatDevDir) {
-    const devRoot = (await isAbsolute(fastcatDevDir))
-      ? await resolve(fastcatDevDir)
-      : await join(await resourceDir(), fastcatDevDir);
+    const devRoot = await resolve(fastcatDevDir);
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('allow_dev_directory_scope', { path: devRoot }).catch(() => undefined);
 

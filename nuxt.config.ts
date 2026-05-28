@@ -1,4 +1,7 @@
 import { defineNuxtConfig } from 'nuxt/config';
+import { resolve } from 'node:path';
+
+const fastcatDevDir = resolve(process.env.FASTCAT_DEV_DIR || './.dev-files');
 
 export default defineNuxtConfig({
   ssr: false,
@@ -52,7 +55,7 @@ export default defineNuxtConfig({
       fastcatAccountApiUrl: '',
       fastcatAccountUiUrl: '',
       blockContextMenu: true,
-      fastcatDevDir: process.env.FASTCAT_DEV_DIR || './.dev-files',
+      fastcatDevDir,
     },
   },
 

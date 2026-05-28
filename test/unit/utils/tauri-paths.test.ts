@@ -50,18 +50,18 @@ describe('tauri-paths utility', () => {
     });
   });
 
-  it('resolves relative dev paths under the Tauri resource directory in dev mode', async () => {
+  it('resolves relative dev paths from the Tauri dev working directory', async () => {
     (globalThis as TauriGlobal).__TAURI_INTERNALS__ = {};
     expect(isTauriRuntime()).toBe(true);
 
     const paths = await resolveTauriAppPaths('./.dev-files', true);
     expect(invoke).toHaveBeenCalledWith('allow_dev_directory_scope', {
-      path: '/mock-resource/./.dev-files',
+      path: '/absolute/./.dev-files',
     });
     expect(paths).toEqual({
-      configDir: '/mock-resource/./.dev-files/config',
-      cacheDir: '/mock-resource/./.dev-files/cache',
-      documentsDir: '/mock-resource/./.dev-files/Documents',
+      configDir: '/absolute/./.dev-files/config',
+      cacheDir: '/absolute/./.dev-files/cache',
+      documentsDir: '/absolute/./.dev-files/Documents',
     });
   });
 
@@ -88,9 +88,9 @@ describe('tauri-paths utility', () => {
     const paths = await resolveTauriAppPaths('./.dev-files', true);
 
     expect(paths).toEqual({
-      configDir: '/mock-resource/./.dev-files/config',
-      cacheDir: '/mock-resource/./.dev-files/cache',
-      documentsDir: '/mock-resource/./.dev-files/Documents',
+      configDir: '/absolute/./.dev-files/config',
+      cacheDir: '/absolute/./.dev-files/cache',
+      documentsDir: '/absolute/./.dev-files/Documents',
     });
   });
 });
