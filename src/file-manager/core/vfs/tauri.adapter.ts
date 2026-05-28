@@ -104,6 +104,9 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     }
 
     const { tauriPath, options } = await this.getTauriFsArgs('');
+    if (tauriPath === '.' || tauriPath === '' || tauriPath === '/') {
+      return;
+    }
     try {
       await mkdir(tauriPath, {
         ...options,
@@ -122,7 +125,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
 
     if (base.type === 'app-data') {
       return {
-        tauriPath: normalizedPath,
+        tauriPath: normalizedPath || '.',
         options: { baseDir: BaseDirectory.AppData },
       };
     }

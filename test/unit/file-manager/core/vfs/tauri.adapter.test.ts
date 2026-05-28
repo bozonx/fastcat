@@ -71,10 +71,10 @@ afterEach(() => {
 
 describe('TauriFileSystemAdapter', () => {
   describe('base resolution', () => {
-    it('uses AppData when base is the magic string', async () => {
+    it('uses AppData when base is the magic string without calling mkdir', async () => {
       const adapter = new TauriFileSystemAdapter(TAURI_APP_DATA_BASE_PATH);
       await adapter.init();
-      expect(mkdir).toHaveBeenCalledWith('', { baseDir: BaseDirectory.AppData, recursive: true });
+      expect(mkdir).not.toHaveBeenCalled();
     });
 
     it('uses an absolute base path otherwise', async () => {
@@ -89,10 +89,16 @@ describe('TauriFileSystemAdapter', () => {
       expect(mkdir).toHaveBeenCalledWith('/lazy/root', { baseDir: undefined, recursive: true });
     });
 
-    it('accepts a TauriBase discriminated union', async () => {
+    it('accepts a TauriBase discriminated union without calling mkdir', async () => {
       const adapter = new TauriFileSystemAdapter({ type: 'app-data' });
       await adapter.init();
-      expect(mkdir).toHaveBeenCalledWith('', { baseDir: BaseDirectory.AppData, recursive: true });
+      expect(mkdir).not.toHaveBeenCalled();
+    });
+
+    it('skips mkdir if resolved path is the root "/" directory', async () => {
+      const adapter = new TauriFileSystemAdapter('/');
+      await adapter.init();
+      expect(mkdir).not.toHaveBeenCalled();
     });
 
     it('init throws outside of a Tauri environment', async () => {
@@ -114,6 +120,13 @@ describe('TauriFileSystemAdapter', () => {
         'directory:docs/sub',
         'file:docs/a.txt',
       ]);
+    });
+
+    it('uses "." path for reading empty/root path in AppData', async () => {
+      vi.mocked(readDir).mockResolvedValue([]);
+      const adapter = new TauriFileSystemAdapter(TAURI_APP_DATA_BASE_PATH);
+      await adapter.readDirectory('');
+      expect(readDir).toHaveBeenCalledWith('.', { baseDir: BaseDirectory.AppData });
     });
 
     it('returns an empty array when the directory is missing', async () => {
