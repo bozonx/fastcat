@@ -28,7 +28,7 @@ interface BunnyOutputLike {
 interface BunnyConversionProcess {
   isValid: boolean;
   discardedTracks?: { reason: string }[];
-  onProgress?: (progress: number) => void;
+  onProgress?: (progress: number, processedTime?: number) => unknown;
   execute?: () => Promise<void>;
   cancel?: () => void | Promise<void>;
 }
@@ -208,7 +208,7 @@ export async function runTranscode(
       );
     }
 
-    conversionProcess = await Conversion.init({
+    const initProcess = await Conversion.init({
       input,
       output,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -217,6 +217,11 @@ export async function runTranscode(
       audio: audioConfig as any,
       showWarnings: false,
     });
+
+    if (!initProcess) {
+      throw new Error('Failed to initialize conversion process');
+    }
+    conversionProcess = initProcess as unknown as BunnyConversionProcess;
 
     if (!conversionProcess.isValid) {
       let reasons = '';

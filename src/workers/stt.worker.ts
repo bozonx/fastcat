@@ -109,11 +109,11 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
       currentModelName = modelName;
       env.backends.onnx.gpu = true;
 
-      transcriber = (await pipeline('automatic-speech-recognition', modelName, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      transcriber = (await (pipeline as any)('automatic-speech-recognition', modelName, {
         device: 'webgpu',
         quantized: true,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any)) as AutomaticSpeechRecognitionPipeline;
+      })) as AutomaticSpeechRecognitionPipeline;
 
       log.log('Pipeline initialized with WebGPU');
       return transcriber;
@@ -128,11 +128,11 @@ async function initTranscriber(modelName: string): Promise<AutomaticSpeechRecogn
   currentModelName = modelName;
   env.backends.onnx.gpu = false;
 
-  transcriber = (await pipeline('automatic-speech-recognition', modelName, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  transcriber = (await (pipeline as any)('automatic-speech-recognition', modelName, {
     device: 'wasm',
     quantized: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any)) as AutomaticSpeechRecognitionPipeline;
+  })) as AutomaticSpeechRecognitionPipeline;
 
   log.log('Pipeline initialized with WASM');
   return transcriber;

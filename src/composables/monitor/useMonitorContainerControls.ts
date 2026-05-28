@@ -287,7 +287,7 @@ export function useMonitorContainerControls(options: UseMonitorContainerControls
             checked: options.timelineStore.playbackSpeed === opt.value,
             onSelect: () => options.timelineStore.setPlaybackSpeed(opt.value),
           })),
-          { label: '', type: 'divider' as const },
+          { label: '', type: 'separator' as const },
           ...playbackSpeedOptions.map((opt) => ({
             label: opt.label,
             type: 'checkbox' as const,

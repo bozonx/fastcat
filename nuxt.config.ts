@@ -57,6 +57,22 @@ export default defineNuxtConfig({
   },
 
   vite: {
+    optimizeDeps: {
+      include: [
+        'p-queue',
+        '@tauri-apps/api/core',
+        '@tauri-apps/api/path',
+        '@tauri-apps/api/webview',
+        '@tauri-apps/api/window',
+        '@tauri-apps/plugin-fs',
+        '@tauri-apps/plugin-dialog',
+        'tauri-plugin-fs-stream-api',
+        'pixi.js',
+        'pixi-filters',
+        'zod',
+        '@vueuse/core',
+      ],
+    },
     worker: {
       format: 'es',
     },

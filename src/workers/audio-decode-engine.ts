@@ -9,7 +9,11 @@ interface InputLike<TAudioTrack = unknown> {
 }
 
 interface AudioSampleSinkLike {
-  samples(...args: number[]): AsyncIterable<unknown>;
+  samples(
+    startTimestamp?: number,
+    endTimestamp?: number,
+    options?: unknown,
+  ): AsyncIterable<unknown>;
   close?(): void;
   dispose?(): void;
 }

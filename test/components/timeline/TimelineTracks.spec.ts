@@ -1,10 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
 import { reactive, nextTick, toRef } from 'vue';
 import { defineStore } from 'pinia';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+
+mockComponent('UContextMenu', {
+  template: '<div><slot /></div>',
+});
+mockComponent('UDropdownMenu', {
+  template: '<div><slot /></div>',
+});
 
 vi.mock('~/components/timeline/TimelineClip.vue', () => ({
   default: {
@@ -24,6 +31,12 @@ vi.mock('~/components/timeline/TimelineGap.vue', () => ({
 }));
 vi.mock('~/components/timeline/TimelineSpeedModal.vue', () => ({
   default: { name: 'TimelineSpeedModal', template: '<div></div>' },
+}));
+vi.mock('~/components/timeline/AutoMontageModal.vue', () => ({
+  default: { name: 'AutoMontageModal', template: '<div></div>', props: ['open'] },
+}));
+vi.mock('~/components/properties/clip/ClipParametersPasteModal.vue', () => ({
+  default: { name: 'ClipParametersPasteModal', template: '<div></div>', props: ['open'] },
 }));
 
 const selectTrackSpy = vi.fn();

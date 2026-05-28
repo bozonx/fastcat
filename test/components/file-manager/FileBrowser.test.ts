@@ -72,6 +72,7 @@ const {
     resolveDefaultTargetDir: vi.fn(async () => '/'),
     runWithUiFeedback: vi.fn((opts: any) => opts.action()),
     mediaCache: { hasProxy: vi.fn(() => false) },
+    getFileIcon: vi.fn(() => 'i-heroicons-document'),
   };
 
   const rawFileBrowserEntries = {
