@@ -6,13 +6,17 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { exists } from '@tauri-apps/plugin-fs';
 import { TauriDirectoryHandle } from './tauri-handle';
 import { isTauriRuntime } from '~/utils/runtime';
+import { resolveTauriAppPaths } from '~/utils/tauri-paths';
 const log = createDevLogger('tauri');
 
 export class TauriWorkspaceProvider implements WorkspaceProvider {
   id = 'tauri';
   isSupported = isTauriRuntime();
 
-  constructor(private storage: WorkspaceHandleStorage<string>) {}
+  constructor(
+    private storage: WorkspaceHandleStorage<string>,
+    private fastcatDevDir?: string,
+  ) {}
 
   async openWorkspace(): Promise<DirectoryHandleLike | null> {
     if (!this.isSupported) return null;
@@ -40,16 +44,34 @@ export class TauriWorkspaceProvider implements WorkspaceProvider {
     if (!this.isSupported) return null;
 
     try {
-      const path = await this.storage.get();
-      if (!path) return null;
+      let path = await this.storage.get();
+      let isDefaultWorkspace = false;
+      if (!path) {
+        const paths = await resolveTauriAppPaths(this.fastcatDevDir);
+        if (paths) {
+          const { join } = await import('@tauri-apps/api/path');
+          path = await join(paths.documentsDir, 'FastCat');
+          isDefaultWorkspace = true;
+        } else {
+          return null;
+        }
+      }
 
       const dirExists = await exists(path);
-      if (dirExists) {
-        return new TauriDirectoryHandle(
-          path,
-          path.split('/').pop() || path.split('\\').pop() || 'workspace',
-        ) as unknown as DirectoryHandleLike;
+      if (!dirExists) {
+        if (isDefaultWorkspace || path.endsWith('FastCat')) {
+          const { mkdir } = await import('@tauri-apps/plugin-fs');
+          await mkdir(path, { recursive: true }).catch(() => undefined);
+          await this.storage.set(path);
+        } else {
+          return null;
+        }
       }
+
+      return new TauriDirectoryHandle(
+        path,
+        path.split('/').pop() || path.split('\\').pop() || 'workspace',
+      ) as unknown as DirectoryHandleLike;
     } catch (e) {
       log.warn('Failed to restore tauri workspace handle:', e);
     }

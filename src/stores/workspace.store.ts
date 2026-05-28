@@ -29,7 +29,9 @@ export interface RecentProject {
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   const runtimeConfig = useRuntimeConfig();
-  const workspaceProvider = createWorkspaceProvider();
+  const workspaceProvider = createWorkspaceProvider(
+    runtimeConfig.public.fastcatDevDir as string | undefined,
+  );
   const workspaceTopology = getWorkspaceStorageTopology();
 
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);

@@ -1,19 +1,40 @@
+import { ref, defineComponent } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
+import { useTimelineStore } from '~/stores/timeline.store';
 import Timeline from '~/components/layout-panels/EditorTimeline.vue';
 import UiTimecode from '~/components/ui/editor/UiTimecode.vue';
-import { useTimelineStore } from '~/stores/timeline.store';
-import { ref } from 'vue';
+
+mockComponent(
+  'UContextMenu',
+  defineComponent({
+    setup(props, { slots }) {
+      return () => (slots.default ? slots.default() : null);
+    },
+  }),
+);
+
+mockComponent(
+  'UDropdownMenu',
+  defineComponent({
+    setup(props, { slots }) {
+      return () => (slots.default ? slots.default() : null);
+    },
+  }),
+);
 
 // Mock composables to avoid side effects
-vi.mock('~/composables/timeline/useTimelineSectionResize', () => ({
-  useTimelineSectionResize: () => ({
-    videoSectionPercent: ref(50),
-    sectionContainerRef: ref(null),
-    onSectionResizeStart: vi.fn(),
-    resetSectionPercent: vi.fn(),
-  }),
-}));
+vi.mock('~/composables/timeline/useTimelineSectionResize', async () => {
+  const { ref } = await import('vue');
+  return {
+    useTimelineSectionResize: () => ({
+      videoSectionPercent: ref(50),
+      sectionContainerRef: ref(null),
+      onSectionResizeStart: globalThis.vi.fn(),
+      resetSectionPercent: globalThis.vi.fn(),
+    }),
+  };
+});
 
 describe('Timeline Component', () => {
   beforeEach(() => {

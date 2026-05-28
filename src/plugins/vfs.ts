@@ -1,4 +1,4 @@
-import { defineNuxtPlugin } from 'nuxt/app';
+import { defineNuxtPlugin, useRuntimeConfig } from 'nuxt/app';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
 import { RouterFileSystemAdapter, type VfsRoute } from '~/file-manager/core/vfs/router.adapter';
 import { useProjectStore } from '~/stores/project.store';
@@ -100,11 +100,14 @@ interface WorkspaceAdapters {
   project: IFileSystemAdapter;
   /** Adapter rooted at the workspace directory (parent of all projects + common assets). */
   workspace: IFileSystemAdapter;
+  /** Adapter rooted at the system cache/vardata directory. */
+  vardata: IFileSystemAdapter;
 }
 
 function createTauriWorkspaceAdapters(
   workspaceStore: ReturnType<typeof useWorkspaceStore>,
   projectStore: ReturnType<typeof useProjectStore>,
+  fastcatDevDir?: string,
 ): WorkspaceAdapters {
   const handle = workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle | null;
   const workspacePath = handle?.path;
@@ -121,7 +124,18 @@ function createTauriWorkspaceAdapters(
     workspacePath ? { type: 'absolute', path: workspacePath } : TAURI_APP_DATA_BASE_PATH,
   );
 
-  return { project, workspace };
+  const vardata = new TauriFileSystemAdapter(async () => {
+    const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
+    const paths = await resolveTauriAppPaths(fastcatDevDir);
+    if (paths) {
+      const { join } = await import('@tauri-apps/api/path');
+      const vardataPath = await join(paths.cacheDir, 'vardata');
+      return { type: 'absolute', path: vardataPath };
+    }
+    return { type: 'app-data' };
+  });
+
+  return { project, workspace, vardata };
 }
 
 function createOpfsWorkspaceAdapters(
@@ -130,7 +144,7 @@ function createOpfsWorkspaceAdapters(
 ): WorkspaceAdapters {
   const project = new OpfsFileSystemAdapter(() => projectStore.getProjectDirHandle());
   const workspace = new OpfsFileSystemAdapter(async () => workspaceStore.workspaceHandle ?? null);
-  return { project, workspace };
+  return { project, workspace, vardata: workspace };
 }
 
 /**
@@ -139,6 +153,7 @@ function createOpfsWorkspaceAdapters(
  */
 function buildVfsRoutes(args: {
   workspace: IFileSystemAdapter;
+  vardata: IFileSystemAdapter;
   remote: IFileSystemAdapter;
 }): VfsRoute[] {
   const stripPrefix = (prefix: string) => (path: string) =>
@@ -152,7 +167,7 @@ function buildVfsRoutes(args: {
     },
     {
       prefix: '/vardata',
-      adapter: args.workspace,
+      adapter: args.vardata,
       stripPrefix: (p) => (p.startsWith('/') ? p.slice(1) : p),
     },
     {
@@ -173,9 +188,14 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
   const isTauri = isTauriRuntime();
+  const runtimeConfig = useRuntimeConfig();
 
-  const { project, workspace } = isTauri
-    ? createTauriWorkspaceAdapters(workspaceStore, projectStore)
+  const { project, workspace, vardata } = isTauri
+    ? createTauriWorkspaceAdapters(
+        workspaceStore,
+        projectStore,
+        runtimeConfig.public.fastcatDevDir as string | undefined,
+      )
     : createOpfsWorkspaceAdapters(workspaceStore, projectStore);
 
   const remote = new BloggerDogVfsAdapter(() => {
@@ -183,9 +203,13 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     return bloggerDogStore.config;
   }, translate);
 
-  const adapter = new RouterFileSystemAdapter(project, buildVfsRoutes({ workspace, remote }), {
-    progressReporter: createNuxtVfsProgressReporter(nuxtApp),
-  });
+  const adapter = new RouterFileSystemAdapter(
+    project,
+    buildVfsRoutes({ workspace, vardata, remote }),
+    {
+      progressReporter: createNuxtVfsProgressReporter(nuxtApp),
+    },
+  );
 
   await adapter.init();
 

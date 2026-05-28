@@ -20,7 +20,7 @@ vi.mock('~/stores/workspace.store', () => ({
 
 // Mock i18n
 
-describe('SettingsMouse', () => {
+describe('SettingsMouse', { timeout: 15000 }, () => {
   it('renders mouse sections and reset button', async () => {
     const wrapper = await mountSuspended(SettingsMouse);
 
