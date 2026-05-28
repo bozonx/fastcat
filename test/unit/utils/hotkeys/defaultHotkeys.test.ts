@@ -123,6 +123,19 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleLockTrack']).toEqual(['Shift+T']);
   });
 
+  it('has nudge clip bindings with Ctrl modifier to avoid conflict with playhead stepping', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsLeft']).toEqual(['Ctrl+ArrowLeft']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsRight']).toEqual([
+      'Ctrl+ArrowRight',
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsLeftLarge']).toEqual([
+      'Ctrl+Shift+ArrowLeft',
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsRightLarge']).toEqual([
+      'Ctrl+Shift+ArrowRight',
+    ]);
+  });
+
   it('has defaults for project panel, settings and background task shortcuts', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.projectTabFiles']).toEqual(['Shift+H']);
     expect(DEFAULT_HOTKEYS.bindings['general.projectTabHistory']).toEqual(['Shift+J']);

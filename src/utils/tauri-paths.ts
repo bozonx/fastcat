@@ -75,24 +75,20 @@ export async function resolveTauriAppPaths(
 
   if ((isDevMode() || forceDev) && fastcatDevDir) {
     const devRoot = await resolve(fastcatDevDir);
-    console.log('[tauri-paths] devRoot resolved:', devRoot);
     const { invoke } = await import('@tauri-apps/api/core');
     try {
       await invoke('allow_dev_directory_scope', { path: devRoot });
-      console.log('[tauri-paths] scope extended for:', devRoot);
-    } catch (e) {
-      console.error('[tauri-paths] allow_dev_directory_scope failed:', e);
+    } catch {
+      // ignore scope extension failure in dev
     }
 
     const paths = await buildDevOsPaths(devRoot);
-    console.log('[tauri-paths] dev paths:', paths);
     const { mkdir } = await import('@tauri-apps/plugin-fs');
-    for (const [key, dir] of Object.entries(paths)) {
+    for (const [, dir] of Object.entries(paths)) {
       try {
         await mkdir(dir, { recursive: true });
-        console.log('[tauri-paths] mkdir ok:', key, dir);
-      } catch (e) {
-        console.error('[tauri-paths] mkdir failed:', key, dir, e);
+      } catch {
+        // ignore mkdir failure in dev (directory may already exist)
       }
     }
 

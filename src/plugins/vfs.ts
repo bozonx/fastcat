@@ -3,10 +3,7 @@ import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
 import { RouterFileSystemAdapter, type VfsRoute } from '~/file-manager/core/vfs/router.adapter';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import {
-  TauriFileSystemAdapter,
-  TAURI_APP_DATA_BASE_PATH,
-} from '~/file-manager/core/vfs/tauri.adapter';
+import { TauriFileSystemAdapter } from '~/file-manager/core/vfs/tauri.adapter';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import type {
   IFileSystemAdapter,

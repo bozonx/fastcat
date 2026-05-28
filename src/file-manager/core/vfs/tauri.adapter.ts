@@ -113,7 +113,6 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
         recursive: true,
       });
     } catch (e) {
-      console.error('[TauriFileSystemAdapter] mkdir failed:', { tauriPath, options, error: e });
       throw wrapPlatformError(e, tauriPath);
     }
   }
