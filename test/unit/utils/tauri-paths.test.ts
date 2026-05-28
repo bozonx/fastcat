@@ -12,7 +12,9 @@ function clearTauriGlobal() {
 
 vi.mock('@tauri-apps/api/path', () => ({
   appConfigDir: vi.fn().mockResolvedValue('/mock-config'),
+  appDataDir: vi.fn().mockResolvedValue('/mock-data'),
   appCacheDir: vi.fn().mockResolvedValue('/mock-cache'),
+  tempDir: vi.fn().mockResolvedValue('/mock-temp'),
   documentDir: vi.fn().mockResolvedValue('/mock-documents'),
   isAbsolute: vi.fn().mockImplementation(async (path: string) => path.startsWith('/')),
   resourceDir: vi.fn().mockResolvedValue('/mock-resource'),
@@ -45,7 +47,9 @@ describe('tauri-paths utility', () => {
     const paths = await resolveTauriAppPaths(undefined);
     expect(paths).toEqual({
       configDir: '/mock-config',
+      dataDir: '/mock-data',
       cacheDir: '/mock-cache',
+      tempDir: '/mock-temp',
       documentsDir: '/mock-documents',
     });
   });
@@ -60,7 +64,9 @@ describe('tauri-paths utility', () => {
     });
     expect(paths).toEqual({
       configDir: '/absolute/./.dev-files/config',
+      dataDir: '/absolute/./.dev-files/data',
       cacheDir: '/absolute/./.dev-files/cache',
+      tempDir: '/absolute/./.dev-files/tmp',
       documentsDir: '/absolute/./.dev-files/Documents',
     });
   });
@@ -75,7 +81,9 @@ describe('tauri-paths utility', () => {
     });
     expect(paths).toEqual({
       configDir: '/absolute//tmp/fastcat-dev/config',
+      dataDir: '/absolute//tmp/fastcat-dev/data',
       cacheDir: '/absolute//tmp/fastcat-dev/cache',
+      tempDir: '/absolute//tmp/fastcat-dev/tmp',
       documentsDir: '/absolute//tmp/fastcat-dev/Documents',
     });
   });
@@ -89,7 +97,9 @@ describe('tauri-paths utility', () => {
 
     expect(paths).toEqual({
       configDir: '/absolute/./.dev-files/config',
+      dataDir: '/absolute/./.dev-files/data',
       cacheDir: '/absolute/./.dev-files/cache',
+      tempDir: '/absolute/./.dev-files/tmp',
       documentsDir: '/absolute/./.dev-files/Documents',
     });
   });

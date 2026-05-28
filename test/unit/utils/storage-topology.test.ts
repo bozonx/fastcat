@@ -1,12 +1,17 @@
 /** @vitest-environment node */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   getResolvedProjectCacheSegments,
   getResolvedProjectProxiesSegments,
   getResolvedProjectTempSegments,
   getResolvedProjectWaveformsSegments,
+  resolveTauriSystemStorageTopology,
   resolveWorkspaceLocalStorageTopology,
 } from '~/utils/storage-topology';
+
+vi.mock('@tauri-apps/api/path', () => ({
+  join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
+}));
 
 describe('storage topology', () => {
   it('resolves workspace-local topology with defaults', () => {
@@ -76,5 +81,57 @@ describe('storage topology', () => {
       'project-1',
       'waveforms',
     ]);
+  });
+
+  it('resolves Tauri system topology into app data, cache and temp roots', async () => {
+    const resolved = await resolveTauriSystemStorageTopology({
+      paths: {
+        contentRootPath: '',
+        dataRootPath: '',
+        tempRootPath: '',
+        proxiesRootPath: '',
+        ephemeralTmpRootPath: '',
+        placementMode: 'system-default',
+      },
+      appPaths: {
+        configDir: '/app/config',
+        dataDir: '/app/data',
+        cacheDir: '/app/cache',
+        tempDir: '/system/tmp',
+        documentsDir: '/documents',
+      },
+    });
+
+    expect(resolved.projectsRoot).toBe('projects');
+    expect(resolved.commonRoot).toBe('common');
+    expect(resolved.dataRoot).toBe('/app/data/data');
+    expect(resolved.tempRoot).toBe('/app/cache/temp');
+    expect(resolved.proxiesRoot).toBe('/app/cache/proxies');
+    expect(resolved.ephemeralTmpRoot).toBe('/system/tmp/fastcat-jobs');
+  });
+
+  it('preserves absolute Tauri storage overrides', async () => {
+    const resolved = await resolveTauriSystemStorageTopology({
+      paths: {
+        contentRootPath: '',
+        dataRootPath: '/mnt/fastcat-data/',
+        tempRootPath: '/mnt/fastcat-cache/temp/',
+        proxiesRootPath: '/mnt/fastcat-proxies/',
+        ephemeralTmpRootPath: '/tmp/fastcat/',
+        placementMode: 'system-default',
+      },
+      appPaths: {
+        configDir: '/app/config',
+        dataDir: '/app/data',
+        cacheDir: '/app/cache',
+        tempDir: '/system/tmp',
+        documentsDir: '/documents',
+      },
+    });
+
+    expect(resolved.dataRoot).toBe('/mnt/fastcat-data');
+    expect(resolved.tempRoot).toBe('/mnt/fastcat-cache/temp');
+    expect(resolved.proxiesRoot).toBe('/mnt/fastcat-proxies');
+    expect(resolved.ephemeralTmpRoot).toBe('/tmp/fastcat');
   });
 });

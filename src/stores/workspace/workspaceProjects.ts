@@ -5,7 +5,10 @@ import type { RecentProject } from '~/stores/workspace.store';
 import { getErrorMessage } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { toStoragePathSegments } from '~/utils/storage-topology';
-import { ensureDirectoryChain, resolveStorageRootHandle } from '~/utils/storage-handles';
+import {
+  ensureDirectoryChain,
+  resolveStorageRootHandle,
+} from '~/utils/storage-handles';
 import { renameDirectoryFallback } from '~/file-manager/fs/ops';
 const log = createDevLogger('workspaceProjects');
 
@@ -31,6 +34,20 @@ export function createWorkspaceProjectsModule(params: {
   resolvedStorageTopology: Ref<ResolvedStorageTopology>;
 }): WorkspaceProjectsModule {
   const workspaceTopology = getWorkspaceStorageTopology();
+
+  async function clearDirectoryContents(dir: FileSystemDirectoryHandle) {
+    const handleLike = dir as unknown as {
+      values?: () => AsyncIterableIterator<FileSystemHandle>;
+      entries?: () => AsyncIterableIterator<[string, FileSystemHandle]>;
+    };
+    const iterator = handleLike.values?.() ?? handleLike.entries?.();
+    if (!iterator) return;
+
+    for await (const value of iterator) {
+      const entry = Array.isArray(value) ? value[1] : value;
+      await dir.removeEntry(entry.name, { recursive: entry.kind === 'directory' });
+    }
+  }
 
   async function loadProjects() {
     if (!params.projectsHandle.value) return;
@@ -59,28 +76,36 @@ export function createWorkspaceProjectsModule(params: {
 
   async function clearVardata() {
     if (!params.workspaceHandle.value) return;
-    const tempRootSegments = toStoragePathSegments(params.resolvedStorageTopology.value.tempRoot);
-    const tempRootDirName = tempRootSegments[0] ?? workspaceTopology.tempRootDirName;
-    try {
-      await params.workspaceHandle.value.removeEntry(tempRootDirName, {
-        recursive: true,
-      });
-    } catch (e: unknown) {
-      if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        log.warn('Failed to clear vardata', e);
+    const rootPaths = [
+      params.resolvedStorageTopology.value.tempRoot,
+      params.resolvedStorageTopology.value.proxiesRoot,
+    ];
+    const uniqueRootPaths = [...new Set(rootPaths.filter((path) => path.trim().length > 0))];
+    for (const rootPath of uniqueRootPaths) {
+      try {
+        const rootDir = await resolveStorageRootHandle({
+          workspaceHandle: params.workspaceHandle.value,
+          rootPath,
+          create: true,
+        });
+        await clearDirectoryContents(rootDir as FileSystemDirectoryHandle);
+      } catch (e: unknown) {
+        if ((e as { name?: unknown }).name !== 'NotFoundError') {
+          log.warn('Failed to clear generated storage root', rootPath, e);
+        }
       }
     }
-    try {
-      let currentDir = params.workspaceHandle.value;
-      for (const segment of tempRootSegments.length > 0
-        ? tempRootSegments
-        : [workspaceTopology.tempRootDirName]) {
-        currentDir = await currentDir.getDirectoryHandle(segment, { create: true });
+
+    if (uniqueRootPaths.length === 0) {
+      try {
+        const tempRootDir = await params.workspaceHandle.value.getDirectoryHandle(
+          workspaceTopology.tempRootDirName,
+          { create: true },
+        );
+        await clearDirectoryContents(tempRootDir);
+      } catch (e) {
+        log.warn('Failed to clear workspace-local temp root', e);
       }
-    } catch (e) {
-      // Mirrors the warn on the clear step above; recreating the temp root is
-      // best-effort but a failure is worth surfacing for debugging.
-      log.warn('Failed to recreate temp root', e);
     }
   }
 
@@ -98,6 +123,22 @@ export function createWorkspaceProjectsModule(params: {
     } catch {
       // ignore
     }
+
+    if (params.resolvedStorageTopology.value.proxiesRoot.trim()) {
+      try {
+        const proxiesRootDir = await resolveStorageRootHandle({
+          workspaceHandle: params.workspaceHandle.value!,
+          rootPath: params.resolvedStorageTopology.value.proxiesRoot,
+        });
+        const projectsDir = await ensureDirectoryChain({
+          baseDir: proxiesRootDir,
+          segments: [workspaceTopology.tempProjectsDirName],
+        });
+        await projectsDir.removeEntry(projectId, { recursive: true });
+      } catch {
+        // ignore
+      }
+    }
   }
 
   async function deleteProject(name: string, projectId?: string) {
@@ -105,19 +146,7 @@ export function createWorkspaceProjectsModule(params: {
 
     try {
       if (projectId) {
-        try {
-          const tempRootDir = await resolveStorageRootHandle({
-            workspaceHandle: params.workspaceHandle.value!,
-            rootPath: params.resolvedStorageTopology.value.tempRoot,
-          });
-          const projectsDir = await ensureDirectoryChain({
-            baseDir: tempRootDir,
-            segments: [workspaceTopology.tempProjectsDirName],
-          });
-          await projectsDir.removeEntry(projectId, { recursive: true });
-        } catch {
-          // ignore
-        }
+        await clearProjectVardata(projectId);
       }
 
       await params.projectsHandle.value.removeEntry(name, { recursive: true });

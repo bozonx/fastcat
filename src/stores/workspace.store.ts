@@ -1,10 +1,15 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { defineStore, skipHydrate } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
-import { resolveWorkspaceLocalStorageTopology } from '~/utils/storage-topology';
+import {
+  resolveTauriSystemStorageTopology,
+  resolveWorkspaceLocalStorageTopology,
+  type ResolvedStorageTopology,
+} from '~/utils/storage-topology';
+import { resolveTauriAppPaths, type TauriAppPaths } from '~/utils/tauri-paths';
 import { isModelDownloaded } from '~/utils/transcription/model-storage';
 
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
@@ -37,6 +42,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   const workspaceHandle = ref<FileSystemDirectoryHandle | null>(null);
   const projectsHandle = ref<FileSystemDirectoryHandle | null>(null);
   const settingsRepo = ref<WorkspaceSettingsRepository | null>(null);
+  const tauriAppPaths = ref<TauriAppPaths | null>(null);
 
   const projects = ref<string[]>([]);
   const isLoading = ref(false);
@@ -113,8 +119,42 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     { immediate: true },
   );
 
-  const resolvedStorageTopology = computed(() =>
+  const resolvedStorageTopology = ref<ResolvedStorageTopology>(
     resolveWorkspaceLocalStorageTopology(appSettings.value.paths),
+  );
+  let storageTopologyRevision = 0;
+
+  async function refreshResolvedStorageTopology() {
+    const revision = ++storageTopologyRevision;
+    const paths = appSettings.value.paths;
+    if (workspaceProvider.id !== 'tauri' || paths.placementMode === 'portable') {
+      resolvedStorageTopology.value = resolveWorkspaceLocalStorageTopology(paths);
+      return;
+    }
+
+    tauriAppPaths.value ??= await resolveTauriAppPaths(
+      runtimeConfig.public.fastcatDevDir as string | undefined,
+    );
+    if (!tauriAppPaths.value) {
+      resolvedStorageTopology.value = resolveWorkspaceLocalStorageTopology(paths);
+      return;
+    }
+
+    const resolved = await resolveTauriSystemStorageTopology({
+      paths,
+      appPaths: tauriAppPaths.value,
+    });
+    if (revision === storageTopologyRevision) {
+      resolvedStorageTopology.value = resolved;
+    }
+  }
+
+  watch(
+    () => appSettings.value.paths,
+    () => {
+      void refreshResolvedStorageTopology();
+    },
+    { deep: true, immediate: true },
   );
 
   const projectsModule = createWorkspaceProjectsModule({

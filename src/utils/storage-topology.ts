@@ -14,6 +14,7 @@ import {
   WORKSPACE_TEMP_PROJECTS_DIR_NAME,
   type StoragePathRegistry,
 } from './storage-roots';
+import type { TauriAppPaths } from './tauri-paths';
 
 export interface ResolvedStorageTopology {
   projectsRoot: string;
@@ -26,6 +27,10 @@ export interface ResolvedStorageTopology {
 
 function trimPath(path: string): string {
   return path.trim().replace(/^\/+|\/+$/g, '');
+}
+
+function trimRootPath(path: string): string {
+  return path.trim().replace(/[\\/]+$/g, '');
 }
 
 function joinSegments(...segments: Array<string | undefined>): string {
@@ -126,5 +131,34 @@ export function resolveWorkspaceLocalStorageTopology(
     tempRoot: tempBase,
     proxiesRoot: proxiesRootBase,
     ephemeralTmpRoot: ephemeralTmpRootBase,
+  };
+}
+
+export async function resolveTauriSystemStorageTopology(input: {
+  paths: StoragePathRegistry;
+  appPaths: TauriAppPaths;
+}): Promise<ResolvedStorageTopology> {
+  const { join } = await import('@tauri-apps/api/path');
+  const contentRootBase = trimRootPath(input.paths.contentRootPath);
+  const dataRootBase = trimRootPath(input.paths.dataRootPath);
+  const tempRootBase = trimRootPath(input.paths.tempRootPath);
+  const proxiesRootBase = trimRootPath(input.paths.proxiesRootPath);
+  const ephemeralTmpRootBase = trimRootPath(input.paths.ephemeralTmpRootPath);
+
+  const contentBase = contentRootBase;
+  const dataRoot = dataRootBase || (await join(input.appPaths.dataDir, DATA_ROOT_DIR_NAME));
+  const tempRoot = tempRootBase || (await join(input.appPaths.cacheDir, TEMP_ROOT_DIR_NAME));
+  const proxiesRoot =
+    proxiesRootBase || (await join(input.appPaths.cacheDir, PROXIES_ROOT_DIR_NAME));
+  const ephemeralTmpRoot =
+    ephemeralTmpRootBase || (await join(input.appPaths.tempDir, 'fastcat-jobs'));
+
+  return {
+    projectsRoot: joinSegments(contentBase, PROJECTS_ROOT_DIR_NAME),
+    commonRoot: joinSegments(contentBase, COMMON_ROOT_DIR_NAME),
+    dataRoot,
+    tempRoot,
+    proxiesRoot,
+    ephemeralTmpRoot,
   };
 }

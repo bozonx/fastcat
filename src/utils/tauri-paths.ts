@@ -4,7 +4,9 @@ const isDevMode = (): boolean => import.meta.dev;
 
 export interface TauriAppPaths {
   configDir: string;
+  dataDir: string;
   cacheDir: string;
+  tempDir: string;
   documentsDir: string;
 }
 
@@ -16,7 +18,7 @@ export async function resolveTauriAppPaths(
     return null;
   }
 
-  const { appConfigDir, appCacheDir, documentDir, join, resolve } =
+  const { appConfigDir, appDataDir, appCacheDir, documentDir, tempDir, join, resolve } =
     await import('@tauri-apps/api/path');
 
   if ((isDevMode() || forceDev) && fastcatDevDir) {
@@ -26,7 +28,9 @@ export async function resolveTauriAppPaths(
 
     return {
       configDir: await join(devRoot, 'config'),
+      dataDir: await join(devRoot, 'data'),
       cacheDir: await join(devRoot, 'cache'),
+      tempDir: await join(devRoot, 'tmp'),
       documentsDir: await join(devRoot, 'Documents'),
     };
   }
@@ -34,7 +38,9 @@ export async function resolveTauriAppPaths(
   // Production: standard OS directories via Tauri path API
   return {
     configDir: await appConfigDir(),
+    dataDir: await appDataDir(),
     cacheDir: await appCacheDir(),
+    tempDir: await tempDir(),
     documentsDir: await documentDir(),
   };
 }
