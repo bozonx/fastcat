@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
-import { timeUsToPx } from '~/utils/timeline/geometry';
+import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { clipHasAudio, isAudio, isVideo } from '~/utils/timeline/clip';
 import TimelineClipPreviewOverlays from './TimelineClipPreviewOverlays.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
@@ -18,6 +18,7 @@ interface SlipOverlayView extends ClipPreviewOverlay {
 }
 
 const MIN_WAVEFORM_WIDTH_PX = 30;
+const MIN_WAVEFORM_PX_PER_SECOND = 2.5;
 
 defineProps<{
   item: TimelineTrackItem;
@@ -51,6 +52,7 @@ defineProps<{
       v-if="
         effectiveClipItem &&
         effectiveClipItem.showWaveform !== false &&
+        zoomToPxPerSecond(zoom) >= MIN_WAVEFORM_PX_PER_SECOND &&
         clipWidthPx >= MIN_WAVEFORM_WIDTH_PX &&
         (isAudio(item, track) || (isVideo(item, track) && clipHasAudio(item, track, mediaMetadata)))
       "
