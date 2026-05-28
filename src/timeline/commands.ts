@@ -38,6 +38,7 @@ import {
   overlayPlaceItem,
   overlayTrimItem,
   trimItem,
+  trimItems,
   splitItem,
   autoTrimPauses,
   updateClipProperties,
@@ -106,6 +107,17 @@ export interface TrimItemCommand {
   itemId: string;
   edge: 'start' | 'end';
   deltaUs: number;
+  quantizeToFrames?: boolean;
+}
+
+export interface TrimItemsCommand {
+  type: 'trim_items';
+  trims: {
+    trackId: string;
+    itemId: string;
+    edge: 'start' | 'end';
+    deltaUs: number;
+  }[];
   quantizeToFrames?: boolean;
 }
 
@@ -363,6 +375,7 @@ export type TimelineCommand =
   | RemoveItemCommand
   | MoveItemCommand
   | TrimItemCommand
+  | TrimItemsCommand
   | SplitItemCommand
   | DeleteItemsCommand
   | AddTrackCommand
@@ -446,6 +459,8 @@ export function applyTimelineCommand(
       return moveItemToTrack(doc, cmd);
     case 'trim_item':
       return trimItem(doc, cmd);
+    case 'trim_items':
+      return trimItems(doc, cmd);
     case 'split_item':
       return splitItem(doc, cmd);
     case 'update_clip_properties':

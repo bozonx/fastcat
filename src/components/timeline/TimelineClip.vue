@@ -77,7 +77,7 @@ interface Props {
     durationUs: number;
     edge: 'start' | 'end';
     deltaUs: number;
-  } | null;
+  }[] | null;
   selectedTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
   resizeVolume: {
     itemId: string;
@@ -131,9 +131,14 @@ const timelineContext = inject<TimelineContext>('timelineContext')!;
 const isHovered = ref(false);
 const isTransitionCreateHandleActive = ref(false);
 
+const myTrimPreview = computed(() => {
+  if (!props.trimPreview) return null;
+  return props.trimPreview.find((p) => p.itemId === props.item.id) ?? null;
+});
+
 const effectiveTimelineRange = computed(() => {
-  const preview = props.trimPreview;
-  if (preview && preview.itemId === props.item.id) {
+  const preview = myTrimPreview.value;
+  if (preview) {
     return { startUs: preview.startUs, durationUs: preview.durationUs };
   }
   return props.item.timelineRange;
@@ -176,9 +181,9 @@ const slipOverlay = computed<SlipOverlayView | null>(() => {
 });
 
 const trimOverlay = computed<TrimOverlayView | null>(() => {
-  const preview = props.trimPreview;
+  const preview = myTrimPreview.value;
   const clip = clipItem.value;
-  if (!preview || preview.itemId !== props.item.id || !clip) return null;
+  if (!preview || !clip) return null;
 
   const sourceDurationUs = Math.max(0, Math.round(Number(clip.sourceDurationUs ?? 0)));
   const sourceRangeStartUs = Math.max(0, Math.round(Number(clip.sourceRange?.startUs ?? 0)));
@@ -337,8 +342,8 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
 });
 
 const effectiveSourceRange = computed(() => {
-  const preview = props.trimPreview;
-  if (preview && preview.itemId === props.item.id && clipItem.value) {
+  const preview = myTrimPreview.value;
+  if (preview && clipItem.value) {
     const fps = sanitizeFps(timelineContext.timelineDoc.value?.timebase?.fps);
     const hasFixedSourceDuration =
       (clipItem.value.clipType === 'media' && !clipItem.value.isImage) ||

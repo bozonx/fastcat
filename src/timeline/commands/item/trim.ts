@@ -1,5 +1,5 @@
 import type { TimelineDocument, TimelineTrackItem } from '../../types';
-import type { TrimItemCommand, TimelineCommandResult } from '../../commands';
+import type { TrimItemCommand, TrimItemsCommand, TimelineCommandResult } from '../../commands';
 import {
   getTrackById,
   getDocFps,
@@ -71,4 +71,20 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
+}
+
+export function trimItems(doc: TimelineDocument, cmd: TrimItemsCommand): TimelineCommandResult {
+  let currentDoc = doc;
+  for (const trim of cmd.trims) {
+    const result = trimItem(currentDoc, {
+      type: 'trim_item',
+      trackId: trim.trackId,
+      itemId: trim.itemId,
+      edge: trim.edge,
+      deltaUs: trim.deltaUs,
+      quantizeToFrames: cmd.quantizeToFrames,
+    });
+    currentDoc = result.next;
+  }
+  return { next: currentDoc };
 }

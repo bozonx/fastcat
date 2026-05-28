@@ -36,7 +36,8 @@ import {
   pickBestSnapCandidateUs,
   computeSnappedStartUs,
 } from '~/utils/timeline/geometry';
-import { sanitizeFps, getLinkedClipGroupItemIds } from '~/timeline/commands/utils';
+import { sanitizeFps, getLinkedClipGroupItemIds, findClipById } from '~/timeline/commands/utils';
+import { computeTrimGeometry } from '~/timeline/commands/item/trimGeometry';
 import { formatStopFrameTimecode } from '~/utils/stop-frames';
 import { useTimelinePointerSession } from '~/composables/timeline/useTimelinePointerSession';
 import type { TimelineCommand } from '~/timeline/commands';
@@ -117,7 +118,7 @@ export function useTimelineItemDrag(
 
   const movePreview = ref<TimelineMovePreview[]>([]);
   const slipPreview = ref<TimelineSlipPreview | null>(null);
-  const trimPreview = ref<TimelineTrimPreview | null>(null);
+  const trimPreview = ref<TimelineTrimPreview[]>([]);
   const pendingMoveCommit = ref<{
     moves: Array<{
       fromTrackId: string;
@@ -128,12 +129,12 @@ export function useTimelineItemDrag(
     isCollision?: boolean;
   } | null>(null);
   const pendingTrimCommit = ref<{
-    trackId: string;
-    itemId: string;
+    targetTrackId: string;
+    targetItemId: string;
     edge: 'start' | 'end';
     deltaUs: number;
     quantizeToFrames: boolean;
-    commandType: 'trim_item' | 'overlay_trim_item';
+    commandType: 'trim_item' | 'trim_items' | 'overlay_trim_item';
   } | null>(null);
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
@@ -380,7 +381,7 @@ export function useTimelineItemDrag(
     movePreview.value = [{ itemId, trackId, startUs }];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
-    trimPreview.value = null;
+    trimPreview.value = [];
     pendingTrimCommit.value = null;
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
@@ -401,9 +402,22 @@ export function useTimelineItemDrag(
     const item = track?.items.find((it) => it.id === input.itemId);
     if (item?.kind === 'clip' && Boolean(item.locked)) return;
 
+    const doc = timelineStore.timelineDoc;
+
+    let targetItemId = input.itemId;
+    let targetTrackId = input.trackId;
+
+    if (item?.kind === 'clip' && item.linkedVideoClipId && item.lockToLinkedVideo && doc) {
+      const video = findClipById(doc, item.linkedVideoClipId);
+      if (video) {
+        targetItemId = video.item.id;
+        targetTrackId = video.track.id;
+      }
+    }
+
     draggingMode.value = input.edge === 'start' ? 'trim_start' : 'trim_end';
-    draggingTrackId.value = input.trackId;
-    draggingItemId.value = input.itemId;
+    draggingTrackId.value = targetTrackId;
+    draggingItemId.value = targetItemId;
     dragAnchorClientX.value = e.clientX;
     dragAnchorScrollLeft.value = scrollEl.value?.scrollLeft ?? 0;
     lastDragClientX.value = e.clientX;
@@ -415,8 +429,8 @@ export function useTimelineItemDrag(
     dragLastAppliedQuantizedDeltaUs.value = 0;
 
     const currentItem = tracks.value
-      .find((t) => t.id === input.trackId)
-      ?.items.find((it) => it.id === input.itemId);
+      .find((t) => t.id === targetTrackId)
+      ?.items.find((it) => it.id === targetItemId);
     const durationUs = currentItem?.kind === 'clip' ? currentItem.timelineRange.durationUs : 0;
     dragAnchorItemDurationUs.value = Math.max(0, Math.round(Number(durationUs ?? 0)));
 
@@ -424,9 +438,11 @@ export function useTimelineItemDrag(
       ? Math.max(0, Math.round(timelineStore.duration))
       : null;
     const snapSettings = workspaceStore.userSettings.timeline.snapping;
+
+    const groupedIds = doc ? getLinkedClipGroupItemIds(doc, targetItemId) : [targetItemId];
     dragSnapTargetsUs.value = computeSnapTargetsUs({
       tracks: tracks.value,
-      excludeItemIds: [input.itemId],
+      excludeItemIds: groupedIds,
       includeTimelineStart: snapSettings.timelineEdges,
       includeTimelineEndUs: snapSettings.timelineEdges ? timelineEndUs : null,
       includePlayheadUs: snapSettings.playhead ? timelineStore.currentTime : null,
@@ -442,17 +458,47 @@ export function useTimelineItemDrag(
     movePreview.value = [];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
-    trimPreview.value =
-      currentItem?.kind === 'clip'
-        ? {
-            itemId: input.itemId,
-            trackId: input.trackId,
-            startUs: currentItem.timelineRange.startUs,
-            durationUs: currentItem.timelineRange.durationUs,
-            edge: input.edge,
-            deltaUs: 0,
+
+    const previewItems: TimelineTrimPreview[] = [];
+    const seen = new Set<string>();
+
+    for (const id of groupedIds) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const tr = tracks.value.find((t) => t.items.some((it) => it.id === id));
+      const it = tr?.items.find((x) => x.id === id);
+      if (it?.kind === 'clip') {
+        previewItems.push({
+          itemId: id,
+          trackId: tr!.id,
+          startUs: it.timelineRange.startUs,
+          durationUs: it.timelineRange.durationUs,
+          edge: input.edge,
+          deltaUs: 0,
+        });
+      }
+    }
+
+    if (doc) {
+      for (const t of doc.tracks) {
+        if (t.kind !== 'audio') continue;
+        for (const it of t.items) {
+          if (it.kind !== 'clip') continue;
+          if (it.linkedVideoClipId === targetItemId && it.lockToLinkedVideo && !seen.has(it.id)) {
+            previewItems.push({
+              itemId: it.id,
+              trackId: t.id,
+              startUs: it.timelineRange.startUs,
+              durationUs: it.timelineRange.durationUs,
+              edge: input.edge,
+              deltaUs: 0,
+            });
           }
-        : null;
+        }
+      }
+    }
+
+    trimPreview.value = previewItems;
     pendingTrimCommit.value = null;
 
     (e.currentTarget as HTMLElement | null)?.setPointerCapture(e.pointerId);
@@ -813,25 +859,45 @@ export function useTimelineItemDrag(
     lastDragClientX.value = clientX;
     dragLastAppliedQuantizedDeltaUs.value = desiredQuantizedDeltaUs;
 
-    const nextStartUs =
-      mode === 'trim_start' ? anchorStartUs + desiredQuantizedDeltaUs : anchorStartUs;
-    const nextDurationUs =
-      mode === 'trim_start'
-        ? anchorDurationUs - desiredQuantizedDeltaUs
-        : anchorDurationUs + desiredQuantizedDeltaUs;
     const cmdEdge = mode === 'trim_start' ? 'start' : 'end';
 
-    trimPreview.value = {
-      itemId,
-      trackId,
-      startUs: Math.max(0, Math.round(nextStartUs)),
-      durationUs: Math.max(0, Math.round(nextDurationUs)),
-      edge: cmdEdge,
-      deltaUs: desiredQuantizedDeltaUs,
-    };
+    const nextPreviews: TimelineTrimPreview[] = [];
+    for (const preview of trimPreview.value) {
+      const pTrack = doc?.tracks.find((t) => t.id === preview.trackId);
+      const pItem = pTrack?.items.find((it) => it.id === preview.itemId);
+      if (!pItem || pItem.kind !== 'clip') continue;
+
+      const speed =
+        typeof pItem.speed === 'number' && Number.isFinite(pItem.speed) ? pItem.speed : 1;
+      const hasFixedSourceDuration =
+        (pItem.clipType === 'media' && !pItem.isImage) || pItem.clipType === 'timeline';
+
+      const { timelineRange, valid } = computeTrimGeometry({
+        edge: cmdEdge,
+        deltaUs: desiredQuantizedDeltaUs,
+        speed,
+        fps,
+        quantizeToFrames: enableFrameSnap,
+        timelineRange: pItem.timelineRange,
+        sourceRange: pItem.sourceRange,
+        sourceDurationUs: pItem.sourceDurationUs,
+        hasFixedSourceDuration,
+      });
+
+      if (!valid) continue;
+
+      nextPreviews.push({
+        ...preview,
+        startUs: Math.max(0, Math.round(timelineRange.startUs)),
+        durationUs: Math.max(0, Math.round(timelineRange.durationUs)),
+        deltaUs: desiredQuantizedDeltaUs,
+      });
+    }
+
+    trimPreview.value = nextPreviews;
     pendingTrimCommit.value = {
-      trackId,
-      itemId,
+      targetTrackId: trackId,
+      targetItemId: itemId,
       edge: cmdEdge,
       deltaUs: desiredQuantizedDeltaUs,
       quantizeToFrames: enableFrameSnap,
@@ -1097,29 +1163,77 @@ export function useTimelineItemDrag(
     if (!cancel && (draggingMode.value === 'trim_start' || draggingMode.value === 'trim_end')) {
       const commit = pendingTrimCommit.value;
       if (commit && commit.deltaUs !== 0) {
-        const cmd: Extract<TimelineCommand, { type: 'trim_item' | 'overlay_trim_item' }> =
-          commit.commandType === 'overlay_trim_item'
-            ? {
-                type: 'overlay_trim_item',
-                trackId: commit.trackId,
-                itemId: commit.itemId,
-                edge: commit.edge,
-                deltaUs: commit.deltaUs,
-                quantizeToFrames: commit.quantizeToFrames,
-              }
-            : {
-                type: 'trim_item',
-                trackId: commit.trackId,
-                itemId: commit.itemId,
-                edge: commit.edge,
-                deltaUs: commit.deltaUs,
-                quantizeToFrames: commit.quantizeToFrames,
-              };
         const docBeforeApply = timelineStore.timelineDoc;
-        timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
-        if (timelineStore.timelineDoc !== docBeforeApply) {
-          lastDragAppliedCmd.value = cmd;
-          hasPendingTimelinePersist.value = true;
+
+        if (commit.commandType === 'overlay_trim_item') {
+          const cmd: Extract<TimelineCommand, { type: 'overlay_trim_item' }> = {
+            type: 'overlay_trim_item',
+            trackId: commit.targetTrackId,
+            itemId: commit.targetItemId,
+            edge: commit.edge,
+            deltaUs: commit.deltaUs,
+            quantizeToFrames: commit.quantizeToFrames,
+          };
+          timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
+          if (timelineStore.timelineDoc !== docBeforeApply) {
+            lastDragAppliedCmd.value = cmd;
+            hasPendingTimelinePersist.value = true;
+          }
+        } else {
+          const trims = trimPreview.value
+            .map((preview) => {
+              const found = docBeforeApply
+                ? findClipById(docBeforeApply, preview.itemId)
+                : null;
+              if (!found) return null;
+              const it = found.item;
+              if (it.linkedVideoClipId && it.lockToLinkedVideo) {
+                const videoInTrims = trimPreview.value.some(
+                  (vp) => vp.itemId === it.linkedVideoClipId,
+                );
+                if (videoInTrims) return null;
+              }
+              return {
+                trackId: preview.trackId,
+                itemId: preview.itemId,
+                edge: commit.edge,
+                deltaUs: commit.deltaUs,
+              };
+            })
+            .filter(
+              (
+                x,
+              ): x is {
+                trackId: string;
+                itemId: string;
+                edge: 'start' | 'end';
+                deltaUs: number;
+              } => x !== null,
+            );
+
+          if (trims.length === 1) {
+            const cmd: Extract<TimelineCommand, { type: 'trim_item' }> = {
+              type: 'trim_item',
+              ...trims[0]!,
+              quantizeToFrames: commit.quantizeToFrames,
+            };
+            timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
+            if (timelineStore.timelineDoc !== docBeforeApply) {
+              lastDragAppliedCmd.value = cmd;
+              hasPendingTimelinePersist.value = true;
+            }
+          } else if (trims.length > 1) {
+            const cmd: Extract<TimelineCommand, { type: 'trim_items' }> = {
+              type: 'trim_items',
+              trims,
+              quantizeToFrames: commit.quantizeToFrames,
+            };
+            timelineStore.applyTimeline(cmd, { saveMode: 'none', skipHistory: true });
+            if (timelineStore.timelineDoc !== docBeforeApply) {
+              lastDragAppliedCmd.value = cmd;
+              hasPendingTimelinePersist.value = true;
+            }
+          }
         }
       }
     }
@@ -1135,7 +1249,11 @@ export function useTimelineItemDrag(
             : 'videoEditor.fileManager.history.entries.moveItems';
       } else if (appliedCmd.type === 'update_clip_properties') {
         labelKey = getUpdateClipPropertiesLabelKey(appliedCmd.properties ?? {});
-      } else if (appliedCmd.type === 'trim_item' || appliedCmd.type === 'overlay_trim_item') {
+      } else if (
+        appliedCmd.type === 'trim_item' ||
+        appliedCmd.type === 'trim_items' ||
+        appliedCmd.type === 'overlay_trim_item'
+      ) {
         labelKey = 'videoEditor.fileManager.history.entries.trimClip';
       } else {
         labelKey = getTimelineCommandLabelKey(appliedCmd.type);
@@ -1176,7 +1294,7 @@ export function useTimelineItemDrag(
     movePreview.value = [];
     pendingMoveCommit.value = null;
     slipPreview.value = null;
-    trimPreview.value = null;
+    trimPreview.value = [];
     pendingTrimCommit.value = null;
 
     dragStartSnapshot.value = null;
