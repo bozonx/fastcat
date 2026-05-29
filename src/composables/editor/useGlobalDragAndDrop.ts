@@ -189,7 +189,11 @@ export function useGlobalDragAndDrop() {
 
               const files: File[] = [];
 
+              const { invoke } = await import('@tauri-apps/api/core');
               for (const path of paths) {
+                // Extend scope to allow reading the dropped file from any location.
+                await invoke('allow_dropped_file_scope', { path }).catch(() => {});
+
                 const file = await fm.vfs.getFile(path);
                 if (file) {
                   files.push(file);

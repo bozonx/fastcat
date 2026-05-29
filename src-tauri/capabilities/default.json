@@ -32,6 +32,12 @@
         "$DOCUMENT/FastCat/**/.fastcat",
         "$DOCUMENT/FastCat/**/.fastcat/**",
         "$DOCUMENT/FastCat/**/.fastcat/**/*",
+        "$DOCUMENT/FastCat/.fastcat",
+        "$DOCUMENT/FastCat/.fastcat/**",
+        "$DOCUMENT/FastCat/.fastcat/**/*",
+        "$DOCUMENT/FastCat/projects/*/.fastcat",
+        "$DOCUMENT/FastCat/projects/*/.fastcat/**",
+        "$DOCUMENT/FastCat/projects/*/.fastcat/**/*",
         "$DOCUMENT/FastCat/.fastcat-config",
         "$DOCUMENT/FastCat/.fastcat-config/**",
         "$DOCUMENT/FastCat/.fastcat-config/**/*",
@@ -40,9 +46,16 @@
         "$RESOURCE/../.dev-files/**/.fastcat",
         "$RESOURCE/../.dev-files/**/.fastcat/**",
         "$RESOURCE/../.dev-files/**/.fastcat/**/*",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat/**",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat/**/*",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat/**",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat/**/*",
         "$RESOURCE/../.dev-files/**/.fastcat-config",
         "$RESOURCE/../.dev-files/**/.fastcat-config/**",
-        "$RESOURCE/../.dev-files/**/.fastcat-config/**/*"
+        "$RESOURCE/../.dev-files/**/.fastcat-config/**/*",
+        "$HOME/**/*"
       ]
     },
     {
@@ -57,11 +70,24 @@
         "$DOCUMENT/FastCat/**/.fastcat",
         "$DOCUMENT/FastCat/**/.fastcat/**",
         "$DOCUMENT/FastCat/**/.fastcat/**/*",
+        "$DOCUMENT/FastCat/.fastcat",
+        "$DOCUMENT/FastCat/.fastcat/**",
+        "$DOCUMENT/FastCat/.fastcat/**/*",
+        "$DOCUMENT/FastCat/projects/*/.fastcat",
+        "$DOCUMENT/FastCat/projects/*/.fastcat/**",
+        "$DOCUMENT/FastCat/projects/*/.fastcat/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/.fastcat",
         "$RESOURCE/../.dev-files/**/.fastcat/**",
-        "$RESOURCE/../.dev-files/**/.fastcat/**/*"
+        "$RESOURCE/../.dev-files/**/.fastcat/**/*",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat/**",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat/**/*",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat/**",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat/**/*",
+        "$HOME/**/*"
       ]
     },
     {
@@ -76,11 +102,23 @@
         "$DOCUMENT/FastCat/**/.fastcat",
         "$DOCUMENT/FastCat/**/.fastcat/**",
         "$DOCUMENT/FastCat/**/.fastcat/**/*",
+        "$DOCUMENT/FastCat/.fastcat",
+        "$DOCUMENT/FastCat/.fastcat/**",
+        "$DOCUMENT/FastCat/.fastcat/**/*",
+        "$DOCUMENT/FastCat/projects/*/.fastcat",
+        "$DOCUMENT/FastCat/projects/*/.fastcat/**",
+        "$DOCUMENT/FastCat/projects/*/.fastcat/**/*",
         "$RESOURCE/.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/*",
         "$RESOURCE/../.dev-files/**/.fastcat",
         "$RESOURCE/../.dev-files/**/.fastcat/**",
-        "$RESOURCE/../.dev-files/**/.fastcat/**/*"
+        "$RESOURCE/../.dev-files/**/.fastcat/**/*",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat/**",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/.fastcat/**/*",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat/**",
+        "$RESOURCE/../.dev-files/home/user/Documents/FastCat/projects/*/.fastcat/**/*"
       ]
     }
   ]

@@ -5,3 +5,4 @@
 //!     или через регистрируемый custom URI scheme. См. doc/tauri-compositor.md (вопрос про monitor).
 
 pub mod compositor_cmd;
+pub mod monitor_cmd;

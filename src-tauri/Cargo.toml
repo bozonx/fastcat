@@ -50,6 +50,10 @@ parley = "0.9"
 # Растр-декод для image-слоёв (PNG/JPEG/WebP). Видеокадры приходят отдельно от декодера.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 raw-window-handle = "0.6"
+# Нативный монитор: окно + декодер.
+winit = "0.30"
+# Видео-декодинг — через системный ffmpeg CLI (см. media/decode.rs). Прямая привязка
+# к libav-биндингам пока заблокирована несовместимостью ffmpeg-next с ffmpeg 8.x.
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2.4.2"

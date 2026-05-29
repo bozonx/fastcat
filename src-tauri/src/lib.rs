@@ -9,6 +9,25 @@ pub mod compositor;
 pub mod engine;
 pub mod ipc;
 pub mod media;
+pub mod monitor;
+
+/// Extends the fs scope to allow reading a file dropped from the OS.
+/// Required for drag-and-drop imports from arbitrary filesystem locations.
+#[tauri::command]
+fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    use std::path::Path;
+    let p = Path::new(&path);
+
+    // Reject directories — only individual files should be allowed this way.
+    if p.extension().is_none() && p.is_dir() {
+        return Err(format!("path is a directory: {path}"));
+    }
+
+    println!("[allow_dropped_file_scope] extending scope to: {path}");
+    app.fs_scope()
+        .allow_file(&path)
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
@@ -64,10 +83,16 @@ pub fn run() {
         // .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_fs_stream::init())
         .invoke_handler(tauri::generate_handler![
+            allow_dropped_file_scope,
             allow_dev_directory_scope,
             video_render::webgpu_render_engine_status,
             ipc::compositor_cmd::compositor_render_frame,
             ipc::compositor_cmd::media_open,
+            ipc::monitor_cmd::monitor_open,
+            ipc::monitor_cmd::monitor_play,
+            ipc::monitor_cmd::monitor_pause,
+            ipc::monitor_cmd::monitor_seek,
+            ipc::monitor_cmd::monitor_close,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {

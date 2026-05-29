@@ -108,8 +108,15 @@ export function createProjectFsModule(params: {
           return await currentDir.getFileHandle(fileName, {
             create: input.create ?? false,
           });
-        } catch {
-          // Fallback to workspace root
+        } catch (e) {
+          if ((e as { name?: unknown }).name !== 'NotFoundError') {
+            // Non-NotFoundError (e.g., scope/permission error): do not fall through
+            if ((e as { name?: unknown }).name !== 'TypeMismatchError') {
+              log.error('Failed to get project file handle by path:', input.relativePath, e);
+            }
+            return null;
+          }
+          // NotFoundError: fall through to workspace root fallback
         }
       }
     }
@@ -204,8 +211,14 @@ export function createProjectFsModule(params: {
           });
         }
         return currentDir;
-      } catch {
-        // Fallback to workspace root
+      } catch (e) {
+        if ((e as { name?: unknown }).name !== 'NotFoundError') {
+          if ((e as { name?: unknown }).name !== 'TypeMismatchError') {
+            log.error('Failed to get project directory handle by path:', path, e);
+          }
+          return null;
+        }
+        // NotFoundError: fall through to workspace root fallback
       }
     }
 
