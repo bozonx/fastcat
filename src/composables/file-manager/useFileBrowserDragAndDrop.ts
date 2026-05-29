@@ -14,6 +14,7 @@ import {
 import { useFileDrop } from '~/composables/file-manager/useFileDrop';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
+  FILE_MANAGER_ITEMS_DRAG_TYPE,
   useDraggedFile,
   FILE_MANAGER_MOVE_DRAG_TYPE,
   INTERNAL_DRAG_TYPE,
@@ -151,10 +152,17 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     return isLayer1Active(event, workspaceStore.userSettings);
   }
 
+  function isSameFileSystemDrag(): boolean | null {
+    return appClipboard.dragSourceVfs && options.vfs
+      ? appClipboard.dragSourceVfs === options.vfs
+      : null;
+  }
+
   function resolveDragOperation(event: DragEvent): 'copy' | 'move' {
     return resolveFileManagerDragOperation({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(event),
+      isSameFileSystem: isSameFileSystemDrag(),
       targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
     });
   }
@@ -166,6 +174,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     return resolveFileManagerDropOperation({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(event),
+      isSameFileSystem: isSameFileSystemDrag(),
       targetFileManagerInstanceId: options.fileManagerInstanceId ?? null,
       currentDragOperation: appClipboard.currentDragOperation,
       fallbackRawOperation,
@@ -208,6 +217,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const operation = resolveFileManagerDragOperation({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
+      isSameFileSystem: isSameFileSystemDrag(),
       targetFileManagerInstanceId: targetInstanceId,
     });
 
@@ -245,9 +255,11 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     syncFileManagerDragCursor({ isDragging: true, operation });
 
     const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
+    const serializedPayload = JSON.stringify(movePayload);
+    e.dataTransfer.setData(FILE_MANAGER_ITEMS_DRAG_TYPE, serializedPayload);
     e.dataTransfer.setData(
       operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
-      JSON.stringify(movePayload),
+      serializedPayload,
     );
     appClipboard.setDraggedItems(movePayload);
     // Mark as internal so the global overlay is not shown
@@ -300,6 +312,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     const types = e.dataTransfer.types;
     if (
       !types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
+      !types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) &&
       !types.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
       !types.includes('Files')
     ) {
@@ -339,6 +352,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!types) return;
     if (
       !types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) &&
+      !types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) &&
       !types.includes(FILE_MANAGER_COPY_DRAG_TYPE) &&
       !types.includes('Files')
     ) {
@@ -364,6 +378,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     if (
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
       if (
@@ -438,12 +453,13 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
+    const itemsRaw = e.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
 
     const targetPath = entry.path;
 
-    const internalRaw = copyRaw || moveRaw;
+    const internalRaw = itemsRaw || copyRaw || moveRaw;
     if (internalRaw) {
       const isCrossManagerDrag = isCrossFileManagerDrag({
         dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
@@ -554,6 +570,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!types) return;
     if (
       types.includes('Files') ||
+      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
@@ -568,6 +585,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!types) return;
     if (
       types.includes('Files') ||
+      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
@@ -588,6 +606,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       }
       if (
         types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+        types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
         types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
       ) {
         if (
@@ -626,6 +645,7 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
     if (!types) return;
     if (
       types.includes('Files') ||
+      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
     ) {
@@ -657,9 +677,10 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
       return;
     }
 
+    const itemsRaw = e.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-    const internalRaw = copyRaw || moveRaw;
+    const internalRaw = itemsRaw || copyRaw || moveRaw;
     if (internalRaw) {
       const isCrossManagerDrag = isCrossFileManagerDrag({
         dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
@@ -832,7 +853,12 @@ export function useFileBrowserDragAndDrop(options: UseFileBrowserDragAndDropOpti
   return {
     isDragOverPanel,
     dragOverEntryPath,
-    currentDragOperation: computed(() => appClipboard.currentDragOperation),
+    currentDragOperation: computed(() => {
+      const operation = appClipboard.currentDragOperation;
+      return operation === 'copy' || operation === 'move' || operation === 'cancel'
+        ? operation
+        : null;
+    }),
     isRootDropOver,
     isRelevantDrag,
     onEntryDragStart,

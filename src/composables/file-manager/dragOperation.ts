@@ -1,21 +1,30 @@
 import {
   INTERNAL_DRAG_TYPE,
   FILE_MANAGER_COPY_DRAG_TYPE,
+  FILE_MANAGER_ITEMS_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 
 export interface ResolveFileManagerDragOperationParams {
   dragSourceFileManagerInstanceId?: string | null;
   isLayer1Active: boolean;
+  isSameFileSystem?: boolean | null;
   targetFileManagerInstanceId?: string | null;
 }
 
 export interface FileManagerDraggedItem {
   path?: unknown;
   kind?: unknown;
+  name?: unknown;
 }
 
-export type FileManagerDragCursorOperation = 'copy' | 'move' | 'cancel';
+export type FileManagerDragCursorOperation =
+  | 'copy'
+  | 'move'
+  | 'cancel'
+  | 'open-panel'
+  | 'open-tab'
+  | 'timeline-add';
 
 export interface ResolveFileManagerDropOperationParams extends ResolveFileManagerDragOperationParams {
   currentDragOperation?: FileManagerDragCursorOperation | null;
@@ -38,7 +47,7 @@ export function isCrossFileManagerDrag(
 export function resolveFileManagerDragOperation(
   params: ResolveFileManagerDragOperationParams,
 ): 'copy' | 'move' {
-  if (isCrossFileManagerDrag(params)) {
+  if (isCrossFileManagerDrag(params) && params.isSameFileSystem === false) {
     return params.isLayer1Active ? 'move' : 'copy';
   }
 
@@ -71,6 +80,20 @@ export function hasInternalFileManagerDragType(
   const dragTypes = Array.from(types);
   return (
     dragTypes.includes(INTERNAL_DRAG_TYPE) ||
+    dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+    dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
+    dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE)
+  );
+}
+
+export function hasFileManagerItemsDragType(
+  types: ArrayLike<string> | readonly string[] | null | undefined,
+): boolean {
+  if (!types) return false;
+
+  const dragTypes = Array.from(types);
+  return (
+    dragTypes.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
     dragTypes.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
     dragTypes.includes(FILE_MANAGER_MOVE_DRAG_TYPE)
   );
@@ -152,9 +175,10 @@ export function getDropTargetEntryPath(event: DragEvent): string | null {
 }
 
 export function getDraggedFileManagerItems(event: DragEvent): FileManagerDraggedItem[] {
+  const itemsRaw = event.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
   const copyRaw = event.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
   const moveRaw = event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-  const internalRaw = copyRaw || moveRaw;
+  const internalRaw = itemsRaw || copyRaw || moveRaw;
   if (!internalRaw) return [];
 
   try {

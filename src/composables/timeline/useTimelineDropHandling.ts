@@ -22,6 +22,7 @@ import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/applicat
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
+import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 const log = createDevLogger('useTimelineDropHandling');
 
@@ -685,6 +686,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       if (files.length > 0 && files.every(isSupportedExternalFile)) {
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
 
         // We can't show a full preview for OS files easily because we don't have metadata yet,
         // but we can show a ghost box with a generic label.
@@ -726,6 +728,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       if (canImportToTimeline) {
         e.preventDefault();
         if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
 
         const dropPositionUs = getDropPosition(e);
         if (dropPositionUs !== null) {

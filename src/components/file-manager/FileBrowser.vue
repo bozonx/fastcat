@@ -182,7 +182,6 @@ fileManagerStore.setSelectionContext({
 });
 
 const {
-  isDragOverPanel,
   dragOverEntryPath,
   currentDragOperation,
   onEntryDragStart: onEntryDragStartBase,
@@ -195,9 +194,6 @@ const {
   onRootDragOver: onRootDragOverBase,
   onRootDragLeave: onRootDragLeaveBase,
   onRootDrop: onRootDropBase,
-  onPanelDragOver,
-  onPanelDragLeave,
-  onPanelDrop,
 } = useFileBrowserDragAndDrop({
   findEntryByPath,
   resolveEntryByPath,
@@ -804,14 +800,10 @@ async function onDirectoryUploadChange(e: Event) {
     class="flex flex-col h-full bg-ui-bg relative overflow-hidden transition-colors duration-150"
     :class="{
       'panel-focus-frame': !safeHideFocusFrame,
-      'bg-primary-500/5': isDragOverPanel,
       'panel-focus-frame--active':
         !safeHideFocusFrame && focusStore.isPanelFocused(`dynamic:file-manager:${instanceId}`),
     }"
     @pointerdown.capture="focusBrowserPanel"
-    @dragover.prevent="onPanelDragOver"
-    @dragleave="onPanelDragLeave"
-    @drop.prevent.stop="onPanelDrop"
   >
     <!-- Toolbar -->
     <FileBrowserToolbar

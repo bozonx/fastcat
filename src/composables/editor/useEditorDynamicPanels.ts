@@ -8,6 +8,11 @@ import { readLocalStorageJson, getPlatformSuffix } from '~/stores/ui/uiLocalStor
 import type { DynamicPanel } from '~/stores/editor-view.store';
 import { isOpenableProjectFileName } from '~/utils/media-types';
 import { genUuid } from '~/utils/ids';
+import {
+  getDraggedFileManagerItems,
+  hasFileManagerItemsDragType,
+} from '~/composables/file-manager/dragOperation';
+import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 const log = createDevLogger('useEditorDynamicPanels');
 
 interface UseEditorDynamicPanelsOptions {
@@ -197,6 +202,7 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
     event.preventDefault();
 
     const isDraggingFile =
+      hasFileManagerItemsDragType(event.dataTransfer?.types) ||
       event.dataTransfer?.types.includes('application/json') ||
       event.dataTransfer?.types.includes('application/fastcat-file-manager-move');
     const isDraggingPanel = Boolean(draggingPanelId.value);
@@ -206,6 +212,11 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
 
     if (!isDraggingFile && !isDraggingPanel && !isDraggingTab) {
       return;
+    }
+
+    if (isDraggingFile && event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'open-panel' });
     }
 
     if (draggingPanelId.value === panelId) {
@@ -353,9 +364,12 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
       return;
     }
 
+    const fileManagerItems = getDraggedFileManagerItems(event);
     const fileDragData =
-      event.dataTransfer?.getData('application/json') ||
-      event.dataTransfer?.getData('application/fastcat-file-manager-move');
+      fileManagerItems.length > 0
+        ? JSON.stringify(fileManagerItems[0])
+        : event.dataTransfer?.getData('application/json') ||
+          event.dataTransfer?.getData('application/fastcat-file-manager-move');
 
     if (fileDragData) {
       try {

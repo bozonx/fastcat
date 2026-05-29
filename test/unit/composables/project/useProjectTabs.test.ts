@@ -74,6 +74,28 @@ describe('useProjectTabs', () => {
     expect(tabsStore.tabs.length).toBe(0);
   });
 
+  it('opens file-manager neutral drag payload as a file tab', async () => {
+    const { onTabBarDrop, tabsStore } = useProjectTabs({ enableUiEffects: false });
+    const payload = [{ kind: 'file', path: '_video/clip.mp4', name: 'clip.mp4' }];
+
+    await onTabBarDrop({
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+      dataTransfer: {
+        getData: (type: string) =>
+          type === 'application/fastcat-file-manager-items' ? JSON.stringify(payload) : '',
+      },
+    } as unknown as DragEvent);
+
+    expect(tabsStore.tabs).toHaveLength(1);
+    const tab = tabsStore.tabs[0];
+    expect(isFileTab(tab!)).toBe(true);
+    if (isFileTab(tab!)) {
+      expect(tab.filePath).toBe('_video/clip.mp4');
+      expect(tab.fileName).toBe('clip.mp4');
+    }
+  });
+
   describe('getStaticTabContextMenuItems', () => {
     it('returns disabled detach item for files tab', () => {
       const { getStaticTabContextMenuItems } = useProjectTabs({ enableUiEffects: false });

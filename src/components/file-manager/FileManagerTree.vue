@@ -7,6 +7,7 @@ import {
   useDraggedFile,
   INTERNAL_DRAG_TYPE,
   FILE_MANAGER_COPY_DRAG_TYPE,
+  FILE_MANAGER_ITEMS_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
   REMOTE_FILE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
@@ -15,7 +16,6 @@ import type { FsEntry } from '~/types/fs';
 import type { getBdPayload } from '~/types/bloggerdog';
 import { useUiStore } from '~/stores/ui.store';
 import { useSelectionStore } from '~/stores/selection.store';
-import { useVfs } from '~/composables/useVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import {
@@ -306,9 +306,11 @@ function onDragStart(e: DragEvent, entry: FsEntry) {
   syncFileManagerDragCursor({ isDragging: true, operation });
   const movePayload = entriesToMove.map((e) => ({ name: e.name, kind: e.kind, path: e.path }));
   appClipboard.setDraggedItems(movePayload);
+  const serializedPayload = JSON.stringify(movePayload);
+  e.dataTransfer?.setData(FILE_MANAGER_ITEMS_DRAG_TYPE, serializedPayload);
   e.dataTransfer?.setData(
     operation === 'copy' ? FILE_MANAGER_COPY_DRAG_TYPE : FILE_MANAGER_MOVE_DRAG_TYPE,
-    JSON.stringify(movePayload),
+    serializedPayload,
   );
 
   // Mark this as an internal drag so the global drop overlay is not shown
@@ -344,10 +346,15 @@ function onDragEnd() {
   resetFileManagerDragCursor();
 }
 
+function isSameFileSystemDrag(): boolean | null {
+  return appClipboard.dragSourceVfs && props.vfs ? appClipboard.dragSourceVfs === props.vfs : null;
+}
+
 function resolveDragOperation(e: DragEvent): 'copy' | 'move' {
   return resolveFileManagerDragOperation({
     dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
     isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
+    isSameFileSystem: isSameFileSystemDrag(),
     targetFileManagerInstanceId: props.instanceId ?? null,
   });
 }
@@ -359,6 +366,7 @@ function resolveDropOperation(
   return resolveFileManagerDropOperation({
     dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
     isLayer1Active: isLayer1Active(e, workspaceStore.userSettings),
+    isSameFileSystem: isSameFileSystemDrag(),
     targetFileManagerInstanceId: props.instanceId ?? null,
     currentDragOperation: appClipboard.currentDragOperation,
     fallbackRawOperation,
@@ -373,6 +381,7 @@ function syncDragOperationFromKeyboard(event: KeyboardEvent) {
   const operation = resolveFileManagerDragOperation({
     dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
     isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
+    isSameFileSystem: isSameFileSystemDrag(),
     targetFileManagerInstanceId: props.instanceId ?? null,
   });
 
@@ -403,7 +412,11 @@ function onDragOverDir(e: DragEvent, entry: FsEntry) {
   const types = e.dataTransfer?.types;
   if (!types) return;
 
-  if (types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) || types.includes(FILE_MANAGER_COPY_DRAG_TYPE)) {
+  if (
+    types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
+    types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+    types.includes(FILE_MANAGER_COPY_DRAG_TYPE)
+  ) {
     // Basic restriction: internal dragging of files within Bloggerdog is not supported.
     const isSourceBd = appClipboard.dragSourceVfs?.id === 'bloggerdog';
     const isTargetBd = props.vfs?.id === 'bloggerdog';
@@ -485,9 +498,10 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   appClipboard.setDragTargetFileManagerInstanceId(null);
   resetFileManagerDragCursor();
 
+  const itemsRaw = e.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
   const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
   const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
-  const internalRaw = copyRaw || moveRaw;
+  const internalRaw = itemsRaw || copyRaw || moveRaw;
   if (internalRaw) {
     const isCrossManagerDrag = isCrossFileManagerDrag({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
@@ -601,8 +615,6 @@ async function onDropDir(e: DragEvent, entry: FsEntry) {
   });
 }
 
-const localVfs = useVfs();
-
 function getBdType(entry: FsEntry): string | undefined {
   return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
 }
@@ -714,7 +726,7 @@ const { getContextMenuItems } = useFileContextMenu(
             :instance-id="instanceId"
             :is-files-page="isFilesPage"
             :is-external="isExternal"
-            :vfs="localVfs"
+            :vfs="vfs"
             @commit-rename="(entry, name) => emit('commitRename', entry, name)"
             @stop-rename="emit('stopRename')"
             @toggle="emit('toggle', $event)"

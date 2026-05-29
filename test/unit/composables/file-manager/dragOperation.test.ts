@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   hasInternalFileManagerDragType,
+  getDraggedFileManagerItems,
   isFileManagerDropCancellationTarget,
   isCrossFileManagerDrag,
   resolveFileManagerDragOperation,
@@ -50,11 +51,32 @@ describe('dragOperation', () => {
     ).toBe('copy');
   });
 
-  it('uses copy by default and move with layer1 across different managers', () => {
+  it('uses move by default across different managers backed by the same file system', () => {
     expect(
       resolveFileManagerDragOperation({
         dragSourceFileManagerInstanceId: 'sidebar',
         targetFileManagerInstanceId: 'main',
+        isSameFileSystem: true,
+        isLayer1Active: false,
+      }),
+    ).toBe('move');
+
+    expect(
+      resolveFileManagerDragOperation({
+        dragSourceFileManagerInstanceId: 'sidebar',
+        targetFileManagerInstanceId: 'main',
+        isSameFileSystem: true,
+        isLayer1Active: true,
+      }),
+    ).toBe('copy');
+  });
+
+  it('uses copy by default and move with layer1 across different file systems', () => {
+    expect(
+      resolveFileManagerDragOperation({
+        dragSourceFileManagerInstanceId: 'sidebar',
+        targetFileManagerInstanceId: 'main',
+        isSameFileSystem: false,
         isLayer1Active: false,
       }),
     ).toBe('copy');
@@ -63,6 +85,7 @@ describe('dragOperation', () => {
       resolveFileManagerDragOperation({
         dragSourceFileManagerInstanceId: 'sidebar',
         targetFileManagerInstanceId: 'main',
+        isSameFileSystem: false,
         isLayer1Active: true,
       }),
     ).toBe('move');
@@ -129,10 +152,23 @@ describe('dragOperation', () => {
   });
 
   it('detects internal file-manager drag types even when Files is present', () => {
-    expect(hasInternalFileManagerDragType(['Files', 'application/fastcat-file-manager-move'])).toBe(
-      true,
-    );
+    expect(
+      hasInternalFileManagerDragType(['Files', 'application/fastcat-file-manager-items']),
+    ).toBe(true);
 
     expect(hasInternalFileManagerDragType(['Files'])).toBe(false);
+  });
+
+  it('reads neutral file-manager item payload before legacy operation payloads', () => {
+    expect(
+      getDraggedFileManagerItems({
+        dataTransfer: {
+          getData: (type: string) =>
+            type === 'application/fastcat-file-manager-items'
+              ? JSON.stringify([{ path: '_video/clip.mp4', kind: 'file', name: 'clip.mp4' }])
+              : '',
+        },
+      } as unknown as DragEvent),
+    ).toEqual([{ path: '_video/clip.mp4', kind: 'file', name: 'clip.mp4' }]);
   });
 });

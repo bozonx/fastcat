@@ -75,6 +75,7 @@ vi.mock('~/composables/useAppClipboard', () => ({
 
 vi.mock('~/composables/useDraggedFile', () => ({
   INTERNAL_DRAG_TYPE: 'application/fastcat-internal-file',
+  FILE_MANAGER_ITEMS_DRAG_TYPE: 'application/fastcat-file-manager-items',
   FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-file-manager-copy',
   FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-file-manager-move',
   useDraggedFile: () => ({
@@ -164,6 +165,10 @@ describe('useFileBrowserDragAndDrop', () => {
     expect(appClipboardMock.setDragSourceFileManagerInstanceId).toHaveBeenCalledWith('main');
     expect(appClipboardMock.setDragTargetFileManagerInstanceId).toHaveBeenCalledWith('main');
     expect(appClipboardMock.setCurrentDragOperation).toHaveBeenCalledWith('move');
+    expect(dataTransfer.setData).toHaveBeenCalledWith(
+      'application/fastcat-file-manager-items',
+      JSON.stringify([{ name: '_video', kind: 'directory', path: '_video' }]),
+    );
     expect(setDraggedFileMock).not.toHaveBeenCalled();
   });
 });

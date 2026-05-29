@@ -8,11 +8,13 @@ import type { RemoteFsEntry } from '~/utils/remote-vfs';
 const {
   INTERNAL_DRAG_TYPE,
   REMOTE_FILE_DRAG_TYPE,
+  FILE_MANAGER_ITEMS_DRAG_TYPE,
   FILE_MANAGER_COPY_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } = vi.hoisted(() => ({
   INTERNAL_DRAG_TYPE: 'application/fastcat-internal-file',
   REMOTE_FILE_DRAG_TYPE: 'application/fastcat-remote-file',
+  FILE_MANAGER_ITEMS_DRAG_TYPE: 'application/fastcat-file-manager-items',
   FILE_MANAGER_COPY_DRAG_TYPE: 'application/fastcat-file-manager-copy',
   FILE_MANAGER_MOVE_DRAG_TYPE: 'application/fastcat-file-manager-move',
 }));
@@ -132,6 +134,7 @@ vi.mock('~/composables/useAppClipboard', () => ({
 vi.mock('~/composables/useDraggedFile', () => ({
   INTERNAL_DRAG_TYPE,
   REMOTE_FILE_DRAG_TYPE,
+  FILE_MANAGER_ITEMS_DRAG_TYPE,
   FILE_MANAGER_COPY_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
   useDraggedFile: () => ({

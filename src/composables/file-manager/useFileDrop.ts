@@ -8,6 +8,7 @@ import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { FileManagerClipboardItem } from '~/stores/clipboard.store';
 import {
   FILE_MANAGER_COPY_DRAG_TYPE,
+  FILE_MANAGER_ITEMS_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
 } from '~/composables/useDraggedFile';
 import {
@@ -62,10 +63,17 @@ export function useFileDrop(options: UseFileDropOptions) {
     return isLayer1Active(e, workspaceStore.userSettings);
   }
 
+  function isSameFileSystemDrag(): boolean | null {
+    return appClipboard.dragSourceVfs && options.vfs
+      ? appClipboard.dragSourceVfs === options.vfs
+      : null;
+  }
+
   function resolveOperation(e: DragEvent): 'copy' | 'move' {
     return resolveFileManagerDragOperation({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(e),
+      isSameFileSystem: isSameFileSystemDrag(),
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
     });
   }
@@ -77,6 +85,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     return resolveFileManagerDropOperation({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isCopyModifierActive(e),
+      isSameFileSystem: isSameFileSystemDrag(),
       targetFileManagerInstanceId: options.targetFileManagerInstanceId ?? null,
       currentDragOperation: appClipboard.currentDragOperation,
       fallbackRawOperation,
@@ -88,6 +97,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     if (!types) return false;
     return (
       types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      types.includes(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
       types.includes(FILE_MANAGER_COPY_DRAG_TYPE) ||
       types.includes('Files')
     );
@@ -131,6 +141,7 @@ export function useFileDrop(options: UseFileDropOptions) {
     const operation = resolveFileManagerDragOperation({
       dragSourceFileManagerInstanceId: appClipboard.dragSourceFileManagerInstanceId,
       isLayer1Active: isLayer1Active(event, workspaceStore.userSettings),
+      isSameFileSystem: isSameFileSystemDrag(),
       targetFileManagerInstanceId: targetInstanceId,
     });
 
@@ -221,6 +232,7 @@ export function useFileDrop(options: UseFileDropOptions) {
 
     const droppedFiles = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
     const hasFiles = e.dataTransfer?.types.includes('Files') ?? false;
+    const itemsRaw = e.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE);
     const copyRaw = e.dataTransfer?.getData(FILE_MANAGER_COPY_DRAG_TYPE);
     const moveRaw = e.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE);
     const hasInternalDrag = hasInternalFileManagerDragType(e.dataTransfer?.types);
@@ -230,7 +242,7 @@ export function useFileDrop(options: UseFileDropOptions) {
       return;
     }
 
-    const internalRaw = copyRaw || moveRaw;
+    const internalRaw = itemsRaw || copyRaw || moveRaw;
     if (!internalRaw) return;
 
     const isCrossManagerDrag = isCrossFileManagerDrag({

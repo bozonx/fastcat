@@ -1,5 +1,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { FILE_MANAGER_MOVE_DRAG_TYPE } from '~/composables/useDraggedFile';
+import {
+  FILE_MANAGER_ITEMS_DRAG_TYPE,
+  FILE_MANAGER_MOVE_DRAG_TYPE,
+} from '~/composables/useDraggedFile';
+import {
+  getDraggedFileManagerItems,
+  hasFileManagerItemsDragType,
+} from '~/composables/file-manager/dragOperation';
+import {
+  resetFileManagerDragCursor,
+  syncFileManagerDragCursor,
+} from '~/composables/file-manager/dragCursor';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import {
@@ -185,13 +196,17 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
   function onTabBarDragOver(event: DragEvent) {
     const types = event.dataTransfer?.types ?? [];
     if (
-      types.includes(FILE_MANAGER_MOVE_DRAG_TYPE) ||
+      hasFileManagerItemsDragType(types) ||
       types.includes('application/json') ||
       types.includes('panel-drag') ||
       types.includes('file-tab-drag') ||
       types.includes('static-tab-drag')
     ) {
       event.preventDefault();
+      if (hasFileManagerItemsDragType(types) || types.includes('application/json')) {
+        event.dataTransfer!.dropEffect = 'copy';
+        syncFileManagerDragCursor({ isDragging: true, operation: 'open-tab' });
+      }
       isDropTarget.value = true;
     }
   }
@@ -213,6 +228,7 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     const related = event.relatedTarget as Node | null;
     if (!currentTarget?.contains(related)) {
       isDropTarget.value = false;
+      resetFileManagerDragCursor();
     }
   }
 
@@ -220,8 +236,25 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     isDropTarget.value = false;
     event.preventDefault();
     event.stopPropagation();
+    resetFileManagerDragCursor();
+
+    const fileManagerItems = getDraggedFileManagerItems(event);
+    if (fileManagerItems.length > 0) {
+      for (const payload of fileManagerItems) {
+        if (
+          payload.kind === 'file' &&
+          typeof payload.path === 'string' &&
+          typeof payload.name === 'string' &&
+          isOpenableProjectFileName(payload.name)
+        ) {
+          await openDroppedFile({ filePath: payload.path, fileName: payload.name });
+        }
+      }
+      return;
+    }
 
     const movePayloadRaw =
+      event.dataTransfer?.getData(FILE_MANAGER_ITEMS_DRAG_TYPE) ||
       event.dataTransfer?.getData(FILE_MANAGER_MOVE_DRAG_TYPE) ||
       event.dataTransfer?.getData('application/fastcat-file-manager-move');
 

@@ -3,22 +3,35 @@ const FILE_MANAGER_DRAG_COPY_CLASS = 'fastcat-file-manager-drag-copy';
 const FILE_MANAGER_DRAG_MOVE_CLASS = 'fastcat-file-manager-drag-move';
 const FILE_MANAGER_DRAG_CANCEL_CLASS = 'fastcat-file-manager-drag-cancel';
 const FILE_MANAGER_DRAG_OVERLAY_ID = 'fastcat-file-manager-drag-overlay';
+type FileManagerDragCursorOperation =
+  | 'copy'
+  | 'move'
+  | 'cancel'
+  | 'open-panel'
+  | 'open-tab'
+  | 'timeline-add';
 
 let dragOverlay: HTMLDivElement | null = null;
 let dragOverlayIcon: HTMLSpanElement | null = null;
 let dragOverlayLabel: HTMLSpanElement | null = null;
 let overlayListenersRegistered = false;
 
-function getCursorStyle(operation: 'copy' | 'move' | 'cancel' | null): string {
+function getCursorStyle(operation: FileManagerDragCursorOperation | null): string {
   if (operation === 'copy') return 'copy';
   if (operation === 'cancel') return 'not-allowed';
   if (operation === 'move') return 'move';
+  if (operation === 'open-panel' || operation === 'open-tab' || operation === 'timeline-add') {
+    return 'copy';
+  }
   return '';
 }
 
-function getOverlayMarkup(operation: 'copy' | 'move' | 'cancel' | null) {
+function getOverlayMarkup(operation: FileManagerDragCursorOperation | null) {
   if (operation === 'copy') return '+';
   if (operation === 'cancel') return 'x';
+  if (operation === 'open-panel') return '[]';
+  if (operation === 'open-tab') return '+';
+  if (operation === 'timeline-add') return '+';
   return '^';
 }
 
@@ -69,15 +82,32 @@ function ensureDragOverlay() {
   return overlay;
 }
 
-function updateDragOverlayOperation(operation: 'copy' | 'move' | 'cancel' | null) {
+function updateDragOverlayOperation(operation: FileManagerDragCursorOperation | null) {
   const overlay = ensureDragOverlay();
   if (!overlay || !dragOverlayIcon || !dragOverlayLabel) return;
 
   dragOverlayIcon.textContent = getOverlayMarkup(operation);
   dragOverlayIcon.style.background =
-    operation === 'copy' ? '#22c55e' : operation === 'cancel' ? '#ef4444' : '#f59e0b';
+    operation === 'copy' ||
+    operation === 'open-panel' ||
+    operation === 'open-tab' ||
+    operation === 'timeline-add'
+      ? '#22c55e'
+      : operation === 'cancel'
+        ? '#ef4444'
+        : '#f59e0b';
   dragOverlayLabel.textContent =
-    operation === 'copy' ? 'Copy' : operation === 'cancel' ? 'Cancel' : 'Move';
+    operation === 'copy'
+      ? 'Copy'
+      : operation === 'cancel'
+        ? 'Not allowed'
+        : operation === 'open-panel'
+          ? 'Add as panel'
+          : operation === 'open-tab'
+            ? 'Add as tab'
+            : operation === 'timeline-add'
+              ? 'Add to timeline'
+              : 'Move';
 }
 
 function updateDragOverlayPosition(x: number, y: number) {
@@ -106,7 +136,7 @@ function unregisterOverlayListeners() {
 
 function updateClassList(
   target: HTMLElement,
-  params: { isDragging: boolean; operation: 'copy' | 'move' | 'cancel' | null },
+  params: { isDragging: boolean; operation: FileManagerDragCursorOperation | null },
 ) {
   target.classList.toggle(FILE_MANAGER_DRAGGING_CLASS, params.isDragging);
   target.classList.toggle(
@@ -130,7 +160,7 @@ function updateClassList(
 
 export function syncFileManagerDragCursor(params: {
   isDragging: boolean;
-  operation: 'copy' | 'move' | 'cancel' | null;
+  operation: FileManagerDragCursorOperation | null;
 }) {
   if (typeof document === 'undefined') return;
 
