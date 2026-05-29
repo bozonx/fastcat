@@ -194,9 +194,43 @@ export function useGlobalDragAndDrop() {
               const files: File[] = [];
 
               const { invoke } = await import('@tauri-apps/api/core');
-              for (const path of paths) {
+              for (const rawPath of paths) {
+                // Внутренний drag (blob:/http:/data:) — забираем содержимое через fetch,
+                // потому что это не путь в FS.
+                if (/^(blob|https?|data):/i.test(rawPath)) {
+                  try {
+                    const resp = await fetch(rawPath);
+                    const blob = await resp.blob();
+                    const filename =
+                      rawPath.split('/').pop()?.split('?')[0] ||
+                      `dropped-${Date.now()}.${(blob.type.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '')}`;
+                    files.push(
+                      new File([blob], filename, {
+                        type: blob.type || 'application/octet-stream',
+                        lastModified: Date.now(),
+                      }),
+                    );
+                  } catch (err) {
+                    log.warn('Failed to fetch blob/url drop', rawPath, err);
+                  }
+                  continue;
+                }
+
+                // Tauri иногда отдаёт `file://...` URL вместо plain path (зависит от source);
+                // tauri-plugin-fs не любит non-file URL'ы — конвертим обратно в OS-путь.
+                let path = rawPath;
+                if (/^file:\/\//i.test(path)) {
+                  try {
+                    path = decodeURIComponent(new URL(path).pathname);
+                  } catch {
+                    log.warn('Failed to decode file:// URL, using as-is', rawPath);
+                  }
+                }
+
                 // Extend scope to allow reading the dropped file from any location.
-                await invoke('allow_dropped_file_scope', { path }).catch(() => {});
+                await invoke('allow_dropped_file_scope', { path }).catch((err) => {
+                  log.warn('allow_dropped_file_scope failed', path, err);
+                });
 
                 let file: File | null = null;
                 try {
@@ -209,8 +243,15 @@ export function useGlobalDragAndDrop() {
                   files.push(file);
                 } else {
                   const { readFile, stat } = await import('@tauri-apps/plugin-fs');
-                  const metadata = await stat(path);
-                  const bytes = await readFile(path);
+                  let metadata;
+                  let bytes;
+                  try {
+                    metadata = await stat(path);
+                    bytes = await readFile(path);
+                  } catch (err) {
+                    log.warn('Failed to read dropped file via fs plugin', path, err);
+                    continue;
+                  }
                   const filename = path.split(/[/\\]/).pop() || 'unknown';
                   files.push(
                     new File([bytes], filename, {
