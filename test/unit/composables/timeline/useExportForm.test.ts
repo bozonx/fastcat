@@ -160,6 +160,8 @@ vi.mock('~/composables/timeline/export', () => ({
     cancelExport: vi.fn(),
     cancelRequested: ref(false),
     resetExportState: vi.fn(),
+    exportType: ref<'video' | 'audio'>('video'),
+    ext: ref('mp4'),
   }),
 }));
 

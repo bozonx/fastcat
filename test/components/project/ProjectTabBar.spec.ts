@@ -20,6 +20,8 @@ describe('ProjectTabBar.vue', () => {
           activeTabId: 'files',
           fileTabs: [],
           staticTabsOrder: ['files', 'history'],
+          tabOrder: [],
+          hiddenStaticTabs: [],
         },
       },
     });
@@ -58,6 +60,8 @@ describe('ProjectTabBar.vue', () => {
           activeTabId: 'files',
           fileTabs: [],
           staticTabsOrder: ['files', 'history'],
+          tabOrder: [],
+          hiddenStaticTabs: [],
         },
       },
     });
@@ -100,6 +104,8 @@ describe('ProjectTabBar.vue', () => {
             },
           ],
           staticTabsOrder: ['files'],
+          tabOrder: [],
+          hiddenStaticTabs: [],
         },
       },
     });
@@ -126,5 +132,90 @@ describe('ProjectTabBar.vue', () => {
     // Click close button
     await closeBtn.trigger('click');
     expect(store.fileTabs).toHaveLength(0);
+  });
+
+  it('renders mixed tab order when tabOrder is provided', async () => {
+    const component = await mountWithNuxt(ProjectTabBar, {
+      initialState: {
+        projectTabs: {
+          activeTabId: 'history',
+          fileTabs: [
+            {
+              id: 'file-tab-1',
+              filePath: 'media/video.mp4',
+              fileName: 'video.mp4',
+              mediaType: 'video',
+              icon: 'i-heroicons-film',
+            },
+          ],
+          staticTabsOrder: ['files', 'history'],
+          tabOrder: ['files', 'file-tab-1', 'history'],
+          hiddenStaticTabs: [],
+        },
+      },
+    });
+
+    const store = useProjectTabsStore();
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
+    store.registerProjectTab({
+      id: 'history',
+      label: 'History',
+      icon: 'i-heroicons-clock',
+      component: markRaw(MockComponent),
+    });
+
+    await component.vm.$nextTick();
+
+    const tabs = component.findAll('[data-tab-id]');
+    expect(tabs).toHaveLength(3);
+    expect(tabs[0].attributes('data-tab-id')).toBe('files');
+    expect(tabs[1].attributes('data-tab-id')).toBe('file-tab-1');
+    expect(tabs[2].attributes('data-tab-id')).toBe('history');
+  });
+
+  it('hides detached static tabs from the bar', async () => {
+    const component = await mountWithNuxt(ProjectTabBar, {
+      initialState: {
+        projectTabs: {
+          activeTabId: 'files',
+          fileTabs: [],
+          staticTabsOrder: ['files', 'history'],
+          tabOrder: [],
+          hiddenStaticTabs: ['history'],
+        },
+      },
+    });
+
+    const store = useProjectTabsStore();
+    store.registerProjectTab({
+      id: 'files',
+      label: 'Files',
+      icon: 'i-heroicons-folder',
+      component: markRaw(MockComponent),
+    });
+    store.registerProjectTab({
+      id: 'history',
+      label: 'History',
+      icon: 'i-heroicons-clock',
+      component: markRaw(MockComponent),
+    });
+
+    await component.vm.$nextTick();
+
+    const tabs = component.findAll('[data-tab-id]');
+    expect(tabs).toHaveLength(1);
+    expect(tabs[0].attributes('data-tab-id')).toBe('files');
+
+    // Restoring the tab should bring it back
+    store.showStaticTab('history');
+    await component.vm.$nextTick();
+    const restoredTabs = component.findAll('[data-tab-id]');
+    expect(restoredTabs).toHaveLength(2);
+    expect(restoredTabs[1].attributes('data-tab-id')).toBe('history');
   });
 });

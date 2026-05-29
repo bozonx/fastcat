@@ -1163,6 +1163,8 @@ export default {
       "confirmCloseMessage": "Есть незавершённые фоновые задачи. Вы уверены, что хотите закрыть приложение?"
     },
     "export": {
+      "audioTab": "Экспорт аудио",
+      "videoTab": "Экспорт видео",
       "audioBitrate": "Битрейт аудио (кбит/с)",
       "audioBitrateHelp": "Целевой битрейт аудио.",
       "audioCodec": "Аудио кодек",

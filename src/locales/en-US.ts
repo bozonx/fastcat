@@ -1163,6 +1163,8 @@ export default {
       "confirmCloseMessage": "There are unfinished background tasks. Are you sure you want to close the application?"
     },
     "export": {
+      "audioTab": "Audio Export",
+      "videoTab": "Video Export",
       "audioBitrate": "Audio bitrate (kbps)",
       "audioBitrateHelp": "Target audio bitrate.",
       "audioCodec": "Audio codec",

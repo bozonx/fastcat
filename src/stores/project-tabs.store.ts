@@ -36,6 +36,10 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
   /** Static tabs that are currently detached as panels (hidden from tab bar). */
   const hiddenStaticTabs = ref<string[]>([]);
 
+  function getSafeHiddenStaticTabs(): string[] {
+    return hiddenStaticTabs.value ?? [];
+  }
+
   /** File tabs added by drag-drop (persisted in project.ui.json) */
   const fileTabs = ref<ProjectFileTab[]>([]);
 
@@ -78,10 +82,13 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
    * Hidden static tabs are filtered out.
    */
   const tabs = computed<AnyProjectTab[]>(() => {
-    const staticMap = new Map(registeredTabs.value.map((t) => [t.id, t]));
-    const fileMap = new Map(fileTabs.value.map((t) => [t.id, t]));
-    const hidden = new Set(hiddenStaticTabs.value);
-    const order = tabOrder.value.length > 0 ? tabOrder.value : [...staticTabsOrder.value, ...fileTabs.value.map((f) => f.id)];
+    const staticMap = new Map((registeredTabs.value ?? []).map((t) => [t.id, t]));
+    const fileMap = new Map((fileTabs.value ?? []).map((t) => [t.id, t]));
+    const hidden = new Set(hiddenStaticTabs.value ?? []);
+    const order =
+      (tabOrder.value?.length ?? 0) > 0
+        ? (tabOrder.value ?? [])
+        : [...(staticTabsOrder.value ?? []), ...(fileTabs.value ?? []).map((f) => f.id)];
 
     const result: AnyProjectTab[] = [];
     const seen = new Set<string>();
@@ -163,10 +170,17 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     fileTabs.value = [...fileTabs.value, tab];
 
     // Insert after the currently active tab, or at the end
-    const currentOrder = tabOrder.value.length > 0 ? tabOrder.value : [...staticTabsOrder.value, ...fileTabs.value.map((f) => f.id)];
+    const currentOrder =
+      tabOrder.value.length > 0
+        ? tabOrder.value
+        : [...staticTabsOrder.value, ...fileTabs.value.map((f) => f.id)];
     const activeIdx = currentOrder.indexOf(activeTabId.value ?? '');
     if (activeIdx !== -1) {
-      tabOrder.value = [...currentOrder.slice(0, activeIdx + 1), tab.id, ...currentOrder.slice(activeIdx + 1)];
+      tabOrder.value = [
+        ...currentOrder.slice(0, activeIdx + 1),
+        tab.id,
+        ...currentOrder.slice(activeIdx + 1),
+      ];
     } else {
       tabOrder.value = [...currentOrder, tab.id];
     }
@@ -231,14 +245,15 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
 
   /** Hide a static tab from the tab bar (detached as a panel) */
   function hideStaticTab(tabId: string) {
-    if (!hiddenStaticTabs.value.includes(tabId)) {
-      hiddenStaticTabs.value = [...hiddenStaticTabs.value, tabId];
+    const current = getSafeHiddenStaticTabs();
+    if (!current.includes(tabId)) {
+      hiddenStaticTabs.value = [...current, tabId];
     }
   }
 
   /** Show a static tab in the tab bar (panel was closed) */
   function showStaticTab(tabId: string) {
-    hiddenStaticTabs.value = hiddenStaticTabs.value.filter((id) => id !== tabId);
+    hiddenStaticTabs.value = getSafeHiddenStaticTabs().filter((id) => id !== tabId);
   }
 
   /**
@@ -246,9 +261,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
    * Call after loading project settings to ensure tabs aren't left hidden
    * when their panels no longer exist.
    */
-  function syncHiddenStaticTabsWithLayout(
-    panels: Array<{ panels: Array<{ type: string }> }>,
-  ) {
+  function syncHiddenStaticTabsWithLayout(panels: Array<{ panels: Array<{ type: string }> }>) {
     const panelTypes = new Set<string>();
     for (const col of panels) {
       for (const panel of col.panels) {
@@ -265,7 +278,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
       backups: 'backups',
     };
 
-    hiddenStaticTabs.value = hiddenStaticTabs.value.filter((tabId) => {
+    hiddenStaticTabs.value = getSafeHiddenStaticTabs().filter((tabId) => {
       const panelType = tabIdToPanelType[tabId];
       return panelType && panelTypes.has(panelType);
     });

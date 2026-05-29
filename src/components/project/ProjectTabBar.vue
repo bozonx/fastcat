@@ -66,7 +66,11 @@ function isDraggable(tab: AnyProjectTab): boolean {
         <UContextMenu
           v-for="tab in allTabsModel"
           :key="tab.id"
-          :items="isFileTab(tab) ? getFileTabContextMenuItems(tab.id) : getStaticTabContextMenuItems(tab.id)"
+          :items="
+            isFileTab(tab)
+              ? getFileTabContextMenuItems(tab.id)
+              : getStaticTabContextMenuItems(tab.id)
+          "
         >
           <div
             :data-tab-id="tab.id"

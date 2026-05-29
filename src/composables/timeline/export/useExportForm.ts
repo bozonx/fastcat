@@ -84,6 +84,8 @@ export function useExportForm() {
     cancelExport,
     cancelRequested,
     resetExportState,
+    exportType,
+    ext,
   } = useTimelineExport();
 
   const initialSavedSettingsSnapshot = ref('');
@@ -136,6 +138,7 @@ export function useExportForm() {
   );
   const savedSettingsSnapshot = computed(() =>
     JSON.stringify({
+      exportType: exportType.value,
       width: normalizedExportWidth.value,
       height: normalizedExportHeight.value,
       fps: normalizedExportFps.value,
@@ -200,6 +203,23 @@ export function useExportForm() {
     },
   );
 
+  watch(ext, async (nextExt) => {
+    try {
+      const base = outputFilename.value.replace(/\.[^.]+$/, '');
+      if (!base) return;
+
+      if (!/_\d{3}$/.test(base)) {
+        outputFilename.value = await getNextAvailableFilename(base, nextExt);
+        return;
+      }
+
+      outputFilename.value = `${base}.${nextExt}`;
+      await validateFilename();
+    } catch {
+      // ignore
+    }
+  });
+
   function resolveDefaultExportRangeId() {
     const selectedEntity = selectionStore.selectedEntity;
 
@@ -221,6 +241,7 @@ export function useExportForm() {
 
   async function initializeExportForm() {
     resetExportState();
+    exportType.value = 'video';
     filenameError.value = null;
     saveAsDefaults.value = false;
     customExportPath.value = null;
@@ -317,30 +338,40 @@ export function useExportForm() {
       const tempFilename = `.${finalFilename}.tmp-${Date.now()}-${randomToken(6)}`;
       const tempFileHandle = await exportDir.getFileHandle(tempFilename, { create: true });
 
-      const resolvedCodecs = resolveExportCodecs(
-        outputFormat.value,
-        videoCodec.value,
-        audioCodec.value as 'aac' | 'opus',
-      );
+      const isAudio = exportType.value === 'audio';
+
+      const finalFormat = isAudio
+        ? audioCodec.value === 'opus'
+          ? 'webm'
+          : 'mp4'
+        : outputFormat.value;
+
+      const resolvedCodecs = isAudio
+        ? { videoCodec: 'none', audioCodec: audioCodec.value }
+        : resolveExportCodecs(
+            outputFormat.value,
+            videoCodec.value,
+            audioCodec.value as 'aac' | 'opus',
+          );
 
       let exportSuccess = false;
       try {
         exportPhase.value = 'encoding';
         await exportTimelineToFile(
           {
-            format: outputFormat.value,
+            format: finalFormat,
             videoCodec: resolvedCodecs.videoCodec,
-            bitrate: bitrateBps.value,
+            bitrate: isAudio ? 100_000 : bitrateBps.value,
             audioBitrate: audioBitrateBps.value,
-            audio: !excludeAudio.value,
+            audio: isAudio ? true : !excludeAudio.value,
             audioCodec: resolvedCodecs.audioCodec,
             audioSampleRate: audioSampleRate.value,
-            width: normalizedExportWidth.value,
-            height: normalizedExportHeight.value,
-            fps: normalizedExportFps.value,
+            width: isAudio ? 2 : normalizedExportWidth.value,
+            height: isAudio ? 2 : normalizedExportHeight.value,
+            fps: isAudio ? 30 : normalizedExportFps.value,
             bitrateMode: bitrateMode.value,
             keyframeIntervalSec: keyframeIntervalSec.value,
-            exportAlpha: exportAlpha.value,
+            exportAlpha: isAudio ? false : exportAlpha.value,
             metadata: {
               title: metadataTitle.value,
               description: metadataDescription.value,
@@ -512,6 +543,8 @@ export function useExportForm() {
     isSettingsDirty,
     customExportPath,
     isTauri,
+    exportType,
+    ext,
 
     initializeExportForm,
     pickTauriExportPath,

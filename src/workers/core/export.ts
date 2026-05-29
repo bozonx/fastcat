@@ -596,35 +596,40 @@ export async function runExport(
   }
 
   await loadFonts();
-  const localCompositor = new VideoCompositor();
-  await localCompositor.init(options.width, options.height, '#000', true, undefined, {
-    rendererPreference,
-  });
+  const localCompositor = options.videoCodec !== 'none' ? new VideoCompositor() : null;
+  if (localCompositor) {
+    await localCompositor.init(options.width, options.height, '#000', true, undefined, {
+      rendererPreference,
+    });
+  }
 
   try {
-    const maxVideoDurationUs = await localCompositor.loadTimeline(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      timelineClips as any,
-      {
-        getFileHandleByPath: async (path) => {
-          if (!hostClient) return null;
-          return hostClient.getFileHandleByPath(path);
+    let maxVideoDurationUs = 0;
+    if (localCompositor) {
+      maxVideoDurationUs = await localCompositor.loadTimeline(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        timelineClips as any,
+        {
+          getFileHandleByPath: async (path) => {
+            if (!hostClient) return null;
+            return hostClient.getFileHandleByPath(path);
+          },
+          getFileByPath: async (path: string) => {
+            if (!hostClient?.getFileByPath) return null;
+            return hostClient.getFileByPath(path);
+          },
+          getCurrentProjectId: async () => {
+            if (!hostClient) return null;
+            return await hostClient.getCurrentProjectId();
+          },
+          ensureVectorImageRaster: async (params) => {
+            if (!hostClient) return null;
+            return await hostClient.ensureVectorImageRaster(params);
+          },
         },
-        getFileByPath: async (path: string) => {
-          if (!hostClient?.getFileByPath) return null;
-          return hostClient.getFileByPath(path);
-        },
-        getCurrentProjectId: async () => {
-          if (!hostClient) return null;
-          return await hostClient.getCurrentProjectId();
-        },
-        ensureVectorImageRaster: async (params) => {
-          if (!hostClient) return null;
-          return await hostClient.ensureVectorImageRaster(params);
-        },
-      },
-      checkCancel,
-    );
+        checkCancel,
+      );
+    }
 
     const maxAudioDurationUs = options.audio ? computeMaxAudioDurationUs(audioClips) : 0;
 
@@ -672,17 +677,22 @@ export async function runExport(
         );
       }
 
-      const videoSource = new CanvasSource(localCompositor.canvas as unknown as HTMLCanvasElement, {
-        codec: getBunnyVideoCodec(options.videoCodec),
-        fullCodecString,
-        bitrate: options.bitrate,
-        alpha: options.exportAlpha && formatSupportsAlpha ? 'keep' : 'discard',
-        bitrateMode: options.bitrateMode === 'constant' ? 'constant' : 'variable',
-        keyFrameInterval,
-        hardwareAcceleration: preference,
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (output as any).addVideoTrack(videoSource);
+      const videoSource =
+        options.videoCodec !== 'none' && localCompositor
+          ? new CanvasSource(localCompositor.canvas as unknown as HTMLCanvasElement, {
+              codec: getBunnyVideoCodec(options.videoCodec),
+              fullCodecString,
+              bitrate: options.bitrate,
+              alpha: options.exportAlpha && formatSupportsAlpha ? 'keep' : 'discard',
+              bitrateMode: options.bitrateMode === 'constant' ? 'constant' : 'variable',
+              keyFrameInterval,
+              hardwareAcceleration: preference,
+            })
+          : null;
+      if (videoSource) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (output as any).addVideoTrack(videoSource);
+      }
 
       let audioSource: unknown = null;
       let writeMixedAudioToSource: (() => Promise<void>) | null = null;
@@ -747,13 +757,19 @@ export async function runExport(
           await writeMixedAudioToSource();
         }
 
-        await encodeFrames({
-          durationUs: maxDurationUs,
-          fps: options.fps,
-          videoSource,
-          compositor: localCompositor,
-          taskId,
-        });
+        if (videoSource && localCompositor) {
+          await encodeFrames({
+            durationUs: maxDurationUs,
+            fps: options.fps,
+            videoSource,
+            compositor: localCompositor,
+            taskId,
+          });
+        } else {
+          if (hostClient) {
+            await hostClient.onExportProgress(99, taskId);
+          }
+        }
 
         await notifyPhase('saving', taskId);
 
@@ -796,7 +812,9 @@ export async function runExport(
       }
     }
   } finally {
-    await localCompositor.destroy();
+    if (localCompositor) {
+      await localCompositor.destroy();
+    }
   }
 }
 

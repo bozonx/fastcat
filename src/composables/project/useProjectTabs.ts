@@ -5,7 +5,6 @@ import { useProjectStore } from '~/stores/project.store';
 import {
   isFileTab,
   type AnyProjectTab,
-  type ProjectFileTab,
   type ProjectTab,
   useProjectTabsStore,
 } from '~/stores/project-tabs.store';

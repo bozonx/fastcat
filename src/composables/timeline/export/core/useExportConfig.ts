@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import { getExt } from '../filenameUtils';
 
 export function useExportConfig() {
+  const exportType = ref<'video' | 'audio'>('video');
   const outputFormat = ref<'mp4' | 'webm' | 'mkv'>('mp4');
   const videoCodec = ref('avc1.640032');
   const bitrateMbps = ref<number>(5);
@@ -25,7 +26,12 @@ export function useExportConfig() {
   const metadataAuthor = ref<string>('');
   const metadataTags = ref<string>('');
 
-  const ext = computed(() => getExt(outputFormat.value));
+  const ext = computed(() => {
+    if (exportType.value === 'audio') {
+      return audioCodec.value === 'opus' ? 'webm' : 'mp4';
+    }
+    return getExt(outputFormat.value);
+  });
 
   const bitrateBps = computed(() => {
     const value = Number(bitrateMbps.value);
@@ -60,6 +66,7 @@ export function useExportConfig() {
   });
 
   return {
+    exportType,
     outputFormat,
     videoCodec,
     bitrateMbps,

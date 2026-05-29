@@ -10,6 +10,10 @@ import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
+import UiTabs from '~/components/ui/UiTabs.vue';
+import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 import {
   BASE_VIDEO_CODEC_OPTIONS,
@@ -73,16 +77,39 @@ const {
   isSettingsDirty,
   customExportPath,
   isTauri,
+  exportType,
 
   initializeExportForm,
   pickTauriExportPath,
   handleOutputFormatChange,
-  handleFilenameExtUpdate,
   handleStartExport,
   getPhaseLabel,
   validateFilename,
   cancelExport,
 } = useExportForm();
+
+const tabOptions = computed(() => [
+  { label: t('videoEditor.export.videoTab', 'Экспорт видео'), value: 'video' },
+  { label: t('videoEditor.export.audioTab', 'Экспорт аудио'), value: 'audio' },
+]);
+
+const audioCodecOptions = computed(() => [
+  { value: 'aac', label: t('videoEditor.export.codec.aac') },
+  { value: 'opus', label: t('videoEditor.export.codec.opus') },
+]);
+
+const audioSampleRateOptions = computed(() => {
+  const current = Number(audioSampleRate.value);
+  const options = [
+    { value: 44100, label: '44.1 kHz' },
+    { value: 48000, label: '48 kHz' },
+    { value: 96000, label: '96 kHz' },
+  ];
+  if (current && !options.some((o) => o.value === current)) {
+    options.unshift({ value: current, label: `${current / 1000} kHz` });
+  }
+  return options;
+});
 
 const resolutionSummary = computed(() => {
   return `${exportWidth.value}x${exportHeight.value}, ${formatFps(exportFps.value)}FPS, ${(audioSampleRate.value || 0) / 1000}kHz`;
@@ -142,9 +169,6 @@ watch(
 
 watch(outputFormat, (fmt) => {
   handleOutputFormatChange(fmt);
-
-  if (projectStore.currentView !== 'export') return;
-  handleFilenameExtUpdate(fmt);
 });
 
 watch(outputFilename, async () => {
@@ -181,6 +205,8 @@ async function onConfirm() {
           {{ t('videoEditor.export.title') }}
         </h2>
       </div>
+
+      <UiTabs v-model="exportType" :options="tabOptions" class="mb-6 shrink-0" />
 
       <div class="flex flex-col gap-6 max-w-2xl flex-1 shrink-0">
         <div
@@ -261,10 +287,8 @@ async function onConfirm() {
           </div>
         </div>
 
-        <div class="h-px bg-ui-border"></div>
-
-        <!-- Resolution & FPS Settings -->
-        <div class="space-y-4">
+        <!-- Resolution & FPS Settings (Video only) -->
+        <div v-show="exportType === 'video'" class="space-y-4">
           <div
             class="w-full flex justify-between items-center cursor-pointer group"
             @click="isResolutionExpanded = !isResolutionExpanded"
@@ -301,10 +325,10 @@ async function onConfirm() {
           </div>
         </div>
 
-        <div class="h-px bg-ui-border"></div>
+        <div v-show="exportType === 'video'" class="h-px bg-ui-border"></div>
 
-        <!-- Encoding Settings -->
-        <div class="space-y-4">
+        <!-- Encoding Settings (Video only) -->
+        <div v-show="exportType === 'video'" class="space-y-4">
           <div
             class="w-full flex justify-between items-center cursor-pointer group"
             @click="isEncodingExpanded = !isEncodingExpanded"
@@ -353,7 +377,47 @@ async function onConfirm() {
           </div>
         </div>
 
-        <div class="h-px bg-ui-border"></div>
+        <div v-show="exportType === 'video'" class="h-px bg-ui-border"></div>
+
+        <!-- Audio Settings (Audio only) -->
+        <div v-show="exportType === 'audio'" class="space-y-4">
+          <div class="flex flex-col gap-4">
+            <UiFormField :label="t('videoEditor.export.audioCodec')">
+              <UiButtonGroup
+                v-model="audioCodec"
+                :options="audioCodecOptions"
+                :disabled="isExporting"
+              />
+            </UiFormField>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <UiFormField :label="t('videoEditor.export.audioBitrate')">
+                <UiWheelNumberInput
+                  v-model="audioBitrateKbps"
+                  :min="0"
+                  :step="16"
+                  :disabled="isExporting"
+                  :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
+                />
+              </UiFormField>
+
+              <UiFormField :label="t('videoEditor.audio.sampleRate')">
+                <UiSelect
+                  v-model="audioSampleRate"
+                  :items="audioSampleRateOptions"
+                  :disabled="isExporting"
+                  :searchable="false"
+                  size="sm"
+                  full-width
+                  value-key="value"
+                  label-key="label"
+                />
+              </UiFormField>
+            </div>
+          </div>
+        </div>
+
+        <div v-show="exportType === 'audio'" class="h-px bg-ui-border"></div>
 
         <div class="space-y-4">
           <UiFormSectionHeader :title="t('videoEditor.export.metadata')" />
