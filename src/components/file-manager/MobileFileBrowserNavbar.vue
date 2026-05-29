@@ -27,7 +27,9 @@ const projectStore = useProjectStore();
 </script>
 
 <template>
-  <div class="mobile-file-browser-navbar flex items-center gap-2 border-b border-ui-border bg-ui-bg-elevated/50 px-3 py-2.5">
+  <div
+    class="mobile-file-browser-navbar flex items-center gap-2 border-b border-ui-border bg-ui-bg-elevated/50 px-3 py-2.5"
+  >
     <UButton
       v-if="hasFolderPath && !isSelectionMode"
       icon="lucide:chevron-left"

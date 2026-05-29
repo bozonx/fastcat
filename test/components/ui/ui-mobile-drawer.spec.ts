@@ -20,7 +20,7 @@ const drawerStub = {
     'handleOnly',
     'ui',
   ],
-  emits: ['update:open', 'update:active-snap-point'],
+  emits: ['update:open', 'update:activeSnapPoint'],
   template: '<div class="udrawer-stub"><slot name="content" /></div>',
 };
 
@@ -200,12 +200,37 @@ describe('UiMobileDrawer', () => {
     const drawer = wrapper.findComponent(drawerStub);
 
     expect(drawer.props('ui')).toMatchObject({
-      content: 'z-[var(--z-fixed)] shadow-none ring-0 bg-transparent mt-0',
+      content:
+        'mobile-drawer-vaul-content z-[var(--z-fixed)] shadow-none ring-0 bg-transparent mt-0',
     });
     expect(wrapper.html()).toContain('z-[var(--z-fixed)]');
   });
 
-  it('does not force gpu compositing or font smoothing on drawer content', async () => {
+  it('renders vertical numeric snap points as integer pixel values for sharp text', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: {
+        open: true,
+        snapPoints: ['116px', 0.92],
+        activeSnapPoint: 0.92,
+        direction: 'bottom',
+      },
+      slots: {
+        default: '<div class="body-slot">Body</div>',
+      },
+      global: {
+        stubs: {
+          UDrawer: drawerStub,
+        },
+      },
+    });
+
+    const drawer = wrapper.findComponent(drawerStub);
+
+    expect(drawer.props('snapPoints')).toEqual(['116px', '776px']);
+    expect(drawer.props('activeSnapPoint')).toBe('776px');
+  });
+
+  it('keeps drawer content out of rasterized text layers', async () => {
     const wrapper = await mountSuspended(UiMobileDrawer, {
       props: {
         open: true,
@@ -226,5 +251,8 @@ describe('UiMobileDrawer', () => {
     expect(container.exists()).toBe(true);
     expect(container.classes()).not.toContain('transform-gpu');
     expect(container.classes()).not.toContain('antialiased');
+    expect(container.classes().some((className) => className.startsWith('backdrop-blur'))).toBe(
+      false,
+    );
   });
 });

@@ -91,6 +91,22 @@ const isExpanded = computed(() => {
   return activeSnapPoint.value === lastPoint;
 });
 
+const isVerticalDrawer = computed(
+  () => effectiveDirection.value === 'bottom' || effectiveDirection.value === 'top',
+);
+
+function toRenderedSnapPoint(point: number | string) {
+  if (typeof point === 'string' || !isVerticalDrawer.value) return point;
+  return `${Math.floor(height.value * point)}px`;
+}
+
+const renderedSnapPoints = computed(() => props.snapPoints?.map(toRenderedSnapPoint));
+
+const renderedActiveSnapPoint = computed(() => {
+  if (activeSnapPoint.value === null) return undefined;
+  return toRenderedSnapPoint(activeSnapPoint.value);
+});
+
 /**
  * Compute max-height from the largest snap point.
  * vaul-vue renders the DrawerContent at full viewport height and translates it,
@@ -104,11 +120,15 @@ const snapContentHeight = computed(() => {
   return undefined;
 });
 
+const drawerUi = computed(() => ({
+  content: 'mobile-drawer-vaul-content z-[var(--z-fixed)] shadow-none ring-0 bg-transparent mt-0',
+}));
+
 /** Responsive container logic */
 const containerClasses = computed(() => {
   const base =
     'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-[var(--z-fixed)]';
-  const bgColor = 'bg-ui-bg-elevated/98 backdrop-blur-xl ring-1 ring-white/10';
+  const bgColor = 'bg-ui-bg-elevated ring-1 ring-white/10';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
     const sideBorder = effectiveDirection.value === 'right' ? 'border-l' : 'border-r';
@@ -293,7 +313,9 @@ function onHandleTap() {
 }
 
 function onSnapPointChange(val: string | number) {
-  activeSnapPoint.value = val;
+  const renderedIndex = renderedSnapPoints.value?.findIndex((point) => point === val) ?? -1;
+  activeSnapPoint.value =
+    renderedIndex >= 0 && props.snapPoints ? (props.snapPoints[renderedIndex] ?? val) : val;
 }
 
 // --- Backdrop visibility (debounced to avoid flash on re-open) ---
@@ -357,14 +379,14 @@ watch(isOpen, (val) => {
     :direction="effectiveDirection"
     :title="drawerTitleForA11y"
     :description="drawerDescriptionForA11y"
-    :snap-points="props.snapPoints"
-    :active-snap-point="activeSnapPoint ?? undefined"
+    :snap-points="renderedSnapPoints"
+    :active-snap-point="renderedActiveSnapPoint"
     :dismissible="props.dismissible"
     :should-scale-background="props.shouldScaleBackground"
     :modal="props.modal"
     :overlay="props.modal && props.overlay"
     :handle="false"
-    :ui="{ content: 'z-[var(--z-fixed)] shadow-none ring-0 bg-transparent mt-0' }"
+    :ui="drawerUi"
     @update:active-snap-point="onSnapPointChange"
   >
     <template #content>
@@ -469,5 +491,15 @@ watch(isOpen, (val) => {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #334155;
   border-radius: 10px;
+}
+
+:global(
+  .mobile-drawer-vaul-content[data-vaul-drawer][data-vaul-drawer-direction='bottom'][data-state='open'][data-vaul-snap-points='false']
+),
+:global(
+  .mobile-drawer-vaul-content[data-vaul-drawer][data-vaul-drawer-direction='top'][data-state='open'][data-vaul-snap-points='false']
+) {
+  transform: none !important;
+  will-change: auto;
 }
 </style>

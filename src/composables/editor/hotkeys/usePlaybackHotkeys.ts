@@ -118,6 +118,30 @@ export function usePlaybackHotkeys(
       });
       return true;
     },
+
+    'playback.jumpPrevBoundary': () => {
+      if (!focusStore.canUsePlaybackHotkeys) return false;
+      timelineStore.jumpToPrevClipBoundary();
+      return true;
+    },
+
+    'playback.jumpNextBoundary': () => {
+      if (!focusStore.canUsePlaybackHotkeys) return false;
+      timelineStore.jumpToNextClipBoundary();
+      return true;
+    },
+
+    'playback.jumpPrevBoundaryTrack': () => {
+      if (!focusStore.canUsePlaybackHotkeys) return false;
+      timelineStore.jumpToPrevClipBoundary({ currentTrackOnly: true });
+      return true;
+    },
+
+    'playback.jumpNextBoundaryTrack': () => {
+      if (!focusStore.canUsePlaybackHotkeys) return false;
+      timelineStore.jumpToNextClipBoundary({ currentTrackOnly: true });
+      return true;
+    },
   };
 
   const playbackSpeedMap: Partial<
@@ -175,10 +199,13 @@ export function usePlaybackHotkeys(
 
   for (const [cmd, speedCmd] of Object.entries(playbackSpeedMap)) {
     handlers[cmd as HotkeyCommandId] = () => {
-      const canUse = focusStore.canUsePlaybackHotkeys;
+      const canUse =
+        cmd === 'playback.backward1'
+          ? canUsePlaybackOrTimelineFocus()
+          : focusStore.canUsePlaybackHotkeys;
       if (!canUse) return false;
 
-      if (isPreviewLikeFocus(focusStore.effectiveFocus)) {
+      if (cmd !== 'playback.backward1' && isPreviewLikeFocus(focusStore.effectiveFocus)) {
         if (speedCmd.direction === 'backward') {
           return true; // ignored but consumed
         }

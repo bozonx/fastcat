@@ -81,15 +81,15 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has jumpPrevBoundary with A and MouseForward', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpPrevBoundary']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpPrevBoundary']).toContain('A');
-    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpPrevBoundary']).toContain('MouseForward');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toContain('A');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toContain('MouseForward');
   });
 
   it('has jumpNextBoundary with S and MouseBack', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toBeDefined();
-    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toContain('S');
-    expect(DEFAULT_HOTKEYS.bindings['timeline.jumpNextBoundary']).toContain('MouseBack');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('S');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('MouseBack');
   });
 
   it('has updated defaults for timeline creation and monitor snapshot', () => {
@@ -98,10 +98,10 @@ describe('DEFAULT_HOTKEYS', () => {
   });
 
   it('has updated defaults for timeline trim and selection actions', () => {
-    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsLeftOfPlayhead']).toEqual(['E']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual(['R']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimLeft']).toEqual(['Shift+D']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimRight']).toEqual(['Shift+F']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsLeftOfPlayhead']).toEqual(['C']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual(['V']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimLeft']).toEqual(['Shift+E']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimRight']).toEqual(['Shift+R']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['Shift+E']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual(['Shift+R']);
   });

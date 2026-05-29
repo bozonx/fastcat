@@ -248,30 +248,6 @@ export function useTimelineHotkeys(
       return true;
     },
 
-    'timeline.jumpPrevBoundary': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-      timelineStore.jumpToPrevClipBoundary();
-      return true;
-    },
-
-    'timeline.jumpNextBoundary': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-      timelineStore.jumpToNextClipBoundary();
-      return true;
-    },
-
-    'timeline.jumpPrevBoundaryTrack': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-      timelineStore.jumpToPrevClipBoundary({ currentTrackOnly: true });
-      return true;
-    },
-
-    'timeline.jumpNextBoundaryTrack': () => {
-      if (!focusStore.canUseTimelineHotkeys) return false;
-      timelineStore.jumpToNextClipBoundary({ currentTrackOnly: true });
-      return true;
-    },
-
     'timeline.splitAtPlayhead': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       void timelineStore.splitClipAtPlayhead();

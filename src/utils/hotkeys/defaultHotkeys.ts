@@ -68,10 +68,6 @@ export type HotkeyCommandId =
   | 'timeline.advancedRippleTrimRight'
   | 'timeline.rippleDeleteSelectedClipRange'
   | 'timeline.rippleDelete'
-  | 'timeline.jumpPrevBoundary'
-  | 'timeline.jumpNextBoundary'
-  | 'timeline.jumpPrevBoundaryTrack'
-  | 'timeline.jumpNextBoundaryTrack'
   | 'timeline.splitAtPlayhead'
   | 'timeline.splitAllAtPlayhead'
   | 'timeline.toggleDisableClip'
@@ -123,6 +119,10 @@ export type HotkeyCommandId =
   | 'playback.forward0_5'
   | 'playback.backward0_5'
   | 'playback.backward1'
+  | 'playback.jumpPrevBoundary'
+  | 'playback.jumpNextBoundary'
+  | 'playback.jumpPrevBoundaryTrack'
+  | 'playback.jumpNextBoundaryTrack'
   | 'general.navigateBack'
   | 'general.navigateForward'
   | 'general.navigateUp'
@@ -275,18 +275,6 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Ripple delete selected clip range on all tracks',
     },
     { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
-    { id: 'timeline.jumpPrevBoundary', groupId: 'timeline', title: 'Jump to previous edit point' },
-    { id: 'timeline.jumpNextBoundary', groupId: 'timeline', title: 'Jump to next edit point' },
-    {
-      id: 'timeline.jumpPrevBoundaryTrack',
-      groupId: 'timeline',
-      title: 'Jump to previous edit point on track',
-    },
-    {
-      id: 'timeline.jumpNextBoundaryTrack',
-      groupId: 'timeline',
-      title: 'Jump to next edit point on track',
-    },
     { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split at playhead' },
     { id: 'timeline.splitAllAtPlayhead', groupId: 'timeline', title: 'Split all at playhead' },
     { id: 'timeline.toggleDisableClip', groupId: 'timeline', title: 'Disable / Enable clip' },
@@ -407,6 +395,18 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'playback.forward0_5', groupId: 'playback', title: 'Forward 0.5x' },
     { id: 'playback.backward0_5', groupId: 'playback', title: 'Backward 0.5x' },
     { id: 'playback.backward1', groupId: 'playback', title: 'Backward 1x' },
+    { id: 'playback.jumpPrevBoundary', groupId: 'playback', title: 'Jump to previous edit point' },
+    { id: 'playback.jumpNextBoundary', groupId: 'playback', title: 'Jump to next edit point' },
+    {
+      id: 'playback.jumpPrevBoundaryTrack',
+      groupId: 'playback',
+      title: 'Jump to previous edit point on track',
+    },
+    {
+      id: 'playback.jumpNextBoundaryTrack',
+      groupId: 'playback',
+      title: 'Jump to next edit point on track',
+    },
   ],
   bindings: {
     'general.copy': [`${Mod}+C`],
@@ -478,20 +478,16 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.selectDragModeMove': ['L'],
     'timeline.selectDragModePseudoOverlap': [';'],
     'timeline.selectDragModeSlip': ["'"],
-    'timeline.selectClipsLeftOfPlayhead': ['E'],
-    'timeline.selectClipsRightOfPlayhead': ['R'],
-    'timeline.trimToPlayheadLeft': ['C'],
-    'timeline.trimToPlayheadRight': ['V'],
-    'timeline.rippleTrimLeft': ['Shift+D'],
-    'timeline.rippleTrimRight': ['Shift+F'],
-    'timeline.advancedRippleTrimLeft': ['D'],
-    'timeline.advancedRippleTrimRight': ['F'],
+    'timeline.selectClipsLeftOfPlayhead': ['C'],
+    'timeline.selectClipsRightOfPlayhead': ['V'],
+    'timeline.trimToPlayheadLeft': ['D'],
+    'timeline.trimToPlayheadRight': ['F'],
+    'timeline.rippleTrimLeft': ['Shift+E'],
+    'timeline.rippleTrimRight': ['Shift+R'],
+    'timeline.advancedRippleTrimLeft': ['E'],
+    'timeline.advancedRippleTrimRight': ['R'],
     'timeline.rippleDeleteSelectedClipRange': ['Z'],
     'timeline.rippleDelete': ['Shift+Z', 'Backspace'],
-    'timeline.jumpPrevBoundary': ['A', 'MouseForward'],
-    'timeline.jumpNextBoundary': ['S', 'MouseBack'],
-    'timeline.jumpPrevBoundaryTrack': ['Shift+A'],
-    'timeline.jumpNextBoundaryTrack': ['Shift+S'],
     'timeline.splitAtPlayhead': ['G'],
     'timeline.splitAllAtPlayhead': ['Shift+G'],
     'timeline.toggleDisableClip': ['W'],
@@ -527,22 +523,26 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'playback.stepBackward': ['ArrowLeft'],
     'playback.stepForwardLarge': ['Shift+ArrowRight'],
     'playback.stepBackwardLarge': ['Shift+ArrowLeft'],
-    'playback.forward1_25': ['F'],
-    'playback.backward1_25': ['D'],
-    'playback.forward1_5': ['Shift+F'],
-    'playback.backward1_5': ['Shift+D'],
-    'playback.forward1_75': ['R'],
-    'playback.backward1_75': ['E'],
-    'playback.forward2': ['Shift+R'],
-    'playback.backward2': ['Shift+E'],
-    'playback.forward3': ['G'],
-    'playback.backward3': ['S'],
-    'playback.forward5': ['Shift+G'],
-    'playback.backward5': ['Shift+S'],
-    'playback.forward0_75': ['V'],
-    'playback.backward0_75': ['C'],
-    'playback.forward0_5': ['Shift+V'],
-    'playback.backward0_5': ['Shift+C'],
-    'playback.backward1': ['A'],
+    'playback.forward1_25': ['Shift+F'],
+    'playback.backward1_25': ['Shift+D'],
+    'playback.forward1_5': ['F'],
+    'playback.backward1_5': ['D'],
+    'playback.forward1_75': ['Shift+R'],
+    'playback.backward1_75': ['Shift+E'],
+    'playback.forward2': ['R'],
+    'playback.backward2': ['E'],
+    'playback.forward3': ['Shift+G'],
+    'playback.backward3': ['Shift+Z'],
+    'playback.forward5': ['G'],
+    'playback.backward5': ['Z'],
+    'playback.forward0_75': ['Shift+V'],
+    'playback.backward0_75': ['Shift+C'],
+    'playback.forward0_5': ['V'],
+    'playback.backward0_5': ['C'],
+    'playback.backward1': [`${Mod}+Space`],
+    'playback.jumpPrevBoundary': ['A', 'MouseForward'],
+    'playback.jumpNextBoundary': ['S', 'MouseBack'],
+    'playback.jumpPrevBoundaryTrack': ['Shift+A'],
+    'playback.jumpNextBoundaryTrack': ['Shift+S'],
   },
 };
