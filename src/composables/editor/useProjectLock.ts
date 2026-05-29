@@ -21,6 +21,12 @@ export function useProjectLock() {
   let lockReleaseFn: (() => void) | null = null;
   let broadcastChannel: BroadcastChannel | null = null;
 
+  /**
+   * Optional callback invoked before releasing the lock on a steal request.
+   * Use it to flush pending autosave data before handing over control.
+   */
+  let onBeforeRelease: (() => Promise<void>) | null = null;
+
   function getLockName(projectId: string): string {
     return `fastcat-project-lock-${projectId}`;
   }
@@ -36,6 +42,14 @@ export function useProjectLock() {
 
       if (type === 'lock:steal' && lockedProjectId.value === projectId) {
         log.log(`Received steal request for project: ${projectId} from tab: ${requesterTabId}`);
+        // Flush pending autosave before releasing so the new owner gets latest data
+        if (onBeforeRelease) {
+          try {
+            await onBeforeRelease();
+          } catch (e) {
+            log.warn('onBeforeRelease callback failed', e);
+          }
+        }
         await releaseLock();
         isLockLost.value = true;
       }
@@ -127,24 +141,25 @@ export function useProjectLock() {
     lockedProjectId.value = null;
   }
 
-  function handleBeforeUnload() {
-    if (lockedProjectId.value) {
-      releaseLock().catch(() => {});
-    }
+  /**
+   * Register a callback to be called before the lock is released on a steal request.
+   * Use this to flush any pending saves before handing over the project.
+   */
+  function setOnBeforeRelease(callback: (() => Promise<void>) | null) {
+    onBeforeRelease = callback;
   }
 
   if (typeof window !== 'undefined') {
     setupChannel();
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    // We can't use onUnmounted reliably in a global store that's never disposed,
-    // but we can ensure we don't leak by closing the channel if we ever recreate.
+    // Note: Web Locks API automatically releases the lock when the tab closes,
+    // so a beforeunload handler is not needed here.
   }
 
   return {
     acquireLock,
     releaseLock,
     stealLock,
+    setOnBeforeRelease,
     isLocked: () => lockedProjectId.value !== null,
     isLockLost,
   };

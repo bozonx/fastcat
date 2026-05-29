@@ -179,6 +179,15 @@ export const useProjectStore = defineStore('project', () => {
     }
   });
 
+  // Register emergency autosave so pending changes are flushed before lock is
+  // handed over to another tab on steal.
+  const timelineStoreForFlush = useTimelineStore();
+  projectLock.setOnBeforeRelease(async () => {
+    if (!isReadOnly.value) {
+      await timelineStoreForFlush.flushTimelineAutosave();
+    }
+  });
+
   async function stealProjectLock() {
     if (!currentProjectId.value) return;
     const lockAcquired = await projectLock.stealLock(currentProjectId.value);
@@ -307,6 +316,15 @@ export const useProjectStore = defineStore('project', () => {
       currentProjectName.value = name;
       await loadProjectMeta();
 
+      // Acquire lock immediately after the project ID is assigned, so this tab
+      // is the exclusive owner from the start.
+      if (currentProjectId.value) {
+        const lockAcquired = await projectLock.acquireLock(currentProjectId.value);
+        isReadOnly.value = !lockAcquired;
+      } else {
+        log.warn('createProject: projectId is unknown after loadProjectMeta');
+      }
+
       currentTimelinePath.value = initialTimeline;
       currentFileName.value = initialTimeline;
 
@@ -350,12 +368,14 @@ export const useProjectStore = defineStore('project', () => {
       });
     }
 
-    // Acquire lock after project ID is known (loaded from meta)
-    if (currentProjectId.value) {
-      const lockAcquired = await projectLock.acquireLock(currentProjectId.value);
+    // Acquire lock after project ID is known (loaded from meta).
+    // Fall back to project name as lock key for legacy projects without a stored ID.
+    const lockKey = currentProjectId.value ?? currentProjectName.value;
+    if (lockKey) {
+      const lockAcquired = await projectLock.acquireLock(lockKey);
       isReadOnly.value = !lockAcquired;
     } else {
-      log.warn('Cannot acquire lock: projectId is unknown');
+      log.warn('Cannot acquire lock: neither projectId nor projectName is available');
       isReadOnly.value = false;
     }
 
@@ -401,6 +421,10 @@ export const useProjectStore = defineStore('project', () => {
 
   async function deleteCurrentProject() {
     if (!currentProjectName.value) return;
+    if (isReadOnly.value) {
+      log.warn('deleteCurrentProject blocked: project is read-only');
+      return;
+    }
     await workspaceStore.deleteProject(
       currentProjectName.value,
       currentProjectId.value ?? undefined,

@@ -113,6 +113,19 @@ export function useFileManagerActions(actions: FileManagerActions) {
 
   const editingEntryPath = ref<string | null>(null);
 
+  /**
+   * Shows a toast and returns true when the project is read-only.
+   * Use as an early-return guard in all file-system write operations.
+   */
+  function isReadOnlyGuard(): boolean {
+    if (!projectStore.isReadOnly) return false;
+    toast.add({
+      title: t('videoEditor.fileManager.errors.readOnlyAction'),
+      color: 'warning',
+    });
+    return true;
+  }
+
   const timelinesUsingDeleteTarget = computed(() => {
     return deleteTargets.value.flatMap((entry) => {
       if (entry.kind !== 'file' || !entry.path) return [];
@@ -121,6 +134,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   });
 
   function startRename(entry: FsEntry) {
+    if (isReadOnlyGuard()) return;
     const bdPayload = getBdPayload(entry);
     if (bdPayload?.type === 'virtual-folder' || bdPayload?.type === 'project') return;
     editingEntryPath.value = entry.path ?? null;
@@ -133,6 +147,11 @@ export function useFileManagerActions(actions: FileManagerActions) {
   async function commitRename(entry: FsEntry, newName: string) {
     const trimmed = newName.trim();
     if (!trimmed || trimmed === entry.name) {
+      stopRename();
+      return;
+    }
+
+    if (isReadOnlyGuard()) {
       stopRename();
       return;
     }
@@ -160,6 +179,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   }
 
   async function handleCreateAutoFolder(targetDirPath: string, existingNames: string[]) {
+    if (isReadOnlyGuard()) return;
     const usedNames = new Set(existingNames);
 
     const baseName = t('common.folderBaseName');
@@ -284,6 +304,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
   }
 
   async function openDeleteConfirmModal(entries: FsEntry[]) {
+    if (isReadOnlyGuard()) return;
     const deleteSnapshot = entries.map((entry) => ({ ...entry }));
     if (workspaceStore.userSettings.deleteWithoutConfirmation) {
       deleteTargets.value = deleteSnapshot;
@@ -362,6 +383,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
     >
   > = {
     createFolder: async (entry, getExistingNames) => {
+      if (isReadOnlyGuard()) return;
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (!e) return;
       const existingNames = getExistingNames
@@ -370,6 +392,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       await handleCreateAutoFolder(e.path, existingNames);
     },
     upload: (entry) => {
+      if (isReadOnlyGuard()) return;
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (!e || e.kind !== 'directory') return;
       directoryUploadTarget.value = e;
@@ -384,6 +407,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       void openDeleteConfirmModal(entries);
     },
     createProxy: async (entry) => {
+      if (isReadOnlyGuard()) return;
       const entries = Array.isArray(entry) ? entry : [entry];
       for (const e of entries) {
         if (e.kind !== 'file' || !e.path) continue;
@@ -404,6 +428,7 @@ export function useFileManagerActions(actions: FileManagerActions) {
       }
     },
     deleteProxy: async (entry) => {
+      if (isReadOnlyGuard()) return;
       const entries = Array.isArray(entry) ? entry : [entry];
       for (const e of entries) {
         if (e.kind === 'file' && e.path) {
@@ -412,10 +437,12 @@ export function useFileManagerActions(actions: FileManagerActions) {
       }
     },
     createOtioVersion: async (entry) => {
+      if (isReadOnlyGuard()) return;
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (e) await createOtioVersion(e);
     },
     createMarkdown: async (entry) => {
+      if (isReadOnlyGuard()) return;
       const e = Array.isArray(entry) ? entry[0] : entry;
       await createMarkdownInDirectory(e?.kind === 'directory' ? e.path : undefined);
     },
@@ -458,7 +485,13 @@ export function useFileManagerActions(actions: FileManagerActions) {
       });
     },
     paste: async (entry) => {
+      // paste with cut operation moves files — that is a write operation
       const payload = clipboardStore.clipboardPayload;
+      if (payload?.source === 'fileManager' && payload.operation === 'cut') {
+        if (isReadOnlyGuard()) return;
+      }
+      // paste with copy operation from an external source to this project is also a write
+      if (isReadOnlyGuard()) return;
       if (!payload || payload.source !== 'fileManager' || payload.items.length === 0) return;
       const targetEntry = Array.isArray(entry) ? entry[0] : entry;
       if (targetEntry?.source === 'remote' && !canPasteIntoBloggerDogEntry(targetEntry)) return;

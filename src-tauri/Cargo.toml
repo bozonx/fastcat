@@ -41,12 +41,12 @@ tauri-plugin-persisted-scope = "2.3.7"
 
 # --- GPU / compositor stack ---
 wgpu = { version = "29.0.3", default-features = false, features = ["dx12", "gles", "metal", "std", "vulkan", "wgsl"] }
-vello = "0.6"
-vello_svg = "0.10"
-peniko = "0.5"
+vello = "0.9"
+vello_svg = "0.9"
+peniko = "0.6"
 kurbo = "0.13"
 # Text shaping/layout — Linebender stack, тот же что и Vello.
-parley = "0.6"
+parley = "0.9"
 # Растр-декод для image-слоёв (PNG/JPEG/WebP). Видеокадры приходят отдельно от декодера.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 raw-window-handle = "0.6"

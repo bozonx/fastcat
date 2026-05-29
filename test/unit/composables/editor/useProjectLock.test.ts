@@ -76,4 +76,74 @@ describe('useProjectLock', () => {
     expect(lock.isLockLost.value).toBe(true);
     expect(lock.isLocked()).toBe(false);
   });
+
+  it('onBeforeRelease callback is called when lock is stolen', async () => {
+    const lock = useProjectLock();
+    await lock.acquireLock('project-1');
+
+    const onBeforeRelease = vi.fn().mockResolvedValue(undefined);
+    lock.setOnBeforeRelease(onBeforeRelease);
+
+    const channel = createdChannels[0];
+    if (channel.onmessage) {
+      await channel.onmessage({
+        data: { type: 'lock:steal', projectId: 'project-1', requesterTabId: 'other-tab' },
+      } as MessageEvent);
+    }
+
+    expect(onBeforeRelease).toHaveBeenCalledOnce();
+    expect(lock.isLockLost.value).toBe(true);
+  });
+
+  it('onBeforeRelease is not called when steal is for a different project', async () => {
+    const lock = useProjectLock();
+    await lock.acquireLock('project-1');
+
+    const onBeforeRelease = vi.fn().mockResolvedValue(undefined);
+    lock.setOnBeforeRelease(onBeforeRelease);
+
+    const channel = createdChannels[0];
+    if (channel.onmessage) {
+      await channel.onmessage({
+        data: { type: 'lock:steal', projectId: 'project-2', requesterTabId: 'other-tab' },
+      } as MessageEvent);
+    }
+
+    // Different project — our lock should remain, callback should not be called
+    expect(onBeforeRelease).not.toHaveBeenCalled();
+    expect(lock.isLocked()).toBe(true);
+  });
+
+  it('setOnBeforeRelease can clear the callback by passing null', async () => {
+    const lock = useProjectLock();
+    await lock.acquireLock('project-1');
+
+    const onBeforeRelease = vi.fn().mockResolvedValue(undefined);
+    lock.setOnBeforeRelease(onBeforeRelease);
+    lock.setOnBeforeRelease(null);
+
+    const channel = createdChannels[0];
+    if (channel.onmessage) {
+      await channel.onmessage({
+        data: { type: 'lock:steal', projectId: 'project-1', requesterTabId: 'other-tab' },
+      } as MessageEvent);
+    }
+
+    expect(onBeforeRelease).not.toHaveBeenCalled();
+    expect(lock.isLockLost.value).toBe(true);
+  });
+
+  it('does not register a beforeunload event listener', () => {
+    const addEventListenerSpy = vi.fn();
+    vi.stubGlobal('window', {
+      addEventListener: addEventListenerSpy,
+    });
+
+    useProjectLock();
+
+    const beforeunloadCalls = addEventListenerSpy.mock.calls.filter(
+      (call) => call[0] === 'beforeunload',
+    );
+    expect(beforeunloadCalls).toHaveLength(0);
+  });
 });

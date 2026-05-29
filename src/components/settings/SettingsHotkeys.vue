@@ -38,8 +38,8 @@ const normalizedQuery = computed(() => searchQuery.value.toLowerCase().trim());
 const hotkeyGroupOrder: readonly HotkeyGroupId[] = [
   'general',
   'fileManager',
-  'timeline',
   'timelineMonitorGlobal',
+  'timeline',
   'monitor',
 ];
 
