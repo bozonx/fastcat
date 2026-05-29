@@ -747,6 +747,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return;
     }
 
+    if (payload && !payload.isExternal) {
+      e.preventDefault?.();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
+    }
+
     await buildDragPreview(e, trackId);
   }
 

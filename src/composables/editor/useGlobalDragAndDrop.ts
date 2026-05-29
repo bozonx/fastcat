@@ -14,6 +14,7 @@ import {
 } from '~/utils/hotkeys/runtime';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { isTauriRuntime } from '~/utils/runtime';
+import { useDraggedFile } from '~/composables/useDraggedFile';
 const log = createDevLogger('useGlobalDragAndDrop');
 
 const isDropInProgress = ref(false);
@@ -25,6 +26,7 @@ export function useGlobalDragAndDrop() {
   const projectStore = useProjectStore();
   const fm = useFileManager();
   const { t } = useI18n();
+  const { draggedFile } = useDraggedFile();
 
   const commandOrder = DEFAULT_HOTKEYS.commands.map((c) => c.id);
   const effectiveHotkeys = computed(() =>
@@ -173,7 +175,9 @@ export function useGlobalDragAndDrop() {
         const { getCurrentWebview } = await import('@tauri-apps/api/webview');
         unlistenTauriDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
           if (event.payload.type === 'over') {
-            uiStore.isGlobalDragging = true;
+            if (!uiStore.isFileManagerDragging && !draggedFile.value) {
+              uiStore.isGlobalDragging = true;
+            }
           } else if (event.payload.type === 'leave') {
             uiStore.isGlobalDragging = false;
           } else if (event.payload.type === 'drop') {

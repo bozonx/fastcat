@@ -31,26 +31,121 @@ export class TauriFileHandle {
     });
   }
 
-  async createWritable(): Promise<{
-    write: (data: string | Uint8Array | BlobPart) => Promise<void>;
+  async createWritable(options?: { keepExistingData?: boolean }): Promise<{
+    write: (data: unknown) => Promise<void>;
+    seek: (position: number) => Promise<void>;
+    truncate: (size: number) => Promise<void>;
     close: () => Promise<void>;
   }> {
     const random = randomToken(6);
     const tempPath = `${this.path}.${Date.now().toString(36)}.${random}.tmp`;
 
-    return {
-      write: async (data: string | Uint8Array | BlobPart) => {
-        let bytes: Uint8Array;
-        if (typeof data === 'string') {
-          bytes = new TextEncoder().encode(data);
-        } else if (data instanceof Uint8Array) {
-          bytes = data;
-        } else {
-          bytes = new Uint8Array(await new Blob([data]).arrayBuffer());
+    let buffer = new Uint8Array(0);
+    if (options?.keepExistingData !== false) {
+      if (await exists(this.path)) {
+        try {
+          buffer = await readFile(this.path);
+        } catch {
+          // Ignore and start empty if file read fails
         }
-        await withFileWriteSlot(() => writeFile(tempPath, bytes));
+      }
+    }
+
+    let fileSize = buffer.length;
+    let position = 0;
+
+    const toUint8Array = async (data: unknown): Promise<Uint8Array> => {
+      if (typeof data === 'string') {
+        return new TextEncoder().encode(data);
+      }
+      if (data instanceof Uint8Array) {
+        return data;
+      }
+      if (data instanceof ArrayBuffer) {
+        return new Uint8Array(data);
+      }
+      if (ArrayBuffer.isView(data)) {
+        return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+      }
+      if (data instanceof Blob) {
+        return new Uint8Array(await data.arrayBuffer());
+      }
+      return new Uint8Array(await new Blob([data as BlobPart]).arrayBuffer());
+    };
+
+    const truncateInternal = (size: number) => {
+      if (size < buffer.length) {
+        buffer = buffer.slice(0, size);
+      } else if (size > buffer.length) {
+        const newBuffer = new Uint8Array(size);
+        newBuffer.set(buffer);
+        buffer = newBuffer;
+      }
+      fileSize = size;
+      if (position > size) {
+        position = size;
+      }
+    };
+
+    const writeInternal = async (data: unknown) => {
+      const bytes = await toUint8Array(data);
+      const neededLength = position + bytes.length;
+      if (neededLength > buffer.length) {
+        const newBuffer = new Uint8Array(Math.max(neededLength, buffer.length * 2));
+        newBuffer.set(buffer);
+        buffer = newBuffer;
+      }
+      buffer.set(bytes, position);
+      position = neededLength;
+      fileSize = Math.max(fileSize, neededLength);
+    };
+
+    return {
+      write: async (data: unknown) => {
+        if (data && typeof data === 'object' && 'type' in data) {
+          const params = data as {
+            type: 'write' | 'seek' | 'truncate';
+            position?: number;
+            size?: number;
+            data?: unknown;
+          };
+
+          if (params.type === 'seek') {
+            if (params.position !== undefined) {
+              position = params.position;
+            }
+            return;
+          }
+
+          if (params.type === 'truncate') {
+            if (params.size !== undefined) {
+              truncateInternal(params.size);
+            }
+            return;
+          }
+
+          if (params.type === 'write') {
+            if (params.position !== undefined) {
+              position = params.position;
+            }
+            if (params.data !== undefined) {
+              await writeInternal(params.data);
+            }
+            return;
+          }
+        }
+
+        await writeInternal(data);
+      },
+      seek: async (pos: number) => {
+        position = pos;
+      },
+      truncate: async (size: number) => {
+        truncateInternal(size);
       },
       close: async () => {
+        const finalData = buffer.subarray(0, fileSize);
+        await withFileWriteSlot(() => writeFile(tempPath, finalData));
         if (await exists(tempPath)) {
           await withFileWriteSlot(() => rename(tempPath, this.path));
         }

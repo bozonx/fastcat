@@ -71,25 +71,26 @@ describe('TauriFileHandle', () => {
   });
 
   describe('createWritable', () => {
-    it('writes string data', async () => {
+    it('writes string data on close', async () => {
       const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
-      const writable = await handle.createWritable();
+      const writable = await handle.createWritable({ keepExistingData: false });
       await writable.write('hello');
+      await writable.close();
 
       expect(writeFile).toHaveBeenCalledWith(
         expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
         expect.any(Uint8Array),
       );
-      // We know it converts string to Uint8Array
       const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
       expect(new TextDecoder().decode(callArg)).toBe('hello');
     });
 
-    it('writes Uint8Array data', async () => {
+    it('writes Uint8Array data on close', async () => {
       const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
-      const writable = await handle.createWritable();
+      const writable = await handle.createWritable({ keepExistingData: false });
       const data = new Uint8Array([1, 2, 3]);
       await writable.write(data);
+      await writable.close();
 
       expect(writeFile).toHaveBeenCalledWith(
         expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
@@ -97,11 +98,12 @@ describe('TauriFileHandle', () => {
       );
     });
 
-    it('writes other data types (Blob)', async () => {
+    it('writes other data types (Blob) on close', async () => {
       const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
-      const writable = await handle.createWritable();
+      const writable = await handle.createWritable({ keepExistingData: false });
       const blob = new Blob(['blob data']);
       await writable.write(blob);
+      await writable.close();
 
       expect(writeFile).toHaveBeenCalledWith(
         expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
@@ -111,10 +113,50 @@ describe('TauriFileHandle', () => {
       expect(new TextDecoder().decode(callArg)).toBe('blob data');
     });
 
-    it('has a close method that resolves', async () => {
+    it('supports keepExistingData options', async () => {
       const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
       vi.mocked(exists).mockResolvedValue(true);
+      vi.mocked(readFile).mockResolvedValue(new TextEncoder().encode('existing'));
+
       const writable = await handle.createWritable();
+      await writable.write('!newValue');
+      await writable.close();
+
+      expect(writeFile).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
+        expect.any(Uint8Array),
+      );
+      const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
+      expect(new TextDecoder().decode(callArg)).toBe('!newValue');
+    });
+
+    it('supports seek and chunked write', async () => {
+      const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
+      const writable = await handle.createWritable({ keepExistingData: false });
+      await writable.write({ type: 'write', position: 2, data: 'hello' });
+      await writable.close();
+
+      const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
+      expect(callArg[0]).toBe(0);
+      expect(callArg[1]).toBe(0);
+      expect(new TextDecoder().decode(callArg.slice(2))).toBe('hello');
+    });
+
+    it('supports truncate', async () => {
+      const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
+      const writable = await handle.createWritable({ keepExistingData: false });
+      await writable.write('hello world');
+      await writable.truncate(5);
+      await writable.close();
+
+      const callArg = vi.mocked(writeFile).mock.calls[0][1] as Uint8Array;
+      expect(new TextDecoder().decode(callArg)).toBe('hello');
+    });
+
+    it('has a close method that resolves and renames the temp file', async () => {
+      const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
+      vi.mocked(exists).mockResolvedValue(true);
+      const writable = await handle.createWritable({ keepExistingData: false });
       await expect(writable.close()).resolves.toBeUndefined();
       expect(rename).toHaveBeenCalledWith(
         expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),

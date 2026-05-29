@@ -283,15 +283,6 @@ const {
       );
     });
   },
-  onLongPress: () => {
-    if (props.isMobile) {
-      emit('clipAction', {
-        action: 'longPress',
-        trackId: props.track.id,
-        itemId: props.item.id,
-      });
-    }
-  },
 });
 
 function onClipPointerdown(e: PointerEvent) {
@@ -733,7 +724,7 @@ function handleTransitionCreate(
           : '',
         !isMediaMissing && isUnsupported ? 'bg-amber-600/50! border-amber-700!' : '',
         (clipItem && Boolean(clipItem.locked)) || track.locked ? 'cursor-not-allowed' : '',
-        isMobile ? 'touch-none' : '',
+        isMobile && timelineContext.selectedItemIds.value.includes(item.id) ? 'touch-none' : '',
         isMovePreviewCollision ? 'bg-red-600/80! border-red-500! border-2! text-white! z-50!' : '',
       ]"
       @pointerdown="onClipPointerdown"

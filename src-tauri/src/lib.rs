@@ -26,6 +26,9 @@ fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), S
     println!("[allow_dropped_file_scope] extending scope to: {path}");
     app.fs_scope()
         .allow_file(&path)
+        .map_err(|e| e.to_string())?;
+    app.asset_protocol_scope()
+        .allow_file(&path)
         .map_err(|e| e.to_string())
 }
 
@@ -33,6 +36,9 @@ fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), S
 fn allow_path_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
     println!("[allow_path_scope] extending scope to: {path}");
     app.fs_scope()
+        .allow_directory(&path, true)
+        .map_err(|e| e.to_string())?;
+    app.asset_protocol_scope()
         .allow_directory(&path, true)
         .map_err(|e| e.to_string())
 }
@@ -61,12 +67,14 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
     }
 
     println!("[allow_dev_directory_scope] extending scope to: {}", path);
-    let result = app
-        .fs_scope()
-        .allow_directory(path, true)
-        .map_err(|error| error.to_string());
-    println!("[allow_dev_directory_scope] result: {:?}", result);
-    result
+    app.fs_scope()
+        .allow_directory(&path, true)
+        .map_err(|error| error.to_string())?;
+    app.asset_protocol_scope()
+        .allow_directory(&path, true)
+        .map_err(|error| error.to_string())?;
+    println!("[allow_dev_directory_scope] scope extended successfully");
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

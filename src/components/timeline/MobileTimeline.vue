@@ -708,7 +708,7 @@ async function onClipAction(payload: TimelineClipActionPayload) {
         ref="scrollEl"
         class="absolute top-12 left-0 right-0 bottom-0 overflow-auto overscroll-none no-scrollbar"
         :class="draggingMode ? 'touch-none' : 'touch-pan-x touch-pan-y'"
-        @touchstart.passive="onTouchStart"
+        @touchstart="onTouchStart"
         @touchmove="onTouchMove"
         @pointerdown.capture="onTimelinePointerDownCapture"
         @click="onTimelineClick"

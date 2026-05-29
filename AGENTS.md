@@ -45,13 +45,7 @@ The project uses a custom `src/` directory. Besides the standard Nuxt folders (`
 - Always write unit or component tests for any new or modified functionality you introduce.
 - When adding or changing functionality, update relevant tests and documentation (including `README.md`).
 
-## Verification and Code Quality
-- Before completing any task, always verify your changes by running `pnpm check` (which executes `pnpm i18n:check && pnpm typecheck && pnpm lint && pnpm test:unit`).
-- Ensure that all new i18n keys added in your changes are present in all localization files (under `src/locales/`).
-- Make sure there are no lint issues, typecheck errors, or failing unit tests in your commits.
-
 ## Dependencies
 - Use only official, well-maintained libraries.
 - Rely on the latest stable versions and official documentation.
 - Always use Context7 for code generation, setup, or retrieving documentation for libraries/APIs.
-

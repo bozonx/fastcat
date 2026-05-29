@@ -48,7 +48,7 @@ describe('UiTabs', () => {
     // Instead of relying on NuxtUI internal DOM, test the computed property binding
     const uTabs = component.findComponent({ name: 'UTabs' });
     if (uTabs.exists()) {
-      await uTabs.vm.$emit('update:modelValue', 1);
+      await uTabs.vm.$emit('update:modelValue', 'tab2');
 
       expect(component.emitted('update:modelValue')).toBeTruthy();
       expect(component.emitted('update:modelValue')![0]).toEqual(['tab2']);

@@ -74,7 +74,10 @@ export function useMobileTimelineSelection(
     return items.length > 0 ? items : null;
   });
 
-  const isMultiSelectionMode = computed(() => Boolean(selectedClips.value?.length));
+  const isMultiSelectionMode = computed(() => {
+    const count = timelineStore.selectedItemIds.length;
+    return count > 1 || isMultiSelectionDrawerOpen.value || isLongPress.value;
+  });
 
   function syncSelectionStoreFromItemIds() {
     const map = itemToTrackMap.value;
