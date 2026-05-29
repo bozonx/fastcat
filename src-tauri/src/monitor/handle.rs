@@ -6,11 +6,20 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Result};
+use raw_window_handle::RawWindowHandle;
 use tauri::AppHandle;
 use winit::event_loop::EventLoopProxy;
 
 use super::app::run_event_loop;
 use super::scene::MonitorScene;
+
+/// Обёртка над `RawWindowHandle` для безопасной (для нас) передачи между потоками.
+/// `RawWindowHandle` содержит сырой указатель/идентификатор окна; он остаётся валидным
+/// всё время жизни главного Tauri-окна, которое мы не закрываем досрочно.
+#[derive(Debug, Clone, Copy)]
+pub struct SendableRawHandle(pub RawWindowHandle);
+unsafe impl Send for SendableRawHandle {}
+unsafe impl Sync for SendableRawHandle {}
 
 #[derive(Debug)]
 pub enum MonitorCommand {
@@ -23,6 +32,17 @@ pub enum MonitorCommand {
     Close,
     /// Фоновый поток загрузил слой — event-loop должен дренировать bg_rx.
     BgReady,
+    /// Положение/размер встроенного child-окна монитора в координатах родителя
+    /// (физические пиксели от left-top клиентской области главного окна).
+    /// Первый вызов с непустым прямоугольником создаёт окно; последующие — двигают/ресайзят.
+    SetViewport {
+        parent: SendableRawHandle,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+        visible: bool,
+    },
 }
 
 pub struct MonitorHandle {

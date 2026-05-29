@@ -23,6 +23,7 @@ use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 use vello::util::RenderSurface;
 use vello::Scene as VelloScene;
 use winit::application::ApplicationHandler;
+use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
@@ -32,7 +33,7 @@ use crate::media::decode::VideoFrame;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
-use super::handle::MonitorCommand;
+use super::handle::{MonitorCommand, SendableRawHandle};
 use super::scene::{LayerKind, MonitorScene, SceneLayer};
 
 const DEFAULT_TITLE: &str = "FastCat Monitor";
@@ -40,6 +41,17 @@ const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
 /// Целевой framerate нативного монитора (кадров/сек). Ограничивает Poll — вместо busy-loop.
 const TARGET_FPS: f64 = 60.0;
+
+/// Заказ положения child-окна от фронта (физические пиксели в координатах родителя).
+#[derive(Debug, Clone, Copy)]
+struct ViewportSpec {
+    parent: SendableRawHandle,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    visible: bool,
+}
 
 // ---------------------------------------------------------------------------
 // Результаты фоновой загрузки слоёв
@@ -93,6 +105,10 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
         use winit::platform::x11::EventLoopBuilderExtX11;
         EventLoopBuilderExtWayland::with_any_thread(&mut builder, true);
         EventLoopBuilderExtX11::with_any_thread(&mut builder, true);
+        // Форсируем X11: WINIT_UNIX_BACKEND env var в winit 0.30 не работает.
+        // Без этого на Wayland-сессии винит игнорирует X11-родителя (Tauri-окно)
+        // и создаёт собственное Wayland-toplevel — встраивание ломается.
+        EventLoopBuilderExtX11::with_x11(&mut builder);
     }
     #[cfg(target_os = "windows")]
     {
@@ -116,7 +132,13 @@ struct MonitorApp {
     /// Получатель результатов фоновых загрузок; дренируется в user_event(BgReady).
     bg_rx: Receiver<BgLayerResult>,
     state: Option<WindowState>,
+    /// Сцена, пришедшая ДО первого SetViewport — применяется сразу после создания окна.
     pending_scene: Option<MonitorScene>,
+    /// Последний viewport. Если окна ещё нет — создадим по этому спеку в `resumed()`/SetViewport.
+    pending_viewport: Option<ViewportSpec>,
+    /// True, если winit уже вызвал `resumed` и можно создавать окна. До этого create_window
+    /// падает; мы откладываем создание до resumed.
+    resumed: bool,
 }
 
 impl MonitorApp {
@@ -126,7 +148,43 @@ impl MonitorApp {
         bg_tx: Sender<BgLayerResult>,
         bg_rx: Receiver<BgLayerResult>,
     ) -> Self {
-        Self { app, proxy, bg_tx, bg_rx, state: None, pending_scene: None }
+        Self {
+            app,
+            proxy,
+            bg_tx,
+            bg_rx,
+            state: None,
+            pending_scene: None,
+            pending_viewport: None,
+            resumed: false,
+        }
+    }
+
+    /// Пытается создать окно из `pending_viewport`. Вызывается из `resumed` и `SetViewport`.
+    fn try_create_window(&mut self, event_loop: &ActiveEventLoop) {
+        if self.state.is_some() || !self.resumed {
+            return;
+        }
+        let Some(vp) = self.pending_viewport else { return };
+        match init_window(
+            event_loop,
+            self.app.clone(),
+            self.proxy.clone(),
+            self.bg_tx.clone(),
+            vp,
+        ) {
+            Ok(state) => {
+                self.state = Some(state);
+                if let Some(scene) = self.pending_scene.take() {
+                    if let Some(s) = self.state.as_mut() {
+                        s.apply_scene(scene);
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("[monitor] init failed: {e:?}");
+            }
+        }
     }
 }
 
@@ -155,6 +213,9 @@ struct WindowState {
     clock_wall_origin: Option<Instant>,
     last_emit_pts: f64,
     scene_size: (u32, u32),
+    /// Последний применённый viewport — чтобы не дёргать set_outer_position/set_inner_size
+    /// без нужды (на Wayland это лишние commit'ы и потенциальные flicker'ы).
+    last_viewport: ViewportSpec,
 }
 
 enum LayerRuntime {
@@ -190,28 +251,10 @@ struct DecodedVideoFrame {
 
 impl ApplicationHandler<MonitorCommand> for MonitorApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.state.is_some() {
-            return;
-        }
-        match init_window(
-            event_loop,
-            self.app.clone(),
-            self.proxy.clone(),
-            self.bg_tx.clone(),
-        ) {
-            Ok(state) => {
-                self.state = Some(state);
-                if let Some(scene) = self.pending_scene.take() {
-                    if let Some(s) = self.state.as_mut() {
-                        s.apply_scene(scene);
-                    }
-                }
-            }
-            Err(e) => {
-                log::error!("[monitor] init failed: {e:?}");
-                event_loop.exit();
-            }
-        }
+        // Помечаемся как «resumed» и пытаемся создать окно, если viewport уже пришёл
+        // от фронта. Иначе ждём первого SetViewport.
+        self.resumed = true;
+        self.try_create_window(event_loop);
     }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, cmd: MonitorCommand) {
@@ -253,6 +296,29 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 }
                 if let Some(s) = self.state.as_ref() {
                     s.window.request_redraw();
+                }
+            }
+            MonitorCommand::SetViewport {
+                parent,
+                x,
+                y,
+                width,
+                height,
+                visible,
+            } => {
+                let vp = ViewportSpec {
+                    parent,
+                    x,
+                    y,
+                    width: width.max(1),
+                    height: height.max(1),
+                    visible,
+                };
+                self.pending_viewport = Some(vp);
+                if let Some(s) = self.state.as_mut() {
+                    s.apply_viewport(vp);
+                } else {
+                    self.try_create_window(event_loop);
                 }
             }
         }
@@ -307,10 +373,62 @@ fn init_window(
     app: AppHandle,
     proxy: EventLoopProxy<MonitorCommand>,
     bg_tx: Sender<BgLayerResult>,
+    viewport: ViewportSpec,
 ) -> Result<WindowState> {
-    let window_attrs = Window::default_attributes()
+    let mut window_attrs = Window::default_attributes()
         .with_title(DEFAULT_TITLE)
-        .with_inner_size(winit::dpi::LogicalSize::new(960.0, 540.0));
+        .with_decorations(false)
+        .with_resizable(false)
+        .with_visible(false)
+        .with_inner_size(PhysicalSize::new(viewport.width, viewport.height))
+        .with_position(PhysicalPosition::new(viewport.x, viewport.y));
+
+    // Платформо-зависимое истинное встраивание.
+    //
+    // На X11 общий `with_parent_window` НЕ делает reparent — он лишь определяет root/screen.
+    // Для настоящего child-окна нужен `WindowAttributesExtX11::with_embed_parent_window(xid)`,
+    // которое winit реализует через XReparentWindow. Только так окно перестаёт быть toplevel
+    // (исчезает из таскбара, клипается клиентской областью родителя, двигается с ним).
+    #[cfg(target_os = "linux")]
+    {
+        use raw_window_handle::RawWindowHandle;
+        use winit::platform::x11::WindowAttributesExtX11;
+        match viewport.parent.0 {
+            RawWindowHandle::Xlib(h) => {
+                log::info!(
+                    "[monitor] parent: Xlib XID={:#x} ({} dec)",
+                    h.window, h.window
+                );
+                window_attrs = window_attrs
+                    .with_embed_parent_window(h.window as u32)
+                    .with_override_redirect(true);
+            }
+            RawWindowHandle::Xcb(h) => {
+                log::info!(
+                    "[monitor] parent: Xcb XID={:#x} ({} dec)",
+                    h.window.get(), h.window.get()
+                );
+                window_attrs = window_attrs
+                    .with_embed_parent_window(h.window.get())
+                    .with_override_redirect(true);
+            }
+            RawWindowHandle::Wayland(_) => {
+                anyhow::bail!(
+                    "monitor: parent handle is Wayland — GDK_BACKEND=x11 не подхватилось. \
+                     XWayland-режим не активирован."
+                );
+            }
+            other => {
+                anyhow::bail!("monitor: unexpected parent handle variant: {:?}", other);
+            }
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // SAFETY: родительский handle = главное окно Tauri, живёт дольше монитора.
+        window_attrs = unsafe { window_attrs.with_parent_window(Some(viewport.parent.0)) };
+    }
+
     let window = Arc::new(
         event_loop
             .create_window(window_attrs)
@@ -324,6 +442,10 @@ fn init_window(
         size.width.max(1),
         size.height.max(1),
     ))?;
+
+    if viewport.visible {
+        window.set_visible(true);
+    }
 
     Ok(WindowState {
         app,
@@ -340,6 +462,7 @@ fn init_window(
         clock_wall_origin: None,
         last_emit_pts: -1.0,
         scene_size: (0, 0),
+        last_viewport: viewport,
     })
 }
 
@@ -371,10 +494,36 @@ impl WindowState {
         self.scene_size = (scene.width, scene.height);
         self.scene = scene.layers;
 
-        if !self.scene.is_empty() {
-            self.window.set_visible(true);
-        }
+        // Видимость окна теперь полностью контролируется фронтом через SetViewport —
+        // здесь только просим перерисовать.
         self.window.request_redraw();
+    }
+
+    fn apply_viewport(&mut self, vp: ViewportSpec) {
+        let prev = self.last_viewport;
+        log::info!(
+            "[monitor] apply_viewport pos=({},{}) size={}x{} visible={}",
+            vp.x, vp.y, vp.width, vp.height, vp.visible
+        );
+        if (prev.x, prev.y) != (vp.x, vp.y) {
+            self.window
+                .set_outer_position(PhysicalPosition::new(vp.x, vp.y));
+        }
+        if (prev.width, prev.height) != (vp.width, vp.height) {
+            let _ = self
+                .window
+                .request_inner_size(PhysicalSize::new(vp.width, vp.height));
+            // С override_redirect WM не управляет окном, и WindowEvent::Resized может
+            // не прилететь синхронно. Ресайзим surface сразу — иначе будет кадр старого размера.
+            self.resize(vp.width, vp.height);
+        }
+        if prev.visible != vp.visible {
+            self.window.set_visible(vp.visible);
+        }
+        self.last_viewport = vp;
+        if vp.visible {
+            self.window.request_redraw();
+        }
     }
 
     fn play(&mut self) {

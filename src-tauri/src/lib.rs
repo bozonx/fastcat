@@ -79,6 +79,20 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // На Linux форсируем X11 backend для GTK/webkit2gtk и winit. Это нужно для
+    // встраивания нативного монитора (winit child window) в главное окно Tauri:
+    // honestный `wl_subsurface` между двумя разными wl_display connections невозможен,
+    // а на X11 `with_parent_window` создаёт настоящий child через XCreateWindow.
+    // На Wayland-сессии оба окна поднимутся через XWayland.
+    #[cfg(target_os = "linux")]
+    {
+        // SAFETY: вызывается до tauri::Builder и до любого взаимодействия с GTK/winit.
+        unsafe {
+            std::env::set_var("GDK_BACKEND", "x11");
+            std::env::set_var("WINIT_UNIX_BACKEND", "x11");
+        }
+    }
+
     let mut builder = tauri::Builder::default();
 
     #[cfg(desktop)]
@@ -109,6 +123,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_play,
             ipc::monitor_cmd::monitor_pause,
             ipc::monitor_cmd::monitor_seek,
+            ipc::monitor_cmd::monitor_set_viewport,
             ipc::monitor_cmd::monitor_close,
         ])
         .setup(|app| {
