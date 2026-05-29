@@ -9,6 +9,7 @@ export const TIMELINE_COMMAND_LABEL_KEYS: Record<TimelineCommand['type'], string
   move_items: 'videoEditor.fileManager.history.entries.moveItems',
   move_item_to_track: 'videoEditor.fileManager.history.entries.moveItem',
   trim_item: 'videoEditor.fileManager.history.entries.trimClip',
+  trim_items: 'videoEditor.fileManager.history.entries.trimClip',
   overlay_trim_item: 'videoEditor.fileManager.history.entries.trimClip',
   overlay_place_item: 'videoEditor.fileManager.history.entries.placeClip',
   split_item: 'videoEditor.fileManager.history.entries.splitClip',

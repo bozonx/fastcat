@@ -5,13 +5,15 @@ import { useSelectionStore } from '~/stores/selection.store';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 
 const props = defineProps<{
-  trimPreview?: {
-    itemId: string;
-    trackId: string;
-    startUs: number;
-    durationUs: number;
-    edge: 'start' | 'end';
-  } | null;
+  trimPreview?:
+    | {
+        itemId: string;
+        trackId: string;
+        startUs: number;
+        durationUs: number;
+        edge: 'start' | 'end';
+      }[]
+    | null;
 }>();
 
 const emit = defineEmits<{
@@ -73,14 +75,13 @@ const effectiveRange = computed(() => {
   const clipContext = currentClipAndTrack.value;
   if (!clipContext) return null;
 
-  if (
-    props.trimPreview &&
-    props.trimPreview.itemId === clipContext.item.id &&
-    props.trimPreview.trackId === clipContext.track.id
-  ) {
+  const myPreview = props.trimPreview?.find(
+    (p) => p.itemId === clipContext.item.id && p.trackId === clipContext.track.id,
+  );
+  if (myPreview) {
     return {
-      startUs: props.trimPreview.startUs,
-      durationUs: props.trimPreview.durationUs,
+      startUs: myPreview.startUs,
+      durationUs: myPreview.durationUs,
     };
   }
 

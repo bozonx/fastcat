@@ -1182,9 +1182,7 @@ export function useTimelineItemDrag(
         } else {
           const trims = trimPreview.value
             .map((preview) => {
-              const found = docBeforeApply
-                ? findClipById(docBeforeApply, preview.itemId)
-                : null;
+              const found = docBeforeApply ? findClipById(docBeforeApply, preview.itemId) : null;
               if (!found) return null;
               const it = found.item;
               if (it.linkedVideoClipId && it.lockToLinkedVideo) {

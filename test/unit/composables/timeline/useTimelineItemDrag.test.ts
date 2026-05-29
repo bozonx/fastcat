@@ -414,14 +414,16 @@ describe('useTimelineItemDrag', () => {
     } as PointerEvent);
 
     expect(applyTimelineMock).not.toHaveBeenCalled();
-    expect(trimPreview.value).toEqual({
-      itemId: 'clip-1',
-      trackId: 'track-1',
-      startUs: 1_400_000,
-      durationUs: 4_600_000,
-      edge: 'start',
-      deltaUs: 400_000,
-    });
+    expect(trimPreview.value).toEqual([
+      {
+        itemId: 'clip-1',
+        trackId: 'track-1',
+        startUs: 1_400_000,
+        durationUs: 4_600_000,
+        edge: 'start',
+        deltaUs: 400_000,
+      },
+    ]);
 
     handlers.onPointerUp({
       button: 0,
@@ -616,5 +618,142 @@ describe('useTimelineItemDrag', () => {
       vi.advanceTimersByTime(16);
       expect(getScrollLeft()).toBe(scrollAfterEdge);
     });
+  });
+
+  it('redirects trim from locked-audio to its linked video and shows dual preview', () => {
+    timelineStoreMock.timelineDoc.tracks[0]!.items[0] = {
+      ...timelineStoreMock.timelineDoc.tracks[0]!.items[0]!,
+      sourceDurationUs: 10_000_000,
+    };
+    timelineStoreMock.timelineDoc.tracks[1]!.items[0] = {
+      ...timelineStoreMock.timelineDoc.tracks[1]!.items[0]!,
+      linkedVideoClipId: 'clip-1',
+      lockToLinkedVideo: true,
+    };
+
+    const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startTrimItem, trimPreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startTrimItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 12,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-2',
+        itemId: 'clip-a1',
+        edge: 'end',
+        startUs: 1_000_000,
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+    handlers.onPointerMove({
+      buttons: 1,
+      button: 0,
+      clientX: 104,
+      clientY: 20,
+    } as PointerEvent);
+
+    expect(trimPreview.value.length).toBe(2);
+    const videoPreview = trimPreview.value.find((p) => p.itemId === 'clip-1');
+    const audioPreview = trimPreview.value.find((p) => p.itemId === 'clip-a1');
+    expect(videoPreview).toBeTruthy();
+    expect(audioPreview).toBeTruthy();
+
+    handlers.onPointerUp({
+      button: 0,
+      clientX: 104,
+      clientY: 20,
+      pointerId: 12,
+      currentTarget: pointerTarget,
+    } as PointerEvent);
+
+    expect(applyTimelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'trim_item',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        edge: 'end',
+      }),
+      expect.objectContaining({ saveMode: 'none', skipHistory: true }),
+    );
+  });
+
+  it('trims all linkedGroupId members together using trim_items', () => {
+    const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
+    const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);
+    const { startTrimItem, trimPreview } = useTimelineItemDrag(scrollEl, tracks);
+
+    const pointerTarget = {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+    };
+
+    startTrimItem(
+      {
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 20,
+        pointerId: 13,
+        pointerType: 'mouse',
+        currentTarget: pointerTarget,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      } as unknown as PointerEvent,
+      {
+        trackId: 'track-1',
+        itemId: 'clip-2',
+        edge: 'start',
+        startUs: 7_000_000,
+      },
+    );
+
+    const handlers = bindSessionMock.mock.calls[0]?.[0];
+
+    handlers.onPointerMove({
+      buttons: 1,
+      button: 0,
+      clientX: 104,
+      clientY: 20,
+    } as PointerEvent);
+
+    expect(trimPreview.value.length).toBe(2);
+    expect(trimPreview.value.some((p) => p.itemId === 'clip-2')).toBe(true);
+    expect(trimPreview.value.some((p) => p.itemId === 'clip-a1')).toBe(true);
+
+    handlers.onPointerUp({
+      button: 0,
+      clientX: 104,
+      clientY: 20,
+      pointerId: 13,
+      currentTarget: pointerTarget,
+    } as PointerEvent);
+
+    expect(applyTimelineMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'trim_items',
+        trims: expect.arrayContaining([
+          expect.objectContaining({ itemId: 'clip-2' }),
+          expect.objectContaining({ itemId: 'clip-a1' }),
+        ]),
+      }),
+      expect.objectContaining({ saveMode: 'none', skipHistory: true }),
+    );
   });
 });

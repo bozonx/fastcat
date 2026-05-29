@@ -70,14 +70,16 @@ interface Props {
     deltaUs: number;
     timecode: string;
   } | null;
-  trimPreview?: {
-    itemId: string;
-    trackId: string;
-    startUs: number;
-    durationUs: number;
-    edge: 'start' | 'end';
-    deltaUs: number;
-  }[] | null;
+  trimPreview?:
+    | {
+        itemId: string;
+        trackId: string;
+        startUs: number;
+        durationUs: number;
+        edge: 'start' | 'end';
+        deltaUs: number;
+      }[]
+    | null;
   selectedTransition: { trackId: string; itemId: string; edge: 'in' | 'out' } | null;
   resizeVolume: {
     itemId: string;

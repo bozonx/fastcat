@@ -1830,7 +1830,7 @@ export default {
       "userProject": "Пресеты проектов",
       "userProxy": "Прокси",
       "userSection": "Пользовательские настройки",
-      "userUi": "Интерфейс",
+      "userUi": "Внешний вид",
       "userVideo": "Видео",
       "video": {
         "accelerationDiagnostics": "Диагностика ускорения",

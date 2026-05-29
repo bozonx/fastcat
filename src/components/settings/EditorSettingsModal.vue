@@ -216,7 +216,7 @@ watch(
             />
             <UiToggleButton
               :model-value="activeSection === 'user.ui'"
-              label="UI"
+              :label="t('videoEditor.settings.userUi')"
               inactive-color="neutral"
               active-color="neutral"
               :active-bg="'color-mix(in srgb, var(--selection-accent-500) 15%, transparent)'"

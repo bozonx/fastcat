@@ -27,14 +27,16 @@ const props = defineProps<{
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
-  trimPreview?: {
-    itemId: string;
-    trackId: string;
-    startUs: number;
-    durationUs: number;
-    edge: 'start' | 'end';
-    deltaUs: number;
-  } | null;
+  trimPreview?:
+    | {
+        itemId: string;
+        trackId: string;
+        startUs: number;
+        durationUs: number;
+        edge: 'start' | 'end';
+        deltaUs: number;
+      }[]
+    | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   scrollLeft?: number;

@@ -9,6 +9,7 @@ import SettingsVideo from './SettingsVideo.vue';
 import SettingsAudio from './SettingsAudio.vue';
 import SettingsIntegrations from './SettingsIntegrations.vue';
 import SettingsStorage from './SettingsStorage.vue';
+import SettingsUi from './SettingsUi.vue';
 import { useUiStore } from '~/stores/ui.store';
 
 type SettingsSection =
@@ -19,6 +20,7 @@ type SettingsSection =
   | 'user.video'
   | 'user.audio'
   | 'user.integrations'
+  | 'user.ui'
   | 'workspace.storage';
 
 const { t } = useI18n();
@@ -41,6 +43,7 @@ const sections = computed(() => [
   { value: 'user.video', label: t('videoEditor.settings.userVideo') },
   { value: 'user.audio', label: t('videoEditor.settings.userAudio') },
   { value: 'user.integrations', label: t('videoEditor.settings.userIntegrations') },
+  { value: 'user.ui', label: t('videoEditor.settings.userUi') },
   { value: 'workspace.storage', label: t('videoEditor.settings.workspaceStorage') },
 ]);
 
@@ -76,6 +79,7 @@ onBeforeUnmount(() => {
       <SettingsVideo v-else-if="activeSection === 'user.video'" />
       <SettingsAudio v-else-if="activeSection === 'user.audio'" />
       <SettingsIntegrations v-else-if="activeSection === 'user.integrations'" />
+      <SettingsUi v-else-if="activeSection === 'user.ui'" />
       <SettingsStorage v-else-if="activeSection === 'workspace.storage'" />
     </div>
   </div>

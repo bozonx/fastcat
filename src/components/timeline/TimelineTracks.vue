@@ -64,14 +64,16 @@ const props = defineProps<{
   } | null;
   movePreview?: { itemId: string; trackId: string; startUs: number; isCollision?: boolean }[];
   slipPreview?: { itemId: string; trackId: string; deltaUs: number; timecode: string } | null;
-  trimPreview?: {
-    itemId: string;
-    trackId: string;
-    startUs: number;
-    durationUs: number;
-    edge: 'start' | 'end';
-    deltaUs: number;
-  } | null;
+  trimPreview?:
+    | {
+        itemId: string;
+        trackId: string;
+        startUs: number;
+        durationUs: number;
+        edge: 'start' | 'end';
+        deltaUs: number;
+      }[]
+    | null;
   draggingMode?: 'move' | 'slip' | 'trim_start' | 'trim_end' | null;
   draggingItemId?: string | null;
   isMobile?: boolean;
@@ -170,6 +172,20 @@ const { movePreviewItemsByTrack, movePreviewIds, movePreviewMemoByTrack } = useT
     draggingMode: () => props.draggingMode,
   },
 );
+
+const trimPreviewMemoByTrack = computed(() => {
+  const map: Record<string, string> = {};
+  if (!props.trimPreview) return map;
+  for (const track of props.tracks) {
+    const parts: string[] = [];
+    for (const item of track.items) {
+      const p = props.trimPreview.find((tp) => tp.itemId === item.id);
+      if (p) parts.push(`${item.id}:${p.startUs}:${p.durationUs}`);
+    }
+    map[track.id] = parts.join(',');
+  }
+  return map;
+});
 
 const { speedModal, openSpeedModal, saveSpeedModal, speedModalTargetHasAudio } =
   useTimelineSpeedModal(() => props.tracks);
@@ -378,11 +394,8 @@ watch(
           trackViewModel.track.items.some((i) => i.id === slipPreview?.itemId)
             ? slipPreview?.deltaUs
             : null,
-          trackViewModel.track.items.some((i) => i.id === trimPreview?.itemId)
-            ? trimPreview?.startUs
-            : null,
-          trackViewModel.track.items.some((i) => i.id === trimPreview?.itemId)
-            ? trimPreview?.durationUs
+          trackViewModel.track.items.some((i) => trimPreview?.some((p) => p.itemId === i.id))
+            ? (trimPreviewMemoByTrack[trackViewModel.track.id] ?? null)
             : null,
         ]"
         :data-track-id="trackViewModel.track.id"
@@ -469,13 +482,13 @@ watch(
             :can-edit-clip-content="canEditClipContent"
             :is-dragging-current-item="draggingItemId === item.id"
             :is-move-preview-current-item="movePreviewIds.has(item.id)"
-            :is-trim-preview-current-item="trimPreview?.itemId === item.id"
+            :is-trim-preview-current-item="trimPreview?.some((p) => p.itemId === item.id)"
             :selected-transition="selectedTransition"
             :resize-volume="resizeVolume"
             :scroll-left="scrollLeft"
             :viewport-width="viewportWidth"
             :slip-preview="slipPreview?.itemId === item.id ? slipPreview : null"
-            :trim-preview="trimPreview?.itemId === item.id ? trimPreview : null"
+            :trim-preview="trimPreview ?? null"
             :is-mobile="isMobile"
             @select-item="(ev, id) => emit('selectItem', ev, id)"
             @start-move-item="(ev, payload) => emit('startMoveItem', ev, payload)"

@@ -411,14 +411,16 @@ describe('TimelineClip', () => {
         sourceRange: { startUs: 1_000_000, durationUs: 5_000_000 },
         sourceDurationUs: 10_000_000,
       },
-      trimPreview: {
-        itemId: 'clip-1',
-        trackId: 'track-1',
-        startUs: 1_000_000,
-        durationUs: 4_000_000,
-        edge: 'start',
-        deltaUs: 1_000_000,
-      },
+      trimPreview: [
+        {
+          itemId: 'clip-1',
+          trackId: 'track-1',
+          startUs: 1_000_000,
+          durationUs: 4_000_000,
+          edge: 'start',
+          deltaUs: 1_000_000,
+        },
+      ],
     });
 
     const overlay = component.find('[data-trim-overlay]');
