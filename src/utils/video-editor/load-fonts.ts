@@ -24,17 +24,20 @@ export async function loadFonts(): Promise<void> {
     const response = await fetch(GOOGLE_FONTS_URL);
     const css = await response.text();
     const faceBlocks = css.match(/@font-face\s*{[^}]+}/g) ?? [];
-    for (const block of faceBlocks) {
-      const familyMatch = block.match(/font-family:\s*['"]?([^'";]+)['"]?/);
-      const urlMatch = block.match(/url\(([^)]+)\)/);
-      if (familyMatch?.[1] && urlMatch?.[1]) {
+    await Promise.allSettled(
+      faceBlocks.map(async (block) => {
+        const familyMatch = block.match(/font-family:\s*['"]?([^'";]+)['"]?/);
+        const urlMatch = block.match(/url\(([^)]+)\)/);
+        if (!familyMatch?.[1] || !urlMatch?.[1]) return;
+
         const family = familyMatch[1].trim();
         const url = urlMatch[1].replace(/['"]/g, '');
-        const fontFace = new FontFace(family, `url(${url})`);
+        const fontBytes = await fetch(url).then((r) => r.arrayBuffer());
+        const fontFace = new FontFace(family, fontBytes);
         fontSet.add(fontFace);
         await fontFace.load();
-      }
-    }
+      }),
+    );
   } catch (e) {
     log.warn('[FontLoader] Font loading failed:', e);
   }

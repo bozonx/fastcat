@@ -168,6 +168,7 @@ watch(
 );
 
 watch(outputFormat, (fmt) => {
+  if (exportType.value !== 'video') return;
   handleOutputFormatChange(fmt);
 });
 

@@ -292,25 +292,6 @@ export function useExportForm() {
     audioCodec.value = codecConfig.audioCodec;
   }
 
-  async function handleFilenameExtUpdate(fmt: 'mp4' | 'webm' | 'mkv') {
-    try {
-      const base = outputFilename.value.replace(/\.[^.]+$/, '');
-      const nextExt = getExt(fmt);
-
-      if (!base) return;
-
-      if (!/_\d{3}$/.test(base)) {
-        outputFilename.value = await getNextAvailableFilename(base, nextExt);
-        return;
-      }
-
-      outputFilename.value = `${base}.${nextExt}`;
-      await validateFilename();
-    } catch {
-      // ignore
-    }
-  }
-
   async function handleStartExport(onSuccess?: (file: File) => void | Promise<void>) {
     if (isExporting.value) return;
 
@@ -479,9 +460,13 @@ export function useExportForm() {
   async function pickTauriExportPath() {
     if (!isTauri) return;
     try {
+      const isAudio = exportType.value === 'audio';
+      const audioExt = audioCodec.value === 'opus' ? 'webm' : 'mp4';
       const path = await save({
         defaultPath: outputFilename.value,
-        filters: [{ name: 'Video', extensions: [outputFormat.value] }],
+        filters: isAudio
+          ? [{ name: 'Audio', extensions: [audioExt] }]
+          : [{ name: 'Video', extensions: [outputFormat.value] }],
       });
       if (path) {
         customExportPath.value = path;
@@ -549,7 +534,6 @@ export function useExportForm() {
     initializeExportForm,
     pickTauriExportPath,
     handleOutputFormatChange,
-    handleFilenameExtUpdate,
     handleStartExport,
     getPhaseLabel,
     validateFilename,
