@@ -11,6 +11,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useEditorDynamicPanels } from '~/composables/editor/useEditorDynamicPanels';
+import { useNativeMonitorBridge } from '~/composables/monitor/useNativeMonitorBridge';
 import { useProjectActions } from '~/composables/editor/useProjectActions';
 import { computed, ref } from 'vue';
 import { until } from '@vueuse/core';
@@ -22,6 +23,9 @@ const workspaceStore = useWorkspaceStore();
 const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const { t } = useI18n();
+
+// Зеркалит таймлайн в нативное окно монитора (Rust/Vello). На non-Tauri — no-op.
+useNativeMonitorBridge();
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 const activeResetAction = ref<(() => void) | null>(null);
