@@ -129,13 +129,25 @@ const volumeY = computed(() => {
 });
 
 const isIndicatorVisible = computed(() => {
-  // Hide if track height is too small
   if (props.trackHeight < 35) return false;
-
-  // Hide if clip is too narrow
   if (props.clipWidthPx < 45) return false;
 
+  // Hide if volume is 100% and not muted
+  const roundedVolume = Math.round((props.clip.audioGain ?? 1) * 100);
+  if (roundedVolume === 100 && !props.clip.audioMuted) return false;
+
   return true;
+});
+
+const volumeIcon = computed(() => {
+  const isMuted = props.clip.audioMuted;
+  const gain = props.clip.audioGain ?? 1;
+  const roundedVolume = Math.round(gain * 100);
+
+  if (isMuted || roundedVolume === 0) {
+    return 'i-heroicons-speaker-x-mark';
+  }
+  return 'i-heroicons-speaker-wave';
 });
 
 const volumeIndicatorPosition = computed(() => {
@@ -292,20 +304,19 @@ const volumeIndicatorPosition = computed(() => {
       "
     >
       <div
+        v-if="!isMobile"
         class="w-full bg-yellow-400 opacity-80"
-        :class="[
-          clipWidthPx >= (isMobile ? 5 : 15) ? 'opacity-100' : 'hidden',
-          isMobile ? 'h-1' : 'h-[1.5px]',
-        ]"
+        :class="[clipWidthPx >= 15 ? 'opacity-100' : 'hidden', 'h-[1.5px]']"
       ></div>
 
       <div
         v-if="isIndicatorVisible"
-        class="absolute -translate-x-1/2 text-2xs font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1 rounded pointer-events-none select-none transition-opacity opacity-100"
+        class="absolute -translate-x-1/2 text-2xs font-mono text-yellow-400 leading-none py-0.5 bg-black/60 px-1.5 rounded pointer-events-none select-none transition-opacity opacity-100 flex items-center gap-1"
         :class="[(clip.audioGain ?? 1) > 1 ? 'top-full mt-0.5' : 'bottom-full mb-0.5']"
         :style="volumeIndicatorPosition"
       >
-        {{ Math.round((clip.audioGain ?? 1) * 100) }}%
+        <UIcon :name="volumeIcon" class="w-3 h-3 shrink-0" />
+        <span>{{ clip.audioMuted ? 0 : Math.round((clip.audioGain ?? 1) * 100) }}%</span>
       </div>
     </div>
   </div>

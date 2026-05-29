@@ -108,7 +108,6 @@ const { isFullscreen, toggle: toggleFullscreen } = useFullscreen(containerRef);
 
 const isContextMenuOpen = ref(false);
 
-const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 let longPressStartX = 0;
@@ -134,21 +133,9 @@ function clearLongPressTimer() {
 }
 
 function onLongPressPointerDown(e: PointerEvent) {
-  const target = e.target as HTMLElement;
-  if (
-    target.closest('button') ||
-    target.closest('input') ||
-    target.closest('[role="slider"]') ||
-    target.closest('[role="menuitem"]')
-  )
-    return;
+  // Long press contextual menu is disabled on mobile
   longPressStartX = e.clientX;
   longPressStartY = e.clientY;
-  longPressTimer = setTimeout(() => {
-    longPressTimer = null;
-    isContextMenuOpen.value = true;
-    if (navigator.vibrate) navigator.vibrate(30);
-  }, LONG_PRESS_MS);
 }
 
 function onLongPressPointerMove(e: PointerEvent) {
