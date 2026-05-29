@@ -116,6 +116,12 @@ pub fn run() {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
                         .level(log::LevelFilter::Info)
+                        // На Wayland + GL backend wgpu_hal каждое кадра логирует
+                        // `EGL 'eglSwapInterval' code 0x300d` (EGL_BAD_SURFACE) — это
+                        // безвредный варнинг (swapInterval не настраивается на лету),
+                        // но он засоряет терминал. Поднимаем порог именно для него.
+                        .level_for("wgpu_hal::gles::egl", log::LevelFilter::Off)
+                        .level_for("wgpu_hal::gles", log::LevelFilter::Warn)
                         .build(),
                 )?;
             }

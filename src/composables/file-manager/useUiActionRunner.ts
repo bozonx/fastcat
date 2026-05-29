@@ -36,6 +36,11 @@ export function createUiActionRunner(state: UiActionRunnerState, deps: UiActionR
         return null;
       }
 
+      // Стек в консоль обязателен — без него toast'у часто нечего сказать
+      // (типа "I/O error at _files"), а реальная причина теряется.
+      // eslint-disable-next-line no-console
+      console.error(`[${params.toastTitle}]`, e);
+
       const message = e instanceof Error ? e.message : params.defaultErrorMessage;
       state.error.value = message;
       deps.toast.add({

@@ -850,6 +850,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       void timelineMediaUsageStore.refreshUsage();
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
+      log.error('[timeline] File drop import failed', err);
       const message = err instanceof Error ? err.message : String(err);
       toast.add({
         color: 'error',
@@ -949,6 +950,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
+      log.error('[timeline] JSON drop processing failed', err);
       const message = err instanceof Error ? err.message : String(err);
       toast.add({
         color: 'error',
