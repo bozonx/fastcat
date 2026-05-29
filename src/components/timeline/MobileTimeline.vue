@@ -280,9 +280,7 @@ function handleMobileTimelineItemSelect(ev: PointerEvent, id: string) {
       return;
     }
 
-    suppressDrawerSelectionClearTemporarily(() => {
-      selectItem(ev, id);
-    });
+    selectItem(ev, id);
     return;
   }
 
@@ -397,7 +395,6 @@ function onTimelinePointerDownCapture(e: PointerEvent) {
     clickStartY.value = e.clientY;
     isLongPress.value = false;
     lastPointerType.value = e.pointerType;
-    suppressDrawerSelectionClearTemporarily();
   }
 }
 

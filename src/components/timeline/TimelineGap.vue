@@ -189,7 +189,7 @@ function onClick(e: MouseEvent) {
         isSelected
           ? 'border-primary-500 bg-primary-500/15 hover:bg-primary-500/25'
           : 'border-ui-border/50 bg-ui-bg-elevated/20 hover:bg-ui-bg-elevated/40',
-        isMobile ? 'touch-none' : '',
+        isMobile && isSelected ? 'touch-none' : '',
       ]"
       :style="style"
       @pointerdown="onPointerdown"

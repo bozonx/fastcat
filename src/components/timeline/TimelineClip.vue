@@ -283,6 +283,15 @@ const {
       );
     });
   },
+  onLongPress: () => {
+    if (props.isMobile) {
+      emit('clipAction', {
+        action: 'longPress',
+        trackId: props.track.id,
+        itemId: props.item.id,
+      });
+    }
+  },
 });
 
 function onClipPointerdown(e: PointerEvent) {
