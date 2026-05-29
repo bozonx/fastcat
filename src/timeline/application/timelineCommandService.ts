@@ -15,6 +15,7 @@ import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { secondsToUs } from '~/utils/time';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat } from '~/timeline/format';
+import { getMediaTypeFromFilename } from '~/utils/media-types';
 import {
   normalizeProjectPath,
   resolveNestedMediaPath,
@@ -305,17 +306,25 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     if (!targetTrack) throw new Error('Track not found');
 
     const metadata = await deps.getOrFetchMetadataByPath(input.path);
-    if (!metadata || metadata.error) throw new Error('Failed to resolve media metadata');
+    // Для картинок (по расширению) допускаем фолбэк: если воркер не смог распарсить
+    // метаданные (например, PNG с альфой / нестандартный формат) — всё равно вставляем
+    // как статичный image-клип с дефолтной длительностью, а не фейлим весь дроп.
+    const isImageExt = getMediaTypeFromFilename(input.name || input.path) === 'image';
+    if ((!metadata || metadata.error) && !isImageExt) {
+      throw new Error('Failed to resolve media metadata');
+    }
 
-    ensureTrackKindCompatibility(targetTrack, metadata);
+    if (metadata && !metadata.error) {
+      ensureTrackKindCompatibility(targetTrack, metadata);
+    }
 
-    const hasVideo = Boolean(metadata.video);
-    const hasAudio = Boolean(metadata.audio);
-    const isImageLike = !hasVideo && !hasAudio;
+    const hasVideo = Boolean(metadata?.video);
+    const hasAudio = Boolean(metadata?.audio);
+    const isImageLike = isImageExt || (!hasVideo && !hasAudio);
 
     const durationUs = isImageLike
       ? deps.defaultImageDurationUs
-      : Math.max(1, secondsToUs(Number(metadata.duration)));
+      : Math.max(1, secondsToUs(Number(metadata?.duration)));
     const sourceDurationUs = isImageLike ? deps.defaultImageSourceDurationUs : durationUs;
 
     if (!Number.isFinite(durationUs) || durationUs <= 0) {
@@ -340,7 +349,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       });
     }
 
-    if (metadata.video) {
+    if (metadata?.video) {
       const doc = deps.getTimelineDoc();
       const timelineFormat = getTimelineFormat(doc);
       if (timelineFormat.isAutoSettings && isTimelineEmpty(doc)) {

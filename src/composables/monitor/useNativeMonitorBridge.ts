@@ -99,6 +99,13 @@ export function useNativeMonitorBridge(): void {
         const opacityActive = item.opacityActive !== false;
         const opacity = opacityActive ? (item.opacity ?? 1) : 1;
 
+        // z-order: source-of-truth — `clip.layer` (так считает веб-композитор),
+        // если не задан — фолбэк на индекс трека в документе.
+        const z =
+          typeof item.layer === 'number' && Number.isFinite(item.layer)
+            ? Math.round(item.layer)
+            : trackIndex;
+
         layers.push({
           id: item.id,
           kind: isImageLayer(item) ? 'image' : 'video',
@@ -106,7 +113,7 @@ export function useNativeMonitorBridge(): void {
           timeline_start_sec: startUs / 1_000_000,
           timeline_end_sec: (startUs + durUs) / 1_000_000,
           source_start_sec: srcStartUs / 1_000_000,
-          z: trackIndex,
+          z,
           opacity: Math.max(0, Math.min(1, opacity)),
         });
       }
