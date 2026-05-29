@@ -197,6 +197,19 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     { deep: true },
   );
 
+  watch(
+    [projects, recentProjects],
+    ([newProjects, newRecent]) => {
+      if (!workspaceHandle.value) return;
+      const projectNames = new Set(newProjects);
+      const filtered = newRecent.filter((p) => projectNames.has(p.projectName));
+      if (filtered.length !== newRecent.length) {
+        recentProjects.value = filtered;
+      }
+    },
+    { immediate: true, deep: true },
+  );
+
   function updateRecentProject(project: Omit<RecentProject, 'updatedAt'>) {
     const now = new Date().toISOString();
     const existingIndex = recentProjects.value.findIndex(

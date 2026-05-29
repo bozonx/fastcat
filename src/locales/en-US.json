@@ -1536,6 +1536,8 @@
         "toggle1": "Play / pause (1x)"
       },
       "timeline": {
+        "globalToStart": "Go to start of timeline",
+        "globalToEnd": "Go to end of timeline",
         "advancedRippleTrimLeft": "Advanced ripple trim (all tracks, left)",
         "advancedRippleTrimRight": "Advanced ripple trim (all tracks, right)",
         "addAdjustmentClipAtPlayhead": "Create adjustment clip at playhead",

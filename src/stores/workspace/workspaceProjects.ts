@@ -48,7 +48,6 @@ export function createWorkspaceProjectsModule(params: {
   async function loadProjects() {
     if (!params.projectsHandle.value) return;
 
-    params.projects.value = [];
     try {
       const handleLike = params.projectsHandle.value as unknown as {
         values?: () => AsyncIterableIterator<FileSystemHandle>;
@@ -57,14 +56,16 @@ export function createWorkspaceProjectsModule(params: {
       const iterator = handleLike.values?.() ?? handleLike.entries?.();
       if (!iterator) return;
 
+      const tempProjects: string[] = [];
       for await (const value of iterator) {
         const handle = Array.isArray(value) ? value[1] : value;
         if (handle.kind === 'directory') {
-          params.projects.value.push(handle.name);
+          tempProjects.push(handle.name);
         }
       }
 
-      params.projects.value.sort((a, b) => a.localeCompare(b));
+      tempProjects.sort((a, b) => a.localeCompare(b));
+      params.projects.value = tempProjects;
     } catch (e: unknown) {
       params.error.value = getErrorMessage(e, 'Failed to load projects');
     }

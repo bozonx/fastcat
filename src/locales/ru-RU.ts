@@ -1536,6 +1536,8 @@ export default {
         "toggle1": "Воспроизведение / Пауза (1x)"
       },
       "timeline": {
+        "globalToStart": "В начало таймлайна",
+        "globalToEnd": "В конец таймлайна",
         "advancedRippleTrimLeft": "Расширенная обрезка со сдвигом (все дорожки, лево)",
         "advancedRippleTrimRight": "Расширенная обрезка со сдвигом (все дорожки, право)",
         "addAdjustmentClipAtPlayhead": "Создать adjustment clip на позиции playhead",

@@ -1129,4 +1129,33 @@ describe('useEditorHotkeys', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q', code: 'KeyQ', bubbles: true }));
     expect(toggleMuteSpy).toHaveBeenCalledOnce();
   });
+
+  it('triggers timeline.globalToStart and timeline.globalToEnd commands on Home and End keys', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const timelineStore = useTimelineStore() as any;
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'timeline.globalToStart': ['Home'],
+      'timeline.globalToEnd': ['End'],
+    };
+
+    projectStore.setView('cut');
+    // Set focus to a preview-like panel (e.g. project files)
+    focusStore.setPanelFocus('project');
+
+    const goToStartSpy = vi.fn();
+    const goToEndSpy = vi.fn();
+    timelineStore.goToStart = goToStartSpy;
+    timelineStore.goToEnd = goToEndSpy;
+
+    // Send Home key
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', code: 'Home', bubbles: true }));
+    expect(goToStartSpy).toHaveBeenCalledOnce();
+
+    // Send End key
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', code: 'End', bubbles: true }));
+    expect(goToEndSpy).toHaveBeenCalledOnce();
+  });
 });

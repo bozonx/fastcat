@@ -99,6 +99,8 @@ export type HotkeyCommandId =
   | 'timeline.setSelectionIn'
   | 'timeline.setSelectionOut'
   | 'timeline.centerPlayhead'
+  | 'timeline.globalToStart'
+  | 'timeline.globalToEnd'
   | 'playback.toggle'
   | 'playback.toggle1'
   | 'playback.toStart'
@@ -226,6 +228,16 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
       title: 'Toggle playback (secondary)',
     },
     { id: 'playback.backward1', groupId: 'timelineMonitorGlobal', title: 'Backward 1x' },
+    {
+      id: 'timeline.globalToStart',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Go to start of timeline',
+    },
+    {
+      id: 'timeline.globalToEnd',
+      groupId: 'timelineMonitorGlobal',
+      title: 'Go to end of timeline',
+    },
 
     // Timeline & Monitor Global - Громкость
     { id: 'general.mute', groupId: 'timelineMonitorGlobal', title: 'Mute / Unmute' },
@@ -593,8 +605,10 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],
-    'playback.toStart': ['W', 'Home'],
-    'playback.toEnd': ['T', 'End'],
+    'playback.toStart': ['W'],
+    'playback.toEnd': ['T'],
+    'timeline.globalToStart': ['Home'],
+    'timeline.globalToEnd': ['End'],
     'playback.stepForward': ['ArrowRight'],
     'playback.stepBackward': ['ArrowLeft'],
     'playback.stepForwardLarge': ['Shift+ArrowRight'],

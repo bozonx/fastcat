@@ -63,6 +63,16 @@ export function usePlaybackHotkeys(
       return true;
     },
 
+    'timeline.globalToStart': () => {
+      timelineStore.goToStart();
+      return true;
+    },
+
+    'timeline.globalToEnd': () => {
+      timelineStore.goToEnd();
+      return true;
+    },
+
     'playback.stepForward': (e) => {
       if (!canUsePlaybackOrTimelineFocus() || isPreviewLikeFocus(focusStore.effectiveFocus))
         return false;

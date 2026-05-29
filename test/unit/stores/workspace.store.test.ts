@@ -126,7 +126,9 @@ describe('WorkspaceStore', () => {
 
       const mockProjectsHandle = {
         removeEntry: vi.fn().mockResolvedValue(undefined),
-        values: vi.fn().mockReturnValue([]),
+        values: vi.fn().mockImplementation(async function* () {
+          yield { name: 'p2', kind: 'directory', name: 'p2' } as any;
+        }),
       };
       store.projectsHandle = mockProjectsHandle as any;
       store.workspaceHandle = { name: 'root' } as any;
@@ -161,6 +163,32 @@ describe('WorkspaceStore', () => {
 
       expect(store.recentProjects[0].projectName).toBe('new-name');
       expect(store.lastProjectName).toBe('new-name');
+    });
+  });
+
+  describe('recentProjects filtering of non-existent projects', () => {
+    it('does not filter if workspaceHandle is null', async () => {
+      const store = useWorkspaceStore();
+      store.workspaceHandle = null;
+      store.projects = [];
+      store.recentProjects = [
+        { projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' },
+      ];
+      await nextTick();
+      expect(store.recentProjects).toHaveLength(1);
+    });
+
+    it('filters out recent projects that do not exist physically when workspace is active', async () => {
+      const store = useWorkspaceStore();
+      store.workspaceHandle = { name: 'root' } as any;
+      store.projects = ['p2'];
+      store.recentProjects = [
+        { projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' },
+        { projectName: 'p2', projectId: 'id2', updatedAt: '2024-01-02' },
+      ];
+      await nextTick();
+      expect(store.recentProjects).toHaveLength(1);
+      expect(store.recentProjects[0].projectName).toBe('p2');
     });
   });
 });
