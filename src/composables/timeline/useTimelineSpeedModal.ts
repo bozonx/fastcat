@@ -44,7 +44,7 @@ export function useTimelineSpeedModal(tracks: () => TimelineTrack[]) {
     const clip = track?.items.find(
       (it): it is TimelineClipItem => it.id === speedModal.value!.itemId && it.kind === 'clip',
     );
-    if (!clip || (track?.kind === 'video' && clip.audioFromVideoDisabled)) return false;
+    if (!clip || (track?.kind === 'video' && clip.audioMuted)) return false;
     if (track?.kind === 'audio') return true;
     return Boolean(clip.source?.path && mediaStore.mediaMetadata[clip.source.path]?.audio);
   });

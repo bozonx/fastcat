@@ -819,8 +819,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     rippleTrimSelectionRange: selectionRangeModule.rippleTrimSelectionRange,
     moveItemToTrack: commands.moveItemToTrack,
     extractAudioToTrack: commands.extractAudioToTrack,
-    returnAudioToVideo: commands.returnAudioToVideo,
-    unlinkAudioFromVideo: commands.unlinkAudioFromVideo,
     markTimelineAsDirty: lifecycle.markTimelineAsDirty,
     markTimelineAsCleanForCurrentRevision: lifecycle.markTimelineAsCleanForCurrentRevision,
     resetTimelineState: lifecycle.resetTimelineState,

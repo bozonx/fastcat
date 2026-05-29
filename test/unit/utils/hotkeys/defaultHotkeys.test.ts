@@ -176,4 +176,11 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.projectSettings']).toEqual(['Shift+U']);
     expect(DEFAULT_HOTKEYS.bindings['general.appSettings']).toEqual(['Shift+I']);
   });
+
+  it('has defaults for start/end timeline and playback shortcuts', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.toStart']).toEqual(['W']);
+    expect(DEFAULT_HOTKEYS.bindings['playback.toEnd']).toEqual(['T']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End']);
+  });
 });

@@ -125,46 +125,7 @@ export function buildMultiSelectionContextMenu(
     });
   }
 
-  if (state.hasLockedLinks) {
-    mainGroup.push({
-      label: options.t('fastcat.timeline.unlinkAudio'),
-      icon: 'i-heroicons-link-slash',
-      onSelect: async () => {
-        if (!state.doc) return;
 
-        const cmds: TimelineCommand[] = [];
-        for (const track of state.doc.tracks) {
-          if (track.kind !== 'audio') continue;
-
-          for (const item of track.items) {
-            if (item.kind !== 'clip') continue;
-
-            const linked = String(item.linkedVideoClipId ?? '');
-            const isLocked = Boolean(item.lockToLinkedVideo);
-            const shouldUnlink =
-              (state.selectedIds.has(item.id) && linked && isLocked) ||
-              (state.selectedVideoIds.length > 0 &&
-                linked &&
-                isLocked &&
-                state.selectedVideoIds.includes(linked));
-
-            if (!shouldUnlink) continue;
-
-            cmds.push({
-              type: 'unlink_audio_from_video',
-              audioTrackId: track.id,
-              audioItemId: item.id,
-            });
-          }
-        }
-
-        if (cmds.length === 0) return;
-
-        options.batchApplyTimeline(cmds);
-        await options.requestTimelineSave({ immediate: true });
-      },
-    });
-  }
 
   mainGroup.push({
     label: state.hasGroupedClip

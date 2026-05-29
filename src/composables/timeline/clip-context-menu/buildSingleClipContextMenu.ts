@@ -21,28 +21,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const mediaGroup: ContextMenuGroup = [];
   const isFree = isClipFreePosition(clipItem, options.timelineDoc.value);
   const doc = options.timelineDoc.value;
-  const lockedLinkedAudioClips =
-    doc?.tracks
-      .filter((candidateTrack) => candidateTrack.kind === 'audio')
-      .flatMap((candidateTrack) => candidateTrack.items)
-      .filter(
-        (candidateItem): candidateItem is TimelineClipItem =>
-          candidateItem.kind === 'clip' &&
-          Boolean(candidateItem.linkedVideoClipId) &&
-          Boolean(candidateItem.lockToLinkedVideo),
-      ) ?? [];
 
-  const linkedAudioForThisVideo =
-    track.kind === 'video'
-      ? lockedLinkedAudioClips.filter(
-          (audioClip) => String(audioClip.linkedVideoClipId) === clipItem.id,
-        )
-      : [];
-
-  const isLockedAudioClip =
-    track.kind === 'audio' &&
-    Boolean(clipItem.linkedVideoClipId) &&
-    Boolean(clipItem.lockToLinkedVideo);
 
   stateGroup.push({
     label: clipItem.disabled
@@ -155,33 +134,6 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  if (isLockedAudioClip) {
-    relationGroup.push({
-      label: options.t('fastcat.timeline.unlinkAudio'),
-      icon: 'i-heroicons-link-slash',
-      onSelect: async () => {
-        options.applyTimelineCommand({
-          type: 'unlink_audio_from_video',
-          audioTrackId: track.id,
-          audioItemId: clipItem.id,
-        });
-        await options.requestTimelineSave({ immediate: true });
-      },
-    });
-  } else if (linkedAudioForThisVideo.length > 0) {
-    relationGroup.push({
-      label: options.t('fastcat.timeline.unlinkAudio'),
-      icon: 'i-heroicons-link-slash',
-      onSelect: async () => {
-        options.applyTimelineCommand({
-          type: 'unlink_audio_from_video',
-          videoItemId: clipItem.id,
-        });
-        await options.requestTimelineSave({ immediate: true });
-      },
-    });
-  }
-
   const currentSpeed = clipItem.speed ?? 1;
   if (clipSupportsSpeedControls(track, clipItem)) {
     timingGroup.push({
@@ -197,7 +149,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   }
 
   const canExtract =
-    track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.audioFromVideoDisabled;
+    track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.isImage && !clipItem.audioMuted;
   if (canExtract) {
     relationGroup.push({
       label: options.t('fastcat.timeline.extractAudio'),
@@ -207,51 +159,6 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
           action: 'extractAudio',
           trackId: track.id,
           itemId: clipItem.id,
-        }),
-    });
-  }
-
-  const docTracks = options.timelineDoc.value?.tracks ?? [];
-  const hasReturnFromVideoClip =
-    track.kind === 'video' &&
-    Boolean(clipItem.audioFromVideoDisabled) &&
-    docTracks.some((candidateTrack: TimelineTrack) =>
-      candidateTrack.kind !== 'audio'
-        ? false
-        : (candidateTrack.items ?? []).some(
-            (candidateItem: TimelineTrackItem) =>
-              candidateItem.kind === 'clip' &&
-              candidateItem.linkedVideoClipId === clipItem.id &&
-              Boolean(candidateItem.lockToLinkedVideo),
-          ),
-    );
-
-  const hasReturnFromLockedAudioClip =
-    track.kind === 'audio' &&
-    Boolean(clipItem.linkedVideoClipId) &&
-    Boolean(clipItem.lockToLinkedVideo);
-
-  if (hasReturnFromVideoClip) {
-    relationGroup.push({
-      label: options.t('fastcat.timeline.returnAudio'),
-      icon: 'i-heroicons-arrow-uturn-left',
-      onSelect: () =>
-        options.emitClipAction({
-          action: 'returnAudio',
-          trackId: track.id,
-          itemId: clipItem.id,
-        }),
-    });
-  } else if (hasReturnFromLockedAudioClip) {
-    relationGroup.push({
-      label: options.t('fastcat.timeline.returnAudio'),
-      icon: 'i-heroicons-arrow-uturn-left',
-      onSelect: () =>
-        options.emitClipAction({
-          action: 'returnAudio',
-          trackId: track.id,
-          itemId: clipItem.id,
-          videoItemId: String(clipItem.linkedVideoClipId),
         }),
     });
   }

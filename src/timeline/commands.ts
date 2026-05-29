@@ -16,8 +16,6 @@ import type {
 } from './types';
 import {
   extractAudioToTrack,
-  returnAudioToVideo,
-  unlinkAudioFromVideo,
 } from './commands/audioHandlers';
 import {
   addTrack,
@@ -181,18 +179,6 @@ export interface ExtractAudioToTrackCommand {
   audioTrackId?: string;
 }
 
-export interface ReturnAudioToVideoCommand {
-  type: 'return_audio_to_video';
-  videoItemId: string;
-}
-
-export interface UnlinkAudioFromVideoCommand {
-  type: 'unlink_audio_from_video';
-  videoItemId?: string;
-  audioTrackId?: string;
-  audioItemId?: string;
-}
-
 export interface RenameItemCommand {
   type: 'rename_item';
   trackId: string;
@@ -209,9 +195,6 @@ export interface UpdateClipPropertiesCommand {
       TimelineClipItem,
       | 'disabled'
       | 'locked'
-      | 'audioFromVideoDisabled'
-      | 'linkedVideoClipId'
-      | 'lockToLinkedVideo'
       | 'opacity'
       | 'blendMode'
       | 'effects'
@@ -385,8 +368,6 @@ export type TimelineCommand =
   | MoveItemToTrackCommand
   | MoveItemsCommand
   | ExtractAudioToTrackCommand
-  | ReturnAudioToVideoCommand
-  | UnlinkAudioFromVideoCommand
   | RenameItemCommand
   | UpdateClipPropertiesCommand
   | UpdateTrackPropertiesCommand
@@ -430,10 +411,6 @@ export function applyTimelineCommand(
       return removeMarker(doc, cmd);
     case 'extract_audio_to_track':
       return extractAudioToTrack(doc, cmd);
-    case 'return_audio_to_video':
-      return returnAudioToVideo(doc, cmd);
-    case 'unlink_audio_from_video':
-      return unlinkAudioFromVideo(doc, cmd);
     case 'add_track':
       return addTrack(doc, cmd);
     case 'rename_track':

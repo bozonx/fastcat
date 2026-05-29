@@ -64,42 +64,7 @@ export function useClipBatchActions(
     selectedClipRefs.value.filter(({ track, clip }) => clipSupportsAutoMontage(track, clip)),
   );
 
-  const hasLockedLinks = computed(() => {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return false;
 
-    const selectedIds = new Set(items.value.map((x) => x.itemId));
-
-    for (const track of doc.tracks) {
-      for (const it of track.items) {
-        if (!selectedIds.has(it.id)) continue;
-        if (it.kind !== 'clip') continue;
-        if (
-          track.kind === 'audio' &&
-          Boolean(it.linkedVideoClipId) &&
-          Boolean(it.lockToLinkedVideo)
-        ) {
-          return true;
-        }
-        if (track.kind === 'video') {
-          const videoId = it.id;
-          const hasLinkedAudio = doc.tracks
-            .filter((t) => t.kind === 'audio')
-            .some((t) =>
-              t.items.some(
-                (a) =>
-                  a.kind === 'clip' &&
-                  Boolean(a.linkedVideoClipId) &&
-                  Boolean(a.lockToLinkedVideo) &&
-                  String(a.linkedVideoClipId) === videoId,
-              ),
-            );
-          if (hasLinkedAudio) return true;
-        }
-      }
-    }
-    return false;
-  });
 
   const hasGroupedClip = computed(() =>
     selectedClips.value.some(
@@ -222,49 +187,7 @@ export function useClipBatchActions(
     });
   }
 
-  function handleUnlinkSelected() {
-    const doc = ctx.timelineDoc.value;
-    if (!doc) return;
 
-    const selectedIds = new Set(items.value.map((x) => x.itemId));
-    const videoIds: string[] = [];
-
-    for (const track of doc.tracks) {
-      for (const it of track.items) {
-        if (!selectedIds.has(it.id)) continue;
-        if (it.kind !== 'clip') continue;
-        if (track.kind === 'video') videoIds.push(it.id);
-      }
-    }
-
-    const cmds: TimelineCommand[] = [];
-
-    for (const track of doc.tracks) {
-      if (track.kind !== 'audio') continue;
-      for (const it of track.items) {
-        if (it.kind !== 'clip') continue;
-        const linked = String(it.linkedVideoClipId ?? '');
-        const isLocked = Boolean(it.lockToLinkedVideo);
-
-        const shouldUnlink =
-          (selectedIds.has(it.id) && Boolean(it.linkedVideoClipId) && isLocked) ||
-          (videoIds.length > 0 && isLocked && linked && videoIds.includes(linked));
-
-        if (!shouldUnlink) continue;
-
-        cmds.push({
-          type: 'unlink_audio_from_video',
-          audioTrackId: track.id,
-          audioItemId: it.id,
-        });
-      }
-    }
-
-    if (cmds.length === 0) return;
-    ctx.batchApplyTimeline(cmds, {
-      labelKey: 'videoEditor.fileManager.history.entries.unlinkAudio',
-    });
-  }
 
   function handleGroupSelected() {
     if (items.value.length < 2) return;
@@ -462,7 +385,6 @@ export function useClipBatchActions(
 
   return {
     selectedClips,
-    hasLockedLinks,
     hasGroupedClip,
     hasFreeClip,
     allDisabled,
@@ -485,7 +407,6 @@ export function useClipBatchActions(
     speedClipRefs,
     sourceOrientationClipRefs,
     autoMontageClipRefs,
-    handleUnlinkSelected,
     handleGroupSelected,
     handleUngroupSelected,
     handleDelete,

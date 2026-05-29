@@ -7,18 +7,17 @@ export interface TimelineClipRef {
 
 export function clipSupportsAudioControls(
   track: Pick<TimelineTrack, 'kind'>,
-  clip: Pick<TimelineClipItem, 'clipType' | 'isImage' | 'audioFromVideoDisabled'>,
+  clip: Pick<TimelineClipItem, 'clipType' | 'isImage'>,
 ): boolean {
   if (track.kind === 'audio') return true;
   if (track.kind !== 'video') return false;
-  if (clip.audioFromVideoDisabled) return false;
   if (clip.clipType === 'timeline') return true;
   return clip.clipType === 'media' && !clip.isImage;
 }
 
 export function clipSupportsWaveformControls(
   track: Pick<TimelineTrack, 'kind'>,
-  clip: Pick<TimelineClipItem, 'clipType' | 'isImage' | 'audioFromVideoDisabled'>,
+  clip: Pick<TimelineClipItem, 'clipType' | 'isImage'>,
 ): boolean {
   return clipSupportsAudioControls(track, clip);
 }

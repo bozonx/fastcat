@@ -124,28 +124,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     return !isClipFrameAligned(options.clip.value, safeFps);
   });
 
-  const hasLockedLinkedAudio = computed(() => {
-    const doc = timelineStore.timelineDoc;
-    if (!doc) return false;
-    if (options.trackKind.value !== 'video') return false;
-    return doc.tracks
-      .filter((t: TimelineTrack) => t.kind === 'audio')
-      .some((t: TimelineTrack) =>
-        t.items.some(
-          (it) =>
-            it.kind === 'clip' &&
-            Boolean(it.linkedVideoClipId) &&
-            Boolean(it.lockToLinkedVideo) &&
-            String(it.linkedVideoClipId) === options.clip.value.id,
-        ),
-      );
-  });
 
-  const isLockedLinkedAudioClip = computed(() => {
-    if (options.trackKind.value !== 'audio') return false;
-    const clip = options.clip.value;
-    return Boolean(clip.linkedVideoClipId) && Boolean(clip.lockToLinkedVideo);
-  });
 
   const isInLinkedGroup = computed(
     () =>
@@ -153,35 +132,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       options.clip.value.linkedGroupId.trim().length > 0,
   );
 
-  const linkedAudioClip = computed(() => {
-    const doc = timelineStore.timelineDoc;
-    if (!doc || options.trackKind.value !== 'video') return null;
-    for (const track of doc.tracks) {
-      if (track.kind !== 'audio') continue;
-      for (const item of track.items) {
-        if (item.kind === 'clip' && item.linkedVideoClipId === options.clip.value.id) {
-          return item;
-        }
-      }
-    }
-    return null;
-  });
 
-  const linkedVideoClip = computed(() => {
-    const doc = timelineStore.timelineDoc;
-    if (!doc || options.trackKind.value !== 'audio') return null;
-    const videoId = options.clip.value.linkedVideoClipId;
-    if (!videoId) return null;
-    for (const track of doc.tracks) {
-      if (track.kind !== 'video') continue;
-      for (const item of track.items) {
-        if (item.kind === 'clip' && item.id === videoId) {
-          return item;
-        }
-      }
-    }
-    return null;
-  });
 
   const isSoloed = computed(() => {
     const doc = timelineStore.timelineDoc;
@@ -223,39 +174,10 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     return (
       options.trackKind.value === 'video' &&
       options.clip.value.clipType === 'media' &&
-      !options.clip.value.audioFromVideoDisabled
+      !options.clip.value.isImage &&
+      !options.clip.value.audioMuted
     );
   });
-
-  const hasReturnFromVideoClip = computed(() => {
-    return (
-      options.trackKind.value === 'video' && Boolean(options.clip.value.audioFromVideoDisabled)
-    );
-  });
-
-  const hasReturnFromLockedAudioClip = computed(() => {
-    return (
-      options.trackKind.value === 'audio' &&
-      Boolean(options.clip.value.linkedVideoClipId) &&
-      Boolean(options.clip.value.lockToLinkedVideo)
-    );
-  });
-
-  function goToLinkedAudio() {
-    if (linkedAudioClip.value) {
-      timelineStore.selectTimelineItems([
-        { trackId: linkedAudioClip.value.trackId, itemId: linkedAudioClip.value.id },
-      ]);
-    }
-  }
-
-  function goToLinkedVideo() {
-    if (linkedVideoClip.value) {
-      timelineStore.selectTimelineItems([
-        { trackId: linkedVideoClip.value.trackId, itemId: linkedVideoClip.value.id },
-      ]);
-    }
-  }
 
   function handleDeleteClip() {
     const clipId = options.clip.value?.id;
@@ -275,22 +197,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }
   }
 
-  function handleUnlinkAudio() {
-    const doc = timelineStore.timelineDoc;
-    if (!doc) return;
 
-    if (isLockedLinkedAudioClip.value) {
-      timelineStore.unlinkAudioFromVideo({
-        audioTrackId: options.clip.value.trackId,
-        audioItemId: options.clip.value.id,
-      });
-      return;
-    }
-
-    if (options.trackKind.value === 'video') {
-      timelineStore.unlinkAudioFromVideo({ videoItemId: options.clip.value.id });
-    }
-  }
 
   function handleQuantizeClip() {
     const doc = timelineStore.timelineDoc;
@@ -469,13 +376,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     });
   }
 
-  function handleReturnAudio() {
-    const clip = options.clip.value;
-    timelineStore.applyTimeline({
-      type: 'return_audio_to_video',
-      videoItemId: clip.linkedVideoClipId || clip.id,
-    });
-  }
+
 
   function handlePaste() {
     const payload = clipboardStore.clipboardPayload;
@@ -533,34 +434,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
     });
 
-    if (linkedAudioClip.value) {
-      list.push({
-        id: 'goToLinkedAudio',
-        label: t('fastcat.clip.goToLinkedAudio'),
-        icon: 'i-heroicons-speaker-wave',
-        color: 'primary',
-        onClick: goToLinkedAudio,
-      });
-    }
 
-    if (linkedVideoClip.value) {
-      list.push({
-        id: 'goToLinkedVideo',
-        label: t('fastcat.clip.goToLinkedVideo'),
-        icon: 'i-heroicons-film',
-        color: 'primary',
-        onClick: goToLinkedVideo,
-      });
-    }
-
-    if (hasLockedLinkedAudio.value || isLockedLinkedAudioClip.value) {
-      list.push({
-        id: 'unlinkAudio',
-        label: t('fastcat.timeline.unlinkAudio'),
-        icon: 'i-heroicons-link-slash',
-        onClick: handleUnlinkAudio,
-      });
-    }
 
     if (isInLinkedGroup.value) {
       list.push({
@@ -665,14 +539,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    if (hasReturnFromVideoClip.value || hasReturnFromLockedAudioClip.value) {
-      list.push({
-        id: 'returnAudio',
-        label: t('fastcat.timeline.returnAudio'),
-        icon: 'i-heroicons-arrow-uturn-left',
-        onClick: handleReturnAudio,
-      });
-    }
+
 
     return list;
   });
@@ -767,11 +634,8 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
 
   return {
     isFreePosition,
-    hasLockedLinkedAudio,
-    isLockedLinkedAudioClip,
     isInLinkedGroup,
     handleDeleteClip,
-    handleUnlinkAudio,
     handleQuantizeClip,
     handleRemoveFromGroup,
     toggleAudioWaveformMode,
@@ -780,10 +644,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     handleRenameClip,
     handleSelectInFileManager,
     handleOpenNestedTimeline,
-    goToLinkedAudio,
-    goToLinkedVideo,
-    linkedAudioClip,
-    linkedVideoClip,
     isSoloed,
     toggleSolo,
     handleReplaceMedia,
@@ -793,7 +653,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     handleFreezeFrame,
     handleResetFreezeFrame,
     handleExtractAudio,
-    handleReturnAudio,
     handlePaste,
     otherActionsList,
     commonActionsList,

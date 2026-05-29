@@ -76,11 +76,11 @@ impl FfmpegDecoder {
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-nostdin").arg("-loglevel").arg("error");
 
-        // Two-stage seek для frame-accurate позиционирования:
-        //   1) `-ss <t-pre>` ДО `-i` — быстрый прыжок к ближайшему keyframe;
-        //   2) `-ss <pre>` ПОСЛЕ `-i` — точный сдвиг внутри GOP.
-        // На time_sec == 0 обе ветки пустые → читаем с начала.
-        // -copyts + setpts гарантирует, что в выходе PTS начинается с 0 в момент time_sec.
+        // Двухэтапный seek для frame-accurate позиционирования:
+        //   1) `-ss <pre>` ДО `-i` — быстрый прыжок к ближайшему keyframe (pre = t − 0.5s);
+        //   2) `-ss <post>` ПОСЛЕ `-i` — точный досдвиг оставшихся ≤0.5s внутри GOP.
+        // При time_sec ≤ 0.5 первый этап пропускается (pre=0, post=time_sec).
+        // PTS считаем как start_time + frame_index / fps (cfr-вывод через -vf fps=...).
         let pre = if time_sec > 0.5 { time_sec - 0.5 } else { 0.0 };
         let post = time_sec - pre;
         if pre > 0.0 {

@@ -28,7 +28,7 @@ export function useExportConfig() {
 
   const ext = computed(() => {
     if (exportType.value === 'audio') {
-      return audioCodec.value === 'opus' ? 'webm' : 'mp4';
+      return audioCodec.value === 'opus' ? 'webm' : 'aac';
     }
     return getExt(outputFormat.value);
   });

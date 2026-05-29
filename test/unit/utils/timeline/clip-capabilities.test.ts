@@ -31,7 +31,7 @@ describe('clip-capabilities', () => {
       expect(
         clipSupportsAudioControls(
           { kind: 'audio' },
-          { clipType: 'media', isImage: false, audioFromVideoDisabled: false },
+          { clipType: 'media', isImage: false },
         ),
       ).toBe(true);
     });
@@ -40,7 +40,7 @@ describe('clip-capabilities', () => {
       expect(
         clipSupportsAudioControls(
           { kind: 'video' },
-          { clipType: 'media', isImage: true, audioFromVideoDisabled: false },
+          { clipType: 'media', isImage: true },
         ),
       ).toBe(false);
     });

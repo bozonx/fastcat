@@ -51,7 +51,6 @@ export function clipHasAudio(
 
   const clip = item as TimelineClipItem;
 
-  if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
   if (clip.clipType !== 'media' && clip.clipType !== 'timeline') return track.kind === 'audio';
   if (!clip.source?.path) return track.kind === 'audio';
 

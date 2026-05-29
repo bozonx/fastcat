@@ -1038,77 +1038,7 @@ export function useTimelineItemDrag(
       }
     }
 
-    if (
-      !cancel &&
-      draggingMode.value === 'move' &&
-      dragIsFreeOverride.value &&
-      !dragIsCopyOverride.value &&
-      pendingMoveCommit.value &&
-      !pendingMoveCommit.value.isCollision
-    ) {
-      // Unlinks must run only when the move itself will succeed. Otherwise the
-      // skipHistory unlink writes survive without a corresponding history entry
-      // (the entry is only pushed when a move actually commits below), leaving
-      // them irreversible by undo.
-      const doc = timelineStore.timelineDoc;
-      if (doc) {
-        const movedVideoIds: string[] = [];
-        const moves = pendingMoveCommit.value?.moves ?? [];
 
-        for (const move of moves) {
-          const tr = doc.tracks.find((t) => t.id === move.toTrackId);
-          const it = tr?.items.find((x) => x.id === move.itemId);
-          if (!it || it.kind !== 'clip') continue;
-
-          if (tr?.kind === 'video') {
-            movedVideoIds.push(it.id);
-          }
-
-          if (
-            tr?.kind === 'audio' &&
-            Boolean(it.linkedVideoClipId) &&
-            Boolean(it.lockToLinkedVideo)
-          ) {
-            timelineStore.applyTimeline(
-              {
-                type: 'unlink_audio_from_video',
-                audioTrackId: tr.id,
-                audioItemId: it.id,
-              },
-              { saveMode: 'none', skipHistory: true },
-            );
-            hasPendingTimelinePersist.value = true;
-          }
-        }
-
-        if (movedVideoIds.length > 0) {
-          const cmds: TimelineCommand[] = [];
-          for (const t of doc.tracks) {
-            if (t.kind !== 'audio') continue;
-            for (const it of t.items) {
-              if (it.kind !== 'clip') continue;
-              const linked = it.linkedVideoClipId ?? '';
-              if (!linked) continue;
-              if (!it.lockToLinkedVideo) continue;
-              if (!movedVideoIds.includes(linked)) continue;
-              cmds.push({
-                type: 'unlink_audio_from_video',
-                audioTrackId: t.id,
-                audioItemId: it.id,
-              });
-            }
-          }
-
-          if (cmds.length > 0) {
-            timelineStore.batchApplyTimeline(cmds, {
-              saveMode: 'none',
-              skipHistory: true,
-            });
-            hasPendingTimelinePersist.value = true;
-          }
-        }
-      }
-    }
 
     if (!cancel && draggingMode.value === 'move') {
       const usePseudoOverlap = dragUsePseudoOverlapOverride.value;
@@ -1184,13 +1114,6 @@ export function useTimelineItemDrag(
             .map((preview) => {
               const found = docBeforeApply ? findClipById(docBeforeApply, preview.itemId) : null;
               if (!found) return null;
-              const it = found.item;
-              if (it.linkedVideoClipId && it.lockToLinkedVideo) {
-                const videoInTrims = trimPreview.value.some(
-                  (vp) => vp.itemId === it.linkedVideoClipId,
-                );
-                if (videoInTrims) return null;
-              }
               return {
                 trackId: preview.trackId,
                 itemId: preview.itemId,

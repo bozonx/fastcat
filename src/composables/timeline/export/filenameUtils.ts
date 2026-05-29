@@ -1,6 +1,7 @@
-export function getExt(fmt: 'mp4' | 'webm' | 'mkv'): 'mp4' | 'webm' | 'mkv' {
+export function getExt(fmt: 'mp4' | 'webm' | 'mkv' | 'aac'): 'mp4' | 'webm' | 'mkv' | 'aac' {
   if (fmt === 'webm') return 'webm';
   if (fmt === 'mkv') return 'mkv';
+  if (fmt === 'aac') return 'aac';
   return 'mp4';
 }
 

@@ -325,7 +325,6 @@ export function clipHasAudio(
   const clip = item as import('~/timeline/types').TimelineClipItem;
   const ct = clip.clipType as string;
   if (ct === 'timeline') return true;
-  if (track.kind === 'video' && clip.audioFromVideoDisabled) return false;
   if (ct !== 'media' && ct !== 'timeline') return track.kind === 'audio';
   if (!clip.source?.path) return track.kind === 'audio';
   return Boolean((mediaMetadata[clip.source.path] as Record<string, unknown> | undefined)?.audio);

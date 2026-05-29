@@ -44,59 +44,7 @@ export function collectMultiSelectionState(
     }
   }
 
-  const selectedIds = new Set(selectedItemIds);
-  const selectedVideoIds: string[] = [];
 
-  if (doc) {
-    for (const track of doc.tracks) {
-      if (track.kind !== 'video') continue;
-
-      for (const item of track.items) {
-        if (item.kind !== 'clip') continue;
-        if (!selectedIds.has(item.id)) continue;
-
-        selectedVideoIds.push(item.id);
-      }
-    }
-  }
-
-  const hasLockedLinks = (() => {
-    if (!doc) return false;
-
-    for (const track of doc.tracks) {
-      for (const item of track.items) {
-        if (!selectedIds.has(item.id)) continue;
-        if (item.kind !== 'clip') continue;
-
-        if (
-          track.kind === 'audio' &&
-          Boolean(item.linkedVideoClipId) &&
-          Boolean(item.lockToLinkedVideo)
-        ) {
-          return true;
-        }
-
-        if (track.kind !== 'video') continue;
-
-        const videoId = item.id;
-        const hasLinkedAudio = doc.tracks
-          .filter((candidateTrack) => candidateTrack.kind === 'audio')
-          .some((audioTrack) =>
-            audioTrack.items.some(
-              (audioItem) =>
-                audioItem.kind === 'clip' &&
-                Boolean(audioItem.linkedVideoClipId) &&
-                Boolean(audioItem.lockToLinkedVideo) &&
-                String(audioItem.linkedVideoClipId) === videoId,
-            ),
-          );
-
-        if (hasLinkedAudio) return true;
-      }
-    }
-
-    return false;
-  })();
 
   let hasAudioOrVideoWithAudio = false;
   let hasVideo = false;
@@ -147,11 +95,9 @@ export function collectMultiSelectionState(
     thumbnailItemsToUpdate,
     autoMontageItemsToUpdate,
     selectedClips,
-    selectedIds,
-    selectedVideoIds,
+    selectedIds: new Set(selectedItemIds),
     allDisabled: selectedClips.length > 0 && selectedClips.every((clip) => clip.disabled),
     hasFreeClip: selectedClips.some((clip) => isClipFreePosition(clip, doc)),
-    hasLockedLinks,
     hasLockedTrack: lockedTrackIds.size > 0,
     hasAudioOrVideoWithAudio,
     hasVideo,

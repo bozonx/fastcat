@@ -173,3 +173,47 @@ describe('useExportProcess - playback guard', () => {
     expect(stopPlaybackMock).not.toHaveBeenCalled();
   });
 });
+
+describe('useExportProcess - format resolution', () => {
+  it('calls exportTimeline with format aac when aac option is provided', async () => {
+    const state = {
+      activeExportTaskId: ref<string | null>(null),
+      exportPhase: ref<'preparing' | 'encoding' | 'saving' | null>(null),
+      exportWarnings: ref<string[]>([]),
+      isExporting: ref(false),
+      cancelRequested: ref(false),
+    };
+
+    const { exportTimelineToFile } = useExportProcess(
+      state.activeExportTaskId,
+      state.exportPhase,
+      state.exportWarnings,
+      state.isExporting,
+      state.cancelRequested,
+    );
+
+    const { getExportWorkerClient } = await import('~/utils/video-editor/worker-client');
+    const mockExportTimeline = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getExportWorkerClient).mockReturnValue({
+      client: {
+        exportTimeline: mockExportTimeline,
+      } as any,
+      worker: {} as any,
+    });
+
+    const fileHandle = { createWritable: vi.fn() } as any;
+    await exportTimelineToFile(
+      { format: 'aac', videoCodec: 'none', audio: true, audioSampleRate: 44100 } as any,
+      fileHandle,
+      () => {},
+    );
+
+    expect(mockExportTimeline).toHaveBeenCalledWith(
+      fileHandle,
+      expect.objectContaining({ format: 'aac' }),
+      expect.any(Array),
+      expect.any(Array),
+      expect.any(String),
+    );
+  });
+});

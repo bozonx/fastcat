@@ -147,10 +147,12 @@ export function useNativeMonitorBridge(): void {
     }
   }
 
-  // Сцена меняется при любых правках таймлайна, формата, активного проекта.
+  // Сцена меняется при правках треков/клипов и формата.
+  // Наблюдаем только tracks + format (не весь doc), чтобы не гонять IPC на каждое
+  // изменение waveform-данных или UI-полей, не влияющих на рендер.
   watch(
     [
-      () => timelineStore.timelineDoc,
+      () => timelineStore.timelineDoc?.tracks,
       () => timelineStore.timelineFormat,
     ],
     () => {
@@ -207,5 +209,6 @@ export function useNativeMonitorBridge(): void {
 
   onScopeDispose(() => {
     for (const un of unsubs) un();
+    void invoke('monitor_close').catch((err) => log.warn('monitor_close on dispose failed', err));
   });
 }

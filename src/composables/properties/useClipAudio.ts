@@ -42,7 +42,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
 
     const clip = options.clip.value;
     const track = options.tracks.value?.find((t) => t.id === clip.trackId);
-    if (track?.kind === 'video' && clip.audioFromVideoDisabled) return false;
+    if (track?.kind === 'video' && clip.audioMuted) return false;
 
     const path = clip.source?.path;
     if (path) {

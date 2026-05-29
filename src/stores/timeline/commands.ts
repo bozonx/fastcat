@@ -47,12 +47,6 @@ export interface TimelineCommandsModule {
     startUs: number;
   }) => Promise<void>;
   extractAudioToTrack: (input: { videoTrackId: string; videoItemId: string }) => Promise<void>;
-  returnAudioToVideo: (input: { videoItemId: string }) => void;
-  unlinkAudioFromVideo: (input: {
-    videoItemId?: string;
-    audioTrackId?: string;
-    audioItemId?: string;
-  }) => void;
   addClipToTimelineFromPath: (
     input: {
       trackId: string;
@@ -191,22 +185,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     });
   }
 
-  function returnAudioToVideo(input: { videoItemId: string }) {
-    applyTimeline({ type: 'return_audio_to_video', videoItemId: input.videoItemId });
-  }
 
-  function unlinkAudioFromVideo(input: {
-    videoItemId?: string;
-    audioTrackId?: string;
-    audioItemId?: string;
-  }) {
-    applyTimeline({
-      type: 'unlink_audio_from_video',
-      videoItemId: input.videoItemId,
-      audioTrackId: input.audioTrackId,
-      audioItemId: input.audioItemId,
-    });
-  }
 
   async function addClipToTimelineFromPath(
     input: {
@@ -254,8 +233,6 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     ensureTimelineDoc: () => commandService.ensureTimelineDoc(),
     moveItemToTrack,
     extractAudioToTrack,
-    returnAudioToVideo,
-    unlinkAudioFromVideo,
     addClipToTimelineFromPath,
     addTimelineClipToTimelineFromPath,
   };

@@ -17,8 +17,6 @@ export function useTimelineClipActions() {
       });
     } else if (payload.action === 'resetFreezeFrame') {
       timelineStore.resetClipFreezeFrame({ trackId: payload.trackId, itemId: payload.itemId });
-    } else {
-      timelineStore.returnAudioToVideo({ videoItemId: payload.videoItemId ?? payload.itemId });
     }
 
     await timelineStore.requestTimelineSave({ immediate: true });

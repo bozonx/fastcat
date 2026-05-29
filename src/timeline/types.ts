@@ -196,9 +196,6 @@ interface TimelineClipBase {
   audioWaveformMode?: 'half' | 'full';
   showWaveform?: boolean;
   showThumbnails?: boolean;
-  audioFromVideoDisabled?: boolean;
-  linkedVideoClipId?: string;
-  lockToLinkedVideo?: boolean;
   freezeFrameSourceUs?: number;
   isImage?: boolean;
 
@@ -372,7 +369,6 @@ export interface TimelineTransitionSelection {
 export interface TimelineClipActionPayload {
   action:
     | 'extractAudio'
-    | 'returnAudio'
     | 'freezeFrame'
     | 'resetFreezeFrame'
     | 'openAutoMontage'
@@ -380,7 +376,6 @@ export interface TimelineClipActionPayload {
     | 'longPress';
   trackId: string;
   itemId: string;
-  videoItemId?: string;
   edge?: 'in' | 'out' | 'end';
   deltaUs?: number;
   quantizeToFrames?: boolean;

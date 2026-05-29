@@ -403,7 +403,7 @@ export async function runExport(
   initEffects();
   initTransitions();
 
-  const { Output, Mp4OutputFormat, WebMOutputFormat, MkvOutputFormat, CanvasSource, StreamTarget } =
+  const { Output, Mp4OutputFormat, WebMOutputFormat, MkvOutputFormat, AdtsOutputFormat, CanvasSource, StreamTarget } =
     await import('mediabunny');
 
   function ensureNotCancelled() {
@@ -645,7 +645,9 @@ export async function runExport(
         ? new WebMOutputFormat()
         : options.format === 'mkv'
           ? new MkvOutputFormat()
-          : new Mp4OutputFormat();
+          : options.format === 'aac'
+            ? new AdtsOutputFormat()
+            : new Mp4OutputFormat();
 
     async function runExportWithHardwareAcceleration(
       preference: 'prefer-hardware' | 'prefer-software',

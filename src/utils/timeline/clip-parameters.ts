@@ -165,7 +165,6 @@ function splitEffects(clip: TimelineClipItem) {
 }
 
 function canHaveAudioParams(clip: TimelineClipItem, trackKind: TrackKind) {
-  if (trackKind === 'video' && clip.audioFromVideoDisabled) return false;
   return trackKind === 'audio' || clip.clipType === 'media' || clip.clipType === 'timeline';
 }
 

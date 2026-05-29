@@ -65,7 +65,6 @@ export function buildEffectiveAudioClipItems(
       if (item.disabled || item.audioMuted) continue;
       const clipType = item.clipType ?? 'media';
       if (clipType !== 'media' && clipType !== 'timeline') continue;
-      if (item.audioFromVideoDisabled) continue;
       const path = item.source?.path;
       if (!path) continue;
 

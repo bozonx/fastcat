@@ -28,7 +28,8 @@ const items = computed(() =>
       :items="items"
       :ui="{
         root: 'gap-4',
-        list: 'px-3 py-2 gap-4 bg-transparent p-0 rounded-none',
+        list: 'relative flex items-center bg-transparent p-0 rounded-none overflow-x-hidden [scrollbar-width:none] select-none gap-4',
+        indicator: 'hidden',
         trigger:
           'text-xs font-semibold uppercase tracking-wider transition-colors outline-none cursor-pointer whitespace-nowrap px-0 py-0 data-[state=active]:text-primary-400 data-[state=active]:bg-transparent data-[state=inactive]:text-ui-text-muted data-[state=inactive]:hover:text-ui-text data-[state=inactive]:bg-transparent',
       }"

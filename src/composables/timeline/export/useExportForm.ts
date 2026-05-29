@@ -320,11 +320,12 @@ export function useExportForm() {
       const tempFileHandle = await exportDir.getFileHandle(tempFilename, { create: true });
 
       const isAudio = exportType.value === 'audio';
+      const fileExt = outputFilename.value.split('.').pop()?.toLowerCase();
 
       const finalFormat = isAudio
-        ? audioCodec.value === 'opus'
-          ? 'webm'
-          : 'mp4'
+        ? (fileExt === 'aac' || fileExt === 'mp4' || fileExt === 'webm' || fileExt === 'mkv'
+            ? (fileExt as 'aac' | 'mp4' | 'webm' | 'mkv')
+            : audioCodec.value === 'opus' ? 'webm' : 'aac')
         : outputFormat.value;
 
       const resolvedCodecs = isAudio
@@ -461,7 +462,7 @@ export function useExportForm() {
     if (!isTauri) return;
     try {
       const isAudio = exportType.value === 'audio';
-      const audioExt = audioCodec.value === 'opus' ? 'webm' : 'mp4';
+      const audioExt = audioCodec.value === 'opus' ? 'webm' : 'aac';
       const path = await save({
         defaultPath: outputFilename.value,
         filters: isAudio

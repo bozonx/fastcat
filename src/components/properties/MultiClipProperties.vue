@@ -61,7 +61,6 @@ function handleCutClips() {
 const itemsRef = toRef(props, 'items');
 const {
   selectedClips,
-  hasLockedLinks,
   hasGroupedClip,
   hasFreeClip,
   allDisabled,
@@ -85,7 +84,6 @@ const {
   speedClipRefs,
   sourceOrientationClipRefs,
   autoMontageClipRefs,
-  handleUnlinkSelected,
   handleGroupSelected,
   handleUngroupSelected,
   handleDelete,
@@ -526,14 +524,7 @@ const otherActions = computed(() => {
     });
   }
 
-  if (hasLockedLinks.value) {
-    result.push({
-      id: 'unlink-audio',
-      label: t('fastcat.timeline.unlinkAudio'),
-      icon: 'i-heroicons-link-slash',
-      onClick: handleUnlinkSelected,
-    });
-  }
+
 
   if (hasAutoMontageControls.value) {
     result.push({
