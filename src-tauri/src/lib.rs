@@ -5,6 +5,11 @@ use tauri_plugin_fs::FsExt;
 
 pub mod video_render;
 
+pub mod compositor;
+pub mod engine;
+pub mod ipc;
+pub mod media;
+
 #[tauri::command]
 fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
     if !cfg!(debug_assertions) {
@@ -60,7 +65,9 @@ pub fn run() {
         .plugin(tauri_plugin_fs_stream::init())
         .invoke_handler(tauri::generate_handler![
             allow_dev_directory_scope,
-            video_render::webgpu_render_engine_status
+            video_render::webgpu_render_engine_status,
+            ipc::compositor_cmd::compositor_render_frame,
+            ipc::compositor_cmd::media_open,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -69,6 +76,13 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
+            }
+            // Инициализируем видео-движок (wgpu + compositor) при старте.
+            match pollster::block_on(engine::VideoEngine::new()) {
+                Ok(engine) => { app.manage(engine); }
+                Err(error) => {
+                    log::error!("failed to init VideoEngine: {error:?}");
+                }
             }
             Ok(())
         })
