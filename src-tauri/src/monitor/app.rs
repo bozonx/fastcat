@@ -1,18 +1,20 @@
-//! ApplicationHandler винита: окно + Compositor + DecodePump.
+//! ApplicationHandler винита: окно + Compositor + мульти-слойная сцена.
 //!
-//! Принцип:
-//!   - декод идёт в отдельном потоке (`DecodePump`), в event-loop мы только тянем готовые кадры;
-//!   - рендер делегирован Compositor'у: сцена собирается локально (image-layer + transform), он рисует;
-//!   - время воспроизведения трекается wall-clock'ом и эмитится через Tauri `emit` ("monitor:time").
+//! Модель:
+//!   - сцена = список `SceneLayer` (video|image) с z-order, opacity, диапазонами на таймлайне;
+//!   - на каждый видеослой держим свой `DecodePump` (открываем лениво при первом покрытии);
+//!   - на каждый image-слой — раз декодим в `ImageData` и держим в кеше;
+//!   - мастер-клок = timeline-time (секунды), wall-clock based; в фронт эмитим именно его.
 //!
-//! Кадровый клок: `clock_pts_origin` = PTS текущего «настоящего» отображаемого кадра,
-//! `clock_wall_origin` = `Instant` момента, когда этот кадр стал считаться играющим.
-//! Через `tick_and_render` мы догоняем `current` до целевого PTS = pts_origin + wall_elapsed.
+//! Кадровый клок: `clock_pts_origin` = timeline-PTS, который должен «играть» в момент
+//! `clock_wall_origin`. В `tick_and_render` мы для каждого видеослоя выбираем готовый кадр,
+//! чей `pts_sec` (clip-local) не превышает целевого `source_pts_at(timeline_pts)`.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::{Sender, TryRecvError};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use tauri::{AppHandle, Emitter};
@@ -27,13 +29,15 @@ use winit::window::{Window, WindowId};
 use crate::compositor::Compositor;
 use crate::media::decode::VideoFrame;
 use crate::media::decode_thread::DecodePump;
+use crate::media::image_decode::decode_image;
 
 use super::handle::MonitorCommand;
+use super::scene::{LayerKind, MonitorScene, SceneLayer};
 
 const DEFAULT_TITLE: &str = "FastCat Monitor";
-/// События в фронт: текущее время воспроизведения в секундах (clip-local).
+/// Событие в фронт: текущий timeline-time (секунды).
 const EVT_TIME: &str = "monitor:time";
-/// Событие при достижении EOF.
+/// Событие при достижении конца последнего покрытого слоя (опционально).
 const EVT_ENDED: &str = "monitor:ended";
 
 pub fn run_event_loop(
@@ -81,12 +85,12 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
 struct MonitorApp {
     app: AppHandle,
     state: Option<WindowState>,
-    pending_open: Option<PathBuf>,
+    pending_scene: Option<MonitorScene>,
 }
 
 impl MonitorApp {
     fn new(app: AppHandle) -> Self {
-        Self { app, state: None, pending_open: None }
+        Self { app, state: None, pending_scene: None }
     }
 }
 
@@ -96,20 +100,43 @@ struct WindowState {
     compositor: Compositor,
     surface: RenderSurface<'static>,
 
-    pump: Option<DecodePump>,
-    media_size: Option<(u32, u32)>,
-
-    current: Option<DecodedFrame>,
-    upcoming: Option<DecodedFrame>,
+    /// Сцена «как заказал фронт». Источник истины для diff'а рантаймов.
+    scene: Vec<SceneLayer>,
+    /// `id -> runtime` (видеопампы, декодированные картинки).
+    runtimes: HashMap<String, LayerRuntime>,
 
     playing: bool,
-    clock_wall_origin: Option<Instant>,
+    /// timeline-PTS, который играет в `clock_wall_origin`.
     clock_pts_origin: f64,
-    /// Последнее значение времени, отправленное на фронт — чтобы не спамить событиями.
+    clock_wall_origin: Option<Instant>,
+    /// Последнее значение времени, отправленное на фронт.
     last_emit_pts: f64,
+    /// Композитный размер сцены (бер ём из MonitorScene.width/height).
+    scene_size: (u32, u32),
 }
 
-struct DecodedFrame {
+enum LayerRuntime {
+    Video(VideoLayerRt),
+    Image(ImageLayerRt),
+    /// Слой задан, но открытие пока не удалось / отложено.
+    Pending,
+}
+
+struct VideoLayerRt {
+    pump: DecodePump,
+    media_size: (u32, u32),
+    current: Option<DecodedVideoFrame>,
+    upcoming: Option<DecodedVideoFrame>,
+    /// Последний clip-local seek, чтобы не дёргать ffmpeg каждый кадр без нужды.
+    last_seek_clip_local: Option<f64>,
+}
+
+struct ImageLayerRt {
+    image: ImageData,
+    size: (u32, u32),
+}
+
+struct DecodedVideoFrame {
     pts_sec: f64,
     image: ImageData,
 }
@@ -122,11 +149,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         match init_window(event_loop, self.app.clone()) {
             Ok(state) => {
                 self.state = Some(state);
-                if let Some(path) = self.pending_open.take() {
+                if let Some(scene) = self.pending_scene.take() {
                     if let Some(s) = self.state.as_mut() {
-                        if let Err(e) = s.open_media(&path) {
-                            log::error!("[monitor] open_media failed: {e:?}");
-                        }
+                        s.apply_scene(scene);
                     }
                 }
             }
@@ -139,13 +164,12 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, cmd: MonitorCommand) {
         match cmd {
-            MonitorCommand::Open(path) => {
+            MonitorCommand::SetScene(scene) => {
                 if let Some(s) = self.state.as_mut() {
-                    if let Err(e) = s.open_media(&path) {
-                        log::error!("[monitor] open_media failed: {e:?}");
-                    }
+                    s.apply_scene(scene);
+                    s.window.request_redraw();
                 } else {
-                    self.pending_open = Some(path);
+                    self.pending_scene = Some(scene);
                 }
             }
             MonitorCommand::Play => {
@@ -161,9 +185,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             }
             MonitorCommand::Seek(t) => {
                 if let Some(s) = self.state.as_mut() {
-                    if let Err(e) = s.seek(t) {
-                        log::error!("[monitor] seek failed: {e:?}");
-                    }
+                    s.seek(t);
                     s.window.request_redraw();
                 }
             }
@@ -209,12 +231,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             event_loop.set_control_flow(ControlFlow::Wait);
             return;
         }
-        if let Some(next) = &state.upcoming {
-            let target = state.wall_for_pts(next.pts_sec);
-            event_loop.set_control_flow(ControlFlow::WaitUntil(target));
-        } else {
-            event_loop.set_control_flow(ControlFlow::Poll);
-        }
+        // Простая модель: пока играем — Poll. На больших сценах можно оптимизировать,
+        // считая ближайший целевой wall-time по min(upcoming.pts_sec) по всем видеослоям.
+        event_loop.set_control_flow(ControlFlow::Poll);
         state.window.request_redraw();
     }
 }
@@ -242,14 +261,13 @@ fn init_window(event_loop: &ActiveEventLoop, app: AppHandle) -> Result<WindowSta
         window,
         compositor,
         surface,
-        pump: None,
-        media_size: None,
-        current: None,
-        upcoming: None,
+        scene: Vec::new(),
+        runtimes: HashMap::new(),
         playing: false,
-        clock_wall_origin: None,
         clock_pts_origin: 0.0,
+        clock_wall_origin: None,
         last_emit_pts: -1.0,
+        scene_size: (0, 0),
     })
 }
 
@@ -258,110 +276,64 @@ impl WindowState {
         self.compositor.resize_surface(&mut self.surface, width, height);
     }
 
-    fn open_media(&mut self, path: &PathBuf) -> Result<()> {
-        let pump = DecodePump::open(path)?;
-        let info = pump.info.clone();
-        log::info!(
-            "[monitor] opened {}: {}x{} @ {:.3} fps codec={}",
-            path.display(),
-            info.width,
-            info.height,
-            info.fps,
-            info.codec
-        );
-        self.media_size = Some((info.width, info.height));
-        self.pump = Some(pump);
-        self.current = None;
-        self.upcoming = None;
-        self.playing = false;
-        self.clock_wall_origin = None;
-        self.clock_pts_origin = 0.0;
-        self.last_emit_pts = -1.0;
-        self.prime_first_frames();
-        self.window.set_visible(true);
-        self.window.request_redraw();
-        Ok(())
-    }
-
-    fn prime_first_frames(&mut self) {
-        // Дренаж первых готовых кадров (если уже успели декодиться).
-        // Блокирующего ожидания тут не делаем — пусть отрисуется чёрным, кадры приедут на ближайшем redraw.
-        self.try_pull_frames();
-    }
-
-    fn try_pull_frames(&mut self) {
-        let Some(pump) = self.pump.as_ref() else { return };
-        let live_gen = pump.current_generation();
-        loop {
-            match pump.rx.try_recv() {
-                Ok(msg) => {
-                    if msg.generation != live_gen {
-                        continue; // выбросить остаток предыдущего seek-эпизода
-                    }
-                    let decoded = decoded_to_image(msg.frame);
-                    if self.current.is_none() {
-                        self.clock_pts_origin = decoded.pts_sec;
-                        self.current = Some(decoded);
-                    } else if self.upcoming.is_none() {
-                        self.upcoming = Some(decoded);
-                    } else {
-                        // Кадр опередил собственный темп — придержим вместо upcoming
-                        // и выйдем; следующий redraw продвинется и заберёт.
-                        // Здесь просто перезаписываем upcoming на «более новый» нельзя — это сломает порядок.
-                        // Вернёмся: положим обратно… mpsc не поддерживает; значит — break и оставим в канале.
-                        // Чтобы не съесть его — нам пришлось бы его не вынимать. Идея: проверяем прежде.
-                        // Перепишем цикл ниже.
-                        // Откатить: ничего не делаем, оставляем upcoming прежним; новый кадр потеряется.
-                        // Не страшно при QUEUE_CAPACITY=6 — он окажется в очереди и подъедется на следующий redraw.
-                        // Но мы его УЖЕ вынули. Костыль: положим в upcoming, потеряв предыдущий upcoming.
-                        // Это краткосрочно ок: оба — будущие кадры, видим только текущий.
-                        self.upcoming = Some(decoded);
-                        break;
-                    }
-                }
-                Err(TryRecvError::Empty) => break,
-                Err(TryRecvError::Disconnected) => {
-                    self.pump = None;
-                    break;
-                }
-            }
+    fn apply_scene(&mut self, scene: MonitorScene) {
+        let new_ids: std::collections::HashSet<String> =
+            scene.layers.iter().map(|l| l.id.clone()).collect();
+        // Дропаем рантаймы исчезнувших слоёв (закроет ffmpeg subprocess).
+        self.runtimes.retain(|id, _| new_ids.contains(id));
+        self.scene_size = (scene.width, scene.height);
+        self.scene = scene.layers;
+        if !self.scene.is_empty() {
+            self.window.set_visible(true);
         }
+        // Ленивая инициализация рантаймов происходит в tick_and_render
+        // (видим только то, что покрывает текущий timeline-PTS).
+        self.window.request_redraw();
     }
 
     fn play(&mut self) {
-        if self.pump.is_none() {
+        if self.scene.is_empty() {
             return;
         }
         self.playing = true;
-        let base_pts = self
-            .current
-            .as_ref()
-            .map(|f| f.pts_sec)
-            .unwrap_or(self.clock_pts_origin);
-        self.clock_pts_origin = base_pts;
         self.clock_wall_origin = Some(Instant::now());
     }
 
     fn pause(&mut self) {
         if self.playing {
-            // Зафиксировать накопленное время до сброса wall-origin.
-            self.clock_pts_origin = self.current_playback_time();
+            self.clock_pts_origin = self.current_timeline_pts();
         }
         self.playing = false;
         self.clock_wall_origin = None;
     }
 
-    fn seek(&mut self, time_sec: f64) -> Result<()> {
-        let Some(pump) = self.pump.as_ref() else { return Ok(()) };
-        pump.seek(time_sec.max(0.0))?;
-        self.current = None;
-        self.upcoming = None;
-        self.clock_pts_origin = time_sec.max(0.0);
+    fn seek(&mut self, timeline_sec: f64) {
+        let t = timeline_sec.max(0.0);
+        self.clock_pts_origin = t;
         self.clock_wall_origin = if self.playing { Some(Instant::now()) } else { None };
-        Ok(())
+        // Дропаем фреймы видеослоёв — следующая прокачка возьмёт свежие после seek'а.
+        // Здесь же сразу отправляем seek в pump'ы покрывающих слоёв.
+        let scene = self.scene.clone();
+        for layer in &scene {
+            if !layer.covers(t) {
+                continue;
+            }
+            if layer.kind != LayerKind::Video {
+                continue;
+            }
+            let clip_local = layer.source_pts_at(t);
+            if let Some(LayerRuntime::Video(v)) = self.runtimes.get_mut(&layer.id) {
+                if let Err(e) = v.pump.seek(clip_local) {
+                    log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                }
+                v.current = None;
+                v.upcoming = None;
+                v.last_seek_clip_local = Some(clip_local);
+            }
+        }
     }
 
-    fn current_playback_time(&self) -> f64 {
+    fn current_timeline_pts(&self) -> f64 {
         match (self.playing, self.clock_wall_origin) {
             (true, Some(origin)) => {
                 self.clock_pts_origin + Instant::now().duration_since(origin).as_secs_f64()
@@ -370,64 +342,146 @@ impl WindowState {
         }
     }
 
-    fn wall_for_pts(&self, pts: f64) -> Instant {
-        let now = Instant::now();
-        match self.clock_wall_origin {
-            Some(origin) => {
-                let dt = pts - self.clock_pts_origin;
-                if dt <= 0.0 {
-                    now
-                } else {
-                    origin + Duration::from_secs_f64(dt)
+    fn ensure_runtime_for(&mut self, layer: &SceneLayer) {
+        if self.runtimes.contains_key(&layer.id) {
+            return;
+        }
+        match layer.kind {
+            LayerKind::Video => {
+                let path = PathBuf::from(&layer.path);
+                match DecodePump::open(&path) {
+                    Ok(pump) => {
+                        let info = pump.info.clone();
+                        log::info!(
+                            "[monitor] opened video layer {} {}: {}x{} @ {:.3}fps codec={}",
+                            layer.id,
+                            path.display(),
+                            info.width,
+                            info.height,
+                            info.fps,
+                            info.codec
+                        );
+                        let media_size = (info.width, info.height);
+                        let mut rt = VideoLayerRt {
+                            pump,
+                            media_size,
+                            current: None,
+                            upcoming: None,
+                            last_seek_clip_local: None,
+                        };
+                        // Сразу же seek'аемся в clip-local от текущего timeline-PTS,
+                        // чтобы при play не упереться в начало источника.
+                        let clip_local = layer.source_pts_at(self.current_timeline_pts());
+                        if clip_local > 0.0 {
+                            if let Err(e) = rt.pump.seek(clip_local) {
+                                log::error!("[monitor] initial seek {}: {e:?}", layer.id);
+                            }
+                            rt.last_seek_clip_local = Some(clip_local);
+                        }
+                        self.runtimes
+                            .insert(layer.id.clone(), LayerRuntime::Video(rt));
+                    }
+                    Err(e) => {
+                        log::error!("[monitor] open pump {}: {e:?}", layer.id);
+                        self.runtimes.insert(layer.id.clone(), LayerRuntime::Pending);
+                    }
                 }
             }
-            None => now,
+            LayerKind::Image => {
+                let path = PathBuf::from(&layer.path);
+                match decode_image(&path) {
+                    Ok(img) => {
+                        log::info!(
+                            "[monitor] decoded image layer {} {}: {}x{}",
+                            layer.id,
+                            path.display(),
+                            img.width,
+                            img.height
+                        );
+                        let rt = ImageLayerRt {
+                            image: img.image,
+                            size: (img.width, img.height),
+                        };
+                        self.runtimes
+                            .insert(layer.id.clone(), LayerRuntime::Image(rt));
+                    }
+                    Err(e) => {
+                        log::error!("[monitor] decode image {}: {e:?}", layer.id);
+                        self.runtimes.insert(layer.id.clone(), LayerRuntime::Pending);
+                    }
+                }
+            }
+        }
+    }
+
+    fn pull_video_frames(rt: &mut VideoLayerRt) {
+        let live_gen = rt.pump.current_generation();
+        loop {
+            match rt.pump.rx.try_recv() {
+                Ok(msg) => {
+                    if msg.generation != live_gen {
+                        continue;
+                    }
+                    let decoded = decoded_to_image(msg.frame);
+                    if rt.current.is_none() {
+                        rt.current = Some(decoded);
+                    } else if rt.upcoming.is_none() {
+                        rt.upcoming = Some(decoded);
+                    } else {
+                        // Слишком быстрый pump — затрём upcoming.
+                        rt.upcoming = Some(decoded);
+                        break;
+                    }
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => break,
+            }
+        }
+    }
+
+    fn advance_video_to(rt: &mut VideoLayerRt, target_clip_local: f64) {
+        loop {
+            let advance = matches!(&rt.upcoming, Some(u) if u.pts_sec <= target_clip_local);
+            if !advance {
+                break;
+            }
+            rt.current = rt.upcoming.take();
+            Self::pull_video_frames(rt);
+            if rt.upcoming.is_none() {
+                break;
+            }
         }
     }
 
     fn tick_and_render(&mut self) {
-        // Подтянуть готовые кадры из pump.
-        self.try_pull_frames();
-
-        if self.playing {
-            let t = self.current_playback_time();
-            loop {
-                let advance = matches!(&self.upcoming, Some(u) if u.pts_sec <= t);
-                if !advance {
-                    break;
-                }
-                self.current = self.upcoming.take();
-                // Попробуем взять ещё один кадр; если нет — заберём на следующем redraw.
-                self.try_pull_frames();
-                if self.upcoming.is_none() {
-                    // EOF?
-                    if let Some(pump) = self.pump.as_ref() {
-                        if pump.rx.try_recv().is_err() {
-                            // Канал может быть просто пуст — EOF определяется только когда
-                            // отстаём по времени надолго. На MVP: если upcoming None после
-                            // догона — продолжаем играть current, и если новых кадров нет
-                            // несколько кадров подряд — paused.
-                        }
-                    }
-                    break;
-                }
+        let t = self.current_timeline_pts();
+        // Ensure runtimes for currently-visible layers.
+        let scene = self.scene.clone();
+        for layer in &scene {
+            if layer.covers(t) {
+                self.ensure_runtime_for(layer);
             }
-            // Если current отстал и нет upcoming — возможно достигли EOF.
-            // Не паузим мгновенно, дадим pump подтянуть; фронту сообщим о EOF только по факту
-            // «нет новых кадров и pump потерян».
-            if self.upcoming.is_none() && self.pump.is_none() {
-                self.playing = false;
-                let _ = self.app.emit(EVT_ENDED, ());
+        }
+        // Прокачать кадры и подровнять «current» под целевой PTS.
+        for layer in &scene {
+            if !layer.covers(t) {
+                continue;
+            }
+            if layer.kind != LayerKind::Video {
+                continue;
+            }
+            if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
+                Self::pull_video_frames(rt);
+                let target = layer.source_pts_at(t);
+                Self::advance_video_to(rt, target);
             }
         }
 
-        self.render();
-        self.emit_time();
+        self.render(t);
+        self.emit_time(t);
     }
 
-    fn emit_time(&mut self) {
-        let t = self.current_playback_time();
-        // Эмитим только при изменении >= 1мс.
+    fn emit_time(&mut self, t: f64) {
         if (t - self.last_emit_pts).abs() < 0.001 {
             return;
         }
@@ -435,32 +489,109 @@ impl WindowState {
         let _ = self.app.emit(EVT_TIME, t);
     }
 
-    fn render(&mut self) {
+    fn render(&mut self, t: f64) {
         let width = self.surface.config.width;
         let height = self.surface.config.height;
 
-        let mut scene = VelloScene::new();
-        if let (Some(frame), Some((mw, mh))) = (self.current.as_ref(), self.media_size) {
-            let scale = (width as f64 / mw as f64).min(height as f64 / mh as f64);
-            let draw_w = mw as f64 * scale;
-            let draw_h = mh as f64 * scale;
+        // Bounding box композитной сцены — приоритет: явный scene_size, иначе максимум по слоям.
+        let (scene_w, scene_h) = if self.scene_size.0 > 0 && self.scene_size.1 > 0 {
+            (self.scene_size.0, self.scene_size.1)
+        } else {
+            self.compute_scene_bbox()
+        };
+
+        let mut scene_obj = VelloScene::new();
+        if scene_w > 0 && scene_h > 0 {
+            // Letterbox: фит композитной сцены в окно.
+            let scale = (width as f64 / scene_w as f64).min(height as f64 / scene_h as f64);
+            let draw_w = scene_w as f64 * scale;
+            let draw_h = scene_h as f64 * scale;
             let tx = (width as f64 - draw_w) * 0.5;
             let ty = (height as f64 - draw_h) * 0.5;
-            let transform = kurbo::Affine::translate((tx, ty))
+            let outer = kurbo::Affine::translate((tx, ty))
                 * kurbo::Affine::scale_non_uniform(scale, scale);
-            scene.draw_image(&frame.image, transform);
+
+            // z-order: меньший z — внизу.
+            let mut indices: Vec<usize> = (0..self.scene.len())
+                .filter(|&i| self.scene[i].covers(t))
+                .collect();
+            indices.sort_by_key(|&i| self.scene[i].z);
+
+            for i in indices {
+                let layer = &self.scene[i];
+                let opacity = layer.opacity.clamp(0.0, 1.0);
+                if opacity <= 0.0 {
+                    continue;
+                }
+                let Some(rt) = self.runtimes.get(&layer.id) else { continue };
+                let (img, (mw, mh)) = match rt {
+                    LayerRuntime::Video(v) => match v.current.as_ref() {
+                        Some(f) => (&f.image, v.media_size),
+                        None => continue,
+                    },
+                    LayerRuntime::Image(im) => (&im.image, im.size),
+                    LayerRuntime::Pending => continue,
+                };
+                // Фит каждого слоя в композитный bbox (сохраняем aspect).
+                let layer_scale = (scene_w as f64 / mw as f64).min(scene_h as f64 / mh as f64);
+                let dw = mw as f64 * layer_scale;
+                let dh = mh as f64 * layer_scale;
+                let lx = (scene_w as f64 - dw) * 0.5;
+                let ly = (scene_h as f64 - dh) * 0.5;
+                let inner = kurbo::Affine::translate((lx, ly))
+                    * kurbo::Affine::scale_non_uniform(layer_scale, layer_scale);
+                let xform = outer * inner;
+
+                // Прозрачность: оборачиваем рисование в push_layer с alpha. Это уважает
+                // straight alpha канала изображения И per-clip opacity.
+                if opacity < 1.0 {
+                    let bbox = kurbo::Rect::new(0.0, 0.0, mw as f64, mh as f64);
+                    scene_obj.push_layer(
+                        vello::peniko::Fill::NonZero,
+                        vello::peniko::Mix::Normal,
+                        opacity as f32,
+                        xform,
+                        &bbox,
+                    );
+                    scene_obj.draw_image(img, xform);
+                    scene_obj.pop_layer();
+                } else {
+                    scene_obj.draw_image(img, xform);
+                }
+            }
         }
 
+        // Чёрный фон (за letterbox-полями и под прозрачными слоями).
         if let Err(e) = self
             .compositor
-            .render_to_surface(&mut self.surface, &scene, Color::BLACK)
+            .render_to_surface(&mut self.surface, &scene_obj, Color::BLACK)
         {
             log::error!("[monitor] compositor render: {e:?}");
         }
     }
+
+    fn compute_scene_bbox(&self) -> (u32, u32) {
+        let mut w = 0u32;
+        let mut h = 0u32;
+        for layer in &self.scene {
+            let Some(rt) = self.runtimes.get(&layer.id) else { continue };
+            let (mw, mh) = match rt {
+                LayerRuntime::Video(v) => v.media_size,
+                LayerRuntime::Image(im) => im.size,
+                LayerRuntime::Pending => continue,
+            };
+            w = w.max(mw);
+            h = h.max(mh);
+        }
+        if w == 0 || h == 0 {
+            (1920, 1080)
+        } else {
+            (w, h)
+        }
+    }
 }
 
-fn decoded_to_image(frame: VideoFrame) -> DecodedFrame {
+fn decoded_to_image(frame: VideoFrame) -> DecodedVideoFrame {
     let VideoFrame { width, height, pixels, pts_sec } = frame;
     let blob = Blob::new(Arc::new(pixels));
     let image = ImageData {
@@ -471,5 +602,9 @@ fn decoded_to_image(frame: VideoFrame) -> DecodedFrame {
         width,
         height,
     };
-    DecodedFrame { pts_sec, image }
+    DecodedVideoFrame { pts_sec, image }
 }
+
+// Подавление неиспользуемого варианта при отсутствии EOF-логики (будущая фича).
+#[allow(dead_code)]
+const _EVT_ENDED: &str = EVT_ENDED;

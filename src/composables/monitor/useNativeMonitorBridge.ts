@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { computed, onScopeDispose, watch } from 'vue';
+import { onScopeDispose, watch } from 'vue';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -11,20 +11,37 @@ import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-han
 
 const log = createDevLogger('useNativeMonitorBridge');
 
-/**
- * Привязка состояния таймлайна к нативному монитору (winit + Vello + ffmpeg в Rust).
- *
- * Baseline (single-clip):
- *   - playhead над media-клипом → открываем исходник в нативном окне (lazy spawn);
- *   - playhead вышел из любого клипа → пауза;
- *   - isPlaying → monitor_play / monitor_pause;
- *   - ручной seek (пауза) → monitor_seek в clip-local;
- *   - натив эмитит "monitor:time" → апдейтим timelineStore.currentTime (master clock — натив).
- *
- * Адресовка: clip-local_us = clip.sourceRange.startUs + (playhead_us − clip.timelineRange.startUs).
- * Скорость, эффекты, multi-track — пока игнорим.
- */
-async function resolveClipAbsolutePath(
+const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
+
+interface SceneLayer {
+  id: string;
+  kind: 'video' | 'image';
+  path: string;
+  timeline_start_sec: number;
+  timeline_end_sec: number;
+  source_start_sec: number;
+  z: number;
+  opacity: number;
+}
+
+interface MonitorScene {
+  layers: SceneLayer[];
+  width: number;
+  height: number;
+}
+
+function extOf(path: string): string {
+  const i = path.lastIndexOf('.');
+  return i >= 0 ? path.slice(i + 1) : '';
+}
+
+function isImageLayer(clip: TimelineClipItem): boolean {
+  if (clip.isImage) return true;
+  const path = clip.source?.path ?? '';
+  return IMAGE_EXT.has(extOf(path).toLowerCase());
+}
+
+async function resolveProjectAbsolutePath(
   projectRelativePath: string,
   projectStore: ReturnType<typeof useProjectStore>,
 ): Promise<string> {
@@ -39,86 +56,92 @@ async function resolveClipAbsolutePath(
   }
 }
 
+/**
+ * Привязка таймлайна к нативному мульти-слойному монитору.
+ *
+ *   - сцена = снапшот всех video/image клипов; z = trackIndex (выше — поверх);
+ *   - opacity = clip.opacity * (1 - transitions/masks?), пока берём только per-clip opacity;
+ *   - на каждое значимое изменение шлём `monitor_set_scene`;
+ *   - транспорт (play/pause/seek) — отдельные команды по timeline-PTS;
+ *   - master clock — натив, эмитит timeline-time в `monitor:time`.
+ */
 export function useNativeMonitorBridge(): void {
   if (!isTauriRuntime()) return;
 
   const timelineStore = useTimelineStore();
   const projectStore = useProjectStore();
 
-  const activeMediaClip = computed<TimelineClipItem | null>(() => {
+  let lastSceneJson = '';
+  let suppressSeekFromTimeUpdate = false;
+
+  async function buildScene(): Promise<MonitorScene> {
     const doc = timelineStore.timelineDoc;
-    if (!doc?.tracks?.length) return null;
-    const t = timelineStore.currentTime;
-    for (let i = doc.tracks.length - 1; i >= 0; i--) {
-      const track = doc.tracks[i];
+    const fmt = timelineStore.timelineFormat;
+    const sceneWidth = fmt?.width ?? 1920;
+    const sceneHeight = fmt?.height ?? 1080;
+    const layers: SceneLayer[] = [];
+    if (!doc?.tracks?.length) return { layers, width: sceneWidth, height: sceneHeight };
+
+    for (let trackIndex = 0; trackIndex < doc.tracks.length; trackIndex++) {
+      const track = doc.tracks[trackIndex];
       if (!track?.items) continue;
       for (const item of track.items) {
         if (!isClipItem(item) || !isSourceClipItem(item)) continue;
-        if (!item.source?.path) continue;
-        const start = item.timelineRange.startUs;
-        const end = start + item.timelineRange.durationUs;
-        if (t >= start && t < end) return item;
+        if (item.disabled) continue;
+        const path = item.source?.path;
+        if (!path) continue;
+
+        const absolutePath = await resolveProjectAbsolutePath(path, projectStore);
+        const startUs = item.timelineRange.startUs;
+        const durUs = item.timelineRange.durationUs;
+        const srcStartUs = item.sourceRange.startUs;
+
+        const opacityActive = item.opacityActive !== false;
+        const opacity = opacityActive ? (item.opacity ?? 1) : 1;
+
+        layers.push({
+          id: item.id,
+          kind: isImageLayer(item) ? 'image' : 'video',
+          path: absolutePath,
+          timeline_start_sec: startUs / 1_000_000,
+          timeline_end_sec: (startUs + durUs) / 1_000_000,
+          source_start_sec: srcStartUs / 1_000_000,
+          z: trackIndex,
+          opacity: Math.max(0, Math.min(1, opacity)),
+        });
       }
     }
-    return null;
-  });
-
-  function clipLocalSec(timelineTimeUs: number, clip: TimelineClipItem): number {
-    const local = clip.sourceRange.startUs + (timelineTimeUs - clip.timelineRange.startUs);
-    return Math.max(0, local) / 1_000_000;
+    return { layers, width: sceneWidth, height: sceneHeight };
   }
 
-  let lastOpenedPath: string | null = null;
-  // Когда натив сам тикает время и шлёт нам обновления, watch на currentTime
-  // не должен реагировать форвардом обратно в monitor_seek.
-  let suppressSeekFromTimeUpdate = false;
+  async function syncScene(): Promise<void> {
+    try {
+      const scene = await buildScene();
+      const json = JSON.stringify(scene);
+      if (json === lastSceneJson) return;
+      lastSceneJson = json;
+      await invoke('monitor_set_scene', { scene });
+    } catch (err) {
+      log.warn('monitor_set_scene failed', err);
+    }
+  }
 
-  // Открытие при смене источника + дедуп по path.
+  // Сцена меняется при любых правках таймлайна, формата, активного проекта.
   watch(
-    () => activeMediaClip.value?.source?.path ?? null,
-    async (path) => {
-      if (!path) {
-        // Вышли из клипа — пауза, чтобы натив не доигрывал хвост.
-        try {
-          await invoke('monitor_pause');
-        } catch (err) {
-          log.warn('monitor_pause on clip exit failed', err);
-        }
-        return;
-      }
-      if (path === lastOpenedPath) return;
-      lastOpenedPath = path;
-      try {
-        const absolutePath = await resolveClipAbsolutePath(path, projectStore);
-        await invoke('monitor_open', { path: absolutePath });
-        const clip = activeMediaClip.value;
-        if (clip) {
-          await invoke('monitor_seek', {
-            timeSec: clipLocalSec(timelineStore.currentTime, clip),
-          });
-        }
-        if (timelineStore.isPlaying) await invoke('monitor_play');
-      } catch (err) {
-        log.warn('monitor_open failed', err);
-      }
+    [
+      () => timelineStore.timelineDoc,
+      () => timelineStore.timelineFormat,
+    ],
+    () => {
+      void syncScene();
     },
-    { immediate: true },
+    { deep: true, immediate: true },
   );
 
-  // Play / Pause.
+  // Play/Pause.
   watch(
     () => timelineStore.isPlaying,
     async (playing) => {
-      if (!activeMediaClip.value) {
-        if (!playing) {
-          try {
-            await invoke('monitor_pause');
-          } catch (err) {
-            log.warn('monitor pause failed', err);
-          }
-        }
-        return;
-      }
       try {
         await invoke(playing ? 'monitor_play' : 'monitor_pause');
       } catch (err) {
@@ -127,43 +150,30 @@ export function useNativeMonitorBridge(): void {
     },
   );
 
-  // Ручной seek — только когда таймлайн НЕ играет (во время play натив сам тикает кадры
-  // и postback из "monitor:time" не должен снова дёргать monitor_seek).
+  // Manual seek (только когда не играем — иначе натив сам тикает).
   watch(
     () => timelineStore.currentTime,
     async (t) => {
       if (timelineStore.isPlaying) return;
       if (suppressSeekFromTimeUpdate) return;
-      const clip = activeMediaClip.value;
-      if (!clip) return;
       try {
-        await invoke('monitor_seek', { timeSec: clipLocalSec(t, clip) });
+        await invoke('monitor_seek', { timeSec: t / 1_000_000 });
       } catch (err) {
         log.warn('monitor_seek failed', err);
       }
     },
   );
 
-  // Master clock: натив каждые ~кадр шлёт текущий clip-local PTS.
-  // Конвертим обратно в timeline-time и обновляем стор без обратного seek'а.
+  // Натив — мастер-клок: timeline-PTS (секунды) приходят в `monitor:time`.
   const unsubs: UnlistenFn[] = [];
   void listen<number>('monitor:time', (event) => {
-    const clip = activeMediaClip.value;
-    if (!clip) return;
-    const clipLocalUs = Math.round(event.payload * 1_000_000);
-    const timelineUs = clip.timelineRange.startUs + (clipLocalUs - clip.sourceRange.startUs);
-    const clampedEnd = clip.timelineRange.startUs + clip.timelineRange.durationUs;
-    const next = Math.min(clampedEnd, Math.max(clip.timelineRange.startUs, timelineUs));
-    if (Math.abs(next - timelineStore.currentTime) < 500) return; // < 0.5ms — шум
+    const timelineUs = Math.round(event.payload * 1_000_000);
+    if (Math.abs(timelineUs - timelineStore.currentTime) < 500) return;
     suppressSeekFromTimeUpdate = true;
-    timelineStore.currentTime = next;
+    timelineStore.currentTime = timelineUs;
     queueMicrotask(() => {
       suppressSeekFromTimeUpdate = false;
     });
-    // Достигли конца клипа — паузим (натив тоже может прислать ended, но дублировать ок).
-    if (next >= clampedEnd - 1 && timelineStore.isPlaying) {
-      timelineStore.isPlaying = false;
-    }
   })
     .then((un) => unsubs.push(un))
     .catch((err) => log.warn('listen monitor:time failed', err));

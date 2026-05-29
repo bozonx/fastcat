@@ -1,5 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { normalizeTimeUs } from '~/utils/monitor-time';
+import { isTauriRuntime } from '~/utils/runtime';
 import type { PreviewRenderOptions, VideoCoreWorkerAPI } from '~/utils/video-editor/worker-rpc';
 const log = createDevLogger('useMonitorCore.compositor');
 
@@ -37,6 +38,11 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   }
 
   async function ensureReady(ensureOptions?: EnsureMonitorCompositorReadyOptions) {
+    // В Tauri превью рисует нативный монитор (winit+Vello), PIXI канвас не нужен.
+    if (isTauriRuntime()) {
+      compositorReady = false;
+      return;
+    }
     if (!options.containerEl.value) {
       return;
     }
@@ -93,6 +99,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
   function scheduleRender(timeUs: number) {
     if (options.isUnmounted()) return;
+    if (isTauriRuntime()) return; // native monitor сам рисует
     latestRenderTimeUs = normalizeTimeUs(timeUs);
     if (renderLoopInFlight) return;
 

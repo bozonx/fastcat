@@ -1,6 +1,5 @@
 //! Тонкий handle к потоку монитора. Хранится в `VideoEngine` и шарится между Tauri-командами.
 
-use std::path::PathBuf;
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 
@@ -9,12 +8,16 @@ use tauri::AppHandle;
 use winit::event_loop::EventLoopProxy;
 
 use super::app::run_event_loop;
+use super::scene::MonitorScene;
 
 #[derive(Debug, Clone)]
 pub enum MonitorCommand {
-    Open(PathBuf),
+    /// Полная замена сцены — фронт шлёт текущий снимок таймлайна, монитор сам
+    /// решает, какие декодеры открыть/закрыть.
+    SetScene(MonitorScene),
     Play,
     Pause,
+    /// Seek по timeline-времени (секунды). Каждый видеослой пересчитывает в clip-local.
     Seek(f64),
     Close,
     /// Пинг для is_alive(): event-loop игнорирует, но send_event() вернёт Err

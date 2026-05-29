@@ -105,7 +105,7 @@ pub fn run() {
             video_render::webgpu_render_engine_status,
             ipc::compositor_cmd::compositor_render_frame,
             ipc::compositor_cmd::media_open,
-            ipc::monitor_cmd::monitor_open,
+            ipc::monitor_cmd::monitor_set_scene,
             ipc::monitor_cmd::monitor_play,
             ipc::monitor_cmd::monitor_pause,
             ipc::monitor_cmd::monitor_seek,

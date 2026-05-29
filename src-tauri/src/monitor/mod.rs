@@ -6,5 +6,7 @@
 
 mod app;
 mod handle;
+pub mod scene;
 
 pub use handle::{MonitorCommand, MonitorHandle};
+pub use scene::{LayerKind, MonitorScene, SceneLayer};

@@ -205,7 +205,8 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
     requestId?: number,
   ) {
-    if (!compositor) throw new Error('Compositor not initialized');
+    // В Tauri-режиме веб-композитор не инициализируется (превью рисует нативный монитор).
+    if (!compositor) return;
     if (typeof requestId === 'number' && Number.isFinite(requestId)) {
       latestLoadTimelineRequestId = requestId;
     }
@@ -241,7 +242,9 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
   async updateTimelineLayout(
     clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
   ) {
-    if (!compositor) throw new Error('Compositor not initialized');
+    // В Tauri-режиме веб-компоузер не инициализируется (нативный монитор рисует превью);
+    // не падаем, просто возвращаем 0 — длительность пересчитается по аудиочасти.
+    if (!compositor) return 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return compositor.updateTimelineLayout(clips as any);
   },

@@ -1,18 +1,25 @@
 //! Команды нативного монитора (winit-окно + Vello).
-
-use std::path::PathBuf;
+//!
+//! Модель API:
+//!   - `monitor_set_scene` — фронт шлёт текущий снимок таймлайна (video+image слои);
+//!   - `monitor_play` / `monitor_pause` — транспорт по timeline-времени;
+//!   - `monitor_seek(timeline_sec)` — позиционирование по timeline-PTS;
+//!   - `monitor_close` — закрыть окно (event-loop умрёт, респавн на следующем set_scene).
 
 use tauri::State;
 
 use crate::engine::VideoEngine;
-use crate::monitor::MonitorCommand;
+use crate::monitor::{MonitorCommand, MonitorScene};
 
 #[tauri::command]
-pub async fn monitor_open(path: String, engine: State<'_, VideoEngine>) -> Result<(), String> {
+pub async fn monitor_set_scene(
+    scene: MonitorScene,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
     engine
         .ensure_monitor()
         .map_err(|e| e.to_string())?
-        .send(MonitorCommand::Open(PathBuf::from(path)))
+        .send(MonitorCommand::SetScene(scene))
         .map_err(|e| e.to_string())
 }
 

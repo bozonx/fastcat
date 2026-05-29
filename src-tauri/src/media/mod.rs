@@ -5,3 +5,4 @@
 
 pub mod decode;
 pub mod decode_thread;
+pub mod image_decode;
