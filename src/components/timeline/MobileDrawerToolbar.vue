@@ -53,7 +53,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative flex-1 min-w-0 overflow-hidden">
+  <div class="mobile-drawer-toolbar relative flex-1 min-w-0 overflow-hidden">
     <!-- Left shadow -->
     <div
       class="absolute left-0 top-0 bottom-0 w-12 z-10 pointer-events-none transition-opacity duration-300"

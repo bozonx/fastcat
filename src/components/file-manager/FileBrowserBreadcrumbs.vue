@@ -21,7 +21,7 @@ const { getHotkeyTitle } = useHotkeyLabel();
 
 <template>
   <div
-    class="flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
+    class="file-browser-breadcrumbs flex items-center gap-1 px-4 py-2 border-b border-ui-border/50 bg-ui-bg-accent/30 shrink-0"
   >
     <UiTooltip
       :text="

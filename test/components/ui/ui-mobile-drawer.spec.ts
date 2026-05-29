@@ -204,4 +204,27 @@ describe('UiMobileDrawer', () => {
     });
     expect(wrapper.html()).toContain('z-[var(--z-fixed)]');
   });
+
+  it('does not force gpu compositing or font smoothing on drawer content', async () => {
+    const wrapper = await mountSuspended(UiMobileDrawer, {
+      props: {
+        open: true,
+        direction: 'bottom',
+      },
+      slots: {
+        default: '<div class="body-slot">Body</div>',
+      },
+      global: {
+        stubs: {
+          UDrawer: drawerStub,
+        },
+      },
+    });
+
+    const container = wrapper.find('.pointer-events-auto.z-\\[var\\(--z-fixed\\)\\]');
+
+    expect(container.exists()).toBe(true);
+    expect(container.classes()).not.toContain('transform-gpu');
+    expect(container.classes()).not.toContain('antialiased');
+  });
 });

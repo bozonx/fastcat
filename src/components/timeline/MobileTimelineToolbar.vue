@@ -174,7 +174,7 @@ function handleRippleTrimRight() {
 
 <template>
   <div
-    class="flex items-center justify-between gap-2 border-b border-ui-border bg-ui-bg-elevated px-2 py-2 shadow-sm"
+    class="mobile-timeline-toolbar flex items-center justify-between gap-2 border-b border-ui-border bg-ui-bg-elevated px-2 py-2 shadow-sm"
   >
     <MobileDrawerToolbar variant="toolbar" content-class="gap-2 py-0">
       <div class="flex items-center gap-1 rounded-xl bg-ui-bg px-1 py-1 shrink-0">

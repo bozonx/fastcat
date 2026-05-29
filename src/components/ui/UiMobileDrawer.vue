@@ -107,7 +107,7 @@ const snapContentHeight = computed(() => {
 /** Responsive container logic */
 const containerClasses = computed(() => {
   const base =
-    'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-[var(--z-fixed)] antialiased transform-gpu';
+    'flex flex-col relative overflow-hidden shadow-2xl transition-all duration-300 pointer-events-auto z-[var(--z-fixed)]';
   const bgColor = 'bg-ui-bg-elevated/98 backdrop-blur-xl ring-1 ring-white/10';
 
   if (effectiveDirection.value === 'right' || effectiveDirection.value === 'left') {
