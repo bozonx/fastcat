@@ -3,9 +3,11 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { computed, onScopeDispose, watch } from 'vue';
 
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import { isClipItem, isSourceClipItem, type TimelineClipItem } from '~/timeline/types';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
+import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 
 const log = createDevLogger('useNativeMonitorBridge');
 
@@ -22,10 +24,26 @@ const log = createDevLogger('useNativeMonitorBridge');
  * Адресовка: clip-local_us = clip.sourceRange.startUs + (playhead_us − clip.timelineRange.startUs).
  * Скорость, эффекты, multi-track — пока игнорим.
  */
+async function resolveClipAbsolutePath(
+  projectRelativePath: string,
+  projectStore: ReturnType<typeof useProjectStore>,
+): Promise<string> {
+  try {
+    const handle = await projectStore.getProjectDirHandle();
+    const projectPath = (handle as unknown as TauriDirectoryHandle | null)?.path;
+    if (!projectPath) return projectRelativePath;
+    const { join } = await import('@tauri-apps/api/path');
+    return await join(projectPath, projectRelativePath);
+  } catch {
+    return projectRelativePath;
+  }
+}
+
 export function useNativeMonitorBridge(): void {
   if (!isTauriRuntime()) return;
 
   const timelineStore = useTimelineStore();
+  const projectStore = useProjectStore();
 
   const activeMediaClip = computed<TimelineClipItem | null>(() => {
     const doc = timelineStore.timelineDoc;
@@ -71,7 +89,8 @@ export function useNativeMonitorBridge(): void {
       if (path === lastOpenedPath) return;
       lastOpenedPath = path;
       try {
-        await invoke('monitor_open', { path });
+        const absolutePath = await resolveClipAbsolutePath(path, projectStore);
+        await invoke('monitor_open', { path: absolutePath });
         const clip = activeMediaClip.value;
         if (clip) {
           await invoke('monitor_seek', {

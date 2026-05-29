@@ -52,8 +52,13 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
   watch(
     entries,
     async (currentEntries) => {
+      const workspaceStore = useWorkspaceStore();
       const projectId = projectStore.currentProjectId;
-      const workspaceHandle = useWorkspaceStore().workspaceHandle;
+      const workspaceHandle = workspaceStore.workspaceHandle;
+
+      // When the user has disabled thumbnail generation globally, skip video decoding
+      // for file manager thumbnails too — it prevents unnecessary heavy Worker work.
+      const thumbnailsDisabled = workspaceStore.userSettings?.ui?.clipThumbnailMode === 'none';
 
       const newHashes = new Set<string>();
       const validPaths = new Set(currentEntries.map((e) => e.path).filter(Boolean));
@@ -80,7 +85,8 @@ export function useFileManagerThumbnails(entries: Ref<FsEntry[]>, vfs?: IFileSys
           if (
             projectId &&
             hasProjectContext &&
-            (type === 'video' || type === 'image' || isTimeline)
+            (type === 'video' || type === 'image' || isTimeline) &&
+            !(thumbnailsDisabled && type === 'video')
           ) {
             // Timeline previews are NOT supported in external FM (without projectId context)
             // But here we have projectId, so it's likely the project FM or a compatible view.

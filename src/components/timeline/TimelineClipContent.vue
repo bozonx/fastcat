@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import { clipHasAudio, isAudio, isVideo } from '~/utils/timeline/clip';
 import TimelineClipPreviewOverlays from './TimelineClipPreviewOverlays.vue';
 import TimelineClipThumbnails from './TimelineClipThumbnails.vue';
 import TimelineAudioWaveform from './audio/TimelineAudioWaveform.vue';
+import { useWorkspaceStore } from '~/stores/workspace.store';
+
+const workspaceStore = useWorkspaceStore();
+const clipThumbnailMode = computed(() => workspaceStore.userSettings.ui.clipThumbnailMode);
 
 interface ClipPreviewOverlay {
   rangeStyle: Record<string, string>;
@@ -41,7 +46,7 @@ defineProps<{
 <template>
   <div class="flex-1 flex w-full min-h-0 relative" :style="{ zIndex: 'var(--z-clip-content)' }">
     <TimelineClipThumbnails
-      v-if="effectiveClipItem && isVideo(item, track) && effectiveClipItem.showThumbnails !== false"
+      v-if="effectiveClipItem && isVideo(item, track) && effectiveClipItem.showThumbnails !== false && clipThumbnailMode !== 'none'"
       :item="effectiveClipItem"
       :width="clipWidthPx"
       :scroll-left="scrollLeft"
