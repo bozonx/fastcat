@@ -407,13 +407,7 @@ export function useTimelineItemDrag(
     let targetItemId = input.itemId;
     let targetTrackId = input.trackId;
 
-    if (item?.kind === 'clip' && item.linkedVideoClipId && item.lockToLinkedVideo && doc) {
-      const video = findClipById(doc, item.linkedVideoClipId);
-      if (video) {
-        targetItemId = video.item.id;
-        targetTrackId = video.track.id;
-      }
-    }
+
 
     draggingMode.value = input.edge === 'start' ? 'trim_start' : 'trim_end';
     draggingTrackId.value = targetTrackId;
@@ -479,24 +473,7 @@ export function useTimelineItemDrag(
       }
     }
 
-    if (doc) {
-      for (const t of doc.tracks) {
-        if (t.kind !== 'audio') continue;
-        for (const it of t.items) {
-          if (it.kind !== 'clip') continue;
-          if (it.linkedVideoClipId === targetItemId && it.lockToLinkedVideo && !seen.has(it.id)) {
-            previewItems.push({
-              itemId: it.id,
-              trackId: t.id,
-              startUs: it.timelineRange.startUs,
-              durationUs: it.timelineRange.durationUs,
-              edge: input.edge,
-              deltaUs: 0,
-            });
-          }
-        }
-      }
-    }
+
 
     trimPreview.value = previewItems;
     pendingTrimCommit.value = null;

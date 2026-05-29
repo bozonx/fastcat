@@ -25,8 +25,7 @@ export const TIMELINE_COMMAND_LABEL_KEYS: Record<TimelineCommand['type'], string
   reorder_tracks: 'videoEditor.fileManager.history.entries.reorderTracks',
   update_track_properties: 'videoEditor.fileManager.history.entries.updateTrack',
   extract_audio_to_track: 'videoEditor.fileManager.history.entries.extractAudio',
-  return_audio_to_video: 'videoEditor.fileManager.history.entries.returnAudio',
-  unlink_audio_from_video: 'videoEditor.fileManager.history.entries.unlinkAudio',
+
   update_master_gain: 'videoEditor.fileManager.history.entries.updateMasterGain',
   update_master_muted: 'videoEditor.fileManager.history.entries.toggleMute',
   update_master_effects: 'videoEditor.fileManager.history.entries.updateEffects',
@@ -53,8 +52,7 @@ const UPDATE_CLIP_PROPERTIES_LABEL_MAP: Record<string, string> = {
   showThumbnails: 'videoEditor.fileManager.history.entries.toggleThumbnails',
   disabled: 'videoEditor.fileManager.history.entries.toggleDisabled',
   linkedGroupId: 'videoEditor.fileManager.history.entries.updateClipGroup',
-  linkedVideoClipId: 'videoEditor.fileManager.history.entries.unlinkAudio',
-  lockToLinkedVideo: 'videoEditor.fileManager.history.entries.unlinkAudio',
+
   transform: 'videoEditor.fileManager.history.entries.updateClipTransform',
 };
 

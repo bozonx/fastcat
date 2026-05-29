@@ -24,6 +24,7 @@ import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';
 import { secondsToUs } from '~/utils/time';
 import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { useUploadProgress } from '~/composables/useUploadProgress';
 const log = createDevLogger('useTimelineDropHandling');
 
 export interface UseTimelineDropHandlingOptions {
@@ -82,12 +83,16 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
 
   const dragPreview = ref<DragPreview | null>(null);
 
-  // Import/Copy progress state
-  const isImporting = ref(false);
-  const importProgress = ref(0);
-  const importFileName = ref('');
-  const importPhase = ref('');
-  let importAbortController: AbortController | null = null;
+  const {
+    isActive: isImporting,
+    progress: importProgress,
+    fileName: importFileName,
+    phase: importPhase,
+    begin: beginImport,
+    end: endImport,
+    cancel: cancelImport,
+    onProgress: onImportProgress,
+  } = useUploadProgress();
 
   function clearDragPreview() {
     dragPreview.value = null;
@@ -627,7 +632,10 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       : false;
   }
 
-  async function importExternalItemToProject(item: TimelineDropItem): Promise<TimelineDropItem> {
+  async function importExternalItemToProject(
+    item: TimelineDropItem,
+    signal?: AbortSignal,
+  ): Promise<TimelineDropItem> {
     if (!item.path) return item;
 
     if (item.path.startsWith('/remote')) {
@@ -637,7 +645,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       const resultPath = await fileManager.copyEntry({
         source: { path: item.path, name: item.name || '', kind: 'file' },
         targetDirPath: targetDir,
-        abortSignal: importAbortController?.signal ?? undefined,
+        abortSignal: signal,
       });
 
       return {
@@ -805,24 +813,20 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
     const totalBytes = supportedFiles.reduce((acc, file) => acc + file.size, 0);
     const useBackgroundTask = totalBytes >= LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES;
 
+    const fallbackBytes = supportedFiles.reduce((acc, file) => acc + file.size, 0);
     try {
-      isImporting.value = !useBackgroundTask;
-      importProgress.value = 0;
-      importPhase.value = t('videoEditor.fileManager.actions.importing');
-      importAbortController = new AbortController();
+      const abortSignal = beginImport(
+        t('videoEditor.fileManager.actions.importing'),
+        useBackgroundTask,
+      );
 
       const results = await fileManager.handleFiles(supportedFiles, {
-        abortSignal: importAbortController.signal,
+        abortSignal,
         backgroundMode: useBackgroundTask ? 'auto' : 'never',
-        onProgress: (p) => {
-          const total = p.totalBytes ?? supportedFiles.reduce((acc, file) => acc + file.size, 0);
-          importProgress.value =
-            total > 0 ? (p.loadedBytes ?? 0) / total : p.currentFileIndex / p.totalFiles;
-          importFileName.value = p.fileName;
-        },
+        onProgress: (p) => onImportProgress(p, fallbackBytes),
       });
 
-      if (importAbortController.signal.aborted) return;
+      if (abortSignal.aborted) return;
       if (!results) return;
 
       let currentStartUs = startUs;
@@ -858,15 +862,9 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         description: message,
       });
     } finally {
-      isImporting.value = false;
-      importAbortController = null;
+      endImport();
       clearDragPreview();
     }
-  }
-
-  function cancelImport() {
-    importAbortController?.abort();
-    isImporting.value = false;
   }
 
   async function handleLibraryDrop(
@@ -889,28 +887,25 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       let itemsToDrop = items;
 
       if (payload.isExternal) {
-        isImporting.value = true;
-        importProgress.value = 0;
-        importPhase.value = t('videoEditor.fileManager.actions.importing');
-        importAbortController = new AbortController();
+        const signal = beginImport(t('videoEditor.fileManager.actions.importing'), false);
 
         const externalItems = items.filter(isSupportedLibraryItem);
         for (let i = 0; i < externalItems.length; i++) {
-          if (importAbortController.signal.aborted) break;
+          if (signal.aborted) break;
           const item = externalItems[i];
           if (!item) continue;
           importFileName.value = item.name || '';
           importProgress.value = i / externalItems.length;
-          externalItems[i] = await importExternalItemToProject(item);
+          externalItems[i] = await importExternalItemToProject(item, signal);
         }
         itemsToDrop = externalItems;
 
-        if (importAbortController.signal.aborted) {
-          isImporting.value = false;
+        if (signal.aborted) {
+          endImport();
           return;
         }
 
-        isImporting.value = false;
+        endImport();
       }
 
       for (const item of itemsToDrop) {
@@ -958,8 +953,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         description: message,
       });
     } finally {
-      isImporting.value = false;
-      importAbortController = null;
+      endImport();
       clearDragPreview();
     }
   }

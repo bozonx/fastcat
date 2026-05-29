@@ -14,7 +14,6 @@ import {
   assertClipNotLocked,
   normalizeGaps,
   findClipById,
-  updateLinkedLockedAudio,
   getLinkedClipGroupItemIds,
   autoAdaptChangedTracks,
   rangesOverlap,
@@ -242,55 +241,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
     }
   }
 
-  if (
-    !cmd.ignoreLinks &&
-    item.kind === 'clip' &&
-    item.clipType === 'media' &&
-    item.linkedVideoClipId &&
-    item.lockToLinkedVideo
-  ) {
-    const linked = findClipById(doc, item.linkedVideoClipId);
-    if (!linked) return { next: doc };
-    if (linked.track.kind !== 'video') return { next: doc };
 
-    const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
-    const startUs = shouldQuantizeToFrames
-      ? quantizeTimeUsToFrames(cmd.startUs, getDocFps(doc), 'round')
-      : Math.max(0, Math.round(cmd.startUs));
-    const durationUs = Math.max(0, linked.item.timelineRange.durationUs);
-
-    assertNoOverlap(linked.track, linked.item.id, startUs, durationUs);
-
-    let nextTracks = doc.tracks.map((t) => {
-      if (t.id !== linked.track.id) return t;
-      const nextItems: TimelineTrackItem[] = t.items.map((x) =>
-        x.id === linked.item.id
-          ? {
-              ...x,
-              timelineRange: { ...x.timelineRange, startUs },
-            }
-          : x,
-      );
-      nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-      return {
-        ...t,
-        items: normalizeGaps(doc, t.id, nextItems, {
-          quantizeToFrames: shouldQuantizeToFrames,
-        }),
-      };
-    });
-
-    nextTracks = updateLinkedLockedAudio(
-      { ...doc, tracks: nextTracks },
-      linked.item.id,
-      (audio) => ({
-        ...audio,
-        timelineRange: { ...audio.timelineRange, startUs },
-      }),
-    );
-
-    return { next: { ...doc, tracks: nextTracks } };
-  }
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
@@ -318,12 +269,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
-  if (!cmd.ignoreLinks && item.kind === 'clip' && track.kind === 'video') {
-    nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
-      ...audio,
-      timelineRange: { ...audio.timelineRange, startUs },
-    }));
-  }
+
 
   return { next: { ...doc, tracks: nextTracks } };
 }
@@ -357,12 +303,7 @@ export function moveItemToTrack(
     assertClipNotLocked(item, 'move');
   }
 
-  const isLockedLinkedAudio =
-    !cmd.ignoreLinks &&
-    item.kind === 'clip' &&
-    item.clipType === 'media' &&
-    Boolean(item.linkedVideoClipId) &&
-    Boolean(item.lockToLinkedVideo);
+
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
@@ -397,46 +338,7 @@ export function moveItemToTrack(
     return t;
   });
 
-  if (
-    isLockedLinkedAudio &&
-    item.kind === 'clip' &&
-    item.clipType === 'media' &&
-    item.linkedVideoClipId
-  ) {
-    const linked = findClipById({ ...doc, tracks: nextTracks }, item.linkedVideoClipId);
-    if (linked && linked.track.kind === 'video') {
-      const linkedDurationUs = Math.max(0, linked.item.timelineRange.durationUs);
-      assertNoOverlap(linked.track, linked.item.id, startUs, linkedDurationUs);
 
-      nextTracks = nextTracks.map((t) => {
-        if (t.id !== linked.track.id) return t;
-        const nextItems: TimelineTrackItem[] = t.items.map((x) =>
-          x.id === linked.item.id
-            ? {
-                ...x,
-                timelineRange: { ...x.timelineRange, startUs },
-              }
-            : x,
-        );
-        nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-        return {
-          ...t,
-          items: normalizeGaps(doc, t.id, nextItems, {
-            quantizeToFrames: shouldQuantizeToFrames,
-          }),
-        };
-      });
-
-      nextTracks = updateLinkedLockedAudio(
-        { ...doc, tracks: nextTracks },
-        linked.item.id,
-        (audio) => ({
-          ...audio,
-          timelineRange: { ...audio.timelineRange, startUs },
-        }),
-      );
-    }
-  }
 
   // Auto-adapt transitions only on tracks that actually changed (from, to, and
   // any linked-audio track). Mapping over every track was O(total_items) per

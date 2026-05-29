@@ -206,7 +206,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     requestId?: number,
   ) {
     // В Tauri-режиме веб-композитор не инициализируется (превью рисует нативный монитор).
-    if (!compositor) return;
+    if (!compositor) return 0;
     if (typeof requestId === 'number' && Number.isFinite(requestId)) {
       latestLoadTimelineRequestId = requestId;
     }

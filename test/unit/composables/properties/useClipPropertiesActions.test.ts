@@ -187,25 +187,7 @@ describe('useClipPropertiesActions', () => {
     });
   });
 
-  describe('linked audio/video navigation', () => {
-    it('finds the linked audio clip from a video clip and selects it', () => {
-      const videoClip = makeClip({ id: 'v-clip', trackId: 'v1' });
-      const audioClip = makeClip({ id: 'a-clip', trackId: 'a1', linkedVideoClipId: 'v-clip' });
-      const timelineStore = makeTimelineStore({
-        timelineDoc: makeDoc([
-          makeTrack({ id: 'v1', kind: 'video', items: [videoClip] }),
-          makeTrack({ id: 'a1', kind: 'audio', items: [audioClip] }),
-        ]),
-      });
-      const { actions } = build({ clip: videoClip, trackKind: 'video', timelineStore });
 
-      expect(actions.linkedAudioClip.value?.id).toBe('a-clip');
-      actions.goToLinkedAudio();
-      expect(timelineStore.selectTimelineItems).toHaveBeenCalledWith([
-        { trackId: 'a1', itemId: 'a-clip' },
-      ]);
-    });
-  });
 
   describe('handleRemoveFromGroup', () => {
     it('clears linkedGroupId when the clip is grouped', () => {

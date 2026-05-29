@@ -277,8 +277,7 @@ function serializeTrackItems(
             fadeInCurve: item.audioFadeInCurve,
             fadeOutCurve: item.audioFadeOutCurve,
             muted: item.audioMuted,
-            fromVideoDisabled:
-              item.clipType === 'media' ? Boolean(item.audioFromVideoDisabled) : undefined,
+
           },
           visual: {
             opacity: item.opacity,
@@ -291,8 +290,7 @@ function serializeTrackItems(
           },
           links: {
             linkedGroupId: item.linkedGroupId,
-            linkedVideoClipId: item.clipType === 'media' ? item.linkedVideoClipId : undefined,
-            lockToLinkedVideo: item.clipType === 'media' ? item.lockToLinkedVideo : undefined,
+
           },
           transform: item.transform,
           mask: item.mask,
@@ -690,26 +688,7 @@ export function parseTimelineFromOtio(
       track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
     ),
   );
-  const tracksWithValidLinks = normalizedTracks.map((track) => ({
-    ...track,
-    items: track.items.map((item) => {
-      if (item.kind !== 'clip' || !item.linkedVideoClipId || clipIds.has(item.linkedVideoClipId)) {
-        return item;
-      }
 
-      report.warn(
-        'broken_link',
-        `Dropping broken linkedVideoClipId "${item.linkedVideoClipId}" on clip "${item.id}".`,
-        `tracks[${track.id}].items[${item.id}]`,
-      );
-
-      const next = { ...item };
-      delete (next as { linkedVideoClipId?: unknown }).linkedVideoClipId;
-      delete (next as { lockToLinkedVideo?: unknown }).lockToLinkedVideo;
-
-      return next;
-    }),
-  }));
 
   const docId = coerceId(docMeta.docId, fallback.id);
   const version = typeof docMeta.version === 'number' ? docMeta.version : 0;
@@ -728,7 +707,7 @@ export function parseTimelineFromOtio(
   const masterGain = docMeta.masterGain;
   const masterMuted = docMeta.masterMuted;
 
-  if (tracksWithValidLinks.length === 0) {
+  if (normalizedTracks.length === 0) {
     report.warn('no_tracks', 'No valid tracks found; creating default timeline.');
     const base = createDefaultTimelineDocument({ id: docId, name, format });
     base.metadata = {
@@ -756,7 +735,7 @@ export function parseTimelineFromOtio(
     id: docId,
     name,
     timebase: { fps: format.fps },
-    tracks: tracksWithValidLinks,
+    tracks: normalizedTracks,
     metadata: {
       fastcat: {
         version,

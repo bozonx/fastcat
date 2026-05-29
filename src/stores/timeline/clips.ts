@@ -70,9 +70,6 @@ export interface TimelineClipsModule {
         TimelineClipItem,
         | 'disabled'
         | 'locked'
-        | 'audioFromVideoDisabled'
-        | 'linkedVideoClipId'
-        | 'lockToLinkedVideo'
         | 'opacity'
         | 'blendMode'
         | 'effects'
@@ -279,8 +276,6 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         | 'showThumbnails'
         | 'sourceRange'
         | 'sourceDurationUs'
-        | 'linkedVideoClipId'
-        | 'lockToLinkedVideo'
         | 'linkedGroupId'
         | 'source'
         | 'opacityActive'
@@ -619,10 +614,6 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         });
       }
 
-      // Translate linked IDs if the target is also being pasted
-      const translatedLinkedVideoId = clip.linkedVideoClipId
-        ? idMap.get(clip.linkedVideoClipId)
-        : undefined;
       const translatedGroupId = clip.linkedGroupId
         ? pastedGroupIds.get(clip.linkedGroupId)
         : undefined;
@@ -655,9 +646,6 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
           showThumbnails: clip.showThumbnails,
           sourceRange: clip.sourceRange,
           sourceDurationUs: clip.sourceDurationUs,
-          audioFromVideoDisabled: clip.audioFromVideoDisabled,
-          linkedVideoClipId: translatedLinkedVideoId,
-          lockToLinkedVideo: translatedLinkedVideoId ? clip.lockToLinkedVideo : false,
           linkedGroupId: translatedGroupId,
           opacityActive: clip.opacityActive,
           blendModeActive: clip.blendModeActive,

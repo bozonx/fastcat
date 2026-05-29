@@ -13,7 +13,6 @@ import {
   sliceTrackItemsForOverlay,
   normalizeGaps,
   findClipById,
-  updateLinkedLockedAudio,
   autoAdaptChangedTracks,
 } from '../utils';
 import { computeTrimGeometry } from './trimGeometry';
@@ -31,9 +30,7 @@ export function overlayTrimItem(
 
   assertClipNotLocked(moved, 'trim');
 
-  if (moved.clipType === 'media' && moved.linkedVideoClipId && moved.lockToLinkedVideo) {
-    throw new Error('Locked audio clip');
-  }
+
 
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
 
@@ -84,58 +81,7 @@ export function overlayTrimItem(
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: normalized } : t));
 
-  if (track.kind === 'video' && movedNext.clipType === 'media') {
-    const updatedMoved = findClipById({ ...doc, tracks: nextTracks }, movedNext.id);
-    if (updatedMoved && updatedMoved.track.kind === 'video') {
-      // Linked-audio sync: shift the audio so its head still lines up with the
-      // video, and mirror the *amount* of source consumption — never copy the
-      // video's absolute sourceRange wholesale, because extract-audio clips can
-      // point to a different file with its own range/duration.
-      const videoBefore = moved;
-      const videoAfter = updatedMoved.item;
-      const startDeltaUs = videoAfter.timelineRange.startUs - videoBefore.timelineRange.startUs;
-      const sourceStartDeltaUs = videoAfter.sourceRange.startUs - videoBefore.sourceRange.startUs;
-      const newDurationUs = videoAfter.timelineRange.durationUs;
-      nextTracks = updateLinkedLockedAudio(
-        { ...doc, tracks: nextTracks },
-        updatedMoved.item.id,
-        (audio) => {
-          const audioSpeed =
-            typeof audio.speed === 'number' && Number.isFinite(audio.speed) ? audio.speed : 1;
-          const audioAbsSpeed = Math.max(0.0001, Math.abs(audioSpeed));
-          const audioSourceLimit = Math.max(0, Math.round(Number(audio.sourceDurationUs ?? 0)));
-          const nextAudioSourceStartUs = Math.max(
-            0,
-            Math.round(audio.sourceRange.startUs + sourceStartDeltaUs),
-          );
-          const requestedAudioSourceDurationUs = Math.max(
-            0,
-            Math.round(newDurationUs * audioAbsSpeed),
-          );
-          const audioSourceDurationUs =
-            audioSourceLimit > 0
-              ? Math.min(
-                  requestedAudioSourceDurationUs,
-                  Math.max(0, audioSourceLimit - nextAudioSourceStartUs),
-                )
-              : requestedAudioSourceDurationUs;
-          return {
-            ...audio,
-            timelineRange: {
-              ...audio.timelineRange,
-              startUs: Math.max(0, audio.timelineRange.startUs + startDeltaUs),
-              durationUs: newDurationUs,
-            },
-            sourceRange: {
-              ...audio.sourceRange,
-              startUs: nextAudioSourceStartUs,
-              durationUs: audioSourceDurationUs,
-            },
-          };
-        },
-      );
-    }
-  }
+
 
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
@@ -158,12 +104,7 @@ export function overlayPlaceItem(
     assertClipNotLocked(item, 'move');
   }
 
-  const isLockedLinkedAudio =
-    !cmd.ignoreLinks &&
-    item.kind === 'clip' &&
-    item.clipType === 'media' &&
-    Boolean(item.linkedVideoClipId) &&
-    Boolean(item.lockToLinkedVideo);
+
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
@@ -210,56 +151,7 @@ export function overlayPlaceItem(
     });
   }
 
-  if (
-    isLockedLinkedAudio &&
-    item.kind === 'clip' &&
-    item.clipType === 'media' &&
-    item.linkedVideoClipId
-  ) {
-    const linked = findClipById({ ...doc, tracks: nextTracks }, item.linkedVideoClipId);
-    if (linked && linked.track.kind === 'video') {
-      const linkedDurationUs = Math.max(0, linked.item.timelineRange.durationUs);
-      assertNoOverlap(linked.track, linked.item.id, startUs, linkedDurationUs);
 
-      nextTracks = nextTracks.map((t) => {
-        if (t.id !== linked.track.id) return t;
-        const nextItems: TimelineTrackItem[] = t.items.map((x) =>
-          x.id === linked.item.id
-            ? {
-                ...x,
-                timelineRange: { ...x.timelineRange, startUs },
-              }
-            : x,
-        );
-        nextItems.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-        return {
-          ...t,
-          items: normalizeGaps(doc, t.id, nextItems, {
-            quantizeToFrames: shouldQuantizeToFrames,
-          }),
-        };
-      });
-
-      nextTracks = updateLinkedLockedAudio(
-        { ...doc, tracks: nextTracks },
-        linked.item.id,
-        (audio) => ({
-          ...audio,
-          timelineRange: { ...audio.timelineRange, startUs },
-        }),
-      );
-    }
-  } else if (
-    !cmd.ignoreLinks &&
-    item.kind === 'clip' &&
-    fromTrack.kind === 'video' &&
-    toTrack.kind === 'video'
-  ) {
-    nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
-      ...audio,
-      timelineRange: { ...audio.timelineRange, startUs },
-    }));
-  }
 
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 

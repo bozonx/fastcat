@@ -67,14 +67,13 @@ describe('utils/audio', () => {
       kind: 'clip' as const,
       clipType: 'media' as const,
       source: { path: 'a.mp4' },
-      audioFromVideoDisabled: false,
     };
     const gap = { kind: 'gap' as const };
 
     expect(clipHasAudio(gap, audioTrack, {})).toBe(false);
     // audio track returns true even without metadata for media clips
     expect(clipHasAudio(clip, audioTrack, {})).toBe(true);
-    // video track needs metadata or audioFromVideoDisabled=false
+    // video track needs metadata with audio: true
     expect(clipHasAudio(clip, videoTrack, { 'a.mp4': { audio: true } as any })).toBe(true);
     expect(clipHasAudio(clip, videoTrack, {})).toBe(false);
   });

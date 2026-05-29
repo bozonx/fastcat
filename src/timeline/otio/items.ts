@@ -241,7 +241,7 @@ export function parseClipItem(input: {
     audioMuted: fastcatMeta.audio?.muted,
     audioWaveformMode: fastcatMeta.audio?.waveformMode,
     showWaveform: fastcatMeta.audio?.showWaveform,
-    audioFromVideoDisabled: Boolean(fastcatMeta.audio?.fromVideoDisabled),
+
     freezeFrameSourceUs:
       clipType === 'media' && timeEffects.freezeFrameSourceUs !== undefined
         ? Math.round(timeEffects.freezeFrameSourceUs)
@@ -256,8 +256,7 @@ export function parseClipItem(input: {
     transitionIn: transitionIn ?? parseFastCatTransition(fastcatMeta.transitions?.in),
     transitionOut: transitionOut ?? parseFastCatTransition(fastcatMeta.transitions?.out),
     linkedGroupId: fastcatMeta.links?.linkedGroupId,
-    linkedVideoClipId: fastcatMeta.links?.linkedVideoClipId,
-    lockToLinkedVideo: fastcatMeta.links?.lockToLinkedVideo,
+
     isImage: fastcatMeta.visual?.isImage,
     showThumbnails: fastcatMeta.visual?.showThumbnails,
     sourceOrientation: fastcatMeta.visual?.sourceOrientation,

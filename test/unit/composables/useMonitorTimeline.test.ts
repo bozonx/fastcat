@@ -375,7 +375,7 @@ describe('useMonitorTimeline', () => {
                 id: 'vclip2',
                 kind: 'clip',
                 source: { path: 'video2.mp4' },
-                audioFromVideoDisabled: true,
+                audioMuted: true,
                 timelineRange: { startUs: 1000, durationUs: 1000 },
                 sourceRange: { startUs: 0, durationUs: 1000 },
               },

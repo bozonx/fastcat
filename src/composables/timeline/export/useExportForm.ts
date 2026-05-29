@@ -323,9 +323,22 @@ export function useExportForm() {
       const fileExt = outputFilename.value.split('.').pop()?.toLowerCase();
 
       const finalFormat = isAudio
-        ? (fileExt === 'aac' || fileExt === 'mp4' || fileExt === 'webm' || fileExt === 'mkv'
-            ? (fileExt as 'aac' | 'mp4' | 'webm' | 'mkv')
-            : audioCodec.value === 'opus' ? 'webm' : 'aac')
+        ? fileExt === 'aac' ||
+          fileExt === 'mp4' ||
+          fileExt === 'webm' ||
+          fileExt === 'mkv' ||
+          fileExt === 'opus' ||
+          fileExt === 'ogg' ||
+          fileExt === 'flac' ||
+          fileExt === 'wav'
+          ? (fileExt as 'aac' | 'mp4' | 'webm' | 'mkv' | 'opus' | 'ogg' | 'flac' | 'wav')
+          : audioCodec.value === 'opus'
+            ? 'opus'
+            : audioCodec.value === 'flac'
+              ? 'flac'
+              : audioCodec.value === 'pcm'
+                ? 'wav'
+                : 'aac'
         : outputFormat.value;
 
       const resolvedCodecs = isAudio
@@ -462,7 +475,14 @@ export function useExportForm() {
     if (!isTauri) return;
     try {
       const isAudio = exportType.value === 'audio';
-      const audioExt = audioCodec.value === 'opus' ? 'webm' : 'aac';
+      const audioExt =
+        audioCodec.value === 'opus'
+          ? 'opus'
+          : audioCodec.value === 'flac'
+            ? 'flac'
+            : audioCodec.value === 'pcm'
+              ? 'wav'
+              : 'aac';
       const path = await save({
         defaultPath: outputFilename.value,
         filters: isAudio

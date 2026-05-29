@@ -61,6 +61,7 @@ export function getBunnyAudioCodec(codec: string | undefined): BunnyAudioCodec {
   const v = String(codec).toLowerCase();
   if (v === 'aac' || v.startsWith('mp4a')) return 'aac';
   if (v === 'opus') return 'opus';
+  if (v === 'pcm') return 'pcm-s16';
   return v as BunnyAudioCodec;
 }
 

@@ -579,55 +579,26 @@ describe('timeline/commands update_clip_properties', () => {
     expect(clip.style).toBeUndefined();
   });
 
-  it('updates showWaveform on video clip and propagates it to linked audio clip without wiping out audioGain', () => {
-    const doc: TimelineDocument = {
-      OTIO_SCHEMA: 'Timeline.1',
-      id: 'doc1',
-      name: 'Test',
-      timebase: { fps: 30 },
-      tracks: [
+  it('updates showWaveform on a clip directly', () => {
+    const doc = makeDoc({
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
         {
-          id: 'v1',
-          kind: 'video',
-          name: 'V1',
-          items: [
-            {
-              kind: 'clip',
-              clipType: 'media',
-              id: 'c1',
-              trackId: 'v1',
-              name: 'Video Clip',
-              source: { path: 'video.mp4' },
-              sourceDurationUs: 10_000_000,
-              timelineRange: { startUs: 0, durationUs: 5_000_000 },
-              sourceRange: { startUs: 0, durationUs: 5_000_000 },
-            } as any,
-          ],
-        },
-        {
-          id: 'a1',
-          kind: 'audio',
-          name: 'A1',
-          items: [
-            {
-              kind: 'clip',
-              clipType: 'media',
-              id: 'c2',
-              trackId: 'a1',
-              name: 'Audio Clip',
-              source: { path: 'video.mp4' },
-              sourceDurationUs: 10_000_000,
-              timelineRange: { startUs: 0, durationUs: 5_000_000 },
-              sourceRange: { startUs: 0, durationUs: 5_000_000 },
-              linkedVideoClipId: 'c1',
-              lockToLinkedVideo: true,
-              audioGain: 0.7,
-              showWaveform: true,
-            } as any,
-          ],
-        },
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'Video Clip',
+          source: { path: 'video.mp4' },
+          sourceDurationUs: 10_000_000,
+          timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          sourceRange: { startUs: 0, durationUs: 5_000_000 },
+          showWaveform: true,
+        } as any,
       ],
-    };
+    });
 
     const next = applyTimelineCommand(doc, {
       type: 'update_clip_properties',
@@ -636,10 +607,7 @@ describe('timeline/commands update_clip_properties', () => {
       properties: { showWaveform: false },
     }).next;
 
-    const audioTrack = next.tracks.find((t) => t.id === 'a1') as TimelineTrack;
-    const audioClip = audioTrack.items[0] as any;
-
-    expect(audioClip.showWaveform).toBe(false);
-    expect(audioClip.audioGain).toBe(0.7); // Preserved!
+    const clip = (next.tracks[0] as TimelineTrack).items[0] as any;
+    expect(clip.showWaveform).toBe(false);
   });
 });

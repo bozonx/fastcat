@@ -97,11 +97,7 @@ export function useProvideTimelineContext() {
         options,
       ),
 
-    unlinkAudioFromVideo: (input: {
-      videoItemId?: string;
-      audioTrackId?: string;
-      audioItemId?: string;
-    }) => timelineStore.unlinkAudioFromVideo(input),
+
     renameItem: (trackId: string, itemId: string, name: string) =>
       timelineStore.renameItem(trackId, itemId, name),
     updateTrackProperties: (trackId: string, patch: Record<string, unknown>) =>

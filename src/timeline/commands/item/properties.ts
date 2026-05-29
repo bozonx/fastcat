@@ -9,8 +9,6 @@ import {
   getTrackById,
   getDocFps,
   normalizeGaps,
-  findClipById,
-  updateLinkedLockedAudio,
   autoAdaptClipTransitions,
   assertClipNotLocked,
 } from '../utils';
@@ -235,58 +233,7 @@ export function updateClipProperties(
     return t;
   });
 
-  let finalTracks = nextTracks;
-  const updatedDoc = { ...doc, tracks: nextTracks };
-  const updated = findClipById(updatedDoc, cmd.itemId);
-  if (updated && updated.track.kind === 'video' && updated.item.clipType === 'media') {
-    if ('timelineRange' in nextProps || 'speed' in nextProps || 'sourceRange' in nextProps) {
-      finalTracks = updateLinkedLockedAudio(
-        { ...doc, tracks: finalTracks },
-        updated.item.id,
-        (a) => ({
-          ...a,
-          timelineRange: {
-            ...a.timelineRange,
-            startUs: updated.item.timelineRange.startUs,
-            durationUs: updated.item.timelineRange.durationUs,
-          },
-          sourceRange: {
-            ...a.sourceRange,
-            startUs: updated.item.sourceRange.startUs,
-            durationUs: updated.item.sourceRange.durationUs,
-          },
-          speed: updated.item.speed,
-        }),
-      );
-    }
-
-    const audioPatch: Record<string, unknown> = {};
-    if ('audioGain' in nextProps) audioPatch.audioGain = updated.item.audioGain;
-    if ('audioBalance' in nextProps) audioPatch.audioBalance = updated.item.audioBalance;
-    if ('audioFadeInUs' in nextProps) audioPatch.audioFadeInUs = updated.item.audioFadeInUs;
-    if ('audioFadeOutUs' in nextProps) audioPatch.audioFadeOutUs = updated.item.audioFadeOutUs;
-    if ('audioFadeInCurve' in nextProps)
-      audioPatch.audioFadeInCurve = updated.item.audioFadeInCurve;
-    if ('audioFadeOutCurve' in nextProps)
-      audioPatch.audioFadeOutCurve = updated.item.audioFadeOutCurve;
-    if ('audioMuted' in nextProps) audioPatch.audioMuted = updated.item.audioMuted;
-    if ('audioWaveformMode' in nextProps)
-      audioPatch.audioWaveformMode = updated.item.audioWaveformMode;
-    if ('showWaveform' in nextProps) audioPatch.showWaveform = updated.item.showWaveform;
-
-    if (Object.keys(audioPatch).length > 0) {
-      finalTracks = updateLinkedLockedAudio(
-        { ...doc, tracks: finalTracks },
-        updated.item.id,
-        (a) => ({
-          ...a,
-          ...audioPatch,
-        }),
-      );
-    }
-  }
-
-  return { next: { ...doc, tracks: finalTracks } };
+  return { next: { ...doc, tracks: nextTracks } };
 }
 
 export function updateClipTransition(

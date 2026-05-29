@@ -135,47 +135,9 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
     }
   }
 
-  const originLinkedVideoId = String(origin.item.linkedVideoClipId ?? '').trim();
-  if (originLinkedVideoId) {
-    result.add(originLinkedVideoId);
-  }
-
-  for (const track of doc.tracks) {
-    for (const item of track.items) {
-      if (item.kind !== 'clip') continue;
-      const linkedVideoId = String(item.linkedVideoClipId ?? '').trim();
-      if (!linkedVideoId) continue;
-      if (
-        linkedVideoId === origin.item.id ||
-        (originLinkedVideoId && linkedVideoId === originLinkedVideoId)
-      ) {
-        result.add(item.id);
-      }
-    }
-  }
-
   const finalResult = [...result];
   docCache.set(itemId, finalResult);
   return finalResult;
-}
-
-export function updateLinkedLockedAudio(
-  doc: TimelineDocument,
-  videoItemId: string,
-  patch: (audio: TimelineClipItem) => TimelineClipItem,
-): TimelineTrack[] {
-  return doc.tracks.map((t) => {
-    if (t.kind !== 'audio') return t;
-    let changed = false;
-    const nextItems = t.items.map((it) => {
-      if (it.kind !== 'clip') return it;
-      if (it.linkedVideoClipId !== videoItemId) return it;
-      if (!it.lockToLinkedVideo) return it;
-      changed = true;
-      return patch(it);
-    });
-    return changed ? { ...t, items: nextItems } : t;
-  });
 }
 
 export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {

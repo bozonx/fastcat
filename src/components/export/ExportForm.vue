@@ -69,6 +69,7 @@ const {
   metadataDescription,
   metadataAuthor,
   metadataTags,
+  audioCodecSupport,
 
   selectedExportRangeId,
   saveAsDefaults,
@@ -94,8 +95,18 @@ const tabOptions = computed(() => [
 ]);
 
 const audioCodecOptions = computed(() => [
-  { value: 'aac', label: t('videoEditor.export.codec.aac') },
-  { value: 'opus', label: t('videoEditor.export.codec.opus') },
+  {
+    value: 'aac',
+    label: t('videoEditor.export.codec.aac'),
+    disabled: !audioCodecSupport.value?.aac,
+  },
+  {
+    value: 'opus',
+    label: t('videoEditor.export.codec.opus'),
+    disabled: !audioCodecSupport.value?.opus,
+  },
+  { value: 'flac', label: 'FLAC', disabled: !audioCodecSupport.value?.flac },
+  { value: 'pcm', label: 'PCM (WAV)', disabled: !audioCodecSupport.value?.pcm },
 ]);
 
 const audioSampleRateOptions = computed(() => {
@@ -392,7 +403,10 @@ async function onConfirm() {
             </UiFormField>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UiFormField :label="t('videoEditor.export.audioBitrate')">
+              <UiFormField
+                v-if="audioCodec !== 'flac' && audioCodec !== 'pcm'"
+                :label="t('videoEditor.export.audioBitrate')"
+              >
                 <UiWheelNumberInput
                   v-model="audioBitrateKbps"
                   :min="0"

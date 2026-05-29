@@ -31,11 +31,7 @@ interface TimelineStoreActions {
   loadTimeline: () => Promise<void>;
   loadTimelineMetadata: () => Promise<void> | void;
   updateClipProperties: (trackId: string, itemId: string, patch: Record<string, unknown>) => void;
-  unlinkAudioFromVideo: (input: {
-    videoItemId?: string;
-    audioTrackId?: string;
-    audioItemId?: string;
-  }) => void;
+
   renameItem: (trackId: string, itemId: string, name: string) => void;
   selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
   updateTrackProperties: (trackId: string, patch: Record<string, unknown>) => void;

@@ -11,7 +11,6 @@ import {
   normalizeGaps,
   quantizeRangeToFrames,
   autoAdaptChangedTracks,
-  findClipById,
 } from '../utils';
 import { cloneValue } from '~/utils/clone';
 
@@ -43,17 +42,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     assertClipNotLocked(item, 'split');
   }
 
-  if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
-    const videoLoc = findClipById(doc, item.linkedVideoClipId);
-    if (!videoLoc || videoLoc.track.kind !== 'video' || videoLoc.item.kind !== 'clip') {
-      return { next: doc };
-    }
-    return splitItem(doc, {
-      ...cmd,
-      trackId: videoLoc.track.id,
-      itemId: videoLoc.item.id,
-    });
-  }
+
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
@@ -144,108 +133,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
-  if (track.kind === 'video' && item.clipType === 'media') {
-    // Split locked linked audio that follows this video item.
-    nextTracks = nextTracks.map((t) => {
-      if (t.kind !== 'audio') return t;
 
-      let changed = false;
-      const patched: TimelineTrackItem[] = [];
-      for (const it of t.items) {
-        if (
-          it.kind === 'clip' &&
-          it.clipType === 'media' &&
-          it.linkedVideoClipId === item.id &&
-          it.lockToLinkedVideo
-        ) {
-          changed = true;
-          const qAudioTimeline = quantizeRangeToFrames(it.timelineRange, fps);
-          const audioStartUs = qAudioTimeline.startUs;
-          const audioEndUs = audioStartUs + qAudioTimeline.durationUs;
-          const audioStartFrame = usToFrame(audioStartUs, fps, 'round');
-          const audioEndFrame = usToFrame(audioEndUs, fps, 'round');
-          if (!(cutFrame > audioStartFrame && cutFrame < audioEndFrame)) {
-            patched.push(it);
-            continue;
-          }
-
-          const leftAudioDurationUs = Math.max(0, atUs - audioStartUs);
-          const rightAudioDurationUs = Math.max(0, audioEndUs - atUs);
-          const audioSpeed =
-            typeof it.speed === 'number' && Number.isFinite(it.speed) ? (it.speed as number) : 1;
-          const audioAbsSpeed = Math.abs(audioSpeed);
-          const audioLocalCutUs = Math.max(0, Math.round((atUs - audioStartUs) * audioAbsSpeed));
-
-          let leftAudioSourceStartUs: number;
-          let leftAudioSourceDurationUs: number;
-          let rightAudioSourceStartUs: number;
-          let rightAudioSourceDurationUs: number;
-
-          if (audioSpeed >= 0) {
-            leftAudioSourceStartUs = Math.round(it.sourceRange.startUs);
-            leftAudioSourceDurationUs = Math.max(0, audioLocalCutUs);
-            rightAudioSourceStartUs = Math.max(
-              0,
-              Math.round(it.sourceRange.startUs) + audioLocalCutUs,
-            );
-            rightAudioSourceDurationUs = Math.max(
-              0,
-              Math.round(it.sourceRange.durationUs) - audioLocalCutUs,
-            );
-          } else {
-            const audioSourceDurationUs = Math.round(it.sourceRange.durationUs);
-            leftAudioSourceStartUs = Math.max(
-              0,
-              Math.round(it.sourceRange.startUs) + audioSourceDurationUs - audioLocalCutUs,
-            );
-            leftAudioSourceDurationUs = Math.max(0, audioLocalCutUs);
-            rightAudioSourceStartUs = Math.round(it.sourceRange.startUs);
-            rightAudioSourceDurationUs = Math.max(0, audioSourceDurationUs - audioLocalCutUs);
-          }
-
-          const leftAudio: TimelineClipItem = {
-            ...it,
-            timelineRange: { startUs: audioStartUs, durationUs: leftAudioDurationUs },
-            sourceRange: {
-              startUs: leftAudioSourceStartUs,
-              durationUs: leftAudioSourceDurationUs,
-            },
-            transitionOut: undefined,
-            effects: it.effects ? cloneEffects(it.effects) : undefined,
-            linkedGroupId: undefined,
-          };
-
-          // TODO(keyframes): shift keyframes relative time in rightAudio's effects by audioLocalCutUs
-          const rightAudio: TimelineClipItem = {
-            ...it,
-            id: nextItemId(t.id, 'clip'),
-            trackId: t.id,
-            timelineRange: { startUs: atUs, durationUs: rightAudioDurationUs },
-            sourceRange: {
-              startUs: rightAudioSourceStartUs,
-              durationUs: rightAudioSourceDurationUs,
-            },
-            linkedGroupId: undefined,
-            linkedVideoClipId: rightItemId,
-            transitionIn: undefined,
-            effects: it.effects ? cloneEffects(it.effects) : undefined,
-          };
-
-          patched.push(leftAudio);
-          patched.push(rightAudio);
-        } else {
-          patched.push(it);
-        }
-      }
-
-      if (!changed) return t;
-      patched.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-      return {
-        ...t,
-        items: normalizeGaps(doc, t.id, patched, { quantizeToFrames: shouldQuantizeToFrames }),
-      };
-    });
-  }
 
   // After split clip durations may shrink — adapt transitions/fades that exceed the new size.
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);

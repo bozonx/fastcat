@@ -6,7 +6,6 @@ import {
   assertNoOverlap,
   assertClipNotLocked,
   normalizeGaps,
-  updateLinkedLockedAudio,
   autoAdaptChangedTracks,
 } from '../utils';
 import { computeTrimGeometry } from './trimGeometry';
@@ -18,9 +17,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   if (item.kind !== 'clip') return { next: doc };
 
   assertClipNotLocked(item, 'trim');
-  if (item.clipType === 'media' && item.linkedVideoClipId && item.lockToLinkedVideo) {
-    throw new Error('Locked audio clip');
-  }
+
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
@@ -57,15 +54,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
-  if (track.kind === 'video' && item.clipType === 'media') {
-    nextTracks = updateLinkedLockedAudio({ ...doc, tracks: nextTracks }, item.id, (audio) => ({
-      ...audio,
-      timelineRange,
-      sourceRange,
-      // Keep audio's own sourceDurationUs — overriding with the video's value can corrupt the audio
-      // clip when the linked audio comes from a different source file.
-    }));
-  }
+
 
   // Auto-adapt transitions only on tracks whose items actually changed.
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);

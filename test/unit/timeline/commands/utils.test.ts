@@ -46,7 +46,6 @@ const mockDoc: any = {
           id: 'clip-4',
           kind: 'clip',
           timelineRange: { startUs: 2_000_000, durationUs: 500_000 },
-          linkedVideoClipId: 'clip-1',
         },
       ],
     },
@@ -111,7 +110,7 @@ describe('getLinkedClipGroupItemIds', () => {
   });
 
   it('returns single id for unlinked clip', () => {
-    expect(getLinkedClipGroupItemIds(mockDoc, 'clip-1')).toEqual(['clip-1', 'clip-4']);
+    expect(getLinkedClipGroupItemIds(mockDoc, 'clip-1')).toEqual(['clip-1']);
   });
 
   it('uses cached results for the same document reference', () => {

@@ -52,12 +52,7 @@ export interface TimelineContext {
   cutSelectedClips: () => unknown[];
   pasteClips: (options?: { insertStartUs?: number }) => Promise<unknown>;
 
-  // Newly added for useClipPropertiesActions
-  unlinkAudioFromVideo: (input: {
-    videoItemId?: string;
-    audioTrackId?: string;
-    audioItemId?: string;
-  }) => void;
+
   renameItem: (trackId: string, itemId: string, name: string) => void;
   updateTrackProperties: (trackId: string, patch: Record<string, unknown>) => void;
   goToFiles: () => void;

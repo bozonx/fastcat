@@ -4,7 +4,6 @@ import {
   quantizeTimeUsToFrames,
   assertNoOverlap,
   normalizeGaps,
-  updateLinkedLockedAudio,
 } from '../utils';
 
 /**
@@ -140,65 +139,7 @@ export function applyClipSpeedChange(params: {
         : t,
     );
 
-    for (const movedId of movedVideoClipIds) {
-      const moved = nextClips.find((c) => c.id === movedId);
-      if (!moved) continue;
-      nextTracksLocal = updateLinkedLockedAudio(
-        { ...doc, tracks: nextTracksLocal },
-        movedId,
-        (audio) => ({
-          ...audio,
-          timelineRange: { ...audio.timelineRange, startUs: moved.timelineRange.startUs },
-        }),
-      );
-    }
 
-    const updatedClip = nextClips.find((c) => c.id === item.id);
-    if (updatedClip && track.kind === 'video' && updatedClip.clipType === 'media') {
-      const startDeltaUs = updatedClip.timelineRange.startUs - item.timelineRange.startUs;
-      const sourceStartDeltaUs = updatedClip.sourceRange.startUs - item.sourceRange.startUs;
-      const newTimelineDurationUs = updatedClip.timelineRange.durationUs;
-      nextTracksLocal = updateLinkedLockedAudio(
-        { ...doc, tracks: nextTracksLocal },
-        updatedClip.id,
-        (a) => {
-          const audioSpeed = typeof a.speed === 'number' && Number.isFinite(a.speed) ? a.speed : 1;
-          const audioAbsSpeed = Math.max(0.0001, Math.abs(audioSpeed));
-          const audioSourceLimit = Math.max(0, Math.round(Number(a.sourceDurationUs ?? 0)));
-          const nextAudioSourceStartUs = Math.max(
-            0,
-            Math.round(a.sourceRange.startUs + sourceStartDeltaUs),
-          );
-          const requestedAudioSourceDurationUs = Math.max(
-            0,
-            Math.round(newTimelineDurationUs * audioAbsSpeed),
-          );
-          const audioSourceDurationUs =
-            audioSourceLimit > 0
-              ? Math.min(
-                  requestedAudioSourceDurationUs,
-                  Math.max(0, audioSourceLimit - nextAudioSourceStartUs),
-                )
-              : requestedAudioSourceDurationUs;
-          return {
-            ...a,
-            timelineRange: {
-              ...a.timelineRange,
-              startUs: Math.max(0, a.timelineRange.startUs + startDeltaUs),
-              durationUs: newTimelineDurationUs,
-            },
-            sourceRange: {
-              ...a.sourceRange,
-              startUs: nextAudioSourceStartUs,
-              durationUs: audioSourceDurationUs,
-            },
-            // Keep audio's own sourceDurationUs and speed — they may come
-            // from a different file (extracted audio) and overriding them
-            // would corrupt the clip.
-          };
-        },
-      );
-    }
 
     return { next: { ...doc, tracks: nextTracksLocal } };
   }

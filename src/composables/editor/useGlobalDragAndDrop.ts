@@ -15,6 +15,7 @@ import {
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
 import { isTauriRuntime } from '~/utils/runtime';
 import { useDraggedFile } from '~/composables/useDraggedFile';
+import { useUploadProgress } from '~/composables/useUploadProgress';
 const log = createDevLogger('useGlobalDragAndDrop');
 
 const isDropInProgress = ref(false);
@@ -34,11 +35,16 @@ export function useGlobalDragAndDrop() {
   );
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
   const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
-  const isUploading = ref(false);
-  const uploadProgress = ref(0);
-  const uploadFileName = ref('');
-  const uploadPhase = ref('');
-  let uploadAbortController: AbortController | null = null;
+  const {
+    isActive: isUploading,
+    progress: uploadProgress,
+    fileName: uploadFileName,
+    phase: uploadPhase,
+    begin: beginUpload,
+    end: endUpload,
+    cancel: cancelUpload,
+    onProgress: onUploadProgress,
+  } = useUploadProgress();
 
   function shouldUseBackgroundTask(files: File[]) {
     const totalBytes = files.reduce((acc, file) => acc + file.size, 0);
@@ -52,37 +58,24 @@ export function useGlobalDragAndDrop() {
     const useBackgroundTask = shouldUseBackgroundTask(files);
 
     isDropInProgress.value = true;
-    uploadAbortController = new AbortController();
-    isUploading.value = !useBackgroundTask;
-    uploadProgress.value = 0;
-    uploadPhase.value = t('videoEditor.fileManager.actions.importing');
-    uploadFileName.value = '';
+    const abortSignal = beginUpload(
+      t('videoEditor.fileManager.actions.importing'),
+      useBackgroundTask,
+    );
+    const fallbackBytes = files.reduce((acc, file) => acc + file.size, 0);
 
     try {
       await fm.handleFiles(files, {
         targetDirPath,
-        abortSignal: uploadAbortController.signal,
+        abortSignal,
         backgroundMode: useBackgroundTask ? 'auto' : 'never',
-        onProgress: (progress) => {
-          const total = progress.totalBytes ?? files.reduce((acc, file) => acc + file.size, 0);
-          uploadProgress.value =
-            total > 0
-              ? (progress.loadedBytes ?? 0) / total
-              : progress.currentFileIndex / progress.totalFiles;
-          uploadFileName.value = progress.fileName;
-        },
+        onProgress: (p) => onUploadProgress(p, fallbackBytes),
       });
       isCurrentDragCancelled.value = false;
     } finally {
       isDropInProgress.value = false;
-      isUploading.value = false;
-      uploadAbortController = null;
+      endUpload();
     }
-  }
-
-  function cancelUpload() {
-    uploadAbortController?.abort();
-    isUploading.value = false;
   }
 
   function onGlobalKeyDown(e: KeyboardEvent) {

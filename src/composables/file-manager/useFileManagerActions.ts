@@ -14,6 +14,7 @@ import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumb
 import { generateUniqueFsEntryName } from '~/utils/fs';
 import { createMarkdownCommand } from '~/file-manager/application/fileManagerCommands';
 import { DOCUMENTS_DIR_NAME } from '~/utils/constants';
+import { isTauriRuntime } from '~/utils/runtime';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectTabsStore } from '~/stores/project-tabs.store';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -391,12 +392,40 @@ export function useFileManagerActions(actions: FileManagerActions) {
         : e.children?.map((c) => c.name) || [];
       await handleCreateAutoFolder(e.path, existingNames);
     },
-    upload: (entry) => {
+    upload: async (entry) => {
       if (isReadOnlyGuard()) return;
       const e = Array.isArray(entry) ? entry[0] : entry;
       if (!e || e.kind !== 'directory') return;
-      directoryUploadTarget.value = e;
-      directoryUploadInput.value?.click();
+
+      if (isTauriRuntime()) {
+        const { open } = await import('@tauri-apps/plugin-dialog');
+        const selected = await open({ multiple: true });
+        if (!selected) return;
+        const paths = Array.isArray(selected) ? selected : [selected];
+
+        const { readFile, stat } = await import('@tauri-apps/plugin-fs');
+        const files: File[] = [];
+        for (const path of paths) {
+          try {
+            const [metadata, bytes] = await Promise.all([stat(path), readFile(path)]);
+            const filename = path.split(/[/\\]/).pop() || 'unknown';
+            files.push(
+              new File([bytes], filename, {
+                lastModified: metadata.mtime ? new Date(metadata.mtime).getTime() : Date.now(),
+              }),
+            );
+          } catch (err) {
+            log.warn('Failed to read file from dialog', path, err);
+          }
+        }
+        if (files.length > 0) {
+          await actions.handleFiles(files, { targetDirPath: e.path });
+          actions.notifyFileManagerUpdate?.();
+        }
+      } else {
+        directoryUploadTarget.value = e;
+        directoryUploadInput.value?.click();
+      }
     },
     rename: (entry) => {
       const e = Array.isArray(entry) ? entry[0] : entry;

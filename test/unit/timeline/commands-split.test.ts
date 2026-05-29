@@ -145,7 +145,7 @@ describe('timeline/commands split_item', () => {
     expect(atEnd.tracks[0]?.items.filter((x) => x.kind === 'clip').length).toBe(1);
   });
 
-  it('splits locked linked audio when splitting the linked video clip', () => {
+  it('drops linkedGroupId on both halves when splitting a grouped clip', () => {
     const doc = makeDoc([
       {
         id: 'v1',
@@ -160,26 +160,7 @@ describe('timeline/commands split_item', () => {
             name: 'Video',
             source: { path: 'a.mp4' },
             sourceDurationUs: 10_000_000,
-            timelineRange: { startUs: 0, durationUs: 1_000_000 },
-            sourceRange: { startUs: 0, durationUs: 1_000_000 },
-          },
-        ],
-      },
-      {
-        id: 'a1',
-        kind: 'audio',
-        name: 'A1',
-        items: [
-          {
-            kind: 'clip',
-            clipType: 'media',
-            id: 'aclip',
-            trackId: 'a1',
-            name: 'Audio',
-            source: { path: 'a.mp4' },
-            sourceDurationUs: 10_000_000,
-            linkedVideoClipId: 'vclip',
-            lockToLinkedVideo: true,
+            linkedGroupId: 'group-1',
             timelineRange: { startUs: 0, durationUs: 1_000_000 },
             sourceRange: { startUs: 0, durationUs: 1_000_000 },
           },
@@ -197,72 +178,10 @@ describe('timeline/commands split_item', () => {
     const videoClips = next.tracks[0]?.items.filter((x) => x.kind === 'clip') as any[];
     expect(videoClips.length).toBe(2);
 
+    const leftVideo = videoClips.find((x) => x.id === 'vclip');
     const rightVideo = videoClips.find((x) => x.id !== 'vclip');
-    expect(rightVideo).toBeTruthy();
 
-    const audioClips = next.tracks[1]?.items.filter((x) => x.kind === 'clip') as any[];
-    expect(audioClips.length).toBe(2);
-
-    const leftAudio = audioClips.find((x) => x.linkedVideoClipId === 'vclip');
-    const rightAudio = audioClips.find((x) => x.linkedVideoClipId === rightVideo.id);
-
-    expect(leftAudio).toBeTruthy();
-    expect(rightAudio).toBeTruthy();
-  });
-
-  it('redirects split of locked audio to the linked video clip', () => {
-    const doc = makeDoc([
-      {
-        id: 'v1',
-        kind: 'video',
-        name: 'V1',
-        items: [
-          {
-            kind: 'clip',
-            clipType: 'media',
-            id: 'vclip',
-            trackId: 'v1',
-            name: 'Video',
-            source: { path: 'a.mp4' },
-            sourceDurationUs: 10_000_000,
-            timelineRange: { startUs: 0, durationUs: 1_000_000 },
-            sourceRange: { startUs: 0, durationUs: 1_000_000 },
-          },
-        ],
-      },
-      {
-        id: 'a1',
-        kind: 'audio',
-        name: 'A1',
-        items: [
-          {
-            kind: 'clip',
-            clipType: 'media',
-            id: 'aclip',
-            trackId: 'a1',
-            name: 'Audio',
-            source: { path: 'a.mp4' },
-            sourceDurationUs: 10_000_000,
-            linkedVideoClipId: 'vclip',
-            lockToLinkedVideo: true,
-            timelineRange: { startUs: 0, durationUs: 1_000_000 },
-            sourceRange: { startUs: 0, durationUs: 1_000_000 },
-          },
-        ],
-      },
-    ]);
-
-    const { next } = applyTimelineCommand(doc, {
-      type: 'split_item',
-      trackId: 'a1',
-      itemId: 'aclip',
-      atUs: 500_000,
-    });
-
-    const videoClips = next.tracks[0]?.items.filter((x) => x.kind === 'clip') as any[];
-    expect(videoClips.length).toBe(2);
-
-    const audioClips = next.tracks[1]?.items.filter((x) => x.kind === 'clip') as any[];
-    expect(audioClips.length).toBe(2);
+    expect(leftVideo.linkedGroupId).toBeUndefined();
+    expect(rightVideo.linkedGroupId).toBeUndefined();
   });
 });
