@@ -1,13 +1,15 @@
 //! Применение списка эффектов к текстуре слоя через wgpu render passes.
+//!
+//! TODO: после того как Compositor будет выдавать наружу wgpu device/queue
+//! (или примет builder-функцию), вернуть сюда параметр устройства.
 
 use super::EffectSpec;
-use crate::compositor::gpu::GpuContext;
 
 pub struct EffectPipeline;
 
 impl EffectPipeline {
     pub fn apply(
-        _gpu: &GpuContext,
+        _device: &wgpu::Device,
         _input: &wgpu::Texture,
         _effects: &[EffectSpec],
     ) -> wgpu::Texture {

@@ -1,50 +1,138 @@
-//! Главный объект композитора. Один на приложение.
+//! Главный объект композитора. Один на приложение (живёт внутри monitor-потока,
+//! т.к. wgpu device, surface, vello renderer хотят жить рядом).
 //!
-//! TODO: реализация в следующем PR. Сейчас — каркас типов и API.
+//! Compositor отвечает за:
+//!   1) владение `vello::RenderContext` и кешем `Renderer` по device-id;
+//!   2) создание оконных surface'ов;
+//!   3) рендер `vello::Scene` в surface — c blit'ом из intermediate Rgba8 в формат свопчейна.
+//!
+//! Доменная сцена (`scene::Scene`) → `vello::Scene` собирается в верхнем коде (см. `build_vello_scene`).
+//! Здесь — низкоуровневая обвязка над vello, чтобы её можно было переиспользовать в offscreen-режиме.
 
-use anyhow::Result;
+use std::collections::HashMap;
+use std::num::NonZeroUsize;
+use std::sync::Arc;
 
-use super::gpu::GpuContext;
-use super::scene::Scene;
+use anyhow::{anyhow, Context, Result};
+use vello::peniko::Color;
+use vello::util::{RenderContext, RenderSurface};
+use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene as VelloScene};
+use winit::window::Window;
 
 pub struct Compositor {
-    pub gpu: GpuContext,
-    // vello renderer создаётся лениво при первом рендере в target определённого формата
-    // (нужен Renderer per surface format).
-    renderer: Option<vello::Renderer>,
+    render_cx: RenderContext,
+    renderers: HashMap<usize, Renderer>,
 }
 
 impl Compositor {
-    pub async fn new() -> Result<Self> {
-        let gpu = GpuContext::new().await?;
-        Ok(Self { gpu, renderer: None })
+    pub fn new() -> Self {
+        Self { render_cx: RenderContext::new(), renderers: HashMap::new() }
     }
 
-    /// Рендер сцены в offscreen RGBA8 текстуру (для экспорта/превью кадра в файл).
-    /// Возвращает буфер пикселей.
-    pub fn render_to_buffer(&mut self, _scene: &Scene, _width: u32, _height: u32) -> Result<Vec<u8>> {
-        // TODO: 1) собрать vello Scene из доменной Scene (layers -> vello primitives + images)
-        //       2) применить per-layer wgpu post-process passes (effects)
-        //       3) скомпозить через vello
-        //       4) применить transition pass между двумя сценами если нужно
-        //       5) copy texture -> buffer
-        anyhow::bail!("not implemented")
+    pub async fn create_window_surface(
+        &mut self,
+        window: Arc<Window>,
+        width: u32,
+        height: u32,
+    ) -> Result<RenderSurface<'static>> {
+        let surface = self
+            .render_cx
+            .create_surface(window, width.max(1), height.max(1), wgpu::PresentMode::AutoVsync)
+            .await
+            .map_err(|e| anyhow!("vello create_surface failed: {e:?}"))?;
+        self.ensure_renderer(surface.dev_id)?;
+        Ok(surface)
     }
 
-    /// Рендер в presentation surface (окно/canvas) — для live monitor.
+    pub fn resize_surface(&mut self, surface: &mut RenderSurface<'static>, width: u32, height: u32) {
+        self.render_cx.resize_surface(surface, width.max(1), height.max(1));
+    }
+
+    /// Рендерит готовую `vello::Scene` в окно. Внутри: render_to_texture → blit на свопчейн.
     pub fn render_to_surface(
         &mut self,
-        _scene: &Scene,
-        _surface_target: &mut SurfaceTarget,
+        surface: &mut RenderSurface<'static>,
+        scene: &VelloScene,
+        base_color: Color,
     ) -> Result<()> {
-        anyhow::bail!("not implemented")
+        let width = surface.config.width;
+        let height = surface.config.height;
+        let device_handle = &self.render_cx.devices[surface.dev_id];
+
+        let surface_texture = match surface.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => {
+                t
+            }
+            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                self.render_cx.resize_surface(surface, width, height);
+                return Ok(());
+            }
+            other => {
+                log::warn!("[compositor] surface acquire: {other:?}");
+                return Ok(());
+            }
+        };
+
+        let renderer = self
+            .renderers
+            .get_mut(&surface.dev_id)
+            .ok_or_else(|| anyhow!("no renderer for device {}", surface.dev_id))?;
+
+        renderer
+            .render_to_texture(
+                &device_handle.device,
+                &device_handle.queue,
+                scene,
+                &surface.target_view,
+                &RenderParams {
+                    base_color,
+                    width,
+                    height,
+                    antialiasing_method: AaConfig::Area,
+                },
+            )
+            .map_err(|e| anyhow!("vello render: {e:?}"))?;
+
+        let mut encoder = device_handle
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("compositor-blit"),
+            });
+        let surface_view = surface_texture
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        surface
+            .blitter
+            .copy(&device_handle.device, &mut encoder, &surface.target_view, &surface_view);
+        device_handle.queue.submit([encoder.finish()]);
+        surface_texture.present();
+
+        Ok(())
+    }
+
+    fn ensure_renderer(&mut self, dev_id: usize) -> Result<()> {
+        if self.renderers.contains_key(&dev_id) {
+            return Ok(());
+        }
+        let device_handle = &self.render_cx.devices[dev_id];
+        let renderer = Renderer::new(
+            &device_handle.device,
+            RendererOptions {
+                use_cpu: false,
+                antialiasing_support: AaSupport::area_only(),
+                num_init_threads: NonZeroUsize::new(1),
+                pipeline_cache: None,
+            },
+        )
+        .map_err(|e| anyhow!("vello renderer: {e:?}"))
+        .context("Compositor::ensure_renderer")?;
+        self.renderers.insert(dev_id, renderer);
+        Ok(())
     }
 }
 
-/// Абстракция над целью рендера, чтобы можно было рендерить в окно Tauri или в offscreen.
-pub struct SurfaceTarget {
-    pub width: u32,
-    pub height: u32,
-    pub format: wgpu::TextureFormat,
-    // pub surface: wgpu::Surface<'static>,  // заполнится при подключении окна
+impl Default for Compositor {
+    fn default() -> Self {
+        Self::new()
+    }
 }

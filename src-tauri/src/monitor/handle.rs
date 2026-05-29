@@ -5,6 +5,7 @@ use std::sync::mpsc;
 use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Result};
+use tauri::AppHandle;
 use winit::event_loop::EventLoopProxy;
 
 use super::app::run_event_loop;
@@ -16,6 +17,9 @@ pub enum MonitorCommand {
     Pause,
     Seek(f64),
     Close,
+    /// Пинг для is_alive(): event-loop игнорирует, но send_event() вернёт Err
+    /// если loop уже закрыт. Дёшево и достаточно.
+    Ping,
 }
 
 pub struct MonitorHandle {
@@ -24,12 +28,12 @@ pub struct MonitorHandle {
 }
 
 impl MonitorHandle {
-    pub fn spawn() -> Result<Self> {
+    pub fn spawn(app: AppHandle) -> Result<Self> {
         let (tx, rx) = mpsc::channel::<Result<EventLoopProxy<MonitorCommand>, String>>();
         let thread = std::thread::Builder::new()
             .name("fastcat-monitor".into())
             .spawn(move || {
-                run_event_loop(tx);
+                run_event_loop(app, tx);
             })?;
         let proxy = rx
             .recv()
@@ -45,5 +49,9 @@ impl MonitorHandle {
         self.proxy
             .send_event(cmd)
             .map_err(|_| anyhow!("monitor event loop is gone"))
+    }
+
+    pub fn is_alive(&self) -> bool {
+        self.proxy.send_event(MonitorCommand::Ping).is_ok()
     }
 }

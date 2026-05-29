@@ -65,6 +65,8 @@ export class AudioScheduler {
 
     const ctx = this.getContext();
     if (!ctx) {
+      // Без AudioContext (например в Tauri-сборке аудио отключено) — играем wall-clock'ом.
+      this.playbackContextTimeS = this.wallClockS() + this.kickoffLatencyS;
       return;
     }
 
@@ -79,6 +81,10 @@ export class AudioScheduler {
     if (this.globalSpeed > 0) {
       this.startLookahead();
     }
+  }
+
+  private wallClockS(): number {
+    return performance.now() / 1000;
   }
 
   stop() {
@@ -103,6 +109,9 @@ export class AudioScheduler {
 
     const ctx = this.getContext();
     if (!ctx) {
+      // Без аудио (Tauri) — поддерживаем только обновление wall-clock базы.
+      this.baseTimeS = currentTimeS;
+      this.playbackContextTimeS = this.wallClockS() + this.kickoffLatencyS;
       return;
     }
 
@@ -134,6 +143,8 @@ export class AudioScheduler {
 
     const ctx = this.getContext();
     if (!ctx) {
+      // Wall-clock реанкоринг.
+      this.playbackContextTimeS = this.wallClockS() + this.kickoffLatencyS;
       return;
     }
 
@@ -158,14 +169,15 @@ export class AudioScheduler {
   }
 
   getCurrentTimeS(): number {
-    const ctx = this.getContext();
-    if (!this.isPlaying || !ctx) {
+    if (!this.isPlaying) {
       return this.baseTimeS;
     }
+    const ctx = this.getContext();
+    const nowS = ctx ? ctx.currentTime : this.wallClockS();
 
     // Clamp at 0 — before kickoff the timeline is held at baseTimeS so the
     // monitor renders the requested frame instead of jumping backwards.
-    const elapsed = Math.max(0, ctx.currentTime - this.playbackContextTimeS);
+    const elapsed = Math.max(0, nowS - this.playbackContextTimeS);
     return this.baseTimeS + elapsed * this.globalSpeed;
   }
 

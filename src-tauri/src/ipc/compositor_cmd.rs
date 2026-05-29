@@ -1,27 +1,21 @@
-//! Команды композитора, вызываемые с фронта через invoke().
+//! Команды композитора. Сейчас offscreen-рендер не реализован — Compositor живёт
+//! в monitor-потоке (wgpu device/surface/vello renderer привязаны к нему).
+//! Для frontend нужен отдельный путь (запрос кадра → ответ через канал), добавим позже.
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
 
 use crate::compositor::scene::Scene;
-use crate::engine::VideoEngine;
 
 #[derive(Debug, Serialize)]
 pub struct RenderFrameResult {
     pub width: u32,
     pub height: u32,
-    /// Сейчас — base64 PNG/JPEG для простого тоста монитора (медленно, заменим).
-    /// План: переход на shared memory / SharedArrayBuffer или прямой surface (см. doc).
     pub png_base64: Option<String>,
 }
 
 #[tauri::command]
-pub async fn compositor_render_frame(
-    _scene: Scene,
-    _engine: State<'_, VideoEngine>,
-) -> Result<RenderFrameResult, String> {
-    // TODO: engine.compositor.lock().render_to_buffer(&scene, w, h)
-    Err("not implemented".into())
+pub async fn compositor_render_frame(_scene: Scene) -> Result<RenderFrameResult, String> {
+    Err("offscreen compositor render not implemented yet (Compositor lives in monitor thread)".into())
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,9 +35,6 @@ pub struct OpenMediaResult {
 }
 
 #[tauri::command]
-pub async fn media_open(
-    _params: OpenMediaParams,
-    _engine: State<'_, VideoEngine>,
-) -> Result<OpenMediaResult, String> {
-    Err("not implemented".into())
+pub async fn media_open(_params: OpenMediaParams) -> Result<OpenMediaResult, String> {
+    Err("media_open not implemented".into())
 }

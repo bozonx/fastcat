@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import { computed, watch } from 'vue';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { computed, onScopeDispose, watch } from 'vue';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import {
@@ -13,16 +14,17 @@ import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('useNativeMonitorBridge');
 
 /**
- * Привязка состояния таймлайна к нативному монитору (winit-окно + Vello-композитор в Rust).
+ * Привязка состояния таймлайна к нативному монитору (winit + Vello + ffmpeg в Rust).
  *
- * Минимальный baseline:
- *   - при playhead над media-клипом — открываем его исходник в нативном окне (lazy spawn);
- *   - `isPlaying` → `monitor_play` / `monitor_pause`;
- *   - на ручной seek (пауза) — мирорим playhead в clip-локальное время через `monitor_seek`.
+ * Baseline (single-clip):
+ *   - playhead над media-клипом → открываем исходник в нативном окне (lazy spawn);
+ *   - playhead вышел из любого клипа → пауза;
+ *   - isPlaying → monitor_play / monitor_pause;
+ *   - ручной seek (пауза) → monitor_seek в clip-local;
+ *   - натив эмитит "monitor:time" → апдейтим timelineStore.currentTime (master clock — натив).
  *
- * Адресовка времени: clip-local = clip.sourceRange.startUs + (playhead - clip.timelineRange.startUs).
- * Скорость воспроизведения, эффекты и многотрековая композиция пока ИГНОРИРУЮТСЯ — это
- * однопоточный baseline-плеер: один трек, один файл.
+ * Адресовка: clip-local_us = clip.sourceRange.startUs + (playhead_us − clip.timelineRange.startUs).
+ * Скорость, эффекты, multi-track — пока игнорим.
  */
 export function useNativeMonitorBridge(): void {
   if (!isTauriRuntime()) return;
@@ -33,7 +35,6 @@ export function useNativeMonitorBridge(): void {
     const doc = timelineStore.timelineDoc;
     if (!doc?.tracks?.length) return null;
     const t = timelineStore.currentTime;
-    // Идём по трекам сверху вниз (последний в массиве — верхний слой).
     for (let i = doc.tracks.length - 1; i >= 0; i--) {
       const track = doc.tracks[i];
       if (!track?.items) continue;
@@ -53,11 +54,26 @@ export function useNativeMonitorBridge(): void {
     return Math.max(0, local) / 1_000_000;
   }
 
-  // Открываем новый клип в нативном окне при смене источника.
+  let lastOpenedPath: string | null = null;
+  // Когда натив сам тикает время и шлёт нам обновления, watch на currentTime
+  // не должен реагировать форвардом обратно в monitor_seek.
+  let suppressSeekFromTimeUpdate = false;
+
+  // Открытие при смене источника + дедуп по path.
   watch(
     () => activeMediaClip.value?.source?.path ?? null,
     async (path) => {
-      if (!path) return;
+      if (!path) {
+        // Вышли из клипа — пауза, чтобы натив не доигрывал хвост.
+        try {
+          await invoke('monitor_pause');
+        } catch (err) {
+          log.warn('monitor_pause on clip exit failed', err);
+        }
+        return;
+      }
+      if (path === lastOpenedPath) return;
+      lastOpenedPath = path;
       try {
         await invoke('monitor_open', { path });
         const clip = activeMediaClip.value;
@@ -78,7 +94,16 @@ export function useNativeMonitorBridge(): void {
   watch(
     () => timelineStore.isPlaying,
     async (playing) => {
-      if (!activeMediaClip.value) return;
+      if (!activeMediaClip.value) {
+        if (!playing) {
+          try {
+            await invoke('monitor_pause');
+          } catch (err) {
+            log.warn('monitor pause failed', err);
+          }
+        }
+        return;
+      }
       try {
         await invoke(playing ? 'monitor_play' : 'monitor_pause');
       } catch (err) {
@@ -87,12 +112,13 @@ export function useNativeMonitorBridge(): void {
     },
   );
 
-  // Seek: пробрасываем только когда таймлайн НЕ играет — во время play
-  // натив сам тикает кадры, и постоянный seek приведёт к рестарту pipeline.
+  // Ручной seek — только когда таймлайн НЕ играет (во время play натив сам тикает кадры
+  // и postback из "monitor:time" не должен снова дёргать monitor_seek).
   watch(
     () => timelineStore.currentTime,
     async (t) => {
       if (timelineStore.isPlaying) return;
+      if (suppressSeekFromTimeUpdate) return;
       const clip = activeMediaClip.value;
       if (!clip) return;
       try {
@@ -102,4 +128,39 @@ export function useNativeMonitorBridge(): void {
       }
     },
   );
+
+  // Master clock: натив каждые ~кадр шлёт текущий clip-local PTS.
+  // Конвертим обратно в timeline-time и обновляем стор без обратного seek'а.
+  const unsubs: UnlistenFn[] = [];
+  void listen<number>('monitor:time', (event) => {
+    const clip = activeMediaClip.value;
+    if (!clip) return;
+    const clipLocalUs = Math.round(event.payload * 1_000_000);
+    const timelineUs =
+      clip.timelineRange.startUs + (clipLocalUs - clip.sourceRange.startUs);
+    const clampedEnd = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+    const next = Math.min(clampedEnd, Math.max(clip.timelineRange.startUs, timelineUs));
+    if (Math.abs(next - timelineStore.currentTime) < 500) return; // < 0.5ms — шум
+    suppressSeekFromTimeUpdate = true;
+    timelineStore.currentTime = next;
+    queueMicrotask(() => {
+      suppressSeekFromTimeUpdate = false;
+    });
+    // Достигли конца клипа — паузим (натив тоже может прислать ended, но дублировать ок).
+    if (next >= clampedEnd - 1 && timelineStore.isPlaying) {
+      timelineStore.isPlaying = false;
+    }
+  })
+    .then((un) => unsubs.push(un))
+    .catch((err) => log.warn('listen monitor:time failed', err));
+
+  void listen('monitor:ended', () => {
+    if (timelineStore.isPlaying) timelineStore.isPlaying = false;
+  })
+    .then((un) => unsubs.push(un))
+    .catch((err) => log.warn('listen monitor:ended failed', err));
+
+  onScopeDispose(() => {
+    for (const un of unsubs) un();
+  });
 }

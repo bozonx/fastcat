@@ -1310,6 +1310,7 @@
         "crossVfsFailedTitle": "Failed to move files between file systems",
         "dragDropFailedTitle": "Drag and drop failed",
         "loadFolderFailed": "Failed to load folder content: {message}",
+        "readOnlyAction": "Action unavailable in read-only mode",
         "remoteFailed": "Remote file operation failed",
         "uploadFailedTitle": "Upload failed"
       },

@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { isTauriRuntime } from '~/utils/runtime';
 
 import { getGainAtClipTime } from '~/utils/audio/envelope';
 import { AudioChunkDecoder } from '~/utils/video-editor/AudioChunkDecoder';
@@ -29,6 +30,11 @@ export interface AudioEngineOptions {
 }
 
 export class AudioEngine {
+  // В Tauri-сборке аудио намеренно отключено: WebAudio не инициализируется,
+  // декод/scheduling нод не происходит. Scheduler в этом режиме работает на
+  // wall-clock'е (см. AudioScheduler.getCurrentTimeS), поэтому master-clock
+  // веб-превью продолжает тикать без звука. Натив отдельно владеет своим клоком.
+  private readonly audioOutputDisabled = isTauriRuntime();
   private ctx: AudioContext | null = null;
   // How far ahead (in AudioContext seconds) the streaming loop is allowed to
   // pre-schedule source nodes for a given clip. Bigger = more decoder slack
@@ -100,6 +106,7 @@ export class AudioEngine {
   }
 
   async init(options?: { sampleRate?: number; audioChannels?: 'stereo' | 'mono' }) {
+    if (this.audioOutputDisabled) return;
     const sampleRate = options?.sampleRate || 48000;
     const channelCount = options?.audioChannels === 'mono' ? 1 : 2;
 
@@ -147,6 +154,7 @@ export class AudioEngine {
   }
 
   async resumeContext() {
+    if (this.audioOutputDisabled) return;
     if (this.ctx && this.ctx.state === 'suspended') {
       await this.ctx.resume().catch((err) => {
         logger.warn('resumeContext: Failed to resume', err);
@@ -155,6 +163,11 @@ export class AudioEngine {
   }
 
   async loadClips(clips: AudioEngineClip[]) {
+    if (this.audioOutputDisabled) {
+      // Запоминаем layout (нужен для расчётов вне аудио), но не декодим/не строим граф.
+      this.currentClips = clips;
+      return;
+    }
     this.layoutGeneration += 1;
     const generation = this.layoutGeneration;
     logger.info(
@@ -176,6 +189,10 @@ export class AudioEngine {
   }
 
   updateTimelineLayout(clips: AudioEngineClip[]) {
+    if (this.audioOutputDisabled) {
+      this.currentClips = clips;
+      return;
+    }
     this.layoutGeneration += 1;
     const generation = this.layoutGeneration;
     this.currentClips = clips;

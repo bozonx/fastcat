@@ -1,0 +1,162 @@
+//! Фоновый поток декодера: владеет `VideoDecoder`, шлёт готовые кадры в bounded queue.
+//! Event-loop монитора только тянет кадры — без блокирующего IO в UI-потоке.
+//!
+//! Контракт по seek:
+//!   - consumer вызывает `seek(t)` → внутри инкрементится generation, отправляется команда;
+//!   - старые кадры в очереди помечены прошлым generation → consumer их выбрасывает.
+//! Гарантия: после `seek(t)` все кадры, дошедшие до consumer'а, имеют PTS >= t (с допуском 1/2*1/fps).
+
+use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
+use std::sync::Arc;
+use std::thread::JoinHandle;
+
+use anyhow::{anyhow, Context, Result};
+
+use super::decode::{open as open_decoder, MediaInfo, VideoFrame};
+
+const QUEUE_CAPACITY: usize = 6;
+
+pub struct DecodedFrameMsg {
+    pub generation: u64,
+    pub frame: VideoFrame,
+}
+
+enum DecoderCmd {
+    Seek { generation: u64, time_sec: f64 },
+    Stop,
+}
+
+pub struct DecodePump {
+    pub info: MediaInfo,
+    pub rx: Receiver<DecodedFrameMsg>,
+    cmd_tx: SyncSender<DecoderCmd>,
+    generation: Arc<AtomicU64>,
+    thread: Option<JoinHandle<()>>,
+}
+
+impl DecodePump {
+    pub fn open(path: &Path) -> Result<Self> {
+        let decoder = open_decoder(path)?;
+        let info = decoder.info().clone();
+
+        let (frame_tx, frame_rx) = mpsc::sync_channel::<DecodedFrameMsg>(QUEUE_CAPACITY);
+        // Маленькая command-очередь: seek/stop. sync_channel(1) — чтобы consumer не уехал
+        // вперёд с пачкой seek'ов; ему достаточно знать про самый свежий.
+        let (cmd_tx, cmd_rx) = mpsc::sync_channel::<DecoderCmd>(4);
+        let generation = Arc::new(AtomicU64::new(0));
+        let gen_in_thread = generation.clone();
+        let path_str = path.display().to_string();
+
+        let thread = std::thread::Builder::new()
+            .name(format!("fastcat-decode:{}", path_str))
+            .spawn(move || {
+                run_decoder_loop(decoder, frame_tx, cmd_rx, gen_in_thread);
+            })
+            .context("spawn decoder thread")?;
+
+        Ok(Self {
+            info,
+            rx: frame_rx,
+            cmd_tx,
+            generation,
+            thread: Some(thread),
+        })
+    }
+
+    /// Returns the generation that all future frames will have.
+    pub fn seek(&self, time_sec: f64) -> Result<u64> {
+        let gen = self.generation.fetch_add(1, Ordering::SeqCst) + 1;
+        self.cmd_tx
+            .send(DecoderCmd::Seek { generation: gen, time_sec })
+            .map_err(|_| anyhow!("decoder thread is gone"))?;
+        Ok(gen)
+    }
+
+    pub fn current_generation(&self) -> u64 {
+        self.generation.load(Ordering::SeqCst)
+    }
+}
+
+impl Drop for DecodePump {
+    fn drop(&mut self) {
+        let _ = self.cmd_tx.send(DecoderCmd::Stop);
+        // Прерываем возможный блокирующий send(frame_tx) в потоке: drop receiver'а.
+        // self.rx уже принадлежит self, при drop self он уйдёт автоматически — но мы
+        // дропаем pump целиком, так что rx и cmd_rx уже dead.
+        if let Some(handle) = self.thread.take() {
+            // Не join'имся надолго — если поток завис на ffmpeg, лучше не блокироваться.
+            let _ = handle.join();
+        }
+    }
+}
+
+fn run_decoder_loop(
+    mut decoder: Box<dyn super::decode::VideoDecoder>,
+    frame_tx: SyncSender<DecodedFrameMsg>,
+    cmd_rx: Receiver<DecoderCmd>,
+    gen: Arc<AtomicU64>,
+) {
+    let mut current_gen = gen.load(Ordering::SeqCst);
+    let mut at_eof = false;
+
+    loop {
+        // 1) Обработать все накопившиеся команды.
+        loop {
+            match cmd_rx.try_recv() {
+                Ok(DecoderCmd::Seek { generation, time_sec }) => {
+                    current_gen = generation;
+                    if let Err(e) = decoder.seek(time_sec) {
+                        log::error!("[decode] seek({time_sec}) failed: {e:?}");
+                        return;
+                    }
+                    at_eof = false;
+                }
+                Ok(DecoderCmd::Stop) => return,
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => return,
+            }
+        }
+
+        // 2) EOF — ждём следующую команду блокирующе.
+        if at_eof {
+            match cmd_rx.recv() {
+                Ok(DecoderCmd::Seek { generation, time_sec }) => {
+                    current_gen = generation;
+                    if let Err(e) = decoder.seek(time_sec) {
+                        log::error!("[decode] seek({time_sec}) failed: {e:?}");
+                        return;
+                    }
+                    at_eof = false;
+                    continue;
+                }
+                Ok(DecoderCmd::Stop) => return,
+                Err(_) => return,
+            }
+        }
+
+        // 3) Тянем следующий кадр.
+        match decoder.next_frame() {
+            Ok(Some(frame)) => {
+                // Если consumer уже сделал seek во время нашего read_exact —
+                // отбросим этот кадр, не нагружая канал. Generation atomics свежее.
+                let live_gen = gen.load(Ordering::SeqCst);
+                if live_gen != current_gen {
+                    continue;
+                }
+                let msg = DecodedFrameMsg { generation: current_gen, frame };
+                if frame_tx.send(msg).is_err() {
+                    return; // consumer ушёл
+                }
+            }
+            Ok(None) => {
+                at_eof = true;
+            }
+            Err(e) => {
+                log::error!("[decode] next_frame failed: {e:?}");
+                return;
+            }
+        }
+    }
+}

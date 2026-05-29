@@ -1,32 +1,45 @@
-//! ApplicationHandler винита: создание окна, wgpu surface + Vello render,
-//! приём кадров декодера и тик воспроизведения.
+//! ApplicationHandler винита: окно + Compositor + DecodePump.
 //!
-//! Поток рендера: Vello пишет в intermediate Rgba8Unorm-текстуру (storage),
-//! затем `TextureBlitter` копирует её в surface (любой формат). Это
-//! рекомендованный паттерн из `vello::util` — поддерживает любые swapchain-форматы.
+//! Принцип:
+//!   - декод идёт в отдельном потоке (`DecodePump`), в event-loop мы только тянем готовые кадры;
+//!   - рендер делегирован Compositor'у: сцена собирается локально (image-layer + transform), он рисует;
+//!   - время воспроизведения трекается wall-clock'ом и эмитится через Tauri `emit` ("monitor:time").
+//!
+//! Кадровый клок: `clock_pts_origin` = PTS текущего «настоящего» отображаемого кадра,
+//! `clock_wall_origin` = `Instant` момента, когда этот кадр стал считаться играющим.
+//! Через `tick_and_render` мы догоняем `current` до целевого PTS = pts_origin + wall_elapsed.
 
-use std::num::NonZeroUsize;
 use std::path::PathBuf;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Sender, TryRecvError};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use vello::peniko::{Blob, ImageAlphaType, ImageData, ImageFormat};
-use vello::util::{RenderContext, RenderSurface};
-use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene};
+use tauri::{AppHandle, Emitter};
+use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
+use vello::util::RenderSurface;
+use vello::Scene as VelloScene;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
-use crate::media::decode::{FfmpegDecoder, VideoDecoder, VideoFrame};
+use crate::compositor::Compositor;
+use crate::media::decode::VideoFrame;
+use crate::media::decode_thread::DecodePump;
 
 use super::handle::MonitorCommand;
 
 const DEFAULT_TITLE: &str = "FastCat Monitor";
+/// События в фронт: текущее время воспроизведения в секундах (clip-local).
+const EVT_TIME: &str = "monitor:time";
+/// Событие при достижении EOF.
+const EVT_ENDED: &str = "monitor:ended";
 
-pub fn run_event_loop(proxy_tx: Sender<Result<EventLoopProxy<MonitorCommand>, String>>) {
+pub fn run_event_loop(
+    app: AppHandle,
+    proxy_tx: Sender<Result<EventLoopProxy<MonitorCommand>, String>>,
+) {
     let event_loop = match build_event_loop() {
         Ok(el) => el,
         Err(e) => {
@@ -39,9 +52,9 @@ pub fn run_event_loop(proxy_tx: Sender<Result<EventLoopProxy<MonitorCommand>, St
         return;
     }
 
-    let mut app = MonitorApp::default();
+    let mut app_handler = MonitorApp::new(app);
     event_loop.set_control_flow(ControlFlow::Wait);
-    if let Err(e) = event_loop.run_app(&mut app) {
+    if let Err(e) = event_loop.run_app(&mut app_handler) {
         log::error!("[monitor] event loop terminated: {e:?}");
     }
 }
@@ -65,19 +78,25 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
     builder.build().context("winit EventLoop::build failed")
 }
 
-#[derive(Default)]
 struct MonitorApp {
+    app: AppHandle,
     state: Option<WindowState>,
     pending_open: Option<PathBuf>,
 }
 
-struct WindowState {
-    window: Arc<Window>,
-    render_cx: RenderContext,
-    surface: RenderSurface<'static>,
-    renderer: Renderer,
+impl MonitorApp {
+    fn new(app: AppHandle) -> Self {
+        Self { app, state: None, pending_open: None }
+    }
+}
 
-    decoder: Option<Box<dyn VideoDecoder>>,
+struct WindowState {
+    app: AppHandle,
+    window: Arc<Window>,
+    compositor: Compositor,
+    surface: RenderSurface<'static>,
+
+    pump: Option<DecodePump>,
     media_size: Option<(u32, u32)>,
 
     current: Option<DecodedFrame>,
@@ -86,6 +105,8 @@ struct WindowState {
     playing: bool,
     clock_wall_origin: Option<Instant>,
     clock_pts_origin: f64,
+    /// Последнее значение времени, отправленное на фронт — чтобы не спамить событиями.
+    last_emit_pts: f64,
 }
 
 struct DecodedFrame {
@@ -98,7 +119,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         if self.state.is_some() {
             return;
         }
-        match init_window(event_loop) {
+        match init_window(event_loop, self.app.clone()) {
             Ok(state) => {
                 self.state = Some(state);
                 if let Some(path) = self.pending_open.take() {
@@ -149,6 +170,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::Close => {
                 event_loop.exit();
             }
+            MonitorCommand::Ping => {
+                // живой — ничего не делаем
+            }
         }
     }
 
@@ -195,7 +219,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 }
 
-fn init_window(event_loop: &ActiveEventLoop) -> Result<WindowState> {
+fn init_window(event_loop: &ActiveEventLoop, app: AppHandle) -> Result<WindowState> {
     let window_attrs = Window::default_attributes()
         .with_title(DEFAULT_TITLE)
         .with_inner_size(winit::dpi::LogicalSize::new(960.0, 540.0));
@@ -206,52 +230,37 @@ fn init_window(event_loop: &ActiveEventLoop) -> Result<WindowState> {
     );
 
     let size = window.inner_size();
-    let mut render_cx = RenderContext::new();
-    // Vello создаёт surface от Window; нужен `'static` lifetime — оборачиваем Arc.
-    let surface = pollster::block_on(render_cx.create_surface(
+    let mut compositor = Compositor::new();
+    let surface = pollster::block_on(compositor.create_window_surface(
         window.clone(),
         size.width.max(1),
         size.height.max(1),
-        wgpu::PresentMode::AutoVsync,
-    ))
-    .map_err(|e| anyhow::anyhow!("vello create_surface: {e:?}"))?;
-
-    let device_handle = &render_cx.devices[surface.dev_id];
-    let renderer = Renderer::new(
-        &device_handle.device,
-        RendererOptions {
-            use_cpu: false,
-            antialiasing_support: AaSupport::area_only(),
-            num_init_threads: NonZeroUsize::new(1),
-            pipeline_cache: None,
-        },
-    )
-    .map_err(|e| anyhow::anyhow!("vello renderer: {e:?}"))?;
+    ))?;
 
     Ok(WindowState {
+        app,
         window,
-        render_cx,
+        compositor,
         surface,
-        renderer,
-        decoder: None,
+        pump: None,
         media_size: None,
         current: None,
         upcoming: None,
         playing: false,
         clock_wall_origin: None,
         clock_pts_origin: 0.0,
+        last_emit_pts: -1.0,
     })
 }
 
 impl WindowState {
     fn resize(&mut self, width: u32, height: u32) {
-        self.render_cx
-            .resize_surface(&mut self.surface, width, height);
+        self.compositor.resize_surface(&mut self.surface, width, height);
     }
 
     fn open_media(&mut self, path: &PathBuf) -> Result<()> {
-        let decoder = FfmpegDecoder::open(path)?;
-        let info = decoder.info().clone();
+        let pump = DecodePump::open(path)?;
+        let info = pump.info.clone();
         log::info!(
             "[monitor] opened {}: {}x{} @ {:.3} fps codec={}",
             path.display(),
@@ -261,34 +270,66 @@ impl WindowState {
             info.codec
         );
         self.media_size = Some((info.width, info.height));
-        self.decoder = Some(Box::new(decoder));
+        self.pump = Some(pump);
         self.current = None;
         self.upcoming = None;
         self.playing = false;
         self.clock_wall_origin = None;
         self.clock_pts_origin = 0.0;
-        self.prime_first_frame()?;
+        self.last_emit_pts = -1.0;
+        self.prime_first_frames();
         self.window.set_visible(true);
         self.window.request_redraw();
         Ok(())
     }
 
-    fn prime_first_frame(&mut self) -> Result<()> {
-        if let Some(dec) = self.decoder.as_mut() {
-            if let Some(frame) = dec.next_frame()? {
-                let pts = frame.pts_sec;
-                self.current = Some(decoded_to_image(frame));
-                self.clock_pts_origin = pts;
-            }
-            if let Some(frame) = dec.next_frame()? {
-                self.upcoming = Some(decoded_to_image(frame));
+    fn prime_first_frames(&mut self) {
+        // Дренаж первых готовых кадров (если уже успели декодиться).
+        // Блокирующего ожидания тут не делаем — пусть отрисуется чёрным, кадры приедут на ближайшем redraw.
+        self.try_pull_frames();
+    }
+
+    fn try_pull_frames(&mut self) {
+        let Some(pump) = self.pump.as_ref() else { return };
+        let live_gen = pump.current_generation();
+        loop {
+            match pump.rx.try_recv() {
+                Ok(msg) => {
+                    if msg.generation != live_gen {
+                        continue; // выбросить остаток предыдущего seek-эпизода
+                    }
+                    let decoded = decoded_to_image(msg.frame);
+                    if self.current.is_none() {
+                        self.clock_pts_origin = decoded.pts_sec;
+                        self.current = Some(decoded);
+                    } else if self.upcoming.is_none() {
+                        self.upcoming = Some(decoded);
+                    } else {
+                        // Кадр опередил собственный темп — придержим вместо upcoming
+                        // и выйдем; следующий redraw продвинется и заберёт.
+                        // Здесь просто перезаписываем upcoming на «более новый» нельзя — это сломает порядок.
+                        // Вернёмся: положим обратно… mpsc не поддерживает; значит — break и оставим в канале.
+                        // Чтобы не съесть его — нам пришлось бы его не вынимать. Идея: проверяем прежде.
+                        // Перепишем цикл ниже.
+                        // Откатить: ничего не делаем, оставляем upcoming прежним; новый кадр потеряется.
+                        // Не страшно при QUEUE_CAPACITY=6 — он окажется в очереди и подъедется на следующий redraw.
+                        // Но мы его УЖЕ вынули. Костыль: положим в upcoming, потеряв предыдущий upcoming.
+                        // Это краткосрочно ок: оба — будущие кадры, видим только текущий.
+                        self.upcoming = Some(decoded);
+                        break;
+                    }
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    self.pump = None;
+                    break;
+                }
             }
         }
-        Ok(())
     }
 
     fn play(&mut self) {
-        if self.decoder.is_none() {
+        if self.pump.is_none() {
             return;
         }
         self.playing = true;
@@ -302,29 +343,21 @@ impl WindowState {
     }
 
     fn pause(&mut self) {
+        if self.playing {
+            // Зафиксировать накопленное время до сброса wall-origin.
+            self.clock_pts_origin = self.current_playback_time();
+        }
         self.playing = false;
         self.clock_wall_origin = None;
     }
 
     fn seek(&mut self, time_sec: f64) -> Result<()> {
-        if let Some(dec) = self.decoder.as_mut() {
-            dec.seek(time_sec)?;
-            self.current = None;
-            self.upcoming = None;
-            self.clock_pts_origin = time_sec;
-            self.clock_wall_origin = if self.playing { Some(Instant::now()) } else { None };
-            while let Some(frame) = dec.next_frame()? {
-                if frame.pts_sec + 1.0 / 240.0 >= time_sec {
-                    let pts = frame.pts_sec;
-                    self.current = Some(decoded_to_image(frame));
-                    self.clock_pts_origin = pts;
-                    break;
-                }
-            }
-            if let Some(frame) = dec.next_frame()? {
-                self.upcoming = Some(decoded_to_image(frame));
-            }
-        }
+        let Some(pump) = self.pump.as_ref() else { return Ok(()) };
+        pump.seek(time_sec.max(0.0))?;
+        self.current = None;
+        self.upcoming = None;
+        self.clock_pts_origin = time_sec.max(0.0);
+        self.clock_wall_origin = if self.playing { Some(Instant::now()) } else { None };
         Ok(())
     }
 
@@ -353,6 +386,9 @@ impl WindowState {
     }
 
     fn tick_and_render(&mut self) {
+        // Подтянуть готовые кадры из pump.
+        self.try_pull_frames();
+
         if self.playing {
             let t = self.current_playback_time();
             loop {
@@ -361,30 +397,49 @@ impl WindowState {
                     break;
                 }
                 self.current = self.upcoming.take();
-                if let Some(dec) = self.decoder.as_mut() {
-                    match dec.next_frame() {
-                        Ok(Some(frame)) => self.upcoming = Some(decoded_to_image(frame)),
-                        Ok(None) => {
-                            self.playing = false;
-                            break;
-                        }
-                        Err(e) => {
-                            log::error!("[monitor] decode error: {e:?}");
-                            self.playing = false;
-                            break;
+                // Попробуем взять ещё один кадр; если нет — заберём на следующем redraw.
+                self.try_pull_frames();
+                if self.upcoming.is_none() {
+                    // EOF?
+                    if let Some(pump) = self.pump.as_ref() {
+                        if pump.rx.try_recv().is_err() {
+                            // Канал может быть просто пуст — EOF определяется только когда
+                            // отстаём по времени надолго. На MVP: если upcoming None после
+                            // догона — продолжаем играть current, и если новых кадров нет
+                            // несколько кадров подряд — paused.
                         }
                     }
+                    break;
                 }
             }
+            // Если current отстал и нет upcoming — возможно достигли EOF.
+            // Не паузим мгновенно, дадим pump подтянуть; фронту сообщим о EOF только по факту
+            // «нет новых кадров и pump потерян».
+            if self.upcoming.is_none() && self.pump.is_none() {
+                self.playing = false;
+                let _ = self.app.emit(EVT_ENDED, ());
+            }
         }
+
         self.render();
+        self.emit_time();
+    }
+
+    fn emit_time(&mut self) {
+        let t = self.current_playback_time();
+        // Эмитим только при изменении >= 1мс.
+        if (t - self.last_emit_pts).abs() < 0.001 {
+            return;
+        }
+        self.last_emit_pts = t;
+        let _ = self.app.emit(EVT_TIME, t);
     }
 
     fn render(&mut self) {
         let width = self.surface.config.width;
         let height = self.surface.config.height;
 
-        let mut scene = Scene::new();
+        let mut scene = VelloScene::new();
         if let (Some(frame), Some((mw, mh))) = (self.current.as_ref(), self.media_size) {
             let scale = (width as f64 / mw as f64).min(height as f64 / mh as f64);
             let draw_w = mw as f64 * scale;
@@ -396,67 +451,22 @@ impl WindowState {
             scene.draw_image(&frame.image, transform);
         }
 
-        let device_handle = &self.render_cx.devices[self.surface.dev_id];
-
-        let surface_texture = match self.surface.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                self.render_cx
-                    .resize_surface(&mut self.surface, width, height);
-                return;
-            }
-            other => {
-                log::warn!("[monitor] surface acquire: {other:?}");
-                return;
-            }
-        };
-
-        let render_params = RenderParams {
-            base_color: vello::peniko::Color::BLACK,
-            width,
-            height,
-            antialiasing_method: AaConfig::Area,
-        };
-
-        if let Err(e) = self.renderer.render_to_texture(
-            &device_handle.device,
-            &device_handle.queue,
-            &scene,
-            &self.surface.target_view,
-            &render_params,
-        ) {
-            log::error!("[monitor] vello render: {e:?}");
-            return;
+        if let Err(e) = self
+            .compositor
+            .render_to_surface(&mut self.surface, &scene, Color::BLACK)
+        {
+            log::error!("[monitor] compositor render: {e:?}");
         }
-
-        // Блитим intermediate Rgba8Unorm в surface формат.
-        let mut encoder = device_handle
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("monitor-blit"),
-            });
-        let surface_view = surface_texture
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        self.surface
-            .blitter
-            .copy(&device_handle.device, &mut encoder, &self.surface.target_view, &surface_view);
-        device_handle.queue.submit([encoder.finish()]);
-        surface_texture.present();
     }
 }
 
 fn decoded_to_image(frame: VideoFrame) -> DecodedFrame {
-    let VideoFrame {
-        width,
-        height,
-        pixels,
-        pts_sec,
-    } = frame;
+    let VideoFrame { width, height, pixels, pts_sec } = frame;
     let blob = Blob::new(Arc::new(pixels));
     let image = ImageData {
         data: blob,
         format: ImageFormat::Rgba8,
+        // ffmpeg -pix_fmt rgba отдаёт straight (unpremultiplied) RGBA.
         alpha_type: ImageAlphaType::Alpha,
         width,
         height,

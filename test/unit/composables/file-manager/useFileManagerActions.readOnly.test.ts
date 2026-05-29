@@ -49,8 +49,14 @@ vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => fileM
 vi.mock('~/stores/project-tabs.store', () => ({ useProjectTabsStore: () => projectTabsStore }));
 vi.mock('~/composables/useAppClipboard', () => ({ useAppClipboard: () => clipboardStore }));
 
+vi.mock('#ui/composables/useToast', () => ({
+  useToast: () => ({
+    add: toastAddMock,
+    remove: vi.fn(),
+  }),
+}));
+
 vi.stubGlobal('useI18n', () => ({ t: (key: string) => key }));
-vi.stubGlobal('useToast', () => ({ add: toastAddMock }));
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -96,11 +102,9 @@ describe('useFileManagerActions — read-only guard', () => {
     selectionStore.clearSelection.mockClear();
     projectStore.closeTimelineFile.mockClear();
   });
-
   it('createFolder action shows toast and does not create folder', async () => {
     const createFolder = vi.fn();
     const api = createComposable({ createFolder });
-
     await api.onFileAction('createFolder', dirEntry, () => []);
 
     expect(toastAddMock).toHaveBeenCalledOnce();

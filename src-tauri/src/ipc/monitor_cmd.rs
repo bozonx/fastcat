@@ -48,5 +48,8 @@ pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String>
     if let Some(m) = engine.monitor() {
         m.send(MonitorCommand::Close).map_err(|e| e.to_string())?;
     }
+    // Сбрасываем кэш — event-loop умрёт асинхронно, но новый ensure_monitor должен
+    // увидеть свежее состояние и при необходимости спавнить заново.
+    engine.clear_monitor();
     Ok(())
 }

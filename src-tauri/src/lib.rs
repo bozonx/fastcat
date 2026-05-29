@@ -102,13 +102,8 @@ pub fn run() {
                         .build(),
                 )?;
             }
-            // Инициализируем видео-движок (wgpu + compositor) при старте.
-            match pollster::block_on(engine::VideoEngine::new()) {
-                Ok(engine) => { app.manage(engine); }
-                Err(error) => {
-                    log::error!("failed to init VideoEngine: {error:?}");
-                }
-            }
+            // Видео-движок-singleton; AppHandle нужен, чтобы натив мог эмитить события на фронт.
+            app.manage(engine::VideoEngine::new(app.handle().clone()));
             Ok(())
         })
         .run(tauri::generate_context!())

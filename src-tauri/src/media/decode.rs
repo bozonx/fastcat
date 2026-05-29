@@ -72,22 +72,33 @@ impl FfmpegDecoder {
 
     fn spawn(&mut self, time_sec: f64) -> Result<()> {
         self.kill();
+        let time_sec = time_sec.max(0.0);
         let mut cmd = Command::new("ffmpeg");
-        cmd.arg("-nostdin")
-            .arg("-loglevel")
-            .arg("error")
-            // -ss перед -i = быстрый seek по ключевым кадрам (минус точность, плюс скорость).
-            .arg("-ss")
-            .arg(format!("{time_sec}"))
-            .arg("-i")
-            .arg(&self.path)
-            .arg("-f")
+        cmd.arg("-nostdin").arg("-loglevel").arg("error");
+
+        // Two-stage seek для frame-accurate позиционирования:
+        //   1) `-ss <t-pre>` ДО `-i` — быстрый прыжок к ближайшему keyframe;
+        //   2) `-ss <pre>` ПОСЛЕ `-i` — точный сдвиг внутри GOP.
+        // На time_sec == 0 обе ветки пустые → читаем с начала.
+        // -copyts + setpts гарантирует, что в выходе PTS начинается с 0 в момент time_sec.
+        let pre = if time_sec > 0.5 { time_sec - 0.5 } else { 0.0 };
+        let post = time_sec - pre;
+        if pre > 0.0 {
+            cmd.arg("-ss").arg(format!("{pre}"));
+        }
+        cmd.arg("-i").arg(&self.path);
+        if post > 0.0 || pre > 0.0 {
+            cmd.arg("-ss").arg(format!("{post}"));
+        }
+
+        cmd.arg("-f")
             .arg("rawvideo")
             .arg("-pix_fmt")
             .arg("rgba")
-            // На случай не-квадратных пикселей форсим масштаб к декларированным размерам.
+            // На случай не-квадратных пикселей форсим масштаб к декларированным размерам
+            // и cfr-таймбейс, чтобы frame_index/fps давал корректные PTS.
             .arg("-vf")
-            .arg(format!("scale={}:{}", self.info.width, self.info.height))
+            .arg(format!("scale={}:{},fps={}", self.info.width, self.info.height, fmt_fps(self.info.fps)))
             .arg("-an")
             .arg("-")
             .stdin(Stdio::null())
@@ -139,6 +150,8 @@ impl VideoDecoder for FfmpegDecoder {
             Err(e) => return Err(e.into()),
         }
         let fps = if self.info.fps > 0.0 { self.info.fps } else { 30.0 };
+        // start_time = первый «полезный» кадр выходного потока (после двухэтапного seek),
+        // выход cfr → PTS=start_time + i/fps корректный.
         let pts_sec = self.start_time + self.frame_index as f64 / fps;
         self.frame_index += 1;
         Ok(Some(VideoFrame {
@@ -148,6 +161,12 @@ impl VideoDecoder for FfmpegDecoder {
             pts_sec,
         }))
     }
+}
+
+fn fmt_fps(fps: f64) -> String {
+    let f = if fps > 0.0 && fps.is_finite() { fps } else { 30.0 };
+    // 6 знаков достаточно для 23.976024 и подобных; ffmpeg парсит как float.
+    format!("{:.6}", f)
 }
 
 pub fn open(path: &Path) -> Result<Box<dyn VideoDecoder>> {
