@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VueDraggable } from 'vue-draggable-plus';
-import type { AnyProjectTab } from '~/stores/project-tabs.store';
+import { isFileTab, type AnyProjectTab } from '~/stores/project-tabs.store';
 import { useProjectTabs } from '~/composables/project/useProjectTabs';
 
 const emit = defineEmits<{
@@ -9,22 +9,16 @@ const emit = defineEmits<{
 
 const {
   activateProjectTab,
-  fileTabsModel,
+  allTabsModel,
+  getFileTabContextMenuItems,
   getStaticTabContextMenuItems,
   isDropTarget,
-  onFileTabAuxClick,
-  onFileTabDragStart,
-  onFileTabMouseDown,
-  onStaticTabAuxClick,
-  onStaticTabDragStart,
-  onStaticTabMouseDown,
+  onTabAuxClick,
+  onTabDragStart,
+  onTabMouseDown,
   onTabBarDragLeave,
   onTabBarDragOver,
   onTabBarDrop,
-  projectTabContextMenuItems,
-  staticTabs,
-  tabBarRef,
-  tabContainerRef,
   tabsStore,
 } = useProjectTabs({
   onStaticTabDragStart: (event, tabId) => emit('tab-drag-start', event, tabId),
@@ -32,8 +26,19 @@ const {
 
 const { t } = useI18n();
 
-function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
-  onStaticTabDragStart(event, tab);
+function tabIcon(tab: AnyProjectTab): string {
+  if (isFileTab(tab)) return tab.icon;
+  return tab.icon ?? 'i-heroicons-rectangle-stack';
+}
+
+function tabLabel(tab: AnyProjectTab): string {
+  if (isFileTab(tab)) return tab.fileName;
+  return tab.label;
+}
+
+function isDraggable(tab: AnyProjectTab): boolean {
+  if (isFileTab(tab)) return true;
+  return tab.id !== 'files';
 }
 </script>
 
@@ -50,11 +55,18 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
       ref="tabContainerRef"
       class="flex items-center h-full flex-1 min-w-0 overflow-x-auto no-scrollbar"
     >
-      <div class="flex items-center px-1 gap-0.5 py-1 shrink-0">
+      <VueDraggable
+        v-model="allTabsModel"
+        class="flex items-center px-1 gap-0.5 py-1 min-w-max"
+        :animation="150"
+        ghost-class="project-tab-ghost"
+        fallback-on-body
+        force-fallback
+      >
         <UContextMenu
-          v-for="tab in staticTabs"
+          v-for="tab in allTabsModel"
           :key="tab.id"
-          :items="getStaticTabContextMenuItems(tab.id)"
+          :items="isFileTab(tab) ? getFileTabContextMenuItems(tab.id) : getStaticTabContextMenuItems(tab.id)"
         >
           <div
             :data-tab-id="tab.id"
@@ -64,15 +76,15 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
                 ? 'bg-selection-accent-500/15 text-selection-accent-400'
                 : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
             "
-            :title="tab.label"
-            :draggable="tab.id !== 'files'"
-            @mousedown="onStaticTabMouseDown($event, tab.id)"
-            @auxclick="onStaticTabAuxClick($event, tab.id)"
-            @dragstart="tab.id !== 'files' ? handleStaticTabDragStart($event, tab) : undefined"
+            :title="tabLabel(tab)"
+            :draggable="isDraggable(tab)"
+            @mousedown="onTabMouseDown($event, tab)"
+            @auxclick="onTabAuxClick($event, tab)"
+            @dragstart="isDraggable(tab) ? onTabDragStart($event, tab) : undefined"
             @click="activateProjectTab(tab.id)"
           >
             <UIcon
-              :name="tab.icon ?? 'i-heroicons-rectangle-stack'"
+              :name="tabIcon(tab)"
               class="w-3.5 h-3.5 shrink-0"
               :class="
                 tabsStore.activeTabId === tab.id
@@ -80,62 +92,15 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
                   : 'text-ui-text-muted'
               "
             />
-            <span class="text-2xs font-semibold uppercase tracking-wider">
-              {{ tab.label }}
-            </span>
-          </div>
-        </UContextMenu>
-      </div>
-
-      <UContextMenu
-        v-if="fileTabsModel.length > 0"
-        :items="projectTabContextMenuItems"
-        class="min-w-0 flex-1"
-      >
-        <VueDraggable
-          v-model="fileTabsModel"
-          class="flex items-center px-1 gap-0.5 py-1 min-w-max"
-          :animation="150"
-          handle=".project-file-tab-drag-handle"
-          ghost-class="project-tab-ghost"
-          fallback-on-body
-          force-fallback
-        >
-          <div
-            v-for="tab in fileTabsModel"
-            :key="tab.id"
-            :data-tab-id="tab.id"
-            class="group relative flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors duration-150 shrink-0"
-            :class="
-              tabsStore.activeTabId === tab.id
-                ? 'bg-selection-accent-500/15 text-selection-accent-400'
-                : 'text-ui-text-muted hover:text-ui-text hover:bg-ui-bg-accent/40'
-            "
-            :title="tab.fileName"
-            @mousedown="onFileTabMouseDown($event)"
-            @auxclick="onFileTabAuxClick($event, tab.id)"
-            @click="activateProjectTab(tab.id)"
-          >
-            <div
-              class="project-file-tab-drag-handle flex items-center gap-1.5 min-w-0"
-              draggable="true"
-              @dragstart="onFileTabDragStart($event, tab)"
+            <span
+              class="text-2xs font-semibold tracking-wide truncate max-w-[140px]"
+              :class="!isFileTab(tab) ? 'uppercase' : ''"
             >
-              <UIcon
-                :name="tab.icon"
-                class="w-3.5 h-3.5 shrink-0"
-                :class="
-                  tabsStore.activeTabId === tab.id
-                    ? 'text-selection-accent-400'
-                    : 'text-ui-text-muted'
-                "
-              />
-              <span class="text-2xs font-semibold tracking-wide truncate max-w-[140px]">
-                {{ tab.fileName }}
-              </span>
-            </div>
+              {{ tabLabel(tab) }}
+            </span>
 
             <button
+              v-if="isFileTab(tab)"
               class="ml-0.5 p-0.5 rounded hover:bg-red-500/15 hover:text-red-400 transition-colors"
               :title="t('common.close')"
               @click.stop="tabsStore.removeFileTab(tab.id)"
@@ -143,8 +108,8 @@ function handleStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
               <UIcon name="i-heroicons-x-mark" class="w-3 h-3" />
             </button>
           </div>
-        </VueDraggable>
-      </UContextMenu>
+        </UContextMenu>
+      </VueDraggable>
     </div>
 
     <div

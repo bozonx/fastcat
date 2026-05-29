@@ -27,11 +27,14 @@ export function isFileTab(tab: AnyProjectTab): tab is ProjectFileTab {
 }
 
 export const useProjectTabsStore = defineStore('projectTabs', () => {
-  /** Order of static tab IDs (persisted in project.ui.json) */
+  /** Order of static tab IDs (persisted in project.ui.json) — kept for backward compat. */
   const staticTabsOrder = ref<string[]>([]);
 
-  /** Static tabs that are currently detached as panels (hidden from tab bar) */
-  const hiddenStaticTabs = ref<Set<string>>(new Set());
+  /** Unified display order of all tab IDs (static + file). */
+  const tabOrder = ref<string[]>([]);
+
+  /** Static tabs that are currently detached as panels (hidden from tab bar). */
+  const hiddenStaticTabs = ref<string[]>([]);
 
   /** File tabs added by drag-drop (persisted in project.ui.json) */
   const fileTabs = ref<ProjectFileTab[]>([]);
@@ -45,10 +48,14 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
   function setTabsState(params: {
     fileTabs?: ProjectFileTab[];
     staticTabsOrder?: string[];
+    tabOrder?: string[];
+    hiddenStaticTabs?: string[];
     activeTabId?: string | null;
   }) {
     if (params.fileTabs) fileTabs.value = params.fileTabs;
     if (params.staticTabsOrder) staticTabsOrder.value = params.staticTabsOrder;
+    if (params.tabOrder) tabOrder.value = params.tabOrder;
+    if (params.hiddenStaticTabs) hiddenStaticTabs.value = params.hiddenStaticTabs;
     if (params.activeTabId !== undefined) activeTabId.value = params.activeTabId;
   }
 
@@ -66,23 +73,42 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
   }
 
   /**
-   * All tabs in display order: static tabs (sorted by user) + file tabs.
-   * Static tabs are sorted according to staticTabsOrder; new ones appended.
+   * All tabs in display order: built from `tabOrder`, falling back to
+   * `staticTabsOrder + fileTabs` when `tabOrder` is empty.
+   * Hidden static tabs are filtered out.
    */
   const tabs = computed<AnyProjectTab[]>(() => {
-    const statics = registeredTabs.value.filter((t) => !hiddenStaticTabs.value.has(t.id));
-    const order = staticTabsOrder.value || [];
+    const staticMap = new Map(registeredTabs.value.map((t) => [t.id, t]));
+    const fileMap = new Map(fileTabs.value.map((t) => [t.id, t]));
+    const hidden = new Set(hiddenStaticTabs.value);
+    const order = tabOrder.value.length > 0 ? tabOrder.value : [...staticTabsOrder.value, ...fileTabs.value.map((f) => f.id)];
 
-    const sortedStatics = [...statics].sort((a, b) => {
-      const ai = order.indexOf(a.id);
-      const bi = order.indexOf(b.id);
-      if (ai === -1 && bi === -1) return 0;
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    });
+    const result: AnyProjectTab[] = [];
+    const seen = new Set<string>();
 
-    return [...sortedStatics, ...(fileTabs.value || [])];
+    for (const id of order) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (hidden.has(id)) continue;
+      const tab = staticMap.get(id) ?? fileMap.get(id);
+      if (tab) result.push(tab);
+    }
+
+    // Append newly registered static tabs that aren't in the order yet
+    for (const tab of registeredTabs.value) {
+      if (!hidden.has(tab.id) && !seen.has(tab.id)) {
+        result.push(tab);
+      }
+    }
+
+    // Append file tabs that aren't in the order yet
+    for (const tab of fileTabs.value) {
+      if (!seen.has(tab.id)) {
+        result.push(tab);
+      }
+    }
+
+    return result;
   });
 
   const activeTab = computed(() => tabs.value.find((t) => t.id === activeTabId.value) ?? null);
@@ -95,14 +121,14 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
 
   /**
    * Reorders all tabs (called after VueDraggable sort).
-   * Static tabs go to staticTabsOrder; file tabs update fileTabs order.
+   * Updates the unified `tabOrder` and keeps backward-compat fields in sync.
    */
   function reorderTabs(newOrder: AnyProjectTab[]) {
-    const newStaticOrder = newOrder.filter((t) => !isFileTab(t)).map((t) => t.id);
-    staticTabsOrder.value = newStaticOrder;
+    const newTabOrder = newOrder.map((t) => t.id);
+    tabOrder.value = newTabOrder;
 
-    const newFileTabs = newOrder.filter(isFileTab);
-    fileTabs.value = newFileTabs;
+    staticTabsOrder.value = newOrder.filter((t) => !isFileTab(t)).map((t) => t.id);
+    fileTabs.value = newOrder.filter(isFileTab);
   }
 
   /**
@@ -135,6 +161,16 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     };
 
     fileTabs.value = [...fileTabs.value, tab];
+
+    // Insert after the currently active tab, or at the end
+    const currentOrder = tabOrder.value.length > 0 ? tabOrder.value : [...staticTabsOrder.value, ...fileTabs.value.map((f) => f.id)];
+    const activeIdx = currentOrder.indexOf(activeTabId.value ?? '');
+    if (activeIdx !== -1) {
+      tabOrder.value = [...currentOrder.slice(0, activeIdx + 1), tab.id, ...currentOrder.slice(activeIdx + 1)];
+    } else {
+      tabOrder.value = [...currentOrder, tab.id];
+    }
+
     activeTabId.value = tab.id;
     return tab.id;
   }
@@ -143,6 +179,7 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     const currentTabs = tabs.value;
     const removedIndex = currentTabs.findIndex((tab) => tab.id === tabId);
     fileTabs.value = fileTabs.value.filter((t) => t.id !== tabId);
+    tabOrder.value = tabOrder.value.filter((id) => id !== tabId);
     if (activeTabId.value !== tabId) return;
 
     const remaining = currentTabs.filter((tab) => tab.id !== tabId);
@@ -165,15 +202,22 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     const retainedTab = fileTabs.value.find((tab) => tab.id === tabId);
     if (!retainedTab) return;
 
+    const retainedIds = new Set<string>([tabId]);
     fileTabs.value = [retainedTab];
+    tabOrder.value = tabOrder.value.filter((id) => !isFileTabId(id) || retainedIds.has(id));
     activeTabId.value = tabId;
   }
 
   function removeAllFileTabs() {
     fileTabs.value = [];
+    tabOrder.value = tabOrder.value.filter((id) => !isFileTabId(id));
 
     const fallbackStaticTab = tabs.value.find((tab) => !isFileTab(tab));
     activeTabId.value = fallbackStaticTab?.id ?? null;
+  }
+
+  function isFileTabId(id: string): boolean {
+    return fileTabs.value.some((t) => t.id === id);
   }
 
   function initDefaultTab() {
@@ -187,12 +231,44 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
 
   /** Hide a static tab from the tab bar (detached as a panel) */
   function hideStaticTab(tabId: string) {
-    hiddenStaticTabs.value.add(tabId);
+    if (!hiddenStaticTabs.value.includes(tabId)) {
+      hiddenStaticTabs.value = [...hiddenStaticTabs.value, tabId];
+    }
   }
 
   /** Show a static tab in the tab bar (panel was closed) */
   function showStaticTab(tabId: string) {
-    hiddenStaticTabs.value.delete(tabId);
+    hiddenStaticTabs.value = hiddenStaticTabs.value.filter((id) => id !== tabId);
+  }
+
+  /**
+   * Sync hiddenStaticTabs against the actual layout panels.
+   * Call after loading project settings to ensure tabs aren't left hidden
+   * when their panels no longer exist.
+   */
+  function syncHiddenStaticTabsWithLayout(
+    panels: Array<{ panels: Array<{ type: string }> }>,
+  ) {
+    const panelTypes = new Set<string>();
+    for (const col of panels) {
+      for (const panel of col.panels) {
+        panelTypes.add(panel.type);
+      }
+    }
+
+    const tabIdToPanelType: Record<string, string> = {
+      files: 'fileManager',
+      history: 'history',
+      effects: 'effects',
+      library: 'library',
+      markers: 'markers',
+      backups: 'backups',
+    };
+
+    hiddenStaticTabs.value = hiddenStaticTabs.value.filter((tabId) => {
+      const panelType = tabIdToPanelType[tabId];
+      return panelType && panelTypes.has(panelType);
+    });
   }
 
   return {
@@ -211,7 +287,10 @@ export const useProjectTabsStore = defineStore('projectTabs', () => {
     removeAllFileTabs,
     hideStaticTab,
     showStaticTab,
+    syncHiddenStaticTabsWithLayout,
     staticTabsOrder,
+    tabOrder,
+    hiddenStaticTabs,
     fileTabs,
     setTabsState,
   };

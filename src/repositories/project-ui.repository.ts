@@ -91,6 +91,8 @@ export const ProjectUiSettingsSchema = z.object({
       activeTabId: z.string().nullable().catch(null),
       fileTabs: z.array(ProjectFileTabSchema).catch([]),
       staticTabsOrder: z.array(z.string()).catch([]),
+      tabOrder: z.array(z.string()).catch([]),
+      hiddenStaticTabs: z.array(z.string()).catch([]),
       fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
       layout: ProjectUiLayoutSchema.catch({
         cutPanels: null,
@@ -104,6 +106,8 @@ export const ProjectUiSettingsSchema = z.object({
       activeTabId: null,
       fileTabs: [],
       staticTabsOrder: [],
+      tabOrder: [],
+      hiddenStaticTabs: [],
       fileManagerPaths: {},
       layout: {
         cutPanels: null,

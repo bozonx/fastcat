@@ -14,13 +14,14 @@ import { genUuid } from '~/utils/ids';
 
 const TAB_ID_TO_PANEL_TYPE: Record<
   string,
-  'fileManager' | 'history' | 'effects' | 'library' | 'markers'
+  'fileManager' | 'history' | 'effects' | 'library' | 'markers' | 'backups'
 > = {
   files: 'fileManager',
   history: 'history',
   effects: 'effects',
   library: 'library',
   markers: 'markers',
+  backups: 'backups',
 };
 
 interface UseProjectTabsOptions {
@@ -61,21 +62,16 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     setActiveTab,
   } = tabsStore;
 
+  const allTabsModel = computed({
+    get: () => tabsStore.tabs,
+    set: (value) => reorderTabs(value),
+  });
+
   const staticTabs = computed(() => {
     const tabs = tabsStore.tabs;
     if (!tabs) return [];
 
     return tabs.filter((tab: AnyProjectTab) => !isFileTab(tab)) as ProjectTab[];
-  });
-
-  const fileTabsModel = computed({
-    get: () => {
-      const tabs = tabsStore.tabs;
-      if (!tabs) return [];
-
-      return tabs.filter((tab: AnyProjectTab) => isFileTab(tab)) as ProjectFileTab[];
-    },
-    set: (value) => reorderTabs([...staticTabs.value, ...value]),
   });
 
   const activeFileTab = computed(() => {
@@ -138,57 +134,51 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     return event.button === 1;
   }
 
-  function onStaticTabMouseDown(event: MouseEvent, tabId: string) {
-    if (!isMiddleClick(event) || tabId === 'files') return;
-    event.preventDefault();
+  function onTabMouseDown(event: MouseEvent, tab: AnyProjectTab) {
+    if (!isMiddleClick(event)) return;
+    if (isFileTab(tab)) {
+      event.preventDefault();
+    } else if (tab.id !== 'files') {
+      event.preventDefault();
+    }
   }
 
-  function onStaticTabAuxClick(event: MouseEvent, tabId: string) {
-    if (!isMiddleClick(event) || tabId === 'files') return;
-    event.preventDefault();
-  }
-
-  function onFileTabMouseDown(event: MouseEvent) {
+  function onTabAuxClick(event: MouseEvent, tab: AnyProjectTab) {
     if (!isMiddleClick(event)) return;
     event.preventDefault();
+    if (isFileTab(tab)) {
+      removeFileTab(tab.id);
+    }
   }
 
-  function onFileTabAuxClick(event: MouseEvent, tabId: string) {
-    if (!isMiddleClick(event)) return;
-    event.preventDefault();
-    removeFileTab(tabId);
+  function onTabDragStart(event: DragEvent, tab: AnyProjectTab) {
+    if (!event.dataTransfer) return;
+
+    if (isFileTab(tab)) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData(
+        'file-tab-drag',
+        JSON.stringify({
+          tabId: tab.id,
+          filePath: tab.filePath,
+          fileName: tab.fileName,
+          mediaType: tab.mediaType,
+        }),
+      );
+    } else {
+      if (tab.id === 'files') return;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData(
+        'static-tab-drag',
+        JSON.stringify({ tabId: tab.id, label: (tab as ProjectTab).label }),
+      );
+      handleStaticTabDragStart?.(event, tab.id);
+    }
   }
 
   async function openDroppedFile(params: { filePath: string; fileName: string }) {
     const tabId = addFileTab(params);
     setActiveTab(tabId);
-  }
-
-  function onStaticTabDragStart(event: DragEvent, tab: AnyProjectTab) {
-    if (isFileTab(tab) || !event.dataTransfer) return;
-
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData(
-      'static-tab-drag',
-      JSON.stringify({ tabId: tab.id, label: (tab as ProjectTab).label }),
-    );
-
-    handleStaticTabDragStart?.(event, tab.id);
-  }
-
-  function onFileTabDragStart(event: DragEvent, tab: ProjectFileTab) {
-    if (!event.dataTransfer) return;
-
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData(
-      'file-tab-drag',
-      JSON.stringify({
-        tabId: tab.id,
-        filePath: tab.filePath,
-        fileName: tab.fileName,
-        mediaType: tab.mediaType,
-      }),
-    );
   }
 
   function onTabBarDragOver(event: DragEvent) {
@@ -368,21 +358,41 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     ];
   }
 
+  function getFileTabContextMenuItems(tabId: string) {
+    return [
+      [
+        {
+          label: t('common.close'),
+          icon: 'i-heroicons-x-mark',
+          onSelect: () => removeFileTab(tabId),
+        },
+        {
+          label: t('videoEditor.projectTabs.closeOthers'),
+          icon: 'i-heroicons-minus-circle',
+          onSelect: () => removeOtherFileTabs(tabId),
+        },
+        {
+          label: t('videoEditor.projectTabs.closeAll'),
+          icon: 'i-heroicons-x-circle',
+          onSelect: () => removeAllFileTabs(),
+        },
+      ],
+    ];
+  }
+
   return {
     activateProjectFocus,
     activateProjectTab,
     activeFileTab,
     activeStaticComponent,
+    allTabsModel,
     detachStaticTab,
-    fileTabsModel,
+    getFileTabContextMenuItems,
     getStaticTabContextMenuItems,
     isDropTarget,
-    onFileTabAuxClick,
-    onFileTabDragStart,
-    onFileTabMouseDown,
-    onStaticTabAuxClick,
-    onStaticTabDragStart,
-    onStaticTabMouseDown,
+    onTabAuxClick,
+    onTabDragStart,
+    onTabMouseDown,
     onTabBarDragLeave,
     onTabBarDragOver,
     onTabBarDrop,

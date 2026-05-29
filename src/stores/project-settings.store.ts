@@ -222,6 +222,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
               activeTabId: projectTabsStore.activeTabId,
               fileTabs: projectTabsStore.fileTabs,
               staticTabsOrder: projectTabsStore.staticTabsOrder,
+              tabOrder: projectTabsStore.tabOrder,
+              hiddenStaticTabs: projectTabsStore.hiddenStaticTabs,
               fileManagerPaths,
               // Persist the live layout (panel widths, vertical splits, timeline
               // heights, panel arrangement). Writing empty objects here silently
@@ -404,7 +406,17 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
         activeTabId: settings.ui.activeTabId,
         fileTabs: settings.ui.fileTabs,
         staticTabsOrder: settings.ui.staticTabsOrder,
+        tabOrder: settings.ui.tabOrder,
+        hiddenStaticTabs: settings.ui.hiddenStaticTabs,
       });
+
+      // Ensure hiddenStaticTabs reflects actual panels (panels may have been
+      // closed without restoring the tab before the last save).
+      const allPanels = [
+        ...(settings.ui.layout.cutPanels ?? []),
+        ...(settings.ui.layout.soundPanels ?? []),
+      ];
+      projectTabsStore.syncHiddenStaticTabsWithLayout(allPanels);
 
       const internalFmStores = {
         editor: useFileManagerStore(),

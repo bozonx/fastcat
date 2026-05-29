@@ -106,6 +106,10 @@ export interface FastCatProjectSettings {
     activeTabId: string | null;
     fileTabs: import('~/stores/project-tabs.store').ProjectFileTab[];
     staticTabsOrder: string[];
+    /** Unified display order of all tab IDs (static + file). */
+    tabOrder: string[];
+    /** Static tabs that are detached as panels (hidden from tab bar). */
+    hiddenStaticTabs: string[];
     fileManagerPaths: Record<string, string | null>;
     layout: ProjectUiLayoutState;
   };
@@ -176,6 +180,8 @@ export const DEFAULT_PROJECT_SETTINGS: FastCatProjectSettings = {
     activeTabId: null,
     fileTabs: [],
     staticTabsOrder: [],
+    tabOrder: [],
+    hiddenStaticTabs: [],
     fileManagerPaths: {},
     layout: {
       cutPanels: null,
@@ -252,6 +258,8 @@ export function createDefaultProjectSettings(
       activeTabId: null,
       fileTabs: [],
       staticTabsOrder: [],
+      tabOrder: [],
+      hiddenStaticTabs: [],
       fileManagerPaths: {},
       layout: {
         cutPanels: null,
@@ -415,6 +423,8 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
             activeTabId: z.string().nullable().catch(null),
             fileTabs: z.array(z.unknown()).catch([]),
             staticTabsOrder: z.array(z.string()).catch([]),
+            tabOrder: z.array(z.string()).catch([]),
+            hiddenStaticTabs: z.array(z.string()).catch([]),
             fileManagerPaths: z.record(z.string(), z.string().nullable()).catch({}),
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             layout: layoutSchema.catch(defaults.ui.layout as any),

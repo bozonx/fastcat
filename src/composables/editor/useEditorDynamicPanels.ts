@@ -42,7 +42,9 @@ const panelTypeToTabId: Record<string, string> = {
   history: 'history',
   effects: 'effects',
   fileManager: 'files',
+  library: 'library',
   markers: 'markers',
+  backups: 'backups',
 };
 
 function resolveMediaTypeByExtension(ext: string): 'video' | 'audio' | 'image' | 'unknown' {
@@ -290,7 +292,9 @@ export function useEditorDynamicPanels(options: UseEditorDynamicPanelsOptions) {
           files: 'fileManager',
           history: 'history',
           effects: 'effects',
+          library: 'library',
           markers: 'markers',
+          backups: 'backups',
         };
         const panelType = panelTypeMap[payload.tabId] ?? 'fileManager';
 

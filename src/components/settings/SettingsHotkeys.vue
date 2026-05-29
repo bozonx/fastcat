@@ -39,7 +39,8 @@ const hotkeyGroupOrder: readonly HotkeyGroupId[] = [
   'general',
   'fileManager',
   'timeline',
-  'playback',
+  'timelineMonitorGlobal',
+  'monitor',
 ];
 
 const { isCapturingHotkey, captureTargetCommandId, capturedCombo, startCapture, finishCapture } =
@@ -85,8 +86,9 @@ function getCommandGroupTitle(groupId: string): string {
   const titles: Record<string, string> = {
     general: t('videoEditor.settings.hotkeysGroupGeneral'),
     fileManager: t('videoEditor.settings.hotkeysGroupFileManager'),
-    playback: t('videoEditor.settings.hotkeysGroupPlayback'),
+    monitor: t('videoEditor.settings.hotkeysGroupMonitor'),
     timeline: t('videoEditor.settings.hotkeysGroupTimeline'),
+    timelineMonitorGlobal: t('videoEditor.settings.hotkeysGroupTimelineMonitorGlobal'),
   };
   return titles[groupId] || groupId;
 }

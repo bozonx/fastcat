@@ -20,7 +20,8 @@ export interface DynamicPanel {
     | 'history'
     | 'effects'
     | 'library'
-    | 'markers';
+    | 'markers'
+    | 'backups';
   title?: string;
   // If type is text or media, store file details
   filePath?: string;

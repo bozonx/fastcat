@@ -18,7 +18,7 @@ const commands: readonly HotkeyCommandDefinition[] = [
   { id: 'general.navigateUp', groupId: 'fileManager', title: 'Navigate up' },
   { id: 'timeline.splitAtPlayhead', groupId: 'timeline', title: 'Split' },
   { id: 'timeline.rippleDelete', groupId: 'timeline', title: 'Ripple delete' },
-  { id: 'playback.toggle', groupId: 'playback', title: 'Play/Pause' },
+  { id: 'playback.toggle', groupId: 'monitor', title: 'Play/Pause' },
 ];
 
 function makeEffective(bindings: Partial<Record<HotkeyCommandId, string[]>>) {
@@ -26,7 +26,7 @@ function makeEffective(bindings: Partial<Record<HotkeyCommandId, string[]>>) {
 }
 
 describe('hotkeyConflicts', () => {
-  it('does not treat same combo in timeline and playback as conflict', () => {
+  it('does not treat same combo in timeline and monitor as conflict', () => {
     const effective = makeEffective({
       'timeline.splitAtPlayhead': ['Space'],
       'playback.toggle': ['Space'],
@@ -88,7 +88,7 @@ describe('hotkeyConflicts', () => {
     ).toBe(true);
   });
 
-  it('findDuplicateOwnerByContext ignores timeline vs playback duplicates', () => {
+  it('findDuplicateOwnerByContext ignores timeline vs monitor duplicates', () => {
     const effective = makeEffective({
       'timeline.splitAtPlayhead': ['Space'],
       'playback.toggle': ['Space'],
