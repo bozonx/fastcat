@@ -147,6 +147,8 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
     event.preventDefault();
     if (isFileTab(tab)) {
       removeFileTab(tab.id);
+    } else if (tab.id !== 'files') {
+      detachStaticTab(tab.id);
     }
   }
 

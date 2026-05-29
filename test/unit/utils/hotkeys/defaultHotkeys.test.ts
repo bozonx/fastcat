@@ -80,16 +80,30 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['general.navigateBack']).toContain('MouseBack');
   });
 
-  it('has jumpPrevBoundary with A and MouseForward', () => {
+  it('has jumpPrevBoundary with A, MouseForward, and ArrowUp', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toBeDefined();
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toContain('A');
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toContain('MouseForward');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundary']).toContain('ArrowUp');
   });
 
-  it('has jumpNextBoundary with S and MouseBack', () => {
+  it('has jumpNextBoundary with S, MouseBack, and ArrowDown', () => {
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toBeDefined();
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('S');
     expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('MouseBack');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundary']).toContain('ArrowDown');
+  });
+
+  it('has jumpPrevBoundaryTrack with Shift+A and Shift+ArrowUp', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain('Shift+A');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpPrevBoundaryTrack']).toContain('Shift+ArrowUp');
+  });
+
+  it('has jumpNextBoundaryTrack with Shift+S and Shift+ArrowDown', () => {
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toBeDefined();
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain('Shift+S');
+    expect(DEFAULT_HOTKEYS.bindings['playback.jumpNextBoundaryTrack']).toContain('Shift+ArrowDown');
   });
 
   it('has updated defaults for timeline creation and monitor snapshot', () => {
@@ -133,6 +147,21 @@ describe('DEFAULT_HOTKEYS', () => {
     ]);
     expect(DEFAULT_HOTKEYS.bindings['timeline.moveSelectedClipsRightLarge']).toEqual([
       'Ctrl+Shift+ArrowRight',
+    ]);
+  });
+
+  it('has volume bindings on Ctrl+ArrowUp/Ctrl+ArrowDown', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.increaseSelectedClipsVolume']).toEqual([
+      'Ctrl+ArrowUp',
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.decreaseSelectedClipsVolume']).toEqual([
+      'Ctrl+ArrowDown',
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.increaseSelectedClipsVolumeLarge']).toEqual([
+      'Ctrl+Shift+ArrowUp',
+    ]);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.decreaseSelectedClipsVolumeLarge']).toEqual([
+      'Ctrl+Shift+ArrowDown',
     ]);
   });
 

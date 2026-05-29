@@ -36,6 +36,23 @@ function onDragStart(event: DragEvent) {
   isMenuOpen.value = false;
   emit('dragStart', event);
 }
+
+function isMiddleClick(event: MouseEvent) {
+  return event.button === 1;
+}
+
+function onMouseDown(event: MouseEvent) {
+  if (isMiddleClick(event)) {
+    event.preventDefault();
+  }
+}
+
+function onAuxClick(event: MouseEvent) {
+  if (isMiddleClick(event)) {
+    event.preventDefault();
+    emit('close');
+  }
+}
 </script>
 
 <template>
@@ -47,6 +64,8 @@ function onDragStart(event: DragEvent) {
       @dragstart="onDragStart"
       @dblclick="emit('close')"
       @contextmenu="onContextMenu"
+      @mousedown="onMouseDown"
+      @auxclick="onAuxClick"
     >
       <div class="flex items-center gap-2 min-w-0 flex-1 pr-2">
         <UIcon :name="icon" class="w-4 h-4 text-ui-text-muted shrink-0" />

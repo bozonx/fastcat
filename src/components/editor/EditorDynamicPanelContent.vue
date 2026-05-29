@@ -8,6 +8,7 @@ import ProjectHistory from '~/components/project/ProjectHistory.vue';
 import ProjectEffects from '~/components/project/ProjectEffects.vue';
 import ProjectLibrary from '~/components/project/ProjectLibrary.vue';
 import ProjectMarkers from '~/components/project/ProjectMarkers.vue';
+import ProjectBackups from '~/components/project/ProjectBackups.vue';
 import TextEditor from '~/components/preview/TextEditor.vue';
 import EditorPanelHeader from '~/components/editor/EditorPanelHeader.vue';
 import type { DynamicPanel } from '~/stores/editor-view.store';
@@ -88,7 +89,11 @@ const customPanelContextMenuItems = computed(() => {
 });
 
 const detachedStaticPanelContextMenuItems = computed(() => {
-  if (!['history', 'effects', 'fileManager', 'library', 'markers'].includes(props.panel.type)) {
+  if (
+    !['history', 'effects', 'fileManager', 'library', 'markers', 'backups'].includes(
+      props.panel.type,
+    )
+  ) {
     return [];
   }
 
@@ -218,6 +223,21 @@ const detachedStaticPanelContextMenuItems = computed(() => {
     />
     <div class="flex-1 overflow-hidden min-h-0">
       <ProjectMarkers class="h-full" />
+    </div>
+  </div>
+  <div
+    v-else-if="panel.type === 'backups'"
+    class="h-full w-full bg-ui-bg-elevated flex flex-col relative border border-ui-border"
+  >
+    <EditorPanelHeader
+      :title="panel.title || t('videoEditor.timeline.backups.tabLabel')"
+      icon="i-heroicons-archive-box"
+      :context-menu-items="detachedStaticPanelContextMenuItems"
+      @drag-start="onDragStart"
+      @close="onClose"
+    />
+    <div class="flex-1 overflow-hidden min-h-0">
+      <ProjectBackups class="h-full" />
     </div>
   </div>
   <div
