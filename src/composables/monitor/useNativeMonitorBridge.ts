@@ -82,9 +82,22 @@ export function useNativeMonitorBridge(): void {
     const layers: SceneLayer[] = [];
     if (!doc?.tracks?.length) return { layers, width: sceneWidth, height: sceneHeight };
 
-    for (let trackIndex = 0; trackIndex < doc.tracks.length; trackIndex++) {
-      const track = doc.tracks[trackIndex];
+    // В fastcat КОНВЕНЦИЯ: первый video-трек в `doc.tracks` = верхний визуально = должен
+    // рисоваться поверх. Веб-композитор для этого даёт трекам `layer = N - 1 - index`
+    // (см. `payloadBuilder.buildWorkerVideoTracks`). Зеркалим ту же арифметику здесь —
+    // иначе layer'а 0 у image и video схлопывался в одинаковый z, и порядок отрисовки
+    // случайно зависел от порядка обхода.
+    const visibleVideoTracks = doc.tracks.filter(
+      (track) => track.kind === 'video' && !track.videoHidden,
+    );
+    const videoTrackLayerById = new Map<string, number>();
+    visibleVideoTracks.forEach((track, index) => {
+      videoTrackLayerById.set(track.id, visibleVideoTracks.length - 1 - index);
+    });
+
+    for (const track of visibleVideoTracks) {
       if (!track?.items) continue;
+      const trackLayer = videoTrackLayerById.get(track.id) ?? 0;
       for (const item of track.items) {
         if (!isClipItem(item) || !isSourceClipItem(item)) continue;
         if (item.disabled) continue;
@@ -99,12 +112,13 @@ export function useNativeMonitorBridge(): void {
         const opacityActive = item.opacityActive !== false;
         const opacity = opacityActive ? (item.opacity ?? 1) : 1;
 
-        // z-order: source-of-truth — `clip.layer` (так считает веб-композитор),
-        // если не задан — фолбэк на индекс трека в документе.
-        const z =
+        // z = track layer * 1000 + clip.layer (если задан) — клипы внутри трека
+        // упорядочены по своему layer, а трек целиком — по своему.
+        const clipLayer =
           typeof item.layer === 'number' && Number.isFinite(item.layer)
             ? Math.round(item.layer)
-            : trackIndex;
+            : 0;
+        const z = trackLayer * 1000 + clipLayer;
 
         layers.push({
           id: item.id,

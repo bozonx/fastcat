@@ -201,9 +201,21 @@ export function useGlobalDragAndDrop() {
                   try {
                     const resp = await fetch(rawPath);
                     const blob = await resp.blob();
-                    const filename =
-                      rawPath.split('/').pop()?.split('?')[0] ||
-                      `dropped-${Date.now()}.${(blob.type.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '')}`;
+                    // Имя файла собираем так, чтобы расширение реально соответствовало контенту:
+                    // у blob:/data: URL имя в path может быть UUID без расширения, тогда оно
+                    // попадает в `_files` вместо `_images`/`_video` и затем падает на VFS-записи.
+                    const lastSegment = rawPath.split('/').pop()?.split('?')[0] || '';
+                    const hasExt = /\.[a-z0-9]+$/i.test(lastSegment);
+                    const mimeExt = (blob.type.split('/')[1] || '').replace(/[^a-z0-9]/gi, '');
+                    let filename: string;
+                    if (hasExt) {
+                      filename = lastSegment;
+                    } else if (mimeExt) {
+                      const base = lastSegment || `dropped-${Date.now()}`;
+                      filename = `${base}.${mimeExt === 'jpeg' ? 'jpg' : mimeExt}`;
+                    } else {
+                      filename = lastSegment || `dropped-${Date.now()}.bin`;
+                    }
                     files.push(
                       new File([blob], filename, {
                         type: blob.type || 'application/octet-stream',
