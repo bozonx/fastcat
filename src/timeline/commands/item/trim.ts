@@ -1,4 +1,4 @@
-import type { TimelineDocument, TimelineTrackItem } from '../../types';
+import type { TimelineDocument, TimelineTrackItem, TimelineTrack, TimelineRange, TimelineClipItem } from '../../types';
 import type { TrimItemCommand, TrimItemsCommand, TimelineCommandResult } from '../../commands';
 import {
   getTrackById,
@@ -7,6 +7,8 @@ import {
   assertClipNotLocked,
   normalizeGaps,
   autoAdaptChangedTracks,
+  getLinkedClipGroupItemIds,
+  findClipById,
 } from '../utils';
 import { computeTrimGeometry } from './trimGeometry';
 
@@ -18,9 +20,102 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
 
   assertClipNotLocked(item, 'trim');
 
-
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
+
+  // If the clip is in a group, trim the entire group
+  if (item.linkedGroupId) {
+    const groupItemIds = getLinkedClipGroupItemIds(doc, item.id);
+    
+    const trimGeometries: Array<{
+      track: TimelineTrack;
+      clip: TimelineClipItem;
+      timelineRange: TimelineRange;
+      sourceRange: TimelineRange;
+    }> = [];
+
+    for (const gid of groupItemIds) {
+      const found = findClipById(doc, gid);
+      if (!found) continue;
+
+      const { track: t, item: c } = found;
+      assertClipNotLocked(c, 'trim');
+
+      const hasFixedSourceDuration =
+        (c.clipType === 'media' && !c.isImage) || c.clipType === 'timeline';
+
+      const geom = computeTrimGeometry({
+        edge: cmd.edge,
+        deltaUs: cmd.deltaUs,
+        speed: c.speed,
+        fps,
+        quantizeToFrames: shouldQuantizeToFrames,
+        timelineRange: c.timelineRange,
+        sourceRange: c.sourceRange,
+        sourceDurationUs: c.sourceDurationUs,
+        hasFixedSourceDuration,
+      });
+
+      if (!geom.valid) {
+        return { next: doc };
+      }
+
+      trimGeometries.push({
+        track: t,
+        clip: c,
+        timelineRange: geom.timelineRange,
+        sourceRange: geom.sourceRange,
+      });
+    }
+
+    // Check overlap for all group members before applying
+    for (const geom of trimGeometries) {
+      assertNoOverlap(
+        geom.track,
+        geom.clip.id,
+        geom.timelineRange.startUs,
+        geom.timelineRange.durationUs,
+      );
+    }
+
+    // Group changes by track
+    const trackIdToGeoms = new Map<string, typeof trimGeometries>();
+    for (const geom of trimGeometries) {
+      let list = trackIdToGeoms.get(geom.track.id);
+      if (!list) {
+        list = [];
+        trackIdToGeoms.set(geom.track.id, list);
+      }
+      list.push(geom);
+    }
+
+    let nextTracks = doc.tracks.map((t) => {
+      const geomsForTrack = trackIdToGeoms.get(t.id);
+      if (!geomsForTrack || geomsForTrack.length === 0) return t;
+
+      const nextItemsRaw = t.items.map((x) => {
+        const geom = geomsForTrack.find((g) => g.clip.id === x.id);
+        if (geom) {
+          return {
+            ...x,
+            timelineRange: geom.timelineRange,
+            sourceRange: geom.sourceRange,
+          };
+        }
+        return x;
+      });
+
+      nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      const nextItems = normalizeGaps(doc, t.id, nextItemsRaw, {
+        quantizeToFrames: shouldQuantizeToFrames,
+      });
+
+      return { ...t, items: nextItems };
+    });
+
+    nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
+    return { next: { ...doc, tracks: nextTracks } };
+  }
 
   // Clips with fixed source duration (media and nested timelines) are limited to
   // their real material; images and virtual clips may be extended freely.
@@ -53,8 +148,6 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   });
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
-
-
 
   // Auto-adapt transitions only on tracks whose items actually changed.
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);

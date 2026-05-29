@@ -145,7 +145,7 @@ describe('timeline/commands split_item', () => {
     expect(atEnd.tracks[0]?.items.filter((x) => x.kind === 'clip').length).toBe(1);
   });
 
-  it('drops linkedGroupId on both halves when splitting a grouped clip', () => {
+  it('splits grouped clip and assigns two new linkedGroupIds to both halves, and reassigns uncut group clip', () => {
     const doc = makeDoc([
       {
         id: 'v1',
@@ -166,6 +166,25 @@ describe('timeline/commands split_item', () => {
           },
         ],
       },
+      {
+        id: 'a1',
+        kind: 'audio',
+        name: 'A1',
+        items: [
+          {
+            kind: 'clip',
+            clipType: 'media',
+            id: 'aclip',
+            trackId: 'a1',
+            name: 'Audio',
+            source: { path: 'a.mp4' },
+            sourceDurationUs: 10_000_000,
+            linkedGroupId: 'group-1',
+            timelineRange: { startUs: 0, durationUs: 500_000 },
+            sourceRange: { startUs: 0, durationUs: 500_000 },
+          },
+        ],
+      },
     ]);
 
     const { next } = applyTimelineCommand(doc, {
@@ -181,7 +200,14 @@ describe('timeline/commands split_item', () => {
     const leftVideo = videoClips.find((x) => x.id === 'vclip');
     const rightVideo = videoClips.find((x) => x.id !== 'vclip');
 
-    expect(leftVideo.linkedGroupId).toBeUndefined();
-    expect(rightVideo.linkedGroupId).toBeUndefined();
+    expect(leftVideo.linkedGroupId).toBeDefined();
+    expect(rightVideo.linkedGroupId).toBeDefined();
+    expect(leftVideo.linkedGroupId).not.toBe(rightVideo.linkedGroupId);
+    expect(leftVideo.linkedGroupId).not.toBe('group-1');
+
+    // The audio clip on a1 was not split because atUs (500_000) is at its boundary/outside,
+    // but it should be reassigned to the left group because its startUs < atUs.
+    const audioClip = next.tracks[1]?.items.find((x) => x.id === 'aclip') as any;
+    expect(audioClip.linkedGroupId).toBe(leftVideo.linkedGroupId);
   });
 });

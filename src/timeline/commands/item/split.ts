@@ -11,15 +11,12 @@ import {
   normalizeGaps,
   quantizeRangeToFrames,
   autoAdaptChangedTracks,
+  getLinkedClipGroupItemIds,
 } from '../utils';
 import { cloneValue } from '~/utils/clone';
+import { createLinkedGroupId } from '~/timeline/id';
 
 function cloneEffects<T>(value: T): T {
-  // structuredClone in modern runtimes; fallback to JSON-clone. The previous
-  // implementation silently returned the original ref on failure, so editing
-  // effects on the left half of a split leaked into the right half. Now we
-  // ensure a fresh ref by manually walking arrays of plain objects when the
-  // structured/JSON paths fail.
   if (value === null || typeof value !== 'object') return value;
   const cloned = cloneValue(value);
   if (cloned !== value) return cloned;
@@ -42,8 +39,6 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     assertClipNotLocked(item, 'split');
   }
 
-
-
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
   const qTimeline = quantizeRangeToFrames(item.timelineRange, fps);
@@ -62,6 +57,120 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
   }
 
   const atUs = shouldQuantizeToFrames ? frameToUs(cutFrame, fps) : Number(cmd.atUs);
+
+  // If the clip is in a group, we perform a grouped split
+  if (item.linkedGroupId) {
+    const linkedGroupId = item.linkedGroupId;
+    const leftGroupId = createLinkedGroupId();
+    const rightGroupId = createLinkedGroupId();
+    const groupItemIds = new Set(getLinkedClipGroupItemIds(doc, item.id));
+
+    let nextTracks = doc.tracks.map((t) => {
+      const hasGroupClip = t.items.some((it) => groupItemIds.has(it.id));
+      if (!hasGroupClip) return t;
+
+      let trackItemsChanged = false;
+      const nextItemsRaw: TimelineTrackItem[] = [];
+
+      for (const it of t.items) {
+        if (it.kind !== 'clip' || !groupItemIds.has(it.id)) {
+          nextItemsRaw.push(it);
+          continue;
+        }
+
+        const clipStartUs = it.timelineRange.startUs;
+        const clipEndUs = clipStartUs + it.timelineRange.durationUs;
+        const clipStartFrame = usToFrame(clipStartUs, fps, 'round');
+        const clipEndFrame = usToFrame(clipEndUs, fps, 'round');
+        const cutFrameForClip = usToFrame(atUs, fps, 'round');
+
+        const isSplit = shouldQuantizeToFrames
+          ? (cutFrameForClip > clipStartFrame && cutFrameForClip < clipEndFrame)
+          : (atUs > clipStartUs && atUs < clipEndUs);
+
+        if (isSplit) {
+          trackItemsChanged = true;
+
+          const leftDurationUs = Math.max(0, atUs - clipStartUs);
+          const rightDurationUs = Math.max(0, clipEndUs - atUs);
+
+          const speed = typeof it.speed === 'number' && Number.isFinite(it.speed) ? it.speed : 1;
+          const absSpeed = Math.abs(speed);
+          const localCutUs = Math.max(0, Math.round((atUs - clipStartUs) * absSpeed));
+
+          let leftSourceStartUs: number;
+          let leftSourceDurationUs: number;
+          let rightSourceStartUs: number;
+          let rightSourceDurationUs: number;
+
+          if (speed >= 0) {
+            leftSourceStartUs = Math.round(it.sourceRange.startUs);
+            leftSourceDurationUs = Math.max(0, localCutUs);
+            rightSourceStartUs = Math.max(0, Math.round(it.sourceRange.startUs) + localCutUs);
+            rightSourceDurationUs = Math.max(0, Math.round(it.sourceRange.durationUs) - localCutUs);
+          } else {
+            const sourceDurationUs = Math.round(it.sourceRange.durationUs);
+            leftSourceStartUs = Math.max(
+              0,
+              Math.round(it.sourceRange.startUs) + sourceDurationUs - localCutUs,
+            );
+            leftSourceDurationUs = localCutUs;
+            rightSourceStartUs = Math.round(it.sourceRange.startUs);
+            rightSourceDurationUs = Math.max(0, sourceDurationUs - localCutUs);
+          }
+
+          const rightItemId = nextItemId(t.id, 'clip');
+
+          const leftPatched: TimelineClipItem = {
+            ...(it as TimelineClipItem),
+            timelineRange: { startUs: clipStartUs, durationUs: leftDurationUs },
+            sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
+            transitionOut: undefined,
+            effects: it.effects ? cloneEffects(it.effects) : undefined,
+            linkedGroupId: leftGroupId,
+          };
+
+          const rightItem: TimelineClipItem = {
+            ...(it as TimelineClipItem),
+            id: rightItemId,
+            trackId: t.id,
+            timelineRange: { startUs: atUs, durationUs: rightDurationUs },
+            sourceRange: { startUs: rightSourceStartUs, durationUs: rightSourceDurationUs },
+            linkedGroupId: rightGroupId,
+            transitionIn: undefined,
+            effects: it.effects ? cloneEffects(it.effects) : undefined,
+          };
+
+          nextItemsRaw.push(leftPatched);
+          nextItemsRaw.push(rightItem);
+        } else {
+          // Reassign uncut clip to the left or right group depending on its position
+          const isLeft = shouldQuantizeToFrames
+            ? (clipStartFrame < cutFrameForClip)
+            : (clipStartUs < atUs);
+
+          const nextGroupId = isLeft ? leftGroupId : rightGroupId;
+          trackItemsChanged = true;
+          nextItemsRaw.push({
+            ...it,
+            linkedGroupId: nextGroupId,
+          });
+        }
+      }
+
+      if (!trackItemsChanged) return t;
+
+      nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+      const nextItems = normalizeGaps(doc, t.id, nextItemsRaw, {
+        quantizeToFrames: shouldQuantizeToFrames,
+      });
+
+      return { ...t, items: nextItems };
+    });
+
+    nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
+    return { next: { ...doc, tracks: nextTracks } };
+  }
 
   const leftDurationUs = Math.max(0, atUs - startUs);
   const rightDurationUs = Math.max(0, endUs - atUs);
@@ -101,11 +210,9 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     sourceRange: { startUs: leftSourceStartUs, durationUs: leftSourceDurationUs },
     transitionOut: undefined,
     effects: item.effects ? cloneEffects(item.effects) : undefined,
-    // Drop linkedGroupId on both halves: split breaks the original logical group.
     linkedGroupId: undefined,
   };
 
-  // TODO(keyframes): shift keyframes relative time in rightItem's effects by localCutUs
   const rightItem: TimelineClipItem = {
     ...(item as TimelineClipItem),
     id: rightItemId,
@@ -133,9 +240,6 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
-
-
-  // After split clip durations may shrink — adapt transitions/fades that exceed the new size.
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
