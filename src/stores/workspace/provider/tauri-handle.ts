@@ -74,6 +74,12 @@ export class TauriDirectoryHandle {
     options?: { create?: boolean },
   ): Promise<TauriDirectoryHandle> {
     const childPath = await join(this.path, name);
+
+    if (name.startsWith('.')) {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('allow_path_scope', { path: childPath }).catch(() => {});
+    }
+
     const dirExists = await exists(childPath);
 
     if (!dirExists) {

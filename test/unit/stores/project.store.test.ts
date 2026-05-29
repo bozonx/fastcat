@@ -75,6 +75,7 @@ vi.mock('~/composables/editor/useProjectLock', () => ({
     stealLock: vi.fn(),
     releaseLock: mockReleaseLock,
     isLockLost: ref(false),
+    setOnBeforeRelease: vi.fn(),
   })),
 }));
 

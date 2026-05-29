@@ -11,7 +11,10 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 // ──────────────────────────────────────────────
 
 const uiStore = { selectedFsEntry: null, triggerScrollToFileTreeEntry: vi.fn() };
-const workspaceStore = { userSettings: { deleteWithoutConfirmation: false }, workspaceState: { fileBrowser: { instances: {} } } };
+const workspaceStore = {
+  userSettings: { deleteWithoutConfirmation: false },
+  workspaceState: { fileBrowser: { instances: {} } },
+};
 const selectionStore = {
   selectedEntity: null,
   clearSelection: vi.fn(),
@@ -25,11 +28,19 @@ const projectStore = {
   closeTimelineFile: vi.fn().mockResolvedValue(undefined),
   openTimelineFile: vi.fn().mockResolvedValue(undefined),
 };
-const timelineStore = { loadTimeline: vi.fn().mockResolvedValue(undefined), loadTimelineMetadata: vi.fn() };
+const timelineStore = {
+  loadTimeline: vi.fn().mockResolvedValue(undefined),
+  loadTimelineMetadata: vi.fn(),
+};
 const focusStore = { setActiveTimelinePath: vi.fn() };
 const projectTabsStore = { removeFileTabByPath: vi.fn() };
 const clipboardStore = {
-  clipboardPayload: null as null | { source: string; operation: string; items: unknown[]; sourceInstanceId?: string },
+  clipboardPayload: null as null | {
+    source: string;
+    operation: string;
+    items: unknown[];
+    sourceInstanceId?: string;
+  },
   setClipboardPayload: vi.fn(),
   clearClipboardPayload: vi.fn(),
   getFileManagerVfs: vi.fn(),
@@ -41,7 +52,9 @@ const toastAddMock = vi.fn();
 vi.mock('~/stores/ui.store', () => ({ useUiStore: () => uiStore }));
 vi.mock('~/stores/workspace.store', () => ({ useWorkspaceStore: () => workspaceStore }));
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => selectionStore }));
-vi.mock('~/stores/timeline-media-usage.store', () => ({ useTimelineMediaUsageStore: () => timelineMediaUsageStore }));
+vi.mock('~/stores/timeline-media-usage.store', () => ({
+  useTimelineMediaUsageStore: () => timelineMediaUsageStore,
+}));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => projectStore }));
 vi.mock('~/stores/timeline.store', () => ({ useTimelineStore: () => timelineStore }));
 vi.mock('~/stores/focus.store', () => ({ useFocusStore: () => focusStore }));
@@ -142,7 +155,9 @@ describe('useFileManagerActions — read-only guard', () => {
 
   it('createProxy shows toast and does not call ensureProxy', async () => {
     const ensureProxy = vi.fn();
-    const api = createComposable({ mediaCache: { ensureProxy, cancelProxy: vi.fn(), removeProxy: vi.fn() } });
+    const api = createComposable({
+      mediaCache: { ensureProxy, cancelProxy: vi.fn(), removeProxy: vi.fn() },
+    });
 
     await api.onFileAction('createProxy', fileEntry);
 
@@ -152,7 +167,9 @@ describe('useFileManagerActions — read-only guard', () => {
 
   it('deleteProxy shows toast and does not call removeProxy', async () => {
     const removeProxy = vi.fn();
-    const api = createComposable({ mediaCache: { ensureProxy: vi.fn(), cancelProxy: vi.fn(), removeProxy } });
+    const api = createComposable({
+      mediaCache: { ensureProxy: vi.fn(), cancelProxy: vi.fn(), removeProxy },
+    });
 
     await api.onFileAction('deleteProxy', fileEntry);
 
@@ -163,10 +180,17 @@ describe('useFileManagerActions — read-only guard', () => {
   it('createOtioVersion shows toast and does not copy file', async () => {
     const copyFile = vi.fn();
     const api = createComposable({
-      vfs: { listEntryNames: vi.fn().mockResolvedValue([]), copyFile } as unknown as IFileSystemAdapter,
+      vfs: {
+        listEntryNames: vi.fn().mockResolvedValue([]),
+        copyFile,
+      } as unknown as IFileSystemAdapter,
     });
 
-    await api.onFileAction('createOtioVersion', { kind: 'file', name: 'timeline_001.otio', path: 'timelines/timeline_001.otio' });
+    await api.onFileAction('createOtioVersion', {
+      kind: 'file',
+      name: 'timeline_001.otio',
+      path: 'timelines/timeline_001.otio',
+    });
 
     expect(toastAddMock).toHaveBeenCalledOnce();
     expect(copyFile).not.toHaveBeenCalled();
@@ -175,7 +199,10 @@ describe('useFileManagerActions — read-only guard', () => {
   it('createMarkdown shows toast and does not create directory', async () => {
     const createDirectory = vi.fn();
     const api = createComposable({
-      vfs: { createDirectory, listEntryNames: vi.fn().mockResolvedValue([]) } as unknown as IFileSystemAdapter,
+      vfs: {
+        createDirectory,
+        listEntryNames: vi.fn().mockResolvedValue([]),
+      } as unknown as IFileSystemAdapter,
     });
 
     await api.onFileAction('createMarkdown', dirEntry);

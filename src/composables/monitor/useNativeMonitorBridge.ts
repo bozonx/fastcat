@@ -3,11 +3,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { computed, onScopeDispose, watch } from 'vue';
 
 import { useTimelineStore } from '~/stores/timeline.store';
-import {
-  isClipItem,
-  isSourceClipItem,
-  type TimelineClipItem,
-} from '~/timeline/types';
+import { isClipItem, isSourceClipItem, type TimelineClipItem } from '~/timeline/types';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
 
@@ -136,8 +132,7 @@ export function useNativeMonitorBridge(): void {
     const clip = activeMediaClip.value;
     if (!clip) return;
     const clipLocalUs = Math.round(event.payload * 1_000_000);
-    const timelineUs =
-      clip.timelineRange.startUs + (clipLocalUs - clip.sourceRange.startUs);
+    const timelineUs = clip.timelineRange.startUs + (clipLocalUs - clip.sourceRange.startUs);
     const clampedEnd = clip.timelineRange.startUs + clip.timelineRange.durationUs;
     const next = Math.min(clampedEnd, Math.max(clip.timelineRange.startUs, timelineUs));
     if (Math.abs(next - timelineStore.currentTime) < 500) return; // < 0.5ms — шум

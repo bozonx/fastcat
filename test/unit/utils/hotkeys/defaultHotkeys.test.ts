@@ -116,8 +116,8 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.selectClipsRightOfPlayhead']).toEqual(['V']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimLeft']).toEqual(['Shift+E']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.rippleTrimRight']).toEqual(['Shift+R']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['Shift+E']);
-    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual(['Shift+R']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowWaveform']).toEqual(['Shift+D']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.toggleShowThumbnails']).toEqual(['Shift+F']);
   });
 
   it('has defaults for timeline creation and mode shortcuts', () => {

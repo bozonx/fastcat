@@ -194,7 +194,13 @@ export function useGlobalDragAndDrop() {
                 // Extend scope to allow reading the dropped file from any location.
                 await invoke('allow_dropped_file_scope', { path }).catch(() => {});
 
-                const file = await fm.vfs.getFile(path);
+                let file: File | null = null;
+                try {
+                  file = await fm.vfs.getFile(path);
+                } catch {
+                  // absolute OS path outside VFS workspace scope — fall through to direct read
+                }
+
                 if (file) {
                   files.push(file);
                 } else {

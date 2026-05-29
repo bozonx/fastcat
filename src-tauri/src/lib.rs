@@ -30,6 +30,14 @@ fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), S
 }
 
 #[tauri::command]
+fn allow_path_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    println!("[allow_path_scope] extending scope to: {path}");
+    app.fs_scope()
+        .allow_directory(&path, true)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
     if !cfg!(debug_assertions) {
         return Err("dev directory scope can only be extended in debug builds".to_string());
@@ -84,6 +92,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs_stream::init())
         .invoke_handler(tauri::generate_handler![
             allow_dropped_file_scope,
+            allow_path_scope,
             allow_dev_directory_scope,
             video_render::webgpu_render_engine_status,
             ipc::compositor_cmd::compositor_render_frame,

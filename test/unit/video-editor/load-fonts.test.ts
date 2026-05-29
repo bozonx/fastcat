@@ -39,13 +39,20 @@ describe('loadFonts', () => {
       fonts: { add },
     } as unknown as Document;
     globalThis.FontFace = MockFontFace as unknown as typeof FontFace;
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      text: vi.fn().mockResolvedValue(`
-        @font-face {
-          font-family: 'Inter';
-          src: url(https://example.test/inter.woff2) format('woff2');
-        }
-      `),
+    globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes('fonts.googleapis.com')) {
+        return {
+          text: async () => `
+            @font-face {
+              font-family: 'Inter';
+              src: url(https://example.test/inter.woff2) format('woff2');
+            }
+          `,
+        };
+      }
+      return {
+        arrayBuffer: async () => new ArrayBuffer(0),
+      };
     }) as unknown as typeof fetch;
 
     await loadFonts();
@@ -53,7 +60,7 @@ describe('loadFonts', () => {
     expect(add).toHaveBeenCalledTimes(1);
     expect(add.mock.calls[0]?.[0]).toMatchObject({
       family: 'Inter',
-      source: 'url(https://example.test/inter.woff2)',
+      source: expect.any(ArrayBuffer),
     });
   });
 });

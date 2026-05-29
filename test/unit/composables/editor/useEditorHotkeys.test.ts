@@ -691,6 +691,7 @@ describe('useEditorHotkeys', () => {
 
     mockWorkspaceStore.userSettings.hotkeys.bindings = {
       'timeline.rippleDeleteSelectedClipRange': ['Shift+Z'],
+      'timeline.rippleDelete': ['Backspace'],
     };
     projectStore.setView('cut');
     focusStore.setMainFocus('timeline');
