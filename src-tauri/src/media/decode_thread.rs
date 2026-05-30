@@ -33,7 +33,7 @@ enum DecoderCmd {
 
 pub struct DecodePump {
     pub info: MediaInfo,
-    pub rx: Receiver<DecodedFrameMsg>,
+    rx: Receiver<DecodedFrameMsg>,
     cmd_tx: SyncSender<DecoderCmd>,
     generation: Arc<AtomicU64>,
     thread: Option<JoinHandle<()>>,
@@ -81,6 +81,15 @@ impl DecodePump {
 
     pub fn current_generation(&self) -> u64 {
         self.generation.load(Ordering::SeqCst)
+    }
+
+    /// Неблокирующий приём одного кадра из декодера.
+    /// `None` — канал пуст или декодер завершился.
+    pub fn try_recv_frame(&self) -> Option<DecodedFrameMsg> {
+        match self.rx.try_recv() {
+            Ok(msg) => Some(msg),
+            Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => None,
+        }
     }
 }
 

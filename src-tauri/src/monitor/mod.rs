@@ -1,11 +1,16 @@
-//! Нативный монитор: отдельное окно (winit) с wgpu surface, отрисовка через Vello.
+//! Нативный монитор: отдельное winit-окно с wgpu surface, рендер через Vello.
 //!
-//! Минимальная реализация: окно живёт на собственном потоке (winit event loop),
-//! принимает команды play/pause/seek/open через `EventLoopProxy::send_event`.
-//! Декодер ffmpeg крутится в том же потоке — для baseline-плеера этого достаточно.
+//! Раскладка:
+//! - `app`      — winit ApplicationHandler (`MonitorApp`) + `WindowState` (coordinator).
+//! - `clock`    — `PlaybackClock`: арифметика timeline-времени без знания о GPU/UI.
+//! - `runtime`  — `LayerRuntimeManager`: lifecycle декодеров, diff сцен, compositor-снимок.
+//! - `handle`   — `MonitorHandle`: тонкий proxy к потоку монитора.
+//! - `scene`    — IPC-DTO от фронта: `MonitorScene`, `SceneLayer`, `SceneLayerTransform`.
 
 mod app;
+mod clock;
 mod handle;
+pub mod runtime;
 pub mod scene;
 
 pub use handle::{MonitorCommand, MonitorHandle, MonitorMode, SendableRawHandle};

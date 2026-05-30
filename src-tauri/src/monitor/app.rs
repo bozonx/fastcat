@@ -1,25 +1,18 @@
-//! ApplicationHandler винита: окно + Compositor + мульти-слойная сцена.
+//! ApplicationHandler winit: окно + PlaybackClock + LayerRuntimeManager.
 //!
-//! Модель:
-//!   - сцена = список `SceneLayer` (video|image) с z-order, opacity, диапазонами на таймлайне;
-//!   - на каждый слой держим рантайм (Loading → Video/Image | Failed);
-//!   - открытие декодеров и декод картинок происходит в фоновых потоках (не блокируя event-loop);
-//!   - мастер-клок = timeline-time (секунды), wall-clock based; в фронт эмитим именно его.
-//!
-//! Жизненный цикл слоя:
-//!   `apply_scene` → рантайм отсутствует → `ensure_runtime_for` → Loading + фоновый поток
-//!   → `BgReady` event → `apply_bg_result` → Video | Image | Failed
-//!   `apply_scene` (новая сцена) → Failed удаляется → retry цикл выше.
+//! Архитектура:
+//!   MonitorApp — winit ApplicationHandler; хранит WindowState и отложенные данные до
+//!               первого SetViewport / resumed.
+//!   WindowState — тонкий coordinator: window, surface, compositor + clock + layers.
+//!   PlaybackClock  → `clock.rs`
+//!   LayerRuntimeManager → `runtime.rs`
 
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::time::Duration;
 
 use anyhow::{Context, Result};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
-use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 use vello::util::RenderSurface;
 use winit::application::ApplicationHandler;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -28,23 +21,16 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy}
 use winit::window::{Window, WindowId};
 
 use crate::compositor::Compositor;
-use crate::media::decode::VideoFrame;
-use crate::media::decode_thread::DecodePump;
-use crate::media::image_decode::decode_image;
 
+use super::clock::PlaybackClock;
 use super::handle::{MonitorCommand, MonitorMode, SendableRawHandle};
-use super::scene::{LayerKind, MonitorScene, SceneLayer};
+use super::runtime::{BgLayerResult, LayerRuntimeManager, emit_layer_failed};
+use super::scene::MonitorScene;
 use tauri::ipc::{Channel, InvokeResponseBody};
 
 const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
-/// Эмитим, если фронт не получил обновление времени дольше этого окна. Слой ошибки.
-const EVT_LAYER_FAILED: &str = "monitor:layer_failed";
-/// Целевой framerate нативного монитора (кадров/сек). Ограничивает Poll — вместо busy-loop.
-/// 30 FPS — достаточно для preview-монитора видеоредактора (большинство source — 24/25/30).
-/// При 60 FPS мы рендерили source-кадры дважды на скорости и грузили CPU/GPU вдвое.
-const TARGET_FPS: f64 = 30.0;
 
 /// Заказ положения child-окна от фронта (физические пиксели в координатах родителя).
 #[derive(Debug, Clone, Copy)]
@@ -55,17 +41,6 @@ struct ViewportSpec {
     width: u32,
     height: u32,
     visible: bool,
-}
-
-// ---------------------------------------------------------------------------
-// Результаты фоновой загрузки слоёв
-// ---------------------------------------------------------------------------
-
-pub(super) enum BgLayerResult {
-    VideoOk { id: String, pump: DecodePump, media_size: (u32, u32) },
-    VideoErr { id: String, error: String },
-    ImageOk { id: String, image: ImageData, size: (u32, u32) },
-    ImageErr { id: String, error: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -106,8 +81,8 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
         EventLoopBuilderExtWayland::with_any_thread(&mut builder, true);
         EventLoopBuilderExtX11::with_any_thread(&mut builder, true);
         // Форсируем X11: WINIT_UNIX_BACKEND env var в winit 0.30 не работает.
-        // Без этого на Wayland-сессии винит игнорирует X11-родителя (Tauri-окно)
-        // и создаёт собственное Wayland-toplevel — встраивание ломается.
+        // Без этого на Wayland-сессии winit игнорирует X11-родителя и создаёт
+        // собственное Wayland-toplevel — встраивание в Tauri-окно ломается.
         EventLoopBuilderExtX11::with_x11(&mut builder);
     }
     #[cfg(target_os = "windows")]
@@ -125,19 +100,15 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
 
 struct MonitorApp {
     app: AppHandle,
-    /// Клон прокси — нужен для передачи в фоновые потоки загрузки.
     proxy: EventLoopProxy<MonitorCommand>,
-    /// Отправитель результатов фоновых загрузок.
     bg_tx: Sender<BgLayerResult>,
-    /// Получатель результатов фоновых загрузок; дренируется в user_event(BgReady).
     bg_rx: Receiver<BgLayerResult>,
     state: Option<WindowState>,
-    /// Сцена, пришедшая ДО первого SetViewport — применяется сразу после создания окна.
+    /// Сцена, пришедшая до первого SetViewport.
     pending_scene: Option<MonitorScene>,
-    /// Последний viewport. Если окна ещё нет — создадим по этому спеку в `resumed()`/SetViewport.
+    /// Последний viewport. Если окна ещё нет — создадим по нему в resumed/SetViewport.
     pending_viewport: Option<ViewportSpec>,
-    /// True, если winit уже вызвал `resumed` и можно создавать окна. До этого create_window
-    /// падает; мы откладываем создание до resumed.
+    /// True после первого вызова `resumed` — до него create_window падает.
     resumed: bool,
 }
 
@@ -160,7 +131,6 @@ impl MonitorApp {
         }
     }
 
-    /// Пытается создать окно из `pending_viewport`. Вызывается из `resumed` и `SetViewport`.
     fn try_create_window(&mut self, event_loop: &ActiveEventLoop) {
         if self.state.is_some() || !self.resumed {
             return;
@@ -181,92 +151,13 @@ impl MonitorApp {
                     }
                 }
             }
-            Err(e) => {
-                log::error!("[monitor] init failed: {e:?}");
-            }
+            Err(e) => log::error!("[monitor] init failed: {e:?}"),
         }
     }
 }
 
-// ---------------------------------------------------------------------------
-// WindowState
-// ---------------------------------------------------------------------------
-
-struct WindowState {
-    app: AppHandle,
-    window: Arc<Window>,
-    compositor: Compositor,
-    surface: RenderSurface<'static>,
-    /// Для передачи в фоновые потоки загрузки.
-    bg_tx: Sender<BgLayerResult>,
-    proxy: EventLoopProxy<MonitorCommand>,
-
-    /// Сцена «как заказал фронт». Источник истины для diff'а рантаймов.
-    /// `Arc` — чтобы `tick_and_render`/`seek` могли итерировать снимок сцены без
-    /// одновременной мутации `self.runtimes`/`self.loading_set`, и без полного Vec-clone каждый тик.
-    scene: Arc<Vec<SceneLayer>>,
-    /// id → рантайм (Loading, Video, Image, Failed).
-    runtimes: HashMap<String, LayerRuntime>,
-    /// Слои, для которых фоновый поток загрузки уже запущен.
-    loading_set: HashSet<String>,
-
-    playing: bool,
-    clock_pts_origin: f64,
-    clock_wall_origin: Option<Instant>,
-    last_emit_pts: f64,
-    scene_size: (u32, u32),
-    /// Последний применённый viewport — чтобы не дёргать set_outer_position/set_inner_size
-    /// без нужды (на Wayland это лишние commit'ы и потенциальные flicker'ы).
-    last_viewport: ViewportSpec,
-
-    /// Preview-scale, прокинутый фронтом. Применяется к новым декодерам через ffmpeg `-vf scale`.
-    /// Изменение scale пересоздаёт пампы (через выкидывание рантаймов на следующем apply_scene).
-    preview_scale: Option<f32>,
-
-    /// Режим: Embedded (X11 child) или Canvas (offscreen → channel).
-    mode: MonitorMode,
-    /// Канал для стрима RGBA-кадров фронту (только в режиме Canvas).
-    frame_channel: Option<Channel<InvokeResponseBody>>,
-    /// Размер render target'а в canvas-режиме (физические пиксели).
-    canvas_size: (u32, u32),
-    /// dev_id wgpu для offscreen-рендера; берём из существующего surface'а.
-    offscreen_dev_id: Option<usize>,
-}
-
-enum LayerRuntime {
-    Video(VideoLayerRt),
-    Image(ImageLayerRt),
-    /// Фоновый поток загрузки запущен — результат ещё не пришёл.
-    Loading,
-    /// Открытие не удалось. Будет удалён следующим `apply_scene` для retry.
-    Failed,
-}
-
-struct VideoLayerRt {
-    pump: DecodePump,
-    media_size: (u32, u32),
-    current: Option<DecodedVideoFrame>,
-    upcoming: Option<DecodedVideoFrame>,
-}
-
-struct ImageLayerRt {
-    image: ImageData,
-    size: (u32, u32),
-}
-
-struct DecodedVideoFrame {
-    pts_sec: f64,
-    image: ImageData,
-}
-
-// ---------------------------------------------------------------------------
-// ApplicationHandler impl
-// ---------------------------------------------------------------------------
-
 impl ApplicationHandler<MonitorCommand> for MonitorApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // Помечаемся как «resumed» и пытаемся создать окно, если viewport уже пришёл
-        // от фронта. Иначе ждём первого SetViewport.
         self.resumed = true;
         self.try_create_window(event_loop);
     }
@@ -302,32 +193,17 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 event_loop.exit();
             }
             MonitorCommand::BgReady => {
-                // Дренируем все готовые результаты фоновой загрузки.
                 while let Ok(result) = self.bg_rx.try_recv() {
                     if let Some(s) = self.state.as_mut() {
-                        s.apply_bg_result(result);
+                        s.layers.apply_bg_result(result);
                     }
                 }
                 if let Some(s) = self.state.as_ref() {
                     s.window.request_redraw();
                 }
             }
-            MonitorCommand::SetViewport {
-                parent,
-                x,
-                y,
-                width,
-                height,
-                visible,
-            } => {
-                let vp = ViewportSpec {
-                    parent,
-                    x,
-                    y,
-                    width: width.max(1),
-                    height: height.max(1),
-                    visible,
-                };
+            MonitorCommand::SetViewport { parent, x, y, width, height, visible } => {
+                let vp = ViewportSpec { parent, x, y, width: width.max(1), height: height.max(1), visible };
                 self.pending_viewport = Some(vp);
                 if let Some(s) = self.state.as_mut() {
                     s.apply_viewport(vp);
@@ -365,9 +241,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        let Some(state) = self.state.as_mut() else {
-            return;
-        };
+        let Some(state) = self.state.as_mut() else { return };
         match event {
             WindowEvent::CloseRequested => {
                 state.window.set_visible(false);
@@ -385,17 +259,195 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        let Some(state) = self.state.as_mut() else {
-            return;
-        };
-        if !state.playing {
+        let Some(state) = self.state.as_ref() else { return };
+        if !state.clock.is_playing() {
             event_loop.set_control_flow(ControlFlow::Wait);
             return;
         }
-        // Ограничиваем частоту кадров через WaitUntil вместо busy-loop Poll.
-        let frame_duration = Duration::from_secs_f64(1.0 / TARGET_FPS);
-        event_loop.set_control_flow(ControlFlow::WaitUntil(Instant::now() + frame_duration));
+        let frame_duration = Duration::from_secs_f64(1.0 / state.layers.preview_fps);
+        event_loop.set_control_flow(ControlFlow::WaitUntil(
+            std::time::Instant::now() + frame_duration,
+        ));
         state.window.request_redraw();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// WindowState
+// ---------------------------------------------------------------------------
+
+struct WindowState {
+    app: AppHandle,
+    window: Arc<Window>,
+    compositor: Compositor,
+    surface: RenderSurface<'static>,
+
+    clock: PlaybackClock,
+    layers: LayerRuntimeManager,
+
+    last_emit_pts: f64,
+    last_viewport: ViewportSpec,
+    mode: MonitorMode,
+    /// Канал для стрима RGBA-кадров фронту (только в режиме Canvas).
+    frame_channel: Option<Channel<InvokeResponseBody>>,
+    /// Размер render target'а в canvas-режиме (физические пиксели).
+    canvas_size: (u32, u32),
+    /// dev_id wgpu для offscreen-рендера; берём из существующего surface'а.
+    offscreen_dev_id: Option<usize>,
+}
+
+impl WindowState {
+    fn resize(&mut self, width: u32, height: u32) {
+        self.compositor.resize_surface(&mut self.surface, width, height);
+    }
+
+    fn apply_scene(&mut self, scene: MonitorScene) {
+        self.layers.apply_scene(scene);
+        self.window.request_redraw();
+    }
+
+    fn set_mode(&mut self, mode: MonitorMode) {
+        if self.mode == mode {
+            return;
+        }
+        self.mode = mode;
+        match mode {
+            MonitorMode::Embedded => {
+                if self.last_viewport.visible {
+                    self.window.set_visible(true);
+                }
+            }
+            MonitorMode::Canvas => {
+                // X11 child скрываем — рендер пойдёт offscreen.
+                self.window.set_visible(false);
+            }
+        }
+    }
+
+    fn apply_viewport(&mut self, vp: ViewportSpec) {
+        let prev = self.last_viewport;
+        log::info!(
+            "[monitor] apply_viewport pos=({},{}) size={}x{} visible={}",
+            vp.x, vp.y, vp.width, vp.height, vp.visible
+        );
+        if (prev.x, prev.y) != (vp.x, vp.y) {
+            self.window.set_outer_position(PhysicalPosition::new(vp.x, vp.y));
+        }
+        if (prev.width, prev.height) != (vp.width, vp.height) {
+            let _ = self.window.request_inner_size(PhysicalSize::new(vp.width, vp.height));
+            // С override_redirect WM не управляет окном — WindowEvent::Resized может
+            // не прийти синхронно, поэтому ресайзим surface сразу.
+            self.resize(vp.width, vp.height);
+        }
+        if prev.visible != vp.visible {
+            self.window.set_visible(vp.visible);
+        }
+        self.last_viewport = vp;
+        if vp.visible {
+            self.window.request_redraw();
+        }
+    }
+
+    fn play(&mut self) {
+        if self.layers.is_empty() {
+            return;
+        }
+        self.clock.play();
+    }
+
+    fn pause(&mut self) {
+        self.clock.pause();
+    }
+
+    fn seek(&mut self, timeline_sec: f64) {
+        let t = timeline_sec.max(0.0);
+        self.clock.seek(t);
+        self.layers.seek(t);
+    }
+
+    // -----------------------------------------------------------------------
+    // Главный тик
+    // -----------------------------------------------------------------------
+
+    fn tick_and_render(&mut self) {
+        let t = self.clock.current_pts();
+
+        // Детектируем конец сцены во время воспроизведения.
+        if self.clock.is_playing() && !self.layers.is_empty() {
+            let scene_end = self.layers.scene_end();
+            if scene_end > 0.0 && t >= scene_end {
+                self.clock.pause();
+                let _ = self.app.emit(EVT_ENDED, ());
+                self.emit_time(scene_end);
+                self.render(scene_end);
+                return;
+            }
+        }
+
+        self.layers.tick(t);
+        self.render(t);
+        self.emit_time(t);
+    }
+
+    fn emit_time(&mut self, t: f64) {
+        // Подавляем дубли: на паузе/повторных redraw'ах не шлём тот же PTS дважды.
+        if t == self.last_emit_pts {
+            return;
+        }
+        self.last_emit_pts = t;
+        let _ = self.app.emit(EVT_TIME, t);
+    }
+
+    // -----------------------------------------------------------------------
+    // Рендер
+    // -----------------------------------------------------------------------
+
+    fn render(&mut self, t: f64) {
+        match self.mode {
+            MonitorMode::Embedded => {
+                let width = self.surface.config.width;
+                let height = self.surface.config.height;
+                let scene = self.layers.build_compositor_scene(t);
+                if let Err(e) = self.compositor.render_scene_to_surface(
+                    &scene,
+                    &mut self.surface,
+                    width,
+                    height,
+                ) {
+                    log::error!("[monitor] compositor render: {e:?}");
+                    emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
+                }
+            }
+            MonitorMode::Canvas => {
+                let Some(channel) = self.frame_channel.clone() else { return };
+                let (width, height) = self.canvas_size;
+                if width == 0 || height == 0 {
+                    return;
+                }
+                let Some(dev_id) = self.offscreen_dev_id else { return };
+                let scene = self.layers.build_compositor_scene(t);
+                // NOTE: `render_scene_to_pixels` блокирует event-loop на GPU readback
+                // (~1-5 мс при 1080p). При бюджете 33 мс (30 fps) это приемлемо.
+                // Если понадобится ≥ 60 fps или экспорт — перейти на async-readback:
+                // submit, зарегистрировать callback через `map_async`, проверять готовность
+                // в `about_to_wait`.
+                match self.compositor.render_scene_to_pixels(dev_id, &scene, width, height) {
+                    Ok(pixels) => {
+                        let mut payload = Vec::with_capacity(8 + pixels.len());
+                        payload.extend_from_slice(&width.to_le_bytes());
+                        payload.extend_from_slice(&height.to_le_bytes());
+                        payload.extend_from_slice(&pixels);
+                        if let Err(e) = channel.send(InvokeResponseBody::Raw(payload)) {
+                            log::warn!("[monitor] frame channel send: {e:?}");
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("[monitor] offscreen render: {e:?}");
+                        emit_layer_failed(&self.app, "<offscreen>", "render", &e.to_string());
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -418,44 +470,34 @@ fn init_window(
         .with_inner_size(PhysicalSize::new(viewport.width, viewport.height))
         .with_position(PhysicalPosition::new(viewport.x, viewport.y));
 
-    // Платформо-зависимое истинное встраивание.
+    // Платформо-зависимое встраивание child-окна.
     //
-    // На X11 общий `with_parent_window` НЕ делает reparent — он лишь определяет root/screen.
-    // Для настоящего child-окна нужен `WindowAttributesExtX11::with_embed_parent_window(xid)`,
-    // которое winit реализует через XReparentWindow. Только так окно перестаёт быть toplevel
-    // (исчезает из таскбара, клипается клиентской областью родителя, двигается с ним).
+    // На X11: `with_embed_parent_window(xid)` делает XReparentWindow — окно перестаёт
+    // быть toplevel, клипается и двигается с родителем.
+    // `with_parent_window` на X11 НЕ делает reparent; нужен именно embed.
     #[cfg(target_os = "linux")]
     {
         use raw_window_handle::RawWindowHandle;
         use winit::platform::x11::WindowAttributesExtX11;
         match viewport.parent.0 {
             RawWindowHandle::Xlib(h) => {
-                log::info!(
-                    "[monitor] parent: Xlib XID={:#x} ({} dec)",
-                    h.window, h.window
-                );
+                log::info!("[monitor] parent: Xlib XID={:#x}", h.window);
                 window_attrs = window_attrs
                     .with_embed_parent_window(h.window as u32)
                     .with_override_redirect(true);
             }
             RawWindowHandle::Xcb(h) => {
-                log::info!(
-                    "[monitor] parent: Xcb XID={:#x} ({} dec)",
-                    h.window.get(), h.window.get()
-                );
+                log::info!("[monitor] parent: Xcb XID={:#x}", h.window.get());
                 window_attrs = window_attrs
                     .with_embed_parent_window(h.window.get())
                     .with_override_redirect(true);
             }
             RawWindowHandle::Wayland(_) => {
                 anyhow::bail!(
-                    "monitor: parent handle is Wayland — GDK_BACKEND=x11 не подхватилось. \
-                     XWayland-режим не активирован."
+                    "monitor: parent handle is Wayland — GDK_BACKEND=x11 не подхватилось"
                 );
             }
-            other => {
-                anyhow::bail!("monitor: unexpected parent handle variant: {:?}", other);
-            }
+            other => anyhow::bail!("monitor: unexpected parent handle: {:?}", other),
         }
     }
     #[cfg(not(target_os = "linux"))]
@@ -465,9 +507,7 @@ fn init_window(
     }
 
     let window = Arc::new(
-        event_loop
-            .create_window(window_attrs)
-            .context("create_window failed")?,
+        event_loop.create_window(window_attrs).context("create_window failed")?,
     );
 
     let size = window.inner_size();
@@ -484,587 +524,17 @@ fn init_window(
 
     let offscreen_dev_id = Some(surface.dev_id);
     Ok(WindowState {
-        app,
+        app: app.clone(),
         window,
         compositor,
         surface,
-        bg_tx,
-        proxy,
-        scene: Arc::new(Vec::new()),
-        runtimes: HashMap::new(),
-        loading_set: HashSet::new(),
-        playing: false,
-        clock_pts_origin: 0.0,
-        clock_wall_origin: None,
+        clock: PlaybackClock::new(),
+        layers: LayerRuntimeManager::new(app, bg_tx, proxy),
         last_emit_pts: -1.0,
-        scene_size: (0, 0),
         last_viewport: viewport,
-        preview_scale: None,
         mode: MonitorMode::Embedded,
         frame_channel: None,
         canvas_size: (viewport.width.max(1), viewport.height.max(1)),
         offscreen_dev_id,
     })
-}
-
-// ---------------------------------------------------------------------------
-// WindowState impl
-// ---------------------------------------------------------------------------
-
-impl WindowState {
-    fn resize(&mut self, width: u32, height: u32) {
-        self.compositor.resize_surface(&mut self.surface, width, height);
-    }
-
-    fn apply_scene(&mut self, scene: MonitorScene) {
-        let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
-
-        // Если изменился preview_scale — дропаем все видеорантаймы, чтобы пересоздать
-        // ffmpeg с новым `-vf scale`. Без этого старые пампы будут декодить в прежнем размере.
-        let scale_changed =
-            !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
-        if scale_changed {
-            log::info!(
-                "[monitor] preview_scale change {:?} → {:?}: dropping video runtimes",
-                self.preview_scale,
-                scene.preview_scale,
-            );
-            self.loading_set.clear();
-        }
-        self.preview_scale = scene.preview_scale;
-
-        // Diff рантаймов: оставляем активные, остальные уносим в фоновый дроп.
-        // DecodePump::Drop блокирует поток до завершения ffmpeg + join декодер-треда;
-        // выполняя это в event-loop'е, мы ловим заметный hitch при больших diff'ах
-        // (смена preview_scale, скачок таймлайна). Скидываем дроп в фон.
-        let prev = std::mem::take(&mut self.runtimes);
-        let mut to_drop: Vec<LayerRuntime> = Vec::new();
-        for (id, rt) in prev {
-            let drop_for_scale =
-                scale_changed && matches!(rt, LayerRuntime::Video(_) | LayerRuntime::Loading);
-            let gone = !new_ids.contains(&id);
-            let failed_retry = matches!(rt, LayerRuntime::Failed);
-            if drop_for_scale || gone || failed_retry {
-                to_drop.push(rt);
-            } else {
-                self.runtimes.insert(id, rt);
-            }
-        }
-        if !to_drop.is_empty() {
-            std::thread::Builder::new()
-                .name("fastcat-rt-drop".into())
-                .spawn(move || drop(to_drop))
-                .ok();
-        }
-
-        // Loading-слои, которых нет в новой сцене — убираем из очереди.
-        // Фоновый поток всё равно отработает, но результат выбросим в apply_bg_result.
-        self.loading_set.retain(|id| new_ids.contains(id));
-
-        self.scene_size = (scene.width, scene.height);
-        self.scene = Arc::new(scene.layers);
-
-        // Видимость окна теперь полностью контролируется фронтом через SetViewport —
-        // здесь только просим перерисовать.
-        self.window.request_redraw();
-    }
-
-    fn set_mode(&mut self, mode: MonitorMode) {
-        if self.mode == mode {
-            return;
-        }
-        self.mode = mode;
-        match mode {
-            MonitorMode::Embedded => {
-                // Восстанавливаем видимость X11 child по последнему viewport.
-                if self.last_viewport.visible {
-                    self.window.set_visible(true);
-                }
-            }
-            MonitorMode::Canvas => {
-                // Скрываем X11 child — рендер пойдёт offscreen.
-                self.window.set_visible(false);
-            }
-        }
-    }
-
-    fn apply_viewport(&mut self, vp: ViewportSpec) {
-        let prev = self.last_viewport;
-        log::info!(
-            "[monitor] apply_viewport pos=({},{}) size={}x{} visible={}",
-            vp.x, vp.y, vp.width, vp.height, vp.visible
-        );
-        if (prev.x, prev.y) != (vp.x, vp.y) {
-            self.window
-                .set_outer_position(PhysicalPosition::new(vp.x, vp.y));
-        }
-        if (prev.width, prev.height) != (vp.width, vp.height) {
-            let _ = self
-                .window
-                .request_inner_size(PhysicalSize::new(vp.width, vp.height));
-            // С override_redirect WM не управляет окном, и WindowEvent::Resized может
-            // не прилететь синхронно. Ресайзим surface сразу — иначе будет кадр старого размера.
-            self.resize(vp.width, vp.height);
-        }
-        if prev.visible != vp.visible {
-            self.window.set_visible(vp.visible);
-        }
-        self.last_viewport = vp;
-        if vp.visible {
-            self.window.request_redraw();
-        }
-    }
-
-    fn play(&mut self) {
-        if self.scene.is_empty() {
-            return;
-        }
-        self.playing = true;
-        self.clock_wall_origin = Some(Instant::now());
-    }
-
-    fn pause(&mut self) {
-        if self.playing {
-            self.clock_pts_origin = self.current_timeline_pts();
-        }
-        self.playing = false;
-        self.clock_wall_origin = None;
-    }
-
-    fn seek(&mut self, timeline_sec: f64) {
-        let t = timeline_sec.max(0.0);
-        self.clock_pts_origin = t;
-        self.clock_wall_origin = if self.playing { Some(Instant::now()) } else { None };
-        // Arc::clone — O(1), без копирования Vec'а.
-        let scene = self.scene.clone();
-        for layer in scene.iter() {
-            if !layer.covers(t) || layer.kind != LayerKind::Video {
-                continue;
-            }
-            let clip_local = layer.source_pts_at(t);
-            if let Some(LayerRuntime::Video(v)) = self.runtimes.get_mut(&layer.id) {
-                if let Err(e) = v.pump.seek(clip_local) {
-                    log::error!("[monitor] seek pump {}: {e:?}", layer.id);
-                }
-                v.current = None;
-                v.upcoming = None;
-            }
-        }
-    }
-
-    fn current_timeline_pts(&self) -> f64 {
-        match (self.playing, self.clock_wall_origin) {
-            (true, Some(origin)) => {
-                self.clock_pts_origin + Instant::now().duration_since(origin).as_secs_f64()
-            }
-            _ => self.clock_pts_origin,
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Фоновая загрузка слоёв (не блокирует event-loop)
-    // -----------------------------------------------------------------------
-
-    fn ensure_runtime_for(&mut self, layer: &SceneLayer) {
-        // Рантайм уже есть (Loading, Video, Image) — ничего не делаем.
-        if self.runtimes.contains_key(&layer.id) {
-            return;
-        }
-
-        // Помечаем как Loading сразу, чтобы повторные вызовы в том же тике не дублировали spawn.
-        self.runtimes.insert(layer.id.clone(), LayerRuntime::Loading);
-        self.loading_set.insert(layer.id.clone());
-
-        let id = layer.id.clone();
-        let path = PathBuf::from(&layer.path);
-        let bg_tx = self.bg_tx.clone();
-        let proxy = self.proxy.clone();
-
-        match layer.kind {
-            LayerKind::Video => {
-                // Считаем кап на длинную сторону декода. Базовая логика: scene long edge × preview_scale.
-                // Если scene_size = 0 (ещё не пришёл format) — пускаем без капа (decoder откроется в нативе).
-                let max_long_edge = match (self.scene_size, self.preview_scale) {
-                    ((w, h), Some(scale)) if w > 0 && h > 0 && scale > 0.0 => {
-                        let long = w.max(h) as f32 * scale;
-                        Some(long.round().max(2.0) as u32)
-                    }
-                    _ => None,
-                };
-                log::info!(
-                    "[monitor] spawn video decoder for {id} (max_long_edge={:?}, scene_size={:?}, scale={:?})",
-                    max_long_edge, self.scene_size, self.preview_scale
-                );
-                std::thread::Builder::new()
-                    .name(format!("fastcat-load-video:{}", path.display()))
-                    .spawn(move || {
-                        let result = match DecodePump::open(&path, max_long_edge) {
-                            Ok(pump) => {
-                                let media_size = (pump.info.width, pump.info.height);
-                                BgLayerResult::VideoOk { id, pump, media_size }
-                            }
-                            Err(e) => BgLayerResult::VideoErr { id, error: e.to_string() },
-                        };
-                        let _ = bg_tx.send(result);
-                        let _ = proxy.send_event(MonitorCommand::BgReady);
-                    })
-                    .ok();
-            }
-            LayerKind::Image => {
-                std::thread::Builder::new()
-                    .name(format!("fastcat-load-img:{}", path.display()))
-                    .spawn(move || {
-                        let result = match decode_image(&path) {
-                            Ok(img) => BgLayerResult::ImageOk {
-                                id,
-                                image: img.image,
-                                size: (img.width, img.height),
-                            },
-                            Err(e) => BgLayerResult::ImageErr { id, error: e.to_string() },
-                        };
-                        let _ = bg_tx.send(result);
-                        let _ = proxy.send_event(MonitorCommand::BgReady);
-                    })
-                    .ok();
-            }
-        }
-    }
-
-    fn apply_bg_result(&mut self, result: BgLayerResult) {
-        match result {
-            BgLayerResult::VideoOk { id, pump, media_size } => {
-                self.loading_set.remove(&id);
-                // Слой мог исчезнуть из сцены за время загрузки — дропаем pump.
-                if !self.scene.iter().any(|l| l.id == id) {
-                    self.runtimes.remove(&id);
-                    return;
-                }
-                let clip_local = self.scene.iter()
-                    .find(|l| l.id == id)
-                    .map(|l| l.source_pts_at(self.current_timeline_pts()))
-                    .unwrap_or(0.0);
-                log::info!(
-                    "[monitor] opened video layer {id}: {}x{} @ {:.3}fps codec={}",
-                    pump.info.width, pump.info.height, pump.info.fps, pump.info.codec,
-                );
-                let rt = VideoLayerRt {
-                    pump,
-                    media_size,
-                    current: None,
-                    upcoming: None,
-                };
-                if clip_local > 0.0 {
-                    if let Err(e) = rt.pump.seek(clip_local) {
-                        log::error!("[monitor] initial seek {id}: {e:?}");
-                    }
-                }
-                self.runtimes.insert(id, LayerRuntime::Video(rt));
-            }
-            BgLayerResult::VideoErr { id, error } => {
-                self.loading_set.remove(&id);
-                log::error!("[monitor] open pump {id}: {error}");
-                // Не перетираем уже завершённый Video runtime (например, повторный BG после
-                // ошибки старого) — иначе Failed закроет видимое видео.
-                if !matches!(self.runtimes.get(&id), Some(LayerRuntime::Video(_))) {
-                    self.runtimes.insert(id.clone(), LayerRuntime::Failed);
-                }
-                emit_layer_failed(&self.app, &id, "video", &error);
-            }
-            BgLayerResult::ImageOk { id, image, size } => {
-                self.loading_set.remove(&id);
-                if !self.scene.iter().any(|l| l.id == id) {
-                    self.runtimes.remove(&id);
-                    return;
-                }
-                log::info!("[monitor] decoded image layer {id}: {}x{}", size.0, size.1);
-                self.runtimes.insert(id, LayerRuntime::Image(ImageLayerRt { image, size }));
-            }
-            BgLayerResult::ImageErr { id, error } => {
-                self.loading_set.remove(&id);
-                log::error!("[monitor] decode image {id}: {error}");
-                self.runtimes.insert(id.clone(), LayerRuntime::Failed);
-                emit_layer_failed(&self.app, &id, "image", &error);
-            }
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Видеокадры
-    // -----------------------------------------------------------------------
-
-    fn pull_video_frames(rt: &mut VideoLayerRt) {
-        let live_gen = rt.pump.current_generation();
-        loop {
-            // Если оба слота заполнены — НЕ перетираем upcoming свежим кадром, иначе мы
-            // ускоренно «съезжаем» вперёд target'а и `advance_video_to` никогда не срабатывает
-            // (upcoming.pts всегда оказывается сильно больше target). Оставляем decoder
-            // заблокированным на frame_tx.send(); очередной advance высвободит место.
-            if rt.current.is_some() && rt.upcoming.is_some() {
-                break;
-            }
-            match rt.pump.rx.try_recv() {
-                Ok(msg) => {
-                    if msg.generation != live_gen {
-                        continue;
-                    }
-                    let decoded = decoded_to_image(msg.frame);
-                    if rt.current.is_none() {
-                        rt.current = Some(decoded);
-                    } else {
-                        rt.upcoming = Some(decoded);
-                    }
-                }
-                Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
-            }
-        }
-    }
-
-    fn advance_video_to(rt: &mut VideoLayerRt, target_clip_local: f64) {
-        loop {
-            let advance = matches!(&rt.upcoming, Some(u) if u.pts_sec <= target_clip_local);
-            if !advance {
-                break;
-            }
-            rt.current = rt.upcoming.take();
-            Self::pull_video_frames(rt);
-            if rt.upcoming.is_none() {
-                break;
-            }
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Главный тик
-    // -----------------------------------------------------------------------
-
-    fn tick_and_render(&mut self) {
-        let t = self.current_timeline_pts();
-
-        // Детектируем конец сцены во время воспроизведения.
-        if self.playing && !self.scene.is_empty() {
-            let scene_end = self.scene.iter()
-                .map(|l| l.timeline_end_sec)
-                .fold(0.0_f64, f64::max);
-            if scene_end > 0.0 && t >= scene_end {
-                self.pause();
-                let _ = self.app.emit(EVT_ENDED, ());
-                self.emit_time(scene_end);
-                self.render(scene_end);
-                return;
-            }
-        }
-
-        // Запускаем фоновую загрузку для активных слоёв.
-        // Arc::clone — O(1); даёт split-borrow со списком слоёв при mut-доступе к self.
-        let scene = self.scene.clone();
-        for layer in scene.iter() {
-            if layer.covers(t) {
-                self.ensure_runtime_for(layer);
-            }
-        }
-
-        // Прокачиваем видеокадры.
-        for layer in scene.iter() {
-            if !layer.covers(t) || layer.kind != LayerKind::Video {
-                continue;
-            }
-            if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                Self::pull_video_frames(rt);
-                let target = layer.source_pts_at(t);
-                Self::advance_video_to(rt, target);
-            }
-        }
-
-        self.render(t);
-        self.emit_time(t);
-    }
-
-    fn emit_time(&mut self, t: f64) {
-        // На паузе/повторных redraw'ах подавляем дубли с тем же PTS, чтобы фронт не
-        // получал лишний шум. Во время playback дельта между тиками ≥ 1/TARGET_FPS,
-        // поэтому такой строгий порог не теряет апдейтов.
-        if t == self.last_emit_pts {
-            return;
-        }
-        self.last_emit_pts = t;
-        let _ = self.app.emit(EVT_TIME, t);
-    }
-
-    // -----------------------------------------------------------------------
-    // Рендер
-    // -----------------------------------------------------------------------
-
-    fn render(&mut self, t: f64) {
-        match self.mode {
-            MonitorMode::Embedded => {
-                let width = self.surface.config.width;
-                let height = self.surface.config.height;
-                let scene = self.build_scene(t);
-                if let Err(e) = self.compositor.render_scene_to_surface(
-                    &scene,
-                    &mut self.surface,
-                    width,
-                    height,
-                ) {
-                    log::error!("[monitor] compositor render: {e:?}");
-                    emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
-                }
-            }
-            MonitorMode::Canvas => {
-                let Some(channel) = self.frame_channel.clone() else { return };
-                let (width, height) = self.canvas_size;
-                if width == 0 || height == 0 {
-                    return;
-                }
-                let Some(dev_id) = self.offscreen_dev_id else { return };
-                let scene = self.build_scene(t);
-                match self.compositor.render_scene_to_pixels(dev_id, &scene, width, height) {
-                    Ok(pixels) => {
-                        let mut payload = Vec::with_capacity(8 + pixels.len());
-                        payload.extend_from_slice(&width.to_le_bytes());
-                        payload.extend_from_slice(&height.to_le_bytes());
-                        payload.extend_from_slice(&pixels);
-                        if let Err(e) = channel.send(InvokeResponseBody::Raw(payload)) {
-                            log::warn!("[monitor] frame channel send: {e:?}");
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("[monitor] offscreen render: {e:?}");
-                        emit_layer_failed(&self.app, "<offscreen>", "render", &e.to_string());
-                    }
-                }
-            }
-        }
-    }
-
-    /// Снимок доменной сцены в момент `t`: отбирает покрывающие слои, сортирует по z,
-    /// формирует [`compositor::scene::Scene`]. Трансформ каждого слоя — `center_fit`
-    /// (letterbox медиа в сцену). Вызывается из `render`; результат передаётся в
-    /// `Compositor::render_scene_to_*`.
-    fn build_scene(&self, t: f64) -> crate::compositor::scene::Scene {
-        use crate::compositor::scene::{
-            BlendMode, Layer, LayerKind, RasterSource, Scene, Transform,
-        };
-
-        let (scene_w, scene_h) = if self.scene_size.0 > 0 && self.scene_size.1 > 0 {
-            (self.scene_size.0, self.scene_size.1)
-        } else {
-            self.compute_scene_bbox()
-        };
-
-        let mut indices: Vec<usize> = (0..self.scene.len())
-            .filter(|&i| self.scene[i].covers(t))
-            .collect();
-        indices.sort_by_key(|&i| self.scene[i].z);
-
-        let mut layers = Vec::with_capacity(indices.len());
-        for i in indices {
-            let sl = &self.scene[i];
-            let opacity = sl.opacity.clamp(0.0, 1.0) as f32;
-            if opacity <= 0.0 {
-                continue;
-            }
-            let Some(rt) = self.runtimes.get(&sl.id) else { continue };
-            let (img, media_size) = match rt {
-                LayerRuntime::Video(v) => match v.current.as_ref() {
-                    Some(f) => (f.image.clone(), v.media_size),
-                    None => continue,
-                },
-                LayerRuntime::Image(im) => (im.image.clone(), im.size),
-                LayerRuntime::Loading | LayerRuntime::Failed => continue,
-            };
-            layers.push(Layer {
-                id: sl.id.clone(),
-                kind: LayerKind::Raster {
-                    source: RasterSource::Image(img),
-                    natural_size: media_size,
-                },
-                transform: Transform::center_fit(media_size, (scene_w, scene_h)),
-                opacity,
-                blend: BlendMode::Normal,
-                mask: None,
-                effects: Vec::new(),
-            });
-        }
-
-        Scene {
-            width: scene_w,
-            height: scene_h,
-            time: t,
-            background: Color::BLACK,
-            layers,
-        }
-    }
-
-    fn compute_scene_bbox(&self) -> (u32, u32) {
-        let mut w = 0u32;
-        let mut h = 0u32;
-        for layer in self.scene.iter() {
-            let Some(rt) = self.runtimes.get(&layer.id) else { continue };
-            let (mw, mh) = match rt {
-                LayerRuntime::Video(v) => v.media_size,
-                LayerRuntime::Image(im) => im.size,
-                LayerRuntime::Loading | LayerRuntime::Failed => continue,
-            };
-            w = w.max(mw);
-            h = h.max(mh);
-        }
-        if w == 0 || h == 0 { (1920, 1080) } else { (w, h) }
-    }
-}
-
-/// Сравнение preview_scale с трактовкой `None == Some(1.0)` (отсутствие даунскейла).
-/// Без этой нормализации первый приход `Some(1.0)` после `None` (или наоборот) сбрасывал
-/// бы все живые видеопампы зря.
-fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
-    let a = a.unwrap_or(1.0);
-    let b = b.unwrap_or(1.0);
-    (a - b).abs() < 1e-4
-}
-
-fn emit_layer_failed(app: &AppHandle, id: &str, kind: &str, error: &str) {
-    #[derive(serde::Serialize, Clone)]
-    struct Payload<'a> {
-        id: &'a str,
-        kind: &'a str,
-        error: &'a str,
-    }
-    let _ = app.emit(EVT_LAYER_FAILED, Payload { id, kind, error });
-}
-
-fn decoded_to_image(frame: VideoFrame) -> DecodedVideoFrame {
-    let VideoFrame { width, height, pixels, pts_sec } = frame;
-    let blob = Blob::new(Arc::new(pixels));
-    let image = ImageData {
-        data: blob,
-        format: ImageFormat::Rgba8,
-        alpha_type: ImageAlphaType::Alpha,
-        width,
-        height,
-    };
-    DecodedVideoFrame { pts_sec, image }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::approx_eq_opt_scale;
-
-    #[test]
-    fn none_equals_some_one() {
-        assert!(approx_eq_opt_scale(None, Some(1.0)));
-        assert!(approx_eq_opt_scale(Some(1.0), None));
-        assert!(approx_eq_opt_scale(None, None));
-    }
-
-    #[test]
-    fn detects_meaningful_change() {
-        assert!(!approx_eq_opt_scale(None, Some(0.5)));
-        assert!(!approx_eq_opt_scale(Some(1.0), Some(0.5)));
-        assert!(!approx_eq_opt_scale(Some(0.25), Some(0.5)));
-    }
-
-    #[test]
-    fn tolerates_float_noise() {
-        assert!(approx_eq_opt_scale(Some(0.5), Some(0.5 + 1e-6)));
-    }
 }
