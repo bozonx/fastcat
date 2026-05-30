@@ -41,7 +41,9 @@ const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
 /// Целевой framerate нативного монитора (кадров/сек). Ограничивает Poll — вместо busy-loop.
-const TARGET_FPS: f64 = 60.0;
+/// 30 FPS — достаточно для preview-монитора видеоредактора (большинство source — 24/25/30).
+/// При 60 FPS мы рендерили source-кадры дважды на скорости и грузили CPU/GPU вдвое.
+const TARGET_FPS: f64 = 30.0;
 
 /// Заказ положения child-окна от фронта (физические пиксели в координатах родителя).
 #[derive(Debug, Clone, Copy)]

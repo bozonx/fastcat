@@ -19,14 +19,31 @@ use vello::util::{RenderContext, RenderSurface};
 use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene as VelloScene};
 use winit::window::Window;
 
+/// Закешированный таргет offscreen-рендера. Пересоздаётся только при изменении размера.
+/// Без кеша мы аллоцировали бы 8-16 МБ wgpu Buffer + текстуру на каждый кадр (60 FPS = 480-960 МБ/с
+/// allocations), что давало взрывной рост памяти и нагрузку на CPU.
+struct OffscreenTarget {
+    width: u32,
+    height: u32,
+    texture: wgpu::Texture,
+    view: wgpu::TextureView,
+    buffer: wgpu::Buffer,
+    aligned_row_bytes: usize,
+}
+
 pub struct Compositor {
     render_cx: RenderContext,
     renderers: HashMap<usize, Renderer>,
+    offscreen: Option<OffscreenTarget>,
 }
 
 impl Compositor {
     pub fn new() -> Self {
-        Self { render_cx: RenderContext::new(), renderers: HashMap::new() }
+        Self {
+            render_cx: RenderContext::new(),
+            renderers: HashMap::new(),
+            offscreen: None,
+        }
     }
 
     pub async fn create_window_surface(
@@ -138,17 +155,42 @@ impl Compositor {
         let device = &device_handle.device;
         let queue = &device_handle.queue;
 
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("monitor-offscreen"),
-            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
-            view_formats: &[],
-        });
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        // (Пере)создаём offscreen target только при изменении размера.
+        let need_rebuild = match &self.offscreen {
+            Some(t) => t.width != width || t.height != height,
+            None => true,
+        };
+        if need_rebuild {
+            let row_bytes = width as usize * 4;
+            let aligned_row_bytes = (row_bytes + 255) & !255;
+            let buffer_size = (aligned_row_bytes * height as usize) as u64;
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("monitor-offscreen"),
+                size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("monitor-readback"),
+                size: buffer_size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            self.offscreen = Some(OffscreenTarget {
+                width,
+                height,
+                texture,
+                view,
+                buffer,
+                aligned_row_bytes,
+            });
+        }
+        let target = self.offscreen.as_ref().unwrap();
 
         let renderer = self
             .renderers
@@ -159,7 +201,7 @@ impl Compositor {
                 device,
                 queue,
                 scene,
-                &view,
+                &target.view,
                 &RenderParams {
                     base_color,
                     width,
@@ -169,32 +211,21 @@ impl Compositor {
             )
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
 
-        // bytes_per_row должен быть кратен 256 (wgpu/COPY_BYTES_PER_ROW_ALIGNMENT).
         let row_bytes = width as usize * 4;
-        let aligned_row_bytes = (row_bytes + 255) & !255;
-        let buffer_size = (aligned_row_bytes * height as usize) as u64;
-
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("monitor-readback"),
-            size: buffer_size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("readback") });
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
-                texture: &texture,
+                texture: &target.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
             wgpu::TexelCopyBufferInfo {
-                buffer: &buffer,
+                buffer: &target.buffer,
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: Some(aligned_row_bytes as u32),
+                    bytes_per_row: Some(target.aligned_row_bytes as u32),
                     rows_per_image: Some(height),
                 },
             },
@@ -202,7 +233,7 @@ impl Compositor {
         );
         queue.submit([encoder.finish()]);
 
-        let slice = buffer.slice(..);
+        let slice = target.buffer.slice(..);
         let (tx, rx) = std::sync::mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |r| {
             let _ = tx.send(r);
@@ -215,11 +246,11 @@ impl Compositor {
         let mapped = slice.get_mapped_range();
         let mut out = Vec::with_capacity(row_bytes * height as usize);
         for row in 0..height as usize {
-            let start = row * aligned_row_bytes;
+            let start = row * target.aligned_row_bytes;
             out.extend_from_slice(&mapped[start..start + row_bytes]);
         }
         drop(mapped);
-        buffer.unmap();
+        target.buffer.unmap();
         Ok(out)
     }
 

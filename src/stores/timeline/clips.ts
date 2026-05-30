@@ -325,6 +325,35 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       }
     }
 
+    const isMultiSelect = deps.selectedItemIds.value.includes(itemId) && deps.selectedItemIds.value.length > 1;
+
+    if (isMultiSelect) {
+      const cmds: TimelineCommand[] = [];
+      const doc = deps.timelineDoc.value;
+      if (doc) {
+        for (const selId of deps.selectedItemIds.value) {
+          for (const track of doc.tracks) {
+            const hasClip = track.items.some((it) => it.id === selId && it.kind === 'clip');
+            if (hasClip) {
+              cmds.push({
+                type: 'update_clip_properties',
+                trackId: track.id,
+                itemId: selId,
+                properties: validatedProperties,
+              });
+              break;
+            }
+          }
+        }
+      }
+      if (cmds.length > 0) {
+        return deps.batchApplyTimeline(cmds, {
+          saveMode: 'debounced',
+          labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
+        });
+      }
+    }
+
     return deps.applyTimeline(
       {
         type: 'update_clip_properties',
@@ -348,6 +377,36 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       saveMode?: 'debounced' | 'immediate' | 'none';
     },
   ): string[] {
+    const isMultiSelect = deps.selectedItemIds.value.includes(itemId) && deps.selectedItemIds.value.length > 1;
+
+    if (isMultiSelect) {
+      const cmds: TimelineCommand[] = [];
+      const doc = deps.timelineDoc.value;
+      if (doc) {
+        for (const selId of deps.selectedItemIds.value) {
+          for (const track of doc.tracks) {
+            const hasClip = track.items.some((it) => it.id === selId && it.kind === 'clip');
+            if (hasClip) {
+              cmds.push({
+                type: 'update_clip_transition',
+                trackId: track.id,
+                itemId: selId,
+                ...options,
+              });
+              break;
+            }
+          }
+        }
+      }
+      if (cmds.length > 0) {
+        return deps.batchApplyTimeline(cmds, {
+          saveMode: applyOptions?.saveMode ?? 'debounced',
+          skipHistory: applyOptions?.skipHistory,
+          labelKey: 'videoEditor.fileManager.history.entries.updateTransition',
+        });
+      }
+    }
+
     return deps.applyTimeline(
       {
         type: 'update_clip_transition',

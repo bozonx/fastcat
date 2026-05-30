@@ -501,4 +501,58 @@ describe('TimelineStore', () => {
     expect(c1.audioGain).toBeCloseTo(0.4);
     expect(c2.audioGain).toBeCloseTo(0.7);
   });
+
+  it('synchronizes updateClipProperties across all selected clips when multiple clips are selected', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          clips: [
+            { id: 'c1', startUs: 0, durationUs: 5_000_000 },
+            { id: 'c2', startUs: 6_000_000, durationUs: 5_000_000 },
+          ],
+        },
+      ],
+    });
+    store.timelineDoc = timeline;
+    store.selectedItemIds = ['c1', 'c2'];
+
+    store.updateClipProperties('v1', 'c1', { opacity: 0.75 });
+
+    const c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    const c2 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c2');
+    expect(c1.opacity).toBe(0.75);
+    expect(c2.opacity).toBe(0.75);
+  });
+
+  it('does not synchronize updateClipProperties to other group clips when the other clip is not selected', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          clips: [
+            { id: 'c1', startUs: 0, durationUs: 5_000_000, linkedGroupId: 'group-1' },
+          ],
+        },
+        {
+          id: 'a1',
+          kind: 'audio',
+          clips: [
+            { id: 'c2', startUs: 0, durationUs: 5_000_000, linkedGroupId: 'group-1' },
+          ],
+        },
+      ],
+    });
+    store.timelineDoc = timeline;
+    store.selectedItemIds = ['c1']; // Only c1 is selected, even though it's grouped with c2
+
+    store.updateClipProperties('v1', 'c1', { opacity: 0.5 });
+
+    const c1 = store.timelineDoc.tracks[0].items.find((it: any) => it.id === 'c1');
+    const c2 = store.timelineDoc.tracks[1].items.find((it: any) => it.id === 'c2');
+    expect(c1.opacity).toBe(0.5);
+    expect(c2.opacity).toBeUndefined(); // Should NOT sync to group member because it's not in selection
+  });
 });

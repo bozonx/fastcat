@@ -65,6 +65,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     const rightGroupId = createLinkedGroupId();
     const groupItemIds = new Set(getLinkedClipGroupItemIds(doc, item.id));
 
+    const createdItemIds: string[] = [];
+
     let nextTracks = doc.tracks.map((t) => {
       const hasGroupClip = t.items.some((it) => groupItemIds.has(it.id));
       if (!hasGroupClip) return t;
@@ -120,6 +122,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
           }
 
           const rightItemId = nextItemId(t.id, 'clip');
+          createdItemIds.push(rightItemId);
 
           const leftPatched: TimelineClipItem = {
             ...(it as TimelineClipItem),
@@ -169,7 +172,7 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
     });
 
     nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
-    return { next: { ...doc, tracks: nextTracks } };
+    return { next: { ...doc, tracks: nextTracks }, createdItemIds };
   }
 
   const leftDurationUs = Math.max(0, atUs - startUs);
@@ -242,5 +245,5 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
-  return { next: { ...doc, tracks: nextTracks } };
+  return { next: { ...doc, tracks: nextTracks }, createdItemIds: [rightItemId] };
 }

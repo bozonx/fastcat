@@ -280,10 +280,15 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
 
     const cmds = buildSplitClipCommands(doc, atUs, target);
     if (cmds.length > 0) {
-      deps.batchApplyTimeline(cmds, {
+      const createdIds = deps.batchApplyTimeline(cmds, {
         saveMode: 'none',
         labelKey: 'videoEditor.fileManager.history.entries.splitClip',
       });
+      if (createdIds && createdIds.length > 0) {
+        const currentSelection = deps.selectedItemIds.value;
+        const allIds = Array.from(new Set([...currentSelection, target.itemId, ...createdIds]));
+        deps.selectedItemIds.value = allIds;
+      }
     }
     await deps.requestTimelineSave({ immediate: true });
   }
@@ -323,10 +328,15 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     const cmds = buildSplitSelectedClipsCommands(doc, deps.currentTime.value, itemIdsToSplit);
     if (cmds.length === 0) return;
 
-    deps.batchApplyTimeline(cmds, {
+    const createdIds = deps.batchApplyTimeline(cmds, {
       labelKey: 'videoEditor.fileManager.history.entries.splitSelectedClips',
       saveMode: 'immediate',
     });
+
+    if (createdIds && createdIds.length > 0) {
+      const allIds = Array.from(new Set([...selectedItemIds, ...createdIds]));
+      deps.selectedItemIds.value = allIds;
+    }
 
     await deps.requestTimelineSave({ immediate: true });
   }
