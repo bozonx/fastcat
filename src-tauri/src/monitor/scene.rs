@@ -56,3 +56,44 @@ impl SceneLayer {
         local.max(0.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn layer(start: f64, end: f64, source_start: f64) -> SceneLayer {
+        SceneLayer {
+            id: "x".into(),
+            kind: LayerKind::Video,
+            path: "/tmp/x".into(),
+            timeline_start_sec: start,
+            timeline_end_sec: end,
+            source_start_sec: source_start,
+            z: 0,
+            opacity: 1.0,
+        }
+    }
+
+    #[test]
+    fn covers_is_half_open_interval() {
+        let l = layer(2.0, 5.0, 0.0);
+        assert!(!l.covers(1.999));
+        assert!(l.covers(2.0));
+        assert!(l.covers(4.999));
+        assert!(!l.covers(5.0));
+    }
+
+    #[test]
+    fn source_pts_at_offsets_by_timeline_start() {
+        let l = layer(10.0, 20.0, 3.5);
+        assert!((l.source_pts_at(10.0) - 3.5).abs() < 1e-9);
+        assert!((l.source_pts_at(12.0) - 5.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn source_pts_clamps_to_zero_before_timeline_start() {
+        let l = layer(10.0, 20.0, 0.0);
+        assert_eq!(l.source_pts_at(5.0), 0.0);
+    }
+}
+

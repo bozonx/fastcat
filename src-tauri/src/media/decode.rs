@@ -281,3 +281,59 @@ fn parse_rational(s: &str) -> Option<f64> {
     }
     Some(num / den)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compute_output_dims_no_cap_returns_source() {
+        assert_eq!(compute_output_dims(1920, 1080, None), (1920, 1080));
+        assert_eq!(compute_output_dims(1920, 1080, Some(0)), (1920, 1080));
+    }
+
+    #[test]
+    fn compute_output_dims_no_upscale() {
+        assert_eq!(compute_output_dims(640, 480, Some(4096)), (640, 480));
+    }
+
+    #[test]
+    fn compute_output_dims_downscale_keeps_aspect_and_even() {
+        let (w, h) = compute_output_dims(3840, 2160, Some(1920));
+        assert_eq!(w, 1920);
+        assert_eq!(h, 1080);
+        assert_eq!(w & 1, 0);
+        assert_eq!(h & 1, 0);
+    }
+
+    #[test]
+    fn compute_output_dims_portrait() {
+        let (w, h) = compute_output_dims(1080, 1920, Some(960));
+        assert_eq!(h, 960);
+        assert_eq!(w, 540);
+        assert_eq!(w & 1, 0);
+    }
+
+    #[test]
+    fn compute_output_dims_floors_to_even_and_min_two() {
+        let (w, h) = compute_output_dims(3, 5, Some(2));
+        assert!(w >= 2 && h >= 2);
+        assert_eq!(w & 1, 0);
+        assert_eq!(h & 1, 0);
+    }
+
+    #[test]
+    fn parse_rational_basic() {
+        assert_eq!(parse_rational("30000/1001"), Some(30000.0 / 1001.0));
+        assert_eq!(parse_rational("25"), Some(25.0));
+        assert_eq!(parse_rational("0/0"), None);
+        assert_eq!(parse_rational("abc"), None);
+    }
+
+    #[test]
+    fn fmt_fps_handles_invalid() {
+        assert_eq!(fmt_fps(0.0), "30.000000");
+        assert_eq!(fmt_fps(f64::NAN), "30.000000");
+        assert_eq!(fmt_fps(23.976), "23.976000");
+    }
+}

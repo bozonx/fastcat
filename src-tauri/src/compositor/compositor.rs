@@ -34,7 +34,10 @@ struct OffscreenTarget {
 pub struct Compositor {
     render_cx: RenderContext,
     renderers: HashMap<usize, Renderer>,
-    offscreen: Option<OffscreenTarget>,
+    /// Offscreen target — отдельный на каждый wgpu device. Текстура и readback-buffer
+    /// привязаны к конкретному `wgpu::Device`; шарить один `Option` между device'ами
+    /// приводило бы к молотьбе rebuild'ов при чередовании (preview ↔ export-device).
+    offscreen: HashMap<usize, OffscreenTarget>,
 }
 
 impl Compositor {
@@ -42,7 +45,7 @@ impl Compositor {
         Self {
             render_cx: RenderContext::new(),
             renderers: HashMap::new(),
-            offscreen: None,
+            offscreen: HashMap::new(),
         }
     }
 
@@ -155,8 +158,9 @@ impl Compositor {
         let device = &device_handle.device;
         let queue = &device_handle.queue;
 
-        // (Пере)создаём offscreen target только при изменении размера.
-        let need_rebuild = match &self.offscreen {
+        // (Пере)создаём offscreen target только при изменении размера. Ключ — dev_id,
+        // чтобы при работе с несколькими device'ами они не вытесняли друг друга.
+        let need_rebuild = match self.offscreen.get(&dev_id) {
             Some(t) => t.width != width || t.height != height,
             None => true,
         };
@@ -181,16 +185,19 @@ impl Compositor {
                 usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                 mapped_at_creation: false,
             });
-            self.offscreen = Some(OffscreenTarget {
-                width,
-                height,
-                texture,
-                view,
-                buffer,
-                aligned_row_bytes,
-            });
+            self.offscreen.insert(
+                dev_id,
+                OffscreenTarget {
+                    width,
+                    height,
+                    texture,
+                    view,
+                    buffer,
+                    aligned_row_bytes,
+                },
+            );
         }
-        let target = self.offscreen.as_ref().unwrap();
+        let target = self.offscreen.get(&dev_id).unwrap();
 
         let renderer = self
             .renderers

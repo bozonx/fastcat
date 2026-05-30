@@ -40,6 +40,8 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
 const EVT_ENDED: &str = "monitor:ended";
+/// Эмитим, если фронт не получил обновление времени дольше этого окна. Слой ошибки.
+const EVT_LAYER_FAILED: &str = "monitor:layer_failed";
 /// Целевой framerate нативного монитора (кадров/сек). Ограничивает Poll — вместо busy-loop.
 /// 30 FPS — достаточно для preview-монитора видеоредактора (большинство source — 24/25/30).
 /// При 60 FPS мы рендерили source-кадры дважды на скорости и грузили CPU/GPU вдвое.
@@ -66,10 +68,6 @@ pub(super) enum BgLayerResult {
     ImageOk { id: String, image: ImageData, size: (u32, u32) },
     ImageErr { id: String, error: String },
 }
-
-// DecodePump и ImageData содержат только Send-типы; явная разметка нужна, т.к. компилятор
-// не может автоматически вывести Send для непрозрачных внешних типов (wgpu Blob).
-unsafe impl Send for BgLayerResult {}
 
 // ---------------------------------------------------------------------------
 // Event loop
@@ -205,7 +203,9 @@ struct WindowState {
     proxy: EventLoopProxy<MonitorCommand>,
 
     /// Сцена «как заказал фронт». Источник истины для diff'а рантаймов.
-    scene: Vec<SceneLayer>,
+    /// `Arc` — чтобы `tick_and_render`/`seek` могли итерировать снимок сцены без
+    /// одновременной мутации `self.runtimes`/`self.loading_set`, и без полного Vec-clone каждый тик.
+    scene: Arc<Vec<SceneLayer>>,
     /// id → рантайм (Loading, Video, Image, Failed).
     runtimes: HashMap<String, LayerRuntime>,
     /// Слои, для которых фоновый поток загрузки уже запущен.
@@ -248,7 +248,6 @@ struct VideoLayerRt {
     media_size: (u32, u32),
     current: Option<DecodedVideoFrame>,
     upcoming: Option<DecodedVideoFrame>,
-    last_seek_clip_local: Option<f64>,
 }
 
 struct ImageLayerRt {
@@ -492,7 +491,7 @@ fn init_window(
         surface,
         bg_tx,
         proxy,
-        scene: Vec::new(),
+        scene: Arc::new(Vec::new()),
         runtimes: HashMap::new(),
         loading_set: HashSet::new(),
         playing: false,
@@ -527,31 +526,44 @@ impl WindowState {
             !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
         if scale_changed {
             log::info!(
-                "[monitor] preview_scale change {:?} → {:?}: dropping {} video runtimes",
+                "[monitor] preview_scale change {:?} → {:?}: dropping video runtimes",
                 self.preview_scale,
                 scene.preview_scale,
-                self.runtimes.values().filter(|r| matches!(r, LayerRuntime::Video(_) | LayerRuntime::Loading)).count(),
             );
-            self.runtimes.retain(|_, rt| !matches!(rt, LayerRuntime::Video(_) | LayerRuntime::Loading));
             self.loading_set.clear();
         }
         self.preview_scale = scene.preview_scale;
 
-        // Дропаем рантаймы исчезнувших слоёв (закроет ffmpeg subprocesses).
-        self.runtimes.retain(|id, rt| {
-            if !new_ids.contains(id) {
-                return false;
+        // Diff рантаймов: оставляем активные, остальные уносим в фоновый дроп.
+        // DecodePump::Drop блокирует поток до завершения ffmpeg + join декодер-треда;
+        // выполняя это в event-loop'е, мы ловим заметный hitch при больших diff'ах
+        // (смена preview_scale, скачок таймлайна). Скидываем дроп в фон.
+        let prev = std::mem::take(&mut self.runtimes);
+        let mut to_drop: Vec<LayerRuntime> = Vec::new();
+        for (id, rt) in prev {
+            let drop_for_scale =
+                scale_changed && matches!(rt, LayerRuntime::Video(_) | LayerRuntime::Loading);
+            let gone = !new_ids.contains(&id);
+            let failed_retry = matches!(rt, LayerRuntime::Failed);
+            if drop_for_scale || gone || failed_retry {
+                to_drop.push(rt);
+            } else {
+                self.runtimes.insert(id, rt);
             }
-            // Failed-рантаймы удаляем, чтобы следующий tick сделал retry.
-            !matches!(rt, LayerRuntime::Failed)
-        });
+        }
+        if !to_drop.is_empty() {
+            std::thread::Builder::new()
+                .name("fastcat-rt-drop".into())
+                .spawn(move || drop(to_drop))
+                .ok();
+        }
 
         // Loading-слои, которых нет в новой сцене — убираем из очереди.
         // Фоновый поток всё равно отработает, но результат выбросим в apply_bg_result.
         self.loading_set.retain(|id| new_ids.contains(id));
 
         self.scene_size = (scene.width, scene.height);
-        self.scene = scene.layers;
+        self.scene = Arc::new(scene.layers);
 
         // Видимость окна теперь полностью контролируется фронтом через SetViewport —
         // здесь только просим перерисовать.
@@ -624,8 +636,9 @@ impl WindowState {
         let t = timeline_sec.max(0.0);
         self.clock_pts_origin = t;
         self.clock_wall_origin = if self.playing { Some(Instant::now()) } else { None };
+        // Arc::clone — O(1), без копирования Vec'а.
         let scene = self.scene.clone();
-        for layer in &scene {
+        for layer in scene.iter() {
             if !layer.covers(t) || layer.kind != LayerKind::Video {
                 continue;
             }
@@ -636,7 +649,6 @@ impl WindowState {
                 }
                 v.current = None;
                 v.upcoming = None;
-                v.last_seek_clip_local = Some(clip_local);
             }
         }
     }
@@ -736,18 +748,16 @@ impl WindowState {
                     "[monitor] opened video layer {id}: {}x{} @ {:.3}fps codec={}",
                     pump.info.width, pump.info.height, pump.info.fps, pump.info.codec,
                 );
-                let mut rt = VideoLayerRt {
+                let rt = VideoLayerRt {
                     pump,
                     media_size,
                     current: None,
                     upcoming: None,
-                    last_seek_clip_local: None,
                 };
                 if clip_local > 0.0 {
                     if let Err(e) = rt.pump.seek(clip_local) {
                         log::error!("[monitor] initial seek {id}: {e:?}");
                     }
-                    rt.last_seek_clip_local = Some(clip_local);
                 }
                 self.runtimes.insert(id, LayerRuntime::Video(rt));
             }
@@ -757,8 +767,9 @@ impl WindowState {
                 // Не перетираем уже завершённый Video runtime (например, повторный BG после
                 // ошибки старого) — иначе Failed закроет видимое видео.
                 if !matches!(self.runtimes.get(&id), Some(LayerRuntime::Video(_))) {
-                    self.runtimes.insert(id, LayerRuntime::Failed);
+                    self.runtimes.insert(id.clone(), LayerRuntime::Failed);
                 }
+                emit_layer_failed(&self.app, &id, "video", &error);
             }
             BgLayerResult::ImageOk { id, image, size } => {
                 self.loading_set.remove(&id);
@@ -772,7 +783,8 @@ impl WindowState {
             BgLayerResult::ImageErr { id, error } => {
                 self.loading_set.remove(&id);
                 log::error!("[monitor] decode image {id}: {error}");
-                self.runtimes.insert(id, LayerRuntime::Failed);
+                self.runtimes.insert(id.clone(), LayerRuntime::Failed);
+                emit_layer_failed(&self.app, &id, "image", &error);
             }
         }
     }
@@ -844,15 +856,16 @@ impl WindowState {
         }
 
         // Запускаем фоновую загрузку для активных слоёв.
+        // Arc::clone — O(1); даёт split-borrow со списком слоёв при mut-доступе к self.
         let scene = self.scene.clone();
-        for layer in &scene {
+        for layer in scene.iter() {
             if layer.covers(t) {
                 self.ensure_runtime_for(layer);
             }
         }
 
         // Прокачиваем видеокадры.
-        for layer in &scene {
+        for layer in scene.iter() {
             if !layer.covers(t) || layer.kind != LayerKind::Video {
                 continue;
             }
@@ -868,7 +881,10 @@ impl WindowState {
     }
 
     fn emit_time(&mut self, t: f64) {
-        if (t - self.last_emit_pts).abs() < 0.001 {
+        // На паузе/повторных redraw'ах подавляем дубли с тем же PTS, чтобы фронт не
+        // получал лишний шум. Во время playback дельта между тиками ≥ 1/TARGET_FPS,
+        // поэтому такой строгий порог не теряет апдейтов.
+        if t == self.last_emit_pts {
             return;
         }
         self.last_emit_pts = t;
@@ -891,6 +907,7 @@ impl WindowState {
                     Color::BLACK,
                 ) {
                     log::error!("[monitor] compositor render: {e:?}");
+                    emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
                 }
             }
             MonitorMode::Canvas => {
@@ -917,7 +934,10 @@ impl WindowState {
                             log::warn!("[monitor] frame channel send: {e:?}");
                         }
                     }
-                    Err(e) => log::error!("[monitor] offscreen render: {e:?}"),
+                    Err(e) => {
+                        log::error!("[monitor] offscreen render: {e:?}");
+                        emit_layer_failed(&self.app, "<offscreen>", "render", &e.to_string());
+                    }
                 }
             }
         }
@@ -993,7 +1013,7 @@ impl WindowState {
     fn compute_scene_bbox(&self) -> (u32, u32) {
         let mut w = 0u32;
         let mut h = 0u32;
-        for layer in &self.scene {
+        for layer in self.scene.iter() {
             let Some(rt) = self.runtimes.get(&layer.id) else { continue };
             let (mw, mh) = match rt {
                 LayerRuntime::Video(v) => v.media_size,
@@ -1007,12 +1027,23 @@ impl WindowState {
     }
 }
 
+/// Сравнение preview_scale с трактовкой `None == Some(1.0)` (отсутствие даунскейла).
+/// Без этой нормализации первый приход `Some(1.0)` после `None` (или наоборот) сбрасывал
+/// бы все живые видеопампы зря.
 fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
-    match (a, b) {
-        (None, None) => true,
-        (Some(x), Some(y)) => (x - y).abs() < 1e-4,
-        _ => false,
+    let a = a.unwrap_or(1.0);
+    let b = b.unwrap_or(1.0);
+    (a - b).abs() < 1e-4
+}
+
+fn emit_layer_failed(app: &AppHandle, id: &str, kind: &str, error: &str) {
+    #[derive(serde::Serialize, Clone)]
+    struct Payload<'a> {
+        id: &'a str,
+        kind: &'a str,
+        error: &'a str,
     }
+    let _ = app.emit(EVT_LAYER_FAILED, Payload { id, kind, error });
 }
 
 fn decoded_to_image(frame: VideoFrame) -> DecodedVideoFrame {
@@ -1026,4 +1057,28 @@ fn decoded_to_image(frame: VideoFrame) -> DecodedVideoFrame {
         height,
     };
     DecodedVideoFrame { pts_sec, image }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::approx_eq_opt_scale;
+
+    #[test]
+    fn none_equals_some_one() {
+        assert!(approx_eq_opt_scale(None, Some(1.0)));
+        assert!(approx_eq_opt_scale(Some(1.0), None));
+        assert!(approx_eq_opt_scale(None, None));
+    }
+
+    #[test]
+    fn detects_meaningful_change() {
+        assert!(!approx_eq_opt_scale(None, Some(0.5)));
+        assert!(!approx_eq_opt_scale(Some(1.0), Some(0.5)));
+        assert!(!approx_eq_opt_scale(Some(0.25), Some(0.5)));
+    }
+
+    #[test]
+    fn tolerates_float_noise() {
+        assert!(approx_eq_opt_scale(Some(0.5), Some(0.5 + 1e-6)));
+    }
 }
