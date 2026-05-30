@@ -186,29 +186,129 @@ function applyDragTransform(dx: number, dy: number) {
 const bodyRef = ref<HTMLElement | null>(null);
 
 /**
- * Handle gesture: vaul-vue owns the actual drag — the sheet follows the finger
- * and vaul decides the release outcome (drag up snaps to the next point / full,
- * drag down from the lowest snap dismisses because the drawer is dismissible).
+ * Handle gesture (vertical drawers).
  *
- * We deliberately do NOT close/expand ourselves on release: doing so races vaul's
- * own release animation, so the sheet first snaps back and then re-animates — the
- * "animation starts again" glitch. Here we only record whether the touch became a
- * drag, so the trailing synthetic click doesn't also fire the tap handler.
+ * We fully own the handle drag — the handle is marked `data-vaul-no-drag`, so vaul
+ * does not also drive it — and translate the container to follow the finger. This
+ * lets the sheet close on a SMALL downward movement (the toolbar sheet is short, so
+ * the long drag vaul needs to dismiss is awkward) WITHOUT the "snap back, then
+ * close" double animation that happens when our action races vaul's own release.
+ *
+ * On release we hand the toolbar<->full transition back to vaul (it animates the
+ * snap change) and settle our own offset to 0 in sync, so the motion is continuous
+ * from the finger's release position. Close is a single slide-out we drive here.
  */
+const SETTLE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
+
 const handleStartY = ref(0);
+const handleDragging = ref(false);
 const handleDragged = ref(false);
+/** True while we slide the sheet out ourselves, so the close watcher leaves our
+ *  off-screen transform in place (removing it would flash the sheet back in). */
+const handleClosing = ref(false);
+
+/** Pixel gap between the full and the toolbar snap — how far "expand" travels up. */
+const toolbarOffsetPx = computed(() => {
+  const pts = renderedSnapPoints.value;
+  if (!pts || pts.length < 2) return 0;
+  const toPx = (v: string | number) => (typeof v === 'number' ? v : parseFloat(v) || 0);
+  return Math.max(0, toPx(pts[pts.length - 1]!) - toPx(pts[0]!));
+});
+
+function setHandleTransform(dy: number, animated: boolean, ms = 320) {
+  const el = containerRef.value;
+  if (!el) return;
+  el.style.transition = animated ? `transform ${ms}ms ${SETTLE_EASE}` : 'none';
+  el.style.transform = `translate3d(0, ${dy}px, 0)`;
+}
+
+function resetHandleTransform() {
+  const el = containerRef.value;
+  if (!el || handleDragging.value) return;
+  el.style.removeProperty('transition');
+  el.style.removeProperty('transform');
+}
 
 function onHandleTouchStart(e: TouchEvent) {
   const t = e.touches[0];
   if (!t) return;
   handleStartY.value = t.clientY;
+  handleDragging.value = true;
   handleDragged.value = false;
 }
 
 function onHandleTouchMove(e: TouchEvent) {
+  if (!handleDragging.value) return;
   const t = e.touches[0];
   if (!t) return;
-  if (Math.abs(t.clientY - handleStartY.value) > 8) handleDragged.value = true;
+  let dy = t.clientY - handleStartY.value;
+  if (Math.abs(dy) > 6) handleDragged.value = true;
+
+  if (isExpanded.value) {
+    // Full mode: follow downward only; an upward swipe does nothing.
+    if (dy < 0) dy = 0;
+  } else {
+    // Toolbar mode: can't reveal more than the full height.
+    const maxUp = -toolbarOffsetPx.value;
+    if (dy < maxUp) dy = maxUp;
+  }
+  setHandleTransform(dy, false);
+}
+
+function onHandleTouchEnd(e: TouchEvent) {
+  if (!handleDragging.value) return;
+  handleDragging.value = false;
+  const t = e.changedTouches[0];
+  const dy = t ? t.clientY - handleStartY.value : 0;
+
+  const TAP = 10; // below this it's a tap — let the click handler decide
+  const CLOSE_TOOLBAR = 28; // small downward movement closes the short toolbar sheet
+  const CLOSE_FULL = 64;
+  const EXPAND = 40;
+
+  if (Math.abs(dy) < TAP) {
+    resetHandleTransform();
+    return;
+  }
+
+  if (isExpanded.value) {
+    if (dy > CLOSE_FULL) closeByHandle();
+    else settleHandle();
+    return;
+  }
+
+  if (dy > CLOSE_TOOLBAR) closeByHandle();
+  else if (dy < -EXPAND) expandByHandle();
+  else settleHandle();
+}
+
+/** Ease back to the current snap position. */
+function settleHandle() {
+  setHandleTransform(0, true);
+  window.setTimeout(resetHandleTransform, 340);
+}
+
+/** Hand off to the full snap, syncing our offset with vaul's snap transition. */
+function expandByHandle() {
+  if (props.snapPoints?.length) {
+    activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
+  }
+  setHandleTransform(0, true, 460);
+  window.setTimeout(resetHandleTransform, 480);
+}
+
+/** Slide the sheet out from the release position, then unmount. */
+function closeByHandle() {
+  const el = containerRef.value;
+  if (!el) {
+    requestClose();
+    return;
+  }
+  handleClosing.value = true;
+  setHandleTransform(window.innerHeight || 900, true, 280);
+  window.setTimeout(() => {
+    requestClose();
+  }, 280);
 }
 
 function onBackdropTouchStart(e: TouchEvent) {
@@ -338,8 +438,14 @@ watch([isOpen, isExpanded], ([open, expanded]) => {
 watch(isOpen, (val) => {
   if (!val) {
     activeSnapPoint.value = null;
-    applyDragTransform(0, 0);
+    handleDragging.value = false;
+    // When we drive the close ourselves the container is already animating
+    // off-screen — keep that transform so the sheet doesn't flash back in.
+    if (!handleClosing.value) applyDragTransform(0, 0);
   } else {
+    handleDragging.value = false;
+    handleClosing.value = false;
+    resetHandleTransform();
     // Focus management
     nextTick(() => {
       setTimeout(() => {
@@ -396,9 +502,11 @@ watch(isOpen, (val) => {
             (effectiveDirection === 'bottom' || effectiveDirection === 'top') && props.withHandle
           "
           class="shrink-0 relative z-10 cursor-pointer group"
+          data-vaul-no-drag
           @click.stop="onHandleTap"
           @touchstart.passive="onHandleTouchStart"
           @touchmove.passive="onHandleTouchMove"
+          @touchend.passive="onHandleTouchEnd"
         >
           <div class="flex justify-center py-2.5">
             <div
