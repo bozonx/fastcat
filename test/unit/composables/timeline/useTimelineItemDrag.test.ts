@@ -620,8 +620,6 @@ describe('useTimelineItemDrag', () => {
     });
   });
 
-
-
   it('trims all linkedGroupId members together using trim_items', () => {
     const scrollEl = ref({ scrollLeft: 0 } as HTMLElement);
     const tracks = computed(() => timelineStoreMock.timelineDoc.tracks);

@@ -97,7 +97,6 @@ export function useProvideTimelineContext() {
         options,
       ),
 
-
     renameItem: (trackId: string, itemId: string, name: string) =>
       timelineStore.renameItem(trackId, itemId, name),
     updateTrackProperties: (trackId: string, patch: Record<string, unknown>) =>

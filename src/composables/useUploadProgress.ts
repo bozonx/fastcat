@@ -36,8 +36,7 @@ export function useUploadProgress() {
 
   function onProgress(p: UploadProgressParams, fallbackTotalBytes: number) {
     const total = p.totalBytes ?? fallbackTotalBytes;
-    progress.value =
-      total > 0 ? (p.loadedBytes ?? 0) / total : p.currentFileIndex / p.totalFiles;
+    progress.value = total > 0 ? (p.loadedBytes ?? 0) / total : p.currentFileIndex / p.totalFiles;
     fileName.value = p.fileName;
   }
 

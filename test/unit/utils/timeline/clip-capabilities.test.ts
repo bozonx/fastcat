@@ -29,19 +29,13 @@ describe('clip-capabilities', () => {
   describe('control predicates', () => {
     it('allows audio controls for audio tracks regardless of clip type', () => {
       expect(
-        clipSupportsAudioControls(
-          { kind: 'audio' },
-          { clipType: 'media', isImage: false },
-        ),
+        clipSupportsAudioControls({ kind: 'audio' }, { clipType: 'media', isImage: false }),
       ).toBe(true);
     });
 
     it('denies audio controls for image clips on video tracks', () => {
       expect(
-        clipSupportsAudioControls(
-          { kind: 'video' },
-          { clipType: 'media', isImage: true },
-        ),
+        clipSupportsAudioControls({ kind: 'video' }, { clipType: 'media', isImage: true }),
       ).toBe(false);
     });
 

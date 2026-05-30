@@ -44,8 +44,6 @@ export function collectMultiSelectionState(
     }
   }
 
-
-
   let hasAudioOrVideoWithAudio = false;
   let hasVideo = false;
   let allMuted = true;

@@ -30,8 +30,6 @@ export function overlayTrimItem(
 
   assertClipNotLocked(moved, 'trim');
 
-
-
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
 
   const hasFixedSourceDuration =
@@ -81,8 +79,6 @@ export function overlayTrimItem(
 
   let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: normalized } : t));
 
-
-
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 
   return { next: { ...doc, tracks: nextTracks } };
@@ -103,8 +99,6 @@ export function overlayPlaceItem(
   if (!cmd.ignoreLocks) {
     assertClipNotLocked(item, 'move');
   }
-
-
 
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
@@ -150,8 +144,6 @@ export function overlayPlaceItem(
       return t;
     });
   }
-
-
 
   nextTracks = autoAdaptChangedTracks(doc.tracks, nextTracks);
 

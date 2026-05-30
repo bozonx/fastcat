@@ -404,10 +404,8 @@ export function useTimelineItemDrag(
 
     const doc = timelineStore.timelineDoc;
 
-    let targetItemId = input.itemId;
-    let targetTrackId = input.trackId;
-
-
+    const targetItemId = input.itemId;
+    const targetTrackId = input.trackId;
 
     draggingMode.value = input.edge === 'start' ? 'trim_start' : 'trim_end';
     draggingTrackId.value = targetTrackId;
@@ -472,8 +470,6 @@ export function useTimelineItemDrag(
         });
       }
     }
-
-
 
     trimPreview.value = previewItems;
     pendingTrimCommit.value = null;
@@ -1014,8 +1010,6 @@ export function useTimelineItemDrag(
         }
       }
     }
-
-
 
     if (!cancel && draggingMode.value === 'move') {
       const usePseudoOverlap = dragUsePseudoOverlapOverride.value;

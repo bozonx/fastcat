@@ -46,7 +46,12 @@ defineProps<{
 <template>
   <div class="flex-1 flex w-full min-h-0 relative" :style="{ zIndex: 'var(--z-clip-content)' }">
     <TimelineClipThumbnails
-      v-if="effectiveClipItem && isVideo(item, track) && effectiveClipItem.showThumbnails !== false && clipThumbnailMode !== 'none'"
+      v-if="
+        effectiveClipItem &&
+        isVideo(item, track) &&
+        effectiveClipItem.showThumbnails !== false &&
+        clipThumbnailMode !== 'none'
+      "
       :item="effectiveClipItem"
       :width="clipWidthPx"
       :scroll-left="scrollLeft"

@@ -9,10 +9,7 @@ import { toRef, ref, watch } from 'vue';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import { useNativeMonitorViewport } from '~/composables/monitor/useNativeMonitorViewport';
-import {
-  useMonitorMode,
-  useNativeMonitorCanvas,
-} from '~/composables/monitor/useNativeMonitorMode';
+import { useMonitorMode, useNativeMonitorCanvas } from '~/composables/monitor/useNativeMonitorMode';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
@@ -133,7 +130,6 @@ defineExpose({
               class="absolute inset-0 w-full h-full"
               style="display: block; pointer-events: none"
             />
-
 
             <!-- SVG overlay: selection ring + slot for additional overlay elements -->
             <svg

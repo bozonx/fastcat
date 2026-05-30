@@ -325,7 +325,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       }
     }
 
-    const isMultiSelect = deps.selectedItemIds.value.includes(itemId) && deps.selectedItemIds.value.length > 1;
+    const isMultiSelect =
+      deps.selectedItemIds.value.includes(itemId) && deps.selectedItemIds.value.length > 1;
 
     if (isMultiSelect) {
       const cmds: TimelineCommand[] = [];
@@ -377,7 +378,8 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       saveMode?: 'debounced' | 'immediate' | 'none';
     },
   ): string[] {
-    const isMultiSelect = deps.selectedItemIds.value.includes(itemId) && deps.selectedItemIds.value.length > 1;
+    const isMultiSelect =
+      deps.selectedItemIds.value.includes(itemId) && deps.selectedItemIds.value.length > 1;
 
     if (isMultiSelect) {
       const cmds: TimelineCommand[] = [];

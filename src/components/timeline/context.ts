@@ -52,7 +52,6 @@ export interface TimelineContext {
   cutSelectedClips: () => unknown[];
   pasteClips: (options?: { insertStartUs?: number }) => Promise<unknown>;
 
-
   renameItem: (trackId: string, itemId: string, name: string) => void;
   updateTrackProperties: (trackId: string, patch: Record<string, unknown>) => void;
   goToFiles: () => void;

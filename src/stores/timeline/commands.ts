@@ -185,8 +185,6 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     });
   }
 
-
-
   async function addClipToTimelineFromPath(
     input: {
       trackId: string;

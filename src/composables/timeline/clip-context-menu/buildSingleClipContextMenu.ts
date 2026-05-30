@@ -22,7 +22,6 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const isFree = isClipFreePosition(clipItem, options.timelineDoc.value);
   const doc = options.timelineDoc.value;
 
-
   stateGroup.push({
     label: clipItem.disabled
       ? options.t('fastcat.timeline.enableClip')
@@ -149,7 +148,10 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   }
 
   const canExtract =
-    track.kind === 'video' && clipItem.clipType === 'media' && !clipItem.isImage && !clipItem.audioMuted;
+    track.kind === 'video' &&
+    clipItem.clipType === 'media' &&
+    !clipItem.isImage &&
+    !clipItem.audioMuted;
   if (canExtract) {
     relationGroup.push({
       label: options.t('fastcat.timeline.extractAudio'),

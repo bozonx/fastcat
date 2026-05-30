@@ -1,10 +1,6 @@
 import type { TimelineDocument, TimelineTrack, TimelineClipItem } from '../../types';
 import type { TimelineCommandResult } from '../../commands';
-import {
-  quantizeTimeUsToFrames,
-  assertNoOverlap,
-  normalizeGaps,
-} from '../utils';
+import { quantizeTimeUsToFrames, assertNoOverlap, normalizeGaps } from '../utils';
 
 /**
  * Handles the `speed` property of an `updateClipProperties` edit.
@@ -133,13 +129,11 @@ export function applyClipSpeedChange(params: {
       }
     }
 
-    let nextTracksLocal = doc.tracks.map((t) =>
+    const nextTracksLocal = doc.tracks.map((t) =>
       t.id === track.id
         ? { ...t, items: normalizeGaps(doc, t.id, nextClips, { quantizeToFrames: true }) }
         : t,
     );
-
-
 
     return { next: { ...doc, tracks: nextTracksLocal } };
   }

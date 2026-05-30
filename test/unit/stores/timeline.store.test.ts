@@ -532,16 +532,12 @@ describe('TimelineStore', () => {
         {
           id: 'v1',
           kind: 'video',
-          clips: [
-            { id: 'c1', startUs: 0, durationUs: 5_000_000, linkedGroupId: 'group-1' },
-          ],
+          clips: [{ id: 'c1', startUs: 0, durationUs: 5_000_000, linkedGroupId: 'group-1' }],
         },
         {
           id: 'a1',
           kind: 'audio',
-          clips: [
-            { id: 'c2', startUs: 0, durationUs: 5_000_000, linkedGroupId: 'group-1' },
-          ],
+          clips: [{ id: 'c2', startUs: 0, durationUs: 5_000_000, linkedGroupId: 'group-1' }],
         },
       ],
     });

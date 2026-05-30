@@ -1,8 +1,5 @@
 import type { TimelineDocument, TimelineClipItem, TimelineTrack } from '../types';
-import type {
-  ExtractAudioToTrackCommand,
-  TimelineCommandResult,
-} from '../commands';
+import type { ExtractAudioToTrackCommand, TimelineCommandResult } from '../commands';
 import {
   getTrackById,
   nextItemId,
@@ -40,10 +37,7 @@ export function extractAudioToTrack(
   const existingLinked = doc.tracks.some((t) =>
     t.kind !== 'audio'
       ? false
-      : t.items.some(
-          (it) =>
-            it.kind === 'clip' && it.linkedGroupId === groupId,
-        ),
+      : t.items.some((it) => it.kind === 'clip' && it.linkedGroupId === groupId),
   );
   if (existingLinked) return { next: doc };
 

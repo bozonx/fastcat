@@ -64,8 +64,6 @@ export function useClipBatchActions(
     selectedClipRefs.value.filter(({ track, clip }) => clipSupportsAutoMontage(track, clip)),
   );
 
-
-
   const hasGroupedClip = computed(() =>
     selectedClips.value.some(
       (clip) => typeof clip.linkedGroupId === 'string' && clip.linkedGroupId.trim().length > 0,
@@ -186,8 +184,6 @@ export function useClipBatchActions(
       labelKey: 'videoEditor.fileManager.history.entries.toggleSolo',
     });
   }
-
-
 
   function handleGroupSelected() {
     if (items.value.length < 2) return;

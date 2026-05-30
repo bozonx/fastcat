@@ -14,9 +14,7 @@ import type {
   ClipEffect,
   TimelineFastCatMetadata,
 } from './types';
-import {
-  extractAudioToTrack,
-} from './commands/audioHandlers';
+import { extractAudioToTrack } from './commands/audioHandlers';
 import {
   addTrack,
   renameTrack,

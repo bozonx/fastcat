@@ -125,8 +125,6 @@ export function buildMultiSelectionContextMenu(
     });
   }
 
-
-
   mainGroup.push({
     label: state.hasGroupedClip
       ? options.t('fastcat.timeline.ungroup')

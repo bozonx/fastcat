@@ -87,8 +87,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
         const cutFrameForClip = usToFrame(atUs, fps, 'round');
 
         const isSplit = shouldQuantizeToFrames
-          ? (cutFrameForClip > clipStartFrame && cutFrameForClip < clipEndFrame)
-          : (atUs > clipStartUs && atUs < clipEndUs);
+          ? cutFrameForClip > clipStartFrame && cutFrameForClip < clipEndFrame
+          : atUs > clipStartUs && atUs < clipEndUs;
 
         if (isSplit) {
           trackItemsChanged = true;
@@ -149,8 +149,8 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
         } else {
           // Reassign uncut clip to the left or right group depending on its position
           const isLeft = shouldQuantizeToFrames
-            ? (clipStartFrame < cutFrameForClip)
-            : (clipStartUs < atUs);
+            ? clipStartFrame < cutFrameForClip
+            : clipStartUs < atUs;
 
           const nextGroupId = isLeft ? leftGroupId : rightGroupId;
           trackItemsChanged = true;

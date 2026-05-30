@@ -1151,7 +1151,9 @@ describe('useEditorHotkeys', () => {
     timelineStore.goToEnd = goToEndSpy;
 
     // Send Home key
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', code: 'Home', bubbles: true }));
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Home', code: 'Home', bubbles: true }),
+    );
     expect(goToStartSpy).toHaveBeenCalledOnce();
 
     // Send End key

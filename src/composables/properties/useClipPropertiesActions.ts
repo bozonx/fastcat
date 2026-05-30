@@ -120,15 +120,11 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     return !isClipFrameAligned(options.clip.value, safeFps);
   });
 
-
-
   const isInLinkedGroup = computed(
     () =>
       typeof options.clip.value.linkedGroupId === 'string' &&
       options.clip.value.linkedGroupId.trim().length > 0,
   );
-
-
 
   const isSoloed = computed(() => {
     const doc = timelineStore.timelineDoc;
@@ -192,8 +188,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       );
     }
   }
-
-
 
   function handleQuantizeClip() {
     const doc = timelineStore.timelineDoc;
@@ -372,8 +366,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     });
   }
 
-
-
   function handlePaste() {
     const payload = clipboardStore.clipboardPayload;
     if (!payload || payload.source !== 'timeline' || payload.items.length === 0) return;
@@ -429,8 +421,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         /* Handled in components since it needs modal state */
       },
     });
-
-
 
     if (isInLinkedGroup.value) {
       list.push({
@@ -534,8 +524,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         onClick: handleExtractAudio,
       });
     }
-
-
 
     return list;
   });

@@ -241,8 +241,6 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
     }
   }
 
-
-
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
   const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
@@ -267,9 +265,7 @@ export function moveItem(doc: TimelineDocument, cmd: MoveItemCommand): TimelineC
     quantizeToFrames: shouldQuantizeToFrames,
   });
 
-  let nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
-
-
+  const nextTracks = doc.tracks.map((t) => (t.id === track.id ? { ...t, items: nextItems } : t));
 
   return { next: { ...doc, tracks: nextTracks } };
 }
@@ -303,8 +299,6 @@ export function moveItemToTrack(
     assertClipNotLocked(item, 'move');
   }
 
-
-
   const fps = getDocFps(doc);
   const shouldQuantizeToFrames = cmd.quantizeToFrames !== false;
   const startCandidate = Math.max(0, Math.round(Number(cmd.startUs)));
@@ -337,8 +331,6 @@ export function moveItemToTrack(
     if (t.id === toTrack.id) return { ...t, items: nextToItems };
     return t;
   });
-
-
 
   // Auto-adapt transitions only on tracks that actually changed (from, to, and
   // any linked-audio track). Mapping over every track was O(total_items) per

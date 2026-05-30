@@ -524,8 +524,6 @@ const otherActions = computed(() => {
     });
   }
 
-
-
   if (hasAutoMontageControls.value) {
     result.push({
       id: 'autoMontage',

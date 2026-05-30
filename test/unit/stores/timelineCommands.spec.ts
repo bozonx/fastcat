@@ -73,4 +73,3 @@ describe('timelineCommands', () => {
     ).rejects.toThrow('Cannot insert the currently opened timeline into itself');
   });
 });
-

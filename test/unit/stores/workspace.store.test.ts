@@ -171,9 +171,7 @@ describe('WorkspaceStore', () => {
       const store = useWorkspaceStore();
       store.workspaceHandle = null;
       store.projects = [];
-      store.recentProjects = [
-        { projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' },
-      ];
+      store.recentProjects = [{ projectName: 'p1', projectId: 'id1', updatedAt: '2024-01-01' }];
       await nextTick();
       expect(store.recentProjects).toHaveLength(1);
     });

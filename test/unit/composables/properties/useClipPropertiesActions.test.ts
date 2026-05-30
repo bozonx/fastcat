@@ -187,8 +187,6 @@ describe('useClipPropertiesActions', () => {
     });
   });
 
-
-
   describe('handleRemoveFromGroup', () => {
     it('clears linkedGroupId when the clip is grouped', () => {
       const clip = makeClip({ linkedGroupId: 'grp-1' });

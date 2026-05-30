@@ -1,4 +1,10 @@
-import type { TimelineDocument, TimelineTrackItem, TimelineTrack, TimelineRange, TimelineClipItem } from '../../types';
+import type {
+  TimelineDocument,
+  TimelineTrackItem,
+  TimelineTrack,
+  TimelineRange,
+  TimelineClipItem,
+} from '../../types';
 import type { TrimItemCommand, TrimItemsCommand, TimelineCommandResult } from '../../commands';
 import {
   getTrackById,
@@ -26,7 +32,7 @@ export function trimItem(doc: TimelineDocument, cmd: TrimItemCommand): TimelineC
   // If the clip is in a group, trim the entire group
   if (item.linkedGroupId) {
     const groupItemIds = getLinkedClipGroupItemIds(doc, item.id);
-    
+
     const trimGeometries: Array<{
       track: TimelineTrack;
       clip: TimelineClipItem;

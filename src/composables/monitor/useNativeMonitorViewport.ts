@@ -74,8 +74,7 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
     // В canvas-режиме нативное X11-окно должно быть скрыто — рендер идёт offscreen,
     // изображение приходит в HTML <canvas>. Геометрию шлём всё равно (чтобы при возврате
     // в embedded окно сразу встало на место), но visible форсим в false.
-    const next: ViewportPayload =
-      mode.value === 'canvas' ? { ...raw, visible: false } : raw;
+    const next: ViewportPayload = mode.value === 'canvas' ? { ...raw, visible: false } : raw;
     if (!changed(last, next)) return;
     last = next;
     invoke('monitor_set_viewport', next).catch((err) =>

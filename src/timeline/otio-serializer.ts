@@ -277,7 +277,6 @@ function serializeTrackItems(
             fadeInCurve: item.audioFadeInCurve,
             fadeOutCurve: item.audioFadeOutCurve,
             muted: item.audioMuted,
-
           },
           visual: {
             opacity: item.opacity,
@@ -290,7 +289,6 @@ function serializeTrackItems(
           },
           links: {
             linkedGroupId: item.linkedGroupId,
-
           },
           transform: item.transform,
           mask: item.mask,
@@ -688,7 +686,6 @@ export function parseTimelineFromOtio(
       track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
     ),
   );
-
 
   const docId = coerceId(docMeta.docId, fallback.id);
   const version = typeof docMeta.version === 'number' ? docMeta.version : 0;
