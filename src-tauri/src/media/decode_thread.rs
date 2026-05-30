@@ -86,12 +86,17 @@ impl DecodePump {
 
 impl Drop for DecodePump {
     fn drop(&mut self) {
+        // ВАЖНО: дропаем frame receiver ДО join'а потока. Иначе:
+        // - sync_channel frame_tx может блокировать decoder-поток в `send()` (очередь полна);
+        // - decoder проверяет cmd_rx только между send'ами → Stop команду не увидит;
+        // - handle.join() ждёт поток вечно;
+        // - self.rx автодропается только после возврата из fn drop → deadlock.
+        // Меняем self.rx на dummy receiver — оригинальный rx моментально дропается,
+        // frame_tx.send() в decoder возвращает Err, поток выходит, join завершается.
+        let (_dummy_tx, dummy_rx) = mpsc::sync_channel::<DecodedFrameMsg>(0);
+        let _ = std::mem::replace(&mut self.rx, dummy_rx);
         let _ = self.cmd_tx.send(DecoderCmd::Stop);
-        // Прерываем возможный блокирующий send(frame_tx) в потоке: drop receiver'а.
-        // self.rx уже принадлежит self, при drop self он уйдёт автоматически — но мы
-        // дропаем pump целиком, так что rx и cmd_rx уже dead.
         if let Some(handle) = self.thread.take() {
-            // Не join'имся надолго — если поток завис на ffmpeg, лучше не блокироваться.
             let _ = handle.join();
         }
     }

@@ -422,6 +422,14 @@ export class ClipResourceManager {
       clip.cropMask = undefined;
       clip.cropMaskKey = undefined;
     }
+    if (clip.adjustmentSourceTexture) {
+      try {
+        clip.adjustmentSourceTexture.destroy(true);
+      } catch {
+        // ignore
+      }
+      clip.adjustmentSourceTexture = null;
+    }
     if (clip.sprite) {
       clip.sprite.destroy(true);
       clip.sprite = null;

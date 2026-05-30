@@ -526,6 +526,12 @@ impl WindowState {
         let scale_changed =
             !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
         if scale_changed {
+            log::info!(
+                "[monitor] preview_scale change {:?} → {:?}: dropping {} video runtimes",
+                self.preview_scale,
+                scene.preview_scale,
+                self.runtimes.values().filter(|r| matches!(r, LayerRuntime::Video(_) | LayerRuntime::Loading)).count(),
+            );
             self.runtimes.retain(|_, rt| !matches!(rt, LayerRuntime::Video(_) | LayerRuntime::Loading));
             self.loading_set.clear();
         }
@@ -674,6 +680,10 @@ impl WindowState {
                     }
                     _ => None,
                 };
+                log::info!(
+                    "[monitor] spawn video decoder for {id} (max_long_edge={:?}, scene_size={:?}, scale={:?})",
+                    max_long_edge, self.scene_size, self.preview_scale
+                );
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
                     .spawn(move || {
@@ -744,7 +754,11 @@ impl WindowState {
             BgLayerResult::VideoErr { id, error } => {
                 self.loading_set.remove(&id);
                 log::error!("[monitor] open pump {id}: {error}");
-                self.runtimes.insert(id, LayerRuntime::Failed);
+                // Не перетираем уже завершённый Video runtime (например, повторный BG после
+                // ошибки старого) — иначе Failed закроет видимое видео.
+                if !matches!(self.runtimes.get(&id), Some(LayerRuntime::Video(_))) {
+                    self.runtimes.insert(id, LayerRuntime::Failed);
+                }
             }
             BgLayerResult::ImageOk { id, image, size } => {
                 self.loading_set.remove(&id);
