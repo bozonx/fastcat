@@ -192,6 +192,17 @@ watch(outputFilename, async () => {
   }
 });
 
+const videoAudioCodec = computed<'aac' | 'opus'>({
+  get: () => {
+    return audioCodec.value === 'flac' || audioCodec.value === 'pcm'
+      ? 'aac'
+      : (audioCodec.value as 'aac' | 'opus');
+  },
+  set: (val) => {
+    audioCodec.value = val;
+  },
+});
+
 async function onConfirm() {
   await handleStartExport(async (file: File) => {
     await fileManager.reloadDirectory('_export');
@@ -369,7 +380,7 @@ async function onConfirm() {
               v-model:video-codec="videoCodec"
               v-model:bitrate-mbps="bitrateMbps"
               v-model:exclude-audio="excludeAudio"
-              v-model:audio-codec="audioCodec"
+              v-model:audio-codec="videoAudioCodec"
               v-model:audio-bitrate-kbps="audioBitrateKbps"
               v-model:audio-sample-rate="audioSampleRate"
               v-model:bitrate-mode="bitrateMode"

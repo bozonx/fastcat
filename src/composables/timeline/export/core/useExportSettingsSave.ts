@@ -10,7 +10,10 @@ export function useExportSettingsSave(
     const isAudio = config.exportType.value === 'audio';
 
     projectStore.projectSettings.project.sampleRate = config.audioSampleRate.value;
-    projectStore.projectSettings.exportDefaults.encoding.audioCodec = config.audioCodec.value;
+    projectStore.projectSettings.exportDefaults.encoding.audioCodec =
+      config.audioCodec.value === 'flac' || config.audioCodec.value === 'pcm'
+        ? 'aac'
+        : config.audioCodec.value;
     projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps =
       config.audioBitrateKbps.value;
 

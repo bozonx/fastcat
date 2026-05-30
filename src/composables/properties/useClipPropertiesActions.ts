@@ -1,9 +1,5 @@
 import { computed, type Ref } from 'vue';
-import type {
-  TimelineClipItem,
-  TrackKind,
-  TimelineDocument,
-} from '~/timeline/types';
+import type { TimelineClipItem, TrackKind, TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import type { TimelineClipClipboardItem } from '~/stores/timeline/clips';
 import { quantizeTimeUsToFrames, sanitizeFps } from '~/timeline/commands/utils';

@@ -681,12 +681,6 @@ export function parseTimelineFromOtio(
   });
 
   const normalizedTracks = [...video, ...audio];
-  const clipIds = new Set(
-    normalizedTracks.flatMap((track) =>
-      track.items.filter((item) => item.kind === 'clip').map((item) => item.id),
-    ),
-  );
-
   const docId = coerceId(docMeta.docId, fallback.id);
   const version = typeof docMeta.version === 'number' ? docMeta.version : 0;
   const name = coerceName(parsed.name, fallback.name);

@@ -186,38 +186,29 @@ function applyDragTransform(dx: number, dy: number) {
 const bodyRef = ref<HTMLElement | null>(null);
 
 /**
- * Handle swipe detection — works alongside vaul-vue (NO data-vaul-no-drag).
- * Acts immediately on touchend so the close/expand fires before vaul-vue
- * snaps back, giving a smooth animation from the release position.
+ * Handle gesture: vaul-vue owns the actual drag — the sheet follows the finger
+ * and vaul decides the release outcome (drag up snaps to the next point / full,
+ * drag down from the lowest snap dismisses because the drawer is dismissible).
+ *
+ * We deliberately do NOT close/expand ourselves on release: doing so races vaul's
+ * own release animation, so the sheet first snaps back and then re-animates — the
+ * "animation starts again" glitch. Here we only record whether the touch became a
+ * drag, so the trailing synthetic click doesn't also fire the tap handler.
  */
-const hSwipeStartY = ref(0);
-const hSwipeEndY = ref(0);
+const handleStartY = ref(0);
+const handleDragged = ref(false);
 
 function onHandleTouchStart(e: TouchEvent) {
   const t = e.touches[0];
-  if (t) {
-    hSwipeStartY.value = t.clientY;
-    hSwipeEndY.value = t.clientY;
-  }
+  if (!t) return;
+  handleStartY.value = t.clientY;
+  handleDragged.value = false;
 }
 
-function onHandleTouchEnd(e: TouchEvent) {
-  const t = e.changedTouches[0];
-  if (t) hSwipeEndY.value = t.clientY;
-
-  if (!isOpen.value) return;
-  const dy = hSwipeEndY.value - hSwipeStartY.value;
-  const THRESHOLD = 15;
-  hSwipeStartY.value = 0;
-  hSwipeEndY.value = 0;
-
-  if (Math.abs(dy) < THRESHOLD) return;
-
-  if (dy > 0 && !isExpanded.value) {
-    requestClose();
-  } else if (dy < -THRESHOLD && !isExpanded.value && props.snapPoints?.length) {
-    activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
-  }
+function onHandleTouchMove(e: TouchEvent) {
+  const t = e.touches[0];
+  if (!t) return;
+  if (Math.abs(t.clientY - handleStartY.value) > 8) handleDragged.value = true;
 }
 
 function onBackdropTouchStart(e: TouchEvent) {
@@ -255,29 +246,28 @@ function onBackdropTouchEnd(e: TouchEvent) {
   const dx = bdDx.value;
   const dir = effectiveDirection.value;
 
+  // A tap on the backdrop closes the sheet and must NOT pass through to whatever
+  // is underneath. preventDefault on touchend suppresses the trailing synthetic
+  // mouse/click events, which would otherwise hit the element below once the
+  // backdrop turns non-interactive on close.
+  if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+    requestClose();
+    return;
+  }
+
   if (dir === 'bottom' || dir === 'top') {
-    if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
-      requestClose();
-      return;
-    }
     if (dy > 50 && dy > Math.abs(dx) * 1.5) {
       if (e.cancelable) e.preventDefault();
       requestClose();
     }
   } else if (dir === 'right') {
-    if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
-      requestClose();
-      return;
-    }
     if (dx > 50) {
       if (e.cancelable) e.preventDefault();
       requestClose();
     }
   } else if (dir === 'left') {
-    if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
-      requestClose();
-      return;
-    }
     if (dx < -50) {
       if (e.cancelable) e.preventDefault();
       requestClose();
@@ -285,7 +275,10 @@ function onBackdropTouchEnd(e: TouchEvent) {
   }
 }
 
-function onBackdropClick() {
+function onBackdropClick(e: MouseEvent) {
+  // Mouse path (touch is handled in onBackdropTouchEnd). Swallow the event so it
+  // never reaches content below the backdrop.
+  e.stopPropagation();
   if (!props.modal) requestClose();
 }
 
@@ -299,6 +292,12 @@ function requestClose() {
 }
 
 function onHandleTap() {
+  // A drag was already handled by vaul; ignore the trailing synthetic click.
+  if (handleDragged.value) {
+    handleDragged.value = false;
+    return;
+  }
+
   if (isExpanded.value) {
     requestClose();
     return;
@@ -370,7 +369,7 @@ watch(isOpen, (val) => {
       @touchstart.passive="onBackdropTouchStart"
       @touchmove.passive="onBackdropTouchMove"
       @touchend="onBackdropTouchEnd"
-      @click="onBackdropClick"
+      @click.stop="onBackdropClick"
     />
   </Teleport>
 
@@ -399,7 +398,7 @@ watch(isOpen, (val) => {
           class="shrink-0 relative z-10 cursor-pointer group"
           @click.stop="onHandleTap"
           @touchstart.passive="onHandleTouchStart"
-          @touchend="onHandleTouchEnd"
+          @touchmove.passive="onHandleTouchMove"
         >
           <div class="flex justify-center py-2.5">
             <div
@@ -478,8 +477,13 @@ watch(isOpen, (val) => {
 </template>
 
 <style scoped>
+/**
+ * When expanded, the sheet bottom is anchored to the viewport edge, so the last
+ * rows would otherwise sit under the home indicator / screen edge. Reserve the
+ * safe-area inset plus a fixed buffer (the inset resolves to 0 in some webviews).
+ */
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 16px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
 }
 
 .custom-scrollbar::-webkit-scrollbar {

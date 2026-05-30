@@ -8,11 +8,9 @@ import {
   getTrackById,
   getDocFps,
   quantizeTimeUsToFrames,
-  assertNoOverlap,
   assertClipNotLocked,
   sliceTrackItemsForOverlay,
   normalizeGaps,
-  findClipById,
   autoAdaptChangedTracks,
 } from '../utils';
 import { computeTrimGeometry } from './trimGeometry';

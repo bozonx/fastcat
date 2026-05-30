@@ -1,6 +1,6 @@
-import type { TimelineDocument, TimelineTrackItem, TimelineClipItem } from '../../types';
+import type { TimelineDocument } from '../../types';
 import type { RemoveItemCommand, DeleteItemsCommand, TimelineCommandResult } from '../../commands';
-import { getTrackById, normalizeGaps, getLinkedClipGroupItemIds } from '../utils';
+import { normalizeGaps, getLinkedClipGroupItemIds } from '../utils';
 
 export function removeItems(
   doc: TimelineDocument,

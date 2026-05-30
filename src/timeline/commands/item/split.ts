@@ -60,7 +60,6 @@ export function splitItem(doc: TimelineDocument, cmd: SplitItemCommand): Timelin
 
   // If the clip is in a group, we perform a grouped split
   if (item.linkedGroupId) {
-    const linkedGroupId = item.linkedGroupId;
     const leftGroupId = createLinkedGroupId();
     const rightGroupId = createLinkedGroupId();
     const groupItemIds = new Set(getLinkedClipGroupItemIds(doc, item.id));
