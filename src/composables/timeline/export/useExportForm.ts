@@ -287,7 +287,11 @@ export function useExportForm() {
   }
 
   function handleOutputFormatChange(fmt: 'mp4' | 'webm' | 'mkv') {
-    const codecConfig = resolveExportCodecs(fmt, videoCodec.value, audioCodec.value);
+    const codecConfig = resolveExportCodecs(
+      fmt,
+      videoCodec.value,
+      audioCodec.value === 'flac' || audioCodec.value === 'pcm' ? 'aac' : audioCodec.value,
+    );
     videoCodec.value = codecConfig.videoCodec;
     audioCodec.value = codecConfig.audioCodec;
   }

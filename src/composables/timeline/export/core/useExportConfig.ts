@@ -7,7 +7,7 @@ export function useExportConfig() {
   const videoCodec = ref('avc1.640032');
   const bitrateMbps = ref<number>(5);
   const excludeAudio = ref(false);
-  const audioCodec = ref<'aac' | 'opus'>('aac');
+  const audioCodec = ref<'aac' | 'opus' | 'flac' | 'pcm'>('aac');
   const audioBitrateKbps = ref<number>(128);
   const audioSampleRate = ref<number>(48000);
   const exportWidth = ref<number>(1920);

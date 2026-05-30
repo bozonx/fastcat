@@ -27,7 +27,7 @@ export interface TimelineTrimmingDeps {
   batchApplyTimeline: (
     cmds: TimelineCommand[],
     options?: { saveMode?: 'none' | 'debounced' | 'immediate'; labelKey?: string },
-  ) => void;
+  ) => string[];
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
   getHotkeyTargetClip: () => { trackId: string; itemId: string } | null;
   getSelectedOrActiveTrackId: () => string | null;
