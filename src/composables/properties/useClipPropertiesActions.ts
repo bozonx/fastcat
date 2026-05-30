@@ -2,7 +2,6 @@ import { computed, type Ref } from 'vue';
 import type {
   TimelineClipItem,
   TrackKind,
-  TimelineTrack,
   TimelineDocument,
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';

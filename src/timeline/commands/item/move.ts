@@ -13,7 +13,6 @@ import {
   assertNoOverlap,
   assertClipNotLocked,
   normalizeGaps,
-  findClipById,
   getLinkedClipGroupItemIds,
   autoAdaptChangedTracks,
   rangesOverlap,

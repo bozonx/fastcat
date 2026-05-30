@@ -1,4 +1,3 @@
-import type { TimelineClipItem, TimelineTrack, TimelineTrackItem } from '~/timeline/types';
 import type { ContextMenuGroup, UseClipContextMenuOptions } from './types';
 import { isClipFreePosition } from './utils';
 import {
@@ -20,7 +19,6 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   const relationGroup: ContextMenuGroup = [];
   const mediaGroup: ContextMenuGroup = [];
   const isFree = isClipFreePosition(clipItem, options.timelineDoc.value);
-  const doc = options.timelineDoc.value;
 
   stateGroup.push({
     label: clipItem.disabled
