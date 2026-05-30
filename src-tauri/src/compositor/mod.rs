@@ -1,22 +1,27 @@
 //! Vello-based video compositor.
 //!
-//! Layout:
-//! - `scene`       — описание кадра (что рендерить): слои, маски, blend modes, transform.
-//! - `layers`      — типы слоёв (video frame, image, shape, svg, text, group).
-//! - `effects`     — пост-эффекты на слой (blur, color, chroma key, ...): wgpu compute/render passes.
-//! - `transitions` — переходы между сценами (crossfade, wipe, dissolve): wgpu shader passes.
-//! - `text`        — обвязка над parley для титров.
-//! - `svg`         — usvg/vello_svg адаптер.
+//! Раскладка:
+//! - `scene`          — доменная модель кадра (`Scene`, `Layer`, `LayerKind`,
+//!                      `Transform`, `BlendMode`, `Mask`, `RasterSource`).
+//!                      Включает `Scene::to_vello(viewport)` — единственное место
+//!                      в кодовой базе, которое строит `vello::Scene` из доменной.
+//! - `layers`         — спецификации будущих kind'ов (ShapeSpec, TextSpec, Paint, …).
+//!                      Сейчас не подключены в `LayerKind`; «словарь» для расширения.
+//! - `effects`        — `EffectSpec` enum. Runtime отсутствует (`Layer::effects`
+//!                      пока игнорируется в `Scene::to_vello`).
+//! - `transitions`    — `TransitionSpec` enum. Runtime отсутствует.
+//! - `text`, `svg`    — модули-документация для будущих text/svg слоёв.
+//! - `texture_cache`  — задел под GPU-resident текстуры (HW-decode, group cache).
 //!
-//! Entrypoint: [`Compositor`] держит `vello::RenderContext` + кеш `Renderer` и рисует
-//! `vello::Scene` в указанный target (window surface или offscreen texture для экспорта).
+//! Entrypoint: [`Compositor`] держит `vello::RenderContext` + кеш `Renderer` по device.
 
-pub mod scene;
-pub mod layers;
 pub mod effects;
-pub mod transitions;
-pub mod text;
+pub mod layers;
+pub mod scene;
 pub mod svg;
+pub mod text;
+pub mod texture_cache;
+pub mod transitions;
 
 mod compositor;
 pub use compositor::Compositor;

@@ -1,9 +1,8 @@
 //! Текстовый рендер: parley (layout + shaping) -> vello Glyph runs.
-//! TODO: загрузка пользовательских шрифтов из проекта (см. фронтовый load-fonts.ts).
-
-use crate::compositor::layers::TextSpec;
-
-pub fn layout_text(_spec: &TextSpec) {
-    // TODO: parley::FontContext + LayoutContext, вернуть готовый layout
-    // плюс конвертер в vello::Scene draw_glyph_run.
-}
+//!
+//! Сейчас runtime отсутствует — `TextSpec` живёт в `super::layers` как «словарь
+//! будущих kind'ов». Подключение: добавить `LayerKind::Text(TextSpec)`,
+//! реализовать `layout_text(spec) -> ParleyLayout`, и в `Scene::to_vello` —
+//! ветку `LayerKind::Text` с `scene.draw_glyph_run(...)`.
+//!
+//! Загрузка пользовательских шрифтов из проекта — см. фронтовый `load-fonts.ts`.

@@ -2,6 +2,10 @@
 //! ДО того как Vello его композитит в общую сцену.
 //!
 //! Pipeline: layer_texture -> [effect1] -> [effect2] -> ... -> compose-into-scene.
+//!
+//! Сейчас runtime отсутствует — `Scene::to_vello` игнорирует `Layer::effects`.
+//! Подключение: реализовать `EffectPipeline::apply(device, input_texture, &[EffectSpec]) -> Texture`
+//! и вызвать перед `draw_image` в `Scene::to_vello`.
 
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +24,3 @@ pub enum EffectSpec {
     /// Произвольный WGSL — для расширяемости.
     CustomWgsl { source: String, params: serde_json::Value },
 }
-
-mod runtime;
-pub use runtime::EffectPipeline;

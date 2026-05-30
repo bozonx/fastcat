@@ -1,8 +1,8 @@
-//! Tauri-команды, экспортируемые на фронт. Все команды композитора — здесь.
-//! Принципы:
-//!   - принимаем сериализованный Scene (JSON) — единый формат с фронта.
-//!   - крупные данные (frame buffers) НЕ через invoke; для монитора — через Tauri event/IPC
-//!     или через регистрируемый custom URI scheme. См. doc/tauri-compositor.md (вопрос про monitor).
+//! Tauri-команды, экспортируемые на фронт.
+//!
+//! Сейчас единственная группа — `monitor_cmd` (управление нативным монитором).
+//! Off-screen рендер (для экспорта/thumbnail воркера) будет добавлен поверх
+//! существующей timeline-модели (`MonitorScene`) отдельной командой
+//! `monitor_render_at(timeline_sec, w, h)`, а не через параллельный per-frame DTO.
 
-pub mod compositor_cmd;
 pub mod monitor_cmd;

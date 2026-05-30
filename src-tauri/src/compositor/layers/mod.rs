@@ -1,35 +1,12 @@
-//! Типы слоёв сцены.
+//! Спецификации будущих типов слоёв.
+//!
+//! Эти типы — «словарь» для будущих вариантов [`super::scene::LayerKind`]
+//! (он `#[non_exhaustive]`). Сейчас не подключены: `LayerKind` поддерживает только
+//! `Raster`. Когда появятся Shape/Text/Svg/Group, варианты добавляются сюда
+//! как `LayerKind::Shape(ShapeSpec)`, и в `Scene::to_vello` добавляется ветка
+//! сборки vello-команд.
 
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "kebab-case")]
-pub enum LayerKind {
-    /// Видео-кадр: ссылается на ресурс, заранее загруженный в GPU-кэш текстур (см. media/).
-    VideoFrame {
-        /// id текстуры в кэше — заполняет media-pipeline когда кадр готов.
-        texture_id: u64,
-        natural_width: u32,
-        natural_height: u32,
-    },
-    /// Растровое изображение из файла. Грузится через `image` crate.
-    Image {
-        /// Абсолютный путь или ключ в кэше.
-        source: String,
-    },
-    /// Векторный шейп — прямоугольник, эллипс, polygon, или произвольный path.
-    Shape(ShapeSpec),
-    /// SVG-документ (через usvg -> vello_svg).
-    Svg {
-        source: String,
-    },
-    /// Текстовый слой (parley layout + vello draw).
-    Text(TextSpec),
-    /// Группа: рендерится в offscreen, потом композится — нужно для blend/opacity на группе.
-    Group {
-        children: Vec<super::scene::Layer>,
-    },
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShapeSpec {
@@ -81,4 +58,9 @@ pub struct TextSpec {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum TextAlign { Left, Center, Right, Justify }
+pub enum TextAlign {
+    Left,
+    Center,
+    Right,
+    Justify,
+}

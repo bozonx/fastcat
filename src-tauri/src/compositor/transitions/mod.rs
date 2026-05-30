@@ -1,5 +1,9 @@
 //! Переходы между двумя сценами (например A→B на стыке клипов).
 //! Каждый transition — wgpu shader pass над двумя текстурами (from, to) + прогресс 0..1.
+//!
+//! Сейчас runtime отсутствует. Подключение: добавить
+//! `Compositor::render_transition(from: &Scene, to: &Scene, spec, progress, ...)`
+//! поверх существующих `render_scene_to_*`.
 
 use serde::{Deserialize, Serialize};
 
@@ -17,17 +21,9 @@ pub enum TransitionSpec {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum SlideDirection { Left, Right, Up, Down }
-
-pub struct TransitionPipeline;
-
-impl TransitionPipeline {
-    pub fn apply(
-        _from: &wgpu::Texture,
-        _to: &wgpu::Texture,
-        _spec: &TransitionSpec,
-        _progress: f32,
-    ) -> wgpu::Texture {
-        unimplemented!()
-    }
+pub enum SlideDirection {
+    Left,
+    Right,
+    Up,
+    Down,
 }
