@@ -72,6 +72,7 @@ export const useProjectStore = defineStore('project', () => {
     workspaceHandle: computed(() => workspaceStore.workspaceHandle),
     projectsHandle: computed(() => workspaceStore.projectsHandle),
     currentProjectName,
+    getVfs: () => useVfs(),
   });
 
   const {
@@ -81,6 +82,12 @@ export const useProjectStore = defineStore('project', () => {
     getFileByPath,
     getDirectoryHandleByPath,
     getProjectDirHandle,
+    readTextByPath,
+    writeTextByPath,
+    deleteByPath,
+    listEntryNames,
+    pathExists,
+    getFileMetadata,
   } = fsModule;
 
   const metaModule = createProjectMetaModule({
@@ -455,6 +462,12 @@ export const useProjectStore = defineStore('project', () => {
     getFileByPath,
     getDirectoryHandleByPath,
     getProjectDirHandle,
+    readTextByPath,
+    writeTextByPath,
+    deleteByPath,
+    listEntryNames,
+    pathExists,
+    getFileMetadata,
     createFallbackTimelineDoc,
     loadProjectSettings,
     saveProjectSettings,

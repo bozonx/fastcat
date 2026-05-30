@@ -5,15 +5,28 @@ import { ref } from 'vue';
 import { createTimelineBackupModule } from '~/stores/timeline/backup';
 import type { TimelineBackupDeps } from '~/stores/timeline/backup';
 
-// The module wraps every file access in withFileIoSlot / runResilientFileWrite;
-// make them transparent so tests exercise the backup logic, not the io budget.
 vi.mock('~/utils/io/io-governor', () => ({
   withFileIoSlot: <T>(task: () => Promise<T>) => task(),
-  runResilientFileWrite: <T>(task: () => Promise<T>) => task(),
 }));
 
-function fakeFileHandle(file: { lastModified: number; size: number }) {
-  return { getFile: vi.fn().mockResolvedValue(file) } as unknown as FileSystemFileHandle;
+type FileMeta = { text: string; lastModified: number };
+
+function makeProjectStoreMock(files: Record<string, FileMeta> = {}) {
+  return {
+    readTextByPath: vi.fn(async (p: string) => files[p]?.text ?? null),
+    writeTextByPath: vi.fn(async (p: string, text: string) => {
+      files[p] = { text, lastModified: Date.now() };
+    }),
+    deleteByPath: vi.fn(async (p: string) => {
+      delete files[p];
+    }),
+    listEntryNames: vi.fn(async (_p: string) => Object.keys(files).map((k) => k.split('/').pop()!)),
+    getFileMetadata: vi.fn(async (p: string) => {
+      const f = files[p];
+      return f ? { lastModified: f.lastModified, size: f.text.length } : null;
+    }),
+    createFallbackTimelineDoc: vi.fn(),
+  };
 }
 
 function createMockDeps(overrides: Partial<TimelineBackupDeps> = {}): TimelineBackupDeps {
@@ -24,17 +37,13 @@ function createMockDeps(overrides: Partial<TimelineBackupDeps> = {}): TimelineBa
     currentTime: ref(0),
     previewMode: ref(false),
     previewBackupInfo: ref(null),
-    projectStore: {
-      getDirectoryHandleByPath: vi.fn().mockResolvedValue(null),
-      getFileHandleByPath: vi.fn().mockResolvedValue(null),
-      createFallbackTimelineDoc: vi.fn(),
-    },
+    projectStore: makeProjectStoreMock(),
     workspaceStore: { userSettings: { backup: { enabled: true, count: 5 } } },
     toast: { add: vi.fn() },
     t: ((key: string) => key) as TimelineBackupDeps['t'],
     loadTimeline: vi.fn().mockResolvedValue(undefined),
     deleteTimelineAutosaveFile: vi.fn().mockResolvedValue(undefined),
-    ensureTimelineFileHandle: vi.fn().mockResolvedValue(null),
+    readTimelineFile: vi.fn().mockResolvedValue(null),
     markTimelineAsDirty: vi.fn(),
     requestTimelineSave: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -55,11 +64,12 @@ describe('createTimelineBackupModule', () => {
       expect(backup.backupVersions.value).toEqual([]);
     });
 
-    it('lists the main file and autosave when both handles resolve', async () => {
-      const ensureTimelineFileHandle = vi
-        .fn()
-        .mockResolvedValue(fakeFileHandle({ lastModified: 1000, size: 42 }));
-      const deps = createMockDeps({ ensureTimelineFileHandle });
+    it('lists the main file and autosave when both exist', async () => {
+      const files: Record<string, FileMeta> = {
+        'project/clip.otio': { text: 'main', lastModified: 1000 },
+        '.fastcat/autosave/project/clip.otio': { text: 'autosave', lastModified: 2000 },
+      };
+      const deps = createMockDeps({ projectStore: makeProjectStoreMock(files) });
       const backup = createTimelineBackupModule(deps);
 
       await backup.loadBackupVersions();
@@ -67,30 +77,46 @@ describe('createTimelineBackupModule', () => {
       expect(backup.backupVersions.value.map((v) => v.type)).toEqual(['main', 'autosave']);
       const main = backup.backupVersions.value[0];
       expect(main.path).toBe('project/clip.otio');
-      expect(main.size).toBe(42);
+      expect(main.size).toBe(4); // 'main'.length
       expect(backup.backupVersions.value[1].path).toBe('.fastcat/autosave/project/clip.otio');
     });
   });
 
   describe('handleBackup', () => {
     it('does nothing when backups are disabled', async () => {
+      const projectStore = makeProjectStoreMock();
       const deps = createMockDeps({
+        projectStore,
         workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } } },
       });
       const backup = createTimelineBackupModule(deps);
 
       await backup.handleBackup('<serialized>');
 
-      expect(deps.projectStore.getDirectoryHandleByPath).not.toHaveBeenCalled();
+      expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
     });
 
     it('does nothing when there is no open timeline path', async () => {
-      const deps = createMockDeps({ currentTimelinePath: ref(null) });
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({ currentTimelinePath: ref(null), projectStore });
       const backup = createTimelineBackupModule(deps);
 
       await backup.handleBackup('<serialized>');
 
-      expect(deps.projectStore.getDirectoryHandleByPath).not.toHaveBeenCalled();
+      expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
+    });
+
+    it('writes a backup file when enabled', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({ projectStore });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.handleBackup('<serialized>');
+
+      expect(projectStore.writeTextByPath).toHaveBeenCalledWith(
+        expect.stringContaining('.fastcat/backups/project/clip__bak'),
+        '<serialized>',
+      );
     });
   });
 

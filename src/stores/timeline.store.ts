@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 import type { TimelineDocument, TimelineSelectionRange } from '~/timeline/types';
-import { runResilientFileWrite } from '~/utils/io/io-governor';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createTimelineEditService } from '~/timeline/application/timelineEditService';
 import { parseTimelineFromOtio, serializeTimelineToOtio } from '~/timeline/otio-serializer';
@@ -336,22 +335,15 @@ export const useTimelineStore = defineStore('timeline', () => {
     t,
     loadTimeline,
     deleteTimelineAutosaveFile,
-    ensureTimelineFileHandle,
+    readTimelineFile: async (relativePath) => {
+      const text = await projectStore.readTextByPath(relativePath);
+      if (!text) return null;
+      const meta = await projectStore.getFileMetadata(relativePath);
+      return { text, lastModified: meta?.lastModified ?? 0, size: meta?.size ?? text.length };
+    },
     markTimelineAsDirty: () => lifecycle.markTimelineAsDirty(),
     requestTimelineSave: (options) => lifecycle.requestTimelineSave(options),
   });
-
-  async function ensureTimelineFileHandle(options?: {
-    create?: boolean;
-    relativePath?: string;
-  }): Promise<FileSystemFileHandle | null> {
-    const relativePath = options?.relativePath ?? currentTimelinePath.value;
-    if (!relativePath) return null;
-    return await projectStore.getProjectFileHandleByRelativePath({
-      relativePath,
-      create: options?.create ?? false,
-    });
-  }
 
   function isMobileEditorRoute() {
     return (
@@ -364,20 +356,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   // timeline. Called after an explicit save commits the work, and on clean
   // shutdown so a leftover sidecar is never mistaken for crash data.
   async function deleteTimelineAutosaveFile(timelinePath: string) {
-    const sidecarPath = `.fastcat/autosave/${timelinePath}`;
-    const parts = sidecarPath.split('/');
-    const fileName = parts.pop();
-    if (!fileName) return;
-    const dirHandle = await projectStore.getDirectoryHandleByPath(parts.join('/'), {
-      create: false,
-    });
-    if (!dirHandle) return;
     try {
-      await dirHandle.removeEntry(fileName);
+      await projectStore.deleteByPath(`.fastcat/autosave/${timelinePath}`);
     } catch (e) {
-      if ((e as { name?: string })?.name !== 'NotFoundError') {
-        log.warn('Failed to delete autosave sidecar', timelinePath, e);
-      }
+      log.warn('Failed to delete autosave sidecar', timelinePath, e);
     }
   }
 
@@ -400,7 +382,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentProjectName,
     currentTimelinePath,
 
-    ensureTimelineFileHandle,
+    readTimelineText: (p) => projectStore.readTextByPath(p),
+    writeTimelineText: (p, text) => projectStore.writeTextByPath(p, text),
+    deleteTimelinePath: (p) => projectStore.deleteByPath(p),
+    getTimelineMetadata: (p) => projectStore.getFileMetadata(p),
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
     getProjectSettings: () => projectStore.projectSettings,
     getOpenPaths: () => projectStore.projectSettings?.timelines?.openPaths ?? [],
@@ -625,14 +610,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     const prefix = match ? match[1]! : baseName;
 
     const parentPath = parts.join('/');
-    const dirHandle = await projectStore.getDirectoryHandleByPath(parentPath, { create: true });
-    if (!dirHandle) return;
 
+    const existingNames = await projectStore.listEntryNames(parentPath);
     const existingVersions: number[] = [];
-    for await (const [name, handle] of (
-      dirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
-    ).entries()) {
-      if (handle.kind === 'file' && name.startsWith(prefix) && name.endsWith('.otio')) {
+    for (const name of existingNames) {
+      if (name.startsWith(prefix) && name.endsWith('.otio')) {
         const vMatch = name.slice(0, -'.otio'.length).match(/_v(\d{1,3})$/);
         if (vMatch) {
           existingVersions.push(parseInt(vMatch[1]!, 10));
@@ -648,20 +630,8 @@ export const useTimelineStore = defineStore('timeline', () => {
     const nextName = `${prefix}_v${nextNum.toString().padStart(2, '0')}.otio`;
 
     try {
-      const newHandle = await dirHandle.getFileHandle(nextName, { create: true });
-
-      await runResilientFileWrite(async () => {
-        const writable = await (
-          newHandle as unknown as {
-            createWritable: () => Promise<{
-              write: (data: string) => Promise<void>;
-              close: () => Promise<void>;
-            }>;
-          }
-        ).createWritable();
-        await writable.write(snapshotSerialized);
-        await writable.close();
-      });
+      const newPath = parentPath ? `${parentPath}/${nextName}` : nextName;
+      await projectStore.writeTextByPath(newPath, snapshotSerialized);
 
       toast.add({
         title: t('videoEditor.timeline.versionCreated', {
@@ -670,7 +640,7 @@ export const useTimelineStore = defineStore('timeline', () => {
         color: 'success',
       });
 
-      const newRelativePath = parentPath ? `${parentPath}/${nextName}` : nextName;
+      const newRelativePath = newPath;
       await projectStore.openTimelineFile(newRelativePath);
       focusStore.setActiveTimelinePath(newRelativePath);
       await loadTimeline();

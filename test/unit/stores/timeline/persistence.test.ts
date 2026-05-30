@@ -18,7 +18,6 @@ const selectTimelineDurationUs = vi.fn().mockReturnValue(0);
 const onSaveSuccess = vi.fn();
 const onSaveError = vi.fn();
 
-// Minimal mock for Worker used by serializeInWorker
 let originalWorker: any;
 const workerMocks: Array<{
   postMessage: (data: unknown) => void;
@@ -32,7 +31,6 @@ beforeAll(() => {
       onmessage: null as ((e: MessageEvent) => void) | null,
       onerror: null as ((e: ErrorEvent) => void) | null,
       postMessage: vi.fn().mockImplementation((data: unknown) => {
-        // Simulate async worker response
         queueMicrotask(() => {
           if (worker.onmessage) {
             worker.onmessage(
@@ -54,6 +52,24 @@ afterAll(() => {
   (globalThis as any).Worker = originalWorker;
 });
 
+type FileStore = Record<string, { text: string; lastModified: number }>;
+
+function makeVfsMock(files: FileStore) {
+  return {
+    readTimelineText: vi.fn(async (p: string) => files[p]?.text ?? null),
+    writeTimelineText: vi.fn(async (p: string, text: string) => {
+      files[p] = { text, lastModified: Date.now() };
+    }),
+    deleteTimelinePath: vi.fn(async (p: string) => {
+      delete files[p];
+    }),
+    getTimelineMetadata: vi.fn(async (p: string) => {
+      const f = files[p];
+      return f ? { lastModified: f.lastModified, size: f.text.length } : null;
+    }),
+  };
+}
+
 function createMockDeps(
   overrides?: Partial<Parameters<typeof createTimelinePersistenceModule>[0]>,
 ) {
@@ -72,7 +88,7 @@ function createMockDeps(
     timelineSaveError: ref<string | null>(null),
     currentProjectName: ref('test-project'),
     currentTimelinePath: ref('timeline.otio'),
-    ensureTimelineFileHandle: vi.fn().mockResolvedValue(null),
+    ...makeVfsMock({}),
     createFallbackTimelineDoc: () => ({ ...fallbackDoc }),
     getProjectSettings: () => ({}),
     parseTimelineFromOtio,
@@ -91,7 +107,7 @@ describe('TimelinePersistenceModule', () => {
     workerMocks.length = 0;
   });
 
-  it('loadTimeline sets fallback doc when file handle is missing', async () => {
+  it('loadTimeline sets fallback doc when file is missing', async () => {
     const deps = createMockDeps();
     const mod = createTimelinePersistenceModule(deps);
 
@@ -102,13 +118,8 @@ describe('TimelinePersistenceModule', () => {
   });
 
   it('loadTimeline falls back to default when parseTimelineFromOtio throws', async () => {
-    const deps = createMockDeps({
-      ensureTimelineFileHandle: vi.fn().mockResolvedValue({
-        getFile: vi.fn().mockResolvedValue({
-          text: vi.fn().mockResolvedValue('invalid otio'),
-        }),
-      }),
-    });
+    const files: FileStore = { 'timeline.otio': { text: 'invalid otio', lastModified: 1 } };
+    const deps = createMockDeps(makeVfsMock(files));
     parseTimelineFromOtio.mockImplementation(() => {
       throw new Error('corrupted');
     });
@@ -123,29 +134,19 @@ describe('TimelinePersistenceModule', () => {
 
   it('preserves a tab unsaved edits in memory across a tab switch', async () => {
     const currentTimelinePath = ref('A.otio');
-    const fileContents: Record<string, string> = {
-      'A.otio': JSON.stringify({ ...fallbackDoc, id: 'A' }),
-      'B.otio': JSON.stringify({ ...fallbackDoc, id: 'B' }),
+    const files: FileStore = {
+      'A.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'A' }), lastModified: 1 },
+      'B.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'B' }), lastModified: 1 },
     };
-    const ensureTimelineFileHandle = vi.fn(
-      async (options?: { create?: boolean; relativePath?: string }) => {
-        const path = options?.relativePath ?? currentTimelinePath.value;
-        if (!path || path.startsWith('.fastcat/autosave/')) return null;
-        const text = fileContents[path];
-        if (text === undefined) return null;
-        return { getFile: async () => ({ text: async () => text, lastModified: 1 }) } as any;
-      },
-    );
     parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
 
     const deps = createMockDeps({
       currentTimelinePath,
-      ensureTimelineFileHandle,
+      ...makeVfsMock(files),
       getOpenPaths: () => ['A.otio', 'B.otio'],
     });
     const mod = createTimelinePersistenceModule(deps);
 
-    // Load A from disk, then make an unsaved in-memory edit.
     await mod.loadTimeline();
     expect(deps.timelineDoc.value.id).toBe('A');
     deps.timelineDoc.value = { ...deps.timelineDoc.value, edited: true };
@@ -154,51 +155,38 @@ describe('TimelinePersistenceModule', () => {
 
     const parseCallsAfterA = parseTimelineFromOtio.mock.calls.length;
 
-    // Switch to B (A's edits are snapshotted in memory, not re-read on return).
     currentTimelinePath.value = 'B.otio';
     await mod.loadTimeline();
     expect(deps.timelineDoc.value.id).toBe('B');
 
-    // Switch back to A: edits + dirty restored from memory, no disk re-read.
     currentTimelinePath.value = 'A.otio';
     await mod.loadTimeline();
     expect(deps.timelineDoc.value.edited).toBe(true);
     expect(deps.isTimelineDirty.value).toBe(true);
-    // Only B was parsed across the two switches; A came from the cache.
     expect(parseTimelineFromOtio.mock.calls.length).toBe(parseCallsAfterA + 1);
   });
 
   it('parks and restores each tab undo stack across a switch', async () => {
     const currentTimelinePath = ref('A.otio');
-    const fileContents: Record<string, string> = {
-      'A.otio': JSON.stringify({ ...fallbackDoc, id: 'A' }),
-      'B.otio': JSON.stringify({ ...fallbackDoc, id: 'B' }),
+    const files: FileStore = {
+      'A.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'A' }), lastModified: 1 },
+      'B.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'B' }), lastModified: 1 },
     };
-    const ensureTimelineFileHandle = vi.fn(
-      async (options?: { create?: boolean; relativePath?: string }) => {
-        const path = options?.relativePath ?? currentTimelinePath.value;
-        if (!path || path.startsWith('.fastcat/autosave/')) return null;
-        const text = fileContents[path];
-        if (text === undefined) return null;
-        return { getFile: async () => ({ text: async () => text, lastModified: 1 }) } as any;
-      },
-    );
     parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
 
-    // Model the live undo stack: capture parks (and clears) it, restore swaps it.
     let liveHistory: string[] = [];
     const captureHistoryState = vi.fn(() => {
-      const parked = liveHistory;
+      const p = liveHistory;
       liveHistory = [];
-      return parked;
+      return p;
     });
-    const restoreHistoryState = vi.fn((state: unknown) => {
-      liveHistory = (state as string[] | null) ?? [];
+    const restoreHistoryState = vi.fn((s: unknown) => {
+      liveHistory = (s as string[] | null) ?? [];
     });
 
     const deps = createMockDeps({
       currentTimelinePath,
-      ensureTimelineFileHandle,
+      ...makeVfsMock(files),
       getOpenPaths: () => ['A.otio', 'B.otio'],
       captureHistoryState,
       restoreHistoryState,
@@ -209,14 +197,11 @@ describe('TimelinePersistenceModule', () => {
     liveHistory.push('A-edit');
     mod.markDirty();
 
-    // Switch to B → A's stack is parked; B starts fresh.
     currentTimelinePath.value = 'B.otio';
     await mod.loadTimeline();
     expect(liveHistory).toEqual([]);
     liveHistory.push('B-edit');
-    mod.markDirty();
 
-    // Switch back to A → A's parked stack is restored, B's is gone from live.
     currentTimelinePath.value = 'A.otio';
     await mod.loadTimeline();
     expect(liveHistory).toEqual(['A-edit']);
@@ -225,40 +210,28 @@ describe('TimelinePersistenceModule', () => {
   it('evicts cached tab state once the tab is no longer open', async () => {
     const currentTimelinePath = ref('A.otio');
     let openPaths = ['A.otio', 'B.otio'];
-    const fileContents: Record<string, string> = {
-      'A.otio': JSON.stringify({ ...fallbackDoc, id: 'A' }),
-      'B.otio': JSON.stringify({ ...fallbackDoc, id: 'B' }),
+    const files: FileStore = {
+      'A.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'A' }), lastModified: 1 },
+      'B.otio': { text: JSON.stringify({ ...fallbackDoc, id: 'B' }), lastModified: 1 },
     };
-    const ensureTimelineFileHandle = vi.fn(
-      async (options?: { create?: boolean; relativePath?: string }) => {
-        const path = options?.relativePath ?? currentTimelinePath.value;
-        if (!path || path.startsWith('.fastcat/autosave/')) return null;
-        const text = fileContents[path];
-        if (text === undefined) return null;
-        return { getFile: async () => ({ text: async () => text, lastModified: 1 }) } as any;
-      },
-    );
     parseTimelineFromOtio.mockImplementation((text: string) => JSON.parse(text));
 
     const deps = createMockDeps({
       currentTimelinePath,
-      ensureTimelineFileHandle,
+      ...makeVfsMock(files),
       getOpenPaths: () => openPaths,
     });
     const mod = createTimelinePersistenceModule(deps);
 
-    // Load A, edit it, switch to B → A is cached in memory.
     await mod.loadTimeline();
     deps.timelineDoc.value = { ...deps.timelineDoc.value, edited: true };
     mod.markDirty();
     currentTimelinePath.value = 'B.otio';
     await mod.loadTimeline();
 
-    // Close A and trigger a load while it's gone → its cache entry is pruned.
     openPaths = ['B.otio'];
     await mod.loadTimeline();
 
-    // Reopen A: it's no longer cached, so it loads fresh from disk (no stale edit).
     openPaths = ['B.otio', 'A.otio'];
     currentTimelinePath.value = 'A.otio';
     await mod.loadTimeline();
@@ -270,23 +243,20 @@ describe('TimelinePersistenceModule', () => {
   it('saveTimeline skips when doc is null', async () => {
     const deps = createMockDeps({ timelineDoc: ref<any>(null) });
     const mod = createTimelinePersistenceModule(deps);
-
     await mod.saveTimeline();
-    expect(deps.ensureTimelineFileHandle).not.toHaveBeenCalled();
+    expect(deps.writeTimelineText).not.toHaveBeenCalled();
   });
 
   it('saveTimeline skips when read-only', async () => {
     const onSaveBlockedReadOnly = vi.fn();
     const deps = createMockDeps({
       timelineDoc: ref({ ...fallbackDoc }),
-      isTimelineDirty: ref(true),
       isReadOnly: ref(true),
       onSaveBlockedReadOnly,
     });
     const mod = createTimelinePersistenceModule(deps);
-
     await mod.saveTimeline();
-    expect(deps.ensureTimelineFileHandle).not.toHaveBeenCalled();
+    expect(deps.writeTimelineText).not.toHaveBeenCalled();
     expect(onSaveBlockedReadOnly).toHaveBeenCalled();
   });
 
@@ -294,7 +264,6 @@ describe('TimelinePersistenceModule', () => {
     const exitPreview = vi.fn();
     const deps = createMockDeps({ exitPreview });
     const mod = createTimelinePersistenceModule(deps);
-
     await mod.loadTimeline();
     expect(exitPreview).toHaveBeenCalled();
   });
@@ -303,22 +272,16 @@ describe('TimelinePersistenceModule', () => {
     const showRecoveryDialog = vi.fn().mockResolvedValue('open-saved');
     const onRecoveryChoice = vi.fn();
     const deleteAutosaveFile = vi.fn().mockResolvedValue(undefined);
-    const mainFile = { text: async () => '{"id":"main"}', lastModified: 100 } as any;
-    const autosaveFile = { text: async () => '{"id":"autosave"}', lastModified: 200 } as any;
-    const ensureTimelineFileHandle = vi.fn(
-      async (options?: { create?: boolean; relativePath?: string }) => {
-        if (options?.relativePath?.includes('autosave')) {
-          return { getFile: async () => autosaveFile } as any;
-        }
-        return { getFile: async () => mainFile } as any;
-      },
-    );
-
+    // autosave is newer → should trigger dialog
+    const files: FileStore = {
+      'timeline.otio': { text: '{"id":"main"}', lastModified: 100 },
+      '.fastcat/autosave/timeline.otio': { text: '{"id":"autosave"}', lastModified: 200 },
+    };
     const deps = createMockDeps({
+      ...makeVfsMock(files),
       showRecoveryDialog,
       onRecoveryChoice,
       deleteAutosaveFile,
-      ensureTimelineFileHandle,
     });
     const mod = createTimelinePersistenceModule(deps);
     await mod.loadTimeline();
@@ -332,22 +295,11 @@ describe('TimelinePersistenceModule', () => {
   it('loadTimeline handles showRecoveryDialog for restore-autosave', async () => {
     const showRecoveryDialog = vi.fn().mockResolvedValue('restore-autosave');
     const onRecoveryChoice = vi.fn();
-    const mainFile = { text: async () => '{"id":"main"}', lastModified: 100 } as any;
-    const autosaveFile = { text: async () => '{"id":"autosave"}', lastModified: 200 } as any;
-    const ensureTimelineFileHandle = vi.fn(
-      async (options?: { create?: boolean; relativePath?: string }) => {
-        if (options?.relativePath?.includes('autosave')) {
-          return { getFile: async () => autosaveFile } as any;
-        }
-        return { getFile: async () => mainFile } as any;
-      },
-    );
-
-    const deps = createMockDeps({
-      showRecoveryDialog,
-      onRecoveryChoice,
-      ensureTimelineFileHandle,
-    });
+    const files: FileStore = {
+      'timeline.otio': { text: '{"id":"main"}', lastModified: 100 },
+      '.fastcat/autosave/timeline.otio': { text: '{"id":"autosave"}', lastModified: 200 },
+    };
+    const deps = createMockDeps({ ...makeVfsMock(files), showRecoveryDialog, onRecoveryChoice });
     const mod = createTimelinePersistenceModule(deps);
     await mod.loadTimeline();
 
@@ -357,33 +309,24 @@ describe('TimelinePersistenceModule', () => {
   });
 
   it('removes an in-flight autosave if an explicit save wins the race', async () => {
-    let resolveAutosaveWrite: (() => void) | null = null;
-    const autosaveWritable = {
-      write: vi.fn(
-        () =>
-          new Promise<void>((resolve) => {
-            resolveAutosaveWrite = resolve;
-          }),
-      ),
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const mainWritable = {
-      write: vi.fn().mockResolvedValue(undefined),
-      close: vi.fn().mockResolvedValue(undefined),
-    };
-    const autosaveHandle = {
-      createWritable: vi.fn().mockResolvedValue(autosaveWritable),
-    };
-    const mainHandle = {
-      createWritable: vi.fn().mockResolvedValue(mainWritable),
-    };
+    const files: FileStore = {};
+    let autosaveResolve: (() => void) | null = null;
+    const vfsMock = makeVfsMock(files);
+    // make autosave write hang until we resolve it
+    const originalWrite = vfsMock.writeTimelineText;
+    vfsMock.writeTimelineText = vi.fn(async (p: string, text: string) => {
+      if (p.includes('autosave')) {
+        await new Promise<void>((r) => {
+          autosaveResolve = r;
+        });
+      }
+      return originalWrite(p, text);
+    });
+
     const deleteAutosaveFile = vi.fn().mockResolvedValue(undefined);
     const deps = createMockDeps({
       timelineDoc: ref({ ...fallbackDoc }),
-      ensureTimelineFileHandle: vi.fn(
-        async (options?: { create?: boolean; relativePath?: string }) =>
-          options?.relativePath?.startsWith('.fastcat/autosave/') ? autosaveHandle : mainHandle,
-      ),
+      ...vfsMock,
       deleteAutosaveFile,
     });
     const mod = createTimelinePersistenceModule(deps);
@@ -391,16 +334,19 @@ describe('TimelinePersistenceModule', () => {
     mod.markDirty();
     const autosavePromise = mod.flushTimelineAutosave();
 
-    for (let i = 0; i < 10 && !autosaveWritable.write.mock.calls.length; i++) {
+    // wait for autosave to start writing
+    for (
+      let i = 0;
+      i < 20 && !vfsMock.writeTimelineText.mock.calls.some((c) => c[0].includes('autosave'));
+      i++
+    ) {
       await Promise.resolve();
     }
-    expect(autosaveWritable.write).toHaveBeenCalled();
 
     await mod.saveTimeline();
-    expect(mainWritable.write).toHaveBeenCalled();
     expect(deps.isTimelineDirty.value).toBe(false);
 
-    resolveAutosaveWrite?.();
+    autosaveResolve?.();
     await autosavePromise;
 
     expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');

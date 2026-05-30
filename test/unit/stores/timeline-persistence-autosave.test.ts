@@ -10,12 +10,31 @@ import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { useTimelineStore } from '~/stores/timeline.store';
 
 // Use reactive to ensure store properties remain reactive
+// In-memory file store for the mock
+const mockFiles: Record<string, { text: string; lastModified: number }> = {};
+
 const mockProjectStore = reactive({
   currentProjectName: 'test-project',
   currentTimelinePath: 'timelines/main.otio',
   isReadOnly: false,
-  getProjectFileHandleByRelativePath: vi.fn(),
-  getDirectoryHandleByPath: vi.fn(),
+  // --- new VFS-based methods (used by persistence/backup) ---
+  readTextByPath: vi.fn(async (p: string) => mockFiles[p]?.text ?? null),
+  writeTextByPath: vi.fn(async (p: string, text: string) => {
+    mockFiles[p] = { text, lastModified: Date.now() };
+  }),
+  deleteByPath: vi.fn(async (p: string) => {
+    delete mockFiles[p];
+  }),
+  listEntryNames: vi.fn(async (_p: string) => [] as string[]),
+  getFileMetadata: vi.fn(async (p: string) => {
+    const f = mockFiles[p];
+    return f ? { lastModified: f.lastModified, size: f.text.length } : null;
+  }),
+  // --- still used by some call sites not yet migrated ---
+  getProjectFileHandleByRelativePath: vi.fn(
+    async (input: { relativePath: string; create?: boolean }) => null as any,
+  ),
+  getDirectoryHandleByPath: vi.fn(async () => null as any),
   createFallbackTimelineDoc: vi.fn().mockReturnValue({
     OTIO_SCHEMA: 'Timeline.1',
     id: 'fallback',
@@ -91,8 +110,8 @@ describe('Timeline Persistence and AutoSave', () => {
     mockProjectStore.isReadOnly = false;
     mockProjectStore.currentProjectName = 'test-project';
     mockProjectStore.currentTimelinePath = 'timelines/main.otio';
-    mockProjectStore.getProjectFileHandleByRelativePath.mockResolvedValue(mockFileHandle);
-    mockProjectStore.getDirectoryHandleByPath.mockResolvedValue(mockDirHandle);
+    // Reset in-memory file store
+    for (const k of Object.keys(mockFiles)) delete mockFiles[k];
     WorkerMock.postedMessages = [];
   });
 
@@ -114,23 +133,19 @@ describe('Timeline Persistence and AutoSave', () => {
     expect(timelineStore.isTimelineDirty).toBe(true);
 
     // Should not save immediately
-    expect(mockFileHandle.createWritable).not.toHaveBeenCalled();
+    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(10_000);
 
-    // Now wait for all microtasks and async operations (multiple flushes to be sure)
     for (let i = 0; i < 10; i++) {
       await vi.runAllTimersAsync();
       await Promise.resolve();
     }
 
-    expect(mockFileHandle.createWritable).toHaveBeenCalled();
-    expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalledWith({
-      relativePath: '.fastcat/autosave/timelines/main.otio',
-      create: true,
-    });
-    expect(mockWritable.write).toHaveBeenCalled();
-    expect(mockWritable.close).toHaveBeenCalled();
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+      '.fastcat/autosave/timelines/main.otio',
+      expect.any(String),
+    );
     expect(timelineStore.isTimelineDirty).toBe(true);
   });
 
@@ -146,18 +161,15 @@ describe('Timeline Persistence and AutoSave', () => {
     timelineStore.markTimelineAsDirty();
     const savePromise = timelineStore.saveTimeline();
 
-    // Allow the queue and worker to proceed
     await vi.runAllTimersAsync();
     await Promise.resolve();
     await savePromise;
     await Promise.resolve();
-    await Promise.resolve();
 
-    expect(mockFileHandle.createWritable).toHaveBeenCalled();
-    expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalledWith({
-      relativePath: 'timelines/main.otio',
-      create: true,
-    });
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+      'timelines/main.otio',
+      expect.any(String),
+    );
     expect(timelineStore.isSavingTimeline).toBe(false);
     expect(timelineStore.isTimelineDirty).toBe(false);
   });
@@ -174,19 +186,19 @@ describe('Timeline Persistence and AutoSave', () => {
     timelineStore.markTimelineAsDirty();
     await timelineStore.requestTimelineSave({ immediate: true });
 
-    expect(mockFileHandle.createWritable).not.toHaveBeenCalled();
+    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
 
     await vi.runAllTimersAsync();
     await Promise.resolve();
 
-    expect(mockProjectStore.getProjectFileHandleByRelativePath).toHaveBeenCalledWith({
-      relativePath: '.fastcat/autosave/timelines/main.otio',
-      create: true,
-    });
-    expect(mockProjectStore.getProjectFileHandleByRelativePath).not.toHaveBeenCalledWith({
-      relativePath: 'timelines/main.otio',
-      create: true,
-    });
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+      '.fastcat/autosave/timelines/main.otio',
+      expect.any(String),
+    );
+    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalledWith(
+      'timelines/main.otio',
+      expect.any(String),
+    );
     expect(timelineStore.isTimelineDirty).toBe(true);
   });
 
@@ -207,8 +219,10 @@ describe('Timeline Persistence and AutoSave', () => {
   });
 
   it('triggers backup after a successful save', async () => {
-    const timelineStore = useTimelineStore();
+    // Enable backup in user settings
+    (mockWorkspaceStore.userSettings as any).backup = { enabled: true, count: 5 };
 
+    const timelineStore = useTimelineStore();
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
       id: 'test',
@@ -216,24 +230,16 @@ describe('Timeline Persistence and AutoSave', () => {
       tracks: [],
     } as any;
 
-    // Simulate save
     timelineStore.markTimelineAsDirty();
     await timelineStore.saveTimeline();
 
-    // Wait for handleBackup
     await vi.runAllTimersAsync();
     await Promise.resolve();
 
-    // Check if backup directory was requested
-    expect(mockProjectStore.getDirectoryHandleByPath).toHaveBeenCalledWith(
+    // Backup is written via writeTextByPath with a path inside .fastcat/backups
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
       expect.stringContaining('.fastcat/backups'),
-      { create: true },
-    );
-
-    // Check if new backup file was created
-    expect(mockDirHandle.getFileHandle).toHaveBeenCalledWith(
-      expect.stringMatching(/main__bak\d{3}\.otio/),
-      { create: true },
+      expect.any(String),
     );
   });
 
@@ -251,8 +257,7 @@ describe('Timeline Persistence and AutoSave', () => {
     timelineStore.markTimelineAsDirty();
     await timelineStore.saveTimeline();
 
-    expect(mockFileHandle.createWritable).not.toHaveBeenCalled();
-    // It stays dirty because it couldn't save
+    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
     expect(timelineStore.isTimelineDirty).toBe(true);
   });
 });

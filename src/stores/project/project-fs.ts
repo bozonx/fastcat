@@ -8,6 +8,8 @@ import {
 } from '~/utils/workspace-common';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { VfsNotFoundError } from '~/file-manager/core/vfs/errors';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 const log = createDevLogger('project-fs');
 
 export interface ProjectFsModule {
@@ -23,18 +25,45 @@ export interface ProjectFsModule {
     options?: { create?: boolean },
   ) => Promise<FileSystemDirectoryHandle | null>;
   getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
+  /** Read file text by VFS path. Returns null if file is missing. */
+  readTextByPath: (path: string) => Promise<string | null>;
+  /** Write text to a VFS path (atomic, governed). */
+  writeTextByPath: (path: string, text: string) => Promise<void>;
+  /** Delete a file or directory by VFS path. Missing paths resolve silently. */
+  deleteByPath: (path: string, options?: { recursive?: boolean }) => Promise<void>;
+  /** List entry names in a VFS directory. Returns [] if directory missing. */
+  listEntryNames: (path: string) => Promise<string[]>;
+  /** Check if a VFS path exists. */
+  pathExists: (path: string) => Promise<boolean>;
+  /** Get file metadata (lastModified, size). Returns null if missing. */
+  getFileMetadata: (path: string) => Promise<{ lastModified: number; size: number } | null>;
 }
 
 export function createProjectFsModule(params: {
   workspaceHandle: Ref<FileSystemDirectoryHandle | null>;
   projectsHandle: Ref<FileSystemDirectoryHandle | null>;
   currentProjectName: Ref<string | null>;
+  /**
+   * Lazily resolves the application VFS adapter. Lazy (not eager) because this
+   * module is constructed during project-store setup, which can run before the
+   * Nuxt VFS plugin has provided `$vfs`.
+   */
+  getVfs: () => IFileSystemAdapter;
 }) {
   const workspaceTopology = getWorkspaceStorageTopology();
 
   function toProjectRelativePath(path: string): string {
     return normalizeWorkspaceFilePath(path);
   }
+
+  // ===========================================================================
+  // Handle-returning methods.
+  //
+  // IMPORTANT: these resolve REAL platform directory/file handles from the
+  // workspace provider. They are the *ground truth* the VFS adapters are built
+  // on (`createTauriWorkspaceAdapters` reads `getProjectDirHandle().path`), so
+  // they must NOT be reimplemented in terms of the VFS — that would be circular.
+  // ===========================================================================
 
   async function getWorkspaceCommonDirHandle(
     create = false,
@@ -44,9 +73,7 @@ export function createProjectFsModule(params: {
     try {
       return await params.workspaceHandle.value.getDirectoryHandle(
         workspaceTopology.commonDirName,
-        {
-          create,
-        },
+        { create },
       );
     } catch {
       return null;
@@ -110,7 +137,6 @@ export function createProjectFsModule(params: {
           });
         } catch (e) {
           if ((e as { name?: unknown }).name !== 'NotFoundError') {
-            // Non-NotFoundError (e.g., scope/permission error): do not fall through
             if ((e as { name?: unknown }).name !== 'TypeMismatchError') {
               log.error('Failed to get project file handle by path:', input.relativePath, e);
             }
@@ -249,6 +275,71 @@ export function createProjectFsModule(params: {
     }
   }
 
+  // ===========================================================================
+  // VFS path-based methods (atomic writes, typed errors). Used by callers that
+  // only need read/write/list by path — they route through the application VFS
+  // (active project = default route, `@common/…` = workspace common).
+  // ===========================================================================
+
+  /** Resolve a workspace-relative path to the routed VFS path. */
+  function resolveVfsPath(path: string): string {
+    const normalized = toProjectRelativePath(path);
+    if (!normalized) return '';
+    if (isWorkspaceCommonPath(normalized)) return toWorkspaceCommonPath(normalized);
+    return normalized;
+  }
+
+  async function readTextByPath(path: string): Promise<string | null> {
+    const vfsPath = resolveVfsPath(path);
+    if (!vfsPath) return null;
+    try {
+      const blob = await params.getVfs().readFile(vfsPath);
+      const text = await blob.text();
+      return text.trim() || null;
+    } catch (e) {
+      if (e instanceof VfsNotFoundError) return null;
+      throw e;
+    }
+  }
+
+  async function writeTextByPath(path: string, text: string): Promise<void> {
+    const vfsPath = resolveVfsPath(path);
+    if (!vfsPath) throw new Error(`Invalid VFS path: ${path}`);
+    await params.getVfs().writeFile(vfsPath, text);
+  }
+
+  async function deleteByPath(path: string, options?: { recursive?: boolean }): Promise<void> {
+    const vfsPath = resolveVfsPath(path);
+    if (!vfsPath) return;
+    await params.getVfs().deleteEntry(vfsPath, options?.recursive ?? false);
+  }
+
+  async function listEntryNames(path: string): Promise<string[]> {
+    const vfsPath = resolveVfsPath(path);
+    if (!vfsPath) return [];
+    try {
+      return await params.getVfs().listEntryNames(vfsPath);
+    } catch {
+      return [];
+    }
+  }
+
+  async function pathExists(path: string): Promise<boolean> {
+    const vfsPath = resolveVfsPath(path);
+    if (!vfsPath) return false;
+    return params.getVfs().exists(vfsPath);
+  }
+
+  async function getFileMetadata(
+    path: string,
+  ): Promise<{ lastModified: number; size: number } | null> {
+    const vfsPath = resolveVfsPath(path);
+    if (!vfsPath) return null;
+    const meta = await params.getVfs().getMetadata(vfsPath);
+    if (!meta || meta.kind !== 'file') return null;
+    return { lastModified: meta.lastModified, size: meta.size };
+  }
+
   const module: ProjectFsModule = {
     toProjectRelativePath,
     getProjectFileHandleByRelativePath,
@@ -256,6 +347,12 @@ export function createProjectFsModule(params: {
     getFileByPath,
     getDirectoryHandleByPath,
     getProjectDirHandle,
+    readTextByPath,
+    writeTextByPath,
+    deleteByPath,
+    listEntryNames,
+    pathExists,
+    getFileMetadata,
   };
 
   return module;

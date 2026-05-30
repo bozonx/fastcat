@@ -1,7 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { toRaw, type Ref } from 'vue';
 import { createAutoSave } from '~/utils/auto-save';
-import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
 
@@ -27,10 +27,12 @@ export interface TimelinePersistenceDeps {
   currentProjectName: Ref<string | null>;
   currentTimelinePath: Ref<string | null>;
 
-  ensureTimelineFileHandle: (options?: {
-    create?: boolean;
-    relativePath?: string;
-  }) => Promise<FileSystemFileHandle | null>;
+  readTimelineText: (relativePath: string) => Promise<string | null>;
+  writeTimelineText: (relativePath: string, text: string) => Promise<void>;
+  deleteTimelinePath: (relativePath: string) => Promise<void>;
+  getTimelineMetadata: (
+    relativePath: string,
+  ) => Promise<{ lastModified: number; size: number } | null>;
   createFallbackTimelineDoc: () => TimelineDocument;
 
   getProjectSettings: () => { timelines?: { sessions?: Record<string, unknown> } } | null;
@@ -328,14 +330,8 @@ export function createTimelinePersistenceModule(
     return `.fastcat/autosave/${timelinePath}`;
   }
 
-  async function writeSerializedToHandle(handle: FileSystemFileHandle, serialized: string) {
-    await runResilientFileWrite(async () => {
-      const writable = await (
-        handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
-      ).createWritable();
-      await writable.write(serialized);
-      await writable.close();
-    });
+  async function writeSerializedToPath(relativePath: string, serialized: string) {
+    await deps.writeTimelineText(relativePath, serialized);
   }
 
   async function serializeValidatedTimeline(doc: TimelineDocument) {
@@ -416,16 +412,11 @@ export function createTimelinePersistenceModule(
           return false;
         }
 
-        const handle = await deps.ensureTimelineFileHandle({
-          create: true,
-          relativePath: getAutosavePath(currentTimelinePath),
-        });
-        if (!handle) return false;
-
+        const autosavePath = getAutosavePath(currentTimelinePath);
         const serialized = await serializeValidatedTimeline(doc);
         if (generation !== autosaveGeneration || !isDirty()) return false;
 
-        await writeSerializedToHandle(handle, serialized);
+        await writeSerializedToPath(autosavePath, serialized);
         if (generation !== autosaveGeneration || !isDirty()) {
           await deps.deleteAutosaveFile?.(currentTimelinePath);
           return false;
@@ -515,42 +506,38 @@ export function createTimelinePersistenceModule(
     const fallback = deps.createFallbackTimelineDoc();
 
     try {
-      const handle = await deps.ensureTimelineFileHandle({ create: false });
-      const autosavePath = getAutosavePath(deps.currentTimelinePath.value);
-      const autosaveHandle = await deps.ensureTimelineFileHandle({
-        create: false,
-        relativePath: autosavePath,
-      });
-      if (!handle && !autosaveHandle) {
+      const mainPath = deps.currentTimelinePath.value;
+      const autosavePath = getAutosavePath(mainPath);
+
+      const mainMeta = await deps.getTimelineMetadata(mainPath);
+      const autosaveMeta = await deps.getTimelineMetadata(autosavePath);
+
+      if (!mainMeta && !autosaveMeta) {
         if (requestId !== loadTimelineRequestId) return;
         deps.timelineDoc.value = fallback;
         return;
       }
 
-      const mainFile = handle ? await withFileIoSlot(() => handle.getFile()) : null;
-      const autosaveFile = autosaveHandle
-        ? await withFileIoSlot(() => autosaveHandle.getFile())
-        : null;
-      let text = mainFile ? await withFileIoSlot(() => mainFile.text()) : '';
+      let text = mainMeta
+        ? ((await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '')
+        : '';
       const shouldOfferAutosave =
-        !!autosaveFile && (!mainFile || autosaveFile.lastModified > mainFile.lastModified);
+        !!autosaveMeta && (!mainMeta || autosaveMeta.lastModified > mainMeta.lastModified);
 
       if (shouldOfferAutosave) {
         if (deps.shouldRestoreAutosaveSilently?.()) {
-          text = await withFileIoSlot(() => autosaveFile.text());
+          text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
           restoredAutosave = true;
         } else if (deps.showRecoveryDialog) {
-          const choice = await deps.showRecoveryDialog({
-            timelinePath: deps.currentTimelinePath.value,
-          });
+          const choice = await deps.showRecoveryDialog({ timelinePath: mainPath });
           if (choice === 'restore-autosave') {
-            text = await withFileIoSlot(() => autosaveFile.text());
+            text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
             restoredAutosave = true;
           } else {
             deps.onRecoveryChoice?.(choice);
             if (choice === 'open-saved') {
               try {
-                await deps.deleteAutosaveFile?.(deps.currentTimelinePath.value);
+                await deps.deleteAutosaveFile?.(mainPath);
               } catch (e) {
                 log.warn('Failed to remove discarded autosave sidecar', e);
               }
@@ -558,13 +545,10 @@ export function createTimelinePersistenceModule(
           }
         } else {
           const shouldRestore =
-            (await deps.confirmRestoreAutosave?.({
-              timelinePath: deps.currentTimelinePath.value,
-              autosavePath,
-            })) ?? false;
-
+            (await deps.confirmRestoreAutosave?.({ timelinePath: mainPath, autosavePath })) ??
+            false;
           if (shouldRestore) {
-            text = await withFileIoSlot(() => autosaveFile.text());
+            text = (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
             restoredAutosave = true;
           }
         }
@@ -650,11 +634,9 @@ export function createTimelinePersistenceModule(
         return;
       }
 
-      const handle = await deps.ensureTimelineFileHandle({ create: true });
-      if (!handle) return;
-
+      const timelinePath = currentTimelinePath;
       const serialized = await serializeValidatedTimeline(doc);
-      await writeSerializedToHandle(handle, serialized);
+      await writeSerializedToPath(timelinePath, serialized);
 
       if (
         currentProjectId === deps.currentProjectName.value &&

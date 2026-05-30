@@ -4,7 +4,7 @@ import { ref, type Ref } from 'vue';
 import type { TimelineDocument } from '~/timeline/types';
 import type { AppNotificationService } from '~/services/app-notification.service';
 import type { I18nService } from '~/services/i18n.service';
-import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import { getNextBackupName, getBackupsToDelete, getBackupNumber } from '~/utils/timeline-backup';
@@ -39,11 +39,11 @@ export interface TimelineBackupDeps {
   previewMode: Ref<boolean>;
   previewBackupInfo: Ref<TimelinePreviewBackupInfo | null>;
   projectStore: {
-    getDirectoryHandleByPath: (
-      path: string,
-      options?: { create?: boolean },
-    ) => Promise<FileSystemDirectoryHandle | null>;
-    getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
+    readTextByPath: (path: string) => Promise<string | null>;
+    writeTextByPath: (path: string, text: string) => Promise<void>;
+    deleteByPath: (path: string, options?: { recursive?: boolean }) => Promise<void>;
+    listEntryNames: (path: string) => Promise<string[]>;
+    getFileMetadata: (path: string) => Promise<{ lastModified: number; size: number } | null>;
     createFallbackTimelineDoc: () => TimelineDocument;
   };
   workspaceStore: {
@@ -53,10 +53,9 @@ export interface TimelineBackupDeps {
   t: I18nService['t'];
   loadTimeline: () => Promise<void>;
   deleteTimelineAutosaveFile: (timelinePath: string) => Promise<void>;
-  ensureTimelineFileHandle: (options?: {
-    create?: boolean;
-    relativePath?: string;
-  }) => Promise<FileSystemFileHandle | null>;
+  readTimelineFile: (
+    relativePath: string,
+  ) => Promise<{ text: string; lastModified: number; size: number } | null>;
   markTimelineAsDirty: () => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
 }
@@ -99,44 +98,18 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
 
       const backupDirStr = `.fastcat/backups/${dirPath}`;
 
-      const backupDirHandle = await deps.projectStore.getDirectoryHandleByPath(backupDirStr, {
-        create: true,
-      });
-      if (!backupDirHandle) return;
-
-      const existingBackupNames: string[] = [];
-      for await (const [name, handle] of (
-        backupDirHandle as unknown as { entries: () => AsyncIterable<[string, FileSystemHandle]> }
-      ).entries()) {
-        if (
-          handle.kind === 'file' &&
-          name.startsWith(baseName + '__bak') &&
-          name.endsWith('.otio')
-        ) {
-          existingBackupNames.push(name);
-        }
-      }
+      const allNames = await deps.projectStore.listEntryNames(backupDirStr);
+      const existingBackupNames = allNames.filter(
+        (n) => n.startsWith(baseName + '__bak') && n.endsWith('.otio'),
+      );
 
       const nextName = getNextBackupName(baseName, existingBackupNames);
-
-      const newHandle = await backupDirHandle.getFileHandle(nextName, { create: true });
-      await runResilientFileWrite(async () => {
-        const writable = await (
-          newHandle as unknown as {
-            createWritable: () => Promise<{
-              write: (data: string) => Promise<void>;
-              close: () => Promise<void>;
-            }>;
-          }
-        ).createWritable();
-        await writable.write(serialized);
-        await writable.close();
-      });
+      await deps.projectStore.writeTextByPath(`${backupDirStr}${nextName}`, serialized);
 
       const toDelete = getBackupsToDelete(existingBackupNames, backupSettings.count);
       for (const name of toDelete) {
         try {
-          await backupDirHandle.removeEntry(name);
+          await deps.projectStore.deleteByPath(`${backupDirStr}${name}`);
         } catch (e) {
           log.warn('Failed to delete old backup', e);
         }
@@ -175,23 +148,22 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   async function openVersionForPreview(version: TimelineBackupVersion) {
     if (!deps.currentTimelinePath.value) return;
     try {
-      let file: File | null = null;
+      let text: string | null = null;
       if (version.type === 'main') {
-        const handle = await deps.ensureTimelineFileHandle({ create: false });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
+        const r = await withFileIoSlot(() =>
+          deps.readTimelineFile(deps.currentTimelinePath.value!),
+        );
+        text = r?.text ?? null;
       } else if (version.type === 'autosave') {
-        const handle = await deps.ensureTimelineFileHandle({
-          create: false,
-          relativePath: `.fastcat/autosave/${deps.currentTimelinePath.value}`,
-        });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
+        const r = await withFileIoSlot(() =>
+          deps.readTimelineFile(`.fastcat/autosave/${deps.currentTimelinePath.value}`),
+        );
+        text = r?.text ?? null;
       } else {
-        const handle = await deps.projectStore.getFileHandleByPath(version.path);
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
+        text = await withFileIoSlot(() => deps.projectStore.readTextByPath(version.path));
       }
 
-      if (!file) throw new Error('File not found');
-      const text = await withFileIoSlot(() => file.text());
+      if (!text) throw new Error('File not found');
 
       const fallback = deps.projectStore.createFallbackTimelineDoc();
       const parsed = parseTimelineFromOtio(text, {
@@ -222,23 +194,22 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
 
   async function restoreVersion(version: TimelineBackupVersion) {
     try {
-      let file: File | null = null;
+      let text: string | null = null;
       if (version.type === 'main') {
-        const handle = await deps.ensureTimelineFileHandle({ create: false });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
+        const r = await withFileIoSlot(() =>
+          deps.readTimelineFile(deps.currentTimelinePath.value!),
+        );
+        text = r?.text ?? null;
       } else if (version.type === 'autosave') {
-        const handle = await deps.ensureTimelineFileHandle({
-          create: false,
-          relativePath: `.fastcat/autosave/${deps.currentTimelinePath.value}`,
-        });
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
+        const r = await withFileIoSlot(() =>
+          deps.readTimelineFile(`.fastcat/autosave/${deps.currentTimelinePath.value}`),
+        );
+        text = r?.text ?? null;
       } else {
-        const handle = await deps.projectStore.getFileHandleByPath(version.path);
-        if (handle) file = await withFileIoSlot(() => handle.getFile());
+        text = await withFileIoSlot(() => deps.projectStore.readTextByPath(version.path));
       }
 
-      if (!file) throw new Error('File not found');
-      const text = await withFileIoSlot(() => file.text());
+      if (!text) throw new Error('File not found');
 
       const fallback = deps.projectStore.createFallbackTimelineDoc();
       const parsed = parseTimelineFromOtio(text, {
@@ -282,16 +253,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
           await deps.deleteTimelineAutosaveFile(deps.currentTimelinePath.value);
         }
       } else if (version.type === 'backup') {
-        const pathParts = version.path.split('/');
-        const fileName = pathParts.pop();
-        if (!fileName) return;
-        const dirPath = pathParts.join('/');
-        const dirHandle = await deps.projectStore.getDirectoryHandleByPath(dirPath, {
-          create: false,
-        });
-        if (dirHandle) {
-          await dirHandle.removeEntry(fileName);
-        }
+        await deps.projectStore.deleteByPath(version.path);
       }
       deps.toast.add({
         title: deps.t('videoEditor.timeline.backups.versionDeleted'),
@@ -315,32 +277,28 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
     const list: TimelineBackupVersion[] = [];
     try {
       // 1. Main file
-      const mainHandle = await deps.ensureTimelineFileHandle({ create: false });
-      if (mainHandle) {
-        const file = await withFileIoSlot(() => mainHandle.getFile());
+      const mainMeta = await deps.projectStore.getFileMetadata(deps.currentTimelinePath.value);
+      if (mainMeta) {
         list.push({
           type: 'main',
           name: deps.currentTimelinePath.value.split('/').pop() || deps.currentTimelinePath.value,
           path: deps.currentTimelinePath.value,
-          date: new Date(file.lastModified),
-          size: file.size,
+          date: new Date(mainMeta.lastModified),
+          size: mainMeta.size,
           label: deps.t('videoEditor.timeline.backups.mainFile'),
         });
       }
 
       // 2. Autosave
-      const autosaveHandle = await deps.ensureTimelineFileHandle({
-        create: false,
-        relativePath: `.fastcat/autosave/${deps.currentTimelinePath.value}`,
-      });
-      if (autosaveHandle) {
-        const file = await withFileIoSlot(() => autosaveHandle.getFile());
+      const autosavePath = `.fastcat/autosave/${deps.currentTimelinePath.value}`;
+      const autosaveMeta = await deps.projectStore.getFileMetadata(autosavePath);
+      if (autosaveMeta) {
         list.push({
           type: 'autosave',
           name: 'autosave',
-          path: `.fastcat/autosave/${deps.currentTimelinePath.value}`,
-          date: new Date(file.lastModified),
-          size: file.size,
+          path: autosavePath,
+          date: new Date(autosaveMeta.lastModified),
+          size: autosaveMeta.size,
           label: deps.t('videoEditor.timeline.backups.autosave'),
         });
       }
@@ -352,46 +310,24 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         const baseName = fileName.replace(/\.otio$/, '');
         const dirPath = pathParts.length > 0 ? pathParts.join('/') + '/' : '';
         const backupDirStr = `.fastcat/backups/${dirPath}`;
-        const backupDirHandle = await deps.projectStore.getDirectoryHandleByPath(backupDirStr, {
-          create: false,
-        });
+        const allNames = await deps.projectStore.listEntryNames(backupDirStr);
+        const backupNames = allNames
+          .filter((n) => n.startsWith(baseName + '__bak') && n.endsWith('.otio'))
+          .sort((a, b) => (getBackupNumber(b) || 0) - (getBackupNumber(a) || 0));
 
-        if (backupDirHandle) {
-          const files: { name: string; handle: FileSystemFileHandle }[] = [];
-          for await (const [name, handle] of (
-            backupDirHandle as unknown as {
-              entries: () => AsyncIterable<[string, FileSystemHandle]>;
-            }
-          ).entries()) {
-            if (
-              handle.kind === 'file' &&
-              name.startsWith(baseName + '__bak') &&
-              name.endsWith('.otio')
-            ) {
-              files.push({ name, handle: handle as FileSystemFileHandle });
-            }
-          }
-
-          files.sort((a, b) => {
-            const numA = getBackupNumber(a.name) || 0;
-            const numB = getBackupNumber(b.name) || 0;
-            return numB - numA;
+        for (const name of backupNames) {
+          const meta = await deps.projectStore.getFileMetadata(`${backupDirStr}${name}`);
+          const num = getBackupNumber(name);
+          list.push({
+            type: 'backup',
+            name,
+            path: `${backupDirStr}${name}`,
+            date: meta ? new Date(meta.lastModified) : null,
+            size: meta?.size ?? null,
+            label: deps.t('videoEditor.timeline.backups.backupNum', {
+              num: num !== null ? `#${num}` : name,
+            }),
           });
-
-          for (const item of files) {
-            const file = await withFileIoSlot(() => item.handle.getFile());
-            const num = getBackupNumber(item.name);
-            list.push({
-              type: 'backup',
-              name: item.name,
-              path: `${backupDirStr}${item.name}`,
-              date: new Date(file.lastModified),
-              size: file.size,
-              label: deps.t('videoEditor.timeline.backups.backupNum', {
-                num: num !== null ? `#${num}` : item.name,
-              }),
-            });
-          }
         }
       }
     } catch (e) {
