@@ -1,10 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import {
-  ensureAppFileHandle,
-  readJsonFromFileHandle,
-  writeJsonToFileHandle,
-  type DirectoryHandleLike,
-} from './app-fs.repository';
+import { createAppFsJsonStore } from './app-fs.repository';
+import { projectAppFilePath, type ProjectRepositoryDeps } from './project-repository-base';
 
 import { z } from 'zod';
 const log = createDevLogger('project-ui.repository');
@@ -126,18 +122,13 @@ export interface ProjectUiRepository {
   save(data: ProjectUiSettings): Promise<void>;
 }
 
-export function createProjectUiRepository(input: {
-  projectDir: DirectoryHandleLike;
-}): ProjectUiRepository {
+export function createProjectUiRepository(input: ProjectRepositoryDeps): ProjectUiRepository {
+  const store = createAppFsJsonStore(input.vfs);
+  const path = projectAppFilePath(input.projectPath, 'project.ui.json');
+
   return {
     async load() {
-      const handle = await ensureAppFileHandle({
-        baseDir: input.projectDir,
-        filename: 'project.ui.json',
-        create: false,
-      });
-      if (!handle) return null;
-      const raw = await readJsonFromFileHandle<unknown>(handle);
+      const raw = await store.readJson<unknown>(path);
       if (!raw) return null;
 
       const parsed = ProjectUiSettingsSchema.safeParse({
@@ -153,13 +144,7 @@ export function createProjectUiRepository(input: {
     },
 
     async save(data) {
-      const handle = await ensureAppFileHandle({
-        baseDir: input.projectDir,
-        filename: 'project.ui.json',
-        create: true,
-      });
-      if (!handle) return;
-      await writeJsonToFileHandle({ handle, data: { ...data, version: 1 } });
+      await store.writeJson(path, { ...data, version: 1 });
     },
   };
 }

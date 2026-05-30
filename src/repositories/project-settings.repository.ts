@@ -1,42 +1,28 @@
 import type { FastCatProjectSettings } from '~/utils/project-settings';
-import {
-  ensureAppFileHandle,
-  readJsonFromFileHandle,
-  writeJsonToFileHandle,
-  type DirectoryHandleLike,
-} from './app-fs.repository';
+import { createAppFsJsonStore } from './app-fs.repository';
+import { projectAppFilePath, type ProjectRepositoryDeps } from './project-repository-base';
 
 export interface ProjectSettingsRepository {
   load(): Promise<unknown | null>;
   save(data: FastCatProjectSettings): Promise<void>;
 }
 
-export function createProjectSettingsRepository(input: {
-  projectDir: DirectoryHandleLike;
-}): ProjectSettingsRepository {
+export function createProjectSettingsRepository(
+  input: ProjectRepositoryDeps,
+): ProjectSettingsRepository {
+  const store = createAppFsJsonStore(input.vfs);
+  const path = projectAppFilePath(input.projectPath, 'project.settings.json');
+
   return {
     async load() {
-      const handle = await ensureAppFileHandle({
-        baseDir: input.projectDir,
-        filename: 'project.settings.json',
-        create: false,
-      });
-      if (!handle) return null;
-      return await readJsonFromFileHandle(handle);
+      return await store.readJson(path);
     },
 
     async save(data) {
-      const handle = await ensureAppFileHandle({
-        baseDir: input.projectDir,
-        filename: 'project.settings.json',
-        create: true,
-      });
-      if (!handle) return;
-
       // Strip UI/session state from technical settings file (persisted in project.ui.json)
       const { monitor, monitors, timelines, ui, timeline, ...technicalData } =
         data as unknown as Record<string, unknown>;
-      await writeJsonToFileHandle({ handle, data: technicalData });
+      await store.writeJson(path, technicalData);
     },
   };
 }

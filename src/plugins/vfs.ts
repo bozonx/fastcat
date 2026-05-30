@@ -16,8 +16,10 @@ import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
 import {
   WORKSPACE_COMMON_PATH_PREFIX,
+  WORKSPACE_PROJECT_PATH_PREFIX,
   toWorkspaceCommonStoragePath,
 } from '~/utils/workspace-common';
+import { PROJECTS_ROOT_DIR_NAME } from '~/utils/storage-roots';
 import { isTauriRuntime } from '~/utils/runtime';
 
 /**
@@ -174,6 +176,19 @@ function buildVfsRoutes(args: {
       prefix: WORKSPACE_COMMON_PATH_PREFIX,
       adapter: args.workspace,
       stripPrefix: toWorkspaceCommonStoragePath,
+    },
+    {
+      // `@project/<name>/<rest>` → workspace-relative `projects/<name>/<rest>`.
+      // Addresses a specific project regardless of which one is active.
+      prefix: WORKSPACE_PROJECT_PATH_PREFIX,
+      adapter: args.workspace,
+      stripPrefix: (path: string) => {
+        const rel =
+          path === WORKSPACE_PROJECT_PATH_PREFIX
+            ? ''
+            : path.slice(`${WORKSPACE_PROJECT_PATH_PREFIX}/`.length);
+        return rel ? `${PROJECTS_ROOT_DIR_NAME}/${rel}` : PROJECTS_ROOT_DIR_NAME;
+      },
     },
     {
       prefix: '/vardata',

@@ -7,6 +7,7 @@ import {
   type ProjectMeta,
 } from '~/repositories/project-meta.repository';
 import { genUuid } from '~/utils/ids';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 const log = createDevLogger('project-meta');
 
 function createProjectId(): string {
@@ -23,15 +24,16 @@ export interface ProjectMetaModule {
 export function createProjectMetaModule(params: {
   currentProjectName: Ref<string | null>;
   currentProjectId: Ref<string | null>;
-  getProjectDirHandle: () => Promise<FileSystemDirectoryHandle | null>;
+  getVfs: () => IFileSystemAdapter;
 }) {
   const projectMetaRepo = { value: null as ProjectMetaRepository | null };
   const projectMeta = ref<ProjectMeta | null>(null);
 
   async function ensureRepo(): Promise<ProjectMetaRepository | null> {
     if (projectMetaRepo.value) return projectMetaRepo.value;
-    const dir = await params.getProjectDirHandle();
-    projectMetaRepo.value = dir ? createProjectMetaRepository({ projectDir: dir }) : null;
+    // Default VFS route targets the active project; callers guard on
+    // `currentProjectName` before reading/writing.
+    projectMetaRepo.value = createProjectMetaRepository({ vfs: params.getVfs() });
     return projectMetaRepo.value;
   }
 

@@ -218,8 +218,18 @@ const toolbarOffsetPx = computed(() => {
 function setHandleTransform(dy: number, animated: boolean, ms = 320) {
   const el = containerRef.value;
   if (!el) return;
-  el.style.transition = animated ? `transform ${ms}ms ${SETTLE_EASE}` : 'none';
-  el.style.transform = `translate3d(0, ${dy}px, 0)`;
+  const transform = `translate3d(0, ${dy}px, 0)`;
+  if (!animated) {
+    el.style.transition = 'none';
+    el.style.transform = transform;
+    return;
+  }
+  // The drag left `transition: none`. Set the transition, then force a reflow so
+  // the current (release) position is committed as the animation's start value —
+  // otherwise the browser coalesces both changes and jumps straight to the end.
+  el.style.transition = `transform ${ms}ms ${SETTLE_EASE}`;
+  void el.offsetHeight;
+  el.style.transform = transform;
 }
 
 function resetHandleTransform() {

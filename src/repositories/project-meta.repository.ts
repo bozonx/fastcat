@@ -1,10 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import {
-  ensureAppFileHandle,
-  readJsonFromFileHandle,
-  writeJsonToFileHandle,
-  type DirectoryHandleLike,
-} from './app-fs.repository';
+import { createAppFsJsonStore } from './app-fs.repository';
+import { projectAppFilePath, type ProjectRepositoryDeps } from './project-repository-base';
 
 import { z } from 'zod';
 const log = createDevLogger('project-meta.repository');
@@ -28,18 +24,13 @@ export interface ProjectMetaRepository {
   save(data: Partial<ProjectMeta> & { id: string }): Promise<void>;
 }
 
-export function createProjectMetaRepository(input: {
-  projectDir: DirectoryHandleLike;
-}): ProjectMetaRepository {
+export function createProjectMetaRepository(input: ProjectRepositoryDeps): ProjectMetaRepository {
+  const store = createAppFsJsonStore(input.vfs);
+  const path = projectAppFilePath(input.projectPath, 'project.meta.json');
+
   return {
     async load() {
-      const handle = await ensureAppFileHandle({
-        baseDir: input.projectDir,
-        filename: 'project.meta.json',
-        create: false,
-      });
-      if (!handle) return null;
-      const raw = await readJsonFromFileHandle<unknown>(handle);
+      const raw = await store.readJson<unknown>(path);
       if (!raw) return null;
 
       const parsed = ProjectMetaSchema.safeParse(raw);
@@ -51,16 +42,7 @@ export function createProjectMetaRepository(input: {
     },
 
     async save(data) {
-      const handle = await ensureAppFileHandle({
-        baseDir: input.projectDir,
-        filename: 'project.meta.json',
-        create: true,
-      });
-      if (!handle) return;
-
-      // If we are updating, we should probably load existing first or assume data is complete
-      // For now, let's just write what we have, but store/module should handle merging
-      await writeJsonToFileHandle({ handle, data });
+      await store.writeJson(path, data);
     },
   };
 }

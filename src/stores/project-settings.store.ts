@@ -17,6 +17,7 @@ import {
   createProjectUiRepository,
   type ProjectUiRepository,
 } from '~/repositories/project-ui.repository';
+import { normalizeWorkspaceFilePath, toProjectStoragePath } from '~/utils/workspace-common';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { getPlatformSuffix } from '~/stores/ui/uiLocalStorage';
 import type { ProjectMeta } from '~/repositories/project-meta.repository';
@@ -289,35 +290,24 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   async function ensureRepo(): Promise<void> {
     if (projectSettingsRepo.value && projectUiRepo.value) return;
 
+    // Guard on an active project: the default VFS route targets it, but with no
+    // project open it would fall back to AppData. `projectPath` omitted → active.
     const dir = await getProjectDirHandle.value?.();
-    if (dir) {
-      if (!projectSettingsRepo.value) {
-        projectSettingsRepo.value = createProjectSettingsRepository({ projectDir: dir });
-      }
-      if (!projectUiRepo.value) {
-        projectUiRepo.value = createProjectUiRepository({ projectDir: dir });
-      }
-    }
+    if (!dir) return;
+
+    const vfs = useVfs();
+    projectSettingsRepo.value ??= createProjectSettingsRepository({ vfs });
+    projectUiRepo.value ??= createProjectUiRepository({ vfs });
   }
 
   async function projectFileExists(path: string): Promise<boolean> {
     const dir = await getProjectDirHandle.value?.();
     if (!dir) return false;
 
-    const parts = path.split('/').filter(Boolean);
-    const fileName = parts.pop();
-    if (!fileName) return false;
+    const normalized = normalizeWorkspaceFilePath(path);
+    if (!normalized) return false;
 
-    try {
-      let currentDir = dir;
-      for (const part of parts) {
-        currentDir = await currentDir.getDirectoryHandle(part);
-      }
-      await currentDir.getFileHandle(fileName);
-      return true;
-    } catch {
-      return false;
-    }
+    return useVfs().exists(normalized);
   }
 
   async function loadProjectSettings() {
@@ -504,11 +494,12 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
     await requestProjectSettingsSave({ immediate: true });
   }
 
-  async function saveInitialProjectSettingsForNewProject(options: {
-    projectDir: FileSystemDirectoryHandle;
-  }) {
-    projectSettingsRepo.value = createProjectSettingsRepository({ projectDir: options.projectDir });
-    projectUiRepo.value = createProjectUiRepository({ projectDir: options.projectDir });
+  async function saveInitialProjectSettingsForNewProject(options: { projectName: string }) {
+    // The project is not active yet, so address it explicitly by name.
+    const vfs = useVfs();
+    const projectPath = toProjectStoragePath(options.projectName);
+    projectSettingsRepo.value = createProjectSettingsRepository({ vfs, projectPath });
+    projectUiRepo.value = createProjectUiRepository({ vfs, projectPath });
 
     const initial = createDefaultProjectSettings(workspaceStore.userSettings);
     projectSettings.value = initial;

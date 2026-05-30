@@ -1,4 +1,10 @@
-import { runResilientFileWrite, withFileIoSlot } from '~/utils/io/io-governor';
+import {
+  isTransientWriteError,
+  runResilientFileWrite,
+  withFileIoSlot,
+} from '~/utils/io/io-governor';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { VfsNotFoundError } from '~/file-manager/core/vfs/errors';
 
 export type FileHandleLike = Pick<FileSystemFileHandle, 'getFile' | 'createWritable'>;
 
@@ -19,6 +25,64 @@ export interface AppFsRepository {
   }) => Promise<FileHandleLike | null>;
   readJsonFromFileHandle: <T>(handle: FileHandleLike) => Promise<T | null>;
   writeJsonToFileHandle: (input: { handle: FileHandleLike; data: unknown }) => Promise<void>;
+}
+
+/**
+ * VFS-native JSON store. Replaces the handle-based {@link AppFsRepository} for
+ * migrated call sites: paths are routed through the application VFS adapter
+ * (atomic temp+rename writes, I/O-governed, typed errors) instead of walking
+ * `FileSystemDirectoryHandle`s.
+ */
+export interface AppFsJsonStore {
+  /** Read+parse JSON at `path`. Returns null if the file is missing or empty. */
+  readJson<T>(path: string): Promise<T | null>;
+  /** Atomically write `data` as pretty JSON at `path`. */
+  writeJson(path: string, data: unknown): Promise<void>;
+}
+
+const JSON_WRITE_ATTEMPTS = 6;
+const JSON_WRITE_BASE_DELAY_MS = 200;
+
+export function createAppFsJsonStore(vfs: IFileSystemAdapter): AppFsJsonStore {
+  return {
+    async readJson<T>(path: string): Promise<T | null> {
+      let blob: Blob;
+      try {
+        blob = await withFileIoSlot(() => vfs.readFile(path));
+      } catch (error) {
+        if (error instanceof VfsNotFoundError) return null;
+        throw error;
+      }
+      const text = (await blob.text()).trim();
+      if (!text) return null;
+      return JSON.parse(text) as T;
+    },
+
+    async writeJson(path: string, data: unknown): Promise<void> {
+      if (data === undefined) {
+        throw new Error('Refusing to write undefined to JSON file');
+      }
+      // The adapter already acquires an I/O slot and writes atomically, so we
+      // retry transient datapipe exhaustion *without* an outer slot — nesting
+      // `withFileIoSlot` around a self-governing call could deadlock the budget.
+      let lastError: unknown;
+      for (let attempt = 0; attempt < JSON_WRITE_ATTEMPTS; attempt += 1) {
+        try {
+          await vfs.writeJson(path, data);
+          return;
+        } catch (error) {
+          lastError = error;
+          if (attempt === JSON_WRITE_ATTEMPTS - 1 || !isTransientWriteError(error)) {
+            throw error;
+          }
+          await new Promise<void>((resolve) =>
+            setTimeout(resolve, JSON_WRITE_BASE_DELAY_MS * 2 ** attempt),
+          );
+        }
+      }
+      throw lastError;
+    },
+  };
 }
 
 const JSON_WRITE_CHUNK_SIZE = 512 * 1024;

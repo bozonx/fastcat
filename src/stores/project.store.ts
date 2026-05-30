@@ -30,6 +30,7 @@ import { useHistoryStore } from './history.store';
 
 import { createProjectFsModule } from '~/stores/project/project-fs';
 import { createProjectMetaModule } from '~/stores/project/project-meta';
+import { useVfs } from '~/composables/useVfs';
 import { createProjectTimelinesModule } from '~/stores/project/project-timelines';
 import { useProjectLock } from '~/composables/editor/useProjectLock';
 import { getErrorMessage } from '~/utils/errors';
@@ -85,7 +86,7 @@ export const useProjectStore = defineStore('project', () => {
   const metaModule = createProjectMetaModule({
     currentProjectName,
     currentProjectId,
-    getProjectDirHandle,
+    getVfs: () => useVfs(),
   });
   const { loadProjectMeta, clearProjectMetaState } = metaModule;
 
@@ -248,7 +249,7 @@ export const useProjectStore = defineStore('project', () => {
 
       try {
         await projectDir.getDirectoryHandle('.fastcat', { create: true });
-        await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectDir });
+        await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectName: name });
       } catch (e) {
         log.warn('Failed to create project settings file', e);
       }

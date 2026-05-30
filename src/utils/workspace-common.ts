@@ -1,6 +1,24 @@
 export const WORKSPACE_COMMON_DIR_NAME = 'common';
 export const WORKSPACE_COMMON_PATH_PREFIX = '@common';
 
+/**
+ * VFS path prefix that addresses a *specific* project by name, regardless of
+ * which project is currently active. Routed (see `buildVfsRoutes`) to the
+ * workspace adapter under `projects/<name>/…`.
+ *
+ * The default (unprefixed) route always targets the *active* project, so this
+ * prefix is only needed when operating on a project that is not yet active
+ * (e.g. writing initial settings while creating a new project).
+ */
+export const WORKSPACE_PROJECT_PATH_PREFIX = '@project';
+
+/** Build a VFS path addressing `relPath` inside the named project's directory. */
+export function toProjectStoragePath(projectName: string, relPath = ''): string {
+  const rel = normalizeWorkspaceFilePath(relPath);
+  const base = `${WORKSPACE_PROJECT_PATH_PREFIX}/${projectName}`;
+  return rel ? `${base}/${rel}` : base;
+}
+
 function isWorkspaceCommonPrefix(path: string, prefix: string): boolean {
   return path === prefix || path.startsWith(`${prefix}/`);
 }
