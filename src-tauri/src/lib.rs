@@ -1,9 +1,49 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
 pub mod video_render;
+
+/// Best-effort resolution of the current user's home directory without pulling
+/// in extra crates. Returns `None` if neither the platform-specific nor the
+/// generic environment variables are set.
+fn user_home_dir() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        std::env::var_os("USERPROFILE")
+            .map(PathBuf::from)
+            .filter(|p| !p.as_os_str().is_empty())
+    }
+    #[cfg(not(windows))]
+    {
+        std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .filter(|p| !p.as_os_str().is_empty())
+    }
+}
+
+/// Rejects scope-extension targets that would hand the webview far more of the
+/// filesystem than any single operation needs: filesystem roots and the bare
+/// home directory. A compromised renderer must not be able to call
+/// `allow_path_scope("/")` and read the whole disk. Callers should pass an
+/// already-resolved absolute path.
+fn reject_dangerous_scope_path(path: &Path) -> Result<(), String> {
+    // A path with no parent is a filesystem root (`/`, `C:\`).
+    if path.parent().is_none() {
+        return Err(format!("refusing to extend scope to filesystem root: {path:?}"));
+    }
+
+    if let Some(home) = user_home_dir() {
+        if path == home {
+            return Err(format!(
+                "refusing to extend scope to the home directory: {path:?}"
+            ));
+        }
+    }
+
+    Ok(())
+}
 
 pub mod compositor;
 pub mod engine;
@@ -34,6 +74,8 @@ fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), S
 
 #[tauri::command]
 fn allow_path_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    reject_dangerous_scope_path(Path::new(&path))?;
+
     log::info!("[allow_path_scope] extending scope to: {path}");
     app.fs_scope()
         .allow_directory(&path, true)
@@ -49,22 +91,7 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
         return Err("dev directory scope can only be extended in debug builds".to_string());
     }
 
-    let path_obj = Path::new(&path);
-
-    // Reject obviously dangerous paths (system roots and home directories).
-    let is_root = path_obj.parent().is_none();
-    let is_home = path_obj
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(|n| n.starts_with('~'))
-        .unwrap_or(false);
-
-    if is_root || is_home {
-        return Err(format!(
-            "refusing to extend scope to system or home directory: {}",
-            path
-        ));
-    }
+    reject_dangerous_scope_path(Path::new(&path))?;
 
     log::info!("[allow_dev_directory_scope] extending scope to: {}", path);
     app.fs_scope()
