@@ -51,10 +51,20 @@ pub struct FfmpegDecoder {
 }
 
 impl FfmpegDecoder {
-    pub fn open(path: &Path) -> Result<Self> {
-        let info = probe(path)?;
-        let frame_bytes = (info.width as usize)
-            .checked_mul(info.height as usize)
+    /// `max_output_long_edge` — максимальная длинная сторона декодированного кадра в пикселях.
+    /// Если `Some(n)` и source-длинная сторона > n, ffmpeg downscale'нет (`-vf scale=...`),
+    /// что радикально снижает CPU/GPU-нагрузку для 4K/HEVC превью. Аспект сохраняется.
+    /// При `None` или если source меньше — декод в source-разрешении.
+    pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Self> {
+        let mut info = probe(path)?;
+
+        // Вычисляем target output dims с сохранением aspect ratio.
+        let (out_w, out_h) = compute_output_dims(info.width, info.height, max_output_long_edge);
+        info.width = out_w;
+        info.height = out_h;
+
+        let frame_bytes = (out_w as usize)
+            .checked_mul(out_h as usize)
             .and_then(|n| n.checked_mul(4))
             .ok_or_else(|| anyhow!("invalid frame size"))?;
         let mut dec = Self {
@@ -169,8 +179,26 @@ fn fmt_fps(fps: f64) -> String {
     format!("{:.6}", f)
 }
 
-pub fn open(path: &Path) -> Result<Box<dyn VideoDecoder>> {
-    Ok(Box::new(FfmpegDecoder::open(path)?))
+pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Box<dyn VideoDecoder>> {
+    Ok(Box::new(FfmpegDecoder::open(path, max_output_long_edge)?))
+}
+
+/// Считает target dims декода, сохраняя aspect и НЕ увеличивая разрешение.
+fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u32, u32) {
+    let Some(max) = max_long_edge else { return (src_w, src_h) };
+    if max == 0 {
+        return (src_w, src_h);
+    }
+    let long = src_w.max(src_h);
+    if long <= max {
+        return (src_w, src_h);
+    }
+    let scale = max as f64 / long as f64;
+    // Кратность 2 — ffmpeg требует чётных размеров для yuv-целевых форматов; нам RGBA,
+    // но всё равно проще держать чётно, чтобы избежать редких артефактов scale-фильтра.
+    let w = ((src_w as f64 * scale).round() as u32).max(2) & !1;
+    let h = ((src_h as f64 * scale).round() as u32).max(2) & !1;
+    (w, h)
 }
 
 fn probe(path: &Path) -> Result<MediaInfo> {

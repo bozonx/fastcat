@@ -60,6 +60,8 @@ export function addClipToTrack(
     sourceRange,
     audioFadeInCurve: cmd.audioFadeInCurve,
     audioFadeOutCurve: cmd.audioFadeOutCurve,
+    showWaveform: cmd.showWaveform,
+    audioWaveformMode: cmd.audioWaveformMode,
   };
 
   let nextTracks = doc.tracks;

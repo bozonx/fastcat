@@ -57,6 +57,8 @@ export interface AddClipToTrackCommand {
   pseudo?: boolean;
   audioFadeInCurve?: AudioFadeCurve;
   audioFadeOutCurve?: AudioFadeCurve;
+  showWaveform?: boolean;
+  audioWaveformMode?: 'half' | 'full';
 }
 
 export interface AddVirtualClipToTrackCommand {

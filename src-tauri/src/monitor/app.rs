@@ -220,6 +220,10 @@ struct WindowState {
     /// без нужды (на Wayland это лишние commit'ы и потенциальные flicker'ы).
     last_viewport: ViewportSpec,
 
+    /// Preview-scale, прокинутый фронтом. Применяется к новым декодерам через ffmpeg `-vf scale`.
+    /// Изменение scale пересоздаёт пампы (через выкидывание рантаймов на следующем apply_scene).
+    preview_scale: Option<f32>,
+
     /// Режим: Embedded (X11 child) или Canvas (offscreen → channel).
     mode: MonitorMode,
     /// Канал для стрима RGBA-кадров фронту (только в режиме Canvas).
@@ -497,6 +501,7 @@ fn init_window(
         last_emit_pts: -1.0,
         scene_size: (0, 0),
         last_viewport: viewport,
+        preview_scale: None,
         mode: MonitorMode::Embedded,
         frame_channel: None,
         canvas_size: (viewport.width.max(1), viewport.height.max(1)),
@@ -515,6 +520,16 @@ impl WindowState {
 
     fn apply_scene(&mut self, scene: MonitorScene) {
         let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
+
+        // Если изменился preview_scale — дропаем все видеорантаймы, чтобы пересоздать
+        // ffmpeg с новым `-vf scale`. Без этого старые пампы будут декодить в прежнем размере.
+        let scale_changed =
+            !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
+        if scale_changed {
+            self.runtimes.retain(|_, rt| !matches!(rt, LayerRuntime::Video(_) | LayerRuntime::Loading));
+            self.loading_set.clear();
+        }
+        self.preview_scale = scene.preview_scale;
 
         // Дропаем рантаймы исчезнувших слоёв (закроет ffmpeg subprocesses).
         self.runtimes.retain(|id, rt| {
@@ -650,10 +665,19 @@ impl WindowState {
 
         match layer.kind {
             LayerKind::Video => {
+                // Считаем кап на длинную сторону декода. Базовая логика: scene long edge × preview_scale.
+                // Если scene_size = 0 (ещё не пришёл format) — пускаем без капа (decoder откроется в нативе).
+                let max_long_edge = match (self.scene_size, self.preview_scale) {
+                    ((w, h), Some(scale)) if w > 0 && h > 0 && scale > 0.0 => {
+                        let long = w.max(h) as f32 * scale;
+                        Some(long.round().max(2.0) as u32)
+                    }
+                    _ => None,
+                };
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
                     .spawn(move || {
-                        let result = match DecodePump::open(&path) {
+                        let result = match DecodePump::open(&path, max_long_edge) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);
                                 BgLayerResult::VideoOk { id, pump, media_size }
@@ -962,6 +986,14 @@ impl WindowState {
             h = h.max(mh);
         }
         if w == 0 || h == 0 { (1920, 1080) } else { (w, h) }
+    }
+}
+
+fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
+    match (a, b) {
+        (None, None) => true,
+        (Some(x), Some(y)) => (x - y).abs() < 1e-4,
+        _ => false,
     }
 }
 

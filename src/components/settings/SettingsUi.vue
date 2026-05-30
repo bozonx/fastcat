@@ -12,6 +12,12 @@ const thumbnailModeOptions = computed(() => [
   { label: t('videoEditor.settings.clipThumbnailModeEdges'), value: 'edges' },
   { label: t('videoEditor.settings.clipThumbnailModeNone'), value: 'none' },
 ]);
+
+const waveformModeOptions = computed(() => [
+  { label: t('videoEditor.settings.defaultAudioWaveformModeHalf'), value: 'half' },
+  { label: t('videoEditor.settings.defaultAudioWaveformModeFull'), value: 'full' },
+  { label: t('videoEditor.settings.defaultAudioWaveformModeNone'), value: 'none' },
+]);
 </script>
 
 <template>
@@ -24,6 +30,16 @@ const thumbnailModeOptions = computed(() => [
       <UiSelect
         v-model="workspaceStore.userSettings.ui.clipThumbnailMode"
         :items="thumbnailModeOptions"
+        value-key="value"
+        label-key="label"
+        full-width
+      />
+    </UiFormField>
+
+    <UiFormField :label="t('videoEditor.settings.defaultAudioWaveformMode')">
+      <UiSelect
+        v-model="workspaceStore.userSettings.ui.defaultAudioWaveformMode"
+        :items="waveformModeOptions"
         value-key="value"
         label-key="label"
         full-width

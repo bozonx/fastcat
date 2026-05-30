@@ -61,6 +61,9 @@ export interface TimelineCommandServiceDeps {
   getUserSettings: () => {
     optimization: { autoCreateProxies: boolean };
     projectDefaults: { defaultAudioFadeCurve: AudioFadeCurve };
+    ui?: {
+      defaultAudioWaveformMode?: 'half' | 'full' | 'none';
+    };
   };
   getProjectSettings: () => {
     project: {
@@ -379,6 +382,11 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
 
     deps.ensureTimelineDoc();
 
+    const userSettings = deps.getUserSettings();
+    const defaultWaveformMode = userSettings.ui?.defaultAudioWaveformMode ?? 'half';
+    const showWaveform = defaultWaveformMode !== 'none';
+    const audioWaveformMode = defaultWaveformMode === 'full' ? 'full' : 'half';
+
     const res = deps.applyTimeline(
       {
         type: 'add_clip_to_track',
@@ -390,8 +398,10 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         isImage: isImageLike,
         startUs: input.startUs ?? 0,
         pseudo: input.pseudo,
-        audioFadeInCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
-        audioFadeOutCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
+        audioFadeInCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
+        audioFadeOutCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
+        showWaveform,
+        audioWaveformMode,
       },
       options,
     );
@@ -494,6 +504,11 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const targetTrack = deps.getTrackById(input.trackId);
     if (!targetTrack) throw new Error('Track not found');
 
+    const userSettings = deps.getUserSettings();
+    const defaultWaveformMode = userSettings.ui?.defaultAudioWaveformMode ?? 'half';
+    const showWaveform = defaultWaveformMode !== 'none';
+    const audioWaveformMode = defaultWaveformMode === 'full' ? 'full' : 'half';
+
     const res = deps.applyTimeline(
       {
         type: 'add_clip_to_track',
@@ -503,8 +518,10 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
         startUs: input.startUs ?? 0,
         durationUs,
         pseudo: input.pseudo,
-        audioFadeInCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
-        audioFadeOutCurve: deps.getUserSettings().projectDefaults.defaultAudioFadeCurve,
+        audioFadeInCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
+        audioFadeOutCurve: userSettings.projectDefaults.defaultAudioFadeCurve,
+        showWaveform,
+        audioWaveformMode,
       },
       options,
     );

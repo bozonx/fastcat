@@ -28,6 +28,8 @@ interface MonitorScene {
   layers: SceneLayer[];
   width: number;
   height: number;
+  /** Preview scale: 1 = full, 0.5 = 1/2, 0.25 = 1/4, 0.125 = 1/8. */
+  preview_scale?: number;
 }
 
 function extOf(path: string): string {
@@ -79,8 +81,17 @@ export function useNativeMonitorBridge(): void {
     const fmt = timelineStore.timelineFormat;
     const sceneWidth = fmt?.width ?? 1920;
     const sceneHeight = fmt?.height ?? 1080;
+    // Preview scale хранится на activeMonitor (1 / 0.5 / 0.25 / 0.125). Прокидываем в натив
+    // для downscale на стороне ffmpeg — ключевая оптимизация для 4K source'ов.
+    const previewScale = projectStore.activeMonitor?.previewResolution ?? 1;
     const layers: SceneLayer[] = [];
-    if (!doc?.tracks?.length) return { layers, width: sceneWidth, height: sceneHeight };
+    if (!doc?.tracks?.length)
+      return {
+        layers,
+        width: sceneWidth,
+        height: sceneHeight,
+        preview_scale: previewScale,
+      };
 
     // В fastcat КОНВЕНЦИЯ: первый video-трек в `doc.tracks` = верхний визуально = должен
     // рисоваться поверх. Веб-композитор для этого даёт трекам `layer = N - 1 - index`
@@ -132,7 +143,7 @@ export function useNativeMonitorBridge(): void {
         });
       }
     }
-    return { layers, width: sceneWidth, height: sceneHeight };
+    return { layers, width: sceneWidth, height: sceneHeight, preview_scale: previewScale };
   }
 
   async function syncScene(): Promise<void> {
@@ -154,6 +165,7 @@ export function useNativeMonitorBridge(): void {
     [
       () => timelineStore.timelineDoc?.tracks,
       () => timelineStore.timelineFormat,
+      () => projectStore.activeMonitor?.previewResolution,
     ],
     () => {
       void syncScene();

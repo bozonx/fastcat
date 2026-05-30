@@ -39,6 +39,11 @@ pub struct MonitorScene {
     pub width: u32,
     #[serde(default)]
     pub height: u32,
+    /// Preview-scale: 1.0 = 1/1, 0.5 = 1/2, и т.д. Применяется к ffmpeg-декоду через
+    /// `-vf scale` — даёт огромную экономию CPU/GPU для 4K source'ов в маленьком preview.
+    /// `None` или 0 → декод в нативном разрешении.
+    #[serde(default)]
+    pub preview_scale: Option<f32>,
 }
 
 impl SceneLayer {

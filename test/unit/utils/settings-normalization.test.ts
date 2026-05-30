@@ -241,4 +241,25 @@ describe('settings normalization', () => {
     expect(normalized.timeline.snapping.playheadClick).toBe(true);
     expect(normalized.timeline.snapping.playhead).toBe(true);
   });
+
+  it('normalizes UI settings including defaultAudioWaveformMode', () => {
+    const normalized = normalizeUserSettings({
+      ui: {
+        interfaceScale: 16,
+        clipThumbnailMode: 'edges',
+        defaultAudioWaveformMode: 'full',
+      },
+    });
+
+    expect(normalized.ui.interfaceScale).toBe(16);
+    expect(normalized.ui.clipThumbnailMode).toBe('edges');
+    expect(normalized.ui.defaultAudioWaveformMode).toBe('full');
+
+    const normalizedFallback = normalizeUserSettings({
+      ui: {
+        defaultAudioWaveformMode: 'invalid_mode',
+      },
+    });
+    expect(normalizedFallback.ui.defaultAudioWaveformMode).toBe('half');
+  });
 });

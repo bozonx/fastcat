@@ -28,6 +28,10 @@ export function normalizeUiSettings(raw: unknown): FastCatUserSettings['ui'] {
       .enum(['standard', 'edges', 'none'])
       .catch(DEFAULT_USER_SETTINGS.ui.clipThumbnailMode)
       .parse(input?.clipThumbnailMode),
+    defaultAudioWaveformMode: z
+      .enum(['half', 'full', 'none'])
+      .catch(DEFAULT_USER_SETTINGS.ui.defaultAudioWaveformMode)
+      .parse(input?.defaultAudioWaveformMode),
   };
 }
 
