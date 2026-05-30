@@ -4,10 +4,13 @@
 //! Compositor отвечает за:
 //!   1) владение `vello::RenderContext` и кешем `Renderer` по device-id;
 //!   2) создание оконных surface'ов;
-//!   3) рендер `vello::Scene` в surface — c blit'ом из intermediate Rgba8 в формат свопчейна.
+//!   3) рендер `scene::Scene` в surface / пиксели.
 //!
-//! Доменная сцена (`scene::Scene`) → `vello::Scene` собирается в верхнем коде (см. `build_vello_scene`).
-//! Здесь — низкоуровневая обвязка над vello, чтобы её можно было переиспользовать в offscreen-режиме.
+//! Точки входа:
+//!   - `render_scene_to_surface` / `render_scene_to_pixels` — high-level, принимают доменную `Scene`.
+//!   - `render_to_surface` / `render_to_pixels` — low-level, принимают готовую `vello::Scene`.
+//!
+//! Конвертация `scene::Scene → vello::Scene` происходит внутри через `scene.to_vello(w, h)`.
 
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -128,6 +131,31 @@ impl Compositor {
         surface_texture.present();
 
         Ok(())
+    }
+
+    /// High-level: составляет доменную `Scene` в vello и рендерит в окно.
+    /// `scene.background` используется как базовый цвет.
+    pub fn render_scene_to_surface(
+        &mut self,
+        scene: &super::scene::Scene,
+        surface: &mut RenderSurface<'static>,
+        viewport_w: u32,
+        viewport_h: u32,
+    ) -> Result<()> {
+        let vello = scene.to_vello(viewport_w, viewport_h);
+        self.render_to_surface(surface, &vello, scene.background)
+    }
+
+    /// High-level: составляет доменную `Scene` в vello и читает пиксели в `Vec<u8>` (RGBA, `w×h×4`).
+    pub fn render_scene_to_pixels(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        viewport_w: u32,
+        viewport_h: u32,
+    ) -> Result<Vec<u8>> {
+        let vello = scene.to_vello(viewport_w, viewport_h);
+        self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background)
     }
 
     /// Возвращает первое существующее `dev_id` или инициализирует новое (нужно для offscreen-рендера,

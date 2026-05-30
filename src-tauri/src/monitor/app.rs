@@ -21,7 +21,6 @@ use anyhow::{Context, Result};
 use tauri::{AppHandle, Emitter};
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 use vello::util::RenderSurface;
-use vello::Scene as VelloScene;
 use winit::application::ApplicationHandler;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::WindowEvent;
@@ -900,11 +899,12 @@ impl WindowState {
             MonitorMode::Embedded => {
                 let width = self.surface.config.width;
                 let height = self.surface.config.height;
-                let scene_obj = self.build_vello_scene(t, width, height);
-                if let Err(e) = self.compositor.render_to_surface(
+                let scene = self.build_scene(t);
+                if let Err(e) = self.compositor.render_scene_to_surface(
+                    &scene,
                     &mut self.surface,
-                    &scene_obj,
-                    Color::BLACK,
+                    width,
+                    height,
                 ) {
                     log::error!("[monitor] compositor render: {e:?}");
                     emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
@@ -916,15 +916,9 @@ impl WindowState {
                 if width == 0 || height == 0 {
                     return;
                 }
-                let scene_obj = self.build_vello_scene(t, width, height);
                 let Some(dev_id) = self.offscreen_dev_id else { return };
-                match self.compositor.render_to_pixels(
-                    dev_id,
-                    &scene_obj,
-                    width,
-                    height,
-                    Color::BLACK,
-                ) {
+                let scene = self.build_scene(t);
+                match self.compositor.render_scene_to_pixels(dev_id, &scene, width, height) {
                     Ok(pixels) => {
                         let mut payload = Vec::with_capacity(8 + pixels.len());
                         payload.extend_from_slice(&width.to_le_bytes());
@@ -943,71 +937,63 @@ impl WindowState {
         }
     }
 
-    fn build_vello_scene(&self, t: f64, width: u32, height: u32) -> VelloScene {
+    /// Снимок доменной сцены в момент `t`: отбирает покрывающие слои, сортирует по z,
+    /// формирует [`compositor::scene::Scene`]. Трансформ каждого слоя — `center_fit`
+    /// (letterbox медиа в сцену). Вызывается из `render`; результат передаётся в
+    /// `Compositor::render_scene_to_*`.
+    fn build_scene(&self, t: f64) -> crate::compositor::scene::Scene {
+        use crate::compositor::scene::{
+            BlendMode, Layer, LayerKind, RasterSource, Scene, Transform,
+        };
+
         let (scene_w, scene_h) = if self.scene_size.0 > 0 && self.scene_size.1 > 0 {
             (self.scene_size.0, self.scene_size.1)
         } else {
             self.compute_scene_bbox()
         };
 
-        let mut scene_obj = VelloScene::new();
-        if scene_w > 0 && scene_h > 0 {
-            let scale = (width as f64 / scene_w as f64).min(height as f64 / scene_h as f64);
-            let draw_w = scene_w as f64 * scale;
-            let draw_h = scene_h as f64 * scale;
-            let tx = (width as f64 - draw_w) * 0.5;
-            let ty = (height as f64 - draw_h) * 0.5;
-            let outer = kurbo::Affine::translate((tx, ty))
-                * kurbo::Affine::scale_non_uniform(scale, scale);
+        let mut indices: Vec<usize> = (0..self.scene.len())
+            .filter(|&i| self.scene[i].covers(t))
+            .collect();
+        indices.sort_by_key(|&i| self.scene[i].z);
 
-            let mut indices: Vec<usize> = (0..self.scene.len())
-                .filter(|&i| self.scene[i].covers(t))
-                .collect();
-            indices.sort_by_key(|&i| self.scene[i].z);
-
-            for i in indices {
-                let layer = &self.scene[i];
-                let opacity = layer.opacity.clamp(0.0, 1.0);
-                if opacity <= 0.0 {
-                    continue;
-                }
-                let Some(rt) = self.runtimes.get(&layer.id) else { continue };
-                let (img, (mw, mh)) = match rt {
-                    LayerRuntime::Video(v) => match v.current.as_ref() {
-                        Some(f) => (&f.image, v.media_size),
-                        None => continue,
-                    },
-                    LayerRuntime::Image(im) => (&im.image, im.size),
-                    LayerRuntime::Loading | LayerRuntime::Failed => continue,
-                };
-                let layer_scale =
-                    (scene_w as f64 / mw as f64).min(scene_h as f64 / mh as f64);
-                let dw = mw as f64 * layer_scale;
-                let dh = mh as f64 * layer_scale;
-                let lx = (scene_w as f64 - dw) * 0.5;
-                let ly = (scene_h as f64 - dh) * 0.5;
-                let inner = kurbo::Affine::translate((lx, ly))
-                    * kurbo::Affine::scale_non_uniform(layer_scale, layer_scale);
-                let xform = outer * inner;
-
-                if opacity < 1.0 {
-                    let bbox = kurbo::Rect::new(0.0, 0.0, mw as f64, mh as f64);
-                    scene_obj.push_layer(
-                        vello::peniko::Fill::NonZero,
-                        vello::peniko::Mix::Normal,
-                        opacity as f32,
-                        xform,
-                        &bbox,
-                    );
-                    scene_obj.draw_image(img, xform);
-                    scene_obj.pop_layer();
-                } else {
-                    scene_obj.draw_image(img, xform);
-                }
+        let mut layers = Vec::with_capacity(indices.len());
+        for i in indices {
+            let sl = &self.scene[i];
+            let opacity = sl.opacity.clamp(0.0, 1.0) as f32;
+            if opacity <= 0.0 {
+                continue;
             }
+            let Some(rt) = self.runtimes.get(&sl.id) else { continue };
+            let (img, media_size) = match rt {
+                LayerRuntime::Video(v) => match v.current.as_ref() {
+                    Some(f) => (f.image.clone(), v.media_size),
+                    None => continue,
+                },
+                LayerRuntime::Image(im) => (im.image.clone(), im.size),
+                LayerRuntime::Loading | LayerRuntime::Failed => continue,
+            };
+            layers.push(Layer {
+                id: sl.id.clone(),
+                kind: LayerKind::Raster {
+                    source: RasterSource::Image(img),
+                    natural_size: media_size,
+                },
+                transform: Transform::center_fit(media_size, (scene_w, scene_h)),
+                opacity,
+                blend: BlendMode::Normal,
+                mask: None,
+                effects: Vec::new(),
+            });
         }
 
-        scene_obj
+        Scene {
+            width: scene_w,
+            height: scene_h,
+            time: t,
+            background: Color::BLACK,
+            layers,
+        }
     }
 
     fn compute_scene_bbox(&self) -> (u32, u32) {
