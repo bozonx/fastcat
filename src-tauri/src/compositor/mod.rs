@@ -1,19 +1,18 @@
 //! Vello-based video compositor.
 //!
 //! Раскладка:
-//! - `scene`          — доменная модель кадра (`Scene`, `Layer`, `LayerKind`,
-//!                      `Transform`, `BlendMode`, `Mask`, `RasterSource`).
-//!                      Включает `Scene::to_vello(viewport)` — единственное место
-//!                      в кодовой базе, которое строит `vello::Scene` из доменной.
-//! - `layers`         — спецификации будущих kind'ов (ShapeSpec, TextSpec, Paint, …).
-//!                      Сейчас не подключены в `LayerKind`; «словарь» для расширения.
-//! - `effects`        — `EffectSpec` enum. Runtime отсутствует (`Layer::effects`
-//!                      пока игнорируется в `Scene::to_vello`).
-//! - `transitions`    — `TransitionSpec` enum. Runtime отсутствует.
-//! - `text`, `svg`    — модули-документация для будущих text/svg слоёв.
-//! - `texture_cache`  — задел под GPU-resident текстуры (HW-decode, group cache).
+//! - `scene`         — доменная модель кадра (`Scene`, `Layer`, `LayerKind`,
+//!                     `Transform`, `BlendMode`, `Mask`, `RasterSource`).
+//!                     `Scene::to_vello(w, h)` — единственное место, строящее
+//!                     `vello::Scene` из доменной; вызывается внутри `Compositor`.
+//! - `layers`        — спецификации будущих kind'ов (ShapeSpec, TextSpec, Paint, …).
+//!                     Не подключены к `LayerKind`; «словарь» для расширения.
+//! - `effects`       — `EffectSpec` enum. Runtime отсутствует.
+//! - `transitions`   — `TransitionSpec` enum. Runtime отсутствует.
+//! - `text`, `svg`   — модули-документация для будущих слоёв.
+//! - `texture_cache` — задел под GPU-resident текстуры (HW-decode, group cache).
 //!
-//! Entrypoint: [`Compositor`] держит `vello::RenderContext` + кеш `Renderer` по device.
+//! Entrypoint: [`Compositor`] — high-level `render_scene_to_*` + low-level `render_to_*`.
 
 pub mod effects;
 pub mod layers;

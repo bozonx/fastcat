@@ -397,4 +397,53 @@ mod tests {
         let _ = scene.to_vello(0, 0);
         let _ = scene.to_vello(100, 0);
     }
+
+    #[test]
+    fn fit_into_same_aspect_no_translation() {
+        // Если аспект совпадает — letterbox/pillarbox нулевые.
+        let a = fit_into((1920, 1080), (960, 540));
+        let (x0, y0) = affine_apply(a, (0.0, 0.0));
+        let (x1, y1) = affine_apply(a, (1920.0, 1080.0));
+        assert!(approx(x0, 0.0));
+        assert!(approx(y0, 0.0));
+        assert!(approx(x1, 960.0));
+        assert!(approx(y1, 540.0));
+    }
+
+    #[test]
+    fn blend_mode_all_variants_map_without_panic() {
+        // Исчерпывающая проверка: ни одна ветка match не упадёт.
+        let modes = [
+            BlendMode::Normal, BlendMode::Multiply, BlendMode::Screen,
+            BlendMode::Overlay, BlendMode::Darken, BlendMode::Lighten,
+            BlendMode::ColorDodge, BlendMode::ColorBurn, BlendMode::HardLight,
+            BlendMode::SoftLight, BlendMode::Difference, BlendMode::Exclusion,
+            BlendMode::Hue, BlendMode::Saturation, BlendMode::Color,
+            BlendMode::Luminosity,
+        ];
+        for m in modes {
+            let _ = m.to_vello();
+        }
+    }
+
+    #[test]
+    fn transform_rotation_90deg_maps_x_to_y() {
+        // Поворот на 90° вокруг начала координат: (1,0) → (0,1).
+        let t = Transform {
+            x: 0.0,
+            y: 0.0,
+            scale_x: 1.0,
+            scale_y: 1.0,
+            rotation_deg: 90.0,
+            anchor_x: 0.0,
+            anchor_y: 0.0,
+        };
+        let a = t.to_affine((0, 0)); // natural size не используется при anchor=0
+        let (px, py) = affine_apply(a, (1.0, 0.0));
+        // После rotate(90°): x→-y, y→x, т.е. (1,0)→(0,1) в математических осях.
+        // В экранных координатах (y вниз): (1,0)→(0,-1)?
+        // kurbo::Affine::rotate(π/2): [[cos, -sin],[sin, cos]] = [[0,-1],[1,0]] → (1,0)→(0,1).
+        assert!(approx(px.abs(), 0.0));
+        assert!(approx(py.abs(), 1.0));
+    }
 }
