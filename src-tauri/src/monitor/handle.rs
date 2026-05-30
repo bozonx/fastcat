@@ -7,11 +7,30 @@ use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Result};
 use raw_window_handle::RawWindowHandle;
+use serde::{Deserialize, Serialize};
+use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::AppHandle;
 use winit::event_loop::EventLoopProxy;
 
 use super::app::run_event_loop;
 use super::scene::MonitorScene;
+
+/// Режим вывода монитора.
+/// - `Embedded` — нативное X11 child-окно поверх webview (по умолчанию, без оверлеев).
+/// - `Canvas` — offscreen-рендер, стрим RGBA-кадров в HTML `<canvas>` через Tauri Channel.
+///   Позволяет ставить SVG/HTML-оверлеи (transform handles, grid, timecode) поверх изображения.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MonitorMode {
+    Embedded,
+    Canvas,
+}
+
+impl Default for MonitorMode {
+    fn default() -> Self {
+        Self::Embedded
+    }
+}
 
 /// Обёртка над `RawWindowHandle` для безопасной (для нас) передачи между потоками.
 /// `RawWindowHandle` содержит сырой указатель/идентификатор окна; он остаётся валидным
@@ -21,7 +40,6 @@ pub struct SendableRawHandle(pub RawWindowHandle);
 unsafe impl Send for SendableRawHandle {}
 unsafe impl Sync for SendableRawHandle {}
 
-#[derive(Debug)]
 pub enum MonitorCommand {
     /// Полная замена сцены — фронт шлёт текущий снимок таймлайна.
     SetScene(MonitorScene),
@@ -43,6 +61,13 @@ pub enum MonitorCommand {
         height: u32,
         visible: bool,
     },
+    /// Переключение режима вывода (см. `MonitorMode`).
+    SetMode(MonitorMode),
+    /// Регистрация channel'а для стрима RGBA-кадров в canvas-режиме.
+    /// Каждый кадр: 8-байтный header (`u32 LE width`, `u32 LE height`) + RGBA8 пиксели.
+    SetFrameChannel(Channel<InvokeResponseBody>),
+    /// Размер render target'а в canvas-режиме (физические пиксели). Может отличаться от `SetViewport`.
+    SetCanvasSize { width: u32, height: u32 },
 }
 
 pub struct MonitorHandle {

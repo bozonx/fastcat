@@ -7,10 +7,11 @@
 //!   - `monitor_close` — закрыть окно (event-loop умрёт, респавн на следующем set_scene).
 
 use raw_window_handle::HasWindowHandle;
+use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Manager, State};
 
 use crate::engine::VideoEngine;
-use crate::monitor::{MonitorCommand, MonitorScene, SendableRawHandle};
+use crate::monitor::{MonitorCommand, MonitorMode, MonitorScene, SendableRawHandle};
 
 #[tauri::command]
 pub async fn monitor_set_scene(
@@ -82,6 +83,47 @@ pub async fn monitor_set_viewport(
             height,
             visible,
         })
+        .map_err(|e| e.to_string())
+}
+
+/// Переключение режима вывода: `embedded` (X11 child) или `canvas` (offscreen → stream в HTML canvas).
+#[tauri::command]
+pub async fn monitor_set_mode(
+    mode: MonitorMode,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    engine
+        .ensure_monitor()
+        .map_err(|e| e.to_string())?
+        .send(MonitorCommand::SetMode(mode))
+        .map_err(|e| e.to_string())
+}
+
+/// Подписка на стрим RGBA-кадров. Каждое сообщение в channel = bytes:
+/// `u32 LE width` + `u32 LE height` + `width*height*4` байт RGBA8.
+#[tauri::command]
+pub async fn monitor_subscribe_frames(
+    channel: Channel<InvokeResponseBody>,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    engine
+        .ensure_monitor()
+        .map_err(|e| e.to_string())?
+        .send(MonitorCommand::SetFrameChannel(channel))
+        .map_err(|e| e.to_string())
+}
+
+/// Размер render target'а в canvas-режиме (физические пиксели).
+#[tauri::command]
+pub async fn monitor_set_canvas_size(
+    width: u32,
+    height: u32,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    engine
+        .ensure_monitor()
+        .map_err(|e| e.to_string())?
+        .send(MonitorCommand::SetCanvasSize { width, height })
         .map_err(|e| e.to_string())
 }
 

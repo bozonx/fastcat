@@ -124,6 +124,9 @@ pub fn run() {
             ipc::monitor_cmd::monitor_pause,
             ipc::monitor_cmd::monitor_seek,
             ipc::monitor_cmd::monitor_set_viewport,
+            ipc::monitor_cmd::monitor_set_mode,
+            ipc::monitor_cmd::monitor_subscribe_frames,
+            ipc::monitor_cmd::monitor_set_canvas_size,
             ipc::monitor_cmd::monitor_close,
         ])
         .setup(|app| {

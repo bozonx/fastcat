@@ -16,7 +16,10 @@ use anyhow::{anyhow, Context, Result};
 
 use super::decode::{open as open_decoder, MediaInfo, VideoFrame};
 
-const QUEUE_CAPACITY: usize = 6;
+// Размер очереди декодированных кадров. Каждый кадр = ширина × высота × 4 байта.
+// Для 1080×1920 это ~8 МБ/кадр, так что 2 = 16 МБ буфера на слой — достаточно для smooth
+// playback (всегда есть `current` + 1 `upcoming` для lookahead) и не раздувает память.
+const QUEUE_CAPACITY: usize = 2;
 
 pub struct DecodedFrameMsg {
     pub generation: u64,

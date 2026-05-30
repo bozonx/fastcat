@@ -9,6 +9,10 @@ import { toRef, ref, watch } from 'vue';
 import { useMonitorGestures } from '~/composables/monitor/useMonitorGestures';
 import { useMonitorSettings } from '~/composables/monitor/useMonitorSettings';
 import { useNativeMonitorViewport } from '~/composables/monitor/useNativeMonitorViewport';
+import {
+  useMonitorMode,
+  useNativeMonitorCanvas,
+} from '~/composables/monitor/useNativeMonitorMode';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import type { TimelineMarker } from '~/timeline/types';
@@ -39,10 +43,15 @@ const timelineStore = useTimelineStore();
 const { showTimecode } = useMonitorSettings();
 const viewportEl = ref<HTMLElement | null>(null);
 const timecodeEl = ref<HTMLElement | null>(null);
+const nativeCanvasEl = ref<HTMLCanvasElement | null>(null);
+
+const { mode: monitorMode } = useMonitorMode();
 
 // Бинд нативного child-окна Tauri-монитора к видимой области панели. Vello внутри
 // сам делает letterbox под аспект сцены — здесь даём «холст» без учёта workspace pan/zoom.
 useNativeMonitorViewport(viewportEl);
+// Стрим RGBA-кадров → <canvas> в режиме canvas. В embedded режиме no-op.
+useNativeMonitorCanvas(nativeCanvasEl);
 
 const {
   zoom,
@@ -116,6 +125,15 @@ defineExpose({
           >
             <!-- Canvas content slot (WebGL container, placeholder div, etc.) -->
             <slot name="canvas" />
+
+            <!-- Tauri native monitor in 'canvas' mode: stream RGBA frames here -->
+            <canvas
+              v-if="monitorMode === 'canvas'"
+              ref="nativeCanvasEl"
+              class="absolute inset-0 w-full h-full"
+              style="display: block; pointer-events: none"
+            />
+
 
             <!-- SVG overlay: selection ring + slot for additional overlay elements -->
             <svg

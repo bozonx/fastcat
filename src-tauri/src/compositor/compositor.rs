@@ -110,6 +110,119 @@ impl Compositor {
         Ok(())
     }
 
+    /// Возвращает первое существующее `dev_id` или инициализирует новое (нужно для offscreen-рендера,
+    /// когда нет surface). Здесь мы шарим device между surface и offscreen — у Vello это OK.
+    pub fn ensure_offscreen_device(&mut self) -> Result<usize> {
+        if let Some(dev_id) = self.renderers.keys().copied().next() {
+            return Ok(dev_id);
+        }
+        // Создаём device через RenderContext без surface (адаптер выберется автоматически).
+        let dev_id = pollster::block_on(self.render_cx.device(None))
+            .ok_or_else(|| anyhow!("vello device: no compatible adapter"))?;
+        self.ensure_renderer(dev_id)?;
+        Ok(dev_id)
+    }
+
+    /// Рендерит сцену в Rgba8 texture и читает её обратно в `Vec<u8>` (RGBA, length = w*h*4).
+    /// `(width, height)` должны быть кратны 256 / 64 — это требование `copy_texture_to_buffer`
+    /// учитываем выравниванием `bytes_per_row`; здесь не требуем кратности от вызывающего.
+    pub fn render_to_pixels(
+        &mut self,
+        dev_id: usize,
+        scene: &VelloScene,
+        width: u32,
+        height: u32,
+        base_color: Color,
+    ) -> Result<Vec<u8>> {
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = &device_handle.device;
+        let queue = &device_handle.queue;
+
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("monitor-offscreen"),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let renderer = self
+            .renderers
+            .get_mut(&dev_id)
+            .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
+        renderer
+            .render_to_texture(
+                device,
+                queue,
+                scene,
+                &view,
+                &RenderParams {
+                    base_color,
+                    width,
+                    height,
+                    antialiasing_method: AaConfig::Area,
+                },
+            )
+            .map_err(|e| anyhow!("vello render: {e:?}"))?;
+
+        // bytes_per_row должен быть кратен 256 (wgpu/COPY_BYTES_PER_ROW_ALIGNMENT).
+        let row_bytes = width as usize * 4;
+        let aligned_row_bytes = (row_bytes + 255) & !255;
+        let buffer_size = (aligned_row_bytes * height as usize) as u64;
+
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("monitor-readback"),
+            size: buffer_size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("readback") });
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(aligned_row_bytes as u32),
+                    rows_per_image: Some(height),
+                },
+            },
+            wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+        );
+        queue.submit([encoder.finish()]);
+
+        let slice = buffer.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        device.poll(wgpu::PollType::wait_indefinitely()).ok();
+        rx.recv()
+            .map_err(|_| anyhow!("buffer map disconnected"))?
+            .map_err(|e| anyhow!("buffer map: {e:?}"))?;
+
+        let mapped = slice.get_mapped_range();
+        let mut out = Vec::with_capacity(row_bytes * height as usize);
+        for row in 0..height as usize {
+            let start = row * aligned_row_bytes;
+            out.extend_from_slice(&mapped[start..start + row_bytes]);
+        }
+        drop(mapped);
+        buffer.unmap();
+        Ok(out)
+    }
+
     fn ensure_renderer(&mut self, dev_id: usize) -> Result<()> {
         if self.renderers.contains_key(&dev_id) {
             return Ok(());

@@ -33,8 +33,9 @@ use crate::media::decode::VideoFrame;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
-use super::handle::{MonitorCommand, SendableRawHandle};
+use super::handle::{MonitorCommand, MonitorMode, SendableRawHandle};
 use super::scene::{LayerKind, MonitorScene, SceneLayer};
+use tauri::ipc::{Channel, InvokeResponseBody};
 
 const DEFAULT_TITLE: &str = "FastCat Monitor";
 const EVT_TIME: &str = "monitor:time";
@@ -216,6 +217,15 @@ struct WindowState {
     /// Последний применённый viewport — чтобы не дёргать set_outer_position/set_inner_size
     /// без нужды (на Wayland это лишние commit'ы и потенциальные flicker'ы).
     last_viewport: ViewportSpec,
+
+    /// Режим: Embedded (X11 child) или Canvas (offscreen → channel).
+    mode: MonitorMode,
+    /// Канал для стрима RGBA-кадров фронту (только в режиме Canvas).
+    frame_channel: Option<Channel<InvokeResponseBody>>,
+    /// Размер render target'а в canvas-режиме (физические пиксели).
+    canvas_size: (u32, u32),
+    /// dev_id wgpu для offscreen-рендера; берём из существующего surface'а.
+    offscreen_dev_id: Option<usize>,
 }
 
 enum LayerRuntime {
@@ -319,6 +329,27 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.apply_viewport(vp);
                 } else {
                     self.try_create_window(event_loop);
+                }
+            }
+            MonitorCommand::SetMode(mode) => {
+                if let Some(s) = self.state.as_mut() {
+                    s.set_mode(mode);
+                    s.window.request_redraw();
+                }
+            }
+            MonitorCommand::SetFrameChannel(ch) => {
+                if let Some(s) = self.state.as_mut() {
+                    s.frame_channel = Some(ch);
+                } else {
+                    log::warn!("[monitor] SetFrameChannel before window init — ignored");
+                }
+            }
+            MonitorCommand::SetCanvasSize { width, height } => {
+                if let Some(s) = self.state.as_mut() {
+                    s.canvas_size = (width.max(1), height.max(1));
+                    if s.mode == MonitorMode::Canvas {
+                        s.window.request_redraw();
+                    }
                 }
             }
         }
@@ -447,6 +478,7 @@ fn init_window(
         window.set_visible(true);
     }
 
+    let offscreen_dev_id = Some(surface.dev_id);
     Ok(WindowState {
         app,
         window,
@@ -463,6 +495,10 @@ fn init_window(
         last_emit_pts: -1.0,
         scene_size: (0, 0),
         last_viewport: viewport,
+        mode: MonitorMode::Embedded,
+        frame_channel: None,
+        canvas_size: (viewport.width.max(1), viewport.height.max(1)),
+        offscreen_dev_id,
     })
 }
 
@@ -497,6 +533,25 @@ impl WindowState {
         // Видимость окна теперь полностью контролируется фронтом через SetViewport —
         // здесь только просим перерисовать.
         self.window.request_redraw();
+    }
+
+    fn set_mode(&mut self, mode: MonitorMode) {
+        if self.mode == mode {
+            return;
+        }
+        self.mode = mode;
+        match mode {
+            MonitorMode::Embedded => {
+                // Восстанавливаем видимость X11 child по последнему viewport.
+                if self.last_viewport.visible {
+                    self.window.set_visible(true);
+                }
+            }
+            MonitorMode::Canvas => {
+                // Скрываем X11 child — рендер пойдёт offscreen.
+                self.window.set_visible(false);
+            }
+        }
     }
 
     fn apply_viewport(&mut self, vp: ViewportSpec) {
@@ -781,9 +836,50 @@ impl WindowState {
     // -----------------------------------------------------------------------
 
     fn render(&mut self, t: f64) {
-        let width = self.surface.config.width;
-        let height = self.surface.config.height;
+        match self.mode {
+            MonitorMode::Embedded => {
+                let width = self.surface.config.width;
+                let height = self.surface.config.height;
+                let scene_obj = self.build_vello_scene(t, width, height);
+                if let Err(e) = self.compositor.render_to_surface(
+                    &mut self.surface,
+                    &scene_obj,
+                    Color::BLACK,
+                ) {
+                    log::error!("[monitor] compositor render: {e:?}");
+                }
+            }
+            MonitorMode::Canvas => {
+                let Some(channel) = self.frame_channel.clone() else { return };
+                let (width, height) = self.canvas_size;
+                if width == 0 || height == 0 {
+                    return;
+                }
+                let scene_obj = self.build_vello_scene(t, width, height);
+                let Some(dev_id) = self.offscreen_dev_id else { return };
+                match self.compositor.render_to_pixels(
+                    dev_id,
+                    &scene_obj,
+                    width,
+                    height,
+                    Color::BLACK,
+                ) {
+                    Ok(pixels) => {
+                        let mut payload = Vec::with_capacity(8 + pixels.len());
+                        payload.extend_from_slice(&width.to_le_bytes());
+                        payload.extend_from_slice(&height.to_le_bytes());
+                        payload.extend_from_slice(&pixels);
+                        if let Err(e) = channel.send(InvokeResponseBody::Raw(payload)) {
+                            log::warn!("[monitor] frame channel send: {e:?}");
+                        }
+                    }
+                    Err(e) => log::error!("[monitor] offscreen render: {e:?}"),
+                }
+            }
+        }
+    }
 
+    fn build_vello_scene(&self, t: f64, width: u32, height: u32) -> VelloScene {
         let (scene_w, scene_h) = if self.scene_size.0 > 0 && self.scene_size.1 > 0 {
             (self.scene_size.0, self.scene_size.1)
         } else {
@@ -847,12 +943,7 @@ impl WindowState {
             }
         }
 
-        if let Err(e) = self
-            .compositor
-            .render_to_surface(&mut self.surface, &scene_obj, Color::BLACK)
-        {
-            log::error!("[monitor] compositor render: {e:?}");
-        }
+        scene_obj
     }
 
     fn compute_scene_bbox(&self) -> (u32, u32) {

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { onMounted, onScopeDispose, watch, type Ref } from 'vue';
 
+import { useMonitorMode } from '~/composables/monitor/useNativeMonitorMode';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
 
@@ -31,6 +32,8 @@ interface ViewportPayload {
  */
 export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
   if (!isTauriRuntime()) return;
+
+  const { mode } = useMonitorMode();
 
   let rafHandle = 0;
   let last: ViewportPayload | null = null;
@@ -67,10 +70,14 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
     rafHandle = window.requestAnimationFrame(tick);
     const el = elRef.value;
     if (!el) return;
-    const next = readPayload(el);
+    const raw = readPayload(el);
+    // В canvas-режиме нативное X11-окно должно быть скрыто — рендер идёт offscreen,
+    // изображение приходит в HTML <canvas>. Геометрию шлём всё равно (чтобы при возврате
+    // в embedded окно сразу встало на место), но visible форсим в false.
+    const next: ViewportPayload =
+      mode.value === 'canvas' ? { ...raw, visible: false } : raw;
     if (!changed(last, next)) return;
     last = next;
-    log.info('set_viewport', next, 'dpr=' + (window.devicePixelRatio || 1));
     invoke('monitor_set_viewport', next).catch((err) =>
       log.warn('monitor_set_viewport failed', err),
     );

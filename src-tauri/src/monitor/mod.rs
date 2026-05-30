@@ -8,5 +8,5 @@ mod app;
 mod handle;
 pub mod scene;
 
-pub use handle::{MonitorCommand, MonitorHandle, SendableRawHandle};
+pub use handle::{MonitorCommand, MonitorHandle, MonitorMode, SendableRawHandle};
 pub use scene::{LayerKind, MonitorScene, SceneLayer};

@@ -7,6 +7,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
+import { useMonitorMode } from '~/composables/monitor/useNativeMonitorMode';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
@@ -70,6 +71,8 @@ registerMonitorActions({
   createStopFrameSnapshot,
   createNewTimeline,
 });
+
+const { mode: monitorMode, toggle: toggleMonitorMode } = useMonitorMode();
 
 const props = withDefaults(
   defineProps<{
@@ -363,6 +366,24 @@ watch(viewportRef, (vp) => {
               />
             </UiTooltip>
           </template>
+
+          <!-- Toggle: embedded (X11 child window) <-> canvas (offscreen → HTML canvas) -->
+          <UiTooltip
+            :text="
+              monitorMode === 'embedded'
+                ? 'Switch to canvas mode (overlays support)'
+                : 'Switch to embedded mode (native window)'
+            "
+          >
+            <UiActionButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              :icon="monitorMode === 'embedded' ? 'lucide:layers' : 'lucide:box'"
+              aria-label="Toggle monitor mode"
+              @click="toggleMonitorMode"
+            />
+          </UiTooltip>
 
           <UiTooltip :text="getHotkeyTitle(t('fastcat.monitor.resetZoom'), 'general.zoomReset')">
             <UiActionButton
