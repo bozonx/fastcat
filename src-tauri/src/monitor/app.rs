@@ -784,6 +784,13 @@ impl WindowState {
     fn pull_video_frames(rt: &mut VideoLayerRt) {
         let live_gen = rt.pump.current_generation();
         loop {
+            // Если оба слота заполнены — НЕ перетираем upcoming свежим кадром, иначе мы
+            // ускоренно «съезжаем» вперёд target'а и `advance_video_to` никогда не срабатывает
+            // (upcoming.pts всегда оказывается сильно больше target). Оставляем decoder
+            // заблокированным на frame_tx.send(); очередной advance высвободит место.
+            if rt.current.is_some() && rt.upcoming.is_some() {
+                break;
+            }
             match rt.pump.rx.try_recv() {
                 Ok(msg) => {
                     if msg.generation != live_gen {
@@ -792,11 +799,8 @@ impl WindowState {
                     let decoded = decoded_to_image(msg.frame);
                     if rt.current.is_none() {
                         rt.current = Some(decoded);
-                    } else if rt.upcoming.is_none() {
-                        rt.upcoming = Some(decoded);
                     } else {
                         rt.upcoming = Some(decoded);
-                        break;
                     }
                 }
                 Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,

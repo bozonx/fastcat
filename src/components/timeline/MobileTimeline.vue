@@ -290,7 +290,7 @@ function handleMobileTimelineItemSelect(ev: PointerEvent, id: string) {
 function handleMobileTimelineItemLongPress(id: string) {
   suppressDrawerSelectionClearTemporarily(() => {
     isLongPress.value = true;
-    drawerActiveSnapPoint.value = '108px';
+    drawerActiveSnapPoint.value = null;
     enterMobileMultiSelection(id);
   });
 }
