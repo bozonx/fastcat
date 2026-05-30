@@ -15,6 +15,7 @@ import { isModelDownloaded } from '~/utils/transcription/model-storage';
 import { createWorkspaceSettingsModule } from '~/stores/workspace/workspaceSettings';
 import { createWorkspaceProjectsModule } from '~/stores/workspace/workspaceProjects';
 import { createWorkspaceInitModule } from '~/stores/workspace/workspaceInit';
+import { useVfs } from '~/composables/useVfs';
 import { createWorkspaceProvider } from '~/stores/workspace/provider';
 import { createWorkspaceStateModule } from '~/stores/workspace/workspaceState';
 
@@ -240,10 +241,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     workspaceHandle.value = handle;
-    settingsRepo.value = createWorkspaceSettingsRepository({
-      workspaceDir: handle,
-      fastcatDevDir: runtimeConfig.public.fastcatDevDir as string | undefined,
-    });
+    settingsRepo.value = createWorkspaceSettingsRepository({ vfs: useVfs() });
 
     const folders = [
       workspaceTopology.projectsDirName,
@@ -296,7 +294,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error,
     isInitializing,
     isEphemeral,
-    fastcatDevDir: runtimeConfig.public.fastcatDevDir as string | undefined,
+    getVfs: () => useVfs(),
     loadProjects,
     loadAppSettingsFromDisk,
     loadWorkspaceSettingsFromDisk,

@@ -4,15 +4,11 @@ import type {
   FastCatWorkspaceSettings,
 } from '~/utils/settings';
 import type { WorkspaceState } from '~/utils/workspace-state';
-import {
-  ensureAppFileHandle,
-  readJsonFromFileHandle,
-  writeJsonToFileHandle,
-  type DirectoryHandleLike,
-} from './app-fs.repository';
+import { createAppFsJsonStore } from './app-fs.repository';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { FASTCAT_CONFIG_DIR_NAME } from '~/utils/storage-roots';
 import { isTauriRuntime } from '~/utils/runtime';
-import { resolveTauriAppPaths } from '~/utils/tauri-paths';
+import { CONFIG_PATH_PREFIX, WORKSPACE_ROOT_PATH_PREFIX } from '~/utils/workspace-common';
 
 export interface WorkspaceSettingsRepository {
   loadUserSettings(): Promise<unknown | null>;
@@ -25,103 +21,33 @@ export interface WorkspaceSettingsRepository {
   saveWorkspaceState(data: WorkspaceState): Promise<void>;
 }
 
-async function readWorkspaceJson(input: {
-  workspaceDir: DirectoryHandleLike;
-  filename: string;
-  folderName: string;
-}): Promise<unknown | null> {
-  const handle = await ensureAppFileHandle({
-    baseDir: input.workspaceDir,
-    filename: input.filename,
-    create: false,
-    folderName: input.folderName,
-  });
-  if (!handle) return null;
-  return await readJsonFromFileHandle(handle);
-}
-
-async function writeWorkspaceJson(input: {
-  workspaceDir: DirectoryHandleLike;
-  filename: string;
-  folderName: string;
-  data: unknown;
-}): Promise<void> {
-  const handle = await ensureAppFileHandle({
-    baseDir: input.workspaceDir,
-    filename: input.filename,
-    create: true,
-    folderName: input.folderName,
-  });
-  if (!handle) return;
-  await writeJsonToFileHandle({ handle, data: input.data });
-}
-
-async function readTauriConfigJson(
-  filename: string,
-  fastcatDevDir?: string,
-): Promise<unknown | null> {
-  const { exists, readTextFile, mkdir } = await import('@tauri-apps/plugin-fs');
-  const { join } = await import('@tauri-apps/api/path');
-  const paths = await resolveTauriAppPaths(fastcatDevDir);
-  if (!paths) return null;
-
-  await mkdir(paths.configDir, { recursive: true });
-  const filePath = await join(paths.configDir, filename);
-  const fileExists = await exists(filePath);
-  if (!fileExists) return null;
-  const text = await readTextFile(filePath);
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  return JSON.parse(trimmed) as unknown;
-}
-
-async function writeTauriConfigJson(
-  filename: string,
-  data: unknown,
-  fastcatDevDir?: string,
-): Promise<void> {
-  const { writeTextFile, mkdir } = await import('@tauri-apps/plugin-fs');
-  const { join } = await import('@tauri-apps/api/path');
-  const paths = await resolveTauriAppPaths(fastcatDevDir);
-  if (!paths) return;
-
-  await mkdir(paths.configDir, { recursive: true });
-  const filePath = await join(paths.configDir, filename);
-  await writeTextFile(filePath, `${JSON.stringify(data, null, 2)}\n`);
-}
-
 export function createWorkspaceSettingsRepository(input: {
-  workspaceDir: DirectoryHandleLike;
-  fastcatDevDir?: string;
+  vfs: IFileSystemAdapter;
 }): WorkspaceSettingsRepository {
-  async function loadSettings(filename: string, isGlobal: boolean): Promise<unknown | null> {
+  const store = createAppFsJsonStore(input.vfs);
+
+  /**
+   * Resolve the VFS path for a settings file.
+   *
+   * Global user/app settings on Tauri live in the OS config dir (`@config`);
+   * everything else (workspace settings, workspace-state, and — in the browser —
+   * user/app settings too) lives in the workspace's `.fastcat-config` dir.
+   */
+  function settingsPath(filename: string, isGlobal: boolean): string {
     const isAppOrUserSettings =
       filename === 'user.settings.json' || filename === 'app.settings.json';
     if (isTauriRuntime() && isGlobal && isAppOrUserSettings) {
-      return await readTauriConfigJson(filename, input.fastcatDevDir);
+      return `${CONFIG_PATH_PREFIX}/${filename}`;
     }
-
-    return await readWorkspaceJson({
-      workspaceDir: input.workspaceDir,
-      filename,
-      folderName: FASTCAT_CONFIG_DIR_NAME,
-    });
+    return `${WORKSPACE_ROOT_PATH_PREFIX}/${FASTCAT_CONFIG_DIR_NAME}/${filename}`;
   }
 
-  async function saveSettings(filename: string, isGlobal: boolean, data: unknown): Promise<void> {
-    const isAppOrUserSettings =
-      filename === 'user.settings.json' || filename === 'app.settings.json';
-    if (isTauriRuntime() && isGlobal && isAppOrUserSettings) {
-      await writeTauriConfigJson(filename, data, input.fastcatDevDir);
-      return;
-    }
+  function loadSettings(filename: string, isGlobal: boolean): Promise<unknown | null> {
+    return store.readJson(settingsPath(filename, isGlobal));
+  }
 
-    await writeWorkspaceJson({
-      workspaceDir: input.workspaceDir,
-      filename,
-      folderName: FASTCAT_CONFIG_DIR_NAME,
-      data,
-    });
+  function saveSettings(filename: string, isGlobal: boolean, data: unknown): Promise<void> {
+    return store.writeJson(settingsPath(filename, isGlobal), data);
   }
 
   return {

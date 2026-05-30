@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { createWorkspaceInitModule } from '~/stores/workspace/workspaceInit';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
+import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
 
 function createMockProvider() {
   return {
@@ -61,6 +62,7 @@ describe('createWorkspaceInitModule', () => {
       error,
       isInitializing,
       isEphemeral,
+      getVfs: () => new InMemoryFileSystemAdapter(),
       loadProjects,
       loadAppSettingsFromDisk,
       loadWorkspaceSettingsFromDisk,
@@ -118,6 +120,7 @@ describe('createWorkspaceInitModule', () => {
       error,
       isInitializing,
       isEphemeral,
+      getVfs: () => new InMemoryFileSystemAdapter(),
       loadProjects,
       loadAppSettingsFromDisk,
       loadWorkspaceSettingsFromDisk,

@@ -12,6 +12,16 @@ export const WORKSPACE_COMMON_PATH_PREFIX = '@common';
  */
 export const WORKSPACE_PROJECT_PATH_PREFIX = '@project';
 
+/** VFS prefix addressing the workspace directory root (parent of projects/common). */
+export const WORKSPACE_ROOT_PATH_PREFIX = '@workspace';
+
+/**
+ * VFS prefix addressing the application *config* directory. On Tauri this is the
+ * OS per-app config dir (separate from the workspace); in the browser there is
+ * no separate config dir, so it aliases the workspace root.
+ */
+export const CONFIG_PATH_PREFIX = '@config';
+
 /** Build a VFS path addressing `relPath` inside the named project's directory. */
 export function toProjectStoragePath(projectName: string, relPath = ''): string {
   const rel = normalizeWorkspaceFilePath(relPath);

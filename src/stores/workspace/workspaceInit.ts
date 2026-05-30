@@ -3,6 +3,7 @@ import type { Ref } from 'vue';
 
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
 import type { WorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getErrorMessage, isAbortError } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import type { WorkspaceProvider } from './provider';
@@ -17,7 +18,7 @@ export interface WorkspaceInitDeps {
   error: Ref<string | null>;
   isInitializing: Ref<boolean>;
   isEphemeral: Ref<boolean>;
-  fastcatDevDir?: string;
+  getVfs: () => IFileSystemAdapter;
 
   loadProjects: () => Promise<void>;
   loadAppSettingsFromDisk: () => Promise<void>;
@@ -44,10 +45,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
 
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     deps.workspaceHandle.value = handle;
-    deps.settingsRepo.value = createWorkspaceSettingsRepository({
-      workspaceDir: handle,
-      fastcatDevDir: deps.fastcatDevDir,
-    });
+    deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
 
     const folders = [
       workspaceTopology.projectsDirName,

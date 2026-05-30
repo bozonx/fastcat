@@ -215,26 +215,59 @@ const toolbarOffsetPx = computed(() => {
   return Math.max(0, toPx(pts[pts.length - 1]!) - toPx(pts[0]!));
 });
 
-function setHandleTransform(dy: number, animated: boolean, ms = 320) {
+let handleAnim: Animation | null = null;
+
+/** Instant transform while the finger drives the sheet (no transition lag). */
+function setHandleTransform(dy: number) {
   const el = containerRef.value;
   if (!el) return;
-  const transform = `translate3d(0, ${dy}px, 0)`;
-  if (!animated) {
-    el.style.transition = 'none';
-    el.style.transform = transform;
+  if (handleAnim) {
+    handleAnim.cancel();
+    handleAnim = null;
+  }
+  el.style.transition = 'none';
+  el.style.transform = dy === 0 ? '' : `translate3d(0, ${dy}px, 0)`;
+}
+
+/**
+ * Animate the container from the release position to a target offset.
+ * Uses the Web Animations API: a plain CSS transition started in the same tick as
+ * the preceding instant drag transform does not fire reliably, which made the
+ * sheet jump (disappear) instead of sliding. WAA is deterministic about the start.
+ */
+function animateHandle(fromDy: number, toDy: number, ms: number, done?: () => void) {
+  const el = containerRef.value;
+  const from = `translate3d(0, ${fromDy}px, 0)`;
+  const to = toDy === 0 ? 'translate3d(0, 0, 0)' : `translate3d(0, ${toDy}px, 0)`;
+
+  if (!el || typeof el.animate !== 'function') {
+    if (el) el.style.transform = toDy === 0 ? '' : to;
+    done?.();
     return;
   }
-  // The drag left `transition: none`. Set the transition, then force a reflow so
-  // the current (release) position is committed as the animation's start value —
-  // otherwise the browser coalesces both changes and jumps straight to the end.
-  el.style.transition = `transform ${ms}ms ${SETTLE_EASE}`;
-  void el.offsetHeight;
-  el.style.transform = transform;
+
+  if (handleAnim) handleAnim.cancel();
+  el.style.transform = from;
+  handleAnim = el.animate([{ transform: from }, { transform: to }], {
+    duration: ms,
+    easing: SETTLE_EASE,
+    fill: 'forwards',
+  });
+  handleAnim.onfinish = () => {
+    el.style.transform = toDy === 0 ? '' : to;
+    handleAnim?.cancel();
+    handleAnim = null;
+    done?.();
+  };
 }
 
 function resetHandleTransform() {
   const el = containerRef.value;
   if (!el || handleDragging.value) return;
+  if (handleAnim) {
+    handleAnim.cancel();
+    handleAnim = null;
+  }
   el.style.removeProperty('transition');
   el.style.removeProperty('transform');
 }
@@ -262,14 +295,16 @@ function onHandleTouchMove(e: TouchEvent) {
     const maxUp = -toolbarOffsetPx.value;
     if (dy < maxUp) dy = maxUp;
   }
-  setHandleTransform(dy, false);
+  setHandleTransform(dy);
 }
 
 function onHandleTouchEnd(e: TouchEvent) {
   if (!handleDragging.value) return;
   handleDragging.value = false;
   const t = e.changedTouches[0];
-  const dy = t ? t.clientY - handleStartY.value : 0;
+  let dy = t ? t.clientY - handleStartY.value : 0;
+  if (isExpanded.value && dy < 0) dy = 0;
+  else if (!isExpanded.value && dy < -toolbarOffsetPx.value) dy = -toolbarOffsetPx.value;
 
   const TAP = 10; // below this it's a tap — let the click handler decide
   const CLOSE_TOOLBAR = 28; // small downward movement closes the short toolbar sheet
@@ -282,43 +317,33 @@ function onHandleTouchEnd(e: TouchEvent) {
   }
 
   if (isExpanded.value) {
-    if (dy > CLOSE_FULL) closeByHandle();
-    else settleHandle();
+    if (dy > CLOSE_FULL) closeByHandle(dy);
+    else settleHandle(dy);
     return;
   }
 
-  if (dy > CLOSE_TOOLBAR) closeByHandle();
-  else if (dy < -EXPAND) expandByHandle();
-  else settleHandle();
+  if (dy > CLOSE_TOOLBAR) closeByHandle(dy);
+  else if (dy < -EXPAND) expandByHandle(dy);
+  else settleHandle(dy);
 }
 
 /** Ease back to the current snap position. */
-function settleHandle() {
-  setHandleTransform(0, true);
-  window.setTimeout(resetHandleTransform, 340);
+function settleHandle(fromDy: number) {
+  animateHandle(fromDy, 0, 320, resetHandleTransform);
 }
 
 /** Hand off to the full snap, syncing our offset with vaul's snap transition. */
-function expandByHandle() {
+function expandByHandle(fromDy: number) {
   if (props.snapPoints?.length) {
     activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
   }
-  setHandleTransform(0, true, 460);
-  window.setTimeout(resetHandleTransform, 480);
+  animateHandle(fromDy, 0, 460, resetHandleTransform);
 }
 
 /** Slide the sheet out from the release position, then unmount. */
-function closeByHandle() {
-  const el = containerRef.value;
-  if (!el) {
-    requestClose();
-    return;
-  }
+function closeByHandle(fromDy: number) {
   handleClosing.value = true;
-  setHandleTransform(window.innerHeight || 900, true, 280);
-  window.setTimeout(() => {
-    requestClose();
-  }, 280);
+  animateHandle(fromDy, window.innerHeight || 900, 280, () => requestClose());
 }
 
 function onBackdropTouchStart(e: TouchEvent) {

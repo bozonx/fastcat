@@ -15,8 +15,10 @@ import { useBloggerDogStore } from '~/stores/bloggerdog';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
 import { useUiStore } from '~/stores/ui.store';
 import {
+  CONFIG_PATH_PREFIX,
   WORKSPACE_COMMON_PATH_PREFIX,
   WORKSPACE_PROJECT_PATH_PREFIX,
+  WORKSPACE_ROOT_PATH_PREFIX,
   toWorkspaceCommonStoragePath,
 } from '~/utils/workspace-common';
 import { PROJECTS_ROOT_DIR_NAME } from '~/utils/storage-roots';
@@ -101,6 +103,12 @@ interface WorkspaceAdapters {
   workspace: IFileSystemAdapter;
   /** Adapter rooted at the system cache/vardata directory. */
   vardata: IFileSystemAdapter;
+  /**
+   * Adapter rooted at the application config directory. On Tauri this is the OS
+   * per-app config dir; in the browser there is no separate config dir, so it
+   * aliases the workspace adapter.
+   */
+  config: IFileSystemAdapter;
 }
 
 function createTauriWorkspaceAdapters(
@@ -147,7 +155,15 @@ function createTauriWorkspaceAdapters(
     return { type: 'absolute', path: await join(await appDataDir(), 'vardata') };
   });
 
-  return { project, workspace, vardata };
+  const config = new TauriFileSystemAdapter(async () => {
+    const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
+    const paths = await resolveTauriAppPaths(fastcatDevDir);
+    if (paths) return { type: 'absolute', path: paths.configDir };
+    const { appConfigDir } = await import('@tauri-apps/api/path');
+    return { type: 'absolute', path: await appConfigDir() };
+  });
+
+  return { project, workspace, vardata, config };
 }
 
 function createOpfsWorkspaceAdapters(
@@ -156,7 +172,8 @@ function createOpfsWorkspaceAdapters(
 ): WorkspaceAdapters {
   const project = new OpfsFileSystemAdapter(() => projectStore.getProjectDirHandle());
   const workspace = new OpfsFileSystemAdapter(async () => workspaceStore.workspaceHandle ?? null);
-  return { project, workspace, vardata: workspace };
+  // The browser has no separate config dir — config settings live in the workspace.
+  return { project, workspace, vardata: workspace, config: workspace };
 }
 
 /**
@@ -166,6 +183,7 @@ function createOpfsWorkspaceAdapters(
 function buildVfsRoutes(args: {
   workspace: IFileSystemAdapter;
   vardata: IFileSystemAdapter;
+  config: IFileSystemAdapter;
   remote: IFileSystemAdapter;
 }): VfsRoute[] {
   const stripPrefix = (prefix: string) => (path: string) =>
@@ -176,6 +194,18 @@ function buildVfsRoutes(args: {
       prefix: WORKSPACE_COMMON_PATH_PREFIX,
       adapter: args.workspace,
       stripPrefix: toWorkspaceCommonStoragePath,
+    },
+    {
+      // `@workspace/<rest>` → workspace root `<rest>` (parent of projects/common).
+      prefix: WORKSPACE_ROOT_PATH_PREFIX,
+      adapter: args.workspace,
+      stripPrefix: stripPrefix(WORKSPACE_ROOT_PATH_PREFIX),
+    },
+    {
+      // `@config/<rest>` → application config dir `<rest>`.
+      prefix: CONFIG_PATH_PREFIX,
+      adapter: args.config,
+      stripPrefix: stripPrefix(CONFIG_PATH_PREFIX),
     },
     {
       // `@project/<name>/<rest>` → workspace-relative `projects/<name>/<rest>`.
@@ -215,7 +245,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   const isTauri = isTauriRuntime();
   const runtimeConfig = useRuntimeConfig();
 
-  const { project, workspace, vardata } = isTauri
+  const { project, workspace, vardata, config } = isTauri
     ? createTauriWorkspaceAdapters(
         workspaceStore,
         projectStore,
@@ -230,7 +260,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   const adapter = new RouterFileSystemAdapter(
     project,
-    buildVfsRoutes({ workspace, vardata, remote }),
+    buildVfsRoutes({ workspace, vardata, config, remote }),
     {
       progressReporter: createNuxtVfsProgressReporter(nuxtApp),
     },

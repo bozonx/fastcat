@@ -1,118 +1,20 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWorkspaceSettingsRepository } from '~/repositories/workspace-settings.repository';
+import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
 import { isTauriRuntime } from '~/utils/runtime';
-
-const tauriFsState = vi.hoisted(() => ({
-  files: new Map<string, string>(),
-}));
 
 vi.mock('~/utils/runtime', () => ({
   isTauriRuntime: vi.fn(() => false),
 }));
 
-vi.mock('@tauri-apps/api/path', () => ({
-  appConfigDir: vi.fn().mockResolvedValue('/mock-config'),
-  appDataDir: vi.fn().mockResolvedValue('/mock-data'),
-  appCacheDir: vi.fn().mockResolvedValue('/mock-cache'),
-  tempDir: vi.fn().mockResolvedValue('/mock-temp'),
-  documentDir: vi.fn().mockResolvedValue('/mock-documents'),
-  isAbsolute: vi.fn().mockResolvedValue(false),
-  resourceDir: vi.fn().mockResolvedValue('/mock-resource'),
-  resolve: vi.fn().mockImplementation(async (path: string) => `/absolute/${path}`),
-  join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
-}));
-
-vi.mock('@tauri-apps/plugin-fs', () => ({
-  mkdir: vi.fn().mockResolvedValue(undefined),
-  exists: vi.fn().mockImplementation(async (path: string) => tauriFsState.files.has(path)),
-  readTextFile: vi.fn().mockImplementation(async (path: string) => tauriFsState.files.get(path)),
-  writeTextFile: vi.fn().mockImplementation(async (path: string, text: string) => {
-    tauriFsState.files.set(path, text);
-  }),
-}));
-
-function createFileHandleMock(input: { text: string }) {
-  let bytes = new TextEncoder().encode(input.text);
-
-  return {
-    async getFile() {
-      return {
-        async text() {
-          return new TextDecoder().decode(bytes);
-        },
-      };
-    },
-    async createWritable() {
-      return {
-        // The repository writes JSON in chunks: a `{ type: 'write', position, data }`
-        // payload per chunk followed by a `truncate`. Accept both shapes.
-        async write(data: string | { type: 'write'; position?: number; data: Uint8Array }) {
-          if (typeof data === 'string') {
-            bytes = new TextEncoder().encode(data);
-            return;
-          }
-          const position = data.position ?? bytes.length;
-          const nextLength = Math.max(bytes.length, position + data.data.length);
-          const nextBytes = new Uint8Array(nextLength);
-          nextBytes.set(bytes);
-          nextBytes.set(data.data, position);
-          bytes = nextBytes;
-        },
-        async truncate(size: number) {
-          bytes = bytes.slice(0, size);
-        },
-        async close() {
-          // no-op
-        },
-      };
-    },
-  };
-}
-
-function createDirMock() {
-  const files = new Map<string, any>();
-  const dirs = new Map<string, any>();
-
-  return {
-    async getDirectoryHandle(name: string, options?: { create?: boolean }) {
-      if (dirs.has(name)) return dirs.get(name);
-      if (!options?.create) {
-        const err: any = new Error('NotFound');
-        err.name = 'NotFoundError';
-        throw err;
-      }
-      const next = createDirMock();
-      dirs.set(name, next);
-      return next;
-    },
-    async getFileHandle(name: string, options?: { create?: boolean }) {
-      if (files.has(name)) return files.get(name);
-      if (!options?.create) {
-        const err: any = new Error('NotFound');
-        err.name = 'NotFoundError';
-        throw err;
-      }
-      const next = createFileHandleMock({ text: '' });
-      files.set(name, next);
-      return next;
-    },
-    __debug: {
-      files,
-      dirs,
-    },
-  };
-}
-
 describe('workspace-settings.repository', () => {
   beforeEach(() => {
     vi.mocked(isTauriRuntime).mockReturnValue(false);
-    tauriFsState.files.clear();
   });
 
   it('returns null on missing files', async () => {
-    const root = createDirMock();
-    const repo = createWorkspaceSettingsRepository({ workspaceDir: root as any });
+    const repo = createWorkspaceSettingsRepository({ vfs: new InMemoryFileSystemAdapter() });
 
     expect(await repo.loadUserSettings()).toBeNull();
     expect(await repo.loadAppSettings()).toBeNull();
@@ -120,8 +22,7 @@ describe('workspace-settings.repository', () => {
   });
 
   it('saves and loads user settings', async () => {
-    const root = createDirMock();
-    const repo = createWorkspaceSettingsRepository({ workspaceDir: root as any });
+    const repo = createWorkspaceSettingsRepository({ vfs: new InMemoryFileSystemAdapter() });
 
     await repo.saveUserSettings({
       openLastProjectOnStart: true,
@@ -181,8 +82,8 @@ describe('workspace-settings.repository', () => {
 
   it('keeps Tauri global app settings separate from workspace settings', async () => {
     vi.mocked(isTauriRuntime).mockReturnValue(true);
-    const root = createDirMock();
-    const repo = createWorkspaceSettingsRepository({ workspaceDir: root as any });
+    const vfs = new InMemoryFileSystemAdapter();
+    const repo = createWorkspaceSettingsRepository({ vfs });
 
     await repo.saveAppSettings({
       ui: { locale: 'en-US', theme: 'dark' },
@@ -206,11 +107,9 @@ describe('workspace-settings.repository', () => {
       },
     } as any);
 
-    expect(tauriFsState.files.has('/mock-config/app.settings.json')).toBe(true);
-
-    const workspaceConfigDir = root.__debug.dirs.get('.fastcat-config');
-    expect(workspaceConfigDir).toBeTruthy();
-    expect(workspaceConfigDir.__debug.files.has('app.settings.json')).toBe(true);
+    // Global app settings → config dir; workspace settings → workspace config dir.
+    expect(await vfs.exists('@config/app.settings.json')).toBe(true);
+    expect(await vfs.exists('@workspace/.fastcat-config/app.settings.json')).toBe(true);
 
     const loadedAppSettings = await repo.loadAppSettings();
     const loadedWorkspaceSettings = await repo.loadWorkspaceSettings();
