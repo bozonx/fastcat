@@ -14,6 +14,8 @@ import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHost
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
+import { isTauriRuntime } from '~/utils/runtime';
+import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 const log = createDevLogger('thumbnail-generator');
 
 export interface ThumbnailTask extends BaseThumbnailTask {
@@ -393,18 +395,25 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     const file = await projectStore.getFileByPath(task.projectRelativePath);
     if (!file) throw new Error(`Source file not found: ${task.projectRelativePath}`);
 
-    setThumbnailHostApi(
-      createVideoCoreHostApi({
-        getCurrentProjectId: () => projectStore.currentProjectId,
-        getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-        getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-        getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-        getFileByPath: async (path) => projectStore.getFileByPath(path),
-        onExportProgress: () => {},
-      }),
-    );
-
-    const { client } = getThumbnailWorkerClient();
+    const sourceHandle = isTauriRuntime()
+      ? await projectStore.getFileHandleByPath(task.projectRelativePath)
+      : null;
+    const nativeSourcePath = getNativeFileHandlePath(sourceHandle);
+    const client = nativeSourcePath
+      ? null
+      : (() => {
+          setThumbnailHostApi(
+            createVideoCoreHostApi({
+              getCurrentProjectId: () => projectStore.currentProjectId,
+              getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+              getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+              getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+              getFileByPath: async (path) => projectStore.getFileByPath(path),
+              onExportProgress: () => {},
+            }),
+          );
+          return getThumbnailWorkerClient().client;
+        })();
 
     const vfs = useVfs();
     const vfsPath = getTimelineThumbnailVfsPath(task.projectId, task.id);
@@ -437,15 +446,23 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
           let blobs: (Blob | null)[] = [];
 
           try {
-            blobs = await client.extractVideoFrameBlobs(file, {
-              timesS: chunkTimes,
-              maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
-              maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
-              quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
-              mimeType: 'image/webp',
-              taskId: task.id,
-              keepAlive: true,
-            });
+            blobs = nativeSourcePath
+              ? await nativeVideoFrameWebps({
+                  sourcePath: nativeSourcePath,
+                  timesSec: chunkTimes,
+                  maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
+                  maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
+                  quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+                })
+              : await client!.extractVideoFrameBlobs(file, {
+                  timesS: chunkTimes,
+                  maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
+                  maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
+                  quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
+                  mimeType: 'image/webp',
+                  taskId: task.id,
+                  keepAlive: true,
+                });
           } catch (error) {
             if (this.isCancelled(task.id)) {
               return;
@@ -494,10 +511,12 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       }
     } finally {
       this.opfsExistingFiles.delete(task.id);
-      try {
-        await client.releaseFrameExtractor(task.id);
-      } catch {
-        // ignore
+      if (client) {
+        try {
+          await client.releaseFrameExtractor(task.id);
+        } catch {
+          // ignore
+        }
       }
     }
   }

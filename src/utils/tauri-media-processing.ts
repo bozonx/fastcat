@@ -91,6 +91,42 @@ export async function nativeRenderTimelineFrameWebp(params: {
   return new Blob([new Uint8Array(bytes)], { type: 'image/webp' });
 }
 
+export async function nativeVideoFrameWebp(params: {
+  sourcePath: string;
+  timeSec: number;
+  maxWidth: number;
+  maxHeight: number;
+  quality: number;
+}): Promise<Blob> {
+  const bytes = await invoke<number[]>('native_video_frame_webp', {
+    sourcePath: params.sourcePath,
+    timeSec: params.timeSec,
+    maxWidth: params.maxWidth,
+    maxHeight: params.maxHeight,
+    quality: params.quality,
+  });
+  return new Blob([new Uint8Array(bytes)], { type: 'image/webp' });
+}
+
+export async function nativeVideoFrameWebps(params: {
+  sourcePath: string;
+  timesSec: number[];
+  maxWidth: number;
+  maxHeight: number;
+  quality: number;
+}): Promise<(Blob | null)[]> {
+  const results = await invoke<(number[] | null)[]>('native_video_frame_webps', {
+    sourcePath: params.sourcePath,
+    timesSec: params.timesSec,
+    maxWidth: params.maxWidth,
+    maxHeight: params.maxHeight,
+    quality: params.quality,
+  });
+  return results.map((bytes) =>
+    bytes ? new Blob([new Uint8Array(bytes)], { type: 'image/webp' }) : null,
+  );
+}
+
 function buildNativeConvertOptions(request: ConversionRequest) {
   if (request.type === 'video' && request.video) {
     return {

@@ -152,6 +152,8 @@ pub fn run() {
             ipc::media_cmd::native_media_cancel,
             ipc::media_cmd::native_timeline_render_frame_to_file,
             ipc::media_cmd::native_timeline_render_frame_webp,
+            ipc::media_cmd::native_video_frame_webp,
+            ipc::media_cmd::native_video_frame_webps,
             ipc::monitor_cmd::monitor_set_scene,
             ipc::monitor_cmd::monitor_play,
             ipc::monitor_cmd::monitor_pause,

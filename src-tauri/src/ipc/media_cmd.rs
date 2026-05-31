@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use tauri::State;
 
 use crate::media::processing::{
-    convert_media, generate_proxy, probe_media, NativeConvertOptions, NativeMediaMetadata,
-    NativeMediaTasks, NativeProxyOptions,
+    convert_media, extract_video_frame_webp, extract_video_frame_webps, generate_proxy,
+    probe_media, NativeConvertOptions, NativeMediaMetadata, NativeMediaTasks, NativeProxyOptions,
 };
 use crate::media::timeline_render::{render_timeline_frame_to_file, render_timeline_frame_to_webp};
 use crate::monitor::MonitorScene;
@@ -89,6 +89,40 @@ pub async fn native_timeline_render_frame_webp(
 ) -> Result<Vec<u8>, String> {
     tokio::task::spawn_blocking(move || {
         render_timeline_frame_to_webp(scene, time_sec, width, height, quality)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn native_video_frame_webp(
+    source_path: String,
+    time_sec: f64,
+    max_width: u32,
+    max_height: u32,
+    quality: f32,
+) -> Result<Vec<u8>, String> {
+    let source_path = PathBuf::from(source_path);
+    tokio::task::spawn_blocking(move || {
+        extract_video_frame_webp(&source_path, time_sec, max_width, max_height, quality)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn native_video_frame_webps(
+    source_path: String,
+    times_sec: Vec<f64>,
+    max_width: u32,
+    max_height: u32,
+    quality: f32,
+) -> Result<Vec<Option<Vec<u8>>>, String> {
+    let source_path = PathBuf::from(source_path);
+    tokio::task::spawn_blocking(move || {
+        extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality)
     })
     .await
     .map_err(|e| e.to_string())?

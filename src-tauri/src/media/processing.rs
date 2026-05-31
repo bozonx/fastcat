@@ -296,6 +296,78 @@ pub fn convert_media(
     run_ffmpeg_task(tasks, task_id, args)
 }
 
+pub fn extract_video_frame_webp(
+    source_path: &Path,
+    time_sec: f64,
+    max_width: u32,
+    max_height: u32,
+    quality: f32,
+) -> Result<Vec<u8>> {
+    let metadata = probe_media(source_path)?;
+    let video = metadata
+        .video
+        .as_ref()
+        .ok_or_else(|| anyhow!("source has no video stream"))?;
+    let (width, height) = fit_even_size(video.width, video.height, max_width, max_height);
+    let output = Command::new("ffmpeg")
+        .arg("-nostdin")
+        .arg("-v")
+        .arg("error")
+        .arg("-ss")
+        .arg(format_time(time_sec))
+        .arg("-i")
+        .arg(source_path)
+        .arg("-frames:v")
+        .arg("1")
+        .arg("-vf")
+        .arg(format!("scale={width}:{height}"))
+        .arg("-c:v")
+        .arg("libwebp")
+        .arg("-quality")
+        .arg(webp_quality_arg(quality))
+        .arg("-f")
+        .arg("image2pipe")
+        .arg("-")
+        .stdin(Stdio::null())
+        .output()
+        .context("failed to run ffmpeg frame extraction")?;
+
+    if !output.status.success() {
+        return Err(anyhow!(
+            "ffmpeg frame extraction failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    if output.stdout.is_empty() {
+        return Err(anyhow!("ffmpeg frame extraction returned empty output"));
+    }
+    Ok(output.stdout)
+}
+
+pub fn extract_video_frame_webps(
+    source_path: &Path,
+    times_sec: &[f64],
+    max_width: u32,
+    max_height: u32,
+    quality: f32,
+) -> Result<Vec<Option<Vec<u8>>>> {
+    times_sec
+        .iter()
+        .map(|time_sec| {
+            extract_video_frame_webp(source_path, *time_sec, max_width, max_height, quality)
+                .map(Some)
+                .or_else(|error| {
+                    log::warn!(
+                        "[native-media] thumbnail extraction failed at {:.3}s for {}: {error}",
+                        time_sec,
+                        source_path.display()
+                    );
+                    Ok(None)
+                })
+        })
+        .collect()
+}
+
 fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, args: Vec<String>) -> Result<()> {
     let child = Command::new("ffmpeg")
         .args(&args)
@@ -363,6 +435,19 @@ fn scaled_even_size(width: u32, height: u32, max_pixels: u32) -> (u32, u32) {
     )
 }
 
+fn fit_even_size(width: u32, height: u32, max_width: u32, max_height: u32) -> (u32, u32) {
+    if width == 0 || height == 0 {
+        return (2, 2);
+    }
+    let scale = (max_width.max(1) as f64 / width as f64)
+        .min(max_height.max(1) as f64 / height as f64)
+        .min(1.0);
+    (
+        even((width as f64 * scale).round() as u32),
+        even((height as f64 * scale).round() as u32),
+    )
+}
+
 fn even(value: u32) -> u32 {
     (value.max(2) + 1) & !1
 }
@@ -383,6 +468,23 @@ fn format_fps(fps: f64) -> String {
     } else {
         "30.000000".into()
     }
+}
+
+fn format_time(time_sec: f64) -> String {
+    if time_sec.is_finite() && time_sec > 0.0 {
+        format!("{time_sec:.6}")
+    } else {
+        "0.000000".into()
+    }
+}
+
+fn webp_quality_arg(quality: f32) -> String {
+    let value = if quality.is_finite() {
+        quality.clamp(0.01, 1.0)
+    } else {
+        0.7
+    };
+    format!("{}", (value * 100.0).round() as u32)
 }
 
 fn parse_rational(s: &str) -> Option<f64> {
@@ -408,6 +510,13 @@ mod tests {
     fn scaled_even_size_downscales_to_pixel_budget() {
         let (w, h) = scaled_even_size(3840, 2160, 1920 * 1080);
         assert_eq!((w, h), (1920, 1080));
+    }
+
+    #[test]
+    fn fit_even_size_fits_box_without_upscale() {
+        assert_eq!(fit_even_size(1920, 1080, 320, 320), (320, 180));
+        assert_eq!(fit_even_size(1080, 1920, 320, 320), (180, 320));
+        assert_eq!(fit_even_size(100, 50, 320, 320), (100, 50));
     }
 
     #[test]

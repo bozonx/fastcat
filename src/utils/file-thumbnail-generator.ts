@@ -17,6 +17,12 @@ import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-edi
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { isTauriRuntime } from '~/utils/runtime';
+import {
+  getNativeFileHandlePath,
+  nativeMediaMetadata,
+  nativeVideoFrameWebp,
+} from '~/utils/tauri-media-processing';
 const log = createDevLogger('file-thumbnail-generator');
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
@@ -226,6 +232,33 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         return;
       }
     } else {
+      if (isTauriRuntime()) {
+        const handle = await projectStore.getFileHandleByPath(task.projectRelativePath);
+        const sourcePath = getNativeFileHandlePath(handle);
+        if (sourcePath) {
+          try {
+            const meta = await nativeMediaMetadata(sourcePath);
+            const timeSec = Math.max(
+              0,
+              (meta.duration || 0) * FILE_MANAGER_THUMBNAILS.POSITION_FRACTION,
+            );
+            blob = await nativeVideoFrameWebp({
+              sourcePath,
+              timeSec,
+              maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+              maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+              quality: FILE_MANAGER_THUMBNAILS.QUALITY,
+            });
+          } catch (e) {
+            if (!this.isCancelled(task.id)) {
+              task.onError?.(e instanceof Error ? e : new Error(String(e)));
+            }
+            return;
+          }
+        }
+      }
+
+      if (!blob) {
       setThumbnailHostApi(
         createVideoCoreHostApi({
           getCurrentProjectId: () => projectStore.currentProjectId,
@@ -255,6 +288,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
           task.onError?.(e instanceof Error ? e : new Error(String(e)));
         }
         return;
+      }
       }
     }
 
