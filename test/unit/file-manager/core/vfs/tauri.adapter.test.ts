@@ -392,7 +392,50 @@ describe('TauriFileSystemAdapter', () => {
       );
       await adapter.writeStream('docs/x.bin');
       expect(mkdir).toHaveBeenCalled();
-      expect(openWriteFileStream).toHaveBeenCalledWith('/root/docs/x.bin');
+      expect(openWriteFileStream).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/root\/docs\/\.x\.bin\..*\.tmp$/),
+      );
+    });
+
+    it('commits a write stream by renaming the temp file on close', async () => {
+      const adapter = new TauriFileSystemAdapter('/root');
+      vi.mocked(mkdir).mockResolvedValue();
+      vi.mocked(rename).mockResolvedValue();
+      vi.mocked(openWriteFileStream).mockResolvedValue(
+        new WritableStream<Uint8Array>({
+          write: () => {},
+        }),
+      );
+
+      const stream = await adapter.writeStream('docs/x.bin');
+      const writer = stream.getWriter();
+      await writer.write(new Uint8Array([1, 2, 3]));
+      await writer.close();
+
+      const tempPath = vi.mocked(openWriteFileStream).mock.calls[0][0] as string;
+      expect(rename).toHaveBeenCalledWith(tempPath, '/root/docs/x.bin', {
+        oldPathBaseDir: undefined,
+        newPathBaseDir: undefined,
+      });
+      expect(remove).not.toHaveBeenCalledWith(tempPath, expect.anything());
+    });
+
+    it('removes the temp file when a write stream is aborted', async () => {
+      const adapter = new TauriFileSystemAdapter('/root');
+      vi.mocked(mkdir).mockResolvedValue();
+      vi.mocked(remove).mockResolvedValue();
+      vi.mocked(openWriteFileStream).mockResolvedValue(
+        new WritableStream<Uint8Array>({
+          write: () => {},
+        }),
+      );
+
+      const stream = await adapter.writeStream('docs/x.bin');
+      await stream.abort('cancelled');
+
+      const tempPath = vi.mocked(openWriteFileStream).mock.calls[0][0] as string;
+      expect(remove).toHaveBeenCalledWith(tempPath, { baseDir: undefined });
+      expect(rename).not.toHaveBeenCalled();
     });
 
     it('honors abort before opening streams', async () => {

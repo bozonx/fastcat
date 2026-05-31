@@ -106,7 +106,7 @@ async function writeImportedFile(params: {
     throw new DOMException('The operation was aborted.', 'AbortError');
   }
 
-  const writable = await params.vfs.writeStream(params.targetPath);
+  const writable = await params.vfs.writeStream(params.targetPath, { signal: params.abortSignal });
   let currentFileBytes = 0;
   const progressStream = new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {

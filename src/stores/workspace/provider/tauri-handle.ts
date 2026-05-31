@@ -9,8 +9,11 @@ import {
   rename,
 } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
+import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
+
+const STREAM_WRITER_THRESHOLD_BYTES = 1024 * 1024;
 
 export class TauriFileHandle {
   kind = 'file' as const;
@@ -36,23 +39,74 @@ export class TauriFileHandle {
     seek: (position: number) => Promise<void>;
     truncate: (size: number) => Promise<void>;
     close: () => Promise<void>;
+    abort: (reason?: unknown) => Promise<void>;
   }> {
     const random = randomToken(6);
     const tempPath = `${this.path}.${Date.now().toString(36)}.${random}.tmp`;
 
+    type WriteMode = 'pending' | 'stream' | 'buffer';
+    let mode: WriteMode = 'pending';
+    let streamWriter: WritableStreamDefaultWriter<Uint8Array> | null = null;
+    let releaseStreamSlot: (() => void) | null = null;
     let buffer = new Uint8Array(0);
-    if (options?.keepExistingData !== false) {
-      if (await exists(this.path)) {
+    let fileSize = 0;
+    let position = 0;
+
+    const ensureBufferMode = async () => {
+      if (mode === 'buffer') return;
+      if (mode === 'stream') {
+        throw new Error('Cannot seek or truncate after streaming writes have started');
+      }
+      mode = 'buffer';
+      if (options?.keepExistingData !== false && (await exists(this.path))) {
         try {
           buffer = await readFile(this.path);
+          fileSize = buffer.length;
         } catch {
           // Ignore and start empty if file read fails
         }
       }
-    }
+    };
 
-    let fileSize = buffer.length;
-    let position = 0;
+    const ensureStreamMode = async () => {
+      if (mode === 'stream') return;
+      if (mode === 'buffer') return;
+      mode = 'stream';
+      releaseStreamSlot = await acquireStreamingFileIoSlot();
+      try {
+        const stream = await openWriteFileStream(tempPath);
+        streamWriter = stream.getWriter();
+      } catch (error) {
+        releaseStreamSlot();
+        releaseStreamSlot = null;
+        mode = 'pending';
+        throw error;
+      }
+    };
+
+    const promoteAppendBufferToStreamIfLarge = async () => {
+      if (mode !== 'buffer') return;
+      if (options?.keepExistingData !== false) return;
+      if (fileSize < STREAM_WRITER_THRESHOLD_BYTES) return;
+      if (position !== fileSize) return;
+
+      const finalData = buffer.subarray(0, fileSize);
+      mode = 'stream';
+      releaseStreamSlot = await acquireStreamingFileIoSlot();
+      try {
+        const stream = await openWriteFileStream(tempPath);
+        streamWriter = stream.getWriter();
+        await streamWriter.write(finalData);
+      } catch (error) {
+        releaseStreamSlot();
+        releaseStreamSlot = null;
+        mode = 'buffer';
+        throw error;
+      }
+      buffer = new Uint8Array(0);
+      fileSize = 0;
+      position = 0;
+    };
 
     const toUint8Array = async (data: unknown): Promise<Uint8Array> => {
       if (typeof data === 'string') {
@@ -103,6 +157,7 @@ export class TauriFileHandle {
     return {
       write: async (data: unknown) => {
         if (data && typeof data === 'object' && 'type' in data) {
+          await ensureBufferMode();
           const params = data as {
             type: 'write' | 'seek' | 'truncate';
             position?: number;
@@ -135,19 +190,57 @@ export class TauriFileHandle {
           }
         }
 
+        if (mode === 'buffer') {
+          await writeInternal(data);
+          await promoteAppendBufferToStreamIfLarge();
+          return;
+        }
+
+        if (mode === 'stream') {
+          await streamWriter!.write(await toUint8Array(data));
+          return;
+        }
+
+        await ensureBufferMode();
         await writeInternal(data);
+        await promoteAppendBufferToStreamIfLarge();
       },
       seek: async (pos: number) => {
+        await ensureBufferMode();
         position = pos;
       },
       truncate: async (size: number) => {
+        await ensureBufferMode();
         truncateInternal(size);
       },
       close: async () => {
-        const finalData = buffer.subarray(0, fileSize);
-        await withFileWriteSlot(() => writeFile(tempPath, finalData));
-        if (await exists(tempPath)) {
+        try {
+          if (mode === 'stream') {
+            await streamWriter?.close();
+            releaseStreamSlot?.();
+            releaseStreamSlot = null;
+          } else {
+            await ensureBufferMode();
+            const finalData = buffer.subarray(0, fileSize);
+            await withFileWriteSlot(() => writeFile(tempPath, finalData));
+          }
           await withFileWriteSlot(() => rename(tempPath, this.path));
+        } catch (error) {
+          releaseStreamSlot?.();
+          releaseStreamSlot = null;
+          await remove(tempPath).catch(() => {});
+          throw error;
+        }
+      },
+      abort: async (reason?: unknown) => {
+        try {
+          if (mode === 'stream') {
+            await streamWriter?.abort(reason);
+          }
+        } finally {
+          releaseStreamSlot?.();
+          releaseStreamSlot = null;
+          await remove(tempPath).catch(() => {});
         }
       },
     };

@@ -196,9 +196,20 @@ export interface IFileSystemAdapter {
   /** Write JSON via `writeFile`. */
   writeJson(path: string, data: unknown, options?: VfsOperationOptions): Promise<void>;
 
-  /** Read file contents as a `ReadableStream`. */
+  /**
+   * Read file contents as a `ReadableStream`.
+   *
+   * Implementations that hold platform resources or I/O-budget slots for the
+   * stream must release them when the stream closes, errors, or is cancelled.
+   */
   readStream(path: string, options?: VfsOperationOptions): Promise<ReadableStream<Uint8Array>>;
 
-  /** Open a `WritableStream` to a file. Creates parent directories. */
+  /**
+   * Open an atomic `WritableStream` to a file. Creates parent directories.
+   *
+   * Bytes are staged outside the final path and committed only when the stream
+   * closes successfully. Abort/error paths must remove the staged file where the
+   * platform allows it.
+   */
   writeStream(path: string, options?: VfsOperationOptions): Promise<WritableStream<Uint8Array>>;
 }

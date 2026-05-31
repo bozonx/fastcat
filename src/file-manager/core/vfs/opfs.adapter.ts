@@ -624,7 +624,39 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     throwIfAborted(options?.signal, path);
     const file = await this.getFile(path);
     if (!file) throw new VfsNotFoundError(path);
-    return file.stream();
+    const releaseIo = await acquireStreamingFileIoSlot();
+    const reader = file.stream().getReader();
+    let released = false;
+    const releaseOnce = () => {
+      if (released) return;
+      released = true;
+      releaseIo();
+    };
+
+    return new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          throwIfAborted(options?.signal, path);
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.close();
+            releaseOnce();
+            return;
+          }
+          if (value) controller.enqueue(value);
+        } catch (e) {
+          releaseOnce();
+          controller.error(e);
+        }
+      },
+      async cancel(reason) {
+        try {
+          await reader.cancel(reason);
+        } finally {
+          releaseOnce();
+        }
+      },
+    });
   }
 
   async writeStream(
@@ -635,6 +667,8 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     const releasePath = await acquireQueuedFileAccess(this.getFileAccessKey(path));
     const releaseIo = await acquireStreamingFileIoSlot();
     const parentHandle = await this.getParentDirHandle(path, { create: true });
+    let tempName = '';
+    let tempHandle: FileSystemFileHandle | null = null;
     try {
       if (!parentHandle) throw new VfsNotFoundError(path);
       await this.ensureReadWritePermission(parentHandle, path);
@@ -643,14 +677,17 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
       const fileName = parts[parts.length - 1];
       if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
 
-      const fileHandle = await parentHandle.getFileHandle(fileName, { create: true });
-      await this.ensureReadWritePermission(fileHandle, path);
+      const supportsAtomicMove = await this.supportsHandleMove(parentHandle);
+      tempName = supportsAtomicMove ? this.createTempName(fileName) : fileName;
+      tempHandle = await parentHandle.getFileHandle(tempName, { create: true });
+      await this.ensureReadWritePermission(tempHandle, path);
       const writable = (await (
-        fileHandle as ExtendedFileHandle
+        tempHandle as ExtendedFileHandle
       ).createWritable()) as unknown as WritableStream<Uint8Array>;
       const writer = writable.getWriter();
       let pathReleased = false;
       let ioReleased = false;
+      let closed = false;
       const releasePathOnce = () => {
         if (pathReleased) return;
         pathReleased = true;
@@ -661,15 +698,27 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         ioReleased = true;
         releaseIo();
       };
+      const cleanupTemp = async () => {
+        if (!tempName || tempName === fileName || closed) return;
+        await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
+      };
 
       return new WritableStream<Uint8Array>({
         write: async (chunk) => {
+          throwIfAborted(options?.signal, path);
           await writer.write(chunk);
         },
         close: async () => {
           try {
             await writer.close();
+            if (tempName !== fileName) {
+              await (tempHandle as ExtendedHandle).move!(parentHandle, fileName);
+            }
+            closed = true;
             this.revokeObjectUrlsUnder(path);
+          } catch (e) {
+            await cleanupTemp();
+            throw e;
           } finally {
             releasePathOnce();
             releaseIoOnce();
@@ -678,6 +727,7 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         abort: async (reason) => {
           try {
             await writer.abort(reason);
+            await cleanupTemp();
           } finally {
             releasePathOnce();
             releaseIoOnce();
@@ -685,6 +735,9 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
         },
       });
     } catch (e) {
+      if (parentHandle && tempName) {
+        await (parentHandle as ExtendedDirectoryHandle).removeEntry(tempName).catch(() => {});
+      }
       releasePath();
       releaseIo();
       throw e;

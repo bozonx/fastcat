@@ -34,7 +34,7 @@ import {
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
 import { normalizeFsPath } from '~/file-manager/core/path';
-import { withFileWriteSlot } from '~/utils/io/io-governor';
+import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
 
@@ -483,9 +483,43 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     options?: VfsOperationOptions,
   ): Promise<ReadableStream<Uint8Array>> {
     throwIfAborted(options?.signal, path);
+    const releaseIo = await acquireStreamingFileIoSlot();
     try {
-      return await openReadFileStream(await this.resolveStreamPath(path));
+      const source = await openReadFileStream(await this.resolveStreamPath(path));
+      const reader = source.getReader();
+      let released = false;
+      const releaseOnce = () => {
+        if (released) return;
+        released = true;
+        releaseIo();
+      };
+
+      return new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          try {
+            throwIfAborted(options?.signal, path);
+            const { done, value } = await reader.read();
+            if (done) {
+              controller.close();
+              releaseOnce();
+              return;
+            }
+            if (value) controller.enqueue(value);
+          } catch (e) {
+            releaseOnce();
+            controller.error(e);
+          }
+        },
+        async cancel(reason) {
+          try {
+            await reader.cancel(reason);
+          } finally {
+            releaseOnce();
+          }
+        },
+      });
     } catch (e) {
+      releaseIo();
       if (isNotFoundError(e)) throw new VfsNotFoundError(path, { cause: e });
       throw wrapPlatformError(e, path);
     }
@@ -498,9 +532,65 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     throwIfAborted(options?.signal, path);
     const normalizedPath = this.normalizePath(path);
     await this.ensureParentDirectory(normalizedPath);
+    const parentPath = this.getParentPath(normalizedPath);
+    const fileName = this.getEntryName(normalizedPath);
+    if (!fileName) throw new VfsInvalidArgumentError(`Invalid file name in path: ${path}`);
+    const tempRelative = parentPath
+      ? `${parentPath}/${this.createTempName(fileName)}`
+      : this.createTempName(fileName);
+    const tempPath = await this.resolveStreamPath(tempRelative);
+    const final = await this.getTauriFsArgs(normalizedPath);
+    const temp = await this.getTauriFsArgs(tempRelative);
+    const releaseIo = await acquireStreamingFileIoSlot();
     try {
-      return await openWriteFileStream(await this.resolveStreamPath(normalizedPath));
+      const target = await openWriteFileStream(tempPath);
+      const writer = target.getWriter();
+      let released = false;
+      let committed = false;
+      const releaseOnce = () => {
+        if (released) return;
+        released = true;
+        releaseIo();
+      };
+      const cleanupTemp = async () => {
+        if (committed) return;
+        await remove(temp.tauriPath, temp.options).catch(() => {});
+      };
+
+      return new WritableStream<Uint8Array>({
+        async write(chunk) {
+          throwIfAborted(options?.signal, path);
+          await writer.write(chunk);
+        },
+        async close() {
+          try {
+            await writer.close();
+            await withFileWriteSlot(() =>
+              rename(temp.tauriPath, final.tauriPath, {
+                oldPathBaseDir: temp.options.baseDir,
+                newPathBaseDir: final.options.baseDir,
+              }),
+            );
+            committed = true;
+          } catch (e) {
+            await cleanupTemp();
+            throw wrapPlatformError(e, path);
+          } finally {
+            releaseOnce();
+          }
+        },
+        async abort(reason) {
+          try {
+            await writer.abort(reason);
+          } finally {
+            await cleanupTemp();
+            releaseOnce();
+          }
+        },
+      });
     } catch (e) {
+      releaseIo();
+      await remove(temp.tauriPath, temp.options).catch(() => {});
       throw wrapPlatformError(e, path);
     }
   }

@@ -12,6 +12,7 @@ import {
   rename,
 } from '@tauri-apps/plugin-fs';
 import { join } from '@tauri-apps/api/path';
+import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
   readFile: vi.fn(),
@@ -28,9 +29,18 @@ vi.mock('@tauri-apps/api/path', () => ({
   join: vi.fn((...args) => Promise.resolve(args.join('/'))),
 }));
 
+vi.mock('tauri-plugin-fs-stream-api', () => ({
+  openWriteFileStream: vi.fn(),
+}));
+
 describe('TauriFileHandle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(openWriteFileStream).mockResolvedValue(
+      new WritableStream<Uint8Array>({
+        write: () => {},
+      }),
+    );
   });
 
   it('initializes correctly', () => {
@@ -162,6 +172,45 @@ describe('TauriFileHandle', () => {
         expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
         '/test/file.txt',
       );
+    });
+
+    it('removes the temp file when close fails', async () => {
+      const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
+      vi.mocked(rename).mockRejectedValueOnce(new Error('rename failed'));
+      vi.mocked(remove).mockResolvedValue();
+
+      const writable = await handle.createWritable({ keepExistingData: false });
+      await writable.write('hello');
+      await expect(writable.close()).rejects.toThrow('rename failed');
+
+      expect(remove).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
+      );
+    });
+
+    it('streams large append-only writes instead of buffering the whole file', async () => {
+      const handle = new TauriFileHandle('/test/file.txt', 'file.txt');
+      const writer = {
+        write: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+        abort: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.mocked(openWriteFileStream).mockResolvedValue({
+        getWriter: () => writer,
+      } as unknown as WritableStream<Uint8Array>);
+      const writable = await handle.createWritable({ keepExistingData: false });
+      const largeChunk = new Uint8Array(1024 * 1024);
+
+      await writable.write(largeChunk);
+      await writable.close();
+
+      expect(openWriteFileStream).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9]+\.[a-z0-9]+\.tmp$/),
+      );
+      expect(writer.write).toHaveBeenCalledWith(largeChunk);
+      expect(writer.close).toHaveBeenCalled();
+      expect(writeFile).not.toHaveBeenCalled();
+      expect(rename).toHaveBeenCalled();
     });
   });
 });

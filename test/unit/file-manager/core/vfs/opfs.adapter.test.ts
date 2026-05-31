@@ -551,6 +551,29 @@ describe('OpfsFileSystemAdapter', () => {
       const blob = await adapter.readFile('streamed.txt');
       expect(await blob.text()).toBe('streamed');
     });
+
+    it('commits writeStream through a temp file when handle.move is available', async () => {
+      const originalGetFileHandle = root.getFileHandle.getMockImplementation()!;
+      root.getFileHandle.mockImplementation(async (name: string, options?: { create?: boolean }) => {
+        const handle = (await originalGetFileHandle(name, options)) as MockFileHandle;
+        if (name.startsWith('.')) {
+          (handle as unknown as { move: (parent: MockDirectoryHandle, nextName: string) => void })
+            .move = (parent, nextName) => {
+            parent.addChild(nextName, handle);
+            void parent.removeEntry(name).catch(() => {});
+          };
+        }
+        return handle;
+      });
+
+      const stream = await adapter.writeStream('atomic.txt');
+      const writer = stream.getWriter();
+      await writer.write(new TextEncoder().encode('atomic'));
+      await writer.close();
+
+      expect(root.getChild('atomic.txt')).toBeDefined();
+      expect((await adapter.readFile('atomic.txt')).text()).resolves.toBe('atomic');
+    });
   });
 
   describe('listEntryNames', () => {
