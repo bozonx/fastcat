@@ -341,7 +341,11 @@ fn draw_shape(scene: &mut VelloScene, spec: &ShapeLayer, xform: Affine) {
     }
 }
 
-fn build_shape_path(geometry: &ShapeGeometry, natural_size: (u32, u32), stroke_width: f64) -> BezPath {
+fn build_shape_path(
+    geometry: &ShapeGeometry,
+    natural_size: (u32, u32),
+    stroke_width: f64,
+) -> BezPath {
     let w = natural_size.0 as f64;
     let h = natural_size.1 as f64;
     let sw = stroke_width.max(0.0);
@@ -401,8 +405,14 @@ fn build_shape_path(geometry: &ShapeGeometry, natural_size: (u32, u32), stroke_w
             let rw = size * *width;
             let rh = size * *height;
             let r = *corner_radius * rw.min(rh) * 0.5;
-            RoundedRect::new(cx - rw * 0.5, cy - rh * 0.5, cx + rw * 0.5, cy + rh * 0.5, r)
-                .to_path(0.1)
+            RoundedRect::new(
+                cx - rw * 0.5,
+                cy - rh * 0.5,
+                cx + rw * 0.5,
+                cy + rh * 0.5,
+                r,
+            )
+            .to_path(0.1)
         }
     }
 }

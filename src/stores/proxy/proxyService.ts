@@ -8,6 +8,13 @@ import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/work
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { BackgroundTasksStore } from '~/stores/background-tasks.store';
+import { isTauriRuntime } from '~/utils/runtime';
+import {
+  getNativeFileHandlePath,
+  nativeCancelMediaTask,
+  nativeGenerateProxy,
+  nativeMediaMetadata,
+} from '~/utils/tauri-media-processing';
 const log = createDevLogger('proxyService');
 
 export interface ProxyService {
@@ -273,6 +280,42 @@ export function createProxyService(params: {
 
             const optimization = params.getOptimizationSettings();
 
+            if (isTauriRuntime()) {
+              const sourceHandle = await params.getFileHandleByPath(projectRelativePath);
+              const sourcePath = getNativeFileHandlePath(sourceHandle);
+              const targetPath = getNativeFileHandlePath(proxyFileHandle);
+              if (sourcePath && targetPath) {
+                const meta = await nativeMediaMetadata(sourcePath);
+                const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+                if (!durationUs) throw new Error('Invalid video duration');
+                await nativeGenerateProxy({
+                  taskId,
+                  sourcePath,
+                  targetPath,
+                  options: {
+                    maxPixels: optimization.proxyMaxPixels,
+                    videoBitrateBps: optimization.proxyVideoBitrateMbps * 1_000_000,
+                    audioBitrateBps: optimization.proxyAudioBitrateKbps * 1000,
+                    videoCodec: optimization.proxyVideoCodec,
+                    copyOpusAudio: optimization.proxyCopyOpusAudio,
+                  },
+                });
+                params.proxyProgress.value = new Map(params.proxyProgress.value).set(
+                  projectRelativePath,
+                  100,
+                );
+                params.backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
+                params.existingProxies.value = new Set([
+                  ...params.existingProxies.value,
+                  projectRelativePath,
+                ]);
+                if (bgTaskId) {
+                  params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
+                }
+                return;
+              }
+            }
+
             const { client } = getProxyWorkerClient();
 
             const meta = await client.extractMetadata(file);
@@ -458,8 +501,12 @@ export function createProxyService(params: {
     const taskId = params.proxyTaskIds.value.get(projectRelativePath);
     if (taskId && params.activeWorkerPaths.value.has(projectRelativePath)) {
       try {
-        const { client } = getProxyWorkerClient();
-        await client.cancelExport(taskId);
+        if (isTauriRuntime()) {
+          await nativeCancelMediaTask(taskId);
+        } else {
+          const { client } = getProxyWorkerClient();
+          await client.cancelExport(taskId);
+        }
       } catch {
         // ignore
       }

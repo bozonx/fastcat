@@ -146,6 +146,12 @@ pub fn run() {
             allow_path_scope,
             allow_dev_directory_scope,
             video_render::webgpu_render_engine_status,
+            ipc::media_cmd::native_media_metadata,
+            ipc::media_cmd::native_media_generate_proxy,
+            ipc::media_cmd::native_media_convert,
+            ipc::media_cmd::native_media_cancel,
+            ipc::media_cmd::native_timeline_render_frame_to_file,
+            ipc::media_cmd::native_timeline_render_frame_webp,
             ipc::monitor_cmd::monitor_set_scene,
             ipc::monitor_cmd::monitor_play,
             ipc::monitor_cmd::monitor_pause,
@@ -156,6 +162,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_set_canvas_size,
             ipc::monitor_cmd::monitor_close,
         ])
+        .manage(media::processing::NativeMediaTasks::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

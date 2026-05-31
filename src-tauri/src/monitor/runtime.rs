@@ -795,7 +795,7 @@ fn video_frame_to_image(frame: VideoFrame) -> DecodedVideoFrame {
     }
 }
 
-fn rasterize_svg(path: &PathBuf) -> anyhow::Result<(ImageData, (u32, u32))> {
+pub(crate) fn rasterize_svg(path: &PathBuf) -> anyhow::Result<(ImageData, (u32, u32))> {
     let mut options = resvg::usvg::Options {
         resources_dir: path.parent().map(|p| p.to_path_buf()),
         ..resvg::usvg::Options::default()

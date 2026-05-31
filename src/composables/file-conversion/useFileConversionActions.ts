@@ -9,6 +9,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { getExportWorkerClient, restartExportWorker } from '~/utils/video-editor/worker-client';
 import { getWorkspaceFileHandle } from '~/utils/workspace-fs';
+import { isTauriRuntime } from '~/utils/runtime';
 import type { ConversionRequest } from '~/types/conversion';
 import {
   clampPositiveNumber,
@@ -19,6 +20,12 @@ import {
 } from '~/utils/conversion/helpers';
 import { executeMediaConversion } from '~/utils/conversion/media-conversion';
 import { convertImageFile } from '~/utils/conversion/image-conversion';
+import {
+  getNativeFileHandlePath,
+  nativeCancelMediaTask,
+  nativeConvertMedia,
+  nativeMediaMetadata,
+} from '~/utils/tauri-media-processing';
 import {
   DEFAULT_VIDEO_FORMAT,
   DEFAULT_VIDEO_CODEC,
@@ -144,6 +151,18 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
     }
   }
 
+  async function extractEntryMetadata(path: string, file: File) {
+    if (isTauriRuntime()) {
+      const handle = await projectStore.getFileHandleByPath(path);
+      const nativePath = getNativeFileHandlePath(handle);
+      if (nativePath) {
+        return await nativeMediaMetadata(nativePath);
+      }
+    }
+
+    return await extractMetadataWithTimeout(file);
+  }
+
   async function resolveImageSourceFile(path: string): Promise<File | null> {
     const targetVfs = props.targetVfs.value;
     if (targetVfs) {
@@ -211,7 +230,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       try {
         const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
-        const meta = await extractMetadataWithTimeout(file);
+        const meta = await extractEntryMetadata(entry.path, file);
 
         if (
           requestId !== props.conversionModalRequestId.value ||
@@ -306,7 +325,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       try {
         const file = await projectStore.getFileByPath(entry.path);
         if (!file) throw new Error('Failed to access source file');
-        const meta = await extractMetadataWithTimeout(file);
+        const meta = await extractEntryMetadata(entry.path, file);
 
         if (
           requestId !== props.conversionModalRequestId.value ||
@@ -483,8 +502,12 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           cancel: async () => {
             controller.abort();
             try {
-              const { client } = getExportWorkerClient();
-              await client.cancelExport(taskId);
+              if (isTauriRuntime()) {
+                await nativeCancelMediaTask(taskId);
+              } else {
+                const { client } = getExportWorkerClient();
+                await client.cancelExport(taskId);
+              }
             } catch (cancelErr) {
               log.warn('cancelExport failed', cancelErr);
             }
@@ -499,18 +522,35 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
           color: 'neutral',
         });
 
-        executeMediaConversion({
-          request,
-          targetHandle,
-          taskId,
-          backgroundTaskId: bgTaskId,
-          isExternal: props.targetIsExternal.value,
-          signal: controller.signal,
-          isCancelRequested: () => {
-            const task = backgroundTasksStore.tasks.find((item) => item.id === bgTaskId);
-            return task?.status === 'cancelled';
-          },
-        })
+        const runConversion = async () => {
+          if (isTauriRuntime()) {
+            const sourceHandle = props.targetIsExternal.value
+              ? await getWorkspaceFileHandle(entry.path)
+              : await projectStore.getFileHandleByPath(entry.path);
+            const sourcePath = getNativeFileHandlePath(sourceHandle);
+            const targetPath = getNativeFileHandlePath(targetHandle);
+            if (sourcePath && targetPath) {
+              backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
+              await nativeConvertMedia({ taskId, sourcePath, targetPath, request });
+              return;
+            }
+          }
+
+          await executeMediaConversion({
+            request,
+            targetHandle,
+            taskId,
+            backgroundTaskId: bgTaskId,
+            isExternal: props.targetIsExternal.value,
+            signal: controller.signal,
+            isCancelRequested: () => {
+              const task = backgroundTasksStore.tasks.find((item) => item.id === bgTaskId);
+              return task?.status === 'cancelled';
+            },
+          });
+        };
+
+        runConversion()
           .then(async () => {
             backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
             backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');

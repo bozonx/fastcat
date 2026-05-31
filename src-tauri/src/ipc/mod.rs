@@ -5,4 +5,5 @@
 //! существующей timeline-модели (`MonitorScene`) отдельной командой
 //! `monitor_render_at(timeline_sec, w, h)`, а не через параллельный per-frame DTO.
 
+pub mod media_cmd;
 pub mod monitor_cmd;

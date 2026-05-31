@@ -68,7 +68,10 @@ impl VideoFrameCache {
     pub fn frame_le(&mut self, target_pts: f64) -> Option<DecodedVideoFrame> {
         let key = self.index_of(target_pts);
         self.last_request = key;
-        self.frames.range(..=key).next_back().map(|(_, f)| f.clone())
+        self.frames
+            .range(..=key)
+            .next_back()
+            .map(|(_, f)| f.clone())
     }
 
     /// Есть ли в кеше кадр в пределах `tolerance_frames` от target (для fast-path seek).
@@ -80,7 +83,11 @@ impl VideoFrameCache {
             .range(..=key)
             .next_back()
             .map(|(k, _)| (key - *k).abs());
-        let ceil = self.frames.range(key..).next().map(|(k, _)| (*k - key).abs());
+        let ceil = self
+            .frames
+            .range(key..)
+            .next()
+            .map(|(k, _)| (*k - key).abs());
         let best = match (floor, ceil) {
             (Some(a), Some(b)) => a.min(b),
             (Some(a), None) => a,
@@ -123,7 +130,10 @@ mod tests {
             width: 1,
             height: 1,
         };
-        DecodedVideoFrame { pts_sec: pts, image }
+        DecodedVideoFrame {
+            pts_sec: pts,
+            image,
+        }
     }
 
     #[test]

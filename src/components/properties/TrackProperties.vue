@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { BLEND_MODE_OPTIONS as RAW_BLEND_MODE_OPTIONS } from '~/utils/constants';
@@ -19,6 +19,7 @@ import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
+import { useTrackExtraActions } from '~/composables/properties/useTrackExtraActions';
 
 const props = defineProps<{
   track: TimelineTrack;
@@ -152,72 +153,12 @@ const trackColor = computed({
   set: (val: string) => timelineStore.updateTrackProperties(props.track.id, { color: val }),
 });
 
-const sameKindTracks = computed(() =>
-  (timelineStore.timelineDoc?.tracks ?? []).filter((track) => track.kind === props.track.kind),
-);
+const trackRef = toRef(props, 'track');
 
-const nextTrackIndex = computed(() => sameKindTracks.value.length + 1);
-
-function createTrack(options: { insertBeforeId?: string; insertAfterId?: string }) {
-  const nextName = `${props.track.kind === 'video' ? 'Video' : 'Audio'} ${nextTrackIndex.value}`;
-  timelineStore.addTrack(props.track.kind, nextName, options);
-}
-
-const extraActions = computed(() => {
-  const list: Array<{
-    id: string;
-    label: string;
-    icon: string;
-    color?: 'primary' | 'danger' | 'warning' | 'success' | 'neutral';
-    onClick: () => void;
-  }> = [];
-  if (props.track.kind === 'video') {
-    list.push({
-      id: 'generate-captions',
-      label: t('fastcat.captions.generate'),
-      icon: 'i-heroicons-chat-bubble-bottom-center-text',
-      onClick: () => (isGenerateCaptionsOpen.value = true),
-    });
-  }
-
-  list.push(
-    {
-      id: 'create-above',
-      label: t(`fastcat.timeline.add${props.track.kind === 'video' ? 'Video' : 'Audio'}TrackAbove`),
-      icon: props.track.kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
-      onClick: () => createTrack({ insertBeforeId: props.track.id }),
-    },
-    {
-      id: 'create-below',
-      label: t(`fastcat.timeline.add${props.track.kind === 'video' ? 'Video' : 'Audio'}TrackBelow`),
-      icon: props.track.kind === 'video' ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note',
-      onClick: () => createTrack({ insertAfterId: props.track.id }),
-    },
-  );
-
-  // Track reordering actions
-  const isFirst = sameKindTracks.value[0]?.id === props.track.id;
-  const isLast = sameKindTracks.value.at(-1)?.id === props.track.id;
-
-  if (!isFirst) {
-    list.push({
-      id: 'move-up',
-      label: t('fastcat.track.moveUp'),
-      icon: 'i-heroicons-arrow-up',
-      onClick: () => timelineStore.moveTrackUp(props.track.id),
-    });
-  }
-
-  if (!isLast) {
-    list.push({
-      id: 'move-down',
-      label: t('fastcat.track.moveDown'),
-      icon: 'i-heroicons-arrow-down',
-      onClick: () => timelineStore.moveTrackDown(props.track.id),
-    });
-  }
-
-  return list;
+const { extraActions } = useTrackExtraActions({
+  track: trackRef,
+  timelineStore,
+  onGenerateCaptions: () => (isGenerateCaptionsOpen.value = true),
 });
 
 const trackQuickActions = computed(() => {
