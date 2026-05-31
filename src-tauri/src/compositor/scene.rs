@@ -132,12 +132,52 @@ impl LayerKind {
 
 #[derive(Debug, Clone)]
 pub struct ShapeLayer {
-    pub shape_type: String,
+    pub geometry: ShapeGeometry,
     pub fill: Color,
     pub stroke: Color,
     pub stroke_width: f64,
     pub natural_size: (u32, u32),
-    pub config: serde_json::Value,
+}
+
+/// Типизированная геометрия фигуры. Поля-доли уже нормализованы (проценты делятся на 100
+/// и клампятся 0..10) на границе IPC — см. `crate::monitor::runtime::parse_shape_geometry`.
+/// Раньше тут лежал `shape_type: String` + `config: serde_json::Value`, который парсился
+/// строковыми ключами на каждом кадре; перенос в enum убрал stringly-typing и дубли.
+#[derive(Debug, Clone)]
+pub enum ShapeGeometry {
+    Rectangle {
+        width: f64,
+        height: f64,
+        corner_radius: f64,
+    },
+    Circle {
+        squash_x: f64,
+        squash_y: f64,
+    },
+    Triangle {
+        base_length: f64,
+        vertex_offset: f64,
+    },
+    Star {
+        rays: usize,
+        inner_radius: f64,
+    },
+    Bang {
+        rays: usize,
+        inner_radius: f64,
+    },
+    SpeechBubble {
+        width: f64,
+        height: f64,
+        corner_radius: f64,
+        pointer_x: f64,
+        pointer_w: f64,
+        pointer_h: f64,
+        pointer_right: bool,
+    },
+    Cloud {
+        cloud_type: i32,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -288,7 +328,7 @@ impl BlendMode {
 }
 
 fn draw_shape(scene: &mut VelloScene, spec: &ShapeLayer, xform: Affine) {
-    let path = build_shape_path(spec);
+    let path = build_shape_path(&spec.geometry, spec.natural_size, spec.stroke_width);
     scene.fill(Fill::NonZero, xform, Brush::Solid(spec.fill), None, &path);
     if spec.stroke_width > 0.0 {
         scene.stroke(
@@ -301,65 +341,68 @@ fn draw_shape(scene: &mut VelloScene, spec: &ShapeLayer, xform: Affine) {
     }
 }
 
-fn build_shape_path(spec: &ShapeLayer) -> BezPath {
-    let w = spec.natural_size.0 as f64;
-    let h = spec.natural_size.1 as f64;
-    let sw = spec.stroke_width.max(0.0);
+fn build_shape_path(geometry: &ShapeGeometry, natural_size: (u32, u32), stroke_width: f64) -> BezPath {
+    let w = natural_size.0 as f64;
+    let h = natural_size.1 as f64;
+    let sw = stroke_width.max(0.0);
     let size = (w.min(h) - sw * 2.0).max(1.0);
     let cx = w * 0.5;
     let cy = h * 0.5;
     let half = size * 0.5;
-    let cfg = &spec.config;
 
-    match spec.shape_type.as_str() {
-        "circle" => {
-            let rx = half * (1.0 - percent(cfg, "squashX", 0.0));
-            let ry = half * (1.0 - percent(cfg, "squashY", 0.0));
+    match geometry {
+        ShapeGeometry::Circle { squash_x, squash_y } => {
+            let rx = half * (1.0 - *squash_x);
+            let ry = half * (1.0 - *squash_y);
             kurbo::Ellipse::new((cx, cy), (rx.max(1.0), ry.max(1.0)), 0.0).to_path(0.1)
         }
-        "triangle" => {
-            let base = size * percent(cfg, "baseLength", 100.0);
-            let offset = percent(cfg, "vertexOffset", 50.0) * base;
+        ShapeGeometry::Triangle {
+            base_length,
+            vertex_offset,
+        } => {
+            let base = size * *base_length;
+            let offset = *vertex_offset * base;
             polygon(&[
                 (cx - base * 0.5 + offset, cy - half),
                 (cx + base * 0.5, cy + half),
                 (cx - base * 0.5, cy + half),
             ])
         }
-        "star" | "bang" => {
-            let rays = number(
-                cfg,
-                "rays",
-                if spec.shape_type == "star" { 5.0 } else { 12.0 },
-            )
-            .round()
-            .max(2.0) as usize;
-            let inner = half
-                * percent(
-                    cfg,
-                    "innerRadius",
-                    if spec.shape_type == "star" {
-                        40.0
-                    } else {
-                        70.0
-                    },
-                );
-            star_path(cx, cy, half, inner, rays)
+        ShapeGeometry::Star { rays, inner_radius } | ShapeGeometry::Bang { rays, inner_radius } => {
+            star_path(cx, cy, half, half * *inner_radius, *rays)
         }
-        "speech_bubble" => speech_bubble_path(cx, cy, half, size, cfg),
-        "cloud" => cloud_path(cx, cy, half, number(cfg, "cloudType", 1.0).round() as i32),
-        _ => {
-            let rw = size * percent(cfg, "width", 100.0);
-            let rh = size * percent(cfg, "height", 100.0);
-            let r = percent(cfg, "cornerRadius", 0.0) * rw.min(rh) * 0.5;
-            RoundedRect::new(
-                cx - rw * 0.5,
-                cy - rh * 0.5,
-                cx + rw * 0.5,
-                cy + rh * 0.5,
-                r,
-            )
-            .to_path(0.1)
+        ShapeGeometry::SpeechBubble {
+            width,
+            height,
+            corner_radius,
+            pointer_x,
+            pointer_w,
+            pointer_h,
+            pointer_right,
+        } => speech_bubble_path(SpeechBubbleParams {
+            cx,
+            cy,
+            half,
+            size,
+            width: *width,
+            height: *height,
+            corner_radius: *corner_radius,
+            pointer_x: *pointer_x,
+            pointer_w: *pointer_w,
+            pointer_h: *pointer_h,
+            pointer_right: *pointer_right,
+        }),
+        ShapeGeometry::Cloud { cloud_type } => cloud_path(cx, cy, half, *cloud_type),
+        ShapeGeometry::Rectangle {
+            width,
+            height,
+            corner_radius,
+        } => {
+            let rw = size * *width;
+            let rh = size * *height;
+            let r = *corner_radius * rw.min(rh) * 0.5;
+            RoundedRect::new(cx - rw * 0.5, cy - rh * 0.5, cx + rw * 0.5, cy + rh * 0.5, r)
+                .to_path(0.1)
         }
     }
 }
@@ -447,40 +490,51 @@ fn star_path(cx: f64, cy: f64, outer: f64, inner: f64, rays: usize) -> BezPath {
     polygon(&points)
 }
 
-fn speech_bubble_path(cx: f64, cy: f64, half: f64, size: f64, cfg: &serde_json::Value) -> BezPath {
-    let w = size * percent(cfg, "width", 100.0);
-    let h = size * percent(cfg, "height", 70.0);
-    let x = cx - w * 0.5;
-    let y = cy - h * 0.5 - half * 0.15;
-    let r = (percent(cfg, "cornerRadius", 20.0) * w.min(h) * 0.5).min(w.min(h) * 0.5);
-    let pointer_x = w * percent(cfg, "pointerX", 30.0);
-    let pointer_w = w * percent(cfg, "pointerAngle", 20.0);
-    let pointer_h = h * percent(cfg, "pointerSharpness", 40.0);
-    let right = cfg
-        .get("pointerDirection")
-        .and_then(|v| v.as_str())
-        .is_some_and(|v| v == "right");
-    let mut p = BezPath::new();
-    p.move_to((x + r, y));
-    p.line_to((x + w - r, y));
-    p.quad_to((x + w, y), (x + w, y + r));
-    p.line_to((x + w, y + h - r));
-    p.quad_to((x + w, y + h), (x + w - r, y + h));
+struct SpeechBubbleParams {
+    cx: f64,
+    cy: f64,
+    half: f64,
+    size: f64,
+    width: f64,
+    height: f64,
+    corner_radius: f64,
+    pointer_x: f64,
+    pointer_w: f64,
+    pointer_h: f64,
+    pointer_right: bool,
+}
+
+fn speech_bubble_path(p: SpeechBubbleParams) -> BezPath {
+    let w = p.size * p.width;
+    let h = p.size * p.height;
+    let x = p.cx - w * 0.5;
+    let y = p.cy - h * 0.5 - p.half * 0.15;
+    let r = (p.corner_radius * w.min(h) * 0.5).min(w.min(h) * 0.5);
+    let pointer_x = w * p.pointer_x;
+    let pointer_w = w * p.pointer_w;
+    let pointer_h = h * p.pointer_h;
+    let right = p.pointer_right;
+    let mut path = BezPath::new();
+    path.move_to((x + r, y));
+    path.line_to((x + w - r, y));
+    path.quad_to((x + w, y), (x + w, y + r));
+    path.line_to((x + w, y + h - r));
+    path.quad_to((x + w, y + h), (x + w - r, y + h));
     if right {
-        p.line_to((x + pointer_x + pointer_w, y + h));
-        p.line_to((x + pointer_x + pointer_w, y + h + pointer_h));
-        p.line_to((x + pointer_x, y + h));
+        path.line_to((x + pointer_x + pointer_w, y + h));
+        path.line_to((x + pointer_x + pointer_w, y + h + pointer_h));
+        path.line_to((x + pointer_x, y + h));
     } else {
-        p.line_to((x + pointer_x + pointer_w, y + h));
-        p.line_to((x + pointer_x, y + h + pointer_h));
-        p.line_to((x + pointer_x, y + h));
+        path.line_to((x + pointer_x + pointer_w, y + h));
+        path.line_to((x + pointer_x, y + h + pointer_h));
+        path.line_to((x + pointer_x, y + h));
     }
-    p.line_to((x + r, y + h));
-    p.quad_to((x, y + h), (x, y + h - r));
-    p.line_to((x, y + r));
-    p.quad_to((x, y), (x + r, y));
-    p.close_path();
-    p
+    path.line_to((x + r, y + h));
+    path.quad_to((x, y + h), (x, y + h - r));
+    path.line_to((x, y + r));
+    path.quad_to((x, y), (x + r, y));
+    path.close_path();
+    path
 }
 
 fn cloud_path(cx: f64, cy: f64, half: f64, cloud_type: i32) -> BezPath {
@@ -508,14 +562,6 @@ fn cloud_path(cx: f64, cy: f64, half: f64, cloud_type: i32) -> BezPath {
         );
     }
     path
-}
-
-fn number(value: &serde_json::Value, key: &str, fallback: f64) -> f64 {
-    value.get(key).and_then(|v| v.as_f64()).unwrap_or(fallback)
-}
-
-fn percent(value: &serde_json::Value, key: &str, fallback: f64) -> f64 {
-    (number(value, key, fallback) / 100.0).clamp(0.0, 10.0)
 }
 
 #[derive(Debug, Clone)]

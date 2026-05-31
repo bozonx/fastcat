@@ -5,8 +5,6 @@
 //!                     `Transform`, `BlendMode`, `Mask`, `RasterSource`).
 //!                     `Scene::to_vello(w, h)` — единственное место, строящее
 //!                     `vello::Scene` из доменной; вызывается внутри `Compositor`.
-//! - `layers`        — спецификации будущих kind'ов (ShapeSpec, TextSpec, Paint, …).
-//!                     Не подключены к `LayerKind`; «словарь» для расширения.
 //! - `effects`       — `EffectSpec` enum. Runtime отсутствует.
 //! - `transitions`   — `TransitionSpec` enum. Runtime отсутствует.
 //! - `text`, `svg`   — модули-документация для будущих слоёв.
@@ -15,7 +13,6 @@
 //! Entrypoint: [`Compositor`] — high-level `render_scene_to_*` + low-level `render_to_*`.
 
 pub mod effects;
-pub mod layers;
 pub mod scene;
 pub mod svg;
 pub mod text;

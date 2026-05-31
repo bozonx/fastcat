@@ -21,13 +21,15 @@ use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 use winit::event_loop::EventLoopProxy;
 
 use crate::compositor::scene::{
-    BlendMode, Layer, LayerKind as CompLayerKind, RasterSource, Scene, ShapeLayer, TextAlign,
-    TextBackground, TextLayer, Transform,
+    BlendMode, Layer, LayerKind as CompLayerKind, RasterSource, Scene, ShapeGeometry, ShapeLayer,
+    TextAlign, TextBackground, TextLayer, Transform,
 };
 use crate::media::decode::VideoFrame;
+use crate::media::decode_gate::decoder_load_gate;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
 
+use super::frame_cache::{DecodedVideoFrame, VideoFrameCache};
 use super::handle::MonitorCommand;
 use super::scene::{LayerKind, MonitorScene, SceneLayer};
 
@@ -83,46 +85,41 @@ pub enum LayerRuntime {
 pub struct VideoLayerRt {
     pub pump: DecodePump,
     pub media_size: (u32, u32),
+    /// Текущий отображаемый кадр (последний с PTS ≤ target из кеша).
     pub current: Option<DecodedVideoFrame>,
-    pub upcoming: Option<DecodedVideoFrame>,
+    /// Кеш декодированных кадров для дешёвого скраба назад без респауна ffmpeg.
+    cache: VideoFrameCache,
 }
 
 impl VideoLayerRt {
-    /// Тянет доступные кадры из декодера в слоты current/upcoming.
-    /// Останавливается, когда оба слота заполнены или канал пуст.
-    pub fn pull_frames(&mut self) {
-        let live_gen = self.pump.current_generation();
-        while self.current.is_none() || self.upcoming.is_none() {
-            match self.pump.try_recv_frame() {
-                Some(msg) => {
-                    if msg.generation != live_gen {
-                        continue;
-                    }
-                    let decoded = video_frame_to_image(msg.frame);
-                    if self.current.is_none() {
-                        self.current = Some(decoded);
-                    } else {
-                        self.upcoming = Some(decoded);
-                    }
-                }
-                None => break,
-            }
+    fn new(pump: DecodePump, media_size: (u32, u32)) -> Self {
+        let fps = pump.info.fps;
+        let frame_bytes = (media_size.0 as usize)
+            .saturating_mul(media_size.1 as usize)
+            .saturating_mul(4);
+        Self {
+            cache: VideoFrameCache::new(fps, frame_bytes),
+            pump,
+            media_size,
+            current: None,
         }
     }
 
-    /// Продвигает `current` к `target_clip_local`, если `upcoming.pts <= target`.
-    pub fn advance_to(&mut self, target_clip_local: f64) {
-        loop {
-            let should_advance =
-                matches!(&self.upcoming, Some(u) if u.pts_sec <= target_clip_local);
-            if !should_advance {
-                break;
+    /// Сливает все доступные кадры из декодера в кеш (неблокирующе).
+    fn pull_into_cache(&mut self) {
+        let live_gen = self.pump.current_generation();
+        while let Some(msg) = self.pump.try_recv_frame() {
+            if msg.generation != live_gen {
+                continue;
             }
-            self.current = self.upcoming.take();
-            self.pull_frames();
-            if self.upcoming.is_none() {
-                break;
-            }
+            self.cache.insert(video_frame_to_image(msg.frame));
+        }
+    }
+
+    /// Выбирает отображаемый кадр: ближайший с PTS ≤ target из кеша (если есть).
+    fn update_display(&mut self, target_clip_local: f64) {
+        if let Some(frame) = self.cache.frame_le(target_clip_local) {
+            self.current = Some(frame);
         }
     }
 }
@@ -130,11 +127,6 @@ impl VideoLayerRt {
 pub struct ImageLayerRt {
     pub image: ImageData,
     pub size: (u32, u32),
-}
-
-pub struct DecodedVideoFrame {
-    pub pts_sec: f64,
-    pub image: ImageData,
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +264,7 @@ impl LayerRuntimeManager {
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
                     .spawn(move || {
+                        let _permit = decoder_load_gate().acquire();
                         let result = match DecodePump::open(&path, max_long_edge) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);
@@ -295,6 +288,7 @@ impl LayerRuntimeManager {
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-img:{}", path.display()))
                     .spawn(move || {
+                        let _permit = decoder_load_gate().acquire();
                         let result = match decode_image(&path) {
                             Ok(img) => BgLayerResult::ImageOk {
                                 id,
@@ -315,6 +309,7 @@ impl LayerRuntimeManager {
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-svg:{}", path.display()))
                     .spawn(move || {
+                        let _permit = decoder_load_gate().acquire();
                         let result = match rasterize_svg(&path) {
                             Ok((image, size)) => BgLayerResult::SvgOk { id, image, size },
                             Err(e) => BgLayerResult::SvgErr {
@@ -356,12 +351,7 @@ impl LayerRuntimeManager {
                     .find(|l| l.id == id)
                     .map(|l| l.source_pts_at(0.0))
                     .unwrap_or(0.0);
-                let rt = VideoLayerRt {
-                    pump,
-                    media_size,
-                    current: None,
-                    upcoming: None,
-                };
+                let rt = VideoLayerRt::new(pump, media_size);
                 if clip_local > 0.0 {
                     if let Err(e) = rt.pump.seek(clip_local) {
                         log::error!("[monitor] initial seek {id}: {e:?}");
@@ -429,15 +419,39 @@ impl LayerRuntimeManager {
                 continue;
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                rt.pull_frames();
-                let target = layer.source_pts_at(t);
-                rt.advance_to(target);
+                rt.pull_into_cache();
+                rt.update_display(layer.source_pts_at(t));
             }
         }
     }
 
-    /// Передаёт позицию seek всем активным видеослоям.
-    pub fn seek(&mut self, t: f64) {
+    /// Seek активных видеослоёв на `t`. На паузе при попадании в кеш показывает кадр без
+    /// респауна ffmpeg (дешёвый скраб); иначе перепозиционирует декодер.
+    pub fn seek(&mut self, t: f64, playing: bool) {
+        let scene = self.scene.clone();
+        for layer in scene.iter() {
+            if !layer.covers(t) || layer.kind != LayerKind::Video {
+                continue;
+            }
+            let clip_local = layer.source_pts_at(t);
+            if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
+                rt.pull_into_cache();
+                // Пауза + попадание в кеш → показываем кадр без перезапуска ffmpeg.
+                if !playing && rt.cache.has_near(clip_local, 1) {
+                    rt.update_display(clip_local);
+                    continue;
+                }
+                if let Err(e) = rt.pump.seek(clip_local) {
+                    log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                }
+                rt.update_display(clip_local);
+            }
+        }
+    }
+
+    /// Перепозиционирует декодеры активных видеослоёв к `t`. Вызывается при старте
+    /// воспроизведения, чтобы после скраба по кешу forward-стрим был корректным.
+    pub fn resync_active_videos(&mut self, t: f64) {
         let scene = self.scene.clone();
         for layer in scene.iter() {
             if !layer.covers(t) || layer.kind != LayerKind::Video {
@@ -446,10 +460,8 @@ impl LayerRuntimeManager {
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 if let Err(e) = rt.pump.seek(clip_local) {
-                    log::error!("[monitor] seek pump {}: {e:?}", layer.id);
+                    log::error!("[monitor] resync pump {}: {e:?}", layer.id);
                 }
-                rt.current = None;
-                rt.upcoming = None;
             }
         }
     }
@@ -495,25 +507,29 @@ impl LayerRuntimeManager {
                     }
                 }
                 LayerKind::Background => CompLayerKind::Shape(ShapeLayer {
-                    shape_type: "square".into(),
+                    geometry: ShapeGeometry::Rectangle {
+                        width: 1.0,
+                        height: 1.0,
+                        corner_radius: 0.0,
+                    },
                     fill: parse_color(sl.background_color.as_deref().unwrap_or("#000000"), 1.0),
                     stroke: Color::TRANSPARENT,
                     stroke_width: 0.0,
                     natural_size: (scene_w, scene_h),
-                    config: serde_json::json!({ "width": 100, "height": 100 }),
                 }),
                 LayerKind::Shape => {
                     let stroke_width = sl.stroke_width.unwrap_or(0.0).max(0.0);
                     let size = (scene_w.min(scene_h) as f64 * 0.8 + stroke_width * 2.0)
                         .ceil()
                         .max(1.0) as u32;
+                    let shape_type = sl.shape_type.clone().unwrap_or_else(|| "square".into());
+                    let config = sl.shape_config.clone().unwrap_or(serde_json::Value::Null);
                     CompLayerKind::Shape(ShapeLayer {
-                        shape_type: sl.shape_type.clone().unwrap_or_else(|| "square".into()),
+                        geometry: parse_shape_geometry(&shape_type, &config),
                         fill: parse_color(sl.fill_color.as_deref().unwrap_or("#ffffff"), 1.0),
                         stroke: parse_color(sl.stroke_color.as_deref().unwrap_or("#000000"), 1.0),
                         stroke_width,
                         natural_size: (size, size),
-                        config: sl.shape_config.clone().unwrap_or(serde_json::Value::Null),
                     })
                 }
                 LayerKind::Text => {
@@ -673,6 +689,52 @@ fn number_opt(value: &serde_json::Value, key: &str) -> Option<f64> {
         .get(key)
         .and_then(|v| v.as_f64())
         .filter(|v| v.is_finite())
+}
+
+/// Доля из процентного поля: `number/100`, clamp 0..10. Совпадает со старой семантикой
+/// `percent` из `compositor::scene`, перенесённой на границу IPC.
+fn percent(value: &serde_json::Value, key: &str, fallback: f64) -> f64 {
+    (number(value, key, fallback) / 100.0).clamp(0.0, 10.0)
+}
+
+/// Парсит нетипизированный shape-config из IPC в типизированную `ShapeGeometry` один раз
+/// при сборке кадра (раньше парсилось строковыми ключами внутри отрисовки на каждом кадре).
+fn parse_shape_geometry(shape_type: &str, cfg: &serde_json::Value) -> ShapeGeometry {
+    match shape_type {
+        "circle" => ShapeGeometry::Circle {
+            squash_x: percent(cfg, "squashX", 0.0),
+            squash_y: percent(cfg, "squashY", 0.0),
+        },
+        "triangle" => ShapeGeometry::Triangle {
+            base_length: percent(cfg, "baseLength", 100.0),
+            vertex_offset: percent(cfg, "vertexOffset", 50.0),
+        },
+        "star" => ShapeGeometry::Star {
+            rays: number(cfg, "rays", 5.0).round().max(2.0) as usize,
+            inner_radius: percent(cfg, "innerRadius", 40.0),
+        },
+        "bang" => ShapeGeometry::Bang {
+            rays: number(cfg, "rays", 12.0).round().max(2.0) as usize,
+            inner_radius: percent(cfg, "innerRadius", 70.0),
+        },
+        "speech_bubble" => ShapeGeometry::SpeechBubble {
+            width: percent(cfg, "width", 100.0),
+            height: percent(cfg, "height", 70.0),
+            corner_radius: percent(cfg, "cornerRadius", 20.0),
+            pointer_x: percent(cfg, "pointerX", 30.0),
+            pointer_w: percent(cfg, "pointerAngle", 20.0),
+            pointer_h: percent(cfg, "pointerSharpness", 40.0),
+            pointer_right: cfg.get("pointerDirection").and_then(|v| v.as_str()) == Some("right"),
+        },
+        "cloud" => ShapeGeometry::Cloud {
+            cloud_type: number(cfg, "cloudType", 1.0).round() as i32,
+        },
+        _ => ShapeGeometry::Rectangle {
+            width: percent(cfg, "width", 100.0),
+            height: percent(cfg, "height", 100.0),
+            corner_radius: percent(cfg, "cornerRadius", 0.0),
+        },
+    }
 }
 
 fn string_value(value: &serde_json::Value, key: &str, fallback: &str) -> String {

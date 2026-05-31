@@ -4,5 +4,6 @@
 //! Аудио в Tauri-сборке намеренно отключено — звук обеспечивает веб-AudioEngine (web-сборка).
 
 pub mod decode;
+pub mod decode_gate;
 pub mod decode_thread;
 pub mod image_decode;
