@@ -1,88 +1,36 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { readJsonFromFileHandle, writeJsonToFileHandle } from '~/repositories/app-fs.repository';
+import { createAppFsJsonStore } from '~/repositories/app-fs.repository';
+import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
 
-function createFileHandleMock(initialText: string) {
-  let text = initialText;
-  let bytes = new TextEncoder().encode(text);
-  let writeCount = 0;
-
-  function syncText() {
-    text = new TextDecoder().decode(bytes);
-  }
-
-  return {
-    async getFile() {
-      return {
-        async text() {
-          return text;
-        },
-      };
-    },
-    async createWritable() {
-      return {
-        async write(data: string | { type: 'write'; position?: number; data: Uint8Array }) {
-          writeCount += 1;
-          if (typeof data === 'string') {
-            bytes = new TextEncoder().encode(data);
-            syncText();
-            return;
-          }
-
-          const position = data.position ?? bytes.length;
-          const nextLength = Math.max(bytes.length, position + data.data.length);
-          const nextBytes = new Uint8Array(nextLength);
-          nextBytes.set(bytes);
-          nextBytes.set(data.data, position);
-          bytes = nextBytes;
-          syncText();
-        },
-        async truncate(size: number) {
-          bytes = bytes.slice(0, size);
-          syncText();
-        },
-        async close() {
-          // no-op
-        },
-        async abort() {
-          // no-op
-        },
-      };
-    },
-    __debug: {
-      get writeCount() {
-        return writeCount;
-      },
-    },
-  };
-}
-
-describe('app-fs.repository', () => {
-  it('readJsonFromFileHandle returns null on empty text', async () => {
-    const handle = createFileHandleMock('   ');
-    const value = await readJsonFromFileHandle(handle as any);
-    expect(value).toBeNull();
+describe('app-fs.repository (AppFsJsonStore)', () => {
+  it('readJson returns null when the file is missing', async () => {
+    const store = createAppFsJsonStore(new InMemoryFileSystemAdapter());
+    expect(await store.readJson('missing.json')).toBeNull();
   });
 
-  it('readJsonFromFileHandle parses JSON', async () => {
-    const handle = createFileHandleMock('{"a":1}');
-    const value = await readJsonFromFileHandle(handle as any);
-    expect(value).toEqual({ a: 1 });
+  it('readJson returns null on empty/whitespace content', async () => {
+    const vfs = new InMemoryFileSystemAdapter();
+    await vfs.writeFile('empty.json', '   ');
+    const store = createAppFsJsonStore(vfs);
+    expect(await store.readJson('empty.json')).toBeNull();
   });
 
-  it('writeJsonToFileHandle writes pretty JSON with newline', async () => {
-    const handle = createFileHandleMock('');
-    await writeJsonToFileHandle({ handle: handle as any, data: { a: 1 } });
-    const value = await readJsonFromFileHandle(handle as any);
-    expect(value).toEqual({ a: 1 });
+  it('writeJson + readJson round-trips an object', async () => {
+    const store = createAppFsJsonStore(new InMemoryFileSystemAdapter());
+    await store.writeJson('a.json', { a: 1 });
+    expect(await store.readJson('a.json')).toEqual({ a: 1 });
   });
 
-  it('writeJsonToFileHandle writes large JSON in chunks', async () => {
-    const handle = createFileHandleMock('');
-    await writeJsonToFileHandle({ handle: handle as any, data: { value: 'x'.repeat(600_000) } });
-
-    const value = await readJsonFromFileHandle<{ value: string }>(handle as any);
+  it('round-trips large JSON payloads', async () => {
+    const store = createAppFsJsonStore(new InMemoryFileSystemAdapter());
+    await store.writeJson('big.json', { value: 'x'.repeat(600_000) });
+    const value = await store.readJson<{ value: string }>('big.json');
     expect(value?.value).toHaveLength(600_000);
-    expect(handle.__debug.writeCount).toBeGreaterThan(1);
+  });
+
+  it('refuses to write undefined', async () => {
+    const store = createAppFsJsonStore(new InMemoryFileSystemAdapter());
+    await expect(store.writeJson('x.json', undefined)).rejects.toThrow();
   });
 });
