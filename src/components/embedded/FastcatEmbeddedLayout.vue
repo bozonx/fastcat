@@ -81,8 +81,7 @@ async function initEmbedded() {
   if (props.assets && props.assets.length > 0) {
     const results = await loadExternalAssets({
       assets: props.assets,
-      getProjectFileHandle: (path, options) =>
-        projectStore.getProjectFileHandleByRelativePath({ relativePath: path, ...options }),
+      writeProjectFile: (path, data) => projectStore.writeFileByPath(path, data),
     });
 
     // 3. Prepare timeline (Ensure we have default tracks instead of blindly adding new ones)

@@ -29,6 +29,8 @@ export interface ProjectFsModule {
   readTextByPath: (path: string) => Promise<string | null>;
   /** Write text to a VFS path (atomic, governed). */
   writeTextByPath: (path: string, text: string) => Promise<void>;
+  /** Write binary/text data to a VFS path (atomic, governed). */
+  writeFileByPath: (path: string, data: Blob | Uint8Array | string) => Promise<void>;
   /** Delete a file or directory by VFS path. Missing paths resolve silently. */
   deleteByPath: (path: string, options?: { recursive?: boolean }) => Promise<void>;
   /** List entry names in a VFS directory. Returns [] if directory missing. */
@@ -308,6 +310,12 @@ export function createProjectFsModule(params: {
     await params.getVfs().writeFile(vfsPath, text);
   }
 
+  async function writeFileByPath(path: string, data: Blob | Uint8Array | string): Promise<void> {
+    const vfsPath = resolveVfsPath(path);
+    if (!vfsPath) throw new Error(`Invalid VFS path: ${path}`);
+    await params.getVfs().writeFile(vfsPath, data);
+  }
+
   async function deleteByPath(path: string, options?: { recursive?: boolean }): Promise<void> {
     const vfsPath = resolveVfsPath(path);
     if (!vfsPath) return;
@@ -349,6 +357,7 @@ export function createProjectFsModule(params: {
     getProjectDirHandle,
     readTextByPath,
     writeTextByPath,
+    writeFileByPath,
     deleteByPath,
     listEntryNames,
     pathExists,

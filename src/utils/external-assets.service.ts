@@ -1,6 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { VIDEO_DIR_NAME, AUDIO_DIR_NAME, IMAGES_DIR_NAME } from '~/utils/constants';
-import { withFileIoSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
 const log = createDevLogger('external-assets.service');
 
@@ -23,10 +22,8 @@ export interface AssetLoadResult {
  */
 export async function loadExternalAssets(params: {
   assets: ExternalAsset[];
-  getProjectFileHandle: (
-    path: string,
-    options: { create: boolean },
-  ) => Promise<FileSystemFileHandle | null>;
+  /** Write a downloaded asset to the project at the given project-relative path. */
+  writeProjectFile: (path: string, data: Blob) => Promise<void>;
 }): Promise<AssetLoadResult[]> {
   const promises = params.assets.map(async (asset) => {
     try {
@@ -67,23 +64,7 @@ export async function loadExternalAssets(params: {
 
       const relativePath = `${folder}/${filename}`;
 
-      const handle = await params.getProjectFileHandle(relativePath, { create: true });
-      if (!handle) throw new Error(`Failed to get file handle for ${relativePath}`);
-
-      await withFileIoSlot(async () => {
-        const writable = await (
-          handle as unknown as { createWritable(): Promise<FileSystemWritableFileStream> }
-        ).createWritable();
-        try {
-          await writable.write(blob);
-          await writable.close();
-        } catch (error) {
-          await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
-            .abort?.()
-            .catch(() => undefined);
-          throw error;
-        }
-      });
+      await params.writeProjectFile(relativePath, blob);
 
       return {
         asset: { ...asset, id: asset.id || filename, type: resolvedType, filename },
