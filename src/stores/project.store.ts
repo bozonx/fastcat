@@ -4,8 +4,8 @@ import { ref, computed } from 'vue';
 
 import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
-import { runResilientFileWrite } from '~/utils/io/io-governor';
 import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
+import { toProjectStoragePath } from '~/utils/workspace-common';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 import { createDefaultProjectSettings } from '~/utils/project-settings';
@@ -245,18 +245,21 @@ export const useProjectStore = defineStore('project', () => {
     workspaceStore.isLoading = true;
 
     try {
-      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(name, {
-        create: true,
-      });
-      await projectDir.getDirectoryHandle(VIDEO_DIR_NAME, { create: true });
-      await projectDir.getDirectoryHandle(AUDIO_DIR_NAME, { create: true });
-      await projectDir.getDirectoryHandle(IMAGES_DIR_NAME, { create: true });
-      await projectDir.getDirectoryHandle(DOCUMENTS_DIR_NAME, { create: true });
-      await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, { create: true });
-      await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
+      const vfs = useVfs();
+      // The project is not active yet — address it explicitly via `@project/<name>`.
+      for (const dirName of [
+        VIDEO_DIR_NAME,
+        AUDIO_DIR_NAME,
+        IMAGES_DIR_NAME,
+        DOCUMENTS_DIR_NAME,
+        TIMELINES_DIR_NAME,
+        EXPORT_DIR_NAME,
+      ]) {
+        await vfs.createDirectory(toProjectStoragePath(name, dirName));
+      }
 
       try {
-        await projectDir.getDirectoryHandle('.fastcat', { create: true });
+        await vfs.createDirectory(toProjectStoragePath(name, '.fastcat'));
         await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectName: name });
       } catch (e) {
         log.warn('Failed to create project settings file', e);
@@ -300,13 +303,7 @@ export const useProjectStore = defineStore('project', () => {
       }
 
       const otioFileName = `${name}_001.otio`;
-      const timelinesDir = await projectDir.getDirectoryHandle(TIMELINES_DIR_NAME, {
-        create: true,
-      });
-      const otioFile = await timelinesDir.getFileHandle(otioFileName, { create: true });
-      if (typeof (otioFile as FileSystemFileHandle).createWritable !== 'function') {
-        throw new Error('Failed to create timeline: createWritable is not available');
-      }
+      const initialTimeline = `${TIMELINES_DIR_NAME}/${otioFileName}`;
 
       const payload = createDefaultTimelineDocument({
         id: name,
@@ -314,13 +311,10 @@ export const useProjectStore = defineStore('project', () => {
         format: createTimelineFormatFromProjectDefaults(initialSettings.project),
       });
 
-      await runResilientFileWrite(async () => {
-        const writable = await (otioFile as FileSystemFileHandle).createWritable();
-        await writable.write(serializeTimelineToOtio(payload));
-        await writable.close();
-      });
-
-      const initialTimeline = `${TIMELINES_DIR_NAME}/${otioFileName}`;
+      await vfs.writeFile(
+        toProjectStoragePath(name, initialTimeline),
+        serializeTimelineToOtio(payload),
+      );
 
       currentProjectName.value = name;
       await loadProjectMeta();
