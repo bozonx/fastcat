@@ -30,7 +30,11 @@ pub fn decode_image(path: &Path) -> Result<DecodedImage> {
         width,
         height,
     };
-    Ok(DecodedImage { width, height, image })
+    Ok(DecodedImage {
+        width,
+        height,
+        image,
+    })
 }
 
 /// Расширения, которые мы трактуем как «статичное изображение» — это маркер для

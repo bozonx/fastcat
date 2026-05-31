@@ -24,7 +24,7 @@ use crate::compositor::Compositor;
 
 use super::clock::PlaybackClock;
 use super::handle::{MonitorCommand, MonitorMode, SendableRawHandle};
-use super::runtime::{BgLayerResult, LayerRuntimeManager, emit_layer_failed};
+use super::runtime::{emit_layer_failed, BgLayerResult, LayerRuntimeManager};
 use super::scene::MonitorScene;
 use tauri::ipc::{Channel, InvokeResponseBody};
 
@@ -135,7 +135,9 @@ impl MonitorApp {
         if self.state.is_some() || !self.resumed {
             return;
         }
-        let Some(vp) = self.pending_viewport else { return };
+        let Some(vp) = self.pending_viewport else {
+            return;
+        };
         match init_window(
             event_loop,
             self.app.clone(),
@@ -202,8 +204,22 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.window.request_redraw();
                 }
             }
-            MonitorCommand::SetViewport { parent, x, y, width, height, visible } => {
-                let vp = ViewportSpec { parent, x, y, width: width.max(1), height: height.max(1), visible };
+            MonitorCommand::SetViewport {
+                parent,
+                x,
+                y,
+                width,
+                height,
+                visible,
+            } => {
+                let vp = ViewportSpec {
+                    parent,
+                    x,
+                    y,
+                    width: width.max(1),
+                    height: height.max(1),
+                    visible,
+                };
                 self.pending_viewport = Some(vp);
                 if let Some(s) = self.state.as_mut() {
                     s.apply_viewport(vp);
@@ -241,7 +257,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        let Some(state) = self.state.as_mut() else { return };
+        let Some(state) = self.state.as_mut() else {
+            return;
+        };
         match event {
             WindowEvent::CloseRequested => {
                 state.window.set_visible(false);
@@ -259,7 +277,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        let Some(state) = self.state.as_ref() else { return };
+        let Some(state) = self.state.as_ref() else {
+            return;
+        };
         if !state.clock.is_playing() {
             event_loop.set_control_flow(ControlFlow::Wait);
             return;
@@ -298,7 +318,8 @@ struct WindowState {
 
 impl WindowState {
     fn resize(&mut self, width: u32, height: u32) {
-        self.compositor.resize_surface(&mut self.surface, width, height);
+        self.compositor
+            .resize_surface(&mut self.surface, width, height);
     }
 
     fn apply_scene(&mut self, scene: MonitorScene) {
@@ -328,13 +349,20 @@ impl WindowState {
         let prev = self.last_viewport;
         log::info!(
             "[monitor] apply_viewport pos=({},{}) size={}x{} visible={}",
-            vp.x, vp.y, vp.width, vp.height, vp.visible
+            vp.x,
+            vp.y,
+            vp.width,
+            vp.height,
+            vp.visible
         );
         if (prev.x, prev.y) != (vp.x, vp.y) {
-            self.window.set_outer_position(PhysicalPosition::new(vp.x, vp.y));
+            self.window
+                .set_outer_position(PhysicalPosition::new(vp.x, vp.y));
         }
         if (prev.width, prev.height) != (vp.width, vp.height) {
-            let _ = self.window.request_inner_size(PhysicalSize::new(vp.width, vp.height));
+            let _ = self
+                .window
+                .request_inner_size(PhysicalSize::new(vp.width, vp.height));
             // С override_redirect WM не управляет окном — WindowEvent::Resized может
             // не прийти синхронно, поэтому ресайзим surface сразу.
             self.resize(vp.width, vp.height);
@@ -419,19 +447,26 @@ impl WindowState {
                 }
             }
             MonitorMode::Canvas => {
-                let Some(channel) = self.frame_channel.clone() else { return };
+                let Some(channel) = self.frame_channel.clone() else {
+                    return;
+                };
                 let (width, height) = self.canvas_size;
                 if width == 0 || height == 0 {
                     return;
                 }
-                let Some(dev_id) = self.offscreen_dev_id else { return };
+                let Some(dev_id) = self.offscreen_dev_id else {
+                    return;
+                };
                 let scene = self.layers.build_compositor_scene(t);
                 // NOTE: `render_scene_to_pixels` блокирует event-loop на GPU readback
                 // (~1-5 мс при 1080p). При бюджете 33 мс (30 fps) это приемлемо.
                 // Если понадобится ≥ 60 fps или экспорт — перейти на async-readback:
                 // submit, зарегистрировать callback через `map_async`, проверять готовность
                 // в `about_to_wait`.
-                match self.compositor.render_scene_to_pixels(dev_id, &scene, width, height) {
+                match self
+                    .compositor
+                    .render_scene_to_pixels(dev_id, &scene, width, height)
+                {
                     Ok(pixels) => {
                         let mut payload = Vec::with_capacity(8 + pixels.len());
                         payload.extend_from_slice(&width.to_le_bytes());
@@ -507,7 +542,9 @@ fn init_window(
     }
 
     let window = Arc::new(
-        event_loop.create_window(window_attrs).context("create_window failed")?,
+        event_loop
+            .create_window(window_attrs)
+            .context("create_window failed")?,
     );
 
     let size = window.inner_size();

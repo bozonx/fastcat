@@ -52,6 +52,7 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 raw-window-handle = "0.6"
 # Нативный монитор: окно + декодер.
 winit = "0.30"
+resvg = "0.46.0"
 # Видео-декодинг — через системный ffmpeg CLI (см. media/decode.rs). Прямая привязка
 # к libav-биндингам пока заблокирована несовместимостью ffmpeg-next с ffmpeg 8.x.
 

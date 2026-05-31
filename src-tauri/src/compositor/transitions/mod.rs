@@ -11,12 +11,25 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum TransitionSpec {
     Crossfade,
-    Wipe { angle_deg: f32, softness: f32 },
-    Slide { direction: SlideDirection },
-    Dissolve { seed: u32 },
-    CircleReveal { center: [f32; 2], softness: f32 },
+    Wipe {
+        angle_deg: f32,
+        softness: f32,
+    },
+    Slide {
+        direction: SlideDirection,
+    },
+    Dissolve {
+        seed: u32,
+    },
+    CircleReveal {
+        center: [f32; 2],
+        softness: f32,
+    },
     /// Произвольный WGSL.
-    CustomWgsl { source: String, params: serde_json::Value },
+    CustomWgsl {
+        source: String,
+        params: serde_json::Value,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

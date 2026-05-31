@@ -17,7 +17,10 @@ pub struct VideoEngine {
 
 impl VideoEngine {
     pub fn new(app: AppHandle) -> Self {
-        Self { app, monitor: Mutex::new(None) }
+        Self {
+            app,
+            monitor: Mutex::new(None),
+        }
     }
 
     /// Лениво создаёт окно монитора. Если предыдущее окно умерло (юзер закрыл / Close),

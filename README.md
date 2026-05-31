@@ -82,6 +82,7 @@ The application will be available at `http://localhost:3000`.
 - Selected desktop workspace folders are persisted with `tauri-plugin-persisted-scope`, so the app can restore access after restart without granting the whole home directory.
 - The Rust desktop crate targets Rust `1.87.0` because the native video rendering engine foundation uses `wgpu` 29.
 - The `webgpu_render_engine_status` Tauri command probes native `wgpu` adapter/device availability and is the entry point for the upcoming Rust WebGPU renderer.
+- The native Tauri monitor renders media, SVG, background, text, and shape timeline layers through the Rust video core. SVG files are rasterized with `resvg` at load time, while text/shapes/blend modes are composed in the Vello scene used by the monitor preview.
 - The desktop VFS adapter stores its local app-managed data in `BaseDirectory.AppData`.
 - FastCat stores global `user.settings.json` and `app.settings.json` in the OS-recommended Tauri `BaseDirectory.AppConfig` location. Workspace settings stay in the selected workspace.
 - Desktop startup automatically restores the saved workspace path, or creates and uses the default `Documents/FastCat` workspace when no path was saved yet.

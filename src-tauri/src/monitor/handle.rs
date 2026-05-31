@@ -67,7 +67,10 @@ pub enum MonitorCommand {
     /// Каждый кадр: 8-байтный header (`u32 LE width`, `u32 LE height`) + RGBA8 пиксели.
     SetFrameChannel(Channel<InvokeResponseBody>),
     /// Размер render target'а в canvas-режиме (физические пиксели). Может отличаться от `SetViewport`.
-    SetCanvasSize { width: u32, height: u32 },
+    SetCanvasSize {
+        width: u32,
+        height: u32,
+    },
 }
 
 pub struct MonitorHandle {

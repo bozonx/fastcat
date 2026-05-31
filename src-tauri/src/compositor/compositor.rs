@@ -60,15 +60,26 @@ impl Compositor {
     ) -> Result<RenderSurface<'static>> {
         let surface = self
             .render_cx
-            .create_surface(window, width.max(1), height.max(1), wgpu::PresentMode::AutoVsync)
+            .create_surface(
+                window,
+                width.max(1),
+                height.max(1),
+                wgpu::PresentMode::AutoVsync,
+            )
             .await
             .map_err(|e| anyhow!("vello create_surface failed: {e:?}"))?;
         self.ensure_renderer(surface.dev_id)?;
         Ok(surface)
     }
 
-    pub fn resize_surface(&mut self, surface: &mut RenderSurface<'static>, width: u32, height: u32) {
-        self.render_cx.resize_surface(surface, width.max(1), height.max(1));
+    pub fn resize_surface(
+        &mut self,
+        surface: &mut RenderSurface<'static>,
+        width: u32,
+        height: u32,
+    ) {
+        self.render_cx
+            .resize_surface(surface, width.max(1), height.max(1));
     }
 
     /// Рендерит готовую `vello::Scene` в окно. Внутри: render_to_texture → blit на свопчейн.
@@ -83,9 +94,8 @@ impl Compositor {
         let device_handle = &self.render_cx.devices[surface.dev_id];
 
         let surface_texture = match surface.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => {
-                t
-            }
+            wgpu::CurrentSurfaceTexture::Success(t)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 self.render_cx.resize_surface(surface, width, height);
                 return Ok(());
@@ -116,17 +126,21 @@ impl Compositor {
             )
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
 
-        let mut encoder = device_handle
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("compositor-blit"),
-            });
+        let mut encoder =
+            device_handle
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("compositor-blit"),
+                });
         let surface_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-        surface
-            .blitter
-            .copy(&device_handle.device, &mut encoder, &surface.target_view, &surface_view);
+        surface.blitter.copy(
+            &device_handle.device,
+            &mut encoder,
+            &surface.target_view,
+            &surface_view,
+        );
         device_handle.queue.submit([encoder.finish()]);
         surface_texture.present();
 
@@ -198,7 +212,11 @@ impl Compositor {
             let buffer_size = (aligned_row_bytes * height as usize) as u64;
             let texture = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("monitor-offscreen"),
-                size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -247,8 +265,9 @@ impl Compositor {
             .map_err(|e| anyhow!("vello render: {e:?}"))?;
 
         let row_bytes = width as usize * 4;
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("readback") });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("readback"),
+        });
         encoder.copy_texture_to_buffer(
             wgpu::TexelCopyTextureInfo {
                 texture: &target.texture,
@@ -264,7 +283,11 @@ impl Compositor {
                     rows_per_image: Some(height),
                 },
             },
-            wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
         );
         queue.submit([encoder.finish()]);
 

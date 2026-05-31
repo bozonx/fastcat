@@ -74,7 +74,10 @@ impl DecodePump {
     pub fn seek(&self, time_sec: f64) -> Result<u64> {
         let gen = self.generation.fetch_add(1, Ordering::SeqCst) + 1;
         self.cmd_tx
-            .send(DecoderCmd::Seek { generation: gen, time_sec })
+            .send(DecoderCmd::Seek {
+                generation: gen,
+                time_sec,
+            })
             .map_err(|_| anyhow!("decoder thread is gone"))?;
         Ok(gen)
     }
@@ -124,7 +127,10 @@ fn run_decoder_loop(
         // 1) Обработать все накопившиеся команды.
         loop {
             match cmd_rx.try_recv() {
-                Ok(DecoderCmd::Seek { generation, time_sec }) => {
+                Ok(DecoderCmd::Seek {
+                    generation,
+                    time_sec,
+                }) => {
                     current_gen = generation;
                     if let Err(e) = decoder.seek(time_sec) {
                         log::error!("[decode] seek({time_sec}) failed: {e:?}");
@@ -141,7 +147,10 @@ fn run_decoder_loop(
         // 2) EOF — ждём следующую команду блокирующе.
         if at_eof {
             match cmd_rx.recv() {
-                Ok(DecoderCmd::Seek { generation, time_sec }) => {
+                Ok(DecoderCmd::Seek {
+                    generation,
+                    time_sec,
+                }) => {
                     current_gen = generation;
                     if let Err(e) = decoder.seek(time_sec) {
                         log::error!("[decode] seek({time_sec}) failed: {e:?}");
@@ -164,7 +173,10 @@ fn run_decoder_loop(
                 if live_gen != current_gen {
                     continue;
                 }
-                let msg = DecodedFrameMsg { generation: current_gen, frame };
+                let msg = DecodedFrameMsg {
+                    generation: current_gen,
+                    frame,
+                };
                 if frame_tx.send(msg).is_err() {
                     return; // consumer ушёл
                 }

@@ -31,7 +31,9 @@ fn user_home_dir() -> Option<PathBuf> {
 fn reject_dangerous_scope_path(path: &Path) -> Result<(), String> {
     // A path with no parent is a filesystem root (`/`, `C:\`).
     if path.parent().is_none() {
-        return Err(format!("refusing to extend scope to filesystem root: {path:?}"));
+        return Err(format!(
+            "refusing to extend scope to filesystem root: {path:?}"
+        ));
     }
 
     if let Some(home) = user_home_dir() {

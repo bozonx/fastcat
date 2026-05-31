@@ -17,7 +17,10 @@ pub struct PlaybackClock {
 
 impl PlaybackClock {
     pub fn new() -> Self {
-        Self { pts_origin: 0.0, wall_origin: None }
+        Self {
+            pts_origin: 0.0,
+            wall_origin: None,
+        }
     }
 
     pub fn is_playing(&self) -> bool {
@@ -26,9 +29,7 @@ impl PlaybackClock {
 
     pub fn current_pts(&self) -> f64 {
         match self.wall_origin {
-            Some(origin) => {
-                self.pts_origin + Instant::now().duration_since(origin).as_secs_f64()
-            }
+            Some(origin) => self.pts_origin + Instant::now().duration_since(origin).as_secs_f64(),
             None => self.pts_origin,
         }
     }

@@ -18,17 +18,36 @@ pub struct ShapeSpec {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum ShapeGeometry {
-    Rect { width: f32, height: f32, radius: f32 },
-    Ellipse { rx: f32, ry: f32 },
-    Path { d: String },
+    Rect {
+        width: f32,
+        height: f32,
+        radius: f32,
+    },
+    Ellipse {
+        rx: f32,
+        ry: f32,
+    },
+    Path {
+        d: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Paint {
-    Solid { rgba: [u8; 4] },
-    LinearGradient { from: [f32; 2], to: [f32; 2], stops: Vec<GradientStop> },
-    RadialGradient { center: [f32; 2], radius: f32, stops: Vec<GradientStop> },
+    Solid {
+        rgba: [u8; 4],
+    },
+    LinearGradient {
+        from: [f32; 2],
+        to: [f32; 2],
+        stops: Vec<GradientStop>,
+    },
+    RadialGradient {
+        center: [f32; 2],
+        radius: f32,
+        stops: Vec<GradientStop>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

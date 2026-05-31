@@ -108,7 +108,12 @@ impl FfmpegDecoder {
             // На случай не-квадратных пикселей форсим масштаб к декларированным размерам
             // и cfr-таймбейс, чтобы frame_index/fps давал корректные PTS.
             .arg("-vf")
-            .arg(format!("scale={}:{},fps={}", self.info.width, self.info.height, fmt_fps(self.info.fps)))
+            .arg(format!(
+                "scale={}:{},fps={}",
+                self.info.width,
+                self.info.height,
+                fmt_fps(self.info.fps)
+            ))
             .arg("-an")
             .arg("-")
             .stdin(Stdio::null())
@@ -159,7 +164,11 @@ impl VideoDecoder for FfmpegDecoder {
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
             Err(e) => return Err(e.into()),
         }
-        let fps = if self.info.fps > 0.0 { self.info.fps } else { 30.0 };
+        let fps = if self.info.fps > 0.0 {
+            self.info.fps
+        } else {
+            30.0
+        };
         // start_time = первый «полезный» кадр выходного потока (после двухэтапного seek),
         // выход cfr → PTS=start_time + i/fps корректный.
         let pts_sec = self.start_time + self.frame_index as f64 / fps;
@@ -174,7 +183,11 @@ impl VideoDecoder for FfmpegDecoder {
 }
 
 fn fmt_fps(fps: f64) -> String {
-    let f = if fps > 0.0 && fps.is_finite() { fps } else { 30.0 };
+    let f = if fps > 0.0 && fps.is_finite() {
+        fps
+    } else {
+        30.0
+    };
     // 6 знаков достаточно для 23.976024 и подобных; ffmpeg парсит как float.
     format!("{:.6}", f)
 }
@@ -185,7 +198,9 @@ pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Box<dyn Vi
 
 /// Считает target dims декода, сохраняя aspect и НЕ увеличивая разрешение.
 fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u32, u32) {
-    let Some(max) = max_long_edge else { return (src_w, src_h) };
+    let Some(max) = max_long_edge else {
+        return (src_w, src_h);
+    };
     if max == 0 {
         return (src_w, src_h);
     }
@@ -218,8 +233,8 @@ fn probe(path: &Path) -> Result<MediaInfo> {
             String::from_utf8_lossy(&output.stderr)
         ));
     }
-    let json: serde_json::Value = serde_json::from_slice(&output.stdout)
-        .context("ffprobe returned non-JSON output")?;
+    let json: serde_json::Value =
+        serde_json::from_slice(&output.stdout).context("ffprobe returned non-JSON output")?;
     let streams = json
         .get("streams")
         .and_then(|s| s.as_array())
