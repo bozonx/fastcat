@@ -7,6 +7,14 @@ import { getClipThumbnailsHash, thumbnailGenerator } from '~/utils/thumbnail-gen
 import { getFileThumbnailHash, fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 
 const mockFile = new File([], 'test.mp4');
+const mockVfs = vi.hoisted(() => ({
+  readDirectory: vi.fn().mockResolvedValue([]),
+  readFile: vi
+    .fn()
+    .mockRejectedValue(Object.assign(new Error('missing'), { name: 'VfsNotFoundError' })),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  deleteEntry: vi.fn().mockResolvedValue(undefined),
+}));
 
 interface CacheBackedGenerator {
   cache: Map<string, unknown>;
@@ -66,6 +74,10 @@ vi.mock('~/utils/io/io-governor', () => ({
   withFileWriteSlot: vi.fn((fn: () => Promise<void>) => fn()),
 }));
 
+vi.mock('~/composables/useVfs', () => ({
+  useVfs: () => mockVfs,
+}));
+
 // Mock URL.createObjectURL/revokeObjectURL
 global.URL.createObjectURL = vi.fn(() => 'blob:url');
 global.URL.revokeObjectURL = vi.fn();
@@ -79,6 +91,12 @@ describe('Thumbnail Generators', () => {
     // starts from a clean cache/queue instead of inheriting prior state.
     thumbnailGenerator.reset();
     fileThumbnailGenerator.reset();
+    mockVfs.readDirectory.mockResolvedValue([]);
+    mockVfs.readFile.mockRejectedValue(
+      Object.assign(new Error('missing'), { name: 'VfsNotFoundError' }),
+    );
+    mockVfs.writeFile.mockResolvedValue(undefined);
+    mockVfs.deleteEntry.mockResolvedValue(undefined);
 
     vi.mocked(useWorkspaceStore).mockReturnValue({
       workspaceHandle: (function () {

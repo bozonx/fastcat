@@ -1,9 +1,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { rasterizeSvgToBlob } from '~/utils/svg';
-import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
-import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
-import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
+import { withFileIoSlot } from '~/utils/io/io-governor';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { CACHE_ROOT_DIR_NAME } from '~/utils/storage-roots';
 const log = createDevLogger('vectorImageCache');
@@ -16,15 +14,7 @@ export interface EnsureVectorImageRasterParams {
   width: number;
   height: number;
   sourceFileHandle: FileSystemFileHandle;
-  workspaceHandle: FileSystemDirectoryHandle;
-  resolvedStorageTopology?: ResolvedStorageTopology;
-}
-
-export interface ClearVectorImageRasterParams {
-  projectId: string;
-  projectRelativePath: string;
-  workspaceHandle: FileSystemDirectoryHandle;
-  resolvedStorageTopology?: ResolvedStorageTopology;
+  vfs: IFileSystemAdapter;
 }
 
 function hashString(input: string): string {
@@ -55,62 +45,50 @@ function getVectorImageRasterFileName(params: {
   return `${hashString(`${VECTOR_IMAGE_CACHE_VERSION}:${sourceStamp}:${dims}`)}.png`;
 }
 
-async function ensureDirectory(
-  root: FileSystemDirectoryHandle,
-  segments: string[],
-): Promise<FileSystemDirectoryHandle> {
-  let dir = root;
-  for (const segment of segments) {
-    dir = await dir.getDirectoryHandle(segment, { create: true });
-  }
-  return dir;
+function getVectorImageCacheRootVfsPath(projectId: string): string {
+  return toProjectTempVfsPath(projectId, [CACHE_ROOT_DIR_NAME, 'vector_image']);
 }
 
-async function ensureVectorImageCacheRoot(input: {
+function getVectorImageSourceVfsPath(params: {
   projectId: string;
-  workspaceHandle: FileSystemDirectoryHandle;
-  resolvedStorageTopology?: ResolvedStorageTopology;
-  create?: boolean;
-}): Promise<FileSystemDirectoryHandle> {
-  if (input.resolvedStorageTopology) {
-    return (await ensureResolvedProjectTempDir({
-      workspaceHandle: input.workspaceHandle,
-      topology: input.resolvedStorageTopology,
-      projectId: input.projectId,
-      leafSegments: ['cache', 'vector_image'],
-      create: input.create,
-    })) as FileSystemDirectoryHandle;
-  }
+  projectRelativePath: string;
+}): string {
+  return `${getVectorImageCacheRootVfsPath(params.projectId)}/${getVectorImageSourceDirName(
+    params.projectRelativePath,
+  )}`;
+}
 
-  throw new Error('Vector image cache requires resolved storage topology');
+function isNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    ((error as { name?: unknown }).name === 'NotFoundError' ||
+      (error as { name?: unknown }).name === 'VfsNotFoundError')
+  );
 }
 
 export async function ensureVectorImageRaster(
   params: EnsureVectorImageRasterParams,
-): Promise<FileSystemFileHandle> {
+): Promise<File> {
   const width = normalizeDimension(params.width);
   const height = normalizeDimension(params.height);
   const sourceFile = await withFileIoSlot(() => params.sourceFileHandle.getFile());
 
-  const cacheRoot = await ensureVectorImageCacheRoot({
+  const sourceDirPath = getVectorImageSourceVfsPath({
     projectId: params.projectId,
-    workspaceHandle: params.workspaceHandle,
-    resolvedStorageTopology: params.resolvedStorageTopology,
-    create: true,
+    projectRelativePath: params.projectRelativePath,
   });
-  const sourceDir = await ensureDirectory(cacheRoot, [
-    getVectorImageSourceDirName(params.projectRelativePath),
-  ]);
   const fileName = getVectorImageRasterFileName({ sourceFile, width, height });
+  const filePath = `${sourceDirPath}/${fileName}`;
 
   const sourceStamp = `${sourceFile.lastModified}:${sourceFile.size}`;
   const versionFileName = 'version.json';
   let isSameVersion = false;
 
   try {
-    const versionHandle = await sourceDir.getFileHandle(versionFileName);
-    const versionFile = await withFileIoSlot(() => versionHandle.getFile());
-    const versionText = await withFileIoSlot(() => versionFile.text());
+    const versionFile = await params.vfs.readFile(`${sourceDirPath}/${versionFileName}`);
+    const versionText = await versionFile.text();
     const versionData = JSON.parse(versionText) as { sourceStamp: string };
     if (versionData.sourceStamp === sourceStamp) {
       isSameVersion = true;
@@ -121,101 +99,54 @@ export async function ensureVectorImageRaster(
 
   if (!isSameVersion) {
     try {
-      const entriesToDelete: string[] = [];
-      for await (const entry of (
-        sourceDir as unknown as {
-          values: () => AsyncIterable<{ kind: string; name: string }>;
-        }
-      ).values()) {
-        entriesToDelete.push(entry.name);
-      }
-      for (const name of entriesToDelete) {
-        await sourceDir.removeEntry(name, { recursive: true }).catch(() => {});
+      const entries = await params.vfs.readDirectory(sourceDirPath);
+      for (const entry of entries) {
+        await params.vfs.deleteEntry(`${sourceDirPath}/${entry.name}`, true).catch(() => {});
       }
     } catch (e) {
-      log.warn('Failed to clean stale vector image cache files', e);
+      if (!isNotFoundError(e)) {
+        log.warn('Failed to clean stale vector image cache files', e);
+      }
     }
 
     try {
-      const versionHandle = await sourceDir.getFileHandle(versionFileName, { create: true });
-      await withFileWriteSlot(async () => {
-        const writable = await (
-          versionHandle as unknown as {
-            createWritable: () => Promise<FileSystemWritableFileStream>;
-          }
-        ).createWritable();
-        await writable.write(JSON.stringify({ sourceStamp }));
-        await writable.close();
-      });
+      await params.vfs.writeFile(
+        `${sourceDirPath}/${versionFileName}`,
+        JSON.stringify({ sourceStamp }),
+      );
     } catch (e) {
       log.warn('Failed to write vector cache version file', e);
     }
   }
 
   try {
-    return await sourceDir.getFileHandle(fileName);
+    const cached = await params.vfs.readFile(filePath);
+    return new File([cached], fileName, { type: cached.type || 'image/png' });
   } catch (error) {
-    const err = error as { name?: string };
-    if (err?.name !== 'NotFoundError') throw error;
+    if (!isNotFoundError(error)) throw error;
   }
 
   const blob = await rasterizeSvgToBlob(sourceFile, {
     maxWidth: width,
     maxHeight: height,
   });
-  const fileHandle = await sourceDir.getFileHandle(fileName, { create: true });
-  const createWritable = (fileHandle as FileSystemFileHandle).createWritable;
-  if (typeof createWritable !== 'function') {
-    throw new Error('Failed to write vector image cache: createWritable is not available');
-  }
-
-  await withFileWriteSlot(async () => {
-    const writable = await createWritable.call(fileHandle);
-    await writable.write(blob);
-    await writable.close();
-  });
-  return fileHandle;
+  await params.vfs.writeFile(filePath, blob);
+  return new File([blob], fileName, { type: blob.type || 'image/png' });
 }
 
-export async function clearVectorImageRaster(params: ClearVectorImageRasterParams): Promise<void> {
-  try {
-    const cacheRoot = await ensureVectorImageCacheRoot({
-      projectId: params.projectId,
-      workspaceHandle: params.workspaceHandle,
-      resolvedStorageTopology: params.resolvedStorageTopology,
-    });
-    await cacheRoot.removeEntry(getVectorImageSourceDirName(params.projectRelativePath), {
-      recursive: true,
-    });
-  } catch (error) {
-    const err = error as { name?: string };
-    if (err?.name !== 'NotFoundError') {
-      log.warn('Failed to clear vector image cache', error);
-    }
-  }
-}
-
-/**
- * VFS-based variant of {@link clearVectorImageRaster}. Removes the cached
- * raster directory for a vector image source via VFS, avoiding handle
- * dependencies. Preferred on the main thread where VFS is available.
- */
 export async function clearVectorImageRasterVfs(params: {
   vfs: IFileSystemAdapter;
   projectId: string;
   projectRelativePath: string;
 }): Promise<void> {
-  const sourceDirName = getVectorImageSourceDirName(params.projectRelativePath);
-  const vfsPath = toProjectTempVfsPath(params.projectId, [
-    CACHE_ROOT_DIR_NAME,
-    'vector_image',
-    sourceDirName,
-  ]);
+  const vfsPath = getVectorImageSourceVfsPath({
+    projectId: params.projectId,
+    projectRelativePath: params.projectRelativePath,
+  });
   try {
     await params.vfs.deleteEntry(vfsPath, true);
   } catch (error) {
-    const err = error as { name?: string };
-    if (err?.name !== 'NotFoundError') {
+    if (!isNotFoundError(error)) {
       log.warn('Failed to clear vector image cache via VFS', error);
     }
   }

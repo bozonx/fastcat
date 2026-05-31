@@ -6,16 +6,16 @@ import {
   MARKER_THUMBNAILS,
   TIMELINE_MANAGER_THUMBNAILS,
 } from '~/utils/constants';
-import { ensureResolvedProjectThumbnailsDir } from '~/utils/storage-handles';
 import {
   BaseThumbnailGenerator,
   type BaseThumbnailTask,
   hashString,
 } from './base-thumbnail-generator';
+import { useVfs } from '~/composables/useVfs';
+import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
-import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 const log = createDevLogger('file-thumbnail-generator');
 
@@ -36,19 +36,26 @@ export function getFileThumbnailHash(input: {
   return hashString(`file:${input.projectId}:${input.projectRelativePath}${sourceKey}`);
 }
 
-async function ensureThumbnailDir(input: {
+function getThumbnailDirVfsPath(input: { projectId: string; dirName: string }): string {
+  return toProjectTempVfsPath(input.projectId, ['thumbnails', input.dirName]);
+}
+
+function getThumbnailFileVfsPath(input: {
   projectId: string;
   dirName: string;
-  workspaceStore: ReturnType<typeof useWorkspaceStore>;
-  create?: boolean;
-}): Promise<FileSystemDirectoryHandle> {
-  return (await ensureResolvedProjectThumbnailsDir({
-    workspaceHandle: input.workspaceStore.workspaceHandle!,
-    topology: input.workspaceStore.resolvedStorageTopology,
-    projectId: input.projectId,
-    subDir: input.dirName,
-    create: input.create,
-  })) as FileSystemDirectoryHandle;
+  fileName: string;
+}): string {
+  return `${getThumbnailDirVfsPath(input)}/${input.fileName}`;
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    ((error as { name?: unknown }).name === 'NotFoundError' ||
+      (error as { name?: unknown }).name === 'VfsNotFoundError')
+  );
 }
 
 async function resizeImage(file: File, maxWidth: number, maxHeight: number): Promise<Blob> {
@@ -138,27 +145,23 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     task.onComplete?.(url);
   }
 
-  private async loadThumbnailFromOPFS(task: FileThumbnailTask): Promise<string | null> {
+  private async loadThumbnailFromVfs(task: FileThumbnailTask): Promise<string | null> {
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle) return null;
 
     try {
+      const vfs = useVfs();
       const isTimeline = task.projectRelativePath.toLowerCase().endsWith('.otio');
       const dirName = isTimeline
         ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
         : FILE_MANAGER_THUMBNAILS.DIR_NAME;
-
-      const dir = await ensureThumbnailDir({
+      const filePath = getThumbnailFileVfsPath({
         projectId: task.projectId,
         dirName,
-        workspaceStore,
+        fileName: `${task.id}.webp`,
       });
 
-      const fileName = `${task.id}.webp`;
-      const fileHandle = await dir.getFileHandle(fileName);
-      const file = await withFileIoSlot(() => fileHandle.getFile());
-      const buffer = await withFileIoSlot(() => file.arrayBuffer());
-      const blob = new Blob([buffer], { type: file.type });
+      const blob = await vfs.readFile(filePath);
       const url = URL.createObjectURL(blob);
 
       const previousUrl = this.cache.get(task.id);
@@ -171,15 +174,15 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       this.evictCacheIfNeeded();
       return url;
     } catch (e) {
-      if (e instanceof Error && e.name !== 'NotFoundError') {
-        log.warn('Failed to load file thumbnail from OPFS', task.id, e);
+      if (!isNotFoundError(e)) {
+        log.warn('Failed to load file thumbnail from VFS', task.id, e);
       }
       return null;
     }
   }
 
   protected async executeTask(task: FileThumbnailTask): Promise<void> {
-    const existingUrl = await this.loadThumbnailFromOPFS(task);
+    const existingUrl = await this.loadThumbnailFromVfs(task);
     if (existingUrl) {
       if (!this.isCancelled(task.id)) {
         task.onComplete?.(existingUrl);
@@ -257,31 +260,13 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     if (!blob || this.isCancelled(task.id)) return;
 
-    const dir = await ensureThumbnailDir({
+    const vfs = useVfs();
+    const filePath = getThumbnailFileVfsPath({
       projectId: task.projectId,
       dirName: FILE_MANAGER_THUMBNAILS.DIR_NAME,
-      workspaceStore,
-      create: true,
+      fileName: `${task.id}.webp`,
     });
-
-    const fileName = `${task.id}.webp`;
-    const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    await withFileWriteSlot(async () => {
-      const writable = await (
-        fileHandle as unknown as {
-          createWritable: () => Promise<FileSystemWritableFileStream>;
-        }
-      ).createWritable();
-      try {
-        await writable.write(blob);
-        await writable.close();
-      } catch (error) {
-        await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
-          .abort?.()
-          .catch(() => undefined);
-        throw error;
-      }
-    });
+    await vfs.writeFile(filePath, blob);
 
     const thumbUrl = URL.createObjectURL(blob);
 
@@ -309,31 +294,13 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
       : FILE_MANAGER_THUMBNAILS.DIR_NAME;
 
-    const dir = await ensureThumbnailDir({
+    const vfs = useVfs();
+    const filePath = getThumbnailFileVfsPath({
       projectId: input.projectId,
       dirName,
-      workspaceStore,
-      create: true,
+      fileName: `${hash}.webp`,
     });
-
-    const fileName = `${hash}.webp`;
-    const fileHandle = await dir.getFileHandle(fileName, { create: true });
-    await withFileWriteSlot(async () => {
-      const writable = await (
-        fileHandle as unknown as {
-          createWritable: () => Promise<FileSystemWritableFileStream>;
-        }
-      ).createWritable();
-      try {
-        await writable.write(input.blob);
-        await writable.close();
-      } catch (error) {
-        await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
-          .abort?.()
-          .catch(() => undefined);
-        throw error;
-      }
-    });
+    await vfs.writeFile(filePath, input.blob);
 
     const thumbUrl = URL.createObjectURL(input.blob);
 
@@ -364,16 +331,16 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       const dirName = isTimeline
         ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
         : FILE_MANAGER_THUMBNAILS.DIR_NAME;
-
-      const dir = await ensureThumbnailDir({
+      const vfs = useVfs();
+      const filePath = getThumbnailFileVfsPath({
         projectId: input.projectId,
         dirName,
-        workspaceStore,
+        fileName: `${hash}.webp`,
       });
 
-      await dir.removeEntry(`${hash}.webp`);
+      await vfs.deleteEntry(filePath);
     } catch (e) {
-      if (e instanceof Error && e.name !== 'NotFoundError') {
+      if (!isNotFoundError(e)) {
         log.warn('Failed to clear file thumbnail for', hash, e);
       }
     }
@@ -390,45 +357,36 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     const cacheKey = `marker:${input.markerId}`;
 
     try {
-      const dir = await ensureThumbnailDir({
+      const vfs = useVfs();
+      const dirPath = getThumbnailDirVfsPath({
         projectId: input.projectId,
         dirName: MARKER_THUMBNAILS.DIR_NAME,
-        workspaceStore,
       });
 
       const prefix = `${input.markerId}_`;
       const expectedFileName = `${prefix}${input.timeUs}.webp`;
+      const expectedPath = `${dirPath}/${expectedFileName}`;
 
-      // Fast path: try the exact expected filename first to avoid scanning
-      // the whole markers directory on every lookup (slow with many markers).
-      let foundHandle: FileSystemFileHandle | null = null;
+      let foundBlob: Blob | null = null;
       try {
-        foundHandle = await dir.getFileHandle(expectedFileName);
+        foundBlob = await vfs.readFile(expectedPath);
       } catch (e) {
-        if (e instanceof Error && e.name !== 'NotFoundError') throw e;
+        if (!isNotFoundError(e)) throw e;
       }
 
-      if (!foundHandle) {
+      if (!foundBlob) {
         // Fall back to scan (and cleanup) only when the exact file is missing —
         // this is the case where the marker's timeUs changed since last save.
-        const toDelete: string[] = [];
-        for await (const entry of (
-          dir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }
-        ).values()) {
+        const entries = await vfs.readDirectory(dirPath);
+        for (const entry of entries) {
           if (entry.kind === 'file' && entry.name.startsWith(prefix)) {
-            toDelete.push(entry.name);
+            await vfs.deleteEntry(`${dirPath}/${entry.name}`).catch(() => {});
           }
-        }
-        for (const name of toDelete) {
-          await dir.removeEntry(name).catch(() => {});
         }
       }
 
-      if (foundHandle) {
-        const file = await withFileIoSlot(() => foundHandle.getFile());
-        const buffer = await withFileIoSlot(() => file.arrayBuffer());
-        const blob = new Blob([buffer], { type: 'image/webp' });
-        const url = URL.createObjectURL(blob);
+      if (foundBlob) {
+        const url = URL.createObjectURL(foundBlob);
         const previousUrl = this.cache.get(cacheKey);
         if (previousUrl && previousUrl !== url) {
           this.revokeCacheValue(previousUrl);
@@ -438,8 +396,8 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         return url;
       }
     } catch (e) {
-      if (e instanceof Error && e.name !== 'NotFoundError') {
-        log.warn('Failed to get marker thumbnail from OPFS', input.markerId, e);
+      if (!isNotFoundError(e)) {
+        log.warn('Failed to get marker thumbnail from VFS', input.markerId, e);
       }
     }
 
@@ -456,31 +414,13 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const dir = await ensureThumbnailDir({
+      const vfs = useVfs();
+      const filePath = getThumbnailFileVfsPath({
         projectId: input.projectId,
         dirName: MARKER_THUMBNAILS.DIR_NAME,
-        workspaceStore,
-        create: true,
+        fileName: `${input.markerId}_${input.timeUs}.webp`,
       });
-
-      const fileName = `${input.markerId}_${input.timeUs}.webp`;
-      const fileHandle = await dir.getFileHandle(fileName, { create: true });
-      await withFileWriteSlot(async () => {
-        const writable = await (
-          fileHandle as unknown as {
-            createWritable: () => Promise<FileSystemWritableFileStream>;
-          }
-        ).createWritable();
-        try {
-          await writable.write(input.blob);
-          await writable.close();
-        } catch (error) {
-          await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
-            .abort?.()
-            .catch(() => undefined);
-          throw error;
-        }
-      });
+      await vfs.writeFile(filePath, input.blob);
 
       const url = URL.createObjectURL(input.blob);
       const cacheKey = `marker:${input.markerId}`;
@@ -491,7 +431,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       this.cache.set(cacheKey, url);
       this.cacheProjectIds.set(cacheKey, input.projectId);
     } catch (e) {
-      log.error('Failed to save marker thumbnail to OPFS', input.markerId, e);
+      log.error('Failed to save marker thumbnail to VFS', input.markerId, e);
     }
   }
 
@@ -500,20 +440,9 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const projectThumbnailsDir = await ensureResolvedProjectThumbnailsDir({
-        workspaceHandle: workspaceStore.workspaceHandle,
-        topology: workspaceStore.resolvedStorageTopology,
-        projectId,
-      });
-
-      // Browser FileSystemDirectoryHandle doesn't support recursive delete of the handle itself
-      // if we don't have its parent handle.
-      // But we can iterate and delete children.
-      for await (const name of (
-        projectThumbnailsDir as unknown as { keys: () => AsyncIterable<string> }
-      ).keys()) {
-        await projectThumbnailsDir.removeEntry(name, { recursive: true }).catch(() => {});
-      }
+      const vfs = useVfs();
+      const projectThumbnailsPath = toProjectTempVfsPath(projectId, ['thumbnails']);
+      await vfs.deleteEntry(projectThumbnailsPath, true);
 
       for (const [key, cachedUrl] of this.cache.entries()) {
         if (this.cacheProjectIds.get(key) !== projectId) continue;
@@ -522,7 +451,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         this.cacheProjectIds.delete(key);
       }
     } catch (e) {
-      if (e instanceof Error && e.name !== 'NotFoundError') {
+      if (!isNotFoundError(e)) {
         log.warn('Failed to clear all file thumbnails for project', projectId, e);
       }
     }

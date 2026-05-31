@@ -1,5 +1,4 @@
-import { writeFileAtomic } from '~/utils/io/atomic-file-write';
-import { withFileIoSlot } from '~/utils/io/io-governor';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 const AUDIO_CHUNK_CACHE_VERSION = 1;
 const AUDIO_CHUNK_CACHE_MAGIC = 0x46434131; // FCA1
@@ -59,14 +58,16 @@ function getSourceStamp(
   };
 }
 
-async function getSourceCacheDir(params: {
-  cacheRoot: FileSystemDirectoryHandle;
+function getChunkVfsPath(params: {
+  cacheVfsPath: string;
   sourceKey: string;
-  create?: boolean;
-}): Promise<FileSystemDirectoryHandle> {
-  return await params.cacheRoot.getDirectoryHandle(getSourceDirectoryName(params.sourceKey), {
-    create: params.create,
-  });
+  chunkIndex: number;
+}): string {
+  return [
+    params.cacheVfsPath.replace(/\/+$/g, ''),
+    getSourceDirectoryName(params.sourceKey),
+    getChunkFileName(params.chunkIndex),
+  ].join('/');
 }
 
 function isMetadataMatch(params: {
@@ -162,14 +163,15 @@ function deserializeAudioBuffer(params: {
 }
 
 export async function readAudioChunkFromFileCache(params: {
-  cacheRoot: FileSystemDirectoryHandle | null;
+  vfs: IFileSystemAdapter | null;
+  cacheVfsPath: string | null;
   sourceKey: string;
   chunkIndex: number;
   chunkSizeS: number;
   sourceFile: File;
   context: BaseAudioContext;
 }): Promise<PersistedAudioChunk | null> {
-  if (!params.cacheRoot) return null;
+  if (!params.vfs || !params.cacheVfsPath) return null;
 
   const expected: AudioChunkFileCacheMetadata = {
     sourceKey: params.sourceKey,
@@ -184,13 +186,13 @@ export async function readAudioChunkFromFileCache(params: {
   };
 
   try {
-    const sourceDir = await getSourceCacheDir({
-      cacheRoot: params.cacheRoot,
+    const filePath = getChunkVfsPath({
+      cacheVfsPath: params.cacheVfsPath,
       sourceKey: params.sourceKey,
+      chunkIndex: params.chunkIndex,
     });
-    const handle = await sourceDir.getFileHandle(getChunkFileName(params.chunkIndex));
-    const file = await withFileIoSlot(() => handle.getFile());
-    const data = await withFileIoSlot(() => file.arrayBuffer());
+    const file = await params.vfs.readFile(filePath);
+    const data = await file.arrayBuffer();
     return deserializeAudioBuffer({
       data,
       expected,
@@ -202,14 +204,15 @@ export async function readAudioChunkFromFileCache(params: {
 }
 
 export async function writeAudioChunkToFileCache(params: {
-  cacheRoot: FileSystemDirectoryHandle | null;
+  vfs: IFileSystemAdapter | null;
+  cacheVfsPath: string | null;
   sourceKey: string;
   chunkIndex: number;
   chunkSizeS: number;
   sourceFile: File;
   chunk: PersistedAudioChunk;
 }): Promise<void> {
-  if (!params.cacheRoot) return;
+  if (!params.vfs || !params.cacheVfsPath) return;
 
   const metadata: AudioChunkFileCacheMetadata = {
     sourceKey: params.sourceKey,
@@ -223,15 +226,11 @@ export async function writeAudioChunkToFileCache(params: {
     totalFrames: params.chunk.buffer.length,
   };
 
-  const sourceDir = await getSourceCacheDir({
-    cacheRoot: params.cacheRoot,
+  const filePath = getChunkVfsPath({
+    cacheVfsPath: params.cacheVfsPath,
     sourceKey: params.sourceKey,
-    create: true,
+    chunkIndex: params.chunkIndex,
   });
   const data = serializeAudioBuffer({ metadata, buffer: params.chunk.buffer });
-  await writeFileAtomic({
-    dir: sourceDir,
-    fileName: getChunkFileName(params.chunkIndex),
-    data,
-  });
+  await params.vfs.writeFile(filePath, new Uint8Array(data));
 }

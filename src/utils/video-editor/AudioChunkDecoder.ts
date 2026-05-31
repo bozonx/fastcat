@@ -9,12 +9,14 @@ import {
   readAudioChunkFromFileCache,
   writeAudioChunkToFileCache,
 } from '~/utils/video-editor/audio-chunk-file-cache';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 const log = createDevLogger('AudioChunkDecoder');
 
 export interface AudioChunkDecoderOptions {
   getContext: () => AudioContext | null;
   collectPinnedBuffers: () => Set<AudioBuffer>;
-  getCacheRoot?: () => Promise<FileSystemDirectoryHandle | null>;
+  getVfs?: () => IFileSystemAdapter | null;
+  getCacheVfsPath?: () => string | null;
   chunkSizeS?: number;
   maxChunkCount?: number;
 }
@@ -48,7 +50,8 @@ const DEFAULT_MAX_CHUNK_COUNT = 100;
 export class AudioChunkDecoder {
   private readonly getContext: AudioChunkDecoderOptions['getContext'];
   private readonly collectPinnedBuffers: AudioChunkDecoderOptions['collectPinnedBuffers'];
-  private readonly getCacheRoot?: AudioChunkDecoderOptions['getCacheRoot'];
+  private readonly getVfs?: AudioChunkDecoderOptions['getVfs'];
+  private readonly getCacheVfsPath?: AudioChunkDecoderOptions['getCacheVfsPath'];
   private readonly chunkSizeS: number;
   private readonly maxChunkCount: number;
   private chunkCache = new Map<string, AudioChunk[]>();
@@ -62,7 +65,8 @@ export class AudioChunkDecoder {
   constructor(options: AudioChunkDecoderOptions) {
     this.getContext = options.getContext;
     this.collectPinnedBuffers = options.collectPinnedBuffers;
-    this.getCacheRoot = options.getCacheRoot;
+    this.getVfs = options.getVfs;
+    this.getCacheVfsPath = options.getCacheVfsPath;
     this.chunkSizeS = options.chunkSizeS ?? DEFAULT_CHUNK_SIZE_S;
     this.maxChunkCount = options.maxChunkCount ?? DEFAULT_MAX_CHUNK_COUNT;
   }
@@ -188,9 +192,9 @@ export class AudioChunkDecoder {
         if (!ctx) return null;
 
         const requestedStartTimeS = chunkIndex * this.chunkSizeS;
-        const persistentCacheRoot = await this.getPersistentCacheRoot();
+        const persistentCache = this.getPersistentCache();
         const cachedChunk = await readAudioChunkFromFileCache({
-          cacheRoot: persistentCacheRoot,
+          ...persistentCache,
           sourceKey,
           chunkIndex,
           chunkSizeS: this.chunkSizeS,
@@ -241,7 +245,7 @@ export class AudioChunkDecoder {
 
         this.addChunk(sourceKey, chunk, chunkKey);
         void writeAudioChunkToFileCache({
-          cacheRoot: persistentCacheRoot,
+          ...persistentCache,
           sourceKey,
           chunkIndex,
           chunkSizeS: this.chunkSizeS,
@@ -300,14 +304,18 @@ export class AudioChunkDecoder {
     return chunkKey.slice(0, chunkKey.lastIndexOf(':'));
   }
 
-  private async getPersistentCacheRoot(): Promise<FileSystemDirectoryHandle | null> {
-    if (!this.getCacheRoot) return null;
-
+  private getPersistentCache(): { vfs: IFileSystemAdapter | null; cacheVfsPath: string | null } {
+    if (!this.getVfs || !this.getCacheVfsPath) {
+      return { vfs: null, cacheVfsPath: null };
+    }
     try {
-      return await this.getCacheRoot();
+      return {
+        vfs: this.getVfs(),
+        cacheVfsPath: this.getCacheVfsPath(),
+      };
     } catch (err) {
-      log.warn('[AudioEngine] Failed to resolve audio chunk cache root', err);
-      return null;
+      log.warn('[AudioEngine] Failed to resolve audio chunk cache VFS path', err);
+      return { vfs: null, cacheVfsPath: null };
     }
   }
 

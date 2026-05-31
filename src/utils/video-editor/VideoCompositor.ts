@@ -6,6 +6,7 @@ import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 import type { VideoClipEffect } from '~/timeline/types';
+import type { VectorImageRasterCacheResult } from './worker-client';
 
 // Internal modules
 import type { CompositorClip, CompositorTrack } from './compositor/types';
@@ -517,7 +518,7 @@ export class VideoCompositor {
         width: number;
         height: number;
         sourceFileHandle: FileSystemFileHandle;
-      }) => Promise<FileSystemFileHandle | null>;
+      }) => Promise<VectorImageRasterCacheResult | null>;
     },
     checkCancel?: () => boolean,
   ): Promise<number> {
@@ -573,7 +574,7 @@ export class VideoCompositor {
         width: number;
         height: number;
         sourceFileHandle: FileSystemFileHandle;
-      }) => Promise<FileSystemFileHandle | null>;
+      }) => Promise<VectorImageRasterCacheResult | null>;
     },
     checkCancel?: () => boolean,
     abortSignal?: AbortSignal,

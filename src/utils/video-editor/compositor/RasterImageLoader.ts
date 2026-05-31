@@ -1,6 +1,7 @@
 import { getMediaTypeFromFilename } from '../../media-types';
 import { isSvgFile } from '../../svg';
 import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
+import type { VectorImageRasterCacheResult } from '../worker-client';
 
 export interface RasterImageLoaderDeps {
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
@@ -12,7 +13,7 @@ export interface RasterImageLoaderDeps {
     width: number;
     height: number;
     sourceFileHandle: FileSystemFileHandle;
-  }) => Promise<FileSystemFileHandle | null>;
+  }) => Promise<VectorImageRasterCacheResult | null>;
 }
 
 export interface RasterImageLoaderContext {
@@ -72,7 +73,10 @@ export class RasterImageLoader {
           sourceFileHandle: fileHandle,
         });
         if (cached) {
-          imageFile = await runResilientWorkerFileIo(cached, () => cached.getFile());
+          imageFile =
+            cached instanceof File
+              ? cached
+              : await runResilientWorkerFileIo(cached, () => cached.getFile());
         }
       }
     }

@@ -1,5 +1,6 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 
 import { getGainAtClipTime } from '~/utils/audio/envelope';
 import { AudioChunkDecoder } from '~/utils/video-editor/AudioChunkDecoder';
@@ -26,7 +27,8 @@ const TRANSITION_FADE_IN_S = 0.02;
 const CHUNK_EDGE_FADE_S = 0.005;
 
 export interface AudioEngineOptions {
-  getAudioCacheRoot?: () => Promise<FileSystemDirectoryHandle | null>;
+  getVfs?: () => IFileSystemAdapter | null;
+  getAudioCacheVfsPath?: () => string | null;
 }
 
 export class AudioEngine {
@@ -82,7 +84,8 @@ export class AudioEngine {
     this.chunkDecoder = new AudioChunkDecoder({
       getContext: () => this.ctx,
       collectPinnedBuffers: () => this.collectPinnedBuffers(),
-      getCacheRoot: options.getAudioCacheRoot,
+      getVfs: options.getVfs,
+      getCacheVfsPath: options.getAudioCacheVfsPath,
     });
   }
 

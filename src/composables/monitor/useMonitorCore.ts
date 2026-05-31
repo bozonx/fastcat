@@ -11,7 +11,8 @@ import {
 
 import { AudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs } from '~/utils/monitor-time';
-import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import { useVfs } from '~/composables/useVfs';
+import { toProjectTempVfsPath } from '~/utils/storage-topology';
 
 import type { WorkerTimelineClip } from './types';
 import type { UseMonitorCoreOptions } from './useMonitorCore.types';
@@ -77,18 +78,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let workerTimelineOperation: Promise<void> = Promise.resolve();
 
   const audioEngine = new AudioEngine({
-    getAudioCacheRoot: async () => {
-      const workspaceHandle = workspaceStore.workspaceHandle;
+    getVfs: () => useVfs(),
+    getAudioCacheVfsPath: () => {
       const projectId = currentProjectStore.currentProjectId;
-      if (!workspaceHandle || !projectId) return null;
+      if (!workspaceStore.workspaceHandle || !projectId) return null;
 
-      return (await ensureResolvedProjectTempDir({
-        workspaceHandle,
-        topology: workspaceStore.resolvedStorageTopology,
-        projectId,
-        leafSegments: ['audio-cache'],
-        create: true,
-      })) as FileSystemDirectoryHandle;
+      return toProjectTempVfsPath(projectId, ['audio-cache']);
     },
   });
   const { client } = getPreviewWorkerClient();

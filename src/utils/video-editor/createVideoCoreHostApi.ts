@@ -1,11 +1,14 @@
 import type { VideoCoreHostAPI } from './worker-client';
 import { ensureVectorImageRaster } from '~/media-cache/application/vectorImageCache';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { useVfs } from '~/composables/useVfs';
 
 export interface CreateVideoCoreHostApiParams {
   getCurrentProjectId: () => string | null;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath?: (path: string) => Promise<File | null>;
+  getVfs?: () => IFileSystemAdapter | null;
   getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getResolvedStorageTopology?: () => ResolvedStorageTopology | null;
   onExportProgress: (progress: number, taskId?: string) => void;
@@ -31,16 +34,15 @@ export function createVideoCoreHostApi(params: CreateVideoCoreHostApiParams): Vi
       height,
       sourceFileHandle,
     }) => {
-      const workspaceHandle = params.getWorkspaceHandle();
-      if (!workspaceHandle) return null;
+      const vfs = params.getVfs?.() ?? useVfs();
+      if (!vfs || !params.getWorkspaceHandle()) return null;
       return await ensureVectorImageRaster({
         projectId,
         projectRelativePath,
         width,
         height,
         sourceFileHandle,
-        workspaceHandle,
-        resolvedStorageTopology: params.getResolvedStorageTopology?.() ?? undefined,
+        vfs,
       });
     },
     onExportProgress: (progress, taskId) => params.onExportProgress(progress, taskId),

@@ -13,6 +13,7 @@ import type { ClipFactory } from './ClipFactory';
 import type { LayoutApplier } from './LayoutApplier';
 import type { CompositorClip, CompositorTrack } from './types';
 import { resolveBlendMode } from './types';
+import type { VectorImageRasterCacheResult } from '../worker-client';
 const log = createDevLogger('TimelineLoadOrchestrator');
 
 export interface TimelineLoadOrchestratorDeps {
@@ -25,7 +26,7 @@ export interface TimelineLoadOrchestratorDeps {
     width: number;
     height: number;
     sourceFileHandle: FileSystemFileHandle;
-  }) => Promise<FileSystemFileHandle | null>;
+  }) => Promise<VectorImageRasterCacheResult | null>;
 }
 
 export interface TimelineLoadOrchestratorContext {

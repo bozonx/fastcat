@@ -4,6 +4,7 @@ import {
   readAudioChunkFromFileCache,
   writeAudioChunkToFileCache,
 } from '~/utils/video-editor/audio-chunk-file-cache';
+import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
 
 class AudioBufferMock {
   readonly numberOfChannels: number;
@@ -33,71 +34,6 @@ class AudioContextMock {
   }
 }
 
-class MemoryFileHandle {
-  readonly kind = 'file';
-
-  constructor(
-    readonly name: string,
-    private readonly files: Map<string, Uint8Array>,
-  ) {}
-
-  async getFile(): Promise<File> {
-    const data = this.files.get(this.name);
-    if (!data) throw new DOMException(`File ${this.name} not found`, 'NotFoundError');
-    return new File([data], this.name, { lastModified: 1 });
-  }
-
-  async createWritable(): Promise<FileSystemWritableFileStream> {
-    const name = this.name;
-    const files = this.files;
-    return {
-      async write(data: FileSystemWriteChunkType) {
-        const buffer = data instanceof ArrayBuffer ? data : await new Blob([data]).arrayBuffer();
-        files.set(name, new Uint8Array(buffer));
-      },
-      async close() {},
-      async abort() {},
-    } as FileSystemWritableFileStream;
-  }
-
-  async move(_destination: unknown, name: string): Promise<void> {
-    const data = this.files.get(this.name);
-    if (!data) return;
-    this.files.delete(this.name);
-    this.files.set(name, data);
-  }
-}
-
-class MemoryDirectoryHandle {
-  readonly kind = 'directory';
-  readonly files = new Map<string, Uint8Array>();
-  private readonly dirs = new Map<string, MemoryDirectoryHandle>();
-
-  constructor(readonly name: string) {}
-
-  async getDirectoryHandle(name: string, options?: { create?: boolean }) {
-    const existing = this.dirs.get(name);
-    if (existing) return existing;
-    if (!options?.create) throw new DOMException(`Directory ${name} not found`, 'NotFoundError');
-
-    const dir = new MemoryDirectoryHandle(name);
-    this.dirs.set(name, dir);
-    return dir;
-  }
-
-  async getFileHandle(name: string, options?: { create?: boolean }) {
-    if (!this.files.has(name) && !options?.create) {
-      throw new DOMException(`File ${name} not found`, 'NotFoundError');
-    }
-    return new MemoryFileHandle(name, this.files);
-  }
-
-  async removeEntry(name: string): Promise<void> {
-    this.files.delete(name);
-    this.dirs.delete(name);
-  }
-}
-
 function createSourceFile(options?: { lastModified?: number; size?: number }): File {
   const bytes = new Uint8Array(options?.size ?? 8);
   return new File([bytes], 'source.wav', { lastModified: options?.lastModified ?? 10 });
@@ -105,7 +41,8 @@ function createSourceFile(options?: { lastModified?: number; size?: number }): F
 
 describe('audio chunk file cache', () => {
   it('persists and restores a PCM chunk', async () => {
-    const root = new MemoryDirectoryHandle('audio-cache') as unknown as FileSystemDirectoryHandle;
+    const vfs = new InMemoryFileSystemAdapter();
+    const cacheVfsPath = '@ptemp/projects/project-1/audio-cache';
     const context = new AudioContextMock() as unknown as BaseAudioContext;
     const sourceFile = createSourceFile();
     const buffer = new AudioBufferMock(2, 4, 48_000);
@@ -113,7 +50,8 @@ describe('audio chunk file cache', () => {
     buffer.copyToChannel(new Float32Array([-0.1, -0.2, -0.3, -0.4]), 1);
 
     await writeAudioChunkToFileCache({
-      cacheRoot: root,
+      vfs,
+      cacheVfsPath,
       sourceKey: 'source:_audio/test.wav',
       chunkIndex: 3,
       chunkSizeS: 5,
@@ -127,7 +65,8 @@ describe('audio chunk file cache', () => {
     });
 
     const restored = await readAudioChunkFromFileCache({
-      cacheRoot: root,
+      vfs,
+      cacheVfsPath,
       sourceKey: 'source:_audio/test.wav',
       chunkIndex: 3,
       chunkSizeS: 5,
@@ -152,13 +91,15 @@ describe('audio chunk file cache', () => {
   });
 
   it('misses when the source file stamp changes', async () => {
-    const root = new MemoryDirectoryHandle('audio-cache') as unknown as FileSystemDirectoryHandle;
+    const vfs = new InMemoryFileSystemAdapter();
+    const cacheVfsPath = '@ptemp/projects/project-1/audio-cache';
     const context = new AudioContextMock() as unknown as BaseAudioContext;
     const sourceFile = createSourceFile({ lastModified: 10 });
     const buffer = new AudioBufferMock(1, 2, 48_000);
 
     await writeAudioChunkToFileCache({
-      cacheRoot: root,
+      vfs,
+      cacheVfsPath,
       sourceKey: 'source:_audio/test.wav',
       chunkIndex: 0,
       chunkSizeS: 5,
@@ -172,7 +113,8 @@ describe('audio chunk file cache', () => {
     });
 
     const restored = await readAudioChunkFromFileCache({
-      cacheRoot: root,
+      vfs,
+      cacheVfsPath,
       sourceKey: 'source:_audio/test.wav',
       chunkIndex: 0,
       chunkSizeS: 5,

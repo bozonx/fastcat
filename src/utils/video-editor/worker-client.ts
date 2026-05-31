@@ -15,6 +15,8 @@ interface WorkerTaskHostApi {
   onExportWarning?: VideoCoreHostAPI['onExportWarning'];
 }
 
+export type VectorImageRasterCacheResult = FileSystemFileHandle | File;
+
 export interface VideoCoreHostAPI {
   getCurrentProjectId(): Promise<string | null>;
   getFileHandleByPath(path: string): Promise<FileSystemFileHandle | null>;
@@ -25,7 +27,7 @@ export interface VideoCoreHostAPI {
     width: number;
     height: number;
     sourceFileHandle: FileSystemFileHandle;
-  }): Promise<FileSystemFileHandle | null>;
+  }): Promise<VectorImageRasterCacheResult | null>;
   onExportProgress(progress: number, taskId?: string): void;
   onExportPhase?(phase: 'encoding' | 'saving', taskId?: string): void;
   onExportWarning?(message: string, taskId?: string): void;
