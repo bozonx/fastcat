@@ -37,6 +37,7 @@ import { useFileStorageInfo } from '~/composables/properties/useFileStorageInfo'
 import { useFilePropertiesHandlers } from '~/composables/properties/useFilePropertiesHandlers';
 import { useAudioExtraction } from '~/composables/file-manager/useAudioExtraction';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
+import { computeDirectoryStatsByPath } from '~/utils/fs';
 import { useComputerVfs } from '~/composables/file-manager/useComputerVfs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
@@ -142,8 +143,10 @@ const {
 const { isProjectRootDir, storageFreeBytes, projectStats } = useFileStorageInfo({
   selectedFsEntry: selectedFsEntryRef,
   currentProjectName: computed(() => projectStore.currentProjectName),
-  getDirectoryHandleByPath: async (path) =>
-    isExternalContext.value ? null : await projectStore.getDirectoryHandleByPath(path),
+  getProjectStats: () =>
+    isExternalContext.value
+      ? Promise.resolve(null)
+      : computeDirectoryStatsByPath(fileManager.vfs, ''),
 });
 
 const isProjectRootDirInContext = computed(
@@ -200,8 +203,10 @@ const {
     }
     return await mediaStore.getOrFetchMetadataByPath(path);
   },
-  getDirectoryHandleByPath: (path) =>
-    isExternalContext.value ? Promise.resolve(null) : projectStore.getDirectoryHandleByPath(path),
+  getDirectoryStats: (path) =>
+    isExternalContext.value
+      ? Promise.resolve(null)
+      : computeDirectoryStatsByPath(fileManager.vfs, path, { recursiveFilesCount: false }),
   onResetPreviewMode: (mode) => emit('update:previewMode', mode),
 });
 

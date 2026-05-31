@@ -40,14 +40,19 @@ const mockFileManagerStore = reactive({
 });
 
 const mockProjectStore = reactive({
-  getDirectoryHandleByPath: vi.fn(),
   openTimelineFile: vi.fn(),
   setView: vi.fn(),
 });
 
+const mockVfs = {
+  readDirectory: vi.fn(async () => []),
+  getMetadata: vi.fn(async () => null),
+};
+
 vi.mock('~/stores/selection.store', () => ({ useSelectionStore: () => mockSelectionStore }));
 vi.mock('~/stores/file-manager.store', () => ({ useFileManagerStore: () => mockFileManagerStore }));
 vi.mock('~/stores/project.store', () => ({ useProjectStore: () => mockProjectStore }));
+vi.mock('~/composables/useVfs', () => ({ useVfs: () => mockVfs }));
 
 describe('useMobileFileBrowserSelection', () => {
   beforeEach(() => {

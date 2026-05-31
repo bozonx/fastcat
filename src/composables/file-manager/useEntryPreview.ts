@@ -5,7 +5,7 @@ import yaml from 'js-yaml';
 import { getMediaTypeFromFilename, getMimeTypeFromFilename } from '~/utils/media-types';
 import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { computeDirectoryStats } from '~/utils/fs';
+import type { DirectoryStats } from '~/utils/fs';
 import type { TimelineDocument } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
 import type { MediaMetadata } from '~/stores/media.store';
@@ -61,7 +61,7 @@ export function useEntryPreview(params: {
     entry: FsEntry;
     path: string;
   }) => Promise<MediaMetadata | null>;
-  getDirectoryHandleByPath?: (path: string) => Promise<FileSystemDirectoryHandle | null>;
+  getDirectoryStats?: (path: string) => Promise<DirectoryStats | null>;
   onResetPreviewMode: (mode: 'original' | 'proxy') => void;
 }) {
   const { url: currentUrl, set: setCurrentUrl, revoke: revokeCurrentUrl } = useSafeObjectUrl();
@@ -308,16 +308,15 @@ export function useEntryPreview(params: {
         let size = typeof entry.size === 'number' ? entry.size : undefined;
         let filesCount = entry.children?.filter((c) => c.kind === 'file').length ?? 0;
 
-        if (entry.path && params.getDirectoryHandleByPath) {
-          const handle = await params.getDirectoryHandleByPath(entry.path);
-          if (handle) {
-            try {
-              const stats = await computeDirectoryStats(handle, { recursiveFilesCount: false });
+        if (entry.path && params.getDirectoryStats) {
+          try {
+            const stats = await params.getDirectoryStats(entry.path);
+            if (stats) {
               size = stats.size;
               filesCount = stats.filesCount;
-            } catch {
-              // Fall back to entry metadata below if stats can't be computed.
             }
+          } catch {
+            // Fall back to entry metadata below if stats can't be computed.
           }
         }
 

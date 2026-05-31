@@ -1,10 +1,11 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import { computeDirectoryStats, type DirectoryStats } from '~/utils/fs';
+import type { DirectoryStats } from '~/utils/fs';
 
 interface UseFileStorageInfoOptions {
   selectedFsEntry: Ref<unknown>;
   currentProjectName: Ref<string | null | undefined>;
-  getDirectoryHandleByPath?: (path: string) => Promise<FileSystemDirectoryHandle | null>;
+  /** Compute aggregate stats for the project root, or null when unavailable. */
+  getProjectStats?: () => Promise<DirectoryStats | null>;
 }
 
 export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
@@ -45,12 +46,9 @@ export function useFileStorageInfo(options: UseFileStorageInfoOptions) {
         }
       }
 
-      if (options.getDirectoryHandleByPath) {
+      if (options.getProjectStats) {
         try {
-          const rootHandle = await options.getDirectoryHandleByPath('');
-          if (rootHandle) {
-            projectStats.value = (await computeDirectoryStats(rootHandle)) ?? null;
-          }
+          projectStats.value = (await options.getProjectStats()) ?? null;
         } catch {
           projectStats.value = null;
         }
