@@ -2,7 +2,6 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { ref, watch, inject, onScopeDispose } from 'vue';
 import type { Ref } from 'vue';
 import { useFileManagerStore } from '~/stores/file-manager.store';
-import { useProjectStore } from '~/stores/project.store';
 import { useFileManagerThumbnails } from '~/composables/file-manager/useFileManagerThumbnails';
 import { useFileManagerCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
 import { useFileSorting } from '~/composables/file-manager/useFileSorting';
@@ -11,7 +10,6 @@ import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { getMimeTypeFromFilename } from '~/utils/media-types';
 import { MAX_COPY_DEPTH } from '~/file-manager/core/rules';
 import PQueue from 'p-queue';
-import { withFileIoSlot } from '~/utils/io/io-governor';
 const log = createDevLogger('useFileBrowserEntries');
 
 export interface ExtendedFsEntry extends FsEntry {
@@ -30,7 +28,6 @@ export function useFileBrowserEntries({
   const fileManagerStore =
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
-  const projectStore = useProjectStore();
   const folderEntries = ref<FsEntry[]>([]);
   const folderSizes = ref<Record<string, number>>({});
   const folderSizesLoading = ref<Record<string, boolean>>({});
@@ -44,37 +41,36 @@ export function useFileBrowserEntries({
     metadataQueue.pause();
   });
 
-  async function calculateFolderSize(path: string, handle?: FileSystemDirectoryHandle) {
+  async function calculateFolderSize(path: string) {
     if (folderSizes.value[path] !== undefined || folderSizesLoading.value[path]) return;
 
     folderSizesLoading.value[path] = true;
     await sizeCalcQueue.add(async () => {
       try {
-        const resolvedHandle = handle ?? (await projectStore.getDirectoryHandleByPath(path));
-        if (!resolvedHandle) return;
         let totalSize = 0;
         let visitedEntries = 0;
         const maxEntries = 10000;
 
-        async function calc(dirHandle: FileSystemDirectoryHandle, depth = 0) {
+        async function calc(dirPath: string, depth = 0) {
           if (depth > MAX_COPY_DEPTH || visitedEntries >= maxEntries) return;
-          for await (const entry of dirHandle.values()) {
+          const entries = await vfs.readDirectory(dirPath);
+          for (const entry of entries) {
             visitedEntries++;
             if (visitedEntries >= maxEntries) return;
             if (entry.kind === 'file') {
               try {
-                const file = await withFileIoSlot(() => entry.getFile());
-                totalSize += file.size;
+                const metadata = await vfs.getMetadata(entry.path);
+                if (metadata?.kind === 'file') totalSize += metadata.size;
               } catch {
                 // skip
               }
             } else if (entry.kind === 'directory') {
-              await calc(entry, depth + 1);
+              await calc(entry.path, depth + 1);
             }
           }
         }
 
-        await calc(resolvedHandle);
+        await calc(path);
         folderSizes.value[path] = totalSize;
       } catch (error) {
         log.error('Failed to calculate folder size:', error);

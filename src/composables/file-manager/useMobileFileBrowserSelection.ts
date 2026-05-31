@@ -5,7 +5,8 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useProjectStore } from '~/stores/project.store';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
-import { computeDirectoryStats } from '~/utils/fs';
+import { computeDirectoryStatsByPath } from '~/utils/fs';
+import { useVfs } from '~/composables/useVfs';
 const log = createDevLogger('useMobileFileBrowserSelection');
 
 export function useMobileFileBrowserSelection() {
@@ -14,6 +15,7 @@ export function useMobileFileBrowserSelection() {
     (inject('fileManagerStore', null) as ReturnType<typeof useFileManagerStore> | null) ||
     useFileManagerStore();
   const projectStore = useProjectStore();
+  const vfs = useVfs();
 
   const isSelectionMode = ref(false);
   const isDrawerOpen = ref(false);
@@ -42,9 +44,7 @@ export function useMobileFileBrowserSelection() {
     if (folderSizes.value[path] !== undefined) return;
 
     try {
-      const handle = await projectStore.getDirectoryHandleByPath(path);
-      if (!handle) return;
-      const stats = await computeDirectoryStats(handle);
+      const stats = await computeDirectoryStatsByPath(vfs, path);
       if (stats) {
         fileManagerStore.folderSizes[path] = stats.size;
       }

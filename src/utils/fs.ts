@@ -134,3 +134,67 @@ export async function computeDirectoryStats(
     throw e;
   }
 }
+
+/**
+ * VFS-native variant of {@link computeDirectoryStats}: walks a directory tree by
+ * path through the application VFS, aggregating byte size and file count.
+ * Returns partial stats with `truncated: true` if `maxEntries` is hit.
+ */
+export async function computeDirectoryStatsByPath(
+  vfs: IFileSystemAdapter,
+  dirPath: string,
+  options?: { maxEntries?: number; recursiveFilesCount?: boolean },
+): Promise<DirectoryStats> {
+  const maxEntries = options?.maxEntries ?? 25_000;
+  const recursiveFilesCount = options?.recursiveFilesCount ?? true;
+  let seen = 0;
+  let totalSizeAcrossWalk = 0;
+  let totalFilesAcrossWalk = 0;
+
+  async function walk(path: string, isRoot = true): Promise<DirectoryStats> {
+    const entries = await vfs.readDirectory(path);
+    let totalSize = 0;
+    let totalFiles = 0;
+    for (const entry of entries) {
+      if (seen >= maxEntries) {
+        throw new DirectoryTooLargeError({
+          size: totalSizeAcrossWalk,
+          filesCount: totalFilesAcrossWalk,
+          truncated: true,
+        });
+      }
+      seen += 1;
+
+      if (entry.kind === 'file') {
+        try {
+          const metadata = await vfs.getMetadata(entry.path);
+          const size = metadata?.kind === 'file' ? metadata.size : 0;
+          totalSize += size;
+          totalSizeAcrossWalk += size;
+          if (isRoot || recursiveFilesCount) {
+            totalFiles += 1;
+            totalFilesAcrossWalk += 1;
+          }
+        } catch {
+          // Non-fatal: skip unreadable entry.
+        }
+      } else {
+        const sub = await walk(entry.path, false);
+        totalSize += sub.size;
+        if (recursiveFilesCount) {
+          totalFiles += sub.filesCount;
+        }
+      }
+    }
+    return { size: totalSize, filesCount: totalFiles };
+  }
+
+  try {
+    return await walk(dirPath);
+  } catch (e) {
+    if (e instanceof DirectoryTooLargeError) {
+      return e.partial;
+    }
+    throw e;
+  }
+}
