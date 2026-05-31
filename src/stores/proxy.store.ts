@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useNuxtApp } from 'nuxt/app';
 import type { I18nService } from '~/services/i18n.service';
@@ -8,6 +8,8 @@ import { createProxyFsModule } from '~/stores/proxy/proxyFs';
 import { createProxyQueueModule } from '~/stores/proxy/proxyQueue';
 import { createProxyService } from '~/stores/proxy/proxyService';
 import { useBackgroundTasksStore } from '~/stores/background-tasks.store';
+import { useVfs } from '~/composables/useVfs';
+import { ensureResolvedProjectProxiesDir } from '~/utils/storage-handles';
 
 export const useProxyStore = defineStore('proxy', () => {
   const workspaceStore = useWorkspaceStore();
@@ -28,12 +30,44 @@ export const useProxyStore = defineStore('proxy', () => {
   const bgTaskIdsByPath = ref<Map<string, string>>(new Map());
 
   const fsModule = createProxyFsModule({
-    workspaceHandle: computed(() => workspaceStore.workspaceHandle),
-    currentProjectId: computed(() => projectStore.currentProjectId),
-    resolvedStorageTopology: computed(() => workspaceStore.resolvedStorageTopology),
+    getProjectId: () => projectStore.currentProjectId,
+    getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
   });
 
+  // Lazy: the VFS plugin initializes after stores are set up.
+  const getVfs = () => useVfs();
+
   const queueModule = createProxyQueueModule();
+
+  /**
+   * Tier-3 bridge: obtain a raw FileSystemFileHandle at a VFS path.
+   * The WebCodecs worker needs `createWritable()` for streaming writes.
+   * Uses the legacy handle-based path through `ensureResolvedProjectProxiesDir`
+   * + OPFS handle navigation. This will be removed when the worker RPC layer
+   * migrates to VFS-native streaming.
+   */
+  async function getWriteFileHandle(proxyVfsPath: string): Promise<FileSystemFileHandle | null> {
+    const wsHandle = workspaceStore.workspaceHandle;
+    const projectId = projectStore.currentProjectId;
+    if (!wsHandle || !projectId) return null;
+
+    try {
+      const proxiesDir = (await ensureResolvedProjectProxiesDir({
+        workspaceHandle: wsHandle,
+        topology: workspaceStore.resolvedStorageTopology,
+        projectId,
+        create: true,
+      })) as FileSystemDirectoryHandle;
+
+      // Extract filename from the full VFS path
+      const fileName = proxyVfsPath.split('/').pop();
+      if (!fileName) return null;
+
+      return await proxiesDir.getFileHandle(fileName, { create: true });
+    } catch {
+      return null;
+    }
+  }
 
   const service = createProxyService({
     videoExtensions,
@@ -46,8 +80,11 @@ export const useProxyStore = defineStore('proxy', () => {
     taskIdToPath,
     bgTaskIdsByPath,
     proxyQueue: queueModule.proxyQueue,
-    ensureProjectProxiesDir: fsModule.ensureProjectProxiesDir,
+    getProjectProxiesVfsPath: fsModule.getProjectProxiesVfsPath,
     getProxyFileName: fsModule.getProxyFileName,
+    getProxyFilePath: fsModule.getProxyFilePath,
+    getVfs,
+    getWriteFileHandle,
     getFileHandleByPath: async (path) => await projectStore.getFileHandleByPath(path),
     getFileByPath: async (path) => await projectStore.getFileByPath(path),
     getOptimizationSettings: () => workspaceStore.userSettings.optimization,

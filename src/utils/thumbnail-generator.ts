@@ -5,9 +5,10 @@ import { TIMELINE_CLIP_THUMBNAILS } from '~/utils/constants';
 import {
   BaseThumbnailGenerator,
   type BaseThumbnailTask,
-  ensureBaseThumbnailDir,
   hashString,
 } from './base-thumbnail-generator';
+import { toProjectTempVfsPath } from '~/utils/storage-topology';
+import { useVfs } from '~/composables/useVfs';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
@@ -50,22 +51,12 @@ export function getClipThumbnailsHash(input: {
   return hashString(`${input.projectId}:${input.projectRelativePath}`);
 }
 
-async function ensureTimelineThumbnailDir(input: {
-  projectId: string;
-  workspaceStore: ReturnType<typeof useWorkspaceStore>;
-  hash?: string;
-  create?: boolean;
-}): Promise<FileSystemDirectoryHandle> {
-  const leafSegments = input.hash
-    ? ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME, input.hash]
+function getTimelineThumbnailVfsPath(projectId: string, hash?: string): string {
+  const leafSegments = hash
+    ? ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME, hash]
     : ['thumbnails', TIMELINE_CLIP_THUMBNAILS.DIR_NAME];
 
-  return await ensureBaseThumbnailDir({
-    projectId: input.projectId,
-    workspaceStore: input.workspaceStore,
-    leafSegments,
-    create: input.create,
-  });
+  return toProjectTempVfsPath(projectId, leafSegments);
 }
 
 class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<number, string>> {
@@ -307,26 +298,27 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     }
 
     try {
-      const hashDir = await ensureTimelineThumbnailDir({
-        projectId: task.projectId,
-        workspaceStore,
-        hash: task.id,
-      });
+      const vfs = useVfs();
+      const vfsPath = getTimelineThumbnailVfsPath(task.projectId, task.id);
 
       const urls = new Map<number, string>(this.cache.get(task.id) ?? []);
       const totalFrames = requestedTimes.length;
       let framesProcessed = requestedTimes.length - timesToCheck.length;
 
-      // Single-pass directory scan avoids expensive per-file getFileHandle calls
-      // that throw NotFoundError for every missing thumbnail.
       let existingFiles = this.opfsExistingFiles.get(task.id);
       if (!existingFiles) {
         existingFiles = new Set<string>();
-        for await (const entry of (
-          hashDir as unknown as { values: () => AsyncIterable<{ kind: string; name: string }> }
-        ).values()) {
-          if (entry.kind === 'file') {
-            existingFiles.add(entry.name);
+        try {
+          const entries = await vfs.readDirectory(vfsPath);
+          for (const entry of entries) {
+            if (entry.kind === 'file') {
+              existingFiles.add(entry.name);
+            }
+          }
+        } catch (e: unknown) {
+          const err = e as { name?: string };
+          if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
+            throw e;
           }
         }
         this.opfsExistingFiles.set(task.id, existingFiles);
@@ -348,10 +340,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
           continue;
         }
         try {
-          const fileHandle = await hashDir.getFileHandle(fileName);
-          const file = await withFileIoSlot(() => fileHandle.getFile());
-          const buffer = await withFileIoSlot(() => file.arrayBuffer());
-          const blob = new Blob([buffer], { type: file.type });
+          const filePath = `${vfsPath}/${fileName}`;
+          const blob = await vfs.readFile(filePath);
           const url = URL.createObjectURL(blob);
           const previousUrl = urls.get(key);
           if (previousUrl && previousUrl !== url) {
@@ -363,10 +353,10 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
             task.onProgress?.(framesProcessed / totalFrames, url, time);
           }
         } catch (e: unknown) {
-          if (isDomExceptionName(e, 'NotFoundError')) {
-            continue;
+          const err = e as { name?: string };
+          if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
+            throw e;
           }
-          throw e;
         }
       }
 
@@ -384,8 +374,9 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
       return urls;
     } catch (e: unknown) {
-      if (!isDomExceptionName(e, 'NotFoundError')) {
-        log.warn('Failed to load thumbnails from OPFS', task.id, e);
+      const err = e as { name?: string };
+      if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
+        log.warn('Failed to load thumbnails from VFS', task.id, e);
       }
       return null;
     }
@@ -415,12 +406,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
     const { client } = getThumbnailWorkerClient();
 
-    const dir = await ensureTimelineThumbnailDir({
-      projectId: task.projectId,
-      workspaceStore,
-      hash: task.id,
-      create: true,
-    });
+    const vfs = useVfs();
+    const vfsPath = getTimelineThumbnailVfsPath(task.projectId, task.id);
     const attemptedMissingTimes = new Set<number>();
     // Larger chunks dramatically cut per-call demuxer setup overhead.
     // The worker still checks cancellation between samples inside the chunk.
@@ -476,19 +463,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
             }
 
             const fileName = `${Math.round(currentTime)}.webp`;
-            const fileHandle = await dir.getFileHandle(fileName, { create: true });
-            await withFileWriteSlot(async () => {
-              const writable = await (fileHandle as WritableFileHandle).createWritable();
-              try {
-                await writable.write(blob);
-                await writable.close();
-              } catch (error) {
-                await (writable as FileSystemWritableFileStream & { abort?: () => Promise<void> })
-                  .abort?.()
-                  .catch(() => undefined);
-                throw error;
-              }
-            });
+            const filePath = `${vfsPath}/${fileName}`;
+            await vfs.writeFile(filePath, blob);
 
             this.opfsExistingFiles.get(task.id)?.add(fileName);
 
@@ -541,15 +517,12 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     if (!workspaceStore.workspaceHandle) return;
 
     try {
-      const dir = await ensureTimelineThumbnailDir({
-        projectId: input.projectId,
-        workspaceStore,
-        create: true,
-      });
-
-      await dir.removeEntry(input.hash, { recursive: true });
+      const vfs = useVfs();
+      const vfsPath = getTimelineThumbnailVfsPath(input.projectId, input.hash);
+      await vfs.deleteEntry(vfsPath, true);
     } catch (e: unknown) {
-      if (!isDomExceptionName(e, 'NotFoundError')) {
+      const err = e as { name?: string };
+      if (err?.name !== 'NotFoundError' && err?.name !== 'VfsNotFoundError') {
         log.warn('Failed to clear thumbnails for', input.hash, e);
       }
     }

@@ -134,6 +134,61 @@ vi.mock('~/stores/media/media-worker', () => ({
   }),
 }));
 
+const mockVfs = {
+  writeFile: vi.fn(async (path: string, data: any) => {
+    const fileName = path.split('/').pop() || '';
+    // Store as ArrayBuffer or Uint8Array depending on what was passed
+    const buffer = typeof data === 'string'
+      ? new TextEncoder().encode(data).buffer
+      : data.buffer || data;
+    if (path.includes('files-meta')) {
+      mediaFsMock.metaFiles.set(fileName, buffer);
+    } else if (path.includes('waveforms')) {
+      mediaFsMock.waveformFiles.set(fileName, buffer);
+    }
+  }),
+  deleteEntry: vi.fn(async (path: string) => {
+    const fileName = path.split('/').pop() || '';
+    if (path.includes('files-meta')) {
+      mediaFsMock.metaFiles.delete(fileName);
+    } else if (path.includes('waveforms')) {
+      mediaFsMock.waveformFiles.delete(fileName);
+    }
+  }),
+  getFile: vi.fn(async (path: string) => {
+    const fileName = path.split('/').pop() || '';
+    let val: any;
+    if (path.includes('files-meta')) {
+      val = mediaFsMock.metaFiles.get(fileName);
+    } else if (path.includes('waveforms')) {
+      val = mediaFsMock.waveformFiles.get(fileName);
+    }
+    if (val === undefined) return null;
+
+    return {
+      text: vi.fn(async () => {
+        if (val instanceof ArrayBuffer || val instanceof Uint8Array || ArrayBuffer.isView(val)) {
+          return new TextDecoder().decode(val);
+        }
+        return val ?? '{}';
+      }),
+      arrayBuffer: vi.fn(async () => {
+        if (typeof val === 'string') {
+          return new TextEncoder().encode(val).buffer;
+        }
+        if (val instanceof Uint8Array || ArrayBuffer.isView(val)) {
+          return val.buffer;
+        }
+        return val ?? new ArrayBuffer(0);
+      }),
+    } as any;
+  }),
+};
+
+vi.mock('~/composables/useVfs', () => ({
+  useVfs: () => mockVfs,
+}));
+
 describe('MediaStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());

@@ -1,59 +1,68 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ref } from 'vue';
 import { createProxyFsModule } from '~/stores/proxy/proxyFs';
+import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 
-vi.mock('~/utils/storage-handles', () => ({
-  ensureResolvedProjectProxiesDir: vi.fn(),
-}));
+function makeTopology(overrides: Partial<ResolvedStorageTopology> = {}): ResolvedStorageTopology {
+  return {
+    projectsRoot: 'projects',
+    commonRoot: 'common',
+    dataRoot: 'data',
+    tempRoot: 'vardata',
+    proxiesRoot: '',
+    ephemeralTmpRoot: '',
+    ...overrides,
+  };
+}
 
 describe('createProxyFsModule', () => {
   it('returns a SHA-256 based proxy file name', async () => {
     const module = createProxyFsModule({
-      workspaceHandle: ref(null),
-      currentProjectId: ref(null),
-      resolvedStorageTopology: ref({} as any),
+      getProjectId: () => null,
+      getResolvedStorageTopology: () => makeTopology(),
     });
     const name = await module.getProxyFileName('video/test.mp4');
     expect(name).toMatch(/^[0-9a-f]{64}\.mp4$/);
   });
 
-  it('returns null when workspace handle is missing', async () => {
-    const { ensureResolvedProjectProxiesDir } = await import('~/utils/storage-handles');
+  it('returns null VFS path when project id is missing', () => {
     const module = createProxyFsModule({
-      workspaceHandle: ref(null),
-      currentProjectId: ref('p1'),
-      resolvedStorageTopology: ref({} as any),
+      getProjectId: () => null,
+      getResolvedStorageTopology: () => makeTopology(),
     });
-    expect(await module.ensureProjectProxiesDir()).toBeNull();
-    expect(ensureResolvedProjectProxiesDir).not.toHaveBeenCalled();
+    expect(module.getProjectProxiesVfsPath()).toBeNull();
   });
 
-  it('returns null when project id is missing', async () => {
-    const { ensureResolvedProjectProxiesDir } = await import('~/utils/storage-handles');
+  it('returns @ptemp proxies path when proxiesRoot is empty', () => {
     const module = createProxyFsModule({
-      workspaceHandle: ref({} as FileSystemDirectoryHandle),
-      currentProjectId: ref(null),
-      resolvedStorageTopology: ref({} as any),
+      getProjectId: () => 'p1',
+      getResolvedStorageTopology: () => makeTopology({ proxiesRoot: '' }),
     });
-    expect(await module.ensureProjectProxiesDir()).toBeNull();
-    expect(ensureResolvedProjectProxiesDir).not.toHaveBeenCalled();
+    expect(module.getProjectProxiesVfsPath()).toBe('@ptemp/projects/p1/proxies');
   });
 
-  it('delegates to ensureResolvedProjectProxiesDir when inputs are present', async () => {
-    const { ensureResolvedProjectProxiesDir } = await import('~/utils/storage-handles');
-    const mockDir = { name: 'proxies' } as unknown as FileSystemDirectoryHandle;
-    vi.mocked(ensureResolvedProjectProxiesDir).mockResolvedValue(mockDir);
-
+  it('returns @pproxies path when proxiesRoot is configured', () => {
     const module = createProxyFsModule({
-      workspaceHandle: ref({} as FileSystemDirectoryHandle),
-      currentProjectId: ref('p1'),
-      resolvedStorageTopology: ref({ type: 'standard' } as any),
+      getProjectId: () => 'p1',
+      getResolvedStorageTopology: () => makeTopology({ proxiesRoot: '/mnt/fast/proxies' }),
     });
+    expect(module.getProjectProxiesVfsPath()).toBe('@pproxies/projects/p1');
+  });
 
-    const result = await module.ensureProjectProxiesDir();
-    expect(result).toBe(mockDir);
-    expect(ensureResolvedProjectProxiesDir).toHaveBeenCalledWith(
-      expect.objectContaining({ projectId: 'p1', create: true }),
-    );
+  it('builds full proxy file path', async () => {
+    const module = createProxyFsModule({
+      getProjectId: () => 'p1',
+      getResolvedStorageTopology: () => makeTopology({ proxiesRoot: '' }),
+    });
+    const filePath = await module.getProxyFilePath('video/test.mp4');
+    expect(filePath).toMatch(/^@ptemp\/projects\/p1\/proxies\/[0-9a-f]{64}\.mp4$/);
+  });
+
+  it('returns null proxy file path when project id is missing', async () => {
+    const module = createProxyFsModule({
+      getProjectId: () => null,
+      getResolvedStorageTopology: () => makeTopology(),
+    });
+    const filePath = await module.getProxyFilePath('video/test.mp4');
+    expect(filePath).toBeNull();
   });
 });

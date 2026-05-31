@@ -28,7 +28,7 @@ import {
   onVideoPathMovedCommand,
   removeProxyCommand,
 } from '~/media-cache/application/proxyThumbnailCommands';
-import { clearVectorImageRaster } from '~/media-cache/application/vectorImageCache';
+import { clearVectorImageRasterVfs } from '~/media-cache/application/vectorImageCache';
 import type { FsEntry } from '~/types/fs';
 import { getBdPayload } from '~/types/bloggerdog';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
@@ -441,14 +441,12 @@ export function createFileManager(deps: FileManagerCreateDeps) {
 
   async function clearVectorCacheForPath(path: string) {
     const projectId = deps.getProjectId();
-    const workspaceHandle = deps.getWorkspaceHandle();
-    if (!projectId || !workspaceHandle) return;
+    if (!projectId) return;
 
-    await clearVectorImageRaster({
+    await clearVectorImageRasterVfs({
+      vfs: deps.vfs,
       projectId,
       projectRelativePath: path,
-      workspaceHandle,
-      resolvedStorageTopology: useWorkspaceStore().resolvedStorageTopology,
     });
   }
 
@@ -831,14 +829,12 @@ export function useFileManager(options?: {
 
   async function clearVectorCacheForPath(path: string) {
     const projectId = projectStore.currentProjectId;
-    const workspaceHandle = workspaceStore.workspaceHandle;
-    if (!projectId || !workspaceHandle) return;
+    if (!projectId) return;
 
-    await clearVectorImageRaster({
+    await clearVectorImageRasterVfs({
+      vfs,
       projectId,
       projectRelativePath: path,
-      workspaceHandle,
-      resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
     });
   }
 

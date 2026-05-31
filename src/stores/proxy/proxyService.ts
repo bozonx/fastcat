@@ -6,7 +6,7 @@ import { VIDEO_DIR_NAME } from '~/utils/constants';
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getProxyWorkerClient, setProxyHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
-import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import type { BackgroundTasksStore } from '~/stores/background-tasks.store';
 const log = createDevLogger('proxyService');
 
@@ -43,8 +43,21 @@ export function createProxyService(params: {
 
   proxyQueue: Ref<PQueue>;
 
-  ensureProjectProxiesDir: () => Promise<FileSystemDirectoryHandle | null>;
+  /** VFS path to the project proxies directory, or null when no project is open. */
+  getProjectProxiesVfsPath: () => string | null;
   getProxyFileName: (projectRelativePath: string) => Promise<string>;
+  /** Full VFS path to a specific proxy file, or null when no project is open. */
+  getProxyFilePath: (projectRelativePath: string) => Promise<string | null>;
+  /** Lazy VFS accessor (plugin initializes after stores). */
+  getVfs: () => IFileSystemAdapter;
+
+  /**
+   * Tier-3 bridge: obtain a raw FileSystemFileHandle for the proxy output
+   * file. The WebCodecs worker needs it for `createWritable()` streaming
+   * writes. This is the single remaining handle-crossing point and will be
+   * removed when the worker RPC layer migrates to VFS-native streaming.
+   */
+  getWriteFileHandle: (proxyVfsPath: string) => Promise<FileSystemFileHandle | null>;
 
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
@@ -138,17 +151,18 @@ export function createProxyService(params: {
   }
 
   async function checkExistingProxies(paths: string[]) {
-    const dir = await params.ensureProjectProxiesDir();
-    if (!dir) return;
-
+    const vfs = params.getVfs();
     const next = new Set(params.existingProxies.value);
     for (const path of paths) {
       if (!path.startsWith(`${VIDEO_DIR_NAME}/`)) continue;
       try {
-        const proxyFilename = await params.getProxyFileName(path);
-        const handle = await dir.getFileHandle(proxyFilename);
-        const file = await withFileIoSlot(() => handle.getFile());
-        if (file.size > 0) {
+        const proxyFilePath = await params.getProxyFilePath(path);
+        if (!proxyFilePath) {
+          next.delete(path);
+          continue;
+        }
+        const file = await vfs.getFile(proxyFilePath);
+        if (file && file.size > 0) {
           next.add(path);
         } else {
           next.delete(path);
@@ -165,14 +179,15 @@ export function createProxyService(params: {
     projectRelativePath: string,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
-    // Removed restriction to only generate proxies for files in _video directory
-    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
-
     // Wait if currently generating (e.g. cancellation still in progress)
     if (params.generatingProxies.value.has(projectRelativePath)) return;
 
-    const dir = await params.ensureProjectProxiesDir();
-    if (!dir) throw new Error('Could not access proxies directory');
+    const proxiesVfsPath = params.getProjectProxiesVfsPath();
+    if (!proxiesVfsPath) throw new Error('Could not resolve proxies directory');
+
+    // Ensure proxies directory exists via VFS
+    const vfs = params.getVfs();
+    await vfs.createDirectory(proxiesVfsPath);
 
     params.generatingProxies.value = new Set([
       ...params.generatingProxies.value,
@@ -216,7 +231,8 @@ export function createProxyService(params: {
       }
     }
 
-    let proxyFileHandle: FileSystemFileHandle | null = null;
+    const proxyFilename = await params.getProxyFileName(projectRelativePath);
+    const proxyVfsPath = `${proxiesVfsPath}/${proxyFilename}`;
 
     try {
       await params.proxyQueue.value.add(
@@ -245,8 +261,15 @@ export function createProxyService(params: {
               ...params.activeWorkerPaths.value,
               projectRelativePath,
             ]);
-            const proxyFilename = await params.getProxyFileName(projectRelativePath);
-            proxyFileHandle = await dir.getFileHandle(proxyFilename, { create: true });
+
+            // Worker needs a FileSystemFileHandle for createWritable().
+            // Ensure the file exists via VFS, then obtain a raw handle through
+            // the platform-specific bridge. This is the single remaining
+            // handle-crossing point — worker exports write to it directly via
+            // the FileSystemWritableFileStream API.
+            await vfs.writeFile(proxyVfsPath, new Uint8Array(0));
+            const proxyFileHandle = await params.getWriteFileHandle(proxyVfsPath);
+            if (!proxyFileHandle) throw new Error('Could not obtain proxy file handle');
 
             const optimization = params.getOptimizationSettings();
 
@@ -338,14 +361,11 @@ export function createProxyService(params: {
               params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
             }
           } catch (innerErr) {
-            if (proxyFileHandle) {
-              try {
-                const proxyFilename = await params.getProxyFileName(projectRelativePath);
-                await dir.removeEntry(proxyFilename);
-              } catch {
-                // Best-effort cleanup
-              }
-              proxyFileHandle = null;
+            // Clean up the partially-written proxy file
+            try {
+              await vfs.deleteEntry(proxyVfsPath);
+            } catch {
+              // Best-effort cleanup
             }
             const nextStatus = (innerErr as Error)?.name === 'AbortError' ? 'cancelled' : 'failed';
             params.backgroundTasksStore.updateTaskStatus(bgTaskId, nextStatus, String(innerErr));
@@ -447,13 +467,12 @@ export function createProxyService(params: {
   }
 
   async function deleteProxy(projectRelativePath: string) {
-    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
-    const dir = await params.ensureProjectProxiesDir();
-    if (!dir) return;
-
+    const vfs = params.getVfs();
     try {
-      const proxyFilename = await params.getProxyFileName(projectRelativePath);
-      await dir.removeEntry(proxyFilename);
+      const proxyFilePath = await params.getProxyFilePath(projectRelativePath);
+      if (proxyFilePath) {
+        await vfs.deleteEntry(proxyFilePath);
+      }
     } catch (e: unknown) {
       if (e instanceof Error && e.name !== 'NotFoundError') {
         log.warn('Failed to delete proxy', e);
@@ -467,9 +486,6 @@ export function createProxyService(params: {
   }
 
   async function renameProxyDir(input: { oldPath: string; newPath: string }) {
-    const dir = await params.ensureProjectProxiesDir();
-    if (!dir) return;
-
     const oldPrefix = `${input.oldPath}/`;
 
     // 1. Cancel active/pending tasks
@@ -492,34 +508,19 @@ export function createProxyService(params: {
   }
 
   async function renameProxy(input: { oldPath: string; newPath: string }) {
-    // if (!input.oldPath.startsWith(`${VIDEO_DIR_NAME}/`)) return;
-    const dir = await params.ensureProjectProxiesDir();
-    if (!dir) return;
+    const vfs = params.getVfs();
 
     try {
-      const oldFilename = await params.getProxyFileName(input.oldPath);
-      const newFilename = await params.getProxyFileName(input.newPath);
+      const oldProxyPath = await params.getProxyFilePath(input.oldPath);
+      const newProxyPath = await params.getProxyFilePath(input.newPath);
+      if (!oldProxyPath || !newProxyPath) return;
 
-      const handle = await dir.getFileHandle(oldFilename);
-      if ((handle as unknown as { move?: (name: string) => Promise<void> }).move) {
-        await (handle as unknown as { move: (name: string) => Promise<void> }).move(newFilename);
-      } else {
-        // Fallback: copy and delete if move is not supported (unlikely in modern Chrome)
-        const newHandle = await dir.getFileHandle(newFilename, { create: true });
-        const sourceFile = await withFileIoSlot(() => handle.getFile());
-        await withFileWriteSlot(async () => {
-          const writable = await (
-            newHandle as unknown as {
-              createWritable: () => Promise<{
-                write: (data: File) => Promise<void>;
-                close: () => Promise<void>;
-              }>;
-            }
-          ).createWritable();
-          await writable.write(sourceFile);
-          await writable.close();
-        });
-        await dir.removeEntry(oldFilename);
+      // Try VFS move first; fall back to copy+delete if not supported
+      try {
+        await vfs.moveEntry(oldProxyPath, newProxyPath);
+      } catch {
+        await vfs.copyFile(oldProxyPath, newProxyPath);
+        await vfs.deleteEntry(oldProxyPath);
       }
 
       const next = new Set(params.existingProxies.value);
@@ -537,30 +538,29 @@ export function createProxyService(params: {
     }
   }
 
+  /**
+   * Returns a platform FileSystemFileHandle for the proxy file.
+   *
+   * **Tier-3 limitation**: VFS doesn't expose platform handles, so this
+   * always returns `null`. The monitor composables fall back to
+   * `getProxyFile()` (File-based) which works through VFS. This stub will
+   * be replaced when the worker RPC layer migrates to VFS-native streaming.
+   */
   async function getProxyFileHandle(
-    projectRelativePath: string,
+    _projectRelativePath: string,
   ): Promise<FileSystemFileHandle | null> {
-    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
-    const dir = await params.ensureProjectProxiesDir();
-    if (!dir) return null;
-
-    try {
-      const proxyFilename = await params.getProxyFileName(projectRelativePath);
-      return await dir.getFileHandle(proxyFilename);
-    } catch {
-      return null;
-    }
+    // VFS abstraction cannot produce raw FileSystemFileHandle.
+    // Monitor composables have a getProxyFile fallback path.
+    return null;
   }
 
   async function getProxyFile(projectRelativePath: string): Promise<File | null> {
-    // if (!projectRelativePath.startsWith(`${VIDEO_DIR_NAME}/`)) return null;
-    const dir = await params.ensureProjectProxiesDir();
-    if (!dir) return null;
+    const proxyFilePath = await params.getProxyFilePath(projectRelativePath);
+    if (!proxyFilePath) return null;
 
     try {
-      const proxyFilename = await params.getProxyFileName(projectRelativePath);
-      const handle = await dir.getFileHandle(proxyFilename);
-      return await withFileIoSlot(() => handle.getFile());
+      const vfs = params.getVfs();
+      return await vfs.getFile(proxyFilePath);
     } catch {
       return null;
     }

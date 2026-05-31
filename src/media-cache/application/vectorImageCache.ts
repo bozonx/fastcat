@@ -1,8 +1,11 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { rasterizeSvgToBlob } from '~/utils/svg';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
+import { toProjectTempVfsPath } from '~/utils/storage-topology';
 import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
+import { CACHE_ROOT_DIR_NAME } from '~/utils/storage-roots';
 const log = createDevLogger('vectorImageCache');
 
 const VECTOR_IMAGE_CACHE_VERSION = 'v3';
@@ -188,6 +191,32 @@ export async function clearVectorImageRaster(params: ClearVectorImageRasterParam
     const err = error as { name?: string };
     if (err?.name !== 'NotFoundError') {
       log.warn('Failed to clear vector image cache', error);
+    }
+  }
+}
+
+/**
+ * VFS-based variant of {@link clearVectorImageRaster}. Removes the cached
+ * raster directory for a vector image source via VFS, avoiding handle
+ * dependencies. Preferred on the main thread where VFS is available.
+ */
+export async function clearVectorImageRasterVfs(params: {
+  vfs: IFileSystemAdapter;
+  projectId: string;
+  projectRelativePath: string;
+}): Promise<void> {
+  const sourceDirName = getVectorImageSourceDirName(params.projectRelativePath);
+  const vfsPath = toProjectTempVfsPath(params.projectId, [
+    CACHE_ROOT_DIR_NAME,
+    'vector_image',
+    sourceDirName,
+  ]);
+  try {
+    await params.vfs.deleteEntry(vfsPath, true);
+  } catch (error) {
+    const err = error as { name?: string };
+    if (err?.name !== 'NotFoundError') {
+      log.warn('Failed to clear vector image cache via VFS', error);
     }
   }
 }

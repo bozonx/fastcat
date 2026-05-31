@@ -1,88 +1,49 @@
-import type { ResolvedStorageTopology } from '~/utils/storage-topology';
-import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
+import {
+  FILES_META_ROOT_DIR_NAME,
+  WAVEFORMS_ROOT_DIR_NAME,
+} from '~/utils/storage-roots';
+import { toProjectTempVfsPath } from '~/utils/storage-topology';
 
+/**
+ * Builds VFS addresses for the per-project media cache (file metadata +
+ * waveform peaks). The actual IO is done by the caller through the VFS so that
+ * atomic writes and the I/O governor apply uniformly; this module only owns the
+ * path layout, which mirrors the on-disk structure under the resolved temp root
+ * (`@ptemp/projects/<projectId>/{files-meta,waveforms}/<cacheFileName>`).
+ */
 export interface MediaCacheFsModule {
   getCacheFileName: (projectRelativePath: string) => string;
-  ensureCacheDir: () => Promise<FileSystemDirectoryHandle | null>;
-  ensureFilesMetaDir: () => Promise<FileSystemDirectoryHandle | null>;
-  ensureWaveformsDir: () => Promise<FileSystemDirectoryHandle | null>;
-  removeCacheFiles: (projectRelativePath: string) => Promise<void>;
+  /** `@ptemp` path to the file-metadata JSON, or null when no project is open. */
+  getFilesMetaFilePath: (projectRelativePath: string) => string | null;
+  /** `@ptemp` path to the waveform-peaks blob, or null when no project is open. */
+  getWaveformsFilePath: (projectRelativePath: string) => string | null;
 }
 
 export function createMediaCacheFsModule(deps: {
-  getWorkspaceHandle: () => FileSystemDirectoryHandle | null;
   getProjectId: () => string | null;
-  getResolvedStorageTopology: () => ResolvedStorageTopology;
-}) {
+}): MediaCacheFsModule {
   function getCacheFileName(projectRelativePath: string): string {
     return `${encodeURIComponent(projectRelativePath)}.json`;
   }
 
-  async function ensureCacheDir(): Promise<FileSystemDirectoryHandle | null> {
-    const workspaceHandle = deps.getWorkspaceHandle();
+  function buildCacheFilePath(leaf: string, projectRelativePath: string): string | null {
     const projectId = deps.getProjectId();
-    if (!workspaceHandle || !projectId) return null;
-
-    return (await ensureResolvedProjectTempDir({
-      workspaceHandle,
-      topology: deps.getResolvedStorageTopology(),
-      projectId,
-      leafSegments: ['cache'],
-      create: true,
-    })) as FileSystemDirectoryHandle;
+    if (!projectId) return null;
+    const dir = toProjectTempVfsPath(projectId, [leaf]);
+    return `${dir}/${getCacheFileName(projectRelativePath)}`;
   }
 
-  async function ensureFilesMetaDir(): Promise<FileSystemDirectoryHandle | null> {
-    const workspaceHandle = deps.getWorkspaceHandle();
-    const projectId = deps.getProjectId();
-    if (!workspaceHandle || !projectId) return null;
-
-    return (await ensureResolvedProjectTempDir({
-      workspaceHandle,
-      topology: deps.getResolvedStorageTopology(),
-      projectId,
-      leafSegments: ['files-meta'],
-      create: true,
-    })) as FileSystemDirectoryHandle;
+  function getFilesMetaFilePath(projectRelativePath: string): string | null {
+    return buildCacheFilePath(FILES_META_ROOT_DIR_NAME, projectRelativePath);
   }
 
-  async function ensureWaveformsDir(): Promise<FileSystemDirectoryHandle | null> {
-    const workspaceHandle = deps.getWorkspaceHandle();
-    const projectId = deps.getProjectId();
-    if (!workspaceHandle || !projectId) return null;
-
-    return (await ensureResolvedProjectTempDir({
-      workspaceHandle,
-      topology: deps.getResolvedStorageTopology(),
-      projectId,
-      leafSegments: ['waveforms'],
-      create: true,
-    })) as FileSystemDirectoryHandle;
-  }
-
-  async function removeCacheFiles(projectRelativePath: string): Promise<void> {
-    const fileName = getCacheFileName(projectRelativePath);
-
-    try {
-      const metaDir = await ensureFilesMetaDir();
-      if (metaDir) await metaDir.removeEntry(fileName);
-    } catch {
-      // ignore
-    }
-
-    try {
-      const waveformsDir = await ensureWaveformsDir();
-      if (waveformsDir) await waveformsDir.removeEntry(fileName);
-    } catch {
-      // ignore
-    }
+  function getWaveformsFilePath(projectRelativePath: string): string | null {
+    return buildCacheFilePath(WAVEFORMS_ROOT_DIR_NAME, projectRelativePath);
   }
 
   return {
     getCacheFileName,
-    ensureCacheDir,
-    ensureFilesMetaDir,
-    ensureWaveformsDir,
-    removeCacheFiles,
+    getFilesMetaFilePath,
+    getWaveformsFilePath,
   } satisfies MediaCacheFsModule;
 }

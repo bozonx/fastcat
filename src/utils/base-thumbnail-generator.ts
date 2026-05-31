@@ -1,6 +1,4 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import type { useWorkspaceStore } from '~/stores/workspace.store';
-import { ensureResolvedProjectTempDir } from '~/utils/storage-handles';
 import { addMediaTask } from '~/utils/media-task-queue';
 const log = createDevLogger('base-thumbnail-generator');
 
@@ -17,21 +15,6 @@ export function hashString(input: string): string {
     hash = Math.imul(hash, 16777619);
   }
   return `h${(hash >>> 0).toString(16)}`;
-}
-
-export async function ensureBaseThumbnailDir(input: {
-  projectId: string;
-  leafSegments: string[];
-  workspaceStore: ReturnType<typeof useWorkspaceStore>;
-  create?: boolean;
-}): Promise<FileSystemDirectoryHandle> {
-  return (await ensureResolvedProjectTempDir({
-    workspaceHandle: input.workspaceStore.workspaceHandle!,
-    topology: input.workspaceStore.resolvedStorageTopology,
-    projectId: input.projectId,
-    leafSegments: input.leafSegments,
-    create: input.create,
-  })) as FileSystemDirectoryHandle;
 }
 
 export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TCache> {

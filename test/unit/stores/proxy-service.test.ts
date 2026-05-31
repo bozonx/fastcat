@@ -80,6 +80,68 @@ function createService(overrides: Partial<Parameters<typeof createProxyService>[
 
   const mockDir = createMockDir();
 
+  const mockVfs = {
+    createDirectory: vi.fn(async () => {}),
+    writeFile: vi.fn(async (vfsPath: string, data: any) => {
+      const key = vfsPath.replace('@ptemp/projects/p1/proxies/', '');
+      const handle = {
+        getFile: vi.fn(async () => ({ size: data?.length ?? 0 })),
+        removeEntry: vi.fn(),
+        createWritable: vi.fn(async () => createMockWritable()),
+      };
+      mockDir._map.set(key, handle);
+    }),
+    deleteEntry: vi.fn(async (vfsPath: string) => {
+      const key = vfsPath.replace('@ptemp/projects/p1/proxies/', '');
+      await mockDir.removeEntry(key);
+    }),
+    moveEntry: vi.fn(async (srcPath: string, destPath: string) => {
+      const srcKey = srcPath.replace('@ptemp/projects/p1/proxies/', '');
+      const destKey = destPath.replace('@ptemp/projects/p1/proxies/', '');
+      const handle = mockDir._map.get(srcKey);
+      if (!handle) {
+        const err = new Error('Not found');
+        err.name = 'NotFoundError';
+        throw err;
+      }
+      if (handle.move) {
+        await handle.move(destKey);
+      } else {
+        throw new Error('move is not supported');
+      }
+      mockDir._map.set(destKey, handle);
+      mockDir._map.delete(srcKey);
+    }),
+    copyFile: vi.fn(async (srcPath: string, destPath: string) => {
+      const srcKey = srcPath.replace('@ptemp/projects/p1/proxies/', '');
+      const destKey = destPath.replace('@ptemp/projects/p1/proxies/', '');
+      const handle = mockDir._map.get(srcKey);
+      if (!handle) {
+        const err = new Error('Not found');
+        err.name = 'NotFoundError';
+        throw err;
+      }
+      const newHandle = {
+        ...handle,
+        getFile: vi.fn(async () => {
+          const file = await handle.getFile();
+          return file;
+        }),
+      };
+      mockDir._map.set(destKey, newHandle);
+    }),
+    getFile: vi.fn(async (vfsPath: string) => {
+      const key = vfsPath.replace('@ptemp/projects/p1/proxies/', '');
+      const handle = mockDir._map.get(key);
+      if (!handle) return null;
+      const file = await handle.getFile();
+      return {
+        ...file,
+        size: file.size ?? 0,
+      };
+    }),
+  };
+
   const service = createProxyService({
     videoExtensions: new Set(['mp4', 'mov']),
     generatingProxies,
@@ -91,8 +153,14 @@ function createService(overrides: Partial<Parameters<typeof createProxyService>[
     taskIdToPath,
     bgTaskIdsByPath,
     proxyQueue: ref(queue as any),
-    ensureProjectProxiesDir: vi.fn(async () => mockDir as unknown as FileSystemDirectoryHandle),
+    getProjectProxiesVfsPath: vi.fn(() => '@ptemp/projects/p1/proxies'),
     getProxyFileName: vi.fn(async (path) => `${path}.proxy.mp4`),
+    getProxyFilePath: vi.fn(async (path) => `@ptemp/projects/p1/proxies/${path}.proxy.mp4`),
+    getVfs: () => mockVfs as any,
+    getWriteFileHandle: vi.fn(async (vfsPath: string) => {
+      const key = vfsPath.replace('@ptemp/projects/p1/proxies/', '');
+      return mockDir.getFileHandle(key, { create: true }) as any;
+    }),
     getFileHandleByPath: vi.fn(),
     getFileByPath: vi.fn(),
     getOptimizationSettings: () => ({
@@ -405,34 +473,8 @@ describe('createProxyService', () => {
             }),
         ),
       };
-      const service = createProxyService({
-        videoExtensions: new Set(['mp4']),
-        generatingProxies: ref(new Set<string>()),
-        existingProxies: ref(new Set<string>()),
-        proxyProgress: ref(new Map<string, number>()),
-        proxyAbortControllers: ref(new Map<string, AbortController>()),
-        activeWorkerPaths: ref(new Set<string>()),
-        proxyTaskIds: ref(new Map<string, string>()),
-        taskIdToPath: ref(new Map<string, string>()),
-        bgTaskIdsByPath: ref(new Map<string, string>()),
+      const { service } = createService({
         proxyQueue: ref(queue as any),
-        ensureProjectProxiesDir: vi.fn(async () => ({}) as FileSystemDirectoryHandle),
-        getProxyFileName: vi.fn(async (path) => `${path}.proxy.mp4`),
-        getFileHandleByPath: vi.fn(),
-        getFileByPath: vi.fn(),
-        getOptimizationSettings: () => ({
-          proxyMaxPixels: 640 * 360,
-          proxyVideoBitrateMbps: 1,
-          proxyAudioBitrateKbps: 96,
-          proxyVideoCodec: 'h264',
-          proxyCopyOpusAudio: false,
-        }),
-        getProxyTaskTitle: ({ fileName }) => `Generating proxy: ${fileName}`,
-        backgroundTasksStore: {
-          addTask: vi.fn(() => 'bg-task'),
-          updateTaskStatus: vi.fn(),
-          updateTaskProgress: vi.fn(),
-        } as any,
       });
 
       const dirHandle = {

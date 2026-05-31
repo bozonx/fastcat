@@ -8,8 +8,7 @@ import { useProjectStore } from './project.store';
 import { createMediaCacheFsModule } from '~/stores/media/media-cache-fs';
 import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
-import { writeFileAtomic } from '~/utils/io/atomic-file-write';
-import { withFileIoSlot } from '~/utils/io/io-governor';
+import { useVfs } from '~/composables/useVfs';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/waveform';
@@ -71,10 +70,11 @@ export const useMediaStore = defineStore('media', () => {
   const projectStore = useProjectStore();
 
   const fsModule = createMediaCacheFsModule({
-    getWorkspaceHandle: () => workspaceStore.workspaceHandle,
     getProjectId: () => projectStore.currentProjectId,
-    getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
   });
+
+  // Lazy: the VFS plugin initializes after stores are set up.
+  const getVfs = () => useVfs();
 
   const workerModule = createMediaWorkerModule();
 
@@ -197,15 +197,15 @@ export const useMediaStore = defineStore('media', () => {
   ): Promise<MediaMetadata | null> {
     const cacheKey = projectRelativePath;
 
-    const metaDir = await fsModule.ensureFilesMetaDir();
+    const metaPath = fsModule.getFilesMetaFilePath(projectRelativePath);
     const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
 
     if (options?.forceRefresh) {
       try {
-        const waveformsDir = await fsModule.ensureWaveformsDir();
-        if (waveformsDir) {
+        const waveformsPath = fsModule.getWaveformsFilePath(projectRelativePath);
+        if (waveformsPath) {
           await runCacheFileAccess('waveform', cacheFileName, async () => {
-            await waveformsDir.removeEntry(cacheFileName).catch(() => {});
+            await getVfs().deleteEntry(waveformsPath);
           });
         }
       } catch {
@@ -215,12 +215,12 @@ export const useMediaStore = defineStore('media', () => {
 
     let parsedMeta: MediaMetadata | null = null;
 
-    if (!options?.forceRefresh && metaDir) {
+    if (!options?.forceRefresh && metaPath) {
       try {
         const text = await runCacheFileAccess('metadata', cacheFileName, async () => {
-          const cacheHandle = await metaDir.getFileHandle(cacheFileName);
-          const cacheFile = await withFileIoSlot(() => cacheHandle.getFile());
-          return await withFileIoSlot(() => cacheFile.text());
+          const cacheFile = await getVfs().getFile(metaPath);
+          if (!cacheFile) throw new Error('media metadata cache miss');
+          return await cacheFile.text();
         });
         const parsed = JSON.parse(text) as MediaMetadata;
         if (parsed.source.size === file.size && parsed.source.lastModified === file.lastModified) {
@@ -247,10 +247,10 @@ export const useMediaStore = defineStore('media', () => {
         } else {
           // File changed! Drop stale peaks and thumbnail caches
           try {
-            const waveformsDir = await fsModule.ensureWaveformsDir();
-            if (waveformsDir) {
+            const waveformsPath = fsModule.getWaveformsFilePath(projectRelativePath);
+            if (waveformsPath) {
               await runCacheFileAccess('waveform', cacheFileName, async () => {
-                await waveformsDir.removeEntry(cacheFileName).catch(() => {});
+                await getVfs().deleteEntry(waveformsPath);
               });
             }
           } catch {
@@ -288,17 +288,13 @@ export const useMediaStore = defineStore('media', () => {
           parsedMeta = meta;
           mediaMetadata.value[cacheKey] = meta;
 
-          if (metaDir) {
+          if (metaPath) {
             await runCacheFileAccess('metadata', cacheFileName, async () => {
               // We don't want to save large peaks array inside main metadata json
               const metaToSave = { ...meta };
               delete metaToSave.audioPeaks;
 
-              await writeFileAtomic({
-                dir: metaDir,
-                fileName: cacheFileName,
-                data: JSON.stringify(metaToSave, null, 2),
-              });
+              await getVfs().writeFile(metaPath, JSON.stringify(metaToSave, null, 2));
             });
           }
         } else {
@@ -317,14 +313,10 @@ export const useMediaStore = defineStore('media', () => {
         };
         mediaMetadata.value[cacheKey] = errorMeta;
 
-        if (metaDir) {
+        if (metaPath) {
           try {
             await runCacheFileAccess('metadata', cacheFileName, async () => {
-              await writeFileAtomic({
-                dir: metaDir,
-                fileName: cacheFileName,
-                data: JSON.stringify(errorMeta, null, 2),
-              });
+              await getVfs().writeFile(metaPath, JSON.stringify(errorMeta, null, 2));
             });
           } catch {
             // Ignore OPFS write error
@@ -359,14 +351,14 @@ export const useMediaStore = defineStore('media', () => {
     }
     if (params.mediaType !== 'video' && params.mediaType !== 'audio') return false;
 
-    const waveformsDir = await fsModule.ensureWaveformsDir();
-    if (!waveformsDir) return false;
+    const waveformsPath = fsModule.getWaveformsFilePath(params.cacheKey);
+    if (!waveformsPath) return false;
 
     try {
       const arrayBuffer = await runCacheFileAccess('waveform', params.cacheFileName, async () => {
-        const peaksHandle = await waveformsDir.getFileHandle(params.cacheFileName);
-        const peaksFile = await withFileIoSlot(() => peaksHandle.getFile());
-        return await withFileIoSlot(() => peaksFile.arrayBuffer());
+        const peaksFile = await getVfs().getFile(waveformsPath);
+        if (!peaksFile) throw new Error('waveform cache miss');
+        return await peaksFile.arrayBuffer();
       });
       const uint8 = new Uint8Array(arrayBuffer);
       if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {
@@ -409,14 +401,10 @@ export const useMediaStore = defineStore('media', () => {
       })
       .then(async () => {
         try {
-          const waveformsDir = await fsModule.ensureWaveformsDir();
-          if (!waveformsDir) return;
+          const waveformsPath = fsModule.getWaveformsFilePath(projectRelativePath);
+          if (!waveformsPath) return;
           await runCacheFileAccess('waveform', cacheFileName, async () => {
-            await writeFileAtomic({
-              dir: waveformsDir,
-              fileName: cacheFileName,
-              data: binaryData,
-            });
+            await getVfs().writeFile(waveformsPath, new Uint8Array(binaryData));
           });
         } catch (e) {
           log.warn('Failed to write peaks', e);
@@ -453,10 +441,10 @@ export const useMediaStore = defineStore('media', () => {
     const cacheFileName = fsModule.getCacheFileName(projectRelativePath);
 
     try {
-      const metaDir = await fsModule.ensureFilesMetaDir();
-      if (metaDir) {
+      const metaPath = fsModule.getFilesMetaFilePath(projectRelativePath);
+      if (metaPath) {
         await runCacheFileAccess('metadata', cacheFileName, async () => {
-          await metaDir.removeEntry(cacheFileName);
+          await getVfs().deleteEntry(metaPath);
         });
       }
     } catch {
@@ -464,10 +452,10 @@ export const useMediaStore = defineStore('media', () => {
     }
 
     try {
-      const waveformsDir = await fsModule.ensureWaveformsDir();
-      if (waveformsDir) {
+      const waveformsPath = fsModule.getWaveformsFilePath(projectRelativePath);
+      if (waveformsPath) {
         await runCacheFileAccess('waveform', cacheFileName, async () => {
-          await waveformsDir.removeEntry(cacheFileName);
+          await getVfs().deleteEntry(waveformsPath);
         });
       }
     } catch {
