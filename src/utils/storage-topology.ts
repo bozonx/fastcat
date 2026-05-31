@@ -14,6 +14,10 @@ import {
   WORKSPACE_TEMP_PROJECTS_DIR_NAME,
   type StoragePathRegistry,
 } from './storage-roots';
+import {
+  WORKSPACE_PROJECT_PROXIES_PATH_PREFIX,
+  WORKSPACE_PROJECT_TEMP_PATH_PREFIX,
+} from './workspace-common';
 import type { TauriAppPaths } from './tauri-paths';
 
 export interface ResolvedStorageTopology {
@@ -132,6 +136,41 @@ export function resolveWorkspaceLocalStorageTopology(
     proxiesRoot: proxiesRootBase,
     ephemeralTmpRoot: ephemeralTmpRootBase,
   };
+}
+
+/**
+ * Build a VFS address for a directory under the configurable project *temp*
+ * root. Mirrors the on-disk layout produced by `ensureResolvedProjectTempDir`:
+ * `<tempRoot>/projects/<projectId>/<leaf…>`. The `@ptemp` adapter is rooted at
+ * the resolved `tempRoot`, so the address omits the (dynamic) root itself.
+ */
+export function toProjectTempVfsPath(projectId: string, leaf: string[] = []): string {
+  return [
+    WORKSPACE_PROJECT_TEMP_PATH_PREFIX,
+    WORKSPACE_TEMP_PROJECTS_DIR_NAME,
+    projectId,
+    ...leaf,
+  ].join('/');
+}
+
+/**
+ * Build a VFS address for a project's proxies directory. When `proxiesRoot` is
+ * configured, proxies live at `<proxiesRoot>/projects/<projectId>` (routed via
+ * `@pproxies`); otherwise they fall back under the temp root at
+ * `<tempRoot>/projects/<projectId>/proxies` (routed via `@ptemp`). This mirrors
+ * `ensureResolvedProjectProxiesDir`.
+ */
+export function toProjectProxiesVfsPath(
+  topology: ResolvedStorageTopology,
+  projectId: string,
+): string {
+  const proxiesRoot = (topology.proxiesRoot ?? '').trim();
+  if (proxiesRoot) {
+    return [WORKSPACE_PROJECT_PROXIES_PATH_PREFIX, WORKSPACE_TEMP_PROJECTS_DIR_NAME, projectId].join(
+      '/',
+    );
+  }
+  return toProjectTempVfsPath(projectId, [PROXIES_ROOT_DIR_NAME]);
 }
 
 export async function resolveTauriSystemStorageTopology(input: {

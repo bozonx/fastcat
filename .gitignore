@@ -11,6 +11,7 @@ dist-lib/
 lint-results.json
 test_results.txt
 .pnpm-store/
+*.lock
 
 # Stray build outputs accidentally created by misfired CLI commands
 # (e.g. a tool writing to a literal "false" / "--noEmit" directory)

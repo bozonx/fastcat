@@ -18,6 +18,8 @@ import {
   CONFIG_PATH_PREFIX,
   WORKSPACE_COMMON_PATH_PREFIX,
   WORKSPACE_PROJECT_PATH_PREFIX,
+  WORKSPACE_PROJECT_PROXIES_PATH_PREFIX,
+  WORKSPACE_PROJECT_TEMP_PATH_PREFIX,
   WORKSPACE_ROOT_PATH_PREFIX,
   toWorkspaceCommonStoragePath,
 } from '~/utils/workspace-common';
@@ -109,6 +111,23 @@ interface WorkspaceAdapters {
    * aliases the workspace adapter.
    */
   config: IFileSystemAdapter;
+  /**
+   * Adapter rooted at the resolved, configurable project *temp* root
+   * (`ResolvedStorageTopology.tempRoot`) — may live inside the workspace or at
+   * an absolute OS cache path (Tauri system default).
+   */
+  projectTemp: IFileSystemAdapter;
+  /**
+   * Adapter rooted at the resolved, configurable project *proxies* root
+   * (`ResolvedStorageTopology.proxiesRoot`). Only addressed when `proxiesRoot`
+   * is configured; otherwise proxies route through `projectTemp`.
+   */
+  projectProxies: IFileSystemAdapter;
+}
+
+/** Matches a POSIX (`/…`) or Windows (`C:\…`) absolute path. */
+function isAbsoluteStorageRoot(path: string): boolean {
+  return /^\//.test(path) || /^[a-zA-Z]:[\\/]/.test(path);
 }
 
 function createTauriWorkspaceAdapters(
@@ -168,7 +187,33 @@ function createTauriWorkspaceAdapters(
     return { type: 'absolute', path: await appConfigDir() };
   });
 
-  return { project, workspace, vardata, config };
+  // A configurable storage root (temp/proxies) is either an absolute OS path
+  // (Tauri system default) — used as-is — or a workspace-relative segment chain
+  // (Tauri portable) — joined onto the workspace path.
+  const resolveConfigurableRoot = async (
+    rootPath: string,
+  ): Promise<{ type: 'absolute'; path: string }> => {
+    const trimmed = (rootPath ?? '').trim();
+    if (trimmed && isAbsoluteStorageRoot(trimmed)) {
+      return { type: 'absolute', path: trimmed };
+    }
+    const workspacePath = getWorkspacePath();
+    if (workspacePath) {
+      if (!trimmed) return { type: 'absolute', path: workspacePath };
+      const { join } = await import('@tauri-apps/api/path');
+      return { type: 'absolute', path: await join(workspacePath, trimmed) };
+    }
+    return resolveAppDataDir();
+  };
+
+  const projectTemp = new TauriFileSystemAdapter(() =>
+    resolveConfigurableRoot(workspaceStore.resolvedStorageTopology.tempRoot),
+  );
+  const projectProxies = new TauriFileSystemAdapter(() =>
+    resolveConfigurableRoot(workspaceStore.resolvedStorageTopology.proxiesRoot),
+  );
+
+  return { project, workspace, vardata, config, projectTemp, projectProxies };
 }
 
 function createOpfsWorkspaceAdapters(
@@ -177,8 +222,35 @@ function createOpfsWorkspaceAdapters(
 ): WorkspaceAdapters {
   const project = new OpfsFileSystemAdapter(() => projectStore.getProjectDirHandle());
   const workspace = new OpfsFileSystemAdapter(async () => workspaceStore.workspaceHandle ?? null);
+
+  // In the browser the configurable roots are always workspace-relative segment
+  // chains (no absolute OS paths) — navigate into the workspace handle, creating
+  // intermediate directories so the root exists on first write.
+  const navigateWorkspaceSubdir = async (
+    rootPath: string,
+  ): Promise<FileSystemDirectoryHandle | null> => {
+    const ws = workspaceStore.workspaceHandle ?? null;
+    if (!ws) return null;
+    const segments = (rootPath ?? '')
+      .split('/')
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+    let dir = ws;
+    for (const segment of segments) {
+      dir = await dir.getDirectoryHandle(segment, { create: true });
+    }
+    return dir;
+  };
+
+  const projectTemp = new OpfsFileSystemAdapter(() =>
+    navigateWorkspaceSubdir(workspaceStore.resolvedStorageTopology.tempRoot),
+  );
+  const projectProxies = new OpfsFileSystemAdapter(() =>
+    navigateWorkspaceSubdir(workspaceStore.resolvedStorageTopology.proxiesRoot),
+  );
+
   // The browser has no separate config dir — config settings live in the workspace.
-  return { project, workspace, vardata: workspace, config: workspace };
+  return { project, workspace, vardata: workspace, config: workspace, projectTemp, projectProxies };
 }
 
 /**
@@ -189,6 +261,8 @@ function buildVfsRoutes(args: {
   workspace: IFileSystemAdapter;
   vardata: IFileSystemAdapter;
   config: IFileSystemAdapter;
+  projectTemp: IFileSystemAdapter;
+  projectProxies: IFileSystemAdapter;
   remote: IFileSystemAdapter;
 }): VfsRoute[] {
   const stripPrefix = (prefix: string) => (path: string) =>
@@ -226,6 +300,18 @@ function buildVfsRoutes(args: {
       },
     },
     {
+      // `@ptemp/<rest>` → resolved temp root `<rest>`.
+      prefix: WORKSPACE_PROJECT_TEMP_PATH_PREFIX,
+      adapter: args.projectTemp,
+      stripPrefix: stripPrefix(WORKSPACE_PROJECT_TEMP_PATH_PREFIX),
+    },
+    {
+      // `@pproxies/<rest>` → resolved proxies root `<rest>`.
+      prefix: WORKSPACE_PROJECT_PROXIES_PATH_PREFIX,
+      adapter: args.projectProxies,
+      stripPrefix: stripPrefix(WORKSPACE_PROJECT_PROXIES_PATH_PREFIX),
+    },
+    {
       prefix: '/vardata',
       adapter: args.vardata,
       stripPrefix: (p) => (p.startsWith('/') ? p.slice(1) : p),
@@ -250,7 +336,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
   const isTauri = isTauriRuntime();
   const runtimeConfig = useRuntimeConfig();
 
-  const { project, workspace, vardata, config } = isTauri
+  const { project, workspace, vardata, config, projectTemp, projectProxies } = isTauri
     ? createTauriWorkspaceAdapters(
         workspaceStore,
         projectStore,
@@ -265,7 +351,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   const adapter = new RouterFileSystemAdapter(
     project,
-    buildVfsRoutes({ workspace, vardata, config, remote }),
+    buildVfsRoutes({ workspace, vardata, config, projectTemp, projectProxies, remote }),
     {
       progressReporter: createNuxtVfsProgressReporter(nuxtApp),
     },

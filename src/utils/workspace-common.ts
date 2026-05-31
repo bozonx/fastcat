@@ -22,6 +22,23 @@ export const WORKSPACE_ROOT_PATH_PREFIX = '@workspace';
  */
 export const CONFIG_PATH_PREFIX = '@config';
 
+/**
+ * VFS prefix addressing the configurable *project temp* root (the resolved
+ * `tempRoot` from {@link ResolvedStorageTopology}). The backing adapter is
+ * rooted at the resolved temp directory, which may live inside the workspace
+ * (browser / Tauri portable) or at an absolute OS cache location (Tauri
+ * system default). Addresses look like `@ptemp/projects/<projectId>/<leaf…>`.
+ */
+export const WORKSPACE_PROJECT_TEMP_PATH_PREFIX = '@ptemp';
+
+/**
+ * VFS prefix addressing the configurable *project proxies* root (the resolved
+ * `proxiesRoot`). Only used when `proxiesRoot` is configured; otherwise proxies
+ * live under the temp root (see `toProjectProxiesVfsPath`). Addresses look like
+ * `@pproxies/projects/<projectId>`.
+ */
+export const WORKSPACE_PROJECT_PROXIES_PATH_PREFIX = '@pproxies';
+
 /** Build a VFS path addressing `relPath` inside the named project's directory. */
 export function toProjectStoragePath(projectName: string, relPath = ''): string {
   const rel = normalizeWorkspaceFilePath(relPath);

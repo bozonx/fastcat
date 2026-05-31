@@ -7,7 +7,22 @@ import {
   getResolvedProjectWaveformsSegments,
   resolveTauriSystemStorageTopology,
   resolveWorkspaceLocalStorageTopology,
+  toProjectProxiesVfsPath,
+  toProjectTempVfsPath,
+  type ResolvedStorageTopology,
 } from '~/utils/storage-topology';
+
+function makeTopology(overrides: Partial<ResolvedStorageTopology> = {}): ResolvedStorageTopology {
+  return {
+    projectsRoot: 'projects',
+    commonRoot: 'common',
+    dataRoot: 'data',
+    tempRoot: 'vardata',
+    proxiesRoot: '',
+    ephemeralTmpRoot: '',
+    ...overrides,
+  };
+}
 
 vi.mock('@tauri-apps/api/path', () => ({
   join: vi.fn().mockImplementation(async (...parts: string[]) => parts.join('/')),
@@ -133,5 +148,35 @@ describe('storage topology', () => {
     expect(resolved.tempRoot).toBe('/mnt/fastcat-cache/temp');
     expect(resolved.proxiesRoot).toBe('/mnt/fastcat-proxies');
     expect(resolved.ephemeralTmpRoot).toBe('/tmp/fastcat');
+  });
+});
+
+describe('toProjectTempVfsPath', () => {
+  it('addresses the project temp root, omitting the (dynamic) temp root itself', () => {
+    expect(toProjectTempVfsPath('proj-1')).toBe('@ptemp/projects/proj-1');
+  });
+
+  it('appends leaf segments for cache / waveforms / files-meta dirs', () => {
+    expect(toProjectTempVfsPath('proj-1', ['cache'])).toBe('@ptemp/projects/proj-1/cache');
+    expect(toProjectTempVfsPath('proj-1', ['cache', 'vector_image'])).toBe(
+      '@ptemp/projects/proj-1/cache/vector_image',
+    );
+  });
+});
+
+describe('toProjectProxiesVfsPath', () => {
+  it('falls back under the temp root when proxiesRoot is not configured', () => {
+    const topology = makeTopology({ proxiesRoot: '' });
+    expect(toProjectProxiesVfsPath(topology, 'proj-1')).toBe('@ptemp/projects/proj-1/proxies');
+  });
+
+  it('routes via @pproxies when proxiesRoot is configured', () => {
+    const topology = makeTopology({ proxiesRoot: '/mnt/fast/proxies' });
+    expect(toProjectProxiesVfsPath(topology, 'proj-1')).toBe('@pproxies/projects/proj-1');
+  });
+
+  it('treats a whitespace-only proxiesRoot as unconfigured', () => {
+    const topology = makeTopology({ proxiesRoot: '   ' });
+    expect(toProjectProxiesVfsPath(topology, 'proj-1')).toBe('@ptemp/projects/proj-1/proxies');
   });
 });
