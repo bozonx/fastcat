@@ -71,7 +71,6 @@ const canCutSelection = computed(
     <MobileDrawerToolbar>
       <MobileDrawerToolbarButton
         icon="i-heroicons-trash"
-        :label="t('common.delete')"
         @click="emit('action', 'delete', props.selectedEntries)"
       />
 
@@ -85,14 +84,12 @@ const canCutSelection = computed(
       <MobileDrawerToolbarButton
         v-if="canCopySelection"
         icon="i-heroicons-document-duplicate"
-        :label="t('common.copy')"
         @click="emit('action', 'copy', props.selectedEntries)"
       />
 
       <MobileDrawerToolbarButton
         v-if="canCutSelection"
         icon="i-heroicons-scissors"
-        :label="t('common.cut')"
         @click="emit('action', 'cut', props.selectedEntries)"
       />
 

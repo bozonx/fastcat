@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRefs, watch } from 'vue';
+import { computed, toRefs } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import FileProperties from '~/components/properties/FileProperties.vue';
 import MultiFileProperties from '~/components/properties/MultiFileProperties.vue';
@@ -9,17 +9,9 @@ import type { SelectedFsEntry, SelectedFsEntries } from '~/stores/selection.stor
 import type { FsEntry } from '~/types/fs';
 import MobileDrawerToolbar from '~/components/timeline/MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from '~/components/timeline/MobileDrawerToolbarButton.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import { useProxyStore } from '~/stores/proxy.store';
-import { useWorkspaceStore } from '~/stores/workspace.store';
-import { useAppClipboard } from '~/composables/useAppClipboard';
 import { useMediaStore } from '~/stores/media.store';
-import { useI18n } from 'vue-i18n';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
-
-import { useRuntimeConfig } from 'nuxt/app';
-import { resolveExternalServiceConfig } from '~/utils/external-integrations';
-import { isGeneratingProxyInDirectory, folderHasVideos } from '~/utils/fs-entry-utils';
+import { useAppClipboard } from '~/composables/useAppClipboard';
 import { getBdPayload } from '~/types/bloggerdog';
 import {
   canCopyBloggerDogEntry,
@@ -47,23 +39,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
-const { readDirectory } = useFileManager();
-const runtimeConfig = useRuntimeConfig();
-const workspaceStore = useWorkspaceStore();
 const mediaStore = useMediaStore();
-
-const sttConfig = computed(() =>
-  resolveExternalServiceConfig({
-    service: 'stt',
-    integrations: workspaceStore.userSettings.integrations,
-    bloggerDogApiUrl: '',
-    fastcatAccountApiUrl:
-      typeof runtimeConfig.public.fastcatAccountApiUrl === 'string'
-        ? runtimeConfig.public.fastcatAccountApiUrl
-        : '',
-  }),
-);
-
 const clipboardStore = useAppClipboard();
 
 const selectedEntity = computed(() => selectionStore.selectedEntity);
@@ -129,9 +105,6 @@ const canDelete = computed(() => {
   );
 });
 
-const isOtioFile = computed(() => {
-  return selectedFsEntry.value?.entry.name.toLowerCase().endsWith('.otio') ?? false;
-});
 
 const isBdVirtual = computed(() =>
   selectedFsEntry.value
@@ -141,6 +114,9 @@ const isBdVirtual = computed(() =>
 const isBdProject = computed(() =>
   selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'project' : false,
 );
+const isBdText = computed(() =>
+  selectedFsEntry.value ? isBloggerDogTextWrapper(selectedFsEntry.value.entry) : false,
+);
 const isBdGroup = computed(() =>
   selectedFsEntry.value ? getBdPayload(selectedFsEntry.value.entry)?.type === 'collection' : false,
 );
@@ -148,9 +124,6 @@ const isBdContentItem = computed(() =>
   selectedFsEntry.value
     ? getBdPayload(selectedFsEntry.value.entry)?.type === 'content-item'
     : false,
-);
-const isBdText = computed(() =>
-  selectedFsEntry.value ? isBloggerDogTextWrapper(selectedFsEntry.value.entry) : false,
 );
 const isProjectRoot = computed(() => {
   const entry = selectedFsEntry.value?.entry;
@@ -164,7 +137,6 @@ const isCommonRoot = computed(() => {
     (entry.name.toLowerCase() === 'common' && (entry.path === 'common' || entry.path === ''))
   );
 });
-const isRemoteEntry = computed(() => selectedFsEntry.value?.entry.source === 'remote');
 
 const isFullyUnsupported = computed(() => {
   const entry = selectedFsEntry.value?.entry;
@@ -188,47 +160,9 @@ const canAddToTimeline = computed(() => {
   return isOpenableProjectFileName(selectedEntity.value.name);
 });
 
-const canConvert = computed(() => {
-  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
-  if (isFullyUnsupported.value) return false;
-  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
-  return ['video', 'audio', 'image'].includes(type);
-});
-
-const isVideo = computed(() => {
-  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
-  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
-  return type === 'video';
-});
-
-const isAudio = computed(() => {
-  if (!selectedFsEntry.value || selectedFsEntry.value.entry.kind !== 'file') return false;
-  const type = getMediaTypeFromFilename(selectedFsEntry.value.entry.name);
-  return type === 'audio';
-});
-
 const hasExistingProxy = computed(() => {
   if (!selectedFsEntry.value || !selectedFsEntry.value.path) return false;
   return proxyStore.existingProxies.has(selectedFsEntry.value.path);
-});
-
-const hasAudioTrack = computed(() => {
-  const entry = selectedFsEntry.value?.entry;
-  if (!entry || entry.kind !== 'file' || !entry.path) return false;
-  return Boolean(mediaStore.mediaMetadata[entry.path]?.audio);
-});
-
-const canTranscribe = computed(() => {
-  const entry = selectedFsEntry.value?.entry;
-  if (!entry || entry.kind !== 'file' || entry.source === 'remote') return false;
-  const mediaType = getMediaTypeFromFilename(entry.name);
-  const isMedia = mediaType === 'audio' || mediaType === 'video';
-  if (!isMedia) return false;
-
-  const isLocal = workspaceStore.userSettings.integrations.stt.provider === 'local';
-  const isModelReady = isLocal ? workspaceStore.isSttModelDownloaded : Boolean(sttConfig.value);
-
-  return isModelReady && Boolean(workspaceStore.workspaceHandle) && Boolean(entry.path);
 });
 
 function canTransferSelection(
@@ -273,36 +207,6 @@ const canPasteIntoSelection = computed(() => {
   );
 });
 
-const hasDirectVideoChildren = ref(false);
-
-watch(
-  selectedFsEntry,
-  async (selected, _, onCleanup) => {
-    let cancelled = false;
-    onCleanup(() => {
-      cancelled = true;
-    });
-
-    if (!selected || selected.entry.kind !== 'directory') {
-      hasDirectVideoChildren.value = false;
-      return;
-    }
-
-    if (folderHasVideos(selected.entry)) {
-      hasDirectVideoChildren.value = true;
-      return;
-    }
-
-    const folderPath = selected.entry.path ?? '';
-    const children = await readDirectory(folderPath).catch(() => []);
-    if (cancelled || selectedFsEntry.value?.entry.path !== selected.entry.path) return;
-    hasDirectVideoChildren.value = children.some(
-      (child) => child.kind === 'file' && getMediaTypeFromFilename(child.name) === 'video',
-    );
-  },
-  { immediate: true },
-);
-
 function handleAction(actionId: DrawerAction) {
   if (onAction?.value) {
     const list = selectedEntriesList.value;
@@ -314,216 +218,6 @@ function handleAction(actionId: DrawerAction) {
   }
 }
 
-// Pre-bound action handlers to avoid recreating arrow functions on every topActions recompute.
-const actionHandlers: Record<DrawerAction, () => void> = {
-  convertFile: () => handleAction('convertFile'),
-  transcribe: () => handleAction('transcribe'),
-  createProxy: () => handleAction('createProxy'),
-  cancelProxy: () => handleAction('cancelProxy'),
-  deleteProxy: () => handleAction('deleteProxy'),
-  extractAudio: () => handleAction('extractAudio'),
-  createOtioVersion: () => handleAction('createOtioVersion'),
-  openAsPanel: () => handleAction('openAsPanel'),
-  openAsPanelCut: () => handleAction('openAsPanelCut'),
-  openAsPanelSound: () => handleAction('openAsPanelSound'),
-  openAsProjectTab: () => handleAction('openAsProjectTab'),
-  createFolder: () => handleAction('createFolder'),
-  upload: () => handleAction('upload'),
-  createTimeline: () => handleAction('createTimeline'),
-  createMarkdown: () => handleAction('createMarkdown'),
-  createSubgroup: () => handleAction('createSubgroup'),
-  createContentItem: () => handleAction('createContentItem'),
-  createProxyForFolder: () => handleAction('createProxyForFolder'),
-  cancelProxyForFolder: () => handleAction('cancelProxyForFolder'),
-  rename: () => handleAction('rename'),
-  delete: () => handleAction('delete'),
-  copy: () => handleAction('copy'),
-  cut: () => handleAction('cut'),
-  paste: () => handleAction('paste'),
-  openInNewTab: () => handleAction('openInNewTab'),
-};
-
-const topActions = computed(() => {
-  const entry = selectedFsEntry.value?.entry;
-  const path = selectedFsEntry.value?.path;
-  if (!entry) return [];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const actions: any[] = [];
-
-  // Convert
-  if (canConvert.value) {
-    actions.push({
-      id: 'convert',
-      label: t('videoEditor.fileManager.actions.convertFile'),
-      icon: 'lucide:replace',
-      onClick: actionHandlers.convertFile,
-    });
-  }
-
-  // Transcribe (Video or Audio)
-  if ((isVideo.value || isAudio.value) && !isFullyUnsupported.value) {
-    actions.push({
-      id: 'transcribe',
-      label: t('videoEditor.fileManager.actions.transcribe'),
-      icon: 'i-heroicons-language',
-      disabled: !canTranscribe.value,
-      onClick: actionHandlers.transcribe,
-    });
-  }
-
-  // Proxy (Video only)
-  if (isVideo.value && path && !isFullyUnsupported.value) {
-    const isGenerating = proxyStore.generatingProxies.has(path);
-    const hasProxy = proxyStore.existingProxies.has(path);
-
-    if (isGenerating) {
-      actions.push({
-        id: 'cancelProxy',
-        label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
-        icon: 'i-heroicons-no-symbol',
-        onClick: () => proxyStore.cancelProxyGeneration(path),
-      });
-    } else if (hasProxy) {
-      actions.push({
-        id: 'regenerateProxy',
-        label: t('videoEditor.fileManager.actions.regenerateProxy'),
-        icon: 'i-heroicons-arrow-path',
-        onClick: actionHandlers.createProxy,
-      });
-      actions.push({
-        id: 'deleteProxy',
-        label: t('videoEditor.fileManager.actions.deleteProxy'),
-        icon: 'i-heroicons-trash',
-        onClick: actionHandlers.deleteProxy,
-      });
-    } else {
-      actions.push({
-        id: 'createProxy',
-        label: t('videoEditor.fileManager.actions.createProxy'),
-        icon: 'i-heroicons-video-camera',
-        onClick: actionHandlers.createProxy,
-      });
-    }
-  }
-
-  // Extract Audio (Video only)
-  if (isVideo.value && hasAudioTrack.value && !isFullyUnsupported.value) {
-    actions.push({
-      id: 'extract-audio',
-      label: t('videoEditor.fileManager.actions.extractAudio'),
-      icon: 'i-heroicons-musical-note',
-      onClick: actionHandlers.extractAudio,
-    });
-  }
-
-  // Create OTIO Version
-  if (isOtioFile.value) {
-    actions.push({
-      id: 'createOtioVersion',
-      label: t('fastcat.timeline.createVersion'),
-      icon: 'i-heroicons-document-duplicate',
-      onClick: actionHandlers.createOtioVersion,
-    });
-  }
-
-  // Directory actions
-  if (entry.kind === 'directory') {
-    if (!isRemoteEntry.value) {
-      actions.push(
-        {
-          id: 'createFolder',
-          label: t('videoEditor.fileManager.actions.createFolder'),
-          icon: 'i-heroicons-folder-plus',
-          onClick: actionHandlers.createFolder,
-        },
-        {
-          id: 'upload',
-          label: t('videoEditor.fileManager.actions.uploadFiles'),
-          icon: 'i-heroicons-arrow-up-tray',
-          onClick: actionHandlers.upload,
-        },
-        {
-          id: 'createTimeline',
-          label: t('videoEditor.fileManager.actions.createTimeline'),
-          icon: 'i-heroicons-document-plus',
-          onClick: actionHandlers.createTimeline,
-        },
-        {
-          id: 'createMarkdown',
-          label: t('videoEditor.fileManager.actions.createMarkdown'),
-          icon: 'i-heroicons-document-text',
-          onClick: actionHandlers.createMarkdown,
-        },
-      );
-    } else if (!isBdContentItem.value) {
-      if (!isBdVirtual.value) {
-        actions.push(
-          {
-            id: 'createFolder',
-            label: t('videoEditor.fileManager.actions.createFolder'),
-            icon: 'i-heroicons-folder-plus',
-            onClick: actionHandlers.createFolder,
-          },
-          {
-            id: 'createMarkdown',
-            label: t('videoEditor.fileManager.actions.createMarkdown'),
-            icon: 'i-heroicons-document-text',
-            onClick: actionHandlers.createMarkdown,
-          },
-        );
-      }
-    }
-
-    // Proxy for folder
-    if (hasDirectVideoChildren.value && !isRemoteEntry.value) {
-      if (isGeneratingProxyInDirectory(entry, proxyStore.generatingProxies)) {
-        actions.push({
-          id: 'cancelProxyForFolder',
-          label: t('videoEditor.fileManager.actions.cancelProxyGeneration'),
-          icon: 'i-heroicons-x-circle',
-          color: 'error',
-          onClick: actionHandlers.cancelProxyForFolder,
-        });
-      } else {
-        actions.push({
-          id: 'createProxyForFolder',
-          label: t('videoEditor.fileManager.actions.createProxyForAll'),
-          icon: 'i-heroicons-film',
-          onClick: actionHandlers.createProxyForFolder,
-        });
-      }
-    }
-
-    // BloggerDog specific creations
-    const canCreateSubgroup =
-      isBdProject.value || isBdGroup.value || (isBdVirtual.value && entry.remoteId === 'personal');
-    const canCreateItem =
-      isBdProject.value ||
-      isBdGroup.value ||
-      (isBdVirtual.value && (entry.remoteId === 'personal' || entry.remoteId === 'virtual-all'));
-
-    if (canCreateSubgroup) {
-      actions.push({
-        id: 'createSubgroup',
-        label: t('fastcat.bloggerDog.actions.createSubgroup'),
-        icon: 'i-heroicons-folder-plus',
-        onClick: actionHandlers.createSubgroup,
-      });
-    }
-
-    if (canCreateItem) {
-      actions.push({
-        id: 'createContentItem',
-        label: t('fastcat.bloggerDog.actions.createItem'),
-        icon: 'i-heroicons-document-plus',
-        onClick: actionHandlers.createContentItem,
-      });
-    }
-  }
-
-  return actions;
-});
 </script>
 
 <template>
@@ -543,7 +237,6 @@ const topActions = computed(() => {
             <MobileDrawerToolbarButton
               v-if="canDelete"
               icon="i-heroicons-trash"
-              :label="$t('common.delete')"
               @click="handleAction('delete')"
             />
             <MobileDrawerToolbarButton
@@ -555,19 +248,16 @@ const topActions = computed(() => {
             <MobileDrawerToolbarButton
               v-if="canCopySelection"
               icon="i-heroicons-document-duplicate"
-              :label="$t('common.copy')"
               @click="handleAction('copy')"
             />
             <MobileDrawerToolbarButton
               v-if="canCutSelection"
               icon="i-heroicons-scissors"
-              :label="$t('common.cut')"
               @click="handleAction('cut')"
             />
             <MobileDrawerToolbarButton
               v-if="canPasteIntoSelection"
               icon="i-heroicons-clipboard"
-              :label="$t('common.paste')"
               @click="handleAction('paste')"
             />
             <MobileDrawerToolbarButton
@@ -578,13 +268,6 @@ const topActions = computed(() => {
               @click="emit('add-to-timeline')"
             />
           </MobileDrawerToolbar>
-
-          <div
-            v-if="topActions.length > 0"
-            class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40"
-          >
-            <PropertyActionList :actions="topActions" vertical variant="ghost" size="md" />
-          </div>
         </div>
 
         <div
@@ -596,7 +279,6 @@ const topActions = computed(() => {
             preview-mode="original"
             :has-proxy="hasExistingProxy"
             :mobile-text-mode="isTextDocument"
-            :hide-actions="selectedFsEntry.entry.kind === 'file'"
           />
         </div>
         <div v-else-if="selectedFsMultiple" class="py-2">

@@ -178,7 +178,6 @@ const hasAudio = computed(() => {
       <MobileDrawerToolbar class="border-b border-ui-border">
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
-          :label="t('common.delete')"
           :disabled="isLocked"
           @click="requestDelete"
         />
@@ -192,13 +191,11 @@ const hasAudio = computed(() => {
 
         <MobileDrawerToolbarButton
           icon="i-heroicons-document-duplicate"
-          :label="t('common.copy')"
           @click="handleCopy"
         />
 
         <MobileDrawerToolbarButton
           icon="i-heroicons-scissors"
-          :label="t('common.cut')"
           :disabled="isLocked"
           @click="handleCut"
         />
@@ -212,9 +209,6 @@ const hasAudio = computed(() => {
 
         <MobileDrawerToolbarButton
           :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-          :label="
-            clip?.disabled ? t('fastcat.timeline.enableClip') : t('fastcat.timeline.disableClip')
-          "
           :active="clip?.disabled"
           @click="handleToggleDisabled"
         />
@@ -222,9 +216,6 @@ const hasAudio = computed(() => {
         <template v-if="hasAudio">
           <MobileDrawerToolbarButton
             :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-            :label="
-              clip?.audioMuted ? t('fastcat.timeline.unmuteClip') : t('fastcat.timeline.muteClip')
-            "
             :active="clip?.audioMuted"
             @click="handleToggleMuted"
           />
@@ -232,7 +223,6 @@ const hasAudio = computed(() => {
 
         <MobileDrawerToolbarButton
           :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-          :label="clip?.locked ? t('fastcat.timeline.unlockClip') : t('fastcat.timeline.lockClip')"
           :active="clip?.locked"
           @click="handleToggleLocked"
         />

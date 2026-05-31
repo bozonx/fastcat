@@ -6,7 +6,6 @@ import SelectionRangeProperties from '~/components/properties/SelectionRangeProp
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
-import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 
 interface Props {
   isOpen: boolean;
@@ -20,7 +19,6 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 
@@ -38,33 +36,6 @@ function handleDelete() {
   selectionStore.clearSelection();
   emit('close');
 }
-
-function handleConvertToMarker() {
-  timelineStore.convertSelectionRangeToMarker();
-}
-
-function handleRippleTrim() {
-  timelineStore.rippleTrimSelectionRange();
-}
-
-const mainActions = computed(() => {
-  if (!selectionRange.value) return [];
-  return [
-    {
-      id: 'convert',
-      label: t('fastcat.timeline.convertSelectionToZoneMarker'),
-      icon: 'i-heroicons-bookmark-square',
-      onClick: handleConvertToMarker,
-    },
-    {
-      id: 'ripple-trim',
-      label: t('fastcat.timeline.rippleTrimSelection'),
-      icon: 'i-heroicons-scissors',
-      color: 'warning' as const,
-      onClick: handleRippleTrim,
-    },
-  ];
-});
 </script>
 
 <template>
@@ -77,23 +48,13 @@ const mainActions = computed(() => {
       <MobileDrawerToolbar class="border-b border-ui-border">
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
-          :label="t('common.delete')"
           @click="handleDelete"
         />
       </MobileDrawerToolbar>
     </template>
 
     <div v-if="selectionRange" class="px-4 pb-8 pt-4">
-      <div class="mb-4">
-        <div
-          v-if="mainActions.length > 0"
-          class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40"
-        >
-          <PropertyActionList :actions="mainActions" vertical variant="ghost" size="md" />
-        </div>
-      </div>
-
-      <SelectionRangeProperties hide-actions />
+      <SelectionRangeProperties />
     </div>
   </MobileTimelineDrawer>
 </template>

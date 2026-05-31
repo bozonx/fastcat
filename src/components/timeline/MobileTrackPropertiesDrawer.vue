@@ -8,6 +8,8 @@ import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
+import PropertyActionList from '~/components/properties/PropertyActionList.vue';
+import { useTrackExtraActions } from '~/composables/properties/useTrackExtraActions';
 
 const props = defineProps<{
   isOpen: boolean;
@@ -45,27 +47,6 @@ const selectedTrack = computed(() => {
 
 const isGapMode = computed(() => Boolean(props.gapItemId));
 
-const isTrackFirstOfKind = computed(() => {
-  if (!selectedTrack.value) return true;
-  return (
-    tracks.value.filter((t) => t.kind === selectedTrack.value!.kind)[0]?.id ===
-    selectedTrack.value.id
-  );
-});
-
-const isTrackLastOfKind = computed(() => {
-  if (!selectedTrack.value) return true;
-  const kindTracks = tracks.value.filter((t) => t.kind === selectedTrack.value!.kind);
-  return kindTracks[kindTracks.length - 1]?.id === selectedTrack.value.id;
-});
-
-const sameKindTracks = computed(() => {
-  if (!selectedTrack.value) return [];
-  return tracks.value.filter((track) => track.kind === selectedTrack.value!.kind);
-});
-
-const nextTrackIndex = computed(() => sameKindTracks.value.length + 1);
-
 const isTrackDeleteConfirmOpen = ref(false);
 const isTrackRenameOpen = ref(false);
 
@@ -96,23 +77,6 @@ function toggleTrackSolo() {
   timelineStore.toggleTrackAudioSolo(selectedTrack.value.id);
   timelineStore.requestTimelineSave({ immediate: true });
 }
-
-function moveSelectedTrackUp() {
-  if (!selectedTrack.value) return;
-  timelineStore.moveTrackUp(selectedTrack.value.id);
-}
-
-function moveSelectedTrackDown() {
-  if (!selectedTrack.value) return;
-  timelineStore.moveTrackDown(selectedTrack.value.id);
-}
-
-function createTrack(options: { insertBeforeId?: string; insertAfterId?: string }) {
-  if (!selectedTrack.value) return;
-  const nextName = `${selectedTrack.value.kind === 'video' ? 'Video' : 'Audio'} ${nextTrackIndex.value}`;
-  timelineStore.addTrack(selectedTrack.value.kind, nextName, options);
-}
-
 function requestDeleteTrack() {
   if (!selectedTrack.value) return;
   const skipConfirm = workspaceStore.userSettings.deleteWithoutConfirmation;
@@ -145,64 +109,10 @@ function deleteGap() {
 
 const isGenerateCaptionsOpen = ref(false);
 
-const extraActions = computed(() => {
-  if (!selectedTrack.value) return [];
-  const list: Array<{
-    id: string;
-    label: string;
-    icon: string;
-    onClick: () => void;
-    disabled?: boolean;
-  }> = [];
-  if (selectedTrack.value.kind === 'video') {
-    list.push({
-      id: 'generate-captions',
-      label: t('fastcat.captions.generate'),
-      icon: 'i-heroicons-chat-bubble-bottom-center-text',
-      onClick: () => (isGenerateCaptionsOpen.value = true),
-    });
-  }
-
-  list.push(
-    {
-      id: 'create-above',
-      label: t(
-        `fastcat.timeline.add${selectedTrack.value.kind === 'video' ? 'Video' : 'Audio'}TrackAbove`,
-      ),
-      icon:
-        selectedTrack.value.kind === 'video'
-          ? 'i-heroicons-video-camera'
-          : 'i-heroicons-musical-note',
-      onClick: () => createTrack({ insertBeforeId: selectedTrack.value!.id }),
-    },
-    {
-      id: 'create-below',
-      label: t(
-        `fastcat.timeline.add${selectedTrack.value.kind === 'video' ? 'Video' : 'Audio'}TrackBelow`,
-      ),
-      icon:
-        selectedTrack.value.kind === 'video'
-          ? 'i-heroicons-video-camera'
-          : 'i-heroicons-musical-note',
-      onClick: () => createTrack({ insertAfterId: selectedTrack.value!.id }),
-    },
-    {
-      id: 'move-up',
-      label: t('fastcat.track.moveUp'),
-      icon: 'i-heroicons-arrow-up',
-      disabled: isTrackFirstOfKind.value,
-      onClick: moveSelectedTrackUp,
-    },
-    {
-      id: 'move-down',
-      label: t('fastcat.track.moveDown'),
-      icon: 'i-heroicons-arrow-down',
-      disabled: isTrackLastOfKind.value,
-      onClick: moveSelectedTrackDown,
-    },
-  );
-
-  return list;
+const { extraActions } = useTrackExtraActions({
+  track: selectedTrack,
+  timelineStore,
+  onGenerateCaptions: () => (isGenerateCaptionsOpen.value = true),
 });
 </script>
 
@@ -216,14 +126,12 @@ const extraActions = computed(() => {
       <MobileDrawerToolbar class="border-b border-ui-border">
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
-          :label="isGapMode ? t('fastcat.timeline.deleteGap') : t('common.delete')"
           @click="isGapMode ? deleteGap() : requestDeleteTrack()"
         />
 
         <MobileDrawerToolbarButton
           v-if="isGapMode"
           icon="i-heroicons-trash"
-          :label="t('fastcat.timeline.deleteTrack')"
           @click="requestDeleteTrack"
         />
 
@@ -235,7 +143,6 @@ const extraActions = computed(() => {
 
         <MobileDrawerToolbarButton
           :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-          :label="selectedTrack?.locked ? t('fastcat.track.unlock') : t('fastcat.track.lock')"
           :active="selectedTrack?.locked"
           @click="toggleTrackLock"
         />
@@ -243,11 +150,6 @@ const extraActions = computed(() => {
         <MobileDrawerToolbarButton
           v-if="selectedTrack?.kind === 'video'"
           :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-          :label="
-            selectedTrack?.videoHidden
-              ? t('fastcat.timeline.showTrack')
-              : t('fastcat.timeline.hideTrack')
-          "
           :active="selectedTrack?.videoHidden"
           @click="toggleTrackVideoHidden"
         />
@@ -256,14 +158,12 @@ const extraActions = computed(() => {
           :icon="
             selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
           "
-          :label="selectedTrack?.audioMuted ? t('fastcat.track.unmute') : t('fastcat.track.mute')"
           :active="selectedTrack?.audioMuted"
           @click="toggleTrackMute"
         />
 
         <MobileDrawerToolbarButton
           icon="i-heroicons-musical-note"
-          :label="t('fastcat.track.solo')"
           :active="selectedTrack?.audioSolo"
           @click="toggleTrackSolo"
         />
@@ -271,15 +171,11 @@ const extraActions = computed(() => {
     </template>
 
     <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">
-      <div v-if="extraActions.length > 0" class="grid grid-cols-2 gap-3">
-        <MobileDrawerToolbarButton
-          v-for="action in extraActions"
-          :key="action.id"
-          :icon="action.icon"
-          :label="action.label"
-          :disabled="action.disabled"
-          @click="action.onClick"
-        />
+      <div
+        v-if="extraActions.length > 0"
+        class="py-1 px-3 border border-ui-border rounded-xl bg-ui-bg-elevated/40"
+      >
+        <PropertyActionList :actions="extraActions" vertical variant="ghost" size="md" />
       </div>
 
       <TrackProperties :track="selectedTrack" hide-actions />
