@@ -5,7 +5,8 @@ import type { RecentProject } from '~/stores/workspace.store';
 import { getErrorMessage } from '~/utils/errors';
 import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
 import { ensureDirectoryChain, resolveStorageRootHandle } from '~/utils/storage-handles';
-import { renameDirectoryFallback } from '~/file-manager/fs/ops';
+import { toProjectStoragePath } from '~/utils/workspace-common';
+import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 const log = createDevLogger('workspaceProjects');
 
 export interface WorkspaceProjectsModule {
@@ -16,10 +17,6 @@ export interface WorkspaceProjectsModule {
   renameProject: (oldName: string, newName: string) => Promise<void>;
 }
 
-interface MovableDirectoryHandle extends FileSystemDirectoryHandle {
-  move?: (newName: string) => Promise<void>;
-}
-
 export function createWorkspaceProjectsModule(params: {
   workspaceHandle: Ref<FileSystemDirectoryHandle | null>;
   projectsHandle: Ref<FileSystemDirectoryHandle | null>;
@@ -28,6 +25,8 @@ export function createWorkspaceProjectsModule(params: {
   lastProjectName: Ref<string | null>;
   recentProjects: Ref<RecentProject[]>;
   resolvedStorageTopology: Ref<ResolvedStorageTopology>;
+  /** Lazily resolves the application VFS adapter (see project-fs for rationale). */
+  getVfs: () => IFileSystemAdapter;
 }): WorkspaceProjectsModule {
   const workspaceTopology = getWorkspaceStorageTopology();
 
@@ -49,22 +48,11 @@ export function createWorkspaceProjectsModule(params: {
     if (!params.projectsHandle.value) return;
 
     try {
-      const handleLike = params.projectsHandle.value as unknown as {
-        values?: () => AsyncIterableIterator<FileSystemHandle>;
-        entries?: () => AsyncIterableIterator<[string, FileSystemHandle]>;
-      };
-      const iterator = handleLike.values?.() ?? handleLike.entries?.();
-      if (!iterator) return;
-
-      const tempProjects: string[] = [];
-      for await (const value of iterator) {
-        const handle = Array.isArray(value) ? value[1] : value;
-        if (handle.kind === 'directory') {
-          tempProjects.push(handle.name);
-        }
-      }
-
-      tempProjects.sort((a, b) => a.localeCompare(b));
+      const entries = await params.getVfs().readDirectory(toProjectStoragePath(''));
+      const tempProjects = entries
+        .filter((entry) => entry.kind === 'directory')
+        .map((entry) => entry.name)
+        .sort((a, b) => a.localeCompare(b));
       params.projects.value = tempProjects;
     } catch (e: unknown) {
       params.error.value = getErrorMessage(e, 'Failed to load projects');
@@ -146,7 +134,7 @@ export function createWorkspaceProjectsModule(params: {
         await clearProjectVardata(projectId);
       }
 
-      await params.projectsHandle.value.removeEntry(name, { recursive: true });
+      await params.getVfs().deleteEntry(toProjectStoragePath(name), true);
       await loadProjects();
 
       if (params.lastProjectName.value === name) {
@@ -173,20 +161,8 @@ export function createWorkspaceProjectsModule(params: {
     }
 
     try {
-      const oldHandle = (await params.projectsHandle.value.getDirectoryHandle(
-        oldName,
-      )) as MovableDirectoryHandle;
-      // modern File System Access API supports move()
-      if (typeof oldHandle.move === 'function') {
-        await oldHandle.move(newName);
-      } else {
-        await renameDirectoryFallback({
-          sourceDirHandle: oldHandle,
-          sourceName: oldName,
-          parentDirHandle: params.projectsHandle.value,
-          newName,
-        });
-      }
+      // VFS moveEntry handles same-adapter rename + cross-device copy/delete fallback.
+      await params.getVfs().moveEntry(toProjectStoragePath(oldName), toProjectStoragePath(newName));
 
       await loadProjects();
 

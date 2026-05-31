@@ -13,8 +13,9 @@ const workspaceStoreMock = reactive({
   projectsHandle: { getDirectoryHandle: vi.fn() } as any,
 });
 
-const { mockGetFile, parseTimelineFromOtioMock } = vi.hoisted(() => ({
+const { mockGetFile, mockReadDirectory, parseTimelineFromOtioMock } = vi.hoisted(() => ({
   mockGetFile: vi.fn(),
+  mockReadDirectory: vi.fn(),
   parseTimelineFromOtioMock: vi.fn((text: string) => ({
     name: text,
     tracks: [{ id: 'v1', kind: 'video', items: [{ id: 'clip-1', kind: 'clip' }] }],
@@ -30,7 +31,7 @@ vi.mock('~/stores/workspace.store', () => ({
 }));
 
 vi.mock('~/composables/useVfs', () => ({
-  useVfs: vi.fn(() => ({ getFile: mockGetFile })),
+  useVfs: vi.fn(() => ({ getFile: mockGetFile, readDirectory: mockReadDirectory })),
 }));
 
 vi.mock('~/timeline/otio-serializer', () => ({
@@ -45,20 +46,21 @@ vi.mock('~/utils/timeline-media-usage', () => ({
   computeMediaUsageByTimelineDocs: vi.fn(() => ({ mediaPathToTimelines: {} })),
 }));
 
-function createMockFileEntry(name: string) {
-  return { name, kind: 'file' };
-}
-
-function createMockDirEntry(name: string, children: any[] = []) {
-  return {
-    name,
-    kind: 'directory',
-    values: async function* () {
-      for (const child of children) {
-        yield child;
-      }
-    },
-  };
+/**
+ * Build a `readDirectory(path)` mock from a nested tree. The store walks the
+ * active project root ('') recursively; each directory maps to its VfsEntry[].
+ */
+function buildReadDirectory(
+  tree: Record<string, Array<{ name: string; kind: 'file' | 'directory' }>>,
+) {
+  return vi.fn(async (dirPath: string) => {
+    const entries = tree[dirPath] ?? [];
+    return entries.map((e) => ({
+      name: e.name,
+      kind: e.kind,
+      path: dirPath ? `${dirPath}/${e.name}` : e.name,
+    }));
+  });
 }
 
 describe('TimelineMediaUsageStore', () => {
@@ -95,17 +97,16 @@ describe('TimelineMediaUsageStore', () => {
   });
 
   it('skips .fastcat directory when scanning timelines', async () => {
-    const projectDir = createMockDirEntry('test-project', [
-      createMockFileEntry('timeline1.otio'),
-      createMockDirEntry('.fastcat', [
-        createMockDirEntry('autosave', [createMockFileEntry('timeline1.otio')]),
-      ]),
-      createMockDirEntry('subfolder', [createMockFileEntry('timeline2.otio')]),
-    ]);
-
-    workspaceStoreMock.projectsHandle = {
-      getDirectoryHandle: vi.fn().mockResolvedValue(projectDir),
-    };
+    mockReadDirectory.mockImplementation(
+      buildReadDirectory({
+        '': [
+          { name: 'timeline1.otio', kind: 'file' },
+          { name: '.fastcat', kind: 'directory' },
+          { name: 'subfolder', kind: 'directory' },
+        ],
+        subfolder: [{ name: 'timeline2.otio', kind: 'file' }],
+      }),
+    );
 
     mockGetFile.mockImplementation((path: string) => {
       if (path.endsWith('.otio')) {
@@ -128,10 +129,9 @@ describe('TimelineMediaUsageStore', () => {
   });
 
   it('skips empty or invalid timelines during background media usage scan', async () => {
-    const projectDir = createMockDirEntry('test-project', [createMockFileEntry('broken.otio')]);
-    workspaceStoreMock.projectsHandle = {
-      getDirectoryHandle: vi.fn().mockResolvedValue(projectDir),
-    };
+    mockReadDirectory.mockImplementation(
+      buildReadDirectory({ '': [{ name: 'broken.otio', kind: 'file' }] }),
+    );
     mockGetFile.mockResolvedValue({
       text: () => Promise.resolve(JSON.stringify({ OTIO_SCHEMA: 'Timeline.1', name: 'broken' })),
     } as unknown as File);

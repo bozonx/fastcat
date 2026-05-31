@@ -3,14 +3,22 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { InMemoryFileSystemAdapter } from '~/file-manager/core/vfs/adapters/InMemoryFileSystemAdapter';
 
 vi.unmock('~/stores/workspace.store');
+
+// Project list/delete/rename go through the application VFS (`@project/<name>`).
+let mockVfs: InMemoryFileSystemAdapter;
+vi.mock('~/composables/useVfs', () => ({
+  useVfs: () => mockVfs,
+}));
 
 describe('WorkspaceStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     localStorage.clear();
+    mockVfs = new InMemoryFileSystemAdapter();
   });
 
   it('initializes with default settings', () => {
@@ -124,13 +132,9 @@ describe('WorkspaceStore', () => {
       store.projects = ['p1', 'p2'];
       store.lastProjectName = 'p1';
 
-      const mockProjectsHandle = {
-        removeEntry: vi.fn().mockResolvedValue(undefined),
-        values: vi.fn().mockImplementation(async function* () {
-          yield { name: 'p2', kind: 'directory', name: 'p2' } as any;
-        }),
-      };
-      store.projectsHandle = mockProjectsHandle as any;
+      await mockVfs.createDirectory('@project/p1');
+      await mockVfs.createDirectory('@project/p2');
+      store.projectsHandle = { name: 'projects' } as any;
       store.workspaceHandle = { name: 'root' } as any;
 
       await store.deleteProject('p1');
@@ -150,14 +154,8 @@ describe('WorkspaceStore', () => {
       store.projects = ['old-name'];
       store.lastProjectName = 'old-name';
 
-      const mockOldHandle = {
-        move: vi.fn().mockResolvedValue(undefined),
-      };
-      const mockProjectsHandle = {
-        getDirectoryHandle: vi.fn().mockResolvedValue(mockOldHandle),
-        values: vi.fn().mockReturnValue([]),
-      };
-      store.projectsHandle = mockProjectsHandle as any;
+      await mockVfs.createDirectory('@project/old-name');
+      store.projectsHandle = { name: 'projects' } as any;
 
       await store.renameProject('old-name', 'new-name');
 

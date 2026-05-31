@@ -116,8 +116,11 @@ function createTauriWorkspaceAdapters(
   projectStore: ReturnType<typeof useProjectStore>,
   fastcatDevDir?: string,
 ): WorkspaceAdapters {
-  const handle = workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle | null;
-  const workspacePath = handle?.path;
+  // Resolve the workspace path *dynamically* on every call: the workspace is
+  // opened after this plugin runs, so capturing the handle once (at init) would
+  // pin every adapter to AppData. (The OPFS adapters already read it lazily.)
+  const getWorkspacePath = (): string | undefined =>
+    (workspaceStore.workspaceHandle as unknown as TauriDirectoryHandle | null)?.path;
 
   async function resolveAppDataDir(): Promise<{ type: 'absolute'; path: string }> {
     const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
@@ -133,11 +136,13 @@ function createTauriWorkspaceAdapters(
     const projectHandle = await projectStore.getProjectDirHandle();
     const projectPath = (projectHandle as unknown as TauriDirectoryHandle | null)?.path;
     if (projectPath) return { type: 'absolute', path: projectPath };
+    const workspacePath = getWorkspacePath();
     if (workspacePath) return { type: 'absolute', path: workspacePath };
     return resolveAppDataDir();
   });
 
   const workspace = new TauriFileSystemAdapter(async () => {
+    const workspacePath = getWorkspacePath();
     if (workspacePath) return { type: 'absolute', path: workspacePath };
     return resolveAppDataDir();
   });

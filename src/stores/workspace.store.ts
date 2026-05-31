@@ -166,6 +166,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     lastProjectName,
     recentProjects,
     resolvedStorageTopology,
+    getVfs: () => useVfs(),
   });
   const { loadProjects, clearVardata, clearProjectVardata, deleteProject, renameProject } =
     projectsModule;

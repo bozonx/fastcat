@@ -89,57 +89,35 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
     Boolean(workspaceStore.projectsHandle && projectStore.currentProjectName),
   );
 
-  async function getProjectDirHandle(): Promise<FileSystemDirectoryHandle | null> {
-    if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return null;
-    try {
-      return await workspaceStore.projectsHandle.getDirectoryHandle(
-        projectStore.currentProjectName,
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  async function listTimelineFiles(params: {
-    projectDir: FileSystemDirectoryHandle;
-    maxEntries?: number;
-  }): Promise<string[]> {
-    const maxEntries = params.maxEntries ?? 50_000;
+  // Recursively walk the active project (default VFS route) for `.otio` files.
+  async function listTimelineFiles(params?: { maxEntries?: number }): Promise<string[]> {
+    const vfs = useVfs();
+    const maxEntries = params?.maxEntries ?? 50_000;
     let seen = 0;
-
     const result: string[] = [];
 
-    const walk = async (dir: FileSystemDirectoryHandle, basePath: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const d = dir as any;
-      const iterator = d.values?.() ?? d.entries?.();
-      if (!iterator) return;
-
-      for await (const value of iterator) {
+    const walk = async (dirPath: string) => {
+      const entries = await vfs.readDirectory(dirPath);
+      for (const entry of entries) {
         if (seen >= maxEntries) {
           throw new TimelineScanError('PROJECT_TOO_LARGE', 'Project too large to scan timelines');
         }
         seen += 1;
 
-        const handle = (Array.isArray(value) ? value[1] : value) as
-          | FileSystemFileHandle
-          | FileSystemDirectoryHandle;
-
-        const fullPath = basePath ? `${basePath}/${handle.name}` : handle.name;
-
-        if (handle.kind === 'directory') {
-          if (handle.name === '.fastcat') continue;
-          await walk(handle as FileSystemDirectoryHandle, fullPath);
+        if (entry.kind === 'directory') {
+          if (entry.name === '.fastcat') continue;
+          await walk(entry.path);
           continue;
         }
 
-        if (fullPath.toLowerCase().endsWith('.otio')) {
-          result.push(fullPath);
+        if (entry.path.toLowerCase().endsWith('.otio')) {
+          result.push(entry.path);
         }
       }
     };
 
-    await walk(params.projectDir, '');
+    // '' / root = active project root.
+    await walk('');
 
     return result;
   }
@@ -191,19 +169,11 @@ export const useTimelineMediaUsageStore = defineStore('timeline-media-usage', ()
       return;
     }
 
-    const projectDir = await getProjectDirHandle();
-    if (!projectDir) {
-      scannedMediaUsage.value = {};
-      error.value = 'Project directory is not available';
-      lastScanAt.value = null;
-      return;
-    }
-
     isLoading.value = true;
     error.value = null;
 
     try {
-      const timelinePaths = await listTimelineFiles({ projectDir });
+      const timelinePaths = await listTimelineFiles();
 
       const timelines = (
         await Promise.all(
