@@ -37,7 +37,6 @@ function confirmDelete() {
   timelineStore.removeMarker(marker.value.id);
   emit('close');
 }
-
 </script>
 
 <template>
@@ -48,10 +47,7 @@ function confirmDelete() {
   >
     <template #toolbar>
       <MobileDrawerToolbar class="border-b border-ui-border">
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          @click="confirmDelete"
-        />
+        <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="confirmDelete" />
       </MobileDrawerToolbar>
     </template>
 

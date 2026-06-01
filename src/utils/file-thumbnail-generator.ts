@@ -259,36 +259,36 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       }
 
       if (!blob) {
-      setThumbnailHostApi(
-        createVideoCoreHostApi({
-          getCurrentProjectId: () => projectStore.currentProjectId,
-          getWorkspaceHandle: () => workspaceStore.workspaceHandle,
-          getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
-          getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
-          getFileByPath: async (path) => projectStore.getFileByPath(path),
-          onExportProgress: () => {},
-        }),
-      );
+        setThumbnailHostApi(
+          createVideoCoreHostApi({
+            getCurrentProjectId: () => projectStore.currentProjectId,
+            getWorkspaceHandle: () => workspaceStore.workspaceHandle,
+            getResolvedStorageTopology: () => workspaceStore.resolvedStorageTopology,
+            getFileHandleByPath: async (path) => projectStore.getFileHandleByPath(path),
+            getFileByPath: async (path) => projectStore.getFileByPath(path),
+            onExportProgress: () => {},
+          }),
+        );
 
-      const { client } = getThumbnailWorkerClient();
+        const { client } = getThumbnailWorkerClient();
 
-      try {
-        const blobs = await client.extractVideoFrameBlobs(file, {
-          timesS: [FILE_MANAGER_THUMBNAILS.POSITION_FRACTION],
-          maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-          maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
-          quality: FILE_MANAGER_THUMBNAILS.QUALITY,
-          mimeType: 'image/webp',
-          taskId: task.id,
-          keepAlive: false,
-        });
-        blob = blobs[0] ?? null;
-      } catch (e) {
-        if (!this.isCancelled(task.id)) {
-          task.onError?.(e instanceof Error ? e : new Error(String(e)));
+        try {
+          const blobs = await client.extractVideoFrameBlobs(file, {
+            timesS: [FILE_MANAGER_THUMBNAILS.POSITION_FRACTION],
+            maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+            maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
+            quality: FILE_MANAGER_THUMBNAILS.QUALITY,
+            mimeType: 'image/webp',
+            taskId: task.id,
+            keepAlive: false,
+          });
+          blob = blobs[0] ?? null;
+        } catch (e) {
+          if (!this.isCancelled(task.id)) {
+            task.onError?.(e instanceof Error ? e : new Error(String(e)));
+          }
+          return;
         }
-        return;
-      }
       }
     }
 

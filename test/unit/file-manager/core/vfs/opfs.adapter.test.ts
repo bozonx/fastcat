@@ -554,17 +554,20 @@ describe('OpfsFileSystemAdapter', () => {
 
     it('commits writeStream through a temp file when handle.move is available', async () => {
       const originalGetFileHandle = root.getFileHandle.getMockImplementation()!;
-      root.getFileHandle.mockImplementation(async (name: string, options?: { create?: boolean }) => {
-        const handle = (await originalGetFileHandle(name, options)) as MockFileHandle;
-        if (name.startsWith('.')) {
-          (handle as unknown as { move: (parent: MockDirectoryHandle, nextName: string) => void })
-            .move = (parent, nextName) => {
-            parent.addChild(nextName, handle);
-            void parent.removeEntry(name).catch(() => {});
-          };
-        }
-        return handle;
-      });
+      root.getFileHandle.mockImplementation(
+        async (name: string, options?: { create?: boolean }) => {
+          const handle = (await originalGetFileHandle(name, options)) as MockFileHandle;
+          if (name.startsWith('.')) {
+            (
+              handle as unknown as { move: (parent: MockDirectoryHandle, nextName: string) => void }
+            ).move = (parent, nextName) => {
+              parent.addChild(nextName, handle);
+              void parent.removeEntry(name).catch(() => {});
+            };
+          }
+          return handle;
+        },
+      );
 
       const stream = await adapter.writeStream('atomic.txt');
       const writer = stream.getWriter();

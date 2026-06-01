@@ -189,10 +189,7 @@ const hasAudio = computed(() => {
           @click="isRenameModalOpen = true"
         />
 
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-document-duplicate"
-          @click="handleCopy"
-        />
+        <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
 
         <MobileDrawerToolbarButton
           icon="i-heroicons-scissors"

@@ -53,7 +53,8 @@ async function loadThumbnail() {
     const clipsPayload = nativeScene
       ? undefined
       : await (async () => {
-          const { buildVideoWorkerPayloadFromTracks } = await import('~/composables/timeline/export');
+          const { buildVideoWorkerPayloadFromTracks } =
+            await import('~/composables/timeline/export');
           const builtVideo = await buildVideoWorkerPayloadFromTracks({
             tracks: timelineStore.timelineDoc!.tracks,
             projectStore,

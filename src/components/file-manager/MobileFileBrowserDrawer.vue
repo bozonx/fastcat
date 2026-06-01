@@ -105,7 +105,6 @@ const canDelete = computed(() => {
   );
 });
 
-
 const isBdVirtual = computed(() =>
   selectedFsEntry.value
     ? getBdPayload(selectedFsEntry.value.entry)?.type === 'virtual-folder'
@@ -217,7 +216,6 @@ function handleAction(actionId: DrawerAction) {
     }
   }
 }
-
 </script>
 
 <template>

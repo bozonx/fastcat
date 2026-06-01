@@ -166,9 +166,11 @@ export function toProjectProxiesVfsPath(
 ): string {
   const proxiesRoot = (topology.proxiesRoot ?? '').trim();
   if (proxiesRoot) {
-    return [WORKSPACE_PROJECT_PROXIES_PATH_PREFIX, WORKSPACE_TEMP_PROJECTS_DIR_NAME, projectId].join(
-      '/',
-    );
+    return [
+      WORKSPACE_PROJECT_PROXIES_PATH_PREFIX,
+      WORKSPACE_TEMP_PROJECTS_DIR_NAME,
+      projectId,
+    ].join('/');
   }
   return toProjectTempVfsPath(projectId, [PROXIES_ROOT_DIR_NAME]);
 }

@@ -65,7 +65,13 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
             }),
           );
 
-          blob = await client.extractFrameToBlob(params.timeUs, width, height, clipsPayload, quality);
+          blob = await client.extractFrameToBlob(
+            params.timeUs,
+            width,
+            height,
+            clipsPayload,
+            quality,
+          );
         }
 
         if (!blob) return;

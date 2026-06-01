@@ -204,16 +204,22 @@ function buildBaseLayer(params: {
     opacity: Math.max(0, Math.min(1, finite(clip.opacity, 1))),
     blend_mode: clip.blendMode ?? 'normal',
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
-    transition_in: clip.transitionIn && clip.transitionIn.durationUs > 0 ? {
-      type: clip.transitionIn.type,
-      duration_sec: clip.transitionIn.durationUs / 1_000_000,
-      curve: clip.transitionIn.curve,
-    } : undefined,
-    transition_out: clip.transitionOut && clip.transitionOut.durationUs > 0 ? {
-      type: clip.transitionOut.type,
-      duration_sec: clip.transitionOut.durationUs / 1_000_000,
-      curve: clip.transitionOut.curve,
-    } : undefined,
+    transition_in:
+      clip.transitionIn && clip.transitionIn.durationUs > 0
+        ? {
+            type: clip.transitionIn.type,
+            duration_sec: clip.transitionIn.durationUs / 1_000_000,
+            curve: clip.transitionIn.curve,
+          }
+        : undefined,
+    transition_out:
+      clip.transitionOut && clip.transitionOut.durationUs > 0
+        ? {
+            type: clip.transitionOut.type,
+            duration_sec: clip.transitionOut.durationUs / 1_000_000,
+            curve: clip.transitionOut.curve,
+          }
+        : undefined,
   };
 }
 
@@ -260,7 +266,10 @@ async function buildAudioLayers(params: {
       source_start_sec: clip.sourceRange.startUs / 1_000_000,
       speed: sanitizeAudioSpeed(clip.speed),
       audio_gain: Math.max(0, finite((clip as any).originalAudioGain ?? clip.audioGain, 1)),
-      audio_balance: Math.max(-1, Math.min(1, finite((clip as any).originalAudioBalance ?? clip.audioBalance, 0))),
+      audio_balance: Math.max(
+        -1,
+        Math.min(1, finite((clip as any).originalAudioBalance ?? clip.audioBalance, 0)),
+      ),
       audio_fade_in_sec: Math.max(0, finite(clip.audioFadeInUs, 0) / 1_000_000),
       audio_fade_out_sec: Math.max(0, finite(clip.audioFadeOutUs, 0) / 1_000_000),
       audio_fade_in_curve: clip.audioFadeInCurve ?? 'linear',

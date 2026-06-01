@@ -138,9 +138,8 @@ const mockVfs = {
   writeFile: vi.fn(async (path: string, data: any) => {
     const fileName = path.split('/').pop() || '';
     // Store as ArrayBuffer or Uint8Array depending on what was passed
-    const buffer = typeof data === 'string'
-      ? new TextEncoder().encode(data).buffer
-      : data.buffer || data;
+    const buffer =
+      typeof data === 'string' ? new TextEncoder().encode(data).buffer : data.buffer || data;
     if (path.includes('files-meta')) {
       mediaFsMock.metaFiles.set(fileName, buffer);
     } else if (path.includes('waveforms')) {

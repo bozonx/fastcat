@@ -37,4 +37,3 @@ describe('media-io-source', () => {
     });
   });
 });
-

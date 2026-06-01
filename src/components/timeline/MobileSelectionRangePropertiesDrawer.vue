@@ -46,10 +46,7 @@ function handleDelete() {
   >
     <template #toolbar>
       <MobileDrawerToolbar class="border-b border-ui-border">
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          @click="handleDelete"
-        />
+        <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="handleDelete" />
       </MobileDrawerToolbar>
     </template>
 

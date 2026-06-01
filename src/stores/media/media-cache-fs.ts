@@ -1,7 +1,4 @@
-import {
-  FILES_META_ROOT_DIR_NAME,
-  WAVEFORMS_ROOT_DIR_NAME,
-} from '~/utils/storage-roots';
+import { FILES_META_ROOT_DIR_NAME, WAVEFORMS_ROOT_DIR_NAME } from '~/utils/storage-roots';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
 
 /**
