@@ -17,6 +17,15 @@ const OUTPUT_CHANNELS: usize = 2;
 const CHUNK_DURATION_SEC: f64 = 1.0;
 const PREBUFFER_CHUNKS: usize = 3;
 
+struct CachedAudioDecoder {
+    format: Box<dyn symphonia::core::formats::FormatReader>,
+    decoder: Box<dyn symphonia::core::codecs::Decoder>,
+    track_id: u32,
+    source_rate: u32,
+    channels: usize,
+    time_base: symphonia::core::units::TimeBase,
+}
+
 struct AudioShared {
     scene: Vec<SceneAudioLayer>,
     tracks: Vec<SceneAudioTrack>,
@@ -29,6 +38,7 @@ struct AudioShared {
     seek_serial: u64,
     scene_serial: u64,
     decoded_cache: HashMap<String, Arc<Vec<f32>>>,
+    decoders: HashMap<String, CachedAudioDecoder>,
 }
 
 impl Default for AudioShared {
@@ -45,6 +55,7 @@ impl Default for AudioShared {
             seek_serial: 0,
             scene_serial: 0,
             decoded_cache: HashMap::new(),
+            decoders: HashMap::new(),
         }
     }
 }
@@ -113,6 +124,7 @@ impl NativeAudioEngine {
             .map(|l| l.path.clone())
             .collect();
         state.decoded_cache.retain(|path, _| current_paths.contains(path));
+        state.decoders.retain(|path, _| current_paths.contains(path));
     }
 
     pub fn play(&self, pts_sec: f64) {
@@ -792,71 +804,90 @@ fn decode_symphonia_chunk(
     timeline_duration_sec: f64,
     speed: f64,
     target_sample_rate: u32,
+    shared: &Arc<Mutex<AudioShared>>,
 ) -> Result<Vec<f32>> {
-    use symphonia::core::formats::FormatOptions;
-    use symphonia::core::meta::MetadataOptions;
-    use symphonia::core::codecs::DecoderOptions;
-    use symphonia::core::probe::Hint;
+    let mut decoder_state = {
+        let mut state = shared.lock();
+        state.decoders.remove(path)
+    };
 
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("failed to open audio file for chunk: {}", path))?;
-    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
+    if decoder_state.is_none() {
+        use symphonia::core::formats::FormatOptions;
+        use symphonia::core::meta::MetadataOptions;
+        use symphonia::core::codecs::DecoderOptions;
+        use symphonia::core::probe::Hint;
 
-    let mut hint = Hint::new();
-    if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
-        hint.with_extension(ext);
+        let file = std::fs::File::open(path)
+            .with_context(|| format!("failed to open audio file for chunk: {}", path))?;
+        let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
+
+        let mut hint = Hint::new();
+        if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
+            hint.with_extension(ext);
+        }
+
+        let probed = symphonia::default::get_probe()
+            .format(
+                &hint,
+                mss,
+                &FormatOptions::default(),
+                &MetadataOptions::default(),
+            )
+            .context("failed to probe media format")?;
+
+        let format = probed.format;
+        let track = format
+            .tracks()
+            .iter()
+            .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
+            .ok_or_else(|| anyhow!("no active audio track found"))?;
+
+        let decoder = symphonia::default::get_codecs()
+            .make(
+                &track.codec_params,
+                &DecoderOptions::default(),
+            )
+            .context("failed to create decoder")?;
+
+        let track_id = track.id;
+        let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
+        let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
+        let time_base = track.codec_params.time_base.unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
+
+        decoder_state = Some(CachedAudioDecoder {
+            format,
+            decoder,
+            track_id,
+            source_rate,
+            channels,
+            time_base,
+        });
     }
 
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .context("failed to probe media format")?;
+    let mut state_val = decoder_state.unwrap();
 
-    let mut format = probed.format;
-    let track = format
-        .tracks()
-        .iter()
-        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
-        .ok_or_else(|| anyhow!("no active audio track found"))?;
-
-    let mut decoder = symphonia::default::get_codecs()
-        .make(
-            &track.codec_params,
-            &DecoderOptions::default(),
-        )
-        .context("failed to create decoder")?;
-
-    let track_id = track.id;
-    let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
-    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
-    let time_base = track.codec_params.time_base.unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
-
-    let seeked_to = format.seek(
+    let seeked_to = state_val.format.seek(
         symphonia::core::formats::SeekMode::Accurate,
         symphonia::core::formats::SeekTo::Time {
             time: symphonia::core::units::Time {
                 seconds: source_start_sec.floor() as u64,
                 frac: source_start_sec.fract(),
             },
-            track_id: Some(track_id),
+            track_id: Some(state_val.track_id),
         },
     ).context("failed to seek in format reader")?;
 
-    decoder.reset();
+    state_val.decoder.reset();
 
     let actual_sec = {
-        let t = time_base.calc_time(seeked_to.actual_ts);
+        let t = state_val.time_base.calc_time(seeked_to.actual_ts);
         t.seconds as f64 + t.frac
     };
     let discard_sec = (source_start_sec - actual_sec).max(0.0);
-    let mut discard_frames_remaining = (discard_sec * source_rate as f64).round() as usize;
-    let source_frames_needed = (timeline_duration_sec * speed * source_rate as f64).round() as usize;
+    let mut discard_frames_remaining = (discard_sec * state_val.source_rate as f64).round() as usize;
+    let source_frames_needed = (timeline_duration_sec * speed * state_val.source_rate as f64).round() as usize;
 
-    let mut planar_buffers = vec![Vec::new(); channels];
+    let mut planar_buffers = vec![Vec::new(); state_val.channels];
     let mut collected_frames = 0;
     let mut break_loop = false;
 
@@ -865,7 +896,7 @@ fn decode_symphonia_chunk(
             break;
         }
 
-        let packet = match format.next_packet() {
+        let packet = match state_val.format.next_packet() {
             Ok(packet) => packet,
             Err(symphonia::core::errors::Error::IoError(ref err))
                 if err.kind() == std::io::ErrorKind::UnexpectedEof =>
@@ -875,11 +906,11 @@ fn decode_symphonia_chunk(
             Err(err) => return Err(err).context("failed to read next packet"),
         };
 
-        if packet.track_id() != track_id {
+        if packet.track_id() != state_val.track_id {
             continue;
         }
 
-        match decoder.decode(&packet) {
+        match state_val.decoder.decode(&packet) {
             Ok(audio_buf) => {
                 let spec = *audio_buf.spec();
                 let duration = audio_buf.capacity() as u64;
@@ -900,7 +931,7 @@ fn decode_symphonia_chunk(
                         break;
                     }
                     for ch in 0..num_channels {
-                        if ch < channels {
+                        if ch < state_val.channels {
                             planar_buffers[ch].push(samples[frame * num_channels + ch]);
                         }
                     }
@@ -922,11 +953,22 @@ fn decode_symphonia_chunk(
 
     if collected_frames == 0 {
         let silence_len = (timeline_duration_sec * target_sample_rate as f64).round() as usize * 2;
+        // Put the state back even on empty decode
+        {
+            let mut state = shared.lock();
+            state.decoders.insert(path.to_string(), state_val);
+        }
         return Ok(vec![0.0f32; silence_len]);
     }
 
-    let resampled = resample_planar_with_speed(planar_buffers, source_rate, target_sample_rate, speed, channels)?;
+    let resampled = resample_planar_with_speed(planar_buffers, state_val.source_rate, target_sample_rate, speed, state_val.channels)?;
     let interleaved = planar_to_interleaved_stereo(resampled);
+
+    // Put it back in the cache:
+    {
+        let mut state = shared.lock();
+        state.decoders.insert(path.to_string(), state_val);
+    }
     Ok(interleaved)
 }
 
@@ -974,7 +1016,7 @@ fn decode_audio_chunk(
         return Ok(result);
     }
 
-    decode_symphonia_chunk(path, source_start_sec, timeline_duration_sec, speed, sample_rate)
+    decode_symphonia_chunk(path, source_start_sec, timeline_duration_sec, speed, sample_rate, shared)
 }
 
 fn apply_layer_mix(
@@ -1200,7 +1242,8 @@ mod tests {
     #[test]
     fn test_decode_symphonia_chunk() {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
-        let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000);
+        let shared = Arc::new(Mutex::new(AudioShared::default()));
+        let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000, &shared);
         assert!(decoded.is_ok(), "Failed to decode chunk: {:?}", decoded.err());
         let samples = decoded.unwrap();
         assert!(samples.len() > 0, "Decoded chunk buffer is empty");

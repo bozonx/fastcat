@@ -8,7 +8,7 @@
 
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
+use std::sync::mpsc::{self, Receiver, Sender, SyncSender, TryRecvError};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -34,7 +34,7 @@ enum DecoderCmd {
 pub struct DecodePump {
     pub info: MediaInfo,
     rx: Receiver<DecodedFrameMsg>,
-    cmd_tx: SyncSender<DecoderCmd>,
+    cmd_tx: Sender<DecoderCmd>,
     generation: Arc<AtomicU64>,
     thread: Option<JoinHandle<()>>,
 }
@@ -53,7 +53,7 @@ impl DecodePump {
         let (frame_tx, frame_rx) = mpsc::sync_channel::<DecodedFrameMsg>(QUEUE_CAPACITY);
         // Маленькая command-очередь: seek/stop. sync_channel(1) — чтобы consumer не уехал
         // вперёд с пачкой seek'ов; ему достаточно знать про самый свежий.
-        let (cmd_tx, cmd_rx) = mpsc::sync_channel::<DecoderCmd>(4);
+        let (cmd_tx, cmd_rx) = mpsc::channel::<DecoderCmd>();
         let generation = Arc::new(AtomicU64::new(0));
         let gen_in_thread = generation.clone();
         let path_str = path.display().to_string();
@@ -130,23 +130,37 @@ fn run_decoder_loop(
 
     loop {
         // 1) Обработать все накопившиеся команды.
+        let mut latest_seek = None;
+        let mut stop = false;
+
         loop {
             match cmd_rx.try_recv() {
                 Ok(DecoderCmd::Seek {
                     generation,
                     time_sec,
                 }) => {
-                    current_gen = generation;
-                    if let Err(e) = decoder.seek(time_sec) {
-                        log::error!("[decode] seek({time_sec}) failed: {e:?}");
-                        return;
-                    }
-                    at_eof = false;
+                    latest_seek = Some((generation, time_sec));
                 }
-                Ok(DecoderCmd::Stop) => return,
+                Ok(DecoderCmd::Stop) => {
+                    stop = true;
+                    break;
+                }
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => return,
             }
+        }
+
+        if stop {
+            return;
+        }
+
+        if let Some((generation, time_sec)) = latest_seek {
+            current_gen = generation;
+            if let Err(e) = decoder.seek(time_sec) {
+                log::error!("[decode] seek({time_sec}) failed: {e:?}");
+                return;
+            }
+            at_eof = false;
         }
 
         // 2) EOF — ждём следующую команду блокирующе.
@@ -156,13 +170,36 @@ fn run_decoder_loop(
                     generation,
                     time_sec,
                 }) => {
-                    current_gen = generation;
-                    if let Err(e) = decoder.seek(time_sec) {
-                        log::error!("[decode] seek({time_sec}) failed: {e:?}");
+                    let mut latest_seek = Some((generation, time_sec));
+                    let mut stop = false;
+                    loop {
+                        match cmd_rx.try_recv() {
+                            Ok(DecoderCmd::Seek {
+                                generation,
+                                time_sec,
+                            }) => {
+                                latest_seek = Some((generation, time_sec));
+                            }
+                            Ok(DecoderCmd::Stop) => {
+                                stop = true;
+                                break;
+                            }
+                            Err(TryRecvError::Empty) => break,
+                            Err(TryRecvError::Disconnected) => return,
+                        }
+                    }
+                    if stop {
                         return;
                     }
-                    at_eof = false;
-                    continue;
+                    if let Some((generation, time_sec)) = latest_seek {
+                        current_gen = generation;
+                        if let Err(e) = decoder.seek(time_sec) {
+                            log::error!("[decode] seek({time_sec}) failed: {e:?}");
+                            return;
+                        }
+                        at_eof = false;
+                        continue;
+                    }
                 }
                 Ok(DecoderCmd::Stop) => return,
                 Err(_) => return,
