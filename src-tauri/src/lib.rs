@@ -138,7 +138,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_os::init())
-        // Temporarily disabled to test if it interferes with runtime scope extension.
+        // НЕ включать: несовместим с capability-scope (`fs:scope` с glob'ами `$HOME/**/*` и т.п.).
+        // Плагин при сохранении канонизирует/экранирует пути и glob'ы (UNC-форма `\\?\C:`,
+        // экранирование `?`,`(`), а при восстановлении искажённые паттерны уже не матчат реальные
+        // пути → любой путь становится "forbidden path" (проверено: запись в project `_images/`
+        // падала с VfsPermissionError). Статический scope уже покрывает workspace ($HOME/**/*),
+        // а доступ к файлам вне его выдаётся рантаймом (`allow_dropped_file_scope`).
         // .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_fs_stream::init())
         .invoke_handler(tauri::generate_handler![
@@ -150,6 +155,7 @@ pub fn run() {
             ipc::media_cmd::native_media_generate_proxy,
             ipc::media_cmd::native_media_convert,
             ipc::media_cmd::native_media_cancel,
+            ipc::media_cmd::native_timeline_export,
             ipc::media_cmd::native_timeline_render_frame_to_file,
             ipc::media_cmd::native_timeline_render_frame_webp,
             ipc::media_cmd::native_video_frame_webp,
