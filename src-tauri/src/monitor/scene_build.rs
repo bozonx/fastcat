@@ -90,7 +90,10 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         font_family: string_value(&style, "fontFamily", "sans-serif"),
         font_size: (font_size as f64 * render_scale).max(1.0) as f32,
         font_weight: font_weight(&style),
-        color: parse_color(string_value(&style, "color", "#ffffff").as_str(), color_alpha),
+        color: parse_color(
+            string_value(&style, "color", "#ffffff").as_str(),
+            color_alpha,
+        ),
         align: text_align(&style),
         vertical_align: text_vertical_align(&style),
         line_height: number(&style, "lineHeight", 1.2).clamp(0.1, 10.0) as f32,
@@ -212,8 +215,14 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
     let (r, g, b, a) = match hex.len() {
         3 => {
             let mut chars = hex.chars();
-            let dbl = |c: Option<char>| c.and_then(|c| u8::from_str_radix(&format!("{c}{c}"), 16).ok());
-            (dbl(chars.next()), dbl(chars.next()), dbl(chars.next()), Some(255))
+            let dbl =
+                |c: Option<char>| c.and_then(|c| u8::from_str_radix(&format!("{c}{c}"), 16).ok());
+            (
+                dbl(chars.next()),
+                dbl(chars.next()),
+                dbl(chars.next()),
+                Some(255),
+            )
         }
         6 | 8 => (
             parse_pair(&hex[0..2]),
@@ -347,7 +356,10 @@ mod tests {
     #[test]
     fn parses_short_and_long_hex() {
         let c = parse_color("#f00", 1.0);
-        assert_eq!((c.to_rgba8().r, c.to_rgba8().g, c.to_rgba8().b), (255, 0, 0));
+        assert_eq!(
+            (c.to_rgba8().r, c.to_rgba8().g, c.to_rgba8().b),
+            (255, 0, 0)
+        );
         let c2 = parse_color("00ff00", 0.5);
         assert_eq!(c2.to_rgba8().g, 255);
         assert_eq!(c2.to_rgba8().a, 128);

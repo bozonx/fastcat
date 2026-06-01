@@ -42,7 +42,11 @@ pub struct DecodePump {
 impl DecodePump {
     /// `max_output_long_edge` — кап на длинную сторону декодированного кадра в пикселях.
     /// Прокидывается в ffmpeg `-vf scale`. `None` = декод в нативе.
-    pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Self> {
+    pub fn open(
+        path: &Path,
+        max_output_long_edge: Option<u32>,
+        on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
+    ) -> Result<Self> {
         let decoder = open_decoder(path, max_output_long_edge)?;
         let info = decoder.info().clone();
 
@@ -57,7 +61,7 @@ impl DecodePump {
         let thread = std::thread::Builder::new()
             .name(format!("fastcat-decode:{}", path_str))
             .spawn(move || {
-                run_decoder_loop(decoder, frame_tx, cmd_rx, gen_in_thread);
+                run_decoder_loop(decoder, frame_tx, cmd_rx, gen_in_thread, on_frame_decoded);
             })
             .context("spawn decoder thread")?;
 
@@ -119,6 +123,7 @@ fn run_decoder_loop(
     frame_tx: SyncSender<DecodedFrameMsg>,
     cmd_rx: Receiver<DecoderCmd>,
     gen: Arc<AtomicU64>,
+    on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
 ) {
     let mut current_gen = gen.load(Ordering::SeqCst);
     let mut at_eof = false;
@@ -179,6 +184,9 @@ fn run_decoder_loop(
                 };
                 if frame_tx.send(msg).is_err() {
                     return; // consumer ушёл
+                }
+                if let Some(ref cb) = on_frame_decoded {
+                    cb();
                 }
             }
             Ok(None) => {

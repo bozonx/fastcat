@@ -82,15 +82,22 @@ pub async fn native_timeline_export(
     let tasks = tasks.inner().clone();
     let target_path = PathBuf::from(target_path);
     tokio::task::spawn_blocking(move || {
-        export_timeline(&tasks, &task_id, scene, options, &target_path, &|progress| {
-            let _ = app.emit(
-                "native-timeline-export:progress",
-                NativeTimelineExportProgress {
-                    task_id: &task_id,
-                    progress,
-                },
-            );
-        })
+        export_timeline(
+            &tasks,
+            &task_id,
+            scene,
+            options,
+            &target_path,
+            &|progress| {
+                let _ = app.emit(
+                    "native-timeline-export:progress",
+                    NativeTimelineExportProgress {
+                        task_id: &task_id,
+                        progress,
+                    },
+                );
+            },
+        )
     })
     .await
     .map_err(|e| e.to_string())?

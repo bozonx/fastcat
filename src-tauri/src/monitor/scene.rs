@@ -96,9 +96,47 @@ pub struct SceneLayer {
     pub transform: Option<SceneLayerTransform>,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AudioFadeCurve {
+    Linear,
+    Logarithmic,
+}
+
+impl Default for AudioFadeCurve {
+    fn default() -> Self {
+        Self::Linear
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SceneAudioLayer {
+    pub id: String,
+    pub path: String,
+    pub timeline_start_sec: f64,
+    pub timeline_end_sec: f64,
+    pub source_start_sec: f64,
+    #[serde(default = "one")]
+    pub speed: f64,
+    #[serde(default = "one")]
+    pub audio_gain: f64,
+    #[serde(default)]
+    pub audio_balance: f64,
+    #[serde(default)]
+    pub audio_fade_in_sec: f64,
+    #[serde(default)]
+    pub audio_fade_out_sec: f64,
+    #[serde(default)]
+    pub audio_fade_in_curve: AudioFadeCurve,
+    #[serde(default)]
+    pub audio_fade_out_curve: AudioFadeCurve,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct MonitorScene {
     pub layers: Vec<SceneLayer>,
+    #[serde(default)]
+    pub audio_layers: Vec<SceneAudioLayer>,
     /// Размер композитного кадра. Если 0/отсутствует — берём bounding box из рантаймов.
     #[serde(default)]
     pub width: u32,

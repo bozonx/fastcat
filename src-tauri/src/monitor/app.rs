@@ -20,6 +20,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
+use crate::audio::engine::NativeAudioEngine;
 use crate::compositor::Compositor;
 
 use super::clock::PlaybackClock;
@@ -204,6 +205,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.window.request_redraw();
                 }
             }
+            MonitorCommand::VideoFrameReady => {
+                if let Some(s) = self.state.as_ref() {
+                    s.window.request_redraw();
+                }
+            }
             MonitorCommand::SetViewport {
                 parent,
                 x,
@@ -304,6 +310,7 @@ struct WindowState {
 
     clock: PlaybackClock,
     layers: LayerRuntimeManager,
+    audio: Option<NativeAudioEngine>,
 
     last_emit_pts: f64,
     last_viewport: ViewportSpec,
@@ -323,6 +330,9 @@ impl WindowState {
     }
 
     fn apply_scene(&mut self, scene: MonitorScene) {
+        if let Some(audio) = self.audio.as_ref() {
+            audio.set_scene(scene.audio_layers.clone());
+        }
         self.layers.apply_scene(scene);
         self.window.request_redraw();
     }
@@ -377,8 +387,12 @@ impl WindowState {
     }
 
     fn play(&mut self) {
-        if self.layers.is_empty() {
+        if self.layers.is_empty() && self.audio.as_ref().is_none_or(NativeAudioEngine::is_empty) {
             return;
+        }
+        let pts = self.clock.current_pts();
+        if let Some(audio) = self.audio.as_ref() {
+            audio.play(pts);
         }
         self.clock.play();
         // После скраба по кешу декодеры могут стоять не на текущей позиции —
@@ -387,6 +401,9 @@ impl WindowState {
     }
 
     fn pause(&mut self) {
+        let audio_pts = self.audio.as_ref().map(NativeAudioEngine::pause);
+        let pts = audio_pts.unwrap_or_else(|| self.clock.pause());
+        self.clock.seek(pts);
         self.clock.pause();
     }
 
@@ -394,6 +411,9 @@ impl WindowState {
         let t = timeline_sec.max(0.0);
         self.clock.seek(t);
         let playing = self.clock.is_playing();
+        if let Some(audio) = self.audio.as_ref() {
+            audio.seek(t, playing);
+        }
         self.layers.seek(t, playing);
     }
 
@@ -402,13 +422,23 @@ impl WindowState {
     // -----------------------------------------------------------------------
 
     fn tick_and_render(&mut self) {
-        let t = self.clock.current_pts();
+        let t = self
+            .audio
+            .as_ref()
+            .and_then(NativeAudioEngine::current_pts)
+            .unwrap_or_else(|| self.clock.current_pts());
 
         // Детектируем конец сцены во время воспроизведения.
-        if self.clock.is_playing() && !self.layers.is_empty() {
-            let scene_end = self.layers.scene_end();
+        if self.clock.is_playing() {
+            let video_end = self.layers.scene_end();
+            let audio_end = self
+                .audio
+                .as_ref()
+                .map(NativeAudioEngine::scene_end)
+                .unwrap_or(0.0);
+            let scene_end = video_end.max(audio_end);
             if scene_end > 0.0 && t >= scene_end {
-                self.clock.pause();
+                self.pause();
                 let _ = self.app.emit(EVT_ENDED, ());
                 self.emit_time(scene_end);
                 self.render(scene_end);
@@ -564,6 +594,13 @@ fn init_window(
     }
 
     let offscreen_dev_id = Some(surface.dev_id);
+    let audio = match NativeAudioEngine::new() {
+        Ok(engine) => Some(engine),
+        Err(error) => {
+            log::warn!("[audio] disabled: {error:?}");
+            None
+        }
+    };
     Ok(WindowState {
         app: app.clone(),
         window,
@@ -571,6 +608,7 @@ fn init_window(
         surface,
         clock: PlaybackClock::new(),
         layers: LayerRuntimeManager::new(app, bg_tx, proxy),
+        audio,
         last_emit_pts: -1.0,
         last_viewport: viewport,
         mode: MonitorMode::Embedded,

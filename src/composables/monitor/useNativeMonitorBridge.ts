@@ -12,6 +12,7 @@ import {
   type TextClipStyle,
   type TimelineBlendMode,
   type TimelineClipItem,
+  type TimelineTrack,
   type TimelineShapeClipItem,
   type TimelineTextClipItem,
 } from '~/timeline/types';
@@ -56,12 +57,28 @@ interface SceneLayer {
 
 interface MonitorScene {
   layers: SceneLayer[];
+  audio_layers?: SceneAudioLayer[];
   width: number;
   height: number;
   /** Preview scale: 1 = full, 0.5 = 1/2, 0.25 = 1/4, 0.125 = 1/8. */
   preview_scale?: number;
   /** Native monitor tick FPS; matches the project timeline format. */
   preview_fps?: number;
+}
+
+interface SceneAudioLayer {
+  id: string;
+  path: string;
+  timeline_start_sec: number;
+  timeline_end_sec: number;
+  source_start_sec: number;
+  speed: number;
+  audio_gain: number;
+  audio_balance: number;
+  audio_fade_in_sec: number;
+  audio_fade_out_sec: number;
+  audio_fade_in_curve: 'linear' | 'logarithmic';
+  audio_fade_out_curve: 'linear' | 'logarithmic';
 }
 
 function extOf(path: string): string {
@@ -167,6 +184,40 @@ function makeBaseLayer(params: {
   };
 }
 
+async function makeAudioLayer(params: {
+  item: TimelineClipItem;
+  track: TimelineTrack;
+  absolutePath: string;
+  masterGain: number;
+  masterMuted: boolean;
+}): Promise<SceneAudioLayer | null> {
+  const { item, track, absolutePath, masterGain, masterMuted } = params;
+  if (masterMuted || item.audioMuted || track.audioMuted || item.disabled) return null;
+  if (!absolutePath) return null;
+  const startUs = item.timelineRange.startUs;
+  const durUs = item.timelineRange.durationUs;
+  if (durUs <= 0) return null;
+  const trackGain = clampFinite(track.audioGain, 1);
+  const clipGain = clampFinite(item.audioGain, 1);
+  const trackBalance = clampFinite(track.audioBalance, 0);
+  const clipBalance = clampFinite(item.audioBalance, 0);
+
+  return {
+    id: `${track.id}:${item.id}`,
+    path: absolutePath,
+    timeline_start_sec: startUs / 1_000_000,
+    timeline_end_sec: (startUs + durUs) / 1_000_000,
+    source_start_sec: item.sourceRange.startUs / 1_000_000,
+    speed: Math.max(0.5, Math.min(100, clampFinite(item.speed, 1))),
+    audio_gain: Math.max(0, masterGain * trackGain * clipGain),
+    audio_balance: Math.max(-1, Math.min(1, trackBalance + clipBalance)),
+    audio_fade_in_sec: Math.max(0, clampFinite(item.audioFadeInUs, 0) / 1_000_000),
+    audio_fade_out_sec: Math.max(0, clampFinite(item.audioFadeOutUs, 0) / 1_000_000),
+    audio_fade_in_curve: item.audioFadeInCurve ?? 'linear',
+    audio_fade_out_curve: item.audioFadeOutCurve ?? 'linear',
+  };
+}
+
 async function resolveProjectAbsolutePath(
   projectRelativePath: string,
   projectStore: ReturnType<typeof useProjectStore>,
@@ -208,10 +259,14 @@ export function useNativeMonitorBridge(): void {
     // Preview scale хранится на activeMonitor (1 / 0.5 / 0.25 / 0.125). Прокидываем в натив
     // для downscale на стороне ffmpeg — ключевая оптимизация для 4K source'ов.
     const previewScale = projectStore.activeMonitor?.previewResolution ?? 1;
+    const masterGain = Math.max(0, clampFinite(timelineStore.audioVolume, 1));
+    const masterMuted = Boolean(timelineStore.audioMuted);
     const layers: SceneLayer[] = [];
+    const audioLayers: SceneAudioLayer[] = [];
     if (!doc?.tracks?.length)
       return {
         layers,
+        audio_layers: audioLayers,
         width: sceneWidth,
         height: sceneHeight,
         preview_scale: previewScale,
@@ -251,6 +306,16 @@ export function useNativeMonitorBridge(): void {
           if (!path) continue;
           const absolutePath = await resolveProjectAbsolutePath(path, projectStore);
           const kind = isSvgLayer(item) ? 'svg' : isImageLayer(item) ? 'image' : 'video';
+          if (kind === 'video') {
+            const audioLayer = await makeAudioLayer({
+              item,
+              track,
+              absolutePath,
+              masterGain,
+              masterMuted,
+            });
+            if (audioLayer) audioLayers.push(audioLayer);
+          }
           layers.push({
             ...makeBaseLayer({
               item,
@@ -324,8 +389,28 @@ export function useNativeMonitorBridge(): void {
         }
       }
     }
+
+    for (const track of doc.tracks.filter((track) => track.kind === 'audio')) {
+      if (!track?.items) continue;
+      for (const item of track.items) {
+        if (!isClipItem(item) || !isSourceClipItem(item)) continue;
+        const path = item.source?.path;
+        if (!path) continue;
+        const absolutePath = await resolveProjectAbsolutePath(path, projectStore);
+        const audioLayer = await makeAudioLayer({
+          item,
+          track,
+          absolutePath,
+          masterGain,
+          masterMuted,
+        });
+        if (audioLayer) audioLayers.push(audioLayer);
+      }
+    }
+
     return {
       layers,
+      audio_layers: audioLayers,
       width: sceneWidth,
       height: sceneHeight,
       preview_scale: previewScale,
@@ -352,6 +437,8 @@ export function useNativeMonitorBridge(): void {
     [
       () => timelineStore.timelineDoc?.tracks,
       () => timelineStore.timelineFormat,
+      () => timelineStore.audioVolume,
+      () => timelineStore.audioMuted,
       () => projectStore.activeMonitor?.previewResolution,
     ],
     () => {
@@ -372,11 +459,10 @@ export function useNativeMonitorBridge(): void {
     },
   );
 
-  // Manual seek (только когда не играем — иначе натив сам тикает).
+  // Manual seek (когда не подавлено апдейтом от натива).
   watch(
     () => timelineStore.currentTime,
     async (t) => {
-      if (timelineStore.isPlaying) return;
       if (suppressSeekFromTimeUpdate) return;
       try {
         await invoke('monitor_seek', { timeSec: t / 1_000_000 });
@@ -384,6 +470,7 @@ export function useNativeMonitorBridge(): void {
         log.warn('monitor_seek failed', err);
       }
     },
+    { flush: 'sync' },
   );
 
   // Натив — мастер-клок: timeline-PTS (секунды) приходят в `monitor:time`.

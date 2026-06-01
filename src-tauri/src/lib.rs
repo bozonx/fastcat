@@ -47,6 +47,7 @@ fn reject_dangerous_scope_path(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+pub mod audio;
 pub mod compositor;
 pub mod engine;
 pub mod ipc;
