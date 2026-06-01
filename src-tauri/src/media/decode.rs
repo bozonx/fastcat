@@ -91,13 +91,14 @@ impl FfmpegNextDecoder {
 
         let (visual_w, visual_h) = visual_dimensions(decoder.width(), decoder.height(), rotation);
         let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
+        let (scaled_coded_w, scaled_coded_h) = coded_output_dimensions(out_w, out_h, rotation);
         let scaler = ffmpeg::software::scaling::Context::get(
             decoder.format(),
             decoder.width(),
             decoder.height(),
             ffmpeg::format::Pixel::RGBA,
-            out_w,
-            out_h,
+            scaled_coded_w,
+            scaled_coded_h,
             ffmpeg::software::scaling::flag::Flags::BILINEAR,
         )
         .context("failed to create ffmpeg-next scaler")?;
@@ -106,8 +107,8 @@ impl FfmpegNextDecoder {
             path: path.to_path_buf(),
             info: MediaInfo {
                 duration_sec,
-                width: out_w,
-                height: out_h,
+                width: scaled_coded_w,
+                height: scaled_coded_h,
                 rotation,
                 fps,
                 codec,
@@ -128,11 +129,11 @@ impl FfmpegNextDecoder {
             .run(decoded, &mut rgba)
             .context("failed to scale decoded video frame to RGBA")?;
 
-        let width = rgba.width();
-        let height = rgba.height();
-        let row_bytes = width as usize * 4;
-        let mut pixels = vec![0u8; row_bytes * height as usize];
-        for row in 0..height as usize {
+        let coded_width = rgba.width();
+        let coded_height = rgba.height();
+        let row_bytes = coded_width as usize * 4;
+        let mut pixels = vec![0u8; row_bytes * coded_height as usize];
+        for row in 0..coded_height as usize {
             let src_start = row * rgba.stride(0);
             let dst_start = row * row_bytes;
             pixels[dst_start..dst_start + row_bytes]
@@ -146,8 +147,8 @@ impl FfmpegNextDecoder {
             .unwrap_or(0.0);
 
         Ok(VideoFrame {
-            width,
-            height,
+            width: coded_width,
+            height: coded_height,
             pixels,
             pts_sec,
         })
@@ -236,6 +237,7 @@ impl FfmpegCliDecoder {
         let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
         info.width = out_w;
         info.height = out_h;
+        info.rotation = 0;
 
         let frame_bytes = (out_w as usize)
             .checked_mul(out_h as usize)
@@ -476,6 +478,14 @@ fn rational_as_f64(value: ffmpeg::Rational) -> f64 {
     value.numerator() as f64 / value.denominator() as f64
 }
 
+fn coded_output_dimensions(visual_w: u32, visual_h: u32, rotation: i32) -> (u32, u32) {
+    if is_quarter_turn(rotation) {
+        (visual_h, visual_w)
+    } else {
+        (visual_w, visual_h)
+    }
+}
+
 /// Считает target dims декода, сохраняя aspect и НЕ увеличивая разрешение.
 fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u32, u32) {
     let Some(max) = max_long_edge else {
@@ -662,6 +672,13 @@ mod tests {
     fn visual_dimensions_keeps_unrotated_and_half_turn_sources() {
         assert_eq!(visual_dimensions(1920, 1080, 0), (1920, 1080));
         assert_eq!(visual_dimensions(1920, 1080, 180), (1920, 1080));
+    }
+
+    #[test]
+    fn coded_output_dimensions_swap_quarter_turn_rotation() {
+        assert_eq!(coded_output_dimensions(1080, 1920, 90), (1920, 1080));
+        assert_eq!(coded_output_dimensions(1080, 1920, 270), (1920, 1080));
+        assert_eq!(coded_output_dimensions(1920, 1080, 0), (1920, 1080));
     }
 
     #[test]

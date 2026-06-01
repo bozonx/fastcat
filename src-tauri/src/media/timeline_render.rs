@@ -13,6 +13,11 @@ use crate::media::image_decode::decode_image;
 use crate::monitor::scene::{LayerKind, MonitorScene, SceneLayer};
 use crate::monitor::scene_build::{build_virtual_kind, finalize_layer, rasterize_svg};
 
+struct RasterBuild {
+    kind: CompLayerKind,
+    source_rotation: i32,
+}
+
 pub struct VideoDecoderCache {
     decoders: HashMap<PathBuf, Box<dyn VideoDecoder>>,
 }
@@ -53,7 +58,8 @@ pub fn render_timeline_frame_to_file(
     quality: f32,
 ) -> Result<()> {
     let mut cache = VideoDecoderCache::new();
-    let compositor_scene = build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
+    let compositor_scene =
+        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
     let pixels = render_pooled(&compositor_scene, width, height)?;
     save_rgba_as_webp(target_path, &pixels, width.max(1), height.max(1), quality)
 }
@@ -66,7 +72,8 @@ pub fn render_timeline_frame_to_webp(
     _quality: f32,
 ) -> Result<Vec<u8>> {
     let mut cache = VideoDecoderCache::new();
-    let compositor_scene = build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
+    let compositor_scene =
+        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
     let pixels = render_pooled(&compositor_scene, width, height)?;
 
     let mut bytes = Vec::new();
@@ -102,14 +109,21 @@ pub(crate) fn build_export_scene(
         if layer.opacity.clamp(0.0, 1.0) <= 0.0 {
             continue;
         }
-        let layer_kind = match build_raster_kind(layer, time_sec, svg_long_edge, cache)? {
-            Some(kind) => kind,
-            None => match build_virtual_kind(layer, (scene_w, scene_h)) {
-                Some(kind) => kind,
-                None => continue,
-            },
-        };
-        layers.push(finalize_layer(layer, layer_kind, (scene_w, scene_h), time_sec));
+        let (layer_kind, source_rotation) =
+            match build_raster_kind(layer, time_sec, svg_long_edge, cache)? {
+                Some(built) => (built.kind, built.source_rotation),
+                None => match build_virtual_kind(layer, (scene_w, scene_h)) {
+                    Some(kind) => (kind, 0),
+                    None => continue,
+                },
+            };
+        let layer = layer_with_auto_source_rotation(layer, source_rotation);
+        layers.push(finalize_layer(
+            &layer,
+            layer_kind,
+            (scene_w, scene_h),
+            time_sec,
+        ));
     }
 
     Ok(Scene {
@@ -126,45 +140,74 @@ fn build_raster_kind(
     time_sec: f64,
     svg_long_edge: u32,
     cache: &mut VideoDecoderCache,
-) -> Result<Option<CompLayerKind>> {
-    let kind = match layer.kind {
+) -> Result<Option<RasterBuild>> {
+    let built = match layer.kind {
         LayerKind::Video => {
-            let frame = decode_video_frame_cached(Path::new(&layer.path), layer.source_pts_at(time_sec), cache)?;
+            let (frame, source_rotation) = decode_video_frame_cached(
+                Path::new(&layer.path),
+                layer.source_pts_at(time_sec),
+                cache,
+            )?;
             let size = (frame.width, frame.height);
-            CompLayerKind::Raster {
-                source: RasterSource::Image(video_frame_to_image(frame)),
-                natural_size: size,
+            RasterBuild {
+                kind: CompLayerKind::Raster {
+                    source: RasterSource::Image(video_frame_to_image(frame)),
+                    natural_size: size,
+                },
+                source_rotation,
             }
         }
         LayerKind::Image => {
             let decoded = decode_image(Path::new(&layer.path))?;
-            CompLayerKind::Raster {
-                source: RasterSource::Image(decoded.image),
-                natural_size: (decoded.width, decoded.height),
+            RasterBuild {
+                kind: CompLayerKind::Raster {
+                    source: RasterSource::Image(decoded.image),
+                    natural_size: (decoded.width, decoded.height),
+                },
+                source_rotation: 0,
             }
         }
         LayerKind::Svg => {
             let (image, size) = rasterize_svg(Path::new(&layer.path), svg_long_edge)?;
-            CompLayerKind::Raster {
-                source: RasterSource::Image(image),
-                natural_size: size,
+            RasterBuild {
+                kind: CompLayerKind::Raster {
+                    source: RasterSource::Image(image),
+                    natural_size: size,
+                },
+                source_rotation: 0,
             }
         }
         LayerKind::Background | LayerKind::Shape | LayerKind::Text => return Ok(None),
     };
-    Ok(Some(kind))
+    Ok(Some(built))
 }
 
 fn decode_video_frame_cached(
     path: &Path,
     time_sec: f64,
     cache: &mut VideoDecoderCache,
-) -> Result<VideoFrame> {
+) -> Result<(VideoFrame, i32)> {
     let decoder = cache.get_or_insert(path)?;
+    let source_rotation = decoder.info().rotation;
     decoder.seek(time_sec)?;
-    decoder
+    let frame = decoder
         .next_frame()?
-        .ok_or_else(|| anyhow!("video decoder returned no frame"))
+        .ok_or_else(|| anyhow!("video decoder returned no frame"))?;
+    Ok((frame, source_rotation))
+}
+
+fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> SceneLayer {
+    if source_rotation.rem_euclid(360) == 0 {
+        return layer.clone();
+    }
+    match layer.source_orientation.as_deref() {
+        None | Some("auto") => {
+            let mut layer = layer.clone();
+            layer.source_orientation = Some(source_rotation.rem_euclid(360).to_string());
+            layer
+        }
+        Some(_) => layer.clone(),
+    }
 }
 
 fn video_frame_to_image(frame: VideoFrame) -> ImageData {

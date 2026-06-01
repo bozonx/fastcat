@@ -41,6 +41,7 @@ pub enum BgLayerResult {
         id: String,
         pump: DecodePump,
         media_size: (u32, u32),
+        source_rotation: i32,
     },
     VideoErr {
         id: String,
@@ -82,6 +83,7 @@ pub enum LayerRuntime {
 pub struct VideoLayerRt {
     pub pump: DecodePump,
     pub media_size: (u32, u32),
+    pub source_rotation: i32,
     /// Текущий отображаемый кадр (последний с PTS ≤ target из кеша).
     pub current: Option<DecodedVideoFrame>,
     /// Кеш декодированных кадров для дешёвого скраба назад без респауна ffmpeg.
@@ -89,7 +91,7 @@ pub struct VideoLayerRt {
 }
 
 impl VideoLayerRt {
-    fn new(pump: DecodePump, media_size: (u32, u32)) -> Self {
+    fn new(pump: DecodePump, media_size: (u32, u32), source_rotation: i32) -> Self {
         let fps = pump.info.fps;
         let frame_bytes = (media_size.0 as usize)
             .saturating_mul(media_size.1 as usize)
@@ -98,6 +100,7 @@ impl VideoLayerRt {
             cache: VideoFrameCache::new(fps, frame_bytes),
             pump,
             media_size,
+            source_rotation,
             current: None,
         }
     }
@@ -287,10 +290,12 @@ impl LayerRuntimeManager {
                         let result = match DecodePump::open(&path, max_long_edge, Some(on_frame)) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);
+                                let source_rotation = pump.info.rotation;
                                 BgLayerResult::VideoOk {
                                     id,
                                     pump,
                                     media_size,
+                                    source_rotation,
                                 }
                             }
                             Err(e) => BgLayerResult::VideoErr {
@@ -355,6 +360,7 @@ impl LayerRuntimeManager {
                 id,
                 pump,
                 media_size,
+                source_rotation,
             } => {
                 self.loading_set.remove(&id);
                 if !self.scene.iter().any(|l| l.id == id) {
@@ -374,7 +380,7 @@ impl LayerRuntimeManager {
                     .find(|l| l.id == id)
                     .map(|l| l.source_pts_at(0.0))
                     .unwrap_or(0.0);
-                let rt = VideoLayerRt::new(pump, media_size);
+                let rt = VideoLayerRt::new(pump, media_size, source_rotation);
                 if self.playing {
                     let _ = rt.pump.play();
                 } else {
@@ -541,7 +547,13 @@ impl LayerRuntimeManager {
                 }
             };
 
-            layers.push(finalize_layer(sl, layer_kind, (scene_w, scene_h), t));
+            let layer = match self.runtimes.get(&sl.id) {
+                Some(LayerRuntime::Video(v)) => {
+                    layer_with_auto_source_rotation(sl, v.source_rotation)
+                }
+                _ => sl.clone(),
+            };
+            layers.push(finalize_layer(&layer, layer_kind, (scene_w, scene_h), t));
         }
 
         Scene {
@@ -577,6 +589,20 @@ impl LayerRuntimeManager {
         } else {
             (w, h)
         }
+    }
+}
+
+fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> SceneLayer {
+    if source_rotation.rem_euclid(360) == 0 {
+        return layer.clone();
+    }
+    match layer.source_orientation.as_deref() {
+        None | Some("auto") => {
+            let mut layer = layer.clone();
+            layer.source_orientation = Some(source_rotation.rem_euclid(360).to_string());
+            layer
+        }
+        Some(_) => layer.clone(),
     }
 }
 
@@ -636,7 +662,9 @@ fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::approx_eq_opt_scale;
+    use super::layer_with_auto_source_rotation;
     use super::svg_target_long_edge;
+    use crate::monitor::scene::{LayerKind, SceneLayer};
 
     #[test]
     fn none_equals_some_one() {
@@ -664,5 +692,50 @@ mod tests {
         assert_eq!(svg_target_long_edge((1080, 1920), Some(1.0)), 1920);
         // Неизвестный размер сцены → дефолт 1920.
         assert_eq!(svg_target_long_edge((0, 0), Some(1.0)), 1920);
+    }
+
+    #[test]
+    fn auto_source_orientation_uses_decoder_rotation() {
+        let layer = test_video_layer(Some("auto"));
+        let resolved = layer_with_auto_source_rotation(&layer, -90);
+
+        assert_eq!(resolved.source_orientation.as_deref(), Some("270"));
+    }
+
+    #[test]
+    fn explicit_source_orientation_overrides_decoder_rotation() {
+        let layer = test_video_layer(Some("0"));
+        let resolved = layer_with_auto_source_rotation(&layer, 90);
+
+        assert_eq!(resolved.source_orientation.as_deref(), Some("0"));
+    }
+
+    fn test_video_layer(source_orientation: Option<&str>) -> SceneLayer {
+        SceneLayer {
+            id: "v1".into(),
+            kind: LayerKind::Video,
+            path: "/tmp/video.mp4".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 1.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 1.0,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: source_orientation.map(str::to_string),
+            z: 0,
+            opacity: 1.0,
+            blend_mode: "normal".into(),
+            background_color: None,
+            text: None,
+            style: None,
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: None,
+            transition_out: None,
+        }
     }
 }
