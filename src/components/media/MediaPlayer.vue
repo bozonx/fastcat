@@ -8,6 +8,7 @@ import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
+import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 interface MediaPlaybackTransferState {
   currentTime: number;
@@ -43,6 +44,12 @@ const emit = defineEmits<{
 
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
 const playerRootEl = ref<HTMLElement | null>(null);
+
+const sourceType = computed(() => {
+  const cleanSrc = props.src.split('?')[0] ?? props.src;
+  const mimeType = getMimeTypeFromFilename(cleanSrc);
+  return mimeType === 'application/octet-stream' ? undefined : mimeType;
+});
 
 const {
   isPlaying,
@@ -182,11 +189,14 @@ function onSeekEnd() {
 // Reset state when src changes
 watch(
   () => props.src,
-  () => {
+  async () => {
     resetPlaybackState();
     resetZoom();
 
+    await nextTick();
+
     if (mediaElement.value) {
+      mediaElement.value.load();
       mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
       mediaElement.value.muted = isMuted.value;
     }
@@ -319,7 +329,6 @@ onUnmounted(() => {
       >
         <video
           ref="mediaElement"
-          :src="src"
           class="max-w-full max-h-full object-contain transition-transform duration-75"
           :class="isReady ? 'opacity-100' : 'opacity-0'"
           :style="mediaStyle"
@@ -333,7 +342,9 @@ onUnmounted(() => {
           @ended="onPause"
           @click="togglePlay"
           @dblclick.prevent="resetZoom"
-        ></video>
+        >
+          <source :key="src" :src="src" :type="sourceType" />
+        </video>
       </div>
     </UContextMenu>
 
@@ -341,14 +352,15 @@ onUnmounted(() => {
     <div v-else class="flex-1 flex flex-col min-h-0 bg-ui-bg">
       <audio
         ref="mediaElement"
-        :src="src"
         class="hidden"
         @timeupdate="onTimeUpdate"
         @loadedmetadata="onLoadedMetadata"
         @play="onPlay"
         @pause="onPause"
         @ended="onPause"
-      ></audio>
+      >
+        <source :key="src" :src="src" :type="sourceType" />
+      </audio>
 
       <div class="flex-1 min-h-0 flex items-center justify-center bg-(--media-bg) relative">
         <div

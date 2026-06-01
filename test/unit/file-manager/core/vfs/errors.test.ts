@@ -155,6 +155,23 @@ describe('wrapPlatformError', () => {
     expect((wrapped as VfsError).code).toBe('io');
   });
 
+  it('maps Tauri string/object not-found errors to VfsNotFoundError', () => {
+    expect(wrapPlatformError('No such file or directory (os error 2)', '/x')).toBeInstanceOf(
+      VfsNotFoundError,
+    );
+    expect(wrapPlatformError({ message: 'ENOENT: no such file' }, '/x')).toBeInstanceOf(
+      VfsNotFoundError,
+    );
+    expect(wrapPlatformError({ code: 'ENOENT' }, '/x')).toBeInstanceOf(VfsNotFoundError);
+  });
+
+  it('maps Tauri string/object permission errors to VfsPermissionError', () => {
+    expect(wrapPlatformError('forbidden path: /x', '/x')).toBeInstanceOf(VfsPermissionError);
+    expect(wrapPlatformError({ message: 'Permission denied' }, '/x')).toBeInstanceOf(
+      VfsPermissionError,
+    );
+  });
+
   it('falls back to VfsIoError for unknown errors and non-Errors', () => {
     const unknown = wrapPlatformError(new Error('whatever'), '/x');
     expect(unknown).toBeInstanceOf(VfsIoError);
@@ -180,6 +197,9 @@ describe('isNotFoundError', () => {
 
   it('detects Tauri-style "os error 2" message', () => {
     expect(isNotFoundError(new Error('failed: os error 2'))).toBe(true);
+    expect(isNotFoundError('No such file or directory (os error 2)')).toBe(true);
+    expect(isNotFoundError({ message: 'ENOENT: no such file' })).toBe(true);
+    expect(isNotFoundError({ code: 'ENOENT' })).toBe(true);
   });
 
   it('returns false for unrelated errors', () => {

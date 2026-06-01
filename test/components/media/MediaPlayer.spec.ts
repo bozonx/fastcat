@@ -65,8 +65,10 @@ describe('MediaPlayer.vue', () => {
     });
 
     const video = component.find('video');
+    const source = video.find('source');
     expect(video.exists()).toBe(true);
-    expect(video.attributes('src')).toBe('http://example.com/test.mp4');
+    expect(source.attributes('src')).toBe('http://example.com/test.mp4');
+    expect(source.attributes('type')).toBe('video/mp4');
   });
 
   it('renders audio representation correctly', async () => {
@@ -78,8 +80,10 @@ describe('MediaPlayer.vue', () => {
     });
 
     const audio = component.find('audio');
+    const source = audio.find('source');
     expect(audio.exists()).toBe(true);
-    expect(audio.attributes('src')).toBe('http://example.com/test.mp3');
+    expect(source.attributes('src')).toBe('http://example.com/test.mp3');
+    expect(source.attributes('type')).toBe('audio/mpeg');
 
     // Check if audio placeholder UI is visible (UIcon renders as icon-mock in tests)
     expect(component.find('.icon-mock').exists()).toBe(true);

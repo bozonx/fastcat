@@ -55,6 +55,7 @@ describe('useEntryPreview', () => {
       expect(preview.mediaType.value).toBe('video');
       expect(preview.currentUrl.value).toBe('asset://localhost/video.mp4');
       expect(getObjectUrlByPath).toHaveBeenCalledWith('video.mp4');
+      expect(getFileByPath).not.toHaveBeenCalled();
     } finally {
       consoleWarnSpy.mockRestore();
     }

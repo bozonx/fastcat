@@ -37,6 +37,20 @@ async function loadFile() {
 
   isLoading.value = true;
   try {
+    if ((isVideo.value || isAudio.value) && props.filePath) {
+      const proxyFile = await proxyStore.getProxyFile(props.filePath).catch(() => null);
+      if (proxyFile) {
+        setCurrentUrl(URL.createObjectURL(proxyFile));
+        return;
+      }
+
+      const streamingUrl = await fileManager.vfs.getObjectUrl(props.filePath).catch(() => null);
+      if (streamingUrl) {
+        setCurrentUrl(streamingUrl);
+        return;
+      }
+    }
+
     const file = await fileManager.vfs.getFile(props.filePath);
     if (!file) {
       loadError.value = 'File not found';
@@ -51,21 +65,6 @@ async function loadFile() {
     }
 
     if (isImage.value || isVideo.value || isAudio.value) {
-      // Try proxy for video/audio
-      if ((isVideo.value || isAudio.value) && props.filePath) {
-        const proxyFile = await proxyStore.getProxyFile(props.filePath).catch(() => null);
-        if (proxyFile) {
-          setCurrentUrl(URL.createObjectURL(proxyFile));
-          return;
-        }
-
-        // Use streaming URL for large video/audio files in Tauri
-        const streamingUrl = await fileManager.vfs.getObjectUrl(props.filePath).catch(() => null);
-        if (streamingUrl) {
-          setCurrentUrl(streamingUrl);
-          return;
-        }
-      }
       setCurrentUrl(URL.createObjectURL(file));
     }
   } catch (e) {

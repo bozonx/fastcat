@@ -351,6 +351,43 @@ export function useEntryPreview(params: {
           nextMediaType = extBasedType === 'timeline' ? 'text' : extBasedType;
         }
 
+        if (
+          entry.path &&
+          params.previewMode.value === 'original' &&
+          (nextMediaType === 'video' || nextMediaType === 'audio') &&
+          params.getObjectUrlByPath
+        ) {
+          const nextFileInfo: EntryPreviewInfo = {
+            name: entry.name,
+            kind: 'file',
+            path: entry.path,
+            size: typeof entry.size === 'number' ? entry.size : undefined,
+            createdAt: entry.createdAt,
+            lastModified: entry.lastModified,
+            mimeType: getMimeTypeFromFilename(entry.name),
+            ext: fileExt,
+          };
+          const previewState = await resolvePreviewMediaState(entry, nextMediaType, nextFileInfo);
+          if (requestId !== loadRequestId) {
+            safeRevokeObjectURL(previewState.currentUrl);
+            return;
+          }
+
+          if (previewState.currentUrl) {
+            applyResolvedState({
+              currentUrl: previewState.currentUrl,
+              mediaType: nextMediaType,
+              textContent: '',
+              fileInfo: nextFileInfo,
+              exifData: null,
+              imageDimensions: null,
+              lineCount: null,
+              timelineDocSummary: null,
+            });
+            return;
+          }
+        }
+
         const file = await params.getFileByPath(entry.path);
         if (!file) return;
         if (requestId !== loadRequestId) return;

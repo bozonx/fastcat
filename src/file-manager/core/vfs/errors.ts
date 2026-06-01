@@ -79,6 +79,22 @@ export class VfsIoError extends VfsError {
   }
 }
 
+function getPlatformErrorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
+
+function getPlatformErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return '';
+}
+
 /**
  * Throws a DOMException AbortError. Adapters should call this on `signal.aborted`
  * for consistency with stream/fetch APIs that already use DOMException.
@@ -104,6 +120,9 @@ export function throwIfAborted(signal: AbortSignal | undefined, path?: string): 
 export function wrapPlatformError(error: unknown, path: string): VfsError {
   if (error instanceof VfsError) return error;
 
+  const message = getPlatformErrorMessage(error);
+  const code = getPlatformErrorCode(error);
+
   // DOMException / Error with .name
   if (error instanceof Error) {
     const name = error.name;
@@ -121,7 +140,6 @@ export function wrapPlatformError(error: unknown, path: string): VfsError {
     }
 
     // Node-style codes (Tauri plugin-fs surfaces these in message bodies).
-    const code = (error as { code?: string }).code;
     if (code === 'ENOENT') return new VfsNotFoundError(path, { cause: error });
     if (code === 'EEXIST')
       return new VfsConflictError(path, `Already exists: ${path}`, { cause: error });
@@ -130,7 +148,17 @@ export function wrapPlatformError(error: unknown, path: string): VfsError {
     if (code === 'EXDEV')
       return new VfsError('io', `Cross-device link: ${path}`, { path, cause: error });
 
-    return new VfsIoError(error.message || `I/O error at ${path}`, { path, cause: error });
+    if (isNotFoundError(error)) return new VfsNotFoundError(path, { cause: error });
+    if (/forbidden path|permission denied|not allowed|eacces|eperm/i.test(message)) {
+      return new VfsPermissionError(path, { cause: error });
+    }
+
+    return new VfsIoError(message || `I/O error at ${path}`, { path, cause: error });
+  }
+
+  if (isNotFoundError(error)) return new VfsNotFoundError(path, { cause: error });
+  if (/forbidden path|permission denied|not allowed|eacces|eperm/i.test(message)) {
+    return new VfsPermissionError(path, { cause: error });
   }
 
   return new VfsIoError(`I/O error at ${path}`, { path, cause: error });
@@ -139,14 +167,14 @@ export function wrapPlatformError(error: unknown, path: string): VfsError {
 /** Heuristic: is this a "not found" platform error? Used where we want to swallow it. */
 export function isNotFoundError(error: unknown): boolean {
   if (error instanceof VfsNotFoundError) return true;
+  const message = getPlatformErrorMessage(error);
+  const code = getPlatformErrorCode(error);
   if (error instanceof Error) {
     if (error.name === 'NotFoundError') return true;
-    const code = (error as { code?: string }).code;
     if (code === 'ENOENT') return true;
-    // Tauri plugin-fs surfaces stat errors as plain messages.
-    return /not found|enoent|os error 2\b/i.test(error.message);
   }
-  return false;
+  // Tauri plugin-fs can surface stat/read errors as strings or plain objects.
+  return code === 'ENOENT' || /not found|enoent|os error 2\b/i.test(message);
 }
 
 /** Heuristic: is this an EXDEV cross-device error from a rename? */
