@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref, nextTick } from 'vue';
 import { useExportProcess } from '~/composables/timeline/export/core/useExportProcess';
+import { isTauriRuntime } from '~/utils/io/io-governor';
 
 const stopPlaybackMock = vi.fn();
 
@@ -90,13 +91,14 @@ vi.mock('~/utils/native-monitor-scene', () => ({
   }),
 }));
 
-describe('useExportProcess - playback guard', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    timelineStoreMock.isPlaying = false;
-    timelineStoreMock.timelineDoc = { tracks: [], metadata: { fastcat: {} } };
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(isTauriRuntime).mockReturnValue(false);
+  timelineStoreMock.isPlaying = false;
+  timelineStoreMock.timelineDoc = { tracks: [], metadata: { fastcat: {} } };
+});
 
+describe('useExportProcess - playback guard', () => {
   it('pauses playback before export in browser mode', async () => {
     timelineStoreMock.isPlaying = true;
     const { isTauriRuntime } = await import('~/utils/io/io-governor');
@@ -235,75 +237,11 @@ describe('useExportProcess - format resolution', () => {
   });
 });
 
-describe('useExportProcess - native routing with transitions', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
+describe('useExportProcess - platform routing', () => {
+  it('always routes to nativeExportTimeline in Tauri mode', async () => {
     const { isTauriRuntime } = await import('~/utils/io/io-governor');
     vi.mocked(isTauriRuntime).mockReturnValue(true);
-  });
 
-  it('routes to nativeExportTimeline if transition is dissolve', async () => {
-    const { nativeExportTimeline } = await import('~/utils/tauri-media-processing');
-    const { getExportWorkerClient } = await import('~/utils/video-editor/worker-client');
-    const mockExportTimeline = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(getExportWorkerClient).mockReturnValue({
-      client: {
-        exportTimeline: mockExportTimeline,
-      } as any,
-      worker: {} as any,
-    });
-
-    const { buildVideoWorkerPayloadFromTracks, buildVideoWorkerPayload } =
-      await import('~/composables/timeline/export/payloadBuilder');
-    vi.mocked(buildVideoWorkerPayloadFromTracks).mockResolvedValue({
-      clips: [
-        {
-          kind: 'clip',
-          id: 'v1',
-          layer: 0,
-          source: { path: 'test.mp4' },
-          transitionIn: { type: 'dissolve', durationUs: 1000000 },
-        },
-      ] as any,
-      tracks: [],
-    });
-    vi.mocked(buildVideoWorkerPayload).mockReturnValue([
-      {
-        kind: 'clip',
-        id: 'v1',
-        layer: 0,
-        transitionIn: { type: 'dissolve', durationUs: 1000000 },
-      },
-    ]);
-
-    const state = {
-      activeExportTaskId: ref<string | null>(null),
-      exportPhase: ref<'preparing' | 'encoding' | 'saving' | null>(null),
-      exportWarnings: ref<string[]>([]),
-      isExporting: ref(false),
-      cancelRequested: ref(false),
-    };
-
-    const { exportTimelineToFile } = useExportProcess(
-      state.activeExportTaskId,
-      state.exportPhase,
-      state.exportWarnings,
-      state.isExporting,
-      state.cancelRequested,
-    );
-
-    const fileHandle = { createWritable: vi.fn() } as any;
-    await exportTimelineToFile(
-      { format: 'mp4', videoCodec: 'h264', audio: false, audioSampleRate: 48000 } as any,
-      fileHandle,
-      () => {},
-    );
-
-    expect(nativeExportTimeline).toHaveBeenCalledTimes(1);
-    expect(mockExportTimeline).not.toHaveBeenCalled();
-  });
-
-  it('routes to worker client.exportTimeline if transition is NOT dissolve', async () => {
     const { nativeExportTimeline } = await import('~/utils/tauri-media-processing');
     const { getExportWorkerClient } = await import('~/utils/video-editor/worker-client');
     const mockExportTimeline = vi.fn().mockResolvedValue(undefined);
@@ -336,6 +274,47 @@ describe('useExportProcess - native routing with transitions', () => {
         transitionIn: { type: 'slide', durationUs: 1000000 },
       },
     ]);
+
+    const state = {
+      activeExportTaskId: ref<string | null>(null),
+      exportPhase: ref<'preparing' | 'encoding' | 'saving' | null>(null),
+      exportWarnings: ref<string[]>([]),
+      isExporting: ref(false),
+      cancelRequested: ref(false),
+    };
+
+    const { exportTimelineToFile } = useExportProcess(
+      state.activeExportTaskId,
+      state.exportPhase,
+      state.exportWarnings,
+      state.isExporting,
+      state.cancelRequested,
+    );
+
+    const fileHandle = { createWritable: vi.fn() } as any;
+    await exportTimelineToFile(
+      { format: 'mp4', videoCodec: 'h264', audio: false, audioSampleRate: 48000 } as any,
+      fileHandle,
+      () => {},
+    );
+
+    expect(nativeExportTimeline).toHaveBeenCalledTimes(1);
+    expect(mockExportTimeline).not.toHaveBeenCalled();
+  });
+
+  it('routes to worker client.exportTimeline in browser mode', async () => {
+    const { isTauriRuntime } = await import('~/utils/io/io-governor');
+    vi.mocked(isTauriRuntime).mockReturnValue(false);
+
+    const { nativeExportTimeline } = await import('~/utils/tauri-media-processing');
+    const { getExportWorkerClient } = await import('~/utils/video-editor/worker-client');
+    const mockExportTimeline = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getExportWorkerClient).mockReturnValue({
+      client: {
+        exportTimeline: mockExportTimeline,
+      } as any,
+      worker: {} as any,
+    });
 
     const state = {
       activeExportTaskId: ref<string | null>(null),

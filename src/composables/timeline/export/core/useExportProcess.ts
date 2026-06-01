@@ -34,51 +34,7 @@ const log = createDevLogger('useExportProcess');
 let timelineExportInFlight = false;
 const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
 
-function hasEnabledEffects(effects: ClipEffect[] | undefined): boolean {
-  return Array.isArray(effects) && effects.some((effect) => effect?.enabled !== false);
-}
 
-function canUseNativeTimelineExport(params: {
-  options: ExportOptions;
-  videoPayload: unknown[];
-  audioClips: WorkerTimelineClip[];
-  targetPath: string | null;
-}): boolean {
-  if (!isTauriRuntime() || !params.targetPath) return false;
-  if (!['mp4', 'webm', 'mkv'].includes(params.options.format)) return false;
-
-  for (const item of params.videoPayload) {
-    if (!item || typeof item !== 'object') continue;
-    const value = item as {
-      kind?: string;
-      clipType?: string;
-      effects?: ClipEffect[];
-      masterEffects?: ClipEffect[];
-      transitionIn?: { type?: string; durationUs?: number };
-      transitionOut?: { type?: string; durationUs?: number };
-      mask?: unknown;
-    };
-    if (hasEnabledEffects(value.effects) || hasEnabledEffects(value.masterEffects)) return false;
-    if (value.kind === 'clip') {
-      if (value.clipType === 'hud' || value.clipType === 'adjustment') return false;
-      if (value.mask) return false;
-      const inType = value.transitionIn?.type;
-      const outType = value.transitionOut?.type;
-      if (Number(value.transitionIn?.durationUs ?? 0) > 0 && inType !== 'dissolve') return false;
-      if (Number(value.transitionOut?.durationUs ?? 0) > 0 && outType !== 'dissolve') return false;
-    }
-  }
-
-  if (params.options.audio) {
-    for (const clip of params.audioClips) {
-      if (hasEnabledEffects(clip.effects)) return false;
-      const speed = Number(clip.speed ?? 1);
-      if (Number.isFinite(speed) && speed < 0) return false;
-    }
-  }
-
-  return true;
-}
 
 export function useExportProcess(
   activeExportTaskId: ReturnType<
@@ -191,14 +147,15 @@ export function useExportProcess(
         throw new Error('Timeline is empty');
 
       const nativeTargetPath = getNativeFileHandlePath(fileHandle);
-      const canUseNativeExport = canUseNativeTimelineExport({
-        options,
-        videoPayload,
-        audioClips: croppedAudioClips,
-        targetPath: nativeTargetPath,
-      });
 
-      if (canUseNativeExport && nativeTargetPath && doc) {
+      if (isTauriRuntime()) {
+        if (!nativeTargetPath) {
+          throw new Error('Native target path is not available for Tauri export');
+        }
+        if (!doc) {
+          throw new Error('Timeline document is empty');
+        }
+
         exportPhase.value = 'encoding';
         const scene = await buildNativeMonitorScene({
           timelineDoc: doc,
