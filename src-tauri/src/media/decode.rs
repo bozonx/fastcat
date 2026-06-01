@@ -49,6 +49,7 @@ pub struct FfmpegDecoder {
     start_time: f64,
     /// Индекс кадра в рамках текущего subprocess.
     frame_index: u64,
+    cached_frame: Option<VideoFrame>,
 }
 
 impl FfmpegDecoder {
@@ -79,6 +80,7 @@ impl FfmpegDecoder {
             stdout: None,
             start_time: 0.0,
             frame_index: 0,
+            cached_frame: None,
         };
         dec.spawn(0.0)?;
         Ok(dec)
@@ -86,6 +88,7 @@ impl FfmpegDecoder {
 
     fn spawn(&mut self, time_sec: f64) -> Result<()> {
         self.kill();
+        self.cached_frame = None;
         let time_sec = time_sec.max(0.0);
         let mut cmd = Command::new("ffmpeg");
         cmd.arg("-nostdin").arg("-loglevel").arg("error");
@@ -154,10 +157,37 @@ impl VideoDecoder for FfmpegDecoder {
     }
 
     fn seek(&mut self, time_sec: f64) -> Result<()> {
+        let fps = if self.info.fps > 0.0 {
+            self.info.fps
+        } else {
+            30.0
+        };
+        let current_pts = self.start_time + self.frame_index as f64 / fps;
+
+        // Если мы хотим переместиться вперед на небольшое расстояние (до 1.0 секунды),
+        // читаем кадры последовательно вместо перезапуска процесса.
+        if time_sec >= current_pts && time_sec - current_pts < 1.0 {
+            let mut last_frame = None;
+            while let Some(frame) = self.next_frame()? {
+                let pts = frame.pts_sec;
+                last_frame = Some(frame);
+                if pts >= time_sec {
+                    break;
+                }
+            }
+            self.cached_frame = last_frame;
+            return Ok(());
+        }
+
+        self.cached_frame = None;
         self.spawn(time_sec.max(0.0))
     }
 
     fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
+        if let Some(frame) = self.cached_frame.take() {
+            return Ok(Some(frame));
+        }
+
         let stdout = match self.stdout.as_mut() {
             Some(s) => s,
             None => return Ok(None),

@@ -87,11 +87,13 @@ pub fn export_timeline(
         .ensure_offscreen_device()
         .context("export: no GPU device")?;
 
+    let mut cache = super::timeline_render::VideoDecoderCache::new();
+
     let render_result = (|| -> Result<()> {
         for i in 0..frame_count {
             let time = start + i as f64 / fps;
             let frame_scene =
-                super::timeline_render::build_export_scene(&scene, time, (width, height))?;
+                super::timeline_render::build_export_scene(&scene, time, (width, height), &mut cache)?;
             let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height)?;
             if stdin.write_all(&pixels).is_err() {
                 // ffmpeg закрыл stdin (ошибка энкода или отмена-kill) — выходим, статус заберём ниже.

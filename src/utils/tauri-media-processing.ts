@@ -122,14 +122,14 @@ export async function nativeRenderTimelineFrameWebp(params: {
   height: number;
   quality: number;
 }): Promise<Blob> {
-  const bytes = await invoke<number[]>('native_timeline_render_frame_webp', {
+  const bytes = await invoke<Uint8Array>('native_timeline_render_frame_webp', {
     scene: params.scene,
     timeSec: params.timeSec,
     width: params.width,
     height: params.height,
     quality: params.quality,
   });
-  return new Blob([new Uint8Array(bytes)], { type: 'image/webp' });
+  return new Blob([bytes], { type: 'image/webp' });
 }
 
 export async function nativeVideoFrameWebp(params: {
@@ -139,14 +139,14 @@ export async function nativeVideoFrameWebp(params: {
   maxHeight: number;
   quality: number;
 }): Promise<Blob> {
-  const bytes = await invoke<number[]>('native_video_frame_webp', {
+  const bytes = await invoke<Uint8Array>('native_video_frame_webp', {
     sourcePath: params.sourcePath,
     timeSec: params.timeSec,
     maxWidth: params.maxWidth,
     maxHeight: params.maxHeight,
     quality: params.quality,
   });
-  return new Blob([new Uint8Array(bytes)], { type: 'image/webp' });
+  return new Blob([bytes], { type: 'image/webp' });
 }
 
 export async function nativeVideoFrameWebps(params: {
@@ -156,16 +156,35 @@ export async function nativeVideoFrameWebps(params: {
   maxHeight: number;
   quality: number;
 }): Promise<(Blob | null)[]> {
-  const results = await invoke<(number[] | null)[]>('native_video_frame_webps', {
+  const packedBytes = await invoke<Uint8Array>('native_video_frame_webps', {
     sourcePath: params.sourcePath,
     timesSec: params.timesSec,
     maxWidth: params.maxWidth,
     maxHeight: params.maxHeight,
     quality: params.quality,
   });
-  return results.map((bytes) =>
-    bytes ? new Blob([new Uint8Array(bytes)], { type: 'image/webp' }) : null,
-  );
+
+  const view = new DataView(packedBytes.buffer, packedBytes.byteOffset, packedBytes.byteLength);
+  const count = view.getUint32(0, true);
+  const sizes: number[] = [];
+  let offset = 4;
+  for (let i = 0; i < count; i++) {
+    sizes.push(view.getUint32(offset, true));
+    offset += 4;
+  }
+
+  const blobs: (Blob | null)[] = [];
+  for (const size of sizes) {
+    if (size === 0) {
+      blobs.push(null);
+    } else {
+      const slice = packedBytes.subarray(offset, offset + size);
+      blobs.push(new Blob([slice], { type: 'image/webp' }));
+      offset += size;
+    }
+  }
+
+  return blobs;
 }
 
 function buildNativeConvertOptions(request: ConversionRequest) {

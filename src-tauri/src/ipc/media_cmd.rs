@@ -162,12 +162,62 @@ pub async fn native_video_frame_webps(
     max_width: u32,
     max_height: u32,
     quality: f32,
-) -> Result<Vec<Option<Vec<u8>>>, String> {
+) -> Result<Vec<u8>, String> {
     let source_path = PathBuf::from(source_path);
-    tokio::task::spawn_blocking(move || {
+    let frames = tokio::task::spawn_blocking(move || {
         extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality)
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+    Ok(pack_webp_frames(frames))
+}
+
+pub fn pack_webp_frames(frames: Vec<Option<Vec<u8>>>) -> Vec<u8> {
+    let mut packed = Vec::new();
+    packed.extend_from_slice(&(frames.len() as u32).to_le_bytes());
+    for frame in &frames {
+        match frame {
+            Some(data) => packed.extend_from_slice(&(data.len() as u32).to_le_bytes()),
+            None => packed.extend_from_slice(&0u32.to_le_bytes()),
+        }
+    }
+    for frame in frames {
+        if let Some(data) = frame {
+            packed.extend_from_slice(&data);
+        }
+    }
+    packed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pack_webp_frames_empty() {
+        let packed = pack_webp_frames(vec![]);
+        assert_eq!(packed, 0u32.to_le_bytes().to_vec());
+    }
+
+    #[test]
+    fn test_pack_webp_frames_with_data() {
+        let frames = vec![
+            Some(vec![1, 2, 3]),
+            None,
+            Some(vec![4, 5]),
+        ];
+        let packed = pack_webp_frames(frames);
+        
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&3u32.to_le_bytes()); // Count = 3
+        expected.extend_from_slice(&3u32.to_le_bytes()); // Frame 0 size = 3
+        expected.extend_from_slice(&0u32.to_le_bytes()); // Frame 1 size = 0
+        expected.extend_from_slice(&2u32.to_le_bytes()); // Frame 2 size = 2
+        expected.extend_from_slice(&[1, 2, 3]);          // Frame 0 data
+        expected.extend_from_slice(&[4, 5]);             // Frame 2 data
+        
+        assert_eq!(packed, expected);
+    }
 }

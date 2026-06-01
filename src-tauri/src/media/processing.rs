@@ -349,23 +349,66 @@ pub fn extract_video_frame_webps(
     times_sec: &[f64],
     max_width: u32,
     max_height: u32,
-    quality: f32,
+    _quality: f32,
 ) -> Result<Vec<Option<Vec<u8>>>> {
-    times_sec
+    let mut sorted_times: Vec<(usize, f64)> = times_sec
         .iter()
-        .map(|time_sec| {
-            extract_video_frame_webp(source_path, *time_sec, max_width, max_height, quality)
-                .map(Some)
-                .or_else(|error| {
-                    log::warn!(
-                        "[native-media] thumbnail extraction failed at {:.3}s for {}: {error}",
-                        time_sec,
-                        source_path.display()
-                    );
-                    Ok(None)
-                })
-        })
-        .collect()
+        .copied()
+        .enumerate()
+        .collect();
+    sorted_times.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    let max_edge = max_width.max(max_height);
+    let mut decoder = crate::media::decode::open(source_path, Some(max_edge))?;
+    let mut results = vec![None; times_sec.len()];
+
+    let mut last_pts = -1.0;
+
+    for (orig_idx, target_time) in sorted_times {
+        let needs_seek = last_pts < 0.0 || target_time < last_pts || (target_time - last_pts) > 5.0;
+        if needs_seek {
+            if let Err(e) = decoder.seek(target_time) {
+                log::warn!(
+                    "[native-media] seek failed at {:.3}s for {}: {e}",
+                    target_time,
+                    source_path.display()
+                );
+                continue;
+            }
+        }
+
+        let mut last_frame = None;
+        while let Ok(Some(frame)) = decoder.next_frame() {
+            last_pts = frame.pts_sec;
+            let current_pts = frame.pts_sec;
+            last_frame = Some(frame);
+            if current_pts >= target_time {
+                break;
+            }
+        }
+
+        if let Some(frame) = last_frame {
+            let mut bytes = Vec::new();
+            if let Err(e) = image::write_buffer_with_format(
+                &mut std::io::Cursor::new(&mut bytes),
+                &frame.pixels,
+                frame.width,
+                frame.height,
+                image::ColorType::Rgba8,
+                image::ImageFormat::WebP,
+            ) {
+                log::warn!(
+                    "[native-media] webp encode failed at {:.3}s for {}: {e}",
+                    target_time,
+                    source_path.display()
+                );
+                continue;
+            }
+            results[orig_idx] = Some(bytes);
+        }
+    }
+
+    Ok(results)
 }
 
 fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, args: Vec<String>) -> Result<()> {
