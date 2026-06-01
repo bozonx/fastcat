@@ -51,13 +51,25 @@ export class CanvasFallbackRenderer {
           ? (sample as { toCanvasImageSource: () => unknown }).toCanvasImageSource()
           : sample;
       const src = imageSource as {
+        codedWidth?: number;
         displayWidth?: number;
         width?: number;
+        codedHeight?: number;
         displayHeight?: number;
         height?: number;
       };
-      const frameW = Math.max(1, Math.round(src.displayWidth ?? src.width ?? 1));
-      const frameH = Math.max(1, Math.round(src.displayHeight ?? src.height ?? 1));
+      const frameW = Math.max(
+        1,
+        Math.round(
+          Number(src.codedWidth ?? src.displayWidth ?? src.width ?? 1),
+        ),
+      );
+      const frameH = Math.max(
+        1,
+        Math.round(
+          Number(src.codedHeight ?? src.displayHeight ?? src.height ?? 1),
+        ),
+      );
 
       if (canvas.width !== frameW || canvas.height !== frameH) {
         canvas.width = frameW;

@@ -17,8 +17,26 @@ export class VideoRenderer {
     if (isVideoFrame) {
       clip.lastVideoFrame = sample;
       const frame = sample as VideoFrame;
-      const frameW = frame.displayWidth;
-      const frameH = frame.displayHeight;
+      const frameW = Math.max(
+        1,
+        Math.round(
+          Number(
+            (frame as { codedWidth?: unknown }).codedWidth ??
+              frame.displayWidth ??
+              1,
+          ),
+        ),
+      );
+      const frameH = Math.max(
+        1,
+        Math.round(
+          Number(
+            (frame as { codedHeight?: unknown }).codedHeight ??
+              frame.displayHeight ??
+              1,
+          ),
+        ),
+      );
 
       if (sprite.texture.source.width !== frameW || sprite.texture.source.height !== frameH) {
         if (typeof sprite.texture.source.resize === 'function') {
@@ -45,13 +63,25 @@ export class VideoRenderer {
           ? sampleObj.toCanvasImageSource()
           : (sample as CanvasImageSource);
       const imgAny = imageSource as {
+        codedWidth?: number;
         displayWidth?: number;
         width?: number;
+        codedHeight?: number;
         displayHeight?: number;
         height?: number;
       };
-      const frameW = Math.max(1, Math.round(imgAny.displayWidth ?? imgAny.width ?? 1));
-      const frameH = Math.max(1, Math.round(imgAny.displayHeight ?? imgAny.height ?? 1));
+      const frameW = Math.max(
+        1,
+        Math.round(
+          Number(imgAny.codedWidth ?? imgAny.displayWidth ?? imgAny.width ?? 1),
+        ),
+      );
+      const frameH = Math.max(
+        1,
+        Math.round(
+          Number(imgAny.codedHeight ?? imgAny.displayHeight ?? imgAny.height ?? 1),
+        ),
+      );
 
       this.ensureCanvasFallback(clip);
       const { ctx, canvas } = clip;

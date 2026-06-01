@@ -462,7 +462,7 @@ fn display_matrix_rotation(data: &[u8]) -> Option<i32> {
         return None;
     }
 
-    let degrees = (-b.atan2(a).to_degrees()).round() as i32;
+    let degrees = (b.atan2(a).to_degrees()).round() as i32;
     Some(((degrees % 360) + 360) % 360)
 }
 
@@ -604,6 +604,7 @@ fn probe_rotation(video: &serde_json::Value) -> i32 {
                     items
                         .iter()
                         .find_map(|item| item.get("rotation").and_then(parse_rotation_value))
+                        .map(|r| -r)
                 })
         })
         .unwrap_or(0)
@@ -703,13 +704,13 @@ mod tests {
             ]
         });
 
-        assert_eq!(probe_rotation(&video), -90);
+        assert_eq!(probe_rotation(&video), 90);
     }
 
     #[test]
     fn display_matrix_rotation_reads_quarter_turn() {
         let mut matrix = [0i32; 9];
-        matrix[1] = -(1 << 16);
+        matrix[1] = 1 << 16;
         let data: Vec<u8> = matrix
             .iter()
             .flat_map(|value| value.to_ne_bytes())
