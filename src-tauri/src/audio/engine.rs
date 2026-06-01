@@ -15,7 +15,6 @@ use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer};
 const OUTPUT_CHANNELS: usize = 2;
 const CHUNK_DURATION_SEC: f64 = 1.0;
 const PREBUFFER_CHUNKS: usize = 3;
-const MAX_RING_CHUNKS: usize = 5;
 
 #[derive(Default)]
 struct AudioShared {
@@ -231,12 +230,18 @@ fn write_output<T: OutputSample>(
     let channels = device_channels.max(1) as usize;
     let frames = data.len() / channels;
     let mut state = shared.lock().unwrap();
+    let mut frames_read = 0;
 
     for frame in 0..frames {
         let (left, right) = if state.playing {
-            let left = state.ring.pop_front().unwrap_or(0.0);
-            let right = state.ring.pop_front().unwrap_or(0.0);
-            (left, right)
+            if state.ring.len() >= 2 {
+                let left = state.ring.pop_front().unwrap_or(0.0);
+                let right = state.ring.pop_front().unwrap_or(0.0);
+                frames_read += 1;
+                (left, right)
+            } else {
+                (0.0, 0.0)
+            }
         } else {
             (0.0, 0.0)
         };
@@ -252,7 +257,7 @@ fn write_output<T: OutputSample>(
     }
 
     if state.playing {
-        state.frames_written = state.frames_written.saturating_add(frames as u64);
+        state.frames_written = state.frames_written.saturating_add(frames_read as u64);
     } else {
         let _ = sample_rate;
     }
@@ -260,12 +265,12 @@ fn write_output<T: OutputSample>(
 
 fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, sample_rate: u32) {
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
-    let max_samples = chunk_frames * OUTPUT_CHANNELS * MAX_RING_CHUNKS;
+    let limit_samples = chunk_frames * OUTPUT_CHANNELS * PREBUFFER_CHUNKS;
 
     while running.load(Ordering::Relaxed) {
         let snapshot = {
             let state = shared.lock().unwrap();
-            if !state.playing || state.scene.is_empty() || state.ring.len() >= max_samples {
+            if !state.playing || state.scene.is_empty() || state.ring.len() >= limit_samples {
                 None
             } else {
                 Some((
@@ -295,7 +300,7 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
         {
             continue;
         }
-        if state.ring.len() < chunk_frames * OUTPUT_CHANNELS * PREBUFFER_CHUNKS {
+        if state.ring.len() < limit_samples {
             state.ring.extend(chunk);
             state.producer_pts_sec += CHUNK_DURATION_SEC;
         }
@@ -354,6 +359,31 @@ fn mix_chunk(
     Ok(mixed)
 }
 
+fn build_atempo_filter_str(speed: f64) -> Option<String> {
+    let speed_clamped = sanitize_speed(speed);
+    if (speed_clamped - 1.0).abs() <= f64::EPSILON {
+        return None;
+    }
+    let mut filters = Vec::new();
+    let mut s = speed_clamped;
+    while s > 2.0 {
+        filters.push("atempo=2.0".to_string());
+        s /= 2.0;
+    }
+    while s < 0.5 {
+        filters.push("atempo=0.5".to_string());
+        s /= 0.5;
+    }
+    if (s - 1.0).abs() > f64::EPSILON {
+        filters.push(format!("atempo={:.6}", s));
+    }
+    if filters.is_empty() {
+        None
+    } else {
+        Some(filters.join(","))
+    }
+}
+
 fn decode_ffmpeg_chunk(
     path: &str,
     source_start_sec: f64,
@@ -373,9 +403,8 @@ fn decode_ffmpeg_chunk(
         .arg("-i")
         .arg(path)
         .arg("-vn");
-    if (speed - 1.0).abs() > f64::EPSILON {
-        cmd.arg("-filter:a")
-            .arg(format!("atempo={:.6}", speed.clamp(0.5, 100.0)));
+    if let Some(filter_str) = build_atempo_filter_str(speed) {
+        cmd.arg("-filter:a").arg(filter_str);
     }
     cmd.arg("-f")
         .arg("f32le")
@@ -488,7 +517,7 @@ fn stereo_pan_matrix(balance: f64) -> (f64, f64, f64, f64) {
 
 fn sanitize_speed(speed: f64) -> f64 {
     if speed.is_finite() && speed > 0.0 {
-        speed.clamp(0.5, 100.0)
+        speed.clamp(0.01, 100.0)
     } else {
         1.0
     }
@@ -543,5 +572,15 @@ mod tests {
         assert_eq!(lr, 0.0);
         assert!((rl - 1.0).abs() < 1e-9);
         assert!((rr - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn build_atempo_filter_str_chains_correctly() {
+        assert_eq!(build_atempo_filter_str(1.0), None);
+        assert_eq!(build_atempo_filter_str(2.0).as_deref(), Some("atempo=2.000000"));
+        assert_eq!(build_atempo_filter_str(4.0).as_deref(), Some("atempo=2.0,atempo=2.000000"));
+        assert_eq!(build_atempo_filter_str(0.5).as_deref(), Some("atempo=0.500000"));
+        assert_eq!(build_atempo_filter_str(0.25).as_deref(), Some("atempo=0.5,atempo=0.500000"));
+        assert_eq!(build_atempo_filter_str(3.0).as_deref(), Some("atempo=2.0,atempo=1.500000"));
     }
 }
