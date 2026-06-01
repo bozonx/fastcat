@@ -22,12 +22,20 @@ export function useComputerVfs() {
 
   if (isTauri) {
     const workspacePath = (workspaceStore.workspaceHandle as unknown as { path?: string })?.path;
-    if (workspacePath) {
-      const adapter = new TauriFileSystemAdapter({ type: 'absolute', path: workspacePath });
-      // Tauri adapter needs init() to mkdir its root.
-      adapter.init().catch(() => {});
-      vfs.value = adapter;
-    }
+    const adapter = new TauriFileSystemAdapter(async () => {
+      if (workspacePath) {
+        return { type: 'absolute', path: workspacePath };
+      }
+
+      const { documentDir, homeDir } = await import('@tauri-apps/api/path');
+      return {
+        type: 'absolute',
+        path: (await homeDir().catch(() => null)) ?? (await documentDir()),
+      };
+    });
+    // Tauri adapter needs init() to mkdir its root.
+    adapter.init().catch(() => {});
+    vfs.value = adapter;
   } else {
     vfs.value = new OpfsFileSystemAdapter(async () => {
       if (workspaceStore.workspaceHandle) {

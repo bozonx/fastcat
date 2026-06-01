@@ -62,6 +62,30 @@ const projectPresetOptions = computed(() =>
 
 // Сортировка для основного списка по дате изменения (сначала новые)
 const sortedProjects = computed(() => {
+  if (workspaceStore.workspaceProviderId === 'tauri') {
+    const query = searchQuery.value.trim().toLowerCase();
+    const projects = workspaceStore.recentProjects
+      .filter((project) => !query || project.projectName.toLowerCase().includes(query))
+      .map((project) => ({
+        projectName: project.projectName,
+        projectId: project.projectId,
+        lastTimelinePath: project.lastTimelinePath,
+        updatedAt: project.updatedAt,
+        projectPath: project.projectPath,
+      }));
+
+    projects.sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      if (dateA === dateB) {
+        return a.projectName.localeCompare(b.projectName);
+      }
+      return dateB - dateA;
+    });
+
+    return projects;
+  }
+
   const recentMap = new Map(workspaceStore.recentProjects.map((p) => [p.projectName, p]));
   const projects = filteredProjects.value.map((name) => {
     const recent = recentMap.get(name);
@@ -115,7 +139,9 @@ const formatDate = (dateStr?: string) => {
     </div>
 
     <!-- Если рабочая область не выбрана -->
-    <WelcomeScreen v-else-if="!workspaceStore.workspaceHandle && workspaceStore.workspaceProviderId !== 'tauri'" />
+    <WelcomeScreen
+      v-else-if="!workspaceStore.workspaceHandle && workspaceStore.workspaceProviderId !== 'tauri'"
+    />
 
     <template v-else>
       <div class="flex h-screen w-full flex-col bg-ui-bg overflow-hidden text-ui-text font-sans">
@@ -310,7 +336,7 @@ const formatDate = (dateStr?: string) => {
                 <div v-if="otherProjects.length > 0" class="flex flex-col gap-3">
                   <UiSwipeableRow
                     v-for="project in otherProjects"
-                    :key="project.projectName"
+                    :key="project.projectPath || project.projectId || project.projectName"
                     class="rounded-2xl overflow-hidden"
                   >
                     <template #actions="{ close }">
@@ -319,7 +345,7 @@ const formatDate = (dateStr?: string) => {
                           class="bg-blue-600 active:bg-blue-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors cursor-pointer"
                           :aria-label="t('common.rename')"
                           @click.stop="
-                            startRename(project.projectName);
+                            startRename(project);
                             close();
                           "
                         >
@@ -329,7 +355,7 @@ const formatDate = (dateStr?: string) => {
                           class="bg-red-600 active:bg-red-700 text-white w-14 rounded-2xl h-full flex items-center justify-center transition-colors ml-1 cursor-pointer"
                           :aria-label="t('common.delete')"
                           @click.stop="
-                            startDelete(project.projectName);
+                            startDelete(project);
                             close();
                           "
                         >
@@ -373,12 +399,12 @@ const formatDate = (dateStr?: string) => {
                                 {
                                   label: t('common.rename'),
                                   icon: 'i-heroicons-pencil-square',
-                                  onSelect: () => startRename(project.projectName),
+                                  onSelect: () => startRename(project),
                                 },
                                 {
                                   label: t('common.delete'),
                                   icon: 'i-heroicons-trash',
-                                  onSelect: () => startDelete(project.projectName),
+                                  onSelect: () => startDelete(project),
                                 },
                               ],
                             ]"
@@ -459,13 +485,18 @@ const formatDate = (dateStr?: string) => {
             />
           </UiFormField>
 
-          <UiFormField v-if="workspaceStore.workspaceProviderId === 'tauri'" :label="t('projects.projectLocation')">
+          <UiFormField
+            v-if="workspaceStore.workspaceProviderId === 'tauri'"
+            :label="t('projects.projectLocation')"
+          >
             <div class="flex gap-2 w-full">
               <UiTextInput
                 v-model="projectCreationSettings.location"
                 readonly
                 class="flex-1"
-                :ui="{ base: 'h-16 text-sm px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl truncate text-ui-text-muted' }"
+                :ui="{
+                  base: 'h-16 text-sm px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl truncate text-ui-text-muted',
+                }"
               />
               <UButton
                 color="neutral"

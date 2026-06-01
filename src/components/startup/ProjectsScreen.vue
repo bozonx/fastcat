@@ -51,6 +51,19 @@ const sortBy = ref<SortBy>('date');
 const sortOrder = ref<SortOrder>('desc');
 
 const allProjects = computed(() => {
+  if (workspaceStore.workspaceProviderId === 'tauri') {
+    const query = searchQuery.value.trim().toLowerCase();
+    return workspaceStore.recentProjects
+      .filter((project) => !query || project.projectName.toLowerCase().includes(query))
+      .map((project) => ({
+        projectName: project.projectName,
+        projectId: project.projectId,
+        lastTimelinePath: project.lastTimelinePath,
+        updatedAt: project.updatedAt,
+        projectPath: project.projectPath,
+      }));
+  }
+
   const recentMap = new Map(workspaceStore.recentProjects.map((p) => [p.projectName, p]));
   return filteredProjects.value.map((name) => {
     const recent = recentMap.get(name);
@@ -268,7 +281,7 @@ const formatDate = (dateStr?: string) => {
               <!-- Projects -->
               <div
                 v-for="project in sortedProjects"
-                :key="project.projectName"
+                :key="project.projectPath || project.projectId || project.projectName"
                 class="flex flex-col group bg-ui-bg-elevated/50 border border-ui-border rounded-xl overflow-hidden hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer"
                 @click="handleOpenProject(project.projectPath || project.projectName)"
               >
@@ -299,12 +312,12 @@ const formatDate = (dateStr?: string) => {
                           {
                             label: t('common.rename'),
                             icon: 'i-heroicons-pencil-square',
-                            onSelect: () => startRename(project.projectName),
+                            onSelect: () => startRename(project),
                           },
                           {
                             label: t('common.delete'),
                             icon: 'i-heroicons-trash',
-                            onSelect: () => startDelete(project.projectName),
+                            onSelect: () => startDelete(project),
                           },
                         ],
                       ]"
@@ -344,13 +357,12 @@ const formatDate = (dateStr?: string) => {
         />
       </UiFormField>
 
-      <UiFormField v-if="workspaceStore.workspaceProviderId === 'tauri'" :label="t('projects.projectLocation')">
+      <UiFormField
+        v-if="workspaceStore.workspaceProviderId === 'tauri'"
+        :label="t('projects.projectLocation')"
+      >
         <div class="flex gap-2 w-full">
-          <UiTextInput
-            v-model="projectCreationSettings.location"
-            readonly
-            class="flex-1"
-          />
+          <UiTextInput v-model="projectCreationSettings.location" readonly class="flex-1" />
           <UButton
             color="neutral"
             variant="subtle"

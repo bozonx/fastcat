@@ -13,8 +13,25 @@ export interface WorkspaceProjectsModule {
   loadProjects: () => Promise<void>;
   clearVardata: () => Promise<void>;
   clearProjectVardata: (projectId: string) => Promise<void>;
-  deleteProject: (name: string, projectId?: string) => Promise<void>;
-  renameProject: (oldName: string, newName: string) => Promise<void>;
+  deleteProject: (input: DeleteProjectInput | string, projectId?: string) => Promise<void>;
+  renameProject: (
+    input: RenameProjectInput | string,
+    newName?: string,
+    projectId?: string,
+  ) => Promise<void>;
+}
+
+export interface DeleteProjectInput {
+  name: string;
+  projectId?: string;
+  projectPath?: string;
+}
+
+export interface RenameProjectInput {
+  oldName: string;
+  newName: string;
+  projectId?: string;
+  projectPath?: string;
 }
 
 export function createWorkspaceProjectsModule(params: {
@@ -44,6 +61,49 @@ export function createWorkspaceProjectsModule(params: {
     }
   }
 
+  function normalizeDeleteInput(
+    input: DeleteProjectInput | string,
+    projectId?: string,
+  ): DeleteProjectInput {
+    if (typeof input === 'string') {
+      return { name: input, projectId };
+    }
+    return input;
+  }
+
+  function normalizeRenameInput(
+    input: RenameProjectInput | string,
+    newName?: string,
+    projectId?: string,
+  ): RenameProjectInput {
+    if (typeof input === 'string') {
+      return { oldName: input, newName: newName ?? input, projectId };
+    }
+    return input;
+  }
+
+  function findRecentProject(input: {
+    name: string;
+    projectId?: string;
+    projectPath?: string;
+  }): RecentProject | undefined {
+    if (input.projectId) {
+      const byId = params.recentProjects.value.find(
+        (project) => project.projectId === input.projectId,
+      );
+      if (byId) return byId;
+    }
+
+    if (input.projectPath) {
+      const byPath = params.recentProjects.value.find(
+        (project) => project.projectPath === input.projectPath,
+      );
+      if (byPath) return byPath;
+    }
+
+    return params.recentProjects.value.find((project) => project.projectName === input.name);
+  }
+
   async function loadProjects() {
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
@@ -69,7 +129,8 @@ export function createWorkspaceProjectsModule(params: {
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
       try {
-        const { remove, exists, mkdir } = await import('@tauri-apps/plugin-fs');
+        const { exists, mkdir } = await import('@tauri-apps/plugin-fs');
+        const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
         const rootPaths = [
           params.resolvedStorageTopology.value.tempRoot,
           params.resolvedStorageTopology.value.proxiesRoot,
@@ -77,7 +138,13 @@ export function createWorkspaceProjectsModule(params: {
         const uniqueRootPaths = [...new Set(rootPaths.filter((path) => path.trim().length > 0))];
         for (const rootPath of uniqueRootPaths) {
           if (await exists(rootPath)) {
-            await remove(rootPath, { recursive: true });
+            await clearDirectoryContents(
+              new TauriDirectoryHandle(
+                rootPath,
+                rootPath.split(/[\\/]/).filter(Boolean).at(-1) ?? 'root',
+              ) as unknown as FileSystemDirectoryHandle,
+            );
+          } else {
             await mkdir(rootPath, { recursive: true });
           }
         }
@@ -185,32 +252,38 @@ export function createWorkspaceProjectsModule(params: {
     }
   }
 
-  async function deleteProject(name: string, projectId?: string) {
+  async function deleteProject(input: DeleteProjectInput | string, projectId?: string) {
+    const deleteInput = normalizeDeleteInput(input, projectId);
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
       try {
-        if (projectId) {
-          await clearProjectVardata(projectId);
+        if (deleteInput.projectId) {
+          await clearProjectVardata(deleteInput.projectId);
         }
 
         const { join } = await import('@tauri-apps/api/path');
         const { remove, exists } = await import('@tauri-apps/plugin-fs');
-        const project = params.recentProjects.value.find((p) => p.projectName === name);
-        const projectPath = project?.projectPath || await join(params.resolvedStorageTopology.value.projectsRoot, name);
+        const project = findRecentProject(deleteInput);
+        const projectPath =
+          deleteInput.projectPath ??
+          project?.projectPath ??
+          (await join(params.resolvedStorageTopology.value.projectsRoot, deleteInput.name));
         if (await exists(projectPath)) {
           await remove(projectPath, { recursive: true });
         }
         await loadProjects();
 
-        if (params.lastProjectName.value === name) {
+        if (params.lastProjectName.value === deleteInput.name) {
           params.lastProjectName.value = null;
         }
 
-        params.recentProjects.value = params.recentProjects.value.filter(
-          (p) => p.projectName !== name,
-        );
+        params.recentProjects.value = params.recentProjects.value.filter((recent) => {
+          if (deleteInput.projectId) return recent.projectId !== deleteInput.projectId;
+          if (deleteInput.projectPath) return recent.projectPath !== deleteInput.projectPath;
+          return recent.projectName !== deleteInput.name;
+        });
       } catch (e: unknown) {
-        log.warn('Failed to delete project', name, e);
+        log.warn('Failed to delete project', deleteInput.name, e);
         throw e;
       }
       return;
@@ -219,58 +292,82 @@ export function createWorkspaceProjectsModule(params: {
     if (!params.projectsHandle.value) return;
 
     try {
-      if (projectId) {
-        await clearProjectVardata(projectId);
+      if (deleteInput.projectId) {
+        await clearProjectVardata(deleteInput.projectId);
       }
 
-      await params.getVfs().deleteEntry(toProjectStoragePath(name), true);
+      await params.getVfs().deleteEntry(toProjectStoragePath(deleteInput.name), true);
       await loadProjects();
 
-      if (params.lastProjectName.value === name) {
+      if (params.lastProjectName.value === deleteInput.name) {
         params.lastProjectName.value = null;
       }
 
       params.recentProjects.value = params.recentProjects.value.filter(
-        (p) => p.projectName !== name,
+        (p) => p.projectName !== deleteInput.name,
       );
     } catch (e: unknown) {
       if ((e as { name?: unknown }).name !== 'NotFoundError') {
-        log.warn('Failed to delete project', name, e);
+        log.warn('Failed to delete project', deleteInput.name, e);
         throw e;
       }
     }
   }
 
-  async function renameProject(oldName: string, newName: string) {
+  async function renameProject(
+    input: RenameProjectInput | string,
+    newNameArg?: string,
+    projectId?: string,
+  ) {
+    const renameInput = normalizeRenameInput(input, newNameArg, projectId);
+    const { oldName, newName } = renameInput;
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
       if (oldName === newName) return;
-      if (params.projects.value.includes(newName)) {
-        params.error.value = `Project with name "${newName}" already exists`;
-        return;
-      }
 
       try {
         const { join, dirname } = await import('@tauri-apps/api/path');
         const { rename, exists } = await import('@tauri-apps/plugin-fs');
-        const project = params.recentProjects.value.find((p) => p.projectName === oldName);
-        const oldPath = project?.projectPath || await join(params.resolvedStorageTopology.value.projectsRoot, oldName);
-        const parentDir = project?.projectPath ? await dirname(project.projectPath) : params.resolvedStorageTopology.value.projectsRoot;
+        const project = findRecentProject({
+          name: oldName,
+          projectId: renameInput.projectId,
+          projectPath: renameInput.projectPath,
+        });
+        const oldPath =
+          renameInput.projectPath ??
+          project?.projectPath ??
+          (await join(params.resolvedStorageTopology.value.projectsRoot, oldName));
+        const parentDir =
+          renameInput.projectPath || project?.projectPath
+            ? await dirname(oldPath)
+            : params.resolvedStorageTopology.value.projectsRoot;
         const newPath = await join(parentDir, newName);
+
+        if (await exists(newPath)) {
+          params.error.value = `Project with name "${newName}" already exists`;
+          return;
+        }
+
         if (await exists(oldPath)) {
           await rename(oldPath, newPath);
         }
+
         await loadProjects();
 
         if (params.lastProjectName.value === oldName) {
           params.lastProjectName.value = newName;
         }
 
-        const recentIndex = params.recentProjects.value.findIndex((p) => p.projectName === oldName);
+        const recentIndex = params.recentProjects.value.findIndex((recent) => {
+          if (renameInput.projectId) return recent.projectId === renameInput.projectId;
+          if (renameInput.projectPath) return recent.projectPath === renameInput.projectPath;
+          return recent.projectName === oldName;
+        });
         if (recentIndex !== -1) {
           params.recentProjects.value[recentIndex] = {
             ...params.recentProjects.value[recentIndex],
             projectName: newName,
+            projectPath: newPath,
           } as RecentProject;
         }
       } catch (e: unknown) {

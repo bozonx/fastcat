@@ -4,15 +4,20 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { ref, onMounted, watch } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import { computeDirectoryStats, type DirectoryStats } from '~/utils/fs';
+import {
+  computeDirectoryStats,
+  computeDirectoryStatsByPath,
+  type DirectoryStats,
+} from '~/utils/fs';
 import { formatBytes } from '~/utils/format';
-import { getWorkspaceStorageTopology } from '~/utils/storage-roots';
-import { resolveStorageRootHandle, ensureDirectoryChain } from '~/utils/storage-handles';
+import { toProjectProxiesVfsPath, toProjectTempVfsPath } from '~/utils/storage-topology';
+import { useVfs } from '~/composables/useVfs';
 const log = createDevLogger('StorageSettings');
 
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
+const vfs = useVfs();
 
 const emit = defineEmits<{
   clearTemp: [];
@@ -24,6 +29,25 @@ const projectStats = ref<DirectoryStats | null>(null);
 const vardataStats = ref<DirectoryStats | null>(null);
 const backupStats = ref<DirectoryStats | null>(null);
 const isLoadingStats = ref(false);
+
+function combineStats(stats: DirectoryStats[]): DirectoryStats {
+  return stats.reduce<DirectoryStats>(
+    (acc, item) => ({
+      size: acc.size + item.size,
+      filesCount: acc.filesCount + item.filesCount,
+      truncated: acc.truncated || item.truncated,
+    }),
+    { size: 0, filesCount: 0 },
+  );
+}
+
+async function computeVfsStats(path: string): Promise<DirectoryStats> {
+  try {
+    return await computeDirectoryStatsByPath(vfs, path);
+  } catch {
+    return { size: 0, filesCount: 0 };
+  }
+}
 
 async function updateStats() {
   if (!projectStore.currentProjectId) return;
@@ -50,27 +74,15 @@ async function updateStats() {
       backupStats.value = { size: 0, filesCount: 0 };
     }
 
-    // 2. Calculate project vardata stats
-    if (workspaceStore.workspaceHandle) {
-      const workspaceTopology = getWorkspaceStorageTopology();
-      const tempRootDir = await resolveStorageRootHandle({
-        workspaceHandle: workspaceStore.workspaceHandle,
-        rootPath: workspaceStore.resolvedStorageTopology.tempRoot,
-      });
-      const projectsDir = await ensureDirectoryChain({
-        baseDir: tempRootDir,
-        segments: [workspaceTopology.tempProjectsDirName],
-      });
-
-      try {
-        const projectVardataDir = await projectsDir.getDirectoryHandle(
-          projectStore.currentProjectId,
-        );
-        vardataStats.value = (await computeDirectoryStats(projectVardataDir)) ?? null;
-      } catch {
-        vardataStats.value = { size: 0, filesCount: 0 };
-      }
-    }
+    const tempPath = toProjectTempVfsPath(projectStore.currentProjectId);
+    const proxiesPath = toProjectProxiesVfsPath(
+      workspaceStore.resolvedStorageTopology,
+      projectStore.currentProjectId,
+    );
+    const paths = [...new Set([tempPath, proxiesPath])];
+    vardataStats.value = combineStats(
+      await Promise.all(paths.map((path) => computeVfsStats(path))),
+    );
   } catch (e) {
     log.error('Failed to update storage stats', e);
   } finally {

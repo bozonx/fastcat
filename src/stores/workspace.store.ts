@@ -226,11 +226,20 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function updateRecentProject(project: Omit<RecentProject, 'updatedAt'>) {
     const now = new Date().toISOString();
     const existingIndex = recentProjects.value.findIndex(
-      (p) => p.projectName === project.projectName,
+      (p) =>
+        (project.projectId && p.projectId === project.projectId) ||
+        (project.projectPath && p.projectPath === project.projectPath) ||
+        (!project.projectId &&
+          !project.projectPath &&
+          !p.projectPath &&
+          p.projectName === project.projectName),
     );
+    const existingProject = existingIndex !== -1 ? recentProjects.value[existingIndex] : undefined;
 
     const updatedProject: RecentProject = {
+      ...existingProject,
       ...project,
+      projectPath: project.projectPath ?? existingProject?.projectPath,
       updatedAt: now,
     };
 

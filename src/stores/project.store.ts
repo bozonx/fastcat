@@ -7,10 +7,6 @@ import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { toProjectStoragePath } from '~/utils/workspace-common';
 import { isTauriRuntime } from '~/utils/runtime';
-
-const isAbsoluteStorageRoot = (path: string): boolean => {
-  return /^\//.test(path) || /^[a-zA-Z]:[\\/]/.test(path);
-};
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 import { createDefaultProjectSettings } from '~/utils/project-settings';
@@ -41,6 +37,10 @@ import { useProjectLock } from '~/composables/editor/useProjectLock';
 import { getErrorMessage } from '~/utils/errors';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { thumbnailGenerator } from '~/utils/thumbnail-generator';
+
+const isAbsoluteStorageRoot = (path: string): boolean => {
+  return /^\//.test(path) || /^[a-zA-Z]:[\\/]/.test(path);
+};
 const log = createDevLogger('project.store');
 
 export const useProjectStore = defineStore('project', () => {
@@ -262,7 +262,8 @@ export const useProjectStore = defineStore('project', () => {
       if (isTauri) {
         const { join } = await import('@tauri-apps/api/path');
         const { mkdir, exists } = await import('@tauri-apps/plugin-fs');
-        const parentDir = options?.parentPath || workspaceStore.resolvedStorageTopology.projectsRoot;
+        const parentDir =
+          options?.parentPath || workspaceStore.resolvedStorageTopology.projectsRoot;
         projectPath = await join(parentDir, name);
 
         if (await exists(projectPath)) {
@@ -273,7 +274,10 @@ export const useProjectStore = defineStore('project', () => {
 
         await mkdir(projectPath, { recursive: true });
         const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
-        currentProjectDirHandle.value = new TauriDirectoryHandle(projectPath, name) as unknown as FileSystemDirectoryHandle;
+        currentProjectDirHandle.value = new TauriDirectoryHandle(
+          projectPath,
+          name,
+        ) as unknown as FileSystemDirectoryHandle;
       }
 
       currentProjectName.value = name;
@@ -354,7 +358,7 @@ export const useProjectStore = defineStore('project', () => {
       });
 
       await vfs.writeFile(
-        toProjectStoragePath(name, initialTimeline),
+        isTauri ? initialTimeline : toProjectStoragePath(name, initialTimeline),
         serializeTimelineToOtio(payload),
       );
 
@@ -383,14 +387,6 @@ export const useProjectStore = defineStore('project', () => {
           projectId: currentProjectId.value,
           lastTimelinePath: initialTimeline,
           projectPath: isTauri ? projectPath : undefined,
-        });
-      }
-
-      if (currentProjectId.value) {
-        workspaceStore.updateRecentProject({
-          projectName: name,
-          projectId: currentProjectId.value,
-          lastTimelinePath: initialTimeline,
         });
       }
 
@@ -424,7 +420,10 @@ export const useProjectStore = defineStore('project', () => {
       await invoke('allow_path_scope', { path }).catch(() => {});
 
       const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
-      currentProjectDirHandle.value = new TauriDirectoryHandle(path, name) as unknown as FileSystemDirectoryHandle;
+      currentProjectDirHandle.value = new TauriDirectoryHandle(
+        path,
+        name,
+      ) as unknown as FileSystemDirectoryHandle;
     } else {
       if (!workspaceStore.projects.includes(name)) {
         workspaceStore.error = 'Project not found';
@@ -502,10 +501,11 @@ export const useProjectStore = defineStore('project', () => {
       log.warn('deleteCurrentProject blocked: project is read-only');
       return;
     }
-    await workspaceStore.deleteProject(
-      currentProjectName.value,
-      currentProjectId.value ?? undefined,
-    );
+    await workspaceStore.deleteProject({
+      name: currentProjectName.value,
+      projectId: currentProjectId.value ?? undefined,
+      projectPath: (currentProjectDirHandle.value as unknown as { path?: string } | null)?.path,
+    });
     closeProject();
   }
 

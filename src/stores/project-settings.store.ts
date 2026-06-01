@@ -167,7 +167,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
   const autoSave = createAutoSave({
     doSave: async () => {
-      if (!workspaceStore.projectsHandle) return false;
+      const projectDir = await getProjectDirHandle.value?.();
+      if (!projectDir) return false;
       if (!getCurrentProjectName.value?.()) return false;
       if (isLoadingProjectSettings.value) return false;
       if (getIsReadOnly.value?.()) return false;

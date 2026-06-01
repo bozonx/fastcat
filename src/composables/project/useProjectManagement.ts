@@ -5,6 +5,12 @@ import { useProjectStore } from '~/stores/project.store';
 import { resolveLastUsedProjectPreset } from '~/utils/settings';
 const log = createDevLogger('useProjectManagement');
 
+interface ProjectActionTarget {
+  projectName: string;
+  projectId?: string;
+  projectPath?: string;
+}
+
 function createProjectCreationState(workspaceStore: ReturnType<typeof useWorkspaceStore>) {
   const preset = resolveLastUsedProjectPreset(workspaceStore.userSettings.projectPresets);
 
@@ -67,10 +73,10 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const projectCreationSettings = ref(createProjectCreationState(workspaceStore));
 
   const isRenameModalOpen = ref(false);
-  const renameTargetProject = ref<string | null>(null);
+  const renameTargetProject = ref<ProjectActionTarget | null>(null);
 
   const isDeleteModalOpen = ref(false);
-  const deleteTargetProject = ref<string | null>(null);
+  const deleteTargetProject = ref<ProjectActionTarget | null>(null);
 
   const filteredProjects = computed(() => {
     if (!searchQuery.value.trim()) {
@@ -94,17 +100,29 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
       aspectRatio: projectCreationSettings.value.aspectRatio,
       isCustomResolution: projectCreationSettings.value.isCustomResolution,
       sampleRate: projectCreationSettings.value.sampleRate,
-      parentPath: workspaceStore.workspaceProviderId === 'tauri' ? projectCreationSettings.value.location : undefined,
+      parentPath:
+        workspaceStore.workspaceProviderId === 'tauri'
+          ? projectCreationSettings.value.location
+          : undefined,
     };
 
     await projectStore.createProject(name, options);
+
+    if (workspaceStore.error) {
+      return;
+    }
 
     if (options.presetId) {
       workspaceStore.userSettings.projectPresets.lastUsedPresetId = options.presetId;
     }
 
     if (workspaceStore.userSettings.openLastProjectOnStart) {
-      handleOpenProject(workspaceStore.workspaceProviderId === 'tauri' ? `${options.parentPath}/${name}` : name);
+      if (workspaceStore.workspaceProviderId === 'tauri' && options.parentPath) {
+        const { join } = await import('@tauri-apps/api/path');
+        handleOpenProject(await join(options.parentPath, name));
+      } else {
+        handleOpenProject(name);
+      }
     }
 
     isCreateModalOpen.value = false;
@@ -133,21 +151,27 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
 
   async function renameProject() {
     const oldName = renameTargetProject.value;
-    if (!oldName || !renameValue.value.trim() || renameValue.value === oldName) {
+    if (!oldName || !renameValue.value.trim() || renameValue.value === oldName.projectName) {
       closeRenameModal();
       return;
     }
     try {
-      await workspaceStore.renameProject(oldName, renameValue.value.trim());
+      await workspaceStore.renameProject({
+        oldName: oldName.projectName,
+        newName: renameValue.value.trim(),
+        projectId: oldName.projectId,
+        projectPath: oldName.projectPath,
+      });
       closeRenameModal();
     } catch (e) {
       log.error('Failed to rename project', e);
     }
   }
 
-  function startRename(project: string) {
-    renameTargetProject.value = project;
-    renameValue.value = project;
+  function startRename(project: ProjectActionTarget | string) {
+    renameTargetProject.value =
+      typeof project === 'string' ? { projectName: project } : { ...project };
+    renameValue.value = renameTargetProject.value.projectName;
     isRenameModalOpen.value = true;
   }
 
@@ -157,16 +181,21 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     renameValue.value = '';
   }
 
-  function startDelete(project: string) {
-    deleteTargetProject.value = project;
+  function startDelete(project: ProjectActionTarget | string) {
+    deleteTargetProject.value =
+      typeof project === 'string' ? { projectName: project } : { ...project };
     isDeleteModalOpen.value = true;
   }
 
   async function confirmDelete() {
-    const name = deleteTargetProject.value;
-    if (!name) return;
+    const target = deleteTargetProject.value;
+    if (!target) return;
     try {
-      await workspaceStore.deleteProject(name);
+      await workspaceStore.deleteProject({
+        name: target.projectName,
+        projectId: target.projectId,
+        projectPath: target.projectPath,
+      });
     } catch (e) {
       log.error('Failed to delete project', e);
     } finally {

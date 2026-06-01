@@ -176,6 +176,7 @@ describe('ProjectSettingsStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    workspaceMock.projectsHandle = {} as any;
   });
 
   it('activeMonitor falls back to cut when view is unrecognized', () => {
@@ -304,6 +305,25 @@ describe('ProjectSettingsStore', () => {
     expect(saved.ui.layout.splitSizes['editor-files-top:p1']).toEqual([70, 30]);
     expect(saved.ui.layout.verticalSplitSizes['vkey']).toEqual({ 'col-1': [60, 40] });
     expect(saved.ui.layout.timelineHeights['timeline-height-cut:p1']).toBe(55);
+  });
+
+  it('autosave persists in tauri workspace-less mode when an active project handle exists', async () => {
+    workspaceMock.projectsHandle = null;
+    const store = useProjectSettingsStore();
+    store.setContext({
+      getProjectDirHandle: async () => ({ kind: 'directory', path: '/projects/demo' }) as any,
+      getCurrentProjectName: () => 'demo',
+      getIsReadOnly: () => false,
+      getProjectMeta: () => null,
+      saveProjectMeta: async () => {},
+      getCurrentEditorView: () => 'cut',
+      getLastViewBeforeFullscreen: () => null,
+    });
+
+    expect(capturedAutoSave.doSave).toBeTypeOf('function');
+    await capturedAutoSave.doSave!();
+
+    expect(uiSaveSpy).toHaveBeenCalled();
   });
 });
 

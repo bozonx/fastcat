@@ -123,6 +123,49 @@ describe('WorkspaceStore', () => {
       expect(store.lastProjectName).toBe('my-project');
     });
 
+    it('preserves tauri projectPath when updating an existing project by id', () => {
+      const store = useWorkspaceStore();
+      store.updateRecentProject({
+        projectName: 'same-name',
+        projectId: 'id-1',
+        projectPath: '/projects/a/same-name',
+      });
+
+      store.updateRecentProject({
+        projectName: 'same-name',
+        projectId: 'id-1',
+        lastTimelinePath: 'timelines/main.otio',
+      });
+
+      expect(store.recentProjects).toHaveLength(1);
+      expect(store.recentProjects[0]).toMatchObject({
+        projectName: 'same-name',
+        projectId: 'id-1',
+        projectPath: '/projects/a/same-name',
+        lastTimelinePath: 'timelines/main.otio',
+      });
+    });
+
+    it('keeps tauri projects with the same name separate when paths differ', () => {
+      const store = useWorkspaceStore();
+      store.updateRecentProject({
+        projectName: 'duplicate',
+        projectId: 'id-1',
+        projectPath: '/projects/a/duplicate',
+      });
+      store.updateRecentProject({
+        projectName: 'duplicate',
+        projectId: 'id-2',
+        projectPath: '/projects/b/duplicate',
+      });
+
+      expect(store.recentProjects).toHaveLength(2);
+      expect(store.recentProjects.map((project) => project.projectPath)).toEqual([
+        '/projects/b/duplicate',
+        '/projects/a/duplicate',
+      ]);
+    });
+
     it('syncs to workspaceState.ui.recentProjects', async () => {
       const store = useWorkspaceStore();
       store.updateRecentProject({ projectName: 'sync-test', projectId: 'id-1' });
@@ -216,10 +259,20 @@ describe('WorkspaceStore', () => {
 
     it('synchronizes projects list with recent projects names in tauri mode', async () => {
       const store = useWorkspaceStore();
-      
+
       store.recentProjects = [
-        { projectName: 'tauri-p1', projectId: 'id1', updatedAt: '2024-01-01', projectPath: '/path/to/tauri-p1' },
-        { projectName: 'tauri-p2', projectId: 'id2', updatedAt: '2024-01-02', projectPath: '/path/to/tauri-p2' },
+        {
+          projectName: 'tauri-p1',
+          projectId: 'id1',
+          updatedAt: '2024-01-01',
+          projectPath: '/path/to/tauri-p1',
+        },
+        {
+          projectName: 'tauri-p2',
+          projectId: 'id2',
+          updatedAt: '2024-01-02',
+          projectPath: '/path/to/tauri-p2',
+        },
       ];
 
       await nextTick();
