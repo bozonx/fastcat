@@ -290,33 +290,47 @@ export const useMediaStore = defineStore('media', () => {
           const nativePath = getNativeFileHandlePath(handle);
           if (nativePath) {
             const nativeMeta = await nativeMediaMetadata(nativePath);
-            meta = {
-              source: { size: file.size, lastModified: file.lastModified },
-              duration: nativeMeta.duration,
-            };
-            if (nativeMeta.video) {
-              meta.video = {
-                width: nativeMeta.video.width,
-                height: nativeMeta.video.height,
-                displayWidth: nativeMeta.video.width,
-                displayHeight: nativeMeta.video.height,
-                rotation: 0,
-                codec: nativeMeta.video.codec,
-                parsedCodec: nativeMeta.video.codec,
-                fps: nativeMeta.video.fps,
-                bitrate: nativeMeta.video.bitrate ?? undefined,
-                canDecode: true,
+            const mediaType = getMediaTypeFromFilename(projectRelativePath);
+
+            if (mediaType === 'image') {
+              meta = {
+                source: { size: file.size, lastModified: file.lastModified },
+                duration: 0,
+                image: {
+                  canDisplay: true,
+                  width: nativeMeta.video?.width ?? 0,
+                  height: nativeMeta.video?.height ?? 0,
+                },
               };
-            }
-            if (nativeMeta.audio) {
-              meta.audio = {
-                codec: nativeMeta.audio.codec,
-                parsedCodec: nativeMeta.audio.codec,
-                sampleRate: nativeMeta.audio.sampleRate ?? 48000,
-                channels: nativeMeta.audio.channels ?? 2,
-                bitrate: nativeMeta.audio.bitrate ?? undefined,
-                canDecode: true,
+            } else {
+              meta = {
+                source: { size: file.size, lastModified: file.lastModified },
+                duration: nativeMeta.duration,
               };
+              if (nativeMeta.video) {
+                meta.video = {
+                  width: nativeMeta.video.width,
+                  height: nativeMeta.video.height,
+                  displayWidth: nativeMeta.video.width,
+                  displayHeight: nativeMeta.video.height,
+                  rotation: 0,
+                  codec: nativeMeta.video.codec,
+                  parsedCodec: nativeMeta.video.codec,
+                  fps: nativeMeta.video.fps,
+                  bitrate: nativeMeta.video.bitrate ?? undefined,
+                  canDecode: true,
+                };
+              }
+              if (nativeMeta.audio) {
+                meta.audio = {
+                  codec: nativeMeta.audio.codec,
+                  parsedCodec: nativeMeta.audio.codec,
+                  sampleRate: nativeMeta.audio.sampleRate ?? 48000,
+                  channels: nativeMeta.audio.channels ?? 2,
+                  bitrate: nativeMeta.audio.bitrate ?? undefined,
+                  canDecode: true,
+                };
+              }
             }
           } else {
             throw new Error(`Could not resolve native file path for: ${projectRelativePath}`);

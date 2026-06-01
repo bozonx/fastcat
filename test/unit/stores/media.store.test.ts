@@ -7,6 +7,20 @@ import { useProjectStore } from '~/stores/project.store';
 import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 vi.mock('#app-manifest', () => ({}));
 
+const { mockIsTauriState, mockNativeMediaMetadata } = vi.hoisted(() => ({
+  mockIsTauriState: { value: false },
+  mockNativeMediaMetadata: vi.fn(),
+}));
+
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: () => mockIsTauriState.value,
+}));
+
+vi.mock('~/utils/tauri-media-processing', () => ({
+  getNativeFileHandlePath: (handle: any) => handle?.path || null,
+  nativeMediaMetadata: (...args: any[]) => mockNativeMediaMetadata(...args),
+}));
+
 const { clearThumbnailMock, clearThumbnailsMock } = vi.hoisted(() => ({
   clearThumbnailMock: vi.fn(),
   clearThumbnailsMock: vi.fn(),
@@ -194,6 +208,8 @@ describe('MediaStore', () => {
     mediaFsMock.reset();
     clearThumbnailMock.mockReset();
     clearThumbnailsMock.mockReset();
+    mockIsTauriState.value = false;
+    mockNativeMediaMetadata.mockReset();
     vi.mocked(useProjectStore).mockReturnValue({
       currentProjectId: 'test-project',
       getFileHandleByPath: vi.fn(),
@@ -538,5 +554,98 @@ describe('MediaStore', () => {
     expect(store.metadataLoading['video/sub/a.mp4']).toBeUndefined();
     expect(store.metadataLoading['video/sub/b.mp4']).toBeUndefined();
     expect(store.metadataLoading['video/other.mp4']).toBe(true);
+  });
+
+  it('extracts metadata for image in Tauri environment correctly', async () => {
+    mockIsTauriState.value = true;
+
+    const mockFile = { size: 12345, lastModified: 98765, name: 'logo.svg' } as File;
+    const mockHandle = { path: 'image/logo.svg' };
+    
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
+      getFileByPath: vi.fn().mockResolvedValue(mockFile),
+    } as any);
+
+    const store = useMediaStore();
+
+    mockNativeMediaMetadata.mockResolvedValue({
+      duration: 0.0,
+      video: {
+        width: 800,
+        height: 600,
+        fps: 25.0,
+        codec: 'png',
+      },
+    });
+
+    const result = await store.getOrFetchMetadata(mockFile, 'image/logo.svg');
+
+    expect(result).toBeDefined();
+    expect(result?.duration).toBe(0);
+    expect(result?.image).toEqual({
+      canDisplay: true,
+      width: 800,
+      height: 600,
+    });
+    expect(result?.video).toBeUndefined();
+    expect(result?.audio).toBeUndefined();
+  });
+
+  it('extracts metadata for video in Tauri environment correctly', async () => {
+    mockIsTauriState.value = true;
+
+    const mockFile = { size: 12345, lastModified: 98765, name: 'movie.mp4' } as File;
+    const mockHandle = { path: 'video/movie.mp4' };
+    
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
+      getFileByPath: vi.fn().mockResolvedValue(mockFile),
+    } as any);
+
+    const store = useMediaStore();
+
+    mockNativeMediaMetadata.mockResolvedValue({
+      duration: 12.34,
+      video: {
+        width: 1920,
+        height: 1080,
+        fps: 30.0,
+        codec: 'h264',
+      },
+      audio: {
+        codec: 'aac',
+        sampleRate: 48000,
+        channels: 2,
+      },
+    });
+
+    const result = await store.getOrFetchMetadata(mockFile, 'video/movie.mp4');
+
+    expect(result).toBeDefined();
+    expect(result?.duration).toBe(12.34);
+    expect(result?.video).toEqual({
+      width: 1920,
+      height: 1080,
+      displayWidth: 1920,
+      displayHeight: 1080,
+      rotation: 0,
+      codec: 'h264',
+      parsedCodec: 'h264',
+      fps: 30.0,
+      bitrate: undefined,
+      canDecode: true,
+    });
+    expect(result?.audio).toEqual({
+      codec: 'aac',
+      parsedCodec: 'aac',
+      sampleRate: 48000,
+      channels: 2,
+      bitrate: undefined,
+      canDecode: true,
+    });
+    expect(result?.image).toBeUndefined();
   });
 });
