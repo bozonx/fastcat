@@ -139,6 +139,7 @@ pub struct LayerRuntimeManager {
     pub preview_scale: Option<f32>,
     /// Целевой FPS preview-монитора; устанавливается из MonitorScene.preview_fps.
     pub preview_fps: f64,
+    pub playing: bool,
     runtimes: HashMap<String, LayerRuntime>,
     loading_set: HashSet<String>,
     bg_tx: Sender<BgLayerResult>,
@@ -157,6 +158,7 @@ impl LayerRuntimeManager {
             scene_size: (0, 0),
             preview_scale: None,
             preview_fps: 30.0,
+            playing: false,
             runtimes: HashMap::new(),
             loading_set: HashSet::new(),
             bg_tx,
@@ -166,6 +168,22 @@ impl LayerRuntimeManager {
 
     pub fn is_empty(&self) -> bool {
         self.scene.is_empty()
+    }
+
+    pub fn set_playing(&mut self, playing: bool) {
+        if self.playing == playing {
+            return;
+        }
+        self.playing = playing;
+        for rt in self.runtimes.values_mut() {
+            if let LayerRuntime::Video(v) = rt {
+                if playing {
+                    let _ = v.pump.play();
+                } else {
+                    let _ = v.pump.pause();
+                }
+            }
+        }
     }
 
     /// Конец последнего слоя сцены (секунды timeline). 0.0 если сцена пуста.
@@ -357,10 +375,13 @@ impl LayerRuntimeManager {
                     .map(|l| l.source_pts_at(0.0))
                     .unwrap_or(0.0);
                 let rt = VideoLayerRt::new(pump, media_size);
-                if clip_local > 0.0 {
-                    if let Err(e) = rt.pump.seek(clip_local) {
-                        log::error!("[monitor] initial seek {id}: {e:?}");
-                    }
+                if self.playing {
+                    let _ = rt.pump.play();
+                } else {
+                    let _ = rt.pump.pause();
+                }
+                if let Err(e) = rt.pump.seek(clip_local) {
+                    log::error!("[monitor] initial seek {id}: {e:?}");
                 }
                 self.runtimes.insert(id, LayerRuntime::Video(rt));
             }

@@ -400,6 +400,7 @@ impl WindowState {
             audio.play(pts);
         }
         self.clock.play();
+        self.layers.set_playing(true);
         // После скраба по кешу декодеры могут стоять не на текущей позиции —
         // перепозиционируем, чтобы forward-стрим воспроизведения был корректным.
         self.layers.resync_active_videos(self.clock.current_pts());
@@ -413,6 +414,7 @@ impl WindowState {
         };
         self.clock.pause();
         self.clock.seek(pts);
+        self.layers.set_playing(false);
     }
 
     fn seek(&mut self, timeline_sec: f64) {

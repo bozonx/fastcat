@@ -27,6 +27,8 @@ pub struct DecodedFrameMsg {
 }
 
 enum DecoderCmd {
+    Play,
+    Pause,
     Seek { generation: u64, time_sec: f64 },
     Stop,
 }
@@ -72,6 +74,18 @@ impl DecodePump {
             generation,
             thread: Some(thread),
         })
+    }
+
+    pub fn play(&self) -> Result<()> {
+        self.cmd_tx
+            .send(DecoderCmd::Play)
+            .map_err(|_| anyhow!("decoder thread is gone"))
+    }
+
+    pub fn pause(&self) -> Result<()> {
+        self.cmd_tx
+            .send(DecoderCmd::Pause)
+            .map_err(|_| anyhow!("decoder thread is gone"))
     }
 
     /// Returns the generation that all future frames will have.
@@ -125,6 +139,8 @@ fn run_decoder_loop(
     gen: Arc<AtomicU64>,
     on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
 ) {
+    let mut playing = false;
+    let mut decoded_after_seek = false;
     let mut current_gen = gen.load(Ordering::SeqCst);
     let mut at_eof = false;
 
@@ -140,6 +156,12 @@ fn run_decoder_loop(
                     time_sec,
                 }) => {
                     latest_seek = Some((generation, time_sec));
+                }
+                Ok(DecoderCmd::Play) => {
+                    playing = true;
+                }
+                Ok(DecoderCmd::Pause) => {
+                    playing = false;
                 }
                 Ok(DecoderCmd::Stop) => {
                     stop = true;
@@ -161,36 +183,48 @@ fn run_decoder_loop(
                 return;
             }
             at_eof = false;
+            decoded_after_seek = false;
         }
 
-        // 2) EOF — ждём следующую команду блокирующе.
-        if at_eof {
+        // Если мы не проигрываем, и уже декодировали один кадр после seek, то нам нечего делать — ждём команду блокирующе.
+        if (!playing && decoded_after_seek) || at_eof {
             match cmd_rx.recv() {
-                Ok(DecoderCmd::Seek {
-                    generation,
-                    time_sec,
-                }) => {
-                    let mut latest_seek = Some((generation, time_sec));
+                Ok(cmd) => {
+                    let mut latest_seek = None;
                     let mut stop = false;
+
+                    let mut process_cmd = |cmd: DecoderCmd| match cmd {
+                        DecoderCmd::Seek {
+                            generation,
+                            time_sec,
+                        } => {
+                            latest_seek = Some((generation, time_sec));
+                        }
+                        DecoderCmd::Play => {
+                            playing = true;
+                        }
+                        DecoderCmd::Pause => {
+                            playing = false;
+                        }
+                        DecoderCmd::Stop => {
+                            stop = true;
+                        }
+                    };
+
+                    process_cmd(cmd);
+
                     loop {
                         match cmd_rx.try_recv() {
-                            Ok(DecoderCmd::Seek {
-                                generation,
-                                time_sec,
-                            }) => {
-                                latest_seek = Some((generation, time_sec));
-                            }
-                            Ok(DecoderCmd::Stop) => {
-                                stop = true;
-                                break;
-                            }
+                            Ok(cmd) => process_cmd(cmd),
                             Err(TryRecvError::Empty) => break,
                             Err(TryRecvError::Disconnected) => return,
                         }
                     }
+
                     if stop {
                         return;
                     }
+
                     if let Some((generation, time_sec)) = latest_seek {
                         current_gen = generation;
                         if let Err(e) = decoder.seek(time_sec) {
@@ -198,10 +232,10 @@ fn run_decoder_loop(
                             return;
                         }
                         at_eof = false;
-                        continue;
+                        decoded_after_seek = false;
                     }
+                    continue;
                 }
-                Ok(DecoderCmd::Stop) => return,
                 Err(_) => return,
             }
         }
@@ -222,6 +256,7 @@ fn run_decoder_loop(
                 if frame_tx.send(msg).is_err() {
                     return; // consumer ушёл
                 }
+                decoded_after_seek = true;
                 if let Some(ref cb) = on_frame_decoded {
                     cb();
                 }

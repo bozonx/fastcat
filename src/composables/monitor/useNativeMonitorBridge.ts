@@ -55,6 +55,7 @@ export function useNativeMonitorBridge(): void {
 
   let lastSceneJson = '';
   let suppressSeekFromTimeUpdate = false;
+  let lastSentTime = 0;
 
   async function buildScene(): Promise<NativeMonitorScene> {
     const doc = timelineStore.timelineDoc;
@@ -130,7 +131,19 @@ export function useNativeMonitorBridge(): void {
   watch(
     () => timelineStore.currentTime,
     async (t) => {
-      if (suppressSeekFromTimeUpdate) return;
+      if (suppressSeekFromTimeUpdate) {
+        lastSentTime = t;
+        return;
+      }
+
+      if (timelineStore.isPlaying) {
+        const diff = Math.abs(t - lastSentTime);
+        if (diff <= 200_000) {
+          return;
+        }
+      }
+
+      lastSentTime = t;
       try {
         await invoke('monitor_seek', { timeSec: t / 1_000_000 });
       } catch (err) {
