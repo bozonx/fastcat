@@ -127,6 +127,7 @@ impl VideoLayerRt {
 pub struct ImageLayerRt {
     pub image: ImageData,
     pub size: (u32, u32),
+    pub is_svg: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -223,8 +224,12 @@ impl LayerRuntimeManager {
         let prev = std::mem::take(&mut self.runtimes);
         let mut to_drop: Vec<LayerRuntime> = Vec::new();
         for (id, rt) in prev {
-            let drop_for_scale =
-                scale_changed && matches!(rt, LayerRuntime::Video(_) | LayerRuntime::Loading);
+            let drop_for_scale = scale_changed
+                && match &rt {
+                    LayerRuntime::Video(_) | LayerRuntime::Loading => true,
+                    LayerRuntime::Image(im) => im.is_svg,
+                    _ => false,
+                };
             let gone = !new_ids.contains(&id);
             let failed_retry = matches!(rt, LayerRuntime::Failed);
             if drop_for_scale || gone || failed_retry {
@@ -407,7 +412,7 @@ impl LayerRuntimeManager {
                 }
                 log::info!("[monitor] decoded image {id}: {}x{}", size.0, size.1);
                 self.runtimes
-                    .insert(id, LayerRuntime::Image(ImageLayerRt { image, size }));
+                    .insert(id, LayerRuntime::Image(ImageLayerRt { image, size, is_svg: false }));
             }
             BgLayerResult::ImageErr { id, error } => {
                 self.loading_set.remove(&id);
@@ -423,7 +428,7 @@ impl LayerRuntimeManager {
                 }
                 log::info!("[monitor] decoded svg {id}: {}x{}", size.0, size.1);
                 self.runtimes
-                    .insert(id, LayerRuntime::Image(ImageLayerRt { image, size }));
+                    .insert(id, LayerRuntime::Image(ImageLayerRt { image, size, is_svg: true }));
             }
             BgLayerResult::SvgErr { id, error } => {
                 self.loading_set.remove(&id);
