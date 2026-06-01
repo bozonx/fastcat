@@ -2,7 +2,7 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { Sprite, Texture, type Application, type RenderTexture } from 'pixi.js';
 import { DEFAULT_TRANSITION_MODE } from '~/transitions';
 import type { TransitionManager } from './TransitionManager';
-import type { CompositorClip, CompositorTrack } from './types';
+import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './types';
 import type { StageTextureRenderer } from './StageTextureRenderer';
 const log = createDevLogger('TransitionRenderer');
 
@@ -187,7 +187,7 @@ export class TransitionRenderer {
       transitionSprite.width = params.width;
       transitionSprite.height = params.height;
       transitionSprite.alpha = 1;
-      transitionSprite.blendMode = clip.blendMode ?? 'normal';
+      transitionSprite.blendMode = toPixiBlendMode(clip.blendMode);
       transitionSprite.filters = null;
       transitionSprite.visible = true;
 

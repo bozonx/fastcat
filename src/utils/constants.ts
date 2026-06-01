@@ -132,8 +132,19 @@ export const BLEND_MODE_OPTIONS = [
   { value: 'add', labelKey: 'fastcat.clip.blendMode.add' },
   { value: 'multiply', labelKey: 'fastcat.clip.blendMode.multiply' },
   { value: 'screen', labelKey: 'fastcat.clip.blendMode.screen' },
+  { value: 'overlay', labelKey: 'fastcat.clip.blendMode.overlay' },
   { value: 'darken', labelKey: 'fastcat.clip.blendMode.darken' },
   { value: 'lighten', labelKey: 'fastcat.clip.blendMode.lighten' },
+  { value: 'color-dodge', labelKey: 'fastcat.clip.blendMode.colorDodge' },
+  { value: 'color-burn', labelKey: 'fastcat.clip.blendMode.colorBurn' },
+  { value: 'hard-light', labelKey: 'fastcat.clip.blendMode.hardLight' },
+  { value: 'soft-light', labelKey: 'fastcat.clip.blendMode.softLight' },
+  { value: 'difference', labelKey: 'fastcat.clip.blendMode.difference' },
+  { value: 'exclusion', labelKey: 'fastcat.clip.blendMode.exclusion' },
+  { value: 'hue', labelKey: 'fastcat.clip.blendMode.hue' },
+  { value: 'saturation', labelKey: 'fastcat.clip.blendMode.saturation' },
+  { value: 'color', labelKey: 'fastcat.clip.blendMode.color' },
+  { value: 'luminosity', labelKey: 'fastcat.clip.blendMode.luminosity' },
 ];
 
 export const TRACK_COLOR_PRESETS = [

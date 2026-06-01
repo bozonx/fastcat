@@ -1,4 +1,12 @@
-import type { Filter, Sprite, Graphics, ImageSource, RenderTexture, Container } from 'pixi.js';
+import type {
+  BLEND_MODES,
+  Filter,
+  Sprite,
+  Graphics,
+  ImageSource,
+  RenderTexture,
+  Container,
+} from 'pixi.js';
 import type { Input, VideoSampleSink } from 'mediabunny';
 import type {
   TextClipStyle,
@@ -197,10 +205,25 @@ export function resolveBlendMode(value: unknown): TimelineBlendMode {
   return value === 'add' ||
     value === 'multiply' ||
     value === 'screen' ||
+    value === 'overlay' ||
     value === 'darken' ||
-    value === 'lighten'
+    value === 'lighten' ||
+    value === 'color-dodge' ||
+    value === 'color-burn' ||
+    value === 'hard-light' ||
+    value === 'soft-light' ||
+    value === 'difference' ||
+    value === 'exclusion' ||
+    value === 'hue' ||
+    value === 'saturation' ||
+    value === 'color' ||
+    value === 'luminosity'
     ? value
     : 'normal';
+}
+
+export function toPixiBlendMode(value: TimelineBlendMode | undefined): BLEND_MODES {
+  return (value ?? 'normal') as unknown as BLEND_MODES;
 }
 
 export function isEdgePadding(

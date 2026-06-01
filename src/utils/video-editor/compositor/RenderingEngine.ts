@@ -1,5 +1,5 @@
 import type { Application } from 'pixi.js';
-import type { CompositorClip, CompositorTrack } from './types';
+import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './types';
 import type { PreviewRenderOptions } from '../worker-rpc';
 import { safeDispose } from '../utils';
 
@@ -108,7 +108,7 @@ export class RenderingEngine {
 
       for (const track of context.tracks) {
         track.container.alpha = track.opacity ?? 1;
-        track.container.blendMode = track.blendMode ?? 'normal';
+        track.container.blendMode = toPixiBlendMode(track.blendMode);
         context.applyTrackState(track);
       }
 

@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import type { ConversionRequest } from '~/types/conversion';
 import type { TauriFileHandle } from '~/stores/workspace/provider/tauri-handle';
 
@@ -72,6 +73,46 @@ export async function nativeConvertMedia(params: {
 
 export async function nativeCancelMediaTask(taskId: string): Promise<boolean> {
   return await invoke<boolean>('native_media_cancel', { taskId });
+}
+
+export interface NativeTimelineExportOptions {
+  width: number;
+  height: number;
+  fps: number;
+  startSec: number;
+  endSec: number;
+  videoCodec: string;
+  videoBitrateBps: number;
+  format: string;
+  audioPath?: string | null;
+  audioCodec?: string | null;
+  audioBitrateBps?: number | null;
+}
+
+export async function nativeExportTimeline(params: {
+  taskId: string;
+  scene: unknown;
+  targetPath: string;
+  options: NativeTimelineExportOptions;
+  onProgress?: (progress: number) => void;
+}): Promise<void> {
+  const unlisten = params.onProgress
+    ? await listen<{ taskId: string; progress: number }>('native-timeline-export:progress', (event) => {
+        if (event.payload.taskId !== params.taskId) return;
+        params.onProgress?.(event.payload.progress);
+      })
+    : null;
+
+  try {
+    await invoke('native_timeline_export', {
+      taskId: params.taskId,
+      scene: params.scene,
+      targetPath: params.targetPath,
+      options: params.options,
+    });
+  } finally {
+    unlisten?.();
+  }
 }
 
 export async function nativeRenderTimelineFrameWebp(params: {

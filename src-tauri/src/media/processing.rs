@@ -13,7 +13,7 @@ pub struct NativeMediaTasks {
 }
 
 impl NativeMediaTasks {
-    fn insert(&self, task_id: &str, child: Child) -> Arc<Mutex<Child>> {
+    pub(crate) fn insert(&self, task_id: &str, child: Child) -> Arc<Mutex<Child>> {
         let child = Arc::new(Mutex::new(child));
         self.children
             .lock()
@@ -22,7 +22,7 @@ impl NativeMediaTasks {
         child
     }
 
-    fn remove(&self, task_id: &str) {
+    pub(crate) fn remove(&self, task_id: &str) {
         self.children
             .lock()
             .expect("native media task registry poisoned")

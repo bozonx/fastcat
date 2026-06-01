@@ -188,6 +188,7 @@ pub struct TextLayer {
     pub font_weight: f32,
     pub color: Color,
     pub align: TextAlign,
+    pub vertical_align: TextVerticalAlign,
     pub line_height: f32,
     pub max_width: Option<f32>,
     pub background: Option<TextBackground>,
@@ -199,6 +200,13 @@ pub enum TextAlign {
     Left,
     Center,
     Right,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum TextVerticalAlign {
+    Top,
+    Middle,
+    Bottom,
 }
 
 #[derive(Debug, Clone)]
@@ -453,7 +461,13 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     };
     layout.align(alignment, AlignmentOptions::default());
 
-    let y = ((spec.natural_size.1 as f32 - layout.height()).max(0.0)) * 0.5;
+    // Вертикальное выравнивание блока строк внутри natural-bbox слоя.
+    let slack = (spec.natural_size.1 as f32 - layout.height()).max(0.0);
+    let y = match spec.vertical_align {
+        TextVerticalAlign::Top => 0.0,
+        TextVerticalAlign::Middle => slack * 0.5,
+        TextVerticalAlign::Bottom => slack,
+    };
     for line in layout.lines() {
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(run) = item else {

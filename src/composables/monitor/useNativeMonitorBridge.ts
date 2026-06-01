@@ -60,6 +60,8 @@ interface MonitorScene {
   height: number;
   /** Preview scale: 1 = full, 0.5 = 1/2, 0.25 = 1/4, 0.125 = 1/8. */
   preview_scale?: number;
+  /** Native monitor tick FPS; matches the project timeline format. */
+  preview_fps?: number;
 }
 
 function extOf(path: string): string {
@@ -213,6 +215,7 @@ export function useNativeMonitorBridge(): void {
         width: sceneWidth,
         height: sceneHeight,
         preview_scale: previewScale,
+        preview_fps: fmt?.fps ?? 30,
       };
 
     // В fastcat КОНВЕНЦИЯ: первый video-трек в `doc.tracks` = верхний визуально = должен
@@ -321,7 +324,13 @@ export function useNativeMonitorBridge(): void {
         }
       }
     }
-    return { layers, width: sceneWidth, height: sceneHeight, preview_scale: previewScale };
+    return {
+      layers,
+      width: sceneWidth,
+      height: sceneHeight,
+      preview_scale: previewScale,
+      preview_fps: fmt?.fps ?? 30,
+    };
   }
 
   async function syncScene(): Promise<void> {

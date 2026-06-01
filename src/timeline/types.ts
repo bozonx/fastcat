@@ -40,7 +40,24 @@ export type TimelineClipType =
   | 'shape'
   | 'hud';
 
-export type TimelineBlendMode = 'normal' | 'add' | 'multiply' | 'screen' | 'darken' | 'lighten';
+export type TimelineBlendMode =
+  | 'normal'
+  | 'add'
+  | 'multiply'
+  | 'screen'
+  | 'overlay'
+  | 'darken'
+  | 'lighten'
+  | 'color-dodge'
+  | 'color-burn'
+  | 'hard-light'
+  | 'soft-light'
+  | 'difference'
+  | 'exclusion'
+  | 'hue'
+  | 'saturation'
+  | 'color'
+  | 'luminosity';
 
 export interface TextClipStyle {
   width?: number;

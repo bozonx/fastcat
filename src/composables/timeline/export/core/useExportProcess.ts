@@ -3,6 +3,11 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { isTauriRuntime } from '~/utils/io/io-governor';
+import {
+  getNativeFileHandlePath,
+  nativeCancelMediaTask,
+  nativeExportTimeline,
+} from '~/utils/tauri-media-processing';
 import { randomToken } from '~/utils/ids';
 import {
   broadcastPixiRendererPreference,
@@ -15,6 +20,7 @@ import {
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import type { TimelineDocument } from '~/timeline/types';
+import { buildNativeMonitorScene } from '~/timeline/timeline-thumbnail';
 
 import type { ExportOptions, WorkerTimelineClip } from '../types';
 import {
@@ -138,6 +144,40 @@ export function useExportProcess(
       if (!croppedVideoClips.length && !croppedAudioClips.length)
         throw new Error('Timeline is empty');
 
+      const nativeTargetPath = getNativeFileHandlePath(fileHandle);
+      const canUseNativeExport =
+        isTauriRuntime() &&
+        Boolean(nativeTargetPath) &&
+        !options.audio &&
+        ['mp4', 'webm', 'mkv'].includes(options.format);
+
+      if (canUseNativeExport && nativeTargetPath && doc) {
+        exportPhase.value = 'encoding';
+        const scene = await buildNativeMonitorScene(doc);
+        const rangeStartUs = options.exportRangeUs?.startUs ?? 0;
+        const rangeEndUs = options.exportRangeUs?.endUs ?? timelineStore.duration;
+        await nativeExportTimeline({
+          taskId: exportTaskId,
+          scene,
+          targetPath: nativeTargetPath,
+          options: {
+            width: options.width,
+            height: options.height,
+            fps: options.fps,
+            startSec: rangeStartUs / 1_000_000,
+            endSec: Math.max(rangeStartUs + 1, rangeEndUs) / 1_000_000,
+            videoCodec: options.videoCodec,
+            videoBitrateBps: options.bitrate,
+            format: options.format,
+            audioPath: null,
+            audioCodec: null,
+            audioBitrateBps: null,
+          },
+          onProgress,
+        });
+        return;
+      }
+
       const { client } = getExportWorkerClient();
       await broadcastPixiRendererPreference(workspaceStore.userSettings.optimization.pixiRenderer);
 
@@ -188,6 +228,9 @@ export function useExportProcess(
     if (exportPhase.value === 'preparing') return;
 
     try {
+      if (isTauriRuntime()) {
+        await nativeCancelMediaTask(exportTaskId).catch(() => false);
+      }
       const { client } = getExportWorkerClient();
       await client.cancelExport(exportTaskId);
     } catch (e) {

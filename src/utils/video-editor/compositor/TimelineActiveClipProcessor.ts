@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import type { CompositorClip } from './types';
+import { toPixiBlendMode, type CompositorClip } from './types';
 import {
   clampToLastReadableSourceUs,
   MIN_SOURCE_TIME_END_GUARD_US,
@@ -50,7 +50,7 @@ export class TimelineActiveClipProcessor {
       const effectiveOpacity = params.computeTransitionOpacity(clip, timeUs);
       if (clip.sprite) {
         clip.sprite.alpha = effectiveOpacity;
-        clip.sprite.blendMode = clip.blendMode ?? 'normal';
+        clip.sprite.blendMode = toPixiBlendMode(clip.blendMode);
       }
 
       if (

@@ -70,6 +70,8 @@ describe('TimelineBlendModeSchema', () => {
   it('parses valid blend modes', () => {
     expect(TimelineBlendModeSchema.parse('normal')).toBe('normal');
     expect(TimelineBlendModeSchema.parse('multiply')).toBe('multiply');
+    expect(TimelineBlendModeSchema.parse('color-dodge')).toBe('color-dodge');
+    expect(TimelineBlendModeSchema.parse('luminosity')).toBe('luminosity');
   });
 
   it('throws for invalid blend mode', () => {

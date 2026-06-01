@@ -85,8 +85,19 @@ export function coerceBlendMode(raw: unknown): TimelineBlendMode | undefined {
   return raw === 'add' ||
     raw === 'multiply' ||
     raw === 'screen' ||
+    raw === 'overlay' ||
     raw === 'darken' ||
     raw === 'lighten' ||
+    raw === 'color-dodge' ||
+    raw === 'color-burn' ||
+    raw === 'hard-light' ||
+    raw === 'soft-light' ||
+    raw === 'difference' ||
+    raw === 'exclusion' ||
+    raw === 'hue' ||
+    raw === 'saturation' ||
+    raw === 'color' ||
+    raw === 'luminosity' ||
     raw === 'normal'
     ? raw
     : undefined;

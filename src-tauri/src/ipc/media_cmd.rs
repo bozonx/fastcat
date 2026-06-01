@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 
-use tauri::State;
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, State};
 
 use crate::media::processing::{
     convert_media, extract_video_frame_webp, extract_video_frame_webps, generate_proxy,
     probe_media, NativeConvertOptions, NativeMediaMetadata, NativeMediaTasks, NativeProxyOptions,
 };
+use crate::media::timeline_export::{export_timeline, NativeExportOptions};
 use crate::media::timeline_render::{render_timeline_frame_to_file, render_timeline_frame_to_webp};
 use crate::monitor::MonitorScene;
 
@@ -59,6 +61,40 @@ pub async fn native_media_convert(
 #[tauri::command]
 pub fn native_media_cancel(task_id: String, tasks: State<'_, NativeMediaTasks>) -> bool {
     tasks.cancel(&task_id)
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeTimelineExportProgress<'a> {
+    task_id: &'a str,
+    progress: f64,
+}
+
+#[tauri::command]
+pub async fn native_timeline_export(
+    task_id: String,
+    scene: MonitorScene,
+    options: NativeExportOptions,
+    target_path: String,
+    app: AppHandle,
+    tasks: State<'_, NativeMediaTasks>,
+) -> Result<(), String> {
+    let tasks = tasks.inner().clone();
+    let target_path = PathBuf::from(target_path);
+    tokio::task::spawn_blocking(move || {
+        export_timeline(&tasks, &task_id, scene, options, &target_path, &|progress| {
+            let _ = app.emit(
+                "native-timeline-export:progress",
+                NativeTimelineExportProgress {
+                    task_id: &task_id,
+                    progress,
+                },
+            );
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

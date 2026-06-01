@@ -1,6 +1,6 @@
 import { Container, type Application } from 'pixi.js';
 import type { VideoClipEffect } from '~/timeline/types';
-import type { CompositorClip, CompositorTrack } from './types';
+import { toPixiBlendMode, type CompositorClip, type CompositorTrack } from './types';
 import { buildTrackRuntimeList } from './trackRuntime';
 
 export interface TrackRuntimeManagerParams {
@@ -71,7 +71,7 @@ export class TrackRuntimeManager {
       track.blendMode = def.blendMode;
       track.effects = def.effects;
       track.container.alpha = def.opacity ?? 1;
-      track.container.blendMode = def.blendMode ?? 'normal';
+      track.container.blendMode = toPixiBlendMode(def.blendMode);
       (track.container as unknown as Record<string, unknown>).__trackId = def.id;
 
       if (track.container.parent !== app.stage) {

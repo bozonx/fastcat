@@ -8,4 +8,5 @@ pub mod decode_gate;
 pub mod decode_thread;
 pub mod image_decode;
 pub mod processing;
+pub mod timeline_export;
 pub mod timeline_render;

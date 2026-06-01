@@ -319,7 +319,25 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     }
 
     if (validatedProperties.blendMode) {
-      const validBlendModes = ['normal', 'add', 'multiply', 'screen', 'darken', 'lighten'];
+      const validBlendModes = [
+        'normal',
+        'add',
+        'multiply',
+        'screen',
+        'overlay',
+        'darken',
+        'lighten',
+        'color-dodge',
+        'color-burn',
+        'hard-light',
+        'soft-light',
+        'difference',
+        'exclusion',
+        'hue',
+        'saturation',
+        'color',
+        'luminosity',
+      ];
       if (!validBlendModes.includes(validatedProperties.blendMode as string)) {
         validatedProperties.blendMode = 'normal';
       }

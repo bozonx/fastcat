@@ -18,8 +18,19 @@ export function sanitizeBlendMode(value: unknown): TimelineBlendMode | undefined
   return value === 'add' ||
     value === 'multiply' ||
     value === 'screen' ||
+    value === 'overlay' ||
     value === 'darken' ||
     value === 'lighten' ||
+    value === 'color-dodge' ||
+    value === 'color-burn' ||
+    value === 'hard-light' ||
+    value === 'soft-light' ||
+    value === 'difference' ||
+    value === 'exclusion' ||
+    value === 'hue' ||
+    value === 'saturation' ||
+    value === 'color' ||
+    value === 'luminosity' ||
     value === 'normal'
     ? value
     : undefined;

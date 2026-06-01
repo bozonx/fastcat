@@ -14,6 +14,7 @@ mod frame_cache;
 mod handle;
 pub mod runtime;
 pub mod scene;
+pub mod scene_build;
 
 pub use handle::{MonitorCommand, MonitorHandle, MonitorMode, SendableRawHandle};
 pub use scene::{LayerKind, MonitorScene, SceneLayer};
