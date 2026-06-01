@@ -19,6 +19,7 @@ pub struct MediaInfo {
     pub duration_sec: f64,
     pub width: u32,
     pub height: u32,
+    pub rotation: i32,
     pub fps: f64,
     pub codec: String,
     pub has_audio: bool,
@@ -58,8 +59,11 @@ impl FfmpegDecoder {
     pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Self> {
         let mut info = probe(path)?;
 
-        // Вычисляем target output dims с сохранением aspect ratio.
-        let (out_w, out_h) = compute_output_dims(info.width, info.height, max_output_long_edge);
+        // FFmpeg autorotate applies display-matrix rotation before our filter graph. For phone
+        // videos stored as landscape-coded frames with a 90/270 degree display rotation, scaling
+        // back to coded width/height would squash the already-rotated portrait frame.
+        let (visual_w, visual_h) = visual_dimensions(info.width, info.height, info.rotation);
+        let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
         info.width = out_w;
         info.height = out_h;
 
@@ -281,10 +285,52 @@ fn probe(path: &Path) -> Result<MediaInfo> {
         duration_sec,
         width,
         height,
+        rotation: probe_rotation(video),
         fps,
         codec,
         has_audio,
     })
+}
+
+fn visual_dimensions(width: u32, height: u32, rotation: i32) -> (u32, u32) {
+    if is_quarter_turn(rotation) {
+        (height, width)
+    } else {
+        (width, height)
+    }
+}
+
+fn is_quarter_turn(rotation: i32) -> bool {
+    let normalized = rotation.rem_euclid(360).abs();
+    normalized == 90 || normalized == 270
+}
+
+fn probe_rotation(video: &serde_json::Value) -> i32 {
+    video
+        .get("tags")
+        .and_then(|tags| tags.get("rotate"))
+        .and_then(parse_rotation_value)
+        .or_else(|| {
+            video
+                .get("side_data_list")
+                .and_then(|items| items.as_array())
+                .and_then(|items| {
+                    items
+                        .iter()
+                        .find_map(|item| item.get("rotation").and_then(parse_rotation_value))
+                })
+        })
+        .unwrap_or(0)
+}
+
+fn parse_rotation_value(value: &serde_json::Value) -> Option<i32> {
+    if let Some(rotation) = value.as_i64() {
+        return Some(rotation as i32);
+    }
+    value
+        .as_str()
+        .and_then(|s| s.trim().parse::<f64>().ok())
+        .map(|rotation| rotation.round() as i32)
 }
 
 fn parse_rational(s: &str) -> Option<f64> {
@@ -327,6 +373,44 @@ mod tests {
         assert_eq!(h, 960);
         assert_eq!(w, 540);
         assert_eq!(w & 1, 0);
+    }
+
+    #[test]
+    fn visual_dimensions_swaps_quarter_turn_rotation() {
+        assert_eq!(visual_dimensions(1920, 1080, 90), (1080, 1920));
+        assert_eq!(visual_dimensions(1920, 1080, -90), (1080, 1920));
+        assert_eq!(visual_dimensions(1920, 1080, 270), (1080, 1920));
+    }
+
+    #[test]
+    fn visual_dimensions_keeps_unrotated_and_half_turn_sources() {
+        assert_eq!(visual_dimensions(1920, 1080, 0), (1920, 1080));
+        assert_eq!(visual_dimensions(1920, 1080, 180), (1920, 1080));
+    }
+
+    #[test]
+    fn probe_rotation_reads_tags_rotate() {
+        let video = serde_json::json!({
+            "tags": {
+                "rotate": "90"
+            }
+        });
+
+        assert_eq!(probe_rotation(&video), 90);
+    }
+
+    #[test]
+    fn probe_rotation_reads_side_data_rotation() {
+        let video = serde_json::json!({
+            "side_data_list": [
+                {
+                    "side_data_type": "Display Matrix",
+                    "rotation": -90
+                }
+            ]
+        });
+
+        assert_eq!(probe_rotation(&video), -90);
     }
 
     #[test]
