@@ -255,10 +255,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
             }
             return;
           }
+        } else {
+          // No native path available — cannot generate thumbnail in Tauri without web worker.
+          return;
         }
-      }
+      } else {
 
-      if (!blob) {
         setThumbnailHostApi(
           createVideoCoreHostApi({
             getCurrentProjectId: () => projectStore.currentProjectId,

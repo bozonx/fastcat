@@ -245,6 +245,7 @@ export function useExportProcess(
     try {
       if (isTauriRuntime()) {
         await nativeCancelMediaTask(exportTaskId).catch(() => false);
+        return;
       }
       const { client } = getExportWorkerClient();
       await client.cancelExport(exportTaskId);

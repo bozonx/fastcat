@@ -284,36 +284,37 @@ export function createProxyService(params: {
               const sourceHandle = await params.getFileHandleByPath(projectRelativePath);
               const sourcePath = getNativeFileHandlePath(sourceHandle);
               const targetPath = getNativeFileHandlePath(proxyFileHandle);
-              if (sourcePath && targetPath) {
-                const meta = await nativeMediaMetadata(sourcePath);
-                const durationUs = Math.round((meta.duration || 0) * 1_000_000);
-                if (!durationUs) throw new Error('Invalid video duration');
-                await nativeGenerateProxy({
-                  taskId,
-                  sourcePath,
-                  targetPath,
-                  options: {
-                    maxPixels: optimization.proxyMaxPixels,
-                    videoBitrateBps: optimization.proxyVideoBitrateMbps * 1_000_000,
-                    audioBitrateBps: optimization.proxyAudioBitrateKbps * 1000,
-                    videoCodec: optimization.proxyVideoCodec,
-                    copyOpusAudio: optimization.proxyCopyOpusAudio,
-                  },
-                });
-                params.proxyProgress.value = new Map(params.proxyProgress.value).set(
-                  projectRelativePath,
-                  100,
-                );
-                params.backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
-                params.existingProxies.value = new Set([
-                  ...params.existingProxies.value,
-                  projectRelativePath,
-                ]);
-                if (bgTaskId) {
-                  params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
-                }
-                return;
+              if (!sourcePath || !targetPath) {
+                throw new Error('Could not resolve native file paths for proxy generation');
               }
+              const meta = await nativeMediaMetadata(sourcePath);
+              const durationUs = Math.round((meta.duration || 0) * 1_000_000);
+              if (!durationUs) throw new Error('Invalid video duration');
+              await nativeGenerateProxy({
+                taskId,
+                sourcePath,
+                targetPath,
+                options: {
+                  maxPixels: optimization.proxyMaxPixels,
+                  videoBitrateBps: optimization.proxyVideoBitrateMbps * 1_000_000,
+                  audioBitrateBps: optimization.proxyAudioBitrateKbps * 1000,
+                  videoCodec: optimization.proxyVideoCodec,
+                  copyOpusAudio: optimization.proxyCopyOpusAudio,
+                },
+              });
+              params.proxyProgress.value = new Map(params.proxyProgress.value).set(
+                projectRelativePath,
+                100,
+              );
+              params.backgroundTasksStore.updateTaskProgress(bgTaskId, 1);
+              params.existingProxies.value = new Set([
+                ...params.existingProxies.value,
+                projectRelativePath,
+              ]);
+              if (bgTaskId) {
+                params.backgroundTasksStore.updateTaskStatus(bgTaskId, 'completed');
+              }
+              return;
             }
 
             const { client } = getProxyWorkerClient();

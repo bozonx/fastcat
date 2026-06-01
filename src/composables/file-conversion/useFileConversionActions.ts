@@ -158,6 +158,7 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
       if (nativePath) {
         return await nativeMediaMetadata(nativePath);
       }
+      throw new Error('Could not resolve native file path for metadata extraction');
     }
 
     return await extractMetadataWithTimeout(file);
@@ -529,11 +530,12 @@ export function useFileConversionActions(props: UseFileConversionActionsProps) {
               : await projectStore.getFileHandleByPath(entry.path);
             const sourcePath = getNativeFileHandlePath(sourceHandle);
             const targetPath = getNativeFileHandlePath(targetHandle);
-            if (sourcePath && targetPath) {
-              backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
-              await nativeConvertMedia({ taskId, sourcePath, targetPath, request });
-              return;
+            if (!sourcePath || !targetPath) {
+              throw new Error('Could not resolve native file paths for conversion');
             }
+            backgroundTasksStore.updateTaskStatus(bgTaskId, 'running');
+            await nativeConvertMedia({ taskId, sourcePath, targetPath, request });
+            return;
           }
 
           await executeMediaConversion({

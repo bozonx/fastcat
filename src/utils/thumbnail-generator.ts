@@ -216,9 +216,11 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     this.opfsCheckedTimes.delete(id);
     this.opfsExistingFiles.delete(id);
     if (this.activeTasks.has(id)) {
-      void getThumbnailWorkerClient()
-        .client.cancelExport(id)
-        .catch(() => {});
+      if (!isTauriRuntime()) {
+        void getThumbnailWorkerClient()
+          .client.cancelExport(id)
+          .catch(() => {});
+      }
     }
     super.cancelTask(id);
   }
@@ -399,6 +401,13 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       ? await projectStore.getFileHandleByPath(task.projectRelativePath)
       : null;
     const nativeSourcePath = getNativeFileHandlePath(sourceHandle);
+
+    // In Tauri mode we must have a native filesystem path; without it we cannot
+    // generate thumbnails (web worker is unavailable in the native runtime).
+    if (isTauriRuntime() && !nativeSourcePath) {
+      throw new Error(`No native path for thumbnail task: ${task.projectRelativePath}`);
+    }
+
     const client = nativeSourcePath
       ? null
       : (() => {

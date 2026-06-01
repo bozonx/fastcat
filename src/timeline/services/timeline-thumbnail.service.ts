@@ -7,6 +7,7 @@ import { addLatestMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-qu
 import { useUiStore } from '~/stores/ui.store';
 import type { ResolvedStorageTopology } from '~/utils/storage-topology';
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
+import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('timeline-thumbnail.service');
 
 export interface GenerateTimelineThumbnailParams {
@@ -28,6 +29,8 @@ export function dispatchTimelineThumbnailGeneration(params: GenerateTimelineThum
   addLatestMediaTask({
     key: `timeline-thumbnail:${params.timelinePath}`,
     task: async () => {
+      // Timeline thumbnails require the web-based thumbnail worker; skip in Tauri.
+      if (isTauriRuntime()) return;
       try {
         const width = params.width ?? Math.max(160, Math.round(TIMELINE_CLIP_THUMBNAILS.WIDTH));
         const height = params.height ?? Math.max(90, Math.round(TIMELINE_CLIP_THUMBNAILS.HEIGHT));

@@ -9,6 +9,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('useAudioExtraction');
 
 interface AudioExtractionSelectionContext {
@@ -64,6 +65,16 @@ export function useAudioExtraction() {
   async function extractAudio(entry: FsEntry, context: AudioExtractionSelectionContext = {}) {
     if (isExtracting.value) return;
     if (!entry.path) return;
+
+    // Audio extraction via web-worker is not supported in the Tauri runtime.
+    if (isTauriRuntime()) {
+      toast.add({
+        color: 'warning',
+        title: t('videoEditor.fileManager.extractAudio.failed'),
+        description: 'Audio extraction is not available in the desktop app yet.',
+      });
+      return;
+    }
 
     isExtracting.value = true;
     try {

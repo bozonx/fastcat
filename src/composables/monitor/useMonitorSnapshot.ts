@@ -15,6 +15,7 @@ import { IMAGES_DIR_NAME } from '~/utils/constants';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 import { cloneValue } from '~/utils/clone';
+import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('useMonitorSnapshot');
 
 export function useMonitorSnapshot(input: {
@@ -47,6 +48,8 @@ export function useMonitorSnapshot(input: {
     if (input.isLoading.value || input.loadError.value) return;
     if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
     if (!input.workspaceStore.workspaceHandle) return;
+    // Timeline thumbnails require the web-based thumbnail worker; skip in Tauri.
+    if (isTauriRuntime()) return;
 
     const projectWidth = Number(
       input.timelineStore.timelineFormat?.width ??
@@ -134,6 +137,11 @@ export function useMonitorSnapshot(input: {
     }
 
     isSavingStopFrame.value = true;
+    // Stop-frame snapshots require the web-based thumbnail worker; skip in Tauri.
+    if (isTauriRuntime()) {
+      isSavingStopFrame.value = false;
+      return;
+    }
     try {
       const exportWidth = Math.round(
         Number(

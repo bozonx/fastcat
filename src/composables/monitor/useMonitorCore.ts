@@ -3,6 +3,7 @@ import { useResizeObserver } from '@vueuse/core';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { isTauriRuntime } from '~/utils/runtime';
 import {
   broadcastPixiRendererPreference,
   getPreviewWorkerClient,
@@ -86,9 +87,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       return toProjectTempVfsPath(projectId, ['audio-cache']);
     },
   });
-  const { client } = getPreviewWorkerClient();
+  const { client } = isTauriRuntime() ? { client: null } : getPreviewWorkerClient();
   const compositorRuntime = createMonitorCompositorRuntime({
-    client,
+    client: client!,
     containerEl,
     renderWidth,
     renderHeight,
@@ -171,7 +172,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const payload = cloneWorkerPayload(preparedTimeline.payload);
       const maxDuration = await runWorkerTimelineOperation(async () => {
         await ensureCompositorReady();
-        return await client.updateTimelineLayout(payload);
+        if (isTauriRuntime()) {
+          return flattenedClips.reduce((max, clip) => {
+            return Math.max(max, clip.timelineRange.startUs + clip.timelineRange.durationUs);
+          }, 0);
+        }
+        return await client!.updateTimelineLayout(payload);
       });
       timelineStore.duration = Math.max(
         timelineStore.duration,
@@ -312,7 +318,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         await runWorkerTimelineOperation(async () => {
           await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
           forceRecreateCompositorNextBuild = false;
-          await client.clearClips();
+          if (!isTauriRuntime()) {
+            await client!.clearClips();
+          }
         });
         await audioEngine.loadClips([]);
         if (requestId !== buildRequestId) {
@@ -337,31 +345,40 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         return;
       }
 
-      setPreviewHostApi(
-        createMonitorPreviewHostApi({
-          currentProjectId: currentProjectStore.currentProjectId,
-          workspaceHandle: workspaceStore.workspaceHandle,
-          resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
-          useProxyInMonitor: useProxyInMonitor.value,
-          getProxyFileHandle: proxyStore.getProxyFileHandle,
-          getProxyFile: proxyStore.getProxyFile,
-          getFileHandleByPath: projectStore.getFileHandleByPath,
-          getFileByPath: projectStore.getFileByPath,
-        }),
-      );
+      if (!isTauriRuntime()) {
+        setPreviewHostApi(
+          createMonitorPreviewHostApi({
+            currentProjectId: currentProjectStore.currentProjectId,
+            workspaceHandle: workspaceStore.workspaceHandle,
+            resolvedStorageTopology: workspaceStore.resolvedStorageTopology,
+            useProxyInMonitor: useProxyInMonitor.value,
+            getProxyFileHandle: proxyStore.getProxyFileHandle,
+            getProxyFile: proxyStore.getProxyFile,
+            getFileHandleByPath: projectStore.getFileHandleByPath,
+            getFileByPath: projectStore.getFileByPath,
+          }),
+        );
+      }
 
       const payload = cloneWorkerPayload(preparedTimeline.payload);
       const maxDuration = await runWorkerTimelineOperation(async () => {
         await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
         forceRecreateCompositorNextBuild = false;
-        return clips.length > 0 ? await client.loadTimeline(payload, requestId) : 0;
+        if (isTauriRuntime()) {
+          return clips.reduce((max, clip) => {
+            return Math.max(max, clip.timelineRange.startUs + clip.timelineRange.durationUs);
+          }, 0);
+        }
+        return clips.length > 0 ? await client!.loadTimeline(payload, requestId) : 0;
       });
       if (requestId !== buildRequestId) {
         return;
       }
       if (clips.length === 0) {
         await runWorkerTimelineOperation(async () => {
-          await client.clearClips();
+          if (!isTauriRuntime()) {
+            await client!.clearClips();
+          }
         });
       }
 

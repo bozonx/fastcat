@@ -130,7 +130,9 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
   async function destroy() {
     clearPendingRender();
-    await options.client.destroyCompositor();
+    if (!isTauriRuntime() && options.client) {
+      await options.client.destroyCompositor();
+    }
   }
 
   return {
