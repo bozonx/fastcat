@@ -31,6 +31,7 @@ export interface RecentProject {
   projectId: string;
   updatedAt: string;
   lastTimelinePath?: string;
+  projectPath?: string;
 }
 
 export const useWorkspaceStore = defineStore('workspace', () => {
@@ -197,6 +198,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       });
     },
     { deep: true },
+  );
+
+  watch(
+    recentProjects,
+    (newRecent) => {
+      if (workspaceProvider.id === 'tauri') {
+        projects.value = newRecent.map((p) => p.projectName);
+      }
+    },
+    { immediate: true, deep: true },
   );
 
   watch(

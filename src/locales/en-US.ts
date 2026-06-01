@@ -642,6 +642,8 @@ export default {
       "title": "Projects",
       "workspaceTitle": "Workspace",
       "localWorkspaceName": "Local Disk",
+      "projectLocation": "Project Location",
+      "openProjectDisk": "Open Project from Disk",
       "resumeEditing": "Resume Editing",
       "activeProject": "Active Project",
       "otherProjects": "Other Projects",

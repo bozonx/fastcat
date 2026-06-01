@@ -47,20 +47,7 @@ export function createWorkspaceProjectsModule(params: {
   async function loadProjects() {
     const { isTauriRuntime } = await import('~/utils/runtime');
     if (isTauriRuntime()) {
-      try {
-        const { readDir, exists } = await import('@tauri-apps/plugin-fs');
-        const projectsPath = params.resolvedStorageTopology.value.projectsRoot;
-        if (await exists(projectsPath)) {
-          const entries = await readDir(projectsPath);
-          const tempProjects = entries
-            .filter((entry) => entry.isDirectory)
-            .map((entry) => entry.name)
-            .sort((a, b) => a.localeCompare(b));
-          params.projects.value = tempProjects;
-        }
-      } catch (e: unknown) {
-        params.error.value = getErrorMessage(e, 'Failed to load projects');
-      }
+      params.projects.value = params.recentProjects.value.map((p) => p.projectName);
       return;
     }
 
@@ -208,7 +195,8 @@ export function createWorkspaceProjectsModule(params: {
 
         const { join } = await import('@tauri-apps/api/path');
         const { remove, exists } = await import('@tauri-apps/plugin-fs');
-        const projectPath = await join(params.resolvedStorageTopology.value.projectsRoot, name);
+        const project = params.recentProjects.value.find((p) => p.projectName === name);
+        const projectPath = project?.projectPath || await join(params.resolvedStorageTopology.value.projectsRoot, name);
         if (await exists(projectPath)) {
           await remove(projectPath, { recursive: true });
         }
@@ -263,10 +251,12 @@ export function createWorkspaceProjectsModule(params: {
       }
 
       try {
-        const { join } = await import('@tauri-apps/api/path');
+        const { join, dirname } = await import('@tauri-apps/api/path');
         const { rename, exists } = await import('@tauri-apps/plugin-fs');
-        const oldPath = await join(params.resolvedStorageTopology.value.projectsRoot, oldName);
-        const newPath = await join(params.resolvedStorageTopology.value.projectsRoot, newName);
+        const project = params.recentProjects.value.find((p) => p.projectName === oldName);
+        const oldPath = project?.projectPath || await join(params.resolvedStorageTopology.value.projectsRoot, oldName);
+        const parentDir = project?.projectPath ? await dirname(project.projectPath) : params.resolvedStorageTopology.value.projectsRoot;
+        const newPath = await join(parentDir, newName);
         if (await exists(oldPath)) {
           await rename(oldPath, newPath);
         }

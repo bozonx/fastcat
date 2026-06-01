@@ -642,6 +642,8 @@ export default {
       "title": "Проекты",
       "workspaceTitle": "Рабочая область",
       "localWorkspaceName": "Локальный диск",
+      "projectLocation": "Папка проекта",
+      "openProjectDisk": "Открыть проект с диска",
       "resumeEditing": "Продолжить редактирование",
       "activeProject": "Активный проект",
       "otherProjects": "Другие проекты",

@@ -33,6 +33,8 @@ const {
   startDelete,
   confirmDelete,
   closeDeleteModal,
+  selectProjectLocation,
+  openProjectFromDisk,
 } = useProjectManagement();
 
 const projectPresetOptions = computed(() =>
@@ -57,6 +59,7 @@ const allProjects = computed(() => {
       projectId: recent?.projectId,
       lastTimelinePath: recent?.lastTimelinePath,
       updatedAt: recent?.updatedAt,
+      projectPath: recent?.projectPath,
     };
   });
 });
@@ -118,7 +121,7 @@ const formatDate = (dateStr?: string) => {
       </div>
 
       <!-- Primary Action -->
-      <div class="p-4 space-y-4">
+      <div class="p-4 space-y-3">
         <UButton
           block
           size="xl"
@@ -129,21 +132,29 @@ const formatDate = (dateStr?: string) => {
         >
           {{ t('fastcat.projects.newProject') }}
         </UButton>
+        <UButton
+          v-if="workspaceStore.workspaceProviderId === 'tauri'"
+          block
+          size="lg"
+          variant="subtle"
+          color="neutral"
+          icon="i-heroicons-folder-open"
+          class="py-3 rounded-2xl font-bold uppercase tracking-wide transition-all hover:scale-[1.02] active:scale-[0.98]"
+          @click="openProjectFromDisk"
+        >
+          {{ t('projects.openProjectDisk') }}
+        </UButton>
       </div>
 
       <!-- Bottom Actions -->
       <div class="mt-auto p-4 border-t border-ui-border space-y-4">
         <!-- Workspace Info -->
-        <div class="space-y-2">
+        <div v-if="workspaceStore.workspaceProviderId !== 'tauri'" class="space-y-2">
           <span class="text-[10px] font-bold text-ui-text-muted uppercase tracking-wider block">
             {{ t('fastcat.projects.workspaceTitle') }}
           </span>
           <p class="text-xs font-medium text-ui-text truncate">
-            {{
-              workspaceStore.workspaceProviderId === 'tauri'
-                ? t('projects.localWorkspaceName')
-                : workspaceStore.workspaceHandle?.name
-            }}
+            {{ workspaceStore.workspaceHandle?.name }}
           </p>
         </div>
 
@@ -259,7 +270,7 @@ const formatDate = (dateStr?: string) => {
                 v-for="project in sortedProjects"
                 :key="project.projectName"
                 class="flex flex-col group bg-ui-bg-elevated/50 border border-ui-border rounded-xl overflow-hidden hover:border-primary-500/50 hover:bg-ui-bg-accent transition-all cursor-pointer"
-                @click="handleOpenProject(project.projectName)"
+                @click="handleOpenProject(project.projectPath || project.projectName)"
               >
                 <div class="aspect-video relative shrink-0">
                   <ProjectThumbnail
@@ -331,6 +342,22 @@ const formatDate = (dateStr?: string) => {
           autofocus
           @keyup.enter="createNewProject"
         />
+      </UiFormField>
+
+      <UiFormField v-if="workspaceStore.workspaceProviderId === 'tauri'" :label="t('projects.projectLocation')">
+        <div class="flex gap-2 w-full">
+          <UiTextInput
+            v-model="projectCreationSettings.location"
+            readonly
+            class="flex-1"
+          />
+          <UButton
+            color="neutral"
+            variant="subtle"
+            icon="i-heroicons-folder-open"
+            @click="selectProjectLocation"
+          />
+        </div>
       </UiFormField>
 
       <div

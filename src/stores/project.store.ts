@@ -377,6 +377,14 @@ export const useProjectStore = defineStore('project', () => {
       projectSettings.value = initialSettings;
 
       await metaModule.saveProjectMeta({ lastOpenedTimelinePath: initialTimeline });
+      if (currentProjectId.value) {
+        workspaceStore.updateRecentProject({
+          projectName: name,
+          projectId: currentProjectId.value,
+          lastTimelinePath: initialTimeline,
+          projectPath: isTauri ? projectPath : undefined,
+        });
+      }
 
       if (currentProjectId.value) {
         workspaceStore.updateRecentProject({
@@ -433,6 +441,7 @@ export const useProjectStore = defineStore('project', () => {
         projectName: name,
         projectId: currentProjectId.value,
         lastTimelinePath: metaModule.projectMeta.value?.lastOpenedTimelinePath,
+        projectPath: isTauri ? path : undefined,
       });
     }
 

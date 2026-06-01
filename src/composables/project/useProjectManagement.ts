@@ -20,6 +20,7 @@ function createProjectCreationState(workspaceStore: ReturnType<typeof useWorkspa
     isCustomResolution: preset.isCustomResolution,
     sampleRate: preset.sampleRate,
     isAdvancedSettingsOpen: false,
+    location: workspaceStore.resolvedStorageTopology.projectsRoot,
   };
 }
 
@@ -83,28 +84,27 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     const name = projectCreationSettings.value.name.trim();
     if (!name) return;
 
-    const options = projectCreationSettings.value.isAdvancedSettingsOpen
-      ? {
-          presetId: projectCreationSettings.value.presetId,
-          width: projectCreationSettings.value.width,
-          height: projectCreationSettings.value.height,
-          fps: projectCreationSettings.value.fps,
-          resolutionFormat: projectCreationSettings.value.resolutionFormat,
-          orientation: projectCreationSettings.value.orientation,
-          aspectRatio: projectCreationSettings.value.aspectRatio,
-          isCustomResolution: projectCreationSettings.value.isCustomResolution,
-          sampleRate: projectCreationSettings.value.sampleRate,
-        }
-      : undefined;
+    const options = {
+      presetId: projectCreationSettings.value.presetId,
+      width: projectCreationSettings.value.width,
+      height: projectCreationSettings.value.height,
+      fps: projectCreationSettings.value.fps,
+      resolutionFormat: projectCreationSettings.value.resolutionFormat,
+      orientation: projectCreationSettings.value.orientation,
+      aspectRatio: projectCreationSettings.value.aspectRatio,
+      isCustomResolution: projectCreationSettings.value.isCustomResolution,
+      sampleRate: projectCreationSettings.value.sampleRate,
+      parentPath: workspaceStore.workspaceProviderId === 'tauri' ? projectCreationSettings.value.location : undefined,
+    };
 
     await projectStore.createProject(name, options);
 
-    if (options?.presetId) {
+    if (options.presetId) {
       workspaceStore.userSettings.projectPresets.lastUsedPresetId = options.presetId;
     }
 
     if (workspaceStore.userSettings.openLastProjectOnStart) {
-      handleOpenProject(name);
+      handleOpenProject(workspaceStore.workspaceProviderId === 'tauri' ? `${options.parentPath}/${name}` : name);
     }
 
     isCreateModalOpen.value = false;
@@ -179,6 +179,29 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     deleteTargetProject.value = null;
   }
 
+  async function selectProjectLocation() {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      defaultPath: projectCreationSettings.value.location,
+    });
+    if (selected && typeof selected === 'string') {
+      projectCreationSettings.value.location = selected;
+    }
+  }
+
+  async function openProjectFromDisk() {
+    const { open } = await import('@tauri-apps/plugin-dialog');
+    const selected = await open({
+      directory: true,
+      multiple: false,
+    });
+    if (selected && typeof selected === 'string') {
+      handleOpenProject(selected);
+    }
+  }
+
   return {
     searchQuery,
     renameValue,
@@ -199,5 +222,7 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     startDelete,
     confirmDelete,
     closeDeleteModal,
+    selectProjectLocation,
+    openProjectFromDisk,
   };
 }

@@ -47,6 +47,8 @@ const {
   startDelete,
   confirmDelete,
   closeDeleteModal,
+  selectProjectLocation,
+  openProjectFromDisk,
 } = useProjectManagement({ isMobile: true });
 
 const isSettingsOpen = ref(false);
@@ -68,6 +70,7 @@ const sortedProjects = computed(() => {
       projectId: recent?.projectId,
       lastTimelinePath: recent?.lastTimelinePath,
       updatedAt: recent?.updatedAt,
+      projectPath: recent?.projectPath,
     };
   });
 
@@ -209,7 +212,7 @@ const formatDate = (dateStr?: string) => {
 
             <div class="flex flex-col gap-8 pb-24">
               <!-- New Project Button -->
-              <div class="px-5">
+              <div class="flex flex-col gap-3 px-5">
                 <UButton
                   block
                   size="xl"
@@ -220,6 +223,18 @@ const formatDate = (dateStr?: string) => {
                 >
                   {{ t('fastcat.projects.newProject') }}
                 </UButton>
+                <UButton
+                  v-if="workspaceStore.workspaceProviderId === 'tauri'"
+                  block
+                  size="xl"
+                  variant="subtle"
+                  color="neutral"
+                  icon="i-heroicons-folder-open"
+                  class="py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-bg-elevated/40 text-white! border border-white/5 transition-all active:scale-[0.98]"
+                  @click="openProjectFromDisk"
+                >
+                  {{ t('projects.openProjectDisk') }}
+                </UButton>
               </div>
 
               <!-- Resume Editing Card -->
@@ -229,7 +244,7 @@ const formatDate = (dateStr?: string) => {
                 </h2>
                 <div
                   class="group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary-500/15 via-ui-bg-elevated/40 to-ui-bg-elevated/10 p-4 transition-all active:scale-[0.98] shadow-lg flex items-center gap-4 cursor-pointer"
-                  @click="handleOpenProject(latestProject.projectName)"
+                  @click="handleOpenProject(latestProject.projectPath || latestProject.projectName)"
                 >
                   <!-- Thumbnail -->
                   <div
@@ -325,7 +340,7 @@ const formatDate = (dateStr?: string) => {
 
                     <div
                       class="group bg-ui-bg-elevated/40 border border-white/5 rounded-2xl overflow-hidden flex items-center active:bg-ui-bg-elevated transition-all shadow-sm h-20"
-                      @click="handleOpenProject(project.projectName)"
+                      @click="handleOpenProject(project.projectPath || project.projectName)"
                     >
                       <div class="w-20 h-full relative shrink-0">
                         <ProjectThumbnail
@@ -442,6 +457,24 @@ const formatDate = (dateStr?: string) => {
               autofocus
               @keyup.enter="createNewProject"
             />
+          </UiFormField>
+
+          <UiFormField v-if="workspaceStore.workspaceProviderId === 'tauri'" :label="t('projects.projectLocation')">
+            <div class="flex gap-2 w-full">
+              <UiTextInput
+                v-model="projectCreationSettings.location"
+                readonly
+                class="flex-1"
+                :ui="{ base: 'h-16 text-sm px-6 bg-ui-bg-elevated/50 border border-white/5 rounded-3xl truncate text-ui-text-muted' }"
+              />
+              <UButton
+                color="neutral"
+                variant="subtle"
+                icon="i-heroicons-folder-open"
+                class="h-16 w-16 rounded-3xl"
+                @click="selectProjectLocation"
+              />
+            </div>
           </UiFormField>
 
           <UiAlert v-if="!projectCreationSettings.isAdvancedSettingsOpen">

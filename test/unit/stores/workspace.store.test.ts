@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { nextTick } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -11,6 +11,16 @@ vi.unmock('~/stores/workspace.store');
 let mockVfs: InMemoryFileSystemAdapter;
 vi.mock('~/composables/useVfs', () => ({
   useVfs: () => mockVfs,
+}));
+
+vi.mock('@tauri-apps/api/path', () => ({
+  join: async (...args: string[]) => args.join('/'),
+  resolve: async (path: string) => path,
+  appConfigDir: async () => '/mock/config',
+  appDataDir: async () => '/mock/data',
+  appCacheDir: async () => '/mock/cache',
+  tempDir: async () => '/mock/temp',
+  documentDir: async () => '/mock/documents',
 }));
 
 describe('WorkspaceStore', () => {
@@ -185,6 +195,36 @@ describe('WorkspaceStore', () => {
       await nextTick();
       expect(store.recentProjects).toHaveLength(1);
       expect(store.recentProjects[0].projectName).toBe('p2');
+    });
+  });
+
+  describe('Tauri mode sync', () => {
+    let originalTauriInternals: any;
+
+    beforeEach(() => {
+      originalTauriInternals = (window as any).__TAURI_INTERNALS__;
+      (window as any).__TAURI_INTERNALS__ = {};
+    });
+
+    afterEach(() => {
+      if (originalTauriInternals === undefined) {
+        delete (window as any).__TAURI_INTERNALS__;
+      } else {
+        (window as any).__TAURI_INTERNALS__ = originalTauriInternals;
+      }
+    });
+
+    it('synchronizes projects list with recent projects names in tauri mode', async () => {
+      const store = useWorkspaceStore();
+      
+      store.recentProjects = [
+        { projectName: 'tauri-p1', projectId: 'id1', updatedAt: '2024-01-01', projectPath: '/path/to/tauri-p1' },
+        { projectName: 'tauri-p2', projectId: 'id2', updatedAt: '2024-01-02', projectPath: '/path/to/tauri-p2' },
+      ];
+
+      await nextTick();
+
+      expect(store.projects).toEqual(['tauri-p1', 'tauri-p2']);
     });
   });
 });
