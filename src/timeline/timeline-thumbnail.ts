@@ -11,7 +11,6 @@ import {
   type TimelineTextClipItem,
 } from '~/timeline/types';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import { dispatchTimelineThumbnailGeneration } from '~/timeline/services/timeline-thumbnail.service';
 import { cloneValue } from '~/utils/clone';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getTimelineFormat } from '~/timeline/format';
@@ -23,7 +22,7 @@ const log = createDevLogger('timeline-thumbnail');
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
 const SVG_EXT = new Set(['svg']);
 
-interface NativeSceneLayer {
+export interface NativeSceneLayer {
   id: string;
   kind: 'video' | 'image' | 'svg' | 'text' | 'shape' | 'background';
   path?: string;
@@ -52,7 +51,7 @@ interface NativeSceneLayer {
   };
 }
 
-interface NativeMonitorScene {
+export interface NativeMonitorScene {
   layers: NativeSceneLayer[];
   width: number;
   height: number;
@@ -104,7 +103,9 @@ async function resolveProjectAbsolutePath(projectRelativePath: string): Promise<
   return await join(projectPath, projectRelativePath);
 }
 
-async function buildNativeMonitorScene(timelineDoc: TimelineDocument): Promise<NativeMonitorScene> {
+export async function buildNativeMonitorScene(
+  timelineDoc: TimelineDocument,
+): Promise<NativeMonitorScene> {
   const format = getTimelineFormat(timelineDoc);
   const sceneWidth = format.width;
   const sceneHeight = format.height;
@@ -215,7 +216,11 @@ export function generateTimelineThumbnail(params: {
         return;
       }
 
-      const { buildVideoWorkerPayloadFromTracks } = await import('~/composables/timeline/export');
+      const [{ buildVideoWorkerPayloadFromTracks }, { dispatchTimelineThumbnailGeneration }] =
+        await Promise.all([
+          import('~/composables/timeline/export'),
+          import('~/timeline/services/timeline-thumbnail.service'),
+        ]);
 
       const builtVideo = await buildVideoWorkerPayloadFromTracks({
         tracks: timelineDoc.tracks,
