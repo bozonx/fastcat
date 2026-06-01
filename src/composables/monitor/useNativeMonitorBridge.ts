@@ -81,6 +81,31 @@ interface SceneAudioLayer {
   audio_fade_out_curve: 'linear' | 'logarithmic';
 }
 
+interface NativeAudioTrackSelection {
+  hasAudioSolo: boolean;
+  videoTracksForAudio: TimelineTrack[];
+  audioTracksForAudio: TimelineTrack[];
+}
+
+export function resolveNativeAudioTrackSelection(params: {
+  visibleVideoTracks: TimelineTrack[];
+  audioTracks: TimelineTrack[];
+}): NativeAudioTrackSelection {
+  const hasAudioSolo = [...params.visibleVideoTracks, ...params.audioTracks].some((track) =>
+    Boolean(track.audioSolo),
+  );
+
+  return {
+    hasAudioSolo,
+    videoTracksForAudio: hasAudioSolo
+      ? params.visibleVideoTracks.filter((track) => Boolean(track.audioSolo))
+      : params.visibleVideoTracks.filter((track) => !track.audioMuted),
+    audioTracksForAudio: hasAudioSolo
+      ? params.audioTracks.filter((track) => Boolean(track.audioSolo))
+      : params.audioTracks.filter((track) => !track.audioMuted),
+  };
+}
+
 function extOf(path: string): string {
   const i = path.lastIndexOf('.');
   return i >= 0 ? path.slice(i + 1) : '';
@@ -190,9 +215,11 @@ async function makeAudioLayer(params: {
   absolutePath: string;
   masterGain: number;
   masterMuted: boolean;
+  ignoreTrackMute?: boolean;
 }): Promise<SceneAudioLayer | null> {
-  const { item, track, absolutePath, masterGain, masterMuted } = params;
-  if (masterMuted || item.audioMuted || track.audioMuted || item.disabled) return null;
+  const { item, track, absolutePath, masterGain, masterMuted, ignoreTrackMute = false } = params;
+  if (masterMuted || item.audioMuted || (!ignoreTrackMute && track.audioMuted) || item.disabled)
+    return null;
   if (!absolutePath) return null;
   const startUs = item.timelineRange.startUs;
   const durUs = item.timelineRange.durationUs;
@@ -281,6 +308,13 @@ export function useNativeMonitorBridge(): void {
     const visibleVideoTracks = doc.tracks.filter(
       (track) => track.kind === 'video' && !track.videoHidden,
     );
+    const audioTracks = doc.tracks.filter((track) => track.kind === 'audio');
+    const { hasAudioSolo, videoTracksForAudio, audioTracksForAudio } =
+      resolveNativeAudioTrackSelection({
+        visibleVideoTracks,
+        audioTracks,
+      });
+    const videoTrackIdsForAudio = new Set(videoTracksForAudio.map((track) => track.id));
     const videoTrackLayerById = new Map<string, number>();
     visibleVideoTracks.forEach((track, index) => {
       videoTrackLayerById.set(track.id, visibleVideoTracks.length - 1 - index);
@@ -307,14 +341,17 @@ export function useNativeMonitorBridge(): void {
           const absolutePath = await resolveProjectAbsolutePath(path, projectStore);
           const kind = isSvgLayer(item) ? 'svg' : isImageLayer(item) ? 'image' : 'video';
           if (kind === 'video') {
-            const audioLayer = await makeAudioLayer({
-              item,
-              track,
-              absolutePath,
-              masterGain,
-              masterMuted,
-            });
-            if (audioLayer) audioLayers.push(audioLayer);
+            if (videoTrackIdsForAudio.has(track.id)) {
+              const audioLayer = await makeAudioLayer({
+                item,
+                track,
+                absolutePath,
+                masterGain,
+                masterMuted,
+                ignoreTrackMute: hasAudioSolo,
+              });
+              if (audioLayer) audioLayers.push(audioLayer);
+            }
           }
           layers.push({
             ...makeBaseLayer({
@@ -390,7 +427,7 @@ export function useNativeMonitorBridge(): void {
       }
     }
 
-    for (const track of doc.tracks.filter((track) => track.kind === 'audio')) {
+    for (const track of audioTracksForAudio) {
       if (!track?.items) continue;
       for (const item of track.items) {
         if (!isClipItem(item) || !isSourceClipItem(item)) continue;
@@ -403,6 +440,7 @@ export function useNativeMonitorBridge(): void {
           absolutePath,
           masterGain,
           masterMuted,
+          ignoreTrackMute: hasAudioSolo,
         });
         if (audioLayer) audioLayers.push(audioLayer);
       }

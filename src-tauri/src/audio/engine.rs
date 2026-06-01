@@ -1,8 +1,7 @@
 use std::collections::VecDeque;
-use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, TryLockError};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -149,8 +148,8 @@ impl NativeAudioEngine {
 impl Drop for NativeAudioEngine {
     fn drop(&mut self) {
         self.running.store(false, Ordering::Relaxed);
-        if let Some(producer) = self.producer.take() {
-            let _ = producer.join();
+        if self.producer.take().is_some() {
+            log::debug!("[audio] producer stop requested");
         }
     }
 }
@@ -229,15 +228,21 @@ fn write_output<T: OutputSample>(
 ) {
     let channels = device_channels.max(1) as usize;
     let frames = data.len() / channels;
-    let mut state = shared.lock().unwrap();
-    let mut frames_read = 0;
-
+    let mut state = match shared.try_lock() {
+        Ok(state) => state,
+        Err(TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
+        Err(TryLockError::WouldBlock) => {
+            for sample in data {
+                *sample = T::from_f32(0.0);
+            }
+            return;
+        }
+    };
     for frame in 0..frames {
         let (left, right) = if state.playing {
             if state.ring.len() >= 2 {
                 let left = state.ring.pop_front().unwrap_or(0.0);
                 let right = state.ring.pop_front().unwrap_or(0.0);
-                frames_read += 1;
                 (left, right)
             } else {
                 (0.0, 0.0)
@@ -257,7 +262,7 @@ fn write_output<T: OutputSample>(
     }
 
     if state.playing {
-        state.frames_written = state.frames_written.saturating_add(frames_read as u64);
+        state.frames_written = state.frames_written.saturating_add(frames as u64);
     } else {
         let _ = sample_rate;
     }
@@ -287,13 +292,7 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
             continue;
         };
 
-        let chunk = match mix_chunk(&scene, chunk_start, CHUNK_DURATION_SEC, sample_rate) {
-            Ok(chunk) => chunk,
-            Err(error) => {
-                log::warn!("[audio] mix chunk at {chunk_start:.3}s failed: {error:?}");
-                vec![0.0; chunk_frames * OUTPUT_CHANNELS]
-            }
-        };
+        let chunk = mix_chunk(&scene, chunk_start, CHUNK_DURATION_SEC, sample_rate);
 
         let mut state = shared.lock().unwrap();
         if state.seek_serial != seek_serial || state.scene_serial != scene_serial || !state.playing
@@ -312,7 +311,7 @@ fn mix_chunk(
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
     sample_rate: u32,
-) -> Result<Vec<f32>> {
+) -> Vec<f32> {
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
     let mut mixed = vec![0.0f32; frames * OUTPUT_CHANNELS];
     let chunk_end_sec = chunk_start_sec + chunk_duration_sec;
@@ -331,14 +330,24 @@ fn mix_chunk(
         let speed = sanitize_speed(layer.speed);
         let source_start =
             layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
-        let mut decoded = decode_ffmpeg_chunk(
+        let mut decoded = match decode_ffmpeg_chunk(
             &layer.path,
             source_start,
             segment_duration,
             speed,
             sample_rate,
         )
-        .with_context(|| format!("decode audio layer {}", layer.id))?;
+        .with_context(|| format!("decode audio layer {}", layer.id))
+        {
+            Ok(decoded) => decoded,
+            Err(error) => {
+                log::warn!(
+                    "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
+                    layer.id
+                );
+                continue;
+            }
+        };
         let write_start_frame =
             ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
         let frames_to_write = frames
@@ -356,7 +365,7 @@ fn mix_chunk(
     }
 
     soft_clip(&mut mixed);
-    Ok(mixed)
+    mixed
 }
 
 fn build_atempo_filter_str(speed: f64) -> Option<String> {
@@ -417,12 +426,10 @@ fn decode_ffmpeg_chunk(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = cmd.spawn().context("failed to spawn ffmpeg for audio")?;
-    let mut bytes = Vec::new();
-    if let Some(stdout) = child.stdout.as_mut() {
-        stdout.read_to_end(&mut bytes)?;
-    }
-    let output = child.wait_with_output()?;
+    let output = cmd
+        .spawn()
+        .context("failed to spawn ffmpeg for audio")?
+        .wait_with_output()?;
     if !output.status.success() {
         return Err(anyhow!(
             "ffmpeg audio decode failed: {}",
@@ -430,8 +437,8 @@ fn decode_ffmpeg_chunk(
         ));
     }
 
-    let mut samples = Vec::with_capacity(bytes.len() / 4);
-    for chunk in bytes.chunks_exact(4) {
+    let mut samples = Vec::with_capacity(output.stdout.len() / 4);
+    for chunk in output.stdout.chunks_exact(4) {
         samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
     }
     Ok(samples)
@@ -490,7 +497,7 @@ fn fade_curve(t: f64, curve: AudioFadeCurve) -> f64 {
     let x = t.clamp(0.0, 1.0);
     match curve {
         AudioFadeCurve::Linear => x,
-        AudioFadeCurve::Logarithmic => x.sin().max(0.0),
+        AudioFadeCurve::Logarithmic => (x * std::f64::consts::FRAC_PI_2).sin().max(0.0),
     }
 }
 
@@ -577,10 +584,45 @@ mod tests {
     #[test]
     fn build_atempo_filter_str_chains_correctly() {
         assert_eq!(build_atempo_filter_str(1.0), None);
-        assert_eq!(build_atempo_filter_str(2.0).as_deref(), Some("atempo=2.000000"));
-        assert_eq!(build_atempo_filter_str(4.0).as_deref(), Some("atempo=2.0,atempo=2.000000"));
-        assert_eq!(build_atempo_filter_str(0.5).as_deref(), Some("atempo=0.500000"));
-        assert_eq!(build_atempo_filter_str(0.25).as_deref(), Some("atempo=0.5,atempo=0.500000"));
-        assert_eq!(build_atempo_filter_str(3.0).as_deref(), Some("atempo=2.0,atempo=1.500000"));
+        assert_eq!(
+            build_atempo_filter_str(2.0).as_deref(),
+            Some("atempo=2.000000")
+        );
+        assert_eq!(
+            build_atempo_filter_str(4.0).as_deref(),
+            Some("atempo=2.0,atempo=2.000000")
+        );
+        assert_eq!(
+            build_atempo_filter_str(0.5).as_deref(),
+            Some("atempo=0.500000")
+        );
+        assert_eq!(
+            build_atempo_filter_str(0.25).as_deref(),
+            Some("atempo=0.5,atempo=0.500000")
+        );
+        assert_eq!(
+            build_atempo_filter_str(3.0).as_deref(),
+            Some("atempo=2.0,atempo=1.500000")
+        );
+    }
+
+    #[test]
+    fn logarithmic_fade_reaches_unity() {
+        assert_eq!(fade_curve(0.0, AudioFadeCurve::Logarithmic), 0.0);
+        assert!((fade_curve(1.0, AudioFadeCurve::Logarithmic) - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn output_clock_advances_across_silence() {
+        let shared = Arc::new(Mutex::new(AudioShared {
+            playing: true,
+            ..AudioShared::default()
+        }));
+        let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
+
+        write_output(&mut data, &shared, 48_000, OUTPUT_CHANNELS as u16);
+
+        assert!(data.iter().all(|sample| *sample == 0.0));
+        assert_eq!(shared.lock().unwrap().frames_written, 128);
     }
 }
