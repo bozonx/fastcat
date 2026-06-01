@@ -1,15 +1,14 @@
-//! Видео-декодер через системный `ffmpeg` CLI.
+//! Видео-декодер для нативного monitor/preview.
 //!
-//! Почему не ffmpeg-next: на системе обычно стоит ffmpeg 8.x, а биндинги ffmpeg-next/ffmpeg-sys-next
-//! 7.x ещё ссылаются на удалённый `avfft.h`. Городить локальную сборку libav под старый ABI
-//! ради минимального плеера — оверкилл. CLI-подход даёт нам raw rgba поток с минимальным кодом.
+//! Основной backend — `ffmpeg-next` поверх libav*: он не респаунит внешний процесс на seek
+//! и даёт прямой доступ к PTS/timebase. Системный `ffmpeg` CLI остаётся fallback'ом только
+//! для preview-декода; экспорт, прокси и конвертация по-прежнему используют CLI отдельно.
 //!
-//! Контракт:
-//!   - `ffprobe` отдаёт метаданные (размер, fps, длительность, codec).
-//!   - `ffmpeg -i <path> -ss <t> -f rawvideo -pix_fmt rgba -` пишет в stdout кадры подряд:
-//!     `width * height * 4` байт на каждый. PTS вычисляем как `start_time + frame_index / fps`.
+//! Контракт: наружу всегда отдаём плотный RGBA8 (`width * height * 4`) и PTS в секундах.
 
 use anyhow::{anyhow, Context, Result};
+use ffmpeg_next as ffmpeg;
+use once_cell::sync::OnceCell;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdout, Command, Stdio};
@@ -39,7 +38,177 @@ pub trait VideoDecoder: Send {
     fn next_frame(&mut self) -> Result<Option<VideoFrame>>;
 }
 
-pub struct FfmpegDecoder {
+static FFMPEG_INIT: OnceCell<()> = OnceCell::new();
+
+pub struct FfmpegNextDecoder {
+    path: PathBuf,
+    info: MediaInfo,
+    ictx: ffmpeg::format::context::Input,
+    decoder: ffmpeg::decoder::Video,
+    scaler: ffmpeg::software::scaling::Context,
+    stream_index: usize,
+    stream_time_base: ffmpeg::Rational,
+    eof_sent: bool,
+}
+
+// The decoder is created on the caller thread and then moved as a whole into one decode thread.
+// We never share libav/scaler pointers across threads after that move.
+unsafe impl Send for FfmpegNextDecoder {}
+
+impl FfmpegNextDecoder {
+    pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Self> {
+        init_ffmpeg()?;
+
+        let ictx = ffmpeg::format::input(path).with_context(|| {
+            format!(
+                "failed to open media through ffmpeg-next: {}",
+                path.display()
+            )
+        })?;
+        let input = ictx
+            .streams()
+            .best(ffmpeg::media::Type::Video)
+            .ok_or_else(|| anyhow!("no video stream"))?;
+        let stream_index = input.index();
+        let stream_time_base = input.time_base();
+        let fps = rational_to_f64(input.avg_frame_rate())
+            .or_else(|| rational_to_f64(input.rate()))
+            .unwrap_or(0.0);
+        let duration_sec = input_duration_sec(&ictx, &input);
+        let rotation = metadata_rotation(&input);
+        let has_audio = ictx
+            .streams()
+            .any(|stream| stream.parameters().medium() == ffmpeg::media::Type::Audio);
+        let parameters = input.parameters();
+        let codec = parameters.id().name().to_string();
+
+        let context_decoder = ffmpeg::codec::context::Context::from_parameters(parameters)
+            .context("failed to create ffmpeg-next decoder context")?;
+        let decoder = context_decoder
+            .decoder()
+            .video()
+            .context("failed to open ffmpeg-next video decoder")?;
+
+        let (visual_w, visual_h) = visual_dimensions(decoder.width(), decoder.height(), rotation);
+        let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
+        let scaler = ffmpeg::software::scaling::Context::get(
+            decoder.format(),
+            decoder.width(),
+            decoder.height(),
+            ffmpeg::format::Pixel::RGBA,
+            out_w,
+            out_h,
+            ffmpeg::software::scaling::flag::Flags::BILINEAR,
+        )
+        .context("failed to create ffmpeg-next scaler")?;
+
+        Ok(Self {
+            path: path.to_path_buf(),
+            info: MediaInfo {
+                duration_sec,
+                width: out_w,
+                height: out_h,
+                rotation,
+                fps,
+                codec,
+                has_audio,
+            },
+            ictx,
+            decoder,
+            scaler,
+            stream_index,
+            stream_time_base,
+            eof_sent: false,
+        })
+    }
+
+    fn decode_frame(&mut self, decoded: &ffmpeg::util::frame::Video) -> Result<VideoFrame> {
+        let mut rgba = ffmpeg::util::frame::Video::empty();
+        self.scaler
+            .run(decoded, &mut rgba)
+            .context("failed to scale decoded video frame to RGBA")?;
+
+        let width = rgba.width();
+        let height = rgba.height();
+        let row_bytes = width as usize * 4;
+        let mut pixels = vec![0u8; row_bytes * height as usize];
+        for row in 0..height as usize {
+            let src_start = row * rgba.stride(0);
+            let dst_start = row * row_bytes;
+            pixels[dst_start..dst_start + row_bytes]
+                .copy_from_slice(&rgba.data(0)[src_start..src_start + row_bytes]);
+        }
+
+        let pts_sec = decoded
+            .timestamp()
+            .or_else(|| decoded.pts())
+            .map(|pts| pts as f64 * rational_as_f64(self.stream_time_base))
+            .unwrap_or(0.0);
+
+        Ok(VideoFrame {
+            width,
+            height,
+            pixels,
+            pts_sec,
+        })
+    }
+}
+
+impl VideoDecoder for FfmpegNextDecoder {
+    fn info(&self) -> &MediaInfo {
+        &self.info
+    }
+
+    fn seek(&mut self, time_sec: f64) -> Result<()> {
+        let ts = (time_sec.max(0.0) * 1_000_000.0).round() as i64;
+        self.ictx.seek(ts, ..ts).with_context(|| {
+            format!(
+                "failed to seek ffmpeg-next decoder for {}",
+                self.path.display()
+            )
+        })?;
+        self.decoder.flush();
+        self.eof_sent = false;
+        Ok(())
+    }
+
+    fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
+        loop {
+            let mut decoded = ffmpeg::util::frame::Video::empty();
+            match self.decoder.receive_frame(&mut decoded) {
+                Ok(()) => return self.decode_frame(&decoded).map(Some),
+                Err(ffmpeg::Error::Other { errno }) if errno == ffmpeg::error::EAGAIN => {}
+                Err(ffmpeg::Error::Eof) => return Ok(None),
+                Err(error) => return Err(error).context("failed to receive ffmpeg-next frame"),
+            }
+
+            if self.eof_sent {
+                return Ok(None);
+            }
+
+            let mut packet = None;
+            for (stream, next_packet) in self.ictx.packets() {
+                if stream.index() == self.stream_index {
+                    packet = Some(next_packet);
+                    break;
+                }
+            }
+
+            if let Some(packet) = packet {
+                self.decoder
+                    .send_packet(&packet)
+                    .context("failed to send packet to ffmpeg-next decoder")?;
+            } else {
+                self.decoder
+                    .send_eof()
+                    .context("failed to send EOF to ffmpeg-next decoder")?;
+                self.eof_sent = true;
+            }
+        }
+    }
+}
+
+pub struct FfmpegCliDecoder {
     path: PathBuf,
     info: MediaInfo,
     frame_bytes: usize,
@@ -52,7 +221,7 @@ pub struct FfmpegDecoder {
     cached_frame: Option<VideoFrame>,
 }
 
-impl FfmpegDecoder {
+impl FfmpegCliDecoder {
     /// `max_output_long_edge` — максимальная длинная сторона декодированного кадра в пикселях.
     /// Если `Some(n)` и source-длинная сторона > n, ffmpeg downscale'нет (`-vf scale=...`),
     /// что радикально снижает CPU/GPU-нагрузку для 4K/HEVC превью. Аспект сохраняется.
@@ -145,13 +314,13 @@ impl FfmpegDecoder {
     }
 }
 
-impl Drop for FfmpegDecoder {
+impl Drop for FfmpegCliDecoder {
     fn drop(&mut self) {
         self.kill();
     }
 }
 
-impl VideoDecoder for FfmpegDecoder {
+impl VideoDecoder for FfmpegCliDecoder {
     fn info(&self) -> &MediaInfo {
         &self.info
     }
@@ -227,7 +396,84 @@ fn fmt_fps(fps: f64) -> String {
 }
 
 pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Box<dyn VideoDecoder>> {
-    Ok(Box::new(FfmpegDecoder::open(path, max_output_long_edge)?))
+    match FfmpegNextDecoder::open(path, max_output_long_edge) {
+        Ok(decoder) => Ok(Box::new(decoder)),
+        Err(error) => {
+            log::warn!(
+                "[native-media] ffmpeg-next decoder failed for {}; falling back to ffmpeg CLI: {error:#}",
+                path.display()
+            );
+            Ok(Box::new(FfmpegCliDecoder::open(
+                path,
+                max_output_long_edge,
+            )?))
+        }
+    }
+}
+
+fn init_ffmpeg() -> Result<()> {
+    FFMPEG_INIT
+        .get_or_try_init(|| ffmpeg::init().context("failed to initialize ffmpeg-next"))
+        .map(|_| ())
+}
+
+fn input_duration_sec(ictx: &ffmpeg::format::context::Input, stream: &ffmpeg::Stream<'_>) -> f64 {
+    if stream.duration() > 0 {
+        stream.duration() as f64 * rational_as_f64(stream.time_base())
+    } else if ictx.duration() > 0 {
+        ictx.duration() as f64 / 1_000_000.0
+    } else {
+        0.0
+    }
+}
+
+fn metadata_rotation(stream: &ffmpeg::Stream<'_>) -> i32 {
+    stream
+        .metadata()
+        .get("rotate")
+        .and_then(|rotation| rotation.trim().parse::<f64>().ok())
+        .map(|rotation| rotation.round() as i32)
+        .or_else(|| {
+            stream.side_data().find_map(|item| {
+                if item.kind() == ffmpeg::packet::side_data::Type::DisplayMatrix {
+                    display_matrix_rotation(item.data())
+                } else {
+                    None
+                }
+            })
+        })
+        .unwrap_or(0)
+}
+
+fn display_matrix_rotation(data: &[u8]) -> Option<i32> {
+    if data.len() < 9 * std::mem::size_of::<i32>() {
+        return None;
+    }
+
+    let read_i32 = |index: usize| -> Option<i32> {
+        let start = index * std::mem::size_of::<i32>();
+        Some(i32::from_ne_bytes(data[start..start + 4].try_into().ok()?))
+    };
+    let a = read_i32(0)? as f64;
+    let b = read_i32(1)? as f64;
+    if a == 0.0 && b == 0.0 {
+        return None;
+    }
+
+    let degrees = (-b.atan2(a).to_degrees()).round() as i32;
+    Some(((degrees % 360) + 360) % 360)
+}
+
+fn rational_to_f64(value: ffmpeg::Rational) -> Option<f64> {
+    if value.denominator() == 0 || value.numerator() == 0 {
+        None
+    } else {
+        Some(rational_as_f64(value))
+    }
+}
+
+fn rational_as_f64(value: ffmpeg::Rational) -> f64 {
+    value.numerator() as f64 / value.denominator() as f64
 }
 
 /// Считает target dims декода, сохраняя aspect и НЕ увеличивая разрешение.
@@ -444,6 +690,32 @@ mod tests {
     }
 
     #[test]
+    fn display_matrix_rotation_reads_quarter_turn() {
+        let mut matrix = [0i32; 9];
+        matrix[1] = -(1 << 16);
+        let data: Vec<u8> = matrix
+            .iter()
+            .flat_map(|value| value.to_ne_bytes())
+            .collect();
+
+        assert_eq!(display_matrix_rotation(&data), Some(90));
+    }
+
+    #[test]
+    fn display_matrix_rotation_reads_identity() {
+        let mut matrix = [0i32; 9];
+        matrix[0] = 1 << 16;
+        matrix[4] = 1 << 16;
+        matrix[8] = 1 << 30;
+        let data: Vec<u8> = matrix
+            .iter()
+            .flat_map(|value| value.to_ne_bytes())
+            .collect();
+
+        assert_eq!(display_matrix_rotation(&data), Some(0));
+    }
+
+    #[test]
     fn compute_output_dims_floors_to_even_and_min_two() {
         let (w, h) = compute_output_dims(3, 5, Some(2));
         assert!(w >= 2 && h >= 2);
@@ -464,5 +736,22 @@ mod tests {
         assert_eq!(fmt_fps(0.0), "30.000000");
         assert_eq!(fmt_fps(f64::NAN), "30.000000");
         assert_eq!(fmt_fps(23.976), "23.976000");
+    }
+
+    #[test]
+    fn ffmpeg_next_decoder_reads_fixture_first_frame() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None).unwrap();
+        let frame = decoder.next_frame().unwrap().unwrap();
+
+        assert_eq!(decoder.info().width, 1280);
+        assert_eq!(decoder.info().height, 720);
+        assert_eq!(frame.width, 1280);
+        assert_eq!(frame.height, 720);
+        assert_eq!(frame.pixels.len(), 1280 * 720 * 4);
+        assert!(frame.pts_sec >= 0.0);
     }
 }

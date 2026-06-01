@@ -56,8 +56,8 @@ raw-window-handle = "0.6"
 # Нативный монитор: окно + декодер.
 winit = "0.30"
 resvg = "0.46.0"
-# Видео-декодинг — через системный ffmpeg CLI (см. media/decode.rs). Прямая привязка
-# к libav-биндингам пока заблокирована несовместимостью ffmpeg-next с ffmpeg 8.x.
+# Preview/monitor decode uses libav via ffmpeg-next. Export/proxy/convert still use system ffmpeg CLI.
+ffmpeg-next = "8.1.0"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2.4.2"
