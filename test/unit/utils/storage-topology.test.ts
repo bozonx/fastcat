@@ -144,6 +144,7 @@ describe('storage topology', () => {
       },
     });
 
+    expect(resolved.projectsRoot).toBe('/mnt/fastcat-data');
     expect(resolved.dataRoot).toBe('/mnt/fastcat-data');
     expect(resolved.tempRoot).toBe('/mnt/fastcat-cache/temp');
     expect(resolved.proxiesRoot).toBe('/mnt/fastcat-proxies');

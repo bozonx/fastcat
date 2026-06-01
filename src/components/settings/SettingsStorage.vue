@@ -156,175 +156,90 @@ function resetPathDefaults() {
       </UButton>
     </div>
 
-    <UiFormField
-      v-if="isDesktopTauri"
-      :label="t('videoEditor.settings.storageMode')"
-      :help="
-        t(
-          'videoEditor.settings.storageModeHelp',
-          'Choose between OS default folders and portable workspace-local storage.',
-        )
-      "
-    >
-      <UiSelect
-        v-model="placementMode"
-        :items="placementModeOptions"
-        value-key="value"
-        full-width
-      />
-    </UiFormField>
+    <div v-if="isDesktopTauri" class="flex flex-col gap-6">
+      <!-- 1. Папка общих файлов (common) -->
+      <UiFormField
+        :label="t('videoEditor.settings.commonFilesFolder')"
+        :help="t('videoEditor.settings.commonFilesFolderHelp')"
+      >
+        <div class="flex flex-col gap-2">
+          <div class="flex gap-2">
+            <UiTextInput v-model="contentRootPath" full-width />
+            <UButton
+              color="neutral"
+              variant="soft"
+              icon="i-heroicons-folder-open"
+              @click="pickDesktopPath('content')"
+            />
+          </div>
+          <div class="text-xs text-ui-text-muted mt-0.5">
+            {{ t('videoEditor.settings.resolvedPathLabel') }} <code class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom">{{ workspaceStore.resolvedStorageTopology.commonRoot }}</code>
+          </div>
+        </div>
+      </UiFormField>
 
-    <div
-      v-if="isBrowserWorkspaceMode"
-      class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border"
-    >
-      <div class="flex flex-col gap-1 min-w-0">
-        <div class="text-sm font-medium text-ui-text">
-          {{ t('videoEditor.settings.workspaceFolder') }}
+      <!-- 2. Папка проектов по умолчанию -->
+      <UiFormField
+        :label="t('videoEditor.settings.defaultProjectsFolder')"
+        :help="t('videoEditor.settings.defaultProjectsFolderHelp')"
+      >
+        <div class="flex flex-col gap-2">
+          <div class="flex gap-2">
+            <UiTextInput v-model="dataRootPath" full-width />
+            <UButton
+              color="neutral"
+              variant="soft"
+              icon="i-heroicons-folder-open"
+              @click="pickDesktopPath('data')"
+            />
+          </div>
+          <div class="text-xs text-ui-text-muted mt-0.5">
+            {{ t('videoEditor.settings.resolvedPathLabel') }} <code class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom">{{ workspaceStore.resolvedStorageTopology.projectsRoot }}</code>
+          </div>
         </div>
-        <div class="text-xs text-ui-text-muted break-all">
-          {{ workspaceFolderLabel }}
+      </UiFormField>
+
+      <!-- 3. Папка для прокси-файлов -->
+      <UiFormField
+        :label="t('videoEditor.settings.proxiesFolder')"
+        :help="t('videoEditor.settings.proxiesFolderHelp')"
+      >
+        <div class="flex flex-col gap-2">
+          <div class="flex gap-2">
+            <UiTextInput v-model="proxiesRootPath" full-width />
+            <UButton
+              color="neutral"
+              variant="soft"
+              icon="i-heroicons-folder-open"
+              @click="pickDesktopPath('proxies')"
+            />
+          </div>
+          <div class="text-xs text-ui-text-muted mt-0.5">
+            {{ t('videoEditor.settings.resolvedPathLabel') }} <code class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom">{{ workspaceStore.resolvedStorageTopology.proxiesRoot }}</code>
+          </div>
         </div>
-        <div class="text-xs text-ui-text-muted">
-          {{ t('videoEditor.settings.workspaceFolderDescription') }}
+      </UiFormField>
+
+      <!-- Информационный блок о системных путях и кэше -->
+      <div class="p-4 rounded-xl border border-ui-border bg-ui-bg-elevated/20 flex flex-col gap-3">
+        <div class="text-xs font-bold text-ui-text-muted uppercase tracking-wider">
+          {{ t('videoEditor.settings.systemPathsTitle') }}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="flex flex-col gap-1">
+            <span class="text-ui-text-muted font-medium">{{ t('videoEditor.settings.cacheFolder') }}</span>
+            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{ workspaceStore.resolvedStorageTopology.tempRoot }}</code>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="text-ui-text-muted font-medium">{{ t('videoEditor.settings.tempFolder') }}</span>
+            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{ workspaceStore.resolvedStorageTopology.ephemeralTmpRoot }}</code>
+          </div>
+          <div v-if="workspaceStore.tauriAppPaths" class="flex flex-col gap-1 md:col-span-2">
+            <span class="text-ui-text-muted font-medium">{{ t('videoEditor.settings.appSettingsFolder') }}</span>
+            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{ workspaceStore.tauriAppPaths.configDir }}</code>
+          </div>
         </div>
       </div>
-
-      <UButton
-        color="neutral"
-        variant="soft"
-        icon="i-heroicons-folder-open"
-        :label="t('videoEditor.settings.selectWorkspaceFolder')"
-        @click="pickWorkspaceFolder"
-      />
-    </div>
-
-    <div v-if="isDesktopSystemMode" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <UiFormField
-        :label="t('videoEditor.settings.contentRootPath')"
-        :help="
-          t(
-            'videoEditor.settings.contentRootPathHelp',
-            'Projects and common content use this shared parent path on desktop. Leave empty to use the default OS location.',
-          )
-        "
-      >
-        <div class="flex gap-2">
-          <UiTextInput v-model="contentRootPath" full-width />
-          <UButton
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('content')"
-          />
-        </div>
-      </UiFormField>
-
-      <UiFormField
-        :label="t('videoEditor.settings.dataRootPath')"
-        :help="
-          t(
-            'videoEditor.settings.dataRootPathHelp',
-            'Reserved for future persistent application libraries such as plugins, sticker packs or shared installed assets.',
-          )
-        "
-      >
-        <div class="flex gap-2">
-          <UiTextInput v-model="dataRootPath" full-width />
-          <UButton
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('data')"
-          />
-        </div>
-      </UiFormField>
-
-      <UiFormField
-        :label="t('videoEditor.settings.tempRootPath')"
-        :help="
-          t(
-            'videoEditor.settings.tempRootPathHelp',
-            'Location for rebuildable cache, thumbnails, waveforms and temporary files. Leave empty to use the default OS cache location.',
-          )
-        "
-      >
-        <div class="flex gap-2">
-          <UiTextInput v-model="tempRootPath" full-width />
-          <UButton
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('temp')"
-          />
-        </div>
-      </UiFormField>
-
-      <UiFormField
-        :label="t('videoEditor.settings.proxiesRootPath')"
-        :help="
-          t(
-            'videoEditor.settings.proxiesRootPathHelp',
-            'Generated proxy media can use a dedicated path. Leave empty to use the default application location.',
-          )
-        "
-      >
-        <div class="flex gap-2">
-          <UiTextInput v-model="proxiesRootPath" full-width />
-          <UButton
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('proxies')"
-          />
-        </div>
-      </UiFormField>
-
-      <UiFormField
-        v-if="!workspaceStore.isEphemeral"
-        :label="t('videoEditor.settings.ephemeralTmpRootPath')"
-        :help="
-          t(
-            'videoEditor.settings.ephemeralTmpRootPathHelp',
-            'Short-lived temporary job files. Leave empty to use the system temporary directory.',
-          )
-        "
-      >
-        <div class="flex gap-2">
-          <UiTextInput v-model="ephemeralTmpRootPath" full-width />
-          <UButton
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('ephemeralTmp')"
-          />
-        </div>
-      </UiFormField>
-    </div>
-
-    <div
-      v-if="isDesktopPortableMode && !workspaceStore.isEphemeral"
-      class="grid grid-cols-1 gap-4 md:grid-cols-2"
-    >
-      <UiFormField
-        :label="t('videoEditor.settings.ephemeralTmpRootPath')"
-        :help="
-          t(
-            'videoEditor.settings.portableEphemeralTmpRootPathHelp',
-            'Portable mode stores project cache inside workspace. Leave this empty to keep short-lived job files in the system temporary directory.',
-          )
-        "
-      >
-        <div class="flex gap-2">
-          <UiTextInput v-model="ephemeralTmpRootPath" full-width />
-          <UButton
-            color="neutral"
-            variant="soft"
-            icon="i-heroicons-folder-open"
-            @click="pickDesktopPath('ephemeralTmp')"
-          />
-        </div>
-      </UiFormField>
     </div>
 
     <UiConfirmModal
@@ -344,7 +259,7 @@ function resetPathDefaults() {
     />
 
     <div
-      v-if="isBrowserWorkspaceMode || isDesktopPortableMode"
+      v-if="isBrowserWorkspaceMode || isDesktopTauri"
       class="flex items-center justify-between gap-3 p-3 rounded border border-ui-border"
     >
       <div class="flex flex-col gap-1 min-w-0">

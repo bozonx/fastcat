@@ -406,6 +406,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     error,
     isApiSupported,
     workspaceProviderId,
+    tauriAppPaths: skipHydrate(tauriAppPaths),
     lastProjectName: skipHydrate(lastProjectName),
     userSettings: skipHydrate(userSettings),
     appSettings: skipHydrate(appSettings),

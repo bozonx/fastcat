@@ -194,8 +194,10 @@ export async function resolveTauriSystemStorageTopology(input: {
   const ephemeralTmpRoot =
     ephemeralTmpRootBase || (await join(input.appPaths.tempDir, 'fastcat-jobs'));
 
+  const projectsRoot = dataRootBase || (await join(contentBase, PROJECTS_ROOT_DIR_NAME));
+
   return {
-    projectsRoot: await join(contentBase, PROJECTS_ROOT_DIR_NAME),
+    projectsRoot,
     commonRoot: await join(contentBase, COMMON_ROOT_DIR_NAME),
     dataRoot,
     tempRoot,
