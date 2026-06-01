@@ -11,7 +11,6 @@ import {
   remove,
   rename,
 } from '@tauri-apps/plugin-fs';
-import { join } from '@tauri-apps/api/path';
 import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
@@ -23,10 +22,6 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
   readDir: vi.fn(),
   remove: vi.fn(),
   rename: vi.fn(),
-}));
-
-vi.mock('@tauri-apps/api/path', () => ({
-  join: vi.fn((...args) => Promise.resolve(args.join('/'))),
 }));
 
 vi.mock('tauri-plugin-fs-stream-api', () => ({
@@ -234,7 +229,6 @@ describe('TauriDirectoryHandle', () => {
       vi.mocked(stat).mockResolvedValue({ isDirectory: true } as any);
 
       const child = await handle.getDirectoryHandle('child');
-      expect(join).toHaveBeenCalledWith('/test', 'child');
       expect(exists).toHaveBeenCalledWith('/test/child');
       expect(stat).toHaveBeenCalledWith('/test/child');
       expect(child).toBeInstanceOf(TauriDirectoryHandle);
@@ -278,7 +272,6 @@ describe('TauriDirectoryHandle', () => {
       vi.mocked(stat).mockResolvedValue({ isDirectory: false } as any);
 
       const child = await handle.getFileHandle('file.txt');
-      expect(join).toHaveBeenCalledWith('/test', 'file.txt');
       expect(exists).toHaveBeenCalledWith('/test/file.txt');
       expect(stat).toHaveBeenCalledWith('/test/file.txt');
       expect(child).toBeInstanceOf(TauriFileHandle);
@@ -320,7 +313,6 @@ describe('TauriDirectoryHandle', () => {
       const handle = new TauriDirectoryHandle('/test', 'test');
       await handle.removeEntry('item', { recursive: true });
 
-      expect(join).toHaveBeenCalledWith('/test', 'item');
       expect(remove).toHaveBeenCalledWith('/test/item', { recursive: true });
     });
   });

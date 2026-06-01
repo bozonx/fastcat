@@ -18,7 +18,7 @@ import {
 import PQueue from 'p-queue';
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { appDataDir } from '@tauri-apps/api/path';
 import {
   BaseDirectory,
   copyFile,
@@ -37,6 +37,7 @@ import { normalizeFsPath } from '~/file-manager/core/path';
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
+import { joinTauriFsPath } from '~/utils/tauri-local-path';
 
 /** Marker string for the Tauri AppData base directory. */
 export const TAURI_APP_DATA_BASE_PATH = 'app-data';
@@ -131,7 +132,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     }
 
     const basePath = base.type === 'absolute' ? base.path : await base.resolve();
-    const tauriPath = normalizedPath ? await join(basePath, normalizedPath) : basePath;
+    const tauriPath = normalizedPath ? joinTauriFsPath(basePath, normalizedPath) : basePath;
     return {
       tauriPath,
       options: {},
@@ -167,7 +168,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
         : base.type === 'absolute'
           ? base.path
           : await base.resolve();
-    return normalizedPath ? await join(baseDirPath, normalizedPath) : baseDirPath;
+    return normalizedPath ? joinTauriFsPath(baseDirPath, normalizedPath) : baseDirPath;
   }
 
   private async ensureParentDirectory(path: string): Promise<void> {

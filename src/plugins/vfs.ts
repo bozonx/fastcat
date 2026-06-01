@@ -25,6 +25,7 @@ import {
 } from '~/utils/workspace-common';
 import { PROJECTS_ROOT_DIR_NAME } from '~/utils/storage-roots';
 import { isTauriRuntime } from '~/utils/runtime';
+import { joinTauriFsPath } from '~/utils/tauri-local-path';
 
 /**
  * Bridges core VFS progress reporting to the Nuxt-side background-tasks store
@@ -170,13 +171,10 @@ function createTauriWorkspaceAdapters(
     const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
     const paths = await resolveTauriAppPaths(fastcatDevDir);
     if (paths) {
-      const { join } = await import('@tauri-apps/api/path');
-      const vardataPath = await join(paths.cacheDir, 'vardata');
-      return { type: 'absolute', path: vardataPath };
+      return { type: 'absolute', path: joinTauriFsPath(paths.cacheDir, 'vardata') };
     }
     const { appDataDir } = await import('@tauri-apps/api/path');
-    const { join } = await import('@tauri-apps/api/path');
-    return { type: 'absolute', path: await join(await appDataDir(), 'vardata') };
+    return { type: 'absolute', path: joinTauriFsPath(await appDataDir(), 'vardata') };
   });
 
   const config = new TauriFileSystemAdapter(async () => {
@@ -200,8 +198,7 @@ function createTauriWorkspaceAdapters(
     const workspacePath = getWorkspacePath();
     if (workspacePath) {
       if (!trimmed) return { type: 'absolute', path: workspacePath };
-      const { join } = await import('@tauri-apps/api/path');
-      return { type: 'absolute', path: await join(workspacePath, trimmed) };
+      return { type: 'absolute', path: joinTauriFsPath(workspacePath, trimmed) };
     }
     return resolveAppDataDir();
   };

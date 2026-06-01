@@ -8,10 +8,10 @@ import {
   exists,
   rename,
 } from '@tauri-apps/plugin-fs';
-import { join } from '@tauri-apps/api/path';
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
 import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
+import { joinTauriFsPath } from '~/utils/tauri-local-path';
 
 const STREAM_WRITER_THRESHOLD_BYTES = 1024 * 1024;
 
@@ -65,22 +65,6 @@ export class TauriFileHandle {
         } catch {
           // Ignore and start empty if file read fails
         }
-      }
-    };
-
-    const ensureStreamMode = async () => {
-      if (mode === 'stream') return;
-      if (mode === 'buffer') return;
-      mode = 'stream';
-      releaseStreamSlot = await acquireStreamingFileIoSlot();
-      try {
-        const stream = await openWriteFileStream(tempPath);
-        streamWriter = stream.getWriter();
-      } catch (error) {
-        releaseStreamSlot();
-        releaseStreamSlot = null;
-        mode = 'pending';
-        throw error;
       }
     };
 
@@ -261,7 +245,7 @@ export class TauriDirectoryHandle {
     name: string,
     options?: { create?: boolean },
   ): Promise<TauriDirectoryHandle> {
-    const childPath = await join(this.path, name);
+    const childPath = joinTauriFsPath(this.path, name);
 
     if (name.startsWith('.')) {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -287,7 +271,7 @@ export class TauriDirectoryHandle {
   }
 
   async getFileHandle(name: string, options?: { create?: boolean }): Promise<TauriFileHandle> {
-    const childPath = await join(this.path, name);
+    const childPath = joinTauriFsPath(this.path, name);
     const fileExists = await exists(childPath);
 
     if (!fileExists) {
@@ -307,14 +291,14 @@ export class TauriDirectoryHandle {
   }
 
   async removeEntry(name: string, options?: { recursive?: boolean }): Promise<void> {
-    const childPath = await join(this.path, name);
+    const childPath = joinTauriFsPath(this.path, name);
     await remove(childPath, { recursive: options?.recursive });
   }
 
   async *values(): AsyncIterable<TauriDirectoryHandle | TauriFileHandle> {
     const entries = await readDir(this.path);
     for (const entry of entries) {
-      const childPath = await join(this.path, entry.name);
+      const childPath = joinTauriFsPath(this.path, entry.name);
       if (entry.isDirectory) {
         yield new TauriDirectoryHandle(childPath, entry.name);
       } else {

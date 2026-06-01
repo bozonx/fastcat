@@ -16,7 +16,7 @@ import {
   stat,
   writeFile,
 } from '@tauri-apps/plugin-fs';
-import { appDataDir, join } from '@tauri-apps/api/path';
+import { appDataDir } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openReadFileStream, openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 
@@ -35,7 +35,6 @@ vi.mock('@tauri-apps/plugin-fs', () => ({
 
 vi.mock('@tauri-apps/api/path', () => ({
   appDataDir: vi.fn(async () => '/AppData'),
-  join: vi.fn(async (...parts: string[]) => parts.filter(Boolean).join('/').replace(/\/+/g, '/')),
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -462,10 +461,10 @@ describe('TauriFileSystemAdapter', () => {
     });
   });
 
-  it('asserts join was used during base resolution', async () => {
+  it('resolves nested paths without calling the Tauri path plugin join IPC', async () => {
     const adapter = new TauriFileSystemAdapter('/root');
     vi.mocked(mkdir).mockResolvedValue();
     await adapter.createDirectory('a/b');
-    expect(join).toHaveBeenCalled();
+    expect(mkdir).toHaveBeenCalledWith('/root/a/b', { baseDir: undefined, recursive: true });
   });
 });
