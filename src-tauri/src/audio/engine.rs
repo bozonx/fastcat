@@ -1,7 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -488,7 +487,7 @@ fn mix_chunk(
             let speed = sanitize_speed(layer.speed);
             let source_start =
                 layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
-            let mut decoded = match decode_ffmpeg_chunk(
+            let mut decoded = match decode_audio_chunk(
                 &layer.path,
                 source_start,
                 segment_duration,
@@ -557,7 +556,7 @@ fn mix_chunk(
             let speed = sanitize_speed(layer.speed);
             let source_start =
                 layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
-            let mut decoded = match decode_ffmpeg_chunk(
+            let mut decoded = match decode_audio_chunk(
                 &layer.path,
                 source_start,
                 segment_duration,
@@ -608,69 +607,330 @@ fn apply_master_gain(samples: &mut [f32], master_gain: f64) {
     }
 }
 
-fn build_atempo_filter_str(speed: f64) -> Option<String> {
-    let speed_clamped = sanitize_speed(speed);
-    if (speed_clamped - 1.0).abs() <= f64::EPSILON {
-        return None;
+fn resample_planar_with_speed(
+    input: Vec<Vec<f32>>,
+    source_rate: u32,
+    target_rate: u32,
+    speed: f64,
+    num_channels: usize,
+) -> Result<Vec<Vec<f32>>> {
+    use rubato::{Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction};
+
+    let ratio = target_rate as f64 / (source_rate as f64 * speed);
+    
+    if (ratio - 1.0).abs() < 1e-6 && source_rate == target_rate {
+        return Ok(input);
     }
-    let mut filters = Vec::new();
-    let mut s = speed_clamped;
-    while s > 2.0 {
-        filters.push("atempo=2.0".to_string());
-        s /= 2.0;
+    
+    if input.is_empty() || input[0].is_empty() {
+        return Ok(input);
     }
-    while s < 0.5 {
-        filters.push("atempo=0.5".to_string());
-        s /= 0.5;
+
+    let params = SincInterpolationParameters {
+        sinc_len: 256,
+        f_cutoff: 0.95,
+        interpolation: SincInterpolationType::Linear,
+        oversampling_factor: 160,
+        window: WindowFunction::BlackmanHarris2,
+    };
+    
+    let chunk_size = 1024;
+    let max_ratio_factor = ratio.max(2.0);
+    let mut resampler = SincFixedIn::<f32>::new(
+        ratio,
+        max_ratio_factor,
+        params,
+        chunk_size,
+        num_channels,
+    ).map_err(|e| anyhow!("failed to create resampler: {:?}", e))?;
+    
+    let input_len = input[0].len();
+    let mut output = vec![Vec::new(); num_channels];
+    let mut offset = 0;
+    
+    while offset < input_len {
+        let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
+        let copy_len = (input_len - offset).min(chunk_size);
+        for ch in 0..num_channels {
+            chunk[ch][..copy_len].copy_from_slice(&input[ch][offset..offset + copy_len]);
+        }
+        
+        let out_chunk = resampler.process(&chunk, None)
+            .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
+            
+        for ch in 0..num_channels {
+            output[ch].extend_from_slice(&out_chunk[ch]);
+        }
+        offset += chunk_size;
     }
-    if (s - 1.0).abs() > f64::EPSILON {
-        filters.push(format!("atempo={:.6}", s));
+        
+    Ok(output)
+}
+
+fn planar_to_interleaved_stereo(planar: Vec<Vec<f32>>) -> Vec<f32> {
+    let num_channels = planar.len();
+    if num_channels == 0 {
+        return Vec::new();
     }
-    if filters.is_empty() {
-        None
+    let num_frames = planar[0].len();
+    let mut interleaved = vec![0.0f32; num_frames * 2];
+    
+    if num_channels == 1 {
+        for i in 0..num_frames {
+            let val = planar[0][i];
+            interleaved[i * 2] = val;
+            interleaved[i * 2 + 1] = val;
+        }
     } else {
-        Some(filters.join(","))
+        for i in 0..num_frames {
+            interleaved[i * 2] = planar[0][i];
+            interleaved[i * 2 + 1] = planar[1][i];
+        }
     }
+    interleaved
 }
 
-fn decode_entire_file_ffmpeg(path: &str, sample_rate: u32) -> Result<Vec<f32>> {
-    let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-nostdin")
-        .arg("-loglevel")
-        .arg("error")
-        .arg("-i")
-        .arg(path)
-        .arg("-vn")
-        .arg("-f")
-        .arg("f32le")
-        .arg("-ac")
-        .arg(OUTPUT_CHANNELS.to_string())
-        .arg("-ar")
-        .arg(sample_rate.to_string())
-        .arg("-")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<Vec<f32>> {
+    use symphonia::core::formats::FormatOptions;
+    use symphonia::core::meta::MetadataOptions;
+    use symphonia::core::codecs::DecoderOptions;
+    use symphonia::core::probe::Hint;
 
-    let output = cmd
-        .spawn()
-        .context("failed to spawn ffmpeg for entire audio decode")?
-        .wait_with_output()?;
-    if !output.status.success() {
-        return Err(anyhow!(
-            "ffmpeg entire audio decode failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("failed to open audio file: {}", path))?;
+    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
+
+    let mut hint = Hint::new();
+    if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
+        hint.with_extension(ext);
     }
 
-    let mut samples = Vec::with_capacity(output.stdout.len() / 4);
-    for chunk in output.stdout.chunks_exact(4) {
-        samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    let probed = symphonia::default::get_probe()
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
+        .context("failed to probe media format")?;
+
+    let mut format = probed.format;
+    let track = format
+        .tracks()
+        .iter()
+        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
+        .ok_or_else(|| anyhow!("no active audio track found"))?;
+
+    let mut decoder = symphonia::default::get_codecs()
+        .make(
+            &track.codec_params,
+            &DecoderOptions::default(),
+        )
+        .context("failed to create decoder")?;
+
+    let track_id = track.id;
+    let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
+    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
+
+    let mut planar_buffers = vec![Vec::new(); channels];
+
+    loop {
+        let packet = match format.next_packet() {
+            Ok(packet) => packet,
+            Err(symphonia::core::errors::Error::IoError(ref err))
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(err) => return Err(err).context("failed to read next packet"),
+        };
+
+        if packet.track_id() != track_id {
+            continue;
+        }
+
+        match decoder.decode(&packet) {
+            Ok(audio_buf) => {
+                let spec = *audio_buf.spec();
+                let duration = audio_buf.capacity() as u64;
+                let mut sample_buf = symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
+                sample_buf.copy_interleaved_ref(audio_buf);
+                
+                let samples = sample_buf.samples();
+                let num_channels = spec.channels.count();
+                let num_frames = samples.len() / num_channels;
+                
+                for frame in 0..num_frames {
+                    for ch in 0..num_channels {
+                        if ch < channels {
+                            planar_buffers[ch].push(samples[frame * num_channels + ch]);
+                        }
+                    }
+                }
+            }
+            Err(symphonia::core::errors::Error::IoError(ref err))
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(symphonia::core::errors::Error::DecodeError(err)) => {
+                log::warn!("[audio] symphonia decode error: {:?}", err);
+                continue;
+            }
+            Err(err) => return Err(err).context("failed to decode packet"),
+        }
     }
-    Ok(samples)
+
+    let resampled = resample_planar_with_speed(planar_buffers, source_rate, target_sample_rate, 1.0, channels)?;
+    let interleaved = planar_to_interleaved_stereo(resampled);
+    Ok(interleaved)
 }
 
-fn decode_ffmpeg_chunk(
+fn decode_symphonia_chunk(
+    path: &str,
+    source_start_sec: f64,
+    timeline_duration_sec: f64,
+    speed: f64,
+    target_sample_rate: u32,
+) -> Result<Vec<f32>> {
+    use symphonia::core::formats::FormatOptions;
+    use symphonia::core::meta::MetadataOptions;
+    use symphonia::core::codecs::DecoderOptions;
+    use symphonia::core::probe::Hint;
+
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("failed to open audio file for chunk: {}", path))?;
+    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
+
+    let mut hint = Hint::new();
+    if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
+        hint.with_extension(ext);
+    }
+
+    let probed = symphonia::default::get_probe()
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
+        .context("failed to probe media format")?;
+
+    let mut format = probed.format;
+    let track = format
+        .tracks()
+        .iter()
+        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
+        .ok_or_else(|| anyhow!("no active audio track found"))?;
+
+    let mut decoder = symphonia::default::get_codecs()
+        .make(
+            &track.codec_params,
+            &DecoderOptions::default(),
+        )
+        .context("failed to create decoder")?;
+
+    let track_id = track.id;
+    let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
+    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
+    let time_base = track.codec_params.time_base.unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
+
+    let seeked_to = format.seek(
+        symphonia::core::formats::SeekMode::Accurate,
+        symphonia::core::formats::SeekTo::Time {
+            time: symphonia::core::units::Time {
+                seconds: source_start_sec.floor() as u64,
+                frac: source_start_sec.fract(),
+            },
+            track_id: Some(track_id),
+        },
+    ).context("failed to seek in format reader")?;
+
+    decoder.reset();
+
+    let actual_sec = {
+        let t = time_base.calc_time(seeked_to.actual_ts);
+        t.seconds as f64 + t.frac
+    };
+    let discard_sec = (source_start_sec - actual_sec).max(0.0);
+    let mut discard_frames_remaining = (discard_sec * source_rate as f64).round() as usize;
+    let source_frames_needed = (timeline_duration_sec * speed * source_rate as f64).round() as usize;
+
+    let mut planar_buffers = vec![Vec::new(); channels];
+    let mut collected_frames = 0;
+    let mut break_loop = false;
+
+    loop {
+        if break_loop {
+            break;
+        }
+
+        let packet = match format.next_packet() {
+            Ok(packet) => packet,
+            Err(symphonia::core::errors::Error::IoError(ref err))
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(err) => return Err(err).context("failed to read next packet"),
+        };
+
+        if packet.track_id() != track_id {
+            continue;
+        }
+
+        match decoder.decode(&packet) {
+            Ok(audio_buf) => {
+                let spec = *audio_buf.spec();
+                let duration = audio_buf.capacity() as u64;
+                let mut sample_buf = symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
+                sample_buf.copy_interleaved_ref(audio_buf);
+                
+                let samples = sample_buf.samples();
+                let num_channels = spec.channels.count();
+                let num_frames = samples.len() / num_channels;
+                
+                for frame in 0..num_frames {
+                    if discard_frames_remaining > 0 {
+                        discard_frames_remaining -= 1;
+                        continue;
+                    }
+                    if collected_frames >= source_frames_needed {
+                        break_loop = true;
+                        break;
+                    }
+                    for ch in 0..num_channels {
+                        if ch < channels {
+                            planar_buffers[ch].push(samples[frame * num_channels + ch]);
+                        }
+                    }
+                    collected_frames += 1;
+                }
+            }
+            Err(symphonia::core::errors::Error::IoError(ref err))
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(symphonia::core::errors::Error::DecodeError(err)) => {
+                log::warn!("[audio] symphonia chunk decode error: {:?}", err);
+                continue;
+            }
+            Err(err) => return Err(err).context("failed to decode packet"),
+        }
+    }
+
+    if collected_frames == 0 {
+        let silence_len = (timeline_duration_sec * target_sample_rate as f64).round() as usize * 2;
+        return Ok(vec![0.0f32; silence_len]);
+    }
+
+    let resampled = resample_planar_with_speed(planar_buffers, source_rate, target_sample_rate, speed, channels)?;
+    let interleaved = planar_to_interleaved_stereo(resampled);
+    Ok(interleaved)
+}
+
+fn decode_audio_chunk(
     path: &str,
     source_start_sec: f64,
     timeline_duration_sec: f64,
@@ -678,7 +938,6 @@ fn decode_ffmpeg_chunk(
     sample_rate: u32,
     shared: &Arc<Mutex<AudioShared>>,
 ) -> Result<Vec<f32>> {
-    // 1. Проверяем, подходит ли файл под кэширование всего файла в память.
     let is_cacheable = (speed - 1.0).abs() <= f64::EPSILON;
     let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
 
@@ -692,7 +951,7 @@ fn decode_ffmpeg_chunk(
             Some(samples) => samples,
             None => {
                 log::info!("[audio] caching entire file in memory: {}", path);
-                let decoded = decode_entire_file_ffmpeg(path, sample_rate)?;
+                let decoded = decode_entire_file_symphonia(path, sample_rate)?;
                 let shared_samples = Arc::new(decoded);
                 let mut state = shared.lock();
                 state.decoded_cache.insert(path.to_string(), shared_samples.clone());
@@ -715,48 +974,7 @@ fn decode_ffmpeg_chunk(
         return Ok(result);
     }
 
-    let source_duration = (timeline_duration_sec * speed).max(0.001);
-    let mut cmd = Command::new("ffmpeg");
-    cmd.arg("-nostdin")
-        .arg("-loglevel")
-        .arg("error")
-        .arg("-ss")
-        .arg(format!("{:.6}", source_start_sec.max(0.0)))
-        .arg("-t")
-        .arg(format!("{:.6}", source_duration))
-        .arg("-i")
-        .arg(path)
-        .arg("-vn");
-    if let Some(filter_str) = build_atempo_filter_str(speed) {
-        cmd.arg("-filter:a").arg(filter_str);
-    }
-    cmd.arg("-f")
-        .arg("f32le")
-        .arg("-ac")
-        .arg(OUTPUT_CHANNELS.to_string())
-        .arg("-ar")
-        .arg(sample_rate.to_string())
-        .arg("-")
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    let output = cmd
-        .spawn()
-        .context("failed to spawn ffmpeg for audio")?
-        .wait_with_output()?;
-    if !output.status.success() {
-        return Err(anyhow!(
-            "ffmpeg audio decode failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-
-    let mut samples = Vec::with_capacity(output.stdout.len() / 4);
-    for chunk in output.stdout.chunks_exact(4) {
-        samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
-    }
-    Ok(samples)
+    decode_symphonia_chunk(path, source_start_sec, timeline_duration_sec, speed, sample_rate)
 }
 
 fn apply_layer_mix(
@@ -906,28 +1124,24 @@ mod tests {
     }
 
     #[test]
-    fn build_atempo_filter_str_chains_correctly() {
-        assert_eq!(build_atempo_filter_str(1.0), None);
-        assert_eq!(
-            build_atempo_filter_str(2.0).as_deref(),
-            Some("atempo=2.000000")
-        );
-        assert_eq!(
-            build_atempo_filter_str(4.0).as_deref(),
-            Some("atempo=2.0,atempo=2.000000")
-        );
-        assert_eq!(
-            build_atempo_filter_str(0.5).as_deref(),
-            Some("atempo=0.500000")
-        );
-        assert_eq!(
-            build_atempo_filter_str(0.25).as_deref(),
-            Some("atempo=0.5,atempo=0.500000")
-        );
-        assert_eq!(
-            build_atempo_filter_str(3.0).as_deref(),
-            Some("atempo=2.0,atempo=1.500000")
-        );
+    fn test_planar_to_interleaved_stereo_mono() {
+        let planar = vec![vec![1.0, 2.0, 3.0]];
+        let interleaved = planar_to_interleaved_stereo(planar);
+        assert_eq!(interleaved, vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0]);
+    }
+
+    #[test]
+    fn test_planar_to_interleaved_stereo_stereo() {
+        let planar = vec![vec![1.0, 2.0], vec![3.0, 4.0]];
+        let interleaved = planar_to_interleaved_stereo(planar);
+        assert_eq!(interleaved, vec![1.0, 3.0, 2.0, 4.0]);
+    }
+
+    #[test]
+    fn test_resample_planar_no_op() {
+        let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
+        let resampled = resample_planar_with_speed(planar.clone(), 44100, 44100, 1.0, 2).unwrap();
+        assert_eq!(resampled, planar);
     }
 
     #[test]
@@ -972,5 +1186,25 @@ mod tests {
 
         assert!(data.iter().all(|sample| *sample == 0.0));
         assert_eq!(shared.lock().frames_written, 128); // 128 проигралось
+    }
+
+    #[test]
+    fn test_decode_entire_file_symphonia() {
+        let path = "../test/fixtures/media/sample-1s-audio.mp3";
+        let decoded = decode_entire_file_symphonia(path, 48000);
+        assert!(decoded.is_ok(), "Failed to decode MP3 file: {:?}", decoded.err());
+        let samples = decoded.unwrap();
+        assert!(samples.len() > 0, "Decoded sample buffer is empty");
+    }
+
+    #[test]
+    fn test_decode_symphonia_chunk() {
+        let path = "../test/fixtures/media/sample-1s-audio.mp3";
+        let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000);
+        assert!(decoded.is_ok(), "Failed to decode chunk: {:?}", decoded.err());
+        let samples = decoded.unwrap();
+        assert!(samples.len() > 0, "Decoded chunk buffer is empty");
+        // For a duration of 0.5 seconds at 48000 Hz, we expect around 0.5 * 48000 * 2 (stereo) = 48000 samples.
+        assert!(samples.len() >= 45000 && samples.len() <= 55000, "Unexpected chunk length: {}", samples.len());
     }
 }
