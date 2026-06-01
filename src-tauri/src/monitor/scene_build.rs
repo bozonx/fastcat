@@ -105,7 +105,7 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
 /// Финализирует `CompLayerKind` в `Layer`: transform (явный или center-fit),
 /// opacity и blend-mode из IPC-слоя.
-pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u32)) -> Layer {
+pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u32), time_sec: f64) -> Layer {
     let media_size = kind.natural_size();
     let source_rotation = source_orientation_deg(sl);
     let transform = match &sl.transform {
@@ -140,14 +140,122 @@ pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u3
             }
         }
     };
+    let base_opacity = sl.opacity.clamp(0.0, 1.0) as f32;
+    let local_t = time_sec - sl.timeline_start_sec;
+    let opacity = compute_transition_opacity(sl, local_t, base_opacity);
+
     Layer {
         id: sl.id.clone(),
         kind,
         transform,
-        opacity: sl.opacity.clamp(0.0, 1.0) as f32,
+        opacity,
         blend: parse_blend_mode(&sl.blend_mode),
         mask: None,
         effects: Vec::new(),
+    }
+}
+
+pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f32) -> f32 {
+    let clip_dur = sl.timeline_end_sec - sl.timeline_start_sec;
+    if clip_dur <= 0.0 {
+        return 0.0;
+    }
+
+    let in_dur = sl.transition_in.as_ref().map(|t| t.duration_sec).unwrap_or(0.0);
+    let out_dur = sl.transition_out.as_ref().map(|t| t.duration_sec).unwrap_or(0.0);
+    let out_start = clip_dur - out_dur;
+
+    let in_active = in_dur > 0.0 && local_t < in_dur;
+    let out_active = out_dur > 0.0 && local_t >= out_start;
+
+    let mut apply_in = in_active;
+    let mut apply_out = out_active;
+
+    if in_active && out_active {
+        let dist_to_in_end = in_dur - local_t;
+        let dist_to_out_start = local_t - out_start;
+        if dist_to_in_end <= dist_to_out_start {
+            apply_out = false;
+        } else {
+            apply_in = false;
+        }
+    }
+
+    let mut opacity = base_opacity;
+
+    if apply_in {
+        if let Some(t_in) = &sl.transition_in {
+            if t_in.transition_type == "dissolve" {
+                let raw_progress = (local_t / in_dur).clamp(0.0, 1.0);
+                let curve = t_in.curve.as_deref().unwrap_or("linear");
+                let progress = apply_transition_curve(raw_progress, curve);
+                opacity = opacity * progress as f32;
+            }
+        }
+    } else if apply_out {
+        if let Some(t_out) = &sl.transition_out {
+            if t_out.transition_type == "dissolve" {
+                let raw_progress = ((local_t - out_start) / out_dur).clamp(0.0, 1.0);
+                let curve = t_out.curve.as_deref().unwrap_or("linear");
+                let progress = apply_transition_curve(raw_progress, curve);
+                opacity = opacity * (1.0 - progress) as f32;
+            }
+        }
+    }
+
+    opacity.clamp(0.0, 1.0)
+}
+
+fn solve_cubic_bezier(t: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+    if t <= 0.0 { return 0.0; }
+    if t >= 1.0 { return 1.0; }
+    if (x1 - y1).abs() < 1e-9 && (x2 - y2).abs() < 1e-9 { return t; }
+
+    let mut guess = t;
+    for _ in 0..5 {
+        let cx = 3.0 * x1;
+        let bx = 3.0 * (x2 - x1) - cx;
+        let ax = 1.0 - cx - bx;
+        let current_x = ((ax * guess + bx) * guess + cx) * guess;
+        let current_slope = (3.0 * ax * guess + 2.0 * bx) * guess + cx;
+        if current_slope.abs() < 1e-9 { break; }
+        guess -= (current_x - t) / current_slope;
+    }
+
+    guess = guess.clamp(0.0, 1.0);
+
+    let cy = 3.0 * y1;
+    let by = 3.0 * (y2 - y1) - cy;
+    let ay = 1.0 - cy - by;
+    ((ay * guess + by) * guess + cy) * guess
+}
+
+fn apply_transition_curve(progress: f64, curve: &str) -> f64 {
+    let t = progress.clamp(0.0, 1.0);
+    match curve {
+        "linear" => t,
+        "ease-in" => {
+            let bulge = 0.8;
+            let offset = 1.0;
+            let x1 = offset * bulge;
+            let x2 = 1.0 - (1.0 - offset) * bulge;
+            solve_cubic_bezier(t, x1, 0.0, x2, 1.0)
+        }
+        "ease-out" => {
+            let bulge = 0.8;
+            let offset = 0.0;
+            let x1 = offset * bulge;
+            let x2 = 1.0 - (1.0 - offset) * bulge;
+            solve_cubic_bezier(t, x1, 0.0, x2, 1.0)
+        }
+        "smooth" => {
+            let bulge = 0.8;
+            let offset = 0.5;
+            let x1 = offset * bulge;
+            let x2 = 1.0 - (1.0 - offset) * bulge;
+            solve_cubic_bezier(t, x1, 0.0, x2, 1.0)
+        }
+        _ => t,
     }
 }
 
@@ -388,6 +496,7 @@ pub fn text_vertical_align(value: &serde_json::Value) -> TextVerticalAlign {
 mod tests {
     use super::*;
     use crate::compositor::scene::BlendMode;
+    use serde_json::json;
 
     #[test]
     fn maps_full_blend_mode_set() {
@@ -411,5 +520,114 @@ mod tests {
         let c2 = parse_color("00ff00", 0.5);
         assert_eq!(c2.to_rgba8().g, 255);
         assert_eq!(c2.to_rgba8().a, 128);
+    }
+
+    #[test]
+    fn test_compute_transition_opacity() {
+        let build_layer = |json_val: serde_json::Value| -> SceneLayer {
+            serde_json::from_value(json_val).unwrap()
+        };
+
+        // 1. No transitions
+        let layer_no_trans = build_layer(json!({
+            "id": "1",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 0.8
+        }));
+
+        assert_eq!(compute_transition_opacity(&layer_no_trans, 0.0, 0.8), 0.8);
+        assert_eq!(compute_transition_opacity(&layer_no_trans, 5.0, 0.8), 0.8);
+        assert_eq!(compute_transition_opacity(&layer_no_trans, 10.0, 0.8), 0.8);
+
+        // 2. Transition In (duration = 2.0 sec, linear, dissolve)
+        let layer_trans_in = build_layer(json!({
+            "id": "2",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 0.8,
+            "transition_in": {
+                "type": "dissolve",
+                "duration_sec": 2.0,
+                "curve": "linear"
+            }
+        }));
+
+        assert_eq!(compute_transition_opacity(&layer_trans_in, 0.0, 0.8), 0.0);
+        assert!((compute_transition_opacity(&layer_trans_in, 1.0, 0.8) - 0.4).abs() < 1e-5);
+        assert_eq!(compute_transition_opacity(&layer_trans_in, 2.0, 0.8), 0.8);
+        assert_eq!(compute_transition_opacity(&layer_trans_in, 5.0, 0.8), 0.8);
+
+        // 3. Transition Out (duration = 2.0 sec, linear, dissolve)
+        let layer_trans_out = build_layer(json!({
+            "id": "3",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 0.8,
+            "transition_out": {
+                "type": "dissolve",
+                "duration_sec": 2.0,
+                "curve": "linear"
+            }
+        }));
+
+        assert_eq!(compute_transition_opacity(&layer_trans_out, 5.0, 0.8), 0.8);
+        assert_eq!(compute_transition_opacity(&layer_trans_out, 8.0, 0.8), 0.8);
+        assert!((compute_transition_opacity(&layer_trans_out, 9.0, 0.8) - 0.4).abs() < 1e-5);
+        assert_eq!(compute_transition_opacity(&layer_trans_out, 10.0, 0.8), 0.0);
+
+        // 4. Overlapping Transitions (transition_in 6.0 sec, transition_out 6.0 sec, duration 10.0 sec)
+        let layer_overlap = build_layer(json!({
+            "id": "4",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_in": {
+                "type": "dissolve",
+                "duration_sec": 6.0,
+                "curve": "linear"
+            },
+            "transition_out": {
+                "type": "dissolve",
+                "duration_sec": 6.0,
+                "curve": "linear"
+            }
+        }));
+
+        let op_in = compute_transition_opacity(&layer_overlap, 2.0, 1.0);
+        assert!((op_in - 2.0 / 6.0).abs() < 1e-5);
+
+        let op_out = compute_transition_opacity(&layer_overlap, 8.0, 1.0);
+        assert!((op_out - 2.0 / 6.0).abs() < 1e-5);
+
+        // 5. Bezier Curves (smooth)
+        let layer_bezier = build_layer(json!({
+            "id": "5",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_in": {
+                "type": "dissolve",
+                "duration_sec": 2.0,
+                "curve": "smooth"
+            }
+        }));
+        let op_smooth = compute_transition_opacity(&layer_bezier, 1.0, 1.0);
+        assert!((op_smooth - 0.5).abs() < 1e-5);
     }
 }

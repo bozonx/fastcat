@@ -49,6 +49,8 @@ export function buildEffectiveAudioClipItems(
         source: { path },
         audioGain: mergeGain(track.audioGain, item.audioGain),
         audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
+        originalAudioGain: item.audioGain,
+        originalAudioBalance: item.audioBalance,
         effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       } as import('~/timeline/types').TimelineClipItem);
     }
@@ -80,6 +82,8 @@ export function buildEffectiveAudioClipItems(
         source: { path },
         audioGain: mergeGain(track.audioGain, item.audioGain),
         audioBalance: mergeBalance(track.audioBalance, item.audioBalance),
+        originalAudioGain: item.audioGain,
+        originalAudioBalance: item.audioBalance,
         effects: combinedEffects.length > 0 ? combinedEffects : undefined,
       } as import('~/timeline/types').TimelineClipItem);
     }

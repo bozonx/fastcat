@@ -520,7 +520,7 @@ impl LayerRuntimeManager {
                 }
             };
 
-            layers.push(finalize_layer(sl, layer_kind, (scene_w, scene_h)));
+            layers.push(finalize_layer(sl, layer_kind, (scene_w, scene_h), t));
         }
 
         Scene {

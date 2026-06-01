@@ -78,7 +78,7 @@ pub fn export_timeline(
                 } else {
                     scene.audio_master_gain
                 };
-                render_scene_to_wav(&scene.audio_layers, master_gain, start, end, 48_000, &path)
+                render_scene_to_wav(&scene.audio_layers, &scene.audio_tracks, master_gain, start, end, 48_000, &path)
                     .context("failed to render native audio mix")?;
                 temp_audio = Some(path.clone());
                 Some(path)

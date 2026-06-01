@@ -109,7 +109,7 @@ pub(crate) fn build_export_scene(
                 None => continue,
             },
         };
-        layers.push(finalize_layer(layer, layer_kind, (scene_w, scene_h)));
+        layers.push(finalize_layer(layer, layer_kind, (scene_w, scene_h), time_sec));
     }
 
     Ok(Scene {

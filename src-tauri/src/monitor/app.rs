@@ -336,7 +336,7 @@ impl WindowState {
             } else {
                 scene.audio_master_gain
             };
-            audio.set_scene(scene.audio_layers.clone(), master_gain);
+            audio.set_scene(scene.audio_layers.clone(), scene.audio_tracks.clone(), master_gain);
         }
         self.layers.apply_scene(scene);
         self.window.request_redraw();
@@ -406,10 +406,13 @@ impl WindowState {
     }
 
     fn pause(&mut self) {
-        let audio_pts = self.audio.as_ref().map(NativeAudioEngine::pause);
-        let pts = audio_pts.unwrap_or_else(|| self.clock.pause());
-        self.clock.seek(pts);
+        let pts = if let Some(audio) = self.audio.as_ref() {
+            audio.pause()
+        } else {
+            self.clock.pause()
+        };
         self.clock.pause();
+        self.clock.seek(pts);
     }
 
     fn seek(&mut self, timeline_sec: f64) {

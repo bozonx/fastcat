@@ -64,6 +64,7 @@ export function useNativeMonitorBridge(): void {
       return {
         layers: [],
         audio_layers: [],
+        audio_tracks: [],
         audio_master_gain: Math.max(0, Number(timelineStore.masterGain ?? 1)),
         audio_master_muted: Boolean(timelineStore.audioMuted),
         width: fmt?.width ?? 1920,

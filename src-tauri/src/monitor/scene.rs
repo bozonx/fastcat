@@ -106,6 +106,18 @@ pub struct SceneLayer {
     /// `None` → letterbox center-fit (поведение по умолчанию, совместимость с предыдущими версиями).
     #[serde(default)]
     pub transform: Option<SceneLayerTransform>,
+    #[serde(default)]
+    pub transition_in: Option<SceneTransition>,
+    #[serde(default)]
+    pub transition_out: Option<SceneTransition>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SceneTransition {
+    #[serde(rename = "type")]
+    pub transition_type: String,
+    pub duration_sec: f64,
+    pub curve: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -147,10 +159,25 @@ pub struct SceneAudioLayer {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct SceneAudioTrack {
+    pub id: String,
+    #[serde(default = "one")]
+    pub audio_gain: f64,
+    #[serde(default)]
+    pub audio_balance: f64,
+    #[serde(default)]
+    pub audio_muted: bool,
+    #[serde(default)]
+    pub audio_solo: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct MonitorScene {
     pub layers: Vec<SceneLayer>,
     #[serde(default)]
     pub audio_layers: Vec<SceneAudioLayer>,
+    #[serde(default)]
+    pub audio_tracks: Vec<SceneAudioTrack>,
     /// Master audio bus gain. Effects/track buses подключатся поверх этой модели позже.
     #[serde(default = "one")]
     pub audio_master_gain: f64,
@@ -246,6 +273,8 @@ mod tests {
             stroke_width: None,
             shape_config: None,
             transform: None,
+            transition_in: None,
+            transition_out: None,
         }
     }
 

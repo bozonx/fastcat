@@ -54,16 +54,18 @@ function canUseNativeTimelineExport(params: {
       clipType?: string;
       effects?: ClipEffect[];
       masterEffects?: ClipEffect[];
-      transitionIn?: { durationUs?: number };
-      transitionOut?: { durationUs?: number };
+      transitionIn?: { type?: string; durationUs?: number };
+      transitionOut?: { type?: string; durationUs?: number };
       mask?: unknown;
     };
     if (hasEnabledEffects(value.effects) || hasEnabledEffects(value.masterEffects)) return false;
     if (value.kind === 'clip') {
       if (value.clipType === 'hud' || value.clipType === 'adjustment') return false;
       if (value.mask) return false;
-      if (Number(value.transitionIn?.durationUs ?? 0) > 0) return false;
-      if (Number(value.transitionOut?.durationUs ?? 0) > 0) return false;
+      const inType = value.transitionIn?.type;
+      const outType = value.transitionOut?.type;
+      if (Number(value.transitionIn?.durationUs ?? 0) > 0 && inType !== 'dissolve') return false;
+      if (Number(value.transitionOut?.durationUs ?? 0) > 0 && outType !== 'dissolve') return false;
     }
   }
 

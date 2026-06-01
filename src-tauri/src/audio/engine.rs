@@ -1,17 +1,18 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, TryLockError};
+use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, Stream, StreamConfig};
+use parking_lot::Mutex;
 
-use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer};
+use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 const OUTPUT_CHANNELS: usize = 2;
 const CHUNK_DURATION_SEC: f64 = 1.0;
@@ -19,6 +20,7 @@ const PREBUFFER_CHUNKS: usize = 3;
 
 struct AudioShared {
     scene: Vec<SceneAudioLayer>,
+    tracks: Vec<SceneAudioTrack>,
     master_gain: f64,
     ring: VecDeque<f32>,
     playing: bool,
@@ -27,12 +29,14 @@ struct AudioShared {
     producer_pts_sec: f64,
     seek_serial: u64,
     scene_serial: u64,
+    decoded_cache: HashMap<String, Arc<Vec<f32>>>,
 }
 
 impl Default for AudioShared {
     fn default() -> Self {
         Self {
             scene: Vec::new(),
+            tracks: Vec::new(),
             master_gain: 1.0,
             ring: VecDeque::new(),
             playing: false,
@@ -41,6 +45,7 @@ impl Default for AudioShared {
             producer_pts_sec: 0.0,
             seek_serial: 0,
             scene_serial: 0,
+            decoded_cache: HashMap::new(),
         }
     }
 }
@@ -94,18 +99,25 @@ impl NativeAudioEngine {
         })
     }
 
-    pub fn set_scene(&self, layers: Vec<SceneAudioLayer>, master_gain: f64) {
-        let mut state = self.shared.lock().unwrap();
+    pub fn set_scene(&self, layers: Vec<SceneAudioLayer>, tracks: Vec<SceneAudioTrack>, master_gain: f64) {
+        let mut state = self.shared.lock();
         state.scene = layers;
+        state.tracks = tracks;
         state.master_gain = sanitize_master_gain(master_gain);
         state.ring.clear();
         state.producer_pts_sec =
             state.origin_pts_sec + state.frames_written as f64 / self.sample_rate as f64;
         state.scene_serial = state.scene_serial.wrapping_add(1);
+
+        // GC кэша: удаляем файлы, которых больше нет в сцене
+        let current_paths: std::collections::HashSet<String> = state.scene.iter()
+            .map(|l| l.path.clone())
+            .collect();
+        state.decoded_cache.retain(|path, _| current_paths.contains(path));
     }
 
     pub fn play(&self, pts_sec: f64) {
-        let mut state = self.shared.lock().unwrap();
+        let mut state = self.shared.lock();
         state.playing = true;
         state.origin_pts_sec = pts_sec.max(0.0);
         state.frames_written = 0;
@@ -115,7 +127,7 @@ impl NativeAudioEngine {
     }
 
     pub fn pause(&self) -> f64 {
-        let mut state = self.shared.lock().unwrap();
+        let mut state = self.shared.lock();
         let pts = state.origin_pts_sec + state.frames_written as f64 / self.sample_rate as f64;
         state.playing = false;
         state.origin_pts_sec = pts;
@@ -126,7 +138,7 @@ impl NativeAudioEngine {
     }
 
     pub fn seek(&self, pts_sec: f64, playing: bool) {
-        let mut state = self.shared.lock().unwrap();
+        let mut state = self.shared.lock();
         let pts = pts_sec.max(0.0);
         state.origin_pts_sec = pts;
         state.frames_written = 0;
@@ -137,7 +149,7 @@ impl NativeAudioEngine {
     }
 
     pub fn current_pts(&self) -> Option<f64> {
-        let state = self.shared.lock().unwrap();
+        let state = self.shared.lock();
         if !state.playing {
             return None;
         }
@@ -145,13 +157,12 @@ impl NativeAudioEngine {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.shared.lock().unwrap().scene.is_empty()
+        self.shared.lock().scene.is_empty()
     }
 
     pub fn scene_end(&self) -> f64 {
         self.shared
             .lock()
-            .unwrap()
             .scene
             .iter()
             .map(|layer| layer.timeline_end_sec)
@@ -248,20 +259,23 @@ fn write_output<T: OutputSample>(
     let channels = device_channels.max(1) as usize;
     let frames = data.len() / channels;
     let mut state = match shared.try_lock() {
-        Ok(state) => state,
-        Err(TryLockError::Poisoned(poisoned)) => poisoned.into_inner(),
-        Err(TryLockError::WouldBlock) => {
+        Some(state) => state,
+        None => {
             for sample in data {
                 *sample = T::from_f32(0.0);
             }
             return;
         }
     };
+
+    let mut actual_played_frames = 0usize;
+
     for frame in 0..frames {
         let (left, right) = if state.playing {
             if state.ring.len() >= 2 {
                 let left = state.ring.pop_front().unwrap_or(0.0);
                 let right = state.ring.pop_front().unwrap_or(0.0);
+                actual_played_frames += 1;
                 (left, right)
             } else {
                 (0.0, 0.0)
@@ -281,7 +295,7 @@ fn write_output<T: OutputSample>(
     }
 
     if state.playing {
-        state.frames_written = state.frames_written.saturating_add(frames as u64);
+        state.frames_written = state.frames_written.saturating_add(actual_played_frames as u64);
     } else {
         let _ = sample_rate;
     }
@@ -293,12 +307,13 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
 
     while running.load(Ordering::Relaxed) {
         let snapshot = {
-            let state = shared.lock().unwrap();
+            let state = shared.lock();
             if !state.playing || state.scene.is_empty() || state.ring.len() >= limit_samples {
                 None
             } else {
                 Some((
                     state.scene.clone(),
+                    state.tracks.clone(),
                     state.master_gain,
                     state.producer_pts_sec,
                     state.seek_serial,
@@ -307,20 +322,22 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
             }
         };
 
-        let Some((scene, master_gain, chunk_start, seek_serial, scene_serial)) = snapshot else {
+        let Some((scene, tracks, master_gain, chunk_start, seek_serial, scene_serial)) = snapshot else {
             std::thread::sleep(Duration::from_millis(8));
             continue;
         };
 
         let chunk = mix_chunk(
             &scene,
+            &tracks,
             master_gain,
             chunk_start,
             CHUNK_DURATION_SEC,
             sample_rate,
+            &shared,
         );
 
-        let mut state = shared.lock().unwrap();
+        let mut state = shared.lock();
         if state.seek_serial != seek_serial || state.scene_serial != scene_serial || !state.playing
         {
             continue;
@@ -334,6 +351,7 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
 
 pub(crate) fn render_scene_to_wav(
     scene: &[SceneAudioLayer],
+    tracks: &[SceneAudioTrack],
     master_gain: f64,
     start_sec: f64,
     end_sec: f64,
@@ -347,6 +365,8 @@ pub(crate) fn render_scene_to_wav(
         .with_context(|| format!("create audio wav {}", target_path.display()))?;
     write_wav_f32_header(&mut file, frames, sample_rate)?;
 
+    let shared = Arc::new(Mutex::new(AudioShared::default()));
+
     let mut written = 0u32;
     while written < frames {
         let chunk_frames = ((CHUNK_DURATION_SEC * sample_rate as f64).round() as u32)
@@ -354,7 +374,15 @@ pub(crate) fn render_scene_to_wav(
             .max(1);
         let chunk_duration = chunk_frames as f64 / sample_rate as f64;
         let chunk_start = start + written as f64 / sample_rate as f64;
-        let chunk = mix_chunk(scene, master_gain, chunk_start, chunk_duration, sample_rate);
+        let chunk = mix_chunk(
+            scene,
+            tracks,
+            master_gain,
+            chunk_start,
+            chunk_duration,
+            sample_rate,
+            &shared,
+        );
         for sample in chunk
             .into_iter()
             .take(chunk_frames as usize * OUTPUT_CHANNELS)
@@ -396,61 +424,173 @@ fn write_wav_f32_header(file: &mut std::fs::File, frames: u32, sample_rate: u32)
 
 fn mix_chunk(
     scene: &[SceneAudioLayer],
+    tracks: &[SceneAudioTrack],
     master_gain: f64,
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
     sample_rate: u32,
+    shared: &Arc<Mutex<AudioShared>>,
 ) -> Vec<f32> {
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
     let mut mixed = vec![0.0f32; frames * OUTPUT_CHANNELS];
     let chunk_end_sec = chunk_start_sec + chunk_duration_sec;
 
+    // 1. Проверяем Solo-состояние треков
+    let has_solo = tracks.iter().any(|t| t.audio_solo);
+
+    // 2. Группируем слои по track_id
+    let mut track_layers: HashMap<String, Vec<&SceneAudioLayer>> = HashMap::new();
+    let mut orphan_layers: Vec<&SceneAudioLayer> = Vec::new();
+
     for layer in scene {
-        if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
+        let tid = layer.track_id.as_deref().unwrap_or("");
+        if tid.is_empty() {
+            orphan_layers.push(layer);
+        } else {
+            let matched_track = tracks.iter().find(|t| {
+                t.id == tid || tid.starts_with(&format!("{}_", t.id)) || tid.starts_with(t.id.as_str())
+            });
+            if let Some(track) = matched_track {
+                track_layers.entry(track.id.clone()).or_default().push(layer);
+            } else {
+                orphan_layers.push(layer);
+            }
+        }
+    }
+
+    // 3. Микшируем треки (шины)
+    for track in tracks {
+        if has_solo && !track.audio_solo {
             continue;
         }
-        let segment_start = chunk_start_sec.max(layer.timeline_start_sec);
-        let segment_end = chunk_end_sec.min(layer.timeline_end_sec);
-        let segment_duration = segment_end - segment_start;
-        if segment_duration <= 0.0 {
+        if !has_solo && track.audio_muted {
             continue;
         }
 
-        let speed = sanitize_speed(layer.speed);
-        let source_start =
-            layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
-        let mut decoded = match decode_ffmpeg_chunk(
-            &layer.path,
-            source_start,
-            segment_duration,
-            speed,
-            sample_rate,
-        )
-        .with_context(|| format!("decode audio layer {}", layer.id))
-        {
-            Ok(decoded) => decoded,
-            Err(error) => {
-                log::warn!(
-                    "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
-                    layer.id
-                );
+        let Some(layers) = track_layers.get(&track.id) else {
+            continue;
+        };
+
+        let mut track_mixed = vec![0.0f32; frames * OUTPUT_CHANNELS];
+        let mut has_audio_on_track = false;
+
+        for layer in layers {
+            if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
                 continue;
             }
-        };
-        let write_start_frame =
-            ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
-        let frames_to_write = frames
-            .saturating_sub(write_start_frame)
-            .min(decoded.len() / OUTPUT_CHANNELS);
-        apply_layer_mix(
-            &mut mixed,
-            &mut decoded,
-            write_start_frame,
-            frames_to_write,
-            sample_rate,
-            layer,
-            segment_start,
-        );
+            let segment_start = chunk_start_sec.max(layer.timeline_start_sec);
+            let segment_end = chunk_end_sec.min(layer.timeline_end_sec);
+            let segment_duration = segment_end - segment_start;
+            if segment_duration <= 0.0 {
+                continue;
+            }
+
+            let speed = sanitize_speed(layer.speed);
+            let source_start =
+                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
+            let mut decoded = match decode_ffmpeg_chunk(
+                &layer.path,
+                source_start,
+                segment_duration,
+                speed,
+                sample_rate,
+                shared,
+            )
+            .with_context(|| format!("decode audio layer {}", layer.id))
+            {
+                Ok(decoded) => decoded,
+                Err(error) => {
+                    log::warn!(
+                        "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
+                        layer.id
+                    );
+                    continue;
+                }
+            };
+            let write_start_frame =
+                ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
+            let frames_to_write = frames
+                .saturating_sub(write_start_frame)
+                .min(decoded.len() / OUTPUT_CHANNELS);
+            apply_layer_mix(
+                &mut track_mixed,
+                &mut decoded,
+                write_start_frame,
+                frames_to_write,
+                sample_rate,
+                layer,
+                segment_start,
+            );
+            has_audio_on_track = true;
+        }
+
+        if has_audio_on_track {
+            // Применяем громкость и баланс трека
+            let (ll, lr, rl, rr) = stereo_pan_matrix(track.audio_balance);
+            let gain = track.audio_gain.max(0.0) as f32;
+
+            for i in 0..frames {
+                let dst = i * OUTPUT_CHANNELS;
+                let left = track_mixed[dst] * gain;
+                let right = track_mixed[dst + 1] * gain;
+                let final_left = (ll as f32) * left + (lr as f32) * right;
+                let final_right = (rl as f32) * left + (rr as f32) * right;
+                mixed[dst] += final_left;
+                mixed[dst + 1] += final_right;
+            }
+        }
+    }
+
+    // 4. Микшируем сиротские слои (для обратной совместимости)
+    if !has_solo {
+        for layer in orphan_layers {
+            if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
+                continue;
+            }
+            let segment_start = chunk_start_sec.max(layer.timeline_start_sec);
+            let segment_end = chunk_end_sec.min(layer.timeline_end_sec);
+            let segment_duration = segment_end - segment_start;
+            if segment_duration <= 0.0 {
+                continue;
+            }
+
+            let speed = sanitize_speed(layer.speed);
+            let source_start =
+                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
+            let mut decoded = match decode_ffmpeg_chunk(
+                &layer.path,
+                source_start,
+                segment_duration,
+                speed,
+                sample_rate,
+                shared,
+            )
+            .with_context(|| format!("decode audio layer {}", layer.id))
+            {
+                Ok(decoded) => decoded,
+                Err(error) => {
+                    log::warn!(
+                        "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
+                        layer.id
+                    );
+                    continue;
+                }
+            };
+            let write_start_frame =
+                ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
+            let frames_to_write = frames
+                .saturating_sub(write_start_frame)
+                .min(decoded.len() / OUTPUT_CHANNELS);
+            apply_layer_mix(
+                &mut mixed,
+                &mut decoded,
+                write_start_frame,
+                frames_to_write,
+                sample_rate,
+                layer,
+                segment_start,
+            );
+        }
     }
 
     apply_master_gain(&mut mixed, master_gain);
@@ -493,13 +633,88 @@ fn build_atempo_filter_str(speed: f64) -> Option<String> {
     }
 }
 
+fn decode_entire_file_ffmpeg(path: &str, sample_rate: u32) -> Result<Vec<f32>> {
+    let mut cmd = Command::new("ffmpeg");
+    cmd.arg("-nostdin")
+        .arg("-loglevel")
+        .arg("error")
+        .arg("-i")
+        .arg(path)
+        .arg("-vn")
+        .arg("-f")
+        .arg("f32le")
+        .arg("-ac")
+        .arg(OUTPUT_CHANNELS.to_string())
+        .arg("-ar")
+        .arg(sample_rate.to_string())
+        .arg("-")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let output = cmd
+        .spawn()
+        .context("failed to spawn ffmpeg for entire audio decode")?
+        .wait_with_output()?;
+    if !output.status.success() {
+        return Err(anyhow!(
+            "ffmpeg entire audio decode failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+
+    let mut samples = Vec::with_capacity(output.stdout.len() / 4);
+    for chunk in output.stdout.chunks_exact(4) {
+        samples.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    }
+    Ok(samples)
+}
+
 fn decode_ffmpeg_chunk(
     path: &str,
     source_start_sec: f64,
     timeline_duration_sec: f64,
     speed: f64,
     sample_rate: u32,
+    shared: &Arc<Mutex<AudioShared>>,
 ) -> Result<Vec<f32>> {
+    // 1. Проверяем, подходит ли файл под кэширование всего файла в память.
+    let is_cacheable = (speed - 1.0).abs() <= f64::EPSILON;
+    let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+
+    if is_cacheable && file_size > 0 && file_size < 50 * 1024 * 1024 {
+        let cached_samples = {
+            let state = shared.lock();
+            state.decoded_cache.get(path).cloned()
+        };
+
+        let cached_samples = match cached_samples {
+            Some(samples) => samples,
+            None => {
+                log::info!("[audio] caching entire file in memory: {}", path);
+                let decoded = decode_entire_file_ffmpeg(path, sample_rate)?;
+                let shared_samples = Arc::new(decoded);
+                let mut state = shared.lock();
+                state.decoded_cache.insert(path.to_string(), shared_samples.clone());
+                shared_samples
+            }
+        };
+
+        let start_frame = (source_start_sec * sample_rate as f64).round() as usize;
+        let frames_to_read = (timeline_duration_sec * sample_rate as f64).round() as usize;
+        let start_sample = start_frame * OUTPUT_CHANNELS;
+        let samples_to_read = frames_to_read * OUTPUT_CHANNELS;
+
+        let mut result = vec![0.0f32; samples_to_read];
+        let cached_len = cached_samples.len();
+
+        if start_sample < cached_len {
+            let available = (cached_len - start_sample).min(samples_to_read);
+            result[..available].copy_from_slice(&cached_samples[start_sample..start_sample + available]);
+        }
+        return Ok(result);
+    }
+
     let source_duration = (timeline_duration_sec * speed).max(0.001);
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-nostdin")
@@ -729,7 +944,7 @@ mod tests {
     }
 
     #[test]
-    fn output_clock_advances_across_silence() {
+    fn output_clock_does_not_advance_on_underrun() {
         let shared = Arc::new(Mutex::new(AudioShared {
             playing: true,
             ..AudioShared::default()
@@ -739,6 +954,23 @@ mod tests {
         write_output(&mut data, &shared, 48_000, OUTPUT_CHANNELS as u16);
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        assert_eq!(shared.lock().unwrap().frames_written, 128);
+        assert_eq!(shared.lock().frames_written, 0); // 0 из-за underrun
+    }
+
+    #[test]
+    fn output_clock_advances_when_ring_has_samples() {
+        let mut ring = VecDeque::new();
+        ring.resize(256, 0.0f32); // 128 стерео-фреймов тишины
+        let shared = Arc::new(Mutex::new(AudioShared {
+            playing: true,
+            ring,
+            ..AudioShared::default()
+        }));
+        let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
+
+        write_output(&mut data, &shared, 48_000, OUTPUT_CHANNELS as u16);
+
+        assert!(data.iter().all(|sample| *sample == 0.0));
+        assert_eq!(shared.lock().frames_written, 128); // 128 проигралось
     }
 }
