@@ -43,6 +43,32 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
   let isOpeningWorkspace = false;
   const workspaceTopology = getWorkspaceStorageTopology();
 
+  async function ensureTauriDirectories() {
+    try {
+      const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
+      const { join } = await import('@tauri-apps/api/path');
+      const { mkdir, exists } = await import('@tauri-apps/plugin-fs');
+      
+      const runtimeConfig = useRuntimeConfig();
+      const fastcatDevDir = runtimeConfig.public.fastcatDevDir as string | undefined;
+      const appPaths = await resolveTauriAppPaths(fastcatDevDir);
+      if (appPaths) {
+        const fastcatDocsDir = await join(appPaths.documentsDir, 'FastCat');
+        const commonDir = await join(fastcatDocsDir, 'common');
+        const projectsDir = await join(fastcatDocsDir, 'projects');
+        
+        if (!(await exists(commonDir))) {
+          await mkdir(commonDir, { recursive: true });
+        }
+        if (!(await exists(projectsDir))) {
+          await mkdir(projectsDir, { recursive: true });
+        }
+      }
+    } catch (e) {
+      log.warn('Failed to ensure default Tauri directories', e);
+    }
+  }
+
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     deps.workspaceHandle.value = handle;
     deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
@@ -81,6 +107,9 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
   }
 
   async function openWorkspace() {
+    if (deps.workspaceProvider.id === 'tauri') {
+      return;
+    }
     if (!deps.workspaceProvider.isSupported) return;
     if (isOpeningWorkspace || deps.isLoading.value) return;
 
@@ -108,7 +137,9 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     deps.error.value = null;
 
     deps.resetSettingsState();
-    deps.workspaceProvider.clearWorkspace().catch(log.warn);
+    if (deps.workspaceProvider.id !== 'tauri') {
+      deps.workspaceProvider.clearWorkspace().catch(log.warn);
+    }
   }
 
   async function init() {
@@ -123,13 +154,21 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
     }
 
     try {
-      const handle = await deps.workspaceProvider.restoreWorkspace();
-      if (!handle) {
-        deps.isInitializing.value = false;
-        return;
-      }
+      if (deps.workspaceProvider.id === 'tauri') {
+        deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
+        await ensureTauriDirectories();
+        await deps.loadAppSettingsFromDisk();
+        await deps.loadUserSettingsFromDisk();
+        await deps.loadWorkspaceStateFromDisk();
+      } else {
+        const handle = await deps.workspaceProvider.restoreWorkspace();
+        if (!handle) {
+          deps.isInitializing.value = false;
+          return;
+        }
 
-      await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);
+        await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);
+      }
     } catch (e) {
       log.warn('Failed to restore workspace handle:', e);
     } finally {

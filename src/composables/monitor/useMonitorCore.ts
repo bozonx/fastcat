@@ -82,7 +82,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     getVfs: () => useVfs(),
     getAudioCacheVfsPath: () => {
       const projectId = currentProjectStore.currentProjectId;
-      if (!workspaceStore.workspaceHandle || !projectId) return null;
+      if (!projectId) return null;
+      if (workspaceStore.workspaceProviderId !== 'tauri' && !workspaceStore.workspaceHandle) return null;
 
       return toProjectTempVfsPath(projectId, ['audio-cache']);
     },

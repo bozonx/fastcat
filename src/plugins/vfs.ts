@@ -164,6 +164,18 @@ function createTauriWorkspaceAdapters(
   const workspace = new TauriFileSystemAdapter(async () => {
     const workspacePath = getWorkspacePath();
     if (workspacePath) return { type: 'absolute', path: workspacePath };
+
+    // Fall back to content root (parent of commonRoot) in workspace-less mode
+    const commonRoot = workspaceStore.resolvedStorageTopology.commonRoot;
+    if (commonRoot) {
+      const { resolve } = await import('@tauri-apps/api/path');
+      try {
+        const resolvedCommon = await resolve(commonRoot);
+        return { type: 'absolute', path: resolvedCommon.replace(/[\\/]common$/, '') };
+      } catch {
+        // ignore and fall back
+      }
+    }
     return resolveAppDataDir();
   });
 

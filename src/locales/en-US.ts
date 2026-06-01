@@ -641,6 +641,7 @@ export default {
       "switchToMobile": "Mobile version",
       "title": "Projects",
       "workspaceTitle": "Workspace",
+      "localWorkspaceName": "Local Disk",
       "resumeEditing": "Resume Editing",
       "activeProject": "Active Project",
       "otherProjects": "Other Projects",

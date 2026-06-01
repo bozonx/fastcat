@@ -139,7 +139,11 @@ const formatDate = (dateStr?: string) => {
             {{ t('fastcat.projects.workspaceTitle') }}
           </span>
           <p class="text-xs font-medium text-ui-text truncate">
-            {{ workspaceStore.workspaceHandle?.name }}
+            {{
+              workspaceStore.workspaceProviderId === 'tauri'
+                ? t('projects.localWorkspaceName')
+                : workspaceStore.workspaceHandle?.name
+            }}
           </p>
         </div>
 

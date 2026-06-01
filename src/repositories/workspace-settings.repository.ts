@@ -36,8 +36,11 @@ export function createWorkspaceSettingsRepository(input: {
   function settingsPath(filename: string, isGlobal: boolean): string {
     const isAppOrUserSettings =
       filename === 'user.settings.json' || filename === 'app.settings.json';
-    if (isTauriRuntime() && isGlobal && isAppOrUserSettings) {
-      return `${CONFIG_PATH_PREFIX}/${filename}`;
+    if (isTauriRuntime()) {
+      if (isGlobal && isAppOrUserSettings) {
+        return `${CONFIG_PATH_PREFIX}/${filename}`;
+      }
+      return `/vardata/${filename}`;
     }
     return `${WORKSPACE_ROOT_PATH_PREFIX}/${FASTCAT_CONFIG_DIR_NAME}/${filename}`;
   }

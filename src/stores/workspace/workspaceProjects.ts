@@ -45,6 +45,25 @@ export function createWorkspaceProjectsModule(params: {
   }
 
   async function loadProjects() {
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    if (isTauriRuntime()) {
+      try {
+        const { readDir, exists } = await import('@tauri-apps/plugin-fs');
+        const projectsPath = params.resolvedStorageTopology.value.projectsRoot;
+        if (await exists(projectsPath)) {
+          const entries = await readDir(projectsPath);
+          const tempProjects = entries
+            .filter((entry) => entry.isDirectory)
+            .map((entry) => entry.name)
+            .sort((a, b) => a.localeCompare(b));
+          params.projects.value = tempProjects;
+        }
+      } catch (e: unknown) {
+        params.error.value = getErrorMessage(e, 'Failed to load projects');
+      }
+      return;
+    }
+
     if (!params.projectsHandle.value) return;
 
     try {
@@ -60,6 +79,27 @@ export function createWorkspaceProjectsModule(params: {
   }
 
   async function clearVardata() {
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    if (isTauriRuntime()) {
+      try {
+        const { remove, exists, mkdir } = await import('@tauri-apps/plugin-fs');
+        const rootPaths = [
+          params.resolvedStorageTopology.value.tempRoot,
+          params.resolvedStorageTopology.value.proxiesRoot,
+        ];
+        const uniqueRootPaths = [...new Set(rootPaths.filter((path) => path.trim().length > 0))];
+        for (const rootPath of uniqueRootPaths) {
+          if (await exists(rootPath)) {
+            await remove(rootPath, { recursive: true });
+            await mkdir(rootPath, { recursive: true });
+          }
+        }
+      } catch (e: unknown) {
+        log.warn('Failed to clear Tauri vardata', e);
+      }
+      return;
+    }
+
     if (!params.workspaceHandle.value) return;
     const rootPaths = [
       params.resolvedStorageTopology.value.tempRoot,
@@ -95,6 +135,38 @@ export function createWorkspaceProjectsModule(params: {
   }
 
   async function clearProjectVardata(projectId: string) {
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    if (isTauriRuntime()) {
+      try {
+        const { join } = await import('@tauri-apps/api/path');
+        const { remove, exists } = await import('@tauri-apps/plugin-fs');
+
+        const tempProjectDir = await join(
+          params.resolvedStorageTopology.value.tempRoot,
+          workspaceTopology.tempProjectsDirName,
+          projectId,
+        );
+        if (await exists(tempProjectDir)) {
+          await remove(tempProjectDir, { recursive: true });
+        }
+
+        const proxiesRoot = params.resolvedStorageTopology.value.proxiesRoot.trim();
+        if (proxiesRoot) {
+          const proxiesProjectDir = await join(
+            proxiesRoot,
+            workspaceTopology.tempProjectsDirName,
+            projectId,
+          );
+          if (await exists(proxiesProjectDir)) {
+            await remove(proxiesProjectDir, { recursive: true });
+          }
+        }
+      } catch (e: unknown) {
+        log.warn('Failed to clear Tauri project vardata', projectId, e);
+      }
+      return;
+    }
+
     try {
       const tempRootDir = await resolveStorageRootHandle({
         workspaceHandle: params.workspaceHandle.value!,
@@ -127,6 +199,35 @@ export function createWorkspaceProjectsModule(params: {
   }
 
   async function deleteProject(name: string, projectId?: string) {
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    if (isTauriRuntime()) {
+      try {
+        if (projectId) {
+          await clearProjectVardata(projectId);
+        }
+
+        const { join } = await import('@tauri-apps/api/path');
+        const { remove, exists } = await import('@tauri-apps/plugin-fs');
+        const projectPath = await join(params.resolvedStorageTopology.value.projectsRoot, name);
+        if (await exists(projectPath)) {
+          await remove(projectPath, { recursive: true });
+        }
+        await loadProjects();
+
+        if (params.lastProjectName.value === name) {
+          params.lastProjectName.value = null;
+        }
+
+        params.recentProjects.value = params.recentProjects.value.filter(
+          (p) => p.projectName !== name,
+        );
+      } catch (e: unknown) {
+        log.warn('Failed to delete project', name, e);
+        throw e;
+      }
+      return;
+    }
+
     if (!params.projectsHandle.value) return;
 
     try {
@@ -153,6 +254,42 @@ export function createWorkspaceProjectsModule(params: {
   }
 
   async function renameProject(oldName: string, newName: string) {
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    if (isTauriRuntime()) {
+      if (oldName === newName) return;
+      if (params.projects.value.includes(newName)) {
+        params.error.value = `Project with name "${newName}" already exists`;
+        return;
+      }
+
+      try {
+        const { join } = await import('@tauri-apps/api/path');
+        const { rename, exists } = await import('@tauri-apps/plugin-fs');
+        const oldPath = await join(params.resolvedStorageTopology.value.projectsRoot, oldName);
+        const newPath = await join(params.resolvedStorageTopology.value.projectsRoot, newName);
+        if (await exists(oldPath)) {
+          await rename(oldPath, newPath);
+        }
+        await loadProjects();
+
+        if (params.lastProjectName.value === oldName) {
+          params.lastProjectName.value = newName;
+        }
+
+        const recentIndex = params.recentProjects.value.findIndex((p) => p.projectName === oldName);
+        if (recentIndex !== -1) {
+          params.recentProjects.value[recentIndex] = {
+            ...params.recentProjects.value[recentIndex],
+            projectName: newName,
+          } as RecentProject;
+        }
+      } catch (e: unknown) {
+        params.error.value = getErrorMessage(e, 'Failed to rename project');
+        throw e;
+      }
+      return;
+    }
+
     if (!params.projectsHandle.value) return;
     if (oldName === newName) return;
     if (params.projects.value.includes(newName)) {

@@ -107,9 +107,9 @@ describe('workspace-settings.repository', () => {
       },
     } as any);
 
-    // Global app settings → config dir; workspace settings → workspace config dir.
+    // Global app settings → config dir; workspace settings → /vardata.
     expect(await vfs.exists('@config/app.settings.json')).toBe(true);
-    expect(await vfs.exists('@workspace/.fastcat-config/app.settings.json')).toBe(true);
+    expect(await vfs.exists('/vardata/app.settings.json')).toBe(true);
 
     const loadedAppSettings = await repo.loadAppSettings();
     const loadedWorkspaceSettings = await repo.loadWorkspaceSettings();

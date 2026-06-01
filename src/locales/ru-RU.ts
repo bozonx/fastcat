@@ -641,6 +641,7 @@ export default {
       "switchToMobile": "Мобильная версия",
       "title": "Проекты",
       "workspaceTitle": "Рабочая область",
+      "localWorkspaceName": "Локальный диск",
       "resumeEditing": "Продолжить редактирование",
       "activeProject": "Активный проект",
       "otherProjects": "Другие проекты",

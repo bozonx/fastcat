@@ -117,8 +117,8 @@ describe('storage topology', () => {
       },
     });
 
-    expect(resolved.projectsRoot).toBe('projects');
-    expect(resolved.commonRoot).toBe('common');
+    expect(resolved.projectsRoot).toBe('/documents/FastCat/projects');
+    expect(resolved.commonRoot).toBe('/documents/FastCat/common');
     expect(resolved.dataRoot).toBe('/app/data/data');
     expect(resolved.tempRoot).toBe('/app/cache/temp');
     expect(resolved.proxiesRoot).toBe('/app/cache/proxies');

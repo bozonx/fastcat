@@ -54,7 +54,8 @@ onMounted(async () => {
     await until(() => !workspaceStore.isInitializing).toBeTruthy();
   }
 
-  if (!workspaceStore.workspaceHandle) {
+  const isTauri = workspaceStore.workspaceProviderId === 'tauri';
+  if (!isTauri && !workspaceStore.workspaceHandle) {
     router.push('/m');
     return;
   }

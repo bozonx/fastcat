@@ -44,6 +44,7 @@ export interface ProjectFsModule {
 export function createProjectFsModule(params: {
   workspaceHandle: Ref<FileSystemDirectoryHandle | null>;
   projectsHandle: Ref<FileSystemDirectoryHandle | null>;
+  currentProjectDirHandle: Ref<FileSystemDirectoryHandle | null>;
   currentProjectName: Ref<string | null>;
   /**
    * Lazily resolves the application VFS adapter. Lazy (not eager) because this
@@ -70,16 +71,35 @@ export function createProjectFsModule(params: {
   async function getWorkspaceCommonDirHandle(
     create = false,
   ): Promise<FileSystemDirectoryHandle | null> {
-    if (!params.workspaceHandle.value) return null;
-
-    try {
-      return await params.workspaceHandle.value.getDirectoryHandle(
-        workspaceTopology.commonDirName,
-        { create },
-      );
-    } catch {
-      return null;
+    if (params.workspaceHandle.value) {
+      try {
+        return await params.workspaceHandle.value.getDirectoryHandle(
+          workspaceTopology.commonDirName,
+          { create },
+        );
+      } catch {
+        return null;
+      }
     }
+
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    if (isTauriRuntime()) {
+      const { useWorkspaceStore } = await import('~/stores/workspace.store');
+      const workspaceStore = useWorkspaceStore();
+      const commonRoot = workspaceStore.resolvedStorageTopology.commonRoot;
+      if (commonRoot) {
+        const { resolve } = await import('@tauri-apps/api/path');
+        const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
+        try {
+          const absoluteCommon = await resolve(commonRoot);
+          return new TauriDirectoryHandle(absoluteCommon, 'common') as unknown as FileSystemDirectoryHandle;
+        } catch {
+          return null;
+        }
+      }
+    }
+
+    return null;
   }
 
   async function getProjectFileHandleByRelativePath(input: {
@@ -119,14 +139,12 @@ export function createProjectFsModule(params: {
       }
     }
 
-    if (params.projectsHandle.value && params.currentProjectName.value) {
+    const projectDir = await getProjectDirHandle();
+    if (projectDir) {
       const parts = normalizedPath.split('/').filter(Boolean);
       const fileName = parts.pop();
       if (fileName) {
         try {
-          const projectDir = await params.projectsHandle.value.getDirectoryHandle(
-            params.currentProjectName.value,
-          );
           let currentDir = projectDir;
           for (const dirName of parts) {
             currentDir = await currentDir.getDirectoryHandle(dirName, {
@@ -227,11 +245,9 @@ export function createProjectFsModule(params: {
       }
     }
 
-    if (params.projectsHandle.value && params.currentProjectName.value) {
+    const projectDir = await getProjectDirHandle();
+    if (projectDir) {
       try {
-        const projectDir = await params.projectsHandle.value.getDirectoryHandle(
-          params.currentProjectName.value,
-        );
         let currentDir = projectDir;
         for (const dirName of normalizedPath.split('/').filter(Boolean)) {
           currentDir = await currentDir.getDirectoryHandle(dirName, {
@@ -269,6 +285,9 @@ export function createProjectFsModule(params: {
   }
 
   async function getProjectDirHandle(): Promise<FileSystemDirectoryHandle | null> {
+    if (params.currentProjectDirHandle.value) {
+      return params.currentProjectDirHandle.value;
+    }
     if (!params.projectsHandle.value || !params.currentProjectName.value) return null;
     try {
       return await params.projectsHandle.value.getDirectoryHandle(params.currentProjectName.value);

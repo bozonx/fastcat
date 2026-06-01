@@ -6,6 +6,11 @@ import { createTimelineDocId } from '~/timeline/id';
 import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { toProjectStoragePath } from '~/utils/workspace-common';
+import { isTauriRuntime } from '~/utils/runtime';
+
+const isAbsoluteStorageRoot = (path: string): boolean => {
+  return /^\//.test(path) || /^[a-zA-Z]:[\\/]/.test(path);
+};
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 import { createDefaultProjectSettings } from '~/utils/project-settings';
@@ -52,6 +57,7 @@ export const useProjectStore = defineStore('project', () => {
   } = storeToRefs(projectSettingsStore);
 
   const currentProjectName = ref<string | null>(null);
+  const currentProjectDirHandle = ref<FileSystemDirectoryHandle | null>(null);
   const currentProjectId = ref<string | null>(null);
   const currentTimelinePath = ref<string | null>(null);
   const currentFileName = ref<string | null>(null);
@@ -71,6 +77,7 @@ export const useProjectStore = defineStore('project', () => {
   const fsModule = createProjectFsModule({
     workspaceHandle: computed(() => workspaceStore.workspaceHandle),
     projectsHandle: computed(() => workspaceStore.projectsHandle),
+    currentProjectDirHandle,
     currentProjectName,
     getVfs: () => useVfs(),
   });
@@ -101,6 +108,7 @@ export const useProjectStore = defineStore('project', () => {
   async function closeProject() {
     projectSettingsStore.closeProjectSettings();
     currentProjectName.value = null;
+    currentProjectDirHandle.value = null;
     currentProjectId.value = null;
     currentTimelinePath.value = null;
     currentFileName.value = null;
@@ -229,14 +237,17 @@ export const useProjectStore = defineStore('project', () => {
       aspectRatio?: string;
       isCustomResolution?: boolean;
       sampleRate?: number;
+      parentPath?: string;
     },
   ) {
-    if (!workspaceStore.projectsHandle) {
+    const isTauri = isTauriRuntime();
+
+    if (!isTauri && !workspaceStore.projectsHandle) {
       workspaceStore.error = 'Workspace not initialized';
       return;
     }
 
-    if (workspaceStore.projects.includes(name)) {
+    if (!isTauri && workspaceStore.projects.includes(name)) {
       workspaceStore.error = 'Project already exists';
       return;
     }
@@ -246,7 +257,28 @@ export const useProjectStore = defineStore('project', () => {
 
     try {
       const vfs = useVfs();
-      // The project is not active yet — address it explicitly via `@project/<name>`.
+      let projectPath = '';
+
+      if (isTauri) {
+        const { join } = await import('@tauri-apps/api/path');
+        const { mkdir, exists } = await import('@tauri-apps/plugin-fs');
+        const parentDir = options?.parentPath || workspaceStore.resolvedStorageTopology.projectsRoot;
+        projectPath = await join(parentDir, name);
+
+        if (await exists(projectPath)) {
+          workspaceStore.error = `Project folder "${name}" already exists`;
+          workspaceStore.isLoading = false;
+          return;
+        }
+
+        await mkdir(projectPath, { recursive: true });
+        const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
+        currentProjectDirHandle.value = new TauriDirectoryHandle(projectPath, name) as unknown as FileSystemDirectoryHandle;
+      }
+
+      currentProjectName.value = name;
+
+      // Create folder structure inside the project
       for (const dirName of [
         VIDEO_DIR_NAME,
         AUDIO_DIR_NAME,
@@ -254,13 +286,23 @@ export const useProjectStore = defineStore('project', () => {
         DOCUMENTS_DIR_NAME,
         TIMELINES_DIR_NAME,
         EXPORT_DIR_NAME,
+        '.fastcat',
       ]) {
-        await vfs.createDirectory(toProjectStoragePath(name, dirName));
+        if (isTauri) {
+          const { mkdir } = await import('@tauri-apps/plugin-fs');
+          const { join } = await import('@tauri-apps/api/path');
+          await mkdir(await join(projectPath, dirName), { recursive: true });
+        } else {
+          await vfs.createDirectory(toProjectStoragePath(name, dirName));
+        }
       }
 
       try {
-        await vfs.createDirectory(toProjectStoragePath(name, '.fastcat'));
-        await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectName: name });
+        if (isTauri) {
+          await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectName: '' });
+        } else {
+          await projectSettingsStore.saveInitialProjectSettingsForNewProject({ projectName: name });
+        }
       } catch (e) {
         log.warn('Failed to create project settings file', e);
       }
@@ -353,10 +395,33 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function openProject(name: string) {
-    if (!workspaceStore.projects.includes(name)) {
-      workspaceStore.error = 'Project not found';
-      return;
+  async function openProject(nameOrPath: string) {
+    const isTauri = isTauriRuntime();
+    let name = nameOrPath;
+    let path = nameOrPath;
+
+    if (isTauri) {
+      const isAbsolute = isAbsoluteStorageRoot(nameOrPath);
+      if (isAbsolute) {
+        const { basename } = await import('@tauri-apps/api/path');
+        name = await basename(nameOrPath);
+        path = nameOrPath;
+      } else {
+        const { join } = await import('@tauri-apps/api/path');
+        path = await join(workspaceStore.resolvedStorageTopology.projectsRoot, nameOrPath);
+        name = nameOrPath;
+      }
+
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('allow_path_scope', { path }).catch(() => {});
+
+      const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
+      currentProjectDirHandle.value = new TauriDirectoryHandle(path, name) as unknown as FileSystemDirectoryHandle;
+    } else {
+      if (!workspaceStore.projects.includes(name)) {
+        workspaceStore.error = 'Project not found';
+        return;
+      }
     }
 
     currentProjectName.value = name;

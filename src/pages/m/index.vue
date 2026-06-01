@@ -112,7 +112,7 @@ const formatDate = (dateStr?: string) => {
     </div>
 
     <!-- Если рабочая область не выбрана -->
-    <WelcomeScreen v-else-if="!workspaceStore.workspaceHandle" />
+    <WelcomeScreen v-else-if="!workspaceStore.workspaceHandle && workspaceStore.workspaceProviderId !== 'tauri'" />
 
     <template v-else>
       <div class="flex h-screen w-full flex-col bg-ui-bg overflow-hidden text-ui-text font-sans">
@@ -130,7 +130,9 @@ const formatDate = (dateStr?: string) => {
               >
                 <UIcon name="i-heroicons-folder" class="w-3 h-3" />
                 <span class="truncate max-w-[120px]">{{
-                  workspaceStore.workspaceHandle.name
+                  workspaceStore.workspaceProviderId === 'tauri'
+                    ? t('projects.localWorkspaceName')
+                    : workspaceStore.workspaceHandle?.name
                 }}</span>
               </div>
             </div>

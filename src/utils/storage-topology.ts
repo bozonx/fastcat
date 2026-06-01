@@ -186,7 +186,7 @@ export async function resolveTauriSystemStorageTopology(input: {
   const proxiesRootBase = trimRootPath(input.paths.proxiesRootPath);
   const ephemeralTmpRootBase = trimRootPath(input.paths.ephemeralTmpRootPath);
 
-  const contentBase = contentRootBase;
+  const contentBase = contentRootBase || (await join(input.appPaths.documentsDir, 'FastCat'));
   const dataRoot = dataRootBase || (await join(input.appPaths.dataDir, DATA_ROOT_DIR_NAME));
   const tempRoot = tempRootBase || (await join(input.appPaths.cacheDir, TEMP_ROOT_DIR_NAME));
   const proxiesRoot =
@@ -195,8 +195,8 @@ export async function resolveTauriSystemStorageTopology(input: {
     ephemeralTmpRootBase || (await join(input.appPaths.tempDir, 'fastcat-jobs'));
 
   return {
-    projectsRoot: joinSegments(contentBase, PROJECTS_ROOT_DIR_NAME),
-    commonRoot: joinSegments(contentBase, COMMON_ROOT_DIR_NAME),
+    projectsRoot: await join(contentBase, PROJECTS_ROOT_DIR_NAME),
+    commonRoot: await join(contentBase, COMMON_ROOT_DIR_NAME),
     dataRoot,
     tempRoot,
     proxiesRoot,

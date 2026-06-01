@@ -495,9 +495,8 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
   }
 
   async function saveInitialProjectSettingsForNewProject(options: { projectName: string }) {
-    // The project is not active yet, so address it explicitly by name.
     const vfs = useVfs();
-    const projectPath = toProjectStoragePath(options.projectName);
+    const projectPath = options.projectName ? toProjectStoragePath(options.projectName) : undefined;
     projectSettingsRepo.value = createProjectSettingsRepository({ vfs, projectPath });
     projectUiRepo.value = createProjectUiRepository({ vfs, projectPath });
 
