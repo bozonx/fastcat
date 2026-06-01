@@ -648,4 +648,35 @@ describe('MediaStore', () => {
     });
     expect(result?.image).toBeUndefined();
   });
+
+  it('extracts metadata for video in Tauri environment with rotation correctly', async () => {
+    mockIsTauriState.value = true;
+
+    const mockFile = { size: 12345, lastModified: 98765, name: 'vertical.mp4' } as File;
+    const mockHandle = { path: 'video/vertical.mp4' };
+    
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
+      getFileByPath: vi.fn().mockResolvedValue(mockFile),
+    } as any);
+
+    const store = useMediaStore();
+
+    mockNativeMediaMetadata.mockResolvedValue({
+      duration: 10.0,
+      video: {
+        width: 1920,
+        height: 1080,
+        fps: 30.0,
+        codec: 'h264',
+        rotation: 90,
+      },
+    });
+
+    const result = await store.getOrFetchMetadata(mockFile, 'video/vertical.mp4');
+
+    expect(result).toBeDefined();
+    expect(result?.video?.rotation).toBe(90);
+  });
 });

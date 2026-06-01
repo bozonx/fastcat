@@ -11,6 +11,7 @@ export interface NativeMediaMetadata {
     fps: number;
     codec: string;
     bitrate?: number | null;
+    rotation: number;
   } | null;
   audio?: {
     codec: string;

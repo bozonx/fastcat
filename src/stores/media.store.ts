@@ -313,7 +313,7 @@ export const useMediaStore = defineStore('media', () => {
                   height: nativeMeta.video.height,
                   displayWidth: nativeMeta.video.width,
                   displayHeight: nativeMeta.video.height,
-                  rotation: 0,
+                  rotation: nativeMeta.video.rotation ?? 0,
                   codec: nativeMeta.video.codec,
                   parsedCodec: nativeMeta.video.codec,
                   fps: nativeMeta.video.fps,

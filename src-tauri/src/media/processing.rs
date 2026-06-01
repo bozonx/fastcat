@@ -61,6 +61,7 @@ pub struct NativeVideoMetadata {
     pub fps: f64,
     pub codec: String,
     pub bitrate: Option<u64>,
+    pub rotation: i32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -124,6 +125,8 @@ pub fn probe_media(path: &Path) -> Result<NativeMediaMetadata> {
     metadata_from_ffprobe(json)
 }
 
+use crate::media::decode::probe_rotation;
+
 fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
     let streams = json
         .get("streams")
@@ -163,6 +166,7 @@ fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
                 .get("bit_rate")
                 .and_then(|v| v.as_str())
                 .and_then(|s| s.parse::<u64>().ok()),
+            rotation: probe_rotation(stream),
         });
 
     let audio = streams
@@ -308,7 +312,17 @@ pub fn extract_video_frame_webp(
         .video
         .as_ref()
         .ok_or_else(|| anyhow!("source has no video stream"))?;
-    let (width, height) = fit_even_size(video.width, video.height, max_width, max_height);
+    let rotation_deg = video.rotation.rem_euclid(360).abs();
+    let is_quarter = rotation_deg == 90 || rotation_deg == 270;
+    let (src_w, src_h) = if is_quarter {
+        (video.height, video.width)
+    } else {
+        (video.width, video.height)
+    };
+    let (mut width, mut height) = fit_even_size(src_w, src_h, max_width, max_height);
+    if is_quarter {
+        std::mem::swap(&mut width, &mut height);
+    }
     let output = Command::new("ffmpeg")
         .arg("-nostdin")
         .arg("-v")
@@ -389,16 +403,67 @@ pub fn extract_video_frame_webps(
 
         if let Some(frame) = last_frame {
             let mut bytes = Vec::new();
-            if let Err(e) = image::write_buffer_with_format(
-                &mut std::io::Cursor::new(&mut bytes),
-                &frame.pixels,
-                frame.width,
-                frame.height,
-                image::ColorType::Rgba8,
-                image::ImageFormat::WebP,
-            ) {
+            let rotation = decoder.info().rotation.rem_euclid(360);
+
+            let res: Result<(), anyhow::Error> = if rotation == 90 || rotation == 180 || rotation == 270 {
+                if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
+                    frame.width,
+                    frame.height,
+                    frame.pixels,
+                ) {
+                    match rotation {
+                        90 => {
+                            let rotated = image::imageops::rotate90(&buf);
+                            image::write_buffer_with_format(
+                                &mut std::io::Cursor::new(&mut bytes),
+                                &rotated,
+                                rotated.width(),
+                                rotated.height(),
+                                image::ColorType::Rgba8,
+                                image::ImageFormat::WebP,
+                            ).map_err(Into::into)
+                        }
+                        180 => {
+                            let rotated = image::imageops::rotate180(&buf);
+                            image::write_buffer_with_format(
+                                &mut std::io::Cursor::new(&mut bytes),
+                                &rotated,
+                                rotated.width(),
+                                rotated.height(),
+                                image::ColorType::Rgba8,
+                                image::ImageFormat::WebP,
+                            ).map_err(Into::into)
+                        }
+                        270 => {
+                            let rotated = image::imageops::rotate270(&buf);
+                            image::write_buffer_with_format(
+                                &mut std::io::Cursor::new(&mut bytes),
+                                &rotated,
+                                rotated.width(),
+                                rotated.height(),
+                                image::ColorType::Rgba8,
+                                image::ImageFormat::WebP,
+                            ).map_err(Into::into)
+                        }
+                        _ => unreachable!(),
+                    }
+                } else {
+                    Err(anyhow!("failed to create image buffer for rotation"))
+                }
+            } else {
+                image::write_buffer_with_format(
+                    &mut std::io::Cursor::new(&mut bytes),
+                    &frame.pixels,
+                    frame.width,
+                    frame.height,
+                    image::ColorType::Rgba8,
+                    image::ImageFormat::WebP,
+                ).map_err(Into::into)
+            };
+
+            if let Err(e) = res {
                 log::warn!(
-                    "[native-media] webp encode failed at {:.3}s for {}: {e}",
+                    "[native-media] webp encode/rotate failed at {:.3}s for {}: {e}",
                     target_time,
                     source_path.display()
                 );

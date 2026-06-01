@@ -591,7 +591,7 @@ fn is_quarter_turn(rotation: i32) -> bool {
     normalized == 90 || normalized == 270
 }
 
-fn probe_rotation(video: &serde_json::Value) -> i32 {
+pub(crate) fn probe_rotation(video: &serde_json::Value) -> i32 {
     video
         .get("tags")
         .and_then(|tags| tags.get("rotate"))
@@ -610,7 +610,7 @@ fn probe_rotation(video: &serde_json::Value) -> i32 {
         .unwrap_or(0)
 }
 
-fn parse_rotation_value(value: &serde_json::Value) -> Option<i32> {
+pub(crate) fn parse_rotation_value(value: &serde_json::Value) -> Option<i32> {
     if let Some(rotation) = value.as_i64() {
         return Some(rotation as i32);
     }
