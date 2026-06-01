@@ -67,6 +67,18 @@ pub struct SceneLayer {
     pub timeline_end_sec: f64,
     /// PTS внутри исходника в момент `timeline_start_sec`.
     pub source_start_sec: f64,
+    /// Длина доступного source-range в исходнике. Нужна для speed/reverse clamp.
+    #[serde(default)]
+    pub source_range_duration_sec: f64,
+    /// Скорость воспроизведения video source. Отрицательные значения — reverse.
+    #[serde(default = "one")]
+    pub speed: f64,
+    /// Стоп-кадр: абсолютный PTS внутри исходника.
+    #[serde(default)]
+    pub freeze_frame_source_sec: Option<f64>,
+    /// Явная ориентация источника (`auto`, `0`, `90`, `180`, `270`).
+    #[serde(default)]
+    pub source_orientation: Option<String>,
     /// Чем выше — тем поверх. Сортируем по возрастанию.
     pub z: i32,
     /// `[0; 1]`, домножается на альфа-канал слоя.
@@ -112,6 +124,8 @@ impl Default for AudioFadeCurve {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SceneAudioLayer {
     pub id: String,
+    #[serde(default)]
+    pub track_id: Option<String>,
     pub path: String,
     pub timeline_start_sec: f64,
     pub timeline_end_sec: f64,
@@ -137,6 +151,11 @@ pub struct MonitorScene {
     pub layers: Vec<SceneLayer>,
     #[serde(default)]
     pub audio_layers: Vec<SceneAudioLayer>,
+    /// Master audio bus gain. Effects/track buses подключатся поверх этой модели позже.
+    #[serde(default = "one")]
+    pub audio_master_gain: f64,
+    #[serde(default)]
+    pub audio_master_muted: bool,
     /// Размер композитного кадра. Если 0/отсутствует — берём bounding box из рантаймов.
     #[serde(default)]
     pub width: u32,
@@ -166,8 +185,36 @@ impl SceneLayer {
     }
 
     pub fn source_pts_at(&self, timeline_sec: f64) -> f64 {
-        let local = self.source_start_sec + (timeline_sec - self.timeline_start_sec);
-        local.max(0.0)
+        if let Some(freeze) = self.freeze_frame_source_sec {
+            return freeze.max(0.0);
+        }
+
+        let local = (timeline_sec - self.timeline_start_sec).max(0.0);
+        let speed = sanitize_clip_speed(self.speed);
+        let abs_speed = speed.abs();
+        let source_range =
+            if self.source_range_duration_sec.is_finite() && self.source_range_duration_sec > 0.0 {
+                self.source_range_duration_sec
+            } else {
+                (self.timeline_end_sec - self.timeline_start_sec).max(0.0) * abs_speed
+            };
+        let last_readable = (source_range - 0.001).max(0.0);
+        let source_delta = local * abs_speed;
+        let source_offset = if speed < 0.0 {
+            (last_readable - source_delta).clamp(0.0, last_readable)
+        } else {
+            source_delta.clamp(0.0, last_readable)
+        };
+
+        (self.source_start_sec + source_offset).max(0.0)
+    }
+}
+
+fn sanitize_clip_speed(speed: f64) -> f64 {
+    if speed.is_finite() && speed != 0.0 {
+        speed.clamp(-10.0, 10.0)
+    } else {
+        1.0
     }
 }
 
@@ -183,6 +230,10 @@ mod tests {
             timeline_start_sec: start,
             timeline_end_sec: end,
             source_start_sec: source_start,
+            source_range_duration_sec: (end - start).max(0.0),
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
             z: 0,
             opacity: 1.0,
             blend_mode: "normal".into(),
@@ -215,6 +266,26 @@ mod tests {
     }
 
     #[test]
+    fn source_pts_at_applies_speed_and_reverse() {
+        let mut l = layer(10.0, 20.0, 3.5);
+        l.source_range_duration_sec = 20.0;
+        l.speed = 2.0;
+        assert!((l.source_pts_at(12.0) - 7.5).abs() < 1e-9);
+
+        l.speed = -2.0;
+        assert!((l.source_pts_at(10.0) - 23.499).abs() < 1e-9);
+        assert!((l.source_pts_at(12.0) - 19.499).abs() < 1e-9);
+    }
+
+    #[test]
+    fn source_pts_at_uses_freeze_frame() {
+        let mut l = layer(10.0, 20.0, 3.5);
+        l.speed = 2.0;
+        l.freeze_frame_source_sec = Some(8.25);
+        assert_eq!(l.source_pts_at(15.0), 8.25);
+    }
+
+    #[test]
     fn source_pts_clamps_to_zero_before_timeline_start() {
         let l = layer(10.0, 20.0, 0.0);
         assert_eq!(l.source_pts_at(5.0), 0.0);
@@ -228,6 +299,8 @@ mod tests {
             "timeline_start_sec": 0.0,
             "timeline_end_sec": 5.0,
             "source_start_sec": 0.0,
+            "source_range_duration_sec": 5.0,
+            "speed": 1.0,
             "z": 10,
             "opacity": 0.75,
             "blend_mode": "screen",

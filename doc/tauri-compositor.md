@@ -10,6 +10,24 @@
 
 Точка переключения — `src/utils/video-backend/index.ts` (`getVideoBackend()`).
 
+## Текущий native parity
+
+Нативная Tauri-сцена теперь собирается через общий payload builder:
+`src/utils/native-monitor-scene.ts`. Это важно для совпадения preview, thumbnail и export
+с веб-движком по базовой семантике таймлайна:
+
+- video/image/svg/text/shape/background слои;
+- nested timelines через тот же resolver, что и web/export worker;
+- opacity, blend mode, transform, source orientation;
+- video speed, reverse video и freeze frame;
+- audio clips с gain, balance, fade in/out, solo/mute и отдельной master audio bus gain;
+- native export может muxить нативный офлайн-аудиомикс, если проект не требует неподдержанных
+  визуальных или аудио-возможностей.
+
+Намеренно не перенесено в этот слой: masks/crop, effects, transitions, HUD и audio reverse.
+Если export обнаруживает такие активные возможности, он остаётся на старом web worker pipeline,
+чтобы не получить silent mismatch.
+
 ## Файловая структура
 
 ### Rust (src-tauri/src)

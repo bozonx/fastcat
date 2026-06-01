@@ -331,7 +331,12 @@ impl WindowState {
 
     fn apply_scene(&mut self, scene: MonitorScene) {
         if let Some(audio) = self.audio.as_ref() {
-            audio.set_scene(scene.audio_layers.clone());
+            let master_gain = if scene.audio_master_muted {
+                0.0
+            } else {
+                scene.audio_master_gain
+            };
+            audio.set_scene(scene.audio_layers.clone(), master_gain);
         }
         self.layers.apply_scene(scene);
         self.window.request_redraw();

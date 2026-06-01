@@ -19,6 +19,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 
+use crate::audio::engine::render_scene_to_wav;
 use crate::compositor::Compositor;
 use crate::monitor::scene::MonitorScene;
 
@@ -38,6 +39,8 @@ pub struct NativeExportOptions {
     pub video_bitrate_bps: u32,
     pub format: String,
     /// Путь к заранее смикшированному JS аудио-файлу (wav/m4a/...). `None` → без звука.
+    #[serde(default)]
+    pub audio_enabled: bool,
     pub audio_path: Option<String>,
     pub audio_codec: Option<String>,
     pub audio_bitrate_bps: Option<u32>,
@@ -64,7 +67,36 @@ pub fn export_timeline(
     // Кол-во кадров: длительность × fps. Минимум 1 кадр (стоп-кадр для нулевого диапазона).
     let frame_count = (((end - start) * fps).round() as u64).max(1);
 
-    let args = build_ffmpeg_args(&options, width, height, fps, target_path);
+    let mut temp_audio: Option<PathBuf> = None;
+    let audio_input = if options.audio_enabled {
+        match options.audio_path.as_deref().filter(|p| !p.is_empty()) {
+            Some(path) => Some(PathBuf::from(path)),
+            None if !scene.audio_layers.is_empty() => {
+                let path = temp_audio_path();
+                let master_gain = if scene.audio_master_muted {
+                    0.0
+                } else {
+                    scene.audio_master_gain
+                };
+                render_scene_to_wav(&scene.audio_layers, master_gain, start, end, 48_000, &path)
+                    .context("failed to render native audio mix")?;
+                temp_audio = Some(path.clone());
+                Some(path)
+            }
+            None => None,
+        }
+    } else {
+        None
+    };
+
+    let args = build_ffmpeg_args(
+        &options,
+        audio_input.as_deref(),
+        width,
+        height,
+        fps,
+        target_path,
+    );
     let mut child = Command::new("ffmpeg")
         .args(&args)
         .stdin(Stdio::piped())
@@ -92,8 +124,12 @@ pub fn export_timeline(
     let render_result = (|| -> Result<()> {
         for i in 0..frame_count {
             let time = start + i as f64 / fps;
-            let frame_scene =
-                super::timeline_render::build_export_scene(&scene, time, (width, height), &mut cache)?;
+            let frame_scene = super::timeline_render::build_export_scene(
+                &scene,
+                time,
+                (width, height),
+                &mut cache,
+            )?;
             let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height)?;
             if stdin.write_all(&pixels).is_err() {
                 // ffmpeg закрыл stdin (ошибка энкода или отмена-kill) — выходим, статус заберём ниже.
@@ -112,6 +148,9 @@ pub fn export_timeline(
         let _ = guard.kill();
         drop(guard);
         tasks.remove(task_id);
+        if let Some(path) = temp_audio.as_deref() {
+            let _ = std::fs::remove_file(path);
+        }
         return Err(error);
     }
 
@@ -130,7 +169,13 @@ pub fn export_timeline(
             drop(guard);
             tasks.remove(task_id);
             if status.success() {
+                if let Some(path) = temp_audio.as_deref() {
+                    let _ = std::fs::remove_file(path);
+                }
                 return Ok(());
+            }
+            if let Some(path) = temp_audio.as_deref() {
+                let _ = std::fs::remove_file(path);
             }
             return Err(anyhow!("ffmpeg export failed: {}", stderr.trim()));
         }
@@ -141,6 +186,7 @@ pub fn export_timeline(
 
 fn build_ffmpeg_args(
     options: &NativeExportOptions,
+    audio_input: Option<&Path>,
     width: u32,
     height: u32,
     fps: f64,
@@ -163,9 +209,9 @@ fn build_ffmpeg_args(
         "-".to_string(),
     ];
 
-    let has_audio = options.audio_path.as_deref().is_some_and(|p| !p.is_empty());
-    if let Some(audio) = options.audio_path.as_deref().filter(|p| !p.is_empty()) {
-        args.extend(["-i".to_string(), audio.to_string()]);
+    let has_audio = audio_input.is_some();
+    if let Some(audio) = audio_input {
+        args.extend(["-i".to_string(), audio.display().to_string()]);
     }
 
     args.extend([

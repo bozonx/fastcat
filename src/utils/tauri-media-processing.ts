@@ -84,6 +84,7 @@ export interface NativeTimelineExportOptions {
   videoCodec: string;
   videoBitrateBps: number;
   format: string;
+  audioEnabled?: boolean;
   audioPath?: string | null;
   audioCodec?: string | null;
   audioBitrateBps?: number | null;
@@ -97,10 +98,13 @@ export async function nativeExportTimeline(params: {
   onProgress?: (progress: number) => void;
 }): Promise<void> {
   const unlisten = params.onProgress
-    ? await listen<{ taskId: string; progress: number }>('native-timeline-export:progress', (event) => {
-        if (event.payload.taskId !== params.taskId) return;
-        params.onProgress?.(event.payload.progress);
-      })
+    ? await listen<{ taskId: string; progress: number }>(
+        'native-timeline-export:progress',
+        (event) => {
+          if (event.payload.taskId !== params.taskId) return;
+          params.onProgress?.(event.payload.progress);
+        },
+      )
     : null;
 
   try {
@@ -129,7 +133,7 @@ export async function nativeRenderTimelineFrameWebp(params: {
     height: params.height,
     quality: params.quality,
   });
-  return new Blob([bytes], { type: 'image/webp' });
+  return new Blob([toBlobPart(bytes)], { type: 'image/webp' });
 }
 
 export async function nativeVideoFrameWebp(params: {
@@ -146,7 +150,7 @@ export async function nativeVideoFrameWebp(params: {
     maxHeight: params.maxHeight,
     quality: params.quality,
   });
-  return new Blob([bytes], { type: 'image/webp' });
+  return new Blob([toBlobPart(bytes)], { type: 'image/webp' });
 }
 
 export async function nativeVideoFrameWebps(params: {
@@ -179,12 +183,18 @@ export async function nativeVideoFrameWebps(params: {
       blobs.push(null);
     } else {
       const slice = packedBytes.subarray(offset, offset + size);
-      blobs.push(new Blob([slice], { type: 'image/webp' }));
+      blobs.push(new Blob([toBlobPart(slice)], { type: 'image/webp' }));
       offset += size;
     }
   }
 
   return blobs;
+}
+
+function toBlobPart(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy.buffer;
 }
 
 function buildNativeConvertOptions(request: ConversionRequest) {

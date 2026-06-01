@@ -107,17 +107,38 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 /// opacity и blend-mode из IPC-слоя.
 pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u32)) -> Layer {
     let media_size = kind.natural_size();
+    let source_rotation = source_orientation_deg(sl);
     let transform = match &sl.transform {
-        Some(t) => Transform {
-            x: t.x,
-            y: t.y,
-            scale_x: t.scale_x,
-            scale_y: t.scale_y,
-            rotation_deg: t.rotation_deg,
-            anchor_x: t.anchor_x,
-            anchor_y: t.anchor_y,
-        },
-        None => Transform::center_fit(media_size, scene_size),
+        Some(t) => {
+            let fit = if matches!(
+                sl.kind,
+                LayerKind::Video | LayerKind::Image | LayerKind::Svg
+            ) {
+                oriented_fit_scale(media_size, scene_size, source_rotation)
+            } else {
+                1.0
+            };
+            Transform {
+                x: t.x,
+                y: t.y,
+                scale_x: t.scale_x * fit,
+                scale_y: t.scale_y * fit,
+                rotation_deg: t.rotation_deg + source_rotation,
+                anchor_x: t.anchor_x,
+                anchor_y: t.anchor_y,
+            }
+        }
+        None => {
+            let fit_media_size = if is_quarter_turn(source_rotation) {
+                (media_size.1, media_size.0)
+            } else {
+                media_size
+            };
+            Transform {
+                rotation_deg: source_rotation,
+                ..Transform::center_fit(fit_media_size, scene_size)
+            }
+        }
     };
     Layer {
         id: sl.id.clone(),
@@ -128,6 +149,33 @@ pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u3
         mask: None,
         effects: Vec::new(),
     }
+}
+
+fn source_orientation_deg(sl: &SceneLayer) -> f64 {
+    match sl.source_orientation.as_deref() {
+        Some("90") => 90.0,
+        Some("180") => 180.0,
+        Some("270") => 270.0,
+        _ => 0.0,
+    }
+}
+
+fn oriented_fit_scale(natural: (u32, u32), scene_size: (u32, u32), rotation_deg: f64) -> f64 {
+    let fit_natural = if is_quarter_turn(rotation_deg) {
+        (natural.1, natural.0)
+    } else {
+        natural
+    };
+    let nw = fit_natural.0.max(1) as f64;
+    let nh = fit_natural.1.max(1) as f64;
+    let sw = scene_size.0.max(1) as f64;
+    let sh = scene_size.1.max(1) as f64;
+    (sw / nw).min(sh / nh)
+}
+
+fn is_quarter_turn(rotation_deg: f64) -> bool {
+    let normalized = ((rotation_deg.round() as i32 % 360) + 360) % 360;
+    normalized == 90 || normalized == 270
 }
 
 // ---------------------------------------------------------------------------

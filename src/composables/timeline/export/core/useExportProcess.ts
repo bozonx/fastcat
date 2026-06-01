@@ -19,8 +19,8 @@ import {
 } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import type { TimelineDocument } from '~/timeline/types';
-import { buildNativeMonitorScene } from '~/timeline/timeline-thumbnail';
+import type { ClipEffect, TimelineDocument } from '~/timeline/types';
+import { buildNativeMonitorScene } from '~/utils/native-monitor-scene';
 
 import type { ExportOptions, WorkerTimelineClip } from '../types';
 import {
@@ -33,6 +33,50 @@ const log = createDevLogger('useExportProcess');
 
 let timelineExportInFlight = false;
 const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
+
+function hasEnabledEffects(effects: ClipEffect[] | undefined): boolean {
+  return Array.isArray(effects) && effects.some((effect) => effect?.enabled !== false);
+}
+
+function canUseNativeTimelineExport(params: {
+  options: ExportOptions;
+  videoPayload: unknown[];
+  audioClips: WorkerTimelineClip[];
+  targetPath: string | null;
+}): boolean {
+  if (!isTauriRuntime() || !params.targetPath) return false;
+  if (!['mp4', 'webm', 'mkv'].includes(params.options.format)) return false;
+
+  for (const item of params.videoPayload) {
+    if (!item || typeof item !== 'object') continue;
+    const value = item as {
+      kind?: string;
+      clipType?: string;
+      effects?: ClipEffect[];
+      masterEffects?: ClipEffect[];
+      transitionIn?: { durationUs?: number };
+      transitionOut?: { durationUs?: number };
+      mask?: unknown;
+    };
+    if (hasEnabledEffects(value.effects) || hasEnabledEffects(value.masterEffects)) return false;
+    if (value.kind === 'clip') {
+      if (value.clipType === 'hud' || value.clipType === 'adjustment') return false;
+      if (value.mask) return false;
+      if (Number(value.transitionIn?.durationUs ?? 0) > 0) return false;
+      if (Number(value.transitionOut?.durationUs ?? 0) > 0) return false;
+    }
+  }
+
+  if (params.options.audio) {
+    for (const clip of params.audioClips) {
+      if (hasEnabledEffects(clip.effects)) return false;
+      const speed = Number(clip.speed ?? 1);
+      if (Number.isFinite(speed) && speed < 0) return false;
+    }
+  }
+
+  return true;
+}
 
 export function useExportProcess(
   activeExportTaskId: ReturnType<
@@ -145,15 +189,26 @@ export function useExportProcess(
         throw new Error('Timeline is empty');
 
       const nativeTargetPath = getNativeFileHandlePath(fileHandle);
-      const canUseNativeExport =
-        isTauriRuntime() &&
-        Boolean(nativeTargetPath) &&
-        !options.audio &&
-        ['mp4', 'webm', 'mkv'].includes(options.format);
+      const canUseNativeExport = canUseNativeTimelineExport({
+        options,
+        videoPayload,
+        audioClips: croppedAudioClips,
+        targetPath: nativeTargetPath,
+      });
 
       if (canUseNativeExport && nativeTargetPath && doc) {
         exportPhase.value = 'encoding';
-        const scene = await buildNativeMonitorScene(doc);
+        const scene = await buildNativeMonitorScene({
+          timelineDoc: doc,
+          projectStore,
+          workspaceStore,
+          masterGain: timelineStore.masterGain,
+          masterMuted: timelineStore.audioMuted,
+          previewScale: 1,
+          fallbackFormat: timelineStore.timelineFormat,
+          includeAudio: options.audio,
+          onWarning: reportWarning,
+        });
         const rangeStartUs = options.exportRangeUs?.startUs ?? 0;
         const rangeEndUs = options.exportRangeUs?.endUs ?? timelineStore.duration;
         await nativeExportTimeline({
@@ -169,9 +224,10 @@ export function useExportProcess(
             videoCodec: options.videoCodec,
             videoBitrateBps: options.bitrate,
             format: options.format,
+            audioEnabled: options.audio,
             audioPath: null,
             audioCodec: null,
-            audioBitrateBps: null,
+            audioBitrateBps: options.audioBitrate,
           },
           onProgress,
         });

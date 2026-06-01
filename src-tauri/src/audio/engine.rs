@@ -1,4 +1,6 @@
 use std::collections::VecDeque;
+use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, TryLockError};
@@ -15,9 +17,9 @@ const OUTPUT_CHANNELS: usize = 2;
 const CHUNK_DURATION_SEC: f64 = 1.0;
 const PREBUFFER_CHUNKS: usize = 3;
 
-#[derive(Default)]
 struct AudioShared {
     scene: Vec<SceneAudioLayer>,
+    master_gain: f64,
     ring: VecDeque<f32>,
     playing: bool,
     origin_pts_sec: f64,
@@ -25,6 +27,22 @@ struct AudioShared {
     producer_pts_sec: f64,
     seek_serial: u64,
     scene_serial: u64,
+}
+
+impl Default for AudioShared {
+    fn default() -> Self {
+        Self {
+            scene: Vec::new(),
+            master_gain: 1.0,
+            ring: VecDeque::new(),
+            playing: false,
+            origin_pts_sec: 0.0,
+            frames_written: 0,
+            producer_pts_sec: 0.0,
+            seek_serial: 0,
+            scene_serial: 0,
+        }
+    }
 }
 
 pub struct NativeAudioEngine {
@@ -76,9 +94,10 @@ impl NativeAudioEngine {
         })
     }
 
-    pub fn set_scene(&self, layers: Vec<SceneAudioLayer>) {
+    pub fn set_scene(&self, layers: Vec<SceneAudioLayer>, master_gain: f64) {
         let mut state = self.shared.lock().unwrap();
         state.scene = layers;
+        state.master_gain = sanitize_master_gain(master_gain);
         state.ring.clear();
         state.producer_pts_sec =
             state.origin_pts_sec + state.frames_written as f64 / self.sample_rate as f64;
@@ -280,6 +299,7 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
             } else {
                 Some((
                     state.scene.clone(),
+                    state.master_gain,
                     state.producer_pts_sec,
                     state.seek_serial,
                     state.scene_serial,
@@ -287,12 +307,18 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
             }
         };
 
-        let Some((scene, chunk_start, seek_serial, scene_serial)) = snapshot else {
+        let Some((scene, master_gain, chunk_start, seek_serial, scene_serial)) = snapshot else {
             std::thread::sleep(Duration::from_millis(8));
             continue;
         };
 
-        let chunk = mix_chunk(&scene, chunk_start, CHUNK_DURATION_SEC, sample_rate);
+        let chunk = mix_chunk(
+            &scene,
+            master_gain,
+            chunk_start,
+            CHUNK_DURATION_SEC,
+            sample_rate,
+        );
 
         let mut state = shared.lock().unwrap();
         if state.seek_serial != seek_serial || state.scene_serial != scene_serial || !state.playing
@@ -306,8 +332,71 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
     }
 }
 
+pub(crate) fn render_scene_to_wav(
+    scene: &[SceneAudioLayer],
+    master_gain: f64,
+    start_sec: f64,
+    end_sec: f64,
+    sample_rate: u32,
+    target_path: &Path,
+) -> Result<()> {
+    let start = start_sec.max(0.0);
+    let end = end_sec.max(start);
+    let frames = ((end - start) * sample_rate as f64).round().max(1.0) as u32;
+    let mut file = std::fs::File::create(target_path)
+        .with_context(|| format!("create audio wav {}", target_path.display()))?;
+    write_wav_f32_header(&mut file, frames, sample_rate)?;
+
+    let mut written = 0u32;
+    while written < frames {
+        let chunk_frames = ((CHUNK_DURATION_SEC * sample_rate as f64).round() as u32)
+            .min(frames - written)
+            .max(1);
+        let chunk_duration = chunk_frames as f64 / sample_rate as f64;
+        let chunk_start = start + written as f64 / sample_rate as f64;
+        let chunk = mix_chunk(scene, master_gain, chunk_start, chunk_duration, sample_rate);
+        for sample in chunk
+            .into_iter()
+            .take(chunk_frames as usize * OUTPUT_CHANNELS)
+        {
+            file.write_all(&sample.to_le_bytes())?;
+        }
+        written = written.saturating_add(chunk_frames);
+    }
+    Ok(())
+}
+
+fn write_wav_f32_header(file: &mut std::fs::File, frames: u32, sample_rate: u32) -> Result<()> {
+    let channels = OUTPUT_CHANNELS as u16;
+    let bits_per_sample = 32u16;
+    let bytes_per_sample = (bits_per_sample / 8) as u32;
+    let data_size = frames
+        .saturating_mul(channels as u32)
+        .saturating_mul(bytes_per_sample);
+    let riff_size = 36u32.saturating_add(data_size);
+    file.write_all(b"RIFF")?;
+    file.write_all(&riff_size.to_le_bytes())?;
+    file.write_all(b"WAVE")?;
+    file.write_all(b"fmt ")?;
+    file.write_all(&16u32.to_le_bytes())?;
+    file.write_all(&3u16.to_le_bytes())?;
+    file.write_all(&channels.to_le_bytes())?;
+    file.write_all(&sample_rate.to_le_bytes())?;
+    let byte_rate = sample_rate
+        .saturating_mul(channels as u32)
+        .saturating_mul(bytes_per_sample);
+    file.write_all(&byte_rate.to_le_bytes())?;
+    let block_align = channels.saturating_mul(bytes_per_sample as u16);
+    file.write_all(&block_align.to_le_bytes())?;
+    file.write_all(&bits_per_sample.to_le_bytes())?;
+    file.write_all(b"data")?;
+    file.write_all(&data_size.to_le_bytes())?;
+    Ok(())
+}
+
 fn mix_chunk(
     scene: &[SceneAudioLayer],
+    master_gain: f64,
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
     sample_rate: u32,
@@ -364,8 +453,19 @@ fn mix_chunk(
         );
     }
 
+    apply_master_gain(&mut mixed, master_gain);
     soft_clip(&mut mixed);
     mixed
+}
+
+fn apply_master_gain(samples: &mut [f32], master_gain: f64) {
+    let gain = sanitize_master_gain(master_gain) as f32;
+    if (gain - 1.0).abs() <= f32::EPSILON {
+        return;
+    }
+    for sample in samples {
+        *sample *= gain;
+    }
 }
 
 fn build_atempo_filter_str(speed: f64) -> Option<String> {
@@ -530,6 +630,14 @@ fn sanitize_speed(speed: f64) -> f64 {
     }
 }
 
+fn sanitize_master_gain(gain: f64) -> f64 {
+    if gain.is_finite() {
+        gain.max(0.0)
+    } else {
+        1.0
+    }
+}
+
 fn soft_clip(samples: &mut [f32]) {
     for sample in samples {
         *sample = sample.tanh();
@@ -543,6 +651,7 @@ mod tests {
     fn layer() -> SceneAudioLayer {
         SceneAudioLayer {
             id: "a1".into(),
+            track_id: Some("track-a".into()),
             path: "/tmp/a.wav".into(),
             timeline_start_sec: 0.0,
             timeline_end_sec: 10.0,
@@ -610,6 +719,13 @@ mod tests {
     fn logarithmic_fade_reaches_unity() {
         assert_eq!(fade_curve(0.0, AudioFadeCurve::Logarithmic), 0.0);
         assert!((fade_curve(1.0, AudioFadeCurve::Logarithmic) - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn master_gain_is_applied_after_layer_mix() {
+        let mut samples = vec![0.25, -0.5, 1.0];
+        apply_master_gain(&mut samples, 0.5);
+        assert_eq!(samples, vec![0.125, -0.25, 0.5]);
     }
 
     #[test]
