@@ -40,9 +40,33 @@ impl Scene {
     ///
     /// Это единственное место в кодовой базе, которое строит vello-команды для
     /// доменной сцены — все будущие kind'ы/эффекты/transitions подключаются здесь.
-    pub fn to_vello<F>(&self, viewport_w: u32, viewport_h: u32, resolve_gpu_texture: F) -> VelloScene
+    pub fn to_vello<F>(
+        &self,
+        viewport_w: u32,
+        viewport_h: u32,
+        resolve_gpu_texture: F,
+    ) -> VelloScene
     where
         F: Fn(super::texture_cache::TextureKey) -> Option<ImageData>,
+    {
+        self.to_vello_with_image_processor(
+            viewport_w,
+            viewport_h,
+            resolve_gpu_texture,
+            |image, _| image.clone(),
+        )
+    }
+
+    pub fn to_vello_with_image_processor<F, P>(
+        &self,
+        viewport_w: u32,
+        viewport_h: u32,
+        resolve_gpu_texture: F,
+        mut process_image: P,
+    ) -> VelloScene
+    where
+        F: Fn(super::texture_cache::TextureKey) -> Option<ImageData>,
+        P: FnMut(&ImageData, &[EffectSpec]) -> ImageData,
     {
         let mut out = VelloScene::new();
         if self.width == 0 || self.height == 0 || viewport_w == 0 || viewport_h == 0 {
@@ -74,11 +98,21 @@ impl Scene {
             match &layer.kind {
                 LayerKind::Raster { source, .. } => match source {
                     RasterSource::Image(img) => {
-                        out.draw_image(img, xform);
+                        let processed = if layer.effects.is_empty() {
+                            img.clone()
+                        } else {
+                            process_image(img, &layer.effects)
+                        };
+                        out.draw_image(&processed, xform);
                     }
                     RasterSource::GpuHandle(key) => {
                         if let Some(img) = resolve_gpu_texture(*key) {
-                            out.draw_image(&img, xform);
+                            let processed = if layer.effects.is_empty() {
+                                img
+                            } else {
+                                process_image(&img, &layer.effects)
+                            };
+                            out.draw_image(&processed, xform);
                         }
                     }
                 },
@@ -94,7 +128,7 @@ impl Scene {
                 out.pop_layer();
             }
             // TODO: layer.mask — kurbo::BezPath из layer.mask.path, push_layer как clip.
-            // TODO: layer.effects — multi-pass через future EffectPipeline до draw_image.
+            // TODO: shape/text layer effects need offscreen subscene rendering before Vello compose.
         }
 
         out
@@ -763,6 +797,33 @@ mod tests {
         // Не должен паниковать при нулевом viewport'е.
         let _ = scene.to_vello(0, 0, |_| None);
         let _ = scene.to_vello(100, 0, |_| None);
+    }
+
+    #[test]
+    fn to_vello_processes_raster_layer_effects() {
+        let mut layer = raster_layer((10, 10), Transform::identity(), 1.0);
+        layer.effects = vec![EffectSpec::Brightness { value: 1.2 }];
+        let scene = Scene {
+            width: 100,
+            height: 100,
+            time: 0.0,
+            background: Color::BLACK,
+            layers: vec![layer],
+        };
+        let mut calls = 0;
+
+        let _ = scene.to_vello_with_image_processor(
+            100,
+            100,
+            |_| None,
+            |image, effects| {
+                calls += 1;
+                assert_eq!(effects.len(), 1);
+                image.clone()
+            },
+        );
+
+        assert_eq!(calls, 1);
     }
 
     #[test]
