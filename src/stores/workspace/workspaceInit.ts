@@ -155,11 +155,16 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
 
     try {
       if (deps.workspaceProvider.id === 'tauri') {
-        deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
         await ensureTauriDirectories();
-        await deps.loadAppSettingsFromDisk();
-        await deps.loadUserSettingsFromDisk();
-        await deps.loadWorkspaceStateFromDisk();
+        const handle = await deps.workspaceProvider.restoreWorkspace();
+        if (handle) {
+          await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);
+        } else {
+          deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
+          await deps.loadAppSettingsFromDisk();
+          await deps.loadUserSettingsFromDisk();
+          await deps.loadWorkspaceStateFromDisk();
+        }
       } else {
         const handle = await deps.workspaceProvider.restoreWorkspace();
         if (!handle) {
