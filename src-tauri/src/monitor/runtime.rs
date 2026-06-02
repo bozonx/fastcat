@@ -132,12 +132,7 @@ impl VideoLayerRt {
                 self.current = Some(frame);
                 true
             }
-            None => {
-                if max_lag_sec.is_some() {
-                    self.current = None;
-                }
-                false
-            }
+            None => false,
         }
     }
 

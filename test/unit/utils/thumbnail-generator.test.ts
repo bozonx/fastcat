@@ -166,6 +166,26 @@ describe('Thumbnail Generators', () => {
 
       expect(base).not.toBe(changed);
     });
+
+    it('should ignore source fingerprint for .otio files', () => {
+      const base = getFileThumbnailHash({
+        projectId: 'p1',
+        projectRelativePath: 'timeline.otio',
+        source: { size: 100, lastModified: 100 },
+      });
+      const noFingerprint = getFileThumbnailHash({
+        projectId: 'p1',
+        projectRelativePath: 'timeline.otio',
+      });
+      const changedFingerprint = getFileThumbnailHash({
+        projectId: 'p1',
+        projectRelativePath: 'timeline.otio',
+        source: { size: 9999, lastModified: 9999 },
+      });
+
+      expect(base).toBe(noFingerprint);
+      expect(base).toBe(changedFingerprint);
+    });
   });
 
   describe('fileThumbnailGenerator', () => {

@@ -174,6 +174,14 @@ mod tests {
     }
 
     #[test]
+    fn regular_frame_floor_still_allows_holding_last_frame() {
+        let mut c = VideoFrameCache::new(30.0, 4);
+        c.insert(frame(1.0));
+
+        assert_eq!(c.frame_le(1.5).map(|f| f.pts_sec), Some(1.0));
+    }
+
+    #[test]
     fn has_near_within_tolerance() {
         let mut c = VideoFrameCache::new(30.0, 4);
         c.insert(frame(1.0));

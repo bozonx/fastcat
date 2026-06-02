@@ -21,6 +21,7 @@ export interface MarkerThumbnailParams {
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
   onComplete?: (url: string) => void;
+  onError?: (err: Error) => void;
 }
 
 /**
@@ -46,7 +47,10 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
           });
         } else {
           const clipsPayload = params.clipsPayload;
-          if (!clipsPayload?.length) return;
+          if (!clipsPayload?.length) {
+            params.onError?.(new Error('No clips payload available'));
+            return;
+          }
 
           const [{ getThumbnailWorkerClient, setThumbnailHostApi }, { createVideoCoreHostApi }] =
             await Promise.all([
@@ -74,7 +78,10 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
           );
         }
 
-        if (!blob) return;
+        if (!blob) {
+          params.onError?.(new Error('Extracted blob is null'));
+          return;
+        }
 
         await fileThumbnailGenerator.saveMarkerThumbnail({
           projectId: params.projectId,
@@ -87,6 +94,7 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
         params.onComplete?.(url);
       } catch (error) {
         log.error('Failed to generate marker thumbnail:', params.markerId, error);
+        params.onError?.(error instanceof Error ? error : new Error(String(error)));
       }
     },
     priority: MEDIA_TASK_PRIORITIES.timelineThumbnailLazy,

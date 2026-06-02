@@ -38,7 +38,8 @@ export function getFileThumbnailHash(input: {
     lastModified: number;
   };
 }): string {
-  const sourceKey = input.source ? `:${input.source.size}:${input.source.lastModified}` : '';
+  const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
+  const sourceKey = (input.source && !isTimeline) ? `:${input.source.size}:${input.source.lastModified}` : '';
   return hashString(`file:${input.projectId}:${input.projectRelativePath}${sourceKey}`);
 }
 

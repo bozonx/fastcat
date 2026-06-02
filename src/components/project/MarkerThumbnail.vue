@@ -82,6 +82,10 @@ async function loadThumbnail() {
         thumbnailUrl.value = url;
         isLoading.value = false;
       },
+      onError: (err) => {
+        log.warn('Failed to load marker thumbnail:', props.markerId, err);
+        isLoading.value = false;
+      },
     });
   } catch (error) {
     log.error('Failed to load marker thumbnail:', props.markerId, error);
