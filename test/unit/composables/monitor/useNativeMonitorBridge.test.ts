@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isNativeMonitorSceneReady,
   resolveNativeAudioTrackSelection,
   shouldSyncNativeMonitorTime,
 } from '~/composables/monitor/useNativeMonitorBridge';
-import type { TimelineTrack } from '~/timeline/types';
+import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 
 function track(id: string, kind: 'audio' | 'video', props: Partial<TimelineTrack>): TimelineTrack {
   return {
@@ -65,5 +66,41 @@ describe('shouldSyncNativeMonitorTime', () => {
     expect(shouldSyncNativeMonitorTime({ diffUs: 120_000, nowMs: 120, lastSyncMs: 100 })).toBe(
       true,
     );
+  });
+});
+
+describe('isNativeMonitorSceneReady', () => {
+  const emptyDoc = {
+    id: 'timeline-1',
+    name: 'Timeline 1',
+    tracks: [],
+  } as TimelineDocument;
+
+  it('blocks native scene sync before the active project timeline is loaded', () => {
+    expect(
+      isNativeMonitorSceneReady({
+        currentProjectName: null,
+        currentTimelinePath: null,
+        timelineDoc: null,
+      }),
+    ).toBe(false);
+
+    expect(
+      isNativeMonitorSceneReady({
+        currentProjectName: 'Project',
+        currentTimelinePath: null,
+        timelineDoc: emptyDoc,
+      }),
+    ).toBe(false);
+  });
+
+  it('allows an already opened empty timeline to clear the native scene', () => {
+    expect(
+      isNativeMonitorSceneReady({
+        currentProjectName: 'Project',
+        currentTimelinePath: 'timelines/Project_001.otio',
+        timelineDoc: emptyDoc,
+      }),
+    ).toBe(true);
   });
 });

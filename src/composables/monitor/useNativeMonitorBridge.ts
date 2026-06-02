@@ -5,7 +5,7 @@ import { onScopeDispose, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
-import type { TimelineTrack } from '~/timeline/types';
+import type { TimelineDocument, TimelineTrack } from '~/timeline/types';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
 import { buildNativeMonitorScene, type NativeMonitorScene } from '~/utils/native-monitor-scene';
@@ -23,6 +23,14 @@ interface NativeAudioTrackSelection {
 }
 
 const NATIVE_TIME_STORE_SYNC_MS = 50;
+
+export function isNativeMonitorSceneReady(params: {
+  currentProjectName: string | null;
+  currentTimelinePath: string | null;
+  timelineDoc: TimelineDocument | null;
+}): boolean {
+  return Boolean(params.currentProjectName && params.currentTimelinePath && params.timelineDoc);
+}
 
 export function shouldSyncNativeMonitorTime(params: {
   diffUs: number;
@@ -113,6 +121,15 @@ export function useNativeMonitorBridge(): void {
 
   async function syncScene(): Promise<void> {
     try {
+      if (
+        !isNativeMonitorSceneReady({
+          currentProjectName: projectStore.currentProjectName,
+          currentTimelinePath: projectStore.currentTimelinePath,
+          timelineDoc: timelineStore.timelineDoc,
+        })
+      ) {
+        return;
+      }
       const scene = await buildScene();
       if (isNativeMonitorDisabled()) return;
       const json = JSON.stringify(scene);
