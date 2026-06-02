@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue';
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -46,7 +46,13 @@ const focusStore = useFocusStore();
 const timelineSettingsStore = useTimelineSettingsStore();
 const projectStore = useProjectStore();
 const selectionStore = useSelectionStore();
-const { setDraggedFile, clearDraggedFile } = useDraggedFile();
+const { draggedFile, setDraggedFile, clearDraggedFile } = useDraggedFile();
+
+interface TauriInternalFileDropDetail {
+  clientX: number;
+  clientY: number;
+  payload?: unknown;
+}
 
 const { currentProjectId, currentView } = storeToRefs(projectStore);
 const { trackHeights } = storeToRefs(timelineStore);
@@ -351,6 +357,11 @@ function onTrackAreaPointerDownCapture(e: PointerEvent) {
 
 onBeforeUnmount(() => {
   clearPointerRectCache();
+  window.removeEventListener('fastcat:tauri-internal-file-drop', onTauriInternalFileDrop);
+});
+
+onMounted(() => {
+  window.addEventListener('fastcat:tauri-internal-file-drop', onTauriInternalFileDrop);
 });
 
 function onTrackAreaAuxClick(e: MouseEvent) {
@@ -475,6 +486,26 @@ async function onDrop(e: DragEvent, trackId: string) {
 
   const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
   if (files.length > 0) await handleFileDrop(files, trackId, startUs);
+  clearDragPreview();
+}
+
+async function onTauriInternalFileDrop(event: Event) {
+  const detail = (event as CustomEvent<TauriInternalFileDropDetail>).detail;
+  if (!detail) return;
+
+  const target = document.elementFromPoint(detail.clientX, detail.clientY) as HTMLElement | null;
+  if (!target || !containerRef.value?.contains(target)) return;
+
+  const trackEl = target.closest('[data-track-id]') as HTMLElement | null;
+  const trackId = trackEl?.dataset.trackId;
+  if (!trackEl || !trackId) return;
+
+  const rect = trackEl.getBoundingClientRect();
+  const startUs = pxToTimeUs(detail.clientX - rect.left, timelineStore.timelineZoom);
+  const payload = detail.payload ?? draggedFile.value;
+  if (!payload) return;
+
+  await handleLibraryDrop(JSON.stringify(payload), trackId, startUs);
   clearDragPreview();
 }
 

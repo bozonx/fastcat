@@ -4,6 +4,10 @@ import { onMounted, onScopeDispose, watch, type Ref } from 'vue';
 import { useMonitorMode } from '~/composables/monitor/useNativeMonitorMode';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
+import {
+  isNativeMonitorDisabled,
+  markNativeMonitorInitFailure,
+} from '~/composables/monitor/native-monitor-availability';
 
 const log = createDevLogger('useNativeMonitorViewport');
 
@@ -38,6 +42,13 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
   let rafHandle = 0;
   let last: ViewportPayload | null = null;
   let disposed = false;
+
+  function warnMonitorFailure(message: string, err: unknown): void {
+    const disabledNow = markNativeMonitorInitFailure(err);
+    if (disabledNow || !isNativeMonitorDisabled()) {
+      log.warn(message, err);
+    }
+  }
 
   function readPayload(el: HTMLElement): ViewportPayload {
     const rect = el.getBoundingClientRect();
@@ -77,8 +88,9 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
     const next: ViewportPayload = mode.value === 'canvas' ? { ...raw, visible: false } : raw;
     if (!changed(last, next)) return;
     last = next;
+    if (isNativeMonitorDisabled()) return;
     invoke('monitor_set_viewport', next).catch((err) =>
-      log.warn('monitor_set_viewport failed', err),
+      warnMonitorFailure('monitor_set_viewport failed', err),
     );
   }
 
@@ -95,6 +107,7 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
   onScopeDispose(() => {
     disposed = true;
     if (rafHandle) window.cancelAnimationFrame(rafHandle);
+    if (isNativeMonitorDisabled()) return;
     // Скрыть нативное окно — оно может пережить unmount компонента (event-loop живёт
     // в отдельном потоке и закрывается через `monitor_close` из useNativeMonitorBridge).
     invoke('monitor_set_viewport', {

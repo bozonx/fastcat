@@ -3,6 +3,8 @@ import { listen } from '@tauri-apps/api/event';
 import type { ConversionRequest } from '~/types/conversion';
 import type { TauriFileHandle } from '~/stores/workspace/provider/tauri-handle';
 
+type NativeBytePayload = ArrayBuffer | ArrayBufferView | number[];
+
 export interface NativeMediaMetadata {
   duration: number;
   video?: {
@@ -127,7 +129,7 @@ export async function nativeRenderTimelineFrameWebp(params: {
   height: number;
   quality: number;
 }): Promise<Blob> {
-  const bytes = await invoke<Uint8Array>('native_timeline_render_frame_webp', {
+  const bytes = await invoke<NativeBytePayload>('native_timeline_render_frame_webp', {
     scene: params.scene,
     timeSec: params.timeSec,
     width: params.width,
@@ -144,7 +146,7 @@ export async function nativeVideoFrameWebp(params: {
   maxHeight: number;
   quality: number;
 }): Promise<Blob> {
-  const bytes = await invoke<Uint8Array>('native_video_frame_webp', {
+  const bytes = await invoke<NativeBytePayload>('native_video_frame_webp', {
     sourcePath: params.sourcePath,
     timeSec: params.timeSec,
     maxWidth: params.maxWidth,
@@ -161,13 +163,15 @@ export async function nativeVideoFrameWebps(params: {
   maxHeight: number;
   quality: number;
 }): Promise<(Blob | null)[]> {
-  const packedBytes = await invoke<Uint8Array>('native_video_frame_webps', {
-    sourcePath: params.sourcePath,
-    timesSec: params.timesSec,
-    maxWidth: params.maxWidth,
-    maxHeight: params.maxHeight,
-    quality: params.quality,
-  });
+  const packedBytes = toUint8Array(
+    await invoke<NativeBytePayload>('native_video_frame_webps', {
+      sourcePath: params.sourcePath,
+      timesSec: params.timesSec,
+      maxWidth: params.maxWidth,
+      maxHeight: params.maxHeight,
+      quality: params.quality,
+    }),
+  );
 
   const view = new DataView(packedBytes.buffer, packedBytes.byteOffset, packedBytes.byteLength);
   const count = view.getUint32(0, true);
@@ -192,11 +196,27 @@ export async function nativeVideoFrameWebps(params: {
   return blobs;
 }
 
-function toBlobPart(bytes: Uint8Array): ArrayBuffer {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
+function toUint8Array(bytes: NativeBytePayload): Uint8Array {
+  if (bytes instanceof Uint8Array) return bytes;
+  if (bytes instanceof ArrayBuffer) return new Uint8Array(bytes);
+  if (ArrayBuffer.isView(bytes)) {
+    return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  }
+  if (Array.isArray(bytes)) return Uint8Array.from(bytes);
+  throw new TypeError('Expected native byte payload');
+}
+
+function toBlobPart(bytes: NativeBytePayload): ArrayBuffer {
+  const view = toUint8Array(bytes);
+  const copy = new Uint8Array(view.byteLength);
+  copy.set(view);
   return copy.buffer;
 }
+
+export const __tauriMediaProcessingTestHooks = {
+  toBlobPart,
+  toUint8Array,
+};
 
 function buildNativeConvertOptions(request: ConversionRequest) {
   if (request.type === 'video' && request.video) {

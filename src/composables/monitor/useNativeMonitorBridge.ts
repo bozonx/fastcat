@@ -9,6 +9,10 @@ import type { TimelineTrack } from '~/timeline/types';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
 import { buildNativeMonitorScene, type NativeMonitorScene } from '~/utils/native-monitor-scene';
+import {
+  isNativeMonitorDisabled,
+  markNativeMonitorInitFailure,
+} from '~/composables/monitor/native-monitor-availability';
 
 const log = createDevLogger('useNativeMonitorBridge');
 
@@ -57,6 +61,13 @@ export function useNativeMonitorBridge(): void {
   let suppressSeekFromTimeUpdate = false;
   let lastSentTime = 0;
 
+  function warnMonitorFailure(message: string, err: unknown): void {
+    const disabledNow = markNativeMonitorInitFailure(err);
+    if (disabledNow || !isNativeMonitorDisabled()) {
+      log.warn(message, err);
+    }
+  }
+
   async function buildScene(): Promise<NativeMonitorScene> {
     const doc = timelineStore.timelineDoc;
     const previewScale = projectStore.activeMonitor?.previewResolution ?? 1;
@@ -89,12 +100,13 @@ export function useNativeMonitorBridge(): void {
   async function syncScene(): Promise<void> {
     try {
       const scene = await buildScene();
+      if (isNativeMonitorDisabled()) return;
       const json = JSON.stringify(scene);
       if (json === lastSceneJson) return;
       lastSceneJson = json;
       await invoke('monitor_set_scene', { scene });
     } catch (err) {
-      log.warn('monitor_set_scene failed', err);
+      warnMonitorFailure('monitor_set_scene failed', err);
     }
   }
 
@@ -119,10 +131,11 @@ export function useNativeMonitorBridge(): void {
   watch(
     () => timelineStore.isPlaying,
     async (playing) => {
+      if (isNativeMonitorDisabled()) return;
       try {
         await invoke(playing ? 'monitor_play' : 'monitor_pause');
       } catch (err) {
-        log.warn('monitor play/pause failed', err);
+        warnMonitorFailure('monitor play/pause failed', err);
       }
     },
   );
@@ -144,10 +157,11 @@ export function useNativeMonitorBridge(): void {
       }
 
       lastSentTime = t;
+      if (isNativeMonitorDisabled()) return;
       try {
         await invoke('monitor_seek', { timeSec: t / 1_000_000 });
       } catch (err) {
-        log.warn('monitor_seek failed', err);
+        warnMonitorFailure('monitor_seek failed', err);
       }
     },
     { flush: 'sync' },
@@ -175,6 +189,10 @@ export function useNativeMonitorBridge(): void {
 
   onScopeDispose(() => {
     for (const un of unsubs) un();
-    void invoke('monitor_close').catch((err) => log.warn('monitor_close on dispose failed', err));
+    if (!isNativeMonitorDisabled()) {
+      void invoke('monitor_close').catch((err) =>
+        warnMonitorFailure('monitor_close on dispose failed', err),
+      );
+    }
   });
 }

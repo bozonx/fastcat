@@ -1,0 +1,43 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const invokeMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: invokeMock,
+}));
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(),
+}));
+
+describe('tauri media processing byte handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('copies native byte arrays into a standalone ArrayBuffer', async () => {
+    const { __tauriMediaProcessingTestHooks } = await import('~/utils/tauri-media-processing');
+
+    const buffer = __tauriMediaProcessingTestHooks.toBlobPart([1, 2, 3]);
+
+    expect(buffer).toBeInstanceOf(ArrayBuffer);
+    expect(Array.from(new Uint8Array(buffer))).toEqual([1, 2, 3]);
+  });
+
+  it('decodes packed thumbnail responses from serialized number arrays', async () => {
+    const { nativeVideoFrameWebps } = await import('~/utils/tauri-media-processing');
+    invokeMock.mockResolvedValueOnce([2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3]);
+
+    const blobs = await nativeVideoFrameWebps({
+      sourcePath: '/tmp/video.mp4',
+      timesSec: [0, 4],
+      maxWidth: 160,
+      maxHeight: 90,
+      quality: 0.8,
+    });
+
+    expect(blobs).toHaveLength(2);
+    expect(blobs[1]).toBeNull();
+    expect(Array.from(new Uint8Array(await blobs[0]!.arrayBuffer()))).toEqual([1, 2, 3]);
+  });
+});

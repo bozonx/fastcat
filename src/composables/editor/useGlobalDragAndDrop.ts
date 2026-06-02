@@ -159,6 +159,24 @@ export function useGlobalDragAndDrop() {
 
   // Tauri Drop
   let unlistenTauriDrop: (() => void) | undefined;
+  let isTauriNativeInternalDrag = false;
+  let tauriNativeInternalDragPayload: unknown = null;
+
+  function dispatchTauriInternalFileDrop(position: { x: number; y: number } | undefined) {
+    const payload = draggedFile.value ?? tauriNativeInternalDragPayload;
+    if (!payload || !position) return;
+
+    const scale = window.devicePixelRatio || 1;
+    window.dispatchEvent(
+      new CustomEvent('fastcat:tauri-internal-file-drop', {
+        detail: {
+          clientX: position.x / scale,
+          clientY: position.y / scale,
+          payload,
+        },
+      }),
+    );
+  }
 
   onMounted(async () => {
     window.addEventListener('keydown', onGlobalKeyDown, { capture: true });
@@ -167,14 +185,29 @@ export function useGlobalDragAndDrop() {
       try {
         const { getCurrentWebview } = await import('@tauri-apps/api/webview');
         unlistenTauriDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
+          const hasActiveInternalDrag = uiStore.isFileManagerDragging || Boolean(draggedFile.value);
+
           if (event.payload.type === 'over') {
-            if (!uiStore.isFileManagerDragging && !draggedFile.value) {
+            if (hasActiveInternalDrag) {
+              isTauriNativeInternalDrag = true;
+              tauriNativeInternalDragPayload = draggedFile.value ?? tauriNativeInternalDragPayload;
+              uiStore.isGlobalDragging = false;
+            } else {
               uiStore.isGlobalDragging = true;
             }
           } else if (event.payload.type === 'leave') {
             uiStore.isGlobalDragging = false;
+            isTauriNativeInternalDrag = false;
+            tauriNativeInternalDragPayload = null;
           } else if (event.payload.type === 'drop') {
             uiStore.isGlobalDragging = false;
+
+            if (hasActiveInternalDrag || isTauriNativeInternalDrag) {
+              dispatchTauriInternalFileDrop(event.payload.position);
+              isTauriNativeInternalDrag = false;
+              tauriNativeInternalDragPayload = null;
+              return;
+            }
 
             if (isDropInProgress.value) return;
             if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;

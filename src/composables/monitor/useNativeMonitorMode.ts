@@ -3,6 +3,10 @@ import { computed, ref, watch, onMounted, onScopeDispose, type Ref } from 'vue';
 
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
+import {
+  isNativeMonitorDisabled,
+  markNativeMonitorInitFailure,
+} from '~/composables/monitor/native-monitor-availability';
 
 const log = createDevLogger('useNativeMonitorMode');
 
@@ -43,6 +47,13 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   // O(w*h). Кэп ~960px даёт ~2-3 МБ/кадр вместо 8+ МБ для FullHD.
   const MAX_RENDER_DIM = 960;
 
+  function warnMonitorFailure(message: string, err: unknown): void {
+    const disabledNow = markNativeMonitorInitFailure(err);
+    if (disabledNow || !isNativeMonitorDisabled()) {
+      log.warn(message, err);
+    }
+  }
+
   // Размер canvas (drawing buffer) в физ. пикселях. CSS-размер задаётся стилями и
   // может отличаться — браузер растянет/сожмёт буфер. Это критично для производительности.
   function syncCanvasSize(): void {
@@ -62,8 +73,9 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
       el.width = w;
       el.height = h;
     }
+    if (isNativeMonitorDisabled()) return;
     invoke('monitor_set_canvas_size', { width: w, height: h }).catch((err) =>
-      log.warn('monitor_set_canvas_size failed', err),
+      warnMonitorFailure('monitor_set_canvas_size failed', err),
     );
   }
 
@@ -86,6 +98,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   }
 
   async function subscribe(): Promise<void> {
+    if (isNativeMonitorDisabled()) return;
     const channel = new Channel<ArrayBuffer>();
     channel.onmessage = (data) => {
       // Tauri отдаёт InvokeResponseBody::Raw как ArrayBuffer на стороне JS.
@@ -102,18 +115,20 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
         channel.onmessage = () => {};
       };
     } catch (err) {
-      log.warn('monitor_subscribe_frames failed', err);
+      warnMonitorFailure('monitor_subscribe_frames failed', err);
     }
   }
 
   watch(
     mode,
     async (m) => {
+      if (isNativeMonitorDisabled()) return;
       try {
         await invoke('monitor_set_mode', { mode: m });
       } catch (err) {
-        log.warn('monitor_set_mode failed', err);
+        warnMonitorFailure('monitor_set_mode failed', err);
       }
+      if (isNativeMonitorDisabled()) return;
       if (m === 'canvas') {
         syncCanvasSize();
         if (!unsubChannel) await subscribe();
