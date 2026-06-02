@@ -157,6 +157,8 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.optimization.vaapiDevice;
   workspaceStore.userSettings.optimization.enableHardwareEncoding =
     DEFAULT_USER_SETTINGS.optimization.enableHardwareEncoding;
+  workspaceStore.userSettings.optimization.nativeMonitorSyncMode =
+    DEFAULT_USER_SETTINGS.optimization.nativeMonitorSyncMode;
   isResetConfirmOpen.value = false;
 }
 
@@ -196,7 +198,10 @@ watch(
 );
 
 const tauriVideoCodecs = computed(() => {
-  return tauriDiagnostics.value?.codecs.filter(c => ['h264', 'hevc', 'vp9', 'av1'].includes(c.key)) || [];
+  return (
+    tauriDiagnostics.value?.codecs.filter((c) => ['h264', 'hevc', 'vp9', 'av1'].includes(c.key)) ||
+    []
+  );
 });
 </script>
 
@@ -226,7 +231,11 @@ const tauriVideoCodecs = computed(() => {
 
     <div class="flex flex-col gap-3">
       <div class="text-sm font-medium text-ui-text-muted">
-        {{ isTauri ? t('videoEditor.settings.video.tauriDiagnosticsHeader') : t('videoEditor.settings.video.accelerationDiagnostics') }}
+        {{
+          isTauri
+            ? t('videoEditor.settings.video.tauriDiagnosticsHeader')
+            : t('videoEditor.settings.video.accelerationDiagnostics')
+        }}
       </div>
 
       <div class="flex flex-col gap-4">
@@ -280,6 +289,25 @@ const tauriVideoCodecs = computed(() => {
                 { label: 'VAAPI (Intel/AMD)', value: 'vaapi' },
                 { label: 'NVDEC (Nvidia)', value: 'nvdec' },
                 { label: 'Auto', value: 'auto' },
+              ]"
+              class="max-w-xs"
+              full-width
+            />
+          </UiFormField>
+
+          <UiFormField
+            :label="t('videoEditor.settings.video.nativeMonitorSyncMode')"
+            :help="t('videoEditor.settings.video.nativeMonitorSyncModeHelp')"
+          >
+            <UiSelect
+              v-model="workspaceStore.userSettings.optimization.nativeMonitorSyncMode"
+              :items="[
+                { label: t('videoEditor.settings.video.nativeMonitorSyncSmooth'), value: 'smooth' },
+                {
+                  label: t('videoEditor.settings.video.nativeMonitorSyncBalanced'),
+                  value: 'balanced',
+                },
+                { label: t('videoEditor.settings.video.nativeMonitorSyncStrict'), value: 'strict' },
               ]"
               class="max-w-xs"
               full-width
@@ -404,9 +432,17 @@ const tauriVideoCodecs = computed(() => {
         >
           <div
             class="inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-xs font-medium"
-            :class="tauriDiagnostics.ffmpegAvailable ? 'border-green-500/30 bg-green-500/10 text-green-200' : 'border-red-500/30 bg-red-500/10 text-red-200'"
+            :class="
+              tauriDiagnostics.ffmpegAvailable
+                ? 'border-green-500/30 bg-green-500/10 text-green-200'
+                : 'border-red-500/30 bg-red-500/10 text-red-200'
+            "
           >
-            {{ tauriDiagnostics.ffmpegAvailable ? t('videoEditor.settings.video.ffmpegAvailable') : t('videoEditor.settings.video.unavailableDiagnostics') }}
+            {{
+              tauriDiagnostics.ffmpegAvailable
+                ? t('videoEditor.settings.video.ffmpegAvailable')
+                : t('videoEditor.settings.video.unavailableDiagnostics')
+            }}
           </div>
           <div class="text-sm text-ui-text-muted">
             {{ t('videoEditor.settings.video.ffmpegDiagnosticsHelp') }}
@@ -423,28 +459,60 @@ const tauriVideoCodecs = computed(() => {
 
         <div v-if="tauriDiagnostics" class="flex flex-col gap-4">
           <!-- FFmpeg & FFprobe status -->
-          <div class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10">
+          <div
+            class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10"
+          >
             <div class="text-sm font-medium text-ui-text">
               {{ t('videoEditor.settings.video.ffmpegDiagnostics') }}
             </div>
-            
-            <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+
+            <div
+              class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+            >
               <div class="flex items-start justify-between gap-4 px-3 py-2.5">
-                <span class="text-sm text-ui-text-muted">{{ t('videoEditor.settings.video.ffmpegAvailable') }}</span>
-                <span :class="['text-sm font-medium', tauriDiagnostics.ffmpegAvailable ? 'text-green-400' : 'text-red-400']">
-                  {{ tauriDiagnostics.ffmpegAvailable ? tauriDiagnostics.ffmpegVersion : t('common.no') }}
+                <span class="text-sm text-ui-text-muted">{{
+                  t('videoEditor.settings.video.ffmpegAvailable')
+                }}</span>
+                <span
+                  :class="[
+                    'text-sm font-medium',
+                    tauriDiagnostics.ffmpegAvailable ? 'text-green-400' : 'text-red-400',
+                  ]"
+                >
+                  {{
+                    tauriDiagnostics.ffmpegAvailable
+                      ? tauriDiagnostics.ffmpegVersion
+                      : t('common.no')
+                  }}
                 </span>
               </div>
               <div class="flex items-start justify-between gap-4 px-3 py-2.5">
-                <span class="text-sm text-ui-text-muted">{{ t('videoEditor.settings.video.ffprobeAvailable') }}</span>
-                <span :class="['text-sm font-medium', tauriDiagnostics.ffprobeAvailable ? 'text-green-400' : 'text-red-400']">
-                  {{ tauriDiagnostics.ffprobeAvailable ? tauriDiagnostics.ffprobeVersion : t('common.no') }}
+                <span class="text-sm text-ui-text-muted">{{
+                  t('videoEditor.settings.video.ffprobeAvailable')
+                }}</span>
+                <span
+                  :class="[
+                    'text-sm font-medium',
+                    tauriDiagnostics.ffprobeAvailable ? 'text-green-400' : 'text-red-400',
+                  ]"
+                >
+                  {{
+                    tauriDiagnostics.ffprobeAvailable
+                      ? tauriDiagnostics.ffprobeVersion
+                      : t('common.no')
+                  }}
                 </span>
               </div>
               <div class="flex items-start justify-between gap-4 px-3 py-2.5">
-                <span class="text-sm text-ui-text-muted">{{ t('videoEditor.settings.video.supportedHwaccels') }}</span>
+                <span class="text-sm text-ui-text-muted">{{
+                  t('videoEditor.settings.video.supportedHwaccels')
+                }}</span>
                 <span class="text-sm text-right text-ui-text font-medium break-all">
-                  {{ tauriDiagnostics.hwaccels.length > 0 ? tauriDiagnostics.hwaccels.join(', ') : 'None' }}
+                  {{
+                    tauriDiagnostics.hwaccels.length > 0
+                      ? tauriDiagnostics.hwaccels.join(', ')
+                      : 'None'
+                  }}
                 </span>
               </div>
             </div>
@@ -466,14 +534,23 @@ const tauriVideoCodecs = computed(() => {
                 <div class="text-xs font-semibold text-ui-text-muted px-1">
                   {{ t('videoEditor.settings.video.codecDecoderSupport') }}
                 </div>
-                <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+                <div
+                  class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+                >
                   <div
                     v-for="decoder in codec.decoders"
                     :key="decoder.name"
                     class="flex items-center justify-between px-3 py-2"
                   >
                     <span class="text-xs text-ui-text-muted">{{ decoder.label }}</span>
-                    <span :class="['text-xs font-medium px-2 py-0.5 rounded-full border', decoder.supported ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20']">
+                    <span
+                      :class="[
+                        'text-xs font-medium px-2 py-0.5 rounded-full border',
+                        decoder.supported
+                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                          : 'bg-red-500/10 text-red-400 border-red-500/20',
+                      ]"
+                    >
                       {{ decoder.supported ? 'Supported' : 'Unsupported' }}
                     </span>
                   </div>
@@ -485,14 +562,23 @@ const tauriVideoCodecs = computed(() => {
                 <div class="text-xs font-semibold text-ui-text-muted px-1">
                   {{ t('videoEditor.settings.video.codecEncoderSupport') }}
                 </div>
-                <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+                <div
+                  class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+                >
                   <div
                     v-for="encoder in codec.encoders"
                     :key="encoder.name"
                     class="flex items-center justify-between px-3 py-2"
                   >
                     <span class="text-xs text-ui-text-muted">{{ encoder.label }}</span>
-                    <span :class="['text-xs font-medium px-2 py-0.5 rounded-full border', encoder.supported ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20']">
+                    <span
+                      :class="[
+                        'text-xs font-medium px-2 py-0.5 rounded-full border',
+                        encoder.supported
+                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                          : 'bg-red-500/10 text-red-400 border-red-500/20',
+                      ]"
+                    >
                       {{ encoder.supported ? 'Supported' : 'Unsupported' }}
                     </span>
                   </div>

@@ -133,6 +133,20 @@ impl Default for AudioFadeCurve {
     }
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum PreviewSyncMode {
+    Smooth,
+    Balanced,
+    Strict,
+}
+
+impl Default for PreviewSyncMode {
+    fn default() -> Self {
+        Self::Balanced
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct SceneAudioLayer {
     pub id: String,
@@ -197,6 +211,9 @@ pub struct MonitorScene {
     /// поэтому 30 достаточно; для 60fps source укажите 60.
     #[serde(default = "default_fps")]
     pub preview_fps: f64,
+    /// Политика синхронизации видео с аудио для preview.
+    #[serde(default)]
+    pub preview_sync_mode: PreviewSyncMode,
 }
 
 fn default_fps() -> f64 {

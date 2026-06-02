@@ -27,12 +27,14 @@ use crate::media::image_decode::decode_image;
 
 use super::frame_cache::{DecodedVideoFrame, VideoFrameCache};
 use super::handle::MonitorCommand;
-use super::scene::{LayerKind, MonitorScene, SceneLayer};
+use super::scene::{LayerKind, MonitorScene, PreviewSyncMode, SceneLayer};
 use super::scene_build::{build_virtual_kind, finalize_layer, rasterize_svg};
 
 const EVT_LAYER_FAILED: &str = "monitor:layer_failed";
-const MAX_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
-const MAX_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
+const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
+const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
+const BALANCED_VIDEO_SYNC_LAG_FRAMES: f64 = 6.0;
+const BALANCED_VIDEO_SYNC_LAG_SEC: f64 = 0.22;
 
 // ---------------------------------------------------------------------------
 // Результаты фоновой загрузки
@@ -153,6 +155,8 @@ pub struct LayerRuntimeManager {
     pub preview_scale: Option<f32>,
     /// Целевой FPS preview-монитора; устанавливается из MonitorScene.preview_fps.
     pub preview_fps: f64,
+    /// Политика AV-sync для preview.
+    pub preview_sync_mode: PreviewSyncMode,
     pub playing: bool,
     runtimes: HashMap<String, LayerRuntime>,
     loading_set: HashSet<String>,
@@ -173,6 +177,7 @@ impl LayerRuntimeManager {
             scene_size: (0, 0),
             preview_scale: None,
             preview_fps: 30.0,
+            preview_sync_mode: PreviewSyncMode::Balanced,
             playing: false,
             runtimes: HashMap::new(),
             loading_set: HashSet::new(),
@@ -218,6 +223,7 @@ impl LayerRuntimeManager {
     /// Возвращает `true`, если нужно перерисовать окно.
     pub fn apply_scene(&mut self, scene: MonitorScene) -> bool {
         self.preview_fps = scene.preview_fps;
+        self.preview_sync_mode = scene.preview_sync_mode;
         let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
 
         let scale_changed = !approx_eq_opt_scale(self.preview_scale, scene.preview_scale);
@@ -267,7 +273,12 @@ impl LayerRuntimeManager {
     // Фоновая загрузка
     // -----------------------------------------------------------------------
 
-    fn ensure_runtime_for(&mut self, layer: &SceneLayer, device: Option<wgpu::Device>, queue: Option<wgpu::Queue>) {
+    fn ensure_runtime_for(
+        &mut self,
+        layer: &SceneLayer,
+        device: Option<wgpu::Device>,
+        queue: Option<wgpu::Queue>,
+    ) {
         if matches!(
             layer.kind,
             LayerKind::Text | LayerKind::Shape | LayerKind::Background
@@ -295,7 +306,12 @@ impl LayerRuntimeManager {
                     }
                     _ => None,
                 };
-                let hw_settings = self.app.state::<std::sync::Mutex<crate::FfmpegHardwareSettings>>().lock().unwrap().clone();
+                let hw_settings = self
+                    .app
+                    .state::<std::sync::Mutex<crate::FfmpegHardwareSettings>>()
+                    .lock()
+                    .unwrap()
+                    .clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
@@ -305,7 +321,14 @@ impl LayerRuntimeManager {
                         let on_frame = Box::new(move || {
                             let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
                         });
-                        let result = match DecodePump::open(&path, max_long_edge, hw_settings, Some(on_frame), device, queue) {
+                        let result = match DecodePump::open(
+                            &path,
+                            max_long_edge,
+                            hw_settings,
+                            Some(on_frame),
+                            device,
+                            queue,
+                        ) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);
                                 let source_rotation = pump.info.rotation;
@@ -483,8 +506,8 @@ impl LayerRuntimeManager {
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache(&mut self.texture_cache);
                 let clip_local = layer.source_pts_at(t);
-                let max_lag_sec = video_sync_lag_sec(rt.pump.info.fps);
-                rt.update_display(clip_local, Some(max_lag_sec));
+                let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
+                rt.update_display(clip_local, max_lag_sec);
             }
         }
     }
@@ -511,7 +534,7 @@ impl LayerRuntimeManager {
                 rt.update_display(
                     clip_local,
                     if playing {
-                        Some(video_sync_lag_sec(rt.pump.info.fps))
+                        video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps)
                     } else {
                         None
                     },
@@ -649,13 +672,21 @@ fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> 
     }
 }
 
-fn video_sync_lag_sec(fps: f64) -> f64 {
+fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
     let fps = if fps.is_finite() && fps > 0.0 {
         fps
     } else {
         30.0
     };
-    (MAX_VIDEO_SYNC_LAG_FRAMES / fps).min(MAX_VIDEO_SYNC_LAG_SEC)
+    match mode {
+        PreviewSyncMode::Smooth => None,
+        PreviewSyncMode::Balanced => {
+            Some((BALANCED_VIDEO_SYNC_LAG_FRAMES / fps).min(BALANCED_VIDEO_SYNC_LAG_SEC))
+        }
+        PreviewSyncMode::Strict => {
+            Some((STRICT_VIDEO_SYNC_LAG_FRAMES / fps).min(STRICT_VIDEO_SYNC_LAG_SEC))
+        }
+    }
 }
 
 /// Целевое разрешение растеризации SVG: длинная сторона сцены × preview_scale.
@@ -723,8 +754,8 @@ mod tests {
     use super::layer_with_auto_source_rotation;
     use super::svg_target_long_edge;
     use super::video_sync_lag_sec;
-    use super::MAX_VIDEO_SYNC_LAG_SEC;
-    use crate::monitor::scene::{LayerKind, SceneLayer};
+    use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};
+    use crate::monitor::scene::{LayerKind, PreviewSyncMode, SceneLayer};
 
     #[test]
     fn none_equals_some_one() {
@@ -755,10 +786,20 @@ mod tests {
     }
 
     #[test]
-    fn video_sync_lag_is_capped_by_frame_count_and_absolute_limit() {
-        assert!((video_sync_lag_sec(60.0) - (2.0 / 60.0)).abs() < 1e-9);
-        assert!((video_sync_lag_sec(24.0) - MAX_VIDEO_SYNC_LAG_SEC).abs() < 1e-9);
-        assert!((video_sync_lag_sec(0.0) - (2.0 / 30.0)).abs() < 1e-9);
+    fn video_sync_lag_uses_mode_policy() {
+        assert_eq!(video_sync_lag_sec(PreviewSyncMode::Smooth, 60.0), None);
+
+        let balanced = video_sync_lag_sec(PreviewSyncMode::Balanced, 60.0).unwrap();
+        assert!((balanced - 0.1).abs() < 1e-9);
+
+        let balanced_capped = video_sync_lag_sec(PreviewSyncMode::Balanced, 24.0).unwrap();
+        assert!((balanced_capped - BALANCED_VIDEO_SYNC_LAG_SEC).abs() < 1e-9);
+
+        let strict = video_sync_lag_sec(PreviewSyncMode::Strict, 60.0).unwrap();
+        assert!((strict - (2.0 / 60.0)).abs() < 1e-9);
+
+        let strict_capped = video_sync_lag_sec(PreviewSyncMode::Strict, 24.0).unwrap();
+        assert!((strict_capped - STRICT_VIDEO_SYNC_LAG_SEC).abs() < 1e-9);
     }
 
     #[test]

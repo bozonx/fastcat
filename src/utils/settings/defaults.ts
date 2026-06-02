@@ -117,6 +117,7 @@ export interface FastCatUserSettings {
     hardwareAccelerationMode: 'none' | 'vaapi' | 'nvdec' | 'auto';
     vaapiDevice: string;
     enableHardwareEncoding: boolean;
+    nativeMonitorSyncMode: 'smooth' | 'balanced' | 'strict';
   };
   projectPresets: UserProjectPresetsSettings;
   exportPresets: UserExportPresetsSettings;
@@ -257,6 +258,7 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
     hardwareAccelerationMode: 'none',
     vaapiDevice: '/dev/dri/renderD128',
     enableHardwareEncoding: false,
+    nativeMonitorSyncMode: 'balanced',
   },
   projectPresets: createDefaultProjectPresets(),
   exportPresets: createDefaultExportPresets(),

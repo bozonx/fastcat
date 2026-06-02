@@ -43,6 +43,21 @@ describe('settings normalization', () => {
     ).toBe(1_500_000); // max limit
   });
 
+  it('normalizes native monitor sync mode', () => {
+    expect(
+      normalizeUserSettings({ optimization: { nativeMonitorSyncMode: 'smooth' } }).optimization
+        .nativeMonitorSyncMode,
+    ).toBe('smooth');
+    expect(
+      normalizeUserSettings({ optimization: { nativeMonitorSyncMode: 'strict' } }).optimization
+        .nativeMonitorSyncMode,
+    ).toBe('strict');
+    expect(
+      normalizeUserSettings({ optimization: { nativeMonitorSyncMode: 'invalid' } }).optimization
+        .nativeMonitorSyncMode,
+    ).toBe('balanced');
+  });
+
   it('normalizes locale', () => {
     expect(normalizeUserSettings({ locale: 'ru-RU' }).locale).toBe('ru-RU');
     expect(normalizeUserSettings({ locale: 'ru' }).locale).toBe('ru-RU');

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveNativeAudioTrackSelection } from '~/composables/monitor/useNativeMonitorBridge';
+import {
+  resolveNativeAudioTrackSelection,
+  shouldSyncNativeMonitorTime,
+} from '~/composables/monitor/useNativeMonitorBridge';
 import type { TimelineTrack } from '~/timeline/types';
 
 function track(id: string, kind: 'audio' | 'video', props: Partial<TimelineTrack>): TimelineTrack {
@@ -46,5 +49,21 @@ describe('resolveNativeAudioTrackSelection', () => {
     expect(result.hasAudioSolo).toBe(true);
     expect(result.videoTracksForAudio.map((t) => t.id)).toEqual(['v2']);
     expect(result.audioTracksForAudio.map((t) => t.id)).toEqual(['a2']);
+  });
+});
+
+describe('shouldSyncNativeMonitorTime', () => {
+  it('throttles small native time updates', () => {
+    expect(shouldSyncNativeMonitorTime({ diffUs: 300, nowMs: 100, lastSyncMs: 0 })).toBe(false);
+    expect(shouldSyncNativeMonitorTime({ diffUs: 10_000, nowMs: 120, lastSyncMs: 100 })).toBe(
+      false,
+    );
+    expect(shouldSyncNativeMonitorTime({ diffUs: 10_000, nowMs: 160, lastSyncMs: 100 })).toBe(true);
+  });
+
+  it('forces large native time jumps through the throttle', () => {
+    expect(shouldSyncNativeMonitorTime({ diffUs: 120_000, nowMs: 120, lastSyncMs: 100 })).toBe(
+      true,
+    );
   });
 });

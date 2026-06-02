@@ -22,6 +22,18 @@ interface NativeAudioTrackSelection {
   audioTracksForAudio: TimelineTrack[];
 }
 
+const NATIVE_TIME_STORE_SYNC_MS = 50;
+
+export function shouldSyncNativeMonitorTime(params: {
+  diffUs: number;
+  nowMs: number;
+  lastSyncMs: number;
+}): boolean {
+  if (params.diffUs < 500) return false;
+  if (params.diffUs > 100_000) return true;
+  return params.nowMs - params.lastSyncMs >= NATIVE_TIME_STORE_SYNC_MS;
+}
+
 export function resolveNativeAudioTrackSelection(params: {
   visibleVideoTracks: TimelineTrack[];
   audioTracks: TimelineTrack[];
@@ -60,6 +72,7 @@ export function useNativeMonitorBridge(): void {
   let lastSceneJson = '';
   let suppressSeekFromTimeUpdate = false;
   let lastSentTime = 0;
+  let lastNativeTimeStoreSyncMs = 0;
 
   function warnMonitorFailure(message: string, err: unknown): void {
     const disabledNow = markNativeMonitorInitFailure(err);
@@ -83,6 +96,7 @@ export function useNativeMonitorBridge(): void {
         height: fmt?.height ?? 1080,
         preview_scale: previewScale,
         preview_fps: fmt?.fps ?? 30,
+        preview_sync_mode: workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
       };
     }
 
@@ -120,6 +134,7 @@ export function useNativeMonitorBridge(): void {
       () => timelineStore.masterGain,
       () => timelineStore.audioMuted,
       () => projectStore.activeMonitor?.previewResolution,
+      () => workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
     ],
     () => {
       void syncScene();
@@ -171,7 +186,19 @@ export function useNativeMonitorBridge(): void {
   const unsubs: UnlistenFn[] = [];
   void listen<number>('monitor:time', (event) => {
     const timelineUs = Math.round(event.payload * 1_000_000);
-    if (Math.abs(timelineUs - timelineStore.currentTime) < 500) return;
+    const diffUs = Math.abs(timelineUs - timelineStore.currentTime);
+    const nowMs = performance.now();
+    if (
+      !shouldSyncNativeMonitorTime({
+        diffUs,
+        nowMs,
+        lastSyncMs: lastNativeTimeStoreSyncMs,
+      })
+    ) {
+      return;
+    }
+
+    lastNativeTimeStoreSyncMs = nowMs;
     suppressSeekFromTimeUpdate = true;
     timelineStore.currentTime = timelineUs;
     queueMicrotask(() => {

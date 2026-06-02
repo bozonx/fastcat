@@ -98,6 +98,7 @@ export interface NativeMonitorScene {
   height: number;
   preview_scale?: number;
   preview_fps?: number;
+  preview_sync_mode?: 'smooth' | 'balanced' | 'strict';
 }
 
 export interface BuildNativeMonitorSceneParams {
@@ -375,5 +376,6 @@ export async function buildNativeMonitorScene(
     height: sceneHeight,
     preview_scale: params.previewScale ?? 1,
     preview_fps: format.fps,
+    preview_sync_mode: params.workspaceStore.userSettings.optimization.nativeMonitorSyncMode,
   };
 }

@@ -171,6 +171,9 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
       enableHardwareEncoding: z
         .boolean()
         .catch(DEFAULT_USER_SETTINGS.optimization.enableHardwareEncoding),
+      nativeMonitorSyncMode: z
+        .enum(['smooth', 'balanced', 'strict'])
+        .catch(DEFAULT_USER_SETTINGS.optimization.nativeMonitorSyncMode),
     })
     .catch(DEFAULT_USER_SETTINGS.optimization);
 

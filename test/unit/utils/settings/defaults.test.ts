@@ -23,6 +23,10 @@ describe('DEFAULT_USER_SETTINGS', () => {
     expect(DEFAULT_USER_SETTINGS.projectDefaults.fps).toBe(25);
   });
 
+  it('uses balanced native monitor sync by default', () => {
+    expect(DEFAULT_USER_SETTINGS.optimization.nativeMonitorSyncMode).toBe('balanced');
+  });
+
   it('has mouse defaults', () => {
     expect(DEFAULT_USER_SETTINGS.mouse.timeline.click).toBe('select_item');
     expect(DEFAULT_USER_SETTINGS.mouse.ruler.click).toBe('seek');
