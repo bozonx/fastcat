@@ -76,7 +76,7 @@ pub enum EffectSpec {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Default, Pod, Zeroable)]
 struct EffectUniform {
     mode: u32,
     width: u32,
@@ -86,6 +86,10 @@ struct EffectUniform {
     p1: f32,
     p2: f32,
     p3: f32,
+    p4: f32,
+    p5: f32,
+    p6: f32,
+    p7: f32,
 }
 
 #[derive(Clone, Copy)]
@@ -93,9 +97,28 @@ struct EffectPass {
     uniform: EffectUniform,
 }
 
+pub enum EffectSource {
+    Cpu(ImageData),
+    Gpu(Arc<wgpu::Texture>),
+}
+
+struct CachedResources {
+    width: u32,
+    height: u32,
+    input: Option<wgpu::Texture>,
+    ping: wgpu::Texture,
+    ping_view: wgpu::TextureView,
+    pong: wgpu::Texture,
+    pong_view: wgpu::TextureView,
+    readback: wgpu::Buffer,
+    #[allow(dead_code)]
+    readback_size: u64,
+}
+
 pub struct EffectPipeline {
     bind_layout: wgpu::BindGroupLayout,
     pipeline: wgpu::ComputePipeline,
+    resources: Option<CachedResources>,
 }
 
 impl EffectPipeline {
@@ -155,84 +178,169 @@ impl EffectPipeline {
         Self {
             bind_layout,
             pipeline,
+            resources: None,
         }
     }
 
-    pub fn apply_to_image(
-        &self,
+    fn ensure_resources(&mut self, device: &wgpu::Device, width: u32, height: u32, need_input: bool) {
+        let mut recreate = true;
+        if let Some(res) = &self.resources {
+            if res.width >= width && res.height >= height {
+                if !need_input || res.input.is_some() {
+                    recreate = false;
+                }
+            }
+        }
+
+        if recreate {
+            let new_w = if let Some(res) = &self.resources { res.width.max(width) } else { width };
+            let new_h = if let Some(res) = &self.resources { res.height.max(height) } else { height };
+            let new_size = wgpu::Extent3d {
+                width: new_w,
+                height: new_h,
+                depth_or_array_layers: 1,
+            };
+
+            let usage = wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING;
+
+            let input = if need_input {
+                Some(device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("native-effect-cached-input"),
+                    size: new_size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    usage,
+                    view_formats: &[],
+                }))
+            } else {
+                None
+            };
+
+            let ping = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("native-effect-cached-ping"),
+                size: new_size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage,
+                view_formats: &[],
+            });
+            let ping_view = ping.create_view(&wgpu::TextureViewDescriptor::default());
+
+            let pong = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("native-effect-cached-pong"),
+                size: new_size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage,
+                view_formats: &[],
+            });
+            let pong_view = pong.create_view(&wgpu::TextureViewDescriptor::default());
+
+            let row_bytes = new_w as usize * 4;
+            let aligned_row_bytes = (row_bytes + 255) & !255;
+            let buffer_size = (aligned_row_bytes * new_h as usize) as u64;
+
+            let readback = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("native-effect-cached-readback"),
+                size: buffer_size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+
+            self.resources = Some(CachedResources {
+                width: new_w,
+                height: new_h,
+                input,
+                ping,
+                ping_view,
+                pong,
+                pong_view,
+                readback,
+                readback_size: buffer_size,
+            });
+        }
+    }
+
+    pub fn apply_effects(
+        &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        image: &ImageData,
+        source: &EffectSource,
         effects: &[EffectSpec],
     ) -> Result<ImageData> {
-        let passes = build_passes(effects, image.width, image.height);
-        if passes.is_empty() {
-            return Ok(image.clone());
-        }
-        if image.width == 0 || image.height == 0 {
-            return Ok(image.clone());
-        }
-
-        let pixels = image_pixels_rgba8(image)?;
-        let size = wgpu::Extent3d {
-            width: image.width,
-            height: image.height,
-            depth_or_array_layers: 1,
+        let (width, height) = match source {
+            EffectSource::Cpu(img) => (img.width, img.height),
+            EffectSource::Gpu(tex) => (tex.width(), tex.height()),
         };
-        let usage = wgpu::TextureUsages::COPY_DST
-            | wgpu::TextureUsages::COPY_SRC
-            | wgpu::TextureUsages::TEXTURE_BINDING
-            | wgpu::TextureUsages::STORAGE_BINDING;
-        let input = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-effect-input"),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage,
-            view_formats: &[],
-        });
-        let ping = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-effect-ping"),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage,
-            view_formats: &[],
-        });
-        let pong = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-effect-pong"),
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage,
-            view_formats: &[],
-        });
 
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &input,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &pixels,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(image.width * 4),
-                rows_per_image: Some(image.height),
-            },
-            size,
-        );
+        let passes = build_passes(effects, width, height);
+        if passes.is_empty() {
+            return match source {
+                EffectSource::Cpu(img) => Ok(img.clone()),
+                EffectSource::Gpu(tex) => read_texture_to_image(device, queue, tex),
+            };
+        }
+        if width == 0 || height == 0 {
+            return match source {
+                EffectSource::Cpu(img) => Ok(img.clone()),
+                EffectSource::Gpu(tex) => read_texture_to_image(device, queue, tex),
+            };
+        }
 
-        let input_view = input.create_view(&wgpu::TextureViewDescriptor::default());
-        let ping_view = ping.create_view(&wgpu::TextureViewDescriptor::default());
-        let pong_view = pong.create_view(&wgpu::TextureViewDescriptor::default());
+        let need_input = matches!(source, EffectSource::Cpu(_));
+        self.ensure_resources(device, width, height, need_input);
+
+        let resources = self.resources.as_ref().unwrap();
+
+        let input_view = match source {
+            EffectSource::Cpu(img) => {
+                let pixels = image_pixels_rgba8(img)?;
+                let size = wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                };
+                let input_tex = resources.input.as_ref().unwrap();
+                queue.write_texture(
+                    wgpu::TexelCopyTextureInfo {
+                        texture: input_tex,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    &pixels,
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(width * 4),
+                        rows_per_image: Some(height),
+                    },
+                    size,
+                );
+                input_tex.create_view(&wgpu::TextureViewDescriptor {
+                    label: Some("native-effect-input-view"),
+                    base_mip_level: 0,
+                    mip_level_count: Some(1),
+                    base_array_layer: 0,
+                    array_layer_count: Some(1),
+                    ..Default::default()
+                })
+            }
+            EffectSource::Gpu(tex) => {
+                tex.create_view(&wgpu::TextureViewDescriptor::default())
+            }
+        };
+
+        let ping_view = &resources.ping_view;
+        let pong_view = &resources.pong_view;
         let mut last_is_ping = false;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("native-effect-encoder"),
@@ -247,14 +355,14 @@ impl EffectPipeline {
             let source_view = if index == 0 {
                 &input_view
             } else if last_is_ping {
-                &ping_view
+                ping_view
             } else {
-                &pong_view
+                pong_view
             };
             let target_view = if index == 0 || !last_is_ping {
-                &ping_view
+                ping_view
             } else {
-                &pong_view
+                pong_view
             };
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("native-effect-bind-group"),
@@ -281,26 +389,72 @@ impl EffectPipeline {
                 });
                 cpass.set_pipeline(&self.pipeline);
                 cpass.set_bind_group(0, &bind_group, &[]);
-                cpass.dispatch_workgroups(image.width.div_ceil(8), image.height.div_ceil(8), 1);
+                cpass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
             }
             last_is_ping = index == 0 || !last_is_ping;
         }
 
         queue.submit([encoder.finish()]);
-        let output = if last_is_ping { &ping } else { &pong };
-        read_texture_to_image(device, queue, output)
+        let output = if last_is_ping { &resources.ping } else { &resources.pong };
+        read_texture_to_image_with_buffer(device, queue, output, &resources.readback, width, height)
+    }
+
+    // Deprecated but kept for backward compatibility if needed in tests
+    #[allow(dead_code)]
+    pub fn apply_to_image(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        image: &ImageData,
+        effects: &[EffectSpec],
+    ) -> Result<ImageData> {
+        self.apply_effects(device, queue, &EffectSource::Cpu(image.clone()), effects)
     }
 }
 
 fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
-    effects
-        .iter()
-        .filter_map(|effect| effect_to_pass(effect, width, height))
-        .collect()
+    let mut passes = Vec::new();
+    for effect in effects {
+        match *effect {
+            EffectSpec::GaussianBlur { radius } => {
+                let clamped_r = radius.clamp(0.0, 80.0);
+                if clamped_r > 0.0 {
+                    // Pass 1: Horizontal Blur (mode 4)
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 4,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: clamped_r,
+                            ..Default::default()
+                        },
+                    });
+                    // Pass 2: Vertical Blur (mode 14)
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 14,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: clamped_r,
+                            ..Default::default()
+                        },
+                    });
+                }
+            }
+            _ => {
+                if let Some(pass) = effect_to_pass(effect, width, height) {
+                    passes.push(pass);
+                }
+            }
+        }
+    }
+    passes
 }
 
 fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<EffectPass> {
-    let base = |mode, p0, p1, p2, p3, seed| EffectPass {
+    let base = |mode, p0, p1, p2, p3, p4, p5, seed| EffectPass {
         uniform: EffectUniform {
             mode,
             width,
@@ -310,17 +464,19 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             p1,
             p2,
             p3,
+            p4,
+            p5,
+            p6: 0.0,
+            p7: 0.0,
         },
     };
     match *effect {
-        EffectSpec::Brightness { value } => Some(base(1, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0)),
-        EffectSpec::Contrast { value } => Some(base(2, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0)),
-        EffectSpec::Saturation { value } => Some(base(3, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0)),
-        EffectSpec::GaussianBlur { radius } => {
-            Some(base(4, radius.clamp(0.0, 80.0), 0.0, 0.0, 0.0, 0))
-        }
-        EffectSpec::Sharpen { amount } => Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0)),
-        EffectSpec::Pixelate { size } => Some(base(6, size.clamp(1.0, 128.0), 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Brightness { value } => Some(base(1, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Contrast { value } => Some(base(2, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Saturation { value } => Some(base(3, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::GaussianBlur { .. } => None, // Handled in build_passes
+        EffectSpec::Sharpen { amount } => Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Pixelate { size } => Some(base(6, size.clamp(1.0, 128.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
         EffectSpec::Bloom {
             threshold,
             strength,
@@ -330,6 +486,8 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             threshold.clamp(0.0, 1.0),
             strength.clamp(0.0, 4.0),
             radius.clamp(0.0, 80.0),
+            0.0,
+            0.0,
             0.0,
             0,
         )),
@@ -343,15 +501,17 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             radius.clamp(0.0, 1.0),
             softness.clamp(0.001, 1.0),
             0.0,
+            0.0,
+            0.0,
             0,
         )),
         EffectSpec::Noise { amount, seed } => {
-            Some(base(9, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, seed))
+            Some(base(9, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, seed))
         }
         EffectSpec::ChromaticAberration { amount, angle_deg } => {
-            Some(base(10, amount.clamp(0.0, 80.0), angle_deg, 0.0, 0.0, 0))
+            Some(base(10, amount.clamp(0.0, 80.0), angle_deg, 0.0, 0.0, 0.0, 0.0, 0))
         }
-        EffectSpec::Hue { degrees } => Some(base(11, degrees, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Hue { degrees } => Some(base(11, degrees, 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
         EffectSpec::Levels {
             in_black,
             in_white,
@@ -363,7 +523,9 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             in_black.clamp(0.0, 1.0),
             in_white.clamp(0.001, 1.0),
             gamma.clamp(0.01, 8.0),
-            (out_black.clamp(0.0, 1.0) * 256.0 + out_white.clamp(0.0, 1.0)).clamp(0.0, 257.0),
+            out_black.clamp(0.0, 1.0),
+            out_white.clamp(0.0, 1.0),
+            0.0,
             0,
         )),
         EffectSpec::ChromaKey {
@@ -375,7 +537,9 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             key_rgba[0] as f32 / 255.0,
             key_rgba[1] as f32 / 255.0,
             key_rgba[2] as f32 / 255.0,
-            (threshold.clamp(0.0, 1.0) * 256.0 + smoothness.clamp(0.0, 1.0)).clamp(0.0, 257.0),
+            threshold.clamp(0.0, 1.0),
+            smoothness.clamp(0.0001, 1.0),
+            0.0,
             0,
         )),
         EffectSpec::CustomWgsl { .. } => None,
@@ -421,11 +585,25 @@ fn read_texture_to_image(
     let buffer_size = (aligned_row_bytes * height as usize) as u64;
 
     let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("native-effect-readback"),
+        label: Some("native-effect-readback-temp"),
         size: buffer_size,
         usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         mapped_at_creation: false,
     });
+    read_texture_to_image_with_buffer(device, queue, texture, &buffer, width, height)
+}
+
+fn read_texture_to_image_with_buffer(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    buffer: &wgpu::Buffer,
+    width: u32,
+    height: u32,
+) -> Result<ImageData> {
+    let row_bytes = width as usize * 4;
+    let aligned_row_bytes = (row_bytes + 255) & !255;
+
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("native-effect-readback-encoder"),
     });
@@ -437,7 +615,7 @@ fn read_texture_to_image(
             aspect: wgpu::TextureAspect::All,
         },
         wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
+            buffer,
             layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(aligned_row_bytes as u32),
@@ -489,6 +667,10 @@ struct EffectUniform {
     p1: f32,
     p2: f32,
     p3: f32,
+    p4: f32,
+    p5: f32,
+    p6: f32,
+    p7: f32,
 };
 
 @group(0) @binding(0) var input_tex: texture_2d<f32>;
@@ -524,45 +706,59 @@ fn rotate_hue(color: vec3<f32>, degrees: f32) -> vec3<f32> {
     return color * c + cross(k, color) * s + k * dot(k, color) * (1.0 - c);
 }
 
-fn sample_blur(coord: vec2<i32>, radius: f32) -> vec4<f32> {
-    let r = i32(clamp(round(radius), 0.0, 24.0));
+fn sample_blur_h(coord: vec2<i32>, radius: f32) -> vec4<f32> {
+    let r = i32(clamp(round(radius), 0.0, 32.0));
     if (r == 0) {
         return load_px(coord);
     }
     var sum = vec4<f32>(0.0);
     var weight_sum = 0.0;
-    for (var y = -24; y <= 24; y = y + 1) {
-        for (var x = -24; x <= 24; x = x + 1) {
-            if (abs(x) <= r && abs(y) <= r) {
-                let dist = f32(x * x + y * y);
-                let sigma = max(radius * 0.5, 1.0);
-                let w = exp(-dist / (2.0 * sigma * sigma));
-                sum += load_px(coord + vec2<i32>(x, y)) * w;
-                weight_sum += w;
-            }
-        }
+    let sigma = max(radius * 0.5, 1.0);
+    let double_sigma_sq = 2.0 * sigma * sigma;
+    for (var x = -r; x <= r; x = x + 1) {
+        let dist = f32(x * x);
+        let w = exp(-dist / double_sigma_sq);
+        sum += load_px(coord + vec2<i32>(x, 0)) * w;
+        weight_sum += w;
+    }
+    return sum / max(weight_sum, 0.0001);
+}
+
+fn sample_blur_v(coord: vec2<i32>, radius: f32) -> vec4<f32> {
+    let r = i32(clamp(round(radius), 0.0, 32.0));
+    if (r == 0) {
+        return load_px(coord);
+    }
+    var sum = vec4<f32>(0.0);
+    var weight_sum = 0.0;
+    let sigma = max(radius * 0.5, 1.0);
+    let double_sigma_sq = 2.0 * sigma * sigma;
+    for (var y = -r; y <= r; y = y + 1) {
+        let dist = f32(y * y);
+        let w = exp(-dist / double_sigma_sq);
+        sum += load_px(coord + vec2<i32>(0, y)) * w;
+        weight_sum += w;
     }
     return sum / max(weight_sum, 0.0001);
 }
 
 fn sample_bloom(coord: vec2<i32>, threshold: f32, strength: f32, radius: f32) -> vec3<f32> {
-    let r = i32(clamp(round(radius), 0.0, 18.0));
+    let r = i32(clamp(round(radius), 0.0, 16.0));
     if (r == 0) {
         return vec3<f32>(0.0);
     }
     var sum = vec3<f32>(0.0);
     var weight_sum = 0.0;
-    for (var y = -18; y <= 18; y = y + 1) {
-        for (var x = -18; x <= 18; x = x + 1) {
-            if (abs(x) <= r && abs(y) <= r) {
-                let color = load_px(coord + vec2<i32>(x, y)).rgb;
-                let bright = smoothstep(threshold, 1.0, luma(color));
-                let dist = f32(x * x + y * y);
-                let sigma = max(radius * 0.5, 1.0);
-                let w = exp(-dist / (2.0 * sigma * sigma));
-                sum += color * bright * w;
-                weight_sum += w;
-            }
+    let sigma = max(radius * 0.5, 1.0);
+    let double_sigma_sq = 2.0 * sigma * sigma;
+    for (var y = -r; y <= r; y = y + 1) {
+        for (var x = -r; x <= r; x = x + 1) {
+            let color_val = load_px(coord + vec2<i32>(x, y)).rgb;
+            let bright = smoothstep(threshold, 1.0, luma(color_val));
+            let dist = f32(x * x + y * y);
+            let w = exp(-dist / double_sigma_sq);
+            sum += color_val * bright * w;
+            weight_sum += w;
         }
     }
     return (sum / max(weight_sum, 0.0001)) * strength;
@@ -579,23 +775,22 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     switch effect.mode {
         case 1u: {
-            color.rgb = color.rgb * effect.p0;
+            color = vec4<f32>(color.rgb * effect.p0, color.a);
         }
         case 2u: {
-            color.rgb = (color.rgb - vec3<f32>(0.5)) * effect.p0 + vec3<f32>(0.5);
+            color = vec4<f32>((color.rgb - vec3<f32>(0.5)) * effect.p0 + vec3<f32>(0.5), color.a);
         }
         case 3u: {
             let gray = vec3<f32>(luma(color.rgb));
-            color.rgb = mix(gray, color.rgb, effect.p0);
+            color = vec4<f32>(mix(gray, color.rgb, effect.p0), color.a);
         }
         case 4u: {
-            color = sample_blur(coord, effect.p0);
+            color = sample_blur_h(coord, effect.p0);
         }
         case 5u: {
             let center = load_px(coord);
             let neighbors = load_px(coord + vec2<i32>(1, 0)) + load_px(coord + vec2<i32>(-1, 0)) + load_px(coord + vec2<i32>(0, 1)) + load_px(coord + vec2<i32>(0, -1));
-            color.rgb = center.rgb + (center.rgb * 4.0 - neighbors.rgb) * effect.p0;
-            color.a = center.a;
+            color = vec4<f32>(center.rgb + (center.rgb * 4.0 - neighbors.rgb) * effect.p0, center.a);
         }
         case 6u: {
             let size = max(effect.p0, 1.0);
@@ -603,16 +798,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = load_px(px);
         }
         case 7u: {
-            color.rgb = color.rgb + sample_bloom(coord, effect.p0, effect.p1, effect.p2);
+            color = vec4<f32>(color.rgb + sample_bloom(coord, effect.p0, effect.p1, effect.p2), color.a);
         }
         case 8u: {
             let d = distance(uv, vec2<f32>(0.5, 0.5));
             let mask = smoothstep(effect.p1, effect.p1 + effect.p2, d);
-            color.rgb *= 1.0 - mask * effect.p0;
+            color = vec4<f32>(color.rgb * (1.0 - mask * effect.p0), color.a);
         }
         case 9u: {
             let n = hash21(vec2<f32>(f32(gid.x) + f32(effect.seed), f32(gid.y) - f32(effect.seed)));
-            color.rgb += (n - 0.5) * effect.p0;
+            color = vec4<f32>(color.rgb + (n - 0.5) * effect.p0, color.a);
         }
         case 10u: {
             let angle = effect.p1 * 0.017453292519943295;
@@ -620,23 +815,29 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             let r = load_px(coord + offset).r;
             let g = color.g;
             let b = load_px(coord - offset).b;
-            color.rgb = vec3<f32>(r, g, b);
+            color = vec4<f32>(r, g, b, color.a);
         }
         case 11u: {
-            color.rgb = rotate_hue(color.rgb, effect.p0);
+            color = vec4<f32>(rotate_hue(color.rgb, effect.p0), color.a);
         }
         case 12u: {
-            let out_black = floor(effect.p3) / 256.0;
-            let out_white = fract(effect.p3);
-            let normalized = clamp((color.rgb - vec3<f32>(effect.p0)) / max(effect.p1 - effect.p0, 0.001), vec3<f32>(0.0), vec3<f32>(1.0));
-            color.rgb = mix(vec3<f32>(out_black), vec3<f32>(out_white), pow(normalized, vec3<f32>(1.0 / effect.p2)));
+            let in_black = effect.p0;
+            let in_white = effect.p1;
+            let gamma = effect.p2;
+            let out_black = effect.p3;
+            let out_white = effect.p4;
+            let normalized = clamp((color.rgb - vec3<f32>(in_black)) / max(in_white - in_black, 0.001), vec3<f32>(0.0), vec3<f32>(1.0));
+            color = vec4<f32>(mix(vec3<f32>(out_black), vec3<f32>(out_white), pow(normalized, vec3<f32>(1.0 / gamma))), color.a);
         }
         case 13u: {
-            let threshold = floor(effect.p3) / 256.0;
-            let smoothness = fract(effect.p3);
             let key = vec3<f32>(effect.p0, effect.p1, effect.p2);
+            let threshold = effect.p3;
+            let smoothness = effect.p4;
             let diff = distance(color.rgb, key);
-            color.a *= smoothstep(threshold, threshold + smoothness, diff);
+            color = vec4<f32>(color.rgb, color.a * smoothstep(threshold, threshold + smoothness, diff));
+        }
+        case 14u: {
+            color = sample_blur_v(coord, effect.p0);
         }
         default: {}
     }
@@ -677,5 +878,19 @@ mod tests {
         };
 
         assert_eq!(image_pixels_rgba8(&image).unwrap(), vec![3, 2, 1, 4]);
+    }
+
+    #[test]
+    fn build_passes_gaussian_blur_splits_to_h_and_v() {
+        let passes = build_passes(
+            &[EffectSpec::GaussianBlur { radius: 10.0 }],
+            1920,
+            1080,
+        );
+        assert_eq!(passes.len(), 2);
+        assert_eq!(passes[0].uniform.mode, 4);  // Horizontal
+        assert_eq!(passes[1].uniform.mode, 14); // Vertical
+        assert_eq!(passes[0].uniform.p0, 10.0);
+        assert_eq!(passes[1].uniform.p0, 10.0);
     }
 }

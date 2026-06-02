@@ -513,6 +513,30 @@
             "description": "Offset color channels",
             "name": "Chromatic Aberration"
           },
+          "chromaKey": {
+            "description": "Key out a specific background color",
+            "name": "Chroma Key",
+            "params": {
+              "keyColor": "Key Color",
+              "threshold": "Threshold",
+              "smoothness": "Smoothness"
+            }
+          },
+          "hue": {
+            "description": "Rotate color hues",
+            "name": "Hue Rotation"
+          },
+          "levels": {
+            "description": "Adjust input and output color levels",
+            "name": "Levels",
+            "params": {
+              "inBlack": "Input Black",
+              "inWhite": "Input White",
+              "gamma": "Gamma",
+              "outBlack": "Output Black",
+              "outWhite": "Output White"
+            }
+          },
           "params": {
             "amount": "Amount"
           },

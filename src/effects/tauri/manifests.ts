@@ -345,6 +345,162 @@ export const tauriVideoEffectManifests: VideoEffectManifest[] = [
       }),
     ],
   },
+  {
+    type: 'hue',
+    name: 'Hue Rotation',
+    nameKey: 'fastcat.effects.video.tauri.hue.name',
+    description: 'Rotate color hues',
+    descriptionKey: 'fastcat.effects.video.tauri.hue.description',
+    icon: 'i-heroicons-arrow-path',
+    target: 'video',
+    renderer: 'wgpu',
+    defaultValues: {
+      degrees: 0,
+    },
+    controls: [
+      {
+        kind: 'slider',
+        key: 'degrees',
+        labelKey: 'fastcat.effects.video.dot.params.angle',
+        min: -180,
+        max: 180,
+        step: 1,
+        format: degrees,
+      },
+    ],
+    toTauriSpecs: (values) => [
+      spec('hue', {
+        degrees: clamp(finiteNumber(values.degrees, 0), -180, 180),
+      }),
+    ],
+  },
+  {
+    type: 'levels',
+    name: 'Levels',
+    nameKey: 'fastcat.effects.video.tauri.levels.name',
+    description: 'Adjust input and output color levels',
+    descriptionKey: 'fastcat.effects.video.tauri.levels.description',
+    icon: 'i-heroicons-adjustments-vertical',
+    target: 'video',
+    renderer: 'wgpu',
+    defaultValues: {
+      inBlack: 0,
+      inWhite: 1,
+      gamma: 1,
+      outBlack: 0,
+      outWhite: 1,
+    },
+    controls: [
+      {
+        kind: 'slider',
+        key: 'inBlack',
+        labelKey: 'fastcat.effects.video.tauri.levels.params.inBlack',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'inWhite',
+        labelKey: 'fastcat.effects.video.tauri.levels.params.inWhite',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'gamma',
+        labelKey: 'fastcat.effects.video.tauri.levels.params.gamma',
+        min: 0.01,
+        max: 8.0,
+        step: 0.05,
+      },
+      {
+        kind: 'slider',
+        key: 'outBlack',
+        labelKey: 'fastcat.effects.video.tauri.levels.params.outBlack',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'outWhite',
+        labelKey: 'fastcat.effects.video.tauri.levels.params.outWhite',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        format: percent,
+      },
+    ],
+    toTauriSpecs: (values) => [
+      spec('levels', {
+        in_black: clamp(finiteNumber(values.inBlack, 0), 0, 1),
+        in_white: clamp(finiteNumber(values.inWhite, 1), 0.001, 1),
+        gamma: clamp(finiteNumber(values.gamma, 1), 0.01, 8.0),
+        out_black: clamp(finiteNumber(values.outBlack, 0), 0, 1),
+        out_white: clamp(finiteNumber(values.outWhite, 1), 0, 1),
+      }),
+    ],
+  },
+  {
+    type: 'chroma-key',
+    name: 'Chroma Key',
+    nameKey: 'fastcat.effects.video.tauri.chromaKey.name',
+    description: 'Key out a specific background color',
+    descriptionKey: 'fastcat.effects.video.tauri.chromaKey.description',
+    icon: 'i-heroicons-sparkles',
+    target: 'video',
+    renderer: 'wgpu',
+    defaultValues: {
+      keyColor: '#00ff00',
+      threshold: 0.1,
+      smoothness: 0.1,
+    },
+    controls: [
+      {
+        kind: 'color',
+        key: 'keyColor',
+        labelKey: 'fastcat.effects.video.tauri.chromaKey.params.keyColor',
+      },
+      {
+        kind: 'slider',
+        key: 'threshold',
+        labelKey: 'fastcat.effects.video.tauri.chromaKey.params.threshold',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        format: percent,
+      },
+      {
+        kind: 'slider',
+        key: 'smoothness',
+        labelKey: 'fastcat.effects.video.tauri.chromaKey.params.smoothness',
+        min: 0,
+        max: 1,
+        step: 0.01,
+        format: percent,
+      },
+    ],
+    toTauriSpecs: (values) => {
+      const colorHex = typeof values.keyColor === 'string' ? values.keyColor : '#00ff00';
+      const clean = colorHex.replace('#', '');
+      const r = parseInt(clean.substring(0, 2), 16) || 0;
+      const g = parseInt(clean.substring(2, 4), 16) || 0;
+      const b = parseInt(clean.substring(4, 6), 16) || 0;
+      const a = clean.length >= 8 ? parseInt(clean.substring(6, 8), 16) : 255;
+      return [
+        spec('chroma-key', {
+          key_rgba: [r, g, b, a],
+          threshold: clamp(finiteNumber(values.threshold, 0.1), 0, 1),
+          smoothness: clamp(finiteNumber(values.smoothness, 0.1), 0.0001, 1),
+        }),
+      ];
+    },
+  },
 ];
 
 const tauriVideoManifestByType = new Map(

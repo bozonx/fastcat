@@ -22,7 +22,7 @@ use vello::util::{RenderContext, RenderSurface};
 use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene as VelloScene};
 use winit::window::Window;
 
-use super::effects::{EffectPipeline, EffectSpec};
+use super::effects::{EffectPipeline, EffectSpec, EffectSource};
 use super::scene::{BlendMode, Layer, LayerKind, RasterSource, Transform};
 
 /// Закешированный таргет offscreen-рендера. Пересоздаётся только при изменении размера.
@@ -234,7 +234,7 @@ impl Compositor {
                 continue;
             }
 
-            let source = self.layer_to_effect_source_image(
+            let source = self.layer_to_effect_source(
                 dev_id,
                 scene,
                 layer,
@@ -262,7 +262,7 @@ impl Compositor {
         })
     }
 
-    fn layer_to_effect_source_image(
+    fn layer_to_effect_source(
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
@@ -270,19 +270,20 @@ impl Compositor {
         texture_cache: &super::texture_cache::TextureCache,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> Result<ImageData> {
+    ) -> Result<EffectSource> {
         match &layer.kind {
             LayerKind::Raster { source, .. } => match source {
-                RasterSource::Image(image) => Ok(image.clone()),
+                RasterSource::Image(image) => Ok(EffectSource::Cpu(image.clone())),
                 RasterSource::GpuHandle(key) => {
                     let texture = texture_cache
                         .get(*key)
                         .ok_or_else(|| anyhow!("missing GPU texture for effect layer"))?;
-                    read_texture_to_image(device, queue, &texture)
+                    Ok(EffectSource::Gpu(texture))
                 }
             },
             LayerKind::Shape(_) | LayerKind::Text(_) => {
-                self.render_layer_to_image(dev_id, scene, layer, texture_cache, device, queue)
+                let image = self.render_layer_to_image(dev_id, scene, layer, texture_cache, device, queue)?;
+                Ok(EffectSource::Cpu(image))
             }
         }
     }
@@ -336,14 +337,37 @@ impl Compositor {
         dev_id: usize,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        image: &ImageData,
+        source: &EffectSource,
         effects: &[EffectSpec],
     ) -> ImageData {
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
             .or_insert_with(|| EffectPipeline::new(device));
-        apply_effects_or_original(pipeline, device, queue, image, effects)
+        match pipeline.apply_effects(device, queue, source, effects) {
+            Ok(image) => image,
+            Err(error) => {
+                log::warn!("[compositor] layer effects skipped: {error:?}");
+                match source {
+                    EffectSource::Cpu(img) => img.clone(),
+                    EffectSource::Gpu(tex) => {
+                        match read_texture_to_image(device, queue, tex) {
+                            Ok(img) => img,
+                            Err(e) => {
+                                log::error!("[compositor] fallback readback failed: {e:?}");
+                                ImageData {
+                                    data: vello::peniko::Blob::new(std::sync::Arc::new(vec![0; (tex.width() * tex.height() * 4) as usize])),
+                                    format: vello::peniko::ImageFormat::Rgba8,
+                                    alpha_type: vello::peniko::ImageAlphaType::Alpha,
+                                    width: tex.width(),
+                                    height: tex.height(),
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Возвращает первое существующее `dev_id` или инициализирует новое (нужно для offscreen-рендера,
@@ -596,21 +620,6 @@ pub fn read_texture_to_image(
     })
 }
 
-fn apply_effects_or_original(
-    pipeline: &EffectPipeline,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    image: &ImageData,
-    effects: &[EffectSpec],
-) -> ImageData {
-    match pipeline.apply_to_image(device, queue, image, effects) {
-        Ok(image) => image,
-        Err(error) => {
-            log::warn!("[compositor] layer effects skipped: {error:?}");
-            image.clone()
-        }
-    }
-}
 
 impl Default for Compositor {
     fn default() -> Self {
