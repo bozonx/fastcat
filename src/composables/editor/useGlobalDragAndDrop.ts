@@ -20,6 +20,7 @@ const log = createDevLogger('useGlobalDragAndDrop');
 
 const isDropInProgress = ref(false);
 const isCurrentDragCancelled = ref(false);
+const GLOBAL_DRAG_LEAVE_HIDE_DELAY_MS = 120;
 
 export function useGlobalDragAndDrop() {
   const uiStore = useUiStore();
@@ -45,6 +46,33 @@ export function useGlobalDragAndDrop() {
     cancel: cancelUpload,
     onProgress: onUploadProgress,
   } = useUploadProgress();
+
+  let globalDragLeaveTimeout: number | null = null;
+
+  function cancelGlobalDragLeaveTimeout() {
+    if (globalDragLeaveTimeout === null) return;
+    window.clearTimeout(globalDragLeaveTimeout);
+    globalDragLeaveTimeout = null;
+  }
+
+  function showGlobalDragOverlay() {
+    cancelGlobalDragLeaveTimeout();
+    uiStore.isGlobalDragging = true;
+  }
+
+  function hideGlobalDragOverlay() {
+    cancelGlobalDragLeaveTimeout();
+    uiStore.isGlobalDragging = false;
+  }
+
+  function scheduleGlobalDragOverlayHide() {
+    cancelGlobalDragLeaveTimeout();
+    globalDragLeaveTimeout = window.setTimeout(() => {
+      uiStore.isGlobalDragging = false;
+      isCurrentDragCancelled.value = false;
+      globalDragLeaveTimeout = null;
+    }, GLOBAL_DRAG_LEAVE_HIDE_DELAY_MS);
+  }
 
   function shouldUseBackgroundTask(files: File[]) {
     const totalBytes = files.reduce((acc, file) => acc + file.size, 0);
@@ -90,7 +118,7 @@ export function useGlobalDragAndDrop() {
     });
 
     if (isCancel) {
-      uiStore.isGlobalDragging = false;
+      hideGlobalDragOverlay();
       isCurrentDragCancelled.value = true;
       // Note: We can't cancel the actual OS drag, but we reset our UI state
       // and stop appearing as a drop target until the user leaves the window
@@ -110,14 +138,13 @@ export function useGlobalDragAndDrop() {
 
     if (typesArr.includes('Files')) {
       e.preventDefault();
-      uiStore.isGlobalDragging = true;
+      showGlobalDragOverlay();
     }
   }
 
   function onGlobalDragLeave(e: DragEvent) {
     if (!e.relatedTarget) {
-      uiStore.isGlobalDragging = false;
-      isCurrentDragCancelled.value = false;
+      scheduleGlobalDragOverlayHide();
     }
   }
 
@@ -141,19 +168,19 @@ export function useGlobalDragAndDrop() {
     // is only for fallback when overlay is not shown
     if (isDropInProgress.value) return;
     if (uiStore.isFileManagerDragging || hasInternalFileManagerDragType(e.dataTransfer?.types)) {
-      uiStore.isGlobalDragging = false;
+      hideGlobalDragOverlay();
       return;
     }
 
     try {
-      uiStore.isGlobalDragging = false;
+      hideGlobalDragOverlay();
       isCurrentDragCancelled.value = false;
 
       const files = e.dataTransfer?.files ? Array.from(e.dataTransfer.files) : [];
       if (files.length === 0) return;
       await handleDroppedFiles(files);
     } finally {
-      uiStore.isGlobalDragging = false;
+      hideGlobalDragOverlay();
     }
   }
 
@@ -191,16 +218,16 @@ export function useGlobalDragAndDrop() {
             if (hasActiveInternalDrag) {
               isTauriNativeInternalDrag = true;
               tauriNativeInternalDragPayload = draggedFile.value ?? tauriNativeInternalDragPayload;
-              uiStore.isGlobalDragging = false;
+              hideGlobalDragOverlay();
             } else {
-              uiStore.isGlobalDragging = true;
+              showGlobalDragOverlay();
             }
           } else if (event.payload.type === 'leave') {
-            uiStore.isGlobalDragging = false;
+            scheduleGlobalDragOverlayHide();
             isTauriNativeInternalDrag = false;
             tauriNativeInternalDragPayload = null;
           } else if (event.payload.type === 'drop') {
-            uiStore.isGlobalDragging = false;
+            hideGlobalDragOverlay();
 
             if (hasActiveInternalDrag || isTauriNativeInternalDrag) {
               dispatchTauriInternalFileDrop(event.payload.position);
@@ -318,6 +345,7 @@ export function useGlobalDragAndDrop() {
   });
 
   onUnmounted(() => {
+    cancelGlobalDragLeaveTimeout();
     window.removeEventListener('keydown', onGlobalKeyDown, { capture: true });
 
     if (unlistenTauriDrop) {
