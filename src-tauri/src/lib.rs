@@ -203,6 +203,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_set_canvas_size,
             ipc::monitor_cmd::monitor_close,
             native_update_ffmpeg_settings,
+            ipc::media_cmd::native_get_ffmpeg_diagnostics,
         ])
         .manage(media::processing::NativeMediaTasks::default())
         .manage(std::sync::Mutex::new(FfmpegHardwareSettings::default()))
