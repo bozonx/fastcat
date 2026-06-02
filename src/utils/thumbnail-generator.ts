@@ -397,9 +397,6 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       throw new Error('Workspace is not opened');
     }
 
-    const file = await projectStore.getFileByPath(task.projectRelativePath);
-    if (!file) throw new Error(`Source file not found: ${task.projectRelativePath}`);
-
     const sourceHandle = isTauriRuntime()
       ? await projectStore.getFileHandleByPath(task.projectRelativePath)
       : null;
@@ -426,6 +423,13 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
           );
           return getThumbnailWorkerClient().client;
         })();
+
+    const file = nativeSourcePath
+      ? null
+      : await projectStore.getFileByPath(task.projectRelativePath);
+    if (!nativeSourcePath && !file) {
+      throw new Error(`Source file not found: ${task.projectRelativePath}`);
+    }
 
     const vfs = useVfs();
     const vfsPath = getTimelineThumbnailVfsPath(task.projectId, task.id);
@@ -466,7 +470,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
                   maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,
                   quality: TIMELINE_CLIP_THUMBNAILS.QUALITY,
                 })
-              : await client!.extractVideoFrameBlobs(file, {
+              : await client!.extractVideoFrameBlobs(file!, {
                   timesS: chunkTimes,
                   maxWidth: TIMELINE_CLIP_THUMBNAILS.WIDTH,
                   maxHeight: TIMELINE_CLIP_THUMBNAILS.HEIGHT,

@@ -25,6 +25,7 @@ import { secondsToUs } from '~/utils/time';
 import { syncFileManagerDragCursor } from '~/composables/file-manager/dragCursor';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { useUploadProgress } from '~/composables/useUploadProgress';
+import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
 const log = createDevLogger('useTimelineDropHandling');
 
 export interface UseTimelineDropHandlingOptions {
@@ -688,6 +689,22 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return;
     }
 
+    const payload = draggedFile.draggedFile.value;
+    const hasInternalDrag = hasInternalFileManagerDragType(types);
+
+    if (payload && !payload.isExternal) {
+      e.preventDefault?.();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
+      await buildDragPreview(e, trackId);
+      return;
+    }
+
+    if (hasInternalDrag) {
+      clearDragPreview();
+      return;
+    }
+
     // Handle OS files
     if (types.includes('Files')) {
       const files = Array.from(e.dataTransfer?.files || []);
@@ -725,7 +742,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
       return;
     }
 
-    const payload = draggedFile.draggedFile.value;
     if (payload?.isExternal) {
       const payloadType = getMediaTypeFromFilename(payload.name || payload.path || '');
       const canImportToTimeline =
@@ -753,12 +769,6 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         clearDragPreview();
       }
       return;
-    }
-
-    if (payload && !payload.isExternal) {
-      e.preventDefault?.();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
-      syncFileManagerDragCursor({ isDragging: true, operation: 'timeline-add' });
     }
 
     await buildDragPreview(e, trackId);
@@ -798,6 +808,12 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
   }
 
   async function handleFileDrop(files: File[], trackId: string, startUs: number) {
+    const payload = draggedFile.draggedFile.value;
+    if (payload?.path) {
+      await handleLibraryDrop(JSON.stringify(payload), trackId, startUs);
+      return;
+    }
+
     if (files.length === 0) return;
 
     const supportedFiles = files.filter(isSupportedExternalFile);

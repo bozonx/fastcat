@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { ref } from 'vue';
 import { useTimelineDropHandling } from '~/composables/timeline/useTimelineDropHandling';
-import { useDraggedFile } from '~/composables/useDraggedFile';
+import { FILE_MANAGER_ITEMS_DRAG_TYPE, useDraggedFile } from '~/composables/useDraggedFile';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
@@ -271,6 +271,72 @@ describe('useTimelineDropHandling', () => {
     expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
       expect.objectContaining({
         path: '_video/copied.mp4',
+      }),
+    );
+  });
+
+  it('prioritizes internal file-manager drag over Tauri Files payload on dragover', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const { setDraggedFile } = useDraggedFile();
+    const api = useTimelineDropHandling({ scrollEl });
+
+    setDraggedFile({
+      name: 'image.png',
+      kind: 'file',
+      path: '_images/image.png',
+    });
+
+    const preventDefault = vi.fn();
+    await api.onTrackDragOver(
+      {
+        clientX: 10,
+        shiftKey: false,
+        ctrlKey: false,
+        altKey: false,
+        metaKey: false,
+        preventDefault,
+        dataTransfer: {
+          types: ['Files', FILE_MANAGER_ITEMS_DRAG_TYPE, 'application/json'],
+          files: [new File(['image'], 'image.png', { type: 'image/png' })],
+          dropEffect: 'none',
+        },
+      } as unknown as DragEvent,
+      'v1',
+    );
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(api.dragPreview.value?.label).toBe('image.png');
+    expect(api.dragPreview.value?.trackId).toBe('v1');
+  });
+
+  it('does not upload when drop falls back to Files during active internal drag', async () => {
+    const scrollEl = ref({
+      scrollLeft: 0,
+      getBoundingClientRect: () => ({ left: 0 }),
+    } as unknown as HTMLElement);
+    const { setDraggedFile } = useDraggedFile();
+    const timelineStore = useTimelineStore() as any;
+    timelineStore.addClipToTimelineFromPath = vi.fn().mockResolvedValue({
+      durationUs: 5_000_000,
+      itemId: 'clip-image',
+    });
+    const api = useTimelineDropHandling({ scrollEl });
+
+    setDraggedFile({
+      name: 'image.png',
+      kind: 'file',
+      path: '_images/image.png',
+    });
+
+    await api.handleFileDrop([new File(['image'], 'image.png', { type: 'image/png' })], 'v1', 0);
+
+    expect(handleFilesMock).not.toHaveBeenCalled();
+    expect(timelineStore.addClipToTimelineFromPath).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: '_images/image.png',
       }),
     );
   });

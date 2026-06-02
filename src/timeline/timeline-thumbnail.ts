@@ -38,7 +38,9 @@ export function generateTimelineThumbnail(params: {
   const projectStore = useProjectStore();
   const workspaceStore = useWorkspaceStore();
 
-  if (!projectStore.currentProjectId || !workspaceStore.workspaceHandle) return;
+  if (!projectStore.currentProjectId || (!workspaceStore.workspaceHandle && !isTauriRuntime())) {
+    return;
+  }
 
   const projectId = projectStore.currentProjectId;
   const timelinePath = params.timelinePath;

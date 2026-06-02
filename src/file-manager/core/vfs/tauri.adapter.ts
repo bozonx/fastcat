@@ -298,7 +298,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     const { tauriPath, options: tauriOptions } = await this.getTauriFsArgs(path);
     try {
       const bytes = await readFile(tauriPath, tauriOptions);
-      return new Blob([bytes]);
+      const ext = path.split('.').pop()?.toLowerCase() || '';
+      const { EXTENSION_MIME_MAPPING } = await import('~/utils/media-types');
+      const type = EXTENSION_MIME_MAPPING[ext] || '';
+      return new Blob([bytes], { type });
     } catch (e) {
       if (isNotFoundError(e)) throw new VfsNotFoundError(path, { cause: e });
       throw wrapPlatformError(e, path);

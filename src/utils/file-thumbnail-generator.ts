@@ -24,6 +24,7 @@ import {
   nativeVideoFrameWebp,
 } from '~/utils/tauri-media-processing';
 const log = createDevLogger('file-thumbnail-generator');
+const FILE_THUMBNAIL_HASH_VERSION = 2;
 
 export interface FileThumbnailTask extends BaseThumbnailTask {
   onComplete?: (url: string) => void;
@@ -39,8 +40,11 @@ export function getFileThumbnailHash(input: {
   };
 }): string {
   const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
-  const sourceKey = (input.source && !isTimeline) ? `:${input.source.size}:${input.source.lastModified}` : '';
-  return hashString(`file:${input.projectId}:${input.projectRelativePath}${sourceKey}`);
+  const sourceKey =
+    input.source && !isTimeline ? `:${input.source.size}:${input.source.lastModified}` : '';
+  return hashString(
+    `file:v${FILE_THUMBNAIL_HASH_VERSION}:${input.projectId}:${input.projectRelativePath}${sourceKey}`,
+  );
 }
 
 function getThumbnailDirVfsPath(input: { projectId: string; dirName: string }): string {
@@ -122,6 +126,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
   // which is fine and keeps revocations rare so consumers don't observe broken URLs.
   protected maxCacheEntries = 500;
   private cacheProjectIds = new Map<string, string>();
+  private pathHashes = new Map<string, string>(); // `${projectId}:${projectRelativePath}` -> taskId
 
   protected get taskPriority(): number {
     return MEDIA_TASK_PRIORITIES.fileThumbnail;
@@ -141,11 +146,18 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       }
       this.cache.delete(oldestKey);
       this.cacheProjectIds.delete(oldestKey);
+      for (const [key, val] of this.pathHashes.entries()) {
+        if (val === oldestKey) {
+          this.pathHashes.delete(key);
+          break;
+        }
+      }
     }
   }
 
   protected override clearAdditionalState(): void {
     this.cacheProjectIds.clear();
+    this.pathHashes.clear();
   }
 
   protected onCacheHit(task: FileThumbnailTask, url: string): void {
@@ -162,10 +174,14 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       const dirName = isTimeline
         ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
         : FILE_MANAGER_THUMBNAILS.DIR_NAME;
+
+      const ext = task.projectRelativePath.split('.').pop()?.toLowerCase();
+      const fileExt = ext === 'svg' ? 'svg' : 'webp';
+
       const filePath = getThumbnailFileVfsPath({
         projectId: task.projectId,
         dirName,
-        fileName: `${task.id}.webp`,
+        fileName: `${task.id}.${fileExt}`,
       });
 
       const blob = await vfs.readFile(filePath);
@@ -177,6 +193,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
       }
       this.cache.set(task.id, url);
       this.cacheProjectIds.set(task.id, task.projectId);
+      this.pathHashes.set(`${task.projectId}:${task.projectRelativePath}`, task.id);
       this.touchCacheEntry(task.id);
       this.evictCacheIfNeeded();
       return url;
@@ -218,8 +235,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
     const type = getMediaTypeFromFilename(task.projectRelativePath);
     let blob: Blob | null = null;
+    const ext = task.projectRelativePath.split('.').pop()?.toLowerCase();
+    const isSvg = ext === 'svg';
 
-    if (type === 'image') {
+    if (isSvg) {
+      blob = file;
+    } else if (type === 'image') {
       try {
         blob = await resizeImage(
           file,
@@ -298,10 +319,11 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     if (!blob || this.isCancelled(task.id)) return;
 
     const vfs = useVfs();
+    const fileExt = isSvg ? 'svg' : 'webp';
     const filePath = getThumbnailFileVfsPath({
       projectId: task.projectId,
       dirName: FILE_MANAGER_THUMBNAILS.DIR_NAME,
-      fileName: `${task.id}.webp`,
+      fileName: `${task.id}.${fileExt}`,
     });
     await vfs.writeFile(filePath, blob);
 
@@ -313,6 +335,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
     this.cache.set(task.id, thumbUrl);
     this.cacheProjectIds.set(task.id, task.projectId);
+    this.pathHashes.set(`${task.projectId}:${task.projectRelativePath}`, task.id);
     this.touchCacheEntry(task.id);
     this.evictCacheIfNeeded();
 
@@ -325,7 +348,10 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     const workspaceStore = useWorkspaceStore();
     if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
 
-    const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
+    const hash = getFileThumbnailHash({
+      projectId: input.projectId,
+      projectRelativePath: input.projectRelativePath,
+    });
     const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
     const dirName = isTimeline
       ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
@@ -347,12 +373,20 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
     this.cache.set(hash, thumbUrl);
     this.cacheProjectIds.set(hash, input.projectId);
+    this.pathHashes.set(`${input.projectId}:${input.projectRelativePath}`, hash);
     this.touchCacheEntry(hash);
     this.evictCacheIfNeeded();
   }
 
   async clearThumbnail(input: { projectId: string; projectRelativePath: string }) {
-    const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
+    const key = `${input.projectId}:${input.projectRelativePath}`;
+    const hash =
+      this.pathHashes.get(key) ||
+      getFileThumbnailHash({
+        projectId: input.projectId,
+        projectRelativePath: input.projectRelativePath,
+      });
+    this.pathHashes.delete(key);
     const cachedUrl = this.cache.get(hash);
     if (cachedUrl) {
       this.revokeCacheValue(cachedUrl);
@@ -369,10 +403,12 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         ? TIMELINE_MANAGER_THUMBNAILS.DIR_NAME
         : FILE_MANAGER_THUMBNAILS.DIR_NAME;
       const vfs = useVfs();
+      const ext = input.projectRelativePath.split('.').pop()?.toLowerCase();
+      const fileExt = ext === 'svg' ? 'svg' : 'webp';
       const filePath = getThumbnailFileVfsPath({
         projectId: input.projectId,
         dirName,
-        fileName: `${hash}.webp`,
+        fileName: `${hash}.${fileExt}`,
       });
 
       await vfs.deleteEntry(filePath);

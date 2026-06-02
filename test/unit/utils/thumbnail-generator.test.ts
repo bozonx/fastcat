@@ -222,6 +222,45 @@ describe('Thumbnail Generators', () => {
 
       expect(generator.cache.has(hash)).toBe(false);
     });
+
+    it('should bypass resize and save SVG files directly with .svg extension', async () => {
+      const complete = vi.fn();
+      const svgFile = new File(['<svg></svg>'], 'image.svg', { type: 'image/svg+xml' });
+      const projectStore = useProjectStore();
+      vi.mocked(projectStore.getFileByPath).mockResolvedValueOnce(svgFile);
+
+      fileThumbnailGenerator.addTask({
+        id: 'svg-hash',
+        projectId: 'test-project',
+        projectRelativePath: 'image.svg',
+        onComplete: complete,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(complete).toHaveBeenCalled();
+      expect(mockVfs.writeFile).toHaveBeenCalledWith(
+        expect.stringContaining('svg-hash.svg'),
+        svgFile
+      );
+    });
+
+    it('should track pathHashes and clear them in clearThumbnail', async () => {
+      const generator = fileThumbnailGenerator as any;
+      generator.pathHashes.set('p1:test.mp4', 'real-taskId-hash');
+      generator.cache.set('real-taskId-hash', 'blob-url');
+
+      await fileThumbnailGenerator.clearThumbnail({
+        projectId: 'p1',
+        projectRelativePath: 'test.mp4',
+      });
+
+      expect(generator.cache.has('real-taskId-hash')).toBe(false);
+      expect(generator.pathHashes.has('p1:test.mp4')).toBe(false);
+      expect(mockVfs.deleteEntry).toHaveBeenCalledWith(
+        expect.stringContaining('real-taskId-hash.webp')
+      );
+    });
   });
 
   describe('thumbnailGenerator (timeline)', () => {

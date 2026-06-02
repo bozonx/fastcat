@@ -312,17 +312,7 @@ pub fn extract_video_frame_webp(
         .video
         .as_ref()
         .ok_or_else(|| anyhow!("source has no video stream"))?;
-    let rotation_deg = video.rotation.rem_euclid(360).abs();
-    let is_quarter = rotation_deg == 90 || rotation_deg == 270;
-    let (src_w, src_h) = if is_quarter {
-        (video.height, video.width)
-    } else {
-        (video.width, video.height)
-    };
-    let (mut width, mut height) = fit_even_size(src_w, src_h, max_width, max_height);
-    if is_quarter {
-        std::mem::swap(&mut width, &mut height);
-    }
+    let (width, height) = video_frame_thumbnail_size(video, max_width, max_height);
     let output = Command::new("ffmpeg")
         .arg("-nostdin")
         .arg("-v")
@@ -356,6 +346,21 @@ pub fn extract_video_frame_webp(
         return Err(anyhow!("ffmpeg frame extraction returned empty output"));
     }
     Ok(output.stdout)
+}
+
+fn video_frame_thumbnail_size(
+    video: &NativeVideoMetadata,
+    max_width: u32,
+    max_height: u32,
+) -> (u32, u32) {
+    let rotation_deg = video.rotation.rem_euclid(360).abs();
+    let is_quarter = rotation_deg == 90 || rotation_deg == 270;
+    let (src_w, src_h) = if is_quarter {
+        (video.height, video.width)
+    } else {
+        (video.width, video.height)
+    };
+    fit_even_size(src_w, src_h, max_width, max_height)
 }
 
 pub fn extract_video_frame_webps(
@@ -625,6 +630,20 @@ mod tests {
         assert_eq!(fit_even_size(1920, 1080, 320, 320), (320, 180));
         assert_eq!(fit_even_size(1080, 1920, 320, 320), (180, 320));
         assert_eq!(fit_even_size(100, 50, 320, 320), (100, 50));
+    }
+
+    #[test]
+    fn video_frame_thumbnail_size_keeps_portrait_after_quarter_rotation() {
+        let video = NativeVideoMetadata {
+            width: 1920,
+            height: 1080,
+            fps: 30.0,
+            codec: "h264".into(),
+            bitrate: None,
+            rotation: 90,
+        };
+
+        assert_eq!(video_frame_thumbnail_size(&video, 320, 320), (180, 320));
     }
 
     #[test]
