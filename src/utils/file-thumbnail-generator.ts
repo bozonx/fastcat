@@ -154,7 +154,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
   private async loadThumbnailFromVfs(task: FileThumbnailTask): Promise<string | null> {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle) return null;
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return null;
 
     try {
       const vfs = useVfs();
@@ -202,7 +202,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     const workspaceStore = useWorkspaceStore();
     const projectStore = useProjectStore();
 
-    if (!workspaceStore.workspaceHandle) {
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) {
       throw new Error('Workspace is not opened');
     }
 
@@ -323,7 +323,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
   async saveManualThumbnail(input: { projectId: string; projectRelativePath: string; blob: Blob }) {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle) return;
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
 
     const hash = hashString(`file:${input.projectId}:${input.projectRelativePath}`);
     const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
@@ -361,7 +361,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     }
 
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle) return;
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
 
     try {
       const isTimeline = input.projectRelativePath.toLowerCase().endsWith('.otio');
@@ -389,7 +389,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     timeUs: number;
   }): Promise<string | null> {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle) return null;
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return null;
 
     const cacheKey = `marker:${input.markerId}`;
 
@@ -448,7 +448,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     blob: Blob;
   }) {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle) return;
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
 
     try {
       const vfs = useVfs();
@@ -474,7 +474,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
 
   async clearAllThumbnails(projectId: string) {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle) return;
+    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
 
     try {
       const vfs = useVfs();

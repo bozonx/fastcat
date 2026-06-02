@@ -34,6 +34,18 @@ interface TimelineThumbnailGeneratorInternals extends CacheBackedGenerator {
   ) => void;
 }
 
+let mockIsTauri = false;
+vi.mock('~/utils/runtime', () => ({
+  isTauriRuntime: vi.fn(() => mockIsTauri),
+}));
+
+vi.mock('~/utils/tauri-media-processing', () => ({
+  getNativeFileHandlePath: (handle: any) => handle?.path || null,
+  nativeVideoFrameWebps: vi.fn(async () => [new Blob(['tauri-frame'], { type: 'image/webp' })]),
+  nativeVideoFrameWebp: vi.fn(async () => new Blob(['tauri-frame'], { type: 'image/webp' })),
+  nativeMediaMetadata: vi.fn(async () => ({ duration: 10 })),
+}));
+
 vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: vi.fn(),
 }));
@@ -86,6 +98,7 @@ describe('Thumbnail Generators', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    mockIsTauri = false;
 
     // Both generators are module-level singletons; reset them so each spec
     // starts from a clean cache/queue instead of inheriting prior state.
@@ -367,6 +380,61 @@ describe('Thumbnail Generators', () => {
       expect(generator.listeners.has('clear-test')).toBe(false);
       expect(generator.pendingRequestedTimes.has('clear-test')).toBe(false);
       expect(generator.opfsCheckedTimes.has('clear-test')).toBe(false);
+    });
+  });
+
+  describe('Tauri workspace-less support', () => {
+    beforeEach(() => {
+      mockIsTauri = true;
+      vi.mocked(useWorkspaceStore).mockReturnValue({
+        workspaceHandle: null,
+        resolvedStorageTopology: {
+          tempRoot: '',
+          proxiesRoot: '',
+        },
+      } as any);
+
+      vi.mocked(useProjectStore).mockReturnValue({
+        currentProjectId: 'test-project',
+        getFileByPath: vi.fn().mockResolvedValue(mockFile),
+        getFileHandleByPath: vi.fn().mockResolvedValue({ path: '/mock/video.mp4' }),
+      } as any);
+    });
+
+    it('should generate clip thumbnails successfully when workspaceHandle is null in Tauri', async () => {
+      const progress = vi.fn();
+      const complete = vi.fn();
+
+      thumbnailGenerator.addTask({
+        id: 'tauri-clip-hash',
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        duration: 8,
+        requestedTimesS: [0, 4],
+        onProgress: progress,
+        onComplete: complete,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(complete).toHaveBeenCalled();
+      expect(mockVfs.writeFile).toHaveBeenCalled();
+    });
+
+    it('should generate file thumbnails successfully when workspaceHandle is null in Tauri', async () => {
+      const complete = vi.fn();
+
+      fileThumbnailGenerator.addTask({
+        id: 'tauri-file-hash',
+        projectId: 'p1',
+        projectRelativePath: 'v1.mp4',
+        onComplete: complete,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(complete).toHaveBeenCalled();
+      expect(mockVfs.writeFile).toHaveBeenCalled();
     });
   });
 });

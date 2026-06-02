@@ -90,7 +90,6 @@ pub struct VideoLayerRt {
     pub current: Option<DecodedVideoFrame>,
     /// Кеш декодированных кадров для дешёвого скраба назад без респауна ffmpeg.
     cache: VideoFrameCache,
-    last_recovery_seek_sec: Option<f64>,
 }
 
 impl VideoLayerRt {
@@ -105,7 +104,6 @@ impl VideoLayerRt {
             media_size,
             source_rotation,
             current: None,
-            last_recovery_seek_sec: None,
         }
     }
 
@@ -117,7 +115,6 @@ impl VideoLayerRt {
                 continue;
             }
             self.cache.insert(video_frame_to_image(msg.frame));
-            self.last_recovery_seek_sec = None;
         }
     }
 
@@ -134,17 +131,6 @@ impl VideoLayerRt {
             }
             None => false,
         }
-    }
-
-    fn maybe_recover_to(&mut self, target_clip_local: f64, max_lag_sec: f64) -> anyhow::Result<()> {
-        let should_seek = self
-            .last_recovery_seek_sec
-            .is_none_or(|last| (target_clip_local - last).abs() > max_lag_sec);
-        if should_seek {
-            self.pump.seek(target_clip_local)?;
-            self.last_recovery_seek_sec = Some(target_clip_local);
-        }
-        Ok(())
     }
 }
 
@@ -495,11 +481,7 @@ impl LayerRuntimeManager {
                 rt.pull_into_cache();
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(rt.pump.info.fps);
-                if !rt.update_display(clip_local, Some(max_lag_sec)) && self.playing {
-                    if let Err(e) = rt.maybe_recover_to(clip_local, max_lag_sec) {
-                        log::error!("[monitor] recover seek pump {}: {e:?}", layer.id);
-                    }
-                }
+                rt.update_display(clip_local, Some(max_lag_sec));
             }
         }
     }
@@ -523,7 +505,6 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] seek pump {}: {e:?}", layer.id);
                 }
-                rt.last_recovery_seek_sec = Some(clip_local);
                 rt.update_display(
                     clip_local,
                     if playing {
@@ -549,7 +530,6 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] resync pump {}: {e:?}", layer.id);
                 }
-                rt.last_recovery_seek_sec = Some(clip_local);
             }
         }
     }
