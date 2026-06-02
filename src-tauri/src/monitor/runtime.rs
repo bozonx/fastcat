@@ -31,6 +31,8 @@ use super::scene::{LayerKind, MonitorScene, SceneLayer};
 use super::scene_build::{build_virtual_kind, finalize_layer, rasterize_svg};
 
 const EVT_LAYER_FAILED: &str = "monitor:layer_failed";
+const MAX_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
+const MAX_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
 
 // ---------------------------------------------------------------------------
 // Результаты фоновой загрузки
@@ -88,6 +90,7 @@ pub struct VideoLayerRt {
     pub current: Option<DecodedVideoFrame>,
     /// Кеш декодированных кадров для дешёвого скраба назад без респауна ffmpeg.
     cache: VideoFrameCache,
+    last_recovery_seek_sec: Option<f64>,
 }
 
 impl VideoLayerRt {
@@ -102,6 +105,7 @@ impl VideoLayerRt {
             media_size,
             source_rotation,
             current: None,
+            last_recovery_seek_sec: None,
         }
     }
 
@@ -113,14 +117,39 @@ impl VideoLayerRt {
                 continue;
             }
             self.cache.insert(video_frame_to_image(msg.frame));
+            self.last_recovery_seek_sec = None;
         }
     }
 
     /// Выбирает отображаемый кадр: ближайший с PTS ≤ target из кеша (если есть).
-    fn update_display(&mut self, target_clip_local: f64) {
-        if let Some(frame) = self.cache.frame_le(target_clip_local) {
-            self.current = Some(frame);
+    fn update_display(&mut self, target_clip_local: f64, max_lag_sec: Option<f64>) -> bool {
+        let frame = match max_lag_sec {
+            Some(max_lag) => self.cache.frame_le_with_max_lag(target_clip_local, max_lag),
+            None => self.cache.frame_le(target_clip_local),
+        };
+        match frame {
+            Some(frame) => {
+                self.current = Some(frame);
+                true
+            }
+            None => {
+                if max_lag_sec.is_some() {
+                    self.current = None;
+                }
+                false
+            }
         }
+    }
+
+    fn maybe_recover_to(&mut self, target_clip_local: f64, max_lag_sec: f64) -> anyhow::Result<()> {
+        let should_seek = self
+            .last_recovery_seek_sec
+            .is_none_or(|last| (target_clip_local - last).abs() > max_lag_sec);
+        if should_seek {
+            self.pump.seek(target_clip_local)?;
+            self.last_recovery_seek_sec = Some(target_clip_local);
+        }
+        Ok(())
     }
 }
 
@@ -411,8 +440,14 @@ impl LayerRuntimeManager {
                     return;
                 }
                 log::info!("[monitor] decoded image {id}: {}x{}", size.0, size.1);
-                self.runtimes
-                    .insert(id, LayerRuntime::Image(ImageLayerRt { image, size, is_svg: false }));
+                self.runtimes.insert(
+                    id,
+                    LayerRuntime::Image(ImageLayerRt {
+                        image,
+                        size,
+                        is_svg: false,
+                    }),
+                );
             }
             BgLayerResult::ImageErr { id, error } => {
                 self.loading_set.remove(&id);
@@ -427,8 +462,14 @@ impl LayerRuntimeManager {
                     return;
                 }
                 log::info!("[monitor] decoded svg {id}: {}x{}", size.0, size.1);
-                self.runtimes
-                    .insert(id, LayerRuntime::Image(ImageLayerRt { image, size, is_svg: true }));
+                self.runtimes.insert(
+                    id,
+                    LayerRuntime::Image(ImageLayerRt {
+                        image,
+                        size,
+                        is_svg: true,
+                    }),
+                );
             }
             BgLayerResult::SvgErr { id, error } => {
                 self.loading_set.remove(&id);
@@ -457,7 +498,13 @@ impl LayerRuntimeManager {
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache();
-                rt.update_display(layer.source_pts_at(t));
+                let clip_local = layer.source_pts_at(t);
+                let max_lag_sec = video_sync_lag_sec(rt.pump.info.fps);
+                if !rt.update_display(clip_local, Some(max_lag_sec)) && self.playing {
+                    if let Err(e) = rt.maybe_recover_to(clip_local, max_lag_sec) {
+                        log::error!("[monitor] recover seek pump {}: {e:?}", layer.id);
+                    }
+                }
             }
         }
     }
@@ -475,13 +522,21 @@ impl LayerRuntimeManager {
                 rt.pull_into_cache();
                 // Пауза + попадание в кеш → показываем кадр без перезапуска ffmpeg.
                 if !playing && rt.cache.has_near(clip_local, 1) {
-                    rt.update_display(clip_local);
+                    rt.update_display(clip_local, None);
                     continue;
                 }
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] seek pump {}: {e:?}", layer.id);
                 }
-                rt.update_display(clip_local);
+                rt.last_recovery_seek_sec = Some(clip_local);
+                rt.update_display(
+                    clip_local,
+                    if playing {
+                        Some(video_sync_lag_sec(rt.pump.info.fps))
+                    } else {
+                        None
+                    },
+                );
             }
         }
     }
@@ -499,6 +554,7 @@ impl LayerRuntimeManager {
                 if let Err(e) = rt.pump.seek(clip_local) {
                     log::error!("[monitor] resync pump {}: {e:?}", layer.id);
                 }
+                rt.last_recovery_seek_sec = Some(clip_local);
             }
         }
     }
@@ -611,6 +667,15 @@ fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> 
     }
 }
 
+fn video_sync_lag_sec(fps: f64) -> f64 {
+    let fps = if fps.is_finite() && fps > 0.0 {
+        fps
+    } else {
+        30.0
+    };
+    (MAX_VIDEO_SYNC_LAG_FRAMES / fps).min(MAX_VIDEO_SYNC_LAG_SEC)
+}
+
 /// Целевое разрешение растеризации SVG: длинная сторона сцены × preview_scale.
 /// `None`/невалидный scale → длинная сторона сцены без даунскейла. Если размер
 /// сцены ещё неизвестен — дефолт 1920 (перерастеризация произойдёт при пересборке
@@ -669,6 +734,8 @@ mod tests {
     use super::approx_eq_opt_scale;
     use super::layer_with_auto_source_rotation;
     use super::svg_target_long_edge;
+    use super::video_sync_lag_sec;
+    use super::MAX_VIDEO_SYNC_LAG_SEC;
     use crate::monitor::scene::{LayerKind, SceneLayer};
 
     #[test]
@@ -697,6 +764,13 @@ mod tests {
         assert_eq!(svg_target_long_edge((1080, 1920), Some(1.0)), 1920);
         // Неизвестный размер сцены → дефолт 1920.
         assert_eq!(svg_target_long_edge((0, 0), Some(1.0)), 1920);
+    }
+
+    #[test]
+    fn video_sync_lag_is_capped_by_frame_count_and_absolute_limit() {
+        assert!((video_sync_lag_sec(60.0) - (2.0 / 60.0)).abs() < 1e-9);
+        assert!((video_sync_lag_sec(24.0) - MAX_VIDEO_SYNC_LAG_SEC).abs() < 1e-9);
+        assert!((video_sync_lag_sec(0.0) - (2.0 / 30.0)).abs() < 1e-9);
     }
 
     #[test]

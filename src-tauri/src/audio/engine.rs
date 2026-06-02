@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{SampleFormat, Stream, StreamConfig};
+use cpal::{OutputCallbackInfo, SampleFormat, Stream, StreamConfig};
 use parking_lot::Mutex;
 
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
@@ -34,6 +34,8 @@ struct AudioShared {
     playing: bool,
     origin_pts_sec: f64,
     frames_written: u64,
+    output_latency_sec: f64,
+    last_output_buffer_frames: usize,
     producer_pts_sec: f64,
     seek_serial: u64,
     scene_serial: u64,
@@ -51,6 +53,8 @@ impl Default for AudioShared {
             playing: false,
             origin_pts_sec: 0.0,
             frames_written: 0,
+            output_latency_sec: 0.0,
+            last_output_buffer_frames: 0,
             producer_pts_sec: 0.0,
             seek_serial: 0,
             scene_serial: 0,
@@ -109,7 +113,12 @@ impl NativeAudioEngine {
         })
     }
 
-    pub fn set_scene(&self, layers: Vec<SceneAudioLayer>, tracks: Vec<SceneAudioTrack>, master_gain: f64) {
+    pub fn set_scene(
+        &self,
+        layers: Vec<SceneAudioLayer>,
+        tracks: Vec<SceneAudioTrack>,
+        master_gain: f64,
+    ) {
         let mut state = self.shared.lock();
         state.scene = layers;
         state.tracks = tracks;
@@ -120,11 +129,14 @@ impl NativeAudioEngine {
         state.scene_serial = state.scene_serial.wrapping_add(1);
 
         // GC кэша: удаляем файлы, которых больше нет в сцене
-        let current_paths: std::collections::HashSet<String> = state.scene.iter()
-            .map(|l| l.path.clone())
-            .collect();
-        state.decoded_cache.retain(|path, _| current_paths.contains(path));
-        state.decoders.retain(|path, _| current_paths.contains(path));
+        let current_paths: std::collections::HashSet<String> =
+            state.scene.iter().map(|l| l.path.clone()).collect();
+        state
+            .decoded_cache
+            .retain(|path, _| current_paths.contains(path));
+        state
+            .decoders
+            .retain(|path, _| current_paths.contains(path));
     }
 
     pub fn play(&self, pts_sec: f64) {
@@ -139,10 +151,11 @@ impl NativeAudioEngine {
 
     pub fn pause(&self) -> f64 {
         let mut state = self.shared.lock();
-        let pts = state.origin_pts_sec + state.frames_written as f64 / self.sample_rate as f64;
+        let pts = audible_pts_sec(&state, self.sample_rate);
         state.playing = false;
         state.origin_pts_sec = pts;
         state.frames_written = 0;
+        state.last_output_buffer_frames = 0;
         state.ring.clear();
         state.producer_pts_sec = pts;
         pts
@@ -164,7 +177,7 @@ impl NativeAudioEngine {
         if !state.playing {
             return None;
         }
-        Some(state.origin_pts_sec + state.frames_written as f64 / self.sample_rate as f64)
+        Some(audible_pts_sec(&state, self.sample_rate))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -208,8 +221,8 @@ fn build_stream(
         SampleFormat::F32 => device
             .build_output_stream(
                 config,
-                move |data: &mut [f32], _| {
-                    write_output(data, &shared, sample_rate, device_channels)
+                move |data: &mut [f32], info| {
+                    write_output(data, info, &shared, sample_rate, device_channels)
                 },
                 err_fn,
                 None,
@@ -218,8 +231,8 @@ fn build_stream(
         SampleFormat::I16 => device
             .build_output_stream(
                 config,
-                move |data: &mut [i16], _| {
-                    write_output(data, &shared, sample_rate, device_channels)
+                move |data: &mut [i16], info| {
+                    write_output(data, info, &shared, sample_rate, device_channels)
                 },
                 err_fn,
                 None,
@@ -228,8 +241,8 @@ fn build_stream(
         SampleFormat::U16 => device
             .build_output_stream(
                 config,
-                move |data: &mut [u16], _| {
-                    write_output(data, &shared, sample_rate, device_channels)
+                move |data: &mut [u16], info| {
+                    write_output(data, info, &shared, sample_rate, device_channels)
                 },
                 err_fn,
                 None,
@@ -263,6 +276,7 @@ impl OutputSample for u16 {
 
 fn write_output<T: OutputSample>(
     data: &mut [T],
+    info: &OutputCallbackInfo,
     shared: &Arc<Mutex<AudioShared>>,
     sample_rate: u32,
     device_channels: u16,
@@ -306,10 +320,32 @@ fn write_output<T: OutputSample>(
     }
 
     if state.playing {
-        state.frames_written = state.frames_written.saturating_add(actual_played_frames as u64);
+        state.frames_written = state
+            .frames_written
+            .saturating_add(actual_played_frames as u64);
+        state.last_output_buffer_frames = frames;
+        state.output_latency_sec = output_latency_sec(info);
     } else {
         let _ = sample_rate;
+        state.last_output_buffer_frames = 0;
     }
+}
+
+fn audible_pts_sec(state: &AudioShared, sample_rate: u32) -> f64 {
+    let latency_frames = (state.output_latency_sec.max(0.0) * sample_rate as f64).round() as u64;
+    let buffer_frames = state.last_output_buffer_frames as u64;
+    let audible_frames = state
+        .frames_written
+        .saturating_sub(latency_frames.saturating_add(buffer_frames));
+    state.origin_pts_sec + audible_frames as f64 / sample_rate as f64
+}
+
+fn output_latency_sec(info: &OutputCallbackInfo) -> f64 {
+    info.timestamp()
+        .playback
+        .duration_since(&info.timestamp().callback)
+        .map(|duration| duration.as_secs_f64().clamp(0.0, 0.5))
+        .unwrap_or(0.0)
 }
 
 fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, sample_rate: u32) {
@@ -333,7 +369,8 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
             }
         };
 
-        let Some((scene, tracks, master_gain, chunk_start, seek_serial, scene_serial)) = snapshot else {
+        let Some((scene, tracks, master_gain, chunk_start, seek_serial, scene_serial)) = snapshot
+        else {
             std::thread::sleep(Duration::from_millis(8));
             continue;
         };
@@ -459,10 +496,15 @@ fn mix_chunk(
             orphan_layers.push(layer);
         } else {
             let matched_track = tracks.iter().find(|t| {
-                t.id == tid || tid.starts_with(&format!("{}_", t.id)) || tid.starts_with(t.id.as_str())
+                t.id == tid
+                    || tid.starts_with(&format!("{}_", t.id))
+                    || tid.starts_with(t.id.as_str())
             });
             if let Some(track) = matched_track {
-                track_layers.entry(track.id.clone()).or_default().push(layer);
+                track_layers
+                    .entry(track.id.clone())
+                    .or_default()
+                    .push(layer);
             } else {
                 orphan_layers.push(layer);
             }
@@ -486,7 +528,9 @@ fn mix_chunk(
         let mut has_audio_on_track = false;
 
         for layer in layers {
-            if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
+            if layer.timeline_end_sec <= chunk_start_sec
+                || layer.timeline_start_sec >= chunk_end_sec
+            {
                 continue;
             }
             let segment_start = chunk_start_sec.max(layer.timeline_start_sec);
@@ -555,7 +599,9 @@ fn mix_chunk(
     // 4. Микшируем сиротские слои (для обратной совместимости)
     if !has_solo {
         for layer in orphan_layers {
-            if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
+            if layer.timeline_end_sec <= chunk_start_sec
+                || layer.timeline_start_sec >= chunk_end_sec
+            {
                 continue;
             }
             let segment_start = chunk_start_sec.max(layer.timeline_start_sec);
@@ -626,14 +672,16 @@ fn resample_planar_with_speed(
     speed: f64,
     num_channels: usize,
 ) -> Result<Vec<Vec<f32>>> {
-    use rubato::{Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction};
+    use rubato::{
+        Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+    };
 
     let ratio = target_rate as f64 / (source_rate as f64 * speed);
-    
+
     if (ratio - 1.0).abs() < 1e-6 && source_rate == target_rate {
         return Ok(input);
     }
-    
+
     if input.is_empty() || input[0].is_empty() {
         return Ok(input);
     }
@@ -645,37 +693,34 @@ fn resample_planar_with_speed(
         oversampling_factor: 160,
         window: WindowFunction::BlackmanHarris2,
     };
-    
+
     let chunk_size = 1024;
     let max_ratio_factor = ratio.max(2.0);
-    let mut resampler = SincFixedIn::<f32>::new(
-        ratio,
-        max_ratio_factor,
-        params,
-        chunk_size,
-        num_channels,
-    ).map_err(|e| anyhow!("failed to create resampler: {:?}", e))?;
-    
+    let mut resampler =
+        SincFixedIn::<f32>::new(ratio, max_ratio_factor, params, chunk_size, num_channels)
+            .map_err(|e| anyhow!("failed to create resampler: {:?}", e))?;
+
     let input_len = input[0].len();
     let mut output = vec![Vec::new(); num_channels];
     let mut offset = 0;
-    
+
     while offset < input_len {
         let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
         let copy_len = (input_len - offset).min(chunk_size);
         for ch in 0..num_channels {
             chunk[ch][..copy_len].copy_from_slice(&input[ch][offset..offset + copy_len]);
         }
-        
-        let out_chunk = resampler.process(&chunk, None)
+
+        let out_chunk = resampler
+            .process(&chunk, None)
             .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
-            
+
         for ch in 0..num_channels {
             output[ch].extend_from_slice(&out_chunk[ch]);
         }
         offset += chunk_size;
     }
-        
+
     Ok(output)
 }
 
@@ -686,7 +731,7 @@ fn planar_to_interleaved_stereo(planar: Vec<Vec<f32>>) -> Vec<f32> {
     }
     let num_frames = planar[0].len();
     let mut interleaved = vec![0.0f32; num_frames * 2];
-    
+
     if num_channels == 1 {
         for i in 0..num_frames {
             let val = planar[0][i];
@@ -703,9 +748,9 @@ fn planar_to_interleaved_stereo(planar: Vec<Vec<f32>>) -> Vec<f32> {
 }
 
 fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<Vec<f32>> {
+    use symphonia::core::codecs::DecoderOptions;
     use symphonia::core::formats::FormatOptions;
     use symphonia::core::meta::MetadataOptions;
-    use symphonia::core::codecs::DecoderOptions;
     use symphonia::core::probe::Hint;
 
     let file = std::fs::File::open(path)
@@ -734,10 +779,7 @@ fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<V
         .ok_or_else(|| anyhow!("no active audio track found"))?;
 
     let mut decoder = symphonia::default::get_codecs()
-        .make(
-            &track.codec_params,
-            &DecoderOptions::default(),
-        )
+        .make(&track.codec_params, &DecoderOptions::default())
         .context("failed to create decoder")?;
 
     let track_id = track.id;
@@ -765,13 +807,14 @@ fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<V
             Ok(audio_buf) => {
                 let spec = *audio_buf.spec();
                 let duration = audio_buf.capacity() as u64;
-                let mut sample_buf = symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
+                let mut sample_buf =
+                    symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
                 sample_buf.copy_interleaved_ref(audio_buf);
-                
+
                 let samples = sample_buf.samples();
                 let num_channels = spec.channels.count();
                 let num_frames = samples.len() / num_channels;
-                
+
                 for frame in 0..num_frames {
                     for ch in 0..num_channels {
                         if ch < channels {
@@ -793,7 +836,13 @@ fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<V
         }
     }
 
-    let resampled = resample_planar_with_speed(planar_buffers, source_rate, target_sample_rate, 1.0, channels)?;
+    let resampled = resample_planar_with_speed(
+        planar_buffers,
+        source_rate,
+        target_sample_rate,
+        1.0,
+        channels,
+    )?;
     let interleaved = planar_to_interleaved_stereo(resampled);
     Ok(interleaved)
 }
@@ -812,9 +861,9 @@ fn decode_symphonia_chunk(
     };
 
     if decoder_state.is_none() {
+        use symphonia::core::codecs::DecoderOptions;
         use symphonia::core::formats::FormatOptions;
         use symphonia::core::meta::MetadataOptions;
-        use symphonia::core::codecs::DecoderOptions;
         use symphonia::core::probe::Hint;
 
         let file = std::fs::File::open(path)
@@ -843,16 +892,16 @@ fn decode_symphonia_chunk(
             .ok_or_else(|| anyhow!("no active audio track found"))?;
 
         let decoder = symphonia::default::get_codecs()
-            .make(
-                &track.codec_params,
-                &DecoderOptions::default(),
-            )
+            .make(&track.codec_params, &DecoderOptions::default())
             .context("failed to create decoder")?;
 
         let track_id = track.id;
         let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
         let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
-        let time_base = track.codec_params.time_base.unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
+        let time_base = track
+            .codec_params
+            .time_base
+            .unwrap_or(symphonia::core::units::TimeBase::new(1, source_rate));
 
         decoder_state = Some(CachedAudioDecoder {
             format,
@@ -866,16 +915,19 @@ fn decode_symphonia_chunk(
 
     let mut state_val = decoder_state.unwrap();
 
-    let seeked_to = state_val.format.seek(
-        symphonia::core::formats::SeekMode::Accurate,
-        symphonia::core::formats::SeekTo::Time {
-            time: symphonia::core::units::Time {
-                seconds: source_start_sec.floor() as u64,
-                frac: source_start_sec.fract(),
+    let seeked_to = state_val
+        .format
+        .seek(
+            symphonia::core::formats::SeekMode::Accurate,
+            symphonia::core::formats::SeekTo::Time {
+                time: symphonia::core::units::Time {
+                    seconds: source_start_sec.floor() as u64,
+                    frac: source_start_sec.fract(),
+                },
+                track_id: Some(state_val.track_id),
             },
-            track_id: Some(state_val.track_id),
-        },
-    ).context("failed to seek in format reader")?;
+        )
+        .context("failed to seek in format reader")?;
 
     state_val.decoder.reset();
 
@@ -884,8 +936,10 @@ fn decode_symphonia_chunk(
         t.seconds as f64 + t.frac
     };
     let discard_sec = (source_start_sec - actual_sec).max(0.0);
-    let mut discard_frames_remaining = (discard_sec * state_val.source_rate as f64).round() as usize;
-    let source_frames_needed = (timeline_duration_sec * speed * state_val.source_rate as f64).round() as usize;
+    let mut discard_frames_remaining =
+        (discard_sec * state_val.source_rate as f64).round() as usize;
+    let source_frames_needed =
+        (timeline_duration_sec * speed * state_val.source_rate as f64).round() as usize;
 
     let mut planar_buffers = vec![Vec::new(); state_val.channels];
     let mut collected_frames = 0;
@@ -914,13 +968,14 @@ fn decode_symphonia_chunk(
             Ok(audio_buf) => {
                 let spec = *audio_buf.spec();
                 let duration = audio_buf.capacity() as u64;
-                let mut sample_buf = symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
+                let mut sample_buf =
+                    symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
                 sample_buf.copy_interleaved_ref(audio_buf);
-                
+
                 let samples = sample_buf.samples();
                 let num_channels = spec.channels.count();
                 let num_frames = samples.len() / num_channels;
-                
+
                 for frame in 0..num_frames {
                     if discard_frames_remaining > 0 {
                         discard_frames_remaining -= 1;
@@ -961,7 +1016,13 @@ fn decode_symphonia_chunk(
         return Ok(vec![0.0f32; silence_len]);
     }
 
-    let resampled = resample_planar_with_speed(planar_buffers, state_val.source_rate, target_sample_rate, speed, state_val.channels)?;
+    let resampled = resample_planar_with_speed(
+        planar_buffers,
+        state_val.source_rate,
+        target_sample_rate,
+        speed,
+        state_val.channels,
+    )?;
     let interleaved = planar_to_interleaved_stereo(resampled);
 
     // Put it back in the cache:
@@ -996,7 +1057,9 @@ fn decode_audio_chunk(
                 let decoded = decode_entire_file_symphonia(path, sample_rate)?;
                 let shared_samples = Arc::new(decoded);
                 let mut state = shared.lock();
-                state.decoded_cache.insert(path.to_string(), shared_samples.clone());
+                state
+                    .decoded_cache
+                    .insert(path.to_string(), shared_samples.clone());
                 shared_samples
             }
         };
@@ -1011,12 +1074,20 @@ fn decode_audio_chunk(
 
         if start_sample < cached_len {
             let available = (cached_len - start_sample).min(samples_to_read);
-            result[..available].copy_from_slice(&cached_samples[start_sample..start_sample + available]);
+            result[..available]
+                .copy_from_slice(&cached_samples[start_sample..start_sample + available]);
         }
         return Ok(result);
     }
 
-    decode_symphonia_chunk(path, source_start_sec, timeline_duration_sec, speed, sample_rate, shared)
+    decode_symphonia_chunk(
+        path,
+        source_start_sec,
+        timeline_duration_sec,
+        speed,
+        sample_rate,
+        shared,
+    )
 }
 
 fn apply_layer_mix(
@@ -1122,6 +1193,7 @@ fn soft_clip(samples: &mut [f32]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cpal::{OutputStreamTimestamp, StreamInstant};
 
     fn layer() -> SceneAudioLayer {
         SceneAudioLayer {
@@ -1139,6 +1211,14 @@ mod tests {
             audio_fade_in_curve: AudioFadeCurve::Linear,
             audio_fade_out_curve: AudioFadeCurve::Linear,
         }
+    }
+
+    fn callback_info(latency_sec: f64) -> OutputCallbackInfo {
+        let callback = StreamInstant::new(10, 0);
+        let playback = callback
+            .add(Duration::from_secs_f64(latency_sec))
+            .unwrap_or(callback);
+        OutputCallbackInfo::new(OutputStreamTimestamp { callback, playback })
     }
 
     #[test]
@@ -1207,7 +1287,13 @@ mod tests {
         }));
         let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
 
-        write_output(&mut data, &shared, 48_000, OUTPUT_CHANNELS as u16);
+        write_output(
+            &mut data,
+            &callback_info(0.0),
+            &shared,
+            48_000,
+            OUTPUT_CHANNELS as u16,
+        );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
         assert_eq!(shared.lock().frames_written, 0); // 0 из-за underrun
@@ -1224,17 +1310,43 @@ mod tests {
         }));
         let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
 
-        write_output(&mut data, &shared, 48_000, OUTPUT_CHANNELS as u16);
+        write_output(
+            &mut data,
+            &callback_info(0.0),
+            &shared,
+            48_000,
+            OUTPUT_CHANNELS as u16,
+        );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
         assert_eq!(shared.lock().frames_written, 128); // 128 проигралось
     }
 
     #[test]
+    fn audible_pts_compensates_output_latency_and_buffer() {
+        let shared = Arc::new(Mutex::new(AudioShared {
+            playing: true,
+            origin_pts_sec: 10.0,
+            frames_written: 48_000,
+            output_latency_sec: 0.02,
+            last_output_buffer_frames: 480,
+            ..AudioShared::default()
+        }));
+
+        let pts = audible_pts_sec(&shared.lock(), 48_000);
+
+        assert!((pts - 10.97).abs() < 1e-9);
+    }
+
+    #[test]
     fn test_decode_entire_file_symphonia() {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let decoded = decode_entire_file_symphonia(path, 48000);
-        assert!(decoded.is_ok(), "Failed to decode MP3 file: {:?}", decoded.err());
+        assert!(
+            decoded.is_ok(),
+            "Failed to decode MP3 file: {:?}",
+            decoded.err()
+        );
         let samples = decoded.unwrap();
         assert!(samples.len() > 0, "Decoded sample buffer is empty");
     }
@@ -1244,10 +1356,18 @@ mod tests {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new(Mutex::new(AudioShared::default()));
         let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000, &shared);
-        assert!(decoded.is_ok(), "Failed to decode chunk: {:?}", decoded.err());
+        assert!(
+            decoded.is_ok(),
+            "Failed to decode chunk: {:?}",
+            decoded.err()
+        );
         let samples = decoded.unwrap();
         assert!(samples.len() > 0, "Decoded chunk buffer is empty");
         // For a duration of 0.5 seconds at 48000 Hz, we expect around 0.5 * 48000 * 2 (stereo) = 48000 samples.
-        assert!(samples.len() >= 45000 && samples.len() <= 55000, "Unexpected chunk length: {}", samples.len());
+        assert!(
+            samples.len() >= 45000 && samples.len() <= 55000,
+            "Unexpected chunk length: {}",
+            samples.len()
+        );
     }
 }

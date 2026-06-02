@@ -74,6 +74,21 @@ impl VideoFrameCache {
             .map(|(_, f)| f.clone())
     }
 
+    /// Кадр с наибольшим PTS ≤ target, но только если он не отстал дальше
+    /// допустимого AV-sync окна.
+    pub fn frame_le_with_max_lag(
+        &mut self,
+        target_pts: f64,
+        max_lag_sec: f64,
+    ) -> Option<DecodedVideoFrame> {
+        let frame = self.frame_le(target_pts)?;
+        if target_pts - frame.pts_sec <= max_lag_sec.max(0.0) {
+            Some(frame)
+        } else {
+            None
+        }
+    }
+
     /// Есть ли в кеше кадр в пределах `tolerance_frames` от target (для fast-path seek).
     pub fn has_near(&mut self, target_pts: f64, tolerance_frames: i64) -> bool {
         let key = self.index_of(target_pts);
@@ -144,6 +159,18 @@ mod tests {
         c.insert(frame(2.0));
         assert_eq!(c.frame_le(1.4).map(|f| f.pts_sec), Some(1.0));
         assert_eq!(c.frame_le(-1.0).map(|f| f.pts_sec), None);
+    }
+
+    #[test]
+    fn frame_le_with_max_lag_rejects_stale_frames() {
+        let mut c = VideoFrameCache::new(30.0, 4);
+        c.insert(frame(1.0));
+
+        assert_eq!(
+            c.frame_le_with_max_lag(1.05, 0.1).map(|f| f.pts_sec),
+            Some(1.0)
+        );
+        assert_eq!(c.frame_le_with_max_lag(1.5, 0.1).map(|f| f.pts_sec), None);
     }
 
     #[test]
