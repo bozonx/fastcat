@@ -25,6 +25,8 @@ export interface ThumbnailTile {
 const DEFAULT_THUMB_ASPECT = 16 / 9;
 
 export interface ThumbnailVideoAspectInput {
+  width?: number;
+  height?: number;
   displayWidth: number;
   displayHeight: number;
   rotation?: number;
@@ -38,11 +40,25 @@ export function resolveVisualVideoAspect(
     return fallback;
   }
 
+  const displayAspect = video.displayWidth / video.displayHeight;
   const normalizedRotation = ((Math.round(video.rotation ?? 0) % 360) + 360) % 360;
   const isQuarterTurn = normalizedRotation === 90 || normalizedRotation === 270;
-  const visualWidth = isQuarterTurn ? video.displayHeight : video.displayWidth;
-  const visualHeight = isQuarterTurn ? video.displayWidth : video.displayHeight;
-  return visualWidth / visualHeight;
+
+  if (!isQuarterTurn) {
+    return displayAspect;
+  }
+
+  const codedWidth = Number(video.width);
+  const codedHeight = Number(video.height);
+  const displayMatchesCoded =
+    Number.isFinite(codedWidth) &&
+    Number.isFinite(codedHeight) &&
+    codedWidth > 0 &&
+    codedHeight > 0 &&
+    Math.round(video.displayWidth) === Math.round(codedWidth) &&
+    Math.round(video.displayHeight) === Math.round(codedHeight);
+
+  return displayMatchesCoded ? video.displayHeight / video.displayWidth : displayAspect;
 }
 
 export interface UseTimelineClipThumbnailsOptions {

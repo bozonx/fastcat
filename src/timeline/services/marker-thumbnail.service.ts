@@ -16,7 +16,7 @@ export interface MarkerThumbnailParams {
   timeUs: number;
   clipsPayload?: WorkerVideoPayloadItem[];
   nativeScene?: NativeMonitorScene;
-  workspaceHandle: DirectoryHandleLike;
+  workspaceHandle?: DirectoryHandleLike | null;
   resolvedStorageTopology: ResolvedStorageTopology;
   getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
   getFileByPath: (path: string) => Promise<File | null>;
@@ -58,6 +58,10 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
               import('~/utils/video-editor/createVideoCoreHostApi'),
             ]);
           const { client } = getThumbnailWorkerClient();
+          if (!params.workspaceHandle) {
+            params.onError?.(new Error('Workspace handle is required for web marker thumbnails'));
+            return;
+          }
           setThumbnailHostApi(
             createVideoCoreHostApi({
               getCurrentProjectId: () => params.projectId,

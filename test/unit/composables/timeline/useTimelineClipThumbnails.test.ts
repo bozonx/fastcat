@@ -118,7 +118,25 @@ describe('resolveVisualVideoAspect', () => {
 
   it('swaps dimensions for vertical video stored with quarter-turn rotation metadata', () => {
     expect(
-      resolveVisualVideoAspect({ displayWidth: 1920, displayHeight: 1080, rotation: 90 }),
+      resolveVisualVideoAspect({
+        width: 1920,
+        height: 1080,
+        displayWidth: 1920,
+        displayHeight: 1080,
+        rotation: 90,
+      }),
+    ).toBeCloseTo(9 / 16, 5);
+  });
+
+  it('keeps already-oriented display dimensions for quarter-turn rotation metadata', () => {
+    expect(
+      resolveVisualVideoAspect({
+        width: 1920,
+        height: 1080,
+        displayWidth: 1080,
+        displayHeight: 1920,
+        rotation: 90,
+      }),
     ).toBeCloseTo(9 / 16, 5);
   });
 });

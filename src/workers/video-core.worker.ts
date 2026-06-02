@@ -546,27 +546,15 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
             continue;
           }
 
-          const rawW: number = isVideoFrame
-            ? (sample as VideoFrame).displayWidth
-            : ((imageSource as CanvasImageSource & { displayWidth?: number; width?: number })
-                .displayWidth ??
-              (imageSource as CanvasImageSource & { displayWidth?: number; width?: number })
-                .width ??
-              0);
-          const rawH: number = isVideoFrame
-            ? (sample as VideoFrame).displayHeight
-            : ((imageSource as CanvasImageSource & { displayHeight?: number; height?: number })
-                .displayHeight ??
-              (imageSource as CanvasImageSource & { displayHeight?: number; height?: number })
-                .height ??
-              0);
+          const rotation = normalizeRotation(state.rotation);
+          const rawW = getThumbnailSourceWidth(imageSource, sample, isVideoFrame, rotation);
+          const rawH = getThumbnailSourceHeight(imageSource, sample, isVideoFrame, rotation);
 
           if (!rawW || !rawH) {
             results.push(null);
             continue;
           }
 
-          const rotation = normalizeRotation(state.rotation);
           const isQuarterTurn = rotation === 90 || rotation === 270;
           const visualW = isQuarterTurn ? rawH : rawW;
           const visualH = isQuarterTurn ? rawW : rawH;
@@ -712,6 +700,69 @@ function normalizeRotation(rotation: number): 0 | 90 | 180 | 270 {
   if (normalized >= 135 && normalized < 225) return 180;
   if (normalized >= 225 && normalized < 315) return 270;
   return 0;
+}
+
+function getFinitePositiveNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getThumbnailSourceWidth(
+  imageSource: CanvasImageSource,
+  sample: unknown,
+  isVideoFrame: boolean,
+  rotation: 0 | 90 | 180 | 270,
+): number {
+  const frame = sample as {
+    codedWidth?: unknown;
+    displayWidth?: unknown;
+  };
+  const source = imageSource as CanvasImageSource & {
+    videoWidth?: unknown;
+    naturalWidth?: unknown;
+    width?: unknown;
+    displayWidth?: unknown;
+  };
+  const isQuarterTurn = rotation === 90 || rotation === 270;
+
+  return (
+    (isVideoFrame && getFinitePositiveNumber(frame.codedWidth)) ||
+    getFinitePositiveNumber(source.videoWidth) ||
+    getFinitePositiveNumber(source.naturalWidth) ||
+    getFinitePositiveNumber(source.width) ||
+    (isQuarterTurn ? null : getFinitePositiveNumber(source.displayWidth)) ||
+    getFinitePositiveNumber(frame.displayWidth) ||
+    0
+  );
+}
+
+function getThumbnailSourceHeight(
+  imageSource: CanvasImageSource,
+  sample: unknown,
+  isVideoFrame: boolean,
+  rotation: 0 | 90 | 180 | 270,
+): number {
+  const frame = sample as {
+    codedHeight?: unknown;
+    displayHeight?: unknown;
+  };
+  const source = imageSource as CanvasImageSource & {
+    videoHeight?: unknown;
+    naturalHeight?: unknown;
+    height?: unknown;
+    displayHeight?: unknown;
+  };
+  const isQuarterTurn = rotation === 90 || rotation === 270;
+
+  return (
+    (isVideoFrame && getFinitePositiveNumber(frame.codedHeight)) ||
+    getFinitePositiveNumber(source.videoHeight) ||
+    getFinitePositiveNumber(source.naturalHeight) ||
+    getFinitePositiveNumber(source.height) ||
+    (isQuarterTurn ? null : getFinitePositiveNumber(source.displayHeight)) ||
+    getFinitePositiveNumber(frame.displayHeight) ||
+    0
+  );
 }
 
 function drawRotatedThumbnailFrame(input: {

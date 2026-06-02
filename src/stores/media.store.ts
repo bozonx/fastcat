@@ -308,11 +308,14 @@ export const useMediaStore = defineStore('media', () => {
                 duration: nativeMeta.duration,
               };
               if (nativeMeta.video) {
+                const normalizedRotation =
+                  ((Math.round(nativeMeta.video.rotation ?? 0) % 360) + 360) % 360;
+                const isQuarterTurn = normalizedRotation === 90 || normalizedRotation === 270;
                 meta.video = {
                   width: nativeMeta.video.width,
                   height: nativeMeta.video.height,
-                  displayWidth: nativeMeta.video.width,
-                  displayHeight: nativeMeta.video.height,
+                  displayWidth: isQuarterTurn ? nativeMeta.video.height : nativeMeta.video.width,
+                  displayHeight: isQuarterTurn ? nativeMeta.video.width : nativeMeta.video.height,
                   rotation: nativeMeta.video.rotation ?? 0,
                   codec: nativeMeta.video.codec,
                   parsedCodec: nativeMeta.video.codec,

@@ -17,6 +17,7 @@ import { randomToken } from '~/utils/ids';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
 const log = createDevLogger('thumbnail-generator');
+const CLIP_THUMBNAIL_HASH_VERSION = 2;
 
 export interface ThumbnailTask extends BaseThumbnailTask {
   duration: number; // video duration in seconds
@@ -50,7 +51,9 @@ export function getClipThumbnailsHash(input: {
   projectId: string;
   projectRelativePath: string;
 }): string {
-  return hashString(`${input.projectId}:${input.projectRelativePath}`);
+  return hashString(
+    `v${CLIP_THUMBNAIL_HASH_VERSION}:${input.projectId}:${input.projectRelativePath}`,
+  );
 }
 
 function getTimelineThumbnailVfsPath(projectId: string, hash?: string): string {

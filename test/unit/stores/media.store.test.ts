@@ -677,6 +677,12 @@ describe('MediaStore', () => {
     const result = await store.getOrFetchMetadata(mockFile, 'video/vertical.mp4');
 
     expect(result).toBeDefined();
-    expect(result?.video?.rotation).toBe(90);
+    expect(result?.video).toMatchObject({
+      width: 1920,
+      height: 1080,
+      displayWidth: 1080,
+      displayHeight: 1920,
+      rotation: 90,
+    });
   });
 });
