@@ -40,7 +40,10 @@ impl Scene {
     ///
     /// Это единственное место в кодовой базе, которое строит vello-команды для
     /// доменной сцены — все будущие kind'ы/эффекты/transitions подключаются здесь.
-    pub fn to_vello(&self, viewport_w: u32, viewport_h: u32) -> VelloScene {
+    pub fn to_vello<F>(&self, viewport_w: u32, viewport_h: u32, resolve_gpu_texture: F) -> VelloScene
+    where
+        F: Fn(super::texture_cache::TextureKey) -> Option<ImageData>,
+    {
         let mut out = VelloScene::new();
         if self.width == 0 || self.height == 0 || viewport_w == 0 || viewport_h == 0 {
             return out;
@@ -72,6 +75,11 @@ impl Scene {
                 LayerKind::Raster { source, .. } => match source {
                     RasterSource::Image(img) => {
                         out.draw_image(img, xform);
+                    }
+                    RasterSource::GpuHandle(key) => {
+                        if let Some(img) = resolve_gpu_texture(*key) {
+                            out.draw_image(&img, xform);
+                        }
                     }
                 },
                 LayerKind::Shape(spec) => {
@@ -225,9 +233,7 @@ pub struct TextBackground {
 #[non_exhaustive]
 pub enum RasterSource {
     Image(ImageData),
-    // Future:
-    // /// GPU-resident handle: реальная wgpu::Texture хранится в `super::texture_cache::TextureCache`.
-    // GpuHandle(super::texture_cache::TextureKey),
+    GpuHandle(super::texture_cache::TextureKey),
 }
 
 /// 2D-transform слоя в координатах композитного кадра.
@@ -725,7 +731,7 @@ mod tests {
             layers: Vec::new(),
         };
         // Должно вернуть без паники.
-        let _ = scene.to_vello(1280, 720);
+        let _ = scene.to_vello(1280, 720, |_| None);
     }
 
     #[test]
@@ -742,7 +748,7 @@ mod tests {
                 0.0,
             )],
         };
-        let _ = scene.to_vello(100, 100);
+        let _ = scene.to_vello(100, 100, |_| None);
     }
 
     #[test]
@@ -755,8 +761,8 @@ mod tests {
             layers: vec![raster_layer((10, 10), Transform::identity(), 1.0)],
         };
         // Не должен паниковать при нулевом viewport'е.
-        let _ = scene.to_vello(0, 0);
-        let _ = scene.to_vello(100, 0);
+        let _ = scene.to_vello(0, 0, |_| None);
+        let _ = scene.to_vello(100, 0, |_| None);
     }
 
     #[test]

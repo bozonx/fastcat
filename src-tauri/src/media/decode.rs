@@ -30,6 +30,7 @@ pub struct VideoFrame {
     /// RGBA8, плотная упаковка (`width * height * 4`).
     pub pixels: Vec<u8>,
     pub pts_sec: f64,
+    pub texture: Option<wgpu::Texture>,
 }
 
 pub trait VideoDecoder: Send {
@@ -151,6 +152,7 @@ impl FfmpegNextDecoder {
             height: coded_height,
             pixels,
             pts_sec,
+            texture: None,
         })
     }
 }
@@ -409,6 +411,7 @@ impl VideoDecoder for FfmpegCliDecoder {
             height: self.info.height,
             pixels,
             pts_sec,
+            texture: None,
         }))
     }
 }

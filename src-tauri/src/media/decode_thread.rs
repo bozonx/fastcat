@@ -49,6 +49,8 @@ impl DecodePump {
         max_output_long_edge: Option<u32>,
         hw_settings: crate::FfmpegHardwareSettings,
         on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
+        device: Option<wgpu::Device>,
+        queue: Option<wgpu::Queue>,
     ) -> Result<Self> {
         let decoder = open_decoder(path, max_output_long_edge, hw_settings)?;
         let info = decoder.info().clone();
@@ -64,7 +66,15 @@ impl DecodePump {
         let thread = std::thread::Builder::new()
             .name(format!("fastcat-decode:{}", path_str))
             .spawn(move || {
-                run_decoder_loop(decoder, frame_tx, cmd_rx, gen_in_thread, on_frame_decoded);
+                run_decoder_loop(
+                    decoder,
+                    frame_tx,
+                    cmd_rx,
+                    gen_in_thread,
+                    on_frame_decoded,
+                    device,
+                    queue,
+                );
             })
             .context("spawn decoder thread")?;
 
@@ -139,6 +149,8 @@ fn run_decoder_loop(
     cmd_rx: Receiver<DecoderCmd>,
     gen: Arc<AtomicU64>,
     on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
+    device: Option<wgpu::Device>,
+    queue: Option<wgpu::Queue>,
 ) {
     let mut playing = false;
     let mut decoded_after_seek = false;
@@ -243,13 +255,52 @@ fn run_decoder_loop(
 
         // 3) Тянем следующий кадр.
         match decoder.next_frame() {
-            Ok(Some(frame)) => {
+            Ok(Some(mut frame)) => {
                 // Если consumer уже сделал seek во время нашего read_exact —
                 // отбросим этот кадр, не нагружая канал. Generation atomics свежее.
                 let live_gen = gen.load(Ordering::SeqCst);
                 if live_gen != current_gen {
                     continue;
                 }
+
+                // Загружаем кадр на GPU, если доступны device и queue
+                if let (Some(device), Some(queue)) = (&device, &queue) {
+                    let texture = device.create_texture(&wgpu::TextureDescriptor {
+                        label: Some("decode-gpu-frame"),
+                        size: wgpu::Extent3d {
+                            width: frame.width,
+                            height: frame.height,
+                            depth_or_array_layers: 1,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: wgpu::TextureDimension::D2,
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
+                        view_formats: &[],
+                    });
+                    queue.write_texture(
+                        wgpu::TexelCopyTextureInfo {
+                            texture: &texture,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d::ZERO,
+                            aspect: wgpu::TextureAspect::All,
+                        },
+                        &frame.pixels,
+                        wgpu::TexelCopyBufferLayout {
+                            offset: 0,
+                            bytes_per_row: Some(frame.width * 4),
+                            rows_per_image: Some(frame.height),
+                        },
+                        wgpu::Extent3d {
+                            width: frame.width,
+                            height: frame.height,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                    frame.texture = Some(texture);
+                }
+
                 let msg = DecodedFrameMsg {
                     generation: current_gen,
                     frame,

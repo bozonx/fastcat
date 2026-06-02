@@ -155,8 +155,20 @@ impl Compositor {
         surface: &mut RenderSurface<'static>,
         viewport_w: u32,
         viewport_h: u32,
+        texture_cache: &super::texture_cache::TextureCache,
     ) -> Result<()> {
-        let vello = scene.to_vello(viewport_w, viewport_h);
+        let dev_id = surface.dev_id;
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = &device_handle.device;
+        let queue = &device_handle.queue;
+
+        let vello = scene.to_vello(viewport_w, viewport_h, |key| {
+            if let Some(texture) = texture_cache.get(key) {
+                read_texture_to_image(device, queue, &texture).ok()
+            } else {
+                None
+            }
+        });
         self.render_to_surface(surface, &vello, scene.background)
     }
 
@@ -167,8 +179,19 @@ impl Compositor {
         scene: &super::scene::Scene,
         viewport_w: u32,
         viewport_h: u32,
+        texture_cache: &super::texture_cache::TextureCache,
     ) -> Result<Vec<u8>> {
-        let vello = scene.to_vello(viewport_w, viewport_h);
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = &device_handle.device;
+        let queue = &device_handle.queue;
+
+        let vello = scene.to_vello(viewport_w, viewport_h, |key| {
+            if let Some(texture) = texture_cache.get(key) {
+                read_texture_to_image(device, queue, &texture).ok()
+            } else {
+                None
+            }
+        });
         self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background)
     }
 
@@ -183,6 +206,14 @@ impl Compositor {
             .ok_or_else(|| anyhow!("vello device: no compatible adapter"))?;
         self.ensure_renderer(dev_id)?;
         Ok(dev_id)
+    }
+
+    pub fn device(&self, dev_id: usize) -> Option<wgpu::Device> {
+        self.render_cx.devices.get(dev_id).map(|dh| dh.device.clone())
+    }
+
+    pub fn queue(&self, dev_id: usize) -> Option<wgpu::Queue> {
+        self.render_cx.devices.get(dev_id).map(|dh| dh.queue.clone())
     }
 
     /// Рендерит сцену в Rgba8 texture и читает её обратно в `Vec<u8>` (RGBA, length = w*h*4).
@@ -331,6 +362,81 @@ impl Compositor {
         self.renderers.insert(dev_id, renderer);
         Ok(())
     }
+}
+
+pub fn read_texture_to_image(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+) -> Result<vello::peniko::ImageData> {
+    let width = texture.width();
+    let height = texture.height();
+    let row_bytes = width as usize * 4;
+    let aligned_row_bytes = (row_bytes + 255) & !255;
+    let buffer_size = (aligned_row_bytes * height as usize) as u64;
+
+    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("texture-cache-readback"),
+        size: buffer_size,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("texture-cache-readback-encoder"),
+    });
+
+    encoder.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &buffer,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(aligned_row_bytes as u32),
+                rows_per_image: Some(height),
+            },
+        },
+        wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+    );
+
+    queue.submit([encoder.finish()]);
+
+    let slice = buffer.slice(..);
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    device.poll(wgpu::PollType::wait_indefinitely()).ok();
+    rx.recv()
+        .map_err(|_| anyhow!("buffer map disconnected"))?
+        .map_err(|e| anyhow!("buffer map: {e:?}"))?;
+
+    let mapped = slice.get_mapped_range();
+    let mut pixels = Vec::with_capacity(row_bytes * height as usize);
+    for row in 0..height as usize {
+        let start = row * aligned_row_bytes;
+        pixels.extend_from_slice(&mapped[start..start + row_bytes]);
+    }
+    drop(mapped);
+    buffer.unmap();
+
+    let blob = vello::peniko::Blob::new(std::sync::Arc::new(pixels));
+    Ok(vello::peniko::ImageData {
+        data: blob,
+        format: vello::peniko::ImageFormat::Rgba8,
+        alpha_type: vello::peniko::ImageAlphaType::Alpha,
+        width,
+        height,
+    })
 }
 
 impl Default for Compositor {

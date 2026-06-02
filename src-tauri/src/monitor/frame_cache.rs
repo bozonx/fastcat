@@ -21,6 +21,7 @@ use vello::peniko::ImageData;
 pub struct DecodedVideoFrame {
     pub pts_sec: f64,
     pub image: ImageData,
+    pub texture_key: Option<crate::compositor::texture_cache::TextureKey>,
 }
 
 /// Бюджет памяти кеша на один слой. ~192 МБ: для 1080p (~8 МБ/кадр) это ~23 кадра,
@@ -148,6 +149,7 @@ mod tests {
         DecodedVideoFrame {
             pts_sec: pts,
             image,
+            texture_key: None,
         }
     }
 

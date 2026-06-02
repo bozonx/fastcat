@@ -21,18 +21,32 @@
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct TextureKey(pub(crate) u64);
 
-/// Кеш wgpu-текстур, привязанный к одному `wgpu::Device`. Не используется в runtime
-/// до появления HW-decode/group-offscreen; типы зарезервированы как точка
-/// расширения, чтобы добавление было локальным изменением.
+/// Кеш wgpu-текстур, привязанный к одному `wgpu::Device`.
 pub struct TextureCache {
-    // Заполняется при активации:
-    // next_key: std::sync::atomic::AtomicU64,
-    // textures: std::collections::HashMap<u64, std::sync::Arc<wgpu::Texture>>,
+    next_key: std::sync::atomic::AtomicU64,
+    textures: std::collections::HashMap<u64, std::sync::Arc<wgpu::Texture>>,
 }
 
 impl TextureCache {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            next_key: std::sync::atomic::AtomicU64::new(1),
+            textures: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, texture: wgpu::Texture) -> TextureKey {
+        let key = self.next_key.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.textures.insert(key, std::sync::Arc::new(texture));
+        TextureKey(key)
+    }
+
+    pub fn get(&self, key: TextureKey) -> Option<std::sync::Arc<wgpu::Texture>> {
+        self.textures.get(&key.0).cloned()
+    }
+
+    pub fn remove(&mut self, key: TextureKey) -> Option<std::sync::Arc<wgpu::Texture>> {
+        self.textures.remove(&key.0)
     }
 }
 

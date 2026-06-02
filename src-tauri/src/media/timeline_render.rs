@@ -46,7 +46,8 @@ fn render_pooled(scene: &Scene, width: u32, height: u32) -> Result<Vec<u8>> {
     let mut guard = THUMBNAIL_COMPOSITOR.lock();
     let compositor = guard.get_or_insert_with(Compositor::new);
     let dev_id = compositor.ensure_offscreen_device()?;
-    compositor.render_scene_to_pixels(dev_id, scene, width.max(1), height.max(1))
+    let empty_cache = crate::compositor::texture_cache::TextureCache::new();
+    compositor.render_scene_to_pixels(dev_id, scene, width.max(1), height.max(1), &empty_cache)
 }
 
 pub fn render_timeline_frame_to_file(

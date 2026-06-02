@@ -108,13 +108,13 @@ impl VideoLayerRt {
     }
 
     /// Сливает все доступные кадры из декодера в кеш (неблокирующе).
-    fn pull_into_cache(&mut self) {
+    fn pull_into_cache(&mut self, cache: &mut crate::compositor::texture_cache::TextureCache) {
         let live_gen = self.pump.current_generation();
         while let Some(msg) = self.pump.try_recv_frame() {
             if msg.generation != live_gen {
                 continue;
             }
-            self.cache.insert(video_frame_to_image(msg.frame));
+            self.cache.insert(video_frame_to_image(msg.frame, cache));
         }
     }
 
@@ -158,6 +158,7 @@ pub struct LayerRuntimeManager {
     loading_set: HashSet<String>,
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
+    pub texture_cache: crate::compositor::texture_cache::TextureCache,
 }
 
 impl LayerRuntimeManager {
@@ -177,6 +178,7 @@ impl LayerRuntimeManager {
             loading_set: HashSet::new(),
             bg_tx,
             proxy,
+            texture_cache: crate::compositor::texture_cache::TextureCache::new(),
         }
     }
 
@@ -265,7 +267,7 @@ impl LayerRuntimeManager {
     // Фоновая загрузка
     // -----------------------------------------------------------------------
 
-    fn ensure_runtime_for(&mut self, layer: &SceneLayer) {
+    fn ensure_runtime_for(&mut self, layer: &SceneLayer, device: Option<wgpu::Device>, queue: Option<wgpu::Queue>) {
         if matches!(
             layer.kind,
             LayerKind::Text | LayerKind::Shape | LayerKind::Background
@@ -303,7 +305,7 @@ impl LayerRuntimeManager {
                         let on_frame = Box::new(move || {
                             let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
                         });
-                        let result = match DecodePump::open(&path, max_long_edge, hw_settings, Some(on_frame)) {
+                        let result = match DecodePump::open(&path, max_long_edge, hw_settings, Some(on_frame), device, queue) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);
                                 let source_rotation = pump.info.rotation;
@@ -467,11 +469,11 @@ impl LayerRuntimeManager {
     // -----------------------------------------------------------------------
 
     /// Запускает фоновую загрузку для активных слоёв и прокачивает видеокадры.
-    pub fn tick(&mut self, t: f64) {
+    pub fn tick(&mut self, t: f64, device: Option<wgpu::Device>, queue: Option<wgpu::Queue>) {
         let scene = self.scene.clone();
         for layer in scene.iter() {
             if layer.covers(t) {
-                self.ensure_runtime_for(layer);
+                self.ensure_runtime_for(layer, device.clone(), queue.clone());
             }
         }
         for layer in scene.iter() {
@@ -479,7 +481,7 @@ impl LayerRuntimeManager {
                 continue;
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                rt.pull_into_cache();
+                rt.pull_into_cache(&mut self.texture_cache);
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(rt.pump.info.fps);
                 rt.update_display(clip_local, Some(max_lag_sec));
@@ -497,7 +499,7 @@ impl LayerRuntimeManager {
             }
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                rt.pull_into_cache();
+                rt.pull_into_cache(&mut self.texture_cache);
                 // Пауза + попадание в кеш → показываем кадр без перезапуска ffmpeg.
                 if !playing && rt.cache.has_near(clip_local, 1) {
                     rt.update_display(clip_local, None);
@@ -564,7 +566,11 @@ impl LayerRuntimeManager {
                     match rt {
                         LayerRuntime::Video(v) => match v.current.as_ref() {
                             Some(f) => CompLayerKind::Raster {
-                                source: RasterSource::Image(f.image.clone()),
+                                source: if let Some(key) = f.texture_key {
+                                    RasterSource::GpuHandle(key)
+                                } else {
+                                    RasterSource::Image(f.image.clone())
+                                },
                                 natural_size: v.media_size,
                             },
                             None => continue,
@@ -667,13 +673,18 @@ fn svg_target_long_edge(scene_size: (u32, u32), preview_scale: Option<f32>) -> u
 // Вспомогательные функции
 // ---------------------------------------------------------------------------
 
-fn video_frame_to_image(frame: VideoFrame) -> DecodedVideoFrame {
+fn video_frame_to_image(
+    frame: VideoFrame,
+    cache: &mut crate::compositor::texture_cache::TextureCache,
+) -> DecodedVideoFrame {
     let VideoFrame {
         width,
         height,
         pixels,
         pts_sec,
+        texture,
     } = frame;
+    let texture_key = texture.map(|t| cache.insert(t));
     let blob = Blob::new(Arc::new(pixels));
     DecodedVideoFrame {
         pts_sec,
@@ -684,6 +695,7 @@ fn video_frame_to_image(frame: VideoFrame) -> DecodedVideoFrame {
             width,
             height,
         },
+        texture_key,
     }
 }
 

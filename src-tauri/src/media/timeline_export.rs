@@ -139,6 +139,7 @@ pub fn export_timeline(
         enable_hardware_encoding: options.enable_hardware_encoding.unwrap_or(false),
     };
 
+    let empty_cache = crate::compositor::texture_cache::TextureCache::new();
     let render_result = (|| -> Result<()> {
         for i in 0..frame_count {
             let time = start + i as f64 / fps;
@@ -149,7 +150,7 @@ pub fn export_timeline(
                 &mut cache,
                 hw_settings.clone(),
             )?;
-            let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height)?;
+            let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height, &empty_cache)?;
             if stdin.write_all(&pixels).is_err() {
                 // ffmpeg закрыл stdin (ошибка энкода или отмена-kill) — выходим, статус заберём ниже.
                 break;

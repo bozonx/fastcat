@@ -456,7 +456,10 @@ impl WindowState {
             }
         }
 
-        self.layers.tick(t);
+        let dev_id = self.offscreen_dev_id.unwrap_or(self.surface.dev_id);
+        let device = self.compositor.device(dev_id);
+        let queue = self.compositor.queue(dev_id);
+        self.layers.tick(t, device, queue);
         self.render(t);
         self.emit_time(t);
     }
@@ -485,6 +488,7 @@ impl WindowState {
                     &mut self.surface,
                     width,
                     height,
+                    &self.layers.texture_cache,
                 ) {
                     log::error!("[monitor] compositor render: {e:?}");
                     emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
@@ -509,7 +513,7 @@ impl WindowState {
                 // в `about_to_wait`.
                 match self
                     .compositor
-                    .render_scene_to_pixels(dev_id, &scene, width, height)
+                    .render_scene_to_pixels(dev_id, &scene, width, height, &self.layers.texture_cache)
                 {
                     Ok(pixels) => {
                         let mut payload = Vec::with_capacity(8 + pixels.len());
