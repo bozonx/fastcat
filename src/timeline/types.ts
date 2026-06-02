@@ -205,6 +205,8 @@ interface TimelineClipBase {
 
   audioGain?: number;
   audioBalance?: number;
+  originalAudioGain?: number;
+  originalAudioBalance?: number;
   audioFadeInUs?: number;
   audioFadeOutUs?: number;
   audioFadeInCurve?: AudioFadeCurve;

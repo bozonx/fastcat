@@ -92,7 +92,10 @@ export function createProjectFsModule(params: {
         const { TauriDirectoryHandle } = await import('~/stores/workspace/provider/tauri-handle');
         try {
           const absoluteCommon = await resolve(commonRoot);
-          return new TauriDirectoryHandle(absoluteCommon, 'common') as unknown as FileSystemDirectoryHandle;
+          return new TauriDirectoryHandle(
+            absoluteCommon,
+            'common',
+          ) as unknown as FileSystemDirectoryHandle;
         } catch {
           return null;
         }

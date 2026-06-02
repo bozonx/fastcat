@@ -162,6 +162,15 @@ export function normalizeOptimizationSettings(raw: unknown): FastCatUserSettings
         .min(0)
         .max(4096)
         .catch(DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb),
+      ffmpegPath: z.string().catch(DEFAULT_USER_SETTINGS.optimization.ffmpegPath),
+      ffprobePath: z.string().catch(DEFAULT_USER_SETTINGS.optimization.ffprobePath),
+      hardwareAccelerationMode: z
+        .enum(['none', 'vaapi', 'nvdec', 'auto'])
+        .catch(DEFAULT_USER_SETTINGS.optimization.hardwareAccelerationMode),
+      vaapiDevice: z.string().catch(DEFAULT_USER_SETTINGS.optimization.vaapiDevice),
+      enableHardwareEncoding: z
+        .boolean()
+        .catch(DEFAULT_USER_SETTINGS.optimization.enableHardwareEncoding),
     })
     .catch(DEFAULT_USER_SETTINGS.optimization);
 

@@ -155,7 +155,7 @@ const formatDate = (dateStr?: string) => {
           class="py-3 rounded-2xl font-bold uppercase tracking-wide transition-all hover:scale-[1.02] active:scale-[0.98]"
           @click="openProjectFromDisk"
         >
-          {{ t('projects.openProjectDisk') }}
+          {{ t('fastcat.projects.openProjectDisk') }}
         </UButton>
       </div>
 
@@ -359,7 +359,7 @@ const formatDate = (dateStr?: string) => {
 
       <UiFormField
         v-if="workspaceStore.workspaceProviderId === 'tauri'"
-        :label="t('projects.projectLocation')"
+        :label="t('fastcat.projects.projectLocation')"
       >
         <div class="flex gap-2 w-full">
           <UiTextInput v-model="projectCreationSettings.location" readonly class="flex-1" />

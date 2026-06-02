@@ -241,7 +241,7 @@ describe('Thumbnail Generators', () => {
       expect(complete).toHaveBeenCalled();
       expect(mockVfs.writeFile).toHaveBeenCalledWith(
         expect.stringContaining('svg-hash.svg'),
-        svgFile
+        svgFile,
       );
     });
 
@@ -258,7 +258,7 @@ describe('Thumbnail Generators', () => {
       expect(generator.cache.has('real-taskId-hash')).toBe(false);
       expect(generator.pathHashes.has('p1:test.mp4')).toBe(false);
       expect(mockVfs.deleteEntry).toHaveBeenCalledWith(
-        expect.stringContaining('real-taskId-hash.webp')
+        expect.stringContaining('real-taskId-hash.webp'),
       );
     });
   });

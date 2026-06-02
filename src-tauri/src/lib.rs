@@ -54,6 +54,38 @@ pub mod ipc;
 pub mod media;
 pub mod monitor;
 
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FfmpegHardwareSettings {
+    pub ffmpeg_path: String,
+    pub ffprobe_path: String,
+    pub hardware_acceleration_mode: String,
+    pub vaapi_device: String,
+    pub enable_hardware_encoding: bool,
+}
+
+impl Default for FfmpegHardwareSettings {
+    fn default() -> Self {
+        Self {
+            ffmpeg_path: "ffmpeg".to_string(),
+            ffprobe_path: "ffprobe".to_string(),
+            hardware_acceleration_mode: "none".to_string(),
+            vaapi_device: "/dev/dri/renderD128".to_string(),
+            enable_hardware_encoding: false,
+        }
+    }
+}
+
+#[tauri::command]
+fn native_update_ffmpeg_settings(
+    settings: FfmpegHardwareSettings,
+    state: tauri::State<'_, std::sync::Mutex<FfmpegHardwareSettings>>,
+) {
+    if let Ok(mut guard) = state.lock() {
+        *guard = settings;
+    }
+}
+
 /// Extends the fs scope to allow reading a file dropped from the OS.
 /// Required for drag-and-drop imports from arbitrary filesystem locations.
 #[tauri::command]
@@ -170,8 +202,10 @@ pub fn run() {
             ipc::monitor_cmd::monitor_subscribe_frames,
             ipc::monitor_cmd::monitor_set_canvas_size,
             ipc::monitor_cmd::monitor_close,
+            native_update_ffmpeg_settings,
         ])
         .manage(media::processing::NativeMediaTasks::default())
+        .manage(std::sync::Mutex::new(FfmpegHardwareSettings::default()))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

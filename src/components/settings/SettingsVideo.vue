@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { watch, onMounted, ref, computed } from 'vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { resolveExportPreset, resolveProjectPreset } from '~/utils/settings';
@@ -9,6 +9,7 @@ import {
   type VideoDiagnosticsStatus,
 } from '~/utils/settings/videoDiagnostics';
 import { broadcastPixiRendererPreference } from '~/utils/video-editor/worker-client';
+import { isTauriRuntime } from '~/utils/runtime';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
@@ -68,8 +69,28 @@ async function loadDiagnostics() {
   }
 }
 
+async function syncFfmpegSettings() {
+  if (!isTauriRuntime()) return;
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('native_update_ffmpeg_settings', {
+      settings: {
+        ffmpegPath: workspaceStore.userSettings.optimization.ffmpegPath,
+        ffprobePath: workspaceStore.userSettings.optimization.ffprobePath,
+        hardwareAccelerationMode: workspaceStore.userSettings.optimization.hardwareAccelerationMode,
+        vaapiDevice: workspaceStore.userSettings.optimization.vaapiDevice,
+        enableHardwareEncoding: workspaceStore.userSettings.optimization.enableHardwareEncoding,
+      },
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to sync ffmpeg settings to backend:', err);
+  }
+}
+
 onMounted(async () => {
   await loadDiagnostics();
+  await syncFfmpegSettings();
 });
 
 function resetDefaults() {
@@ -77,6 +98,16 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.optimization.videoFrameCacheMb;
   workspaceStore.userSettings.optimization.pixiRenderer =
     DEFAULT_USER_SETTINGS.optimization.pixiRenderer;
+  workspaceStore.userSettings.optimization.ffmpegPath =
+    DEFAULT_USER_SETTINGS.optimization.ffmpegPath;
+  workspaceStore.userSettings.optimization.ffprobePath =
+    DEFAULT_USER_SETTINGS.optimization.ffprobePath;
+  workspaceStore.userSettings.optimization.hardwareAccelerationMode =
+    DEFAULT_USER_SETTINGS.optimization.hardwareAccelerationMode;
+  workspaceStore.userSettings.optimization.vaapiDevice =
+    DEFAULT_USER_SETTINGS.optimization.vaapiDevice;
+  workspaceStore.userSettings.optimization.enableHardwareEncoding =
+    DEFAULT_USER_SETTINGS.optimization.enableHardwareEncoding;
   isResetConfirmOpen.value = false;
 }
 
@@ -85,6 +116,20 @@ watch(
   async (preference) => {
     await broadcastPixiRendererPreference(preference);
   },
+);
+
+watch(
+  () => [
+    workspaceStore.userSettings.optimization.ffmpegPath,
+    workspaceStore.userSettings.optimization.ffprobePath,
+    workspaceStore.userSettings.optimization.hardwareAccelerationMode,
+    workspaceStore.userSettings.optimization.vaapiDevice,
+    workspaceStore.userSettings.optimization.enableHardwareEncoding,
+  ],
+  async () => {
+    await syncFfmpegSettings();
+  },
+  { deep: true },
 );
 </script>
 
@@ -157,6 +202,70 @@ watch(
             :min="0"
             :max="4096"
             :step="16"
+            class="max-w-xs"
+          />
+        </UiFormField>
+
+        <div class="border-t border-ui-border-muted/50 pt-4 mt-2">
+          <div class="text-sm font-medium text-ui-text mb-3">
+            {{ t('videoEditor.settings.video.ffmpegSettings') }}
+          </div>
+        </div>
+
+        <UiFormField
+          :label="t('videoEditor.settings.video.hwaccelMode')"
+          :help="t('videoEditor.settings.video.hwaccelModeHelp')"
+        >
+          <UiSelect
+            v-model="workspaceStore.userSettings.optimization.hardwareAccelerationMode"
+            :items="[
+              { label: 'None', value: 'none' },
+              { label: 'VAAPI (Intel/AMD)', value: 'vaapi' },
+              { label: 'NVDEC (Nvidia)', value: 'nvdec' },
+              { label: 'Auto', value: 'auto' },
+            ]"
+            class="max-w-xs"
+            full-width
+          />
+        </UiFormField>
+
+        <UiFormField
+          v-if="
+            workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'vaapi' ||
+            workspaceStore.userSettings.optimization.hardwareAccelerationMode === 'auto'
+          "
+          :label="t('videoEditor.settings.video.vaapiDevice')"
+          :help="t('videoEditor.settings.video.vaapiDeviceHelp')"
+        >
+          <UiTextInput
+            v-model="workspaceStore.userSettings.optimization.vaapiDevice"
+            class="max-w-xs"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.video.enableHardwareEncoding')"
+          :help="t('videoEditor.settings.video.enableHardwareEncodingHelp')"
+        >
+          <UCheckbox v-model="workspaceStore.userSettings.optimization.enableHardwareEncoding" />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.video.ffmpegPath')"
+          :help="t('videoEditor.settings.video.ffmpegPathHelp')"
+        >
+          <UiTextInput
+            v-model="workspaceStore.userSettings.optimization.ffmpegPath"
+            class="max-w-xs"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.video.ffprobePath')"
+          :help="t('videoEditor.settings.video.ffprobePathHelp')"
+        >
+          <UiTextInput
+            v-model="workspaceStore.userSettings.optimization.ffprobePath"
             class="max-w-xs"
           />
         </UiFormField>

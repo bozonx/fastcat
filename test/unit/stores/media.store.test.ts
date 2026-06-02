@@ -561,7 +561,7 @@ describe('MediaStore', () => {
 
     const mockFile = { size: 12345, lastModified: 98765, name: 'logo.svg' } as File;
     const mockHandle = { path: 'image/logo.svg' };
-    
+
     vi.mocked(useProjectStore).mockReturnValue({
       currentProjectId: 'test-project',
       getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
@@ -598,7 +598,7 @@ describe('MediaStore', () => {
 
     const mockFile = { size: 12345, lastModified: 98765, name: 'movie.mp4' } as File;
     const mockHandle = { path: 'video/movie.mp4' };
-    
+
     vi.mocked(useProjectStore).mockReturnValue({
       currentProjectId: 'test-project',
       getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
@@ -654,7 +654,7 @@ describe('MediaStore', () => {
 
     const mockFile = { size: 12345, lastModified: 98765, name: 'vertical.mp4' } as File;
     const mockHandle = { path: 'video/vertical.mp4' };
-    
+
     vi.mocked(useProjectStore).mockReturnValue({
       currentProjectId: 'test-project',
       getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),

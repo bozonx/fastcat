@@ -60,15 +60,11 @@ export class CanvasFallbackRenderer {
       };
       const frameW = Math.max(
         1,
-        Math.round(
-          Number(src.codedWidth ?? src.displayWidth ?? src.width ?? 1),
-        ),
+        Math.round(Number(src.codedWidth ?? src.displayWidth ?? src.width ?? 1)),
       );
       const frameH = Math.max(
         1,
-        Math.round(
-          Number(src.codedHeight ?? src.displayHeight ?? src.height ?? 1),
-        ),
+        Math.round(Number(src.codedHeight ?? src.displayHeight ?? src.height ?? 1)),
       );
 
       if (canvas.width !== frameW || canvas.height !== frameH) {

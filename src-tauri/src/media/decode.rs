@@ -220,6 +220,7 @@ pub struct FfmpegCliDecoder {
     /// Индекс кадра в рамках текущего subprocess.
     frame_index: u64,
     cached_frame: Option<VideoFrame>,
+    hw_settings: crate::FfmpegHardwareSettings,
 }
 
 impl FfmpegCliDecoder {
@@ -227,8 +228,8 @@ impl FfmpegCliDecoder {
     /// Если `Some(n)` и source-длинная сторона > n, ffmpeg downscale'нет (`-vf scale=...`),
     /// что радикально снижает CPU/GPU-нагрузку для 4K/HEVC превью. Аспект сохраняется.
     /// При `None` или если source меньше — декод в source-разрешении.
-    pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Self> {
-        let mut info = probe(path)?;
+    pub fn open(path: &Path, max_output_long_edge: Option<u32>, hw_settings: crate::FfmpegHardwareSettings) -> Result<Self> {
+        let mut info = probe(path, &hw_settings.ffprobe_path)?;
 
         // FFmpeg autorotate applies display-matrix rotation before our filter graph. For phone
         // videos stored as landscape-coded frames with a 90/270 degree display rotation, scaling
@@ -252,6 +253,7 @@ impl FfmpegCliDecoder {
             start_time: 0.0,
             frame_index: 0,
             cached_frame: None,
+            hw_settings,
         };
         dec.spawn(0.0)?;
         Ok(dec)
@@ -261,8 +263,32 @@ impl FfmpegCliDecoder {
         self.kill();
         self.cached_frame = None;
         let time_sec = time_sec.max(0.0);
-        let mut cmd = Command::new("ffmpeg");
+        let mut cmd = Command::new(&self.hw_settings.ffmpeg_path);
         cmd.arg("-nostdin").arg("-loglevel").arg("error");
+
+        let hw_accel = &self.hw_settings.hardware_acceleration_mode;
+        if hw_accel != "none" {
+            let mode = if hw_accel == "auto" {
+                if std::path::Path::new(&self.hw_settings.vaapi_device).exists() {
+                    "vaapi"
+                } else {
+                    "none"
+                }
+            } else {
+                hw_accel.as_str()
+            };
+
+            match mode {
+                "vaapi" => {
+                    cmd.arg("-hwaccel").arg("vaapi")
+                       .arg("-hwaccel_device").arg(&self.hw_settings.vaapi_device);
+                }
+                "nvdec" => {
+                    cmd.arg("-hwaccel").arg("nvdec");
+                }
+                _ => {}
+            }
+        }
 
         // Двухэтапный seek для frame-accurate позиционирования:
         //   1) `-ss <pre>` ДО `-i` — быстрый прыжок к ближайшему keyframe (pre = t − 0.5s);
@@ -397,7 +423,11 @@ fn fmt_fps(fps: f64) -> String {
     format!("{:.6}", f)
 }
 
-pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Box<dyn VideoDecoder>> {
+pub fn open(
+    path: &Path,
+    max_output_long_edge: Option<u32>,
+    hw_settings: crate::FfmpegHardwareSettings,
+) -> Result<Box<dyn VideoDecoder>> {
     match FfmpegNextDecoder::open(path, max_output_long_edge) {
         Ok(decoder) => Ok(Box::new(decoder)),
         Err(error) => {
@@ -408,6 +438,7 @@ pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Box<dyn Vi
             Ok(Box::new(FfmpegCliDecoder::open(
                 path,
                 max_output_long_edge,
+                hw_settings,
             )?))
         }
     }
@@ -506,8 +537,8 @@ fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u
     (w, h)
 }
 
-fn probe(path: &Path) -> Result<MediaInfo> {
-    let output = Command::new("ffprobe")
+fn probe(path: &Path, ffprobe_path: &str) -> Result<MediaInfo> {
+    let output = Command::new(ffprobe_path)
         .arg("-v")
         .arg("error")
         .arg("-print_format")

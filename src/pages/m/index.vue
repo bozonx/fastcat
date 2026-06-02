@@ -160,7 +160,7 @@ const formatDate = (dateStr?: string) => {
                 <UIcon name="i-heroicons-folder" class="w-3 h-3" />
                 <span class="truncate max-w-[120px]">{{
                   workspaceStore.workspaceProviderId === 'tauri'
-                    ? t('projects.localWorkspaceName')
+                    ? t('fastcat.projects.localWorkspaceName')
                     : workspaceStore.workspaceHandle?.name
                 }}</span>
               </div>
@@ -259,7 +259,7 @@ const formatDate = (dateStr?: string) => {
                   class="py-4 rounded-2xl font-bold uppercase tracking-wide bg-ui-bg-elevated/40 text-white! border border-white/5 transition-all active:scale-[0.98]"
                   @click="openProjectFromDisk"
                 >
-                  {{ t('projects.openProjectDisk') }}
+                  {{ t('fastcat.projects.openProjectDisk') }}
                 </UButton>
               </div>
 
@@ -487,7 +487,7 @@ const formatDate = (dateStr?: string) => {
 
           <UiFormField
             v-if="workspaceStore.workspaceProviderId === 'tauri'"
-            :label="t('projects.projectLocation')"
+            :label="t('fastcat.projects.projectLocation')"
           >
             <div class="flex gap-2 w-full">
               <UiTextInput

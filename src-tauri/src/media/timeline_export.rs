@@ -44,6 +44,16 @@ pub struct NativeExportOptions {
     pub audio_path: Option<String>,
     pub audio_codec: Option<String>,
     pub audio_bitrate_bps: Option<u32>,
+
+    // Hardware Acceleration Settings
+    #[serde(default)]
+    pub ffmpeg_path: Option<String>,
+    #[serde(default)]
+    pub hardware_acceleration_mode: Option<String>,
+    #[serde(default)]
+    pub vaapi_device: Option<String>,
+    #[serde(default)]
+    pub enable_hardware_encoding: Option<bool>,
 }
 
 /// Полный прогон экспорта. `on_progress(0..1)` зовётся после каждого записанного кадра.
@@ -97,7 +107,8 @@ pub fn export_timeline(
         fps,
         target_path,
     );
-    let mut child = Command::new("ffmpeg")
+    let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
+    let mut child = Command::new(ffmpeg_cmd)
         .args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -120,6 +131,13 @@ pub fn export_timeline(
         .context("export: no GPU device")?;
 
     let mut cache = super::timeline_render::VideoDecoderCache::new();
+    let hw_settings = crate::FfmpegHardwareSettings {
+        ffmpeg_path: options.ffmpeg_path.clone().unwrap_or_else(|| "ffmpeg".to_string()),
+        ffprobe_path: "ffprobe".to_string(),
+        hardware_acceleration_mode: options.hardware_acceleration_mode.clone().unwrap_or_else(|| "none".to_string()),
+        vaapi_device: options.vaapi_device.clone().unwrap_or_else(|| "/dev/dri/renderD128".to_string()),
+        enable_hardware_encoding: options.enable_hardware_encoding.unwrap_or(false),
+    };
 
     let render_result = (|| -> Result<()> {
         for i in 0..frame_count {
@@ -129,6 +147,7 @@ pub fn export_timeline(
                 time,
                 (width, height),
                 &mut cache,
+                hw_settings.clone(),
             )?;
             let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height)?;
             if stdin.write_all(&pixels).is_err() {
@@ -192,7 +211,35 @@ fn build_ffmpeg_args(
     fps: f64,
     target_path: &Path,
 ) -> Vec<String> {
-    let mut args = vec![
+    let hw_mode = if options.enable_hardware_encoding.unwrap_or(false) {
+        let mode = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
+        if mode == "auto" {
+            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+            if std::path::Path::new(vaapi_dev).exists() {
+                "vaapi"
+            } else {
+                "none"
+            }
+        } else {
+            mode
+        }
+    } else {
+        "none"
+    };
+
+    let mut args = Vec::new();
+
+    if hw_mode == "vaapi" {
+        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+        args.extend([
+            "-init_hw_device".to_string(),
+            format!("vaapi=gpu:{vaapi_dev}"),
+            "-filter_hw_device".to_string(),
+            "gpu".to_string(),
+        ]);
+    }
+
+    args.extend([
         "-y".to_string(),
         "-loglevel".to_string(),
         "error".to_string(),
@@ -207,22 +254,41 @@ fn build_ffmpeg_args(
         format!("{fps:.6}"),
         "-i".to_string(),
         "-".to_string(),
-    ];
+    ]);
 
     let has_audio = audio_input.is_some();
     if let Some(audio) = audio_input {
         args.extend(["-i".to_string(), audio.display().to_string()]);
     }
 
+    let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_mode);
     args.extend([
         "-c:v".to_string(),
-        ffmpeg_video_codec(&options.video_codec).to_string(),
+        video_codec.to_string(),
         "-b:v".to_string(),
         options.video_bitrate_bps.max(1).to_string(),
-        // yuv420p — максимальная совместимость плееров.
-        "-pix_fmt".to_string(),
-        "yuv420p".to_string(),
     ]);
+
+    if hw_mode == "vaapi" {
+        args.extend([
+            "-vf".to_string(),
+            "format=nv12|vaapi,hwupload".to_string(),
+            "-pix_fmt".to_string(),
+            "vaapi".to_string(),
+        ]);
+    } else if hw_mode == "nvdec" {
+        args.extend([
+            "-vf".to_string(),
+            "format=yuv420p".to_string(),
+            "-pix_fmt".to_string(),
+            "yuv420p".to_string(),
+        ]);
+    } else {
+        args.extend([
+            "-pix_fmt".to_string(),
+            "yuv420p".to_string(),
+        ]);
+    }
 
     if has_audio {
         let codec = match options.audio_codec.as_deref() {
@@ -256,6 +322,30 @@ fn ffmpeg_video_codec(codec: &str) -> &'static str {
         "libvpx-vp9"
     } else {
         "libx264"
+    }
+}
+
+fn ffmpeg_video_codec_hw(codec: &str, hw_mode: &str) -> &'static str {
+    if hw_mode == "vaapi" {
+        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
+            "av1_vaapi"
+        } else if codec.contains("vp09") || codec.eq_ignore_ascii_case("vp9") {
+            "vp9_vaapi"
+        } else if codec.contains("hevc") || codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265") {
+            "hevc_vaapi"
+        } else {
+            "h264_vaapi"
+        }
+    } else if hw_mode == "nvdec" { // NVENC
+        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
+            "av1_nvenc"
+        } else if codec.contains("hevc") || codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265") {
+            "hevc_nvenc"
+        } else {
+            "h264_nvenc"
+        }
+    } else {
+        ffmpeg_video_codec(codec)
     }
 }
 

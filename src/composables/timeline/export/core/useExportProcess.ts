@@ -34,8 +34,6 @@ const log = createDevLogger('useExportProcess');
 let timelineExportInFlight = false;
 const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
 
-
-
 export function useExportProcess(
   activeExportTaskId: ReturnType<
     (typeof import('./useExportState'))['useExportState']

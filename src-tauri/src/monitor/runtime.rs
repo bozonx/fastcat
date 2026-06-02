@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 use winit::event_loop::EventLoopProxy;
 
@@ -293,6 +293,7 @@ impl LayerRuntimeManager {
                     }
                     _ => None,
                 };
+                let hw_settings = self.app.state::<std::sync::Mutex<crate::FfmpegHardwareSettings>>().lock().unwrap().clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
@@ -302,7 +303,7 @@ impl LayerRuntimeManager {
                         let on_frame = Box::new(move || {
                             let _ = proxy_cb.send_event(MonitorCommand::VideoFrameReady);
                         });
-                        let result = match DecodePump::open(&path, max_long_edge, Some(on_frame)) {
+                        let result = match DecodePump::open(&path, max_long_edge, hw_settings, Some(on_frame)) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);
                                 let source_rotation = pump.info.rotation;

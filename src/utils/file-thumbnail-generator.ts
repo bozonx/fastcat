@@ -282,7 +282,6 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
           return;
         }
       } else {
-
         setThumbnailHostApi(
           createVideoCoreHostApi({
             getCurrentProjectId: () => projectStore.currentProjectId,

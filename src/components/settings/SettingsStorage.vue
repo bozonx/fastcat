@@ -173,7 +173,11 @@ function resetPathDefaults() {
             />
           </div>
           <div class="text-xs text-ui-text-muted mt-0.5">
-            {{ t('videoEditor.settings.resolvedPathLabel') }} <code class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom">{{ workspaceStore.resolvedStorageTopology.commonRoot }}</code>
+            {{ t('videoEditor.settings.resolvedPathLabel') }}
+            <code
+              class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom"
+              >{{ workspaceStore.resolvedStorageTopology.commonRoot }}</code
+            >
           </div>
         </div>
       </UiFormField>
@@ -194,7 +198,11 @@ function resetPathDefaults() {
             />
           </div>
           <div class="text-xs text-ui-text-muted mt-0.5">
-            {{ t('videoEditor.settings.resolvedPathLabel') }} <code class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom">{{ workspaceStore.resolvedStorageTopology.projectsRoot }}</code>
+            {{ t('videoEditor.settings.resolvedPathLabel') }}
+            <code
+              class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom"
+              >{{ workspaceStore.resolvedStorageTopology.projectsRoot }}</code
+            >
           </div>
         </div>
       </UiFormField>
@@ -215,7 +223,11 @@ function resetPathDefaults() {
             />
           </div>
           <div class="text-xs text-ui-text-muted mt-0.5">
-            {{ t('videoEditor.settings.resolvedPathLabel') }} <code class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom">{{ workspaceStore.resolvedStorageTopology.proxiesRoot }}</code>
+            {{ t('videoEditor.settings.resolvedPathLabel') }}
+            <code
+              class="bg-ui-bg-elevated/40 px-1 py-0.5 rounded truncate inline-block max-w-full align-bottom"
+              >{{ workspaceStore.resolvedStorageTopology.proxiesRoot }}</code
+            >
           </div>
         </div>
       </UiFormField>
@@ -227,16 +239,28 @@ function resetPathDefaults() {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div class="flex flex-col gap-1">
-            <span class="text-ui-text-muted font-medium">{{ t('videoEditor.settings.cacheFolder') }}</span>
-            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{ workspaceStore.resolvedStorageTopology.tempRoot }}</code>
+            <span class="text-ui-text-muted font-medium">{{
+              t('videoEditor.settings.cacheFolder')
+            }}</span>
+            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{
+              workspaceStore.resolvedStorageTopology.tempRoot
+            }}</code>
           </div>
           <div class="flex flex-col gap-1">
-            <span class="text-ui-text-muted font-medium">{{ t('videoEditor.settings.tempFolder') }}</span>
-            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{ workspaceStore.resolvedStorageTopology.ephemeralTmpRoot }}</code>
+            <span class="text-ui-text-muted font-medium">{{
+              t('videoEditor.settings.tempFolder')
+            }}</span>
+            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{
+              workspaceStore.resolvedStorageTopology.ephemeralTmpRoot
+            }}</code>
           </div>
           <div v-if="workspaceStore.tauriAppPaths" class="flex flex-col gap-1 md:col-span-2">
-            <span class="text-ui-text-muted font-medium">{{ t('videoEditor.settings.appSettingsFolder') }}</span>
-            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{ workspaceStore.tauriAppPaths.configDir }}</code>
+            <span class="text-ui-text-muted font-medium">{{
+              t('videoEditor.settings.appSettingsFolder')
+            }}</span>
+            <code class="bg-ui-bg-elevated/40 px-1.5 py-1 rounded truncate block">{{
+              workspaceStore.tauriAppPaths.configDir
+            }}</code>
           </div>
         </div>
       </div>

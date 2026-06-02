@@ -48,7 +48,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
       const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
       const { join } = await import('@tauri-apps/api/path');
       const { mkdir, exists } = await import('@tauri-apps/plugin-fs');
-      
+
       const runtimeConfig = useRuntimeConfig();
       const fastcatDevDir = runtimeConfig.public.fastcatDevDir as string | undefined;
       const appPaths = await resolveTauriAppPaths(fastcatDevDir);
@@ -56,7 +56,7 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
         const fastcatDocsDir = await join(appPaths.documentsDir, 'FastCat');
         const commonDir = await join(fastcatDocsDir, 'common');
         const projectsDir = await join(fastcatDocsDir, 'projects');
-        
+
         if (!(await exists(commonDir))) {
           await mkdir(commonDir, { recursive: true });
         }

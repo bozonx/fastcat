@@ -20,21 +20,13 @@ export class VideoRenderer {
       const frameW = Math.max(
         1,
         Math.round(
-          Number(
-            (frame as { codedWidth?: unknown }).codedWidth ??
-              frame.displayWidth ??
-              1,
-          ),
+          Number((frame as { codedWidth?: unknown }).codedWidth ?? frame.displayWidth ?? 1),
         ),
       );
       const frameH = Math.max(
         1,
         Math.round(
-          Number(
-            (frame as { codedHeight?: unknown }).codedHeight ??
-              frame.displayHeight ??
-              1,
-          ),
+          Number((frame as { codedHeight?: unknown }).codedHeight ?? frame.displayHeight ?? 1),
         ),
       );
 
@@ -72,15 +64,11 @@ export class VideoRenderer {
       };
       const frameW = Math.max(
         1,
-        Math.round(
-          Number(imgAny.codedWidth ?? imgAny.displayWidth ?? imgAny.width ?? 1),
-        ),
+        Math.round(Number(imgAny.codedWidth ?? imgAny.displayWidth ?? imgAny.width ?? 1)),
       );
       const frameH = Math.max(
         1,
-        Math.round(
-          Number(imgAny.codedHeight ?? imgAny.displayHeight ?? imgAny.height ?? 1),
-        ),
+        Math.round(Number(imgAny.codedHeight ?? imgAny.displayHeight ?? imgAny.height ?? 1)),
       );
 
       this.ensureCanvasFallback(clip);

@@ -114,7 +114,10 @@ useEventListener(document, 'visibilitychange', () => {
     <div class="flex flex-col flex-1 h-full min-h-0 relative">
       <!-- Main Content (NuxtPage) -->
       <div
-        v-show="!isStartingUp && (workspaceStore.workspaceHandle || workspaceStore.workspaceProviderId === 'tauri')"
+        v-show="
+          !isStartingUp &&
+          (workspaceStore.workspaceHandle || workspaceStore.workspaceProviderId === 'tauri')
+        "
         class="flex flex-col flex-1 min-h-0 relative"
       >
         <EditorHeader
@@ -131,7 +134,11 @@ useEventListener(document, 'visibilitychange', () => {
       <template v-if="isStartingUp">
         <LoadingScreen />
       </template>
-      <template v-else-if="!workspaceStore.workspaceHandle && workspaceStore.workspaceProviderId !== 'tauri'">
+      <template
+        v-else-if="
+          !workspaceStore.workspaceHandle && workspaceStore.workspaceProviderId !== 'tauri'
+        "
+      >
         <WelcomeScreen />
       </template>
 
