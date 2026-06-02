@@ -194,6 +194,10 @@ watch(
   },
   { deep: true },
 );
+
+const tauriVideoCodecs = computed(() => {
+  return tauriDiagnostics.value?.codecs.filter(c => ['h264', 'hevc', 'vp9', 'av1'].includes(c.key)) || [];
+});
 </script>
 
 <template>
@@ -448,7 +452,7 @@ watch(
 
           <!-- Codecs grid -->
           <div
-            v-for="codec in tauriDiagnostics.codecs"
+            v-for="codec in tauriVideoCodecs"
             :key="codec.key"
             class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10"
           >

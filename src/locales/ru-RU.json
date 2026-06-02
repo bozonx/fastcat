@@ -1892,6 +1892,19 @@
       "userSection": "Пользовательские настройки",
       "userUi": "Внешний вид",
       "userVideo": "Видео",
+      "audio": {
+        "accelerationDiagnostics": "Диагностика аудио",
+        "accelerationDiagnosticsHelp": "Проверяет поддержку экспорта аудио через WebCodecs и доступные браузерные аудио-декодеры/кодеры.",
+        "loadingDiagnostics": "Загрузка диагностики",
+        "unavailableDiagnostics": "Диагностика недоступна",
+        "ffmpegDiagnostics": "Диагностика FFmpeg",
+        "ffmpegDiagnosticsHelp": "Проверяет доступность локального FFmpeg и FFprobe, а также поддержку аудиокодеков.",
+        "ffmpegAvailable": "FFmpeg доступен",
+        "ffprobeAvailable": "FFprobe доступен",
+        "codecDecoderSupport": "Поддержка декодирования (декодеры)",
+        "codecEncoderSupport": "Поддержка кодирования (кодеры)",
+        "tauriDiagnosticsHeader": "Tauri аудио-движок (FFmpeg)"
+      },
       "video": {
         "accelerationDiagnostics": "Диагностика ускорения",
         "accelerationDiagnosticsHelp": "Проверяет композитинг предпросмотра Pixi, API импорта и декодирования, поддержку экспорта WebCodecs и данные адаптера WebGPU.",

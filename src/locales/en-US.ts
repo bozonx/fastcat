@@ -1892,6 +1892,19 @@ export default {
       "userSection": "User settings",
       "userUi": "Appearance",
       "userVideo": "Video",
+      "audio": {
+        "accelerationDiagnostics": "Audio diagnostics",
+        "accelerationDiagnosticsHelp": "Checks WebCodecs audio export support and available browser audio decoders/encoders.",
+        "loadingDiagnostics": "Loading diagnostics",
+        "unavailableDiagnostics": "Diagnostics unavailable",
+        "ffmpegDiagnostics": "FFmpeg Diagnostics",
+        "ffmpegDiagnosticsHelp": "Checks availability of local FFmpeg and FFprobe, and audio codecs support.",
+        "ffmpegAvailable": "FFmpeg available",
+        "ffprobeAvailable": "FFprobe available",
+        "codecDecoderSupport": "Decoding support (decoders)",
+        "codecEncoderSupport": "Encoding support (encoders)",
+        "tauriDiagnosticsHeader": "Tauri Audio Engine (FFmpeg)"
+      },
       "video": {
         "accelerationDiagnostics": "Acceleration diagnostics",
         "accelerationDiagnosticsHelp": "Checks Pixi preview compositing, media import/decode APIs, WebCodecs export support, and WebGPU adapter details.",
