@@ -6,6 +6,7 @@ import type { WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type {
+  ClipEffect,
   ClipTransform,
   ShapeConfig,
   TimelineDocument,
@@ -17,6 +18,13 @@ import { getTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
+import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
+import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
+
+interface NativeAudioWorkerTimelineClip extends WorkerTimelineClip {
+  originalAudioGain?: unknown;
+  originalAudioBalance?: unknown;
+}
 
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
 const SVG_EXT = new Set(['svg']);
@@ -62,6 +70,7 @@ export interface NativeSceneLayer {
     duration_sec: number;
     curve?: string;
   };
+  effects?: TauriEffectSpec[];
 }
 
 export interface NativeSceneAudioLayer {
@@ -162,6 +171,29 @@ function buildNativeTransform(
   };
 }
 
+export function buildNativeEffectSpecs(effects?: ClipEffect[]): TauriEffectSpec[] | undefined {
+  if (!Array.isArray(effects) || effects.length === 0) {
+    return undefined;
+  }
+
+  const specs: TauriEffectSpec[] = [];
+  for (const effect of effects) {
+    if (!effect?.enabled || effect.target === 'audio') {
+      continue;
+    }
+
+    const manifest =
+      getTauriVideoEffectManifest(effect.type) ?? getVideoEffectManifest(effect.type);
+    if (!manifest?.toTauriSpecs) {
+      continue;
+    }
+
+    specs.push(...manifest.toTauriSpecs(effect));
+  }
+
+  return specs.length > 0 ? specs : undefined;
+}
+
 async function resolveProjectAbsolutePath(
   projectRelativePath: string,
   projectStore: ReturnType<typeof useProjectStore>,
@@ -204,6 +236,7 @@ function buildBaseLayer(params: {
     z,
     opacity: Math.max(0, Math.min(1, finite(clip.opacity, 1))),
     blend_mode: clip.blendMode ?? 'normal',
+    effects: buildNativeEffectSpecs(clip.effects),
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
     transition_in:
       clip.transitionIn && clip.transitionIn.durationUs > 0
@@ -266,10 +299,19 @@ async function buildAudioLayers(params: {
       timeline_end_sec: (startUs + durationUs) / 1_000_000,
       source_start_sec: clip.sourceRange.startUs / 1_000_000,
       speed: sanitizeAudioSpeed(clip.speed),
-      audio_gain: Math.max(0, finite((clip as any).originalAudioGain ?? clip.audioGain, 1)),
+      audio_gain: Math.max(
+        0,
+        finite((clip as NativeAudioWorkerTimelineClip).originalAudioGain ?? clip.audioGain, 1),
+      ),
       audio_balance: Math.max(
         -1,
-        Math.min(1, finite((clip as any).originalAudioBalance ?? clip.audioBalance, 0)),
+        Math.min(
+          1,
+          finite(
+            (clip as NativeAudioWorkerTimelineClip).originalAudioBalance ?? clip.audioBalance,
+            0,
+          ),
+        ),
       ),
       audio_fade_in_sec: Math.max(0, finite(clip.audioFadeInUs, 0) / 1_000_000),
       audio_fade_out_sec: Math.max(0, finite(clip.audioFadeOutUs, 0) / 1_000_000),

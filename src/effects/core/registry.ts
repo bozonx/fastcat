@@ -1,9 +1,17 @@
 import type { Filter } from 'pixi.js';
 import type { ParamControl } from '~/components/properties/params';
+import { isTauriRuntime } from '~/utils/runtime';
+import { getTauriVideoEffectManifest, tauriVideoEffectManifests } from '../tauri/manifests';
 
 export type EffectType = string;
 
 export type EffectTarget = 'video' | 'audio';
+export type VideoEffectRenderer = 'pixi' | 'wgpu';
+
+export interface TauriEffectSpec {
+  type: string;
+  [key: string]: unknown;
+}
 
 export type AudioEffectCategory = 'basic' | 'artistic' | 'voice';
 
@@ -36,8 +44,10 @@ export interface BaseEffectManifest<T = Record<string, unknown>> {
 
 export interface VideoEffectManifest<T = Record<string, unknown>> extends BaseEffectManifest<T> {
   target?: 'video';
-  createFilter: () => Filter;
-  updateFilter: (filter: Filter, values: T) => void;
+  renderer?: VideoEffectRenderer;
+  createFilter?: () => Filter;
+  updateFilter?: (filter: Filter, values: T) => void;
+  toTauriSpecs?: (values: T) => TauriEffectSpec[];
 }
 
 export interface AudioEffectManifest<T = Record<string, unknown>> extends BaseEffectManifest<T> {
@@ -92,6 +102,13 @@ export function registerEffect<T>(manifest: EffectManifest<T>) {
 export function getEffectManifest(
   type: EffectType,
 ): EffectManifest<Record<string, unknown>> | undefined {
+  if (isTauriRuntime()) {
+    const manifest = getTauriVideoEffectManifest(type);
+    if (manifest) {
+      return manifest as EffectManifest<Record<string, unknown>>;
+    }
+  }
+
   return effectsRegistry.get(type);
 }
 
@@ -118,7 +135,7 @@ export function isAudioEffectManifest<T>(
 export function getVideoEffectManifest(
   type: EffectType,
 ): VideoEffectManifest<Record<string, unknown>> | undefined {
-  const manifest = effectsRegistry.get(type);
+  const manifest = getEffectManifest(type);
   return isVideoEffectManifest(manifest) ? manifest : undefined;
 }
 
@@ -136,6 +153,14 @@ export function isAudioEffectNodeGraph(node: AudioEffectNode): node is AudioEffe
 export function getAllEffectManifests(
   target?: EffectTarget,
 ): EffectManifest<Record<string, unknown>>[] {
+  if (isTauriRuntime() && target === 'video') {
+    const custom = Array.from(effectsRegistry.values())
+      .filter(isVideoEffectManifest)
+      .filter((manifest) => manifest.isCustom);
+
+    return [...tauriVideoEffectManifests, ...custom] as EffectManifest<Record<string, unknown>>[];
+  }
+
   const manifests = Array.from(effectsRegistry.values());
   if (!target) {
     return manifests;

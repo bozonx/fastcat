@@ -184,6 +184,7 @@ export class EffectManager {
 
       const manifest = getVideoEffectManifest(effect.type);
       if (!manifest) continue;
+      if (!manifest.createFilter || !manifest.updateFilter) continue;
 
       seenIds.add(effect.id);
       let filter = filtersMap.get(effect.id);

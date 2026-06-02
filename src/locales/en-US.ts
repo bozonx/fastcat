@@ -508,6 +508,27 @@ export default {
             "shadowOnly": "Shadow Only"
           }
         },
+        "tauri": {
+          "chromaticAberration": {
+            "description": "Offset color channels",
+            "name": "Chromatic Aberration"
+          },
+          "params": {
+            "amount": "Amount"
+          },
+          "pixelate": {
+            "description": "Blocky pixel sampling",
+            "name": "Pixelate"
+          },
+          "sharpen": {
+            "description": "Increase edge contrast",
+            "name": "Sharpen"
+          },
+          "vignette": {
+            "description": "Darken image edges",
+            "name": "Vignette"
+          }
+        },
         "noise": {
           "description": "Film grain effect",
           "name": "Noise",
@@ -1100,7 +1121,10 @@ export default {
         "name": "Card Swap"
       },
       "circle": {
-        "name": "Circle"
+        "name": "Circle",
+        "params": {
+          "radius": "Radius"
+        }
       },
       "clock": {
         "name": "Clock"
@@ -1122,11 +1146,23 @@ export default {
         "name": "Rectangle"
       },
       "slide": {
-        "name": "Slide"
+        "name": "Slide",
+        "options": {
+          "down": "Down",
+          "left": "Left",
+          "right": "Right",
+          "up": "Up"
+        },
+        "params": {
+          "direction": "Direction"
+        }
       },
       "title": "Transitions",
       "wipe": {
-        "name": "Wipe"
+        "name": "Wipe",
+        "params": {
+          "softness": "Softness"
+        }
       },
       "zoom": {
         "name": "Zoom"

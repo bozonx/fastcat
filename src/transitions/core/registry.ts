@@ -1,6 +1,8 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import type { Filter, Texture } from 'pixi.js';
 import type { ParamControl, ParamOption } from '~/components/properties/params';
+import { isTauriRuntime } from '~/utils/runtime';
+import { getTauriTransitionManifest, tauriTransitionManifests } from '../tauri/manifests';
 const log = createDevLogger('registry');
 
 export type TransitionType = string;
@@ -8,6 +10,12 @@ export type TransitionType = string;
 export type TransitionMode = 'adjacent' | 'background' | 'transparent';
 
 export type TransitionCurve = 'linear' | 'smooth' | 'ease-in' | 'ease-out';
+export type TransitionRenderer = 'pixi' | 'wgpu';
+
+export interface TauriTransitionSpec {
+  type: string;
+  [key: string]: unknown;
+}
 
 export const DEFAULT_TRANSITION_MODE: TransitionMode = 'transparent';
 
@@ -52,8 +60,10 @@ export interface TransitionManifest<T = Record<string, unknown>> {
   normalizeParams?: (params?: Record<string, unknown>) => T;
   paramFields?: TransitionParamField[];
   renderMode?: 'opacity' | 'shader';
+  renderer?: TransitionRenderer;
   createFilter?: () => Filter;
   updateFilter?: (filter: Filter, context: TransitionShaderContext) => void;
+  toTauriSpec?: (params: T) => TauriTransitionSpec;
   /** Returns opacity [0..1] of the outgoing clip at `progress` [0..1] */
   computeOutOpacity: (progress: number, params: T, curve: TransitionCurve) => number;
   /** Returns opacity [0..1] of the incoming clip at `progress` [0..1] */
@@ -204,6 +214,13 @@ export function registerTransition<T>(manifest: TransitionManifest<T>): void {
 export function getTransitionManifest(
   type: TransitionType,
 ): TransitionManifest<Record<string, unknown>> | undefined {
+  if (isTauriRuntime()) {
+    const manifest = getTauriTransitionManifest(type);
+    if (manifest) {
+      return manifest as TransitionManifest<Record<string, unknown>>;
+    }
+  }
+
   return registry.get(type);
 }
 
@@ -222,5 +239,12 @@ export function normalizeTransitionParams<T = Record<string, unknown>>(
 }
 
 export function getAllTransitionManifests(): TransitionManifest<Record<string, unknown>>[] {
+  if (isTauriRuntime()) {
+    const custom = Array.from(registry.values()).filter((manifest) => manifest.isCustom);
+    return [...tauriTransitionManifests, ...custom] as TransitionManifest<
+      Record<string, unknown>
+    >[];
+  }
+
   return Array.from(registry.values());
 }

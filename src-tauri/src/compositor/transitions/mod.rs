@@ -25,6 +25,9 @@ pub enum TransitionSpec {
         center: [f32; 2],
         softness: f32,
     },
+    FadeThroughColor {
+        color: String,
+    },
     /// Произвольный WGSL.
     CustomWgsl {
         source: String,

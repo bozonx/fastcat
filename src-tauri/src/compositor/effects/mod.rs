@@ -45,6 +45,24 @@ pub enum EffectSpec {
     Pixelate {
         size: f32,
     },
+    Bloom {
+        threshold: f32,
+        strength: f32,
+        radius: f32,
+    },
+    Vignette {
+        strength: f32,
+        radius: f32,
+        softness: f32,
+    },
+    Noise {
+        amount: f32,
+        seed: u32,
+    },
+    ChromaticAberration {
+        amount: f32,
+        angle_deg: f32,
+    },
     /// Произвольный WGSL — для расширяемости.
     CustomWgsl {
         source: String,

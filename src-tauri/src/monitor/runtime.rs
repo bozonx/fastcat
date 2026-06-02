@@ -844,6 +844,7 @@ mod tests {
             transform: None,
             transition_in: None,
             transition_out: None,
+            effects: Vec::new(),
         }
     }
 }

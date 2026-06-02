@@ -508,6 +508,27 @@ export default {
             "shadowOnly": "Только тень"
           }
         },
+        "tauri": {
+          "chromaticAberration": {
+            "description": "Смещение цветовых каналов",
+            "name": "Хроматическая аберрация"
+          },
+          "params": {
+            "amount": "Сила"
+          },
+          "pixelate": {
+            "description": "Блочная пиксельная выборка",
+            "name": "Пикселизация"
+          },
+          "sharpen": {
+            "description": "Усиление контраста краев",
+            "name": "Резкость"
+          },
+          "vignette": {
+            "description": "Затемнение краев изображения",
+            "name": "Виньетка"
+          }
+        },
         "noise": {
           "description": "Эффект зернистости пленки",
           "name": "Шум",
@@ -1100,7 +1121,10 @@ export default {
         "name": "Card Swap"
       },
       "circle": {
-        "name": "Circle"
+        "name": "Круг",
+        "params": {
+          "radius": "Радиус"
+        }
       },
       "clock": {
         "name": "Clock"
@@ -1122,11 +1146,23 @@ export default {
         "name": "Rectangle"
       },
       "slide": {
-        "name": "Slide"
+        "name": "Сдвиг",
+        "options": {
+          "down": "Вниз",
+          "left": "Влево",
+          "right": "Вправо",
+          "up": "Вверх"
+        },
+        "params": {
+          "direction": "Направление"
+        }
       },
       "title": "Переходы",
       "wipe": {
-        "name": "Wipe"
+        "name": "Вытеснение",
+        "params": {
+          "softness": "Мягкость"
+        }
       },
       "zoom": {
         "name": "Zoom"

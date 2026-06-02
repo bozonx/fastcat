@@ -33,6 +33,7 @@ export function initTransitions(): void {
 }
 
 export * from './core/registry';
+export * from './tauri/manifests';
 export * from './circle/manifest';
 export * from './rectangle/manifest';
 export * from './clock/manifest';

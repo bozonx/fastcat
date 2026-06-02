@@ -10,6 +10,8 @@
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::compositor::effects::EffectSpec;
+
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum LayerKind {
@@ -110,6 +112,8 @@ pub struct SceneLayer {
     pub transition_in: Option<SceneTransition>,
     #[serde(default)]
     pub transition_out: Option<SceneTransition>,
+    #[serde(default)]
+    pub effects: Vec<EffectSpec>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -292,6 +296,7 @@ mod tests {
             transform: None,
             transition_in: None,
             transition_out: None,
+            effects: Vec::new(),
         }
     }
 

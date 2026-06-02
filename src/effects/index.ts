@@ -85,6 +85,7 @@ export function initEffects() {
 
 // Export everything for convenience
 export * from './core/registry';
+export * from './tauri/manifests';
 export * from './video/color-adjustment/manifest';
 export * from './video/blur/manifest';
 export * from './video/color-matrix/manifest';

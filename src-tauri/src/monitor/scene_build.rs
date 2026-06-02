@@ -153,7 +153,7 @@ pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u3
         opacity,
         blend: parse_blend_mode(&sl.blend_mode),
         mask: None,
-        effects: Vec::new(),
+        effects: sl.effects.clone(),
     }
 }
 
@@ -705,4 +705,3 @@ mod tests {
         let _ = std::fs::remove_file(&path);
     }
 }
-
