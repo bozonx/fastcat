@@ -109,6 +109,9 @@ export function useTimelineClipHandleResize(
     if (!canEditClipContent()) return;
     e.stopPropagation();
     e.preventDefault();
+
+    const docBeforeDrag = cloneValue(timelineStore.timelineDoc);
+
     resizeVolume.value = {
       trackId: payload.trackId,
       itemId: payload.itemId,
@@ -130,13 +133,22 @@ export function useTimelineClipHandleResize(
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           audioGain: newVol,
           audioMuted: false,
+        }, {
+          skipHistory: true,
+          saveMode: 'none',
         });
       });
     }
 
     function onPointerUp() {
       if (resizeVolume.value) {
-        timelineStore.historyDebounce.flushPendingDebouncedHistory();
+        if (docBeforeDrag) {
+          timelineStore.pushTimelineHistory(
+            docBeforeDrag,
+            'update_clip_properties',
+            'videoEditor.fileManager.history.entries.updateClipGain',
+          );
+        }
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeVolume.value = null;
@@ -153,9 +165,11 @@ export function useTimelineClipHandleResize(
       });
 
       if (isCancel && resizeVolume.value) {
-        timelineStore.historyDebounce.clearPendingDebouncedHistory();
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           audioGain: resizeVolume.value.startGain,
+        }, {
+          skipHistory: true,
+          saveMode: 'none',
         });
         resizeVolume.value = null;
         clearSession();
@@ -178,6 +192,8 @@ export function useTimelineClipHandleResize(
     const track = tracks.find((t) => t.id === payload.trackId);
     const item = track?.items.find((i) => i.id === payload.itemId);
     if (!item || item.kind !== 'clip') return;
+
+    const docBeforeDrag = cloneValue(timelineStore.timelineDoc);
 
     const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
     const startCurve = item[curveProp] === 'logarithmic' ? 'logarithmic' : 'linear';
@@ -275,12 +291,22 @@ export function useTimelineClipHandleResize(
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           [propName]: nextFadeUs,
           ...(curveChanged ? { [curveProp]: nextCurve } : {}),
+        }, {
+          skipHistory: true,
+          saveMode: 'none',
         });
       });
     }
 
     function onPointerUp() {
       if (resizeFade.value) {
+        if (docBeforeDrag) {
+          timelineStore.pushTimelineHistory(
+            docBeforeDrag,
+            'update_clip_properties',
+            'videoEditor.fileManager.history.entries.updateClipProperties',
+          );
+        }
         timelineStore.requestTimelineSave({ immediate: true });
       }
       resizeFade.value = null;
@@ -302,6 +328,9 @@ export function useTimelineClipHandleResize(
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
           [propName]: resizeFade.value.startFadeUs,
           [curveProp]: resizeFade.value.startCurve,
+        }, {
+          skipHistory: true,
+          saveMode: 'none',
         });
         resizeFade.value = null;
         clearSession();
