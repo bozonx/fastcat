@@ -34,8 +34,9 @@ impl VideoEngine {
             // Стейл — выкидываем, пересоздадим ниже.
             *guard = None;
         }
+        drop(guard);
         let handle = Arc::new(MonitorHandle::spawn(self.app.clone())?);
-        *guard = Some(handle.clone());
+        *self.monitor.lock() = Some(handle.clone());
         Ok(handle)
     }
 

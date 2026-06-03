@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Seek, Write};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -61,7 +61,7 @@ impl SpscRingBuffer {
     }
 
     fn clear(&self) {
-        let write = self.write_idx.load(Ordering::Relaxed);
+        let write = self.write_idx.load(Ordering::Acquire);
         self.read_idx.store(write, Ordering::Release);
     }
 
@@ -77,7 +77,7 @@ impl SpscRingBuffer {
                 break;
             }
             let idx = write % capacity;
-            self.buffer[idx].store(sample.to_bits(), Ordering::Relaxed);
+            self.buffer[idx].store(sample.to_bits(), Ordering::Release);
             self.write_idx.store(write.wrapping_add(1), Ordering::Release);
             written += 1;
         }
@@ -309,7 +309,12 @@ impl NativeAudioEngine {
             .lock()
             .scene
             .iter()
-            .map(|layer| layer.timeline_end_sec)
+            .map(|layer| {
+                let duration = (layer.timeline_end_sec - layer.timeline_start_sec).max(0.0);
+                let speed = sanitize_speed(layer.speed);
+                let actual_duration = if speed > 0.0 { duration / speed } else { duration };
+                layer.timeline_start_sec + actual_duration
+            })
             .fold(0.0, f64::max)
     }
 
@@ -321,10 +326,12 @@ impl NativeAudioEngine {
 
 impl Drop for NativeAudioEngine {
     fn drop(&mut self) {
-        self.running.store(false, Ordering::Relaxed);
+        self.running.store(false, Ordering::Release);
         self.shared.1.notify_all();
-        if self.producer.take().is_some() {
-            log::debug!("[audio] producer stop requested");
+        if let Some(handle) = self.producer.take() {
+            if let Err(e) = handle.join() {
+                log::warn!("[audio] producer thread panicked: {e:?}");
+            }
         }
     }
 }
@@ -406,25 +413,34 @@ fn write_output<T: OutputSample>(
     let channels = device_channels.max(1) as usize;
     let frames = data.len() / channels;
 
-    let playing = shared.0.try_lock().map_or(false, |s| s.playing);
+    let (playing, mut guard) = match shared.0.try_lock() {
+        Some(g) => (g.playing, Some(g)),
+        None => (false, None),
+    };
 
     if !playing {
         for sample in data {
             *sample = T::from_f32(0.0);
         }
-        if let Some(mut state) = shared.0.try_lock() {
+        if let Some(ref mut state) = guard {
             state.last_output_buffer_frames = 0;
         }
         return;
     }
 
-    let mut temp = vec![0.0f32; data.len()];
-    let _read = ring.pop_slice(&mut temp);
-    let actual_played_frames = (_read / channels).min(frames);
+    let mut temp = [0.0f32; 4096];
+    let temp_slice = if data.len() <= temp.len() {
+        &mut temp[..data.len()]
+    } else {
+        // Heap fallback for very large device buffers (uncommon).
+        &mut vec![0.0f32; data.len()][..]
+    };
+    let read = ring.pop_slice(temp_slice);
+    let actual_played_frames = (read / channels).min(frames);
     let mut idx = 0;
     for frame in 0..frames {
-        let left = temp[idx];
-        let right = if channels > 1 { temp[idx + 1] } else { left };
+        let left = temp_slice[idx];
+        let right = if channels > 1 { temp_slice[idx + 1] } else { left };
         idx += channels;
         for ch in 0..channels {
             let value = match ch {
@@ -437,7 +453,7 @@ fn write_output<T: OutputSample>(
         }
     }
 
-    if let Some(mut state) = shared.0.try_lock() {
+    if let Some(ref mut state) = guard {
         state.frames_written = state
             .frames_written
             .saturating_add(actual_played_frames as u64);
@@ -534,20 +550,22 @@ pub(crate) fn render_scene_to_wav(
 ) -> Result<()> {
     let start = start_sec.max(0.0);
     let end = end_sec.max(start);
-    let frames = ((end - start) * sample_rate as f64).round().max(1.0) as u32;
+    let estimated_frames = ((end - start) * sample_rate as f64).round().max(1.0) as u64;
     let mut file = std::fs::File::create(target_path)
         .with_context(|| format!("create audio wav {}", target_path.display()))?;
-    write_wav_f32_header(&mut file, frames, sample_rate)?;
+
+    // Write placeholder header (will be patched after we know actual size).
+    write_wav_f32_header_placeholder(&mut file)?;
 
     let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
-    let mut written = 0u32;
-    while written < frames {
-        let chunk_frames = ((CHUNK_DURATION_SEC * sample_rate as f64).round() as u32)
-            .min(frames - written)
+    let mut written_frames = 0u64;
+    while written_frames < estimated_frames {
+        let chunk_frames = ((CHUNK_DURATION_SEC * sample_rate as f64).round() as u64)
+            .min(estimated_frames - written_frames)
             .max(1);
         let chunk_duration = chunk_frames as f64 / sample_rate as f64;
-        let chunk_start = start + written as f64 / sample_rate as f64;
+        let chunk_start = start + written_frames as f64 / sample_rate as f64;
         let chunk = mix_chunk(
             scene,
             tracks,
@@ -557,24 +575,31 @@ pub(crate) fn render_scene_to_wav(
             sample_rate,
             &shared,
         );
-        for sample in chunk
-            .into_iter()
-            .take(chunk_frames as usize * OUTPUT_CHANNELS)
-        {
+        let samples_to_write = chunk_frames as usize * OUTPUT_CHANNELS;
+        for sample in chunk.into_iter().take(samples_to_write) {
             file.write_all(&sample.to_le_bytes())?;
         }
-        written = written.saturating_add(chunk_frames);
+        written_frames = written_frames.saturating_add(chunk_frames);
     }
+
+    // Patch header with actual frame count.
+    let data_size = written_frames
+        .saturating_mul(OUTPUT_CHANNELS as u64)
+        .saturating_mul(4);
+    let riff_size = 36u64.saturating_add(data_size);
+    file.seek(std::io::SeekFrom::Start(4))?;
+    file.write_all(&(riff_size as u32).to_le_bytes())?;
+    file.seek(std::io::SeekFrom::Start(40))?;
+    file.write_all(&(data_size as u32).to_le_bytes())?;
     Ok(())
 }
 
-fn write_wav_f32_header(file: &mut std::fs::File, frames: u32, sample_rate: u32) -> Result<()> {
+fn write_wav_f32_header_placeholder(file: &mut std::fs::File) -> Result<()> {
+    // Standard WAV header with zero data_size; will be patched after writing.
     let channels = OUTPUT_CHANNELS as u16;
     let bits_per_sample = 32u16;
     let bytes_per_sample = (bits_per_sample / 8) as u32;
-    let data_size = frames
-        .saturating_mul(channels as u32)
-        .saturating_mul(bytes_per_sample);
+    let data_size = 0u32;
     let riff_size = 36u32.saturating_add(data_size);
     file.write_all(b"RIFF")?;
     file.write_all(&riff_size.to_le_bytes())?;
@@ -583,10 +608,8 @@ fn write_wav_f32_header(file: &mut std::fs::File, frames: u32, sample_rate: u32)
     file.write_all(&16u32.to_le_bytes())?;
     file.write_all(&3u16.to_le_bytes())?;
     file.write_all(&channels.to_le_bytes())?;
-    file.write_all(&sample_rate.to_le_bytes())?;
-    let byte_rate = sample_rate
-        .saturating_mul(channels as u32)
-        .saturating_mul(bytes_per_sample);
+    file.write_all(&48_000u32.to_le_bytes())?;
+    let byte_rate = 48_000u32.saturating_mul(channels as u32).saturating_mul(bytes_per_sample);
     file.write_all(&byte_rate.to_le_bytes())?;
     let block_align = channels.saturating_mul(bytes_per_sample as u16);
     file.write_all(&block_align.to_le_bytes())?;
@@ -716,8 +739,8 @@ fn mix_chunk(
                 let right = track_mixed[dst + 1] * gain;
                 let final_left = (ll as f32) * left + (lr as f32) * right;
                 let final_right = (rl as f32) * left + (rr as f32) * right;
-                mixed[dst] += final_left;
-                mixed[dst + 1] += final_right;
+                mixed[dst] = (mixed[dst] + final_left).clamp(-32.0, 32.0);
+                mixed[dst + 1] = (mixed[dst + 1] + final_right).clamp(-32.0, 32.0);
             }
         }
     }
@@ -831,8 +854,8 @@ fn resample_planar_with_speed(
     let mut offset = 0;
 
     while offset < input_len {
-        let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
         let copy_len = (input_len - offset).min(chunk_size);
+        let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
         for ch in 0..num_channels {
             chunk[ch][..copy_len].copy_from_slice(&input[ch][offset..offset + copy_len]);
         }
@@ -844,7 +867,22 @@ fn resample_planar_with_speed(
         for ch in 0..num_channels {
             output[ch].extend_from_slice(&out_chunk[ch]);
         }
-        offset += chunk_size;
+        offset += copy_len;
+    }
+
+    // Flush any remaining resampler delay/tail samples.
+    let flush = vec![vec![0.0f32; chunk_size]; num_channels];
+    loop {
+        let out_chunk = resampler
+            .process(&flush, None)
+            .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
+        let all_empty = out_chunk.iter().all(|ch| ch.is_empty());
+        if all_empty {
+            break;
+        }
+        for ch in 0..num_channels {
+            output[ch].extend_from_slice(&out_chunk[ch]);
+        }
     }
 
     Ok(output)
@@ -908,7 +946,22 @@ fn resample_planar_cached(
         for ch in 0..num_channels {
             output[ch].extend_from_slice(&out_chunk[ch]);
         }
-        offset += chunk_size;
+        offset += copy_len;
+    }
+
+    // Flush any remaining resampler delay/tail samples.
+    let flush = vec![vec![0.0f32; chunk_size]; num_channels];
+    loop {
+        let out_chunk = resampler
+            .process(&flush, None)
+            .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
+        let all_empty = out_chunk.iter().all(|ch| ch.is_empty());
+        if all_empty {
+            break;
+        }
+        for ch in 0..num_channels {
+            output[ch].extend_from_slice(&out_chunk[ch]);
+        }
     }
 
     Ok(output)
@@ -1114,6 +1167,7 @@ fn decode_symphonia_chunk(
     let source_end_sec = source_start_sec + timeline_duration_sec;
     let needs_seek = source_start_sec < state_val.last_decode_end_sec - 0.05
         || source_start_sec > state_val.last_decode_end_sec + 0.05;
+    let current_ratio = target_sample_rate as f64 / (state_val.source_rate as f64 * speed);
 
     let (_actual_sec, discard_frames_remaining) = if needs_seek {
         let seeked_to = state_val
@@ -1132,15 +1186,25 @@ fn decode_symphonia_chunk(
 
         state_val.decoder.reset();
         state_val.resampler = None;
-        state_val.last_resample_ratio = 0.0;
+        state_val.last_resample_ratio = current_ratio;
 
         let actual_sec = {
             let t = state_val.time_base.calc_time(seeked_to.actual_ts);
             t.seconds as f64 + t.frac
         };
-        let discard_sec = (source_start_sec - actual_sec).max(0.0);
-        let discard_frames = (discard_sec * state_val.source_rate as f64).round() as usize;
-        (actual_sec, discard_frames)
+        // If seek landed before requested time, discard leading frames.
+        // If seek landed after, we cannot recover without another seek,
+        // so treat the gap as silence by shifting decode start forward.
+        let (decode_start_sec, discard_frames) = if actual_sec <= source_start_sec {
+            let discard_sec = source_start_sec - actual_sec;
+            let discard_frames = (discard_sec * state_val.source_rate as f64).round() as usize;
+            (actual_sec, discard_frames)
+        } else {
+            // Seek landed past desired position → start decode from actual position,
+            // the gap will become silence in the mixed output.
+            (actual_sec, 0usize)
+        };
+        (decode_start_sec, discard_frames)
     } else {
         (source_start_sec, 0usize)
     };
@@ -1223,6 +1287,9 @@ fn decode_symphonia_chunk(
         return Ok(vec![0.0f32; silence_len]);
     }
 
+    if state_val.resampler.is_some() && (state_val.last_resample_ratio - current_ratio).abs() > 1e-6 {
+        state_val.resampler = None;
+    }
     let resampled = resample_planar_cached(
         planar_buffers,
         state_val.source_rate,
@@ -1323,8 +1390,8 @@ fn apply_layer_mix(
         let left = decoded[src] * gain;
         let right = decoded[src + 1] * gain;
         let dst = (write_start_frame + i) * OUTPUT_CHANNELS;
-        mixed[dst] += ll * left + lr * right;
-        mixed[dst + 1] += rl * left + rr * right;
+        mixed[dst] = (mixed[dst] + ll * left + lr * right).clamp(-32.0, 32.0);
+        mixed[dst + 1] = (mixed[dst + 1] + rl * left + rr * right).clamp(-32.0, 32.0);
     }
 }
 
@@ -1358,22 +1425,13 @@ fn fade_curve(t: f64, curve: AudioFadeCurve) -> f64 {
 
 fn stereo_pan_matrix(balance: f64) -> (f64, f64, f64, f64) {
     let pan = balance.clamp(-1.0, 1.0);
+    // Equal-power stereo balance: attenuate the opposite channel with a cosine taper.
     if pan <= 0.0 {
-        let t = -pan;
-        (
-            1.0,
-            (t * std::f64::consts::FRAC_PI_2).sin(),
-            0.0,
-            (t * std::f64::consts::FRAC_PI_2).cos(),
-        )
+        let right_gain = ((-pan) * std::f64::consts::FRAC_PI_2).cos();
+        (1.0, 0.0, 0.0, right_gain)
     } else {
-        let t = pan;
-        (
-            (t * std::f64::consts::FRAC_PI_2).cos(),
-            0.0,
-            (t * std::f64::consts::FRAC_PI_2).sin(),
-            1.0,
-        )
+        let left_gain = (pan * std::f64::consts::FRAC_PI_2).cos();
+        (left_gain, 0.0, 0.0, 1.0)
     }
 }
 
@@ -1395,7 +1453,15 @@ fn sanitize_master_gain(gain: f64) -> f64 {
 
 fn soft_clip(samples: &mut [f32]) {
     for sample in samples {
-        *sample = sample.tanh();
+        // Only apply non-linearity above unity; below 1.0 signal is untouched.
+        let s = *sample;
+        *sample = if s > 1.0 {
+            1.0 + (s - 1.0).tanh() * 0.5
+        } else if s < -1.0 {
+            -1.0 + (s + 1.0).tanh() * 0.5
+        } else {
+            s
+        };
     }
 }
 
@@ -1422,6 +1488,16 @@ mod tests {
         }
     }
 
+    fn track(id: &str) -> SceneAudioTrack {
+        SceneAudioTrack {
+            id: id.into(),
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_muted: false,
+            audio_solo: false,
+        }
+    }
+
     fn callback_info(latency_sec: f64) -> OutputCallbackInfo {
         let callback = StreamInstant::new(10, 0);
         let playback = callback
@@ -1429,6 +1505,56 @@ mod tests {
             .unwrap_or(callback);
         OutputCallbackInfo::new(OutputStreamTimestamp { callback, playback })
     }
+
+    // ------------------------------------------------------------------
+    // SPSC Ring Buffer
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn ring_buffer_push_pop_round_trip() {
+        let ring = SpscRingBuffer::new(16);
+        let in_samples = vec![0.25, -0.5, 0.75, -0.25];
+        assert_eq!(ring.push_slice(&in_samples), 4);
+        let mut out = [0.0f32; 4];
+        assert_eq!(ring.pop_slice(&mut out), 4);
+        assert_eq!(out, [0.25, -0.5, 0.75, -0.25]);
+    }
+
+    #[test]
+    fn ring_buffer_drops_excess_push() {
+        let ring = SpscRingBuffer::new(4);
+        let in_samples = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        assert_eq!(ring.push_slice(&in_samples), 4);
+        let mut out = [0.0f32; 5];
+        assert_eq!(ring.pop_slice(&mut out), 4);
+        assert_eq!(out, [1.0, 2.0, 3.0, 4.0, 0.0]);
+    }
+
+    #[test]
+    fn ring_buffer_clear_empties() {
+        let ring = SpscRingBuffer::new(8);
+        ring.push_slice(&[1.0, 2.0, 3.0]);
+        ring.clear();
+        assert_eq!(ring.len(), 0);
+        let mut out = [0.0f32; 3];
+        assert_eq!(ring.pop_slice(&mut out), 0);
+    }
+
+    #[test]
+    fn ring_buffer_wraparound() {
+        let ring = SpscRingBuffer::new(4);
+        ring.push_slice(&[1.0, 2.0]);
+        let mut out = [0.0f32; 2];
+        ring.pop_slice(&mut out);
+        ring.push_slice(&[3.0, 4.0, 5.0]);
+        let mut out2 = [0.0f32; 4];
+        assert_eq!(ring.pop_slice(&mut out2), 3);
+        assert_eq!(out2[..3], [3.0, 4.0, 5.0]);
+    }
+
+    // ------------------------------------------------------------------
+    // Gain / Fade
+    // ------------------------------------------------------------------
 
     #[test]
     fn gain_envelope_applies_linear_fades() {
@@ -1440,19 +1566,69 @@ mod tests {
     }
 
     #[test]
-    fn stereo_pan_matrix_matches_equal_power_edges() {
-        let (ll, lr, rl, rr) = stereo_pan_matrix(-1.0);
-        assert!((ll - 1.0).abs() < 1e-9);
-        assert!((lr - 1.0).abs() < 1e-9);
-        assert_eq!(rl, 0.0);
-        assert!(rr.abs() < 1e-9);
+    fn logarithmic_fade_reaches_unity() {
+        assert_eq!(fade_curve(0.0, AudioFadeCurve::Logarithmic), 0.0);
+        assert!((fade_curve(1.0, AudioFadeCurve::Logarithmic) - 1.0).abs() < 1e-9);
+    }
 
-        let (ll, lr, rl, rr) = stereo_pan_matrix(1.0);
-        assert!(ll.abs() < 1e-9);
+    #[test]
+    fn gain_clips_negative_and_excess_fade() {
+        let mut l = layer();
+        l.audio_fade_in_sec = 12.0; // longer than duration
+        l.audio_fade_out_sec = 12.0;
+        // Both fades clamped to duration 10s
+        assert!((gain_at_clip_time(&l, 5.0) - 0.5).abs() < 1e-9);
+    }
+
+    // ------------------------------------------------------------------
+    // Stereo Pan / Balance
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn stereo_balance_center_unity() {
+        let (ll, lr, rl, rr) = stereo_pan_matrix(0.0);
+        assert!((ll - 1.0).abs() < 1e-9);
         assert_eq!(lr, 0.0);
-        assert!((rl - 1.0).abs() < 1e-9);
+        assert_eq!(rl, 0.0);
         assert!((rr - 1.0).abs() < 1e-9);
     }
+
+    #[test]
+    fn stereo_balance_full_left() {
+        let (ll, lr, rl, rr) = stereo_pan_matrix(-1.0);
+        assert!((ll - 1.0).abs() < 1e-9);
+        assert_eq!(lr, 0.0);
+        assert_eq!(rl, 0.0);
+        assert!((rr - 0.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn stereo_balance_full_right() {
+        let (ll, lr, rl, rr) = stereo_pan_matrix(1.0);
+        assert!((ll - 0.0).abs() < 1e-9);
+        assert_eq!(lr, 0.0);
+        assert_eq!(rl, 0.0);
+        assert!((rr - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn stereo_balance_half_left_attenuates_right() {
+        let (_, _, _, rr) = stereo_pan_matrix(-0.5);
+        let expected = (0.5 * std::f64::consts::FRAC_PI_2).cos();
+        assert!((rr - expected).abs() < 1e-9);
+    }
+
+    #[test]
+    fn stereo_balance_no_boost() {
+        // Center must not exceed unity for any channel.
+        let (ll, _lr, _rl, rr) = stereo_pan_matrix(0.0);
+        assert!(ll <= 1.0 + 1e-9);
+        assert!(rr <= 1.0 + 1e-9);
+    }
+
+    // ------------------------------------------------------------------
+    // Conversions
+    // ------------------------------------------------------------------
 
     #[test]
     fn test_planar_to_interleaved_stereo_mono() {
@@ -1468,6 +1644,10 @@ mod tests {
         assert_eq!(interleaved, vec![1.0, 3.0, 2.0, 4.0]);
     }
 
+    // ------------------------------------------------------------------
+    // Resampler
+    // ------------------------------------------------------------------
+
     #[test]
     fn test_resample_planar_no_op() {
         let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
@@ -1476,10 +1656,20 @@ mod tests {
     }
 
     #[test]
-    fn logarithmic_fade_reaches_unity() {
-        assert_eq!(fade_curve(0.0, AudioFadeCurve::Logarithmic), 0.0);
-        assert!((fade_curve(1.0, AudioFadeCurve::Logarithmic) - 1.0).abs() < 1e-9);
+    fn test_resample_planar_cached_ratio_change() {
+        let mut cached = None;
+        let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
+        let _ = resample_planar_cached(planar.clone(), 44100, 48000, 1.0, 2, &mut cached).unwrap();
+        assert!(cached.is_some());
+        // ratio changed → should recreate internally
+        let _ = resample_planar_cached(planar.clone(), 44100, 48000, 2.0, 2, &mut cached).unwrap();
+        // cached was reset in decode_symphonia_chunk logic; here we just verify no panic
+        assert!(cached.is_some());
     }
+
+    // ------------------------------------------------------------------
+    // Master Gain / Soft Clip
+    // ------------------------------------------------------------------
 
     #[test]
     fn master_gain_is_applied_after_layer_mix() {
@@ -1487,6 +1677,39 @@ mod tests {
         apply_master_gain(&mut samples, 0.5);
         assert_eq!(samples, vec![0.125, -0.25, 0.5]);
     }
+
+    #[test]
+    fn soft_clip_preserves_in_band() {
+        let mut samples = vec![-0.5, 0.0, 0.5, 1.0, -1.0];
+        soft_clip(&mut samples);
+        assert!((samples[0] - (-0.5)).abs() < 1e-6);
+        assert!((samples[1] - 0.0).abs() < 1e-6);
+        assert!((samples[2] - 0.5).abs() < 1e-6);
+        assert!((samples[3] - 1.0).abs() < 1e-6);
+        assert!((samples[4] - (-1.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn soft_clip_limits_out_of_band() {
+        let mut samples = vec![2.0, -2.0];
+        soft_clip(&mut samples);
+        assert!(samples[0] > 1.0 && samples[0] < 1.5);
+        assert!(samples[1] < -1.0 && samples[1] > -1.5);
+    }
+
+    #[test]
+    fn sanitize_speed_rejects_non_positive() {
+        assert_eq!(sanitize_speed(0.0), 1.0);
+        assert_eq!(sanitize_speed(-1.0), 1.0);
+        assert_eq!(sanitize_speed(f64::NAN), 1.0);
+        assert_eq!(sanitize_speed(f64::INFINITY), 1.0);
+        assert_eq!(sanitize_speed(0.005), 0.01);
+        assert_eq!(sanitize_speed(101.0), 100.0);
+    }
+
+    // ------------------------------------------------------------------
+    // Output Callback / Clock
+    // ------------------------------------------------------------------
 
     #[test]
     fn output_clock_does_not_advance_on_underrun() {
@@ -1506,13 +1729,12 @@ mod tests {
         );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        assert_eq!(shared.0.lock().frames_written, 0); // 0 из-за underrun
+        assert_eq!(shared.0.lock().frames_written, 0);
     }
 
     #[test]
     fn output_clock_advances_when_ring_has_samples() {
         let ring = SpscRingBuffer::new(512);
-        // Pre-fill with 128 stereo frames of silence.
         ring.push_slice(&vec![0.0f32; 256]);
         let shared = Arc::new((Mutex::new(AudioShared {
             playing: true,
@@ -1529,7 +1751,7 @@ mod tests {
         );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        assert_eq!(shared.0.lock().frames_written, 128); // 128 проигралось
+        assert_eq!(shared.0.lock().frames_written, 128);
     }
 
     #[test]
@@ -1547,6 +1769,10 @@ mod tests {
 
         assert!((pts - 10.97).abs() < 1e-9);
     }
+
+    // ------------------------------------------------------------------
+    // Decode (integration with fixtures)
+    // ------------------------------------------------------------------
 
     #[test]
     fn test_decode_entire_file_symphonia() {
@@ -1573,11 +1799,108 @@ mod tests {
         );
         let samples = decoded.unwrap();
         assert!(samples.len() > 0, "Decoded chunk buffer is empty");
-        // For a duration of 0.5 seconds at 48000 Hz, we expect around 0.5 * 48000 * 2 (stereo) = 48000 samples.
         assert!(
             samples.len() >= 45000 && samples.len() <= 55000,
             "Unexpected chunk length: {}",
             samples.len()
         );
+    }
+
+    // ------------------------------------------------------------------
+    // Mix / Integration
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn mix_chunk_with_solo_mutes_others() {
+        let mut l1 = layer();
+        l1.id = "l1".into();
+        l1.track_id = Some("t1".into());
+        let mut l2 = layer();
+        l2.id = "l2".into();
+        l2.track_id = Some("t2".into());
+        l2.timeline_start_sec = 0.0;
+        l2.timeline_end_sec = 1.0;
+
+        let mut t1 = track("t1");
+        t1.audio_solo = true;
+        let t2 = track("t2");
+
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // Because decode will fail on fake paths, we just test that orphan/muted logic runs
+        // without panic and produces a buffer of the expected size.
+        let chunk = mix_chunk(
+            &[l1, l2],
+            &[t1, t2],
+            1.0,
+            0.0,
+            1.0,
+            48000,
+            &shared,
+        );
+        assert_eq!(chunk.len(), (1.0f64 * 48000.0).round() as usize * OUTPUT_CHANNELS);
+    }
+
+    #[test]
+    fn mix_chunk_clamps_prevent_inf() {
+        // Build two layers on the same track with extreme gain
+        let mut l = layer();
+        l.audio_gain = 1000.0;
+        let mut l2 = layer();
+        l2.id = "l2".into();
+        l2.audio_gain = 1000.0;
+
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let chunk = mix_chunk(
+            &[l, l2],
+            &[],
+            10.0,
+            0.0,
+            0.01,
+            48000,
+            &shared,
+        );
+        // Must not contain inf or NaN
+        assert!(
+            chunk.iter().all(|s| s.is_finite()),
+            "mix produced non-finite sample"
+        );
+    }
+
+    #[test]
+    fn apply_layer_mix_zero_gain_skips() {
+        let mut mixed = vec![0.0f32; 4];
+        let mut decoded = vec![1.0f32, 2.0f32, 3.0f32, 4.0f32];
+        let mut l = layer();
+        l.audio_gain = 0.0;
+        apply_layer_mix(&mut mixed, &mut decoded, 0, 2, 48000, &l, 0.0);
+        assert_eq!(mixed, vec![0.0, 0.0, 0.0, 0.0]);
+    }
+
+    // ------------------------------------------------------------------
+    // WAV Export
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn render_scene_to_wav_produces_valid_header() {
+        let tmp = std::env::temp_dir().join(format!(
+            "fastcat-audit-wav-test-{}.wav",
+            std::process::id()
+        ));
+        let l = layer();
+        // Render a tiny silent scene
+        render_scene_to_wav(&[l], &[], 1.0, 0.0, 0.01, 48000, &tmp).unwrap();
+
+        let bytes = std::fs::read(&tmp).unwrap();
+        assert!(bytes.len() >= 44);
+        assert_eq!(&bytes[0..4], b"RIFF");
+        assert_eq!(&bytes[8..12], b"WAVE");
+        assert_eq!(&bytes[12..16], b"fmt ");
+
+        // riff_size = 36 + data_size
+        let data_size = u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as u64;
+        let riff_size = u32::from_le_bytes(bytes[4..8].try_into().unwrap()) as u64;
+        assert_eq!(riff_size, 36 + data_size);
+
+        let _ = std::fs::remove_file(&tmp);
     }
 }

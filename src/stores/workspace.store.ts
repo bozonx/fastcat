@@ -287,10 +287,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       // ignore
     }
 
-    await loadProjects();
-    await loadAppSettingsFromDisk();
-    await loadUserSettingsFromDisk();
-    await loadWorkspaceStateFromDisk();
+    await Promise.all([
+      loadProjects(),
+      loadAppSettingsFromDisk(),
+      loadUserSettingsFromDisk(),
+      loadWorkspaceStateFromDisk(),
+    ]);
     if (workspaceState.value.ui.lastProjectName !== null) {
       lastProjectName.value = workspaceState.value.ui.lastProjectName;
     } else if (lastProjectName.value !== null) {
@@ -301,9 +303,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     } else if (recentProjects.value.length > 0) {
       workspaceState.value.ui.recentProjects = recentProjects.value;
     }
-    await saveAppSettingsToDisk();
-    await saveUserSettingsToDisk();
-    await saveWorkspaceStateToDisk();
+    await Promise.all([
+      saveAppSettingsToDisk(),
+      saveUserSettingsToDisk(),
+      saveWorkspaceStateToDisk(),
+    ]);
   }
 
   const workspaceInitModule = createWorkspaceInitModule({

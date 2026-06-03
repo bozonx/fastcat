@@ -24,8 +24,6 @@ const focusStore = useFocusStore();
 const selectionStore = useSelectionStore();
 const { t } = useI18n();
 
-// Зеркалит таймлайн в нативное окно монитора (Rust/Vello). На non-Tauri — no-op.
-useNativeMonitorBridge();
 const menuRef = ref<InstanceType<typeof UiContextMenuPortal> | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 const activeResetAction = ref<(() => void) | null>(null);
@@ -234,6 +232,9 @@ onMounted(async () => {
   }
 
   await openProject(decodeURIComponent(projectId));
+
+  // Start native monitor sync only after project is actually loaded.
+  useNativeMonitorBridge();
 });
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {

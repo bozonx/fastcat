@@ -134,7 +134,6 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
         if (!unsubChannel) await subscribe();
       }
     },
-    { immediate: true },
   );
 
   // Реактивно подстраиваем canvas size при resize.

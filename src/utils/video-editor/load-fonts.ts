@@ -1,4 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
+import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('load-fonts');
 let fontsLoaded = false;
 
@@ -16,6 +17,10 @@ function getAvailableFontSet(): FontFaceSet | null {
 export async function loadFonts(): Promise<void> {
   if (fontsLoaded) return;
   fontsLoaded = true;
+
+  if (isTauriRuntime()) {
+    return;
+  }
 
   try {
     const fontSet = getAvailableFontSet();

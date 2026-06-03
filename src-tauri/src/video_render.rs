@@ -23,8 +23,8 @@ pub struct WebGpuAdapterStatus {
 }
 
 #[tauri::command]
-pub fn webgpu_render_engine_status() -> WebGpuRenderEngineStatus {
-    pollster::block_on(probe_webgpu_render_engine())
+pub async fn webgpu_render_engine_status() -> WebGpuRenderEngineStatus {
+    probe_webgpu_render_engine().await
 }
 
 async fn probe_webgpu_render_engine() -> WebGpuRenderEngineStatus {

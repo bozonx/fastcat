@@ -57,12 +57,10 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
         const commonDir = await join(fastcatDocsDir, 'common');
         const projectsDir = await join(fastcatDocsDir, 'projects');
 
-        if (!(await exists(commonDir))) {
-          await mkdir(commonDir, { recursive: true });
-        }
-        if (!(await exists(projectsDir))) {
-          await mkdir(projectsDir, { recursive: true });
-        }
+        await Promise.all([
+          exists(commonDir).then((e) => (e ? undefined : mkdir(commonDir, { recursive: true }))),
+          exists(projectsDir).then((e) => (e ? undefined : mkdir(projectsDir, { recursive: true }))),
+        ]);
       }
     } catch (e) {
       log.warn('Failed to ensure default Tauri directories', e);
@@ -161,9 +159,11 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
           await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);
         } else {
           deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
-          await deps.loadAppSettingsFromDisk();
-          await deps.loadUserSettingsFromDisk();
-          await deps.loadWorkspaceStateFromDisk();
+          await Promise.all([
+            deps.loadAppSettingsFromDisk(),
+            deps.loadUserSettingsFromDisk(),
+            deps.loadWorkspaceStateFromDisk(),
+          ]);
         }
       } else {
         const handle = await deps.workspaceProvider.restoreWorkspace();

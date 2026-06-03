@@ -77,7 +77,9 @@ export function useConfirmClose() {
 
   onMounted(() => {
     window.addEventListener('beforeunload', onBeforeUnload);
-    setupTauriCloseHandler();
+    void setupTauriCloseHandler().catch((err) => {
+      log.error('Failed to setup Tauri close handler:', err);
+    });
   });
 
   onUnmounted(() => {

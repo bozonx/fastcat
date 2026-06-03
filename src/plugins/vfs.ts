@@ -366,7 +366,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     },
   );
 
-  await adapter.init();
+  void adapter.init();
 
   return {
     provide: {

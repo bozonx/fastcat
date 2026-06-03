@@ -23,25 +23,26 @@ interface ViewportPayload {
 /**
  * Привязывает положение и размер child-окна нативного монитора к DOM-элементу.
  *
- * Используем rAF-loop с диффом: каждое значимое изменение `getBoundingClientRect()`
- * (любые причины — resize окна, изменение layout панелей, скролл предка) приводит к
- * одному `invoke('monitor_set_viewport')`. Без изменений — IPC не дёргается.
+ * Используем ResizeObserver + IntersectionObserver вместо rAF-loop:
+ * viewport обновляется только при реальных изменениях размера/видимости элемента.
+ * Это убирает постоянные layout reads (60×/сек) и снижает нагрузку на CPU.
  *
  * Координаты — в физических пикселях относительно клиентской области главного окна Tauri:
  *   `rect.left * dpr`, `rect.top * dpr`, `rect.width * dpr`, `rect.height * dpr`.
- * На десктопе вебвью занимает всю клиентскую область, так что viewport-координаты совпадают.
  *
- * Видимость = ширина и высота > 0 И элемент находится в пределах вьюпорта. Невидимый элемент
- * скрывает нативное окно, чтобы оно не «висело» поверх UI при сворачивании панели.
+ * Видимость определяется через IntersectionObserver (учитывает display:none, opacity, overflow).
+ * В canvas-режиме нативное окно всегда скрывается (visible = false).
  */
 export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
   if (!isTauriRuntime()) return;
 
   const { mode } = useMonitorMode();
 
-  let rafHandle = 0;
   let last: ViewportPayload | null = null;
   let disposed = false;
+  let ro: ResizeObserver | null = null;
+  let io: IntersectionObserver | null = null;
+  let isIntersecting = true;
 
   function warnMonitorFailure(message: string, err: unknown): void {
     const disabledNow = markNativeMonitorInitFailure(err);
@@ -59,9 +60,8 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
     const height = Math.max(0, Math.round(rect.height * dpr));
     const vw = window.innerWidth * dpr;
     const vh = window.innerHeight * dpr;
-    // Невидим, если схлопнут в 0 или полностью за пределами вьюпорта.
     const offscreen = x + width <= 0 || y + height <= 0 || x >= vw || y >= vh;
-    const visible = width > 0 && height > 0 && !offscreen;
+    const visible = width > 0 && height > 0 && !offscreen && isIntersecting;
     return { x, y, width, height, visible };
   }
 
@@ -76,15 +76,8 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
     );
   }
 
-  function tick(): void {
-    if (disposed) return;
-    rafHandle = window.requestAnimationFrame(tick);
-    const el = elRef.value;
-    if (!el) return;
+  function send(el: HTMLElement): void {
     const raw = readPayload(el);
-    // В canvas-режиме нативное X11-окно должно быть скрыто — рендер идёт offscreen,
-    // изображение приходит в HTML <canvas>. Геометрию шлём всё равно (чтобы при возврате
-    // в embedded окно сразу встало на место), но visible форсим в false.
     const next: ViewportPayload = mode.value === 'canvas' ? { ...raw, visible: false } : raw;
     if (!changed(last, next)) return;
     last = next;
@@ -95,21 +88,63 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
   }
 
   onMounted(() => {
-    rafHandle = window.requestAnimationFrame(tick);
+    const el = elRef.value;
+    if (!el) return;
+
+    ro = new ResizeObserver(() => {
+      if (!disposed && elRef.value) {
+        send(elRef.value);
+      }
+    });
+    ro.observe(el);
+
+    io = new IntersectionObserver(
+      (entries) => {
+        isIntersecting = entries[0]?.isIntersecting ?? true;
+        if (!disposed && elRef.value) {
+          send(elRef.value);
+        }
+      },
+      { threshold: 0 },
+    );
+    io.observe(el);
+
+    // Initial sync
+    send(el);
   });
 
   watch(elRef, (el) => {
     if (!el) return;
-    // Пересоздать last, чтобы сразу же отправить актуальный rect.
     last = null;
+    ro?.disconnect();
+    io?.disconnect();
+
+    ro = new ResizeObserver(() => {
+      if (!disposed && elRef.value) {
+        send(elRef.value);
+      }
+    });
+    ro.observe(el);
+
+    io = new IntersectionObserver(
+      (entries) => {
+        isIntersecting = entries[0]?.isIntersecting ?? true;
+        if (!disposed && elRef.value) {
+          send(elRef.value);
+        }
+      },
+      { threshold: 0 },
+    );
+    io.observe(el);
+
+    send(el);
   });
 
   onScopeDispose(() => {
     disposed = true;
-    if (rafHandle) window.cancelAnimationFrame(rafHandle);
+    ro?.disconnect();
+    io?.disconnect();
     if (isNativeMonitorDisabled()) return;
-    // Скрыть нативное окно — оно может пережить unmount компонента (event-loop живёт
-    // в отдельном потоке и закрывается через `monitor_close` из useNativeMonitorBridge).
     invoke('monitor_set_viewport', {
       x: 0,
       y: 0,

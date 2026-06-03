@@ -55,23 +55,24 @@ useEditorHotkeys();
 useConfirmClose();
 
 // Initialization
-onMounted(async () => {
-  try {
-    await workspaceStore.init();
-
-    if (
-      route.path === '/' &&
-      route.query.mode !== 'desktop' &&
-      (workspaceStore.workspaceHandle || workspaceStore.workspaceProviderId === 'tauri') &&
-      workspaceStore.userSettings.openLastProjectOnStart &&
-      workspaceStore.lastProjectName &&
-      workspaceStore.projects.includes(workspaceStore.lastProjectName)
-    ) {
-      await navigateTo(`/editor/${encodeURIComponent(workspaceStore.lastProjectName)}`);
-    }
-  } finally {
-    isStartingUp.value = false;
-  }
+onMounted(() => {
+  workspaceStore
+    .init()
+    .then(() => {
+      if (
+        route.path === '/' &&
+        route.query.mode !== 'desktop' &&
+        (workspaceStore.workspaceHandle || workspaceStore.workspaceProviderId === 'tauri') &&
+        workspaceStore.userSettings.openLastProjectOnStart &&
+        workspaceStore.lastProjectName &&
+        workspaceStore.projects.includes(workspaceStore.lastProjectName)
+      ) {
+        void navigateTo(`/editor/${encodeURIComponent(workspaceStore.lastProjectName)}`);
+      }
+    })
+    .finally(() => {
+      isStartingUp.value = false;
+    });
 });
 
 function onOverlayAutoSort(files: File[]) {
