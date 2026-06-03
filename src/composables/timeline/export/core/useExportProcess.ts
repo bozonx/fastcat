@@ -183,8 +183,9 @@ export function useExportProcess(
             format: options.format,
             audioEnabled: options.audio,
             audioPath: null,
-            audioCodec: null,
+            audioCodec: options.audioCodec || null,
             audioBitrateBps: options.audioBitrate,
+            exportAlpha: options.exportAlpha,
           },
           onProgress,
         });

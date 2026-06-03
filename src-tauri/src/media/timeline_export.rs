@@ -54,6 +54,8 @@ pub struct NativeExportOptions {
     pub vaapi_device: Option<String>,
     #[serde(default)]
     pub enable_hardware_encoding: Option<bool>,
+    #[serde(default)]
+    pub export_alpha: Option<bool>,
 }
 
 /// Полный прогон экспорта. `on_progress(0..1)` зовётся после каждого записанного кадра.
@@ -212,7 +214,10 @@ fn build_ffmpeg_args(
     fps: f64,
     target_path: &Path,
 ) -> Vec<String> {
-    let hw_mode = if options.enable_hardware_encoding.unwrap_or(false) {
+    let export_alpha = options.export_alpha.unwrap_or(false)
+        && (options.format == "webm" || options.format == "mkv");
+
+    let hw_mode = if options.enable_hardware_encoding.unwrap_or(false) && !export_alpha {
         let mode = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
         if mode == "auto" {
             let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
@@ -285,17 +290,36 @@ fn build_ffmpeg_args(
             "yuv420p".to_string(),
         ]);
     } else {
-        args.extend([
-            "-pix_fmt".to_string(),
-            "yuv420p".to_string(),
-        ]);
+        if export_alpha {
+            args.extend([
+                "-pix_fmt".to_string(),
+                "yuva420p".to_string(),
+            ]);
+        } else {
+            args.extend([
+                "-pix_fmt".to_string(),
+                "yuv420p".to_string(),
+            ]);
+        }
     }
 
     if has_audio {
         let codec = match options.audio_codec.as_deref() {
             Some("opus") => "libopus",
-            Some("aac") | None => "aac",
-            Some(other) => other,
+            Some("aac") | None => {
+                if options.format == "webm" {
+                    "libopus"
+                } else {
+                    "aac"
+                }
+            }
+            Some(other) => {
+                if options.format == "webm" && other == "aac" {
+                    "libopus"
+                } else {
+                    other
+                }
+            }
         };
         args.extend(["-c:a".to_string(), codec.to_string()]);
         if let Some(bitrate) = options.audio_bitrate_bps {
@@ -366,3 +390,52 @@ pub fn temp_audio_path() -> PathBuf {
     );
     std::env::temp_dir().join(name)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn test_build_ffmpeg_args_webm_forces_opus() {
+        let options = NativeExportOptions {
+            width: 1920,
+            height: 1080,
+            fps: 30.0,
+            start_sec: 0.0,
+            end_sec: 10.0,
+            video_codec: "vp9".to_string(),
+            video_bitrate_bps: 5_000_000,
+            format: "webm".to_string(),
+            audio_enabled: true,
+            audio_path: None,
+            audio_codec: Some("aac".to_string()),
+            audio_bitrate_bps: Some(128_000),
+            ffmpeg_path: None,
+            hardware_acceleration_mode: None,
+            vaapi_device: None,
+            enable_hardware_encoding: None,
+            export_alpha: None,
+        };
+        let args = build_ffmpeg_args(
+            &options,
+            Some(Path::new("dummy.wav")),
+            1920,
+            1080,
+            30.0,
+            Path::new("output.webm"),
+        );
+        let mut idx = 0;
+        let mut found_opus = false;
+        while idx < args.len() {
+            if args[idx] == "-c:a" {
+                assert_eq!(args[idx + 1], "libopus");
+                found_opus = true;
+                break;
+            }
+            idx += 1;
+        }
+        assert!(found_opus, "Audio codec argument not found");
+    }
+}
+

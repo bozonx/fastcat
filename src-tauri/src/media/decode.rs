@@ -47,6 +47,9 @@ pub struct FfmpegNextDecoder {
     ictx: ffmpeg::format::context::Input,
     decoder: ffmpeg::decoder::Video,
     scaler: ffmpeg::software::scaling::Context,
+    scaler_input_format: ffmpeg::format::Pixel,
+    scaler_input_width: u32,
+    scaler_input_height: u32,
     stream_index: usize,
     stream_time_base: ffmpeg::Rational,
     eof_sent: bool,
@@ -85,10 +88,26 @@ impl FfmpegNextDecoder {
 
         let context_decoder = ffmpeg::codec::context::Context::from_parameters(parameters)
             .context("failed to create ffmpeg-next decoder context")?;
-        let decoder = context_decoder
-            .decoder()
-            .video()
-            .context("failed to open ffmpeg-next video decoder")?;
+        let decoder = if codec == "vp9" {
+            if let Some(libvpx) = ffmpeg::decoder::find_by_name("libvpx-vp9") {
+                context_decoder
+                    .decoder()
+                    .open_as(libvpx)
+                    .context("failed to open ffmpeg-next libvpx-vp9 video decoder")?
+                    .video()
+                    .context("failed to open libvpx-vp9 as video decoder")?
+            } else {
+                context_decoder
+                    .decoder()
+                    .video()
+                    .context("failed to open ffmpeg-next video decoder")?
+            }
+        } else {
+            context_decoder
+                .decoder()
+                .video()
+                .context("failed to open ffmpeg-next video decoder")?
+        };
 
         let (visual_w, visual_h) = visual_dimensions(decoder.width(), decoder.height(), rotation);
         let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
@@ -104,6 +123,10 @@ impl FfmpegNextDecoder {
         )
         .context("failed to create ffmpeg-next scaler")?;
 
+        let scaler_input_format = decoder.format();
+        let scaler_input_width = decoder.width();
+        let scaler_input_height = decoder.height();
+
         Ok(Self {
             path: path.to_path_buf(),
             info: MediaInfo {
@@ -118,6 +141,9 @@ impl FfmpegNextDecoder {
             ictx,
             decoder,
             scaler,
+            scaler_input_format,
+            scaler_input_width,
+            scaler_input_height,
             stream_index,
             stream_time_base,
             eof_sent: false,
@@ -125,6 +151,34 @@ impl FfmpegNextDecoder {
     }
 
     fn decode_frame(&mut self, decoded: &ffmpeg::util::frame::Video) -> Result<VideoFrame> {
+        if decoded.format() != self.scaler_input_format
+            || decoded.width() != self.scaler_input_width
+            || decoded.height() != self.scaler_input_height
+        {
+            log::info!(
+                "[native-media] scaler input parameters changed ({:?}, {}x{}) -> ({:?}, {}x{}); recreating scaler",
+                self.scaler_input_format,
+                self.scaler_input_width,
+                self.scaler_input_height,
+                decoded.format(),
+                decoded.width(),
+                decoded.height()
+            );
+            self.scaler = ffmpeg::software::scaling::Context::get(
+                decoded.format(),
+                decoded.width(),
+                decoded.height(),
+                ffmpeg::format::Pixel::RGBA,
+                self.info.width,
+                self.info.height,
+                ffmpeg::software::scaling::flag::Flags::BILINEAR,
+            )
+            .context("failed to recreate ffmpeg-next scaler")?;
+            self.scaler_input_format = decoded.format();
+            self.scaler_input_width = decoded.width();
+            self.scaler_input_height = decoded.height();
+        }
+
         let mut rgba = ffmpeg::util::frame::Video::empty();
         self.scaler
             .run(decoded, &mut rgba)
@@ -301,6 +355,9 @@ impl FfmpegCliDecoder {
         let post = time_sec - pre;
         if pre > 0.0 {
             cmd.arg("-ss").arg(format!("{pre}"));
+        }
+        if self.info.codec == "vp9" {
+            cmd.arg("-c:v").arg("libvpx-vp9");
         }
         cmd.arg("-i").arg(&self.path);
         if post > 0.0 || pre > 0.0 {
@@ -806,4 +863,65 @@ mod tests {
         assert_eq!(frame.pixels.len(), 1280 * 720 * 4);
         assert!(frame.pts_sec >= 0.0);
     }
+
+    #[test]
+    fn ffmpeg_next_decoder_reads_alpha_webm() {
+        let _ = init_ffmpeg().unwrap();
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/test_alpha_simple.webm");
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None).unwrap();
+        let frame = decoder.next_frame().unwrap().unwrap();
+
+        assert_eq!(decoder.info().codec, "vp9");
+        assert_eq!(frame.width, 200);
+        assert_eq!(frame.height, 200);
+        assert_eq!(frame.pixels.len(), 200 * 200 * 4);
+
+        // Проверяем, что в видео есть прозрачность (хотя бы один пиксель имеет альфа < 255)
+        let mut has_transparency = false;
+        for i in 0..(frame.pixels.len() / 4) {
+            let alpha = frame.pixels[i * 4 + 3];
+            if alpha < 255 {
+                has_transparency = true;
+                break;
+            }
+        }
+        assert!(has_transparency, "Expected some transparent pixels in alpha webm");
+    }
+
+    #[test]
+    fn ffmpeg_cli_decoder_reads_alpha_webm() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/test_alpha_simple.webm");
+        let mut decoder = FfmpegCliDecoder::open(
+            &fixture,
+            None,
+            crate::FfmpegHardwareSettings::default(),
+        )
+        .unwrap();
+        let frame = decoder.next_frame().unwrap().unwrap();
+
+        assert_eq!(decoder.info().codec, "vp9");
+        assert_eq!(frame.width, 200);
+        assert_eq!(frame.height, 200);
+        assert_eq!(frame.pixels.len(), 200 * 200 * 4);
+
+        let mut has_transparency = false;
+        for i in 0..(frame.pixels.len() / 4) {
+            let alpha = frame.pixels[i * 4 + 3];
+            if alpha < 255 {
+                has_transparency = true;
+                break;
+            }
+        }
+        assert!(has_transparency, "Expected some transparent pixels in alpha webm (CLI)");
+    }
 }
+
+
+
+

@@ -134,7 +134,7 @@ pub(crate) fn build_export_scene(
         width: scene_w,
         height: scene_h,
         time: time_sec,
-        background: Color::BLACK,
+        background: Color::TRANSPARENT,
         layers,
     })
 }

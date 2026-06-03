@@ -104,6 +104,7 @@ export interface NativeTimelineExportOptions {
   audioPath?: string | null;
   audioCodec?: string | null;
   audioBitrateBps?: number | null;
+  exportAlpha?: boolean;
 }
 
 export async function nativeExportTimeline(params: {
