@@ -169,6 +169,11 @@ vi.mock('~/composables/timeline/export', () => ({
     resetExportState: vi.fn(),
     exportType: ref<'video' | 'audio'>('video'),
     ext: ref('mp4'),
+    matchTimeline: ref(true),
+    customWidth: ref(1920),
+    customHeight: ref(1080),
+    customFps: ref(30),
+    customAudioSampleRate: ref(48000),
   }),
 }));
 

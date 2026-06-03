@@ -3,6 +3,7 @@ import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { Texture } from 'pixi.js';
 import type { Application, Filter, RenderTexture } from 'pixi.js';
 import type { WorkerTimelineClip } from '../../composables/monitor/types';
+import type { WorkerVideoPayloadItem } from '../../composables/timeline/export/types';
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';
 import type { VideoClipEffect } from '~/timeline/types';
@@ -507,7 +508,7 @@ export class VideoCompositor {
   }
 
   async loadTimeline(
-    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: unknown })[],
+    timelineClips: ReadonlyArray<WorkerVideoPayloadItem>,
     deps: {
       getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
       getFileByPath?: (path: string) => Promise<File | null>;
@@ -563,7 +564,7 @@ export class VideoCompositor {
   }
 
   private async loadTimelineLocked(
-    timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: unknown })[],
+    timelineClips: ReadonlyArray<WorkerVideoPayloadItem>,
     deps: {
       getFileHandleByPath: (path: string) => Promise<FileSystemFileHandle | null>;
       getFileByPath?: (path: string) => Promise<File | null>;
@@ -636,7 +637,7 @@ export class VideoCompositor {
     });
   }
 
-  updateTimelineLayout(timelineClips: Record<string, unknown>[]): Promise<number> {
+  updateTimelineLayout(timelineClips: ReadonlyArray<WorkerVideoPayloadItem>): Promise<number> {
     if (this.disposed) return Promise.resolve(this.maxDurationUs);
     return this.runExclusive(
       () => this.updateTimelineLayoutLocked(timelineClips),
@@ -644,9 +645,9 @@ export class VideoCompositor {
     );
   }
 
-  private updateTimelineLayoutLocked(timelineClips: Record<string, unknown>[]): number {
+  private updateTimelineLayoutLocked(timelineClips: ReadonlyArray<WorkerVideoPayloadItem>): number {
     const meta = timelineClips.find(
-      (x) => x && typeof x === 'object' && (x as Record<string, unknown>).kind === 'meta',
+      (x) => x && typeof x === 'object' && x.kind === 'meta',
     );
     const nextMaster = meta
       ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null)
@@ -663,7 +664,7 @@ export class VideoCompositor {
       updateLifecycle: this.timelineUpdateLifecycle,
       getFallbackTrackId: ({ clip, next }) =>
         this.getTrackRuntimeForClip({
-          layer: Math.round(Number(next.layer ?? clip.layer ?? 0)),
+          layer: Math.round(Number((next as { layer?: number }).layer ?? clip.layer ?? 0)),
         })?.id,
       getTrackRuntimeForClip: (clip) => this.getTrackRuntimeForClip(clip),
       toVideoEffects: (value) => this.toVideoEffects(value),

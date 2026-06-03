@@ -10,6 +10,8 @@ import {
 } from '~/composables/file-manager/useFileManager';
 import type { FsEntry } from '~/types/fs';
 import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/application/fileManagerCommands';
+import { useFileManagerStore } from '~/stores/file-manager.store';
+import { useSelectionStore } from '~/stores/selection.store';
 
 const backgroundTasksStore = {
   addTask: vi.fn(() => 'task-1'),
@@ -142,31 +144,33 @@ describe('useFileManager', () => {
     const writeStream = vi.fn(async () => new WritableStream<Uint8Array>());
     const loadProjectDirectory = vi.fn();
 
+    const vfs = {
+      init: vi.fn(),
+      readDirectory: vi.fn(async () => []),
+      createDirectory: vi.fn(),
+      listEntryNames: vi.fn(async () => []),
+      readFile: vi.fn(),
+      writeFile: vi.fn(),
+      writeStream,
+      readStream: vi.fn(),
+      deleteEntry: vi.fn(),
+      moveEntry: vi.fn(),
+      copyFile: vi.fn(),
+      copyDirectory: vi.fn(),
+      exists: vi.fn(async () => false),
+      getMetadata: vi.fn(async () => null),
+      getObjectUrl: vi.fn(),
+      getFile: vi.fn(),
+      writeJson: vi.fn(),
+    };
+
     const manager = createFileManager({
       t: (key: string, params?: Record<string, unknown>) =>
         params && typeof params === 'object' && 'fileName' in params
           ? `${key}:${String(params.fileName)}`
           : key,
       toast: { add: vi.fn() },
-      vfs: {
-        init: vi.fn(),
-        readDirectory: vi.fn(async () => []),
-        createDirectory: vi.fn(),
-        listEntryNames: vi.fn(async () => []),
-        readFile: vi.fn(),
-        writeFile: vi.fn(),
-        writeStream,
-        readStream: vi.fn(),
-        deleteEntry: vi.fn(),
-        moveEntry: vi.fn(),
-        copyFile: vi.fn(),
-        copyDirectory: vi.fn(),
-        exists: vi.fn(async () => false),
-        getMetadata: vi.fn(async () => null),
-        getObjectUrl: vi.fn(),
-        getFile: vi.fn(),
-        writeJson: vi.fn(),
-      },
+      vfs,
       isApiSupported: ref(true),
       rootEntries: ref([]),
       sortMode: ref('name'),
@@ -191,7 +195,7 @@ describe('useFileManager', () => {
       onDirectoryLoaded: loadProjectDirectory,
     });
 
-    return { manager, writeStream };
+    return { manager, writeStream, vfs };
   }
 
   it('handleFiles creates a background task for large uploads', async () => {
@@ -225,6 +229,45 @@ describe('useFileManager', () => {
     await manager.handleFiles([file]);
 
     expect(backgroundTasksStore.addTask).not.toHaveBeenCalled();
+  });
+
+  it('handleFiles should automatically open target directory and select file if selectInFileManager is true', async () => {
+    const { manager, vfs } = createUploadManager();
+    const file = createUploadFile({ name: 'test.mp4', size: 1024 });
+
+    vi.mocked(vfs.getMetadata).mockResolvedValue({ kind: 'file', lastModified: Date.now(), size: 1024 });
+
+    const fileManagerStore = useFileManagerStore();
+    const selectionStore = useSelectionStore();
+
+    const openFolderSpy = vi.spyOn(fileManagerStore, 'openFolderByPath');
+    const selectFsEntrySpy = vi.spyOn(selectionStore, 'selectFsEntryWithUiUpdate');
+
+    await manager.handleFiles([file], { selectInFileManager: true });
+
+    expect(openFolderSpy).toHaveBeenCalledWith('_video');
+    expect(selectFsEntrySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'test.mp4',
+        path: '_video/test.mp4',
+      }),
+    );
+  });
+
+  it('handleFiles should not select file in file manager if selectInFileManager is false', async () => {
+    const { manager } = createUploadManager();
+    const file = createUploadFile({ name: 'test.mp4', size: 1024 });
+
+    const fileManagerStore = useFileManagerStore();
+    const selectionStore = useSelectionStore();
+
+    const openFolderSpy = vi.spyOn(fileManagerStore, 'openFolderByPath');
+    const selectFsEntrySpy = vi.spyOn(selectionStore, 'selectFsEntryWithUiUpdate');
+
+    await manager.handleFiles([file], { selectInFileManager: false });
+
+    expect(openFolderSpy).not.toHaveBeenCalled();
+    expect(selectFsEntrySpy).not.toHaveBeenCalled();
   });
 
   it('FsEntry type should match expected structure', () => {

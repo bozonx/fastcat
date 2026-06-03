@@ -1,8 +1,10 @@
 //! Текстовый рендер: parley (layout + shaping) -> vello Glyph runs.
-//!
-//! Сейчас runtime отсутствует — `TextSpec` живёт в `super::layers` как «словарь
-//! будущих kind'ов». Подключение: добавить `LayerKind::Text(TextSpec)`,
-//! реализовать `layout_text(spec) -> ParleyLayout`, и в `Scene::to_vello` —
-//! ветку `LayerKind::Text` с `scene.draw_glyph_run(...)`.
-//!
-//! Загрузка пользовательских шрифтов из проекта — см. фронтовый `load-fonts.ts`.
+
+use std::sync::{Mutex, OnceLock};
+use parley::{FontContext, LayoutContext};
+
+pub static TEXT_CTX: OnceLock<Mutex<(FontContext, LayoutContext<[u8; 4]>)>> = OnceLock::new();
+
+pub fn get_text_context() -> &'static Mutex<(FontContext, LayoutContext<[u8; 4]>)>{
+    TEXT_CTX.get_or_init(|| Mutex::new((FontContext::new(), LayoutContext::new())))
+}

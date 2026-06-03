@@ -1250,8 +1250,10 @@ export default {
       "phaseEncoding": "Кодирование видео...",
       "phasePreparing": "Подготовка проекта...",
       "phaseSaving": "Сохранение в библиотеку...",
+      "matchTimeline": "Как на таймлайне",
       "preset": {
-        "custom": "Свой"
+        "custom": "Свой",
+        "matchTimeline": "Как в таймлайне"
       },
       "presetLabel": "Пресет",
       "processing": "Обработка...",
@@ -1595,6 +1597,8 @@ export default {
         "decreaseSelectedClipsVolume": "Уменьшить громкость выбранных клипов",
         "decreaseSelectedClipsVolumeLarge": "Уменьшить громкость выбранных клипов (сильно)",
         "duplicate": "Дублировать таймлайн / Создать версию",
+        "groupClips": "Сгруппировать клипы",
+        "ungroupClips": "Разгруппировать клипы",
         "increaseSelectedClipsVolume": "Увеличить громкость выбранных клипов",
         "increaseSelectedClipsVolumeLarge": "Увеличить громкость выбранных клипов (сильно)",
         "moveSelectedClipsLeft": "Переместить выбранные клипы влево",

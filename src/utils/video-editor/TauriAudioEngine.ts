@@ -53,7 +53,7 @@ export class TauriAudioEngine implements IAudioEngine {
     this.currentClips = clips;
   }
 
-  updateTimelineLayout(clips: AudioEngineClip[]) {
+  async updateTimelineLayout(clips: AudioEngineClip[]) {
     this.currentClips = clips;
   }
 

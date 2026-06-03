@@ -113,6 +113,28 @@ export interface FastCatProjectSettings {
     fileManagerPaths: Record<string, string | null>;
     layout: ProjectUiLayoutState;
   };
+  exportSettings?: {
+    exportType: 'video' | 'audio';
+    outputFormat: 'mp4' | 'webm' | 'mkv';
+    videoCodec: string;
+    bitrateMbps: number;
+    excludeAudio: boolean;
+    audioCodec: 'aac' | 'opus' | 'flac' | 'pcm';
+    audioBitrateKbps: number;
+    audioSampleRate: number;
+    bitrateMode: 'constant' | 'variable';
+    keyframeIntervalSec: number;
+    exportAlpha: boolean;
+    matchTimeline: boolean;
+    customWidth: number;
+    customHeight: number;
+    customFps: number;
+    customAudioSampleRate: number;
+    metadataTitle: string;
+    metadataDescription: string;
+    metadataAuthor: string;
+    metadataTags: string;
+  };
 }
 
 export const DEFAULT_PROJECT_MONITOR_SETTINGS: ProjectMonitorSettings = {

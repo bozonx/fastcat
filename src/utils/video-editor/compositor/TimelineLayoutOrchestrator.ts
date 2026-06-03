@@ -6,15 +6,17 @@ import type {
   TimelineUpdateLifecycleResult,
 } from './TimelineUpdateLifecycle';
 
+import type { WorkerVideoPayloadItem } from '../../../composables/timeline/export/types';
+
 export interface TimelineLayoutOrchestratorParams {
   clips: CompositorClip[];
-  timelineClips: Record<string, unknown>[];
+  timelineClips: ReadonlyArray<WorkerVideoPayloadItem>;
   clipLayoutUpdater: TimelineClipLayoutUpdater;
   trackRebinder: TimelineTrackRebinder;
   updateLifecycle: TimelineUpdateLifecycle;
   getFallbackTrackId: (params: {
     clip: CompositorClip;
-    next: Record<string, unknown>;
+    next: WorkerVideoPayloadItem;
   }) => string | null | undefined;
   getTrackRuntimeForClip: (clip: CompositorClip) => CompositorTrack | null;
   toVideoEffects: (value: unknown) => CompositorClip['effects'];
@@ -24,7 +26,7 @@ export interface TimelineLayoutOrchestratorParams {
 
 export class TimelineLayoutOrchestrator {
   public apply(params: TimelineLayoutOrchestratorParams): TimelineUpdateLifecycleResult {
-    const byId = new Map<string, Record<string, unknown>>();
+    const byId = new Map<string, WorkerVideoPayloadItem>();
     for (const clipData of params.timelineClips) {
       if (clipData?.kind !== 'clip') {
         continue;

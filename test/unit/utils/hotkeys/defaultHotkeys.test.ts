@@ -183,4 +183,9 @@ describe('DEFAULT_HOTKEYS', () => {
     expect(DEFAULT_HOTKEYS.bindings['timeline.globalToStart']).toEqual(['Home']);
     expect(DEFAULT_HOTKEYS.bindings['timeline.globalToEnd']).toEqual(['End']);
   });
+
+  it('has defaults for timeline group and ungroup clips shortcuts', () => {
+    expect(DEFAULT_HOTKEYS.bindings['timeline.groupClips']).toEqual(['Ctrl+G']);
+    expect(DEFAULT_HOTKEYS.bindings['timeline.ungroupClips']).toEqual(['Ctrl+Shift+G']);
+  });
 });

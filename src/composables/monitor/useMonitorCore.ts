@@ -91,7 +91,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   });
   const { client } = isTauriRuntime() ? { client: null } : getPreviewWorkerClient();
   const compositorRuntime = createMonitorCompositorRuntime({
-    client: client!,
+    client,
     containerEl,
     renderWidth,
     renderHeight,
@@ -174,12 +174,12 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const payload = cloneWorkerPayload(preparedTimeline.payload);
       const maxDuration = await runWorkerTimelineOperation(async () => {
         await ensureCompositorReady();
-        if (isTauriRuntime()) {
+        if (!client) {
           return flattenedClips.reduce((max, clip) => {
             return Math.max(max, clip.timelineRange.startUs + clip.timelineRange.durationUs);
           }, 0);
         }
-        return await client!.updateTimelineLayout(payload);
+        return await client.updateTimelineLayout(payload);
       });
       timelineStore.duration = Math.max(
         timelineStore.duration,
@@ -212,10 +212,13 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       layoutUpdateFromQueue = false;
     }
 
-    const audioClips = workerAudioClips.value;
-    const audioEngineClips = await syncAudioEngineClips(audioClips);
-
-    audioEngine.updateTimelineLayout(audioEngineClips);
+    try {
+      const audioClips = workerAudioClips.value;
+      const audioEngineClips = await syncAudioEngineClips(audioClips);
+      await audioEngine.updateTimelineLayout(audioEngineClips);
+    } catch (audioErr) {
+      log.error('[Monitor] Failed to update audio engine layout', audioErr);
+    }
   }
 
   const queues = createMonitorCoreQueues({
@@ -320,8 +323,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         await runWorkerTimelineOperation(async () => {
           await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
           forceRecreateCompositorNextBuild = false;
-          if (!isTauriRuntime()) {
-            await client!.clearClips();
+          if (client) {
+            await client.clearClips();
           }
         });
         await audioEngine.loadClips([]);
@@ -347,7 +350,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
         return;
       }
 
-      if (!isTauriRuntime()) {
+      if (client) {
         setPreviewHostApi(
           createMonitorPreviewHostApi({
             currentProjectId: currentProjectStore.currentProjectId,
@@ -366,20 +369,20 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       const maxDuration = await runWorkerTimelineOperation(async () => {
         await ensureCompositorReady({ forceRecreate: forceRecreateCompositorNextBuild });
         forceRecreateCompositorNextBuild = false;
-        if (isTauriRuntime()) {
+        if (!client) {
           return clips.reduce((max, clip) => {
             return Math.max(max, clip.timelineRange.startUs + clip.timelineRange.durationUs);
           }, 0);
         }
-        return clips.length > 0 ? await client!.loadTimeline(payload, requestId) : 0;
+        return clips.length > 0 ? await client.loadTimeline(payload, requestId) : 0;
       });
       if (requestId !== buildRequestId) {
         return;
       }
       if (clips.length === 0) {
         await runWorkerTimelineOperation(async () => {
-          if (!isTauriRuntime()) {
-            await client!.clearClips();
+          if (client) {
+            await client.clearClips();
           }
         });
       }

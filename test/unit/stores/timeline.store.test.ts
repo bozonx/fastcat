@@ -359,6 +359,30 @@ describe('TimelineStore', () => {
     expect(clip.timelineRange.durationUs).toBe(6_000_000);
   });
 
+  it('trims left/right to a specific time without ripple', async () => {
+    const timeline = createTestTimeline({
+      tracks: [
+        {
+          id: 'v1',
+          kind: 'video',
+          clips: [{ id: 'c1', startUs: 0, durationUs: 10_000_000 }],
+        },
+      ],
+    });
+    store.timelineDoc = timeline;
+
+    let clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
+    await store.trimToTimeLeftNoRipple({ trackId: 'v1', itemId: clip.id }, 3_000_000);
+
+    clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
+    expect(clip.timelineRange.startUs).toBe(3_000_000);
+
+    await store.trimToTimeRightNoRipple({ trackId: 'v1', itemId: clip.id }, 7_000_000);
+
+    clip = store.timelineDoc.tracks[0].items.find((it: any) => it.kind === 'clip');
+    expect(clip.timelineRange.durationUs).toBe(4_000_000);
+  });
+
   it('adds image source to video track', async () => {
     // Rely on effect observation instead of spy if possible, or just check result
     const initialCount = store.timelineDoc.tracks[0].items.length;

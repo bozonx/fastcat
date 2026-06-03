@@ -222,5 +222,5 @@ export const WorkerVideoPayloadItemSchema = z.union([
 export const WorkerVideoPayloadSchema = z.array(WorkerVideoPayloadItemSchema);
 
 export function parseWorkerVideoPayload(value: unknown): WorkerVideoPayloadItem[] {
-  return WorkerVideoPayloadSchema.parse(value);
+  return WorkerVideoPayloadSchema.parse(value) as WorkerVideoPayloadItem[];
 }

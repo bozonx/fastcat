@@ -24,6 +24,8 @@ describe('useClipInteractions', () => {
     selectTimelineItems: vi.fn(),
     trimToPlayheadLeftNoRipple: vi.fn(),
     trimToPlayheadRightNoRipple: vi.fn(),
+    trimToTimeLeftNoRipple: vi.fn(),
+    trimToTimeRightNoRipple: vi.fn(),
     splitClipAtPlayhead: vi.fn(),
     splitClipAtTime: vi.fn(),
     getPointerTimeUs: vi.fn(),
@@ -78,8 +80,9 @@ describe('useClipInteractions', () => {
     expect(ctx.splitClipAtPlayhead).not.toHaveBeenCalled();
   });
 
-  it('trims left in trim mode with Shift', () => {
+  it('trims left in trim mode with Shift (fallback to playhead if pointer time is null)', () => {
     ctx.isTrimModeActive.value = true;
+    ctx.getPointerTimeUs.mockReturnValue(null);
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0, shiftKey: true });
 
@@ -89,10 +92,27 @@ describe('useClipInteractions', () => {
       trackId: 'track-1',
       itemId: 'clip-1',
     });
+    expect(ctx.trimToTimeLeftNoRipple).not.toHaveBeenCalled();
   });
 
-  it('trims right in trim mode with Ctrl', () => {
+  it('trims left in trim mode with Shift at specific pointer time', () => {
     ctx.isTrimModeActive.value = true;
+    ctx.getPointerTimeUs.mockReturnValue(3_000_000);
+    const { onClipClick } = useClipInteractions(ctx);
+    const event = new MouseEvent('click', { button: 0, shiftKey: true });
+
+    onClipClick(event);
+
+    expect(ctx.trimToTimeLeftNoRipple).toHaveBeenCalledWith(
+      { trackId: 'track-1', itemId: 'clip-1' },
+      3_000_000,
+    );
+    expect(ctx.trimToPlayheadLeftNoRipple).not.toHaveBeenCalled();
+  });
+
+  it('trims right in trim mode with Ctrl (fallback to playhead if pointer time is null)', () => {
+    ctx.isTrimModeActive.value = true;
+    ctx.getPointerTimeUs.mockReturnValue(null);
     const { onClipClick } = useClipInteractions(ctx);
     const event = new MouseEvent('click', { button: 0, ctrlKey: true });
 
@@ -102,6 +122,22 @@ describe('useClipInteractions', () => {
       trackId: 'track-1',
       itemId: 'clip-1',
     });
+    expect(ctx.trimToTimeRightNoRipple).not.toHaveBeenCalled();
+  });
+
+  it('trims right in trim mode with Ctrl at specific pointer time', () => {
+    ctx.isTrimModeActive.value = true;
+    ctx.getPointerTimeUs.mockReturnValue(7_000_000);
+    const { onClipClick } = useClipInteractions(ctx);
+    const event = new MouseEvent('click', { button: 0, ctrlKey: true });
+
+    onClipClick(event);
+
+    expect(ctx.trimToTimeRightNoRipple).toHaveBeenCalledWith(
+      { trackId: 'track-1', itemId: 'clip-1' },
+      7_000_000,
+    );
+    expect(ctx.trimToPlayheadRightNoRipple).not.toHaveBeenCalled();
   });
 
   it('does nothing in trim mode if clip is locked', () => {

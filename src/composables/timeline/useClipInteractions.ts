@@ -12,6 +12,8 @@ export interface ClipInteractionsContext {
   selectTimelineItems: (ids: string[]) => void;
   trimToPlayheadLeftNoRipple: (target: { trackId: string; itemId: string }) => void;
   trimToPlayheadRightNoRipple: (target: { trackId: string; itemId: string }) => void;
+  trimToTimeLeftNoRipple?: (target: { trackId: string; itemId: string }, atUs: number) => void;
+  trimToTimeRightNoRipple?: (target: { trackId: string; itemId: string }, atUs: number) => void;
   splitClipAtPlayhead: (target: { trackId: string; itemId: string }) => void;
   splitClipAtTime?: (target: { trackId: string; itemId: string }, atUs: number) => void;
   getPointerTimeUs?: (e: MouseEvent) => number | null;
@@ -45,12 +47,21 @@ export function useClipInteractions(ctx: ClipInteractionsContext) {
 
         ctx.selectTimelineItems([ctx.item.value.id]);
 
+        const pointerTimeUs = ctx.getPointerTimeUs?.(e) ?? null;
+
         if (isShift && !isCtrl) {
-          ctx.trimToPlayheadLeftNoRipple(target);
+          if (pointerTimeUs !== null && ctx.trimToTimeLeftNoRipple) {
+            ctx.trimToTimeLeftNoRipple(target, pointerTimeUs);
+          } else {
+            ctx.trimToPlayheadLeftNoRipple(target);
+          }
         } else if (!isShift && isCtrl) {
-          ctx.trimToPlayheadRightNoRipple(target);
+          if (pointerTimeUs !== null && ctx.trimToTimeRightNoRipple) {
+            ctx.trimToTimeRightNoRipple(target, pointerTimeUs);
+          } else {
+            ctx.trimToPlayheadRightNoRipple(target);
+          }
         } else {
-          const pointerTimeUs = ctx.getPointerTimeUs?.(e) ?? null;
           if (pointerTimeUs !== null && ctx.splitClipAtTime) {
             ctx.splitClipAtTime(target, pointerTimeUs);
           } else {

@@ -26,6 +26,7 @@ export interface UseFileBrowserSharedDeps {
         totalFiles: number;
         fileName: string;
       }) => void;
+      selectInFileManager?: boolean;
     },
   ) => Promise<unknown>;
   findEntryByPath: (path: string) => FsEntry | null;

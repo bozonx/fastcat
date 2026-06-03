@@ -16,7 +16,7 @@ export function normalizeTrackOpacity(value: unknown): number | undefined {
 }
 
 export function buildTrackRuntimeList(
-  timelineItems: unknown[],
+  timelineItems: ReadonlyArray<unknown>,
   toVideoEffects: (value: unknown) => VideoClipEffect[] | undefined,
 ): TrackRuntimeDefinition[] {
   const explicitTracks = timelineItems

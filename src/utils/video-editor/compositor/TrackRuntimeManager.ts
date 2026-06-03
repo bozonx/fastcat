@@ -45,11 +45,11 @@ export class TrackRuntimeManager {
     return this.trackByLayer.get(clip.layer) ?? null;
   }
 
-  public buildList(timelineItems: unknown[]) {
+  public buildList(timelineItems: ReadonlyArray<unknown>) {
     return buildTrackRuntimeList(timelineItems, this.params.toVideoEffects);
   }
 
-  public sync(timelineItems: unknown[], app: Application | null) {
+  public sync(timelineItems: ReadonlyArray<unknown>, app: Application | null) {
     if (!app) return;
 
     const nextDefs = this.buildList(timelineItems);

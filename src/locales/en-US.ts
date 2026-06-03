@@ -1250,8 +1250,10 @@ export default {
       "phaseEncoding": "Encoding video...",
       "phasePreparing": "Preparing project...",
       "phaseSaving": "Saving to library...",
+      "matchTimeline": "Match Timeline",
       "preset": {
-        "custom": "Custom"
+        "custom": "Custom",
+        "matchTimeline": "Match Timeline"
       },
       "presetLabel": "Preset",
       "processing": "Processing...",
@@ -1595,6 +1597,8 @@ export default {
         "decreaseSelectedClipsVolume": "Decrease selected clips volume",
         "decreaseSelectedClipsVolumeLarge": "Decrease volume of selected clips (large)",
         "duplicate": "Duplicate timeline / Create version",
+        "groupClips": "Group clips",
+        "ungroupClips": "Ungroup clips",
         "increaseSelectedClipsVolume": "Increase selected clips volume",
         "increaseSelectedClipsVolumeLarge": "Increase volume of selected clips (large)",
         "moveSelectedClipsLeft": "Move selected clips left",

@@ -1160,4 +1160,79 @@ describe('useEditorHotkeys', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', code: 'End', bubbles: true }));
     expect(goToEndSpy).toHaveBeenCalledOnce();
   });
+
+  it('groups and ungroups clips via Ctrl+G and Ctrl+Shift+G hotkeys', async () => {
+    wrapper = mount(HotkeysHarness);
+    const focusStore = useFocusStore();
+    const projectStore = useProjectStore();
+    const selectionStore = useSelectionStore();
+    const timelineStore = useTimelineStore() as any;
+
+    mockWorkspaceStore.userSettings.hotkeys.bindings = {
+      'timeline.groupClips': ['Ctrl+G'],
+      'timeline.ungroupClips': ['Ctrl+Shift+G'],
+    };
+
+    projectStore.setView('cut');
+    focusStore.setMainFocus('timeline');
+
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clips',
+      items: [
+        { trackId: 'track-1', itemId: 'clip-1' },
+        { trackId: 'track-1', itemId: 'clip-2' },
+      ],
+    };
+
+    const batchApplyTimelineSpy = vi.fn();
+    timelineStore.batchApplyTimeline = batchApplyTimelineSpy;
+
+    // Send Ctrl+G (Group)
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'g', code: 'KeyG', ctrlKey: true, bubbles: true }),
+    );
+    expect(batchApplyTimelineSpy).toHaveBeenCalledOnce();
+    expect(batchApplyTimelineSpy.mock.calls[0][0]).toEqual([
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        properties: { linkedGroupId: expect.any(String) },
+      },
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-2',
+        properties: { linkedGroupId: expect.any(String) },
+      },
+    ]);
+
+    // Send Ctrl+Shift+G (Ungroup)
+    batchApplyTimelineSpy.mockClear();
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'G',
+        code: 'KeyG',
+        ctrlKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    );
+    expect(batchApplyTimelineSpy).toHaveBeenCalledOnce();
+    expect(batchApplyTimelineSpy.mock.calls[0][0]).toEqual([
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-1',
+        properties: { linkedGroupId: undefined },
+      },
+      {
+        type: 'update_clip_properties',
+        trackId: 'track-1',
+        itemId: 'clip-2',
+        properties: { linkedGroupId: undefined },
+      },
+    ]);
+  });
 });

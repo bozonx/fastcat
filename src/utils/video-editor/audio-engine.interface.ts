@@ -8,7 +8,7 @@ export interface AudioEngineOptions {
 export interface IAudioEngine {
   init(options?: { sampleRate?: number; audioChannels?: 'stereo' | 'mono' }): Promise<void>;
   loadClips(clips: AudioEngineClip[]): Promise<void>;
-  updateTimelineLayout(clips: AudioEngineClip[]): void;
+  updateTimelineLayout(clips: AudioEngineClip[]): Promise<void>;
   play(timeUs: number, speed?: number): Promise<void>;
   stop(): void;
   seek(timeUs: number): void;

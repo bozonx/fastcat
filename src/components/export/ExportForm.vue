@@ -78,6 +78,11 @@ const {
   exportRangeOptions,
   hasSelectableExportRanges,
   isSettingsDirty,
+  matchTimeline,
+  customWidth,
+  customHeight,
+  customFps,
+  customAudioSampleRate,
   customExportPath,
   isTauri,
   exportType,
@@ -89,6 +94,9 @@ const {
   getPhaseLabel,
   validateFilename,
   cancelExport,
+  resetAllSettings,
+  resetField,
+  isFieldDirty,
 } = useExportForm();
 
 const tabOptions = computed(() => [
@@ -304,7 +312,20 @@ async function onConfirm() {
             />
           </div>
 
-          <div v-show="isResolutionExpanded" class="pt-2">
+          <div v-show="isResolutionExpanded" class="pt-2 space-y-4">
+            <div class="flex items-center gap-3">
+              <UCheckbox v-model="matchTimeline" :disabled="isExporting" />
+              <span class="text-ui-text text-sm">{{ t('videoEditor.export.matchTimeline') }}</span>
+              <UButton
+                v-if="isFieldDirty('matchTimeline')"
+                icon="i-heroicons-arrow-path-20-solid"
+                color="warning"
+                variant="ghost"
+                size="xs"
+                @click="resetField('matchTimeline')"
+                class="shrink-0"
+              />
+            </div>
             <MediaResolutionSettings
               v-model:width="exportWidth"
               v-model:height="exportHeight"
@@ -313,7 +334,7 @@ async function onConfirm() {
               v-model:orientation="orientation"
               v-model:aspect-ratio="aspectRatio"
               v-model:is-custom-resolution="isCustomResolution"
-              :disabled="isExporting"
+              :disabled="isExporting || matchTimeline"
             />
           </div>
         </div>
@@ -361,6 +382,9 @@ async function onConfirm() {
               v-model:metadata-description="metadataDescription"
               v-model:metadata-author="metadataAuthor"
               v-model:metadata-tags="metadataTags"
+              v-model:match-timeline="matchTimeline"
+              :is-field-dirty="isFieldDirty"
+              :reset-field="resetField"
               :show-audio-advanced="true"
               :hide-audio-sample-rate="true"
               :show-metadata="false"
@@ -392,26 +416,71 @@ async function onConfirm() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UiFormField :label="t('videoEditor.export.metadataTitle')">
-              <UiTextInput v-model="metadataTitle" :disabled="isExporting" full-width />
+              <div class="flex items-center gap-1.5 w-full">
+                <UiTextInput v-model="metadataTitle" :disabled="isExporting" full-width class="flex-grow" />
+                <UButton
+                  v-if="isFieldDirty('metadataTitle')"
+                  icon="i-heroicons-arrow-path-20-solid"
+                  color="warning"
+                  variant="ghost"
+                  size="xs"
+                  @click="resetField('metadataTitle')"
+                  class="shrink-0"
+                />
+              </div>
             </UiFormField>
             <UiFormField :label="t('videoEditor.export.metadataAuthor')">
-              <UiTextInput v-model="metadataAuthor" :disabled="isExporting" full-width />
+              <div class="flex items-center gap-1.5 w-full">
+                <UiTextInput v-model="metadataAuthor" :disabled="isExporting" full-width class="flex-grow" />
+                <UButton
+                  v-if="isFieldDirty('metadataAuthor')"
+                  icon="i-heroicons-arrow-path-20-solid"
+                  color="warning"
+                  variant="ghost"
+                  size="xs"
+                  @click="resetField('metadataAuthor')"
+                  class="shrink-0"
+                />
+              </div>
             </UiFormField>
           </div>
 
           <UiFormField :label="t('videoEditor.export.metadataDescription')">
-            <UiTextarea
-              v-model="metadataDescription"
-              :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
-              :rows="3"
-              autoresize
-              :maxrows="10"
-              full-width
-            />
+            <div class="flex items-start gap-1.5 w-full">
+              <UiTextarea
+                v-model="metadataDescription"
+                :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
+                :rows="3"
+                autoresize
+                :maxrows="10"
+                full-width
+                class="flex-grow"
+              />
+              <UButton
+                v-if="isFieldDirty('metadataDescription')"
+                icon="i-heroicons-arrow-path-20-solid"
+                color="warning"
+                variant="ghost"
+                size="xs"
+                @click="resetField('metadataDescription')"
+                class="shrink-0 mt-2"
+              />
+            </div>
           </UiFormField>
 
           <UiFormField :label="t('videoEditor.export.metadataTags')">
-            <UiTextInput v-model="metadataTags" :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')" full-width />
+            <div class="flex items-center gap-1.5 w-full">
+              <UiTextInput v-model="metadataTags" :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')" full-width class="flex-grow" />
+              <UButton
+                v-if="isFieldDirty('metadataTags')"
+                icon="i-heroicons-arrow-path-20-solid"
+                color="warning"
+                variant="ghost"
+                size="xs"
+                @click="resetField('metadataTags')"
+                class="shrink-0"
+              />
+            </div>
           </UiFormField>
         </div>
 
@@ -478,7 +547,7 @@ async function onConfirm() {
             color="neutral"
             variant="ghost"
             :label="t('common.actions.reset')"
-            @click="initializeExportForm"
+            @click="resetAllSettings"
           />
           <UButton
             v-if="isExporting"

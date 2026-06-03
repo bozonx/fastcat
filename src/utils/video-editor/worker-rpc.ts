@@ -140,7 +140,17 @@ export interface VideoCoreWorkerAPI {
     bgColor: string,
     rendererPreference?: 'webgl' | 'webgpu',
   ): Promise<void>;
+  /**
+   * Full rebuild of the compositor timeline. Cancels any in-flight load and
+   * re-creates clip sprites, textures, and media decoders from scratch.
+   * Use this when the clip set itself changes (add/remove/reorder clips).
+   */
   loadTimeline(clips: WorkerVideoPayloadItem[], requestId?: number): Promise<number>;
+  /**
+   * Incremental layout update. Mutates existing clip positions, durations, and
+   * effects without destroying and re-creating sprites or media decoders.
+   * Use this when only clip properties (trim, position, opacity, etc.) change.
+   */
   updateTimelineLayout(clips: WorkerVideoPayloadItem[]): Promise<number>;
   renderFrame(
     timeUs: number,

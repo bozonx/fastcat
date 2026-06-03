@@ -4,6 +4,7 @@ import PQueue from 'p-queue';
 import { getMediaTypeFromFilename } from '../../media-types';
 import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
 import type { WorkerTimelineClip } from '../../../composables/monitor/types';
+import type { WorkerVideoPayloadItem } from '../../../composables/timeline/export/types';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';
 import type { RasterImageLoader } from './RasterImageLoader';
@@ -66,7 +67,7 @@ export interface TimelineLoadOrchestratorCallbacks {
 }
 
 export interface TimelineLoadOrchestratorParams {
-  timelineClips: (WorkerTimelineClip | { kind: 'meta' | 'track'; [key: string]: unknown })[];
+  timelineClips: ReadonlyArray<WorkerVideoPayloadItem>;
   deps: TimelineLoadOrchestratorDeps;
   mediabunny: MediaClipLoaderMediabunny;
   callbacks: TimelineLoadOrchestratorCallbacks;
@@ -107,9 +108,9 @@ export class TimelineLoadOrchestrator {
 
       const descriptor = this.context.timelineClipLoader.describe({
         index,
-        clipData: clipData as Record<string, unknown>,
+        clipData: clipData as unknown as Record<string, unknown>,
         sequentialTimeUs,
-        fallbackTrackId: callbacks.getFallbackTrackId(clipData as Record<string, unknown>),
+        fallbackTrackId: callbacks.getFallbackTrackId(clipData as unknown as Record<string, unknown>),
       });
       if (!descriptor) {
         continue;
@@ -117,7 +118,7 @@ export class TimelineLoadOrchestrator {
 
       const processed = await this.processDescriptor({
         descriptor,
-        clipData: clipData as Record<string, unknown>,
+        clipData: clipData as unknown as Record<string, unknown>,
         deps,
         mediabunny,
         callbacks,

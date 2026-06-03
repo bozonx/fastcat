@@ -177,12 +177,12 @@ export class WebAudioEngine {
     });
   }
 
-  updateTimelineLayout(clips: AudioEngineClip[]) {
+  async updateTimelineLayout(clips: AudioEngineClip[]) {
     this.layoutGeneration += 1;
     const generation = this.layoutGeneration;
     this.currentClips = clips;
     this.cleanupCache();
-    void this.chunkDecoder.prefetchHeadChunks(clips, {
+    await this.chunkDecoder.prefetchHeadChunks(clips, {
       shouldContinue: () => generation === this.layoutGeneration && !this.destroyed,
     });
     if (this.scheduler.isPlayingActive()) {

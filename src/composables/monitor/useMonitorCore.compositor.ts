@@ -1,11 +1,10 @@
 import { createDevLogger } from '~/utils/dev-logger';
 import { normalizeTimeUs } from '~/utils/monitor-time';
-import { isTauriRuntime } from '~/utils/runtime';
 import type { PreviewRenderOptions, VideoCoreWorkerAPI } from '~/utils/video-editor/worker-rpc';
 const log = createDevLogger('useMonitorCore.compositor');
 
 export interface CreateMonitorCompositorRuntimeOptions {
-  client: VideoCoreWorkerAPI;
+  client: VideoCoreWorkerAPI | null;
   containerEl: { value: HTMLDivElement | null };
   renderWidth: { value: number };
   renderHeight: { value: number };
@@ -38,8 +37,8 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
   }
 
   async function ensureReady(ensureOptions?: EnsureMonitorCompositorReadyOptions) {
-    // В Tauri превью рисует нативный монитор (winit+Vello), PIXI канвас не нужен.
-    if (isTauriRuntime()) {
+    // No web compositor in Tauri mode (native monitor draws preview).
+    if (!options.client) {
       compositorReady = false;
       return;
     }
@@ -99,7 +98,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
   function scheduleRender(timeUs: number) {
     if (options.isUnmounted()) return;
-    if (isTauriRuntime()) return; // native monitor сам рисует
+    if (!options.client) return; // native monitor handles preview
     latestRenderTimeUs = normalizeTimeUs(timeUs);
     if (renderLoopInFlight) return;
 
@@ -111,6 +110,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
             latestRenderTimeUs = null;
             break;
           }
+          if (!options.client) break;
           const nextTimeUs = latestRenderTimeUs;
           latestRenderTimeUs = null;
           await options.client.renderFrame(nextTimeUs, options.getPreviewRenderOptions());
@@ -130,7 +130,7 @@ export function createMonitorCompositorRuntime(options: CreateMonitorCompositorR
 
   async function destroy() {
     clearPendingRender();
-    if (!isTauriRuntime() && options.client) {
+    if (options.client) {
       await options.client.destroyCompositor();
     }
   }

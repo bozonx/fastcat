@@ -1,5 +1,5 @@
 import { createDevLogger } from '~/utils/dev-logger';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -27,6 +27,7 @@ export interface ExportRangeOption {
 }
 
 export function useExportForm() {
+  const isInitializing = ref(false);
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
@@ -87,6 +88,11 @@ export function useExportForm() {
     resetExportState,
     exportType,
     ext,
+    matchTimeline,
+    customWidth,
+    customHeight,
+    customFps,
+    customAudioSampleRate,
   } = useTimelineExport();
 
   const initialSavedSettingsSnapshot = ref('');
@@ -166,9 +172,40 @@ export function useExportForm() {
         .filter(Boolean),
     }),
   );
-  const isSettingsDirty = computed(
-    () => savedSettingsSnapshot.value !== initialSavedSettingsSnapshot.value,
-  );
+  const isSettingsDirty = computed(() => {
+    const encDefaults = projectStore.projectSettings?.exportDefaults?.encoding;
+    if (!encDefaults) return false;
+
+    const format =
+      timelineStore.timelineFormat ??
+      createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
+
+    const isEncodingDifferent =
+      outputFormat.value !== encDefaults.format ||
+      videoCodec.value !== encDefaults.videoCodec ||
+      bitrateMbps.value !== encDefaults.bitrateMbps ||
+      excludeAudio.value !== encDefaults.excludeAudio ||
+      audioCodec.value !== encDefaults.audioCodec ||
+      audioBitrateKbps.value !== encDefaults.audioBitrateKbps ||
+      bitrateMode.value !== encDefaults.bitrateMode ||
+      keyframeIntervalSec.value !== encDefaults.keyframeIntervalSec ||
+      exportAlpha.value !== encDefaults.exportAlpha;
+
+    const isGeometryDifferent =
+      !matchTimeline.value ||
+      exportWidth.value !== format.width ||
+      exportHeight.value !== format.height ||
+      exportFps.value !== format.fps ||
+      Number(audioSampleRate.value) !== format.sampleRate;
+
+    const isMetadataDifferent =
+      metadataTitle.value !== (projectStore.projectMeta?.title || '') ||
+      metadataDescription.value !== (projectStore.projectMeta?.description || '') ||
+      metadataAuthor.value !== (projectStore.projectMeta?.author || '') ||
+      metadataTags.value !== (projectStore.projectMeta?.tags.join(', ') || '');
+
+    return isEncodingDifferent || isGeometryDifferent || isMetadataDifferent;
+  });
 
   watch(isSettingsDirty, (isDirty) => {
     if (isDirty) return;
@@ -242,52 +279,82 @@ export function useExportForm() {
   }
 
   async function initializeExportForm() {
-    resetExportState();
-    exportType.value = 'video';
-    filenameError.value = null;
-    saveAsDefaults.value = false;
-    customExportPath.value = null;
-    selectedExportRangeId.value = resolveDefaultExportRangeId();
+    isInitializing.value = true;
+    try {
+      resetExportState();
+      exportType.value = 'video';
+      filenameError.value = null;
+      saveAsDefaults.value = false;
+      customExportPath.value = null;
+      selectedExportRangeId.value = resolveDefaultExportRangeId();
 
-    await loadCodecSupport();
+      await loadCodecSupport();
 
-    const format =
-      timelineStore.timelineFormat ??
-      createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
+      const format =
+        timelineStore.timelineFormat ??
+        createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
 
-    outputFormat.value = format.exportFormat ?? projectStore.projectSettings.exportDefaults.encoding.format;
-    videoCodec.value = format.videoCodec ?? projectStore.projectSettings.exportDefaults.encoding.videoCodec;
-    bitrateMbps.value = format.videoBitrateMbps ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
-    excludeAudio.value = format.excludeAudio ?? projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
-    audioCodec.value = format.audioCodec ?? projectStore.projectSettings.exportDefaults.encoding.audioCodec;
-    audioBitrateKbps.value = format.audioBitrateKbps ?? projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
-    audioChannels.value = format.audioChannels ?? 2;
-    audioSampleRate.value = format.sampleRate;
-    bitrateMode.value = format.bitrateMode ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
-    keyframeIntervalSec.value =
-      format.keyframeIntervalSec ?? projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
-    exportAlpha.value = format.exportAlpha ?? projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
+      const saved = projectStore.projectSettings.exportSettings;
+      if (saved) {
+        exportType.value = saved.exportType ?? 'video';
+        outputFormat.value = saved.outputFormat ?? 'mp4';
+        videoCodec.value = saved.videoCodec ?? 'avc1.640032';
+        bitrateMbps.value = saved.bitrateMbps ?? 5;
+        excludeAudio.value = saved.excludeAudio ?? false;
+        audioCodec.value = saved.audioCodec ?? 'aac';
+        audioBitrateKbps.value = saved.audioBitrateKbps ?? 128;
+        audioSampleRate.value = saved.audioSampleRate ?? 48000;
+        bitrateMode.value = saved.bitrateMode ?? 'variable';
+        keyframeIntervalSec.value = saved.keyframeIntervalSec ?? 2;
+        exportAlpha.value = saved.exportAlpha ?? false;
+        matchTimeline.value = saved.matchTimeline ?? true;
+        customWidth.value = saved.customWidth ?? format.width;
+        customHeight.value = saved.customHeight ?? format.height;
+        customFps.value = saved.customFps ?? format.fps;
+        customAudioSampleRate.value = saved.customAudioSampleRate ?? format.sampleRate;
+        metadataTitle.value = saved.metadataTitle ?? '';
+        metadataDescription.value = saved.metadataDescription ?? '';
+        metadataAuthor.value = saved.metadataAuthor ?? '';
+        metadataTags.value = saved.metadataTags ?? '';
+      } else {
+        exportType.value = 'video';
+        outputFormat.value = format.exportFormat ?? projectStore.projectSettings.exportDefaults.encoding.format;
+        videoCodec.value = format.videoCodec ?? projectStore.projectSettings.exportDefaults.encoding.videoCodec;
+        bitrateMbps.value = format.videoBitrateMbps ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
+        excludeAudio.value = format.excludeAudio ?? projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
+        audioCodec.value = format.audioCodec ?? projectStore.projectSettings.exportDefaults.encoding.audioCodec;
+        audioBitrateKbps.value = format.audioBitrateKbps ?? projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
+        audioChannels.value = format.audioChannels ?? 2;
+        audioSampleRate.value = format.sampleRate;
+        bitrateMode.value = format.bitrateMode ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
+        keyframeIntervalSec.value =
+          format.keyframeIntervalSec ?? projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
+        exportAlpha.value = format.exportAlpha ?? projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
 
-    metadataTitle.value = projectStore.projectMeta?.title || '';
-    metadataDescription.value = projectStore.projectMeta?.description || '';
-    metadataAuthor.value = projectStore.projectMeta?.author || '';
-    metadataTags.value = projectStore.projectMeta?.tags.join(', ') || '';
+        metadataTitle.value = projectStore.projectMeta?.title || '';
+        metadataDescription.value = projectStore.projectMeta?.description || '';
+        metadataAuthor.value = projectStore.projectMeta?.author || '';
+        metadataTags.value = projectStore.projectMeta?.tags.join(', ') || '';
 
-    exportWidth.value = format.width;
-    exportHeight.value = format.height;
-    exportFps.value = format.fps;
-    resolutionFormat.value = format.resolutionFormat;
-    orientation.value = format.orientation;
-    aspectRatio.value = format.aspectRatio;
-    isCustomResolution.value = format.isCustomResolution;
-    initialSavedSettingsSnapshot.value = savedSettingsSnapshot.value;
+        matchTimeline.value = true;
+        customWidth.value = format.width;
+        customHeight.value = format.height;
+        customFps.value = format.fps;
+        customAudioSampleRate.value = format.sampleRate;
+      }
 
-    await ensureExportDir();
-    const timelineBase = sanitizeBaseName(
-      projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
-    );
-    outputFilename.value = await getNextAvailableFilename(timelineBase, getExt(outputFormat.value));
-    await validateFilename();
+      initialSavedSettingsSnapshot.value = savedSettingsSnapshot.value;
+
+      await ensureExportDir();
+      const timelineBase = sanitizeBaseName(
+        projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
+      );
+      outputFilename.value = await getNextAvailableFilename(timelineBase, getExt(outputFormat.value));
+      await validateFilename();
+    } finally {
+      await nextTick();
+      isInitializing.value = false;
+    }
   }
 
   function handleOutputFormatChange(fmt: 'mp4' | 'webm' | 'mkv') {
@@ -543,6 +610,181 @@ export function useExportForm() {
     return t('videoEditor.export.processing');
   }
 
+  async function resetAllSettings() {
+    projectStore.projectSettings.exportSettings = undefined;
+    matchTimeline.value = true;
+    await initializeExportForm();
+  }
+
+  function resetField(fieldName: string) {
+    const encDefaults = projectStore.projectSettings?.exportDefaults?.encoding;
+    const format =
+      timelineStore.timelineFormat ??
+      createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
+
+    switch (fieldName) {
+      case 'outputFormat':
+        if (encDefaults) outputFormat.value = encDefaults.format;
+        break;
+      case 'videoCodec':
+        if (encDefaults) videoCodec.value = encDefaults.videoCodec;
+        break;
+      case 'bitrateMbps':
+        if (encDefaults) bitrateMbps.value = encDefaults.bitrateMbps;
+        break;
+      case 'excludeAudio':
+        if (encDefaults) excludeAudio.value = encDefaults.excludeAudio;
+        break;
+      case 'audioCodec':
+        if (encDefaults) audioCodec.value = encDefaults.audioCodec;
+        break;
+      case 'audioBitrateKbps':
+        if (encDefaults) audioBitrateKbps.value = encDefaults.audioBitrateKbps;
+        break;
+      case 'bitrateMode':
+        if (encDefaults) bitrateMode.value = encDefaults.bitrateMode;
+        break;
+      case 'keyframeIntervalSec':
+        if (encDefaults) keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
+        break;
+      case 'exportAlpha':
+        if (encDefaults) exportAlpha.value = encDefaults.exportAlpha;
+        break;
+      case 'matchTimeline':
+        matchTimeline.value = true;
+        break;
+      case 'customWidth':
+        customWidth.value = format.width;
+        exportWidth.value = format.width;
+        break;
+      case 'customHeight':
+        customHeight.value = format.height;
+        exportHeight.value = format.height;
+        break;
+      case 'customFps':
+        customFps.value = format.fps;
+        exportFps.value = format.fps;
+        break;
+      case 'customAudioSampleRate':
+        customAudioSampleRate.value = format.sampleRate;
+        audioSampleRate.value = format.sampleRate;
+        break;
+      case 'metadataTitle':
+        metadataTitle.value = projectStore.projectMeta?.title || '';
+        break;
+      case 'metadataDescription':
+        metadataDescription.value = projectStore.projectMeta?.description || '';
+        break;
+      case 'metadataAuthor':
+        metadataAuthor.value = projectStore.projectMeta?.author || '';
+        break;
+      case 'metadataTags':
+        metadataTags.value = projectStore.projectMeta?.tags.join(', ') || '';
+        break;
+    }
+  }
+
+  function isFieldDirty(fieldName: string) {
+    const encDefaults = projectStore.projectSettings?.exportDefaults?.encoding;
+    const format =
+      timelineStore.timelineFormat ??
+      createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
+
+    switch (fieldName) {
+      case 'outputFormat':
+        return outputFormat.value !== encDefaults?.format;
+      case 'videoCodec':
+        return videoCodec.value !== encDefaults?.videoCodec;
+      case 'bitrateMbps':
+        return bitrateMbps.value !== encDefaults?.bitrateMbps;
+      case 'excludeAudio':
+        return excludeAudio.value !== encDefaults?.excludeAudio;
+      case 'audioCodec':
+        return audioCodec.value !== encDefaults?.audioCodec;
+      case 'audioBitrateKbps':
+        return audioBitrateKbps.value !== encDefaults?.audioBitrateKbps;
+      case 'bitrateMode':
+        return bitrateMode.value !== encDefaults?.bitrateMode;
+      case 'keyframeIntervalSec':
+        return keyframeIntervalSec.value !== encDefaults?.keyframeIntervalSec;
+      case 'exportAlpha':
+        return exportAlpha.value !== encDefaults?.exportAlpha;
+      case 'matchTimeline':
+        return !matchTimeline.value;
+      case 'customWidth':
+        return exportWidth.value !== format.width;
+      case 'customHeight':
+        return exportHeight.value !== format.height;
+      case 'customFps':
+        return exportFps.value !== format.fps;
+      case 'customAudioSampleRate':
+        return Number(audioSampleRate.value) !== format.sampleRate;
+      case 'metadataTitle':
+        return metadataTitle.value !== (projectStore.projectMeta?.title || '');
+      case 'metadataDescription':
+        return metadataDescription.value !== (projectStore.projectMeta?.description || '');
+      case 'metadataAuthor':
+        return metadataAuthor.value !== (projectStore.projectMeta?.author || '');
+      case 'metadataTags':
+        return metadataTags.value !== (projectStore.projectMeta?.tags.join(', ') || '');
+      default:
+        return false;
+    }
+  }
+
+  watch(
+    [
+      exportType,
+      outputFormat,
+      videoCodec,
+      bitrateMbps,
+      excludeAudio,
+      audioCodec,
+      audioBitrateKbps,
+      audioSampleRate,
+      bitrateMode,
+      keyframeIntervalSec,
+      exportAlpha,
+      matchTimeline,
+      customWidth,
+      customHeight,
+      customFps,
+      customAudioSampleRate,
+      metadataTitle,
+      metadataDescription,
+      metadataAuthor,
+      metadataTags,
+    ],
+    () => {
+      if (isInitializing.value) return;
+      if (!projectStore.currentProjectName) return;
+
+      projectStore.projectSettings.exportSettings = {
+        exportType: exportType.value,
+        outputFormat: outputFormat.value,
+        videoCodec: videoCodec.value,
+        bitrateMbps: bitrateMbps.value,
+        excludeAudio: excludeAudio.value,
+        audioCodec: audioCodec.value,
+        audioBitrateKbps: audioBitrateKbps.value,
+        audioSampleRate: Number(audioSampleRate.value) || 48000,
+        bitrateMode: bitrateMode.value,
+        keyframeIntervalSec: keyframeIntervalSec.value,
+        exportAlpha: exportAlpha.value,
+        matchTimeline: matchTimeline.value,
+        customWidth: customWidth.value,
+        customHeight: customHeight.value,
+        customFps: customFps.value,
+        customAudioSampleRate: customAudioSampleRate.value,
+        metadataTitle: metadataTitle.value,
+        metadataDescription: metadataDescription.value,
+        metadataAuthor: metadataAuthor.value,
+        metadataTags: metadataTags.value,
+      };
+    },
+    { deep: true }
+  );
+
   return {
     isExporting,
     exportProgress,
@@ -587,10 +829,15 @@ export function useExportForm() {
     exportRangeOptions,
     hasSelectableExportRanges,
     isSettingsDirty,
+    matchTimeline,
+    customWidth,
+    customHeight,
+    customFps,
+    customAudioSampleRate,
+    ext,
     customExportPath,
     isTauri,
     exportType,
-    ext,
 
     initializeExportForm,
     pickTauriExportPath,
@@ -599,5 +846,8 @@ export function useExportForm() {
     getPhaseLabel,
     validateFilename,
     cancelExport,
+    resetAllSettings,
+    resetField,
+    isFieldDirty,
   };
 }

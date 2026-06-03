@@ -13,7 +13,11 @@ import type {
   WorkerRpcErrorShape,
 } from '../utils/video-editor/worker-rpc';
 import type { MediaMetadata } from '../stores/media.store';
-import { ExportOptionsSchema, TranscodeOptionsSchema } from '../composables/timeline/export/types';
+import {
+  ExportOptionsSchema,
+  parseWorkerVideoPayload,
+  TranscodeOptionsSchema,
+} from '../composables/timeline/export/types';
 import { initEffects } from '../effects';
 import { initTransitions } from '../transitions';
 import { normalizeRpcError } from './core/utils';
@@ -204,12 +208,20 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     compositor = nextCompositor;
   },
 
+  /**
+   * Full rebuild of the compositor timeline. Cancels any in-flight load and
+   * re-creates clip sprites, textures, and media decoders from scratch.
+   * Use this when the clip set itself changes (add/remove/reorder clips).
+   */
   async loadTimeline(
     clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
     requestId?: number,
   ) {
-    // В Tauri-режиме веб-композитор не инициализируется (превью рисует нативный монитор).
+    // In Tauri mode the web compositor is not initialized (native monitor draws preview).
     if (!compositor) return 0;
+
+    const validatedClips = parseWorkerVideoPayload(clips);
+
     if (typeof requestId === 'number' && Number.isFinite(requestId)) {
       latestLoadTimelineRequestId = requestId;
     }
@@ -218,8 +230,7 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
       Number.isFinite(requestId) &&
       requestId !== latestLoadTimelineRequestId;
     return compositor.loadTimeline(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      clips as any,
+      validatedClips,
       {
         getFileHandleByPath: async (path: string) => {
           if (!hostClient) return null;
@@ -242,14 +253,20 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     );
   },
 
+  /**
+   * Incremental layout update. Mutates existing clip positions, durations, and
+   * effects without destroying and re-creating sprites or media decoders.
+   * Use this when only clip properties (trim, position, opacity, etc.) change.
+   */
   async updateTimelineLayout(
     clips: import('../composables/timeline/export/types').WorkerVideoPayloadItem[],
   ) {
-    // В Tauri-режиме веб-компоузер не инициализируется (нативный монитор рисует превью);
-    // не падаем, просто возвращаем 0 — длительность пересчитается по аудиочасти.
+    // In Tauri mode the web compositor is not initialized; return 0 so the
+    // audio side still recomputes duration.
     if (!compositor) return 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return compositor.updateTimelineLayout(clips as any);
+
+    const validatedClips = parseWorkerVideoPayload(clips);
+    return compositor.updateTimelineLayout(validatedClips);
   },
 
   async renderFrame(timeUs: number, options?: PreviewRenderOptions) {

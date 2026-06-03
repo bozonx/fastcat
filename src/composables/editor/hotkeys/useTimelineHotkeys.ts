@@ -3,12 +3,14 @@ import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
+import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { HotkeyCommandId } from '~/utils/hotkeys/defaultHotkeys';
 import { getDocFps } from '~/timeline/commands/utils';
 import type { TimelineClipItem } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { createClipParametersSnapshot } from '~/utils/timeline/clip-parameters';
+import { createLinkedGroupId } from '~/timeline/id';
 import type { createHotkeyHoldRunner } from '~/utils/hotkeys/holdRunner';
 import {
   clipSupportsThumbnailControls,
@@ -27,6 +29,7 @@ export function useTimelineHotkeys(
   const focusStore = useFocusStore();
   const workspaceStore = useWorkspaceStore();
   const uiStore = useUiStore();
+  const selectionStore = useSelectionStore();
   const clipboardStore = useAppClipboard();
 
   function getTargetTrackId() {
@@ -701,7 +704,60 @@ export function useTimelineHotkeys(
       uiStore.triggerSpeedModal(track.id, clip.id, currentSpeed);
       return true;
     },
+
+    'timeline.groupClips': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      const clips = getSelectedClips();
+      if (clips.length < 2) return false;
+
+      const nextGroupId = createLinkedGroupId();
+      const cmds: TimelineCommand[] = clips.map(({ trackId, itemId }) => ({
+        type: 'update_clip_properties',
+        trackId,
+        itemId,
+        properties: {
+          linkedGroupId: nextGroupId,
+        },
+      }));
+
+      timelineStore.batchApplyTimeline(cmds, {
+        labelKey: 'videoEditor.fileManager.history.entries.groupClips',
+      });
+      return true;
+    },
+
+    'timeline.ungroupClips': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      const clips = getSelectedClips();
+      if (clips.length === 0) return false;
+
+      const cmds: TimelineCommand[] = clips.map(({ trackId, itemId }) => ({
+        type: 'update_clip_properties',
+        trackId,
+        itemId,
+        properties: {
+          linkedGroupId: undefined,
+        },
+      }));
+
+      timelineStore.batchApplyTimeline(cmds, {
+        labelKey: 'videoEditor.fileManager.history.entries.ungroupClips',
+      });
+      return true;
+    },
   };
+
+  function getSelectedClips(): { trackId: string; itemId: string }[] {
+    const entity = selectionStore.selectedEntity;
+    if (!entity || entity.source !== 'timeline') return [];
+    if (entity.kind === 'clips') {
+      return entity.items;
+    }
+    if (entity.kind === 'clip') {
+      return [{ trackId: entity.trackId, itemId: entity.itemId }];
+    }
+    return [];
+  }
 
   return handlers;
 }

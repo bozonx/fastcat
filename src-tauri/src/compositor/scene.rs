@@ -12,11 +12,9 @@
 
 use kurbo::{Affine, BezPath, Rect, RoundedRect, Shape, Stroke};
 use parley::{
-    Alignment, AlignmentOptions, FontContext, FontFamily, LayoutContext, LineHeight,
-    PositionedLayoutItem, StyleProperty, fontique::FontWeight,
+    FontFamily, LineHeight, PositionedLayoutItem, StyleProperty, fontique::FontWeight,
 };
 use std::sync::Arc;
-use std::sync::{Mutex, OnceLock};
 use vello::Glyph;
 use vello::Scene as VelloScene;
 use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
@@ -267,8 +265,48 @@ pub struct TextLayer {
     pub align: TextAlign,
     pub vertical_align: TextVerticalAlign,
     pub line_height: f32,
+    pub letter_spacing: f32,
     pub max_width: Option<f32>,
-    pub background: Option<TextBackground>,
+
+    // Background
+    pub background_enabled: bool,
+    pub background_color: Color,
+    pub background_radius: f64,
+
+    // Background Shadow
+    pub bg_shadow_enabled: bool,
+    pub bg_shadow_color: Color,
+    pub bg_shadow_blur: f32,
+    pub bg_shadow_spread: f32,
+    pub bg_shadow_offset_x: f32,
+    pub bg_shadow_offset_y: f32,
+
+    // Border
+    pub border_enabled: bool,
+    pub border_color: Color,
+    pub border_width: f32,
+
+    // Text Shadow
+    pub text_shadow_enabled: bool,
+    pub text_shadow_color: Color,
+    pub text_shadow_blur: f32,
+    pub text_shadow_spread: f32,
+    pub text_shadow_offset_x: f32,
+    pub text_shadow_offset_y: f32,
+
+    // Padding
+    pub padding_top: f32,
+    pub padding_right: f32,
+    pub padding_bottom: f32,
+    pub padding_left: f32,
+
+    // Offset helper metrics calculated at construction
+    pub shadow_left: f32,
+    pub shadow_top: f32,
+    pub frame_width: f32,
+    pub frame_height: f32,
+    pub text_block_height: f32,
+
     pub natural_size: (u32, u32),
 }
 
@@ -284,12 +322,6 @@ pub enum TextVerticalAlign {
     Top,
     Middle,
     Bottom,
-}
-
-#[derive(Debug, Clone)]
-pub struct TextBackground {
-    pub color: Color,
-    pub radius: f64,
 }
 
 /// Источник пикселей для `LayerKind::Raster`.
@@ -519,22 +551,84 @@ fn build_shape_path(
 }
 
 fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
-    if let Some(bg) = &spec.background {
-        let rect = RoundedRect::new(
-            0.0,
-            0.0,
-            spec.natural_size.0 as f64,
-            spec.natural_size.1 as f64,
-            bg.radius,
-        )
-        .to_path(0.1);
-        scene.fill(Fill::NonZero, xform, Brush::Solid(bg.color), None, &rect);
+    let frame_x = spec.border_width + spec.shadow_left;
+    let frame_y = spec.border_width + spec.shadow_top;
+
+    // 1. Draw Background Shadow
+    if spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0 {
+        let steps = 10;
+        let base_alpha = spec.bg_shadow_color.to_rgba8().a as f32 / 255.0;
+        let shadow_x = frame_x + spec.bg_shadow_offset_x;
+        let shadow_y = frame_y + spec.bg_shadow_offset_y;
+
+        for i in 0..steps {
+            let t = (i as f32 + 0.5) / steps as f32;
+            let r_offset = spec.bg_shadow_blur * (2.0 * t - 1.0);
+            let ext = spec.bg_shadow_spread + r_offset;
+            
+            let x_val = 2.0 * t - 1.0;
+            let factor = (-2.0 * x_val * x_val).exp();
+            let step_alpha = base_alpha * factor / (steps as f32 * 0.4);
+            
+            let color = Color::from_rgba8(
+                spec.bg_shadow_color.to_rgba8().r,
+                spec.bg_shadow_color.to_rgba8().g,
+                spec.bg_shadow_color.to_rgba8().b,
+                (step_alpha * 255.0).clamp(0.0, 255.0) as u8,
+            );
+
+            let rect = RoundedRect::new(
+                (shadow_x - ext) as f64,
+                (shadow_y - ext) as f64,
+                (shadow_x + spec.frame_width + ext) as f64,
+                (shadow_y + spec.frame_height + ext) as f64,
+                (spec.background_radius + ext as f64).max(0.0),
+            )
+            .to_path(0.1);
+
+            scene.fill(Fill::NonZero, xform, Brush::Solid(color), None, &rect);
+        }
     }
 
-    static TEXT_CTX: OnceLock<Mutex<(FontContext, LayoutContext<[u8; 4]>)>> = OnceLock::new();
-    let lock = TEXT_CTX.get_or_init(|| Mutex::new((FontContext::new(), LayoutContext::new())));
+    // 2. Draw Background
+    if spec.background_enabled && spec.background_color.to_rgba8().a > 0 {
+        let rect = RoundedRect::new(
+            frame_x as f64,
+            frame_y as f64,
+            (frame_x + spec.frame_width) as f64,
+            (frame_y + spec.frame_height) as f64,
+            spec.background_radius,
+        )
+        .to_path(0.1);
+        scene.fill(Fill::NonZero, xform, Brush::Solid(spec.background_color), None, &rect);
+    }
+
+    // 3. Draw Border
+    if spec.border_enabled && spec.border_width > 0.0 && spec.border_color.to_rgba8().a > 0 {
+        let inset = spec.border_width / 2.0;
+        let border_rect = RoundedRect::new(
+            (frame_x - inset) as f64,
+            (frame_y - inset) as f64,
+            (frame_x + spec.frame_width + inset) as f64,
+            (frame_y + spec.frame_height + inset) as f64,
+            (spec.background_radius + inset as f64).max(0.0),
+        )
+        .to_path(0.1);
+        
+        scene.stroke(
+            &Stroke::new(spec.border_width as f64),
+            xform,
+            Brush::Solid(spec.border_color),
+            None,
+            &border_rect,
+        );
+    }
+
+    // 4. Layout Text
+    let lock = crate::compositor::text::get_text_context();
     let Ok(mut ctx) = lock.lock() else { return };
     let (font_cx, layout_cx) = &mut *ctx;
+    
     let mut builder = layout_cx.ranged_builder(font_cx, &spec.text, 1.0, true);
     builder.push_default(StyleProperty::FontSize(spec.font_size.max(1.0)));
     builder.push_default(StyleProperty::Brush([255, 255, 255, 255]));
@@ -546,27 +640,158 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         spec.font_family.as_str(),
     )));
     let mut layout = builder.build(&spec.text);
-    layout.break_all_lines(spec.max_width);
-    let alignment = match spec.align {
-        TextAlign::Left => Alignment::Start,
-        TextAlign::Center => Alignment::Center,
-        TextAlign::Right => Alignment::End,
-    };
-    layout.align(alignment, AlignmentOptions::default());
+    
+    let content_width_px = spec.max_width.map(|w| (w - spec.padding_left - spec.padding_right).max(1.0));
+    layout.break_all_lines(content_width_px);
 
-    // Вертикальное выравнивание блока строк внутри natural-bbox слоя.
-    let slack = (spec.natural_size.1 as f32 - layout.height()).max(0.0);
-    let y = match spec.vertical_align {
-        TextVerticalAlign::Top => 0.0,
-        TextVerticalAlign::Middle => slack * 0.5,
-        TextVerticalAlign::Bottom => slack,
-    };
+    // Compute vertical positioning
+    let content_top_px = frame_y + spec.padding_top;
+    let content_height_px = (spec.frame_height - spec.padding_top - spec.padding_bottom).max(1.0);
+    
+    let mut text_block_top_px = content_top_px;
+    if spec.frame_height > spec.text_block_height + spec.padding_top + spec.padding_bottom {
+        match spec.vertical_align {
+            TextVerticalAlign::Top => {}
+            TextVerticalAlign::Middle => {
+                text_block_top_px += (content_height_px - spec.text_block_height) * 0.5;
+            }
+            TextVerticalAlign::Bottom => {
+                text_block_top_px += content_height_px - spec.text_block_height;
+            }
+        }
+    }
+
+    // Precalculate lines metrics for custom alignment and letter spacing
+    struct LineDrawInfo {
+        glyph_count: usize,
+        adjusted_width: f32,
+    }
+
+    let mut lines_info = Vec::new();
     for line in layout.lines() {
+        let mut glyph_count = 0;
         for item in line.items() {
-            let PositionedLayoutItem::GlyphRun(run) = item else {
-                continue;
-            };
-            let run_xform = xform * Affine::translate((0.0, y as f64));
+            if let PositionedLayoutItem::GlyphRun(run) = item {
+                glyph_count += run.positioned_glyphs().count();
+            }
+        }
+        let adjusted_width = line.metrics().advance + (glyph_count.saturating_sub(1) as f32) * spec.letter_spacing;
+        lines_info.push(LineDrawInfo { glyph_count, adjusted_width });
+    }
+
+    // 5. Draw Text Shadows (if enabled)
+    if spec.text_shadow_enabled && spec.text_shadow_color.to_rgba8().a > 0 {
+        let steps = 5;
+        let base_alpha = spec.text_shadow_color.to_rgba8().a as f32 / 255.0;
+
+        for step in 0..steps {
+            let t = (step as f32 + 0.5) / steps as f32;
+            let r_offset = spec.text_shadow_blur * (2.0 * t - 1.0);
+            let dx = spec.text_shadow_offset_x + r_offset * 0.707;
+            let dy = spec.text_shadow_offset_y + r_offset * 0.707;
+
+            let x_val = 2.0 * t - 1.0;
+            let factor = (-2.0 * x_val * x_val).exp();
+            let step_alpha = base_alpha * factor / (steps as f32 * 0.4);
+
+            let shadow_color = Color::from_rgba8(
+                spec.text_shadow_color.to_rgba8().r,
+                spec.text_shadow_color.to_rgba8().g,
+                spec.text_shadow_color.to_rgba8().b,
+                (step_alpha * 255.0).clamp(0.0, 255.0) as u8,
+            );
+
+            for (line_idx, line) in layout.lines().enumerate() {
+                let info = &lines_info[line_idx];
+                if info.glyph_count == 0 { continue; }
+
+                let line_x_offset = match spec.align {
+                    TextAlign::Left => frame_x + spec.padding_left,
+                    TextAlign::Center => {
+                        let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                        frame_x + spec.padding_left + (frame_content_width - info.adjusted_width) * 0.5
+                    }
+                    TextAlign::Right => {
+                        let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                        frame_x + spec.padding_left + frame_content_width - info.adjusted_width
+                    }
+                };
+
+                let mut glyph_idx = 0;
+                for item in line.items() {
+                    let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
+                    
+                    let run_xform = xform * Affine::translate(((line_x_offset + dx) as f64, (text_block_top_px + dy) as f64));
+                    
+                    let adjusted_glyphs = run.positioned_glyphs().map(|g| {
+                        let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
+                        glyph_idx += 1;
+                        Glyph {
+                            id: g.id,
+                            x: x_adj,
+                            y: g.y,
+                        }
+                    }).collect::<Vec<_>>();
+
+                    if spec.text_shadow_spread > 0.0 {
+                        scene
+                            .draw_glyphs(run.run().font())
+                            .font_size(run.run().font_size())
+                            .brush(shadow_color)
+                            .transform(run_xform)
+                            .draw(
+                                &Stroke::new(spec.text_shadow_spread as f64),
+                                adjusted_glyphs.clone().into_iter(),
+                            );
+                    }
+                    
+                    scene
+                        .draw_glyphs(run.run().font())
+                        .font_size(run.run().font_size())
+                        .brush(shadow_color)
+                        .transform(run_xform)
+                        .draw(
+                            Fill::NonZero,
+                            adjusted_glyphs.into_iter(),
+                        );
+                }
+            }
+        }
+    }
+
+    // 6. Draw Main Text
+    for (line_idx, line) in layout.lines().enumerate() {
+        let info = &lines_info[line_idx];
+        if info.glyph_count == 0 { continue; }
+
+        let line_x_offset = match spec.align {
+            TextAlign::Left => frame_x + spec.padding_left,
+            TextAlign::Center => {
+                let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                frame_x + spec.padding_left + (frame_content_width - info.adjusted_width) * 0.5
+            }
+            TextAlign::Right => {
+                let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                frame_x + spec.padding_left + frame_content_width - info.adjusted_width
+            }
+        };
+
+        let mut glyph_idx = 0;
+        for item in line.items() {
+            let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
+            
+            let run_xform = xform * Affine::translate((line_x_offset as f64, text_block_top_px as f64));
+            
+            let adjusted_glyphs = run.positioned_glyphs().map(|g| {
+                let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
+                glyph_idx += 1;
+                Glyph {
+                    id: g.id,
+                    x: x_adj,
+                    y: g.y,
+                }
+            }).collect::<Vec<_>>();
+
             scene
                 .draw_glyphs(run.run().font())
                 .font_size(run.run().font_size())
@@ -574,11 +799,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                 .transform(run_xform)
                 .draw(
                     Fill::NonZero,
-                    run.positioned_glyphs().map(|g| Glyph {
-                        id: g.id,
-                        x: g.x,
-                        y: g.y,
-                    }),
+                    adjusted_glyphs.into_iter(),
                 );
         }
     }

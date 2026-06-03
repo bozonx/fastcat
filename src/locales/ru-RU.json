@@ -1274,8 +1274,10 @@
       "phaseEncoding": "Кодирование видео...",
       "phasePreparing": "Подготовка проекта...",
       "phaseSaving": "Сохранение в библиотеку...",
+      "matchTimeline": "Как на таймлайне",
       "preset": {
-        "custom": "Свой"
+        "custom": "Свой",
+        "matchTimeline": "Как в таймлайне"
       },
       "presetLabel": "Пресет",
       "processing": "Обработка...",
@@ -1649,6 +1651,8 @@
         "toggleBladeTool": "Вкл/выкл инструмент лезвие",
         "reverseSpeed": "Реверс скорости клипа",
         "openSpeedModal": "Открыть окно изменения скорости",
+        "groupClips": "Сгруппировать клипы",
+        "ungroupClips": "Разгруппировать клипы",
         "toggleMuteClip": "Вкл/выкл звук клипа",
         "toggleMuteTrack": "Вкл/выкл звук дорожки",
         "toggleShowThumbnails": "Показать/скрыть миниатюры",

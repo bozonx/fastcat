@@ -7,10 +7,11 @@ import {
   type CompositorClip,
 } from './types';
 import type { TextClipStyle, ShapeType } from '~/timeline/types';
+import type { WorkerVideoPayloadItem } from '../../../composables/timeline/export/types';
 
 export interface TimelineClipLayoutUpdaterParams {
   clip: CompositorClip;
-  next: Record<string, unknown>;
+  next: WorkerVideoPayloadItem;
   fallbackTrackId?: string | null;
   toVideoEffects: (value: unknown) => CompositorClip['effects'];
   applyClipLayoutForCurrentSource: (clip: CompositorClip) => void;
@@ -28,7 +29,7 @@ export class TimelineClipLayoutUpdater {
       clearClipTransitionFilter,
     } = params;
 
-    const n = next as Record<string, unknown>;
+    const n = next as unknown as Record<string, unknown>;
     const timelineRange = n['timelineRange'] as
       | { startUs?: unknown; durationUs?: unknown }
       | undefined;
@@ -123,8 +124,8 @@ export class TimelineClipLayoutUpdater {
         clip.strokeColor !== nextStroke ||
         clip.strokeWidth !== nextStrokeWidth ||
         !areShapeConfigsEqual(
-          clip.shapeConfig as Record<string, unknown>,
-          nextConfig as Record<string, unknown>,
+          clip.shapeConfig as unknown as Record<string, unknown>,
+          nextConfig as unknown as Record<string, unknown>,
         ) ||
         clip.shapeDirty === true
       ) {

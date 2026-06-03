@@ -104,6 +104,8 @@ export type HotkeyCommandId =
   | 'timeline.toggleBladeTool'
   | 'timeline.reverseSpeed'
   | 'timeline.openSpeedModal'
+  | 'timeline.groupClips'
+  | 'timeline.ungroupClips'
   | 'playback.toggle'
   | 'playback.toggle1'
   | 'playback.toStart'
@@ -475,6 +477,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     { id: 'timeline.toggleBladeTool', groupId: 'timeline', title: 'Toggle blade tool' },
     { id: 'timeline.reverseSpeed', groupId: 'timeline', title: 'Reverse speed' },
     { id: 'timeline.openSpeedModal', groupId: 'timeline', title: 'Open speed modal' },
+    { id: 'timeline.groupClips', groupId: 'timeline', title: 'Group clips' },
+    { id: 'timeline.ungroupClips', groupId: 'timeline', title: 'Ungroup clips' },
 
     // Monitor - Навигация и шаги
     { id: 'playback.stepForward', groupId: 'monitor', title: 'Step forward' },
@@ -611,6 +615,8 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.toggleBladeTool': ['/'],
     'timeline.reverseSpeed': ['P'],
     'timeline.openSpeedModal': [`${Mod}+P`],
+    'timeline.groupClips': [`${Mod}+G`],
+    'timeline.ungroupClips': [`${Mod}+Shift+G`],
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],

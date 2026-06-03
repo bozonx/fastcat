@@ -2,11 +2,13 @@
 import { computed } from 'vue';
 import { useVideoCodecs } from '~/composables/useVideoCodecs';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { useProjectStore } from '~/stores/project.store';
 import MediaEncodingSettings, {
   type FormatOption,
 } from '~/components/media/MediaEncodingSettings.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
+
 interface Props {
   disabled?: boolean;
   showMetadata?: boolean;
@@ -18,6 +20,8 @@ interface Props {
   hideAudioBitrate?: boolean;
   hideAudioSampleRate?: boolean;
   hasAudio?: boolean;
+  isFieldDirty?: (fieldName: string) => boolean;
+  resetField?: (fieldName: string) => void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,19 +35,21 @@ const props = withDefaults(defineProps<Props>(), {
   hideAudioBitrate: false,
   hideAudioSampleRate: false,
   hasAudio: true,
+  isFieldDirty: () => false,
+  resetField: () => {},
 });
 
 const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { required: true });
 const videoCodec = defineModel<string>('videoCodec', { required: true });
 const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
-const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('audioCodec', { default: 'aac' });
+const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3' | 'mp4'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
-const preset = defineModel<'custom' | 'high' | 'optimal' | 'social' | 'lossless'>('preset', {
+const preset = defineModel<'custom' | 'high' | 'optimal' | 'social' | 'lossless' | 'match-timeline'>('preset', {
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
@@ -53,9 +59,11 @@ const metadataTitle = defineModel<string>('metadataTitle', { default: '' });
 const metadataAuthor = defineModel<string>('metadataAuthor', { default: '' });
 const metadataTags = defineModel<string>('metadataTags', { default: '' });
 const metadataDescription = defineModel<string>('metadataDescription', { default: '' });
+const matchTimeline = defineModel<boolean>('matchTimeline', { default: true });
 
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
+const projectStore = useProjectStore();
 const { isLoadingCodecSupport, videoCodecOptions } = useVideoCodecs();
 
 const formatOptions: readonly FormatOption[] = [
@@ -69,11 +77,31 @@ const presetOptions = computed(() => {
     value: p.id,
     label: p.name,
   }));
-  return [...items, { value: 'custom', label: t('videoEditor.export.preset.custom') }];
+  return [
+    { value: 'match-timeline', label: t('videoEditor.export.preset.matchTimeline') },
+    ...items,
+    { value: 'custom', label: t('videoEditor.export.preset.custom') },
+  ];
 });
 
 function applyPreset(presetId: string) {
   if (presetId === 'custom') return;
+
+  if (presetId === 'match-timeline') {
+    matchTimeline.value = true;
+    const encDefaults = projectStore.projectSettings.exportDefaults.encoding;
+    outputFormat.value = encDefaults.format;
+    videoCodec.value = encDefaults.videoCodec;
+    bitrateMbps.value = encDefaults.bitrateMbps;
+    excludeAudio.value = encDefaults.excludeAudio;
+    audioCodec.value = encDefaults.audioCodec as any;
+    audioBitrateKbps.value = encDefaults.audioBitrateKbps;
+    bitrateMode.value = encDefaults.bitrateMode;
+    keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
+    exportAlpha.value = encDefaults.exportAlpha;
+    preset.value = 'match-timeline';
+    return;
+  }
 
   const found = workspaceStore.userSettings.exportPresets.items.find((p) => p.id === presetId);
   if (!found) return;
@@ -82,7 +110,7 @@ function applyPreset(presetId: string) {
   videoCodec.value = found.videoCodec;
   bitrateMbps.value = found.bitrateMbps;
   excludeAudio.value = found.excludeAudio;
-  audioCodec.value = found.audioCodec;
+  audioCodec.value = found.audioCodec as any;
   audioBitrateKbps.value = found.audioBitrateKbps;
   bitrateMode.value = found.bitrateMode;
   keyframeIntervalSec.value = found.keyframeIntervalSec;
@@ -139,6 +167,8 @@ function applyPreset(presetId: string) {
       :format-options="formatOptions"
       :video-codec-options="videoCodecOptions"
       :show-builtin-presets="false"
+      :is-field-dirty="props.isFieldDirty"
+      :reset-field="props.resetField"
     />
   </div>
 </template>

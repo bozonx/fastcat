@@ -275,12 +275,13 @@ export function createFileManager(deps: FileManagerCreateDeps) {
       abortSignal?: AbortSignal;
       onProgress?: HandleFilesDeps['onProgress'];
       backgroundMode?: 'auto' | 'never';
+      selectInFileManager?: boolean;
     },
   ) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
 
-    const { targetDirPath, abortSignal, onProgress, backgroundMode = 'auto' } = options ?? {};
+    const { targetDirPath, abortSignal, onProgress, backgroundMode = 'auto', selectInFileManager = true } = options ?? {};
     const inputFiles = Array.from(files);
     const totalBytes = inputFiles.reduce((acc, file) => acc + file.size, 0);
     const shouldUseBackgroundTask =
@@ -395,6 +396,20 @@ export function createFileManager(deps: FileManagerCreateDeps) {
           : deps.t('videoEditor.fileManager.upload.successTitle'),
         description: summaries.join(', '),
       });
+
+      if (selectInFileManager) {
+        const lastResult = uploadResults[uploadResults.length - 1];
+        if (lastResult) {
+          const fileManagerStore = useFileManagerStore();
+          fileManagerStore.openFolderByPath(lastResult.targetDir);
+
+          const newEntry = await resolveEntryByPath(lastResult.targetPath);
+          if (newEntry) {
+            const selectionStore = useSelectionStore();
+            selectionStore.selectFsEntryWithUiUpdate(newEntry);
+          }
+        }
+      }
     }
 
     return uploadResults;

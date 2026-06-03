@@ -238,6 +238,7 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
                 timelineHeights: { ...projectSettings.value.ui.layout.timelineHeights },
               },
             },
+            exportSettings: projectSettings.value.exportSettings,
           });
         }
       } catch (e: unknown) {
@@ -385,6 +386,10 @@ export const useProjectSettingsStore = defineStore('projectSettings', () => {
 
           if (uiRaw.ui) {
             settings.ui = { ...settings.ui, ...uiRaw.ui };
+          }
+
+          if (uiRaw.exportSettings) {
+            settings.exportSettings = { ...uiRaw.exportSettings };
           }
         }
       }

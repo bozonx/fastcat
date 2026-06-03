@@ -840,6 +840,7 @@ export function useTimelineDropHandling(options: UseTimelineDropHandlingOptions)
         abortSignal,
         backgroundMode: useBackgroundTask ? 'auto' : 'never',
         onProgress: (p) => onImportProgress(p, fallbackBytes),
+        selectInFileManager: false,
       });
 
       if (abortSignal.aborted) return;

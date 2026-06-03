@@ -69,6 +69,7 @@ interface FileManagerActions {
         totalFiles: number;
         fileName: string;
       }) => void;
+      selectInFileManager?: boolean;
     },
   ) => Promise<unknown>;
   mediaCache: Pick<ProxyThumbnailService, 'ensureProxy' | 'cancelProxy' | 'removeProxy'>;

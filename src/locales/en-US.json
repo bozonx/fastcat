@@ -1274,8 +1274,10 @@
       "phaseEncoding": "Encoding video...",
       "phasePreparing": "Preparing project...",
       "phaseSaving": "Saving to library...",
+      "matchTimeline": "Match Timeline",
       "preset": {
-        "custom": "Custom"
+        "custom": "Custom",
+        "matchTimeline": "Match Timeline"
       },
       "presetLabel": "Preset",
       "processing": "Processing...",
@@ -1649,6 +1651,8 @@
         "toggleBladeTool": "Toggle blade tool",
         "reverseSpeed": "Reverse clip speed",
         "openSpeedModal": "Open clip speed modal",
+        "groupClips": "Group clips",
+        "ungroupClips": "Ungroup clips",
         "toggleMuteClip": "Mute / unmute clip",
         "toggleMuteTrack": "Toggle track mute",
         "toggleShowThumbnails": "Show / hide thumbnails",
