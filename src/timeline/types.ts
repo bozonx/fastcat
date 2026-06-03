@@ -27,6 +27,7 @@ export interface TimelineFormat {
   excludeAudio?: boolean;
   audioCodec?: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
   audioBitrateKbps?: number;
+  audioChannels?: number;
   bitrateMode?: 'constant' | 'variable';
   keyframeIntervalSec?: number;
   exportAlpha?: boolean;

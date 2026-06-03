@@ -18,6 +18,7 @@ export const DEFAULT_TIMELINE_FORMAT: TimelineFormat = {
   excludeAudio: false,
   audioCodec: 'aac',
   audioBitrateKbps: 128,
+  audioChannels: 2,
   bitrateMode: 'variable',
   keyframeIntervalSec: 2,
   exportAlpha: false,
@@ -41,6 +42,7 @@ export interface TimelineFormatInput {
   excludeAudio?: unknown;
   audioCodec?: unknown;
   audioBitrateKbps?: unknown;
+  audioChannels?: unknown;
   bitrateMode?: unknown;
   keyframeIntervalSec?: unknown;
   exportAlpha?: unknown;
@@ -99,6 +101,7 @@ export function normalizeTimelineFormat(
     excludeAudio: typeof input?.excludeAudio === 'boolean' ? input.excludeAudio : (fallback.excludeAudio ?? false),
     audioCodec: (input?.audioCodec as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3') ?? fallback.audioCodec ?? 'aac',
     audioBitrateKbps: toInt(input?.audioBitrateKbps, fallback.audioBitrateKbps ?? 128, 8, 512),
+    audioChannels: toInt(input?.audioChannels, fallback.audioChannels ?? 2, 1, 8),
     bitrateMode: (input?.bitrateMode as 'constant' | 'variable') ?? fallback.bitrateMode ?? 'variable',
     keyframeIntervalSec: toInt(input?.keyframeIntervalSec, fallback.keyframeIntervalSec ?? 2, 1, 60),
     exportAlpha: typeof input?.exportAlpha === 'boolean' ? input.exportAlpha : (fallback.exportAlpha ?? false),

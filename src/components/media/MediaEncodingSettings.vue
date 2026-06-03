@@ -311,6 +311,7 @@ watch(
 
       <FileConversionAudioSettings
         v-if="props.showAudioAdvanced"
+        v-model:audio-codec="audioCodec"
         v-model:audio-bitrate-kbps="audioBitrateKbps"
         v-model:audio-channels="audioChannels"
         v-model:audio-sample-rate="audioSampleRate"
@@ -319,6 +320,7 @@ watch(
         :allow-original-sample-rate="props.allowOriginalAudioSampleRate"
         :hide-sample-rate="props.hideAudioSampleRate"
         :disabled="props.disabled"
+        :output-format="outputFormat"
       />
 
       <UiFormField

@@ -52,6 +52,7 @@ export function useExportForm() {
     excludeAudio,
     audioCodec,
     audioBitrateKbps,
+    audioChannels,
     audioSampleRate,
     exportWidth,
     exportHeight,
@@ -152,6 +153,7 @@ export function useExportForm() {
       excludeAudio: excludeAudio.value,
       audioCodec: audioCodec.value,
       audioBitrateKbps: audioBitrateKbps.value,
+      audioChannels: audioChannels.value,
       bitrateMode: bitrateMode.value,
       keyframeIntervalSec: keyframeIntervalSec.value,
       exportAlpha: exportAlpha.value,
@@ -259,6 +261,7 @@ export function useExportForm() {
     excludeAudio.value = format.excludeAudio ?? projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
     audioCodec.value = format.audioCodec ?? projectStore.projectSettings.exportDefaults.encoding.audioCodec;
     audioBitrateKbps.value = format.audioBitrateKbps ?? projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
+    audioChannels.value = format.audioChannels ?? 2;
     audioSampleRate.value = format.sampleRate;
     bitrateMode.value = format.bitrateMode ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
     keyframeIntervalSec.value =
@@ -373,6 +376,7 @@ export function useExportForm() {
             audio: isAudio ? true : !excludeAudio.value,
             audioCodec: resolvedCodecs.audioCodec,
             audioSampleRate: audioSampleRate.value,
+            audioChannels: audioChannels.value === 1 ? 'mono' : 'stereo',
             width: isAudio ? 2 : normalizedExportWidth.value,
             height: isAudio ? 2 : normalizedExportHeight.value,
             fps: isAudio ? 30 : normalizedExportFps.value,
@@ -436,6 +440,7 @@ export function useExportForm() {
               excludeAudio: excludeAudio.value,
               audioCodec: audioCodec.value,
               audioBitrateKbps: audioBitrateKbps.value,
+              audioChannels: audioChannels.value,
               bitrateMode: bitrateMode.value,
               keyframeIntervalSec: keyframeIntervalSec.value,
               exportAlpha: exportAlpha.value,
@@ -553,6 +558,7 @@ export function useExportForm() {
     excludeAudio,
     audioCodec,
     audioBitrateKbps,
+    audioChannels,
     audioSampleRate,
     exportWidth,
     exportHeight,

@@ -5,6 +5,7 @@ import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useFileManager } from '~/composables/file-manager/useFileManager';
 import VideoEncodingForm from '~/components/media/VideoEncodingForm.vue';
+import FileConversionAudioSettings from '~/components/file-manager/FileConversionAudioSettings.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
@@ -54,6 +55,7 @@ const {
   excludeAudio,
   audioCodec,
   audioBitrateKbps,
+  audioChannels,
   audioSampleRate,
   exportWidth,
   exportHeight,
@@ -93,35 +95,6 @@ const tabOptions = computed(() => [
   { label: t('videoEditor.export.videoTab', 'Экспорт видео'), value: 'video' },
   { label: t('videoEditor.export.audioTab', 'Экспорт аудио'), value: 'audio' },
 ]);
-
-const audioCodecOptions = computed(() => [
-  {
-    value: 'aac',
-    label: t('videoEditor.export.codec.aac'),
-    disabled: !audioCodecSupport.value?.aac,
-  },
-  {
-    value: 'opus',
-    label: t('videoEditor.export.codec.opus'),
-    disabled: !audioCodecSupport.value?.opus,
-  },
-  { value: 'flac', label: 'FLAC', disabled: !audioCodecSupport.value?.flac },
-  { value: 'pcm', label: 'PCM (WAV)', disabled: !audioCodecSupport.value?.pcm },
-  { value: 'mp3', label: 'MP3', disabled: !audioCodecSupport.value?.mp3 },
-]);
-
-const audioSampleRateOptions = computed(() => {
-  const current = Number(audioSampleRate.value);
-  const options = [
-    { value: 44100, label: '44.1 kHz' },
-    { value: 48000, label: '48 kHz' },
-    { value: 96000, label: '96 kHz' },
-  ];
-  if (current && !options.some((o) => o.value === current)) {
-    options.unshift({ value: current, label: `${current / 1000} kHz` });
-  }
-  return options;
-});
 
 const resolutionSummary = computed(() => {
   return `${exportWidth.value}x${exportHeight.value}, ${formatFps(exportFps.value)}FPS, ${(audioSampleRate.value || 0) / 1000}kHz`;
@@ -379,6 +352,7 @@ async function onConfirm() {
               v-model:exclude-audio="excludeAudio"
               v-model:audio-codec="videoAudioCodec"
               v-model:audio-bitrate-kbps="audioBitrateKbps"
+              v-model:audio-channels="audioChannels"
               v-model:audio-sample-rate="audioSampleRate"
               v-model:bitrate-mode="bitrateMode"
               v-model:keyframe-interval-sec="keyframeIntervalSec"
@@ -401,43 +375,14 @@ async function onConfirm() {
 
         <!-- Audio Settings (Audio only) -->
         <div v-show="exportType === 'audio'" class="space-y-4">
-          <div class="flex flex-col gap-4">
-            <UiFormField :label="t('videoEditor.export.audioCodec')">
-              <UiButtonGroup
-                v-model="audioCodec"
-                :options="audioCodecOptions"
-                :disabled="isExporting"
-              />
-            </UiFormField>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UiFormField
-                v-if="audioCodec !== 'flac' && audioCodec !== 'pcm'"
-                :label="t('videoEditor.export.audioBitrate')"
-              >
-                <UiWheelNumberInput
-                  v-model="audioBitrateKbps"
-                  :min="0"
-                  :step="16"
-                  :disabled="isExporting"
-                  :class="{ 'ring-2 ring-error ring-inset': audioBitrateKbps <= 0 }"
-                />
-              </UiFormField>
-
-              <UiFormField :label="t('videoEditor.audio.sampleRate')">
-                <UiSelect
-                  v-model="audioSampleRate"
-                  :items="audioSampleRateOptions"
-                  :disabled="isExporting"
-                  :searchable="false"
-                  size="sm"
-                  full-width
-                  value-key="value"
-                  label-key="label"
-                />
-              </UiFormField>
-            </div>
-          </div>
+          <FileConversionAudioSettings
+            v-model:audio-codec="audioCodec"
+            v-model:audio-bitrate-kbps="audioBitrateKbps"
+            v-model:audio-channels="audioChannels"
+            v-model:audio-sample-rate="audioSampleRate"
+            :disabled="isExporting"
+            :allow-original-sample-rate="false"
+          />
         </div>
 
         <div v-show="exportType === 'audio'" class="h-px bg-ui-border"></div>

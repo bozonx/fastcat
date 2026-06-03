@@ -134,6 +134,7 @@ vi.mock('~/composables/timeline/export', () => ({
     excludeAudio: ref(false),
     audioCodec: ref<'aac' | 'opus'>('aac'),
     audioBitrateKbps: ref(192),
+    audioChannels: ref(2),
     audioSampleRate: ref(48000),
     exportWidth: ref(1920),
     exportHeight: ref(1080),
@@ -344,6 +345,7 @@ describe('useExportForm', () => {
       excludeAudio: true,
       audioCodec: 'opus',
       audioBitrateKbps: 128,
+      audioChannels: 1,
       bitrateMode: 'cbr',
       keyframeIntervalSec: 5,
       exportAlpha: true,
@@ -358,6 +360,7 @@ describe('useExportForm', () => {
     expect(form.excludeAudio.value).toBe(true);
     expect(form.audioCodec.value).toBe('opus');
     expect(form.audioBitrateKbps.value).toBe(128);
+    expect(form.audioChannels.value).toBe(1);
     expect(form.audioSampleRate.value).toBe(44100);
     expect(form.bitrateMode.value).toBe('cbr');
     expect(form.keyframeIntervalSec.value).toBe(5);
@@ -375,6 +378,7 @@ describe('useExportForm', () => {
     form.excludeAudio.value = false;
     form.audioCodec.value = 'flac';
     form.audioBitrateKbps.value = 320;
+    form.audioChannels.value = 6;
     form.bitrateMode.value = 'vbr';
     form.keyframeIntervalSec.value = 3;
     form.exportAlpha.value = false;
@@ -400,6 +404,7 @@ describe('useExportForm', () => {
       excludeAudio: false,
       audioCodec: 'flac',
       audioBitrateKbps: 320,
+      audioChannels: 6,
       bitrateMode: 'vbr',
       keyframeIntervalSec: 3,
       exportAlpha: false,

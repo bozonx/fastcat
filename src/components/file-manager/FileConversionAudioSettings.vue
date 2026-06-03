@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
+import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
 
 const props = withDefaults(
   defineProps<{
@@ -10,6 +13,7 @@ const props = withDefaults(
     allowOriginalSampleRate?: boolean;
     hideSampleRate?: boolean;
     showReverse?: boolean;
+    outputFormat?: 'mp4' | 'webm' | 'mkv' | string;
   }>(),
   {
     disabled: false,
@@ -18,6 +22,7 @@ const props = withDefaults(
     allowOriginalSampleRate: false,
     hideSampleRate: false,
     showReverse: false,
+    outputFormat: undefined,
   },
 );
 
@@ -25,8 +30,40 @@ const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: tru
 const audioChannels = defineModel<number>('audioChannels', { required: true });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', { required: true });
 const audioReverse = defineModel<boolean>('audioReverse', { default: false });
+const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3' | undefined>('audioCodec');
 
 const { t } = useI18n();
+const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
+
+onMounted(async () => {
+  await loadCodecSupport();
+});
+
+const audioCodecOptions = computed(() => {
+  const opts = [
+    { value: 'aac', label: t('videoEditor.export.codec.aac', 'AAC') },
+    { value: 'opus', label: t('videoEditor.export.codec.opus', 'Opus') },
+    { value: 'flac', label: 'FLAC' },
+    { value: 'pcm', label: 'PCM (WAV)' },
+    { value: 'mp3', label: 'MP3' },
+  ];
+
+  const format = props.outputFormat;
+  return opts.map((opt) => {
+    let disabled = false;
+    if (format === 'webm' && opt.value !== 'opus') {
+      disabled = true;
+    } else if (format === 'mp4' && (opt.value === 'flac' || opt.value === 'pcm')) {
+      disabled = true;
+    }
+    const isSupported =
+      audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
+    return {
+      ...opt,
+      disabled: disabled || !isSupported,
+    };
+  });
+});
 
 function formatSampleRateLabel(sampleRate: number | null) {
   const kilohertz = sampleRate === null ? null : sampleRate / 1000;
@@ -87,6 +124,19 @@ const selectedSampleRate = computed({
 
 <template>
   <div class="space-y-4">
+    <!-- Audio Codec Select -->
+    <div v-if="audioCodec !== undefined" class="flex flex-col gap-2">
+      <label class="text-xs text-ui-text-muted font-medium">
+        {{ t('videoEditor.export.audioCodec') }}
+      </label>
+      <UiButtonGroup
+        v-model="audioCodec"
+        :options="audioCodecOptions"
+        :disabled="props.disabled"
+      />
+    </div>
+
+    <!-- Audio Channels Select -->
     <div class="flex flex-col gap-2">
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.audio.channels') }}
@@ -98,8 +148,9 @@ const selectedSampleRate = computed({
       />
     </div>
 
-    <div :class="props.hideSampleRate ? 'flex flex-col gap-2' : 'grid grid-cols-2 gap-3'">
-      <div class="flex flex-col gap-2">
+    <div :class="props.hideSampleRate && (audioCodec === 'flac' || audioCodec === 'pcm') ? 'hidden' : props.hideSampleRate || (audioCodec === 'flac' || audioCodec === 'pcm') ? 'flex flex-col gap-2' : 'grid grid-cols-2 gap-3'">
+      <!-- Audio Bitrate Select -->
+      <div v-if="audioCodec !== 'flac' && audioCodec !== 'pcm'" class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.export.audioBitrate') }}
         </label>
@@ -112,6 +163,7 @@ const selectedSampleRate = computed({
         />
       </div>
 
+      <!-- Sample Rate Select -->
       <div v-if="!props.hideSampleRate" class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">
           {{ t('videoEditor.audio.sampleRate') }}
@@ -128,6 +180,8 @@ const selectedSampleRate = computed({
         />
       </div>
     </div>
+
+    <!-- Audio Reverse -->
     <div v-if="props.showReverse" class="flex items-center justify-between">
       <label
         class="text-xs text-ui-text-muted font-medium cursor-pointer"

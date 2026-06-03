@@ -9,6 +9,7 @@ export function useExportConfig() {
   const excludeAudio = ref(false);
   const audioCodec = ref<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('aac');
   const audioBitrateKbps = ref<number>(128);
+  const audioChannels = ref<number>(2);
   const audioSampleRate = ref<number>(48000);
   const exportWidth = ref<number>(1920);
   const exportHeight = ref<number>(1080);
@@ -77,6 +78,7 @@ export function useExportConfig() {
     excludeAudio,
     audioCodec,
     audioBitrateKbps,
+    audioChannels,
     audioSampleRate,
     exportWidth,
     exportHeight,
