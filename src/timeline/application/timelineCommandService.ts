@@ -75,13 +75,26 @@ export interface TimelineCommandServiceDeps {
     };
   };
   updateTimelineFormat: (settings: TimelineFormatInput) => Promise<void>;
-  showFpsWarning: (fileFps: number, projectFps: number) => void;
-  showAutoSettingsApplied: (settings: { width: number; height: number; fps: number }) => void;
   mediaCache: Pick<ProxyThumbnailService, 'hasProxy' | 'ensureProxy'>;
   defaultImageDurationUs: number;
   defaultImageSourceDurationUs: number;
   parseTimelineFromOtio: typeof parseTimelineFromOtio;
   selectTimelineDurationUs: typeof selectTimelineDurationUs;
+}
+
+export interface AddClipWarning {
+  type: 'autoSettingsApplied' | 'fpsMismatch';
+  width?: number;
+  height?: number;
+  fps?: number;
+  fileFps?: number;
+  projectFps?: number;
+}
+
+export interface AddClipResult {
+  durationUs: number;
+  itemId?: string;
+  warnings?: AddClipWarning[];
 }
 
 export interface AddClipToTimelineFromPathInput {
@@ -297,7 +310,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       historyDebounceMs?: number;
       labelKey?: string;
     },
-  ) {
+  ): Promise<AddClipResult> {
     if (isOtioPath(input.path)) {
       return await addTimelineClipFromPath(input, options);
     }
@@ -352,6 +365,8 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       });
     }
 
+    const warnings: AddClipWarning[] = [];
+
     if (metadata?.video) {
       const doc = deps.getTimelineDoc();
       const timelineFormat = getTimelineFormat(doc);
@@ -370,13 +385,14 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           settingsSource: 'firstClip',
         });
 
-        deps.showAutoSettingsApplied({
+        warnings.push({
+          type: 'autoSettingsApplied',
           width: effectiveWidth,
           height: effectiveHeight,
           fps: metadata.video.fps,
         });
       } else if (!areFpsClose(metadata.video.fps, timelineFormat.fps)) {
-        deps.showFpsWarning(metadata.video.fps, timelineFormat.fps);
+        warnings.push({ type: 'fpsMismatch', fileFps: metadata.video.fps, projectFps: timelineFormat.fps });
       }
     }
 
@@ -406,7 +422,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       options,
     );
 
-    return { durationUs, itemId: res[0] };
+    return { durationUs, itemId: res[0], warnings: warnings.length > 0 ? warnings : undefined };
   }
 
   async function moveItemToTrack(input: MoveItemToTrackInput) {
@@ -480,7 +496,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       historyDebounceMs?: number;
       labelKey?: string;
     },
-  ) {
+  ): Promise<AddClipResult> {
     const track = deps.getTrackById(input.trackId);
     if (!track) throw new Error('Track not found');
 

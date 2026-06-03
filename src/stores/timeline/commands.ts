@@ -7,6 +7,7 @@ import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import type { TimelineFormatInput } from '~/timeline/format';
 import type { TimelineApplyWithHistoryOptions } from '~/timeline/apply-options';
+import type { AddClipResult } from '~/timeline/application/timelineCommandService';
 
 export type TimelineApplyOptions = TimelineApplyWithHistoryOptions;
 
@@ -57,7 +58,7 @@ export interface TimelineCommandsModule {
       skipHistory?: boolean;
       saveMode?: 'none' | 'debounced' | 'immediate';
     },
-  ) => Promise<{ durationUs: number; itemId?: string }>;
+  ) => Promise<AddClipResult>;
   addTimelineClipToTimelineFromPath: (
     input: {
       trackId: string;
@@ -73,7 +74,7 @@ export interface TimelineCommandsModule {
       skipHistory?: boolean;
       saveMode?: 'none' | 'debounced' | 'immediate';
     },
-  ) => Promise<{ durationUs: number; itemId?: string }>;
+  ) => Promise<AddClipResult>;
 }
 
 export function createTimelineCommandsModule(params: TimelineCommandsDeps): TimelineCommandsModule {
@@ -128,26 +129,6 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
     getProjectSettings:
       getProjectSettings as () => import('~/utils/project-settings').FastCatProjectSettings,
     updateTimelineFormat,
-    showFpsWarning: (fileFps, projectFps) => {
-      toast.add({
-        title: t('videoEditor.timeline.fpsMismatch'),
-        description: t('videoEditor.timeline.fpsMismatchDesc', { fileFps, projectFps }),
-        color: 'warning',
-        actions: [
-          {
-            label: t('videoEditor.projectSettings.title'),
-            onClick: openProjectSettings,
-          },
-        ],
-      });
-    },
-    showAutoSettingsApplied: (settings) => {
-      toast.add({
-        title: t('videoEditor.timeline.autoSettingsApplied'),
-        description: t('videoEditor.timeline.autoSettingsAppliedDesc', settings),
-        color: 'success',
-      });
-    },
     mediaCache: {
       hasProxy,
       ensureProxy,
@@ -196,7 +177,38 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
       saveMode?: 'none' | 'debounced' | 'immediate';
     },
   ) {
-    return await commandService.addClipToTimelineFromPath(input, options);
+    const result = await commandService.addClipToTimelineFromPath(input, options);
+    if (result.warnings) {
+      for (const w of result.warnings) {
+        if (w.type === 'autoSettingsApplied') {
+          toast.add({
+            title: t('videoEditor.timeline.autoSettingsApplied'),
+            description: t('videoEditor.timeline.autoSettingsAppliedDesc', {
+              width: w.width,
+              height: w.height,
+              fps: w.fps,
+            }),
+            color: 'success',
+          });
+        } else if (w.type === 'fpsMismatch') {
+          toast.add({
+            title: t('videoEditor.timeline.fpsMismatch'),
+            description: t('videoEditor.timeline.fpsMismatchDesc', {
+              fileFps: w.fileFps,
+              projectFps: w.projectFps,
+            }),
+            color: 'warning',
+            actions: [
+              {
+                label: t('videoEditor.projectSettings.title'),
+                onClick: openProjectSettings,
+              },
+            ],
+          });
+        }
+      }
+    }
+    return result;
   }
 
   async function addTimelineClipToTimelineFromPath(

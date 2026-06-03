@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, toRaw } from 'vue';
 
 import type { TimelineTrack, TimelineMoveItemPayload, TimelineDocument } from '~/timeline/types';
 import {
@@ -13,6 +13,7 @@ import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
+import { cloneValue } from '~/utils/clone';
 import { isLayer1Active, isLayer2Active } from '~/utils/hotkeys/layerUtils';
 import {
   getTimelineCommandLabelKey,
@@ -27,7 +28,6 @@ import {
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
 
-import { cloneValue } from '~/utils/clone';
 import {
   zoomToPxPerSecond,
   pxToDeltaUs,
@@ -374,7 +374,7 @@ export function useTimelineItemDrag(
       selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
-    dragStartSnapshot.value = cloneValue(timelineStore.timelineDoc);
+    dragStartSnapshot.value = toRaw(timelineStore.timelineDoc) as TimelineDocument | null;
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
 
@@ -444,7 +444,7 @@ export function useTimelineItemDrag(
       selectionRangeUs: snapSettings.selection ? timelineStore.getSelectionRange() : null,
     });
 
-    dragStartSnapshot.value = cloneValue(timelineStore.timelineDoc);
+    dragStartSnapshot.value = toRaw(timelineStore.timelineDoc) as TimelineDocument | null;
     lastDragAppliedCmd.value = null;
     dragCancelRequested.value = false;
     movePreview.value = [];
