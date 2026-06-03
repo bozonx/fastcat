@@ -15,7 +15,7 @@ export interface TimelineSelectionDeps {
     edge: 'in' | 'out';
   } | null>;
   selectionStore?: {
-    clearTimelineSelection?: () => void;
+    clearSelection?: () => void;
     selectTimelineTrack?: (trackId: string) => void;
     selectTimelineItems?: (
       items: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
@@ -67,7 +67,7 @@ export function createTimelineSelectionModule(
   function clearSelection() {
     deps.selectedItemIds.value = [];
     deps.selectedTransition.value = null;
-    deps.selectionStore?.clearTimelineSelection?.();
+    deps.selectionStore?.clearSelection?.();
   }
 
   function clearSelectedTransition() {
@@ -117,7 +117,7 @@ export function createTimelineSelectionModule(
     if (items.length === 0) {
       if (!options?.append) {
         deps.selectedItemIds.value = [];
-        deps.selectionStore?.clearTimelineSelection?.();
+        deps.selectionStore?.clearSelection?.();
       }
       return;
     }
@@ -134,7 +134,19 @@ export function createTimelineSelectionModule(
         }
       }
       deps.selectedItemIds.value = Array.from(nextIds);
-      // We don't update global selection store here because we don't have trackIds
+
+      const expandedObjects: { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[] = [];
+      for (const id of nextIds) {
+        const trackId = itemToTrackMap.value.get(id);
+        if (trackId) {
+          expandedObjects.push({ trackId, itemId: id, kind: 'clip' });
+        }
+      }
+      if (expandedObjects.length > 0) {
+        deps.selectionStore?.selectTimelineItems?.(expandedObjects);
+      } else {
+        deps.selectionStore?.clearSelection?.();
+      }
     } else {
       const objects = items as { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[];
       for (const obj of objects) {

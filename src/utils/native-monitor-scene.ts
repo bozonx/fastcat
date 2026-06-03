@@ -17,6 +17,7 @@ import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
+import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
 import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
@@ -223,6 +224,140 @@ function buildNativeTransform(
     crop_right: transform.crop?.right ?? 0,
   };
 }
+
+function buildNativeTextTransform(params: {
+  transform: ClipTransform | undefined;
+  style: TimelineTextClipItem['style'];
+  text: string;
+  sceneWidth: number;
+  sceneHeight: number;
+}) {
+  const { transform, style, text, sceneWidth, sceneHeight } = params;
+  if (!transform) return undefined;
+
+  const anchor = resolveNormalizedAnchor(transform.anchor);
+  const measureCanvas = document.createElement('canvas');
+  const measureCtx = measureCanvas.getContext('2d');
+
+  const layout = computeTextLayoutMetrics({
+    text,
+    style,
+    canvasWidth: sceneWidth,
+    canvasHeight: sceneHeight,
+    measureText: (txt, font) => {
+      if (measureCtx) {
+        measureCtx.font = font;
+        return measureCtx.measureText(txt).width;
+      }
+      return txt.length * 10;
+    },
+  });
+
+  const renderScale = sceneHeight / TRANSFORM_DESIGN_BASE.height;
+  const borderEnabled = style?.borderEnabled ?? false;
+  const borderWidth = borderEnabled && typeof style?.borderWidth === 'number' ? style.borderWidth : 0;
+  const borderWidthPx = Math.round(borderWidth * renderScale);
+
+  const bgW = layout.backgroundWidth;
+  const bgH = layout.backgroundHeight;
+
+  const bgShadowEnabled = style?.backgroundShadowEnabled ?? false;
+  const bgShadowBlur = bgShadowEnabled && typeof style?.backgroundShadowBlur === 'number' ? style.backgroundShadowBlur : 0;
+  const bgShadowSpread = bgShadowEnabled && typeof style?.backgroundShadowSpread === 'number' ? style.backgroundShadowSpread : 0;
+  const bgShadowOffsetX = bgShadowEnabled && typeof style?.backgroundShadowOffsetX === 'number' ? style.backgroundShadowOffsetX : 0;
+  const bgShadowOffsetY = bgShadowEnabled && typeof style?.backgroundShadowOffsetY === 'number' ? style.backgroundShadowOffsetY : 0;
+
+  const textShadowEnabled = style?.textShadowEnabled ?? false;
+  const textShadowBlur = textShadowEnabled && typeof style?.textShadowBlur === 'number' ? style.textShadowBlur : 0;
+  const textShadowSpread = textShadowEnabled && typeof style?.textShadowSpread === 'number' ? style.textShadowSpread : 0;
+  const textShadowOffsetX = textShadowEnabled && typeof style?.textShadowOffsetX === 'number' ? style.textShadowOffsetX : 0;
+  const textShadowOffsetY = textShadowEnabled && typeof style?.textShadowOffsetY === 'number' ? style.textShadowOffsetY : 0;
+
+  const bgShadowBlurPx = Math.round(bgShadowBlur * renderScale);
+  const bgShadowSpreadPx = Math.round(bgShadowSpread * renderScale);
+  const bgShadowOffsetXPx = Math.round(bgShadowOffsetX * renderScale);
+  const bgShadowOffsetYPx = Math.round(bgShadowOffsetY * renderScale);
+
+  const textShadowBlurPx = Math.round(textShadowBlur * renderScale);
+  const textShadowSpreadPx = Math.round(textShadowSpread * renderScale);
+  const textShadowOffsetXPx = Math.round(textShadowOffsetX * renderScale);
+  const textShadowOffsetYPx = Math.round(textShadowOffsetY * renderScale);
+
+  const shadowLeft = Math.max(
+    0,
+    bgShadowBlurPx + bgShadowSpreadPx - bgShadowOffsetXPx,
+    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetXPx,
+  );
+  const shadowRight = Math.max(
+    0,
+    bgShadowBlurPx + bgShadowSpreadPx + bgShadowOffsetXPx,
+    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetXPx,
+  );
+  const shadowTop = Math.max(
+    0,
+    bgShadowBlurPx + bgShadowSpreadPx - bgShadowOffsetYPx,
+    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetYPx,
+  );
+  const shadowBottom = Math.max(
+    0,
+    bgShadowBlurPx + bgShadowSpreadPx + bgShadowOffsetYPx,
+    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetYPx,
+  );
+
+  const posX = finite(transform.position?.x, 0) * renderScale;
+  const posY = finite(transform.position?.y, 0) * renderScale;
+
+  return {
+    x: sceneWidth / 2 + posX + (anchor.x - 0.5) * bgW + 0.5 * (shadowRight - shadowLeft),
+    y: sceneHeight / 2 + posY + (anchor.y - 0.5) * bgH + 0.5 * (shadowBottom - shadowTop),
+    scale_x: finite(transform.scale?.x, 1),
+    scale_y: finite(transform.scale?.y, 1),
+    rotation_deg: finite(transform.rotationDeg, 0),
+    anchor_x: anchor.x,
+    anchor_y: anchor.y,
+    crop_top: transform.crop?.top ?? 0,
+    crop_bottom: transform.crop?.bottom ?? 0,
+    crop_left: transform.crop?.left ?? 0,
+    crop_right: transform.crop?.right ?? 0,
+  };
+}
+
+function buildNativeShapeTransform(params: {
+  transform: ClipTransform | undefined;
+  strokeWidth: number | undefined;
+  sceneWidth: number;
+  sceneHeight: number;
+}) {
+  const { transform, strokeWidth, sceneWidth, sceneHeight } = params;
+  if (!transform) return undefined;
+  const anchor = resolveNormalizedAnchor(transform.anchor);
+  const renderScale = sceneHeight / TRANSFORM_DESIGN_BASE.height;
+  const size = Math.min(sceneWidth, sceneHeight) * 0.8;
+  const sW = strokeWidth ?? 0;
+  const targetW = Math.max(1, Math.ceil(size + sW * 2));
+  const targetH = Math.max(1, Math.ceil(size + sW * 2));
+
+  return {
+    x:
+      sceneWidth / 2 +
+      finite(transform.position?.x, 0) * renderScale +
+      (anchor.x - 0.5) * targetW,
+    y:
+      sceneHeight / 2 +
+      finite(transform.position?.y, 0) * renderScale +
+      (anchor.y - 0.5) * targetH,
+    scale_x: finite(transform.scale?.x, 1),
+    scale_y: finite(transform.scale?.y, 1),
+    rotation_deg: finite(transform.rotationDeg, 0),
+    anchor_x: anchor.x,
+    anchor_y: anchor.y,
+    crop_top: transform.crop?.top ?? 0,
+    crop_bottom: transform.crop?.bottom ?? 0,
+    crop_left: transform.crop?.left ?? 0,
+    crop_right: transform.crop?.right ?? 0,
+  };
+}
+
 
 export function buildNativeEffectSpecs(effects?: ClipEffect[]): TauriEffectSpec[] | undefined {
   if (!Array.isArray(effects) || effects.length === 0) {
@@ -446,8 +581,16 @@ export async function buildNativeMonitorScene(
     }
 
     if (clip.clipType === 'text') {
+      const textTransform = buildNativeTextTransform({
+        transform: clip.transform,
+        style: clip.style,
+        text: clip.text ?? '',
+        sceneWidth,
+        sceneHeight,
+      });
       layers.push({
         ...base,
+        transform: textTransform,
         kind: 'text',
         text: clip.text ?? '',
         style: clip.style,
@@ -456,8 +599,15 @@ export async function buildNativeMonitorScene(
     }
 
     if (clip.clipType === 'shape') {
+      const shapeTransform = buildNativeShapeTransform({
+        transform: clip.transform,
+        strokeWidth: clip.strokeWidth,
+        sceneWidth,
+        sceneHeight,
+      });
       layers.push({
         ...base,
+        transform: shapeTransform,
         kind: 'shape',
         shape_type: clip.shapeType ?? 'square',
         fill_color: clip.fillColor ?? '#ffffff',

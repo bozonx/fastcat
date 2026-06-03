@@ -37,7 +37,7 @@ function createMockDeps() {
     selectedTrackId: ref<string | null>(null),
     selectedTransition: ref<any>(null),
     selectionStore: {
-      clearTimelineSelection: vi.fn(),
+      clearSelection: vi.fn(),
       selectTimelineTrack: vi.fn(),
       selectTimelineItems: vi.fn(),
     },
@@ -160,5 +160,16 @@ describe('TimelineSelectionModule', () => {
     const mod = createTimelineSelectionModule(deps);
 
     expect(mod.getSelectedOrActiveTrackId()).toBe('track-1');
+  });
+
+  it('syncs global selection store when selecting clips by IDs', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineSelectionModule(deps);
+
+    mod.selectAllClipsOnTrack('track-1');
+    expect(deps.selectionStore.selectTimelineItems).toHaveBeenCalledWith([
+      { trackId: 'track-1', itemId: 'clip-1', kind: 'clip' },
+      { trackId: 'track-1', itemId: 'clip-2', kind: 'clip' },
+    ]);
   });
 });

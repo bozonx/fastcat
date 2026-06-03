@@ -18,6 +18,7 @@ use std::sync::Arc;
 use vello::Glyph;
 use vello::Scene as VelloScene;
 use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
+use crate::compositor::text::clean_font_family;
 
 use super::effects::EffectSpec;
 
@@ -267,6 +268,7 @@ pub struct TextLayer {
     pub line_height: f32,
     pub letter_spacing: f32,
     pub max_width: Option<f32>,
+    pub explicit_height: Option<f32>,
 
     // Background
     pub background_enabled: bool,
@@ -556,36 +558,67 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
 
     // 1. Draw Background Shadow
     if spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0 {
-        let steps = 10;
         let base_alpha = spec.bg_shadow_color.to_rgba8().a as f32 / 255.0;
+        let base_color = spec.bg_shadow_color.to_rgba8();
         let shadow_x = frame_x + spec.bg_shadow_offset_x;
         let shadow_y = frame_y + spec.bg_shadow_offset_y;
 
-        for i in 0..steps {
-            let t = (i as f32 + 0.5) / steps as f32;
-            let r_offset = spec.bg_shadow_blur * (2.0 * t - 1.0);
-            let ext = spec.bg_shadow_spread + r_offset;
-            
-            let x_val = 2.0 * t - 1.0;
-            let factor = (-2.0 * x_val * x_val).exp();
-            let step_alpha = base_alpha * factor / (steps as f32 * 0.4);
-            
-            let color = Color::from_rgba8(
-                spec.bg_shadow_color.to_rgba8().r,
-                spec.bg_shadow_color.to_rgba8().g,
-                spec.bg_shadow_color.to_rgba8().b,
-                (step_alpha * 255.0).clamp(0.0, 255.0) as u8,
+        let ext = spec.bg_shadow_spread;
+        let rect_x1 = (shadow_x - ext) as f64;
+        let rect_y1 = (shadow_y - ext) as f64;
+        let rect_x2 = (shadow_x + spec.frame_width + ext) as f64;
+        let rect_y2 = (shadow_y + spec.frame_height + ext) as f64;
+        let radius = (spec.background_radius + ext as f64).max(0.0);
+
+        if spec.bg_shadow_blur > 0.0 {
+            // Изотропное круговое размытие за 9 проходов
+            let center_weight = 0.25f32;
+            let ring_weight = 0.75f32 / 8.0f32;
+
+            // Центральный проход
+            let c_color = Color::from_rgba8(
+                base_color.r,
+                base_color.g,
+                base_color.b,
+                ((base_alpha * center_weight) * 255.0).clamp(0.0, 255.0) as u8,
+            );
+            let rect = RoundedRect::new(rect_x1, rect_y1, rect_x2, rect_y2, radius).to_path(0.1);
+            scene.fill(Fill::NonZero, xform, Brush::Solid(c_color), None, &rect);
+
+            // 8 проходов по кругу
+            let r = (spec.bg_shadow_blur * 0.7) as f64;
+            let angles = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0];
+            let r_color = Color::from_rgba8(
+                base_color.r,
+                base_color.g,
+                base_color.b,
+                ((base_alpha * ring_weight) * 255.0).clamp(0.0, 255.0) as u8,
             );
 
-            let rect = RoundedRect::new(
-                (shadow_x - ext) as f64,
-                (shadow_y - ext) as f64,
-                (shadow_x + spec.frame_width + ext) as f64,
-                (shadow_y + spec.frame_height + ext) as f64,
-                (spec.background_radius + ext as f64).max(0.0),
-            )
-            .to_path(0.1);
+            for &angle_deg in &angles {
+                let angle_rad = (angle_deg as f64).to_radians();
+                let dx = r * angle_rad.cos();
+                let dy = r * angle_rad.sin();
 
+                let rect = RoundedRect::new(
+                    rect_x1 + dx,
+                    rect_y1 + dy,
+                    rect_x2 + dx,
+                    rect_y2 + dy,
+                    radius,
+                )
+                .to_path(0.1);
+                scene.fill(Fill::NonZero, xform, Brush::Solid(r_color), None, &rect);
+            }
+        } else {
+            // Без размытия - 1 проход
+            let color = Color::from_rgba8(
+                base_color.r,
+                base_color.g,
+                base_color.b,
+                (base_alpha * 255.0).clamp(0.0, 255.0) as u8,
+            );
+            let rect = RoundedRect::new(rect_x1, rect_y1, rect_x2, rect_y2, radius).to_path(0.1);
             scene.fill(Fill::NonZero, xform, Brush::Solid(color), None, &rect);
         }
     }
@@ -636,8 +669,10 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         spec.line_height.max(0.1),
     )));
     builder.push_default(StyleProperty::FontWeight(FontWeight::new(spec.font_weight)));
+    
+    let cleaned_font = clean_font_family(&spec.font_family);
     builder.push_default(StyleProperty::FontFamily(FontFamily::from(
-        spec.font_family.as_str(),
+        cleaned_font.as_str(),
     )));
     let mut layout = builder.build(&spec.text);
     
@@ -649,7 +684,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     let content_height_px = (spec.frame_height - spec.padding_top - spec.padding_bottom).max(1.0);
     
     let mut text_block_top_px = content_top_px;
-    if spec.frame_height > spec.text_block_height + spec.padding_top + spec.padding_bottom {
+    if spec.explicit_height.is_some() {
         match spec.vertical_align {
             TextVerticalAlign::Top => {}
             TextVerticalAlign::Middle => {
@@ -681,24 +716,15 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
 
     // 5. Draw Text Shadows (if enabled)
     if spec.text_shadow_enabled && spec.text_shadow_color.to_rgba8().a > 0 {
-        let steps = 5;
         let base_alpha = spec.text_shadow_color.to_rgba8().a as f32 / 255.0;
+        let base_color = spec.text_shadow_color.to_rgba8();
 
-        for step in 0..steps {
-            let t = (step as f32 + 0.5) / steps as f32;
-            let r_offset = spec.text_shadow_blur * (2.0 * t - 1.0);
-            let dx = spec.text_shadow_offset_x + r_offset * 0.707;
-            let dy = spec.text_shadow_offset_y + r_offset * 0.707;
-
-            let x_val = 2.0 * t - 1.0;
-            let factor = (-2.0 * x_val * x_val).exp();
-            let step_alpha = base_alpha * factor / (steps as f32 * 0.4);
-
+        let mut draw_shadow_pass = |dx: f32, dy: f32, weight: f32| {
             let shadow_color = Color::from_rgba8(
-                spec.text_shadow_color.to_rgba8().r,
-                spec.text_shadow_color.to_rgba8().g,
-                spec.text_shadow_color.to_rgba8().b,
-                (step_alpha * 255.0).clamp(0.0, 255.0) as u8,
+                base_color.r,
+                base_color.g,
+                base_color.b,
+                ((base_alpha * weight) * 255.0).clamp(0.0, 255.0) as u8,
             );
 
             for (line_idx, line) in layout.lines().enumerate() {
@@ -756,6 +782,23 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                         );
                 }
             }
+        };
+
+        if spec.text_shadow_blur > 0.0 {
+            // Изотропное круговое размытие за 9 проходов
+            draw_shadow_pass(spec.text_shadow_offset_x, spec.text_shadow_offset_y, 0.25);
+
+            let r = spec.text_shadow_blur * 0.7;
+            let angles = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0];
+            for &angle_deg in &angles {
+                let angle_rad = (angle_deg as f32).to_radians();
+                let dx = spec.text_shadow_offset_x + r * angle_rad.cos();
+                let dy = spec.text_shadow_offset_y + r * angle_rad.sin();
+                draw_shadow_pass(dx, dy, 0.75 / 8.0);
+            }
+        } else {
+            // 1 проход
+            draw_shadow_pass(spec.text_shadow_offset_x, spec.text_shadow_offset_y, 1.0);
         }
     }
 

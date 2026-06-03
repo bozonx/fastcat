@@ -24,6 +24,7 @@ use crate::compositor::scene::{
     BlendMode, Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextAlign,
     TextLayer, TextVerticalAlign, Transform, TransitionInfo,
 };
+use crate::compositor::text::clean_font_family;
 use parley::{PositionedLayoutItem, StyleProperty};
 use parley::style::{FontFamily, LineHeight};
 use parley::fontique::FontWeight;
@@ -122,6 +123,7 @@ fn parse_padding(style: &serde_json::Value) -> Padding {
     Padding { top, right, bottom, left }
 }
 
+
 fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let scene_h = scene_size.1;
     let style = sl.style.clone().unwrap_or(serde_json::Value::Null);
@@ -130,7 +132,8 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     
     // Core parameters
     let text = sl.text.clone().unwrap_or_default();
-    let font_family = string_value(&style, "fontFamily", "sans-serif");
+    let font_family_raw = string_value(&style, "fontFamily", "sans-serif");
+    let font_family = clean_font_family(&font_family_raw);
     let font_weight_val = font_weight(&style);
     let line_height_val = number(&style, "lineHeight", 1.2).clamp(0.1, 10.0) as f32;
     let letter_spacing = (number(&style, "letterSpacing", 0.0) * render_scale) as f32;
@@ -269,6 +272,7 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         line_height: line_height_val,
         letter_spacing,
         max_width: explicit_width_px,
+        explicit_height: explicit_height_px,
         
         background_enabled,
         background_color,
@@ -344,14 +348,27 @@ pub fn finalize_layer(
             }
         }
         None => {
-            let fit_media_size = if is_quarter_turn(source_rotation) {
-                (media_size.1, media_size.0)
+            if is_raster_layer {
+                let fit_media_size = if is_quarter_turn(source_rotation) {
+                    (media_size.1, media_size.0)
+                } else {
+                    media_size
+                };
+                Transform {
+                    rotation_deg: source_rotation,
+                    ..Transform::center_fit(fit_media_size, scene_size)
+                }
             } else {
-                media_size
-            };
-            Transform {
-                rotation_deg: source_rotation,
-                ..Transform::center_fit(fit_media_size, scene_size)
+                Transform {
+                    x: scene_size.0 as f64 / 2.0,
+                    y: scene_size.1 as f64 / 2.0,
+                    scale_x: 1.0,
+                    scale_y: 1.0,
+                    rotation_deg: source_rotation,
+                    anchor_x: 0.5,
+                    anchor_y: 0.5,
+                    ..Default::default()
+                }
             }
         }
     };
