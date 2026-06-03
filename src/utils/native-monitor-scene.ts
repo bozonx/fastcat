@@ -59,6 +59,10 @@ export interface NativeSceneLayer {
     rotation_deg: number;
     anchor_x: number;
     anchor_y: number;
+    crop_top?: number;
+    crop_bottom?: number;
+    crop_left?: number;
+    crop_right?: number;
   };
   transition_in?: {
     type: string;
@@ -168,6 +172,10 @@ function buildNativeTransform(
     rotation_deg: finite(transform.rotationDeg, 0),
     anchor_x: anchor.x,
     anchor_y: anchor.y,
+    crop_top: transform.crop?.top ?? 0,
+    crop_bottom: transform.crop?.bottom ?? 0,
+    crop_left: transform.crop?.left ?? 0,
+    crop_right: transform.crop?.right ?? 0,
   };
 }
 

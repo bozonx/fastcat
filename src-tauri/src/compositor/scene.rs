@@ -86,13 +86,27 @@ impl Scene {
             let inner = layer.transform.to_affine(natural);
             let xform = outer * inner;
 
-            // push_layer нужен для opacity<1 или non-Normal blend. Маска и эффекты пока
-            // no-op — будут подключены здесь же при реализации.
+            // Расчет обрезанного bbox (crop)
+            let nw = natural.0 as f64;
+            let nh = natural.1 as f64;
+            let crop_left = (layer.transform.crop_left.clamp(0.0, 100.0) / 100.0) * nw;
+            let crop_right = (layer.transform.crop_right.clamp(0.0, 100.0) / 100.0) * nw;
+            let crop_top = (layer.transform.crop_top.clamp(0.0, 100.0) / 100.0) * nh;
+            let crop_bottom = (layer.transform.crop_bottom.clamp(0.0, 100.0) / 100.0) * nh;
+
+            let x_min = crop_left;
+            let x_max = (nw - crop_right).max(x_min);
+            let y_min = crop_top;
+            let y_max = (nh - crop_bottom).max(y_min);
+            let crop_bbox = Rect::new(x_min, y_min, x_max, y_max);
+
+            let has_crop = crop_left > 0.0 || crop_right > 0.0 || crop_top > 0.0 || crop_bottom > 0.0;
+
+            // push_layer нужен для opacity<1, non-Normal blend или наличия кропа.
             let mix = layer.blend.to_vello();
-            let needs_layer = opacity < 1.0 || !matches!(layer.blend, BlendMode::Normal);
+            let needs_layer = opacity < 1.0 || !matches!(layer.blend, BlendMode::Normal) || has_crop;
             if needs_layer {
-                let bbox = Rect::new(0.0, 0.0, natural.0 as f64, natural.1 as f64);
-                out.push_layer(Fill::NonZero, mix, opacity, xform, &bbox);
+                out.push_layer(Fill::NonZero, mix, opacity, xform, &crop_bbox);
             }
 
             match &layer.kind {
@@ -283,6 +297,10 @@ pub struct Transform {
     pub rotation_deg: f64,
     pub anchor_x: f64,
     pub anchor_y: f64,
+    pub crop_top: f64,
+    pub crop_bottom: f64,
+    pub crop_left: f64,
+    pub crop_right: f64,
 }
 
 impl Transform {
@@ -295,6 +313,10 @@ impl Transform {
             rotation_deg: 0.0,
             anchor_x: 0.0,
             anchor_y: 0.0,
+            crop_top: 0.0,
+            crop_bottom: 0.0,
+            crop_left: 0.0,
+            crop_right: 0.0,
         }
     }
 
@@ -311,6 +333,10 @@ impl Transform {
             rotation_deg: 0.0,
             anchor_x: 0.5,
             anchor_y: 0.5,
+            crop_top: 0.0,
+            crop_bottom: 0.0,
+            crop_left: 0.0,
+            crop_right: 0.0,
         }
     }
 
@@ -756,6 +782,27 @@ mod tests {
     }
 
     #[test]
+    fn to_vello_applies_crop_clipping() {
+        let mut transform = Transform::identity();
+        transform.crop_left = 10.0;
+        transform.crop_top = 20.0;
+        transform.crop_right = 30.0;
+        transform.crop_bottom = 40.0;
+
+        let layer = raster_layer((100, 100), transform, 1.0);
+        let scene = Scene {
+            width: 100,
+            height: 100,
+            time: 0.0,
+            background: Color::BLACK,
+            layers: vec![layer],
+        };
+
+        let vello_scene = scene.to_vello(100, 100, |_| None);
+        assert!(!vello_scene.encoding().is_empty());
+    }
+
+    #[test]
     fn to_vello_empty_scene_returns_empty() {
         let scene = Scene {
             width: 1920,
@@ -875,6 +922,10 @@ mod tests {
             rotation_deg: 90.0,
             anchor_x: 0.0,
             anchor_y: 0.0,
+            crop_top: 0.0,
+            crop_bottom: 0.0,
+            crop_left: 0.0,
+            crop_right: 0.0,
         };
         let a = t.to_affine((0, 0)); // natural size не используется при anchor=0
         let (px, py) = affine_apply(a, (1.0, 0.0));

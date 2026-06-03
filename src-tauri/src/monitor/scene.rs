@@ -47,6 +47,14 @@ pub struct SceneLayerTransform {
     /// Вертикальная anchor-точка в долях натуральной высоты слоя. 0.5 = центр.
     #[serde(default = "half")]
     pub anchor_y: f64,
+    #[serde(default)]
+    pub crop_top: f64,
+    #[serde(default)]
+    pub crop_bottom: f64,
+    #[serde(default)]
+    pub crop_left: f64,
+    #[serde(default)]
+    pub crop_right: f64,
 }
 
 fn one() -> f64 {

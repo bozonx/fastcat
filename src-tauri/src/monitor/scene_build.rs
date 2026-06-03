@@ -128,6 +128,10 @@ pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u3
                 rotation_deg: t.rotation_deg + source_rotation,
                 anchor_x: t.anchor_x,
                 anchor_y: t.anchor_y,
+                crop_top: t.crop_top,
+                crop_bottom: t.crop_bottom,
+                crop_left: t.crop_left,
+                crop_right: t.crop_right,
             }
         }
         None => {
