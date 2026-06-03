@@ -389,10 +389,10 @@ impl FfmpegCliDecoder {
             // и cfr-таймбейс, чтобы frame_index/fps давал корректные PTS.
             .arg("-vf")
             .arg(format!(
-                "scale={}:{},fps={}",
+                "format=rgba,scale={}:{},fps={}",
                 self.info.width,
                 self.info.height,
-                fmt_fps(self.info.fps)
+                format_fps(self.info.fps)
             ))
             .arg("-an")
             .arg("-")
@@ -848,10 +848,10 @@ mod tests {
     }
 
     #[test]
-    fn fmt_fps_handles_invalid() {
-        assert_eq!(fmt_fps(0.0), "30.000000");
-        assert_eq!(fmt_fps(f64::NAN), "30.000000");
-        assert_eq!(fmt_fps(23.976), "23.976000");
+    fn format_fps_handles_invalid() {
+        assert_eq!(format_fps(0.0), "30.000000");
+        assert_eq!(format_fps(f64::NAN), "30.000000");
+        assert_eq!(format_fps(23.976), "23.976000");
     }
 
     #[test]

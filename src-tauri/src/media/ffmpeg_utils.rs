@@ -1,5 +1,3 @@
-use anyhow::{anyhow, Result};
-
 pub fn ffmpeg_video_codec(codec: &str) -> &'static str {
     if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
         "libsvtav1"
@@ -62,6 +60,9 @@ pub fn format_time(time_sec: f64) -> String {
     }
 }
 
+use std::process::{Command, Stdio};
+use anyhow::{anyhow, Result};
+
 pub fn parse_rational(s: &str) -> Option<f64> {
     let mut parts = s.split('/');
     let num: f64 = parts.next()?.parse().ok()?;
@@ -70,4 +71,19 @@ pub fn parse_rational(s: &str) -> Option<f64> {
         return None;
     }
     Some(num / den)
+}
+
+/// Verify that the ffmpeg/ffprobe binary is available and executable.
+pub fn verify_ffmpeg_binary(path: &str) -> Result<()> {
+    match Command::new(path)
+        .arg("-version")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+    {
+        Ok(status) if status.success() => Ok(()),
+        Ok(_) => Err(anyhow!("{path} returned non-zero status")),
+        Err(e) => Err(anyhow!("failed to run {path}: {e}")),
+    }
 }

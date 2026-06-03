@@ -658,7 +658,7 @@ impl LayerRuntimeManager {
             width: scene_w,
             height: scene_h,
             time: t,
-            background: Color::BLACK,
+            background: Color::TRANSPARENT,
             layers,
         }
     }

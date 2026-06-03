@@ -91,6 +91,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
       el.width = width;
       el.height = height;
     }
+    el.style.background = 'transparent';
     const ctx = el.getContext('2d');
     if (!ctx) return;
     const imageData = new ImageData(pixels, width, height);

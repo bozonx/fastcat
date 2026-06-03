@@ -107,6 +107,7 @@ pub async fn native_timeline_export(
 
     let hw = hw_settings.read().unwrap().clone();
     options.ffmpeg_path = Some(hw.ffmpeg_path);
+    options.ffprobe_path = Some(hw.ffprobe_path);
     options.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode);
     options.vaapi_device = Some(hw.vaapi_device);
     options.enable_hardware_encoding = Some(hw.enable_hardware_encoding);

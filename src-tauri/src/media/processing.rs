@@ -118,6 +118,7 @@ pub struct NativeConvertOptions {
 }
 
 pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadata> {
+    verify_ffmpeg_binary(ffprobe_path).context("ffprobe binary check failed")?;
     let output = Command::new(ffprobe_path)
         .arg("-v")
         .arg("error")
@@ -345,14 +346,24 @@ pub fn generate_proxy(
     args.push(target_path.display().to_string());
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args)?;
-    if !target_path.exists() {
-        return Err(anyhow!(
-            "ffmpeg proxy did not produce output file: {}",
-            target_path.display()
-        ));
+    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args) {
+        Ok(()) => {
+            if !target_path.exists() {
+                return Err(anyhow!(
+                    "ffmpeg proxy did not produce output file: {}",
+                    target_path.display()
+                ));
+            }
+            Ok(())
+        }
+        Err(e) if hw_encode != "none" => {
+            log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
+            let mut sw_options = options.clone();
+            sw_options.enable_hardware_encoding = Some(false);
+            generate_proxy(tasks, task_id, source_path, target_path, sw_options)
+        }
+        Err(e) => Err(e),
     }
-    Ok(())
 }
 
 pub fn convert_media(
@@ -484,14 +495,24 @@ pub fn convert_media(
     args.push(target_path.display().to_string());
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args)?;
-    if !target_path.exists() {
-        return Err(anyhow!(
-            "ffmpeg conversion did not produce output file: {}",
-            target_path.display()
-        ));
+    match run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args) {
+        Ok(()) => {
+            if !target_path.exists() {
+                return Err(anyhow!(
+                    "ffmpeg conversion did not produce output file: {}",
+                    target_path.display()
+                ));
+            }
+            Ok(())
+        }
+        Err(e) if hw_encode != "none" => {
+            log::warn!("[native-media] HW conversion failed ({e}), falling back to software encoding");
+            let mut sw_options = options.clone();
+            sw_options.enable_hardware_encoding = Some(false);
+            convert_media(tasks, task_id, source_path, target_path, sw_options)
+        }
+        Err(e) => Err(e),
     }
-    Ok(())
 }
 
 pub fn extract_video_frame_webp(
@@ -703,6 +724,7 @@ pub fn extract_video_frame_webps(
 }
 
 fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, ffmpeg_path: &str, args: Vec<String>) -> Result<()> {
+    verify_ffmpeg_binary(ffmpeg_path).context("ffmpeg binary check failed")?;
     let mut child = Command::new(ffmpeg_path)
         .args(&args)
         .stdin(Stdio::null())
