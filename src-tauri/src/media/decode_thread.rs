@@ -6,10 +6,11 @@
 //!   - старые кадры в очереди помечены прошлым generation → consumer их выбрасывает.
 //! Гарантия: после `seek(t)` все кадры, дошедшие до consumer'а, имеют PTS >= t (с допуском 1/2*1/fps).
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, SyncSender, TryRecvError};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Context, Result};
@@ -62,6 +63,9 @@ impl DecodePump {
         let generation = Arc::new(AtomicU64::new(0));
         let gen_in_thread = generation.clone();
         let path_str = path.display().to_string();
+        let texture_pool: Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        let texture_pool_thread = texture_pool.clone();
 
         let thread = std::thread::Builder::new()
             .name(format!("fastcat-decode:{}", path_str))
@@ -74,6 +78,7 @@ impl DecodePump {
                     on_frame_decoded,
                     device,
                     queue,
+                    texture_pool_thread,
                 );
             })
             .context("spawn decoder thread")?;
@@ -151,6 +156,7 @@ fn run_decoder_loop(
     on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
     device: Option<wgpu::Device>,
     queue: Option<wgpu::Queue>,
+    texture_pool: Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>,
 ) {
     let mut playing = false;
     let mut decoded_after_seek = false;
@@ -265,23 +271,29 @@ fn run_decoder_loop(
 
                 // Загружаем кадр на GPU, если доступны device и queue
                 if let (Some(device), Some(queue)) = (&device, &queue) {
-                    let texture = device.create_texture(&wgpu::TextureDescriptor {
-                        label: Some("decode-gpu-frame"),
-                        size: wgpu::Extent3d {
-                            width: frame.width,
-                            height: frame.height,
-                            depth_or_array_layers: 1,
-                        },
-                        mip_level_count: 1,
-                        sample_count: 1,
-                        dimension: wgpu::TextureDimension::D2,
-                        format: wgpu::TextureFormat::Rgba8Unorm,
-                        usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
-                        view_formats: &[],
-                    });
+                    let tex = {
+                        let mut pool = texture_pool.lock().unwrap();
+                        let slot = pool.entry((frame.width, frame.height)).or_default();
+                        slot.pop().unwrap_or_else(|| {
+                            device.create_texture(&wgpu::TextureDescriptor {
+                                label: Some("decode-gpu-frame"),
+                                size: wgpu::Extent3d {
+                                    width: frame.width,
+                                    height: frame.height,
+                                    depth_or_array_layers: 1,
+                                },
+                                mip_level_count: 1,
+                                sample_count: 1,
+                                dimension: wgpu::TextureDimension::D2,
+                                format: wgpu::TextureFormat::Rgba8Unorm,
+                                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_SRC,
+                                view_formats: &[],
+                            })
+                        })
+                    };
                     queue.write_texture(
                         wgpu::TexelCopyTextureInfo {
-                            texture: &texture,
+                            texture: &tex,
                             mip_level: 0,
                             origin: wgpu::Origin3d::ZERO,
                             aspect: wgpu::TextureAspect::All,
@@ -298,7 +310,8 @@ fn run_decoder_loop(
                             depth_or_array_layers: 1,
                         },
                     );
-                    frame.texture = Some(texture);
+                    frame.texture = Some(tex);
+                    frame.texture_pool = Some(texture_pool.clone());
                 }
 
                 let msg = DecodedFrameMsg {

@@ -245,7 +245,7 @@ fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> 
 
 fn video_frame_to_image(frame: VideoFrame) -> ImageData {
     ImageData {
-        data: Blob::new(Arc::new(frame.pixels)),
+        data: Blob::new(Arc::new(frame.pixels.clone())),
         format: VelloImageFormat::Rgba8,
         alpha_type: ImageAlphaType::Alpha,
         width: frame.width,

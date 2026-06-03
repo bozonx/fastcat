@@ -9,9 +9,11 @@
 use anyhow::{anyhow, Context, Result};
 use ffmpeg_next as ffmpeg;
 use once_cell::sync::OnceCell;
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdout, Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct MediaInfo {
@@ -31,6 +33,18 @@ pub struct VideoFrame {
     pub pixels: Vec<u8>,
     pub pts_sec: f64,
     pub texture: Option<wgpu::Texture>,
+    #[allow(dead_code)]
+    pub texture_pool: Option<Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>>,
+}
+
+impl Drop for VideoFrame {
+    fn drop(&mut self) {
+        if let (Some(tex), Some(pool)) = (self.texture.take(), self.texture_pool.take()) {
+            if let Ok(mut p) = pool.lock() {
+                p.entry((tex.size().width, tex.size().height)).or_default().push(tex);
+            }
+        }
+    }
 }
 
 pub trait VideoDecoder: Send {
@@ -207,6 +221,7 @@ impl FfmpegNextDecoder {
             pixels,
             pts_sec,
             texture: None,
+            texture_pool: None,
         })
     }
 }
@@ -469,6 +484,7 @@ impl VideoDecoder for FfmpegCliDecoder {
             pixels,
             pts_sec,
             texture: None,
+            texture_pool: None,
         }))
     }
 }

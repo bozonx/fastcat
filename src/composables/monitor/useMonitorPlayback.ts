@@ -345,7 +345,7 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
     const frameIntervalMs = 1000 / fps;
 
     if (playbackLoopState.renderAccumulatorMs >= frameIntervalMs) {
-      playbackLoopState.renderAccumulatorMs %= frameIntervalMs;
+      playbackLoopState.renderAccumulatorMs -= frameIntervalMs;
       // Only schedule render if document is visible to save resources in background (Desktop)
       if (!document.hidden) {
         scheduleRender(newTimeUs);

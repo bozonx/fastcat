@@ -628,7 +628,7 @@ pub fn extract_video_frame_webps(
                 if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
                     frame.width,
                     frame.height,
-                    frame.pixels,
+                    frame.pixels.clone(),
                 ) {
                     match rotation {
                         90 => {

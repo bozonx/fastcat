@@ -173,6 +173,9 @@ export function useNativeMonitorBridge(): void {
   );
 
   // Manual seek (когда не подавлено апдейтом от натива).
+  let seekThrottleId: ReturnType<typeof setTimeout> | null = null;
+  let pendingSeekTimeSec = 0;
+
   watch(
     () => timelineStore.currentTime,
     async (t) => {
@@ -190,11 +193,17 @@ export function useNativeMonitorBridge(): void {
 
       lastSentTime = t;
       if (isNativeMonitorDisabled()) return;
-      try {
-        await invoke('monitor_seek', { timeSec: t / 1_000_000 });
-      } catch (err) {
-        warnMonitorFailure('monitor_seek failed', err);
+
+      pendingSeekTimeSec = t / 1_000_000;
+      if (seekThrottleId) {
+        clearTimeout(seekThrottleId);
       }
+      seekThrottleId = setTimeout(() => {
+        seekThrottleId = null;
+        void invoke('monitor_seek', { timeSec: pendingSeekTimeSec }).catch((err) => {
+          warnMonitorFailure('monitor_seek failed', err);
+        });
+      }, 16);
     },
     { flush: 'sync' },
   );

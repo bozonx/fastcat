@@ -16,6 +16,10 @@
 //!   3. `Scene::to_vello` resolves GPU handles to lightweight `ImageData`
 //!      handles backed by Vello texture overrides.
 
+use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
 /// Стабильный идентификатор GPU-resident текстуры в [`TextureCache`].
 /// Получается через `TextureCache::insert`, освобождается через `remove`.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -23,31 +27,39 @@ pub struct TextureKey(pub(crate) u64);
 
 /// Кеш wgpu-текстур, привязанный к одному `wgpu::Device`.
 pub struct TextureCache {
-    next_key: std::sync::atomic::AtomicU64,
-    textures: std::collections::HashMap<u64, std::sync::Arc<wgpu::Texture>>,
+    next_key: AtomicU64,
+    textures: HashMap<u64, Arc<wgpu::Texture>>,
+    order: VecDeque<u64>,
+    max_size: usize,
 }
 
 impl TextureCache {
     pub fn new() -> Self {
         Self {
-            next_key: std::sync::atomic::AtomicU64::new(1),
-            textures: std::collections::HashMap::new(),
+            next_key: AtomicU64::new(1),
+            textures: HashMap::new(),
+            order: VecDeque::new(),
+            max_size: 64,
         }
     }
 
     pub fn insert(&mut self, texture: wgpu::Texture) -> TextureKey {
-        let key = self
-            .next_key
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        self.textures.insert(key, std::sync::Arc::new(texture));
+        let key = self.next_key.fetch_add(1, Ordering::Relaxed);
+        self.textures.insert(key, Arc::new(texture));
+        self.order.push_back(key);
+        while self.textures.len() > self.max_size {
+            if let Some(oldest) = self.order.pop_front() {
+                self.textures.remove(&oldest);
+            }
+        }
         TextureKey(key)
     }
 
-    pub fn get(&self, key: TextureKey) -> Option<std::sync::Arc<wgpu::Texture>> {
+    pub fn get(&self, key: TextureKey) -> Option<Arc<wgpu::Texture>> {
         self.textures.get(&key.0).cloned()
     }
 
-    pub fn remove(&mut self, key: TextureKey) -> Option<std::sync::Arc<wgpu::Texture>> {
+    pub fn remove(&mut self, key: TextureKey) -> Option<Arc<wgpu::Texture>> {
         self.textures.remove(&key.0)
     }
 }

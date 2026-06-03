@@ -737,18 +737,14 @@ fn svg_target_long_edge(scene_size: (u32, u32), preview_scale: Option<f32>) -> u
 // ---------------------------------------------------------------------------
 
 fn video_frame_to_image(
-    frame: VideoFrame,
+    mut frame: VideoFrame,
     cache: &mut crate::compositor::texture_cache::TextureCache,
 ) -> DecodedVideoFrame {
-    let VideoFrame {
-        width,
-        height,
-        pixels,
-        pts_sec,
-        texture,
-    } = frame;
-    let texture_key = texture.map(|t| cache.insert(t));
-    let blob = Blob::new(Arc::new(pixels));
+    let width = frame.width;
+    let height = frame.height;
+    let pts_sec = frame.pts_sec;
+    let texture_key = std::mem::take(&mut frame.texture).map(|t| cache.insert(t));
+    let blob = Blob::new(Arc::new(std::mem::take(&mut frame.pixels)));
     DecodedVideoFrame {
         pts_sec,
         image: ImageData {
