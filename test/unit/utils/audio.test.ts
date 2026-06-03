@@ -10,6 +10,8 @@ import {
   isAudioClipping,
   clipHasAudio,
   trackHasAudio,
+  clipGainToYPercent,
+  clipYPercentToGain,
 } from '~/utils/audio';
 import { getGainAtClipTime, resolveEffectiveFadeDurationsSeconds } from '~/utils/audio/envelope';
 
@@ -204,5 +206,17 @@ describe('utils/audio', () => {
     expect(linear).toBeCloseTo(0.5, 5);
     expect(logarithmic).toBeGreaterThan(linear);
     expect(logarithmic).toBeCloseTo(Math.sin(Math.PI / 4), 5);
+  });
+
+  it('clipGainToYPercent and clipYPercentToGain map correctly', () => {
+    expect(clipGainToYPercent(0)).toBe(100);
+    expect(clipGainToYPercent(-1)).toBe(100);
+    expect(clipGainToYPercent(1.0)).toBeCloseTo(50, 1);
+    expect(clipGainToYPercent(1.5)).toBeCloseTo(0, 1);
+    expect(clipGainToYPercent(2.0)).toBeCloseTo(0, 1);
+
+    expect(clipYPercentToGain(100)).toBeCloseTo(0, 5);
+    expect(clipYPercentToGain(50)).toBeCloseTo(1.0, 5);
+    expect(clipYPercentToGain(0)).toBeCloseTo(1.5, 5);
   });
 });

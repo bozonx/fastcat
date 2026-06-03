@@ -25,9 +25,15 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
     const actionGroup = buildSingleItemActionGroup(options);
     const transitionGroups = buildTransitionContextMenu(options) ?? [];
     const result = [];
-    result.push(...mainGroups);
-    result.push(...transitionGroups);
-    result.push(actionGroup);
+
+    if (mainGroups.length > 0) {
+      result.push(mainGroups[0]); // Группа 1: Скорость и Заморозка
+    }
+    result.push(...transitionGroups); // Группа 2: Переходы
+    if (mainGroups.length > 1) {
+      result.push(...mainGroups.slice(1)); // Остальные группы: Автомонтаж, Состояния и т.д.
+    }
+    result.push(actionGroup); // Группа 5: Действия (Копирование, Вставка и т.д.)
 
     return result;
   });

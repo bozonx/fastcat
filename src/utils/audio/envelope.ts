@@ -1,4 +1,4 @@
-export const CLIP_AUDIO_GAIN_MAX = 4;
+export const CLIP_AUDIO_GAIN_MAX = 2;
 
 export function clampNumber(value: unknown, min: number, max: number): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;

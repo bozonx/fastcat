@@ -64,3 +64,34 @@ export function trackHasAudio(
 ): boolean {
   return track.items.some((item) => clipHasAudio(item, track, mediaMetadata));
 }
+
+export function clipGainToYPercent(gain: number): number {
+  if (gain <= 0) return 100;
+  const db = linearToDb(gain);
+  if (db >= 0) {
+    // Range [1.0, 1.5+] -> [0 dB, 3.52 dB+]
+    // Clamped at 1.5 gain (+3.52 dB) which corresponds to 0% (top of clip)
+    const maxDb = 20 * Math.log10(1.5);
+    const ratio = Math.min(1, db / maxDb);
+    return (1 - ratio) * 50; // Map [0, 1] to [50%, 0%]
+  } else {
+    // Range [0.0, 1.0) -> [-60 dB, 0 dB)
+    const ratio = Math.max(0, (db - (-60)) / 60); // Map [-60, 0] to [0, 1]
+    return 100 - ratio * 50; // Map [0, 1] to [100%, 50%]
+  }
+}
+
+export function clipYPercentToGain(yPercent: number): number {
+  const y = Math.max(0, Math.min(100, yPercent)) / 100; // Map to [0, 1]
+  if (y <= 0.5) {
+    // Upper half (gain 1.0 to 1.5)
+    const maxDb = 20 * Math.log10(1.5);
+    const db = maxDb * (1 - y / 0.5);
+    return dbToLinear(db);
+  } else {
+    // Lower half (gain 0.0 to 1.0)
+    const db = 60 * (1 - 2 * y);
+    return dbToLinear(db);
+  }
+}
+

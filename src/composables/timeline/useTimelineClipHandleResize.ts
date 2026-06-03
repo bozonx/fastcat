@@ -3,6 +3,7 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { cloneValue } from '~/utils/clone';
+import { clipGainToYPercent, clipYPercentToGain } from '~/utils/audio';
 import { pxToDeltaUs, pickBestSnapCandidateUs, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 import type {
   TimelineTrack,
@@ -125,9 +126,10 @@ export function useTimelineClipHandleResize(
     function onPointerMove(ev: PointerEvent) {
       if (!resizeVolume.value) return;
       const dy = ev.clientY - resizeVolume.value.startY;
-      const deltaVol = -(dy / resizeVolume.value.trackHeight) * 4;
-      let newVol = resizeVolume.value.startGain + deltaVol;
-      newVol = Math.max(0, Math.min(4, newVol));
+      const startYPercent = clipGainToYPercent(resizeVolume.value.startGain);
+      const deltaYPercent = (dy / resizeVolume.value.trackHeight) * 100;
+      const newYPercent = Math.max(0, Math.min(100, startYPercent + deltaYPercent));
+      const newVol = clipYPercentToGain(newYPercent);
 
       scheduleUpdate(() => {
         timelineStore.updateClipProperties(payload.trackId, payload.itemId, {

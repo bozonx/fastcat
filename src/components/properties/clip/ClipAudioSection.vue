@@ -212,6 +212,7 @@ const fadeCurveOptions = [
             :model-value="audioGainDb"
             :level-db="props.audioLevelDb"
             :disabled="!isEnabled"
+            :max-db="6.0206"
             @update:model-value="onVolumeUpdate"
             @drag-start="onVolumeDragStart"
             @drag-end="onVolumeDragEnd"

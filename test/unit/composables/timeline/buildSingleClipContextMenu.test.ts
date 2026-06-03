@@ -131,4 +131,29 @@ describe('buildSingleClipContextMenu', () => {
       name: 'Clip 1',
     });
   });
+
+  it('adds paste action for a single clip when clipboard is present', () => {
+    const options = createOptions({
+      hasTimelineClipboard: true,
+    });
+
+    const actions = buildSingleItemActionGroup(options);
+    const pasteAction = actions.find((action) => action.label === 'common.paste');
+
+    expect(pasteAction).toBeTruthy();
+    expect(pasteAction?.disabled).toBeFalsy();
+    pasteAction?.onSelect();
+
+    expect(options.pasteClips).toHaveBeenCalledWith(0);
+  });
+
+  it('correctly orders groups in buildSingleClipMainGroup (speedGroup first)', () => {
+    const options = createOptions();
+    const groups = buildSingleClipMainGroup(options);
+
+    const speedGroupLabels = groups[0].map((action) => action.label);
+    expect(speedGroupLabels[0]).toContain('fastcat.timeline.speed');
+    expect(speedGroupLabels[1]).toBe('videoEditor.audio.reverse');
+    expect(speedGroupLabels[2]).toBe('fastcat.timeline.freezeFrame');
+  });
 });

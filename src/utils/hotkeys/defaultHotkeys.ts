@@ -610,7 +610,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.centerPlayhead': ['Shift+/'],
     'timeline.toggleBladeTool': ['/'],
     'timeline.reverseSpeed': ['P'],
-    'timeline.openSpeedModal': ['Shift+P'],
+    'timeline.openSpeedModal': [`${Mod}+P`],
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],

@@ -62,6 +62,15 @@ function makeTimelineStore(overrides: AnyClip = {}): any {
 function build(options: { clip?: any; trackKind?: 'video' | 'audio'; timelineStore?: any } = {}) {
   const timelineStore = options.timelineStore ?? makeTimelineStore();
   const clip = options.clip ?? makeClip();
+  const uiStore = {
+    selectedFsEntry: null,
+    mediaReplaceTarget: null,
+    isMediaReplaceModalOpen: false,
+    notifyFileManagerUpdate: vi.fn(),
+    triggerScrollToFileTreeEntry: vi.fn(),
+    triggerOpenAutoMontage: vi.fn(),
+    triggerSpeedModal: vi.fn(),
+  } as any;
   const actions = useClipPropertiesActions({
     clip: ref(clip),
     trackKind: ref(options.trackKind ?? 'video'),
@@ -73,14 +82,7 @@ function build(options: { clip?: any; trackKind?: 'video' | 'audio'; timelineSto
       goToFiles: vi.fn(),
       goToCut: vi.fn(),
     } as any,
-    uiStore: {
-      selectedFsEntry: null,
-      mediaReplaceTarget: null,
-      isMediaReplaceModalOpen: false,
-      notifyFileManagerUpdate: vi.fn(),
-      triggerScrollToFileTreeEntry: vi.fn(),
-      triggerOpenAutoMontage: vi.fn(),
-    } as any,
+    uiStore,
     fileManagerStore: { openFolder: vi.fn() } as any,
     selectionStore: { selectFsEntry: vi.fn(), selectTimelineItem: vi.fn() } as any,
     focusStore: { setTempFocus: vi.fn() } as any,
@@ -91,7 +93,7 @@ function build(options: { clip?: any; trackKind?: 'video' | 'audio'; timelineSto
     } as any,
     setActiveTab: vi.fn(),
   });
-  return { actions, timelineStore, clip };
+  return { actions, timelineStore, clip, uiStore };
 }
 
 describe('useClipPropertiesActions', () => {
@@ -248,6 +250,16 @@ describe('useClipPropertiesActions', () => {
       expect(ids).toEqual(
         expect.arrayContaining(['replaceMedia', 'showInFileManager', 'autoMontage']),
       );
+    });
+
+    it('includes speed action for speed-controllable clips and triggers modal', () => {
+      const { actions, uiStore } = build();
+      const speedAction = actions.otherActionsList.value.find((a) => a.id === 'speed');
+      expect(speedAction).toBeTruthy();
+      expect(speedAction?.label).toContain('fastcat.timeline.speed');
+
+      speedAction?.onClick();
+      expect(uiStore.triggerSpeedModal).toHaveBeenCalledWith('v1', 'clip1', 1);
     });
   });
 

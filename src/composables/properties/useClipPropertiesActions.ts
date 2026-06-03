@@ -57,6 +57,7 @@ interface UiStoreActions {
   notifyFileManagerUpdate: () => void;
   triggerScrollToFileTreeEntry: (path: string) => void;
   triggerOpenAutoMontage: (itemIds: string[]) => void;
+  triggerSpeedModal: (trackId: string, itemId: string, speed: number) => void;
 }
 
 interface FilesPageStoreActions {
@@ -389,15 +390,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
     }[] = [];
     const clip = options.clip.value;
 
-    if (isFreePosition.value) {
-      list.push({
-        id: 'quantize',
-        label: t('fastcat.timeline.quantize'),
-        icon: 'i-heroicons-squares-2x2',
-        onClick: handleQuantizeClip,
-      });
-    }
-
+    // 1. Копировать параметры
     list.push({
       id: 'copy-parameters',
       label: t('fastcat.clip.parameters.copy'),
@@ -407,6 +400,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
     });
 
+    // 2. Вставить параметры
     list.push({
       id: 'paste-parameters',
       label: t('fastcat.clip.parameters.paste'),
@@ -417,6 +411,19 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       },
     });
 
+    // 3. Скорость
+    if (clipSupportsSpeedControls({ kind: options.trackKind.value }, clip)) {
+      list.push({
+        id: 'speed',
+        label: `${t('fastcat.timeline.speed')} (${(clip.speed ?? 1).toFixed(2)})`,
+        icon: 'i-heroicons-forward',
+        onClick: () => {
+          uiStore.triggerSpeedModal(clip.trackId, clip.id, clip.speed ?? 1);
+        },
+      });
+    }
+
+    // 4. Реверс
     if (clipSupportsSpeedControls({ kind: options.trackKind.value }, clip)) {
       list.push({
         id: 'reverse-speed',
@@ -431,6 +438,78 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
+    // 5. Заморозить клип / Сбросить заморозку
+    if (isMediaVideoClip.value && !hasFreezeFrame.value) {
+      list.push({
+        id: 'freezeFrame',
+        label: t('fastcat.timeline.freezeFrame'),
+        icon: 'i-heroicons-pause-circle',
+        onClick: handleFreezeFrame,
+      });
+    }
+    if (isMediaVideoClip.value && hasFreezeFrame.value) {
+      list.push({
+        id: 'resetFreezeFrame',
+        label: t('fastcat.timeline.resetFreezeFrame'),
+        icon: 'i-heroicons-play-circle',
+        onClick: handleResetFreezeFrame,
+      });
+    }
+
+    // 6. Автомонтаж
+    if (clip.clipType === 'media') {
+      list.push({
+        id: 'autoMontage',
+        label: t('fastcat.timeline.autoMontage.title'),
+        icon: 'i-heroicons-sparkles',
+        color: 'primary',
+        onClick: () => uiStore.triggerOpenAutoMontage([clip.id]),
+      });
+    }
+
+    // 7. Вынести аудио на аудио дорожку
+    if (canExtractAudio.value) {
+      list.push({
+        id: 'extractAudio',
+        label: t('fastcat.timeline.extractAudio'),
+        icon: 'i-heroicons-musical-note',
+        onClick: handleExtractAudio,
+      });
+    }
+
+    // 8. Показать в файловом менеджере
+    if (clip.clipType === 'media') {
+      list.push({
+        id: 'showInFileManager',
+        label: t('fastcat.clip.showInFileManager'),
+        icon: 'i-heroicons-folder-open',
+        onClick: handleSelectInFileManager,
+      });
+    }
+
+    // 9. Замена медиа
+    if (clip.clipType === 'media') {
+      list.push({
+        id: 'replaceMedia',
+        label: t('fastcat.clip.replaceMedia'),
+        icon: 'i-heroicons-arrow-path',
+        onClick: handleReplaceMedia,
+      });
+    }
+
+    // --- Остальные действия (если применимы) ---
+
+    // Привязать к сетке (Quantize)
+    if (isFreePosition.value) {
+      list.push({
+        id: 'quantize',
+        label: t('fastcat.timeline.quantize'),
+        icon: 'i-heroicons-squares-2x2',
+        onClick: handleQuantizeClip,
+      });
+    }
+
+    // Удалить из группы
     if (isInLinkedGroup.value) {
       list.push({
         id: 'removeFromGroup',
@@ -440,28 +519,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
-    if (clip.clipType === 'media') {
-      list.push({
-        id: 'replaceMedia',
-        label: t('fastcat.clip.replaceMedia'),
-        icon: 'i-heroicons-arrow-path',
-        onClick: handleReplaceMedia,
-      });
-      list.push({
-        id: 'autoMontage',
-        label: t('fastcat.timeline.autoMontage.title'),
-        icon: 'i-heroicons-sparkles',
-        color: 'primary',
-        onClick: () => uiStore.triggerOpenAutoMontage([clip.id]),
-      });
-      list.push({
-        id: 'showInFileManager',
-        label: t('fastcat.clip.showInFileManager'),
-        icon: 'i-heroicons-folder-open',
-        onClick: handleSelectInFileManager,
-      });
-    }
-
+    // Перейти к вложенному таймлайну
     if (clip.clipType === 'timeline') {
       list.push({
         id: 'goToTimeline',
@@ -471,6 +529,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
+    // Показать полную/половинную вейвформу
     if (hasAudio.value) {
       list.push({
         id: 'toggleAudioWaveformMode',
@@ -483,6 +542,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
+    // Скрыть/показать вейвформу
     if (options.trackKind.value === 'video' || options.trackKind.value === 'audio') {
       list.push({
         id: 'toggleShowWaveform',
@@ -495,6 +555,7 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
       });
     }
 
+    // Скрыть/показать миниатюры
     if (options.trackKind.value === 'video') {
       list.push({
         id: 'toggleShowThumbnails',
@@ -504,33 +565,6 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
             : t('fastcat.clip.hideThumbnails'),
         icon: 'i-heroicons-photo',
         onClick: toggleShowThumbnails,
-      });
-    }
-
-    if (isMediaVideoClip.value && !hasFreezeFrame.value) {
-      list.push({
-        id: 'freezeFrame',
-        label: t('fastcat.timeline.freezeFrame'),
-        icon: 'i-heroicons-pause-circle',
-        onClick: handleFreezeFrame,
-      });
-    }
-
-    if (isMediaVideoClip.value && hasFreezeFrame.value) {
-      list.push({
-        id: 'resetFreezeFrame',
-        label: t('fastcat.timeline.resetFreezeFrame'),
-        icon: 'i-heroicons-play-circle',
-        onClick: handleResetFreezeFrame,
-      });
-    }
-
-    if (canExtractAudio.value) {
-      list.push({
-        id: 'extractAudio',
-        label: t('fastcat.timeline.extractAudio'),
-        icon: 'i-heroicons-musical-note',
-        onClick: handleExtractAudio,
       });
     }
 

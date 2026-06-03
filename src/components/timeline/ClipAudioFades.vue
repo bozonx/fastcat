@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount } from 'vue';
 import type { TimelineTrack, TimelineClipItem, TimelineTrackItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { clipGainToYPercent } from '~/utils/audio';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -122,10 +123,8 @@ onBeforeUnmount(() => {
   }
 });
 
-const GAIN_MAX = 4;
 const volumeY = computed(() => {
-  const g = Math.max(0, Math.min(GAIN_MAX, props.clip.audioGain ?? 1));
-  return (1 - g / GAIN_MAX) * 100;
+  return clipGainToYPercent(props.clip.audioGain ?? 1);
 });
 
 const isIndicatorVisible = computed(() => {

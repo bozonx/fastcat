@@ -54,8 +54,8 @@ describe('ClipAudioFades', () => {
     });
 
     const volumeLine = component.find('.cursor-ns-resize');
-    // GAIN_MAX is 4, so gain=1 is at (1 - 1/4) * 100 = 75%
-    expect(volumeLine.attributes('style')).toContain('top: 75%');
+    // gain=1 is at 50% height (logarithmic center)
+    expect(volumeLine.attributes('style')).toContain('top: 50%');
   });
 
   it('emits startResizeVolume on volume line pointerdown', async () => {

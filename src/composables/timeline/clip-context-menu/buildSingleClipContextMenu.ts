@@ -14,42 +14,104 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
   if (item.kind !== 'clip') return [];
 
   const clipItem = item;
+  const speedGroup: ContextMenuGroup = [];
+  const montageGroup: ContextMenuGroup = [];
   const stateGroup: ContextMenuGroup = [];
-  const timingGroup: ContextMenuGroup = [];
-  const relationGroup: ContextMenuGroup = [];
-  const mediaGroup: ContextMenuGroup = [];
   const isFree = isClipFreePosition(clipItem, options.timelineDoc.value);
 
-  stateGroup.push({
-    label: clipItem.disabled
-      ? options.t('fastcat.timeline.enableClip')
-      : options.t('fastcat.timeline.disableClip'),
-    icon: clipItem.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
-    kbds: options.getHotkeyKbds('timeline.toggleDisableClip'),
-    onSelect: async () => {
-      options.updateClipProperties(track.id, clipItem.id, {
-        disabled: !clipItem.disabled,
-      });
-      await options.requestTimelineSave({ immediate: true });
-    },
-  });
-
-  const hasAudio = clipSupportsAudioControls(track, clipItem);
-  if (hasAudio) {
-    stateGroup.push({
-      label: clipItem.audioMuted
-        ? options.t('fastcat.timeline.unmuteClip')
-        : options.t('fastcat.timeline.muteClip'),
-      icon: clipItem.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
-      kbds: options.getHotkeyKbds('timeline.toggleMuteClip'),
+  // 1. speedGroup (Скорость, Реверс, Заморозить клип)
+  const currentSpeed = clipItem.speed ?? 1;
+  if (clipSupportsSpeedControls(track, clipItem)) {
+    speedGroup.push({
+      label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
+      icon: 'i-heroicons-forward',
+      kbds: options.getHotkeyKbds('timeline.openSpeedModal'),
+      onSelect: () =>
+        options.emitOpenSpeedModal({
+          trackId: track.id,
+          itemId: clipItem.id,
+          speed: currentSpeed,
+        }),
+    });
+    speedGroup.push({
+      label: options.t('videoEditor.audio.reverse'),
+      icon: 'i-heroicons-arrow-path',
+      kbds: options.getHotkeyKbds('timeline.reverseSpeed'),
       onSelect: async () => {
         options.updateClipProperties(track.id, clipItem.id, {
-          audioMuted: !clipItem.audioMuted,
+          speed: -currentSpeed,
         });
         await options.requestTimelineSave({ immediate: true });
       },
     });
+  }
 
+  const isMediaVideoClip = track.kind === 'video' && clipItem.clipType === 'media';
+  const hasFreezeFrame = typeof clipItem.freezeFrameSourceUs === 'number';
+
+  if (isMediaVideoClip) {
+    if (!hasFreezeFrame) {
+      speedGroup.push({
+        label: options.t('fastcat.timeline.freezeFrame'),
+        icon: 'i-heroicons-pause-circle',
+        kbds: options.getHotkeyKbds('timeline.toggleFreezeFrame'),
+        onSelect: () =>
+          options.emitClipAction({
+            action: 'freezeFrame',
+            trackId: track.id,
+            itemId: clipItem.id,
+          }),
+      });
+    } else {
+      speedGroup.push({
+        label: options.t('fastcat.timeline.resetFreezeFrame'),
+        icon: 'i-heroicons-play-circle',
+        kbds: options.getHotkeyKbds('timeline.toggleFreezeFrame'),
+        onSelect: () =>
+          options.emitClipAction({
+            action: 'resetFreezeFrame',
+            trackId: track.id,
+            itemId: clipItem.id,
+          }),
+      });
+    }
+  }
+
+  // 2. montageGroup (Автомонтаж, Вынести аудио)
+  if (clipSupportsAutoMontage(track, clipItem)) {
+    montageGroup.push({
+      label: options.t('fastcat.timeline.autoMontage.title'),
+      icon: 'i-heroicons-sparkles',
+      onSelect: () =>
+        options.emitClipAction({
+          action: 'openAutoMontage',
+          trackId: track.id,
+          itemId: clipItem.id,
+        }),
+    });
+  }
+
+  const canExtract =
+    track.kind === 'video' &&
+    clipItem.clipType === 'media' &&
+    !clipItem.isImage &&
+    !clipItem.audioMuted;
+  if (canExtract) {
+    montageGroup.push({
+      label: options.t('fastcat.timeline.extractAudio'),
+      icon: 'i-heroicons-musical-note',
+      onSelect: () =>
+        options.emitClipAction({
+          action: 'extractAudio',
+          trackId: track.id,
+          itemId: clipItem.id,
+        }),
+    });
+  }
+
+  // 3. stateGroup (Вейвформы, миниатюры, Включить/выключить, Заблокировать, Привязать к сетке)
+  const hasAudio = clipSupportsAudioControls(track, clipItem);
+  if (hasAudio) {
     const currentMode = clipItem.audioWaveformMode || 'half';
     stateGroup.push({
       label:
@@ -99,6 +161,39 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
+  // Включить/выключить клип
+  stateGroup.push({
+    label: clipItem.disabled
+      ? options.t('fastcat.timeline.enableClip')
+      : options.t('fastcat.timeline.disableClip'),
+    icon: clipItem.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash',
+    kbds: options.getHotkeyKbds('timeline.toggleDisableClip'),
+    onSelect: async () => {
+      options.updateClipProperties(track.id, clipItem.id, {
+        disabled: !clipItem.disabled,
+      });
+      await options.requestTimelineSave({ immediate: true });
+    },
+  });
+
+  // Включить/выключить звук клипа
+  if (hasAudio) {
+    stateGroup.push({
+      label: clipItem.audioMuted
+        ? options.t('fastcat.timeline.unmuteClip')
+        : options.t('fastcat.timeline.muteClip'),
+      icon: clipItem.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark',
+      kbds: options.getHotkeyKbds('timeline.toggleMuteClip'),
+      onSelect: async () => {
+        options.updateClipProperties(track.id, clipItem.id, {
+          audioMuted: !clipItem.audioMuted,
+        });
+        await options.requestTimelineSave({ immediate: true });
+      },
+    });
+  }
+
+  // Заблокировать/разблокировать клип
   stateGroup.push({
     label: clipItem.locked
       ? options.t('fastcat.timeline.unlockClip')
@@ -113,8 +208,9 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     },
   });
 
+  // Привязать к сетке (Quantize)
   if (isFree && !clipItem.locked) {
-    timingGroup.push({
+    stateGroup.push({
       label: options.t('fastcat.timeline.quantize'),
       icon: 'i-heroicons-squares-2x2',
       onSelect: async () => {
@@ -131,95 +227,7 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     });
   }
 
-  const currentSpeed = clipItem.speed ?? 1;
-  if (clipSupportsSpeedControls(track, clipItem)) {
-    timingGroup.push({
-      label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
-      icon: 'i-heroicons-forward',
-      kbds: options.getHotkeyKbds('timeline.openSpeedModal'),
-      onSelect: () =>
-        options.emitOpenSpeedModal({
-          trackId: track.id,
-          itemId: clipItem.id,
-          speed: currentSpeed,
-        }),
-    });
-    timingGroup.push({
-      label: options.t('videoEditor.audio.reverse'),
-      icon: 'i-heroicons-arrow-path',
-      kbds: options.getHotkeyKbds('timeline.reverseSpeed'),
-      onSelect: async () => {
-        options.updateClipProperties(track.id, clipItem.id, {
-          speed: -currentSpeed,
-        });
-        await options.requestTimelineSave({ immediate: true });
-      },
-    });
-  }
-
-  const canExtract =
-    track.kind === 'video' &&
-    clipItem.clipType === 'media' &&
-    !clipItem.isImage &&
-    !clipItem.audioMuted;
-  if (canExtract) {
-    relationGroup.push({
-      label: options.t('fastcat.timeline.extractAudio'),
-      icon: 'i-heroicons-musical-note',
-      onSelect: () =>
-        options.emitClipAction({
-          action: 'extractAudio',
-          trackId: track.id,
-          itemId: clipItem.id,
-        }),
-    });
-  }
-
-  const isMediaVideoClip = track.kind === 'video' && clipItem.clipType === 'media';
-  const hasFreezeFrame = typeof clipItem.freezeFrameSourceUs === 'number';
-
-  if (isMediaVideoClip && !hasFreezeFrame) {
-    mediaGroup.push({
-      label: options.t('fastcat.timeline.freezeFrame'),
-      icon: 'i-heroicons-pause-circle',
-      kbds: options.getHotkeyKbds('timeline.toggleFreezeFrame'),
-      onSelect: () =>
-        options.emitClipAction({
-          action: 'freezeFrame',
-          trackId: track.id,
-          itemId: clipItem.id,
-        }),
-    });
-  }
-
-  if (isMediaVideoClip && hasFreezeFrame) {
-    mediaGroup.push({
-      label: options.t('fastcat.timeline.resetFreezeFrame'),
-      icon: 'i-heroicons-play-circle',
-      kbds: options.getHotkeyKbds('timeline.toggleFreezeFrame'),
-      onSelect: () =>
-        options.emitClipAction({
-          action: 'resetFreezeFrame',
-          trackId: track.id,
-          itemId: clipItem.id,
-        }),
-    });
-  }
-
-  if (clipSupportsAutoMontage(track, clipItem)) {
-    mediaGroup.push({
-      label: options.t('fastcat.timeline.autoMontage.title'),
-      icon: 'i-heroicons-sparkles',
-      onSelect: () =>
-        options.emitClipAction({
-          action: 'openAutoMontage',
-          trackId: track.id,
-          itemId: clipItem.id,
-        }),
-    });
-  }
-
-  return [stateGroup, timingGroup, relationGroup, mediaGroup].filter((group) => group.length > 0);
+  return [speedGroup, montageGroup, stateGroup].filter((group) => group.length > 0);
 }
 
 export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): ContextMenuGroup {
@@ -238,71 +246,84 @@ export function buildSingleItemActionGroup(options: UseClipContextMenuOptions): 
       targetTrackKind: track.kind,
     }).length > 0;
 
-  const actions: ContextMenuGroup = [
-    ...(clip
-      ? [
-          {
-            label: options.t('common.rename'),
-            icon: 'i-heroicons-pencil',
-            disabled: isTrackLocked || isLocked,
-            kbds: options.getHotkeyKbds('general.rename'),
-            onSelect: () =>
-              options.requestRenameClip({
-                trackId: track.id,
-                itemId: clip.id,
-                name: clip.name,
-              }),
-          },
-        ]
-      : []),
-    {
-      label: options.t('common.copy'),
-      icon: 'i-heroicons-document-duplicate',
-      kbds: options.getHotkeyKbds('general.copy'),
-      onSelect: () => options.copySelectedClips(),
-    },
-    {
-      label: options.t('common.cut'),
-      icon: 'i-heroicons-scissors',
-      disabled: isTrackLocked || isLocked,
-      kbds: options.getHotkeyKbds('general.cut'),
-      onSelect: () => options.cutSelectedClips(),
-    },
-    {
-      label: options.t('fastcat.timeline.delete'),
-      icon: 'i-heroicons-trash',
-      disabled: isTrackLocked || isLocked,
-      kbds: options.getHotkeyKbds('general.delete'),
-      onSelect: () => {
-        options.clearSelection();
-        options.applyTimelineCommand({
-          type: 'delete_items',
-          trackId: track.id,
-          itemIds: [item.id],
-        });
-      },
-    },
-  ];
+  const actions: ContextMenuGroup = [];
 
   if (clip) {
-    actions.splice(
-      1,
-      0,
-      {
-        label: options.t('fastcat.clip.parameters.copy'),
-        icon: 'i-heroicons-clipboard-document',
-        kbds: options.getHotkeyKbds('timeline.copyClipParameters'),
-        onSelect: () => options.copyClipParameters(clip, track.kind),
-      },
-      {
-        label: options.t('fastcat.clip.parameters.paste'),
-        icon: 'i-heroicons-clipboard-document-check',
-        disabled: isTrackLocked || isLocked || !hasApplicableClipParameters,
-        kbds: options.getHotkeyKbds('timeline.pasteClipParameters'),
-        onSelect: () => options.pasteClipParameters(clip, track.kind),
-      },
-    );
+    // Rename
+    actions.push({
+      label: options.t('common.rename'),
+      icon: 'i-heroicons-pencil',
+      disabled: isTrackLocked || isLocked,
+      kbds: options.getHotkeyKbds('general.rename'),
+      onSelect: () =>
+        options.requestRenameClip({
+          trackId: track.id,
+          itemId: clip.id,
+          name: clip.name,
+        }),
+    });
+
+    // Copy parameters
+    actions.push({
+      label: options.t('fastcat.clip.parameters.copy'),
+      icon: 'i-heroicons-clipboard-document',
+      kbds: options.getHotkeyKbds('timeline.copyClipParameters'),
+      onSelect: () => options.copyClipParameters(clip, track.kind),
+    });
+
+    // Paste parameters
+    actions.push({
+      label: options.t('fastcat.clip.parameters.paste'),
+      icon: 'i-heroicons-clipboard-document-check',
+      disabled: isTrackLocked || isLocked || !hasApplicableClipParameters,
+      kbds: options.getHotkeyKbds('timeline.pasteClipParameters'),
+      onSelect: () => options.pasteClipParameters(clip, track.kind),
+    });
   }
+
+  // Copy
+  actions.push({
+    label: options.t('common.copy'),
+    icon: 'i-heroicons-document-duplicate',
+    kbds: options.getHotkeyKbds('general.copy'),
+    onSelect: () => options.copySelectedClips(),
+  });
+
+  // Cut
+  actions.push({
+    label: options.t('common.cut'),
+    icon: 'i-heroicons-scissors',
+    disabled: isTrackLocked || isLocked,
+    kbds: options.getHotkeyKbds('general.cut'),
+    onSelect: () => options.cutSelectedClips(),
+  });
+
+  if (clip) {
+    // Paste
+    actions.push({
+      label: options.t('common.paste'),
+      icon: 'i-heroicons-clipboard',
+      disabled: isTrackLocked || isLocked || !options.hasTimelineClipboard,
+      kbds: options.getHotkeyKbds('general.paste'),
+      onSelect: () => options.pasteClips(clip.timelineRange.startUs),
+    });
+  }
+
+  // Delete
+  actions.push({
+    label: options.t('fastcat.timeline.delete'),
+    icon: 'i-heroicons-trash',
+    disabled: isTrackLocked || isLocked,
+    kbds: options.getHotkeyKbds('general.delete'),
+    onSelect: () => {
+      options.clearSelection();
+      options.applyTimelineCommand({
+        type: 'delete_items',
+        trackId: track.id,
+        itemIds: [item.id],
+      });
+    },
+  });
 
   return actions;
 }

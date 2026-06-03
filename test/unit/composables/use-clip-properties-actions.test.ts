@@ -54,6 +54,7 @@ function createOptions(clip: TimelineClipItem) {
     selectedFsEntry: null as Partial<FsEntry> | null,
     notifyFileManagerUpdate: vi.fn(),
     triggerScrollToFileTreeEntry: vi.fn(),
+    triggerSpeedModal: vi.fn(),
   };
   const selectionStore = { selectFsEntry: vi.fn() };
   const fileManagerStore = { openFolder: vi.fn() };
