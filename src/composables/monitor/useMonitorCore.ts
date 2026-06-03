@@ -10,7 +10,7 @@ import {
   setPreviewHostApi,
 } from '~/utils/video-editor/worker-client';
 
-import { AudioEngine } from '~/utils/video-editor/AudioEngine';
+import { createAudioEngine, type IAudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs } from '~/utils/monitor-time';
 import { useVfs } from '~/composables/useVfs';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
@@ -78,7 +78,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   let resizeScheduled = false;
   let workerTimelineOperation: Promise<void> = Promise.resolve();
 
-  const audioEngine = new AudioEngine({
+  const audioEngine = createAudioEngine({
     getVfs: () => useVfs(),
     getAudioCacheVfsPath: () => {
       const projectId = currentProjectStore.currentProjectId;

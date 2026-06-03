@@ -1,7 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -24,13 +24,99 @@ struct CachedAudioDecoder {
     source_rate: u32,
     channels: usize,
     time_base: symphonia::core::units::TimeBase,
+    // Cached resampler to avoid rebuilding it every chunk.
+    // Stored as Option<Box<...>> because resamplers are large and rarely change ratio.
+    resampler: Option<Box<rubato::SincFixedIn<f32>>>,
+    last_resample_ratio: f64,
+    // Last source position we decoded up to; used to skip seeks on sequential chunks.
+    last_decode_end_sec: f64,
+}
+
+/// Lock-free SPSC ring buffer for real-time audio output.
+/// Uses atomic read/write indices and bit-casts f32 samples into AtomicU32
+/// slots so the backing buffer is plain atomics (no mutex/alloc on hot path).
+struct SpscRingBuffer {
+    buffer: Vec<std::sync::atomic::AtomicU32>,
+    write_idx: AtomicUsize,
+    read_idx: AtomicUsize,
+}
+
+impl SpscRingBuffer {
+    fn new(capacity: usize) -> Self {
+        let mut buffer = Vec::with_capacity(capacity);
+        for _ in 0..capacity {
+            buffer.push(std::sync::atomic::AtomicU32::new(0));
+        }
+        Self {
+            buffer,
+            write_idx: AtomicUsize::new(0),
+            read_idx: AtomicUsize::new(0),
+        }
+    }
+
+    fn len(&self) -> usize {
+        let write = self.write_idx.load(Ordering::Acquire);
+        let read = self.read_idx.load(Ordering::Acquire);
+        write.wrapping_sub(read)
+    }
+
+    fn clear(&self) {
+        let write = self.write_idx.load(Ordering::Relaxed);
+        self.read_idx.store(write, Ordering::Release);
+    }
+
+    /// Push as many samples as capacity allows. Returns count written.
+    fn push_slice(&self, samples: &[f32]) -> usize {
+        let capacity = self.buffer.len();
+        let mut written = 0;
+        for &sample in samples {
+            let write = self.write_idx.load(Ordering::Relaxed);
+            let read = self.read_idx.load(Ordering::Acquire);
+            let available = capacity - write.wrapping_sub(read);
+            if available == 0 {
+                break;
+            }
+            let idx = write % capacity;
+            self.buffer[idx].store(sample.to_bits(), Ordering::Relaxed);
+            self.write_idx.store(write.wrapping_add(1), Ordering::Release);
+            written += 1;
+        }
+        written
+    }
+
+    /// Pop up to `out.len()` samples. Returns count read.
+    fn pop_slice(&self, out: &mut [f32]) -> usize {
+        let w = self.write_idx.load(Ordering::Acquire);
+        let r = self.read_idx.load(Ordering::Relaxed);
+        let available = w.wrapping_sub(r).min(out.len());
+        if available == 0 {
+            return 0;
+        }
+        let capacity = self.buffer.len();
+        let start = r % capacity;
+        let end = start + available;
+        if end <= capacity {
+            for i in 0..available {
+                out[i] = f32::from_bits(self.buffer[start + i].load(Ordering::Relaxed));
+            }
+        } else {
+            let first = capacity - start;
+            for i in 0..first {
+                out[i] = f32::from_bits(self.buffer[start + i].load(Ordering::Relaxed));
+            }
+            for i in first..available {
+                out[i] = f32::from_bits(self.buffer[i - first].load(Ordering::Relaxed));
+            }
+        }
+        self.read_idx.store(r.wrapping_add(available), Ordering::Release);
+        available
+    }
 }
 
 struct AudioShared {
     scene: Vec<SceneAudioLayer>,
     tracks: Vec<SceneAudioTrack>,
     master_gain: f64,
-    ring: VecDeque<f32>,
     playing: bool,
     origin_pts_sec: f64,
     frames_written: u64,
@@ -39,7 +125,7 @@ struct AudioShared {
     producer_pts_sec: f64,
     seek_serial: u64,
     scene_serial: u64,
-    decoded_cache: HashMap<String, Arc<Vec<f32>>>,
+    decoded_cache: lru::LruCache<String, Arc<Vec<f32>>>,
     decoders: HashMap<String, CachedAudioDecoder>,
 }
 
@@ -49,7 +135,6 @@ impl Default for AudioShared {
             scene: Vec::new(),
             tracks: Vec::new(),
             master_gain: 1.0,
-            ring: VecDeque::new(),
             playing: false,
             origin_pts_sec: 0.0,
             frames_written: 0,
@@ -58,7 +143,9 @@ impl Default for AudioShared {
             producer_pts_sec: 0.0,
             seek_serial: 0,
             scene_serial: 0,
-            decoded_cache: HashMap::new(),
+            decoded_cache: lru::LruCache::new(
+                std::num::NonZeroUsize::new(20).unwrap(),
+            ),
             decoders: HashMap::new(),
         }
     }
@@ -66,6 +153,7 @@ impl Default for AudioShared {
 
 pub struct NativeAudioEngine {
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
+    ring: Arc<SpscRingBuffer>,
     running: Arc<AtomicBool>,
     sample_rate: u32,
     device_channels: u16,
@@ -87,24 +175,40 @@ impl NativeAudioEngine {
         let device_channels = config.channels.max(1);
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let running = Arc::new(AtomicBool::new(true));
+
+        let chunk_frames =
+            (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
+        let ring_capacity = chunk_frames * OUTPUT_CHANNELS * PREBUFFER_CHUNKS * 2;
+        let ring = Arc::new(SpscRingBuffer::new(ring_capacity));
+
         let stream = build_stream(
             &device,
             &config,
             supported.sample_format(),
             shared.clone(),
+            ring.clone(),
             sample_rate,
             device_channels,
         )?;
         stream.play().context("audio stream play failed")?;
 
         let producer_shared = shared.clone();
+        let producer_ring = ring.clone();
         let producer_running = running.clone();
         let producer = std::thread::Builder::new()
             .name("fastcat-audio-producer".into())
-            .spawn(move || producer_loop(producer_shared, producer_running, sample_rate))?;
+            .spawn(move || {
+                if let Err(e) = thread_priority::set_current_thread_priority(
+                    thread_priority::ThreadPriority::Max,
+                ) {
+                    log::warn!("[audio] failed to set real-time priority: {e}");
+                }
+                producer_loop(producer_shared, producer_ring, producer_running, sample_rate)
+            })?;
 
         Ok(Self {
             shared,
+            ring,
             running,
             sample_rate,
             device_channels,
@@ -123,7 +227,7 @@ impl NativeAudioEngine {
         state.scene = layers;
         state.tracks = tracks;
         state.master_gain = sanitize_master_gain(master_gain);
-        state.ring.clear();
+        self.ring.clear();
         state.producer_pts_sec =
             state.origin_pts_sec + state.frames_written as f64 / self.sample_rate as f64;
         state.scene_serial = state.scene_serial.wrapping_add(1);
@@ -131,9 +235,20 @@ impl NativeAudioEngine {
         // GC кэша: удаляем файлы, которых больше нет в сцене
         let current_paths: std::collections::HashSet<String> =
             state.scene.iter().map(|l| l.path.clone()).collect();
-        state
+        let to_remove: Vec<String> = state
             .decoded_cache
-            .retain(|path, _| current_paths.contains(path));
+            .iter()
+            .filter_map(|(path, _)| {
+                if current_paths.contains(path) {
+                    None
+                } else {
+                    Some(path.clone())
+                }
+            })
+            .collect();
+        for path in &to_remove {
+            state.decoded_cache.pop(path);
+        }
         state
             .decoders
             .retain(|path, _| current_paths.contains(path));
@@ -146,7 +261,7 @@ impl NativeAudioEngine {
         state.origin_pts_sec = pts_sec.max(0.0);
         state.frames_written = 0;
         state.producer_pts_sec = state.origin_pts_sec;
-        state.ring.clear();
+        self.ring.clear();
         state.seek_serial = state.seek_serial.wrapping_add(1);
         self.shared.1.notify_all();
     }
@@ -158,7 +273,7 @@ impl NativeAudioEngine {
         state.origin_pts_sec = pts;
         state.frames_written = 0;
         state.last_output_buffer_frames = 0;
-        state.ring.clear();
+        self.ring.clear();
         state.producer_pts_sec = pts;
         self.shared.1.notify_all();
         pts
@@ -170,7 +285,7 @@ impl NativeAudioEngine {
         state.origin_pts_sec = pts;
         state.frames_written = 0;
         state.producer_pts_sec = pts;
-        state.ring.clear();
+        self.ring.clear();
         state.playing = playing;
         state.seek_serial = state.seek_serial.wrapping_add(1);
         self.shared.1.notify_all();
@@ -219,7 +334,8 @@ fn build_stream(
     config: &StreamConfig,
     format: SampleFormat,
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
-    sample_rate: u32,
+    ring: Arc<SpscRingBuffer>,
+    _sample_rate: u32,
     device_channels: u16,
 ) -> Result<Stream> {
     let err_fn = |err| log::error!("[audio] output stream error: {err}");
@@ -228,7 +344,7 @@ fn build_stream(
             .build_output_stream(
                 config,
                 move |data: &mut [f32], info| {
-                    write_output(data, info, &shared, sample_rate, device_channels)
+                    write_output(data, info, &shared, &ring, device_channels)
                 },
                 err_fn,
                 None,
@@ -238,7 +354,7 @@ fn build_stream(
             .build_output_stream(
                 config,
                 move |data: &mut [i16], info| {
-                    write_output(data, info, &shared, sample_rate, device_channels)
+                    write_output(data, info, &shared, &ring, device_channels)
                 },
                 err_fn,
                 None,
@@ -248,7 +364,7 @@ fn build_stream(
             .build_output_stream(
                 config,
                 move |data: &mut [u16], info| {
-                    write_output(data, info, &shared, sample_rate, device_channels)
+                    write_output(data, info, &shared, &ring, device_channels)
                 },
                 err_fn,
                 None,
@@ -284,36 +400,32 @@ fn write_output<T: OutputSample>(
     data: &mut [T],
     info: &OutputCallbackInfo,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-    sample_rate: u32,
+    ring: &SpscRingBuffer,
     device_channels: u16,
 ) {
     let channels = device_channels.max(1) as usize;
     let frames = data.len() / channels;
-    let mut state = match shared.0.try_lock() {
-        Some(state) => state,
-        None => {
-            for sample in data {
-                *sample = T::from_f32(0.0);
-            }
-            return;
+
+    let playing = shared.0.try_lock().map_or(false, |s| s.playing);
+
+    if !playing {
+        for sample in data {
+            *sample = T::from_f32(0.0);
         }
-    };
+        if let Some(mut state) = shared.0.try_lock() {
+            state.last_output_buffer_frames = 0;
+        }
+        return;
+    }
 
-    let mut actual_played_frames = 0usize;
-
+    let mut temp = vec![0.0f32; data.len()];
+    let _read = ring.pop_slice(&mut temp);
+    let actual_played_frames = (_read / channels).min(frames);
+    let mut idx = 0;
     for frame in 0..frames {
-        let (left, right) = if state.playing {
-            if state.ring.len() >= 2 {
-                let left = state.ring.pop_front().unwrap_or(0.0);
-                let right = state.ring.pop_front().unwrap_or(0.0);
-                actual_played_frames += 1;
-                (left, right)
-            } else {
-                (0.0, 0.0)
-            }
-        } else {
-            (0.0, 0.0)
-        };
+        let left = temp[idx];
+        let right = if channels > 1 { temp[idx + 1] } else { left };
+        idx += channels;
         for ch in 0..channels {
             let value = match ch {
                 0 if channels == 1 => (left + right) * 0.5,
@@ -325,15 +437,12 @@ fn write_output<T: OutputSample>(
         }
     }
 
-    if state.playing {
+    if let Some(mut state) = shared.0.try_lock() {
         state.frames_written = state
             .frames_written
             .saturating_add(actual_played_frames as u64);
         state.last_output_buffer_frames = frames;
         state.output_latency_sec = output_latency_sec(info);
-    } else {
-        let _ = sample_rate;
-        state.last_output_buffer_frames = 0;
     }
 }
 
@@ -354,7 +463,12 @@ fn output_latency_sec(info: &OutputCallbackInfo) -> f64 {
         .unwrap_or(0.0)
 }
 
-fn producer_loop(shared: Arc<(Mutex<AudioShared>, Condvar)>, running: Arc<AtomicBool>, sample_rate: u32) {
+fn producer_loop(
+    shared: Arc<(Mutex<AudioShared>, Condvar)>,
+    ring: Arc<SpscRingBuffer>,
+    running: Arc<AtomicBool>,
+    sample_rate: u32,
+) {
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
     let limit_samples = chunk_frames * OUTPUT_CHANNELS * PREBUFFER_CHUNKS;
 
@@ -365,7 +479,7 @@ fn producer_loop(shared: Arc<(Mutex<AudioShared>, Condvar)>, running: Arc<Atomic
                 if !running.load(Ordering::Relaxed) {
                     return;
                 }
-                if state.playing && !state.scene.is_empty() && state.ring.len() < limit_samples {
+                if state.playing && !state.scene.is_empty() && ring.len() < limit_samples {
                     break Some((
                         state.scene.clone(),
                         state.tracks.clone(),
@@ -376,7 +490,7 @@ fn producer_loop(shared: Arc<(Mutex<AudioShared>, Condvar)>, running: Arc<Atomic
                     ));
                 }
                 let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(50));
-                if wait_res.timed_out() && (!state.playing || state.scene.is_empty() || state.ring.len() >= limit_samples) {
+                if wait_res.timed_out() && (!state.playing || state.scene.is_empty() || ring.len() >= limit_samples) {
                     break None;
                 }
             }
@@ -402,8 +516,8 @@ fn producer_loop(shared: Arc<(Mutex<AudioShared>, Condvar)>, running: Arc<Atomic
         {
             continue;
         }
-        if state.ring.len() < limit_samples {
-            state.ring.extend(chunk);
+        if ring.len() < limit_samples {
+            ring.push_slice(&chunk);
             state.producer_pts_sec += CHUNK_DURATION_SEC;
         }
     }
@@ -736,6 +850,70 @@ fn resample_planar_with_speed(
     Ok(output)
 }
 
+fn resample_planar_cached(
+    input: Vec<Vec<f32>>,
+    source_rate: u32,
+    target_rate: u32,
+    speed: f64,
+    num_channels: usize,
+    cached_resampler: &mut Option<Box<rubato::SincFixedIn<f32>>>,
+) -> Result<Vec<Vec<f32>>> {
+    use rubato::{
+        Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+    };
+
+    let ratio = target_rate as f64 / (source_rate as f64 * speed);
+
+    if (ratio - 1.0).abs() < 1e-6 && source_rate == target_rate {
+        return Ok(input);
+    }
+
+    if input.is_empty() || input[0].is_empty() {
+        return Ok(input);
+    }
+
+    if cached_resampler.is_none() {
+        let params = SincInterpolationParameters {
+            sinc_len: 256,
+            f_cutoff: 0.95,
+            interpolation: SincInterpolationType::Linear,
+            oversampling_factor: 160,
+            window: WindowFunction::BlackmanHarris2,
+        };
+        let chunk_size = 1024;
+        let max_ratio_factor = ratio.max(2.0);
+        let resampler =
+            SincFixedIn::<f32>::new(ratio, max_ratio_factor, params, chunk_size, num_channels)
+                .map_err(|e| anyhow!("failed to create resampler: {:?}", e))?;
+        *cached_resampler = Some(Box::new(resampler));
+    }
+
+    let resampler = cached_resampler.as_mut().unwrap();
+    let input_len = input[0].len();
+    let chunk_size = resampler.input_frames_max();
+    let mut output = vec![Vec::new(); num_channels];
+    let mut offset = 0;
+
+    while offset < input_len {
+        let copy_len = (input_len - offset).min(chunk_size);
+        let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
+        for ch in 0..num_channels {
+            chunk[ch][..copy_len].copy_from_slice(&input[ch][offset..offset + copy_len]);
+        }
+
+        let out_chunk = resampler
+            .process(&chunk, None)
+            .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
+
+        for ch in 0..num_channels {
+            output[ch].extend_from_slice(&out_chunk[ch]);
+        }
+        offset += chunk_size;
+    }
+
+    Ok(output)
+}
+
 fn planar_to_interleaved_stereo(planar: Vec<Vec<f32>>) -> Vec<f32> {
     let num_channels = planar.len();
     if num_channels == 0 {
@@ -922,34 +1100,51 @@ fn decode_symphonia_chunk(
             source_rate,
             channels,
             time_base,
+            resampler: None,
+            last_resample_ratio: 0.0,
+            last_decode_end_sec: 0.0,
         });
     }
 
     let mut state_val = decoder_state.unwrap();
 
-    let seeked_to = state_val
-        .format
-        .seek(
-            symphonia::core::formats::SeekMode::Accurate,
-            symphonia::core::formats::SeekTo::Time {
-                time: symphonia::core::units::Time {
-                    seconds: source_start_sec.floor() as u64,
-                    frac: source_start_sec.fract(),
+    // Only seek/reset when the requested position is not contiguous with
+    // where the decoder left off. Sequential chunk decodes (the common case
+    // in the producer loop) skip the expensive seek+reset.
+    let source_end_sec = source_start_sec + timeline_duration_sec;
+    let needs_seek = source_start_sec < state_val.last_decode_end_sec - 0.05
+        || source_start_sec > state_val.last_decode_end_sec + 0.05;
+
+    let (_actual_sec, discard_frames_remaining) = if needs_seek {
+        let seeked_to = state_val
+            .format
+            .seek(
+                symphonia::core::formats::SeekMode::Accurate,
+                symphonia::core::formats::SeekTo::Time {
+                    time: symphonia::core::units::Time {
+                        seconds: source_start_sec.floor() as u64,
+                        frac: source_start_sec.fract(),
+                    },
+                    track_id: Some(state_val.track_id),
                 },
-                track_id: Some(state_val.track_id),
-            },
-        )
-        .context("failed to seek in format reader")?;
+            )
+            .context("failed to seek in format reader")?;
 
-    state_val.decoder.reset();
+        state_val.decoder.reset();
+        state_val.resampler = None;
+        state_val.last_resample_ratio = 0.0;
 
-    let actual_sec = {
-        let t = state_val.time_base.calc_time(seeked_to.actual_ts);
-        t.seconds as f64 + t.frac
+        let actual_sec = {
+            let t = state_val.time_base.calc_time(seeked_to.actual_ts);
+            t.seconds as f64 + t.frac
+        };
+        let discard_sec = (source_start_sec - actual_sec).max(0.0);
+        let discard_frames = (discard_sec * state_val.source_rate as f64).round() as usize;
+        (actual_sec, discard_frames)
+    } else {
+        (source_start_sec, 0usize)
     };
-    let discard_sec = (source_start_sec - actual_sec).max(0.0);
-    let mut discard_frames_remaining =
-        (discard_sec * state_val.source_rate as f64).round() as usize;
+    let mut discard_frames_remaining = discard_frames_remaining;
     let source_frames_needed =
         (timeline_duration_sec * speed * state_val.source_rate as f64).round() as usize;
 
@@ -1028,14 +1223,18 @@ fn decode_symphonia_chunk(
         return Ok(vec![0.0f32; silence_len]);
     }
 
-    let resampled = resample_planar_with_speed(
+    let resampled = resample_planar_cached(
         planar_buffers,
         state_val.source_rate,
         target_sample_rate,
         speed,
         state_val.channels,
+        &mut state_val.resampler,
     )?;
     let interleaved = planar_to_interleaved_stereo(resampled);
+
+    // Record where this decode left off so the next chunk can skip the seek.
+    state_val.last_decode_end_sec = source_end_sec;
 
     // Put it back in the cache:
     {
@@ -1058,7 +1257,7 @@ fn decode_audio_chunk(
 
     if is_cacheable && file_size > 0 && file_size < 50 * 1024 * 1024 {
         let cached_samples = {
-            let state = shared.0.lock();
+            let mut state = shared.0.lock();
             state.decoded_cache.get(path).cloned()
         };
 
@@ -1069,9 +1268,7 @@ fn decode_audio_chunk(
                 let decoded = decode_entire_file_symphonia(path, sample_rate)?;
                 let shared_samples = Arc::new(decoded);
                 let mut state = shared.0.lock();
-                state
-                    .decoded_cache
-                    .insert(path.to_string(), shared_samples.clone());
+                state.decoded_cache.put(path.to_string(), shared_samples.clone());
                 shared_samples
             }
         };
@@ -1297,13 +1494,14 @@ mod tests {
             playing: true,
             ..AudioShared::default()
         }), Condvar::new()));
+        let ring = SpscRingBuffer::new(256);
         let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
 
         write_output(
             &mut data,
             &callback_info(0.0),
             &shared,
-            48_000,
+            &ring,
             OUTPUT_CHANNELS as u16,
         );
 
@@ -1313,11 +1511,11 @@ mod tests {
 
     #[test]
     fn output_clock_advances_when_ring_has_samples() {
-        let mut ring = VecDeque::new();
-        ring.resize(256, 0.0f32); // 128 стерео-фреймов тишины
+        let ring = SpscRingBuffer::new(512);
+        // Pre-fill with 128 stereo frames of silence.
+        ring.push_slice(&vec![0.0f32; 256]);
         let shared = Arc::new((Mutex::new(AudioShared {
             playing: true,
-            ring,
             ..AudioShared::default()
         }), Condvar::new()));
         let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
@@ -1326,7 +1524,7 @@ mod tests {
             &mut data,
             &callback_info(0.0),
             &shared,
-            48_000,
+            &ring,
             OUTPUT_CHANNELS as u16,
         );
 

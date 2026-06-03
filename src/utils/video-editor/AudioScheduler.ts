@@ -168,6 +168,20 @@ export class AudioScheduler {
     this.isPlaying = false;
   }
 
+  /**
+   * Re-anchor the timeline clock to an externally-provided time (e.g. from
+   * the native audio engine via Tauri event). This does NOT reset scheduled
+   * clips — it only adjusts baseTimeS so that getCurrentTimeS() matches the
+   * external source.
+   */
+  syncTime(timeUs: number) {
+    const timeS = timeUs / 1_000_000;
+    const ctx = this.getContext();
+    const nowS = ctx ? ctx.currentTime : this.wallClockS();
+    this.baseTimeS = timeS;
+    this.playbackContextTimeS = nowS;
+  }
+
   getCurrentTimeS(): number {
     if (!this.isPlaying) {
       return this.baseTimeS;

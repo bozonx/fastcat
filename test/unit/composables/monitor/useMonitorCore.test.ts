@@ -52,18 +52,22 @@ vi.mock('~/utils/video-editor/AudioEngine', () => {
     });
     setVolume = vi.fn();
     init = vi.fn().mockResolvedValue(undefined);
-    // loadClips redefined
     updateTimelineLayout = vi.fn();
     destroy = vi.fn();
     setMasterVolume = vi.fn();
     setMonitorVolume = vi.fn();
+    resumeContext = vi.fn().mockResolvedValue(undefined);
 
     constructor() {
       audioEngineInstances.push(this);
     }
   }
 
-  return { AudioEngine: AudioEngineMock };
+  return {
+    createAudioEngine: () => new AudioEngineMock(),
+    WebAudioEngine: AudioEngineMock,
+    TauriAudioEngine: AudioEngineMock,
+  };
 });
 
 function createAudioClip(overrides: Partial<WorkerTimelineClip> = {}): WorkerTimelineClip {

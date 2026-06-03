@@ -4,7 +4,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
 import { formatTimecode } from '~/utils/timecode';
 
-import type { AudioEngine } from '~/utils/video-editor/AudioEngine';
+import type { IAudioEngine } from '~/utils/video-editor/AudioEngine';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 const log = createDevLogger('useMonitorPlayback');
@@ -77,7 +77,7 @@ function approxEqual(a: number, b: number) {
 
 function syncMonitorAudioLevels(params: {
   timelineStore: ReturnType<typeof useTimelineStore>;
-  audioEngine: AudioEngine;
+  audioEngine: IAudioEngine;
 }) {
   const prevLevels = params.timelineStore.audioLevels;
   const nextLevels = { ...prevLevels };
@@ -116,7 +116,7 @@ function syncMonitorPlaybackVisibility(params: {
   isPlaying: boolean;
   isMobile: { readonly value: boolean };
   clampToTimeline: (timeUs: number) => number;
-  audioEngine: AudioEngine;
+  audioEngine: IAudioEngine;
   onPauseHiddenPlayback: () => void;
   onRestoreVisiblePlayback: (timeUs: number) => void;
 }) {
@@ -192,7 +192,7 @@ export interface UseMonitorPlaybackOptions {
   clampToTimeline: (timeUs: number) => number;
   updateStoreTime: (timeUs: number) => void;
   scheduleRender: (timeUs: number) => void;
-  audioEngine: AudioEngine;
+  audioEngine: IAudioEngine;
   isMobile: { value: boolean };
 }
 

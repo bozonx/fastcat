@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { AudioEngine } from '~/utils/video-editor/AudioEngine';
+import { createAudioEngine, type IAudioEngine } from '~/utils/video-editor/AudioEngine';
 
 interface WorkerMessageEvent<T> {
   data: T;
@@ -218,7 +218,7 @@ function getDecodePostMessageCalls(worker: WorkerMock | null) {
   );
 }
 
-function createClip(overrides: Partial<Parameters<AudioEngine['loadClips']>[0][number]> = {}) {
+function createClip(overrides: Partial<Parameters<IAudioEngine['loadClips']>[0][number]> = {}) {
   return {
     id: 'clip-1',
     sourcePath: 'audio.mp3',
@@ -268,7 +268,7 @@ describe('AudioEngine', () => {
   });
 
   it('initializes audio context and clamps volume', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     expect(audioContextInstance).toBeTruthy();
@@ -280,7 +280,7 @@ describe('AudioEngine', () => {
   });
 
   it('resumes suspended context on play', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     if (!audioContextInstance) throw new Error('AudioContext not initialized');
@@ -292,7 +292,7 @@ describe('AudioEngine', () => {
   });
 
   it('decodes a source only once for identical clips', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clips = [createClip(), createClip({ id: 'clip-2' })];
@@ -305,7 +305,7 @@ describe('AudioEngine', () => {
   });
 
   it('schedules playback and stops nodes', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -328,7 +328,7 @@ describe('AudioEngine', () => {
   });
 
   it('does not schedule any audio for reversed (negative-speed) clips', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({ speed: -1 });
@@ -344,7 +344,7 @@ describe('AudioEngine', () => {
   });
 
   it('retries playback after seek when playing', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -362,7 +362,7 @@ describe('AudioEngine', () => {
   });
 
   it('fades out active playback before stopping nodes on seek', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -394,7 +394,7 @@ describe('AudioEngine', () => {
   });
 
   it('fades out active playback before stopping nodes on speed changes', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -427,7 +427,7 @@ describe('AudioEngine', () => {
 
   it('does not schedule stale playback after stopping while decode is in flight', async () => {
     workerResponseDelayMs = 50;
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     await engine.loadClips([createClip()]);
@@ -442,7 +442,7 @@ describe('AudioEngine', () => {
   });
 
   it('plays forward scrub preview without enabling playback state', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
@@ -469,7 +469,7 @@ describe('AudioEngine', () => {
   });
 
   it('scales the scrub preview window by clip speed so fast clips are not cut short', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     // Source runs at 2x: 4s of material occupies 2s of timeline.
@@ -504,7 +504,7 @@ describe('AudioEngine', () => {
   it('does not retry permanent decode failures', async () => {
     workerOk = false;
     workerErrorName = 'UnsupportedFormatError';
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -523,7 +523,7 @@ describe('AudioEngine', () => {
   it('retries transient decode failures the next time the chunk is requested', async () => {
     workerOk = false;
     workerErrorName = undefined;
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -541,7 +541,7 @@ describe('AudioEngine', () => {
 
   it('stops stale head prefetch after a newer timeline layout arrives', async () => {
     workerResponseDelayMs = 50;
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     engine.updateTimelineLayout([
@@ -587,7 +587,7 @@ describe('AudioEngine', () => {
   it('gives up after 3 transient NotReadableError retries', async () => {
     workerOk = false;
     workerErrorName = 'NotReadableError';
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -608,7 +608,7 @@ describe('AudioEngine', () => {
 
   it('decodes every chunk needed for a multi-chunk clip', async () => {
     // Clip covers 12s of source — needs chunks 0, 1, and 2 (5s each).
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
@@ -638,7 +638,7 @@ describe('AudioEngine', () => {
   });
 
   it('schedules the first source at the future kickoff time, not at ctx.currentTime', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -658,7 +658,7 @@ describe('AudioEngine', () => {
   });
 
   it('fades in the first source at the kickoff boundary', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip();
@@ -684,7 +684,7 @@ describe('AudioEngine', () => {
   });
 
   it('keeps getCurrentTimeUs clamped to the requested start until kickoff is reached', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
@@ -715,7 +715,7 @@ describe('AudioEngine', () => {
     // (in parallel, capped by maxDecodeConcurrency=2). Chunk 2 only starts
     // decoding once the streaming loop reaches it.
     workerResponseDelayMs = 100;
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
@@ -747,7 +747,7 @@ describe('AudioEngine', () => {
     // 200s clip → 40 chunks. With SCHEDULING_LOOKAHEAD_S = 30s, only ~7
     // chunks should be scheduled ahead at any time, regardless of how long
     // we wait. Past the lookahead window the streaming loop parks itself.
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
@@ -775,7 +775,7 @@ describe('AudioEngine', () => {
     // SCHEDULING_LOOKAHEAD_S of audio. If real time advances past everything
     // that was queued, the loop must wake up, snap the cursor forward, and
     // schedule more — instead of tearing the clip graph down.
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
@@ -807,7 +807,7 @@ describe('AudioEngine', () => {
   it('decodes the correct chunk when playback starts in the middle of the source', async () => {
     // Clip uses source seconds 7..12, so the first chunk needed is index 1
     // (covers 5..10s in source time).
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     const clip = createClip({
@@ -834,7 +834,7 @@ describe('AudioEngine', () => {
   });
 
   it('is safe to call destroy() multiple times', async () => {
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     await engine.init();
 
     engine.destroy();
@@ -845,7 +845,7 @@ describe('AudioEngine', () => {
     workerResponseDelayMs = 100;
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const engine = new AudioEngine();
+    const engine = createAudioEngine();
     const fileHandle = createFileHandle();
     const peaksPromise = engine.extractPeaks(fileHandle, 'audio.mp3', { maxLength: 1000 });
 
