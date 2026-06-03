@@ -212,11 +212,14 @@ describe('TimelineTrimmingModule', () => {
     );
   });
 
-  it('splitClipAtPlayhead batches split commands', async () => {
+  it('splitClipAtPlayhead batches split commands and selects only the right half', async () => {
     const deps = createMockDeps();
+    deps.batchApplyTimeline.mockReturnValue(['new-clip-1']);
+    deps.selectedItemIds.value = ['clip-1', 'other-clip'];
     const mod = createTimelineTrimmingModule(deps);
     await mod.splitClipAtPlayhead();
     expect(deps.batchApplyTimeline).toHaveBeenCalled();
+    expect(deps.selectedItemIds.value).toEqual(['other-clip', 'new-clip-1']);
     expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 
@@ -230,14 +233,17 @@ describe('TimelineTrimmingModule', () => {
     );
   });
 
-  it('splitClipsAtPlayhead filters locked items and batches commands', async () => {
+  it('splitClipsAtPlayhead filters locked items, batches commands and selects only the right halves', async () => {
     const deps = createMockDeps();
+    deps.batchApplyTimeline.mockReturnValue(['new-clip-1']);
+    deps.selectedItemIds.value = ['clip-1', 'clip-2']; // clip-2 is locked, clip-1 is unlocked
     const mod = createTimelineTrimmingModule(deps);
     await mod.splitClipsAtPlayhead();
     expect(deps.batchApplyTimeline).toHaveBeenCalledWith(
       [{ type: 'split_selected' }],
       expect.objectContaining({ saveMode: 'immediate' }),
     );
+    expect(deps.selectedItemIds.value).toEqual(['clip-2', 'new-clip-1']);
     expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 });

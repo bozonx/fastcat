@@ -286,7 +286,8 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
       });
       if (createdIds && createdIds.length > 0) {
         const currentSelection = deps.selectedItemIds.value;
-        const allIds = Array.from(new Set([...currentSelection, target.itemId, ...createdIds]));
+        const remainingSelection = currentSelection.filter((id) => id !== target.itemId);
+        const allIds = Array.from(new Set([...remainingSelection, ...createdIds]));
         deps.selectedItemIds.value = allIds;
       }
     }
@@ -334,7 +335,9 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     });
 
     if (createdIds && createdIds.length > 0) {
-      const allIds = Array.from(new Set([...selectedItemIds, ...createdIds]));
+      const itemIdsToSplitSet = new Set(itemIdsToSplit);
+      const remainingSelection = selectedItemIds.filter((id) => !itemIdsToSplitSet.has(id));
+      const allIds = Array.from(new Set([...remainingSelection, ...createdIds]));
       deps.selectedItemIds.value = allIds;
     }
 
