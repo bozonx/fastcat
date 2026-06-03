@@ -82,7 +82,7 @@ describe('useTimelineExport pure functions', () => {
 
     expect(resolveExportCodecs('mkv', 'avc1.42E032', 'aac')).toEqual({
       videoCodec: 'av01.0.05M.08',
-      audioCodec: 'opus',
+      audioCodec: 'aac',
     });
 
     expect(resolveExportCodecs('mp4', 'avc1.42E032', 'aac')).toEqual({

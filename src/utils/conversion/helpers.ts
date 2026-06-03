@@ -5,13 +5,21 @@ export function resolveAudioChannelsFromMeta(channels?: number): number {
   return channels;
 }
 
-export function resolveAudioOnlyContainerFormat(codec: 'opus' | 'aac'): 'webm' | 'mp4' {
+export function resolveAudioOnlyContainerFormat(codec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'): string {
   if (codec === 'opus') return 'webm';
+  if (codec === 'aac') return 'mp4';
+  if (codec === 'flac') return 'flac';
+  if (codec === 'pcm') return 'wav';
+  if (codec === 'mp3') return 'mp3';
   return 'mp4';
 }
 
-export function resolveAudioOnlyFileExtension(codec: 'opus' | 'aac'): 'opus' | 'm4a' {
+export function resolveAudioOnlyFileExtension(codec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'): string {
   if (codec === 'opus') return 'opus';
+  if (codec === 'aac') return 'm4a';
+  if (codec === 'flac') return 'flac';
+  if (codec === 'pcm') return 'wav';
+  if (codec === 'mp3') return 'mp3';
   return 'm4a';
 }
 

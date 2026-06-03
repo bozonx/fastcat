@@ -252,9 +252,14 @@ function buildNativeConvertOptions(request: ConversionRequest) {
   }
 
   if (request.type === 'audio' && request.audioOnly) {
+    let nativeFormat = 'opus';
+    if (request.audioOnly.codec === 'aac') nativeFormat = 'm4a';
+    else if (request.audioOnly.codec === 'flac') nativeFormat = 'flac';
+    else if (request.audioOnly.codec === 'pcm') nativeFormat = 'wav';
+    else if (request.audioOnly.codec === 'mp3') nativeFormat = 'mp3';
     return {
       kind: 'audio',
-      format: request.audioOnly.codec === 'aac' ? 'm4a' : 'opus',
+      format: nativeFormat,
       audioCodec: request.audioOnly.codec,
       audioBitrateBps: request.audioOnly.bitrateKbps * 1000,
       audio: true,

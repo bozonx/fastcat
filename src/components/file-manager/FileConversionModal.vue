@@ -43,10 +43,22 @@ const isOpen = computed({
   },
 });
 
-const audioFormatOptions: readonly { value: 'opus' | 'aac'; label: string }[] = [
-  { value: 'opus', label: 'OPUS' },
-  { value: 'aac', label: 'AAC' },
-];
+import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
+import { onMounted } from 'vue';
+
+const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
+
+onMounted(() => {
+  loadCodecSupport();
+});
+
+const audioFormatOptions = computed(() => [
+  { value: 'aac', label: 'AAC', disabled: !audioCodecSupport.value?.aac },
+  { value: 'opus', label: 'OPUS', disabled: !audioCodecSupport.value?.opus },
+  { value: 'flac', label: 'FLAC', disabled: !audioCodecSupport.value?.flac },
+  { value: 'pcm', label: 'PCM (WAV)', disabled: !audioCodecSupport.value?.pcm },
+  { value: 'mp3', label: 'MP3', disabled: !audioCodecSupport.value?.mp3 },
+]);
 
 const fileName = computed(() => targetEntry.value?.name ?? '');
 

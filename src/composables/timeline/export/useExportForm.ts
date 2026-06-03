@@ -249,20 +249,21 @@ export function useExportForm() {
 
     await loadCodecSupport();
 
-    outputFormat.value = projectStore.projectSettings.exportDefaults.encoding.format;
-    videoCodec.value = projectStore.projectSettings.exportDefaults.encoding.videoCodec;
-    bitrateMbps.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
-    excludeAudio.value = projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
-    audioCodec.value = projectStore.projectSettings.exportDefaults.encoding.audioCodec;
-    audioBitrateKbps.value = projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
     const format =
       timelineStore.timelineFormat ??
       createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
+
+    outputFormat.value = format.exportFormat ?? projectStore.projectSettings.exportDefaults.encoding.format;
+    videoCodec.value = format.videoCodec ?? projectStore.projectSettings.exportDefaults.encoding.videoCodec;
+    bitrateMbps.value = format.videoBitrateMbps ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
+    excludeAudio.value = format.excludeAudio ?? projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
+    audioCodec.value = format.audioCodec ?? projectStore.projectSettings.exportDefaults.encoding.audioCodec;
+    audioBitrateKbps.value = format.audioBitrateKbps ?? projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
     audioSampleRate.value = format.sampleRate;
-    bitrateMode.value = projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
+    bitrateMode.value = format.bitrateMode ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
     keyframeIntervalSec.value =
-      projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
-    exportAlpha.value = projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
+      format.keyframeIntervalSec ?? projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
+    exportAlpha.value = format.exportAlpha ?? projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
 
     metadataTitle.value = projectStore.projectMeta?.title || '';
     metadataDescription.value = projectStore.projectMeta?.description || '';
@@ -290,7 +291,7 @@ export function useExportForm() {
     const codecConfig = resolveExportCodecs(
       fmt,
       videoCodec.value,
-      audioCodec.value === 'flac' || audioCodec.value === 'pcm' ? 'aac' : audioCodec.value,
+      audioCodec.value,
     );
     videoCodec.value = codecConfig.videoCodec;
     audioCodec.value = codecConfig.audioCodec;
@@ -338,15 +339,18 @@ export function useExportForm() {
           fileExt === 'opus' ||
           fileExt === 'ogg' ||
           fileExt === 'flac' ||
-          fileExt === 'wav'
-          ? (fileExt as 'aac' | 'mp4' | 'webm' | 'mkv' | 'opus' | 'ogg' | 'flac' | 'wav')
+          fileExt === 'wav' ||
+          fileExt === 'mp3'
+          ? (fileExt as 'aac' | 'mp4' | 'webm' | 'mkv' | 'opus' | 'ogg' | 'flac' | 'wav' | 'mp3')
           : audioCodec.value === 'opus'
             ? 'opus'
             : audioCodec.value === 'flac'
               ? 'flac'
               : audioCodec.value === 'pcm'
                 ? 'wav'
-                : 'aac'
+                : audioCodec.value === 'mp3'
+                  ? 'mp3'
+                  : 'aac'
         : outputFormat.value;
 
       const resolvedCodecs = isAudio
@@ -354,7 +358,7 @@ export function useExportForm() {
         : resolveExportCodecs(
             outputFormat.value,
             videoCodec.value,
-            audioCodec.value as 'aac' | 'opus',
+            audioCodec.value,
           );
 
       let exportSuccess = false;
@@ -416,6 +420,26 @@ export function useExportForm() {
 
         if (saveAsDefaults.value) {
           try {
+            await timelineStore.updateTimelineFormat({
+              width: exportWidth.value,
+              height: exportHeight.value,
+              fps: exportFps.value,
+              resolutionFormat: resolutionFormat.value,
+              orientation: orientation.value,
+              aspectRatio: aspectRatio.value,
+              isCustomResolution: isCustomResolution.value,
+              sampleRate: audioSampleRate.value,
+
+              exportFormat: outputFormat.value,
+              videoCodec: videoCodec.value,
+              videoBitrateMbps: bitrateMbps.value,
+              excludeAudio: excludeAudio.value,
+              audioCodec: audioCodec.value,
+              audioBitrateKbps: audioBitrateKbps.value,
+              bitrateMode: bitrateMode.value,
+              keyframeIntervalSec: keyframeIntervalSec.value,
+              exportAlpha: exportAlpha.value,
+            });
             await saveProjectSettingsAsDefault();
           } catch (e) {
             log.warn('Failed to persist export defaults', e);
@@ -490,7 +514,9 @@ export function useExportForm() {
             ? 'flac'
             : audioCodec.value === 'pcm'
               ? 'wav'
-              : 'aac';
+              : audioCodec.value === 'mp3'
+                ? 'mp3'
+                : 'aac';
       const path = await save({
         defaultPath: outputFilename.value,
         filters: isAudio

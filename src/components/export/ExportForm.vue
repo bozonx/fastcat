@@ -107,6 +107,7 @@ const audioCodecOptions = computed(() => [
   },
   { value: 'flac', label: 'FLAC', disabled: !audioCodecSupport.value?.flac },
   { value: 'pcm', label: 'PCM (WAV)', disabled: !audioCodecSupport.value?.pcm },
+  { value: 'mp3', label: 'MP3', disabled: !audioCodecSupport.value?.mp3 },
 ]);
 
 const audioSampleRateOptions = computed(() => {
@@ -192,12 +193,8 @@ watch(outputFilename, async () => {
   }
 });
 
-const videoAudioCodec = computed<'aac' | 'opus'>({
-  get: () => {
-    return audioCodec.value === 'flac' || audioCodec.value === 'pcm'
-      ? 'aac'
-      : (audioCodec.value as 'aac' | 'opus');
-  },
+const videoAudioCodec = computed<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>({
+  get: () => audioCodec.value,
   set: (val) => {
     audioCodec.value = val;
   },
@@ -460,7 +457,7 @@ async function onConfirm() {
           <UiFormField :label="t('videoEditor.export.metadataDescription')">
             <UiTextarea
               v-model="metadataDescription"
-              :disabled="isExporting"
+              :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
               :rows="3"
               autoresize
               :maxrows="10"
@@ -469,7 +466,7 @@ async function onConfirm() {
           </UiFormField>
 
           <UiFormField :label="t('videoEditor.export.metadataTags')">
-            <UiTextInput v-model="metadataTags" :disabled="isExporting" full-width />
+            <UiTextInput v-model="metadataTags" :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')" full-width />
           </UiFormField>
         </div>
 

@@ -664,7 +664,9 @@ export async function runExport(
                 ? new FlacOutputFormat()
                 : options.format === 'wav' || options.format === 'pcm'
                   ? new WavOutputFormat()
-                  : new Mp4OutputFormat();
+                  : options.format === 'mp3'
+                    ? (() => { throw new Error('MP3 export is not supported in the web version'); })()
+                    : new Mp4OutputFormat();
 
     async function runExportWithHardwareAcceleration(
       preference: 'prefer-hardware' | 'prefer-software',

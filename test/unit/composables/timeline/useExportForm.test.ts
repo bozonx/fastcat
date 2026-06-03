@@ -78,21 +78,27 @@ vi.mock('~/stores/project.store', () => ({
   useProjectStore: () => projectStoreMock,
 }));
 
+const timelineFormatMock = ref<any>({
+  sampleRate: 48000,
+  width: 1920,
+  height: 1080,
+  fps: 30,
+  resolutionFormat: '1080p',
+  orientation: 'landscape',
+  aspectRatio: '16:9',
+  isCustomResolution: false,
+  isAutoSettings: false,
+  settingsSource: 'manual',
+});
+const updateTimelineFormatMock = vi.fn();
+
 vi.mock('~/stores/timeline.store', () => ({
   useTimelineStore: () => ({
     timelineDoc: { metadata: { fastcat: {} } },
-    timelineFormat: {
-      sampleRate: 48000,
-      width: 1920,
-      height: 1080,
-      fps: 30,
-      resolutionFormat: '1080p',
-      orientation: 'landscape',
-      aspectRatio: '16:9',
-      isCustomResolution: false,
-      isAutoSettings: false,
-      settingsSource: 'manual',
+    get timelineFormat() {
+      return timelineFormatMock.value;
     },
+    updateTimelineFormat: updateTimelineFormatMock,
     getSelectionRange: () => selectionRangeMock.value,
     getMarkers: () => markersMock.value,
   }),
@@ -167,6 +173,19 @@ vi.mock('~/composables/timeline/export', () => ({
 
 describe('useExportForm', () => {
   beforeEach(() => {
+    timelineFormatMock.value = {
+      sampleRate: 48000,
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      resolutionFormat: '1080p',
+      orientation: 'landscape',
+      aspectRatio: '16:9',
+      isCustomResolution: false,
+      isAutoSettings: false,
+      settingsSource: 'manual',
+    };
+    updateTimelineFormatMock.mockReset();
     selectionRangeMock.value = null;
     markersMock.value = [];
     selectedEntityMock.value = null;
@@ -307,5 +326,83 @@ describe('useExportForm', () => {
     const tempFilename = tempFileCall[0];
     expect(tempFilename.startsWith('.my-video.tmp-')).toBe(true);
     expect(tempFilename.endsWith('.mkv')).toBe(true);
+  });
+
+  it('инициализирует настройки формы из timelineFormat', async () => {
+    timelineFormatMock.value = {
+      sampleRate: 44100,
+      width: 1280,
+      height: 720,
+      fps: 60,
+      resolutionFormat: '720p',
+      orientation: 'landscape',
+      aspectRatio: '16:9',
+      isCustomResolution: false,
+      exportFormat: 'webm',
+      videoCodec: 'vp9',
+      videoBitrateMbps: 12,
+      excludeAudio: true,
+      audioCodec: 'opus',
+      audioBitrateKbps: 128,
+      bitrateMode: 'cbr',
+      keyframeIntervalSec: 5,
+      exportAlpha: true,
+    };
+
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    expect(form.outputFormat.value).toBe('webm');
+    expect(form.videoCodec.value).toBe('vp9');
+    expect(form.bitrateMbps.value).toBe(12);
+    expect(form.excludeAudio.value).toBe(true);
+    expect(form.audioCodec.value).toBe('opus');
+    expect(form.audioBitrateKbps.value).toBe(128);
+    expect(form.audioSampleRate.value).toBe(44100);
+    expect(form.bitrateMode.value).toBe('cbr');
+    expect(form.keyframeIntervalSec.value).toBe(5);
+    expect(form.exportAlpha.value).toBe(true);
+  });
+
+  it('сохраняет настройки в timelineFormat при экспорте, если saveAsDefaults === true', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    form.saveAsDefaults.value = true;
+    form.outputFormat.value = 'mkv';
+    form.videoCodec.value = 'hevc';
+    form.bitrateMbps.value = 15;
+    form.excludeAudio.value = false;
+    form.audioCodec.value = 'flac';
+    form.audioBitrateKbps.value = 320;
+    form.bitrateMode.value = 'vbr';
+    form.keyframeIntervalSec.value = 3;
+    form.exportAlpha.value = false;
+
+    // Убедимся, что форма грязная, чтобы сохранить настройки
+    expect(form.isSettingsDirty.value).toBe(true);
+
+    await form.handleStartExport();
+
+    expect(updateTimelineFormatMock).toHaveBeenCalledTimes(1);
+    expect(updateTimelineFormatMock).toHaveBeenCalledWith({
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      resolutionFormat: '1080p',
+      orientation: 'landscape',
+      aspectRatio: '16:9',
+      isCustomResolution: false,
+      sampleRate: 48000,
+      exportFormat: 'mkv',
+      videoCodec: 'hevc',
+      videoBitrateMbps: 15,
+      excludeAudio: false,
+      audioCodec: 'flac',
+      audioBitrateKbps: 320,
+      bitrateMode: 'vbr',
+      keyframeIntervalSec: 3,
+      exportAlpha: false,
+    });
   });
 });

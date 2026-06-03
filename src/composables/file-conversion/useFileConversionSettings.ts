@@ -19,7 +19,7 @@ export function useFileConversionSettings() {
     videoCodec: DEFAULT_VIDEO_CODEC,
     bitrateMbps: DEFAULT_VIDEO_BITRATE_MBPS,
     excludeAudio: false,
-    audioCodec: DEFAULT_AUDIO_CODEC as 'aac' | 'opus',
+    audioCodec: DEFAULT_AUDIO_CODEC as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
     audioBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
     bitrateMode: 'variable' as 'constant' | 'variable',
     keyframeIntervalSec: DEFAULT_KEYFRAME_INTERVAL_SEC,
@@ -33,7 +33,7 @@ export function useFileConversionSettings() {
   });
 
   const audio = reactive({
-    onlyFormat: DEFAULT_AUDIO_ONLY_FORMAT as 'opus' | 'aac',
+    onlyFormat: DEFAULT_AUDIO_ONLY_FORMAT as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
     onlyBitrateKbps: DEFAULT_AUDIO_BITRATE_KBPS,
     channels: 2,
     sampleRate: 'original' as 'original' | number,

@@ -7,7 +7,7 @@ export function useExportConfig() {
   const videoCodec = ref('avc1.640032');
   const bitrateMbps = ref<number>(5);
   const excludeAudio = ref(false);
-  const audioCodec = ref<'aac' | 'opus' | 'flac' | 'pcm'>('aac');
+  const audioCodec = ref<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('aac');
   const audioBitrateKbps = ref<number>(128);
   const audioSampleRate = ref<number>(48000);
   const exportWidth = ref<number>(1920);
@@ -31,6 +31,7 @@ export function useExportConfig() {
       if (audioCodec.value === 'opus') return 'opus';
       if (audioCodec.value === 'flac') return 'flac';
       if (audioCodec.value === 'pcm') return 'wav';
+      if (audioCodec.value === 'mp3') return 'mp3';
       return 'aac';
     }
     return getExt(outputFormat.value);

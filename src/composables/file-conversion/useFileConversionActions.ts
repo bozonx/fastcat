@@ -52,7 +52,7 @@ interface UseFileConversionActionsProps {
     videoCodec: string;
     bitrateMbps: number;
     excludeAudio: boolean;
-    audioCodec: 'aac' | 'opus';
+    audioCodec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
     audioBitrateKbps: number;
     bitrateMode: 'constant' | 'variable';
     keyframeIntervalSec: number;
@@ -65,7 +65,7 @@ interface UseFileConversionActionsProps {
     isCustomResolution: boolean;
   };
   audioSettings: {
-    onlyFormat: 'opus' | 'aac';
+    onlyFormat: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
     onlyBitrateKbps: number;
     channels: number;
     sampleRate: number | 'original';

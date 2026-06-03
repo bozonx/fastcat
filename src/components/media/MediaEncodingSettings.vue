@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, watch, ref } from 'vue';
+import { computed, watch, ref, onMounted } from 'vue';
+import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
@@ -52,7 +53,7 @@ const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { requi
 const videoCodec = defineModel<string>('videoCodec', { required: true });
 const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
-const audioCodec = defineModel<'aac' | 'opus'>('audioCodec', { default: 'aac' });
+const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('audioCodec', { default: 'aac' });
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
@@ -121,7 +122,9 @@ const videoCodecHelp = computed(() => {
 });
 
 watch(outputFormat, (fmt) => {
-  if (fmt === 'mp4') {
+  if (fmt === 'webm') {
+    audioCodec.value = 'opus';
+  } else if (fmt === 'mp4' && (audioCodec.value === 'flac' || audioCodec.value === 'pcm')) {
     audioCodec.value = 'aac';
   }
 
@@ -139,10 +142,41 @@ watch(videoCodec, () => {
   }
 });
 
-const audioCodecOptions = [
-  { value: 'aac', label: t('videoEditor.export.codec.aac') },
-  { value: 'opus', label: t('videoEditor.export.codec.opus') },
-];
+const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
+
+onMounted(() => {
+  loadCodecSupport();
+});
+
+const audioCodecOptions = computed(() => {
+  const allOptions = [
+    { value: 'aac', label: t('videoEditor.export.codec.aac') },
+    { value: 'opus', label: t('videoEditor.export.codec.opus') },
+    { value: 'flac', label: 'FLAC' },
+    { value: 'pcm', label: 'PCM (WAV)' },
+    { value: 'mp3', label: 'MP3' },
+  ];
+
+  return allOptions.map(opt => {
+    let disabled = false;
+    
+    // Блокировка по формату контейнера
+    if (outputFormat.value === 'webm') {
+      disabled = opt.value !== 'opus';
+    } else if (outputFormat.value === 'mp4') {
+      // MP4 не поддерживает PCM и FLAC в нашем экспортере
+      disabled = opt.value === 'pcm' || opt.value === 'flac';
+    }
+    
+    // Блокировка по системе (браузер / ОС / Tauri)
+    const isSupported = audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
+    
+    return {
+      ...opt,
+      disabled: disabled || !isSupported
+    };
+  });
+});
 
 const bitrateModeOptions = [
   { value: 'variable', label: t('videoEditor.export.bitrateModeVbr') },
@@ -256,14 +290,14 @@ watch(
 
     <div class="flex items-center justify-between">
       <span class="text-sm text-ui-text-muted">
-        {{ t('common.audio') }} ({{ t('videoEditor.export.codec.opus') }})
+        {{ t('common.audio') }} ({{ audioCodecOptions.find(o => o.value === audioCodec)?.label || audioCodec.toUpperCase() }})
       </span>
       <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
     </div>
 
     <div v-if="includeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
       <UiFormField
-        v-if="outputFormat === 'mp4' && !props.showAudioAdvanced"
+        v-if="!props.showAudioAdvanced"
         :label="t('videoEditor.export.audioCodec')"
       >
         <div class="w-full">
