@@ -465,21 +465,18 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     options?: VfsOperationOptions,
   ): Promise<void> {
     throwIfAborted(options?.signal, sourcePath);
-    const sourceFile = await this.getFile(sourcePath);
-    if (!sourceFile) {
+    if (!(await this.exists(sourcePath))) {
       throw new VfsNotFoundError(sourcePath);
     }
 
-    // Re-check abort after the async read so a late cancellation still triggers.
+    // Re-check abort after the async existence check so a late cancellation still triggers.
     throwIfAborted(options?.signal, sourcePath);
 
-    const readStream = sourceFile.stream();
+    const readStream = await this.readStream(sourcePath, options);
     const writeStream = await this.writeStream(targetPath, options);
-    // The source `stream()` drains OPFS datapipes as it's pulled, so account the
-    // read against the interactive pool for the duration of the copy. The write
-    // side already holds a streaming slot (acquired inside `writeStream`), and
-    // streaming is a separate pool, so this can't deadlock against it.
-    await withFileIoSlot(() => readStream.pipeTo(writeStream, { signal: options?.signal }));
+    await readStream
+      .pipeThrough(new TransformStream<Uint8Array, Uint8Array>())
+      .pipeTo(writeStream, { signal: options?.signal });
   }
 
   async copyDirectory(

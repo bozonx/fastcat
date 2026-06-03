@@ -79,9 +79,9 @@ impl Default for FfmpegHardwareSettings {
 #[tauri::command]
 fn native_update_ffmpeg_settings(
     settings: FfmpegHardwareSettings,
-    state: tauri::State<'_, std::sync::Mutex<FfmpegHardwareSettings>>,
+    state: tauri::State<'_, std::sync::RwLock<FfmpegHardwareSettings>>,
 ) {
-    if let Ok(mut guard) = state.lock() {
+    if let Ok(mut guard) = state.write() {
         *guard = settings;
     }
 }
@@ -207,7 +207,7 @@ pub fn run() {
             ipc::media_cmd::native_get_ffmpeg_diagnostics,
         ])
         .manage(media::processing::NativeMediaTasks::default())
-        .manage(std::sync::Mutex::new(FfmpegHardwareSettings::default()))
+        .manage(std::sync::RwLock::new(FfmpegHardwareSettings::default()))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

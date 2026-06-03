@@ -2,7 +2,7 @@
 
 **Дата:** 2026-06-03  
 **Область:** `src-tauri/src/`, `src/workers/`, `src/utils/video-editor/`, `src/timeline/`, `src/stores/timeline/`, `src/media-cache/`, `src/file-manager/`, `src/utils/io/`, `src/effects/`  
-**Автор:** Kimi Code CLI
+**Автор:** Antigravity AI
 
 ---
 

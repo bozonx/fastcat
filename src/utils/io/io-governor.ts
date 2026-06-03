@@ -42,6 +42,7 @@ export async function withFileIoSlot<T>(task: () => Promise<T>): Promise<T> {
   const release = watchHeldSlot(await getMainIoBudget().acquire('interactive'), {
     label: 'interactive',
     warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_INTERACTIVE,
+    hardReleaseMs: FILE_IO_LIMITS.SLOT_HOLD_HARD_RELEASE_MS_INTERACTIVE,
   });
   inFlightCount += 1;
   try {
@@ -61,6 +62,7 @@ export async function acquireStreamingFileIoSlot(): Promise<() => void> {
   return watchHeldSlot(await getMainIoBudget().acquire('streaming'), {
     label: 'streaming',
     warnMs: FILE_IO_LIMITS.SLOT_HOLD_WARN_MS_STREAMING,
+    hardReleaseMs: FILE_IO_LIMITS.SLOT_HOLD_HARD_RELEASE_MS_STREAMING,
   });
 }
 

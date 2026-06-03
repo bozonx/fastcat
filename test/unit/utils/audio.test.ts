@@ -53,7 +53,7 @@ describe('utils/audio', () => {
   it('getAudioMeterPercent returns percentage within range', () => {
     expect(getAudioMeterPercent(-60)).toBe(0);
     expect(getAudioMeterPercent(12)).toBe(100);
-    expect(getAudioMeterPercent(-24)).toBeCloseTo(50, 1);
+    expect(getAudioMeterPercent(-24)).toBeCloseTo(25.1, 1);
   });
 
   it('isAudioClipping detects clipping', () => {
@@ -211,12 +211,29 @@ describe('utils/audio', () => {
   it('clipGainToYPercent and clipYPercentToGain map correctly', () => {
     expect(clipGainToYPercent(0)).toBe(100);
     expect(clipGainToYPercent(-1)).toBe(100);
-    expect(clipGainToYPercent(1.0)).toBeCloseTo(50, 1);
+    expect(clipGainToYPercent(1.0)).toBeCloseTo(33.33, 1);
     expect(clipGainToYPercent(1.5)).toBeCloseTo(0, 1);
     expect(clipGainToYPercent(2.0)).toBeCloseTo(0, 1);
 
     expect(clipYPercentToGain(100)).toBeCloseTo(0, 5);
-    expect(clipYPercentToGain(50)).toBeCloseTo(1.0, 5);
+    expect(clipYPercentToGain(50)).toBeCloseTo(0.75, 5);
+    expect(clipYPercentToGain(33.333333333333336)).toBeCloseTo(1.0, 5);
     expect(clipYPercentToGain(0)).toBeCloseTo(1.5, 5);
   });
+
+  it('dbToPercent and percentToDb map correctly using cubic curve', () => {
+    // Mixer track defaults (minDb = -60, maxDb = 12)
+    // At maxDb = 12, ratio is 1 -> 100%
+    expect(dbToPercent(12, -60, 12)).toBeCloseTo(100, 1);
+    expect(percentToDb(100, -60, 12)).toBeCloseTo(12, 1);
+
+    // At 0 dB, ratio is 1/3.981 = 0.2512 -> cubic ratio is 0.631 -> 63.1%
+    expect(dbToPercent(0, -60, 12)).toBeCloseTo(63.1, 1);
+    expect(percentToDb(63.0957, -60, 12)).toBeCloseTo(0, 1);
+
+    // At minDb = -60, percent is 0%
+    expect(dbToPercent(-60, -60, 12)).toBeCloseTo(0, 1);
+    expect(percentToDb(0, -60, 12)).toBeCloseTo(-60, 1);
+  });
 });
+

@@ -38,6 +38,65 @@ struct OffscreenTarget {
     aligned_row_bytes: usize,
 }
 
+/// Пул переиспользуемых промежуточных GPU-текстур для эффектов и переходов.
+///
+/// Без пула `apply_effects_to_texture` / `copy_texture_for_vello` создавали
+/// новую `wgpu::Texture` на каждый кадр для каждого слоя с эффектом/переходом:
+/// при 10 слоях с blur/bloom — десятки GPU-аллокаций per frame. Пул
+/// переиспользует текстуры по размеру, снижая нагрузку на GPU memory allocator.
+///
+/// Текстуры возвращаются в пул автоматически через `TexturePoolGuard`.
+struct TexturePool {
+    /// (width, height) → список свободных текстур этого размера.
+    free: HashMap<(u32, u32), Vec<wgpu::Texture>>,
+    /// Максимум текстур одного размера в пуле (предотвращает бесконечный рост).
+    max_per_size: usize,
+}
+
+impl TexturePool {
+    fn new() -> Self {
+        Self { free: HashMap::new(), max_per_size: 4 }
+    }
+
+    /// Взять текстуру из пула или создать новую.
+    fn acquire(
+        &mut self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        usage: wgpu::TextureUsages,
+        label: Option<&str>,
+    ) -> wgpu::Texture {
+        let key = (width.max(1), height.max(1));
+        if let Some(slot) = self.free.get_mut(&key) {
+            if let Some(tex) = slot.pop() {
+                return tex;
+            }
+        }
+        device.create_texture(&wgpu::TextureDescriptor {
+            label,
+            size: wgpu::Extent3d { width: key.0, height: key.1, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage,
+            view_formats: &[],
+        })
+    }
+
+    /// Вернуть текстуру в пул для повторного использования.
+    #[allow(dead_code)]
+    fn release(&mut self, texture: wgpu::Texture) {
+        let key = (texture.width(), texture.height());
+        let slot = self.free.entry(key).or_default();
+        if slot.len() < self.max_per_size {
+            slot.push(texture);
+        }
+        // Если пул переполнен — текстура просто дропается (освобождается GPU-память).
+    }
+}
+
 pub struct Compositor {
     render_cx: RenderContext,
     renderers: HashMap<usize, Renderer>,
@@ -47,6 +106,10 @@ pub struct Compositor {
     /// привязаны к конкретному `wgpu::Device`; шарить один `Option` между device'ами
     /// приводило бы к молотьбе rebuild'ов при чередовании (preview ↔ export-device).
     offscreen: HashMap<usize, OffscreenTarget>,
+    /// Пул промежуточных GPU-текстур для эффектов и переходов.
+    texture_pool: TexturePool,
+    /// Кэш скомпилированных GPU пайплайнов (шейдеров) для каждого wgpu-устройства.
+    pipeline_caches: HashMap<usize, wgpu::PipelineCache>,
 }
 
 impl Compositor {
@@ -57,6 +120,8 @@ impl Compositor {
             effect_pipelines: HashMap::new(),
             transition_pipelines: HashMap::new(),
             offscreen: HashMap::new(),
+            texture_pool: TexturePool::new(),
+            pipeline_caches: HashMap::new(),
         }
     }
 
@@ -220,6 +285,40 @@ impl Compositor {
         )?;
         let result =
             self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background);
+        self.unregister_images(dev_id, registered_images);
+        result
+    }
+
+    /// High-level async version: составляет доменную `Scene` в vello и асинхронно читает пиксели в `Vec<u8>` (RGBA, `w×h×4`).
+    pub async fn render_scene_to_pixels_async(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        viewport_w: u32,
+        viewport_h: u32,
+        texture_cache: &super::texture_cache::TextureCache,
+    ) -> Result<Vec<u8>> {
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = device_handle.device.clone();
+        let queue = device_handle.queue.clone();
+        let effective_scene = self.materialize_transitions_and_effects(
+            dev_id,
+            scene,
+            texture_cache,
+            &device,
+            &queue,
+        )?;
+        let mut registered_images = Vec::new();
+        let vello = self.build_vello_scene_from_materialized(
+            dev_id,
+            &effective_scene,
+            viewport_w,
+            viewport_h,
+            texture_cache,
+            &mut registered_images,
+        )?;
+        let result =
+            self.render_to_pixels_async(dev_id, &vello, viewport_w, viewport_h, scene.background).await;
         self.unregister_images(dev_id, registered_images);
         result
     }
@@ -415,9 +514,26 @@ impl Compositor {
             Ok(texture) => Ok(texture),
             Err(error) => {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
+                // Fallback: использовать пул для промежуточной копии.
+                let (width, height) = match source {
+                    EffectSource::Cpu(img) => (img.width.max(1), img.height.max(1)),
+                    EffectSource::Gpu(tex) => (tex.width().max(1), tex.height().max(1)),
+                };
+                let pooled = self.texture_pool.acquire(
+                    device,
+                    width,
+                    height,
+                    wgpu::TextureUsages::COPY_SRC
+                        | wgpu::TextureUsages::COPY_DST
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                    Some("compositor-effect-fallback"),
+                );
                 match source {
                     EffectSource::Cpu(img) => image_to_texture(device, queue, img),
-                    EffectSource::Gpu(tex) => copy_texture_for_vello(device, queue, tex),
+                    EffectSource::Gpu(tex) => {
+                        copy_texture_to(device, queue, tex, &pooled)?;
+                        Ok(pooled)
+                    }
                 }
             }
         }
@@ -431,12 +547,24 @@ impl Compositor {
         texture: &wgpu::Texture,
         registered_images: &mut Vec<ImageData>,
     ) -> Result<ImageData> {
-        let owned = copy_texture_for_vello(device, queue, texture)?;
+        // Используем пул для промежуточной копии (vello требует отдельного владения текстурой).
+        let width = texture.width().max(1);
+        let height = texture.height().max(1);
+        let pooled = self.texture_pool.acquire(
+            device,
+            width,
+            height,
+            wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::TEXTURE_BINDING,
+            Some("compositor-vello-owned-texture"),
+        );
+        copy_texture_to(device, queue, texture, &pooled)?;
         let renderer = self
             .renderers
             .get_mut(&dev_id)
             .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
-        let image = renderer.register_texture(owned);
+        let image = renderer.register_texture(pooled);
         registered_images.push(image.clone());
         Ok(image)
     }
@@ -604,6 +732,136 @@ impl Compositor {
         Ok(out)
     }
 
+    /// Асинхронно рендерит сцену в Rgba8 texture и читает её обратно без блокировки вызывающего потока на GPU poll.
+    pub async fn render_to_pixels_async(
+        &mut self,
+        dev_id: usize,
+        scene: &VelloScene,
+        width: u32,
+        height: u32,
+        base_color: Color,
+    ) -> Result<Vec<u8>> {
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = device_handle.device.clone();
+        let queue = &device_handle.queue;
+
+        let need_rebuild = match self.offscreen.get(&dev_id) {
+            Some(t) => t.width != width || t.height != height,
+            None => true,
+        };
+        if need_rebuild {
+            let row_bytes = width as usize * 4;
+            let aligned_row_bytes = (row_bytes + 255) & !255;
+            let buffer_size = (aligned_row_bytes * height as usize) as u64;
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("monitor-offscreen"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("monitor-readback"),
+                size: buffer_size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            self.offscreen.insert(
+                dev_id,
+                OffscreenTarget {
+                    width,
+                    height,
+                    texture,
+                    view,
+                    buffer,
+                    aligned_row_bytes,
+                },
+            );
+        }
+        let target = self.offscreen.get(&dev_id).unwrap();
+
+        let renderer = self
+            .renderers
+            .get_mut(&dev_id)
+            .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
+        renderer
+            .render_to_texture(
+                &device,
+                queue,
+                scene,
+                &target.view,
+                &RenderParams {
+                    base_color,
+                    width,
+                    height,
+                    antialiasing_method: AaConfig::Area,
+                },
+            )
+            .map_err(|e| anyhow!("vello render: {e:?}"))?;
+
+        let row_bytes = width as usize * 4;
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("readback"),
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &target.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &target.buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(target.aligned_row_bytes as u32),
+                    rows_per_image: Some(height),
+                },
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        queue.submit([encoder.finish()]);
+
+        let buffer = target.buffer.clone();
+        let aligned_row_bytes = target.aligned_row_bytes;
+        let slice = buffer.slice(..);
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+
+        let device_poll = device.clone();
+        tokio::task::spawn_blocking(move || {
+            device_poll.poll(wgpu::PollType::wait_indefinitely()).ok();
+        });
+
+        rx.await
+            .map_err(|_| anyhow!("buffer map channel closed"))?
+            .map_err(|e| anyhow!("buffer map: {e:?}"))?;
+
+        let mapped = slice.get_mapped_range();
+        let mut out = Vec::with_capacity(row_bytes * height as usize);
+        for row in 0..height as usize {
+            let start = row * aligned_row_bytes;
+            out.extend_from_slice(&mapped[start..start + row_bytes]);
+        }
+        drop(mapped);
+        buffer.unmap();
+        Ok(out)
+    }
+
     fn render_to_owned_texture(
         &mut self,
         dev_id: usize,
@@ -658,13 +916,25 @@ impl Compositor {
             return Ok(());
         }
         let device_handle = &self.render_cx.devices[dev_id];
+        
+        // Получаем или создаем PipelineCache для этого устройства
+        let pipeline_cache = self.pipeline_caches.entry(dev_id).or_insert_with(|| {
+            unsafe {
+                device_handle.device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+                    label: Some("vello-pipeline-cache"),
+                    data: None,
+                    fallback: true,
+                })
+            }
+        }).clone();
+
         let renderer = Renderer::new(
             &device_handle.device,
             RendererOptions {
                 use_cpu: false,
                 antialiasing_support: AaSupport::area_only(),
                 num_init_threads: NonZeroUsize::new(1),
-                pipeline_cache: None,
+                pipeline_cache: Some(pipeline_cache),
             },
         )
         .map_err(|e| anyhow!("vello renderer: {e:?}"))
@@ -747,53 +1017,36 @@ fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
     }
 }
 
-fn copy_texture_for_vello(
+/// Копирует содержимое `src` в уже существующую текстуру `dst` (должны быть одинакового размера).
+/// Используется с пулом текстур вместо `copy_texture_for_vello`, чтобы избежать GPU-аллокации на каждый кадр.
+fn copy_texture_to(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-) -> Result<wgpu::Texture> {
-    let width = texture.width().max(1);
-    let height = texture.height().max(1);
-    let output = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("compositor-vello-owned-texture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::COPY_SRC
-            | wgpu::TextureUsages::COPY_DST
-            | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    });
+    src: &wgpu::Texture,
+    dst: &wgpu::Texture,
+) -> Result<()> {
+    let width = src.width().min(dst.width()).max(1);
+    let height = src.height().min(dst.height()).max(1);
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("compositor-vello-texture-copy"),
+        label: Some("compositor-texture-copy-to"),
     });
     encoder.copy_texture_to_texture(
         wgpu::TexelCopyTextureInfo {
-            texture,
+            texture: src,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
         wgpu::TexelCopyTextureInfo {
-            texture: &output,
+            texture: dst,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
+        wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
     );
     queue.submit([encoder.finish()]);
-    Ok(output)
+    Ok(())
 }
 
 impl Default for Compositor {

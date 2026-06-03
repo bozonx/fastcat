@@ -109,7 +109,10 @@ export function createTimelineDispatcherModule(
     }
 
     deps.timelineDoc.value = next;
-    deps.duration.value = selectTimelineDurationUs(next);
+    const nextDuration = selectTimelineDurationUs(next);
+    if (nextDuration !== deps.duration.value) {
+      deps.duration.value = nextDuration;
+    }
     deps.markTimelineAsDirty();
 
     if (createdItemIds?.length) {
@@ -191,7 +194,10 @@ export function createTimelineDispatcherModule(
     }
 
     deps.timelineDoc.value = current;
-    deps.duration.value = selectTimelineDurationUs(current);
+    const nextDuration = selectTimelineDurationUs(current);
+    if (nextDuration !== deps.duration.value) {
+      deps.duration.value = nextDuration;
+    }
     deps.markTimelineAsDirty();
 
     if (allCreatedItemIds.length > 0) {
@@ -221,8 +227,12 @@ export function createTimelineDispatcherModule(
   function applyRestoredSnapshot(snapshot: TimelineDocument) {
     if (deps.isReadOnly?.value) return;
     if (!snapshot) return;
+    if (snapshot === deps.timelineDoc.value) return;
     deps.timelineDoc.value = snapshot;
-    deps.duration.value = selectTimelineDurationUs(snapshot);
+    const nextDuration = selectTimelineDurationUs(snapshot);
+    if (nextDuration !== deps.duration.value) {
+      deps.duration.value = nextDuration;
+    }
     deps.markTimelineAsDirty();
     deps.pruneSelection?.(snapshot);
     void deps.requestTimelineSave();

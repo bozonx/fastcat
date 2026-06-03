@@ -100,9 +100,11 @@ export async function ensureVectorImageRaster(
   if (!isSameVersion) {
     try {
       const entries = await params.vfs.readDirectory(sourceDirPath);
-      for (const entry of entries) {
-        await params.vfs.deleteEntry(`${sourceDirPath}/${entry.name}`, true).catch(() => {});
-      }
+      await Promise.allSettled(
+        entries.map((entry) =>
+          params.vfs.deleteEntry(`${sourceDirPath}/${entry.name}`, true).catch(() => {}),
+        ),
+      );
     } catch (e) {
       if (!isNotFoundError(e)) {
         log.warn('Failed to clean stale vector image cache files', e);

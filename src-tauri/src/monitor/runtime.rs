@@ -308,8 +308,8 @@ impl LayerRuntimeManager {
                 };
                 let hw_settings = self
                     .app
-                    .state::<std::sync::Mutex<crate::FfmpegHardwareSettings>>()
-                    .lock()
+                    .state::<std::sync::RwLock<crate::FfmpegHardwareSettings>>()
+                    .read()
                     .unwrap()
                     .clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");

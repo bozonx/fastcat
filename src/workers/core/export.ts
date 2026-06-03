@@ -240,7 +240,8 @@ async function waitForVideoBackpressure(videoSource: { encodeQueueSize?: number 
   const maxQueueSize = 4;
 
   while (Number(videoSource?.encodeQueueSize ?? 0) >= maxQueueSize) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    // Use 16ms (one frame budget) instead of 0 to avoid busy-waiting on the CPU.
+    await new Promise<void>((resolve) => setTimeout(resolve, 16));
   }
 }
 

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import { getAudioMeterColorClass, getAudioMeterPercent, isAudioClipping } from '~/utils/audio';
+import {
+  getAudioMeterColorClass,
+  getAudioMeterPercent,
+  isAudioClipping,
+  dbToPercent as getDbPercent,
+  percentToDb as getPercentDb,
+} from '~/utils/audio';
 
 const props = defineProps<{
   modelValue: number; // dB value
@@ -21,11 +27,11 @@ const maxDb = props.maxDb ?? 12;
 const minDb = props.minDb ?? -60;
 
 function dbToPercent(db: number): number {
-  return Math.max(0, Math.min(100, ((db - minDb) / (maxDb - minDb)) * 100));
+  return getDbPercent(db, minDb, maxDb);
 }
 
 function percentToDb(percent: number): number {
-  return minDb + (percent / 100) * (maxDb - minDb);
+  return getPercentDb(percent, minDb, maxDb);
 }
 
 const fillPercent = computed(() => dbToPercent(props.modelValue));

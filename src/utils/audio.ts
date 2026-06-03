@@ -35,7 +35,7 @@ export function getAudioMeterColorClass(db: number | undefined): string {
 
 export function getAudioMeterPercent(db: number | undefined, minDb = -60, maxDb = 12): number {
   if (typeof db !== 'number' || !Number.isFinite(db)) return 0;
-  return Math.max(0, Math.min(100, ((db - minDb) / (maxDb - minDb)) * 100));
+  return dbToPercent(db, minDb, maxDb);
 }
 
 export function isAudioClipping(db: number | undefined): boolean {
@@ -67,31 +67,30 @@ export function trackHasAudio(
 
 export function clipGainToYPercent(gain: number): number {
   if (gain <= 0) return 100;
-  const db = linearToDb(gain);
-  if (db >= 0) {
-    // Range [1.0, 1.5+] -> [0 dB, 3.52 dB+]
-    // Clamped at 1.5 gain (+3.52 dB) which corresponds to 0% (top of clip)
-    const maxDb = 20 * Math.log10(1.5);
-    const ratio = Math.min(1, db / maxDb);
-    return (1 - ratio) * 50; // Map [0, 1] to [50%, 0%]
-  } else {
-    // Range [0.0, 1.0) -> [-60 dB, 0 dB)
-    const ratio = Math.max(0, (db - (-60)) / 60); // Map [-60, 0] to [0, 1]
-    return 100 - ratio * 50; // Map [0, 1] to [100%, 50%]
-  }
+  if (gain >= 1.5) return 0;
+  return ((1.5 - gain) / 1.5) * 100;
 }
 
 export function clipYPercentToGain(yPercent: number): number {
-  const y = Math.max(0, Math.min(100, yPercent)) / 100; // Map to [0, 1]
-  if (y <= 0.5) {
-    // Upper half (gain 1.0 to 1.5)
-    const maxDb = 20 * Math.log10(1.5);
-    const db = maxDb * (1 - y / 0.5);
-    return dbToLinear(db);
-  } else {
-    // Lower half (gain 0.0 to 1.0)
-    const db = 60 * (1 - 2 * y);
-    return dbToLinear(db);
-  }
+  const y = Math.max(0, Math.min(100, yPercent));
+  return 1.5 * (1 - y / 100);
 }
+
+export function dbToPercent(db: number, minDb = -60, maxDb = 12): number {
+  if (db <= minDb) return 0;
+  if (db >= maxDb) return 100;
+  const gain = Math.pow(10, db / 20);
+  const maxGain = Math.pow(10, maxDb / 20);
+  const ratio = gain / maxGain;
+  return Math.pow(ratio, 1 / 3) * 100;
+}
+
+export function percentToDb(percent: number, minDb = -60, maxDb = 12): number {
+  if (percent <= 0) return minDb;
+  if (percent >= 100) return maxDb;
+  const maxGain = Math.pow(10, maxDb / 20);
+  const gain = Math.pow(percent / 100, 3) * maxGain;
+  return 20 * Math.log10(gain);
+}
+
 

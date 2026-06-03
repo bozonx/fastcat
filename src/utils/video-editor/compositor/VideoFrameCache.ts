@@ -198,5 +198,22 @@ export function estimateVideoFrameSizeBytes(
     1,
     Math.round(Number((frame as { codedHeight?: unknown }).codedHeight) || height || 1),
   );
-  return codedWidth * codedHeight * 4;
+
+  const frameWithAllocation = frame as {
+    allocationSize?: (options?: { format?: string }) => number;
+  };
+  if (typeof frameWithAllocation.allocationSize === 'function') {
+    try {
+      const size = frameWithAllocation.allocationSize();
+      if (Number.isFinite(size) && size > 0) {
+        return Math.ceil(size * 1.2);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Account for stride alignment (commonly 64 bytes) and GPU texture overhead
+  const alignedWidth = Math.ceil(codedWidth / 64) * 64;
+  return alignedWidth * codedHeight * 4 * 1.5;
 }

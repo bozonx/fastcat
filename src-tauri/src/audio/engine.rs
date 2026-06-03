@@ -9,7 +9,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{OutputCallbackInfo, SampleFormat, Stream, StreamConfig};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, Condvar};
 
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
@@ -65,7 +65,7 @@ impl Default for AudioShared {
 }
 
 pub struct NativeAudioEngine {
-    shared: Arc<Mutex<AudioShared>>,
+    shared: Arc<(Mutex<AudioShared>, Condvar)>,
     running: Arc<AtomicBool>,
     sample_rate: u32,
     device_channels: u16,
@@ -85,7 +85,7 @@ impl NativeAudioEngine {
         let sample_rate = supported.sample_rate();
         let config: StreamConfig = supported.clone().into();
         let device_channels = config.channels.max(1);
-        let shared = Arc::new(Mutex::new(AudioShared::default()));
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let running = Arc::new(AtomicBool::new(true));
         let stream = build_stream(
             &device,
@@ -119,7 +119,7 @@ impl NativeAudioEngine {
         tracks: Vec<SceneAudioTrack>,
         master_gain: f64,
     ) {
-        let mut state = self.shared.lock();
+        let mut state = self.shared.0.lock();
         state.scene = layers;
         state.tracks = tracks;
         state.master_gain = sanitize_master_gain(master_gain);
@@ -137,20 +137,22 @@ impl NativeAudioEngine {
         state
             .decoders
             .retain(|path, _| current_paths.contains(path));
+        self.shared.1.notify_all();
     }
 
     pub fn play(&self, pts_sec: f64) {
-        let mut state = self.shared.lock();
+        let mut state = self.shared.0.lock();
         state.playing = true;
         state.origin_pts_sec = pts_sec.max(0.0);
         state.frames_written = 0;
         state.producer_pts_sec = state.origin_pts_sec;
         state.ring.clear();
         state.seek_serial = state.seek_serial.wrapping_add(1);
+        self.shared.1.notify_all();
     }
 
     pub fn pause(&self) -> f64 {
-        let mut state = self.shared.lock();
+        let mut state = self.shared.0.lock();
         let pts = audible_pts_sec(&state, self.sample_rate);
         state.playing = false;
         state.origin_pts_sec = pts;
@@ -158,11 +160,12 @@ impl NativeAudioEngine {
         state.last_output_buffer_frames = 0;
         state.ring.clear();
         state.producer_pts_sec = pts;
+        self.shared.1.notify_all();
         pts
     }
 
     pub fn seek(&self, pts_sec: f64, playing: bool) {
-        let mut state = self.shared.lock();
+        let mut state = self.shared.0.lock();
         let pts = pts_sec.max(0.0);
         state.origin_pts_sec = pts;
         state.frames_written = 0;
@@ -170,10 +173,11 @@ impl NativeAudioEngine {
         state.ring.clear();
         state.playing = playing;
         state.seek_serial = state.seek_serial.wrapping_add(1);
+        self.shared.1.notify_all();
     }
 
     pub fn current_pts(&self) -> Option<f64> {
-        let state = self.shared.lock();
+        let state = self.shared.0.lock();
         if !state.playing {
             return None;
         }
@@ -181,11 +185,12 @@ impl NativeAudioEngine {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.shared.lock().scene.is_empty()
+        self.shared.0.lock().scene.is_empty()
     }
 
     pub fn scene_end(&self) -> f64 {
         self.shared
+            .0
             .lock()
             .scene
             .iter()
@@ -202,6 +207,7 @@ impl NativeAudioEngine {
 impl Drop for NativeAudioEngine {
     fn drop(&mut self) {
         self.running.store(false, Ordering::Relaxed);
+        self.shared.1.notify_all();
         if self.producer.take().is_some() {
             log::debug!("[audio] producer stop requested");
         }
@@ -212,7 +218,7 @@ fn build_stream(
     device: &cpal::Device,
     config: &StreamConfig,
     format: SampleFormat,
-    shared: Arc<Mutex<AudioShared>>,
+    shared: Arc<(Mutex<AudioShared>, Condvar)>,
     sample_rate: u32,
     device_channels: u16,
 ) -> Result<Stream> {
@@ -277,13 +283,13 @@ impl OutputSample for u16 {
 fn write_output<T: OutputSample>(
     data: &mut [T],
     info: &OutputCallbackInfo,
-    shared: &Arc<Mutex<AudioShared>>,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
     sample_rate: u32,
     device_channels: u16,
 ) {
     let channels = device_channels.max(1) as usize;
     let frames = data.len() / channels;
-    let mut state = match shared.try_lock() {
+    let mut state = match shared.0.try_lock() {
         Some(state) => state,
         None => {
             for sample in data {
@@ -348,30 +354,36 @@ fn output_latency_sec(info: &OutputCallbackInfo) -> f64 {
         .unwrap_or(0.0)
 }
 
-fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, sample_rate: u32) {
+fn producer_loop(shared: Arc<(Mutex<AudioShared>, Condvar)>, running: Arc<AtomicBool>, sample_rate: u32) {
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
     let limit_samples = chunk_frames * OUTPUT_CHANNELS * PREBUFFER_CHUNKS;
 
     while running.load(Ordering::Relaxed) {
         let snapshot = {
-            let state = shared.lock();
-            if !state.playing || state.scene.is_empty() || state.ring.len() >= limit_samples {
-                None
-            } else {
-                Some((
-                    state.scene.clone(),
-                    state.tracks.clone(),
-                    state.master_gain,
-                    state.producer_pts_sec,
-                    state.seek_serial,
-                    state.scene_serial,
-                ))
+            let mut state = shared.0.lock();
+            loop {
+                if !running.load(Ordering::Relaxed) {
+                    return;
+                }
+                if state.playing && !state.scene.is_empty() && state.ring.len() < limit_samples {
+                    break Some((
+                        state.scene.clone(),
+                        state.tracks.clone(),
+                        state.master_gain,
+                        state.producer_pts_sec,
+                        state.seek_serial,
+                        state.scene_serial,
+                    ));
+                }
+                let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(50));
+                if wait_res.timed_out() && (!state.playing || state.scene.is_empty() || state.ring.len() >= limit_samples) {
+                    break None;
+                }
             }
         };
 
         let Some((scene, tracks, master_gain, chunk_start, seek_serial, scene_serial)) = snapshot
         else {
-            std::thread::sleep(Duration::from_millis(8));
             continue;
         };
 
@@ -385,7 +397,7 @@ fn producer_loop(shared: Arc<Mutex<AudioShared>>, running: Arc<AtomicBool>, samp
             &shared,
         );
 
-        let mut state = shared.lock();
+        let mut state = shared.0.lock();
         if state.seek_serial != seek_serial || state.scene_serial != scene_serial || !state.playing
         {
             continue;
@@ -413,7 +425,7 @@ pub(crate) fn render_scene_to_wav(
         .with_context(|| format!("create audio wav {}", target_path.display()))?;
     write_wav_f32_header(&mut file, frames, sample_rate)?;
 
-    let shared = Arc::new(Mutex::new(AudioShared::default()));
+    let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
     let mut written = 0u32;
     while written < frames {
@@ -477,7 +489,7 @@ fn mix_chunk(
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
     sample_rate: u32,
-    shared: &Arc<Mutex<AudioShared>>,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Vec<f32> {
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
     let mut mixed = vec![0.0f32; frames * OUTPUT_CHANNELS];
@@ -853,10 +865,10 @@ fn decode_symphonia_chunk(
     timeline_duration_sec: f64,
     speed: f64,
     target_sample_rate: u32,
-    shared: &Arc<Mutex<AudioShared>>,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
     let mut decoder_state = {
-        let mut state = shared.lock();
+        let mut state = shared.0.lock();
         state.decoders.remove(path)
     };
 
@@ -1010,7 +1022,7 @@ fn decode_symphonia_chunk(
         let silence_len = (timeline_duration_sec * target_sample_rate as f64).round() as usize * 2;
         // Put the state back even on empty decode
         {
-            let mut state = shared.lock();
+            let mut state = shared.0.lock();
             state.decoders.insert(path.to_string(), state_val);
         }
         return Ok(vec![0.0f32; silence_len]);
@@ -1027,7 +1039,7 @@ fn decode_symphonia_chunk(
 
     // Put it back in the cache:
     {
-        let mut state = shared.lock();
+        let mut state = shared.0.lock();
         state.decoders.insert(path.to_string(), state_val);
     }
     Ok(interleaved)
@@ -1039,14 +1051,14 @@ fn decode_audio_chunk(
     timeline_duration_sec: f64,
     speed: f64,
     sample_rate: u32,
-    shared: &Arc<Mutex<AudioShared>>,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
     let is_cacheable = (speed - 1.0).abs() <= f64::EPSILON;
     let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
 
     if is_cacheable && file_size > 0 && file_size < 50 * 1024 * 1024 {
         let cached_samples = {
-            let state = shared.lock();
+            let state = shared.0.lock();
             state.decoded_cache.get(path).cloned()
         };
 
@@ -1056,7 +1068,7 @@ fn decode_audio_chunk(
                 log::info!("[audio] caching entire file in memory: {}", path);
                 let decoded = decode_entire_file_symphonia(path, sample_rate)?;
                 let shared_samples = Arc::new(decoded);
-                let mut state = shared.lock();
+                let mut state = shared.0.lock();
                 state
                     .decoded_cache
                     .insert(path.to_string(), shared_samples.clone());
@@ -1281,10 +1293,10 @@ mod tests {
 
     #[test]
     fn output_clock_does_not_advance_on_underrun() {
-        let shared = Arc::new(Mutex::new(AudioShared {
+        let shared = Arc::new((Mutex::new(AudioShared {
             playing: true,
             ..AudioShared::default()
-        }));
+        }), Condvar::new()));
         let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
 
         write_output(
@@ -1296,18 +1308,18 @@ mod tests {
         );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        assert_eq!(shared.lock().frames_written, 0); // 0 из-за underrun
+        assert_eq!(shared.0.lock().frames_written, 0); // 0 из-за underrun
     }
 
     #[test]
     fn output_clock_advances_when_ring_has_samples() {
         let mut ring = VecDeque::new();
         ring.resize(256, 0.0f32); // 128 стерео-фреймов тишины
-        let shared = Arc::new(Mutex::new(AudioShared {
+        let shared = Arc::new((Mutex::new(AudioShared {
             playing: true,
             ring,
             ..AudioShared::default()
-        }));
+        }), Condvar::new()));
         let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
 
         write_output(
@@ -1319,7 +1331,7 @@ mod tests {
         );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        assert_eq!(shared.lock().frames_written, 128); // 128 проигралось
+        assert_eq!(shared.0.lock().frames_written, 128); // 128 проигралось
     }
 
     #[test]
@@ -1354,7 +1366,7 @@ mod tests {
     #[test]
     fn test_decode_symphonia_chunk() {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
-        let shared = Arc::new(Mutex::new(AudioShared::default()));
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000, &shared);
         assert!(
             decoded.is_ok(),
