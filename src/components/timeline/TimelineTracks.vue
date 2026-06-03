@@ -312,6 +312,15 @@ watch(
     }
   },
 );
+
+watch(
+  () => uiStore.speedModalTrigger,
+  (trigger) => {
+    if (trigger) {
+      openSpeedModal(trigger.trackId, trigger.itemId, trigger.speed);
+    }
+  },
+);
 </script>
 
 <template>

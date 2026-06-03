@@ -51,4 +51,17 @@ describe('ui.store file tree expanded paths', () => {
     ui.setFileTreePathExpanded('folder-b', true);
     expect(Object.keys(ui.fileTreeExpandedPaths)).toEqual(['folder-b']);
   });
+
+  it('triggers speed modal state correctly', () => {
+    const ui = useUiStore();
+    expect(ui.speedModalTrigger).toBeNull();
+
+    ui.triggerSpeedModal('track-1', 'clip-2', 1.5);
+    expect(ui.speedModalTrigger).toEqual({
+      trackId: 'track-1',
+      itemId: 'clip-2',
+      speed: 1.5,
+      timestamp: expect.any(Number),
+    });
+  });
 });

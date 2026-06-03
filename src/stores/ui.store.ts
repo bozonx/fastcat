@@ -245,6 +245,17 @@ export const useUiStore = defineStore('ui', () => {
     isEditorSettingsOpen.value = true;
   }
 
+  const speedModalTrigger = ref<{
+    trackId: string;
+    itemId: string;
+    speed: number;
+    timestamp: number;
+  } | null>(null);
+
+  function triggerSpeedModal(trackId: string, itemId: string, speed: number) {
+    speedModalTrigger.value = { trackId, itemId, speed, timestamp: Date.now() };
+  }
+
   return {
     selectedFsEntry,
     isGlobalDragging,
@@ -324,5 +335,7 @@ export const useUiStore = defineStore('ui', () => {
     showIntegrationSettings,
     openAutoMontageTrigger,
     triggerOpenAutoMontage,
+    speedModalTrigger,
+    triggerSpeedModal,
   };
 });

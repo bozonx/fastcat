@@ -101,6 +101,9 @@ export type HotkeyCommandId =
   | 'timeline.centerPlayhead'
   | 'timeline.globalToStart'
   | 'timeline.globalToEnd'
+  | 'timeline.toggleBladeTool'
+  | 'timeline.reverseSpeed'
+  | 'timeline.openSpeedModal'
   | 'playback.toggle'
   | 'playback.toggle1'
   | 'playback.toStart'
@@ -469,6 +472,9 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     // Timeline - Прочее
     { id: 'timeline.duplicate', groupId: 'timeline', title: 'Duplicate timeline / Create version' },
     { id: 'timeline.centerPlayhead', groupId: 'timeline', title: 'Center playhead' },
+    { id: 'timeline.toggleBladeTool', groupId: 'timeline', title: 'Toggle blade tool' },
+    { id: 'timeline.reverseSpeed', groupId: 'timeline', title: 'Reverse speed' },
+    { id: 'timeline.openSpeedModal', groupId: 'timeline', title: 'Open speed modal' },
 
     // Monitor - Навигация и шаги
     { id: 'playback.stepForward', groupId: 'monitor', title: 'Step forward' },
@@ -602,6 +608,9 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'timeline.setSelectionIn': ['I'],
     'timeline.setSelectionOut': ['O'],
     'timeline.centerPlayhead': ['Shift+/'],
+    'timeline.toggleBladeTool': ['/'],
+    'timeline.reverseSpeed': ['P'],
+    'timeline.openSpeedModal': ['Shift+P'],
 
     'playback.toggle': ['Space'],
     'playback.toggle1': ['Shift+Space'],
@@ -613,7 +622,7 @@ export const DEFAULT_HOTKEYS: HotkeyRegistry = {
     'playback.stepBackward': ['ArrowLeft'],
     'playback.stepForwardLarge': ['Shift+ArrowRight'],
     'playback.stepBackwardLarge': ['Shift+ArrowLeft'],
-    'playback.forward1_25': ['Shift+P'],
+    'playback.forward1_25': [],
     'playback.backward1_25': ['Shift+O'],
     'playback.forward1_5': ['F'],
     'playback.backward1_5': ['D'],

@@ -8,7 +8,7 @@ import { normalizeWorkspaceFilePath } from '~/utils/workspace-common';
 import { revealFileManagerEntry } from '~/composables/file-manager/revealFileManagerEntry';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import { getApplicableClipParameterGroups } from '~/utils/timeline/clip-parameters';
-import { isClipFrameAligned } from '~/utils/timeline/clip-capabilities';
+import { isClipFrameAligned, clipSupportsSpeedControls } from '~/utils/timeline/clip-capabilities';
 
 interface TimelineStoreActions {
   timelineDoc: TimelineDocument | null;
@@ -416,6 +416,20 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
         /* Handled in components since it needs modal state */
       },
     });
+
+    if (clipSupportsSpeedControls({ kind: options.trackKind.value }, clip)) {
+      list.push({
+        id: 'reverse-speed',
+        label: t('videoEditor.audio.reverse'),
+        icon: 'i-heroicons-arrow-path',
+        onClick: () => {
+          const currentSpeed = typeof clip.speed === 'number' ? clip.speed : 1;
+          timelineStore.updateClipProperties(clip.trackId, clip.id, {
+            speed: -currentSpeed,
+          });
+        },
+      });
+    }
 
     if (isInLinkedGroup.value) {
       list.push({

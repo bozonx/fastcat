@@ -14,6 +14,7 @@ import {
   clipSupportsThumbnailControls,
   clipSupportsWaveformControls,
   getSelectedClipRefs,
+  clipSupportsSpeedControls,
 } from '~/utils/timeline/clip-capabilities';
 
 const AUDIO_MIXER_GAIN_STEP = 0.05;
@@ -646,6 +647,58 @@ export function useTimelineHotkeys(
     'timeline.centerPlayhead': () => {
       if (!focusStore.canUseTimelineHotkeys) return false;
       timelineStore.requestScrollToPlayhead();
+      return true;
+    },
+
+    'timeline.toggleBladeTool': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      timelineStore.isTrimModeActive = !timelineStore.isTrimModeActive;
+      return true;
+    },
+
+    'timeline.reverseSpeed': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return false;
+
+      const targets = getSelectedClipRefs(
+        doc,
+        timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
+      ).filter(({ track, clip }) => clipSupportsSpeedControls(track, clip));
+
+      if (targets.length === 0) return false;
+
+      const cmds: TimelineCommand[] = targets.map(({ track, clip }) => {
+        const currentSpeed = typeof clip.speed === 'number' ? clip.speed : 1;
+        return {
+          type: 'update_clip_properties' as const,
+          trackId: track.id,
+          itemId: clip.id,
+          properties: { speed: -currentSpeed },
+        };
+      });
+
+      timelineStore.batchApplyTimeline(cmds);
+      void timelineStore.requestTimelineSave({ immediate: true });
+      return true;
+    },
+
+    'timeline.openSpeedModal': () => {
+      if (!focusStore.canUseTimelineHotkeys) return false;
+      const doc = timelineStore.timelineDoc;
+      if (!doc) return false;
+
+      const targets = getSelectedClipRefs(
+        doc,
+        timelineStore.selectedItemIds.map((itemId) => ({ trackId: '', itemId })),
+      ).filter(({ track, clip }) => clipSupportsSpeedControls(track, clip));
+
+      if (targets.length === 0) return false;
+
+      const { track, clip } = targets[0];
+      const currentSpeed = clip.speed ?? 1;
+
+      uiStore.triggerSpeedModal(track.id, clip.id, currentSpeed);
       return true;
     },
   };

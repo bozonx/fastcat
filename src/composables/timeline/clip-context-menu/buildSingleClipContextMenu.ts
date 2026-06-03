@@ -136,12 +136,24 @@ export function buildSingleClipMainGroup(options: UseClipContextMenuOptions): Co
     timingGroup.push({
       label: `${options.t('fastcat.timeline.speed')} (${currentSpeed.toFixed(2)})`,
       icon: 'i-heroicons-forward',
+      kbds: options.getHotkeyKbds('timeline.openSpeedModal'),
       onSelect: () =>
         options.emitOpenSpeedModal({
           trackId: track.id,
           itemId: clipItem.id,
           speed: currentSpeed,
         }),
+    });
+    timingGroup.push({
+      label: options.t('videoEditor.audio.reverse'),
+      icon: 'i-heroicons-arrow-path',
+      kbds: options.getHotkeyKbds('timeline.reverseSpeed'),
+      onSelect: async () => {
+        options.updateClipProperties(track.id, clipItem.id, {
+          speed: -currentSpeed,
+        });
+        await options.requestTimelineSave({ immediate: true });
+      },
     });
   }
 
