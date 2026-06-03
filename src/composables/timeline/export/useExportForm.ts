@@ -320,7 +320,11 @@ export function useExportForm() {
         }
       }
 
-      const tempFilename = `.${finalFilename}.tmp-${Date.now()}-${randomToken(6)}`;
+      const extIndex = finalFilename.lastIndexOf('.');
+      const tempFilename =
+        extIndex !== -1
+          ? `.${finalFilename.slice(0, extIndex)}.tmp-${Date.now()}-${randomToken(6)}${finalFilename.slice(extIndex)}`
+          : `.${finalFilename}.tmp-${Date.now()}-${randomToken(6)}`;
       const tempFileHandle = await exportDir.getFileHandle(tempFilename, { create: true });
 
       const isAudio = exportType.value === 'audio';

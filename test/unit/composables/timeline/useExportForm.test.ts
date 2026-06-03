@@ -270,4 +270,42 @@ describe('useExportForm', () => {
 
     expect(form.selectedExportRangeId.value).toBe('selection');
   });
+
+  it('сохраняет расширение оригинального файла в имени временного файла', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    form.outputFilename.value = 'my-video.mkv';
+
+    const getFileHandleMock = vi.fn(async (_name: string, options?: { create?: boolean }) => {
+      if (!options?.create) {
+        const error = new Error('Not found');
+        (error as Error & { name: string }).name = 'NotFoundError';
+        throw error;
+      }
+      return {
+        getFile: vi.fn(async () => new File([''], _name)),
+        createWritable: vi.fn(async () => ({
+          write: vi.fn(async () => undefined),
+          close: vi.fn(async () => undefined),
+          abort: vi.fn(async () => undefined),
+        })),
+      };
+    });
+
+    ensureExportDirMock.mockResolvedValue({
+      getFileHandle: getFileHandleMock,
+      removeEntry: vi.fn(async () => undefined),
+    } as any);
+
+    await form.handleStartExport();
+
+    const calls = getFileHandleMock.mock.calls;
+    const tempFileCall = calls.find((call: any) => call[0].includes('.tmp-'));
+
+    expect(tempFileCall).toBeDefined();
+    const tempFilename = tempFileCall[0];
+    expect(tempFilename.startsWith('.my-video.tmp-')).toBe(true);
+    expect(tempFilename.endsWith('.mkv')).toBe(true);
+  });
 });

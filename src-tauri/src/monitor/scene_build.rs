@@ -25,7 +25,7 @@ use crate::compositor::scene::{
     TextBackground, TextLayer, TextVerticalAlign, Transform,
 };
 
-use super::scene::{LayerKind, SceneLayer};
+use super::scene::{LayerKind, SceneLayer, SceneLayerTransform};
 
 /// Строит «виртуальный» (не требующий декода) `CompLayerKind` для слоёв
 /// `Background | Shape | Text`. Для растровых kind'ов возвращает `None` —
@@ -107,19 +107,26 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
 /// Финализирует `CompLayerKind` в `Layer`: transform (явный или center-fit),
 /// opacity и blend-mode из IPC-слоя.
-pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u32), time_sec: f64) -> Layer {
+pub fn finalize_layer(
+    sl: &SceneLayer,
+    kind: CompLayerKind,
+    scene_size: (u32, u32),
+    time_sec: f64,
+) -> Layer {
     let media_size = kind.natural_size();
     let source_rotation = source_orientation_deg(sl);
+    let is_raster_layer = matches!(
+        sl.kind,
+        LayerKind::Video | LayerKind::Image | LayerKind::Svg
+    );
     let transform = match &sl.transform {
         Some(t) => {
-            let fit = if matches!(
-                sl.kind,
-                LayerKind::Video | LayerKind::Image | LayerKind::Svg
-            ) {
+            let fit = if is_raster_layer {
                 oriented_fit_scale(media_size, scene_size, source_rotation)
             } else {
                 1.0
             };
+            let crop = local_crop_from_display_transform(t, source_rotation, is_raster_layer);
             Transform {
                 x: t.x,
                 y: t.y,
@@ -128,10 +135,10 @@ pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u3
                 rotation_deg: t.rotation_deg + source_rotation,
                 anchor_x: t.anchor_x,
                 anchor_y: t.anchor_y,
-                crop_top: t.crop_top,
-                crop_bottom: t.crop_bottom,
-                crop_left: t.crop_left,
-                crop_right: t.crop_right,
+                crop_top: crop.top,
+                crop_bottom: crop.bottom,
+                crop_left: crop.left,
+                crop_right: crop.right,
             }
         }
         None => {
@@ -161,14 +168,68 @@ pub fn finalize_layer(sl: &SceneLayer, kind: CompLayerKind, scene_size: (u32, u3
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct LocalCrop {
+    top: f64,
+    bottom: f64,
+    left: f64,
+    right: f64,
+}
+
+fn local_crop_from_display_transform(
+    transform: &SceneLayerTransform,
+    source_rotation: f64,
+    is_raster_layer: bool,
+) -> LocalCrop {
+    let crop = LocalCrop {
+        top: transform.crop_top,
+        bottom: transform.crop_bottom,
+        left: transform.crop_left,
+        right: transform.crop_right,
+    };
+    if !is_raster_layer {
+        return crop;
+    }
+
+    match normalized_right_angle(source_rotation) {
+        90 => LocalCrop {
+            top: crop.right,
+            right: crop.bottom,
+            bottom: crop.left,
+            left: crop.top,
+        },
+        180 => LocalCrop {
+            top: crop.bottom,
+            right: crop.left,
+            bottom: crop.top,
+            left: crop.right,
+        },
+        270 => LocalCrop {
+            top: crop.left,
+            right: crop.top,
+            bottom: crop.right,
+            left: crop.bottom,
+        },
+        _ => crop,
+    }
+}
+
 pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f32) -> f32 {
     let clip_dur = sl.timeline_end_sec - sl.timeline_start_sec;
     if clip_dur <= 0.0 {
         return 0.0;
     }
 
-    let in_dur = sl.transition_in.as_ref().map(|t| t.duration_sec).unwrap_or(0.0);
-    let out_dur = sl.transition_out.as_ref().map(|t| t.duration_sec).unwrap_or(0.0);
+    let in_dur = sl
+        .transition_in
+        .as_ref()
+        .map(|t| t.duration_sec)
+        .unwrap_or(0.0);
+    let out_dur = sl
+        .transition_out
+        .as_ref()
+        .map(|t| t.duration_sec)
+        .unwrap_or(0.0);
     let out_start = clip_dur - out_dur;
 
     let in_active = in_dur > 0.0 && local_t < in_dur;
@@ -213,9 +274,15 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
 }
 
 fn solve_cubic_bezier(t: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
-    if t <= 0.0 { return 0.0; }
-    if t >= 1.0 { return 1.0; }
-    if (x1 - y1).abs() < 1e-9 && (x2 - y2).abs() < 1e-9 { return t; }
+    if t <= 0.0 {
+        return 0.0;
+    }
+    if t >= 1.0 {
+        return 1.0;
+    }
+    if (x1 - y1).abs() < 1e-9 && (x2 - y2).abs() < 1e-9 {
+        return t;
+    }
 
     let mut guess = t;
     for _ in 0..5 {
@@ -224,7 +291,9 @@ fn solve_cubic_bezier(t: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
         let ax = 1.0 - cx - bx;
         let current_x = ((ax * guess + bx) * guess + cx) * guess;
         let current_slope = (3.0 * ax * guess + 2.0 * bx) * guess + cx;
-        if current_slope.abs() < 1e-9 { break; }
+        if current_slope.abs() < 1e-9 {
+            break;
+        }
         guess -= (current_x - t) / current_slope;
     }
 
@@ -274,6 +343,14 @@ fn source_orientation_deg(sl: &SceneLayer) -> f64 {
     }
 }
 
+fn normalized_right_angle(rotation_deg: f64) -> i32 {
+    let normalized = ((rotation_deg.round() as i32 % 360) + 360) % 360;
+    match normalized {
+        90 | 180 | 270 => normalized,
+        _ => 0,
+    }
+}
+
 fn oriented_fit_scale(natural: (u32, u32), scene_size: (u32, u32), rotation_deg: f64) -> f64 {
     let fit_natural = if is_quarter_turn(rotation_deg) {
         (natural.1, natural.0)
@@ -288,8 +365,7 @@ fn oriented_fit_scale(natural: (u32, u32), scene_size: (u32, u32), rotation_deg:
 }
 
 fn is_quarter_turn(rotation_deg: f64) -> bool {
-    let normalized = ((rotation_deg.round() as i32 % 360) + 360) % 360;
-    normalized == 90 || normalized == 270
+    matches!(normalized_right_angle(rotation_deg), 90 | 270)
 }
 
 // ---------------------------------------------------------------------------
@@ -552,6 +628,42 @@ mod tests {
     use crate::compositor::scene::BlendMode;
     use serde_json::json;
 
+    fn test_shape_kind() -> CompLayerKind {
+        CompLayerKind::Shape(ShapeLayer {
+            geometry: ShapeGeometry::Rectangle {
+                width: 1.0,
+                height: 1.0,
+                corner_radius: 0.0,
+            },
+            fill: Color::WHITE,
+            stroke: Color::TRANSPARENT,
+            stroke_width: 0.0,
+            natural_size: (1920, 1080),
+        })
+    }
+
+    fn layer_with_crop(kind: &str, source_orientation: &str) -> SceneLayer {
+        serde_json::from_value(json!({
+            "id": "crop-test",
+            "kind": kind,
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 1.0,
+            "source_start_sec": 0.0,
+            "source_orientation": source_orientation,
+            "z": 1,
+            "opacity": 1.0,
+            "transform": {
+                "x": 960.0,
+                "y": 540.0,
+                "crop_top": 10.0,
+                "crop_bottom": 20.0,
+                "crop_left": 30.0,
+                "crop_right": 40.0
+            }
+        }))
+        .unwrap()
+    }
+
     #[test]
     fn maps_full_blend_mode_set() {
         assert_eq!(parse_blend_mode("multiply"), BlendMode::Multiply);
@@ -574,6 +686,50 @@ mod tests {
         let c2 = parse_color("00ff00", 0.5);
         assert_eq!(c2.to_rgba8().g, 255);
         assert_eq!(c2.to_rgba8().a, 128);
+    }
+
+    #[test]
+    fn finalize_layer_remaps_raster_crop_for_90_degree_source_orientation() {
+        let layer = layer_with_crop("video", "90");
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 0.0);
+
+        assert_eq!(output.transform.crop_top, 40.0);
+        assert_eq!(output.transform.crop_right, 20.0);
+        assert_eq!(output.transform.crop_bottom, 30.0);
+        assert_eq!(output.transform.crop_left, 10.0);
+    }
+
+    #[test]
+    fn finalize_layer_remaps_raster_crop_for_270_degree_source_orientation() {
+        let layer = layer_with_crop("video", "270");
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 0.0);
+
+        assert_eq!(output.transform.crop_top, 30.0);
+        assert_eq!(output.transform.crop_right, 10.0);
+        assert_eq!(output.transform.crop_bottom, 40.0);
+        assert_eq!(output.transform.crop_left, 20.0);
+    }
+
+    #[test]
+    fn finalize_layer_remaps_raster_crop_for_180_degree_source_orientation() {
+        let layer = layer_with_crop("video", "180");
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 0.0);
+
+        assert_eq!(output.transform.crop_top, 20.0);
+        assert_eq!(output.transform.crop_right, 30.0);
+        assert_eq!(output.transform.crop_bottom, 10.0);
+        assert_eq!(output.transform.crop_left, 40.0);
+    }
+
+    #[test]
+    fn finalize_layer_keeps_non_raster_crop_in_local_space() {
+        let layer = layer_with_crop("shape", "90");
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 0.0);
+
+        assert_eq!(output.transform.crop_top, 10.0);
+        assert_eq!(output.transform.crop_right, 40.0);
+        assert_eq!(output.transform.crop_bottom, 20.0);
+        assert_eq!(output.transform.crop_left, 30.0);
     }
 
     #[test]
