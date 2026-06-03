@@ -451,6 +451,15 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
       throw new Error('Only media and nested timeline clips can be moved across tracks');
     }
 
+    // Re-read the document after any await so we apply against the latest state.
+    const freshDoc = deps.getTimelineDoc();
+    if (!freshDoc) throw new Error('Timeline not loaded');
+    const freshFromTrack = deps.getTrackById(input.fromTrackId);
+    const freshToTrack = deps.getTrackById(input.toTrackId);
+    if (!freshFromTrack || !freshToTrack) throw new Error('Track not found');
+    const freshItem = freshFromTrack.items.find((it) => it.id === input.itemId);
+    if (!freshItem || freshItem.kind !== 'clip') throw new Error('Item no longer exists');
+
     deps.applyTimeline({
       type: 'move_item_to_track',
       fromTrackId: input.fromTrackId,

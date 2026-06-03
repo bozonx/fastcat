@@ -22,6 +22,7 @@ import {
 import { useTimelinePlayheadDrag } from '~/composables/timeline/useTimelinePlayheadDrag';
 import { useTimelineItemSelection } from '~/composables/timeline/useTimelineItemSelection';
 import { useTimelineItemDrag } from '~/composables/timeline/useTimelineItemDrag';
+import { useScrollRectCache } from '~/composables/timeline/useScrollRectCache';
 
 export function useTimelineInteraction(
   scrollEl: Ref<HTMLElement | null>,
@@ -69,44 +70,13 @@ export function useTimelineInteraction(
       projectStore.currentView === 'sound',
   );
 
-  let cachedScrollerRectEl: HTMLElement | null = null;
-  let cachedScrollerRect: DOMRect | null = null;
-  let scrollerRectFrameId = 0;
-
-  function clearScrollerRectCache() {
-    cachedScrollerRectEl = null;
-    cachedScrollerRect = null;
-
-    if (scrollerRectFrameId !== 0) {
-      cancelAnimationFrame(scrollerRectFrameId);
-      scrollerRectFrameId = 0;
-    }
-  }
-
-  function getCachedScrollerRect(el: HTMLElement): DOMRect {
-    if (cachedScrollerRectEl === el && cachedScrollerRect) {
-      return cachedScrollerRect;
-    }
-
-    cachedScrollerRectEl = el;
-    cachedScrollerRect = el.getBoundingClientRect();
-
-    if (scrollerRectFrameId === 0) {
-      scrollerRectFrameId = requestAnimationFrame(() => {
-        scrollerRectFrameId = 0;
-        cachedScrollerRectEl = null;
-        cachedScrollerRect = null;
-      });
-    }
-
-    return cachedScrollerRect;
-  }
+  const { getCachedScrollRect, clearScrollRectCache } = useScrollRectCache();
 
   function onGlobalPointerMove(e: PointerEvent) {
     if (timelineStore.isTrimModeActive && !isDraggingPlayhead.value && !draggingMode.value) {
       const scroller = scrollEl.value;
       if (scroller) {
-        const scrollerRect = getCachedScrollerRect(scroller);
+        const scrollerRect = getCachedScrollRect(scroller);
         const scrollX = scroller.scrollLeft;
         const x = e.clientX - scrollerRect.left + scrollX;
         timelineStore.setCurrentTimeUs(pxToTimeUs(x, timelineStore.timelineZoom));
@@ -119,7 +89,7 @@ export function useTimelineInteraction(
   }
 
   function onGlobalPointerUp(e?: PointerEvent) {
-    clearScrollerRectCache();
+    clearScrollRectCache();
     onPlayheadGlobalPointerUp(e);
     onItemDragGlobalPointerUp(e);
   }
@@ -157,7 +127,7 @@ export function useTimelineInteraction(
   });
 
   onBeforeUnmount(() => {
-    clearScrollerRectCache();
+    clearScrollRectCache();
     window.removeEventListener('keydown', onGlobalKeyDown);
   });
 
