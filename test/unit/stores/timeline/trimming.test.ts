@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
 import { createTimelineTrimmingModule } from '~/stores/timeline/trimming';
+import { buildSplitSelectedClipsCommands } from '~/timeline/domain/editing';
 
 vi.mock('~/timeline/domain/navigation', () => ({
   calculatePrevClipBoundary: vi.fn(() => 500_000),
@@ -216,10 +217,27 @@ describe('TimelineTrimmingModule', () => {
     const deps = createMockDeps();
     deps.batchApplyTimeline.mockReturnValue(['new-clip-1']);
     deps.selectedItemIds.value = ['clip-1', 'other-clip'];
+    const mockBuildSplit = buildSplitSelectedClipsCommands as any;
+    mockBuildSplit.mockReturnValueOnce([{ type: 'split_item', itemId: 'clip-1' }]);
+
     const mod = createTimelineTrimmingModule(deps);
     await mod.splitClipAtPlayhead();
     expect(deps.batchApplyTimeline).toHaveBeenCalled();
     expect(deps.selectedItemIds.value).toEqual(['other-clip', 'new-clip-1']);
+    expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
+  });
+
+  it('splitClipAtPlayhead splits single clip when no selection exists', async () => {
+    const deps = createMockDeps();
+    deps.selectedItemIds.value = [];
+    deps.batchApplyTimeline.mockReturnValue(['new-clip-1']);
+    const mod = createTimelineTrimmingModule(deps);
+    await mod.splitClipAtPlayhead();
+    expect(deps.batchApplyTimeline).toHaveBeenCalledWith(
+      [{ type: 'split_clip' }],
+      expect.objectContaining({ labelKey: 'videoEditor.fileManager.history.entries.splitClip' }),
+    );
+    expect(deps.selectedItemIds.value).toEqual(['new-clip-1']);
     expect(deps.requestTimelineSave).toHaveBeenCalledWith({ immediate: true });
   });
 
@@ -237,10 +255,13 @@ describe('TimelineTrimmingModule', () => {
     const deps = createMockDeps();
     deps.batchApplyTimeline.mockReturnValue(['new-clip-1']);
     deps.selectedItemIds.value = ['clip-1', 'clip-2']; // clip-2 is locked, clip-1 is unlocked
+    const mockBuildSplit = buildSplitSelectedClipsCommands as any;
+    mockBuildSplit.mockReturnValueOnce([{ type: 'split_item', itemId: 'clip-1' }]);
+
     const mod = createTimelineTrimmingModule(deps);
     await mod.splitClipsAtPlayhead();
     expect(deps.batchApplyTimeline).toHaveBeenCalledWith(
-      [{ type: 'split_selected' }],
+      [{ type: 'split_item', itemId: 'clip-1' }],
       expect.objectContaining({ saveMode: 'immediate' }),
     );
     expect(deps.selectedItemIds.value).toEqual(['clip-2', 'new-clip-1']);

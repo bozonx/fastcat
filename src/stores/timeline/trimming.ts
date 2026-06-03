@@ -264,7 +264,11 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
   }
 
   async function splitClipAtPlayhead(targetOverride?: { trackId: string; itemId: string } | null) {
-    await splitClipAtTime(targetOverride ?? deps.getHotkeyTargetClip(), deps.currentTime.value);
+    if (!targetOverride && deps.selectedItemIds.value.length > 0) {
+      await splitClipsAtPlayhead();
+    } else {
+      await splitClipAtTime(targetOverride ?? deps.getHotkeyTargetClip(), deps.currentTime.value);
+    }
   }
 
   async function splitClipAtTime(target: { trackId: string; itemId: string } | null, atUs: number) {
@@ -335,8 +339,9 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     });
 
     if (createdIds && createdIds.length > 0) {
-      const itemIdsToSplitSet = new Set(itemIdsToSplit);
-      const remainingSelection = selectedItemIds.filter((id) => !itemIdsToSplitSet.has(id));
+      const splitItemIds = cmds.map((c) => (c as any).itemId).filter(Boolean) as string[];
+      const splitItemIdsSet = new Set(splitItemIds);
+      const remainingSelection = selectedItemIds.filter((id) => !splitItemIdsSet.has(id));
       const allIds = Array.from(new Set([...remainingSelection, ...createdIds]));
       deps.selectedItemIds.value = allIds;
     }
