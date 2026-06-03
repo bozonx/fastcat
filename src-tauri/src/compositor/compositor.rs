@@ -24,6 +24,7 @@ use winit::window::Window;
 
 use super::effects::{EffectPipeline, EffectSpec, EffectSource};
 use super::scene::{BlendMode, Layer, LayerKind, RasterSource, Transform};
+use super::transitions::TransitionPipeline;
 
 /// Закешированный таргет offscreen-рендера. Пересоздаётся только при изменении размера.
 /// Без кеша мы аллоцировали бы 8-16 МБ wgpu Buffer + текстуру на каждый кадр (60 FPS = 480-960 МБ/с
@@ -41,6 +42,7 @@ pub struct Compositor {
     render_cx: RenderContext,
     renderers: HashMap<usize, Renderer>,
     effect_pipelines: HashMap<usize, EffectPipeline>,
+    transition_pipelines: HashMap<usize, TransitionPipeline>,
     /// Offscreen target — отдельный на каждый wgpu device. Текстура и readback-buffer
     /// привязаны к конкретному `wgpu::Device`; шарить один `Option` между device'ами
     /// приводило бы к молотьбе rebuild'ов при чередовании (preview ↔ export-device).
@@ -53,6 +55,7 @@ impl Compositor {
             render_cx: RenderContext::new(),
             renderers: HashMap::new(),
             effect_pipelines: HashMap::new(),
+            transition_pipelines: HashMap::new(),
             offscreen: HashMap::new(),
         }
     }
@@ -204,7 +207,7 @@ impl Compositor {
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
         let effective_scene =
-            self.materialize_effect_layers(dev_id, scene, texture_cache, &device, &queue)?;
+            self.materialize_transitions_and_effects(dev_id, scene, texture_cache, &device, &queue)?;
 
         Ok(effective_scene.to_vello(viewport_w, viewport_h, |key| {
             if let Some(texture) = texture_cache.get(key) {
@@ -215,7 +218,7 @@ impl Compositor {
         }))
     }
 
-    fn materialize_effect_layers(
+    fn materialize_transitions_and_effects(
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
@@ -223,21 +226,78 @@ impl Compositor {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<super::scene::Scene> {
-        if !scene.layers.iter().any(|layer| !layer.effects.is_empty()) {
-            return Ok(scene.clone());
-        }
+        let mut layers = scene.layers.clone();
 
-        let mut layers = Vec::with_capacity(scene.layers.len());
-        for layer in &scene.layers {
+        // 1. Применяем переходы
+        let mut to_remove = std::collections::HashSet::new();
+        
+        for i in 0..layers.len() {
+            if let Some(trans_info) = layers[i].transition.clone() {
+                let from_layer_opt = layers.iter().find(|l| l.id == trans_info.from_layer_id).cloned();
+                
+                if let Some(from_layer) = from_layer_opt {
+                    let from_source = self.layer_to_effect_source(
+                        dev_id,
+                        scene,
+                        &from_layer,
+                        texture_cache,
+                        device,
+                        queue,
+                    )?;
+                    
+                    let to_source = self.layer_to_effect_source(
+                        dev_id,
+                        scene,
+                        &layers[i],
+                        texture_cache,
+                        device,
+                        queue,
+                    )?;
+                    
+                    let pipeline = self
+                        .transition_pipelines
+                        .entry(dev_id)
+                        .or_insert_with(|| TransitionPipeline::new(device));
+                        
+                    match pipeline.apply_transition(
+                        device,
+                        queue,
+                        &from_source,
+                        &to_source,
+                        &trans_info.spec,
+                        trans_info.progress,
+                    ) {
+                        Ok(processed) => {
+                            layers[i].kind = LayerKind::Raster {
+                                natural_size: (processed.width, processed.height),
+                                source: RasterSource::Image(processed),
+                            };
+                            layers[i].transition = None;
+                            
+                            to_remove.insert(from_layer.id.clone());
+                        }
+                        Err(e) => {
+                            log::warn!("[compositor] transition failed: {e:?}");
+                        }
+                    }
+                }
+            }
+        }
+        
+        layers.retain(|l| !to_remove.contains(&l.id));
+
+        // 2. Применяем эффекты к оставшимся слоям
+        let mut final_layers = Vec::with_capacity(layers.len());
+        for layer in layers {
             if layer.effects.is_empty() {
-                layers.push(layer.clone());
+                final_layers.push(layer);
                 continue;
             }
 
             let source = self.layer_to_effect_source(
                 dev_id,
                 scene,
-                layer,
+                &layer,
                 texture_cache,
                 device,
                 queue,
@@ -250,7 +310,7 @@ impl Compositor {
                 source: RasterSource::Image(processed),
             };
             next.effects.clear();
-            layers.push(next);
+            final_layers.push(next);
         }
 
         Ok(super::scene::Scene {
@@ -258,7 +318,7 @@ impl Compositor {
             height: scene.height,
             time: scene.time,
             background: scene.background,
-            layers,
+            layers: final_layers,
         })
     }
 
@@ -313,6 +373,7 @@ impl Compositor {
                 blend: BlendMode::Normal,
                 mask: None,
                 effects: Vec::new(),
+                transition: None,
             }],
         };
         let vello = isolated.to_vello(width, height, |key| {

@@ -494,13 +494,29 @@ impl LayerRuntimeManager {
     /// Запускает фоновую загрузку для активных слоёв и прокачивает видеокадры.
     pub fn tick(&mut self, t: f64, device: Option<wgpu::Device>, queue: Option<wgpu::Queue>) {
         let scene = self.scene.clone();
+        let mut active_ids = std::collections::HashSet::new();
+
         for layer in scene.iter() {
             if layer.covers(t) {
+                active_ids.insert(layer.id.clone());
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
+
+                if let Some(t_in) = &layer.transition_in {
+                    let local_t = t - layer.timeline_start_sec;
+                    if t_in.transition_type != "dissolve" && local_t < t_in.duration_sec && local_t >= 0.0 {
+                        if let Some(from_id) = &t_in.from_layer_id {
+                            if let Some(from_layer) = scene.iter().find(|l| &l.id == from_id) {
+                                active_ids.insert(from_layer.id.clone());
+                                self.ensure_runtime_for(from_layer, device.clone(), queue.clone());
+                            }
+                        }
+                    }
+                }
             }
         }
+
         for layer in scene.iter() {
-            if !layer.covers(t) || layer.kind != LayerKind::Video {
+            if !active_ids.contains(&layer.id) || layer.kind != LayerKind::Video {
                 continue;
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
@@ -568,9 +584,25 @@ impl LayerRuntimeManager {
     pub fn build_compositor_scene(&self, t: f64) -> Scene {
         let (scene_w, scene_h) = self.resolved_scene_size();
 
-        let mut indices: Vec<usize> = (0..self.scene.len())
-            .filter(|&i| self.scene[i].covers(t))
-            .collect();
+        let mut active_indices = std::collections::HashSet::new();
+        for i in 0..self.scene.len() {
+            if self.scene[i].covers(t) {
+                active_indices.insert(i);
+
+                if let Some(t_in) = &self.scene[i].transition_in {
+                    let local_t = t - self.scene[i].timeline_start_sec;
+                    if t_in.transition_type != "dissolve" && local_t < t_in.duration_sec && local_t >= 0.0 {
+                        if let Some(from_id) = &t_in.from_layer_id {
+                            if let Some(from_idx) = (0..self.scene.len()).find(|&idx| &self.scene[idx].id == from_id) {
+                                active_indices.insert(from_idx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut indices: Vec<usize> = active_indices.into_iter().collect();
         indices.sort_by_key(|&i| self.scene[i].z);
 
         let mut layers = Vec::with_capacity(indices.len());

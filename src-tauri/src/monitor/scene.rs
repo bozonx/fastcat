@@ -124,12 +124,16 @@ pub struct SceneLayer {
     pub effects: Vec<EffectSpec>,
 }
 
+use crate::compositor::transitions::TransitionSpec;
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct SceneTransition {
     #[serde(rename = "type")]
     pub transition_type: String,
     pub duration_sec: f64,
     pub curve: Option<String>,
+    pub from_layer_id: Option<String>,
+    pub spec: Option<TransitionSpec>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]

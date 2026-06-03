@@ -150,6 +150,13 @@ impl Scene {
 }
 
 #[derive(Debug, Clone)]
+pub struct TransitionInfo {
+    pub spec: super::transitions::TransitionSpec,
+    pub progress: f32,
+    pub from_layer_id: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct Layer {
     pub id: String,
     pub kind: LayerKind,
@@ -158,6 +165,7 @@ pub struct Layer {
     pub blend: BlendMode,
     pub mask: Option<Mask>,
     pub effects: Vec<EffectSpec>,
+    pub transition: Option<TransitionInfo>,
 }
 
 /// Тип слоя. `#[non_exhaustive]` — добавление новых вариантов (Text, Svg, Shape,
@@ -701,6 +709,7 @@ mod tests {
             blend: BlendMode::Normal,
             mask: None,
             effects: Vec::new(),
+            transition: None,
         }
     }
 

@@ -20,6 +20,8 @@ import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-ed
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
 import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
+import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
+import { getTransitionManifest } from '~/transitions/core/registry';
 
 interface NativeAudioWorkerTimelineClip extends WorkerTimelineClip {
   originalAudioGain?: unknown;
@@ -222,12 +224,53 @@ function buildBaseLayer(params: {
   sceneWidth: number;
   sceneHeight: number;
   z: number;
+  allClips: WorkerTimelineClip[];
 }): Omit<NativeSceneLayer, 'kind' | 'path'> {
-  const { clip, sceneWidth, sceneHeight, z } = params;
+  const { clip, sceneWidth, sceneHeight, z, allClips } = params;
   const startUs = clip.timelineRange.startUs;
   const durationUs = clip.timelineRange.durationUs;
   const sourceStartUs = clip.sourceRange.startUs;
   const sourceDurationUs = clip.sourceRange.durationUs;
+
+  const transition_in = (() => {
+    if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
+      const type = clip.transitionIn.type;
+      const manifest = getTauriTransitionManifest(type) || getTransitionManifest(type);
+      const spec = manifest?.toTauriSpec ? manifest.toTauriSpec(clip.transitionIn.params ?? {}) : undefined;
+
+      const fromClip = allClips.find(c => 
+        c.trackId === clip.trackId &&
+        c.id !== clip.id &&
+        c.timelineRange.startUs < clip.timelineRange.startUs &&
+        c.timelineRange.endUs > clip.timelineRange.startUs
+      );
+
+      return {
+        type,
+        duration_sec: clip.transitionIn.durationUs / 1_000_000,
+        curve: clip.transitionIn.curve,
+        from_layer_id: fromClip?.id,
+        spec,
+      };
+    }
+    return undefined;
+  })();
+
+  const transition_out = (() => {
+    if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
+      const type = clip.transitionOut.type;
+      const manifest = getTauriTransitionManifest(type) || getTransitionManifest(type);
+      const spec = manifest?.toTauriSpec ? manifest.toTauriSpec(clip.transitionOut.params ?? {}) : undefined;
+
+      return {
+        type,
+        duration_sec: clip.transitionOut.durationUs / 1_000_000,
+        curve: clip.transitionOut.curve,
+        spec,
+      };
+    }
+    return undefined;
+  })();
 
   return {
     id: clip.id,
@@ -246,22 +289,8 @@ function buildBaseLayer(params: {
     blend_mode: clip.blendMode ?? 'normal',
     effects: buildNativeEffectSpecs(clip.effects),
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
-    transition_in:
-      clip.transitionIn && clip.transitionIn.durationUs > 0
-        ? {
-            type: clip.transitionIn.type,
-            duration_sec: clip.transitionIn.durationUs / 1_000_000,
-            curve: clip.transitionIn.curve,
-          }
-        : undefined,
-    transition_out:
-      clip.transitionOut && clip.transitionOut.durationUs > 0
-        ? {
-            type: clip.transitionOut.type,
-            duration_sec: clip.transitionOut.durationUs / 1_000_000,
-            curve: clip.transitionOut.curve,
-          }
-        : undefined,
+    transition_in,
+    transition_out,
   };
 }
 
@@ -352,7 +381,7 @@ export async function buildNativeMonitorScene(
   for (const [index, clip] of builtVideo.clips.entries()) {
     if (clip.clipType === 'hud' || clip.clipType === 'adjustment') continue;
     const z = clip.layer * 1000 + index;
-    const base = buildBaseLayer({ clip, sceneWidth, sceneHeight, z });
+    const base = buildBaseLayer({ clip, sceneWidth, sceneHeight, z, allClips: builtVideo.clips });
 
     if (clip.clipType === 'media') {
       const path = clip.source?.path;

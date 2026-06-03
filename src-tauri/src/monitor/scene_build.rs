@@ -22,7 +22,7 @@ use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 
 use crate::compositor::scene::{
     BlendMode, Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextAlign,
-    TextBackground, TextLayer, TextVerticalAlign, Transform,
+    TextBackground, TextLayer, TextVerticalAlign, Transform, TransitionInfo,
 };
 
 use super::scene::{LayerKind, SceneLayer, SceneLayerTransform};
@@ -157,6 +157,25 @@ pub fn finalize_layer(
     let local_t = time_sec - sl.timeline_start_sec;
     let opacity = compute_transition_opacity(sl, local_t, base_opacity);
 
+    let mut transition = None;
+    if let Some(t_in) = &sl.transition_in {
+        let in_dur = t_in.duration_sec;
+        if in_dur > 0.0 && local_t < in_dur && local_t >= 0.0 {
+            if t_in.transition_type != "dissolve" {
+                if let (Some(from_id), Some(spec)) = (&t_in.from_layer_id, &t_in.spec) {
+                    let progress = (local_t / in_dur).clamp(0.0, 1.0);
+                    let curve = t_in.curve.as_deref().unwrap_or("linear");
+                    let progress_curved = apply_transition_curve(progress, curve) as f32;
+                    transition = Some(TransitionInfo {
+                        spec: spec.clone(),
+                        progress: progress_curved,
+                        from_layer_id: from_id.clone(),
+                    });
+                }
+            }
+        }
+    }
+
     Layer {
         id: sl.id.clone(),
         kind,
@@ -165,6 +184,7 @@ pub fn finalize_layer(
         blend: parse_blend_mode(&sl.blend_mode),
         mask: None,
         effects: sl.effects.clone(),
+        transition,
     }
 }
 
