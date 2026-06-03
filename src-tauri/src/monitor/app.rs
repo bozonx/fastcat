@@ -432,11 +432,12 @@ impl WindowState {
     // -----------------------------------------------------------------------
 
     fn tick_and_render(&mut self) {
-        let t = self
-            .audio
-            .as_ref()
-            .and_then(NativeAudioEngine::current_pts)
-            .unwrap_or_else(|| self.clock.current_pts());
+        let t = if let Some(audio_pts) = self.audio.as_ref().and_then(NativeAudioEngine::current_pts) {
+            self.clock.sync_to_audio_pts(audio_pts);
+            audio_pts
+        } else {
+            self.clock.current_pts()
+        };
 
         // Детектируем конец сцены во время воспроизведения.
         if self.clock.is_playing() {

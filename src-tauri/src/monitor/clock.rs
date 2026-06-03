@@ -55,6 +55,18 @@ impl PlaybackClock {
             self.wall_origin = Some(Instant::now());
         }
     }
+
+    /// Корректирует wall_origin по реальному audio PTS, чтобы
+    /// wall-clock не дрейфовал относительно audio clock.
+    /// Вызывать из тика монитора при наличии аудио.
+    pub fn sync_to_audio_pts(&mut self, audio_pts: f64) {
+        if self.wall_origin.is_some() {
+            self.pts_origin = audio_pts.max(0.0);
+            self.wall_origin = Some(Instant::now());
+        } else {
+            self.pts_origin = audio_pts.max(0.0);
+        }
+    }
 }
 
 #[cfg(test)]

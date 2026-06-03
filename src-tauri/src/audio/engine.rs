@@ -14,8 +14,8 @@ use parking_lot::{Mutex, Condvar};
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 const OUTPUT_CHANNELS: usize = 2;
-const CHUNK_DURATION_SEC: f64 = 1.0;
-const PREBUFFER_CHUNKS: usize = 3;
+const CHUNK_DURATION_SEC: f64 = 0.05;
+const PREBUFFER_CHUNKS: usize = 8;
 
 struct CachedAudioDecoder {
     format: Box<dyn symphonia::core::formats::FormatReader>,
@@ -429,11 +429,14 @@ fn write_output<T: OutputSample>(
     }
 
     let mut temp = [0.0f32; 4096];
+    let mut heap_temp: Vec<f32> = Vec::new();
     let temp_slice = if data.len() <= temp.len() {
+        temp[..data.len()].fill(0.0);
         &mut temp[..data.len()]
     } else {
         // Heap fallback for very large device buffers (uncommon).
-        &mut vec![0.0f32; data.len()][..]
+        heap_temp.resize(data.len(), 0.0);
+        &mut heap_temp[..]
     };
     let read = ring.pop_slice(temp_slice);
     let actual_played_frames = (read / channels).min(frames);
