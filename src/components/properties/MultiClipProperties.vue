@@ -194,11 +194,13 @@ const {
   updateAudioFadeOutCurve,
   updateAudioFadeOutSec,
   updateAudioGain,
+  onVolumeDragStart,
+  onVolumeDragEnd,
 } = useClipAudio({
   clip: computed(() => (firstWaveformClip.value || props.items[0]) as TimelineClipItem),
   tracks: computed(() => timelineStore.timelineDoc?.tracks),
   mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
-  updateAudio: (patch) => {
+  updateAudio: (patch, options) => {
     const cmds: import('~/timeline/commands').TimelineCommand[] = audioClipRefs.value.map(
       ({ track, clip }) => ({
         type: 'update_clip_properties',
@@ -208,9 +210,17 @@ const {
       }),
     );
     if (cmds.length > 0) {
-      timelineStore.batchApplyTimeline(cmds);
+      timelineStore.batchApplyTimeline(cmds, options);
     }
   },
+  pushHistory: (preState, commandType) => {
+    timelineStore.pushTimelineHistory(
+      preState,
+      commandType,
+      'videoEditor.fileManager.history.entries.updateClipGain',
+    );
+  },
+  getTimelineDoc: () => timelineStore.timelineDoc,
 });
 
 function handleBatchToggleTransition(edge: 'in' | 'out') {
@@ -635,6 +645,8 @@ const otherActions = computed(() => {
       @update-audio-fade-in-sec="updateAudioFadeInSec"
       @update-audio-fade-out-curve="updateAudioFadeOutCurve"
       @update-audio-fade-out-sec="updateAudioFadeOutSec"
+      @volume-drag-start="onVolumeDragStart"
+      @volume-drag-end="onVolumeDragEnd"
     />
 
     <ClipTransformSection

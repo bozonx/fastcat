@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import DbSlider from '~/components/audio/DbSlider.vue';
@@ -25,12 +25,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  updateAudioGain: [val: number];
+  updateAudioGain: [val: number, options?: { skipHistory?: boolean }];
   updateAudioBalance: [val: number];
   updateAudioFadeInSec: [val: number];
   updateAudioFadeOutSec: [val: number];
   updateAudioFadeInCurve: [val: AudioFadeCurve];
   updateAudioFadeOutCurve: [val: AudioFadeCurve];
+  volumeDragStart: [];
+  volumeDragEnd: [];
 }>();
 
 const { t } = useI18n();
@@ -41,6 +43,22 @@ const audioGainDb = computed({
   get: () => linearToDb(props.audioGain),
   set: (db: number) => emit('updateAudioGain', dbToLinear(db)),
 });
+
+const isDragging = ref(false);
+
+function onVolumeDragStart() {
+  isDragging.value = true;
+  emit('volumeDragStart');
+}
+
+function onVolumeDragEnd() {
+  isDragging.value = false;
+  emit('volumeDragEnd');
+}
+
+function onVolumeUpdate(db: number) {
+  emit('updateAudioGain', dbToLinear(db), { skipHistory: isDragging.value });
+}
 
 const fadeCurveOptions = [
   {
@@ -190,7 +208,14 @@ const fadeCurveOptions = [
           </span>
         </div>
         <div class="flex-1 min-h-[160px]">
-          <DbSlider v-model="audioGainDb" :level-db="props.audioLevelDb" :disabled="!isEnabled" />
+          <DbSlider
+            :model-value="audioGainDb"
+            :level-db="props.audioLevelDb"
+            :disabled="!isEnabled"
+            @update:model-value="onVolumeUpdate"
+            @drag-start="onVolumeDragStart"
+            @drag-end="onVolumeDragEnd"
+          />
         </div>
       </div>
     </div>

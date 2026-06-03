@@ -110,6 +110,11 @@ export interface TimelineClipsModule {
       background?: import('~/timeline/types').HudMediaParams;
       content?: import('~/timeline/types').HudMediaParams;
     },
+    options?: {
+      skipHistory?: boolean;
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      historyMode?: 'immediate' | 'debounced';
+    },
   ) => string[];
   updateClipTransition: (
     trackId: string,
@@ -297,6 +302,11 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       content?: import('~/timeline/types').HudMediaParams;
       frame?: import('~/timeline/types').HudMediaParams;
     },
+    options?: {
+      skipHistory?: boolean;
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      historyMode?: 'immediate' | 'debounced';
+    },
   ): string[] {
     const validatedProperties = { ...properties };
 
@@ -367,7 +377,9 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       }
       if (cmds.length > 0) {
         return deps.batchApplyTimeline(cmds, {
-          saveMode: 'debounced',
+          saveMode: options?.saveMode ?? 'debounced',
+          skipHistory: options?.skipHistory,
+          historyMode: options?.historyMode,
           labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
         });
       }
@@ -380,7 +392,11 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         itemId,
         properties: validatedProperties,
       },
-      { historyMode: 'debounced' },
+      {
+        historyMode: options?.historyMode ?? 'debounced',
+        skipHistory: options?.skipHistory,
+        saveMode: options?.saveMode,
+      },
     );
   }
 

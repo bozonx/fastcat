@@ -261,6 +261,7 @@ The current behavior is:
 - Fullscreen preview and modal dialogs block panel focus routing and `Tab` switching.
 - `Backspace` closes the currently focused detached panel in `Cut` view and restores focus to the last active main panel.
 - Text inputs and text editors keep their native keyboard behavior and do not receive editor hotkeys.
+- Clicking on buttons via pointer (mouse/touch) automatically removes focus (`blur()`) to prevent focus trapping and accidental hotkey triggers, while preserving keyboard accessibility for Tab navigation.
 
 ## Testing
 

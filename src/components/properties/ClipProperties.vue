@@ -351,13 +351,19 @@ const {
   updateAudioFadeOutCurve,
   updateAudioFadeOutSec,
   updateAudioGain,
+  onVolumeDragStart,
+  onVolumeDragEnd,
 } = useClipAudio({
   clip: clipRef,
   tracks: computed(() => timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined),
   mediaMetadataByPath: computed(() => mediaStore.mediaMetadata),
-  updateAudio: (patch) => {
-    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, patch);
+  updateAudio: (patch, options) => {
+    timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, patch, options);
   },
+  pushHistory: (preState, commandType, labelKey) => {
+    timelineStore.pushTimelineHistory(preState, commandType, labelKey);
+  },
+  getTimelineDoc: () => timelineStore.timelineDoc,
 });
 
 const effectsSectionRef = ref<HTMLElement | null>(null);
@@ -583,6 +589,8 @@ defineExpose({
         @update-audio-fade-in-sec="updateAudioFadeInSec"
         @update-audio-fade-out-curve="updateAudioFadeOutCurve"
         @update-audio-fade-out-sec="updateAudioFadeOutSec"
+        @volume-drag-start="onVolumeDragStart"
+        @volume-drag-end="onVolumeDragEnd"
       />
 
       <AudioEffectsEditor

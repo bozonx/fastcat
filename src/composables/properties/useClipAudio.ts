@@ -1,23 +1,33 @@
-import { computed, type Ref } from 'vue';
-import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
+import { computed, ref, type Ref } from 'vue';
+import type { TimelineClipItem, TimelineTrack, TimelineDocument } from '~/timeline/types';
 import {
   CLIP_AUDIO_GAIN_MAX,
   normalizeAudioFadeCurve,
   type AudioFadeCurve,
 } from '~/utils/audio/envelope';
+import { cloneValue } from '~/utils/clone';
 
 interface UseClipAudioOptions {
   clip: Ref<TimelineClipItem>;
   tracks: Ref<TimelineTrack[] | undefined>;
   mediaMetadataByPath: Ref<Record<string, unknown>>;
-  updateAudio: (patch: {
-    audioGain?: number;
-    audioBalance?: number;
-    audioFadeInUs?: number;
-    audioFadeOutUs?: number;
-    audioFadeInCurve?: AudioFadeCurve;
-    audioFadeOutCurve?: AudioFadeCurve;
-  }) => void;
+  updateAudio: (
+    patch: {
+      audioGain?: number;
+      audioBalance?: number;
+      audioFadeInUs?: number;
+      audioFadeOutUs?: number;
+      audioFadeInCurve?: AudioFadeCurve;
+      audioFadeOutCurve?: AudioFadeCurve;
+    },
+    options?: {
+      skipHistory?: boolean;
+      saveMode?: 'debounced' | 'immediate' | 'none';
+      historyMode?: 'immediate' | 'debounced';
+    },
+  ) => void;
+  pushHistory?: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
+  getTimelineDoc?: () => TimelineDocument | null;
 }
 
 function clampNumber(value: unknown, min: number, max: number): number {
@@ -69,9 +79,9 @@ export function useClipAudio(options: UseClipAudioOptions) {
     return Math.max(-1, Math.min(1, safe));
   });
 
-  function updateAudioGain(val: unknown) {
+  function updateAudioGain(val: unknown, applyOptions?: { skipHistory?: boolean }) {
     const safe = clampNumber(val, 0, CLIP_AUDIO_GAIN_MAX);
-    options.updateAudio({ audioGain: safe });
+    options.updateAudio({ audioGain: safe }, applyOptions);
   }
 
   function updateAudioBalance(val: unknown) {
@@ -135,6 +145,25 @@ export function useClipAudio(options: UseClipAudioOptions) {
     options.updateAudio({ audioFadeOutCurve: normalizeAudioFadeCurve(val) });
   }
 
+  const docBeforeDrag = ref<TimelineDocument | null>(null);
+
+  function onVolumeDragStart() {
+    if (options.getTimelineDoc) {
+      docBeforeDrag.value = cloneValue(options.getTimelineDoc());
+    }
+  }
+
+  function onVolumeDragEnd() {
+    if (docBeforeDrag.value && options.pushHistory) {
+      options.pushHistory(
+        docBeforeDrag.value,
+        'update_clip_properties',
+        'videoEditor.fileManager.history.entries.updateClipGain',
+      );
+    }
+    docBeforeDrag.value = null;
+  }
+
   return {
     audioBalance,
     audioFadeInCurve,
@@ -154,5 +183,7 @@ export function useClipAudio(options: UseClipAudioOptions) {
     updateAudioFadeOutCurve,
     updateAudioFadeOutSec,
     updateAudioGain,
+    onVolumeDragStart,
+    onVolumeDragEnd,
   };
 }

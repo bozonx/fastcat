@@ -12,6 +12,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: number): void;
+  (e: 'drag-start'): void;
+  (e: 'drag-end'): void;
 }>();
 
 const isFocused = ref(false);
@@ -118,11 +120,13 @@ function onDocPointerUp(event: PointerEvent) {
   if (activePointerId.value !== null && event.pointerId !== activePointerId.value) return;
   activePointerId.value = null;
   clearDragListeners();
+  emit('drag-end');
 }
 
 function onDocMouseUp() {
   activePointerId.value = null;
   clearDragListeners();
+  emit('drag-end');
 }
 
 function onPointerDown(event: PointerEvent) {
@@ -132,6 +136,7 @@ function onPointerDown(event: PointerEvent) {
   activePointerId.value = event.pointerId;
   sliderRef.value?.setPointerCapture?.(event.pointerId);
   sliderRef.value?.focus(); // Make sure it gets focus on click
+  emit('drag-start');
   updateFromY(event.clientY);
   document.addEventListener('pointermove', onDocPointerMove);
   document.addEventListener('pointerup', onDocPointerUp);
