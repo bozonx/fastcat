@@ -630,18 +630,15 @@ export const useMediaStore = defineStore('media', () => {
     const maxLength = options?.maxLength || 8000;
 
     if (isTauriRuntime()) {
-      try {
-        const handle = await projectStore.getFileHandleByPath(sourceKey);
-        const nativePath = getNativeFileHandlePath(handle);
-        if (nativePath) {
-          const nativePeaks = await nativeMediaExtractPeaks(nativePath, maxLength);
-          if (nativePeaks && nativePeaks.length > 0) {
-            return nativePeaks;
-          }
+      const handle = await projectStore.getFileHandleByPath(sourceKey);
+      const nativePath = getNativeFileHandlePath(handle);
+      if (nativePath) {
+        const nativePeaks = await nativeMediaExtractPeaks(nativePath, maxLength);
+        if (nativePeaks && nativePeaks.length > 0) {
+          return nativePeaks;
         }
-      } catch (err) {
-        log.warn('Failed native peaks extraction, falling back to worker:', err);
       }
+      return null;
     }
 
     const worker = ensureSharedAudioDecodeWorker();
