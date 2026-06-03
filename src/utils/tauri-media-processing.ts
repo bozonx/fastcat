@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { ConversionRequest } from '~/types/conversion';
 import type { TauriFileHandle } from '~/stores/workspace/provider/tauri-handle';
+import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 
 type NativeBytePayload = ArrayBuffer | ArrayBufferView | number[];
 
@@ -43,8 +44,13 @@ export async function nativeMediaMetadata(path: string): Promise<NativeMediaMeta
 export async function nativeMediaExtractPeaks(
   path: string,
   maxLength: number,
-): Promise<number[][]> {
-  return await invoke<number[][]>('native_media_extract_peaks', { path, maxLength });
+): Promise<Float32Array[]> {
+  const bytes = await invoke<NativeBytePayload>('native_media_extract_peaks', { path, maxLength });
+  const peaks = deserializeWaveformPeaks(toBlobPart(bytes));
+  if (!peaks) {
+    throw new Error('Invalid native waveform payload');
+  }
+  return peaks;
 }
 
 export async function nativeGenerateProxy(params: {

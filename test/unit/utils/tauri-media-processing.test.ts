@@ -40,4 +40,31 @@ describe('tauri media processing byte handling', () => {
     expect(blobs[1]).toBeNull();
     expect(Array.from(new Uint8Array(await blobs[0]!.arrayBuffer()))).toEqual([1, 2, 3]);
   });
+
+  it('decodes native waveform responses from binary payloads', async () => {
+    const { nativeMediaExtractPeaks } = await import('~/utils/tauri-media-processing');
+    const bytes = new Uint8Array(8 + 4 * 4);
+    const view = new DataView(bytes.buffer);
+    view.setUint32(0, 2, true);
+    view.setUint32(4, 2, true);
+    view.setFloat32(8, 0.1, true);
+    view.setFloat32(12, 0.2, true);
+    view.setFloat32(16, 0.3, true);
+    view.setFloat32(20, 0.4, true);
+    invokeMock.mockResolvedValueOnce(bytes);
+
+    const peaks = await nativeMediaExtractPeaks('/tmp/audio.wav', 2);
+
+    expect(invokeMock).toHaveBeenCalledWith('native_media_extract_peaks', {
+      path: '/tmp/audio.wav',
+      maxLength: 2,
+    });
+    expect(peaks).toHaveLength(2);
+    expect(Array.from(peaks[0]!)).toEqual(
+      expect.arrayContaining([expect.closeTo(0.1), expect.closeTo(0.2)]),
+    );
+    expect(Array.from(peaks[1]!)).toEqual(
+      expect.arrayContaining([expect.closeTo(0.3), expect.closeTo(0.4)]),
+    );
+  });
 });

@@ -7,11 +7,13 @@ import { useProjectStore } from '~/stores/project.store';
 import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 vi.mock('#app-manifest', () => ({}));
 
-const { mockIsTauriState, mockNativeMediaMetadata, mockNativeMediaExtractPeaks } = vi.hoisted(() => ({
-  mockIsTauriState: { value: false },
-  mockNativeMediaMetadata: vi.fn(),
-  mockNativeMediaExtractPeaks: vi.fn(),
-}));
+const { mockIsTauriState, mockNativeMediaMetadata, mockNativeMediaExtractPeaks } = vi.hoisted(
+  () => ({
+    mockIsTauriState: { value: false },
+    mockNativeMediaMetadata: vi.fn(),
+    mockNativeMediaExtractPeaks: vi.fn(),
+  }),
+);
 
 vi.mock('~/utils/runtime', () => ({
   isTauriRuntime: () => mockIsTauriState.value,
@@ -22,7 +24,6 @@ vi.mock('~/utils/tauri-media-processing', () => ({
   nativeMediaMetadata: (...args: any[]) => mockNativeMediaMetadata(...args),
   nativeMediaExtractPeaks: (...args: any[]) => mockNativeMediaExtractPeaks(...args),
 }));
-
 
 const { clearThumbnailMock, clearThumbnailsMock } = vi.hoisted(() => ({
   clearThumbnailMock: vi.fn(),
@@ -693,7 +694,10 @@ describe('MediaStore', () => {
 
   it('extracts peaks using Tauri native extraction in Tauri environment', async () => {
     mockIsTauriState.value = true;
-    mockNativeMediaExtractPeaks.mockResolvedValue([[0.1, 0.2], [0.3, 0.4]]);
+    mockNativeMediaExtractPeaks.mockResolvedValue([
+      new Float32Array([0.1, 0.2]),
+      new Float32Array([0.3, 0.4]),
+    ]);
 
     const mockFile = { size: 100, lastModified: 100, name: 'audio.mp3' } as any;
     const mockHandle = { path: 'audio/audio.mp3' };
@@ -716,5 +720,3 @@ describe('MediaStore', () => {
     expect(result?.[1]?.[1]).toBeCloseTo(0.4);
   });
 });
-
-

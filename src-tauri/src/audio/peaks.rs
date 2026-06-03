@@ -1,14 +1,20 @@
+use anyhow::{anyhow, Context, Result};
 use std::path::Path;
-use anyhow::{Result, Context, anyhow};
-use symphonia::core::codecs::DecoderOptions;
+use symphonia::core::audio::SampleBuffer;
+use symphonia::core::codecs::{Decoder, DecoderOptions};
 use symphonia::core::formats::FormatOptions;
+use symphonia::core::formats::FormatReader;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
-use symphonia::core::audio::SampleBuffer;
 
-/// Extracts audio peaks from a media file by streamingly decoding it and downsampling
-/// the absolute amplitude values into a fixed-size buffer per channel.
-pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
+struct AudioDecoderState {
+    format: Box<dyn FormatReader>,
+    decoder: Box<dyn Decoder>,
+    track_id: u32,
+    channels: usize,
+}
+
+fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
     let file = std::fs::File::open(path)
         .with_context(|| format!("failed to open audio file: {}", path.display()))?;
     let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
@@ -27,45 +33,100 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
         )
         .context("failed to probe media format")?;
 
-    let mut format = probed.format;
+    let format = probed.format;
     let track = format
         .tracks()
         .iter()
         .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
         .ok_or_else(|| anyhow!("no active audio track found"))?;
 
-    let mut decoder = symphonia::default::get_codecs()
+    let decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &DecoderOptions::default())
         .context("failed to create decoder")?;
 
-    let track_id = track.id;
-    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
-    let sample_rate = track.codec_params.sample_rate.unwrap_or(48000);
+    Ok(AudioDecoderState {
+        track_id: track.id,
+        channels: track.codec_params.channels.map(|c| c.count()).unwrap_or(1),
+        format,
+        decoder,
+    })
+}
 
-    let file_duration_estimate = track.codec_params.n_frames
-        .map(|f| f as f64)
-        .unwrap_or_else(|| 60.0 * sample_rate as f64);
-    let mut total_frames_estimate = file_duration_estimate.max(1.0) as u64;
+fn count_decoded_frames(path: &Path) -> Result<(u64, usize)> {
+    let mut state = open_audio_decoder(path)?;
+    let mut total_frames = 0u64;
+    let mut channels = state.channels.max(1);
+
+    loop {
+        let packet = match state.format.next_packet() {
+            Ok(packet) => packet,
+            Err(symphonia::core::errors::Error::IoError(ref err))
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(err) => return Err(err).context("failed to read next packet"),
+        };
+
+        if packet.track_id() != state.track_id {
+            continue;
+        }
+
+        match state.decoder.decode(&packet) {
+            Ok(audio_buf) => {
+                channels = channels.max(audio_buf.spec().channels.count());
+                total_frames += audio_buf.frames() as u64;
+            }
+            Err(symphonia::core::errors::Error::IoError(ref err))
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(symphonia::core::errors::Error::DecodeError(_)) => continue,
+            Err(err) => return Err(err).context("failed to decode packet"),
+        }
+    }
+
+    Ok((total_frames, channels))
+}
+
+/// Extracts audio peaks from a media file by streamingly decoding it and downsampling
+/// the absolute amplitude values into a fixed-size buffer per channel.
+pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
+    if max_length == 0 {
+        return Ok(Vec::new());
+    }
+
+    let (total_frames, channels) = count_decoded_frames(path)?;
+    let channels = channels.max(1);
+    if total_frames == 0 {
+        return Ok(vec![vec![0.0f32; max_length]; channels]);
+    }
+
+    let mut state = open_audio_decoder(path)?;
 
     let mut peaks = vec![vec![0.0f32; max_length]; channels];
     let mut current_frame_offset = 0u64;
 
     loop {
-        let packet = match format.next_packet() {
+        let packet = match state.format.next_packet() {
             Ok(packet) => packet,
             Err(symphonia::core::errors::Error::IoError(ref err))
-                if err.kind() == std::io::ErrorKind::UnexpectedEof => { break; }
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
             Err(err) => return Err(err).context("failed to read next packet"),
         };
 
-        if packet.track_id() != track_id {
+        if packet.track_id() != state.track_id {
             continue;
         }
 
-        match decoder.decode(&packet) {
+        match state.decoder.decode(&packet) {
             Ok(audio_buf) => {
                 let spec = *audio_buf.spec();
-                let duration = audio_buf.capacity() as u64;
+                let duration = audio_buf.frames() as u64;
                 let mut sample_buf = SampleBuffer::<f32>::new(duration, spec);
                 sample_buf.copy_interleaved_ref(audio_buf);
 
@@ -73,32 +134,17 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
                 let num_channels = spec.channels.count();
                 let num_frames = samples.len() / num_channels;
 
-                if num_frames == 0 { continue; }
-
-                let packet_end_frame = current_frame_offset + num_frames as u64;
-                if packet_end_frame > total_frames_estimate {
-                    let old_estimate = total_frames_estimate;
-                    total_frames_estimate = packet_end_frame;
-                    let ratio = old_estimate as f64 / total_frames_estimate as f64;
-
-                    for ch in 0..channels {
-                        let mut new_peaks = vec![0.0f32; max_length];
-                        for b in 0..max_length {
-                            let new_b = ((b as f64 * ratio).floor() as usize).min(max_length - 1);
-                            if peaks[ch][b] > new_peaks[new_b] {
-                                new_peaks[new_b] = peaks[ch][b];
-                            }
-                        }
-                        peaks[ch] = new_peaks;
-                    }
+                if num_frames == 0 {
+                    continue;
                 }
 
                 for frame in 0..num_frames {
                     let global_frame = current_frame_offset + frame as u64;
-                    let bucket = ((global_frame as f64 / total_frames_estimate as f64) * max_length as f64).floor() as usize;
+                    let bucket = ((global_frame as u128 * max_length as u128)
+                        / total_frames as u128) as usize;
                     let bucket = bucket.min(max_length - 1);
 
-                    for ch in 0..num_channels {
+                    for ch in 0..num_channels.min(channels) {
                         if ch < channels {
                             let val = samples[frame * num_channels + ch].abs();
                             if val > peaks[ch][bucket] {
@@ -111,8 +157,13 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
                 current_frame_offset += num_frames as u64;
             }
             Err(symphonia::core::errors::Error::IoError(ref err))
-                if err.kind() == std::io::ErrorKind::UnexpectedEof => { break; }
-            Err(symphonia::core::errors::Error::DecodeError(_)) => { continue; }
+                if err.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(symphonia::core::errors::Error::DecodeError(_)) => {
+                continue;
+            }
             Err(err) => return Err(err).context("failed to decode packet"),
         }
     }
@@ -126,6 +177,25 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
     Ok(peaks)
 }
 
+pub fn pack_peaks(peaks: &[Vec<f32>]) -> Vec<u8> {
+    let channel_count = peaks.len() as u32;
+    let samples_count = peaks.first().map(|channel| channel.len()).unwrap_or(0) as u32;
+    let mut bytes = Vec::with_capacity(8 + channel_count as usize * samples_count as usize * 4);
+    bytes.extend_from_slice(&channel_count.to_le_bytes());
+    bytes.extend_from_slice(&samples_count.to_le_bytes());
+
+    for channel in peaks {
+        for value in channel.iter().take(samples_count as usize) {
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+        for _ in channel.len()..samples_count as usize {
+            bytes.extend_from_slice(&0.0f32.to_le_bytes());
+        }
+    }
+
+    bytes
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -136,7 +206,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        
+
         let peaks = extract_peaks(&fixture, 100).unwrap();
         assert!(!peaks.is_empty());
         assert_eq!(peaks[0].len(), 100);
@@ -144,5 +214,62 @@ mod tests {
             assert!(*val >= 0.0 && *val <= 1.0);
         }
     }
-}
 
+    #[test]
+    fn test_extract_peaks_uses_real_decoded_duration() {
+        let path =
+            std::env::temp_dir().join(format!("fastcat-waveform-test-{}.wav", std::process::id()));
+        write_mono_pcm_wav(&path, &[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]).unwrap();
+
+        let peaks = extract_peaks(&path, 5).unwrap();
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(peaks.len(), 1);
+        assert_eq!(peaks[0].len(), 5);
+        assert_eq!(peaks[0], vec![0.2, 0.4, 0.6, 0.8, 1.0]);
+    }
+
+    #[test]
+    fn test_pack_peaks_uses_waveform_binary_layout() {
+        let bytes = pack_peaks(&[vec![0.5, 1.0], vec![0.25, 0.75]]);
+        assert_eq!(&bytes[0..4], &2u32.to_le_bytes());
+        assert_eq!(&bytes[4..8], &2u32.to_le_bytes());
+
+        let values: Vec<f32> = bytes[8..]
+            .chunks_exact(4)
+            .map(|chunk| f32::from_le_bytes(chunk.try_into().unwrap()))
+            .collect();
+        assert_eq!(values, vec![0.5, 1.0, 0.25, 0.75]);
+    }
+
+    fn write_mono_pcm_wav(path: &Path, samples: &[f32]) -> std::io::Result<()> {
+        let sample_rate = 48_000u32;
+        let bits_per_sample = 16u16;
+        let channels = 1u16;
+        let block_align = channels * (bits_per_sample / 8);
+        let byte_rate = sample_rate * block_align as u32;
+        let data_size = samples.len() as u32 * block_align as u32;
+        let mut bytes = Vec::new();
+
+        bytes.extend_from_slice(b"RIFF");
+        bytes.extend_from_slice(&(36 + data_size).to_le_bytes());
+        bytes.extend_from_slice(b"WAVE");
+        bytes.extend_from_slice(b"fmt ");
+        bytes.extend_from_slice(&16u32.to_le_bytes());
+        bytes.extend_from_slice(&1u16.to_le_bytes());
+        bytes.extend_from_slice(&channels.to_le_bytes());
+        bytes.extend_from_slice(&sample_rate.to_le_bytes());
+        bytes.extend_from_slice(&byte_rate.to_le_bytes());
+        bytes.extend_from_slice(&block_align.to_le_bytes());
+        bytes.extend_from_slice(&bits_per_sample.to_le_bytes());
+        bytes.extend_from_slice(b"data");
+        bytes.extend_from_slice(&data_size.to_le_bytes());
+
+        for sample in samples {
+            let value = (sample.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16;
+            bytes.extend_from_slice(&value.to_le_bytes());
+        }
+
+        std::fs::write(path, bytes)
+    }
+}

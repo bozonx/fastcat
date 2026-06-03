@@ -15,7 +15,11 @@ import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { thumbnailGenerator, getClipThumbnailsHash } from '~/utils/thumbnail-generator';
 import { isTauriRuntime } from '~/utils/runtime';
-import { getNativeFileHandlePath, nativeMediaMetadata, nativeMediaExtractPeaks } from '~/utils/tauri-media-processing';
+import {
+  getNativeFileHandlePath,
+  nativeMediaMetadata,
+  nativeMediaExtractPeaks,
+} from '~/utils/tauri-media-processing';
 
 const log = createDevLogger('media.store');
 
@@ -631,7 +635,7 @@ export const useMediaStore = defineStore('media', () => {
         if (nativePath) {
           const nativePeaks = await nativeMediaExtractPeaks(nativePath, maxLength);
           if (nativePeaks && nativePeaks.length > 0) {
-            return nativePeaks.map((channel) => new Float32Array(channel));
+            return nativePeaks;
           }
         }
       } catch (err) {
@@ -661,7 +665,6 @@ export const useMediaStore = defineStore('media', () => {
       });
     });
   }
-
 
   return {
     mediaMetadata,

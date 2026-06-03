@@ -278,7 +278,10 @@ fn parse_ffmpeg_components(output_str: &str) -> std::collections::HashSet<String
         for line in output_str.lines() {
             let line = line.trim();
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 && parts[0].len() == 6 && parts[0].chars().all(|c| c == '.' || c.is_alphabetic()) {
+            if parts.len() >= 2
+                && parts[0].len() == 6
+                && parts[0].chars().all(|c| c == '.' || c.is_alphabetic())
+            {
                 names.insert(parts[1].to_string());
             }
         }
@@ -295,36 +298,38 @@ pub async fn native_get_ffmpeg_diagnostics(
     let ffprobe_cmd = ffprobe_path.as_deref().unwrap_or("ffprobe").to_string();
 
     tokio::task::spawn_blocking(move || {
-        use std::process::Command;
         use std::collections::HashSet;
+        use std::process::Command;
 
         // 1. Check ffmpeg
-        let (ffmpeg_available, ffmpeg_version) = match Command::new(&ffmpeg_cmd).arg("-version").output() {
-            Ok(output) => {
-                if output.status.success() {
-                    let text = String::from_utf8_lossy(&output.stdout);
-                    let version = text.lines().next().unwrap_or("").to_string();
-                    (true, version)
-                } else {
-                    (false, "ffmpeg returned error status".to_string())
+        let (ffmpeg_available, ffmpeg_version) =
+            match Command::new(&ffmpeg_cmd).arg("-version").output() {
+                Ok(output) => {
+                    if output.status.success() {
+                        let text = String::from_utf8_lossy(&output.stdout);
+                        let version = text.lines().next().unwrap_or("").to_string();
+                        (true, version)
+                    } else {
+                        (false, "ffmpeg returned error status".to_string())
+                    }
                 }
-            }
-            Err(e) => (false, format!("Failed to execute: {}", e)),
-        };
+                Err(e) => (false, format!("Failed to execute: {}", e)),
+            };
 
         // 2. Check ffprobe
-        let (ffprobe_available, ffprobe_version) = match Command::new(&ffprobe_cmd).arg("-version").output() {
-            Ok(output) => {
-                if output.status.success() {
-                    let text = String::from_utf8_lossy(&output.stdout);
-                    let version = text.lines().next().unwrap_or("").to_string();
-                    (true, version)
-                } else {
-                    (false, "ffprobe returned error status".to_string())
+        let (ffprobe_available, ffprobe_version) =
+            match Command::new(&ffprobe_cmd).arg("-version").output() {
+                Ok(output) => {
+                    if output.status.success() {
+                        let text = String::from_utf8_lossy(&output.stdout);
+                        let version = text.lines().next().unwrap_or("").to_string();
+                        (true, version)
+                    } else {
+                        (false, "ffprobe returned error status".to_string())
+                    }
                 }
-            }
-            Err(e) => (false, format!("Failed to execute: {}", e)),
-        };
+                Err(e) => (false, format!("Failed to execute: {}", e)),
+            };
 
         // 3. Get hwaccels, encoders, decoders
         let mut hwaccels = Vec::new();
@@ -346,13 +351,15 @@ pub async fn native_get_ffmpeg_diagnostics(
 
             if let Ok(output) = Command::new(&ffmpeg_cmd).arg("-encoders").output() {
                 if output.status.success() {
-                    encoders_set = parse_ffmpeg_components(&String::from_utf8_lossy(&output.stdout));
+                    encoders_set =
+                        parse_ffmpeg_components(&String::from_utf8_lossy(&output.stdout));
                 }
             }
 
             if let Ok(output) = Command::new(&ffmpeg_cmd).arg("-decoders").output() {
                 if output.status.success() {
-                    decoders_set = parse_ffmpeg_components(&String::from_utf8_lossy(&output.stdout));
+                    decoders_set =
+                        parse_ffmpeg_components(&String::from_utf8_lossy(&output.stdout));
                 }
             }
         }
@@ -363,87 +370,242 @@ pub async fn native_get_ffmpeg_diagnostics(
                 label: "H.264 (AVC)".to_string(),
                 key: "h264".to_string(),
                 decoders: vec![
-                    FfmpegComponentDiagnostic { name: "h264".to_string(), label: "Software (h264)".to_string(), supported: decoders_set.contains("h264") },
-                    FfmpegComponentDiagnostic { name: "h264_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: decoders_set.contains("h264_vaapi") },
-                    FfmpegComponentDiagnostic { name: "h264_cuvid".to_string(), label: "Hardware NVDEC (Nvidia)".to_string(), supported: decoders_set.contains("h264_cuvid") },
-                    FfmpegComponentDiagnostic { name: "h264_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: decoders_set.contains("h264_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "h264".to_string(),
+                        label: "Software (h264)".to_string(),
+                        supported: decoders_set.contains("h264"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "h264_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: decoders_set.contains("h264_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "h264_cuvid".to_string(),
+                        label: "Hardware NVDEC (Nvidia)".to_string(),
+                        supported: decoders_set.contains("h264_cuvid"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "h264_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: decoders_set.contains("h264_qsv"),
+                    },
                 ],
                 encoders: vec![
-                    FfmpegComponentDiagnostic { name: "libx264".to_string(), label: "Software (libx264)".to_string(), supported: encoders_set.contains("libx264") },
-                    FfmpegComponentDiagnostic { name: "h264_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: encoders_set.contains("h264_vaapi") },
-                    FfmpegComponentDiagnostic { name: "h264_nvenc".to_string(), label: "Hardware NVENC (Nvidia)".to_string(), supported: encoders_set.contains("h264_nvenc") },
-                    FfmpegComponentDiagnostic { name: "h264_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: encoders_set.contains("h264_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "libx264".to_string(),
+                        label: "Software (libx264)".to_string(),
+                        supported: encoders_set.contains("libx264"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "h264_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: encoders_set.contains("h264_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "h264_nvenc".to_string(),
+                        label: "Hardware NVENC (Nvidia)".to_string(),
+                        supported: encoders_set.contains("h264_nvenc"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "h264_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: encoders_set.contains("h264_qsv"),
+                    },
                 ],
             },
             FfmpegCodecDiagnostic {
                 label: "H.265 (HEVC)".to_string(),
                 key: "hevc".to_string(),
                 decoders: vec![
-                    FfmpegComponentDiagnostic { name: "hevc".to_string(), label: "Software (hevc)".to_string(), supported: decoders_set.contains("hevc") },
-                    FfmpegComponentDiagnostic { name: "hevc_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: decoders_set.contains("hevc_vaapi") },
-                    FfmpegComponentDiagnostic { name: "hevc_cuvid".to_string(), label: "Hardware NVDEC (Nvidia)".to_string(), supported: decoders_set.contains("hevc_cuvid") },
-                    FfmpegComponentDiagnostic { name: "hevc_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: decoders_set.contains("hevc_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "hevc".to_string(),
+                        label: "Software (hevc)".to_string(),
+                        supported: decoders_set.contains("hevc"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "hevc_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: decoders_set.contains("hevc_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "hevc_cuvid".to_string(),
+                        label: "Hardware NVDEC (Nvidia)".to_string(),
+                        supported: decoders_set.contains("hevc_cuvid"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "hevc_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: decoders_set.contains("hevc_qsv"),
+                    },
                 ],
                 encoders: vec![
-                    FfmpegComponentDiagnostic { name: "libx265".to_string(), label: "Software (libx265)".to_string(), supported: encoders_set.contains("libx265") },
-                    FfmpegComponentDiagnostic { name: "hevc_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: encoders_set.contains("hevc_vaapi") },
-                    FfmpegComponentDiagnostic { name: "hevc_nvenc".to_string(), label: "Hardware NVENC (Nvidia)".to_string(), supported: encoders_set.contains("hevc_nvenc") },
-                    FfmpegComponentDiagnostic { name: "hevc_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: encoders_set.contains("hevc_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "libx265".to_string(),
+                        label: "Software (libx265)".to_string(),
+                        supported: encoders_set.contains("libx265"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "hevc_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: encoders_set.contains("hevc_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "hevc_nvenc".to_string(),
+                        label: "Hardware NVENC (Nvidia)".to_string(),
+                        supported: encoders_set.contains("hevc_nvenc"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "hevc_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: encoders_set.contains("hevc_qsv"),
+                    },
                 ],
             },
             FfmpegCodecDiagnostic {
                 label: "VP9".to_string(),
                 key: "vp9".to_string(),
                 decoders: vec![
-                    FfmpegComponentDiagnostic { name: "vp9".to_string(), label: "Software (vp9)".to_string(), supported: decoders_set.contains("vp9") },
-                    FfmpegComponentDiagnostic { name: "vp9_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: decoders_set.contains("vp9_vaapi") },
-                    FfmpegComponentDiagnostic { name: "vp9_cuvid".to_string(), label: "Hardware NVDEC (Nvidia)".to_string(), supported: decoders_set.contains("vp9_cuvid") },
-                    FfmpegComponentDiagnostic { name: "vp9_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: decoders_set.contains("vp9_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "vp9".to_string(),
+                        label: "Software (vp9)".to_string(),
+                        supported: decoders_set.contains("vp9"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "vp9_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: decoders_set.contains("vp9_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "vp9_cuvid".to_string(),
+                        label: "Hardware NVDEC (Nvidia)".to_string(),
+                        supported: decoders_set.contains("vp9_cuvid"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "vp9_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: decoders_set.contains("vp9_qsv"),
+                    },
                 ],
                 encoders: vec![
-                    FfmpegComponentDiagnostic { name: "libvpx-vp9".to_string(), label: "Software (libvpx-vp9)".to_string(), supported: encoders_set.contains("libvpx-vp9") },
-                    FfmpegComponentDiagnostic { name: "vp9_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: encoders_set.contains("vp9_vaapi") },
-                    FfmpegComponentDiagnostic { name: "vp9_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: encoders_set.contains("vp9_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "libvpx-vp9".to_string(),
+                        label: "Software (libvpx-vp9)".to_string(),
+                        supported: encoders_set.contains("libvpx-vp9"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "vp9_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: encoders_set.contains("vp9_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "vp9_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: encoders_set.contains("vp9_qsv"),
+                    },
                 ],
             },
             FfmpegCodecDiagnostic {
                 label: "AV1".to_string(),
                 key: "av1".to_string(),
                 decoders: vec![
-                    FfmpegComponentDiagnostic { name: "av1".to_string(), label: "Software (av1/libdav1d)".to_string(), supported: decoders_set.contains("av1") || decoders_set.contains("libdav1d") },
-                    FfmpegComponentDiagnostic { name: "av1_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: decoders_set.contains("av1_vaapi") },
-                    FfmpegComponentDiagnostic { name: "av1_cuvid".to_string(), label: "Hardware NVDEC (Nvidia)".to_string(), supported: decoders_set.contains("av1_cuvid") },
-                    FfmpegComponentDiagnostic { name: "av1_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: decoders_set.contains("av1_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "av1".to_string(),
+                        label: "Software (av1/libdav1d)".to_string(),
+                        supported: decoders_set.contains("av1")
+                            || decoders_set.contains("libdav1d"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "av1_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: decoders_set.contains("av1_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "av1_cuvid".to_string(),
+                        label: "Hardware NVDEC (Nvidia)".to_string(),
+                        supported: decoders_set.contains("av1_cuvid"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "av1_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: decoders_set.contains("av1_qsv"),
+                    },
                 ],
                 encoders: vec![
-                    FfmpegComponentDiagnostic { name: "libsvtav1".to_string(), label: "Software (libsvtav1)".to_string(), supported: encoders_set.contains("libsvtav1") },
-                    FfmpegComponentDiagnostic { name: "libaom-av1".to_string(), label: "Software (libaom-av1)".to_string(), supported: encoders_set.contains("libaom-av1") },
-                    FfmpegComponentDiagnostic { name: "av1_vaapi".to_string(), label: "Hardware VAAPI (AMD/Intel)".to_string(), supported: encoders_set.contains("av1_vaapi") },
-                    FfmpegComponentDiagnostic { name: "av1_nvenc".to_string(), label: "Hardware NVENC (Nvidia)".to_string(), supported: encoders_set.contains("av1_nvenc") },
-                    FfmpegComponentDiagnostic { name: "av1_qsv".to_string(), label: "Hardware QSV (Intel)".to_string(), supported: encoders_set.contains("av1_qsv") },
+                    FfmpegComponentDiagnostic {
+                        name: "libsvtav1".to_string(),
+                        label: "Software (libsvtav1)".to_string(),
+                        supported: encoders_set.contains("libsvtav1"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "libaom-av1".to_string(),
+                        label: "Software (libaom-av1)".to_string(),
+                        supported: encoders_set.contains("libaom-av1"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "av1_vaapi".to_string(),
+                        label: "Hardware VAAPI (AMD/Intel)".to_string(),
+                        supported: encoders_set.contains("av1_vaapi"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "av1_nvenc".to_string(),
+                        label: "Hardware NVENC (Nvidia)".to_string(),
+                        supported: encoders_set.contains("av1_nvenc"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "av1_qsv".to_string(),
+                        label: "Hardware QSV (Intel)".to_string(),
+                        supported: encoders_set.contains("av1_qsv"),
+                    },
                 ],
             },
             FfmpegCodecDiagnostic {
                 label: "AAC Audio".to_string(),
                 key: "aac".to_string(),
-                decoders: vec![
-                    FfmpegComponentDiagnostic { name: "aac".to_string(), label: "Software (aac)".to_string(), supported: decoders_set.contains("aac") },
-                ],
+                decoders: vec![FfmpegComponentDiagnostic {
+                    name: "aac".to_string(),
+                    label: "Software (aac)".to_string(),
+                    supported: decoders_set.contains("aac"),
+                }],
                 encoders: vec![
-                    FfmpegComponentDiagnostic { name: "aac".to_string(), label: "Software Native (aac)".to_string(), supported: encoders_set.contains("aac") },
-                    FfmpegComponentDiagnostic { name: "libfdk_aac".to_string(), label: "Software FDK-AAC (libfdk_aac)".to_string(), supported: encoders_set.contains("libfdk_aac") },
+                    FfmpegComponentDiagnostic {
+                        name: "aac".to_string(),
+                        label: "Software Native (aac)".to_string(),
+                        supported: encoders_set.contains("aac"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "libfdk_aac".to_string(),
+                        label: "Software FDK-AAC (libfdk_aac)".to_string(),
+                        supported: encoders_set.contains("libfdk_aac"),
+                    },
                 ],
             },
             FfmpegCodecDiagnostic {
                 label: "Opus Audio".to_string(),
                 key: "opus".to_string(),
                 decoders: vec![
-                    FfmpegComponentDiagnostic { name: "opus".to_string(), label: "Software Native (opus)".to_string(), supported: decoders_set.contains("opus") },
-                    FfmpegComponentDiagnostic { name: "libopus".to_string(), label: "Software Libopus (libopus)".to_string(), supported: decoders_set.contains("libopus") },
+                    FfmpegComponentDiagnostic {
+                        name: "opus".to_string(),
+                        label: "Software Native (opus)".to_string(),
+                        supported: decoders_set.contains("opus"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "libopus".to_string(),
+                        label: "Software Libopus (libopus)".to_string(),
+                        supported: decoders_set.contains("libopus"),
+                    },
                 ],
                 encoders: vec![
-                    FfmpegComponentDiagnostic { name: "opus".to_string(), label: "Software Native (opus)".to_string(), supported: encoders_set.contains("opus") },
-                    FfmpegComponentDiagnostic { name: "libopus".to_string(), label: "Software Libopus (libopus)".to_string(), supported: encoders_set.contains("libopus") },
+                    FfmpegComponentDiagnostic {
+                        name: "opus".to_string(),
+                        label: "Software Native (opus)".to_string(),
+                        supported: encoders_set.contains("opus"),
+                    },
+                    FfmpegComponentDiagnostic {
+                        name: "libopus".to_string(),
+                        label: "Software Libopus (libopus)".to_string(),
+                        supported: encoders_set.contains("libopus"),
+                    },
                 ],
             },
         ];
@@ -465,10 +627,11 @@ pub async fn native_get_ffmpeg_diagnostics(
 pub async fn native_media_extract_peaks(
     path: String,
     max_length: usize,
-) -> Result<Vec<Vec<f32>>, String> {
+) -> Result<Vec<u8>, String> {
     let path = PathBuf::from(path);
     tokio::task::spawn_blocking(move || {
         crate::audio::peaks::extract_peaks(&path, max_length)
+            .map(|peaks| crate::audio::peaks::pack_peaks(&peaks))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -488,21 +651,17 @@ mod tests {
 
     #[test]
     fn test_pack_webp_frames_with_data() {
-        let frames = vec![
-            Some(vec![1, 2, 3]),
-            None,
-            Some(vec![4, 5]),
-        ];
+        let frames = vec![Some(vec![1, 2, 3]), None, Some(vec![4, 5])];
         let packed = pack_webp_frames(frames);
-        
+
         let mut expected = Vec::new();
         expected.extend_from_slice(&3u32.to_le_bytes()); // Count = 3
         expected.extend_from_slice(&3u32.to_le_bytes()); // Frame 0 size = 3
         expected.extend_from_slice(&0u32.to_le_bytes()); // Frame 1 size = 0
         expected.extend_from_slice(&2u32.to_le_bytes()); // Frame 2 size = 2
-        expected.extend_from_slice(&[1, 2, 3]);          // Frame 0 data
-        expected.extend_from_slice(&[4, 5]);             // Frame 2 data
-        
+        expected.extend_from_slice(&[1, 2, 3]); // Frame 0 data
+        expected.extend_from_slice(&[4, 5]); // Frame 2 data
+
         assert_eq!(packed, expected);
     }
 }
