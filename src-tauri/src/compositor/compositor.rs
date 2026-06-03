@@ -16,14 +16,14 @@ use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use vello::peniko::{Color, ImageData};
 use vello::util::{RenderContext, RenderSurface};
 use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene as VelloScene};
 use winit::window::Window;
 
-use super::effects::{EffectPipeline, EffectSpec, EffectSource};
-use super::scene::{BlendMode, Layer, LayerKind, RasterSource, Transform};
+use super::effects::{EffectPipeline, EffectSource, EffectSpec};
+use super::scene::{BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, Transform};
 use super::transitions::TransitionPipeline;
 
 /// Закешированный таргет offscreen-рендера. Пересоздаётся только при изменении размера.
@@ -166,14 +166,28 @@ impl Compositor {
         texture_cache: &super::texture_cache::TextureCache,
     ) -> Result<()> {
         let dev_id = surface.dev_id;
-        let vello = self.build_vello_scene_with_effects(
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = device_handle.device.clone();
+        let queue = device_handle.queue.clone();
+        let effective_scene = self.materialize_transitions_and_effects(
             dev_id,
             scene,
+            texture_cache,
+            &device,
+            &queue,
+        )?;
+        let mut registered_images = Vec::new();
+        let vello = self.build_vello_scene_from_materialized(
+            dev_id,
+            &effective_scene,
             viewport_w,
             viewport_h,
             texture_cache,
+            &mut registered_images,
         )?;
-        self.render_to_surface(surface, &vello, scene.background)
+        let result = self.render_to_surface(surface, &vello, scene.background);
+        self.unregister_images(dev_id, registered_images);
+        result
     }
 
     /// High-level: составляет доменную `Scene` в vello и читает пиксели в `Vec<u8>` (RGBA, `w×h×4`).
@@ -185,37 +199,62 @@ impl Compositor {
         viewport_h: u32,
         texture_cache: &super::texture_cache::TextureCache,
     ) -> Result<Vec<u8>> {
-        let vello = self.build_vello_scene_with_effects(
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = device_handle.device.clone();
+        let queue = device_handle.queue.clone();
+        let effective_scene = self.materialize_transitions_and_effects(
             dev_id,
             scene,
+            texture_cache,
+            &device,
+            &queue,
+        )?;
+        let mut registered_images = Vec::new();
+        let vello = self.build_vello_scene_from_materialized(
+            dev_id,
+            &effective_scene,
             viewport_w,
             viewport_h,
             texture_cache,
+            &mut registered_images,
         )?;
-        self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background)
+        let result =
+            self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background);
+        self.unregister_images(dev_id, registered_images);
+        result
     }
 
-    fn build_vello_scene_with_effects(
+    fn build_vello_scene_from_materialized(
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
         viewport_w: u32,
         viewport_h: u32,
         texture_cache: &super::texture_cache::TextureCache,
+        registered_images: &mut Vec<ImageData>,
     ) -> Result<VelloScene> {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
-        let effective_scene =
-            self.materialize_transitions_and_effects(dev_id, scene, texture_cache, &device, &queue)?;
 
-        Ok(effective_scene.to_vello(viewport_w, viewport_h, |key| {
-            if let Some(texture) = texture_cache.get(key) {
-                read_texture_to_image(&device, &queue, &texture).ok()
-            } else {
-                None
-            }
-        }))
+        Ok(
+            scene.to_vello(viewport_w, viewport_h, |source| match source {
+                RasterGpuSource::Cache(key) => {
+                    let texture = texture_cache.get(key)?;
+                    self.register_texture_for_vello(
+                        dev_id,
+                        &device,
+                        &queue,
+                        &texture,
+                        registered_images,
+                    )
+                    .ok()
+                }
+                RasterGpuSource::Texture(texture) => self
+                    .register_texture_for_vello(dev_id, &device, &queue, texture, registered_images)
+                    .ok(),
+            }),
+        )
     }
 
     fn materialize_transitions_and_effects(
@@ -230,35 +269,26 @@ impl Compositor {
 
         // 1. Применяем переходы
         let mut to_remove = std::collections::HashSet::new();
-        
+
         for i in 0..layers.len() {
             if let Some(trans_info) = layers[i].transition.clone() {
-                let from_layer_opt = layers.iter().find(|l| l.id == trans_info.from_layer_id).cloned();
-                
+                let from_layer_opt = layers
+                    .iter()
+                    .find(|l| l.id == trans_info.from_layer_id)
+                    .cloned();
+
                 if let Some(from_layer) = from_layer_opt {
-                    let from_source = self.layer_to_effect_source(
-                        dev_id,
-                        scene,
-                        &from_layer,
-                        texture_cache,
-                        device,
-                        queue,
-                    )?;
-                    
-                    let to_source = self.layer_to_effect_source(
-                        dev_id,
-                        scene,
-                        &layers[i],
-                        texture_cache,
-                        device,
-                        queue,
-                    )?;
-                    
+                    let from_source =
+                        self.layer_to_effect_source(dev_id, scene, &from_layer, texture_cache)?;
+
+                    let to_source =
+                        self.layer_to_effect_source(dev_id, scene, &layers[i], texture_cache)?;
+
                     let pipeline = self
                         .transition_pipelines
                         .entry(dev_id)
                         .or_insert_with(|| TransitionPipeline::new(device));
-                        
+
                     match pipeline.apply_transition(
                         device,
                         queue,
@@ -269,11 +299,11 @@ impl Compositor {
                     ) {
                         Ok(processed) => {
                             layers[i].kind = LayerKind::Raster {
-                                natural_size: (processed.width, processed.height),
-                                source: RasterSource::Image(processed),
+                                natural_size: (processed.width(), processed.height()),
+                                source: RasterSource::GpuTexture(std::sync::Arc::new(processed)),
                             };
                             layers[i].transition = None;
-                            
+
                             to_remove.insert(from_layer.id.clone());
                         }
                         Err(e) => {
@@ -283,7 +313,7 @@ impl Compositor {
                 }
             }
         }
-        
+
         layers.retain(|l| !to_remove.contains(&l.id));
 
         // 2. Применяем эффекты к оставшимся слоям
@@ -294,20 +324,13 @@ impl Compositor {
                 continue;
             }
 
-            let source = self.layer_to_effect_source(
-                dev_id,
-                scene,
-                &layer,
-                texture_cache,
-                device,
-                queue,
-            )?;
+            let source = self.layer_to_effect_source(dev_id, scene, &layer, texture_cache)?;
             let processed =
-                self.apply_effects_to_image(dev_id, device, queue, &source, &layer.effects);
+                self.apply_effects_to_texture(dev_id, device, queue, &source, &layer.effects)?;
             let mut next = layer.clone();
             next.kind = LayerKind::Raster {
-                natural_size: (processed.width, processed.height),
-                source: RasterSource::Image(processed),
+                natural_size: (processed.width(), processed.height()),
+                source: RasterSource::GpuTexture(std::sync::Arc::new(processed)),
             };
             next.effects.clear();
             final_layers.push(next);
@@ -328,8 +351,6 @@ impl Compositor {
         scene: &super::scene::Scene,
         layer: &Layer,
         texture_cache: &super::texture_cache::TextureCache,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
     ) -> Result<EffectSource> {
         match &layer.kind {
             LayerKind::Raster { source, .. } => match source {
@@ -340,23 +361,21 @@ impl Compositor {
                         .ok_or_else(|| anyhow!("missing GPU texture for effect layer"))?;
                     Ok(EffectSource::Gpu(texture))
                 }
+                RasterSource::GpuTexture(texture) => Ok(EffectSource::Gpu(texture.clone())),
             },
             LayerKind::Shape(_) | LayerKind::Text(_) => {
-                let image = self.render_layer_to_image(dev_id, scene, layer, texture_cache, device, queue)?;
-                Ok(EffectSource::Cpu(image))
+                let texture = self.render_layer_to_texture(dev_id, scene, layer)?;
+                Ok(EffectSource::Gpu(Arc::new(texture)))
             }
         }
     }
 
-    fn render_layer_to_image(
+    fn render_layer_to_texture(
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
         layer: &Layer,
-        texture_cache: &super::texture_cache::TextureCache,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) -> Result<ImageData> {
+    ) -> Result<wgpu::Texture> {
         let natural = layer.kind.natural_size();
         let width = natural.0.max(1);
         let height = natural.1.max(1);
@@ -376,58 +395,58 @@ impl Compositor {
                 transition: None,
             }],
         };
-        let vello = isolated.to_vello(width, height, |key| {
-            if let Some(texture) = texture_cache.get(key) {
-                read_texture_to_image(device, queue, &texture).ok()
-            } else {
-                None
-            }
-        });
-        let pixels = self.render_to_pixels(dev_id, &vello, width, height, Color::TRANSPARENT)?;
-        Ok(ImageData {
-            data: vello::peniko::Blob::new(std::sync::Arc::new(pixels)),
-            format: vello::peniko::ImageFormat::Rgba8,
-            alpha_type: vello::peniko::ImageAlphaType::Alpha,
-            width,
-            height,
-        })
+        let vello = isolated.to_vello(width, height, |_| None);
+        self.render_to_owned_texture(dev_id, &vello, width, height, Color::TRANSPARENT)
     }
 
-    fn apply_effects_to_image(
+    fn apply_effects_to_texture(
         &mut self,
         dev_id: usize,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         source: &EffectSource,
         effects: &[EffectSpec],
-    ) -> ImageData {
+    ) -> Result<wgpu::Texture> {
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
             .or_insert_with(|| EffectPipeline::new(device));
         match pipeline.apply_effects(device, queue, source, effects) {
-            Ok(image) => image,
+            Ok(texture) => Ok(texture),
             Err(error) => {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
                 match source {
-                    EffectSource::Cpu(img) => img.clone(),
-                    EffectSource::Gpu(tex) => {
-                        match read_texture_to_image(device, queue, tex) {
-                            Ok(img) => img,
-                            Err(e) => {
-                                log::error!("[compositor] fallback readback failed: {e:?}");
-                                ImageData {
-                                    data: vello::peniko::Blob::new(std::sync::Arc::new(vec![0; (tex.width() * tex.height() * 4) as usize])),
-                                    format: vello::peniko::ImageFormat::Rgba8,
-                                    alpha_type: vello::peniko::ImageAlphaType::Alpha,
-                                    width: tex.width(),
-                                    height: tex.height(),
-                                }
-                            }
-                        }
-                    }
+                    EffectSource::Cpu(img) => image_to_texture(device, queue, img),
+                    EffectSource::Gpu(tex) => copy_texture_for_vello(device, queue, tex),
                 }
             }
+        }
+    }
+
+    fn register_texture_for_vello(
+        &mut self,
+        dev_id: usize,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        texture: &wgpu::Texture,
+        registered_images: &mut Vec<ImageData>,
+    ) -> Result<ImageData> {
+        let owned = copy_texture_for_vello(device, queue, texture)?;
+        let renderer = self
+            .renderers
+            .get_mut(&dev_id)
+            .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
+        let image = renderer.register_texture(owned);
+        registered_images.push(image.clone());
+        Ok(image)
+    }
+
+    fn unregister_images(&mut self, dev_id: usize, images: Vec<ImageData>) {
+        let Some(renderer) = self.renderers.get_mut(&dev_id) else {
+            return;
+        };
+        for image in images {
+            renderer.unregister_texture(image);
         }
     }
 
@@ -585,6 +604,55 @@ impl Compositor {
         Ok(out)
     }
 
+    fn render_to_owned_texture(
+        &mut self,
+        dev_id: usize,
+        scene: &VelloScene,
+        width: u32,
+        height: u32,
+        base_color: Color,
+    ) -> Result<wgpu::Texture> {
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = &device_handle.device;
+        let queue = &device_handle.queue;
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("compositor-owned-vello-layer"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::STORAGE_BINDING
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let renderer = self
+            .renderers
+            .get_mut(&dev_id)
+            .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
+        renderer
+            .render_to_texture(
+                device,
+                queue,
+                scene,
+                &view,
+                &RenderParams {
+                    base_color,
+                    width,
+                    height,
+                    antialiasing_method: AaConfig::Area,
+                },
+            )
+            .map_err(|e| anyhow!("vello render: {e:?}"))?;
+        Ok(texture)
+    }
+
     fn ensure_renderer(&mut self, dev_id: usize) -> Result<()> {
         if self.renderers.contains_key(&dev_id) {
             return Ok(());
@@ -606,42 +674,117 @@ impl Compositor {
     }
 }
 
-pub fn read_texture_to_image(
+fn image_to_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    image: &ImageData,
+) -> Result<wgpu::Texture> {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("compositor-owned-image-texture"),
+        size: wgpu::Extent3d {
+            width: image.width.max(1),
+            height: image.height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
+    let pixels = image_pixels_rgba8(image)?;
+    queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture: &texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        &pixels,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(image.width.max(1) * 4),
+            rows_per_image: Some(image.height.max(1)),
+        },
+        wgpu::Extent3d {
+            width: image.width.max(1),
+            height: image.height.max(1),
+            depth_or_array_layers: 1,
+        },
+    );
+    Ok(texture)
+}
+
+fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
+    let expected = image
+        .format
+        .size_in_bytes(image.width, image.height)
+        .ok_or_else(|| anyhow!("image byte size overflow"))?;
+    let data = image.data.data();
+    if data.len() < expected {
+        return Err(anyhow!(
+            "image data is too small: {} bytes for {}x{}",
+            data.len(),
+            image.width,
+            image.height
+        ));
+    }
+    match image.format {
+        vello::peniko::ImageFormat::Rgba8 => Ok(data[..expected].to_vec()),
+        vello::peniko::ImageFormat::Bgra8 => {
+            let mut rgba = data[..expected].to_vec();
+            for px in rgba.chunks_exact_mut(4) {
+                px.swap(0, 2);
+            }
+            Ok(rgba)
+        }
+        _ => Err(anyhow!(
+            "unsupported image format for compositor texture upload"
+        )),
+    }
+}
+
+fn copy_texture_for_vello(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
-) -> Result<vello::peniko::ImageData> {
-    let width = texture.width();
-    let height = texture.height();
-    let row_bytes = width as usize * 4;
-    let aligned_row_bytes = (row_bytes + 255) & !255;
-    let buffer_size = (aligned_row_bytes * height as usize) as u64;
-
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("texture-cache-readback"),
-        size: buffer_size,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
+) -> Result<wgpu::Texture> {
+    let width = texture.width().max(1);
+    let height = texture.height().max(1);
+    let output = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("compositor-vello-owned-texture"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
     });
-
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("texture-cache-readback-encoder"),
+        label: Some("compositor-vello-texture-copy"),
     });
-
-    encoder.copy_texture_to_buffer(
+    encoder.copy_texture_to_texture(
         wgpu::TexelCopyTextureInfo {
             texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(aligned_row_bytes as u32),
-                rows_per_image: Some(height),
-            },
+        wgpu::TexelCopyTextureInfo {
+            texture: &output,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
         },
         wgpu::Extent3d {
             width,
@@ -649,38 +792,9 @@ pub fn read_texture_to_image(
             depth_or_array_layers: 1,
         },
     );
-
     queue.submit([encoder.finish()]);
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device.poll(wgpu::PollType::wait_indefinitely()).ok();
-    rx.recv()
-        .map_err(|_| anyhow!("buffer map disconnected"))?
-        .map_err(|e| anyhow!("buffer map: {e:?}"))?;
-
-    let mapped = slice.get_mapped_range();
-    let mut pixels = Vec::with_capacity(row_bytes * height as usize);
-    for row in 0..height as usize {
-        let start = row * aligned_row_bytes;
-        pixels.extend_from_slice(&mapped[start..start + row_bytes]);
-    }
-    drop(mapped);
-    buffer.unmap();
-
-    let blob = vello::peniko::Blob::new(std::sync::Arc::new(pixels));
-    Ok(vello::peniko::ImageData {
-        data: blob,
-        format: vello::peniko::ImageFormat::Rgba8,
-        alpha_type: vello::peniko::ImageAlphaType::Alpha,
-        width,
-        height,
-    })
+    Ok(output)
 }
-
 
 impl Default for Compositor {
     fn default() -> Self {

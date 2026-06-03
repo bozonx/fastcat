@@ -1,12 +1,12 @@
 //! Переходы между двумя сценами (например A→B на стыке клипов).
 //! Каждый transition — wgpu shader pass над двумя текстурами (from, to) + прогресс 0..1.
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use vello::peniko::{Blob, ImageAlphaType, ImageData, ImageFormat};
+use std::collections::HashMap;
+use std::sync::Arc;
+use vello::peniko::{ImageData, ImageFormat};
 use wgpu::util::DeviceExt;
 
 use crate::compositor::effects::EffectSource;
@@ -70,7 +70,6 @@ struct CachedTransitionResources {
     height: u32,
     output: wgpu::Texture,
     output_view: wgpu::TextureView,
-    readback: wgpu::Buffer,
 }
 
 pub struct TransitionPipeline {
@@ -141,8 +140,16 @@ impl TransitionPipeline {
         };
 
         if recreate {
-            let new_w = self.resources.as_ref().map(|r| r.width.max(width)).unwrap_or(width);
-            let new_h = self.resources.as_ref().map(|r| r.height.max(height)).unwrap_or(height);
+            let new_w = self
+                .resources
+                .as_ref()
+                .map(|r| r.width.max(width))
+                .unwrap_or(width);
+            let new_h = self
+                .resources
+                .as_ref()
+                .map(|r| r.height.max(height))
+                .unwrap_or(height);
             let size = wgpu::Extent3d {
                 width: new_w,
                 height: new_h,
@@ -163,28 +170,20 @@ impl TransitionPipeline {
             });
             let output_view = output.create_view(&wgpu::TextureViewDescriptor::default());
 
-            let row_bytes = new_w as usize * 4;
-            let aligned_row_bytes = (row_bytes + 255) & !255;
-            let buffer_size = (aligned_row_bytes * new_h as usize) as u64;
-
-            let readback = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("native-transition-readback"),
-                size: buffer_size,
-                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                mapped_at_creation: false,
-            });
-
             self.resources = Some(CachedTransitionResources {
                 width: new_w,
                 height: new_h,
                 output,
                 output_view,
-                readback,
             });
         }
     }
 
-    fn get_or_create_pipeline(&mut self, device: &wgpu::Device, shader_source: &str) -> Result<Arc<wgpu::ComputePipeline>> {
+    fn get_or_create_pipeline(
+        &mut self,
+        device: &wgpu::Device,
+        shader_source: &str,
+    ) -> Result<Arc<wgpu::ComputePipeline>> {
         if !self.pipelines.contains_key(shader_source) {
             let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("native-transition-wgsl"),
@@ -203,7 +202,8 @@ impl TransitionPipeline {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: None,
             });
-            self.pipelines.insert(shader_source.to_string(), Arc::new(pipeline));
+            self.pipelines
+                .insert(shader_source.to_string(), Arc::new(pipeline));
         }
         Ok(self.pipelines.get(shader_source).unwrap().clone())
     }
@@ -216,7 +216,7 @@ impl TransitionPipeline {
         to_source: &EffectSource,
         spec: &TransitionSpec,
         progress: f32,
-    ) -> Result<ImageData> {
+    ) -> Result<wgpu::Texture> {
         let (w_from, h_from) = match from_source {
             EffectSource::Cpu(img) => (img.width, img.height),
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
@@ -305,11 +305,15 @@ impl TransitionPipeline {
 
         queue.submit([encoder.finish()]);
 
-        read_texture_to_image_with_buffer(device, queue, &resources.output, &resources.readback, width, height)
+        copy_texture_owned(device, queue, &resources.output, width, height)
     }
 }
 
-fn create_temp_texture(device: &wgpu::Device, queue: &wgpu::Queue, img: &ImageData) -> Result<wgpu::Texture> {
+fn create_temp_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    img: &ImageData,
+) -> Result<wgpu::Texture> {
     let size = wgpu::Extent3d {
         width: img.width,
         height: img.height,
@@ -374,34 +378,45 @@ fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
     }
 }
 
-fn read_texture_to_image_with_buffer(
+fn copy_texture_owned(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
-    buffer: &wgpu::Buffer,
     width: u32,
     height: u32,
-) -> Result<ImageData> {
-    let row_bytes = width as usize * 4;
-    let aligned_row_bytes = (row_bytes + 255) & !255;
+) -> Result<wgpu::Texture> {
+    let output = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("native-transition-owned-output"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    });
 
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("native-transition-readback-encoder"),
+        label: Some("native-transition-output-copy-encoder"),
     });
-    encoder.copy_texture_to_buffer(
+    encoder.copy_texture_to_texture(
         wgpu::TexelCopyTextureInfo {
             texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::TexelCopyBufferInfo {
-            buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(aligned_row_bytes as u32),
-                rows_per_image: Some(height),
-            },
+        wgpu::TexelCopyTextureInfo {
+            texture: &output,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
         },
         wgpu::Extent3d {
             width,
@@ -410,46 +425,35 @@ fn read_texture_to_image_with_buffer(
         },
     );
     queue.submit([encoder.finish()]);
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device.poll(wgpu::PollType::wait_indefinitely()).ok();
-    rx.recv()
-        .map_err(|_| anyhow!("transition readback disconnected"))?
-        .map_err(|e| anyhow!("transition readback map: {e:?}"))?;
-
-    let mapped = slice.get_mapped_range();
-    let mut out = Vec::with_capacity(row_bytes * height as usize);
-    for row in 0..height as usize {
-        let start = row * aligned_row_bytes;
-        out.extend_from_slice(&mapped[start..start + row_bytes]);
-    }
-    drop(mapped);
-    buffer.unmap();
-    Ok(ImageData {
-        data: Blob::new(Arc::new(out)),
-        format: ImageFormat::Rgba8,
-        alpha_type: ImageAlphaType::Alpha,
-        width,
-        height,
-    })
+    Ok(output)
 }
 
-fn build_uniform(spec: &TransitionSpec, progress: f32, width: u32, height: u32) -> TransitionUniform {
+fn build_uniform(
+    spec: &TransitionSpec,
+    progress: f32,
+    width: u32,
+    height: u32,
+) -> TransitionUniform {
     let mut uni = TransitionUniform {
         progress,
         width,
         height,
         pad: 0,
-        p0: 0.0, p1: 0.0, p2: 0.0, p3: 0.0,
-        p4: 0.0, p5: 0.0, p6: 0.0, p7: 0.0,
+        p0: 0.0,
+        p1: 0.0,
+        p2: 0.0,
+        p3: 0.0,
+        p4: 0.0,
+        p5: 0.0,
+        p6: 0.0,
+        p7: 0.0,
     };
 
     match spec {
-        TransitionSpec::Wipe { angle_deg, softness } => {
+        TransitionSpec::Wipe {
+            angle_deg,
+            softness,
+        } => {
             uni.p0 = *angle_deg;
             uni.p1 = *softness;
         }
@@ -504,6 +508,9 @@ fn build_uniform(spec: &TransitionSpec, progress: f32, width: u32, height: u32) 
 
 fn parse_hex_color(hex: &str) -> [f32; 3] {
     let clean = hex.trim().trim_start_matches('#');
+    if clean.len() != 6 || !clean.as_bytes().iter().all(u8::is_ascii_hexdigit) {
+        return [0.0, 0.0, 0.0];
+    }
     let r = u8::from_str_radix(&clean[0..2], 16).unwrap_or(0) as f32 / 255.0;
     let g = u8::from_str_radix(&clean[2..4], 16).unwrap_or(0) as f32 / 255.0;
     let b = u8::from_str_radix(&clean[4..6], 16).unwrap_or(0) as f32 / 255.0;
@@ -513,18 +520,10 @@ fn parse_hex_color(hex: &str) -> [f32; 3] {
 fn get_shader_source(spec: &TransitionSpec) -> String {
     match spec {
         TransitionSpec::CustomWgsl { source, .. } => source.clone(),
-        TransitionSpec::Crossfade => {
-            include_str!("shaders/crossfade.wgsl").to_string()
-        }
-        TransitionSpec::Wipe { .. } => {
-            include_str!("shaders/wipe.wgsl").to_string()
-        }
-        TransitionSpec::Slide { .. } => {
-            include_str!("shaders/slide.wgsl").to_string()
-        }
-        TransitionSpec::Dissolve { .. } => {
-            include_str!("shaders/dissolve.wgsl").to_string()
-        }
+        TransitionSpec::Crossfade => include_str!("shaders/crossfade.wgsl").to_string(),
+        TransitionSpec::Wipe { .. } => include_str!("shaders/wipe.wgsl").to_string(),
+        TransitionSpec::Slide { .. } => include_str!("shaders/slide.wgsl").to_string(),
+        TransitionSpec::Dissolve { .. } => include_str!("shaders/dissolve.wgsl").to_string(),
         TransitionSpec::CircleReveal { .. } => {
             include_str!("shaders/circle_reveal.wgsl").to_string()
         }
@@ -538,6 +537,7 @@ fn get_shader_source(spec: &TransitionSpec) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
+    use vello::peniko::{Blob, ImageAlphaType};
 
     #[test]
     fn test_parse_transition_spec_json() {
@@ -587,27 +587,49 @@ mod tests {
 
         let rgb_no_hash = parse_hex_color("ff0000");
         assert_eq!(rgb_no_hash, [1.0, 0.0, 0.0]);
+
+        assert_eq!(parse_hex_color("#f"), [0.0, 0.0, 0.0]);
+        assert_eq!(parse_hex_color("not-hex"), [0.0, 0.0, 0.0]);
     }
 
     #[test]
     fn test_get_shader_sources_not_empty() {
         let specs = [
             TransitionSpec::Crossfade,
-            TransitionSpec::Wipe { angle_deg: 45.0, softness: 0.1 },
-            TransitionSpec::Slide { direction: SlideDirection::Left },
+            TransitionSpec::Wipe {
+                angle_deg: 45.0,
+                softness: 0.1,
+            },
+            TransitionSpec::Slide {
+                direction: SlideDirection::Left,
+            },
             TransitionSpec::Dissolve { seed: 42 },
-            TransitionSpec::CircleReveal { center: [0.5, 0.5], softness: 0.1 },
-            TransitionSpec::FadeThroughColor { color: "#ff0000".into() },
-            TransitionSpec::CustomWgsl { source: "custom_code".into(), params: serde_json::Value::Null },
+            TransitionSpec::CircleReveal {
+                center: [0.5, 0.5],
+                softness: 0.1,
+            },
+            TransitionSpec::FadeThroughColor {
+                color: "#ff0000".into(),
+            },
+            TransitionSpec::CustomWgsl {
+                source: "custom_code".into(),
+                params: serde_json::Value::Null,
+            },
         ];
 
         for spec in &specs {
             let src = get_shader_source(spec);
-            assert!(!src.is_empty(), "Shader source for spec should not be empty");
+            assert!(
+                !src.is_empty(),
+                "Shader source for spec should not be empty"
+            );
             if let TransitionSpec::CustomWgsl { source, .. } = spec {
                 assert_eq!(src, *source);
             } else {
-                assert!(src.contains("fn main"), "Builtin shaders must contain 'fn main'");
+                assert!(
+                    src.contains("fn main"),
+                    "Builtin shaders must contain 'fn main'"
+                );
             }
         }
     }
@@ -635,4 +657,3 @@ mod tests {
         assert_eq!(image_pixels_rgba8(&bgra_img).unwrap(), vec![30, 20, 10, 40]);
     }
 }
-

@@ -12,13 +12,14 @@
 
 use kurbo::{Affine, BezPath, Rect, RoundedRect, Shape, Stroke};
 use parley::{
-    fontique::FontWeight, Alignment, AlignmentOptions, FontContext, FontFamily, LayoutContext,
-    LineHeight, PositionedLayoutItem, StyleProperty,
+    Alignment, AlignmentOptions, FontContext, FontFamily, LayoutContext, LineHeight,
+    PositionedLayoutItem, StyleProperty, fontique::FontWeight,
 };
+use std::sync::Arc;
 use std::sync::{Mutex, OnceLock};
-use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
 use vello::Glyph;
 use vello::Scene as VelloScene;
+use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
 
 use super::effects::EffectSpec;
 
@@ -47,7 +48,7 @@ impl Scene {
         resolve_gpu_texture: F,
     ) -> VelloScene
     where
-        F: Fn(super::texture_cache::TextureKey) -> Option<ImageData>,
+        F: FnMut(RasterGpuSource<'_>) -> Option<ImageData>,
     {
         self.to_vello_with_image_processor(
             viewport_w,
@@ -61,11 +62,11 @@ impl Scene {
         &self,
         viewport_w: u32,
         viewport_h: u32,
-        resolve_gpu_texture: F,
+        mut resolve_gpu_texture: F,
         mut process_image: P,
     ) -> VelloScene
     where
-        F: Fn(super::texture_cache::TextureKey) -> Option<ImageData>,
+        F: FnMut(RasterGpuSource<'_>) -> Option<ImageData>,
         P: FnMut(&ImageData, &[EffectSpec]) -> ImageData,
     {
         let mut out = VelloScene::new();
@@ -100,11 +101,13 @@ impl Scene {
             let y_max = (nh - crop_bottom).max(y_min);
             let crop_bbox = Rect::new(x_min, y_min, x_max, y_max);
 
-            let has_crop = crop_left > 0.0 || crop_right > 0.0 || crop_top > 0.0 || crop_bottom > 0.0;
+            let has_crop =
+                crop_left > 0.0 || crop_right > 0.0 || crop_top > 0.0 || crop_bottom > 0.0;
 
             // push_layer нужен для opacity<1, non-Normal blend или наличия кропа.
             let mix = layer.blend.to_vello();
-            let needs_layer = opacity < 1.0 || !matches!(layer.blend, BlendMode::Normal) || has_crop;
+            let needs_layer =
+                opacity < 1.0 || !matches!(layer.blend, BlendMode::Normal) || has_crop;
             if needs_layer {
                 out.push_layer(Fill::NonZero, mix, opacity, xform, &crop_bbox);
             }
@@ -120,7 +123,17 @@ impl Scene {
                         out.draw_image(&processed, xform);
                     }
                     RasterSource::GpuHandle(key) => {
-                        if let Some(img) = resolve_gpu_texture(*key) {
+                        if let Some(img) = resolve_gpu_texture(RasterGpuSource::Cache(*key)) {
+                            let processed = if layer.effects.is_empty() {
+                                img
+                            } else {
+                                process_image(&img, &layer.effects)
+                            };
+                            out.draw_image(&processed, xform);
+                        }
+                    }
+                    RasterSource::GpuTexture(texture) => {
+                        if let Some(img) = resolve_gpu_texture(RasterGpuSource::Texture(texture)) {
                             let processed = if layer.effects.is_empty() {
                                 img
                             } else {
@@ -290,6 +303,12 @@ pub struct TextBackground {
 pub enum RasterSource {
     Image(ImageData),
     GpuHandle(super::texture_cache::TextureKey),
+    GpuTexture(Arc<wgpu::Texture>),
+}
+
+pub enum RasterGpuSource<'a> {
+    Cache(super::texture_cache::TextureKey),
+    Texture(&'a wgpu::Texture),
 }
 
 /// 2D-transform слоя в координатах композитного кадра.

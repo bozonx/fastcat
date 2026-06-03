@@ -4,13 +4,12 @@
 //! a wgpu compute pass over a texture, so the same code path can be used by the
 //! native monitor and export.
 
-use std::borrow::Cow;
-use std::sync::Arc;
-
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
-use vello::peniko::{Blob, ImageAlphaType, ImageData, ImageFormat};
+use std::borrow::Cow;
+use std::sync::Arc;
+use vello::peniko::{ImageData, ImageFormat};
 use wgpu::util::DeviceExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,9 +109,6 @@ struct CachedResources {
     ping_view: wgpu::TextureView,
     pong: wgpu::Texture,
     pong_view: wgpu::TextureView,
-    readback: wgpu::Buffer,
-    #[allow(dead_code)]
-    readback_size: u64,
 }
 
 pub struct EffectPipeline {
@@ -182,7 +178,13 @@ impl EffectPipeline {
         }
     }
 
-    fn ensure_resources(&mut self, device: &wgpu::Device, width: u32, height: u32, need_input: bool) {
+    fn ensure_resources(
+        &mut self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        need_input: bool,
+    ) {
         let mut recreate = true;
         if let Some(res) = &self.resources {
             if res.width >= width && res.height >= height {
@@ -193,8 +195,16 @@ impl EffectPipeline {
         }
 
         if recreate {
-            let new_w = if let Some(res) = &self.resources { res.width.max(width) } else { width };
-            let new_h = if let Some(res) = &self.resources { res.height.max(height) } else { height };
+            let new_w = if let Some(res) = &self.resources {
+                res.width.max(width)
+            } else {
+                width
+            };
+            let new_h = if let Some(res) = &self.resources {
+                res.height.max(height)
+            } else {
+                height
+            };
             let new_size = wgpu::Extent3d {
                 width: new_w,
                 height: new_h,
@@ -245,17 +255,6 @@ impl EffectPipeline {
             });
             let pong_view = pong.create_view(&wgpu::TextureViewDescriptor::default());
 
-            let row_bytes = new_w as usize * 4;
-            let aligned_row_bytes = (row_bytes + 255) & !255;
-            let buffer_size = (aligned_row_bytes * new_h as usize) as u64;
-
-            let readback = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("native-effect-cached-readback"),
-                size: buffer_size,
-                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                mapped_at_creation: false,
-            });
-
             self.resources = Some(CachedResources {
                 width: new_w,
                 height: new_h,
@@ -264,8 +263,6 @@ impl EffectPipeline {
                 ping_view,
                 pong,
                 pong_view,
-                readback,
-                readback_size: buffer_size,
             });
         }
     }
@@ -276,7 +273,7 @@ impl EffectPipeline {
         queue: &wgpu::Queue,
         source: &EffectSource,
         effects: &[EffectSpec],
-    ) -> Result<ImageData> {
+    ) -> Result<wgpu::Texture> {
         let (width, height) = match source {
             EffectSource::Cpu(img) => (img.width, img.height),
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
@@ -284,16 +281,10 @@ impl EffectPipeline {
 
         let passes = build_passes(effects, width, height);
         if passes.is_empty() {
-            return match source {
-                EffectSource::Cpu(img) => Ok(img.clone()),
-                EffectSource::Gpu(tex) => read_texture_to_image(device, queue, tex),
-            };
+            return source_to_owned_texture(device, queue, source, width, height);
         }
         if width == 0 || height == 0 {
-            return match source {
-                EffectSource::Cpu(img) => Ok(img.clone()),
-                EffectSource::Gpu(tex) => read_texture_to_image(device, queue, tex),
-            };
+            return source_to_owned_texture(device, queue, source, width.max(1), height.max(1));
         }
 
         let need_input = matches!(source, EffectSource::Cpu(_));
@@ -334,9 +325,7 @@ impl EffectPipeline {
                     ..Default::default()
                 })
             }
-            EffectSource::Gpu(tex) => {
-                tex.create_view(&wgpu::TextureViewDescriptor::default())
-            }
+            EffectSource::Gpu(tex) => tex.create_view(&wgpu::TextureViewDescriptor::default()),
         };
 
         let ping_view = &resources.ping_view;
@@ -395,20 +384,12 @@ impl EffectPipeline {
         }
 
         queue.submit([encoder.finish()]);
-        let output = if last_is_ping { &resources.ping } else { &resources.pong };
-        read_texture_to_image_with_buffer(device, queue, output, &resources.readback, width, height)
-    }
-
-    // Deprecated but kept for backward compatibility if needed in tests
-    #[allow(dead_code)]
-    pub fn apply_to_image(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        image: &ImageData,
-        effects: &[EffectSpec],
-    ) -> Result<ImageData> {
-        self.apply_effects(device, queue, &EffectSource::Cpu(image.clone()), effects)
+        let output = if last_is_ping {
+            &resources.ping
+        } else {
+            &resources.pong
+        };
+        copy_texture_owned(device, queue, output, width, height)
     }
 }
 
@@ -471,12 +452,22 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         },
     };
     match *effect {
-        EffectSpec::Brightness { value } => Some(base(1, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
-        EffectSpec::Contrast { value } => Some(base(2, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
-        EffectSpec::Saturation { value } => Some(base(3, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Brightness { value } => {
+            Some(base(1, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
+        }
+        EffectSpec::Contrast { value } => {
+            Some(base(2, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
+        }
+        EffectSpec::Saturation { value } => {
+            Some(base(3, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
+        }
         EffectSpec::GaussianBlur { .. } => None, // Handled in build_passes
-        EffectSpec::Sharpen { amount } => Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
-        EffectSpec::Pixelate { size } => Some(base(6, size.clamp(1.0, 128.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Sharpen { amount } => {
+            Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
+        }
+        EffectSpec::Pixelate { size } => {
+            Some(base(6, size.clamp(1.0, 128.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
+        }
         EffectSpec::Bloom {
             threshold,
             strength,
@@ -505,12 +496,26 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0,
         )),
-        EffectSpec::Noise { amount, seed } => {
-            Some(base(9, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, seed))
-        }
-        EffectSpec::ChromaticAberration { amount, angle_deg } => {
-            Some(base(10, amount.clamp(0.0, 80.0), angle_deg, 0.0, 0.0, 0.0, 0.0, 0))
-        }
+        EffectSpec::Noise { amount, seed } => Some(base(
+            9,
+            amount.clamp(0.0, 1.0),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            seed,
+        )),
+        EffectSpec::ChromaticAberration { amount, angle_deg } => Some(base(
+            10,
+            amount.clamp(0.0, 80.0),
+            angle_deg,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+        )),
         EffectSpec::Hue { degrees } => Some(base(11, degrees, 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
         EffectSpec::Levels {
             in_black,
@@ -573,54 +578,95 @@ fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
     }
 }
 
-fn read_texture_to_image(
+fn source_to_owned_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-) -> Result<ImageData> {
-    let width = texture.width();
-    let height = texture.height();
-    let row_bytes = width as usize * 4;
-    let aligned_row_bytes = (row_bytes + 255) & !255;
-    let buffer_size = (aligned_row_bytes * height as usize) as u64;
-
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("native-effect-readback-temp"),
-        size: buffer_size,
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    read_texture_to_image_with_buffer(device, queue, texture, &buffer, width, height)
-}
-
-fn read_texture_to_image_with_buffer(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    buffer: &wgpu::Buffer,
+    source: &EffectSource,
     width: u32,
     height: u32,
-) -> Result<ImageData> {
-    let row_bytes = width as usize * 4;
-    let aligned_row_bytes = (row_bytes + 255) & !255;
+) -> Result<wgpu::Texture> {
+    match source {
+        EffectSource::Cpu(img) => {
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("native-effect-owned-cpu-source"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+            let pixels = image_pixels_rgba8(img)?;
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &pixels,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(width * 4),
+                    rows_per_image: Some(height),
+                },
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+            Ok(texture)
+        }
+        EffectSource::Gpu(texture) => copy_texture_owned(device, queue, texture, width, height),
+    }
+}
 
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("native-effect-readback-encoder"),
+fn copy_texture_owned(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+) -> Result<wgpu::Texture> {
+    let output = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("native-effect-owned-output"),
+        size: wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
     });
-    encoder.copy_texture_to_buffer(
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("native-effect-output-copy-encoder"),
+    });
+    encoder.copy_texture_to_texture(
         wgpu::TexelCopyTextureInfo {
             texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,
         },
-        wgpu::TexelCopyBufferInfo {
-            buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(aligned_row_bytes as u32),
-                rows_per_image: Some(height),
-            },
+        wgpu::TexelCopyTextureInfo {
+            texture: &output,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
         },
         wgpu::Extent3d {
             width,
@@ -629,32 +675,7 @@ fn read_texture_to_image_with_buffer(
         },
     );
     queue.submit([encoder.finish()]);
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device.poll(wgpu::PollType::wait_indefinitely()).ok();
-    rx.recv()
-        .map_err(|_| anyhow!("effect readback disconnected"))?
-        .map_err(|e| anyhow!("effect readback map: {e:?}"))?;
-
-    let mapped = slice.get_mapped_range();
-    let mut out = Vec::with_capacity(row_bytes * height as usize);
-    for row in 0..height as usize {
-        let start = row * aligned_row_bytes;
-        out.extend_from_slice(&mapped[start..start + row_bytes]);
-    }
-    drop(mapped);
-    buffer.unmap();
-    Ok(ImageData {
-        data: Blob::new(Arc::new(out)),
-        format: ImageFormat::Rgba8,
-        alpha_type: ImageAlphaType::Alpha,
-        width,
-        height,
-    })
+    Ok(output)
 }
 
 const EFFECT_SHADER: &str = r#"
@@ -849,6 +870,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use vello::peniko::{Blob, ImageAlphaType};
 
     #[test]
     fn build_passes_skips_custom_wgsl() {
@@ -882,13 +904,9 @@ mod tests {
 
     #[test]
     fn build_passes_gaussian_blur_splits_to_h_and_v() {
-        let passes = build_passes(
-            &[EffectSpec::GaussianBlur { radius: 10.0 }],
-            1920,
-            1080,
-        );
+        let passes = build_passes(&[EffectSpec::GaussianBlur { radius: 10.0 }], 1920, 1080);
         assert_eq!(passes.len(), 2);
-        assert_eq!(passes[0].uniform.mode, 4);  // Horizontal
+        assert_eq!(passes[0].uniform.mode, 4); // Horizontal
         assert_eq!(passes[1].uniform.mode, 14); // Vertical
         assert_eq!(passes[0].uniform.p0, 10.0);
         assert_eq!(passes[1].uniform.p0, 10.0);

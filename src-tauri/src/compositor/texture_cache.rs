@@ -1,8 +1,8 @@
 //! GPU-resident texture cache — задел под HW-decoded видеокадры и group-offscreen-кеш.
 //!
-//! Сейчас весь рендер идёт через CPU-blob (`peniko::ImageData`). Vello внутренне
-//! кеширует GPU-аплоад по identity `peniko::Blob`, поэтому повторный клон одной
-//! и той же `ImageData` (статичная картинка) не перезаливается.
+//! Vello still describes images as `peniko::ImageData`, but GPU-resident layers
+//! are registered through renderer texture overrides, without CPU readback from
+//! this cache.
 //!
 //! Этот модуль активируется когда появятся:
 //!   - HW-decode видео (VAAPI / VideoToolbox / D3D11) — декодер пишет в
@@ -10,11 +10,11 @@
 //!   - `LayerKind::Group` — offscreen-композит детей кешируется между кадрами
 //!     до изменения дочерних слоёв.
 //!
-//! План активации:
-//!   1. Реализовать `TextureCache::{insert, get, remove}` поверх `wgpu::Device`.
-//!   2. Добавить вариант `RasterSource::GpuHandle(TextureKey)` в [`super::scene::RasterSource`].
-//!   3. Расширить `Scene::to_vello`: для GPU-handle либо readback в `ImageData`,
-//!      либо custom WGSL-pass до vello-композита.
+//! Active path:
+//!   1. `TextureCache::{insert, get, remove}` stores wgpu textures by key.
+//!   2. `RasterSource::GpuHandle(TextureKey)` carries cached GPU frames.
+//!   3. `Scene::to_vello` resolves GPU handles to lightweight `ImageData`
+//!      handles backed by Vello texture overrides.
 
 /// Стабильный идентификатор GPU-resident текстуры в [`TextureCache`].
 /// Получается через `TextureCache::insert`, освобождается через `remove`.
@@ -36,7 +36,9 @@ impl TextureCache {
     }
 
     pub fn insert(&mut self, texture: wgpu::Texture) -> TextureKey {
-        let key = self.next_key.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let key = self
+            .next_key
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         self.textures.insert(key, std::sync::Arc::new(texture));
         TextureKey(key)
     }

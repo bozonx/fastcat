@@ -731,6 +731,46 @@ mod tests {
     }
 
     #[test]
+    fn finalize_layer_builds_shader_transition_info_from_transition_in() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "to",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_in": {
+                "type": "wipe",
+                "duration_sec": 2.0,
+                "curve": "linear",
+                "from_layer_id": "from",
+                "spec": {
+                    "type": "wipe",
+                    "angle_deg": 45.0,
+                    "softness": 0.25
+                }
+            }
+        }))
+        .unwrap();
+
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 11.0);
+        let transition = output.transition.expect("transition info");
+        assert_eq!(transition.from_layer_id, "from");
+        assert!((transition.progress - 0.5).abs() < 1e-6);
+        match transition.spec {
+            crate::compositor::transitions::TransitionSpec::Wipe {
+                angle_deg,
+                softness,
+            } => {
+                assert_eq!(angle_deg, 45.0);
+                assert_eq!(softness, 0.25);
+            }
+            _ => panic!("expected wipe transition"),
+        }
+    }
+
+    #[test]
     fn finalize_layer_remaps_raster_crop_for_180_degree_source_orientation() {
         let layer = layer_with_crop("video", "180");
         let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 0.0);

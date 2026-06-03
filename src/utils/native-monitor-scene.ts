@@ -22,6 +22,7 @@ import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
 import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
+import type { TauriTransitionSpec } from '~/transitions/core/registry';
 
 interface NativeAudioWorkerTimelineClip extends WorkerTimelineClip {
   originalAudioGain?: unknown;
@@ -70,11 +71,14 @@ export interface NativeSceneLayer {
     type: string;
     duration_sec: number;
     curve?: string;
+    from_layer_id?: string;
+    spec?: TauriTransitionSpec;
   };
   transition_out?: {
     type: string;
     duration_sec: number;
     curve?: string;
+    spec?: TauriTransitionSpec;
   };
   effects?: TauriEffectSpec[];
 }
@@ -155,6 +159,45 @@ function sanitizeAudioSpeed(value: unknown): number {
   return Math.max(0.01, Math.min(100, Math.abs(finite(value, 1) || 1)));
 }
 
+function findPreviousAdjacentClip(
+  clip: WorkerTimelineClip,
+  allClips: WorkerTimelineClip[],
+): WorkerTimelineClip | undefined {
+  return allClips
+    .filter((candidate) => {
+      if (candidate.trackId !== clip.trackId || candidate.id === clip.id) {
+        return false;
+      }
+      const candidateEndUs = candidate.timelineRange.startUs + candidate.timelineRange.durationUs;
+      return (
+        candidate.timelineRange.startUs < clip.timelineRange.startUs &&
+        candidateEndUs >= clip.timelineRange.startUs - 1_000
+      );
+    })
+    .sort((a, b) => {
+      const aEndUs = a.timelineRange.startUs + a.timelineRange.durationUs;
+      const bEndUs = b.timelineRange.startUs + b.timelineRange.durationUs;
+      return bEndUs - aEndUs;
+    })[0];
+}
+
+function getEffectiveTransitionIn(
+  clip: WorkerTimelineClip,
+  allClips: WorkerTimelineClip[],
+): WorkerTimelineClip['transitionIn'] {
+  if (clip.transitionIn) {
+    return clip.transitionIn;
+  }
+
+  const previous = findPreviousAdjacentClip(clip, allClips);
+  const previousOut = previous?.transitionOut;
+  if (previousOut && (previousOut.mode ?? 'transparent') === 'adjacent') {
+    return previousOut;
+  }
+
+  return undefined;
+}
+
 function buildNativeTransform(
   transform: ClipTransform | undefined,
   sceneWidth: number,
@@ -233,22 +276,19 @@ function buildBaseLayer(params: {
   const sourceDurationUs = clip.sourceRange.durationUs;
 
   const transition_in = (() => {
-    if (clip.transitionIn && clip.transitionIn.durationUs > 0) {
-      const type = clip.transitionIn.type;
+    const effectiveTransitionIn = getEffectiveTransitionIn(clip, allClips);
+    if (effectiveTransitionIn && effectiveTransitionIn.durationUs > 0) {
+      const type = effectiveTransitionIn.type;
       const manifest = getTauriTransitionManifest(type) || getTransitionManifest(type);
-      const spec = manifest?.toTauriSpec ? manifest.toTauriSpec(clip.transitionIn.params ?? {}) : undefined;
-
-      const fromClip = allClips.find(c => 
-        c.trackId === clip.trackId &&
-        c.id !== clip.id &&
-        c.timelineRange.startUs < clip.timelineRange.startUs &&
-        c.timelineRange.endUs > clip.timelineRange.startUs
-      );
+      const spec = manifest?.toTauriSpec
+        ? manifest.toTauriSpec(effectiveTransitionIn.params ?? {})
+        : undefined;
+      const fromClip = findPreviousAdjacentClip(clip, allClips);
 
       return {
         type,
-        duration_sec: clip.transitionIn.durationUs / 1_000_000,
-        curve: clip.transitionIn.curve,
+        duration_sec: effectiveTransitionIn.durationUs / 1_000_000,
+        curve: effectiveTransitionIn.curve,
         from_layer_id: fromClip?.id,
         spec,
       };
@@ -260,7 +300,9 @@ function buildBaseLayer(params: {
     if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
       const type = clip.transitionOut.type;
       const manifest = getTauriTransitionManifest(type) || getTransitionManifest(type);
-      const spec = manifest?.toTauriSpec ? manifest.toTauriSpec(clip.transitionOut.params ?? {}) : undefined;
+      const spec = manifest?.toTauriSpec
+        ? manifest.toTauriSpec(clip.transitionOut.params ?? {})
+        : undefined;
 
       return {
         type,
