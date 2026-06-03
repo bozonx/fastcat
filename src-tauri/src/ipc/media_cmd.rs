@@ -461,8 +461,23 @@ pub async fn native_get_ffmpeg_diagnostics(
     .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+pub async fn native_media_extract_peaks(
+    path: String,
+    max_length: usize,
+) -> Result<Vec<Vec<f32>>, String> {
+    let path = PathBuf::from(path);
+    tokio::task::spawn_blocking(move || {
+        crate::audio::peaks::extract_peaks(&path, max_length)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]

@@ -7,9 +7,10 @@ import { useProjectStore } from '~/stores/project.store';
 import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 vi.mock('#app-manifest', () => ({}));
 
-const { mockIsTauriState, mockNativeMediaMetadata } = vi.hoisted(() => ({
+const { mockIsTauriState, mockNativeMediaMetadata, mockNativeMediaExtractPeaks } = vi.hoisted(() => ({
   mockIsTauriState: { value: false },
   mockNativeMediaMetadata: vi.fn(),
+  mockNativeMediaExtractPeaks: vi.fn(),
 }));
 
 vi.mock('~/utils/runtime', () => ({
@@ -19,7 +20,9 @@ vi.mock('~/utils/runtime', () => ({
 vi.mock('~/utils/tauri-media-processing', () => ({
   getNativeFileHandlePath: (handle: any) => handle?.path || null,
   nativeMediaMetadata: (...args: any[]) => mockNativeMediaMetadata(...args),
+  nativeMediaExtractPeaks: (...args: any[]) => mockNativeMediaExtractPeaks(...args),
 }));
+
 
 const { clearThumbnailMock, clearThumbnailsMock } = vi.hoisted(() => ({
   clearThumbnailMock: vi.fn(),
@@ -210,6 +213,8 @@ describe('MediaStore', () => {
     clearThumbnailsMock.mockReset();
     mockIsTauriState.value = false;
     mockNativeMediaMetadata.mockReset();
+    mockNativeMediaExtractPeaks.mockReset();
+
     vi.mocked(useProjectStore).mockReturnValue({
       currentProjectId: 'test-project',
       getFileHandleByPath: vi.fn(),
@@ -685,4 +690,31 @@ describe('MediaStore', () => {
       rotation: 90,
     });
   });
+
+  it('extracts peaks using Tauri native extraction in Tauri environment', async () => {
+    mockIsTauriState.value = true;
+    mockNativeMediaExtractPeaks.mockResolvedValue([[0.1, 0.2], [0.3, 0.4]]);
+
+    const mockFile = { size: 100, lastModified: 100, name: 'audio.mp3' } as any;
+    const mockHandle = { path: 'audio/audio.mp3' };
+
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
+      getFileByPath: vi.fn().mockResolvedValue(mockFile),
+    } as any);
+
+    const store = useMediaStore();
+    const result = await store.extractPeaks(mockFile, 'audio/audio.mp3', { maxLength: 100 });
+
+    expect(mockNativeMediaExtractPeaks).toHaveBeenCalledWith('audio/audio.mp3', 100);
+    expect(result).toBeDefined();
+    expect(result?.[0]).toBeInstanceOf(Float32Array);
+    expect(result?.[0]?.[0]).toBeCloseTo(0.1);
+    expect(result?.[0]?.[1]).toBeCloseTo(0.2);
+    expect(result?.[1]?.[0]).toBeCloseTo(0.3);
+    expect(result?.[1]?.[1]).toBeCloseTo(0.4);
+  });
 });
+
+

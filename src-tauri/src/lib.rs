@@ -185,6 +185,7 @@ pub fn run() {
             allow_dev_directory_scope,
             video_render::webgpu_render_engine_status,
             ipc::media_cmd::native_media_metadata,
+            ipc::media_cmd::native_media_extract_peaks,
             ipc::media_cmd::native_media_generate_proxy,
             ipc::media_cmd::native_media_convert,
             ipc::media_cmd::native_media_cancel,

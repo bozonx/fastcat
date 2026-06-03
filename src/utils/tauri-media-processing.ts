@@ -40,6 +40,13 @@ export async function nativeMediaMetadata(path: string): Promise<NativeMediaMeta
   return await invoke<NativeMediaMetadata>('native_media_metadata', { path });
 }
 
+export async function nativeMediaExtractPeaks(
+  path: string,
+  maxLength: number,
+): Promise<number[][]> {
+  return await invoke<number[][]>('native_media_extract_peaks', { path, maxLength });
+}
+
 export async function nativeGenerateProxy(params: {
   taskId: string;
   sourcePath: string;

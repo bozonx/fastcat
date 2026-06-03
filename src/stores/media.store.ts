@@ -15,7 +15,8 @@ import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { thumbnailGenerator, getClipThumbnailsHash } from '~/utils/thumbnail-generator';
 import { isTauriRuntime } from '~/utils/runtime';
-import { getNativeFileHandlePath, nativeMediaMetadata } from '~/utils/tauri-media-processing';
+import { getNativeFileHandlePath, nativeMediaMetadata, nativeMediaExtractPeaks } from '~/utils/tauri-media-processing';
+
 const log = createDevLogger('media.store');
 
 interface VideoColorSpaceInit {
@@ -621,6 +622,23 @@ export const useMediaStore = defineStore('media', () => {
     sourceKey: string,
     options?: { maxLength?: number; precision?: number },
   ): Promise<Float32Array[] | null> {
+    const maxLength = options?.maxLength || 8000;
+
+    if (isTauriRuntime()) {
+      try {
+        const handle = await projectStore.getFileHandleByPath(sourceKey);
+        const nativePath = getNativeFileHandlePath(handle);
+        if (nativePath) {
+          const nativePeaks = await nativeMediaExtractPeaks(nativePath, maxLength);
+          if (nativePeaks && nativePeaks.length > 0) {
+            return nativePeaks.map((channel) => new Float32Array(channel));
+          }
+        }
+      } catch (err) {
+        log.warn('Failed native peaks extraction, falling back to worker:', err);
+      }
+    }
+
     const worker = ensureSharedAudioDecodeWorker();
     return new Promise<Float32Array[] | null>((resolve) => {
       const id = ++decodeCallId;
@@ -643,6 +661,7 @@ export const useMediaStore = defineStore('media', () => {
       });
     });
   }
+
 
   return {
     mediaMetadata,
