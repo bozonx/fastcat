@@ -11,6 +11,7 @@ import SttWorker from '~/workers/stt.worker.ts?worker';
 import AudioDecodeWorker from '~/workers/audio-decode.worker.ts?worker';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
+import { isLazyTauriFile } from '~/stores/workspace/provider/tauri-handle';
 
 export type { LocalTranscriptionProgress };
 
@@ -54,6 +55,20 @@ async function decodeAudioForStt(file: File, signal?: AbortSignal): Promise<Floa
   const decodeWorker = getDecodeWorker();
   const id = Math.random();
 
+  let request: DecodeRequest = {
+    type: 'decode-stt',
+    id,
+    sourceKey: 'stt-decode',
+    options: { targetSampleRate: 16000 },
+  };
+
+  if (isLazyTauriFile(file)) {
+    const buf = await file.arrayBuffer();
+    request.arrayBuffer = buf;
+  } else {
+    request.blob = file;
+  }
+
   return new Promise((resolve, reject) => {
     const abortHandler = () => {
       terminateDecodeWorker();
@@ -83,15 +98,8 @@ async function decodeAudioForStt(file: File, signal?: AbortSignal): Promise<Floa
 
     decodeWorker.addEventListener('message', handler);
 
-    const request: DecodeRequest = {
-      type: 'decode-stt',
-      id,
-      sourceKey: 'stt-decode',
-      blob: file,
-      options: { targetSampleRate: 16000 },
-    };
-
-    decodeWorker.postMessage(request);
+    const transferables: ArrayBuffer[] = request.arrayBuffer ? [request.arrayBuffer] : [];
+    decodeWorker.postMessage(request, transferables);
   });
 }
 

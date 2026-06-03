@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use image::{ColorType, ImageFormat};
 use parking_lot::Mutex;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat as VelloImageFormat};
@@ -20,22 +20,48 @@ struct RasterBuild {
 
 pub struct VideoDecoderCache {
     decoders: HashMap<PathBuf, Box<dyn VideoDecoder>>,
+    lru: VecDeque<PathBuf>,
+    capacity: usize,
 }
 
 impl VideoDecoderCache {
     pub fn new() -> Self {
         Self {
             decoders: HashMap::new(),
+            lru: VecDeque::new(),
+            capacity: 8,
         }
     }
 
     pub fn get_or_insert(&mut self, path: &Path, hw_settings: crate::FfmpegHardwareSettings) -> Result<&mut dyn VideoDecoder> {
         let path_buf = path.to_path_buf();
         if !self.decoders.contains_key(&path_buf) {
+            while self.decoders.len() >= self.capacity && !self.decoders.is_empty() {
+                if let Some(oldest) = self.lru.pop_front() {
+                    if oldest != path_buf {
+                        self.decoders.remove(&oldest);
+                    }
+                }
+            }
             let decoder = open_decoder(path, None, hw_settings)?;
             self.decoders.insert(path_buf.clone(), decoder);
         }
+        self.lru.retain(|p| p != &path_buf);
+        self.lru.push_back(path_buf.clone());
         Ok(self.decoders.get_mut(&path_buf).unwrap().as_mut())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decoder_cache_new_has_default_capacity() {
+        let cache = VideoDecoderCache::new();
+        assert_eq!(cache.capacity, 8);
+        assert!(cache.decoders.is_empty());
+        assert!(cache.lru.is_empty());
     }
 }
 

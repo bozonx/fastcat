@@ -7,6 +7,7 @@ import {
   stat,
   exists,
   rename,
+  open,
 } from '@tauri-apps/plugin-fs';
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
@@ -14,6 +15,101 @@ import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 import { joinTauriFsPath } from '~/utils/tauri-local-path';
 
 const STREAM_WRITER_THRESHOLD_BYTES = 1024 * 1024;
+export const LAZY_FILE_MEDIA_THRESHOLD_BYTES = 5 * 1024 * 1024;
+
+const MEDIA_EXTENSIONS = new Set([
+  'mp4', 'mov', 'mkv', 'webm', 'avi', 'mp3', 'wav', 'flac', 'aac', 'ogg', 'opus', 'm4a', 'mka',
+  'wmv', 'm4v', '3gp', 'ogv', 'oga', 'wma', 'aiff', 'au',
+]);
+
+export function isMediaFile(name: string): boolean {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  return MEDIA_EXTENSIONS.has(ext);
+}
+
+export function isLazyTauriFile(value: unknown): value is LazyTauriFile {
+  return value instanceof LazyTauriFile;
+}
+
+export class LazyTauriFile extends File {
+  readonly path: string;
+  private _totalSize: number;
+  private _start: number;
+  private _end: number;
+
+  constructor(params: {
+    path: string;
+    name: string;
+    size: number;
+    type?: string;
+    lastModified?: number;
+    start?: number;
+    end?: number;
+  }) {
+    super([], params.name, {
+      type: params.type ?? '',
+      lastModified: params.lastModified ?? Date.now(),
+    });
+    this.path = params.path;
+    this._totalSize = params.size;
+    this._start = params.start ?? 0;
+    this._end = params.end ?? params.size;
+  }
+
+  override get size(): number {
+    return this._end - this._start;
+  }
+
+  override slice(start = 0, end = this.size, contentType?: string): Blob {
+    const relativeStart = Math.max(0, this._start + start);
+    const relativeEnd = Math.min(this._start + this.size, this._start + end);
+    return new LazyTauriFile({
+      path: this.path,
+      name: this.name,
+      size: this._totalSize,
+      type: contentType ?? this.type,
+      lastModified: this.lastModified,
+      start: relativeStart,
+      end: relativeEnd,
+    });
+  }
+
+  override async arrayBuffer(): Promise<ArrayBuffer> {
+    const handle = await open(this.path, { read: true });
+    try {
+      if (this._start > 0) {
+        await handle.seek(this._start, 0);
+      }
+      const length = this.size;
+      const result = new Uint8Array(length);
+      let read = 0;
+      while (read < length) {
+        const chunk = await handle.read(result.subarray(read));
+        if (chunk === null) break;
+        read += chunk;
+      }
+      return result.buffer;
+    } finally {
+      await handle.close();
+    }
+  }
+
+  override async text(): Promise<string> {
+    const buf = await this.arrayBuffer();
+    return new TextDecoder().decode(buf);
+  }
+
+  override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+    const self = this;
+    return new ReadableStream<Uint8Array<ArrayBuffer>>({
+      async pull(controller) {
+        const chunk = await self.arrayBuffer();
+        controller.enqueue(new Uint8Array(chunk) as Uint8Array<ArrayBuffer>);
+        controller.close();
+      },
+    });
+  }
+}
 
 export class TauriFileHandle {
   kind = 'file' as const;
@@ -26,9 +122,18 @@ export class TauriFileHandle {
   }
 
   async getFile(): Promise<File> {
+    const fileStat = await stat(this.path).catch(() => ({ mtime: Date.now(), size: 0 }));
+    const size = fileStat.size ?? 0;
+    if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(this.name)) {
+      return new LazyTauriFile({
+        path: this.path,
+        name: this.name,
+        size,
+        lastModified: fileStat.mtime ? new Date(fileStat.mtime).getTime() : Date.now(),
+      });
+    }
     const bytes = await readFile(this.path);
     const blob = new Blob([bytes]);
-    const fileStat = await stat(this.path).catch(() => ({ mtime: Date.now() }));
     return new File([blob], this.name, {
       lastModified: fileStat.mtime ? new Date(fileStat.mtime).getTime() : Date.now(),
     });

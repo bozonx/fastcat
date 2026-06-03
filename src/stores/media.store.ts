@@ -20,6 +20,7 @@ import {
   nativeMediaMetadata,
   nativeMediaExtractPeaks,
 } from '~/utils/tauri-media-processing';
+import { isLazyTauriFile } from '~/stores/workspace/provider/tauri-handle';
 
 const log = createDevLogger('media.store');
 
@@ -656,13 +657,32 @@ export const useMediaStore = defineStore('media', () => {
           resolve(null);
         },
       });
-      worker.postMessage({
+      const payload: {
+        type: 'extract-peaks';
+        id: number;
+        sourceKey: string;
+        blob?: File;
+        arrayBuffer?: ArrayBuffer;
+        options?: { maxLength?: number; precision?: number };
+      } = {
         type: 'extract-peaks',
         id,
         sourceKey,
-        blob: file,
         options,
-      });
+      };
+      if (isLazyTauriFile(file)) {
+        file.arrayBuffer().then((buf) => {
+          payload.arrayBuffer = buf;
+          worker.postMessage(payload, [buf]);
+        }).catch((err: unknown) => {
+          log.warn('Failed to read lazy file for peaks extraction', err);
+          decodePending.delete(id);
+          resolve(null);
+        });
+      } else {
+        payload.blob = file;
+        worker.postMessage(payload);
+      }
     });
   }
 
