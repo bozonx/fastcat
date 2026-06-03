@@ -6,14 +6,9 @@ import { parseTimelineFromOtio } from '~/timeline/otio-serializer';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import type { ProxyThumbnailService } from '~/media-cache/application/proxyThumbnailService';
 import type { TimelineFormatInput } from '~/timeline/format';
+import type { TimelineApplyWithHistoryOptions } from '~/timeline/apply-options';
 
-export interface TimelineApplyOptions {
-  saveMode?: 'debounced' | 'immediate' | 'none';
-  skipHistory?: boolean;
-  historyMode?: 'immediate' | 'debounced';
-  historyDebounceMs?: number;
-  labelKey?: string;
-}
+export type TimelineApplyOptions = TimelineApplyWithHistoryOptions;
 
 export interface TimelineCommandsDeps {
   timelineDoc: Ref<TimelineDocument | null>;

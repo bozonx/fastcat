@@ -8,7 +8,7 @@ import type {
   TimelineTrack,
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { getDocFps, nextItemId, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import { getDocFps, nextItemId, nextItemIds, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 import { cloneValue } from '~/utils/clone';
 import { resolveClipSourceTimeUs } from '~/utils/video-editor/source-time';
@@ -50,6 +50,7 @@ export interface TimelineClipsDeps {
   resolveTargetVideoTrackIdForInsert: () => string;
   clearSelection: () => void;
   clearSelectedTransition: () => void;
+  removeFromSelection: (itemIds: string[]) => void;
   rippleDeleteRange: (input: { trackIds: string[]; startUs: number; endUs: number }) => void;
   createFallbackTimelineDoc: () => TimelineDocument;
   deleteTrack: (trackId: string, options?: { allowNonEmpty?: boolean }) => void;
@@ -308,51 +309,6 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       historyMode?: 'immediate' | 'debounced';
     },
   ): string[] {
-    const validatedProperties = { ...properties };
-
-    if (typeof validatedProperties.opacity === 'number') {
-      validatedProperties.opacity = Math.max(0, Math.min(1, validatedProperties.opacity));
-    }
-
-    if (typeof validatedProperties.audioGain === 'number') {
-      validatedProperties.audioGain = Math.max(
-        0,
-        Math.min(CLIP_AUDIO_GAIN_MAX, validatedProperties.audioGain),
-      );
-    }
-
-    if (typeof validatedProperties.audioBalance === 'number') {
-      validatedProperties.audioBalance = Math.max(
-        -1,
-        Math.min(1, validatedProperties.audioBalance),
-      );
-    }
-
-    if (validatedProperties.blendMode) {
-      const validBlendModes = [
-        'normal',
-        'add',
-        'multiply',
-        'screen',
-        'overlay',
-        'darken',
-        'lighten',
-        'color-dodge',
-        'color-burn',
-        'hard-light',
-        'soft-light',
-        'difference',
-        'exclusion',
-        'hue',
-        'saturation',
-        'color',
-        'luminosity',
-      ];
-      if (!validBlendModes.includes(validatedProperties.blendMode as string)) {
-        validatedProperties.blendMode = 'normal';
-      }
-    }
-
     const isMultiSelect =
       deps.selectedItemIds.value.includes(itemId) && deps.selectedItemIds.value.length > 1;
 
@@ -368,7 +324,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
                 type: 'update_clip_properties',
                 trackId: track.id,
                 itemId: selId,
-                properties: validatedProperties,
+                properties,
               });
               break;
             }
@@ -379,7 +335,6 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         return deps.batchApplyTimeline(cmds, {
           saveMode: options?.saveMode ?? 'debounced',
           skipHistory: options?.skipHistory,
-          historyMode: options?.historyMode,
           labelKey: 'videoEditor.fileManager.history.entries.updateClipProperties',
         });
       }
@@ -390,7 +345,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         type: 'update_clip_properties',
         trackId,
         itemId,
-        properties: validatedProperties,
+        properties,
       },
       {
         historyMode: options?.historyMode ?? 'debounced',
@@ -482,8 +437,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
     });
 
     // Remove only deleted IDs from selection
-    const deletedIdSet = new Set(itemIdsToDelete);
-    deps.selectedItemIds.value = deps.selectedItemIds.value.filter((id) => !deletedIdSet.has(id));
+    deps.removeFromSelection(itemIdsToDelete);
   }
 
   function deleteFirstSelectedItem() {
@@ -561,7 +515,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
 
       // Clear selection only of cut items
       const cutIds = new Set(Array.from(byTrack.values()).flat());
-      deps.selectedItemIds.value = deps.selectedItemIds.value.filter((id) => !cutIds.has(id));
+      deps.removeFromSelection(Array.from(cutIds));
     }
 
     return items;
@@ -653,13 +607,26 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
       return doc.tracks.find((track) => track.kind === sourceKind) ?? baseTargetTrack;
     }
 
-    // Use nextItemId for both clip and group IDs — it uses genUuid (crypto-backed
-    // when available) so two paste bursts in the same track cannot collide.
+    // Pre-generate clip IDs per track in batches so a single crypto call
+    // suffices per track regardless of how many clips are pasted.
+    const perTrackCounts = new Map<string, number>();
+    for (const item of items) {
+      const targetTrack = resolveCompatibleTargetTrack(item);
+      perTrackCounts.set(targetTrack.id, (perTrackCounts.get(targetTrack.id) ?? 0) + 1);
+    }
+    const perTrackBatches = new Map<string, string[]>();
+    for (const [trackId, count] of perTrackCounts) {
+      perTrackBatches.set(trackId, nextItemIds(trackId, 'clip', count));
+    }
+
+    const perTrackIndices = new Map<string, number>();
     for (const item of items) {
       const clip = item.clip;
       const targetTrack = resolveCompatibleTargetTrack(item);
+      const idx = perTrackIndices.get(targetTrack.id) ?? 0;
+      perTrackIndices.set(targetTrack.id, idx + 1);
+      const newClipId = perTrackBatches.get(targetTrack.id)![idx]!;
 
-      const newClipId = nextItemId(targetTrack.id, 'clip');
       idMap.set(clip.id, newClipId);
       if (clip.linkedGroupId && !pastedGroupIds.has(clip.linkedGroupId)) {
         pastedGroupIds.set(clip.linkedGroupId, nextItemId(targetTrack.id, 'group'));

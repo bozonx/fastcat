@@ -7,7 +7,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { TimelineTrack } from '~/timeline/types';
-import { resolvePlayheadClickTimeUs } from './timelineInteractionUtils';
+import { resolvePlayheadClickTimeUs } from './timeline-drag-domain';
 import { createMarkerId } from '~/timeline/id';
 
 export interface UseTimelineClickActionsOptions {

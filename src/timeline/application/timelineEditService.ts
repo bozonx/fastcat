@@ -1,6 +1,8 @@
 import type { TimelineDocument, TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
+import type { TimelineApplyOptions } from '~/timeline/apply-options';
 
+import { buildRippleMarkerCommands } from '~/timeline/domain/markers';
 import { computeCutUs } from '~/timeline/domain/editing';
 
 interface HotkeyTarget {
@@ -8,21 +10,13 @@ interface HotkeyTarget {
   itemId: string;
 }
 
-interface ApplyTimelineOptions {
-  saveMode?: 'debounced' | 'immediate' | 'none';
-  skipHistory?: boolean;
-  historyMode?: 'immediate' | 'debounced';
-  historyDebounceMs?: number;
-  labelKey?: string;
-}
-
 export interface TimelineEditServiceDeps {
   getDoc: () => TimelineDocument | null;
   getHotkeyTargetClip: () => HotkeyTarget | null;
   getSelectedItemIds: () => string[];
   getCurrentTime: () => number;
-  applyTimeline: (cmd: TimelineCommand, options?: ApplyTimelineOptions) => void;
-  batchApplyTimeline: (cmds: TimelineCommand[], options?: ApplyTimelineOptions) => void;
+  applyTimeline: (cmd: TimelineCommand, options?: TimelineApplyOptions) => void;
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: TimelineApplyOptions) => void;
   pushTimelineHistory: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
 }
@@ -38,73 +32,9 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
     return doc.tracks.find((t) => t.id === trackId) ?? null;
   }
 
-  /**
-   * Returns commands that remove/shrink markers overlapping [rangeStartUs, rangeEndUs] and
-   * shift markers starting at/after rangeEndUs left by (rangeEndUs - rangeStartUs).
-   * Pure — does not apply anything. Useful for inclusion in larger batches so a single
-   * history entry and reactive flush cover both clip and marker changes.
-   */
-  function buildRippleMarkerCommands(
-    doc: TimelineDocument,
-    rangeStartUs: number,
-    rangeEndUs: number,
-  ): TimelineCommand[] {
-    if (!(rangeEndUs > rangeStartUs)) return [];
-    const deltaUs = rangeEndUs - rangeStartUs;
-    const markers = (doc.metadata?.fastcat?.markers ?? []) as Array<{
-      id: string;
-      timeUs: number;
-      durationUs?: number;
-    }>;
-    if (markers.length === 0) return [];
-
-    const cmds: TimelineCommand[] = [];
-    for (const m of markers) {
-      const mStart = m.timeUs;
-      const mEnd = m.timeUs + Math.max(0, m.durationUs ?? 0);
-      if (mEnd <= rangeStartUs) continue;
-      if (mStart >= rangeEndUs) {
-        cmds.push({ type: 'update_marker', id: m.id, timeUs: Math.max(0, mStart - deltaUs) });
-        continue;
-      }
-      if (mStart >= rangeStartUs && mEnd <= rangeEndUs) {
-        cmds.push({ type: 'remove_marker', id: m.id });
-        continue;
-      }
-      if (mStart < rangeStartUs && mEnd > rangeEndUs) {
-        cmds.push({
-          type: 'update_marker',
-          id: m.id,
-          timeUs: mStart,
-          durationUs: Math.max(0, (m.durationUs ?? 0) - deltaUs),
-        });
-        continue;
-      }
-      if (mStart < rangeStartUs) {
-        cmds.push({
-          type: 'update_marker',
-          id: m.id,
-          timeUs: mStart,
-          durationUs: Math.max(0, rangeStartUs - mStart),
-        });
-        continue;
-      }
-      // Head overlap: marker starts inside the range, extends past it.
-      const newStart = Math.max(0, rangeStartUs);
-      const newEnd = Math.max(newStart, mEnd - deltaUs);
-      cmds.push({
-        type: 'update_marker',
-        id: m.id,
-        timeUs: newStart,
-        durationUs: Math.max(0, newEnd - newStart),
-      });
-    }
-    return cmds;
-  }
-
   function rippleDeleteRange(
     input: RippleDeleteRangeParams,
-    options?: ApplyTimelineOptions,
+    options?: TimelineApplyOptions,
   ): number | null {
     const doc = deps.getDoc();
     if (!doc) return null;
@@ -116,10 +46,10 @@ export function createTimelineEditService(deps: TimelineEditServiceDeps) {
 
     const deltaUs = endUs - startUs;
     const trackIdSet = new Set(input.trackIds);
-    const batchOptions: ApplyTimelineOptions = options ?? {
+    const batchOptions: TimelineApplyOptions = options ?? {
       saveMode: 'none',
     };
-    const internalBatchOptions: ApplyTimelineOptions = {
+    const internalBatchOptions: TimelineApplyOptions = {
       ...batchOptions,
       skipHistory: true,
     };

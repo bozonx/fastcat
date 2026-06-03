@@ -5,6 +5,7 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
+import type { TimelineApplyOptions, TimelineApplyWithHistoryOptions } from '~/timeline/apply-options';
 import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './history-labels';
 
 import type { TimelineHydrationModule } from './hydration';
@@ -35,21 +36,11 @@ export interface TimelineDispatcherDeps {
 export interface TimelineDispatcherModule {
   applyTimeline: (
     cmd: TimelineCommand,
-    options?: {
-      saveMode?: 'debounced' | 'immediate' | 'none';
-      skipHistory?: boolean;
-      historyMode?: 'immediate' | 'debounced';
-      historyDebounceMs?: number;
-      labelKey?: string;
-    },
+    options?: TimelineApplyWithHistoryOptions,
   ) => string[];
   batchApplyTimeline: (
     cmds: TimelineCommand[],
-    options?: {
-      saveMode?: 'debounced' | 'immediate' | 'none';
-      skipHistory?: boolean;
-      labelKey?: string;
-    },
+    options?: TimelineApplyOptions,
   ) => string[];
   pushTimelineHistory: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
   undoTimeline: () => void;
@@ -62,13 +53,7 @@ export function createTimelineDispatcherModule(
 ): TimelineDispatcherModule {
   function applyTimeline(
     cmd: TimelineCommand,
-    options?: {
-      saveMode?: 'debounced' | 'immediate' | 'none';
-      skipHistory?: boolean;
-      historyMode?: 'immediate' | 'debounced';
-      historyDebounceMs?: number;
-      labelKey?: string;
-    },
+    options?: TimelineApplyWithHistoryOptions,
   ): string[] {
     if (deps.isReadOnly?.value) {
       log.warn('Timeline command ignored: timeline is read-only');
@@ -91,6 +76,7 @@ export function createTimelineDispatcherModule(
     } catch (error) {
       if (error instanceof Error && error.message === 'Item overlaps with another item') {
         log.warn('Timeline command rejected: item overlaps with another item', cmd);
+        deps.notifyWarning?.('fastcat.timeline.itemOverlap');
         return [];
       }
       if (error instanceof Error && error.message === 'Marker already exists at this time') {
@@ -132,11 +118,7 @@ export function createTimelineDispatcherModule(
 
   function batchApplyTimeline(
     cmds: TimelineCommand[],
-    options?: {
-      saveMode?: 'debounced' | 'immediate' | 'none';
-      skipHistory?: boolean;
-      labelKey?: string;
-    },
+    options?: TimelineApplyOptions,
   ): string[] {
     if (deps.isReadOnly?.value) {
       log.warn('Timeline command ignored: timeline is read-only');
@@ -168,6 +150,7 @@ export function createTimelineDispatcherModule(
           error instanceof Error && error.message === 'Marker already exists at this time';
         if (overlap) {
           log.warn('Timeline batch command rejected: item overlaps with another item', cmd);
+          deps.notifyWarning?.('fastcat.timeline.itemOverlap');
         } else if (markerExists) {
           log.warn('Timeline batch command rejected: marker already exists at this time', cmd);
           deps.notifyWarning?.('fastcat.timeline.markerAlreadyExists');

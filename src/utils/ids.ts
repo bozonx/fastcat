@@ -39,3 +39,16 @@ export function randomToken(length = 8): string {
 export function genPrefixedId(prefix: string): string {
   return `${prefix}${genUuid()}`;
 }
+
+/**
+ * Generates a batch of prefixed IDs sharing a single base UUID so that only
+ * one crypto call is needed even for hundreds of items.
+ */
+export function genPrefixedIdBatch(prefix: string, count: number): string[] {
+  const base = genUuid();
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    out.push(`${prefix}${base}_${i}`);
+  }
+  return out;
+}

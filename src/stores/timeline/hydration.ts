@@ -16,19 +16,39 @@ export function createTimelineHydrationModule(
   deps: TimelineHydrationDeps,
 ): TimelineHydrationModule {
   function hydrateAllClips(doc: TimelineDocument): TimelineDocument {
-    let changed = false;
-    const nextTracks = doc.tracks.map((t) => {
-      let trackChanged = false;
-      const nextItems = t.items.map((it) => {
-        if (it.id && it.kind === 'clip' && it.clipType === 'media' && it.source?.path) {
+    // Fast path: scan once without allocating arrays to see if any work is needed.
+    let anyPatch = false;
+    for (const t of doc.tracks) {
+      for (const it of t.items) {
+        if (it.kind === 'clip' && it.clipType === 'media' && it.source?.path) {
           const meta = deps.mediaMetadata.value[it.source.path];
           if (meta) {
             const durationS = Number(meta.duration);
             const durationUs =
               Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
-            const hasVideo = Boolean(meta.video);
-            const hasAudio = Boolean(meta.audio);
-            const isImageLike = !hasVideo && !hasAudio;
+            const isImageLike = !meta.video && !meta.audio;
+            if ((durationUs > 0 && it.sourceDurationUs !== durationUs) || it.isImage !== isImageLike) {
+              anyPatch = true;
+              break;
+            }
+          }
+        }
+      }
+      if (anyPatch) break;
+    }
+    if (!anyPatch) return doc;
+
+    let changed = false;
+    const nextTracks = doc.tracks.map((t) => {
+      let trackChanged = false;
+      const nextItems = t.items.map((it) => {
+        if (it.kind === 'clip' && it.clipType === 'media' && it.source?.path) {
+          const meta = deps.mediaMetadata.value[it.source.path];
+          if (meta) {
+            const durationS = Number(meta.duration);
+            const durationUs =
+              Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
+            const isImageLike = !meta.video && !meta.audio;
 
             const needsSourceDurationPatch = durationUs > 0 && it.sourceDurationUs !== durationUs;
             const needsIsImagePatch = it.isImage !== isImageLike;

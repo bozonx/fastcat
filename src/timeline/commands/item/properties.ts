@@ -9,7 +9,7 @@ import {
   getTrackById,
   getDocFps,
   normalizeGaps,
-  autoAdaptClipTransitions,
+  autoAdaptClipEdgeDurations,
   assertClipNotLocked,
 } from '../utils';
 import { normalizeBalance, normalizeGain } from '~/utils/audio/envelope';
@@ -225,7 +225,7 @@ export function updateClipProperties(
           ? ({ ...it, ...nextProps } as TimelineClipItem)
           : it,
       );
-      const normalized = autoAdaptClipTransitions(
+      const normalized = autoAdaptClipEdgeDurations(
         normalizeGaps(doc, t.id, updatedItems, { quantizeToFrames: false }),
       );
       return { ...t, items: normalized };
@@ -346,7 +346,7 @@ export function updateClipTransition(
       it.id === item.id ? ({ ...it, ...patch } as TimelineTrackItem) : it,
     );
     nextItemsRaw.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-    const nextItems = autoAdaptClipTransitions(
+    const nextItems = autoAdaptClipEdgeDurations(
       normalizeGaps(doc, t.id, nextItemsRaw, { quantizeToFrames: false }),
     );
     return { ...t, items: nextItems };

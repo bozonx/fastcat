@@ -23,8 +23,6 @@ import { useTimelinePlayheadDrag } from '~/composables/timeline/useTimelinePlayh
 import { useTimelineItemSelection } from '~/composables/timeline/useTimelineItemSelection';
 import { useTimelineItemDrag } from '~/composables/timeline/useTimelineItemDrag';
 
-export { BASE_PX_PER_SECOND, timeUsToPx, pxToTimeUs, pxToDeltaUs, computeAnchoredScrollLeft };
-
 export function useTimelineInteraction(
   scrollEl: Ref<HTMLElement | null>,
   tracks: ComputedRef<TimelineTrack[]>,

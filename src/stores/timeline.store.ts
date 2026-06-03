@@ -254,6 +254,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     resolveTargetVideoTrackIdForInsert: () => tracks.resolveTargetVideoTrackIdForInsert(),
     clearSelection: () => selection.clearSelection(),
     clearSelectedTransition: () => selection.clearSelectedTransition(),
+    removeFromSelection: (ids) => selection.removeFromSelection(ids),
     rippleDeleteRange: (input) => trimming.rippleDeleteRange(input),
     createFallbackTimelineDoc: () => projectStore.createFallbackTimelineDoc(),
     deleteTrack: (trackId, options) => tracks.deleteTrack(trackId, options),

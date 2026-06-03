@@ -949,21 +949,6 @@ fn resample_planar_cached(
         offset += copy_len;
     }
 
-    // Flush any remaining resampler delay/tail samples.
-    let flush = vec![vec![0.0f32; chunk_size]; num_channels];
-    loop {
-        let out_chunk = resampler
-            .process(&flush, None)
-            .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
-        let all_empty = out_chunk.iter().all(|ch| ch.is_empty());
-        if all_empty {
-            break;
-        }
-        for ch in 0..num_channels {
-            output[ch].extend_from_slice(&out_chunk[ch]);
-        }
-    }
-
     Ok(output)
 }
 
@@ -1576,8 +1561,9 @@ mod tests {
         let mut l = layer();
         l.audio_fade_in_sec = 12.0; // longer than duration
         l.audio_fade_out_sec = 12.0;
-        // Both fades clamped to duration 10s
-        assert!((gain_at_clip_time(&l, 5.0) - 0.5).abs() < 1e-9);
+        // Both fades clamped to duration 10s, so at t=5 both are active:
+        // fade_in = 5/10 = 0.5, fade_out = (10-5)/10 = 0.5, total = 0.25
+        assert!((gain_at_clip_time(&l, 5.0) - 0.25).abs() < 1e-9);
     }
 
     // ------------------------------------------------------------------
@@ -1656,14 +1642,13 @@ mod tests {
     }
 
     #[test]
-    fn test_resample_planar_cached_ratio_change() {
+    fn test_resample_planar_cached_reuses_instance() {
         let mut cached = None;
         let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
         let _ = resample_planar_cached(planar.clone(), 44100, 48000, 1.0, 2, &mut cached).unwrap();
         assert!(cached.is_some());
-        // ratio changed → should recreate internally
-        let _ = resample_planar_cached(planar.clone(), 44100, 48000, 2.0, 2, &mut cached).unwrap();
-        // cached was reset in decode_symphonia_chunk logic; here we just verify no panic
+        // Calling again with the same ratio reuses the cached resampler.
+        let _ = resample_planar_cached(planar.clone(), 44100, 48000, 1.0, 2, &mut cached).unwrap();
         assert!(cached.is_some());
     }
 

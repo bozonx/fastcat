@@ -17,7 +17,7 @@ import { useTimelineRulerInteractions } from '~/composables/timeline/useTimeline
 import {
   computeSnapTargetsUs,
   resolvePlayheadClickTimeUs,
-} from '~/composables/timeline/timelineInteractionUtils';
+} from '~/composables/timeline/timeline-drag-domain';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
 
 const { t } = useI18n();

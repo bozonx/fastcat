@@ -33,6 +33,7 @@ export interface TimelineSelectionModule {
     itemIds: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
     options?: { append?: boolean },
   ) => void;
+  removeFromSelection: (itemIds: string[]) => void;
   selectAllClipsOnTrack: (trackId: string, options?: { append?: boolean }) => void;
   selectAllClips: () => void;
   selectClipsRelativeToPlayhead: (params: {
@@ -157,6 +158,14 @@ export function createTimelineSelectionModule(
       } else {
         deps.selectionStore?.selectTimelineItems?.(objects);
       }
+    }
+  }
+
+  function removeFromSelection(itemIds: string[]) {
+    const toRemove = new Set(itemIds);
+    const next = deps.selectedItemIds.value.filter((id) => !toRemove.has(id));
+    if (next.length !== deps.selectedItemIds.value.length) {
+      deps.selectedItemIds.value = next;
     }
   }
 
@@ -313,6 +322,7 @@ export function createTimelineSelectionModule(
     selectTrack,
     toggleSelection,
     selectTimelineItems,
+    removeFromSelection,
     selectAllClipsOnTrack,
     selectAllClips,
     selectClipsRelativeToPlayhead,

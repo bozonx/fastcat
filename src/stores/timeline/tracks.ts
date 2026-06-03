@@ -327,68 +327,59 @@ export function createTimelineTracksModule(deps: TimelineTracksDeps): TimelineTr
     () => deps.timelineDoc.value?.tracks.some((t) => t.audioSolo) ?? false,
   );
 
-  function unsoloAllTracks() {
-    const tracksWithSolo = deps.timelineDoc.value?.tracks.filter((t) => t.audioSolo) ?? [];
-    if (tracksWithSolo.length === 0) return;
+  function batchToggleTracks<TKey extends keyof TimelineTrack>(
+    predicate: (track: TimelineTrack) => boolean,
+    property: TKey,
+    value: TimelineTrack[TKey],
+    labelKey: string,
+  ) {
+    const targets = deps.timelineDoc.value?.tracks.filter(predicate) ?? [];
+    if (targets.length === 0) return;
 
-    const cmds = tracksWithSolo.map((t) => ({
+    const cmds = targets.map((t) => ({
       type: 'update_track_properties' as const,
       trackId: t.id,
-      properties: { audioSolo: false },
+      properties: { [property]: value } as Pick<TimelineTrack, TKey>,
     }));
 
-    deps.batchApplyTimeline(cmds, {
-      labelKey: 'videoEditor.fileManager.history.entries.unsoloAllTracks',
-    });
+    deps.batchApplyTimeline(cmds, { labelKey });
     void deps.requestTimelineSave({ immediate: true });
+  }
+
+  function unsoloAllTracks() {
+    batchToggleTracks(
+      (t) => !!t.audioSolo,
+      'audioSolo',
+      false,
+      'videoEditor.fileManager.history.entries.unsoloAllTracks',
+    );
   }
 
   function unmuteAllTracks() {
-    const tracksWithMute = deps.timelineDoc.value?.tracks.filter((t) => t.audioMuted) ?? [];
-    if (tracksWithMute.length === 0) return;
-
-    const cmds = tracksWithMute.map((t) => ({
-      type: 'update_track_properties' as const,
-      trackId: t.id,
-      properties: { audioMuted: false },
-    }));
-
-    deps.batchApplyTimeline(cmds, {
-      labelKey: 'videoEditor.fileManager.history.entries.unmuteAllTracks',
-    });
-    void deps.requestTimelineSave({ immediate: true });
+    batchToggleTracks(
+      (t) => !!t.audioMuted,
+      'audioMuted',
+      false,
+      'videoEditor.fileManager.history.entries.unmuteAllTracks',
+    );
   }
 
   function unlockAllTracks() {
-    const tracksWithLock = deps.timelineDoc.value?.tracks.filter((t) => t.locked) ?? [];
-    if (tracksWithLock.length === 0) return;
-
-    const cmds = tracksWithLock.map((t) => ({
-      type: 'update_track_properties' as const,
-      trackId: t.id,
-      properties: { locked: false },
-    }));
-
-    deps.batchApplyTimeline(cmds, {
-      labelKey: 'videoEditor.fileManager.history.entries.unlockAllTracks',
-    });
-    void deps.requestTimelineSave({ immediate: true });
+    batchToggleTracks(
+      (t) => !!t.locked,
+      'locked',
+      false,
+      'videoEditor.fileManager.history.entries.unlockAllTracks',
+    );
   }
 
   function showAllTracks() {
-    const hiddenTracks = deps.timelineDoc.value?.tracks.filter((t) => t.videoHidden) ?? [];
-    if (hiddenTracks.length === 0) return;
-
-    const cmds = hiddenTracks.map((t) => ({
-      type: 'update_track_properties' as const,
-      trackId: t.id,
-      properties: { videoHidden: false },
-    }));
-
-    deps.batchApplyTimeline(cmds, {
-      labelKey: 'videoEditor.fileManager.history.entries.showAllTracks',
-    });
-    void deps.requestTimelineSave({ immediate: true });
+    batchToggleTracks(
+      (t) => !!t.videoHidden,
+      'videoHidden',
+      false,
+      'videoEditor.fileManager.history.entries.showAllTracks',
+    );
   }
 
   return {

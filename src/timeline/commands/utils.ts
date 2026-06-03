@@ -5,7 +5,7 @@ import type {
   TimelineTrack,
   TimelineTrackItem,
 } from '../types';
-import { genUuid } from '~/utils/ids';
+import { genUuid, genPrefixedIdBatch } from '~/utils/ids';
 
 /**
  * Throws if the given item is a locked clip — single source of truth for the
@@ -115,29 +115,33 @@ export function getLinkedClipGroupItemIds(doc: TimelineDocument, itemId: string)
     return cached;
   }
 
-  const origin = findClipById(doc, itemId);
-  if (!origin) {
-    const result = [itemId];
-    docCache.set(itemId, result);
-    return result;
-  }
-
-  const result = new Set<string>([origin.item.id]);
-  const linkedGroupId = String(origin.item.linkedGroupId ?? '').trim();
-
-  if (linkedGroupId) {
-    for (const track of doc.tracks) {
-      for (const item of track.items) {
-        if (item.kind !== 'clip') continue;
-        if (String(item.linkedGroupId ?? '').trim() !== linkedGroupId) continue;
-        result.add(item.id);
+  // First miss for this doc: build a full group index in a single pass
+  // and populate the cache for every clip so subsequent lookups are O(1).
+  const groupIndex = new Map<string, string[]>();
+  for (const track of doc.tracks) {
+    for (const item of track.items) {
+      if (item.kind !== 'clip') continue;
+      const gid = String(item.linkedGroupId ?? '').trim();
+      if (gid) {
+        const arr = groupIndex.get(gid) ?? [];
+        arr.push(item.id);
+        groupIndex.set(gid, arr);
+      }
+      if (!docCache.has(item.id)) {
+        docCache.set(item.id, [item.id]);
       }
     }
   }
 
-  const finalResult = [...result];
-  docCache.set(itemId, finalResult);
-  return finalResult;
+  for (const ids of groupIndex.values()) {
+    for (const id of ids) {
+      docCache.set(id, ids);
+    }
+  }
+
+  const result = docCache.get(itemId);
+  if (result) return result;
+  return [itemId];
 }
 
 export function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
@@ -349,23 +353,14 @@ export function sliceTrackItemsForOverlay(
   return nextItems;
 }
 
-export function normalizeGaps(
-  doc: TimelineDocument,
-  trackId: string,
-  items: TimelineTrackItem[],
-  options?: { quantizeToFrames?: boolean },
-): TimelineTrackItem[] {
-  const fps = getDocFps(doc);
-  const shouldQuantizeToFrames = options?.quantizeToFrames !== false;
-  const clips = items
-    .filter((it): it is TimelineClipItem => it.kind === 'clip')
-    .map((it) => ({ ...it, timelineRange: { ...it.timelineRange } }));
-
-  clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
-
-  // Auto-adjust transitions based on adjacency before generating gaps. Always
-  // produce *new* transition objects when changing mode so we don't mutate the
-  // shared ref held by undo snapshots.
+/**
+ * Updates transitionIn/transitionOut modes on a sorted clip array based on
+ * adjacency to neighbours. Non-overridden transitions become 'adjacent' when
+ * touching a neighbour and 'transparent' otherwise.
+ *
+ * Mutates the input array's clip objects (they are already shallow copies).
+ */
+function applyTransitionAdjacencyModes(clips: TimelineClipItem[]) {
   for (let i = 0; i < clips.length; i++) {
     const current = clips[i];
     if (!current) continue;
@@ -402,6 +397,22 @@ export function normalizeGaps(
       }
     }
   }
+}
+
+export function normalizeGaps(
+  doc: TimelineDocument,
+  trackId: string,
+  items: TimelineTrackItem[],
+  options?: { quantizeToFrames?: boolean },
+): TimelineTrackItem[] {
+  const fps = getDocFps(doc);
+  const shouldQuantizeToFrames = options?.quantizeToFrames !== false;
+  const clips = items
+    .filter((it): it is TimelineClipItem => it.kind === 'clip')
+    .map((it) => ({ ...it, timelineRange: { ...it.timelineRange } }));
+
+  clips.sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs);
+  applyTransitionAdjacencyModes(clips);
 
   const result: TimelineTrackItem[] = [];
   let cursorUs = 0;
@@ -482,6 +493,10 @@ export function normalizeTrackOrder(doc: TimelineDocument, trackIds: string[]): 
 
 export function nextItemId(trackId: string, prefix: string): string {
   return `${prefix}_${trackId}_${genUuid()}`;
+}
+
+export function nextItemIds(trackId: string, prefix: string, count: number): string[] {
+  return genPrefixedIdBatch(`${prefix}_${trackId}_`, count);
 }
 
 export function computeTrackEndUs(track: TimelineTrack): number {
@@ -635,9 +650,6 @@ export function autoAdaptClipEdgeDurations(items: TimelineTrackItem[]): Timeline
  *
  * Returns a new items array (immutable). Does not modify the input.
  */
-export function autoAdaptClipTransitions(items: TimelineTrackItem[]): TimelineTrackItem[] {
-  return autoAdaptClipEdgeDurations(items);
-}
 
 /**
  * Applies `autoAdaptClipTransitions` only to tracks whose `items` reference
@@ -653,6 +665,6 @@ export function autoAdaptChangedTracks(
   return nextTracks.map((t) => {
     const orig = byId.get(t.id);
     if (orig && orig.items === t.items) return t;
-    return { ...t, items: autoAdaptClipTransitions(t.items) };
+    return { ...t, items: autoAdaptClipEdgeDurations(t.items) };
   });
 }

@@ -7,7 +7,7 @@ import {
   computeSnapTargetsUs,
   getSelectedMovableItemIds,
   resolveMoveTargetTrackId,
-} from '~/composables/timeline/timelineInteractionUtils';
+} from '~/composables/timeline/timeline-drag-domain';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useSelectionStore } from '~/stores/selection.store';

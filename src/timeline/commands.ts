@@ -507,7 +507,7 @@ export function applyTimelineCommand(
     default: {
       const _exhaustiveCheck: never = cmd;
       throw new Error(
-        `Unhandled timeline command type: ${(_exhaustiveCheck as { type?: string }).type}`,
+        `Unhandled timeline command type: ${(_exhaustiveCheck as unknown as TimelineCommand).type}`,
       );
     }
   }

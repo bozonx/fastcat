@@ -18,7 +18,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
-import { resolvePlayheadClickTimeUs } from '~/composables/timeline/timelineInteractionUtils';
+import { resolvePlayheadClickTimeUs } from '~/composables/timeline/timeline-drag-domain';
 import {
   computeTimelineScrollLeftForPlayhead,
   timeUsToPx,

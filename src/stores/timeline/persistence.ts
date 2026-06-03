@@ -209,10 +209,10 @@ function serializeInWorker(doc: TimelineDocument): Promise<string> {
       reject(e);
       worker.terminate();
     };
+    const raw = deepToRaw(doc);
     try {
-      worker.postMessage(deepToRaw(doc));
+      worker.postMessage(raw);
     } catch (e) {
-      const raw = deepToRaw(doc);
       const path = findNonCloneablePath(raw);
       log.error('[timeline persistence] non-cloneable value in TimelineDocument at', path, e);
       log.error('[timeline persistence] raw doc snapshot:', raw);
