@@ -438,8 +438,9 @@ fn write_output<T: OutputSample>(
         heap_temp.resize(data.len(), 0.0);
         &mut heap_temp[..]
     };
-    let read = ring.pop_slice(temp_slice);
-    let actual_played_frames = (read / channels).min(frames);
+    let _read = ring.pop_slice(temp_slice);
+    // If the ring underruns, the remainder of temp_slice is already zeroed,
+    // so we output silence but still advance the clock to prevent drift.
     let mut idx = 0;
     for frame in 0..frames {
         let left = temp_slice[idx];
@@ -447,10 +448,10 @@ fn write_output<T: OutputSample>(
         idx += channels;
         for ch in 0..channels {
             let value = match ch {
-                0 if channels == 1 => (left + right) * 0.5,
+                0 if channels == 1 => left,
                 0 => left,
                 1 => right,
-                _ => 0.0,
+                _ => left,
             };
             data[frame * channels + ch] = T::from_f32(value);
         }
@@ -459,7 +460,7 @@ fn write_output<T: OutputSample>(
     if let Some(ref mut state) = guard {
         state.frames_written = state
             .frames_written
-            .saturating_add(actual_played_frames as u64);
+            .saturating_add(frames as u64);
         state.last_output_buffer_frames = frames;
         state.output_latency_sec = output_latency_sec(info);
     }
@@ -467,10 +468,10 @@ fn write_output<T: OutputSample>(
 
 fn audible_pts_sec(state: &AudioShared, sample_rate: u32) -> f64 {
     let latency_frames = (state.output_latency_sec.max(0.0) * sample_rate as f64).round() as u64;
-    let buffer_frames = state.last_output_buffer_frames as u64;
-    let audible_frames = state
-        .frames_written
-        .saturating_sub(latency_frames.saturating_add(buffer_frames));
+    // `frames_written` already accounts for every frame handed to the OS callback;
+    // `output_latency_sec` is the pipeline delay. Subtracting buffer size again
+    // would double-count the in-flight audio.
+    let audible_frames = state.frames_written.saturating_sub(latency_frames);
     state.origin_pts_sec + audible_frames as f64 / sample_rate as f64
 }
 
@@ -559,7 +560,7 @@ pub(crate) fn render_scene_to_wav(
         .with_context(|| format!("create audio wav {}", target_path.display()))?;
 
     // Write placeholder header (will be patched after we know actual size).
-    write_wav_f32_header_placeholder(&mut file)?;
+    write_wav_f32_header_placeholder(&mut file, sample_rate)?;
 
     let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
@@ -599,7 +600,7 @@ pub(crate) fn render_scene_to_wav(
     Ok(())
 }
 
-fn write_wav_f32_header_placeholder(file: &mut std::fs::File) -> Result<()> {
+fn write_wav_f32_header_placeholder(file: &mut std::fs::File, sample_rate: u32) -> Result<()> {
     // Standard WAV header with zero data_size; will be patched after writing.
     let channels = OUTPUT_CHANNELS as u16;
     let bits_per_sample = 32u16;
@@ -613,8 +614,8 @@ fn write_wav_f32_header_placeholder(file: &mut std::fs::File) -> Result<()> {
     file.write_all(&16u32.to_le_bytes())?;
     file.write_all(&3u16.to_le_bytes())?;
     file.write_all(&channels.to_le_bytes())?;
-    file.write_all(&48_000u32.to_le_bytes())?;
-    let byte_rate = 48_000u32.saturating_mul(channels as u32).saturating_mul(bytes_per_sample);
+    file.write_all(&sample_rate.to_le_bytes())?;
+    let byte_rate = sample_rate.saturating_mul(channels as u32).saturating_mul(bytes_per_sample);
     file.write_all(&byte_rate.to_le_bytes())?;
     let block_align = channels.saturating_mul(bytes_per_sample as u16);
     file.write_all(&block_align.to_le_bytes())?;
@@ -862,7 +863,9 @@ fn apply_master_gain(samples: &mut [f32], master_gain: f64) {
         return;
     }
     for sample in samples {
-        *sample *= gain;
+        // Clamp to a generous headroom before soft_clip prevents extreme
+        // values from many mixed layers from distorting unexpectedly.
+        *sample = (*sample * gain).clamp(-128.0, 128.0);
     }
 }
 
@@ -1234,7 +1237,9 @@ fn decode_symphonia_chunk(
         // so treat the gap as silence by shifting decode start forward.
         let (decode_start_sec, discard_frames) = if actual_sec <= source_start_sec {
             let discard_sec = source_start_sec - actual_sec;
-            let discard_frames = (discard_sec * state_val.source_rate as f64).round() as usize;
+            // Floor instead of round to avoid discarding one frame too many,
+            // which would create a sub-millisecond silent gap after the seek.
+            let discard_frames = (discard_sec * state_val.source_rate as f64).floor() as usize;
             (actual_sec, discard_frames)
         } else {
             // Seek landed past desired position → start decode from actual position,
@@ -1427,8 +1432,8 @@ fn apply_layer_mix(
         let left = decoded[src] * gain;
         let right = decoded[src + 1] * gain;
         let dst = (write_start_frame + i) * OUTPUT_CHANNELS;
-        mixed[dst] = (mixed[dst] + ll * left + lr * right).clamp(-32.0, 32.0);
-        mixed[dst + 1] = (mixed[dst + 1] + rl * left + rr * right).clamp(-32.0, 32.0);
+        mixed[dst] = mixed[dst] + ll * left + lr * right;
+        mixed[dst + 1] = mixed[dst + 1] + rl * left + rr * right;
     }
 }
 
@@ -1749,7 +1754,7 @@ mod tests {
     // ------------------------------------------------------------------
 
     #[test]
-    fn output_clock_does_not_advance_on_underrun() {
+    fn output_clock_advances_on_underrun_to_prevent_drift() {
         let shared = Arc::new((Mutex::new(AudioShared {
             playing: true,
             ..AudioShared::default()
@@ -1766,7 +1771,9 @@ mod tests {
         );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        assert_eq!(shared.0.lock().frames_written, 0);
+        // Even when the ring underruns we must advance frames_written so
+        // that audible_pts_sec does not fall behind real time.
+        assert_eq!(shared.0.lock().frames_written, 128);
     }
 
     #[test]
@@ -1792,7 +1799,7 @@ mod tests {
     }
 
     #[test]
-    fn audible_pts_compensates_output_latency_and_buffer() {
+    fn audible_pts_compensates_output_latency_only() {
         let shared = Arc::new(Mutex::new(AudioShared {
             playing: true,
             origin_pts_sec: 10.0,
@@ -1804,7 +1811,10 @@ mod tests {
 
         let pts = audible_pts_sec(&shared.lock(), 48_000);
 
-        assert!((pts - 10.97).abs() < 1e-9);
+        // frames_written already accounts for every frame handed to the OS;
+        // only pipeline latency should be subtracted (0.02 s = 960 frames).
+        // 48000 - 960 = 47040 → 47040/48000 = 0.98 s → pts = 10.98
+        assert!((pts - 10.98).abs() < 1e-9);
     }
 
     // ------------------------------------------------------------------
@@ -1913,6 +1923,23 @@ mod tests {
         l.audio_gain = 0.0;
         apply_layer_mix(&mut mixed, &mut decoded, 0, 2, 48000, &l, 0.0);
         assert_eq!(mixed, vec![0.0, 0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn apply_layer_mix_allows_headroom_for_later_clamp() {
+        let mut mixed = vec![0.0f32; 4];
+        let mut decoded = vec![10.0f32, 10.0f32, 10.0f32, 10.0f32];
+        let mut l = layer();
+        l.audio_gain = 5.0;
+        l.audio_fade_in_sec = 0.0;
+        l.audio_fade_out_sec = 0.0;
+        apply_layer_mix(&mut mixed, &mut decoded, 0, 2, 48000, &l, 0.0);
+        // Each channel: decoded(10) * gain(5) = 50.
+        // With centre pan (1.0,0,0,1.0) mixed should accumulate to 50.0.
+        assert!((mixed[0] - 50.0).abs() < 1e-5);
+        assert!((mixed[1] - 50.0).abs() < 1e-5);
+        assert!((mixed[2] - 50.0).abs() < 1e-5);
+        assert!((mixed[3] - 50.0).abs() < 1e-5);
     }
 
     // ------------------------------------------------------------------

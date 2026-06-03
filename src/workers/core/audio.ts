@@ -42,7 +42,7 @@ export async function buildMixedAudioTrack(
 
   const audioSource = new AudioSampleSource({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    codec: getBunnyAudioCodec(options.audioCodec === 'mulaw' ? 'alaw' : options.audioCodec) as any,
+    codec: getBunnyAudioCodec(options.audioCodec === 'mulaw' ? 'mulaw' : options.audioCodec) as any,
     bitrate: options.audioBitrate,
   });
 

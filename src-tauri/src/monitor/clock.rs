@@ -60,9 +60,11 @@ impl PlaybackClock {
     /// wall-clock не дрейфовал относительно audio clock.
     /// Вызывать из тика монитора при наличии аудио.
     pub fn sync_to_audio_pts(&mut self, audio_pts: f64) {
-        if self.wall_origin.is_some() {
-            self.pts_origin = audio_pts.max(0.0);
-            self.wall_origin = Some(Instant::now());
+        if let Some(origin) = self.wall_origin {
+            // Preserve the elapsed wall time so current_pts() does not jump
+            // backwards when audio_pts is slightly behind the wall clock.
+            let elapsed = Instant::now().duration_since(origin).as_secs_f64();
+            self.pts_origin = audio_pts - elapsed;
         } else {
             self.pts_origin = audio_pts.max(0.0);
         }
@@ -115,5 +117,22 @@ mod tests {
         c.seek(10.0);
         // После seek PTS должен быть около 10 (не дрейфовать от wall).
         assert!((c.current_pts() - 10.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn sync_to_audio_pts_does_not_jump_backwards() {
+        let mut c = PlaybackClock::new();
+        c.play();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let before = c.current_pts();
+        // Simulate audio lagging slightly behind wall clock.
+        c.sync_to_audio_pts(before - 0.02);
+        let after = c.current_pts();
+        // Should be approximately the audio_pts (within a few ms), not
+        // snapping to Instant::now() which would create a backwards jump.
+        assert!(
+            (after - (before - 0.02)).abs() < 0.005,
+            "sync created a jump: before={before}, after={after}"
+        );
     }
 }
