@@ -219,7 +219,8 @@ export default {
       "showThumbnails": "Показать миниатюры",
       "showWaveform": "Показать вейвформу",
       "speed": {
-        "title": "Скорость"
+        "title": "Скорость",
+        "reverseAudioWarning": "Звук в реверсе воспроизводится только при экспорте"
       },
       "speedMultiplier": "Скорость",
       "tabs": {

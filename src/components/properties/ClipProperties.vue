@@ -474,6 +474,7 @@ defineExpose({
         v-model:enabled="isSpeedEnabled"
         :clip="clip"
         :can-edit-reversed="canEditReversed"
+        :track-kind="clipTrackKind"
         @update-speed="
           (speed: number) => timelineStore.updateClipProperties(clip.trackId, clip.id, { speed })
         "

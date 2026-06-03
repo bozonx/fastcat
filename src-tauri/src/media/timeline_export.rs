@@ -23,6 +23,7 @@ use crate::audio::engine::render_scene_to_wav;
 use crate::compositor::Compositor;
 use crate::monitor::scene::MonitorScene;
 
+use super::ffmpeg_utils::*;
 use super::processing::NativeMediaTasks;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -122,6 +123,15 @@ pub fn export_timeline(
         .take()
         .ok_or_else(|| anyhow!("ffmpeg stdin unavailable"))?;
 
+    // Drain stderr in background to avoid pipe deadlock.
+    let stderr_handle = child.stderr.take().map(|mut stderr| {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut stderr, &mut buf);
+            buf
+        })
+    });
+
     // Регистрируем процесс, чтобы `native_media_cancel(task_id)` мог его убить.
     let child = tasks.insert(task_id, child);
 
@@ -153,9 +163,8 @@ pub fn export_timeline(
                 hw_settings.clone(),
             )?;
             let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height, &empty_cache)?;
-            if stdin.write_all(&pixels).is_err() {
-                // ffmpeg закрыл stdin (ошибка энкода или отмена-kill) — выходим, статус заберём ниже.
-                break;
+            if let Err(e) = stdin.write_all(&pixels) {
+                return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
             }
             on_progress((i + 1) as f64 / frame_count as f64);
         }
@@ -166,7 +175,7 @@ pub fn export_timeline(
     drop(stdin);
 
     if let Err(error) = render_result {
-        let mut guard = child.lock().expect("native media task child poisoned");
+        let mut guard = child.lock();
         let _ = guard.kill();
         drop(guard);
         tasks.remove(task_id);
@@ -176,21 +185,30 @@ pub fn export_timeline(
         return Err(error);
     }
 
+    let start = std::time::Instant::now();
+    const TIMEOUT: Duration = Duration::from_secs(3600);
+
     loop {
-        let mut guard = child.lock().expect("native media task child poisoned");
+        let mut guard = child.lock();
         if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
-            let stderr = guard
-                .stderr
-                .take()
-                .map(|mut s| {
-                    let mut text = String::new();
-                    let _ = s.read_to_string(&mut text);
-                    text
-                })
-                .unwrap_or_default();
+            let stderr_text = match stderr_handle {
+                Some(handle) => {
+                    String::from_utf8_lossy(&handle.join().unwrap_or_default()).to_string()
+                }
+                None => String::new(),
+            };
             drop(guard);
             tasks.remove(task_id);
             if status.success() {
+                if !target_path.exists() {
+                    if let Some(path) = temp_audio.as_deref() {
+                        let _ = std::fs::remove_file(path);
+                    }
+                    return Err(anyhow!(
+                        "ffmpeg export succeeded but output file is missing: {}",
+                        target_path.display()
+                    ));
+                }
                 if let Some(path) = temp_audio.as_deref() {
                     let _ = std::fs::remove_file(path);
                 }
@@ -199,10 +217,21 @@ pub fn export_timeline(
             if let Some(path) = temp_audio.as_deref() {
                 let _ = std::fs::remove_file(path);
             }
-            return Err(anyhow!("ffmpeg export failed: {}", stderr.trim()));
+            return Err(anyhow!("ffmpeg export failed: {}", stderr_text.trim()));
         }
         drop(guard);
         std::thread::sleep(Duration::from_millis(100));
+        if start.elapsed() > TIMEOUT {
+            let mut guard = child.lock();
+            let _ = guard.kill();
+            let _ = guard.wait();
+            drop(guard);
+            tasks.remove(task_id);
+            if let Some(path) = temp_audio.as_deref() {
+                let _ = std::fs::remove_file(path);
+            }
+            return Err(anyhow!("ffmpeg export timed out after {} seconds", TIMEOUT.as_secs()));
+        }
     }
 }
 
@@ -337,45 +366,6 @@ fn build_ffmpeg_args(
 
     args.push(target_path.display().to_string());
     args
-}
-
-/// Маппинг браузерной codec-строки на ffmpeg-энкодер (то же, что в `processing.rs`).
-fn ffmpeg_video_codec(codec: &str) -> &'static str {
-    if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-        "libsvtav1"
-    } else if codec.contains("vp09") || codec.eq_ignore_ascii_case("vp9") {
-        "libvpx-vp9"
-    } else {
-        "libx264"
-    }
-}
-
-fn ffmpeg_video_codec_hw(codec: &str, hw_mode: &str) -> &'static str {
-    if hw_mode == "vaapi" {
-        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-            "av1_vaapi"
-        } else if codec.contains("vp09") || codec.eq_ignore_ascii_case("vp9") {
-            "vp9_vaapi"
-        } else if codec.contains("hevc") || codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265") {
-            "hevc_vaapi"
-        } else {
-            "h264_vaapi"
-        }
-    } else if hw_mode == "nvdec" { // NVENC
-        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-            "av1_nvenc"
-        } else if codec.contains("hevc") || codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265") {
-            "hevc_nvenc"
-        } else {
-            "h264_nvenc"
-        }
-    } else {
-        ffmpeg_video_codec(codec)
-    }
-}
-
-fn even(value: u32) -> u32 {
-    value & !1
 }
 
 /// Сохраняет временный путь для аудио-микса (JS пишет сюда WAV перед экспортом).

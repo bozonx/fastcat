@@ -528,6 +528,7 @@ fn producer_loop(
             CHUNK_DURATION_SEC,
             sample_rate,
             &shared,
+            false,
         );
 
         let mut state = shared.0.lock();
@@ -577,6 +578,7 @@ pub(crate) fn render_scene_to_wav(
             chunk_duration,
             sample_rate,
             &shared,
+            true,
         );
         let samples_to_write = chunk_frames as usize * OUTPUT_CHANNELS;
         for sample in chunk.into_iter().take(samples_to_write) {
@@ -630,6 +632,7 @@ fn mix_chunk(
     chunk_duration_sec: f64,
     sample_rate: u32,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+    is_export: bool,
 ) -> Vec<f32> {
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
     let mut mixed = vec![0.0f32; frames * OUTPUT_CHANNELS];
@@ -692,9 +695,20 @@ fn mix_chunk(
                 continue;
             }
 
-            let speed = sanitize_speed(layer.speed);
-            let source_start =
-                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
+            let speed_raw = layer.speed;
+            let reversed = speed_raw < 0.0;
+            if !is_export && reversed {
+                continue; // Mute reverse audio in preview/monitor
+            }
+
+            let speed = sanitize_speed(speed_raw.abs());
+            let source_start = if reversed {
+                let source_start_in_range = ((layer.timeline_end_sec - segment_end) * speed).max(0.0);
+                layer.source_start_sec + source_start_in_range
+            } else {
+                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed
+            };
+
             let mut decoded = match decode_audio_chunk(
                 &layer.path,
                 source_start,
@@ -714,6 +728,18 @@ fn mix_chunk(
                     continue;
                 }
             };
+
+            if reversed {
+                let num_frames = decoded.len() / OUTPUT_CHANNELS;
+                for i in 0..num_frames / 2 {
+                    let j = num_frames - 1 - i;
+                    let idx_i = i * OUTPUT_CHANNELS;
+                    let idx_j = j * OUTPUT_CHANNELS;
+                    decoded.swap(idx_i, idx_j);
+                    decoded.swap(idx_i + 1, idx_j + 1);
+                }
+            }
+
             let write_start_frame =
                 ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
             let frames_to_write = frames
@@ -763,9 +789,20 @@ fn mix_chunk(
                 continue;
             }
 
-            let speed = sanitize_speed(layer.speed);
-            let source_start =
-                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed;
+            let speed_raw = layer.speed;
+            let reversed = speed_raw < 0.0;
+            if !is_export && reversed {
+                continue; // Mute reverse audio in preview/monitor
+            }
+
+            let speed = sanitize_speed(speed_raw.abs());
+            let source_start = if reversed {
+                let source_start_in_range = ((layer.timeline_end_sec - segment_end) * speed).max(0.0);
+                layer.source_start_sec + source_start_in_range
+            } else {
+                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed
+            };
+
             let mut decoded = match decode_audio_chunk(
                 &layer.path,
                 source_start,
@@ -785,6 +822,18 @@ fn mix_chunk(
                     continue;
                 }
             };
+
+            if reversed {
+                let num_frames = decoded.len() / OUTPUT_CHANNELS;
+                for i in 0..num_frames / 2 {
+                    let j = num_frames - 1 - i;
+                    let idx_i = i * OUTPUT_CHANNELS;
+                    let idx_j = j * OUTPUT_CHANNELS;
+                    decoded.swap(idx_i, idx_j);
+                    decoded.swap(idx_i + 1, idx_j + 1);
+                }
+            }
+
             let write_start_frame =
                 ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
             let frames_to_write = frames
@@ -1824,6 +1873,7 @@ mod tests {
             1.0,
             48000,
             &shared,
+            false,
         );
         assert_eq!(chunk.len(), (1.0f64 * 48000.0).round() as usize * OUTPUT_CHANNELS);
     }
@@ -1846,6 +1896,7 @@ mod tests {
             0.01,
             48000,
             &shared,
+            false,
         );
         // Must not contain inf or NaN
         assert!(

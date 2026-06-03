@@ -219,7 +219,8 @@
       "showThumbnails": "Show thumbnails",
       "showWaveform": "Show waveform",
       "speed": {
-        "title": "Speed"
+        "title": "Speed",
+        "reverseAudioWarning": "Reversed audio is only played during export"
       },
       "speedMultiplier": "Speed",
       "tabs": {

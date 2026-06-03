@@ -2,11 +2,12 @@
 import { computed } from 'vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
-import type { TimelineClipItem } from '~/timeline/types';
+import type { TimelineClipItem, TrackKind } from '~/timeline/types';
 
 const props = defineProps<{
   clip: TimelineClipItem;
   canEditReversed: boolean;
+  trackKind: TrackKind;
 }>();
 
 const emit = defineEmits<{
@@ -27,6 +28,18 @@ const speedMultiplier = computed({
     emit('updateSpeed', num);
   },
 });
+
+const isReversed = computed(() => speedMultiplier.value < 0);
+
+const hasAudio = computed(() => {
+  return (
+    props.trackKind === 'audio' ||
+    props.clip.clipType === 'media' ||
+    props.clip.clipType === 'timeline'
+  );
+});
+
+const showReverseAudioWarning = computed(() => isReversed.value && hasAudio.value);
 
 function resetSpeed() {
   emit('updateSpeed', 1);
@@ -64,6 +77,13 @@ function resetSpeed() {
           :disabled="!isEnabled"
           unit="x"
         />
+        <div
+          v-if="showReverseAudioWarning"
+          class="flex items-start gap-2 text-2xs text-warning"
+        >
+          <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 shrink-0 mt-0.5 block" />
+          <span>{{ t('fastcat.clip.speed.reverseAudioWarning') }}</span>
+        </div>
       </div>
     </div>
   </PropertySection>

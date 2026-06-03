@@ -665,6 +665,8 @@ export class WebAudioEngine {
     const maxPlaybackDurationS = previewDurationUs / 1_000_000;
 
     for (const clip of this.currentClips) {
+      if (isReversedClip(clip)) continue; // Reverse audio muted in preview
+
       const clipStartS = clip.startUs / 1_000_000;
       const clipEndS = clipStartS + clip.durationUs / 1_000_000;
 
@@ -772,6 +774,7 @@ export class WebAudioEngine {
   private async scheduleClip(clip: AudioEngineClip, generation: number): Promise<boolean> {
     if (!this.ctx || !this.masterGain) return false;
     if (this.scheduler.getGlobalSpeed() <= 0) return false; // No backward playback
+    if (isReversedClip(clip)) return false; // Reverse audio muted in preview
 
     const sourceKey = clip.sourcePath;
     if (!sourceKey) return false;

@@ -4,8 +4,10 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
+
+use parking_lot::Mutex;
 
 #[derive(Clone, Default)]
 pub struct NativeMediaTasks {
@@ -15,32 +17,22 @@ pub struct NativeMediaTasks {
 impl NativeMediaTasks {
     pub(crate) fn insert(&self, task_id: &str, child: Child) -> Arc<Mutex<Child>> {
         let child = Arc::new(Mutex::new(child));
-        self.children
-            .lock()
-            .expect("native media task registry poisoned")
-            .insert(task_id.to_string(), child.clone());
+        self.children.lock().insert(task_id.to_string(), child.clone());
         child
     }
 
     pub(crate) fn remove(&self, task_id: &str) {
-        self.children
-            .lock()
-            .expect("native media task registry poisoned")
-            .remove(task_id);
+        self.children.lock().remove(task_id);
     }
 
     pub fn cancel(&self, task_id: &str) -> bool {
-        let child = self
-            .children
-            .lock()
-            .expect("native media task registry poisoned")
-            .get(task_id)
-            .cloned();
+        let child = self.children.lock().get(task_id).cloned();
         let Some(child) = child else {
             return false;
         };
-        let mut child = child.lock().expect("native media task child poisoned");
+        let mut child = child.lock();
         let _ = child.kill();
+        let _ = child.wait();
         true
     }
 }
@@ -150,6 +142,7 @@ pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadat
 }
 
 use crate::media::decode::probe_rotation;
+use crate::media::ffmpeg_utils::*;
 
 fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
     let streams = json
@@ -352,7 +345,14 @@ pub fn generate_proxy(
     args.push(target_path.display().to_string());
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args)
+    run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args)?;
+    if !target_path.exists() {
+        return Err(anyhow!(
+            "ffmpeg proxy did not produce output file: {}",
+            target_path.display()
+        ));
+    }
+    Ok(())
 }
 
 pub fn convert_media(
@@ -484,7 +484,14 @@ pub fn convert_media(
     args.push(target_path.display().to_string());
 
     let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
-    run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args)
+    run_ffmpeg_task(tasks, task_id, ffmpeg_cmd, args)?;
+    if !target_path.exists() {
+        return Err(anyhow!(
+            "ffmpeg conversion did not produce output file: {}",
+            target_path.display()
+        ));
+    }
+    Ok(())
 }
 
 pub fn extract_video_frame_webp(
@@ -696,36 +703,54 @@ pub fn extract_video_frame_webps(
 }
 
 fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, ffmpeg_path: &str, args: Vec<String>) -> Result<()> {
-    let child = Command::new(ffmpeg_path)
+    let mut child = Command::new(ffmpeg_path)
         .args(&args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()
         .context("failed to spawn ffmpeg")?;
+
+    // Drain stderr in a background thread to prevent pipe deadlock on long runs.
+    let stderr_handle = child.stderr.take().map(|mut stderr| {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = std::io::Read::read_to_end(&mut stderr, &mut buf);
+            buf
+        })
+    });
+
     let child = tasks.insert(task_id, child);
 
+    let start = std::time::Instant::now();
+    const TIMEOUT: Duration = Duration::from_secs(3600);
+
     loop {
-        let mut guard = child.lock().expect("native media task child poisoned");
+        let mut guard = child.lock();
         if let Some(status) = guard.try_wait().context("failed to poll ffmpeg")? {
-            let stderr = guard
-                .stderr
-                .take()
-                .map(|mut s| {
-                    let mut text = String::new();
-                    let _ = std::io::Read::read_to_string(&mut s, &mut text);
-                    text
-                })
-                .unwrap_or_default();
+            let stderr_text = match stderr_handle {
+                Some(handle) => {
+                    String::from_utf8_lossy(&handle.join().unwrap_or_default()).to_string()
+                }
+                None => String::new(),
+            };
             drop(guard);
             tasks.remove(task_id);
             if status.success() {
                 return Ok(());
             }
-            return Err(anyhow!("ffmpeg failed: {}", stderr.trim()));
+            return Err(anyhow!("ffmpeg failed: {}", stderr_text.trim()));
         }
         drop(guard);
         std::thread::sleep(Duration::from_millis(100));
+        if start.elapsed() > TIMEOUT {
+            let mut guard = child.lock();
+            let _ = guard.kill();
+            let _ = guard.wait();
+            drop(guard);
+            tasks.remove(task_id);
+            return Err(anyhow!("ffmpeg timed out after {} seconds", TIMEOUT.as_secs()));
+        }
     }
 }
 
@@ -775,60 +800,6 @@ fn fit_even_size(width: u32, height: u32, max_width: u32, max_height: u32) -> (u
     )
 }
 
-fn even(value: u32) -> u32 {
-    (value.max(2) + 1) & !1
-}
-
-fn ffmpeg_video_codec(codec: &str) -> &'static str {
-    if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-        "libsvtav1"
-    } else if codec.contains("vp09") || codec.eq_ignore_ascii_case("vp9") {
-        "libvpx-vp9"
-    } else {
-        "libx264"
-    }
-}
-
-fn ffmpeg_video_codec_hw(codec: &str, hw_mode: &str) -> &'static str {
-    if hw_mode == "vaapi" {
-        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-            "av1_vaapi"
-        } else if codec.contains("vp09") || codec.eq_ignore_ascii_case("vp9") {
-            "vp9_vaapi"
-        } else if codec.contains("hevc") || codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265") {
-            "hevc_vaapi"
-        } else {
-            "h264_vaapi"
-        }
-    } else if hw_mode == "nvdec" { // NVENC
-        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-            "av1_nvenc"
-        } else if codec.contains("hevc") || codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265") {
-            "hevc_nvenc"
-        } else {
-            "h264_nvenc"
-        }
-    } else {
-        ffmpeg_video_codec(codec)
-    }
-}
-
-fn format_fps(fps: f64) -> String {
-    if fps.is_finite() && fps > 0.0 {
-        format!("{fps:.6}")
-    } else {
-        "30.000000".into()
-    }
-}
-
-fn format_time(time_sec: f64) -> String {
-    if time_sec.is_finite() && time_sec > 0.0 {
-        format!("{time_sec:.6}")
-    } else {
-        "0.000000".into()
-    }
-}
-
 fn webp_quality_arg(quality: f32) -> String {
     let value = if quality.is_finite() {
         quality.clamp(0.01, 1.0)
@@ -836,16 +807,6 @@ fn webp_quality_arg(quality: f32) -> String {
         0.7
     };
     format!("{}", (value * 100.0).round() as u32)
-}
-
-fn parse_rational(s: &str) -> Option<f64> {
-    let mut parts = s.split('/');
-    let num: f64 = parts.next()?.parse().ok()?;
-    let den: f64 = parts.next().and_then(|d| d.parse().ok()).unwrap_or(1.0);
-    if den == 0.0 {
-        return None;
-    }
-    Some(num / den)
 }
 
 #[cfg(test)]

@@ -15,6 +15,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
 
+use crate::media::ffmpeg_utils::*;
+
 #[derive(Debug, Clone)]
 pub struct MediaInfo {
     pub duration_sec: f64,
@@ -396,7 +398,7 @@ impl FfmpegCliDecoder {
             .arg("-")
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stderr(Stdio::null());
         let mut child = cmd
             .spawn()
             .context("failed to spawn ffmpeg (is it installed and on PATH?)")?;
@@ -466,7 +468,16 @@ impl VideoDecoder for FfmpegCliDecoder {
         let mut pixels = vec![0u8; self.frame_bytes];
         match stdout.read_exact(&mut pixels) {
             Ok(()) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                if let Some(ref mut child) = self.child {
+                    if let Ok(Some(status)) = child.try_wait() {
+                        if !status.success() {
+                            return Err(anyhow!("ffmpeg decoder exited with error: {status}"));
+                        }
+                    }
+                }
+                return Ok(None);
+            }
             Err(e) => return Err(e.into()),
         }
         let fps = if self.info.fps > 0.0 {
@@ -487,16 +498,6 @@ impl VideoDecoder for FfmpegCliDecoder {
             texture_pool: None,
         }))
     }
-}
-
-fn fmt_fps(fps: f64) -> String {
-    let f = if fps > 0.0 && fps.is_finite() {
-        fps
-    } else {
-        30.0
-    };
-    // 6 знаков достаточно для 23.976024 и подобных; ffmpeg парсит как float.
-    format!("{:.6}", f)
 }
 
 pub fn open(
@@ -725,16 +726,6 @@ pub(crate) fn parse_rotation_value(value: &serde_json::Value) -> Option<i32> {
         .as_str()
         .and_then(|s| s.trim().parse::<f64>().ok())
         .map(|rotation| rotation.round() as i32)
-}
-
-fn parse_rational(s: &str) -> Option<f64> {
-    let mut parts = s.split('/');
-    let num: f64 = parts.next()?.parse().ok()?;
-    let den: f64 = parts.next().and_then(|d| d.parse().ok()).unwrap_or(1.0);
-    if den == 0.0 {
-        return None;
-    }
-    Some(num / den)
 }
 
 #[cfg(test)]
