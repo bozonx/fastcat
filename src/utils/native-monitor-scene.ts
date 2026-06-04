@@ -8,11 +8,13 @@ import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type {
   ClipEffect,
   ClipTransform,
-  ShapeConfig,
   TimelineDocument,
-  TimelineShapeClipItem,
   TimelineTextClipItem,
 } from '~/timeline/types';
+import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
+import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
+import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';
+import type { SceneAudioTrack } from '~/types/generated/native-monitor/SceneAudioTrack';
 import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
@@ -23,7 +25,6 @@ import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
 import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
-import type { TauriTransitionSpec } from '~/transitions/core/registry';
 
 interface NativeAudioWorkerTimelineClip extends WorkerTimelineClip {
   originalAudioGain?: unknown;
@@ -33,93 +34,13 @@ interface NativeAudioWorkerTimelineClip extends WorkerTimelineClip {
 const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
 const SVG_EXT = new Set(['svg']);
 
-export interface NativeSceneLayer {
-  id: string;
-  kind: 'video' | 'image' | 'svg' | 'text' | 'shape' | 'background';
-  path?: string;
-  timeline_start_sec: number;
-  timeline_end_sec: number;
-  source_start_sec: number;
-  source_range_duration_sec: number;
-  speed: number;
-  freeze_frame_source_sec?: number;
-  source_orientation?: string;
-  z: number;
-  opacity: number;
-  blend_mode?: string;
-  background_color?: string;
-  text?: string;
-  style?: TimelineTextClipItem['style'];
-  shape_type?: TimelineShapeClipItem['shapeType'];
-  fill_color?: string;
-  stroke_color?: string;
-  stroke_width?: number;
-  shape_config?: ShapeConfig;
-  transform?: {
-    x: number;
-    y: number;
-    scale_x: number;
-    scale_y: number;
-    rotation_deg: number;
-    anchor_x: number;
-    anchor_y: number;
-    crop_top?: number;
-    crop_bottom?: number;
-    crop_left?: number;
-    crop_right?: number;
-  };
-  transition_in?: {
-    type: string;
-    duration_sec: number;
-    curve?: string;
-    from_layer_id?: string;
-    spec?: TauriTransitionSpec;
-  };
-  transition_out?: {
-    type: string;
-    duration_sec: number;
-    curve?: string;
-    spec?: TauriTransitionSpec;
-  };
-  effects?: TauriEffectSpec[];
-}
-
-export interface NativeSceneAudioLayer {
-  id: string;
-  track_id?: string;
-  path: string;
-  timeline_start_sec: number;
-  timeline_end_sec: number;
-  source_start_sec: number;
-  speed: number;
-  audio_gain: number;
-  audio_balance: number;
-  audio_fade_in_sec: number;
-  audio_fade_out_sec: number;
-  audio_fade_in_curve: 'linear' | 'logarithmic';
-  audio_fade_out_curve: 'linear' | 'logarithmic';
-}
-
-export interface NativeAudioTrack {
-  id: string;
-  audio_gain: number;
-  audio_balance: number;
-  audio_muted: boolean;
-  audio_solo: boolean;
-}
-
-export interface NativeMonitorScene {
-  layers: NativeSceneLayer[];
-  audio_layers?: NativeSceneAudioLayer[];
-  audio_tracks?: NativeAudioTrack[];
-  audio_master_gain: number;
-  audio_master_muted: boolean;
-  width: number;
-  height: number;
-  preview_scale?: number;
-  preview_fps?: number;
-  preview_sync_mode?: 'smooth' | 'balanced' | 'strict';
-}
+// The scene DTOs are generated from the Rust IPC structs (`src-tauri/src/
+// monitor/scene.rs`) by ts-rs — Rust is the single source of truth for the
+// shape. These aliases keep the historical frontend names stable.
+export type NativeSceneLayer = SceneLayer;
+export type NativeSceneAudioLayer = SceneAudioLayer;
+export type NativeAudioTrack = SceneAudioTrack;
+export type NativeMonitorScene = MonitorScene;
 
 export interface BuildNativeMonitorSceneParams {
   timelineDoc: TimelineDocument;
@@ -254,24 +175,37 @@ function buildNativeTextTransform(params: {
   });
 
   const renderScale = sceneHeight / TRANSFORM_DESIGN_BASE.height;
-  const borderEnabled = style?.borderEnabled ?? false;
-  const borderWidth = borderEnabled && typeof style?.borderWidth === 'number' ? style.borderWidth : 0;
-  const borderWidthPx = Math.round(borderWidth * renderScale);
 
   const bgW = layout.backgroundWidth;
   const bgH = layout.backgroundHeight;
 
   const bgShadowEnabled = style?.backgroundShadowEnabled ?? false;
-  const bgShadowBlur = bgShadowEnabled && typeof style?.backgroundShadowBlur === 'number' ? style.backgroundShadowBlur : 0;
-  const bgShadowSpread = bgShadowEnabled && typeof style?.backgroundShadowSpread === 'number' ? style.backgroundShadowSpread : 0;
-  const bgShadowOffsetX = bgShadowEnabled && typeof style?.backgroundShadowOffsetX === 'number' ? style.backgroundShadowOffsetX : 0;
-  const bgShadowOffsetY = bgShadowEnabled && typeof style?.backgroundShadowOffsetY === 'number' ? style.backgroundShadowOffsetY : 0;
+  const bgShadowBlur =
+    bgShadowEnabled && typeof style?.backgroundShadowBlur === 'number'
+      ? style.backgroundShadowBlur
+      : 0;
+  const bgShadowSpread =
+    bgShadowEnabled && typeof style?.backgroundShadowSpread === 'number'
+      ? style.backgroundShadowSpread
+      : 0;
+  const bgShadowOffsetX =
+    bgShadowEnabled && typeof style?.backgroundShadowOffsetX === 'number'
+      ? style.backgroundShadowOffsetX
+      : 0;
+  const bgShadowOffsetY =
+    bgShadowEnabled && typeof style?.backgroundShadowOffsetY === 'number'
+      ? style.backgroundShadowOffsetY
+      : 0;
 
   const textShadowEnabled = style?.textShadowEnabled ?? false;
-  const textShadowBlur = textShadowEnabled && typeof style?.textShadowBlur === 'number' ? style.textShadowBlur : 0;
-  const textShadowSpread = textShadowEnabled && typeof style?.textShadowSpread === 'number' ? style.textShadowSpread : 0;
-  const textShadowOffsetX = textShadowEnabled && typeof style?.textShadowOffsetX === 'number' ? style.textShadowOffsetX : 0;
-  const textShadowOffsetY = textShadowEnabled && typeof style?.textShadowOffsetY === 'number' ? style.textShadowOffsetY : 0;
+  const textShadowBlur =
+    textShadowEnabled && typeof style?.textShadowBlur === 'number' ? style.textShadowBlur : 0;
+  const textShadowSpread =
+    textShadowEnabled && typeof style?.textShadowSpread === 'number' ? style.textShadowSpread : 0;
+  const textShadowOffsetX =
+    textShadowEnabled && typeof style?.textShadowOffsetX === 'number' ? style.textShadowOffsetX : 0;
+  const textShadowOffsetY =
+    textShadowEnabled && typeof style?.textShadowOffsetY === 'number' ? style.textShadowOffsetY : 0;
 
   const bgShadowBlurPx = Math.round(bgShadowBlur * renderScale);
   const bgShadowSpreadPx = Math.round(bgShadowSpread * renderScale);
@@ -338,14 +272,9 @@ function buildNativeShapeTransform(params: {
   const targetH = Math.max(1, Math.ceil(size + sW * 2));
 
   return {
-    x:
-      sceneWidth / 2 +
-      finite(transform.position?.x, 0) * renderScale +
-      (anchor.x - 0.5) * targetW,
+    x: sceneWidth / 2 + finite(transform.position?.x, 0) * renderScale + (anchor.x - 0.5) * targetW,
     y:
-      sceneHeight / 2 +
-      finite(transform.position?.y, 0) * renderScale +
-      (anchor.y - 0.5) * targetH,
+      sceneHeight / 2 + finite(transform.position?.y, 0) * renderScale + (anchor.y - 0.5) * targetH,
     scale_x: finite(transform.scale?.x, 1),
     scale_y: finite(transform.scale?.y, 1),
     rotation_deg: finite(transform.rotationDeg, 0),
@@ -357,7 +286,6 @@ function buildNativeShapeTransform(params: {
     crop_right: transform.crop?.right ?? 0,
   };
 }
-
 
 export function buildNativeEffectSpecs(effects?: ClipEffect[]): TauriEffectSpec[] | undefined {
   if (!Array.isArray(effects) || effects.length === 0) {
@@ -403,7 +331,7 @@ function buildBaseLayer(params: {
   sceneHeight: number;
   z: number;
   allClips: WorkerTimelineClip[];
-}): Omit<NativeSceneLayer, 'kind' | 'path'> {
+}): Omit<NativeSceneLayer, 'kind'> {
   const { clip, sceneWidth, sceneHeight, z, allClips } = params;
   const startUs = clip.timelineRange.startUs;
   const durationUs = clip.timelineRange.durationUs;
@@ -451,6 +379,9 @@ function buildBaseLayer(params: {
 
   return {
     id: clip.id,
+    // `path` is required by the generated SceneLayer; media layers override it
+    // below, virtual layers (text/shape/background) leave it empty.
+    path: '',
     timeline_start_sec: startUs / 1_000_000,
     timeline_end_sec: (startUs + durationUs) / 1_000_000,
     source_start_sec: sourceStartUs / 1_000_000,
@@ -464,7 +395,7 @@ function buildBaseLayer(params: {
     z,
     opacity: Math.max(0, Math.min(1, finite(clip.opacity, 1))),
     blend_mode: clip.blendMode ?? 'normal',
-    effects: buildNativeEffectSpecs(clip.effects),
+    effects: buildNativeEffectSpecs(clip.effects) ?? [],
     transform: buildNativeTransform(clip.transform, sceneWidth, sceneHeight),
     transition_in,
     transition_out,

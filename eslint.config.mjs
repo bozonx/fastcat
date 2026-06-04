@@ -12,6 +12,8 @@ export default withNuxt(eslintPluginPrettierRecommended)
       'src-tauri/**',
       'scripts/patch_transform.js',
       '**/*.d.ts',
+      // ts-rs generated bindings (Rust is the source of truth; do not lint/format).
+      'src/types/generated/**',
     ],
   })
   .append({

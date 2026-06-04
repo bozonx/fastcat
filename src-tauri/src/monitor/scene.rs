@@ -9,11 +9,17 @@
 
 use serde::Deserialize;
 use serde_json::Value;
+use ts_rs::TS;
 
 use crate::compositor::effects::EffectSpec;
 
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+// ts-rs generates the TypeScript mirror of these IPC DTOs into
+// `src/types/generated/native-monitor/` (see `export_to` below). The frontend
+// scene builder imports them so the contract has a single source of truth.
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/", rename_all = "lowercase")]
 pub enum LayerKind {
     Video,
     Image,
@@ -30,7 +36,8 @@ pub enum LayerKind {
 ///
 /// Если `transform` не задан в JSON (None), слой вписывается в сцену методом
 /// letterbox/center-fit через `Transform::center_fit` (поведение по умолчанию).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneLayerTransform {
     /// Позиция anchor-точки в scene-space (пиксели; (0,0) = left-top сцены).
     pub x: f64,
@@ -64,7 +71,8 @@ fn half() -> f64 {
     0.5
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneLayer {
     /// Стабильный идентификатор клипа — ключ для diff'а scene и кеша рантаймов.
     pub id: String,
@@ -85,9 +93,11 @@ pub struct SceneLayer {
     pub speed: f64,
     /// Стоп-кадр: абсолютный PTS внутри исходника.
     #[serde(default)]
+    #[ts(optional)]
     pub freeze_frame_source_sec: Option<f64>,
     /// Явная ориентация источника (`auto`, `0`, `90`, `180`, `270`).
     #[serde(default)]
+    #[ts(optional)]
     pub source_orientation: Option<String>,
     /// Чем выше — тем поверх. Сортируем по возрастанию.
     pub z: i32,
@@ -97,47 +107,67 @@ pub struct SceneLayer {
     #[serde(default = "default_blend")]
     pub blend_mode: String,
     #[serde(default)]
+    #[ts(optional)]
     pub background_color: Option<String>,
     #[serde(default)]
+    #[ts(optional)]
     pub text: Option<String>,
+    // Open-ended text style bag — mapped to the existing frontend type.
     #[serde(default)]
+    #[ts(optional, type = "import('~/timeline/types').TextClipStyle")]
     pub style: Option<Value>,
     #[serde(default)]
+    #[ts(optional)]
     pub shape_type: Option<String>,
     #[serde(default)]
+    #[ts(optional)]
     pub fill_color: Option<String>,
     #[serde(default)]
+    #[ts(optional)]
     pub stroke_color: Option<String>,
     #[serde(default)]
+    #[ts(optional)]
     pub stroke_width: Option<f64>,
     #[serde(default)]
+    #[ts(optional, type = "import('~/timeline/types').ShapeConfig")]
     pub shape_config: Option<Value>,
     /// Явный трансформ слоя в scene-space.
     /// `None` → letterbox center-fit (поведение по умолчанию, совместимость с предыдущими версиями).
     #[serde(default)]
+    #[ts(optional)]
     pub transform: Option<SceneLayerTransform>,
     #[serde(default)]
+    #[ts(optional)]
     pub transition_in: Option<SceneTransition>,
     #[serde(default)]
+    #[ts(optional)]
     pub transition_out: Option<SceneTransition>,
+    // Video effect specs — produced by the frontend effect manifests.
     #[serde(default)]
+    #[ts(type = "import('~/effects').TauriEffectSpec[]")]
     pub effects: Vec<EffectSpec>,
 }
 
 use crate::compositor::transitions::TransitionSpec;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneTransition {
     #[serde(rename = "type")]
     pub transition_type: String,
     pub duration_sec: f64,
+    #[ts(optional)]
     pub curve: Option<String>,
+    #[ts(optional)]
     pub from_layer_id: Option<String>,
+    // Transition spec — produced by the frontend transition manifests.
+    #[ts(optional, type = "import('~/transitions/core/registry').TauriTransitionSpec")]
     pub spec: Option<TransitionSpec>,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/", rename_all = "lowercase")]
 pub enum AudioFadeCurve {
     Linear,
     Logarithmic,
@@ -149,8 +179,9 @@ impl Default for AudioFadeCurve {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/", rename_all = "lowercase")]
 pub enum PreviewSyncMode {
     Smooth,
     Balanced,
@@ -163,10 +194,12 @@ impl Default for PreviewSyncMode {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneAudioLayer {
     pub id: String,
     #[serde(default)]
+    #[ts(optional)]
     pub track_id: Option<String>,
     pub path: String,
     pub timeline_start_sec: f64,
@@ -188,7 +221,8 @@ pub struct SceneAudioLayer {
     pub audio_fade_out_curve: AudioFadeCurve,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneAudioTrack {
     pub id: String,
     #[serde(default = "one")]
@@ -201,7 +235,8 @@ pub struct SceneAudioTrack {
     pub audio_solo: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct MonitorScene {
     pub layers: Vec<SceneLayer>,
     #[serde(default)]
@@ -222,6 +257,7 @@ pub struct MonitorScene {
     /// Даёт значительную экономию CPU/GPU на 4K source'ах в маленьком preview.
     /// `None` или отсутствие → декод в нативном разрешении.
     #[serde(default)]
+    #[ts(optional)]
     pub preview_scale: Option<f32>,
     /// Целевой FPS preview-рендера. По умолчанию 30. Большинство source — 24/25/30,
     /// поэтому 30 достаточно; для 60fps source укажите 60.
