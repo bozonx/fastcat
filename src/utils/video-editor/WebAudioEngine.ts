@@ -18,7 +18,10 @@ import type {
   AudioNodeCollection,
   ClipPlaybackWindow,
 } from '~/utils/video-editor/audio-engine.types';
-
+import type {
+  AudioEngineCapabilities,
+  IAudioEngine,
+} from '~/utils/video-editor/audio-engine.interface';
 
 const logger = createDevLogger('WebAudioEngine');
 const TRANSITION_FADE_IN_S = 0.02;
@@ -29,7 +32,13 @@ export interface WebAudioEngineOptions {
   getAudioCacheVfsPath?: () => string | null;
 }
 
-export class WebAudioEngine {
+export class WebAudioEngine implements IAudioEngine {
+  // Full Web Audio implementation: scrubbing, peak extraction and metering.
+  readonly capabilities: AudioEngineCapabilities = {
+    scrubPreview: true,
+    peaksExtraction: true,
+    levelMetering: true,
+  };
   private ctx: AudioContext | null = null;
   // How far ahead (in AudioContext seconds) the streaming loop is allowed to
   // pre-schedule source nodes for a given clip. Bigger = more decoder slack

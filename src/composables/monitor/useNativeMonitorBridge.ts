@@ -1,6 +1,6 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 import { onScopeDispose, watch } from 'vue';
+import { nativeMonitorIpc, onMonitorTime, onMonitorEnded } from './native-monitor-ipc';
 
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -135,7 +135,7 @@ export function useNativeMonitorBridge(): void {
       const json = JSON.stringify(scene);
       if (json === lastSceneJson) return;
       lastSceneJson = json;
-      await invoke('monitor_set_scene', { scene });
+      await nativeMonitorIpc.setScene(scene);
     } catch (err) {
       warnMonitorFailure('monitor_set_scene failed', err);
     }
@@ -165,7 +165,7 @@ export function useNativeMonitorBridge(): void {
     async (playing) => {
       if (isNativeMonitorDisabled()) return;
       try {
-        await invoke(playing ? 'monitor_play' : 'monitor_pause');
+        await (playing ? nativeMonitorIpc.play() : nativeMonitorIpc.pause());
       } catch (err) {
         warnMonitorFailure('monitor play/pause failed', err);
       }
@@ -200,7 +200,7 @@ export function useNativeMonitorBridge(): void {
       }
       seekThrottleId = setTimeout(() => {
         seekThrottleId = null;
-        void invoke('monitor_seek', { timeSec: pendingSeekTimeSec }).catch((err) => {
+        void nativeMonitorIpc.seek(pendingSeekTimeSec).catch((err) => {
           warnMonitorFailure('monitor_seek failed', err);
         });
       }, 16);
@@ -210,8 +210,8 @@ export function useNativeMonitorBridge(): void {
 
   // Натив — мастер-клок: timeline-PTS (секунды) приходят в `monitor:time`.
   const unsubs: UnlistenFn[] = [];
-  void listen<number>('monitor:time', (event) => {
-    const timelineUs = Math.round(event.payload * 1_000_000);
+  void onMonitorTime((timelineSec) => {
+    const timelineUs = Math.round(timelineSec * 1_000_000);
     const diffUs = Math.abs(timelineUs - timelineStore.currentTime);
     const nowMs = performance.now();
     if (
@@ -234,7 +234,7 @@ export function useNativeMonitorBridge(): void {
     .then((un) => unsubs.push(un))
     .catch((err) => log.warn('listen monitor:time failed', err));
 
-  void listen('monitor:ended', () => {
+  void onMonitorEnded(() => {
     if (timelineStore.isPlaying) timelineStore.isPlaying = false;
   })
     .then((un) => unsubs.push(un))
@@ -243,9 +243,9 @@ export function useNativeMonitorBridge(): void {
   onScopeDispose(() => {
     for (const un of unsubs) un();
     if (!isNativeMonitorDisabled()) {
-      void invoke('monitor_close').catch((err) =>
-        warnMonitorFailure('monitor_close on dispose failed', err),
-      );
+      void nativeMonitorIpc
+        .close()
+        .catch((err) => warnMonitorFailure('monitor_close on dispose failed', err));
     }
   });
 }

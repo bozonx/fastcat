@@ -5,13 +5,9 @@ import {
 import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
-import type {
-  TimelineTrack,
-  TimelineTrackItem,
-  ClipEffect,
-  TimelineDocument,
-} from '~/timeline/types';
+import type { TimelineTrack, ClipEffect, TimelineDocument } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
+import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import type { WorkerTimelineClip } from './types';
 
 export interface PreparedMonitorTimelineData {
@@ -20,40 +16,16 @@ export interface PreparedMonitorTimelineData {
   payload: WorkerVideoPayloadItem[];
 }
 
-export function createMockAudioItems(audioClips: WorkerTimelineClip[]): TimelineTrackItem[] {
-  return audioClips.map((clip) => ({
-    kind: 'clip',
-    clipType:
-      clip.clipType === 'media' && clip.source?.path?.endsWith('.otio')
-        ? 'timeline'
-        : clip.clipType,
-    id: clip.id,
-    trackId: clip.trackId,
-    speed: clip.speed,
-    audioGain: clip.audioGain,
-    audioBalance: clip.audioBalance,
-    audioFadeInUs: clip.audioFadeInUs,
-    audioFadeOutUs: clip.audioFadeOutUs,
-    audioFadeInCurve: clip.audioFadeInCurve,
-    audioFadeOutCurve: clip.audioFadeOutCurve,
-    audioDeclickDurationUs: clip.audioDeclickDurationUs,
-    transitionIn: clip.transitionIn,
-    transitionOut: clip.transitionOut,
-    source: clip.source,
-    timelineRange: clip.timelineRange,
-    sourceRange: clip.sourceRange,
-    freezeFrameSourceUs: clip.freezeFrameSourceUs,
-    opacity: clip.opacity,
-    blendMode: clip.blendMode,
-    effects: clip.effects,
-    transform: clip.transform,
-    sourceOrientation: clip.sourceOrientation,
-    name: clip.id,
-  })) as TimelineTrackItem[];
-}
-
+/**
+ * Build the worker payloads for the monitor straight from the timeline tracks.
+ *
+ * Both video and audio derive from the same `TimelineTrack[]` source through a
+ * single `toWorkerTimelineClips` pass — the audio path mirrors the native
+ * monitor's `buildAudioLayers` (track-bus → `toWorkerTimelineClips`) so the web
+ * and native monitors agree on what an audio clip is. There is no intermediate
+ * `WorkerTimelineClip → mock TimelineTrackItem → WorkerTimelineClip` round-trip.
+ */
 export async function prepareMonitorTimelineData(params: {
-  rawAudioClips: WorkerTimelineClip[];
   tracks: TimelineTrack[];
   projectStore: ReturnType<typeof useProjectStore>;
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
@@ -69,8 +41,16 @@ export async function prepareMonitorTimelineData(params: {
     fallbackFormat: params.fallbackFormat,
     nestedDocCache,
   });
+
+  const audioTracks = params.tracks.filter((track) => track.kind === 'audio');
+  const videoTracks = params.tracks.filter((track) => track.kind === 'video');
+  const effectiveAudioItems = buildEffectiveAudioClipItems({
+    audioTracks,
+    videoTracks,
+    masterEffects: params.masterEffects,
+  });
   const flattenedAudio = await toWorkerTimelineClips(
-    createMockAudioItems(params.rawAudioClips),
+    effectiveAudioItems,
     params.projectStore,
     params.workspaceStore,
     {

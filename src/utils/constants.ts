@@ -95,6 +95,36 @@ export const VIDEO_CORE_LIMITS = {
   BLEND_SHADOW_GAP_THRESHOLD_US: 200_000,
 };
 
+/**
+ * Per-method timeouts (ms) for worker RPC calls. A single coarse timeout is
+ * wrong because methods have wildly different cost: a metadata probe should
+ * fail fast, a full timeline rebuild on a slow disk legitimately takes longer,
+ * and long-running jobs (export, audio extraction, transcode, frame-strip
+ * extraction) must not time out at all — they report progress and are cancelled
+ * explicitly. `null` means "no timeout".
+ */
+export const WORKER_RPC_TIMEOUTS_MS: Record<string, number | null> = {
+  extractMetadata: 30_000,
+  setPixiRendererPreference: 10_000,
+  initCompositor: 30_000,
+  destroyCompositor: 15_000,
+  clearClips: 15_000,
+  renderFrame: 60_000,
+  loadTimeline: 120_000,
+  updateTimelineLayout: 60_000,
+  extractFrameToBlob: 60_000,
+  // No timeout: progress-reporting / explicitly-cancelled long jobs.
+  exportTimeline: null,
+  transcodeMedia: null,
+  extractAudio: null,
+  extractVideoFrameBlobs: null,
+  cancelExport: 30_000,
+  releaseFrameExtractor: 15_000,
+};
+
+/** Fallback when a method has no explicit entry in WORKER_RPC_TIMEOUTS_MS. */
+export const WORKER_RPC_DEFAULT_TIMEOUT_MS = 30_000;
+
 export const TIMELINE_CLIP_THUMBNAILS = {
   DIR_NAME: 'video_clips',
   INTERVAL_SECONDS: 4,

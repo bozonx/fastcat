@@ -6,6 +6,20 @@ import type {
 } from '~/timeline/types';
 
 import { z } from 'zod';
+import {
+  BlendModeSchema,
+  ShapeTypeSchema,
+  HudTypeSchema,
+  FadeCurveSchema,
+  ClipSourceOrientationSchema,
+  ClipTransformSchema,
+  ClipTransitionSchema,
+  ClipMaskSchema,
+  ClipEffectSchema,
+  TextClipStyleSchema,
+  ShapeConfigSchema,
+  HudMediaParamsSchema,
+} from '~/timeline/clip-schemas';
 
 export const ExportOptionsSchema = z.object({
   format: z.enum(['mp4', 'webm', 'mkv', 'aac', 'opus', 'ogg', 'flac', 'wav', 'pcm']),
@@ -165,34 +179,34 @@ const WorkerTimelineClipSchema = z.object({
   audioBalance: z.number().optional(),
   audioFadeInUs: z.number().optional(),
   audioFadeOutUs: z.number().optional(),
-  audioFadeInCurve: z.enum(['linear', 'logarithmic']).optional(),
-  audioFadeOutCurve: z.enum(['linear', 'logarithmic']).optional(),
+  audioFadeInCurve: FadeCurveSchema.optional(),
+  audioFadeOutCurve: FadeCurveSchema.optional(),
   audioDeclickDurationUs: z.number().optional(),
-  defaultAudioFadeCurve: z.enum(['linear', 'logarithmic']).optional(),
+  defaultAudioFadeCurve: FadeCurveSchema.optional(),
 
   source: z.object({ path: z.string() }).optional(),
   backgroundColor: z.string().optional(),
   text: z.string().optional(),
-  style: z.unknown().optional(),
-  shapeType: z.string().optional(),
+  style: TextClipStyleSchema.optional(),
+  shapeType: ShapeTypeSchema.optional(),
   fillColor: z.string().optional(),
   strokeColor: z.string().optional(),
   strokeWidth: z.number().optional(),
-  shapeConfig: z.unknown().optional(),
-  hudType: z.string().optional(),
-  background: z.unknown().optional(),
-  content: z.unknown().optional(),
-  frame: z.unknown().optional(),
+  shapeConfig: ShapeConfigSchema.optional(),
+  hudType: HudTypeSchema.optional(),
+  background: HudMediaParamsSchema.optional(),
+  content: HudMediaParamsSchema.optional(),
+  frame: HudMediaParamsSchema.optional(),
 
   freezeFrameSourceUs: z.number().optional(),
   opacity: z.number().optional(),
-  blendMode: z.string().optional(),
-  effects: z.array(z.unknown()).optional(),
-  mask: z.unknown().optional(),
-  transform: z.unknown().optional(),
-  sourceOrientation: z.unknown().optional(),
-  transitionIn: z.unknown().optional(),
-  transitionOut: z.unknown().optional(),
+  blendMode: BlendModeSchema.optional(),
+  effects: z.array(ClipEffectSchema).optional(),
+  mask: ClipMaskSchema.optional(),
+  transform: ClipTransformSchema.optional(),
+  sourceOrientation: ClipSourceOrientationSchema.optional(),
+  transitionIn: ClipTransitionSchema.optional(),
+  transitionOut: ClipTransitionSchema.optional(),
   sourceDurationUs: z.number().optional(),
 
   timelineRange: TimelineRangeSchema,
@@ -204,13 +218,13 @@ const WorkerTimelineTrackSchema = z.object({
   id: z.string().min(1),
   layer: z.number().int(),
   opacity: z.number().optional(),
-  blendMode: z.string().optional(),
-  effects: z.array(z.unknown()).optional(),
+  blendMode: BlendModeSchema.optional(),
+  effects: z.array(ClipEffectSchema).optional(),
 });
 
 const WorkerTimelineMetaSchema = z.object({
   kind: z.literal('meta'),
-  masterEffects: z.array(z.unknown()),
+  masterEffects: z.array(ClipEffectSchema),
 });
 
 export const WorkerVideoPayloadItemSchema = z.union([

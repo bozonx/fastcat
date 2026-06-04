@@ -3,7 +3,6 @@ import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
 import type { ClipEffect, TimelineTrack } from '~/timeline/types';
 import type { TimelineFormatInput } from '~/timeline/format';
-import type { WorkerTimelineClip } from './types';
 import { computeAudioDurationUs } from './useMonitorCore.helpers';
 import {
   prepareMonitorTimelineData,
@@ -15,7 +14,6 @@ export interface PreparedMonitorTimelineState extends PreparedMonitorTimelineDat
 }
 
 export async function prepareMonitorTimelineState(params: {
-  rawAudioClips: WorkerTimelineClip[];
   tracks: TimelineTrack[];
   projectStore: ReturnType<typeof useProjectStore>;
   workspaceStore: ReturnType<typeof useWorkspaceStore>;
@@ -23,7 +21,6 @@ export async function prepareMonitorTimelineState(params: {
   fallbackFormat?: TimelineFormatInput;
 }): Promise<PreparedMonitorTimelineState> {
   const preparedTimeline = await prepareMonitorTimelineData({
-    rawAudioClips: params.rawAudioClips,
     tracks: params.tracks,
     projectStore: params.projectStore,
     workspaceStore: params.workspaceStore,

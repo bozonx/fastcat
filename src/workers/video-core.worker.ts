@@ -66,71 +66,22 @@ function serializeWorkerError(err: unknown): WorkerRpcErrorShape {
   };
 }
 
+/**
+ * Generic RPC dispatch. Every worker method is implemented on the `api` object
+ * below, and each method performs its own input validation (e.g. `renderFrame`
+ * and `extractMetadata` parse their payloads internally, `loadTimeline` runs
+ * `parseWorkerVideoPayload`). So dispatch is a single typed lookup instead of a
+ * per-method switch that had to be kept in sync with the interface by hand.
+ */
 async function callWorkerMethod<K extends WorkerMethod>(
   method: K,
   args: Parameters<VideoCoreWorkerAPI[K]>,
 ): Promise<Awaited<ReturnType<VideoCoreWorkerAPI[K]>>> {
-  switch (method) {
-    case 'setPixiRendererPreference':
-      return api.setPixiRendererPreference(
-        ...(args as Parameters<VideoCoreWorkerAPI['setPixiRendererPreference']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'extractMetadata':
-      return parseMediaMetadata(await extractMetadata(args[0] as File)) as Awaited<
-        ReturnType<VideoCoreWorkerAPI[K]>
-      >;
-    case 'renderFrame': {
-      const [timeUs, options] = args as Parameters<VideoCoreWorkerAPI['renderFrame']>;
-      const parsedOptions = options ? PreviewRenderOptionsSchema.parse(options) : undefined;
-      return api.renderFrame(timeUs, parsedOptions) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    }
-    case 'initCompositor':
-      return api.initCompositor(
-        ...(args as Parameters<VideoCoreWorkerAPI['initCompositor']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'loadTimeline':
-      return api.loadTimeline(
-        ...(args as Parameters<VideoCoreWorkerAPI['loadTimeline']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'updateTimelineLayout':
-      return api.updateTimelineLayout(
-        ...(args as Parameters<VideoCoreWorkerAPI['updateTimelineLayout']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'clearClips':
-      return api.clearClips() as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'destroyCompositor':
-      return api.destroyCompositor() as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'exportTimeline':
-      return api.exportTimeline(
-        ...(args as Parameters<VideoCoreWorkerAPI['exportTimeline']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'transcodeMedia':
-      return api.transcodeMedia(
-        ...(args as Parameters<VideoCoreWorkerAPI['transcodeMedia']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'cancelExport':
-      return api.cancelExport(
-        ...(args as Parameters<VideoCoreWorkerAPI['cancelExport']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'extractFrameToBlob':
-      return api.extractFrameToBlob(
-        ...(args as Parameters<VideoCoreWorkerAPI['extractFrameToBlob']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'extractAudio':
-      return api.extractAudio(
-        ...(args as Parameters<VideoCoreWorkerAPI['extractAudio']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'extractVideoFrameBlobs':
-      return api.extractVideoFrameBlobs(
-        ...(args as Parameters<VideoCoreWorkerAPI['extractVideoFrameBlobs']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    case 'releaseFrameExtractor':
-      return api.releaseFrameExtractor(
-        ...(args as Parameters<VideoCoreWorkerAPI['releaseFrameExtractor']>),
-      ) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
-    default:
-      throw new Error(`Unsupported worker method: ${String(method)}`);
+  const handler = (api as Record<string, (...handlerArgs: unknown[]) => unknown>)[method];
+  if (typeof handler !== 'function') {
+    throw new Error(`Unsupported worker method: ${String(method)}`);
   }
+  return (await handler(...(args as unknown[]))) as Awaited<ReturnType<VideoCoreWorkerAPI[K]>>;
 }
 
 function createHostRpcCall(method: keyof VideoCoreHostAPI, args: unknown[]) {

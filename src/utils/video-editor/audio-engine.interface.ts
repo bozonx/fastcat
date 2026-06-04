@@ -5,7 +5,24 @@ export interface AudioEngineOptions {
   getAudioCacheVfsPath?: () => string | null;
 }
 
+/**
+ * Declares which optional features a concrete audio engine actually supports,
+ * so callers can branch instead of relying on silent no-op implementations.
+ * The Tauri engine, for example, delegates output to Rust and does not provide
+ * Web Audio scrub preview, JS peak extraction, or level metering.
+ */
+export interface AudioEngineCapabilities {
+  /** `previewScrubForward` / `stopScrubPreview` produce audible scrubbing. */
+  scrubPreview: boolean;
+  /** `extractPeaks` returns waveform peaks (vs. always `null`). */
+  peaksExtraction: boolean;
+  /** `getLevels` returns live RMS/peak meters (vs. static silence). */
+  levelMetering: boolean;
+}
+
 export interface IAudioEngine {
+  /** Static description of which optional features this engine implements. */
+  readonly capabilities: AudioEngineCapabilities;
   init(options?: { sampleRate?: number; audioChannels?: 'stereo' | 'mono' }): Promise<void>;
   loadClips(clips: AudioEngineClip[]): Promise<void>;
   updateTimelineLayout(clips: AudioEngineClip[]): Promise<void>;
@@ -18,11 +35,7 @@ export interface IAudioEngine {
   setMonitorVolume(volume: number): void;
   getCurrentTimeUs(): number;
   getLevels(trackId?: string): { rmsDb: number; peakDb: number };
-  previewScrubForward(
-    fromUs: number,
-    toUs: number,
-    maxPreviewDurationUs?: number,
-  ): Promise<void>;
+  previewScrubForward(fromUs: number, toUs: number, maxPreviewDurationUs?: number): Promise<void>;
   stopScrubPreview(): void;
   extractPeaks(
     fileHandle: FileSystemFileHandle,

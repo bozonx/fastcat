@@ -1,4 +1,5 @@
-import { Channel, invoke } from '@tauri-apps/api/core';
+import { Channel } from '@tauri-apps/api/core';
+import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { computed, ref, watch, onMounted, onScopeDispose, type Ref } from 'vue';
 
 import { createDevLogger } from '~/utils/dev-logger';
@@ -74,9 +75,9 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
       el.height = h;
     }
     if (isNativeMonitorDisabled()) return;
-    invoke('monitor_set_canvas_size', { width: w, height: h }).catch((err) =>
-      warnMonitorFailure('monitor_set_canvas_size failed', err),
-    );
+    nativeMonitorIpc
+      .setCanvasSize(w, h)
+      .catch((err) => warnMonitorFailure('monitor_set_canvas_size failed', err));
   }
 
   function drawFrame(buffer: ArrayBuffer): void {
@@ -111,7 +112,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
       }
     };
     try {
-      await invoke('monitor_subscribe_frames', { channel });
+      await nativeMonitorIpc.subscribeFrames(channel);
       unsubChannel = () => {
         channel.onmessage = () => {};
       };
@@ -120,22 +121,19 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     }
   }
 
-  watch(
-    mode,
-    async (m) => {
-      if (isNativeMonitorDisabled()) return;
-      try {
-        await invoke('monitor_set_mode', { mode: m });
-      } catch (err) {
-        warnMonitorFailure('monitor_set_mode failed', err);
-      }
-      if (isNativeMonitorDisabled()) return;
-      if (m === 'canvas') {
-        syncCanvasSize();
-        if (!unsubChannel) await subscribe();
-      }
-    },
-  );
+  watch(mode, async (m) => {
+    if (isNativeMonitorDisabled()) return;
+    try {
+      await nativeMonitorIpc.setMode(m);
+    } catch (err) {
+      warnMonitorFailure('monitor_set_mode failed', err);
+    }
+    if (isNativeMonitorDisabled()) return;
+    if (m === 'canvas') {
+      syncCanvasSize();
+      if (!unsubChannel) await subscribe();
+    }
+  });
 
   // Реактивно подстраиваем canvas size при resize.
   let ro: ResizeObserver | null = null;

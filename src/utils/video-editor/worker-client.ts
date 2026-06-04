@@ -5,7 +5,11 @@ import type {
   VideoCoreWorkerRpcMessage,
   WorkerRpcErrorShape,
 } from './worker-rpc';
-import { VIDEO_CORE_LIMITS } from '../constants';
+import {
+  VIDEO_CORE_LIMITS,
+  WORKER_RPC_TIMEOUTS_MS,
+  WORKER_RPC_DEFAULT_TIMEOUT_MS,
+} from '../constants';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
 const log = createDevLogger('worker-client');
 
@@ -128,6 +132,37 @@ function toError(error: WorkerRpcErrorShape | unknown): Error {
   return nextError;
 }
 
+type HostMethod = keyof VideoCoreHostAPI;
+
+/**
+ * Receive-side dispatch for host methods the worker calls back into. Each entry
+ * adapts the serialized `(args, taskId)` envelope to the host API signature;
+ * the table replaces a hand-maintained switch that drifted from the interface.
+ */
+const hostMethodHandlers: Record<
+  HostMethod,
+  (hostApi: VideoCoreHostAPI, args: unknown[], taskId: string | undefined) => unknown
+> = {
+  getCurrentProjectId: (hostApi) => hostApi.getCurrentProjectId(),
+  getFileHandleByPath: (hostApi, args) => hostApi.getFileHandleByPath(args[0] as string),
+  getFileByPath: async (hostApi, args) =>
+    (await hostApi.getFileByPath?.(args[0] as string)) ?? null,
+  ensureVectorImageRaster: (hostApi, args) =>
+    hostApi.ensureVectorImageRaster(
+      args[0] as {
+        projectId: string;
+        projectRelativePath: string;
+        width: number;
+        height: number;
+        sourceFileHandle: FileSystemFileHandle;
+      },
+    ),
+  onExportProgress: (hostApi, args, taskId) => hostApi.onExportProgress(args[0] as number, taskId),
+  onExportPhase: (hostApi, args, taskId) =>
+    hostApi.onExportPhase?.(args[0] as 'encoding' | 'saving', taskId),
+  onExportWarning: (hostApi, args, taskId) => hostApi.onExportWarning?.(args[0] as string, taskId),
+};
+
 async function callHostMethod(hostApi: VideoCoreHostAPI, message: unknown) {
   const msg = message as Record<string, unknown>;
   if (msg.type !== 'rpc-call') {
@@ -136,32 +171,11 @@ async function callHostMethod(hostApi: VideoCoreHostAPI, message: unknown) {
   const args = (msg.args as unknown[] | undefined) ?? [];
   const taskId = msg.taskId as string | undefined;
 
-  switch (msg.method) {
-    case 'getCurrentProjectId':
-      return await hostApi.getCurrentProjectId();
-    case 'getFileHandleByPath':
-      return await hostApi.getFileHandleByPath(args[0] as string);
-    case 'getFileByPath':
-      return (await hostApi.getFileByPath?.(args[0] as string)) ?? null;
-    case 'ensureVectorImageRaster':
-      return await hostApi.ensureVectorImageRaster(
-        args[0] as {
-          projectId: string;
-          projectRelativePath: string;
-          width: number;
-          height: number;
-          sourceFileHandle: FileSystemFileHandle;
-        },
-      );
-    case 'onExportProgress':
-      return hostApi.onExportProgress(args[0] as number, taskId);
-    case 'onExportPhase':
-      return hostApi.onExportPhase?.(args[0] as 'encoding' | 'saving', taskId);
-    case 'onExportWarning':
-      return hostApi.onExportWarning?.(args[0] as string, taskId);
-    default:
-      throw new Error(`Method ${String(msg.method)} not found on Host API`);
+  const handler = hostMethodHandlers[msg.method as HostMethod];
+  if (!handler) {
+    throw new Error(`Method ${String(msg.method)} not found on Host API`);
   }
+  return await handler(hostApi, args, taskId);
 }
 
 function terminateChannel(channel: WorkerChannel, reason: string) {
@@ -323,14 +337,18 @@ function createChannelClient(channel: WorkerChannel): {
       const id = (state.callIdCounter = (state.callIdCounter + 1) % Number.MAX_SAFE_INTEGER);
 
       let timeoutId: number | undefined;
-      if (method !== 'exportTimeline' && method !== 'extractAudio') {
+      const timeoutMs =
+        method in WORKER_RPC_TIMEOUTS_MS
+          ? WORKER_RPC_TIMEOUTS_MS[method]
+          : WORKER_RPC_DEFAULT_TIMEOUT_MS;
+      if (timeoutMs !== null) {
         timeoutId = window.setTimeout(() => {
           const pending = state.pendingCalls.get(id);
           if (pending) {
             state.pendingCalls.delete(id);
             pending.reject(new Error(`Worker RPC timeout for method: ${method}`));
           }
-        }, 30000);
+        }, timeoutMs);
       }
 
       state.pendingCalls.set(id, { resolve, reject, timeoutId });

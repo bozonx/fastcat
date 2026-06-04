@@ -1,6 +1,6 @@
-import { invoke } from '@tauri-apps/api/core';
 import { onMounted, onScopeDispose, watch, type Ref } from 'vue';
 
+import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 import { useMonitorMode } from '~/composables/monitor/useNativeMonitorMode';
 import { createDevLogger } from '~/utils/dev-logger';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -82,9 +82,9 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
     if (!changed(last, next)) return;
     last = next;
     if (isNativeMonitorDisabled()) return;
-    invoke('monitor_set_viewport', next).catch((err) =>
-      warnMonitorFailure('monitor_set_viewport failed', err),
-    );
+    nativeMonitorIpc
+      .setViewport(next)
+      .catch((err) => warnMonitorFailure('monitor_set_viewport failed', err));
   }
 
   onMounted(() => {
@@ -145,14 +145,16 @@ export function useNativeMonitorViewport(elRef: Ref<HTMLElement | null>): void {
     ro?.disconnect();
     io?.disconnect();
     if (isNativeMonitorDisabled()) return;
-    invoke('monitor_set_viewport', {
-      x: 0,
-      y: 0,
-      width: 1,
-      height: 1,
-      visible: false,
-    }).catch(() => {
-      // ignore — окно может уже быть закрыто
-    });
+    nativeMonitorIpc
+      .setViewport({
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        visible: false,
+      })
+      .catch(() => {
+        // ignore — окно может уже быть закрыто
+      });
   });
 }

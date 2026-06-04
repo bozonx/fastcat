@@ -10,6 +10,42 @@ function isAudioClipEffect(effect: ClipEffect<Record<string, unknown>>): effect 
   return effect?.target === 'audio';
 }
 
+/**
+ * Canonical projection from the shared `WorkerTimelineClip` DTO to the audio
+ * engine's `AudioEngineClip`. This is the single place that maps clip fields to
+ * the audio engine; `mapAudioEngineClips` only adds the resolved file handle and
+ * proxy-aware source key on top of this pure mapping.
+ */
+export function workerClipToAudioEngineClip(params: {
+  clip: WorkerTimelineClip;
+  sourcePath: string;
+  fileHandle: FileSystemFileHandle;
+}): MonitorAudioClipDescriptor {
+  const { clip, sourcePath, fileHandle } = params;
+  return {
+    id: clip.id,
+    trackId: clip.trackId,
+    sourcePath,
+    fileHandle,
+    startUs: clip.timelineRange.startUs,
+    durationUs: clip.timelineRange.durationUs,
+    sourceStartUs: clip.sourceRange.startUs,
+    sourceRangeDurationUs: clip.sourceRange.durationUs,
+    sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
+    speed: clip.speed,
+    audioGain: clip.audioGain,
+    audioBalance: clip.audioBalance,
+    audioFadeInUs: clip.audioFadeInUs,
+    audioFadeOutUs: clip.audioFadeOutUs,
+    audioFadeInCurve: clip.audioFadeInCurve,
+    audioFadeOutCurve: clip.audioFadeOutCurve,
+    audioDeclickDurationUs: clip.audioDeclickDurationUs,
+    transitionIn: clip.transitionIn,
+    transitionOut: clip.transitionOut,
+    audioEffects: (clip.effects ?? []).filter(isAudioClipEffect),
+  };
+}
+
 export async function getFileHandleForAudio(params: {
   path: string;
   useProxyInMonitor: boolean;
@@ -74,33 +110,14 @@ export async function mapAudioEngineClips(params: {
           return null;
         }
 
-        const mappedClip: MonitorAudioClipDescriptor = {
-          id: clip.id,
-          trackId: clip.trackId,
+        return workerClipToAudioEngineClip({
+          clip,
           sourcePath: getAudioSourceKey({
             path,
             useProxyInMonitor: params.useProxyInMonitor,
           }),
           fileHandle: handle,
-          startUs: clip.timelineRange.startUs,
-          durationUs: clip.timelineRange.durationUs,
-          sourceStartUs: clip.sourceRange.startUs,
-          sourceRangeDurationUs: clip.sourceRange.durationUs,
-          sourceDurationUs: clip.sourceDurationUs ?? clip.sourceRange.durationUs,
-          speed: clip.speed,
-          audioGain: clip.audioGain,
-          audioBalance: clip.audioBalance,
-          audioFadeInUs: clip.audioFadeInUs,
-          audioFadeOutUs: clip.audioFadeOutUs,
-          audioFadeInCurve: clip.audioFadeInCurve,
-          audioFadeOutCurve: clip.audioFadeOutCurve,
-          audioDeclickDurationUs: clip.audioDeclickDurationUs,
-          transitionIn: clip.transitionIn,
-          transitionOut: clip.transitionOut,
-          audioEffects: (clip.effects ?? []).filter(isAudioClipEffect),
-        };
-
-        return mappedClip;
+        });
       } catch {
         return null;
       }

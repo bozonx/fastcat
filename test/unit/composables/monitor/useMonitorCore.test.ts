@@ -5,7 +5,7 @@ import { mount } from '@vue/test-utils';
 import type { WorkerTimelineClip } from '~/composables/monitor/types';
 
 import { useMonitorCore } from '~/composables/monitor/useMonitorCore';
-import { createMockAudioItems } from '~/composables/monitor/useMonitorCore.payload';
+import { workerClipToAudioEngineClip } from '~/composables/monitor/useMonitorCore.audio';
 import { computeMonitorTimelineDuration } from '~/composables/monitor/useMonitorCore.timeline';
 
 const mockClient = {
@@ -111,9 +111,9 @@ describe('useMonitorCore', () => {
     }
   });
 
-  it('preserves audio envelope fields while preparing monitor audio items', () => {
-    const [item] = createMockAudioItems([
-      createAudioClip({
+  it('preserves audio envelope fields in the canonical clip→audio-engine projection', () => {
+    const item = workerClipToAudioEngineClip({
+      clip: createAudioClip({
         audioFadeInCurve: 'logarithmic',
         audioFadeOutCurve: 'linear',
         audioDeclickDurationUs: 5000,
@@ -121,7 +121,9 @@ describe('useMonitorCore', () => {
         transitionIn: { type: 'dissolve', durationUs: 100_000, mode: 'adjacent' } as any,
         transitionOut: { type: 'dissolve', durationUs: 200_000, mode: 'adjacent' } as any,
       }),
-    ]);
+      sourcePath: 'audio.mp3',
+      fileHandle: {} as FileSystemFileHandle,
+    });
 
     expect(item).toMatchObject({
       audioFadeInCurve: 'logarithmic',
@@ -148,6 +150,26 @@ describe('useMonitorCore', () => {
   });
 
   it('uses audio duration when timeline has only audio clips', async () => {
+    // Audio is derived from timelineDoc.tracks (the single source of truth),
+    // mirroring the native monitor — not from a separately-fed clip array.
+    const audioTrack = {
+      id: 'track-audio',
+      kind: 'audio',
+      name: 'A1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'audio-1',
+          trackId: 'track-audio',
+          name: 'audio-1',
+          source: { path: 'audio.mp3' },
+          timelineRange: { startUs: 0, durationUs: 5_000_000 },
+          sourceRange: { startUs: 0, durationUs: 5_000_000 },
+        },
+      ],
+    };
+
     const timelineStore = reactive({
       duration: 0,
       currentTime: 0,
@@ -155,7 +177,7 @@ describe('useMonitorCore', () => {
       masterGain: 1,
       audioMuted: false,
       setCurrentTimeUs: vi.fn(),
-      timelineDoc: null,
+      timelineDoc: { tracks: [audioTrack] } as any,
     });
 
     const projectStore = reactive({

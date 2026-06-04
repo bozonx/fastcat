@@ -1,4 +1,3 @@
-import type { Ref } from 'vue';
 import type { WorkerTimelineClip } from './types';
 
 export function hasProxyForMonitorSources(params: {
@@ -14,21 +13,6 @@ export function hasProxyForMonitorSources(params: {
 
     return params.existingProxies.has(path);
   });
-}
-
-export function getMonitorLayoutUpdatePayload(params: {
-  rawWorkerTimelineClips?: Ref<WorkerTimelineClip[]>;
-  rawWorkerAudioClips?: Ref<WorkerTimelineClip[]>;
-  workerTimelineClips: Ref<WorkerTimelineClip[]>;
-  workerAudioClips: Ref<WorkerTimelineClip[]>;
-}): {
-  layoutClips: WorkerTimelineClip[];
-  layoutAudioClips: WorkerTimelineClip[];
-} {
-  return {
-    layoutClips: params.rawWorkerTimelineClips?.value ?? params.workerTimelineClips.value,
-    layoutAudioClips: params.rawWorkerAudioClips?.value ?? params.workerAudioClips.value,
-  };
 }
 
 export function shouldScheduleClipLayoutUpdate(params: {

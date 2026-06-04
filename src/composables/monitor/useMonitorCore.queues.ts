@@ -1,19 +1,9 @@
-import type { Ref } from 'vue';
-import type { WorkerVideoPayloadItem } from '~/composables/timeline/export/types';
-import type { WorkerTimelineClip } from './types';
-
-export interface MonitorLayoutQueuePayload {
-  layoutClips: WorkerTimelineClip[];
-  layoutAudioClips: WorkerTimelineClip[];
-  workerTimelinePayload?: Ref<WorkerVideoPayloadItem[]>;
-}
-
 export interface CreateMonitorCoreQueuesOptions {
   buildDebounceMs: number;
   layoutDebounceMs: number;
   isUnmounted: () => boolean;
   flushBuild: () => Promise<void>;
-  flushLayoutUpdate: (payload: MonitorLayoutQueuePayload) => Promise<void>;
+  flushLayoutUpdate: () => Promise<void>;
 }
 
 export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions) {
@@ -23,7 +13,7 @@ export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions)
   let layoutDebounceTimer: number | null = null;
   let layoutScheduledFireAt = Number.POSITIVE_INFINITY;
   let layoutUpdateInFlight = false;
-  let pendingLayoutPayload: MonitorLayoutQueuePayload | null = null;
+  let layoutRequested = false;
 
   async function flushBuildQueue() {
     if (buildInFlight) {
@@ -48,10 +38,9 @@ export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions)
 
     layoutUpdateInFlight = true;
     try {
-      while (pendingLayoutPayload) {
-        const payload = pendingLayoutPayload;
-        pendingLayoutPayload = null;
-        await options.flushLayoutUpdate(payload);
+      while (layoutRequested) {
+        layoutRequested = false;
+        await options.flushLayoutUpdate();
       }
     } finally {
       layoutUpdateInFlight = false;
@@ -70,8 +59,8 @@ export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions)
     }, options.buildDebounceMs);
   }
 
-  function scheduleLayoutUpdate(payload: MonitorLayoutQueuePayload, debounceMs?: number) {
-    pendingLayoutPayload = payload;
+  function scheduleLayoutUpdate(debounceMs?: number) {
+    layoutRequested = true;
 
     const delay = debounceMs ?? options.layoutDebounceMs;
     const fireAt = Date.now() + delay;
@@ -107,7 +96,7 @@ export function createMonitorCoreQueues(options: CreateMonitorCoreQueuesOptions)
     }
     layoutScheduledFireAt = Number.POSITIVE_INFINITY;
 
-    pendingLayoutPayload = null;
+    layoutRequested = false;
     buildRequested = false;
   }
 

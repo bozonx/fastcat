@@ -10,7 +10,7 @@ import {
   setPreviewHostApi,
 } from '~/utils/video-editor/worker-client';
 
-import { createAudioEngine, type IAudioEngine } from '~/utils/video-editor/AudioEngine';
+import { createAudioEngine } from '~/utils/video-editor/AudioEngine';
 import { clampTimeUs } from '~/utils/monitor-time';
 import { useVfs } from '~/composables/useVfs';
 import { toProjectTempVfsPath } from '~/utils/storage-topology';
@@ -25,7 +25,7 @@ import {
   disposeMonitorCoreRuntime,
   initializeMonitorCoreRuntime,
 } from './useMonitorCore.lifecycle';
-import { createMonitorCoreQueues, type MonitorLayoutQueuePayload } from './useMonitorCore.queues';
+import { createMonitorCoreQueues } from './useMonitorCore.queues';
 import {
   computeMonitorTimelineDuration,
   prepareMonitorTimelineState,
@@ -152,10 +152,9 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
     return clampToTimeline(timelineStore.currentTime);
   }
 
-  async function flushLayoutUpdate(params: MonitorLayoutQueuePayload) {
+  async function flushLayoutUpdate() {
     try {
       const preparedTimeline = await prepareMonitorTimelineState({
-        rawAudioClips: params.layoutAudioClips,
         tracks: timelineStore.timelineDoc?.tracks ?? [],
         projectStore,
         workspaceStore,
@@ -230,18 +229,8 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
   });
 
   const scheduleBuild = queues.scheduleBuild;
-  const scheduleLayoutUpdate = (
-    layoutClips: WorkerTimelineClip[],
-    audioClips: WorkerTimelineClip[],
-    debounceMs?: number,
-  ) => {
-    queues.scheduleLayoutUpdate(
-      {
-        layoutClips,
-        layoutAudioClips: audioClips,
-      },
-      debounceMs,
-    );
+  const scheduleLayoutUpdate = (debounceMs?: number) => {
+    queues.scheduleLayoutUpdate(debounceMs);
   };
 
   const scheduleRender = compositorRuntime.scheduleRender;
@@ -283,10 +272,7 @@ export function useMonitorCore(options: UseMonitorCoreOptions) {
       // Invalidate audio handle cache on full rebuild
       audioHandleCache.clear();
 
-      const rawAudio = rawWorkerAudioClips?.value ?? workerAudioClips.value;
-
       const preparedTimeline = await prepareMonitorTimelineState({
-        rawAudioClips: rawAudio,
         tracks: timelineStore.timelineDoc?.tracks ?? [],
         projectStore,
         workspaceStore,

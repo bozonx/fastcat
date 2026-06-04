@@ -2,7 +2,11 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { createDevLogger } from '~/utils/dev-logger';
 import { AudioScheduler } from '~/utils/video-editor/AudioScheduler';
 import type { AudioEngineClip } from '~/utils/video-editor/audio-engine.types';
-import type { AudioEngineOptions, IAudioEngine } from './audio-engine.interface';
+import type {
+  AudioEngineOptions,
+  IAudioEngine,
+  AudioEngineCapabilities,
+} from './audio-engine.interface';
 
 const logger = createDevLogger('TauriAudioEngine');
 const EVT_TIME = 'monitor:time';
@@ -17,6 +21,13 @@ const EVT_TIME = 'monitor:time';
  * current playback position, and volume metadata.
  */
 export class TauriAudioEngine implements IAudioEngine {
+  // Output, scrubbing, peaks and metering are owned by the Rust native engine,
+  // not the Web Audio API, so these JS-side features are intentionally absent.
+  readonly capabilities: AudioEngineCapabilities = {
+    scrubPreview: false,
+    peaksExtraction: false,
+    levelMetering: false,
+  };
   private readonly scheduler: AudioScheduler;
   private currentClips: AudioEngineClip[] = [];
   private destroyed = false;

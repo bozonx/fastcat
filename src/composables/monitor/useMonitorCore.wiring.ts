@@ -2,7 +2,6 @@ import { watch } from 'vue';
 import type { Ref } from 'vue';
 import type { WorkerTimelineClip } from './types';
 import {
-  getMonitorLayoutUpdatePayload,
   hasProxyForMonitorSources,
   shouldScheduleAudioLayoutUpdate,
   shouldScheduleClipContentUpdate,
@@ -46,11 +45,7 @@ export interface RegisterMonitorCoreWatchersOptions {
   updateCanvasDisplaySize: () => void;
   scheduleBuild: () => void;
   scheduleRender: (timeUs: number) => void;
-  scheduleLayoutUpdate: (
-    layoutClips: WorkerTimelineClip[],
-    layoutAudioClips: WorkerTimelineClip[],
-    debounceMs?: number,
-  ) => void;
+  scheduleLayoutUpdate: (debounceMs?: number) => void;
   setAudioEngineMasterVolume: (volume: number) => void;
   setAudioEngineMonitorVolume: (volume: number) => void;
 }
@@ -136,14 +131,7 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
       return;
     }
 
-    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
-      rawWorkerTimelineClips: options.rawWorkerTimelineClips,
-      rawWorkerAudioClips: options.rawWorkerAudioClips,
-      workerTimelineClips: options.workerTimelineClips,
-      workerAudioClips: options.workerAudioClips,
-    });
-
-    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips, options.clipLayoutDebounceMs);
+    options.scheduleLayoutUpdate(options.clipLayoutDebounceMs);
   });
 
   // Text content edits flip only clipContentSignature. They go through the same
@@ -164,14 +152,7 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
       return;
     }
 
-    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
-      rawWorkerTimelineClips: options.rawWorkerTimelineClips,
-      rawWorkerAudioClips: options.rawWorkerAudioClips,
-      workerTimelineClips: options.workerTimelineClips,
-      workerAudioClips: options.workerAudioClips,
-    });
-
-    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips, options.clipContentDebounceMs);
+    options.scheduleLayoutUpdate(options.clipContentDebounceMs);
   });
 
   watch(options.audioClipLayoutSignature, () => {
@@ -184,14 +165,7 @@ export function registerMonitorCoreWatchers(options: RegisterMonitorCoreWatchers
       return;
     }
 
-    const { layoutClips, layoutAudioClips } = getMonitorLayoutUpdatePayload({
-      rawWorkerTimelineClips: options.rawWorkerTimelineClips,
-      rawWorkerAudioClips: options.rawWorkerAudioClips,
-      workerTimelineClips: options.workerTimelineClips,
-      workerAudioClips: options.workerAudioClips,
-    });
-
-    options.scheduleLayoutUpdate(layoutClips, layoutAudioClips, options.audioLayoutDebounceMs);
+    options.scheduleLayoutUpdate(options.audioLayoutDebounceMs);
   });
 
   watch(
