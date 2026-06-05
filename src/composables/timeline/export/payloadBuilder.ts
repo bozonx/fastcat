@@ -23,6 +23,7 @@ import {
   resolveNestedMediaPath,
 } from '~/utils/video-editor/worker-clip-utils';
 import { sanitizeTimelineColor } from '~/utils/video-editor/utils';
+import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import type {
   WorkerTimelineClip,
@@ -97,6 +98,8 @@ interface BuildVideoTrackTreeParams {
   nestedDocCache?: Map<string, TimelineDocument>;
 }
 
+const _nestedDocCache = new Map<string, { doc: TimelineDocument; mtime: number }>();
+
 async function readNestedTimelineDoc(params: {
   path: string;
   projectStore: ReturnType<typeof useProjectStore>;
@@ -104,11 +107,15 @@ async function readNestedTimelineDoc(params: {
   cache?: Map<string, TimelineDocument>;
 }): Promise<TimelineDocument | null> {
   const path = normalizeProjectPath(params.path);
-  const cached = params.cache?.get(path);
-  if (cached) return cached;
 
   const file = await params.projectStore.getFileByPath(path);
   if (!file) return null;
+
+  const mtime = file.lastModified;
+  const cached = _nestedDocCache.get(path);
+  if (cached && cached.mtime === mtime) {
+    return cached.doc;
+  }
 
   const text = await withFileIoSlot(() => file.text());
   const doc = parseTimelineFromOtio(text, {
@@ -117,6 +124,7 @@ async function readNestedTimelineDoc(params: {
     format: params.fallbackFormat ?? params.projectStore.projectSettings.project,
   });
 
+  _nestedDocCache.set(path, { doc, mtime });
   params.cache?.set(path, doc);
   return doc;
 }
@@ -233,9 +241,9 @@ export function trimWorkerClipToRange(
   const trimStartUs = overlapStartUs - clipStartUs;
   const trimEndUs = clipEndUs - overlapEndUs;
   const trimmedDurationUs = overlapEndUs - overlapStartUs;
-  const speedRaw = Number(clip.speed);
-  const speed = Number.isFinite(speedRaw) && speedRaw !== 0 ? Math.abs(speedRaw) : 1;
-  const isReversed = Number.isFinite(speedRaw) && speedRaw < 0;
+  const speedRaw = normalizeClipSpeed(clip.speed);
+  const speed = Math.abs(speedRaw);
+  const isReversed = speedRaw < 0;
   const sourceTrimStartUs = Math.round((isReversed ? trimEndUs : trimStartUs) * speed);
   const sourceDurationUs = Math.round(trimmedDurationUs * speed);
 

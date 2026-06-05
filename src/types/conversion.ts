@@ -8,7 +8,7 @@ export interface VideoConversionSettings {
   videoCodec: string;
   bitrateMbps: number;
   excludeAudio: boolean;
-  audioCodec: 'aac' | 'opus';
+  audioCodec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
   audioBitrateKbps: number;
   bitrateMode: 'constant' | 'variable';
   keyframeIntervalSec: number;
@@ -18,7 +18,7 @@ export interface VideoConversionSettings {
 }
 
 export interface AudioOnlyConversionSettings {
-  codec: 'opus' | 'aac';
+  codec: 'opus' | 'aac' | 'flac' | 'pcm' | 'mp3';
   bitrateKbps: number;
   reverse: boolean;
 }

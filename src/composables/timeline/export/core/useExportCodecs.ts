@@ -30,6 +30,19 @@ export function useExportCodecs() {
     isLoadingCodecSupport.value = true;
     try {
       const isTauri = isTauriRuntime();
+      if (isTauri) {
+        videoCodecSupport.value = Object.fromEntries(
+          BASE_VIDEO_CODEC_OPTIONS.map((option) => [option.value, true]),
+        );
+        audioCodecSupport.value = {
+          aac: true,
+          opus: true,
+          flac: true,
+          pcm: true,
+          mp3: true,
+        };
+        return;
+      }
       const [videoSupport, audioSupport] = await Promise.all([
         checkVideoCodecSupport(BASE_VIDEO_CODEC_OPTIONS),
         (async (): Promise<AudioCodecSupport> => {

@@ -5,7 +5,9 @@ export function resolveAudioChannelsFromMeta(channels?: number): number {
   return channels;
 }
 
-export function resolveAudioOnlyContainerFormat(codec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'): string {
+export function resolveAudioOnlyContainerFormat(
+  codec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
+): 'mp4' | 'webm' | 'flac' | 'wav' | 'mp3' {
   if (codec === 'opus') return 'webm';
   if (codec === 'aac') return 'mp4';
   if (codec === 'flac') return 'flac';
@@ -14,7 +16,9 @@ export function resolveAudioOnlyContainerFormat(codec: 'aac' | 'opus' | 'flac' |
   return 'mp4';
 }
 
-export function resolveAudioOnlyFileExtension(codec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'): string {
+export function resolveAudioOnlyFileExtension(
+  codec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3',
+): string {
   if (codec === 'opus') return 'opus';
   if (codec === 'aac') return 'm4a';
   if (codec === 'flac') return 'flac';

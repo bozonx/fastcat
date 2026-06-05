@@ -34,13 +34,18 @@ export function useExportFileSystem() {
       return cachedExportDir;
     }
 
-    const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
-      projectStore.currentProjectName,
-    );
-    cachedExportDir = await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
-    cachedProjectName = projectStore.currentProjectName;
-    cachedProjectsHandle = workspaceStore.projectsHandle;
-    return cachedExportDir;
+    try {
+      const projectDir = await workspaceStore.projectsHandle.getDirectoryHandle(
+        projectStore.currentProjectName,
+      );
+      cachedExportDir = await projectDir.getDirectoryHandle(EXPORT_DIR_NAME, { create: true });
+      cachedProjectName = projectStore.currentProjectName;
+      cachedProjectsHandle = workspaceStore.projectsHandle;
+      return cachedExportDir;
+    } catch (e) {
+      resetExportFsCache();
+      throw e;
+    }
   }
 
   async function listExportFilenames(exportDir: FileSystemDirectoryHandle): Promise<Set<string>> {

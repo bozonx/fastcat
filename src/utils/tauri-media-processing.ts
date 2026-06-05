@@ -1,7 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { ConversionRequest } from '~/types/conversion';
-import type { TauriFileHandle } from '~/stores/workspace/provider/tauri-handle';
 import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 
 type NativeBytePayload = ArrayBuffer | ArrayBufferView | number[];
@@ -33,12 +32,23 @@ export interface NativeProxyOptions {
 }
 
 export function getNativeFileHandlePath(handle: unknown): string | null {
-  const path = (handle as Partial<TauriFileHandle> | null)?.path;
+  if (!handle || typeof handle !== 'object') return null;
+  const path = (handle as Record<string, unknown>).path;
   return typeof path === 'string' && path.length > 0 ? path : null;
 }
 
 export async function nativeMediaMetadata(path: string): Promise<NativeMediaMetadata> {
   return await invoke<NativeMediaMetadata>('native_media_metadata', { path });
+}
+
+/**
+ * Lists font families installed in the OS, as seen by the native renderer's font
+ * database (the same `fontdb` used for SVG rasterization and text shaping). Used to
+ * populate the font picker in the desktop build so it only offers fonts that will
+ * actually render natively. Returns a sorted, de-duplicated list of family names.
+ */
+export async function nativeSystemFonts(): Promise<string[]> {
+  return await invoke<string[]>('native_system_fonts');
 }
 
 /**
@@ -117,6 +127,15 @@ export interface NativeTimelineExportOptions {
   audioPath?: string | null;
   audioCodec?: string | null;
   audioBitrateBps?: number | null;
+  audioChannels?: number;
+  audioSampleRate?: number;
+  videoEnabled?: boolean;
+  bitrateMode?: string;
+  keyframeIntervalSec?: number;
+  metadataTitle?: string | null;
+  metadataDescription?: string | null;
+  metadataAuthor?: string | null;
+  metadataTags?: string | null;
   exportAlpha?: boolean;
 }
 

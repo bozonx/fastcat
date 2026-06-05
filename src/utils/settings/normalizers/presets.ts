@@ -78,7 +78,9 @@ export function normalizeExportPresetItem(
       videoCodec: z.string().trim().min(1).catch(fallback.videoCodec),
       bitrateMbps: z.coerce.number().min(0.2).max(200).catch(fallback.bitrateMbps),
       excludeAudio: z.boolean().catch(fallback.excludeAudio),
-      audioCodec: z.enum(['aac', 'opus']).catch(fallback.audioCodec as 'aac' | 'opus'),
+      audioCodec: z
+        .enum(['aac', 'opus', 'flac', 'pcm', 'mp3'])
+        .catch(fallback.audioCodec as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'),
       audioBitrateKbps: z.coerce.number().min(32).max(1024).catch(fallback.audioBitrateKbps),
       bitrateMode: z
         .enum(['constant', 'variable'])

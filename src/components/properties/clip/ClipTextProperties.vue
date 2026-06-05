@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { TimelineTextClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyField from '~/components/properties/PropertyField.vue';
@@ -7,6 +7,9 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiColorBlendPicker from '~/components/ui/UiColorBlendPicker.vue';
+import { isTauriRuntime } from '~/utils/runtime';
+import { nativeSystemFonts } from '~/utils/tauri-media-processing';
+import { createDevLogger } from '~/utils/dev-logger';
 
 const props = defineProps<{
   clip: TimelineTextClipItem;
@@ -113,7 +116,10 @@ const verticalAlignOptions = [
   { value: 'bottom', label: 'Bottom' },
 ];
 
-const fontFamilyOptions = [
+// Curated list used in the web build, where these families are loaded from Google
+// Fonts. In the desktop (Tauri) build we replace it with the fonts actually
+// installed in the OS — see `fontFamilyOptions` below.
+const webFontFamilyOptions = [
   { value: 'Inter', label: 'Inter' },
   { value: 'Roboto', label: 'Roboto' },
   { value: 'Montserrat', label: 'Montserrat' },
@@ -140,6 +146,51 @@ const fontFamilyOptions = [
   { value: 'serif', label: 'Serif' },
   { value: 'monospace', label: 'Monospace' },
 ];
+
+// Generic CSS families are always offered: the native renderer resolves them
+// directly and they never depend on a specific installed font.
+const genericFontFamilyOptions = [
+  { value: 'sans-serif', label: 'Sans Serif' },
+  { value: 'serif', label: 'Serif' },
+  { value: 'monospace', label: 'Monospace' },
+];
+
+const log = createDevLogger('ClipTextProperties');
+const systemFontFamilies = ref<string[]>([]);
+
+onMounted(async () => {
+  if (!isTauriRuntime()) return;
+  try {
+    systemFontFamilies.value = await nativeSystemFonts();
+  } catch (e) {
+    log.warn('[fonts] failed to load system fonts, falling back to curated list:', e);
+  }
+});
+
+const fontFamilyOptions = computed(() => {
+  // Web build: curated Google-Fonts list.
+  if (!isTauriRuntime() || systemFontFamilies.value.length === 0) {
+    return webFontFamilyOptions;
+  }
+
+  // Desktop build: generic families + every font installed in the OS. Include the
+  // clip's current family even if it is missing from the system, so the select
+  // keeps showing the saved value instead of rendering blank.
+  const options = [
+    ...genericFontFamilyOptions,
+    ...systemFontFamilies.value.map((name) => ({ value: name, label: name })),
+  ];
+
+  const current = props.clip.style?.fontFamily;
+  if (typeof current === 'string' && current.length > 0) {
+    const primary = current.split(',')[0]?.trim().replace(/^['"]|['"]$/g, '') ?? current;
+    if (primary && !options.some((o) => o.value === primary)) {
+      options.push({ value: primary, label: primary });
+    }
+  }
+
+  return options;
+});
 
 const fontWeightOptions = ['100', '200', '300', '400', '500', '600', '700', '800', '900'].map(
   (weight) => ({

@@ -205,6 +205,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_close,
             native_update_ffmpeg_settings,
             ipc::media_cmd::native_get_ffmpeg_diagnostics,
+            ipc::fonts_cmd::native_system_fonts,
         ])
         .manage(media::processing::NativeMediaTasks::default())
         .manage(std::sync::RwLock::new(FfmpegHardwareSettings::default()))

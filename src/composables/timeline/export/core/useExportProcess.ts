@@ -33,6 +33,20 @@ const log = createDevLogger('useExportProcess');
 
 let timelineExportInFlight = false;
 const CANCEL_FORCE_TERMINATE_TIMEOUT_MS = 15_000;
+const AUDIO_ONLY_EXPORT_FORMATS = new Set(['aac', 'opus', 'ogg', 'flac', 'wav', 'pcm']);
+
+function validateNativeExportDimensions(options: Pick<ExportOptions, 'width' | 'height'>) {
+  const values = [
+    ['width', options.width],
+    ['height', options.height],
+  ] as const;
+
+  for (const [name, value] of values) {
+    if (!Number.isInteger(value) || value < 2 || value > 16_384 || value % 2 !== 0) {
+      throw new Error(`Invalid export ${name}: expected an even integer between 2 and 16384`);
+    }
+  }
+}
 
 export function useExportProcess(
   activeExportTaskId: ReturnType<
@@ -60,7 +74,7 @@ export function useExportProcess(
       throw new Error('Another timeline export is already in progress');
     }
 
-    if (!isTauriRuntime() && timelineStore.isPlaying) {
+    if (timelineStore.isPlaying) {
       timelineStore.stopPlayback();
     }
 
@@ -147,6 +161,7 @@ export function useExportProcess(
       const nativeTargetPath = getNativeFileHandlePath(fileHandle);
 
       if (isTauriRuntime()) {
+        validateNativeExportDimensions(options);
         if (!nativeTargetPath) {
           throw new Error('Native target path is not available for Tauri export');
         }
@@ -168,6 +183,9 @@ export function useExportProcess(
         });
         const rangeStartUs = options.exportRangeUs?.startUs ?? 0;
         const rangeEndUs = options.exportRangeUs?.endUs ?? timelineStore.duration;
+        if (rangeEndUs <= rangeStartUs) {
+          throw new Error('Export range is zero or negative');
+        }
         await nativeExportTimeline({
           taskId: exportTaskId,
           scene,
@@ -177,7 +195,7 @@ export function useExportProcess(
             height: options.height,
             fps: options.fps,
             startSec: rangeStartUs / 1_000_000,
-            endSec: Math.max(rangeStartUs + 1, rangeEndUs) / 1_000_000,
+            endSec: rangeEndUs / 1_000_000,
             videoCodec: options.videoCodec,
             videoBitrateBps: options.bitrate,
             format: options.format,
@@ -185,6 +203,15 @@ export function useExportProcess(
             audioPath: null,
             audioCodec: options.audioCodec || null,
             audioBitrateBps: options.audioBitrate,
+            audioChannels: options.audioChannels === 'mono' ? 1 : 2,
+            audioSampleRate: options.audioSampleRate,
+            videoEnabled: !AUDIO_ONLY_EXPORT_FORMATS.has(options.format),
+            bitrateMode: options.bitrateMode ?? 'variable',
+            keyframeIntervalSec: options.keyframeIntervalSec,
+            metadataTitle: options.metadata?.title || null,
+            metadataDescription: options.metadata?.description || null,
+            metadataAuthor: options.metadata?.author || null,
+            metadataTags: options.metadata?.tags || null,
             exportAlpha: options.exportAlpha,
           },
           onProgress,
@@ -243,7 +270,13 @@ export function useExportProcess(
 
     try {
       if (isTauriRuntime()) {
-        await nativeCancelMediaTask(exportTaskId).catch(() => false);
+        const cancelled = await nativeCancelMediaTask(exportTaskId).catch((e) => {
+          log.warn('Failed to request native export cancel', e);
+          return false;
+        });
+        if (!cancelled) {
+          log.warn('Native export task was not cancelled', { exportTaskId });
+        }
         return;
       }
       const { client } = getExportWorkerClient();

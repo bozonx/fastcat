@@ -196,11 +196,6 @@ watch(
     await nextTick();
 
     if (mediaElement.value) {
-      try {
-        mediaElement.value.load();
-      } catch (e) {
-        console.log('[MediaPlayer] load() error:', e);
-      }
       mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
       mediaElement.value.muted = isMuted.value;
     }
@@ -333,6 +328,8 @@ onUnmounted(() => {
       >
         <video
           ref="mediaElement"
+          :src="src"
+          :type="sourceType"
           class="max-w-full max-h-full object-contain transition-transform duration-75"
           :class="isReady ? 'opacity-100' : 'opacity-0'"
           :style="mediaStyle"
@@ -344,11 +341,10 @@ onUnmounted(() => {
           @play="onPlay"
           @pause="onPause"
           @ended="onPause"
+          @error="console.log('[MediaPlayer] video error:', $event, 'code:', ($event.target as HTMLVideoElement).error?.code, 'msg:', ($event.target as HTMLVideoElement).error?.message)"
           @click="togglePlay"
           @dblclick.prevent="resetZoom"
-        >
-          <source :src="src" :type="sourceType" />
-        </video>
+        />
       </div>
     </UContextMenu>
 
@@ -356,15 +352,16 @@ onUnmounted(() => {
     <div v-else class="flex-1 flex flex-col min-h-0 bg-ui-bg">
       <audio
         ref="mediaElement"
+        :src="src"
+        :type="sourceType"
         class="hidden"
         @timeupdate="onTimeUpdate"
         @loadedmetadata="onLoadedMetadata"
         @play="onPlay"
         @pause="onPause"
         @ended="onPause"
-      >
-        <source :src="src" :type="sourceType" />
-      </audio>
+        @error="console.log('[MediaPlayer] audio error:', $event, 'code:', ($event.target as HTMLAudioElement).error?.code)"
+      />
 
       <div class="flex-1 min-h-0 flex items-center justify-center bg-(--media-bg) relative">
         <div

@@ -657,6 +657,20 @@ fn get_font_db() -> Arc<resvg::usvg::fontdb::Database> {
         .clone()
 }
 
+/// Уникальные имена семейств шрифтов, установленных в системе, отсортированные
+/// по алфавиту. Берётся из той же глобальной базы, что и растеризация SVG, поэтому
+/// список ровно соответствует тому, чем реально умеет рисовать нативный рендер.
+pub fn system_font_families() -> Vec<String> {
+    let db = get_font_db();
+    let mut families: Vec<String> = db
+        .faces()
+        .filter_map(|face| face.families.first().map(|(name, _)| name.clone()))
+        .collect();
+    families.sort_unstable_by_key(|name| name.to_lowercase());
+    families.dedup();
+    families
+}
+
 struct SvgCacheEntry {
     modified: SystemTime,
     image: ImageData,

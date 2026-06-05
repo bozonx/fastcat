@@ -43,7 +43,8 @@ export function useExportConfig() {
     [() => timelineStore.timelineFormat, matchTimeline],
     ([format, match]) => {
       if (match) {
-        const fmt = format ?? createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
+        const fmt =
+          format ?? createTimelineFormatFromProjectDefaults(projectStore.projectSettings.project);
         exportWidth.value = fmt.width;
         exportHeight.value = fmt.height;
         exportFps.value = fmt.fps;
@@ -59,7 +60,7 @@ export function useExportConfig() {
         audioSampleRate.value = customAudioSampleRate.value;
       }
     },
-    { immediate: true, deep: true }
+    { immediate: true, deep: true },
   );
 
   watch([exportWidth, exportHeight, exportFps, audioSampleRate], ([w, h, f, s]) => {
@@ -99,13 +100,13 @@ export function useExportConfig() {
   const normalizedExportWidth = computed(() => {
     const value = Number(exportWidth.value);
     if (!Number.isFinite(value) || value <= 0) return 1920;
-    return Math.max(2, Math.floor(Math.round(value) / 2) * 2);
+    return Math.max(2, Math.round(value / 2) * 2);
   });
 
   const normalizedExportHeight = computed(() => {
     const value = Number(exportHeight.value);
     if (!Number.isFinite(value) || value <= 0) return 1080;
-    return Math.max(2, Math.floor(Math.round(value) / 2) * 2);
+    return Math.max(2, Math.round(value / 2) * 2);
   });
 
   const normalizedExportFps = computed(() => {

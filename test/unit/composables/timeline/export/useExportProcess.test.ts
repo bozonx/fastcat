@@ -122,7 +122,14 @@ describe('useExportProcess - playback guard', () => {
 
     const fileHandle = { createWritable: vi.fn() } as any;
     await exportTimelineToFile(
-      { format: 'mp4', videoCodec: 'h264', audio: false, audioSampleRate: 48000 } as any,
+      {
+        format: 'mp4',
+        videoCodec: 'h264',
+        audio: false,
+        audioSampleRate: 48000,
+        width: 1920,
+        height: 1080,
+      } as any,
       fileHandle,
       () => {},
     );
@@ -153,7 +160,14 @@ describe('useExportProcess - playback guard', () => {
 
     const fileHandle = { createWritable: vi.fn() } as any;
     await exportTimelineToFile(
-      { format: 'mp4', videoCodec: 'h264', audio: false, audioSampleRate: 48000 } as any,
+      {
+        format: 'mp4',
+        videoCodec: 'h264',
+        audio: false,
+        audioSampleRate: 48000,
+        width: 1920,
+        height: 1080,
+      } as any,
       fileHandle,
       () => {},
     );
@@ -161,7 +175,7 @@ describe('useExportProcess - playback guard', () => {
     expect(stopPlaybackMock).not.toHaveBeenCalled();
   });
 
-  it('does not pause playback in tauri mode even when playing', async () => {
+  it('pauses playback in tauri mode when playing', async () => {
     timelineStoreMock.isPlaying = true;
     const { isTauriRuntime } = await import('~/utils/io/io-governor');
     (isTauriRuntime as any).mockReturnValue(true);
@@ -184,12 +198,19 @@ describe('useExportProcess - playback guard', () => {
 
     const fileHandle = { createWritable: vi.fn() } as any;
     await exportTimelineToFile(
-      { format: 'mp4', videoCodec: 'h264', audio: false, audioSampleRate: 48000 } as any,
+      {
+        format: 'mp4',
+        videoCodec: 'h264',
+        audio: false,
+        audioSampleRate: 48000,
+        width: 1920,
+        height: 1080,
+      } as any,
       fileHandle,
       () => {},
     );
 
-    expect(stopPlaybackMock).not.toHaveBeenCalled();
+    expect(stopPlaybackMock).toHaveBeenCalledOnce();
   });
 });
 
@@ -293,7 +314,14 @@ describe('useExportProcess - platform routing', () => {
 
     const fileHandle = { createWritable: vi.fn() } as any;
     await exportTimelineToFile(
-      { format: 'mp4', videoCodec: 'h264', audio: false, audioSampleRate: 48000 } as any,
+      {
+        format: 'mp4',
+        videoCodec: 'h264',
+        audio: false,
+        audioSampleRate: 48000,
+        width: 1920,
+        height: 1080,
+      } as any,
       fileHandle,
       () => {},
     );
@@ -334,7 +362,14 @@ describe('useExportProcess - platform routing', () => {
 
     const fileHandle = { createWritable: vi.fn() } as any;
     await exportTimelineToFile(
-      { format: 'mp4', videoCodec: 'h264', audio: false, audioSampleRate: 48000 } as any,
+      {
+        format: 'mp4',
+        videoCodec: 'h264',
+        audio: false,
+        audioSampleRate: 48000,
+        width: 1920,
+        height: 1080,
+      } as any,
       fileHandle,
       () => {},
     );

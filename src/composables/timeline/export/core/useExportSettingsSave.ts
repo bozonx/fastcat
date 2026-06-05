@@ -21,7 +21,7 @@ export function useExportSettingsSave(
       const resolvedCodecs = resolveExportCodecs(
         config.outputFormat.value,
         config.videoCodec.value,
-        config.audioCodec.value as 'aac' | 'opus',
+        config.audioCodec.value,
       );
 
       projectStore.projectSettings.project.width = config.normalizedExportWidth.value;

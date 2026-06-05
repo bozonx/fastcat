@@ -51,7 +51,11 @@ pub fn ffmpeg_video_codec_hw(codec: &str, hw_mode: &str) -> &'static str {
 /// Round up to the nearest even number, minimum 2.
 /// FFmpeg and many codecs require even dimensions.
 pub fn even(value: u32) -> u32 {
-    (value.max(2) + 1) & !1
+    let v = value.max(2);
+    if v >= u32::MAX - 1 {
+        return v & !1;
+    }
+    (v + 1) & !1
 }
 
 pub fn format_fps(fps: f64) -> String {
@@ -70,10 +74,10 @@ pub fn format_time(time_sec: f64) -> String {
     }
 }
 
+use anyhow::{anyhow, Result};
 use std::collections::HashSet;
 use std::process::{Command, Stdio};
 use std::sync::{Mutex, OnceLock};
-use anyhow::{anyhow, Result};
 
 /// Maps a requested audio codec to a concrete ffmpeg encoder name, taking the
 /// container into account. Unknown/unsupported values fall back to a safe default
@@ -132,13 +136,13 @@ pub fn verify_ffmpeg_binary(path: &str) -> Result<()> {
     if verified.lock().unwrap().contains(path) {
         return Ok(());
     }
-    match Command::new(path)
+    let result = Command::new(path)
         .arg("-version")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status()
-    {
+        .status();
+    match result {
         Ok(status) if status.success() => {
             verified.lock().unwrap().insert(path.to_string());
             Ok(())

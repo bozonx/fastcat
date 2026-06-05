@@ -48,6 +48,22 @@ pub struct NativeExportOptions {
     pub audio_bitrate_bps: Option<u32>,
     #[serde(default)]
     pub audio_channels: Option<u32>,
+    #[serde(default)]
+    pub audio_sample_rate: Option<u32>,
+    #[serde(default)]
+    pub video_enabled: Option<bool>,
+    #[serde(default)]
+    pub bitrate_mode: Option<String>,
+    #[serde(default)]
+    pub keyframe_interval_sec: Option<f64>,
+    #[serde(default)]
+    pub metadata_title: Option<String>,
+    #[serde(default)]
+    pub metadata_description: Option<String>,
+    #[serde(default)]
+    pub metadata_author: Option<String>,
+    #[serde(default)]
+    pub metadata_tags: Option<String>,
 
     // Hardware Acceleration Settings
     #[serde(default)]
@@ -82,8 +98,19 @@ pub fn export_timeline(
     };
     let start = options.start_sec.max(0.0);
     let end = options.end_sec.max(start);
-    // Frame count: duration times fps. Keep at least one frame for a zero-length range.
-    let frame_count = (((end - start) * fps).round() as u64).max(1);
+    if end <= start {
+        return Err(anyhow!("export range is zero or negative"));
+    }
+    if options.video_enabled.unwrap_or(true)
+        && options.export_alpha == Some(true)
+        && !export_uses_alpha(&options)
+    {
+        return Err(anyhow!(
+            "alpha export is only supported for VP9 in WebM or MKV containers"
+        ));
+    }
+    // Frame count: duration times fps, rounded up so the last frame covers the end.
+    let frame_count = (((end - start) * fps).ceil() as u64).max(1);
 
     // Resolve the hardware mode once (auto → vaapi/none, alpha forces software) so
     // the fallback decision below is based on what the first attempt *actually* used.
@@ -104,14 +131,18 @@ pub fn export_timeline(
                 } else {
                     scene.audio_master_gain
                 };
-                let output_channels = options.audio_channels.unwrap_or(2) as usize;
+                let output_channels = options.audio_channels.unwrap_or(2).clamp(1, 2) as usize;
+                let sample_rate = options
+                    .audio_sample_rate
+                    .unwrap_or(48_000)
+                    .clamp(8_000, 192_000);
                 render_scene_to_wav(
                     &scene.audio_layers,
                     &scene.audio_tracks,
                     master_gain,
                     start,
                     end,
-                    48_000,
+                    sample_rate,
                     output_channels,
                     &path,
                 )
@@ -127,6 +158,11 @@ pub fn export_timeline(
 
     // One export attempt with the given options. The caller owns temp_audio cleanup.
     let run_attempt = |opts: &NativeExportOptions| -> Result<()> {
+        let is_video = opts.video_enabled.unwrap_or(true);
+        if !is_video && audio_input.is_none() {
+            return Err(anyhow!("audio-only export has no audio input"));
+        }
+
         let args = build_ffmpeg_args(
             opts,
             audio_input.as_deref(),
@@ -139,15 +175,15 @@ pub fn export_timeline(
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
         let mut child = Command::new(ffmpeg_cmd)
             .args(&args)
-            .stdin(Stdio::piped())
+            .stdin(if is_video {
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            })
             .stdout(Stdio::null())
             .stderr(Stdio::piped())
             .spawn()
             .context("failed to spawn ffmpeg for timeline export")?;
-        let mut stdin = child
-            .stdin
-            .take()
-            .ok_or_else(|| anyhow!("ffmpeg stdin unavailable"))?;
 
         // Drain stderr in background to avoid pipe deadlock.
         let stderr_handle = child.stderr.take().map(|mut stderr| {
@@ -161,49 +197,61 @@ pub fn export_timeline(
         // Register the process so `native_media_cancel(task_id)` can stop it.
         let child = tasks.insert(task_id, child);
 
-        // Render frames sequentially through a dedicated compositor, separate
-        // from the thumbnail pool, so export and thumbnail generation do not
-        // contend for the same GPU target.
-        let mut compositor = Compositor::new();
-        let dev_id = compositor
-            .ensure_offscreen_device()
-            .context("export: no GPU device")?;
+        let render_result = if is_video {
+            let mut stdin = child
+                .lock()
+                .stdin
+                .take()
+                .ok_or_else(|| anyhow!("ffmpeg stdin unavailable"))?;
 
-        let mut cache = super::timeline_render::VideoDecoderCache::new();
-        let mut pipeline = compositor
-            .begin_pipelined_readback(dev_id, width, height, 2)
-            .context("export: failed to create pipelined readback")?;
+            // Render frames sequentially through a dedicated compositor, separate
+            // from the thumbnail pool, so export and thumbnail generation do not
+            // contend for the same GPU target.
+            let mut compositor = Compositor::new();
+            let dev_id = compositor
+                .ensure_offscreen_device()
+                .context("export: no GPU device")?;
 
-        let render_result = (|| -> Result<()> {
-            for i in 0..frame_count {
-                let time = start + i as f64 / fps;
-                let frame_scene = super::timeline_render::build_export_scene(
-                    &scene,
-                    time,
-                    (width, height),
-                    &mut cache,
-                )?;
-                if let Some(pixels) =
-                    compositor.render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
-                {
+            let mut cache = super::timeline_render::VideoDecoderCache::new();
+            let mut pipeline = compositor
+                .begin_pipelined_readback(dev_id, width, height, 2)
+                .context("export: failed to create pipelined readback")?;
+
+            let result = (|| -> Result<()> {
+                for i in 0..frame_count {
+                    let time = start + i as f64 / fps;
+                    let frame_scene = super::timeline_render::build_export_scene(
+                        &scene,
+                        time,
+                        (width, height),
+                        &mut cache,
+                    )?;
+                    if let Some(pixels) =
+                        compositor.render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
+                    {
+                        if let Err(e) = stdin.write_all(&pixels) {
+                            return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
+                        }
+                        on_progress(pipeline.emitted as f64 / frame_count as f64);
+                    }
+                }
+                // Сливаем хвостовые кадры, которые ещё висят в pipeline.
+                for pixels in pipeline.drain(&mut compositor)? {
                     if let Err(e) = stdin.write_all(&pixels) {
                         return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                     }
                     on_progress(pipeline.emitted as f64 / frame_count as f64);
                 }
-            }
-            // Сливаем хвостовые кадры, которые ещё висят в pipeline.
-            for pixels in pipeline.drain(&mut compositor)? {
-                if let Err(e) = stdin.write_all(&pixels) {
-                    return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
-                }
-                on_progress(pipeline.emitted as f64 / frame_count as f64);
-            }
-            Ok(())
-        })();
+                Ok(())
+            })();
 
-        // Close stdin so ffmpeg finalizes the container.
-        drop(stdin);
+            // Close stdin so ffmpeg finalizes the container.
+            drop(stdin);
+            result
+        } else {
+            on_progress(1.0);
+            Ok(())
+        };
 
         if let Err(error) = render_result {
             // The write failed because ffmpeg closed the pipe — its stderr almost
@@ -301,7 +349,8 @@ fn build_ffmpeg_args(
 ) -> Vec<String> {
     let export_alpha = export_uses_alpha(options);
     let hw_mode = resolve_export_hw_mode(options);
-
+    let is_video = options.video_enabled.unwrap_or(true);
+    let has_audio = audio_input.is_some();
     let mut args = Vec::new();
 
     if hw_mode == "vaapi" {
@@ -321,56 +370,93 @@ fn build_ffmpeg_args(
         "-y".to_string(),
         "-loglevel".to_string(),
         "error".to_string(),
-        // Video comes from stdin as raw RGBA.
-        "-f".to_string(),
-        "rawvideo".to_string(),
-        "-pix_fmt".to_string(),
-        "rgba".to_string(),
-        "-s".to_string(),
-        format!("{width}x{height}"),
-        "-r".to_string(),
-        format!("{fps:.6}"),
-        "-i".to_string(),
-        "-".to_string(),
     ]);
 
-    let has_audio = audio_input.is_some();
+    // Audio-only path: no rawvideo stdin.
+    if is_video {
+        args.extend([
+            // Video comes from stdin as raw RGBA.
+            "-f".to_string(),
+            "rawvideo".to_string(),
+            "-pix_fmt".to_string(),
+            "rgba".to_string(),
+            "-s".to_string(),
+            format!("{width}x{height}"),
+            "-r".to_string(),
+            format!("{fps:.6}"),
+            "-i".to_string(),
+            "-".to_string(),
+        ]);
+    }
+
     if let Some(audio) = audio_input {
         args.extend(["-i".to_string(), audio.display().to_string()]);
     }
 
-    let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_mode);
-    args.extend([
-        "-c:v".to_string(),
-        video_codec.to_string(),
-        "-b:v".to_string(),
-        options.video_bitrate_bps.max(1).to_string(),
-    ]);
-
-    if export_alpha && video_codec == "libvpx-vp9" {
-        args.extend(["-auto-alt-ref".to_string(), "0".to_string()]);
-    }
-
-    if hw_mode == "vaapi" {
+    if is_video {
+        let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_mode);
         args.extend([
-            "-vf".to_string(),
-            "format=nv12|vaapi,hwupload".to_string(),
-            "-pix_fmt".to_string(),
-            "vaapi".to_string(),
+            "-c:v".to_string(),
+            video_codec.to_string(),
+            "-b:v".to_string(),
+            options.video_bitrate_bps.max(1).to_string(),
         ]);
-    } else if hw_mode == "nvdec" {
-        args.extend([
-            "-vf".to_string(),
-            "format=yuv420p".to_string(),
-            "-pix_fmt".to_string(),
-            "yuv420p".to_string(),
-        ]);
-    } else {
-        if export_alpha {
-            args.extend(["-pix_fmt".to_string(), "yuva420p".to_string()]);
-        } else {
-            args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
+
+        // Bitrate mode
+        let is_cbr = options.bitrate_mode.as_deref() == Some("constant");
+        if is_cbr {
+            let bitrate = options.video_bitrate_bps.max(1);
+            if hw_mode == "nvdec" || hw_mode == "nvenc" {
+                args.extend(["-rc".to_string(), "cbr".to_string()]);
+            } else if hw_mode == "vaapi" {
+                args.extend(["-rc_mode".to_string(), "CBR".to_string()]);
+            } else {
+                args.extend([
+                    "-maxrate".to_string(),
+                    bitrate.to_string(),
+                    "-bufsize".to_string(),
+                    bitrate.to_string(),
+                ]);
+            }
         }
+
+        // Keyframe interval
+        if let Some(interval_sec) = options.keyframe_interval_sec {
+            if interval_sec.is_finite() && interval_sec > 0.0 {
+                let gop = (fps * interval_sec).round() as u32;
+                if gop > 0 {
+                    args.extend(["-g".to_string(), gop.to_string()]);
+                }
+            }
+        }
+
+        if export_alpha && video_codec == "libvpx-vp9" {
+            args.extend(["-auto-alt-ref".to_string(), "0".to_string()]);
+        }
+
+        if hw_mode == "vaapi" {
+            args.extend([
+                "-vf".to_string(),
+                "format=nv12|vaapi,hwupload".to_string(),
+                "-pix_fmt".to_string(),
+                "vaapi".to_string(),
+            ]);
+        } else if hw_mode == "nvdec" {
+            args.extend([
+                "-vf".to_string(),
+                "format=yuv420p".to_string(),
+                "-pix_fmt".to_string(),
+                "yuv420p".to_string(),
+            ]);
+        } else {
+            if export_alpha {
+                args.extend(["-pix_fmt".to_string(), "yuva420p".to_string()]);
+            } else {
+                args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
+            }
+        }
+    } else {
+        args.push("-vn".to_string());
     }
 
     if has_audio {
@@ -387,10 +473,37 @@ fn build_ffmpeg_args(
         if let Some(bitrate) = options.audio_bitrate_bps {
             args.extend(["-b:a".to_string(), bitrate.max(1).to_string()]);
         }
-        // Trim to the shorter stream; video duration is the reference.
-        args.push("-shortest".to_string());
-    } else {
+        if let Some(sample_rate) = options.audio_sample_rate {
+            let sr = sample_rate.clamp(8_000, 192_000);
+            args.extend(["-ar".to_string(), sr.to_string()]);
+        }
+        if is_video {
+            // Trim to the shorter stream; video duration is the reference.
+            args.push("-shortest".to_string());
+        }
+    } else if is_video {
         args.push("-an".to_string());
+    }
+
+    // Metadata
+    if let Some(title) = options.metadata_title.as_deref().filter(|s| !s.is_empty()) {
+        args.extend(["-metadata".to_string(), format!("title={title}")]);
+    }
+    if let Some(description) = options
+        .metadata_description
+        .as_deref()
+        .filter(|s| !s.is_empty())
+    {
+        args.extend([
+            "-metadata".to_string(),
+            format!("description={description}"),
+        ]);
+    }
+    if let Some(author) = options.metadata_author.as_deref().filter(|s| !s.is_empty()) {
+        args.extend(["-metadata".to_string(), format!("author={author}")]);
+    }
+    if let Some(tags) = options.metadata_tags.as_deref().filter(|s| !s.is_empty()) {
+        args.extend(["-metadata".to_string(), format!("tags={tags}")]);
     }
 
     if options.format == "mp4" || options.format == "mov" {
@@ -404,8 +517,7 @@ fn build_ffmpeg_args(
 /// Alpha export is only meaningful for containers/codecs that carry it (webm/mkv);
 /// it also forces software encoding (HW VAAPI/NVENC paths here don't emit alpha).
 fn export_uses_alpha(options: &NativeExportOptions) -> bool {
-    options.export_alpha.unwrap_or(false)
-        && (options.format == "webm" || options.format == "mkv")
+    options.export_alpha.unwrap_or(false) && (options.format == "webm" || options.format == "mkv")
 }
 
 /// Resolves the export hardware mode to a concrete `"vaapi" | "nvdec" | "none"`,
@@ -455,6 +567,38 @@ mod tests {
     use super::*;
     use std::path::Path;
 
+    fn base_options() -> NativeExportOptions {
+        NativeExportOptions {
+            width: 1920,
+            height: 1080,
+            fps: 30.0,
+            start_sec: 0.0,
+            end_sec: 10.0,
+            video_codec: "avc1.64001f".to_string(),
+            video_bitrate_bps: 5_000_000,
+            format: "mp4".to_string(),
+            audio_enabled: false,
+            audio_path: None,
+            audio_codec: None,
+            audio_bitrate_bps: None,
+            audio_channels: None,
+            audio_sample_rate: None,
+            video_enabled: None,
+            bitrate_mode: None,
+            keyframe_interval_sec: None,
+            metadata_title: None,
+            metadata_description: None,
+            metadata_author: None,
+            metadata_tags: None,
+            ffmpeg_path: None,
+            ffprobe_path: None,
+            hardware_acceleration_mode: None,
+            vaapi_device: None,
+            enable_hardware_encoding: None,
+            export_alpha: None,
+        }
+    }
+
     #[test]
     fn test_build_ffmpeg_args_webm_forces_opus() {
         let options = NativeExportOptions {
@@ -471,6 +615,14 @@ mod tests {
             audio_codec: Some("aac".to_string()),
             audio_bitrate_bps: Some(128_000),
             audio_channels: Some(2),
+            audio_sample_rate: Some(48_000),
+            video_enabled: None,
+            bitrate_mode: None,
+            keyframe_interval_sec: None,
+            metadata_title: None,
+            metadata_description: None,
+            metadata_author: None,
+            metadata_tags: None,
             ffmpeg_path: None,
             ffprobe_path: None,
             hardware_acceleration_mode: None,
@@ -515,6 +667,14 @@ mod tests {
             audio_codec: None,
             audio_bitrate_bps: None,
             audio_channels: None,
+            audio_sample_rate: None,
+            video_enabled: None,
+            bitrate_mode: None,
+            keyframe_interval_sec: None,
+            metadata_title: None,
+            metadata_description: None,
+            metadata_author: None,
+            metadata_tags: None,
             ffmpeg_path: None,
             ffprobe_path: None,
             hardware_acceleration_mode: None,
@@ -555,6 +715,14 @@ mod tests {
             audio_codec: None,
             audio_bitrate_bps: None,
             audio_channels: None,
+            audio_sample_rate: None,
+            video_enabled: None,
+            bitrate_mode: None,
+            keyframe_interval_sec: None,
+            metadata_title: None,
+            metadata_description: None,
+            metadata_author: None,
+            metadata_tags: None,
             ffmpeg_path: None,
             ffprobe_path: None,
             hardware_acceleration_mode: None,
@@ -571,5 +739,60 @@ mod tests {
             !args.contains(&"-auto-alt-ref".to_string()),
             "mp4 should not add VP9 alpha flags"
         );
+    }
+
+    #[test]
+    fn test_build_ffmpeg_args_adds_metadata_cbr_and_keyframes() {
+        let options = NativeExportOptions {
+            bitrate_mode: Some("constant".to_string()),
+            keyframe_interval_sec: Some(2.0),
+            metadata_title: Some("Export title".to_string()),
+            metadata_description: Some("Export description".to_string()),
+            metadata_author: Some("Author".to_string()),
+            metadata_tags: Some("one, two".to_string()),
+            ..base_options()
+        };
+        let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.mp4"));
+
+        assert!(args.windows(2).any(|pair| pair == ["-g", "60"]));
+        assert!(args.windows(2).any(|pair| pair == ["-maxrate", "5000000"]));
+        assert!(args.windows(2).any(|pair| pair == ["-bufsize", "5000000"]));
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["-metadata", "title=Export title"]));
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["-metadata", "description=Export description"]));
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["-metadata", "author=Author"]));
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["-metadata", "tags=one, two"]));
+    }
+
+    #[test]
+    fn test_build_ffmpeg_args_audio_only_skips_rawvideo_input() {
+        let options = NativeExportOptions {
+            format: "wav".to_string(),
+            video_enabled: Some(false),
+            audio_enabled: true,
+            audio_codec: Some("pcm".to_string()),
+            audio_sample_rate: Some(44_100),
+            ..base_options()
+        };
+        let args = build_ffmpeg_args(
+            &options,
+            Some(Path::new("dummy.wav")),
+            2,
+            2,
+            30.0,
+            Path::new("output.wav"),
+        );
+
+        assert!(args.windows(2).any(|pair| pair == ["-vn", "-c:a"]));
+        assert!(args.windows(2).any(|pair| pair == ["-ar", "44100"]));
+        assert!(!args.windows(2).any(|pair| pair == ["-f", "rawvideo"]));
+        assert!(!args.contains(&"-c:v".to_string()));
     }
 }

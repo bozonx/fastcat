@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use image::{ColorType, ImageFormat};
 use parking_lot::Mutex;
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
@@ -194,23 +193,14 @@ pub fn render_timeline_frame_to_webp(
     time_sec: f64,
     width: u32,
     height: u32,
-    _quality: f32,
+    quality: f32,
 ) -> Result<Vec<u8>> {
     let mut cache = VideoDecoderCache::new();
     let compositor_scene =
         build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
     let pixels = render_pooled(&compositor_scene, width, height)?;
 
-    let mut bytes = Vec::new();
-    image::write_buffer_with_format(
-        &mut std::io::Cursor::new(&mut bytes),
-        &pixels,
-        width.max(1),
-        height.max(1),
-        ColorType::Rgba8,
-        ImageFormat::WebP,
-    )?;
-    Ok(bytes)
+    encode_rgba_as_webp(&pixels, width.max(1), height.max(1), quality)
 }
 
 pub(crate) fn build_export_scene(
@@ -346,15 +336,19 @@ fn save_rgba_as_webp(
     pixels: &[u8],
     width: u32,
     height: u32,
-    _quality: f32,
+    quality: f32,
 ) -> Result<()> {
-    image::save_buffer_with_format(
-        path,
-        pixels,
-        width,
-        height,
-        ColorType::Rgba8,
-        ImageFormat::WebP,
-    )
-    .map_err(Into::into)
+    std::fs::write(path, encode_rgba_as_webp(pixels, width, height, quality)?)?;
+    Ok(())
+}
+
+fn encode_rgba_as_webp(pixels: &[u8], width: u32, height: u32, quality: f32) -> Result<Vec<u8>> {
+    let encoder = webp::Encoder::from_rgba(pixels, width, height);
+    let quality = quality.clamp(0.0, 100.0);
+    let bytes = if quality >= 100.0 {
+        encoder.encode_lossless()
+    } else {
+        encoder.encode(quality)
+    };
+    Ok(bytes.to_vec())
 }

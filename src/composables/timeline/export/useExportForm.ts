@@ -16,6 +16,7 @@ import { copyFile } from '@tauri-apps/plugin-fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
+import { getNativeFileHandlePath } from '~/utils/tauri-media-processing';
 const log = createDevLogger('useExportForm');
 
 export interface ExportRangeOption {
@@ -379,7 +380,6 @@ export function useExportForm() {
   async function handleStartExport(onSuccess?: (file: File) => void | Promise<void>) {
     if (isExporting.value) return;
 
-    isExporting.value = true;
     exportProgress.value = 0;
     exportError.value = null;
     exportWarnings.value = [];
@@ -388,6 +388,8 @@ export function useExportForm() {
       const exportDir = await ensureExportDir();
       const ok = await validateFilename();
       if (!ok) return;
+
+      isExporting.value = true;
       const finalFilename = normalizeExportFilename(outputFilename.value);
       outputFilename.value = finalFilename;
 
@@ -491,6 +493,21 @@ export function useExportForm() {
           }
         });
 
+        if (isTauri && customExportPath.value) {
+          const tauriFilePath = getNativeFileHandlePath(fileHandle);
+          if (tauriFilePath) {
+            const [{ join }, { exists }] = await Promise.all([
+              import('@tauri-apps/api/path'),
+              import('@tauri-apps/plugin-fs'),
+            ]);
+            const destPath = await join(customExportPath.value, outputFilename.value);
+            if (await exists(destPath)) {
+              throw new Error(t('videoEditor.export.filenameAlreadyExists'));
+            }
+            await copyFile(tauriFilePath, destPath);
+          }
+        }
+
         exportSuccess = true;
         exportProgress.value = 1;
 
@@ -545,21 +562,6 @@ export function useExportForm() {
           const file = await withFileIoSlot(() => fileHandle.getFile());
           await onSuccess(file);
         }
-
-        if (isTauri && customExportPath.value) {
-          const tauriFileHandle = fileHandle as unknown as { path?: string };
-          if (tauriFileHandle.path) {
-            try {
-              const { join } = await import('@tauri-apps/api/path');
-              await copyFile(
-                tauriFileHandle.path,
-                await join(customExportPath.value, outputFilename.value),
-              );
-            } catch (e) {
-              log.warn('Failed to copy exported file to custom location', e);
-            }
-          }
-        }
       } finally {
         try {
           await exportDir.removeEntry(tempFilename);
@@ -593,10 +595,26 @@ export function useExportForm() {
         multiple: false,
       });
       if (path) {
+        const [{ join }, { writeTextFile, remove }] = await Promise.all([
+          import('@tauri-apps/api/path'),
+          import('@tauri-apps/plugin-fs'),
+        ]);
+        const probePath = await join(
+          path,
+          `.fastcat-export-probe-${Date.now()}-${randomToken(6)}.tmp`,
+        );
+        await writeTextFile(probePath, '');
+        await remove(probePath);
         customExportPath.value = path;
       }
     } catch (e) {
       log.warn('Failed to pick export location', e);
+      toast.add({
+        title: t('videoEditor.export.error'),
+        description: e instanceof Error ? e.message : undefined,
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle',
+      });
     }
   }
 

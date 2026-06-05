@@ -20,11 +20,33 @@ import { getTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
 import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
+import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
 import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
+
+let _measureCtx: CanvasRenderingContext2D | null | undefined;
+function getMeasureCtx() {
+  if (_measureCtx !== undefined) return _measureCtx;
+  if (typeof document === 'undefined') {
+    _measureCtx = null;
+    return _measureCtx;
+  }
+  _measureCtx = document.createElement('canvas').getContext('2d');
+  return _measureCtx;
+}
+
+// Preload Tauri path helper so we don't dynamic-import it per clip.
+let _tauriJoin: ((...paths: string[]) => Promise<string>) | null = null;
+async function getTauriJoin() {
+  if (!_tauriJoin) {
+    const { join } = await import('@tauri-apps/api/path');
+    _tauriJoin = join;
+  }
+  return _tauriJoin;
+}
 
 interface NativeAudioWorkerTimelineClip extends WorkerTimelineClip {
   originalAudioGain?: unknown;
@@ -72,9 +94,7 @@ function finite(value: unknown, fallback: number): number {
 }
 
 function sanitizeVideoSpeed(value: unknown): number {
-  const speed = finite(value, 1);
-  if (speed === 0) return 1;
-  return Math.max(-10, Math.min(10, speed));
+  return normalizeClipSpeed(value);
 }
 
 function sanitizeAudioSpeed(value: unknown): number {
@@ -157,8 +177,6 @@ function buildNativeTextTransform(params: {
   if (!transform) return undefined;
 
   const anchor = resolveNormalizedAnchor(transform.anchor);
-  const measureCanvas = document.createElement('canvas');
-  const measureCtx = measureCanvas.getContext('2d');
 
   const layout = computeTextLayoutMetrics({
     text,
@@ -166,6 +184,7 @@ function buildNativeTextTransform(params: {
     canvasWidth: sceneWidth,
     canvasHeight: sceneHeight,
     measureText: (txt, font) => {
+      const measureCtx = getMeasureCtx();
       if (measureCtx) {
         measureCtx.font = font;
         return measureCtx.measureText(txt).width;
@@ -318,7 +337,7 @@ async function resolveProjectAbsolutePath(
     const handle = await projectStore.getProjectDirHandle();
     const projectPath = (handle as unknown as TauriDirectoryHandle | null)?.path;
     if (!projectPath) return projectRelativePath;
-    const { join } = await import('@tauri-apps/api/path');
+    const join = await getTauriJoin();
     return await join(projectPath, projectRelativePath);
   } catch {
     return projectRelativePath;

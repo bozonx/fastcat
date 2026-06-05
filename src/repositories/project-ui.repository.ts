@@ -72,28 +72,30 @@ const ProjectUiLayoutSchema = z.object({
   timelineHeights: z.record(z.string(), z.coerce.number()).catch({}),
 });
 
-const ProjectUiExportSettingsSchema = z.object({
-  exportType: z.enum(['video', 'audio']).catch('video'),
-  outputFormat: z.enum(['mp4', 'webm', 'mkv']).catch('mp4'),
-  videoCodec: z.string().catch('avc1.640032'),
-  bitrateMbps: z.coerce.number().catch(5),
-  excludeAudio: z.coerce.boolean().catch(false),
-  audioCodec: z.enum(['aac', 'opus', 'flac', 'pcm']).catch('aac'),
-  audioBitrateKbps: z.coerce.number().catch(128),
-  audioSampleRate: z.coerce.number().catch(48000),
-  bitrateMode: z.enum(['constant', 'variable']).catch('variable'),
-  keyframeIntervalSec: z.coerce.number().catch(2),
-  exportAlpha: z.coerce.boolean().catch(false),
-  matchTimeline: z.coerce.boolean().catch(true),
-  customWidth: z.coerce.number().catch(1920),
-  customHeight: z.coerce.number().catch(1080),
-  customFps: z.coerce.number().catch(30),
-  customAudioSampleRate: z.coerce.number().catch(48000),
-  metadataTitle: z.string().catch(''),
-  metadataDescription: z.string().catch(''),
-  metadataAuthor: z.string().catch(''),
-  metadataTags: z.string().catch(''),
-}).optional();
+const ProjectUiExportSettingsSchema = z
+  .object({
+    exportType: z.enum(['video', 'audio']).catch('video'),
+    outputFormat: z.enum(['mp4', 'webm', 'mkv']).catch('mp4'),
+    videoCodec: z.string().catch('avc1.640032'),
+    bitrateMbps: z.coerce.number().catch(5),
+    excludeAudio: z.coerce.boolean().catch(false),
+    audioCodec: z.enum(['aac', 'opus', 'flac', 'pcm', 'mp3']).catch('aac'),
+    audioBitrateKbps: z.coerce.number().catch(128),
+    audioSampleRate: z.coerce.number().catch(48000),
+    bitrateMode: z.enum(['constant', 'variable']).catch('variable'),
+    keyframeIntervalSec: z.coerce.number().catch(2),
+    exportAlpha: z.coerce.boolean().catch(false),
+    matchTimeline: z.coerce.boolean().catch(true),
+    customWidth: z.coerce.number().catch(1920),
+    customHeight: z.coerce.number().catch(1080),
+    customFps: z.coerce.number().catch(30),
+    customAudioSampleRate: z.coerce.number().catch(48000),
+    metadataTitle: z.string().catch(''),
+    metadataDescription: z.string().catch(''),
+    metadataAuthor: z.string().catch(''),
+    metadataTags: z.string().catch(''),
+  })
+  .optional();
 
 export const ProjectUiSettingsSchema = z.object({
   version: z.coerce.number().catch(1),

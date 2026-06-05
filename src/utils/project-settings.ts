@@ -84,7 +84,7 @@ export interface FastCatProjectSettings {
       videoCodec: string;
       bitrateMbps: number;
       excludeAudio: boolean;
-      audioCodec: 'aac' | 'opus';
+      audioCodec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
       audioBitrateKbps: number;
       bitrateMode: 'constant' | 'variable';
       keyframeIntervalSec: number;
@@ -119,7 +119,7 @@ export interface FastCatProjectSettings {
     videoCodec: string;
     bitrateMbps: number;
     excludeAudio: boolean;
-    audioCodec: 'aac' | 'opus' | 'flac' | 'pcm';
+    audioCodec: 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3';
     audioBitrateKbps: number;
     audioSampleRate: number;
     bitrateMode: 'constant' | 'variable';
@@ -404,7 +404,7 @@ function createProjectSettingsSchema(defaults: FastCatProjectSettings) {
                   .boolean()
                   .catch(defaults.exportDefaults.encoding.excludeAudio),
                 audioCodec: z
-                  .enum(['aac', 'opus'])
+                  .enum(['aac', 'opus', 'flac', 'pcm', 'mp3'])
                   .catch(defaults.exportDefaults.encoding.audioCodec),
                 audioBitrateKbps: z.coerce
                   .number()

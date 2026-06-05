@@ -22,7 +22,7 @@ import {
 } from '~/timeline/clip-schemas';
 
 export const ExportOptionsSchema = z.object({
-  format: z.enum(['mp4', 'webm', 'mkv', 'aac', 'opus', 'ogg', 'flac', 'wav', 'pcm']),
+  format: z.enum(['mp4', 'webm', 'mkv', 'aac', 'opus', 'ogg', 'flac', 'wav', 'pcm', 'mp3']),
   videoCodec: z.string().trim().min(1),
   bitrate: z.number().finite().min(1),
   bitrateMode: z.enum(['constant', 'variable']).optional(),
@@ -64,7 +64,7 @@ export const ExportOptionsSchema = z.object({
 export type ExportOptions = z.infer<typeof ExportOptionsSchema>;
 
 export const TranscodeOptionsSchema = z.object({
-  format: z.enum(['mp4', 'webm', 'mkv', 'aac', 'opus', 'ogg', 'flac', 'wav', 'pcm']),
+  format: z.enum(['mp4', 'webm', 'mkv', 'aac', 'opus', 'ogg', 'flac', 'wav', 'pcm', 'mp3']),
   videoCodec: z.string().trim().min(1),
   bitrate: z.number().finite().min(1),
   bitrateMode: z.enum(['constant', 'variable']).optional(),

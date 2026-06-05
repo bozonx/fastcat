@@ -41,7 +41,9 @@ export function useMediaPlayerPlayback(
       return;
     }
 
-    void mediaElement.value.play();
+    mediaElement.value.play().catch((e) => {
+      console.log('[MediaPlayer] play() error:', e, 'readyState:', mediaElement.value?.readyState, 'error:', mediaElement.value?.error);
+    });
   }
 
   function pauseAndClearPlayback() {
