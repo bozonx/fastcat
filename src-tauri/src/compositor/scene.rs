@@ -566,70 +566,29 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     let frame_x = spec.border_width + spec.shadow_left;
     let frame_y = spec.border_width + spec.shadow_top;
 
-    // 1. Draw Background Shadow
+    // 1. Draw Background Shadow — настоящий гауссов blur нативной примитивой vello
+    // (`draw_blurred_rounded_rect`), а не 9 смещённых копий, как раньше.
     if spec.bg_shadow_enabled && spec.bg_shadow_color.to_rgba8().a > 0 {
-        let base_alpha = spec.bg_shadow_color.to_rgba8().a as f32 / 255.0;
-        let base_color = spec.bg_shadow_color.to_rgba8();
         let shadow_x = frame_x + spec.bg_shadow_offset_x;
         let shadow_y = frame_y + spec.bg_shadow_offset_y;
 
         let ext = spec.bg_shadow_spread;
-        let rect_x1 = (shadow_x - ext) as f64;
-        let rect_y1 = (shadow_y - ext) as f64;
-        let rect_x2 = (shadow_x + spec.frame_width + ext) as f64;
-        let rect_y2 = (shadow_y + spec.frame_height + ext) as f64;
+        let rect = Rect::new(
+            (shadow_x - ext) as f64,
+            (shadow_y - ext) as f64,
+            (shadow_x + spec.frame_width + ext) as f64,
+            (shadow_y + spec.frame_height + ext) as f64,
+        );
         let radius = (spec.background_radius + ext as f64).max(0.0);
 
         if spec.bg_shadow_blur > 0.0 {
-            // Изотропное круговое размытие за 9 проходов
-            let center_weight = 0.25f32;
-            let ring_weight = 0.75f32 / 8.0f32;
-
-            // Центральный проход
-            let c_color = Color::from_rgba8(
-                base_color.r,
-                base_color.g,
-                base_color.b,
-                ((base_alpha * center_weight) * 255.0).clamp(0.0, 255.0) as u8,
-            );
-            let rect = RoundedRect::new(rect_x1, rect_y1, rect_x2, rect_y2, radius).to_path(0.1);
-            scene.fill(Fill::NonZero, xform, Brush::Solid(c_color), None, &rect);
-
-            // 8 проходов по кругу
-            let r = (spec.bg_shadow_blur * 0.7) as f64;
-            let angles = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0];
-            let r_color = Color::from_rgba8(
-                base_color.r,
-                base_color.g,
-                base_color.b,
-                ((base_alpha * ring_weight) * 255.0).clamp(0.0, 255.0) as u8,
-            );
-
-            for &angle_deg in &angles {
-                let angle_rad = (angle_deg as f64).to_radians();
-                let dx = r * angle_rad.cos();
-                let dy = r * angle_rad.sin();
-
-                let rect = RoundedRect::new(
-                    rect_x1 + dx,
-                    rect_y1 + dy,
-                    rect_x2 + dx,
-                    rect_y2 + dy,
-                    radius,
-                )
-                .to_path(0.1);
-                scene.fill(Fill::NonZero, xform, Brush::Solid(r_color), None, &rect);
-            }
+            // CSS-подобный blur-radius → σ ≈ blur/2. Один точный гауссов примитив,
+            // полная альфа (без раздачи по проходам).
+            let std_dev = (spec.bg_shadow_blur as f64) * 0.5;
+            scene.draw_blurred_rounded_rect(xform, rect, spec.bg_shadow_color, radius, std_dev);
         } else {
-            // Без размытия - 1 проход
-            let color = Color::from_rgba8(
-                base_color.r,
-                base_color.g,
-                base_color.b,
-                (base_alpha * 255.0).clamp(0.0, 255.0) as u8,
-            );
-            let rect = RoundedRect::new(rect_x1, rect_y1, rect_x2, rect_y2, radius).to_path(0.1);
-            scene.fill(Fill::NonZero, xform, Brush::Solid(color), None, &rect);
+            let path = RoundedRect::new(rect.x0, rect.y0, rect.x1, rect.y1, radius).to_path(0.1);
+            scene.fill(Fill::NonZero, xform, Brush::Solid(spec.bg_shadow_color), None, &path);
         }
     }
 
@@ -800,16 +759,16 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         };
 
         if spec.text_shadow_blur > 0.0 {
-            // Изотропное круговое размытие за 9 проходов
-            draw_shadow_pass(spec.text_shadow_offset_x, spec.text_shadow_offset_y, 0.25);
-
-            let r = spec.text_shadow_blur * 0.7;
-            let angles = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0];
-            for &angle_deg in &angles {
-                let angle_rad = (angle_deg as f32).to_radians();
-                let dx = spec.text_shadow_offset_x + r * angle_rad.cos();
-                let dy = spec.text_shadow_offset_y + r * angle_rad.sin();
-                draw_shadow_pass(dx, dy, 0.75 / 8.0);
+            // У глифов нет нативного blur'а в vello, поэтому аппроксимируем гауссиану
+            // ДИСКРЕТНОЙ СВЁРТКОЙ силуэта: сетка отсчётов в пределах ±2σ с весами
+            // exp(-(x²+y²)/2σ²), нормированными к сумме 1. Это 2D-ядро вместо кольца из
+            // 8 копий на одном радиусе (которое давало «8 призраков» при крупном blur).
+            for (dx, dy, w) in gaussian_kernel_taps(spec.text_shadow_blur * 0.5) {
+                draw_shadow_pass(
+                    spec.text_shadow_offset_x + dx,
+                    spec.text_shadow_offset_y + dy,
+                    w,
+                );
             }
         } else {
             // 1 проход
@@ -861,6 +820,42 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                 );
         }
     }
+}
+
+/// Отсчёты дискретного 2D-гауссова ядра для аппроксимации размытия тени текста
+/// перерисовкой силуэта со смещениями. Возвращает `(dx, dy, weight)` на сетке в
+/// пределах ±2σ; веса нормированы к сумме 1, ничтожные (<4%) отброшены ради скорости.
+/// При σ≤0 — единственный отсчёт (0,0,1).
+fn gaussian_kernel_taps(sigma: f32) -> Vec<(f32, f32, f32)> {
+    let sigma = sigma.max(0.0);
+    if sigma < 0.5 {
+        return vec![(0.0, 0.0, 1.0)];
+    }
+    // 5×5 сетка с шагом σ покрывает ±2σ — баланс качества и числа перерисовок.
+    const STEPS: i32 = 2;
+    let step = sigma; // span = STEPS*step = 2σ
+    let two_sigma_sq = 2.0 * sigma * sigma;
+    let mut taps = Vec::new();
+    let mut wsum = 0.0f32;
+    for iy in -STEPS..=STEPS {
+        for ix in -STEPS..=STEPS {
+            let dx = ix as f32 * step;
+            let dy = iy as f32 * step;
+            let w = (-(dx * dx + dy * dy) / two_sigma_sq).exp();
+            if w < 0.04 {
+                continue;
+            }
+            taps.push((dx, dy, w));
+            wsum += w;
+        }
+    }
+    if wsum <= 0.0 {
+        return vec![(0.0, 0.0, 1.0)];
+    }
+    for tap in &mut taps {
+        tap.2 /= wsum;
+    }
+    taps
 }
 
 fn polygon(points: &[(f64, f64)]) -> BezPath {
@@ -1216,6 +1211,26 @@ mod tests {
         for m in modes {
             let _ = m.to_vello();
         }
+    }
+
+    #[test]
+    fn gaussian_kernel_taps_normalized_and_centered() {
+        // σ≤0 → один центральный отсчёт с весом 1.
+        let z = gaussian_kernel_taps(0.0);
+        assert_eq!(z.len(), 1);
+        assert_eq!(z[0], (0.0, 0.0, 1.0));
+
+        // Заметный σ → несколько отсчётов, веса нормированы к сумме 1,
+        // центральный — самый тяжёлый, ядро симметрично.
+        let taps = gaussian_kernel_taps(6.0);
+        assert!(taps.len() > 1);
+        let wsum: f32 = taps.iter().map(|t| t.2).sum();
+        assert!((wsum - 1.0).abs() < 1e-4, "weights must sum to 1, got {wsum}");
+        let center = taps.iter().find(|t| t.0 == 0.0 && t.1 == 0.0).unwrap();
+        assert!(taps.iter().all(|t| t.2 <= center.2 + 1e-6));
+        let sum_dx: f32 = taps.iter().map(|t| t.0).sum();
+        let sum_dy: f32 = taps.iter().map(|t| t.1).sum();
+        assert!(sum_dx.abs() < 1e-3 && sum_dy.abs() < 1e-3, "kernel must be symmetric");
     }
 
     #[test]

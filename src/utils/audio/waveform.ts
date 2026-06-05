@@ -1,5 +1,12 @@
 import { timeUsToPx, zoomToPxPerSecond } from '~/utils/timeline/geometry';
 
+/**
+ * Hard ceiling on the number of peak samples per channel. Must mirror
+ * `MAX_PEAK_LENGTH` in `src-tauri/src/audio/peaks.rs` so the JS-side resolution
+ * budget never asks for more than the native extractor will ever return.
+ */
+export const MAX_WAVEFORM_PEAK_LENGTH = 500_000;
+
 export interface WaveformWindowMetricsParams {
   sourceStartUs: number;
   sourceDurationUs: number;
@@ -59,7 +66,9 @@ export function computeWaveformWindowMetrics(
   const sourceDurationUs = Math.max(0, Math.round(params.sourceDurationUs));
   const timelineDurationUs = Math.max(0, Math.round(params.timelineDurationUs));
   const clipWidthPx = Math.round(timeUsToPx(timelineDurationUs, params.zoom));
-  const totalWidthPx = Math.round(timeUsToPx(sourceDurationUs / Math.abs(speed), params.zoom));
+  // `speed` is already normalized to a positive magnitude; direction is handled
+  // separately via `reversed`, so both metrics divide by the same positive speed.
+  const totalWidthPx = Math.round(timeUsToPx(sourceDurationUs / speed, params.zoom));
   const trimOffsetPx = Math.round(timeUsToPx(sourceStartUs / speed, params.zoom));
   const reversed =
     typeof params.speed === 'number' && Number.isFinite(params.speed) && params.speed < 0;
@@ -169,6 +178,69 @@ export function serializeWaveformPeaks(peaks: Float32Array[]): ArrayBuffer {
   return buffer;
 }
 
+/**
+ * Source fingerprint stored alongside on-disk waveform peaks so a cached blob
+ * can be validated against the file it was generated from. Without this, a blob
+ * keyed only by path could be served for a different file later occupying the
+ * same path once the metadata cache (which does carry size/mtime) is gone.
+ */
+export interface WaveformCacheFingerprint {
+  size: number;
+  lastModified: number;
+}
+
+// First byte of the disk-cache envelope. Chosen so the format is distinguishable
+// from the two legacy on-disk encodings: JSON (starts with '[' = 0x5b) and the
+// raw transport blob (starts with a little-endian channel count, low byte 0..8).
+const WAVEFORM_CACHE_MAGIC = 0xf0;
+const WAVEFORM_CACHE_VERSION = 1;
+const WAVEFORM_CACHE_HEADER_BYTES = 24;
+
+/**
+ * Wraps serialized peaks in a versioned envelope carrying the source fingerprint.
+ * Used only for the on-disk cache; the IPC transport keeps the bare peak format.
+ */
+export function serializeWaveformCacheEntry(
+  peaks: Float32Array[],
+  fingerprint: WaveformCacheFingerprint,
+): ArrayBuffer {
+  const payload = serializeWaveformPeaks(peaks);
+  const buffer = new ArrayBuffer(WAVEFORM_CACHE_HEADER_BYTES + payload.byteLength);
+  const view = new DataView(buffer);
+  view.setUint8(0, WAVEFORM_CACHE_MAGIC);
+  view.setUint8(1, WAVEFORM_CACHE_VERSION);
+  // bytes 2..8 reserved (zero), keeping the f64 fields 8-byte aligned.
+  view.setFloat64(8, fingerprint.size, true);
+  view.setFloat64(16, fingerprint.lastModified, true);
+  new Uint8Array(buffer, WAVEFORM_CACHE_HEADER_BYTES).set(new Uint8Array(payload));
+  return buffer;
+}
+
+/**
+ * Reads a disk-cache envelope. Returns `null` when the buffer is not in the
+ * envelope format (caller should fall back to legacy decoding) or is corrupt.
+ */
+export function readWaveformCacheEntry(
+  buffer: ArrayBuffer,
+): { fingerprint: WaveformCacheFingerprint; peaks: Float32Array[] } | null {
+  if (buffer.byteLength < WAVEFORM_CACHE_HEADER_BYTES) return null;
+  const view = new DataView(buffer);
+  if (view.getUint8(0) !== WAVEFORM_CACHE_MAGIC) return null;
+  if (view.getUint8(1) !== WAVEFORM_CACHE_VERSION) return null;
+
+  const fingerprint: WaveformCacheFingerprint = {
+    size: view.getFloat64(8, true),
+    lastModified: view.getFloat64(16, true),
+  };
+  const peaks = deserializeWaveformPeaks(buffer.slice(WAVEFORM_CACHE_HEADER_BYTES));
+  if (!peaks) return null;
+  return { fingerprint, peaks };
+}
+
+export function isWaveformCacheEntry(buffer: ArrayBuffer): boolean {
+  return buffer.byteLength >= 2 && new DataView(buffer).getUint8(0) === WAVEFORM_CACHE_MAGIC;
+}
+
 export function deserializeWaveformPeaks(buffer: ArrayBuffer): Float32Array[] | null {
   if (buffer.byteLength < 8) return null;
   const view = new DataView(buffer);
@@ -177,12 +249,18 @@ export function deserializeWaveformPeaks(buffer: ArrayBuffer): Float32Array[] | 
   const expectedByteLength = 8 + channelCount * samplesCount * 4;
   if (buffer.byteLength < expectedByteLength) return null;
 
-  const floatArray = new Float32Array(buffer, 8);
-  const peaks: Float32Array[] = [];
-  for (let ch = 0; ch < channelCount; ch++) {
-    const channelData = new Float32Array(samplesCount);
-    channelData.set(floatArray.subarray(ch * samplesCount, (ch + 1) * samplesCount));
-    peaks.push(channelData);
+  try {
+    // Copy out of the trailing payload. Reading the whole tail as a Float32Array
+    // would throw if `(byteLength - 8)` is not 4-aligned, so bound it explicitly.
+    const floatArray = new Float32Array(buffer, 8, channelCount * samplesCount);
+    const peaks: Float32Array[] = [];
+    for (let ch = 0; ch < channelCount; ch++) {
+      const channelData = new Float32Array(samplesCount);
+      channelData.set(floatArray.subarray(ch * samplesCount, (ch + 1) * samplesCount));
+      peaks.push(channelData);
+    }
+    return peaks;
+  } catch {
+    return null;
   }
-  return peaks;
 }

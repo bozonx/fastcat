@@ -4,7 +4,12 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useMediaStore } from '~/stores/media.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useProjectStore } from '~/stores/project.store';
-import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
+import {
+  deserializeWaveformPeaks,
+  isWaveformCacheEntry,
+  readWaveformCacheEntry,
+  serializeWaveformCacheEntry,
+} from '~/utils/audio/waveform';
 vi.mock('#app-manifest', () => ({}));
 
 const { mockIsTauriState, mockNativeMediaMetadata, mockNativeMediaExtractPeaks } = vi.hoisted(
@@ -253,7 +258,7 @@ describe('MediaStore', () => {
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks).toEqual([new Float32Array([0.5, 0.5])]);
   });
 
-  it('persists audio peaks as JSON while keeping Float32Array in memory', async () => {
+  it('persists audio peaks in a fingerprinted envelope when metadata is known', async () => {
     const store = useMediaStore();
     store.mediaMetadata = {
       'some/path.mp4': { source: { size: 100, lastModified: 100 }, duration: 10 },
@@ -266,9 +271,10 @@ describe('MediaStore', () => {
     });
     const buffer = mediaFsMock.waveformFiles.get('some%2Fpath.mp4.json') as ArrayBuffer;
     expect(buffer).toBeInstanceOf(ArrayBuffer);
-    const peaks = deserializeWaveformPeaks(buffer);
-    expect(peaks).toBeDefined();
-    expect(Array.from(peaks![0])).toEqual([0.5, -0.25]);
+    expect(isWaveformCacheEntry(buffer)).toBe(true);
+    const entry = readWaveformCacheEntry(buffer);
+    expect(entry?.fingerprint).toEqual({ size: 100, lastModified: 100 });
+    expect(Array.from(entry!.peaks[0])).toEqual([0.5, -0.25]);
     expect(store.mediaMetadata['some/path.mp4'].audioPeaks?.[0]).toBeInstanceOf(Float32Array);
   });
 
@@ -302,6 +308,46 @@ describe('MediaStore', () => {
     expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
     expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
     expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1]);
+  });
+
+  it('rejects a fingerprinted waveform blob that belongs to a different file', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'some%2Fpath.mp4.json';
+    // Envelope generated for a previous file (size 999) now occupying this path.
+    const stale = serializeWaveformCacheEntry([new Float32Array([0.5, -0.25])], {
+      size: 999,
+      lastModified: 999,
+    });
+    mediaFsMock.waveformFiles.set(cacheFileName, stale);
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'path.mp4' } as File,
+      'some/path.mp4',
+    );
+
+    // The current file is size 100 → fingerprint mismatch → peaks not reused,
+    // and the stale blob is dropped so a fresh extraction can replace it.
+    expect(result?.audioPeaks).toBeUndefined();
+    expect(mediaFsMock.waveformFiles.get(cacheFileName)).toBeUndefined();
+  });
+
+  it('reuses a fingerprinted waveform blob when it matches the current file', async () => {
+    const store = useMediaStore();
+    const cacheFileName = 'some%2Fpath.mp4.json';
+    const fresh = serializeWaveformCacheEntry(
+      [new Float32Array([0.5, -0.25]), new Float32Array([1, -1])],
+      { size: 100, lastModified: 100 },
+    );
+    mediaFsMock.waveformFiles.set(cacheFileName, fresh);
+
+    const result = await store.getOrFetchMetadata(
+      { size: 100, lastModified: 100, name: 'path.mp4' } as File,
+      'some/path.mp4',
+    );
+
+    expect(result?.audioPeaks?.[0]).toBeInstanceOf(Float32Array);
+    expect(Array.from(result?.audioPeaks?.[0] ?? [])).toEqual([0.5, -0.25]);
+    expect(Array.from(result?.audioPeaks?.[1] ?? [])).toEqual([1, -1]);
   });
 
   it('loads cached audio peaks from JSON as Float32Array channels', async () => {

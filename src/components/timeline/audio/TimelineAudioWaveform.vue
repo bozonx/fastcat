@@ -14,6 +14,7 @@ import {
   computeWaveformRenderBudget,
   computeWaveformWindowMetrics,
   resolveWaveformSourceUs,
+  MAX_WAVEFORM_PEAK_LENGTH,
 } from '~/utils/audio/waveform';
 import { runQueuedPeakExtraction } from '~/utils/audio/waveform-extraction-queue';
 import { timeUsToPx } from '~/utils/timeline/geometry';
@@ -89,6 +90,16 @@ const durationUs = computed(() => effectiveSourceDurationUs.value);
 
 function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
   return Array.from({ length: channelCount }, () => new Float32Array(length));
+}
+
+// Resolution budget: ~200 samples per second is more than enough — even at max
+// zoom (~1280 px/s) a denser array adds no visible detail while bloating the
+// cache. Clamp to the native extractor's hard ceiling so the JS budget never
+// silently exceeds what `extract_peaks` can return.
+const WAVEFORM_SAMPLES_PER_SECOND = 200;
+function waveformMaxLength(durationS: number): number {
+  const requested = Math.max(8000, Math.ceil(durationS * WAVEFORM_SAMPLES_PER_SECOND));
+  return Math.min(MAX_WAVEFORM_PEAK_LENGTH, requested);
 }
 
 function mixPeakValue(target: number, next: number) {
@@ -210,7 +221,7 @@ async function buildTimelinePeaks(params: {
 
       visiting.add(path);
       const nestedDurationS = sourceDurationUs / 1_000_000;
-      const nestedMaxLength = Math.max(8000, Math.ceil(nestedDurationS * 200));
+      const nestedMaxLength = waveformMaxLength(nestedDurationS);
 
       sourcePeaks = await buildTimelinePeaks({
         doc: nestedDoc,
@@ -320,8 +331,7 @@ const extractPeaks = async () => {
       });
 
       const durationS = effectiveSourceDurationUs.value / 1_000_000;
-      const samplesPerSecond = 200;
-      const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
+      const maxLength = waveformMaxLength(durationS);
 
       const peaks = await buildTimelinePeaks({
         doc: nestedDoc,
@@ -342,12 +352,8 @@ const extractPeaks = async () => {
       return;
     }
 
-    // Resolution budget: ~200 samples per second is more than enough — even at
-    // max zoom (~1280 px/s) there is no benefit from a denser array, and a denser
-    // one bloats OPFS JSON and JSON.stringify cost for long sources.
     const durationS = effectiveSourceDurationUs.value / 1_000_000;
-    const samplesPerSecond = 200;
-    const maxLength = Math.max(8000, Math.ceil(durationS * samplesPerSecond));
+    const maxLength = waveformMaxLength(durationS);
 
     const peaks = await ensureMediaPeaks({
       path: fileUrl.value,

@@ -334,7 +334,24 @@ impl Compositor {
                 continue;
             }
 
-            let source = self.layer_to_effect_source(dev_id, scene, &layer, texture_cache)?;
+            // Векторные слои (Shape/Text) растеризуем под эффект в ЭКРАННОМ разрешении
+            // (natural × scale), иначе крупная фигура/текст рендерилась бы в natural_size
+            // и увеличивалась при композите → лесенка/мыло. Затем компенсируем scale слоя,
+            // чтобы итоговый размер не удвоился. Растровые слои уже пиксельные — без k.
+            let is_vector = matches!(layer.kind, LayerKind::Shape(_) | LayerKind::Text(_));
+            let render_scale = if is_vector {
+                Self::vector_effect_render_scale(&layer)
+            } else {
+                (1.0, 1.0)
+            };
+
+            let source = if is_vector {
+                let texture =
+                    self.render_layer_to_texture(dev_id, scene, &layer, render_scale)?;
+                EffectSource::Gpu(Arc::new(texture))
+            } else {
+                self.layer_to_effect_source(dev_id, scene, &layer, texture_cache)?
+            };
             let processed =
                 self.apply_effects_to_texture(dev_id, device, queue, &source, &layer.effects)?;
             let mut next = layer.clone();
@@ -342,6 +359,10 @@ impl Compositor {
                 natural_size: (processed.width(), processed.height()),
                 source: RasterSource::GpuTexture(std::sync::Arc::new(processed)),
             };
+            if is_vector {
+                next.transform.scale_x /= render_scale.0;
+                next.transform.scale_y /= render_scale.1;
+            }
             next.effects.clear();
             final_layers.push(next);
         }
@@ -393,21 +414,29 @@ impl Compositor {
                 RasterSource::GpuTexture(texture) => Ok(EffectSource::Gpu(texture.clone())),
             },
             LayerKind::Shape(_) | LayerKind::Text(_) => {
-                let texture = self.render_layer_to_texture(dev_id, scene, layer)?;
+                // 1:1 — путь переходов; сверхдискретизация под эффекты делается в шаге 2.
+                let texture = self.render_layer_to_texture(dev_id, scene, layer, (1.0, 1.0))?;
                 Ok(EffectSource::Gpu(Arc::new(texture)))
             }
         }
     }
 
+    /// Растеризует векторный слой (Shape/Text) в изолированную текстуру для применения
+    /// GPU-эффектов. `scale` задаёт сверхдискретизацию: при `(kx,ky) > 1` слой рисуется
+    /// в `natural × k` пикселей, чтобы при последующем композите с увеличением не было
+    /// алиасинга/мыла (вектор остаётся резким). Вызывающий обязан поделить scale слоя
+    /// на `k`, иначе результат увеличится дважды.
     fn render_layer_to_texture(
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
         layer: &Layer,
+        scale: (f64, f64),
     ) -> Result<wgpu::Texture> {
         let natural = layer.kind.natural_size();
-        let width = natural.0.max(1);
-        let height = natural.1.max(1);
+        let (kx, ky) = scale;
+        let width = ((natural.0 as f64 * kx).round() as u32).max(1);
+        let height = ((natural.1 as f64 * ky).round() as u32).max(1);
         let isolated = super::scene::Scene {
             width,
             height,
@@ -416,7 +445,12 @@ impl Compositor {
             layers: vec![Layer {
                 id: layer.id.clone(),
                 kind: layer.kind.clone(),
-                transform: Transform::identity(),
+                // Рисуем слой увеличенным в k раз внутри текстуры (без сдвига/поворота).
+                transform: Transform {
+                    scale_x: kx,
+                    scale_y: ky,
+                    ..Transform::identity()
+                },
                 opacity: 1.0,
                 blend: BlendMode::Normal,
                 mask: None,
@@ -426,6 +460,20 @@ impl Compositor {
         };
         let vello = isolated.to_vello(width, height, |_| None);
         self.render_to_owned_texture(dev_id, &vello, width, height, Color::TRANSPARENT)
+    }
+
+    /// Степень сверхдискретизации для растеризации векторного слоя под эффект:
+    /// берём абсолютный scale слоя (на сколько он увеличивается на сцене), кламп в
+    /// `[1; 8]` и ограничиваем итоговый размер текстуры (8192 px на сторону).
+    fn vector_effect_render_scale(layer: &Layer) -> (f64, f64) {
+        const MAX_K: f64 = 8.0;
+        const MAX_DIM: f64 = 8192.0;
+        let (nw, nh) = layer.kind.natural_size();
+        let kx = layer.transform.scale_x.abs().clamp(1.0, MAX_K);
+        let ky = layer.transform.scale_y.abs().clamp(1.0, MAX_K);
+        let kx = kx.min(MAX_DIM / (nw.max(1) as f64)).max(1.0);
+        let ky = ky.min(MAX_DIM / (nh.max(1) as f64)).max(1.0);
+        (kx, ky)
     }
 
     fn apply_effects_to_texture(

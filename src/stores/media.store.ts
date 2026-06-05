@@ -11,7 +11,13 @@ import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { useVfs } from '~/composables/useVfs';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
-import { serializeWaveformPeaks, deserializeWaveformPeaks } from '~/utils/audio/waveform';
+import {
+  serializeWaveformPeaks,
+  deserializeWaveformPeaks,
+  serializeWaveformCacheEntry,
+  readWaveformCacheEntry,
+  isWaveformCacheEntry,
+} from '~/utils/audio/waveform';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
 import { thumbnailGenerator, getClipThumbnailsHash } from '~/utils/thumbnail-generator';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -428,11 +434,34 @@ export const useMediaStore = defineStore('media', () => {
       });
       const uint8 = new Uint8Array(arrayBuffer);
       if (uint8[0] === 0x5b /* '[' character in UTF-8 */) {
+        // Legacy JSON format (no fingerprint): trusted optimistically.
         const decoder = new TextDecoder();
         const text = decoder.decode(uint8);
         const peaksData = JSON.parse(text) as number[][];
         params.metadata.audioPeaks = peaksData.map((channel) => new Float32Array(channel));
+      } else if (isWaveformCacheEntry(arrayBuffer)) {
+        // Fingerprinted envelope: only reuse when it matches the current source.
+        const entry = readWaveformCacheEntry(arrayBuffer);
+        if (
+          entry &&
+          entry.fingerprint.size === params.metadata.source.size &&
+          entry.fingerprint.lastModified === params.metadata.source.lastModified
+        ) {
+          params.metadata.audioPeaks = entry.peaks;
+        } else {
+          // Stale (belongs to a different file at this path) — drop it so a fresh
+          // extraction replaces it instead of rendering the wrong waveform.
+          try {
+            await runCacheFileAccess('waveform', params.cacheFileName, async () => {
+              await getVfs().deleteEntry(waveformsPath);
+            });
+          } catch {
+            // ignore
+          }
+          return false;
+        }
       } else {
+        // Legacy bare-binary format (no fingerprint): trusted optimistically.
         const deserialized = deserializeWaveformPeaks(arrayBuffer);
         if (deserialized) {
           params.metadata.audioPeaks = deserialized;
@@ -451,11 +480,20 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   function setAudioPeaks(projectRelativePath: string, peaks: Float32Array[]) {
-    if (mediaMetadata.value[projectRelativePath]) {
-      mediaMetadata.value[projectRelativePath].audioPeaks = peaks;
+    const metadata = mediaMetadata.value[projectRelativePath];
+    if (metadata) {
+      metadata.audioPeaks = peaks;
     }
 
-    const binaryData = serializeWaveformPeaks(peaks);
+    // Persist with a source fingerprint when we know it, so the blob can be
+    // validated on reload and never served for a different file at this path.
+    const source = metadata?.source;
+    const binaryData = source
+      ? serializeWaveformCacheEntry(peaks, {
+          size: source.size,
+          lastModified: source.lastModified,
+        })
+      : serializeWaveformPeaks(peaks);
 
     // Serialize peaks writes per-path to avoid concurrent createWritable() races on the
     // same OPFS entry which can yield truncated/interleaved data for long audio.

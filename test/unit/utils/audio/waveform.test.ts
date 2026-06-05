@@ -7,6 +7,9 @@ import {
   resolveWaveformSourceUs,
   serializeWaveformPeaks,
   deserializeWaveformPeaks,
+  serializeWaveformCacheEntry,
+  readWaveformCacheEntry,
+  isWaveformCacheEntry,
 } from '~/utils/audio/waveform';
 import { timeUsToPx } from '~/utils/timeline/geometry';
 
@@ -178,5 +181,35 @@ describe('audio waveform utilities', () => {
     expect(deserialized).toHaveLength(2);
     expect(deserialized![0]).toEqual(new Float32Array([0.1, 0.2, 0.3, 0.4]));
     expect(deserialized![1]).toEqual(new Float32Array([0.5, 0.6, 0.7, 0.8]));
+  });
+
+  it('returns null for a corrupt waveform buffer instead of throwing', () => {
+    // 9 bytes: a valid header claiming 0 channels/0 samples but a 1-byte,
+    // non-4-aligned tail. Must be handled gracefully, not throw.
+    expect(deserializeWaveformPeaks(new ArrayBuffer(3))).toBeNull();
+    const odd = new ArrayBuffer(9);
+    new DataView(odd).setUint32(0, 1, true); // channelCount = 1
+    new DataView(odd).setUint32(4, 1, true); // samplesCount = 1
+    // expected payload is 4 bytes but only 1 present → guarded by length check
+    expect(deserializeWaveformPeaks(odd)).toBeNull();
+  });
+
+  it('round-trips a fingerprinted cache envelope', () => {
+    const peaks = [new Float32Array([0.5, -0.25]), new Float32Array([1, -1])];
+    const buffer = serializeWaveformCacheEntry(peaks, { size: 42, lastModified: 1234 });
+
+    expect(isWaveformCacheEntry(buffer)).toBe(true);
+    // A bare peak buffer must NOT be mistaken for an envelope.
+    expect(isWaveformCacheEntry(serializeWaveformPeaks(peaks))).toBe(false);
+
+    const entry = readWaveformCacheEntry(buffer);
+    expect(entry?.fingerprint).toEqual({ size: 42, lastModified: 1234 });
+    expect(entry?.peaks[0]).toEqual(new Float32Array([0.5, -0.25]));
+    expect(entry?.peaks[1]).toEqual(new Float32Array([1, -1]));
+  });
+
+  it('rejects non-envelope buffers from the envelope reader', () => {
+    expect(readWaveformCacheEntry(serializeWaveformPeaks([new Float32Array([1])]))).toBeNull();
+    expect(readWaveformCacheEntry(new ArrayBuffer(4))).toBeNull();
   });
 });

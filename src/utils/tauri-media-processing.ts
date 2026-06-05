@@ -41,6 +41,14 @@ export async function nativeMediaMetadata(path: string): Promise<NativeMediaMeta
   return await invoke<NativeMediaMetadata>('native_media_metadata', { path });
 }
 
+/**
+ * Extracts per-channel waveform peaks natively.
+ *
+ * NOTE: `precision` exists only for parity with the web-worker extractor, which
+ * uses it to quantize peaks before JSON serialization. The native path returns a
+ * compact binary f32 payload, so it keeps full precision and ignores this value;
+ * it is still forwarded so the IPC signature stays stable across runtimes.
+ */
 export async function nativeMediaExtractPeaks(
   path: string,
   maxLength: number,
