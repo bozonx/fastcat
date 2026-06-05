@@ -392,12 +392,27 @@ impl EffectPipeline {
     }
 }
 
+/// Множитель для пространственных параметров эффектов (blur radius, pixelate size,
+/// chromatic aberration, …), задаваемых пользователем в «пикселях @1080p». Текстура
+/// эффекта = кадр в его реальном разрешении (preview-scaled или export full-res),
+/// поэтому без нормировки одинаковый radius давал РАЗНЫЙ визуальный масштаб в preview
+/// и в экспорте. Нормируем к высоте 1080 → эффект становится фиксированной долей кадра
+/// и совпадает между preview/export и между разными разрешениями источника.
+fn spatial_scale(height: u32) -> f32 {
+    (height as f32 / 1080.0).clamp(0.1, 8.0)
+}
+
+/// Верхняя граница радиуса гауссова размытия. Совпадает с клампом в шейдере
+/// (`sample_blur_h/v`), чтобы значения из UI не упирались в «тихий потолок».
+const MAX_BLUR_RADIUS: f32 = 64.0;
+
 fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPass> {
+    let scale = spatial_scale(height);
     let mut passes = Vec::new();
     for effect in effects {
         match *effect {
             EffectSpec::GaussianBlur { radius } => {
-                let clamped_r = radius.clamp(0.0, 80.0);
+                let clamped_r = (radius * scale).clamp(0.0, MAX_BLUR_RADIUS);
                 if clamped_r > 0.0 {
                     // Pass 1: Horizontal Blur (mode 4)
                     passes.push(EffectPass {
@@ -434,6 +449,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
 }
 
 fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<EffectPass> {
+    let scale = spatial_scale(height);
     let base = |mode, p0, p1, p2, p3, p4, p5, seed| EffectPass {
         uniform: EffectUniform {
             mode,
@@ -465,7 +481,7 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
         }
         EffectSpec::Pixelate { size } => {
-            Some(base(6, size.clamp(1.0, 128.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
+            Some(base(6, (size * scale).clamp(1.0, 256.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
         }
         EffectSpec::Bloom {
             threshold,
@@ -475,7 +491,9 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             7,
             threshold.clamp(0.0, 1.0),
             strength.clamp(0.0, 4.0),
-            radius.clamp(0.0, 80.0),
+            // Bloom — 2D-ядро (дорогое), шейдер клампит радиус до 16; держим тот же
+            // потолок, чтобы UI-значение отражало реальный эффект.
+            (radius * scale).clamp(0.0, 16.0),
             0.0,
             0.0,
             0.0,
@@ -507,7 +525,7 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         )),
         EffectSpec::ChromaticAberration { amount, angle_deg } => Some(base(
             10,
-            amount.clamp(0.0, 80.0),
+            (amount * scale).clamp(0.0, 80.0),
             angle_deg,
             0.0,
             0.0,
@@ -727,7 +745,7 @@ fn rotate_hue(color: vec3<f32>, degrees: f32) -> vec3<f32> {
 }
 
 fn sample_blur_h(coord: vec2<i32>, radius: f32) -> vec4<f32> {
-    let r = i32(clamp(round(radius), 0.0, 32.0));
+    let r = i32(clamp(round(radius), 0.0, 64.0));
     if (r == 0) {
         return load_px(coord);
     }
@@ -745,7 +763,7 @@ fn sample_blur_h(coord: vec2<i32>, radius: f32) -> vec4<f32> {
 }
 
 fn sample_blur_v(coord: vec2<i32>, radius: f32) -> vec4<f32> {
-    let r = i32(clamp(round(radius), 0.0, 32.0));
+    let r = i32(clamp(round(radius), 0.0, 64.0));
     if (r == 0) {
         return load_px(coord);
     }

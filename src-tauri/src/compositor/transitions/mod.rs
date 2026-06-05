@@ -77,7 +77,57 @@ pub struct TransitionPipeline {
     bind_layout: wgpu::BindGroupLayout,
     pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
     resources: Option<CachedTransitionResources>,
+    /// Билинейный blit-проход: приводит входы перехода к выходному размеру.
+    blit_layout: wgpu::BindGroupLayout,
+    blit_pipeline: wgpu::ComputePipeline,
 }
+
+#[repr(C)]
+#[derive(Clone, Copy, Default, Pod, Zeroable)]
+struct BlitUniform {
+    out_w: u32,
+    out_h: u32,
+    src_w: u32,
+    src_h: u32,
+}
+
+/// Билинейное масштабирование `src` → выходной размер. Шейдеры переходов читают обе
+/// текстуры по координатам выходного размера (`max(from, to)`); без этого blit'а
+/// меньший вход давал `textureLoad` за границей (= чёрные/прозрачные края).
+const BLIT_SHADER: &str = r#"
+struct BlitU { out_w: u32, out_h: u32, src_w: u32, src_h: u32 };
+@group(0) @binding(0) var src_tex: texture_2d<f32>;
+@group(0) @binding(1) var dst_tex: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(2) var<uniform> u: BlitU;
+
+fn ld(p: vec2<i32>) -> vec4<f32> {
+    let c = vec2<i32>(
+        clamp(p.x, 0, i32(u.src_w) - 1),
+        clamp(p.y, 0, i32(u.src_h) - 1)
+    );
+    return textureLoad(src_tex, c, 0);
+}
+
+@compute @workgroup_size(8, 8, 1)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    if (gid.x >= u.out_w || gid.y >= u.out_h) {
+        return;
+    }
+    let uv = vec2<f32>(
+        (f32(gid.x) + 0.5) / f32(u.out_w),
+        (f32(gid.y) + 0.5) / f32(u.out_h)
+    );
+    let sp = uv * vec2<f32>(f32(u.src_w), f32(u.src_h)) - vec2<f32>(0.5, 0.5);
+    let i0 = vec2<i32>(i32(floor(sp.x)), i32(floor(sp.y)));
+    let f = fract(sp);
+    let c00 = ld(i0);
+    let c10 = ld(i0 + vec2<i32>(1, 0));
+    let c01 = ld(i0 + vec2<i32>(0, 1));
+    let c11 = ld(i0 + vec2<i32>(1, 1));
+    let c = mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
+    textureStore(dst_tex, vec2<i32>(i32(gid.x), i32(gid.y)), c);
+}
+"#;
 
 impl TransitionPipeline {
     pub fn new(device: &wgpu::Device) -> Self {
@@ -127,30 +177,169 @@ impl TransitionPipeline {
             ],
         });
 
+        let blit_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("native-transition-blit-layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::StorageTexture {
+                        access: wgpu::StorageTextureAccess::WriteOnly,
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        let blit_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("native-transition-blit-wgsl"),
+            source: wgpu::ShaderSource::Wgsl(BLIT_SHADER.into()),
+        });
+        let blit_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("native-transition-blit-pipeline-layout"),
+            bind_group_layouts: &[Some(&blit_layout)],
+            immediate_size: 0,
+        });
+        let blit_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("native-transition-blit-pipeline"),
+            layout: Some(&blit_pipeline_layout),
+            module: &blit_shader,
+            entry_point: Some("main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            cache: None,
+        });
+
         Self {
             bind_layout,
             pipelines: HashMap::new(),
             resources: None,
+            blit_layout,
+            blit_pipeline,
         }
+    }
+
+    /// Готовит вход перехода как текстуру РОВНО `width×height`. Если GPU-источник уже
+    /// нужного размера — отдаёт дешёвый клон хэндла; иначе билинейно масштабирует
+    /// (CPU-источник предварительно заливается во временную текстуру).
+    fn prepare_input(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        source: &EffectSource,
+        width: u32,
+        height: u32,
+    ) -> Result<wgpu::Texture> {
+        let (src_tex, src_w, src_h) = match source {
+            EffectSource::Cpu(img) => {
+                let tex = create_temp_texture(device, queue, img)?;
+                (tex, img.width, img.height)
+            }
+            EffectSource::Gpu(tex) => {
+                if tex.width() == width && tex.height() == height {
+                    return Ok((**tex).clone());
+                }
+                ((**tex).clone(), tex.width(), tex.height())
+            }
+        };
+
+        let dst = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("native-transition-scaled-input"),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        });
+        let src_view = src_tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let dst_view = dst.create_view(&wgpu::TextureViewDescriptor::default());
+        let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("native-transition-blit-uniform"),
+            contents: bytemuck::bytes_of(&BlitUniform {
+                out_w: width,
+                out_h: height,
+                src_w,
+                src_h,
+            }),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("native-transition-blit-bind-group"),
+            layout: &self.blit_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&src_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&dst_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: uniform.as_entire_binding(),
+                },
+            ],
+        });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("native-transition-blit-encoder"),
+        });
+        {
+            let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("native-transition-blit-pass"),
+                timestamp_writes: None,
+            });
+            cpass.set_pipeline(&self.blit_pipeline);
+            cpass.set_bind_group(0, &bind_group, &[]);
+            cpass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
+        }
+        queue.submit([encoder.finish()]);
+        Ok(dst)
     }
 
     fn ensure_resources(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         let recreate = match &self.resources {
-            Some(res) => res.width < width || res.height < height,
+            // Пересоздаём, если не хватает размера ИЛИ если таргет более чем вдвое
+            // больше нужного — иначе после одного 4K-перехода буфер навсегда оставался
+            // бы 4K (монотонный рост GPU-памяти), как замечено в аудите.
+            Some(res) => {
+                res.width < width
+                    || res.height < height
+                    || res.width > width.saturating_mul(2)
+                    || res.height > height.saturating_mul(2)
+            }
             None => true,
         };
 
         if recreate {
-            let new_w = self
-                .resources
-                .as_ref()
-                .map(|r| r.width.max(width))
-                .unwrap_or(width);
-            let new_h = self
-                .resources
-                .as_ref()
-                .map(|r| r.height.max(height))
-                .unwrap_or(height);
+            // Точно под запрошенный размер: и при росте, и при усадке (max со старым
+            // размером свёл бы усадку на нет).
+            let new_w = width.max(1);
+            let new_h = height.max(1);
             let size = wgpu::Extent3d {
                 width: new_w,
                 height: new_h,
@@ -241,27 +430,17 @@ impl TransitionPipeline {
         let shader_source = get_shader_source(spec);
         let pipeline = self.get_or_create_pipeline(device, &shader_source)?;
 
+        // Приводим оба входа к выходному размеру (билинейно), иначе вход меньшего
+        // размера читался бы за границей в шейдере перехода → чёрные края.
+        let from_tex = self.prepare_input(device, queue, from_source, width, height)?;
+        let to_tex = self.prepare_input(device, queue, to_source, width, height)?;
+
         self.ensure_resources(device, width, height);
         let resources = self.resources.as_ref()
             .ok_or_else(|| anyhow!("transition resources not initialized"))?;
 
-        // Подготовка текстуры From
-        let from_texture = match from_source {
-            EffectSource::Cpu(img) => {
-                let temp_tex = create_temp_texture(device, queue, img)?;
-                temp_tex.create_view(&wgpu::TextureViewDescriptor::default())
-            }
-            EffectSource::Gpu(tex) => tex.create_view(&wgpu::TextureViewDescriptor::default()),
-        };
-
-        // Подготовка текстуры To
-        let to_texture = match to_source {
-            EffectSource::Cpu(img) => {
-                let temp_tex = create_temp_texture(device, queue, img)?;
-                temp_tex.create_view(&wgpu::TextureViewDescriptor::default())
-            }
-            EffectSource::Gpu(tex) => tex.create_view(&wgpu::TextureViewDescriptor::default()),
-        };
+        let from_texture = from_tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let to_texture = to_tex.create_view(&wgpu::TextureViewDescriptor::default());
 
         // Заполнение Uniform буфера
         let uniform_data = build_uniform(spec, progress, width, height);

@@ -38,65 +38,6 @@ struct OffscreenTarget {
     aligned_row_bytes: usize,
 }
 
-/// Пул переиспользуемых промежуточных GPU-текстур для эффектов и переходов.
-///
-/// Без пула `apply_effects_to_texture` / `copy_texture_for_vello` создавали
-/// новую `wgpu::Texture` на каждый кадр для каждого слоя с эффектом/переходом:
-/// при 10 слоях с blur/bloom — десятки GPU-аллокаций per frame. Пул
-/// переиспользует текстуры по размеру, снижая нагрузку на GPU memory allocator.
-///
-/// Текстуры возвращаются в пул автоматически через `TexturePoolGuard`.
-struct TexturePool {
-    /// (width, height) → список свободных текстур этого размера.
-    free: HashMap<(u32, u32), Vec<wgpu::Texture>>,
-    /// Максимум текстур одного размера в пуле (предотвращает бесконечный рост).
-    max_per_size: usize,
-}
-
-impl TexturePool {
-    fn new() -> Self {
-        Self { free: HashMap::new(), max_per_size: 16 }
-    }
-
-    /// Взять текстуру из пула или создать новую.
-    fn acquire(
-        &mut self,
-        device: &wgpu::Device,
-        width: u32,
-        height: u32,
-        usage: wgpu::TextureUsages,
-        label: Option<&str>,
-    ) -> wgpu::Texture {
-        let key = (width.max(1), height.max(1));
-        if let Some(slot) = self.free.get_mut(&key) {
-            if let Some(tex) = slot.pop() {
-                return tex;
-            }
-        }
-        device.create_texture(&wgpu::TextureDescriptor {
-            label,
-            size: wgpu::Extent3d { width: key.0, height: key.1, depth_or_array_layers: 1 },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage,
-            view_formats: &[],
-        })
-    }
-
-    /// Вернуть текстуру в пул для повторного использования.
-    #[allow(dead_code)]
-    fn release(&mut self, texture: wgpu::Texture) {
-        let key = (texture.width(), texture.height());
-        let slot = self.free.entry(key).or_default();
-        if slot.len() < self.max_per_size {
-            slot.push(texture);
-        }
-        // Если пул переполнен — текстура просто дропается (освобождается GPU-память).
-    }
-}
-
 pub struct Compositor {
     render_cx: RenderContext,
     renderers: HashMap<usize, Renderer>,
@@ -106,8 +47,6 @@ pub struct Compositor {
     /// привязаны к конкретному `wgpu::Device`; шарить один `Option` между device'ами
     /// приводило бы к молотьбе rebuild'ов при чередовании (preview ↔ export-device).
     offscreen: HashMap<usize, OffscreenTarget>,
-    /// Пул промежуточных GPU-текстур для эффектов и переходов.
-    texture_pool: TexturePool,
     /// Кэш скомпилированных GPU пайплайнов (шейдеров) для каждого wgpu-устройства.
     pipeline_caches: HashMap<usize, wgpu::PipelineCache>,
 }
@@ -120,7 +59,6 @@ impl Compositor {
             effect_pipelines: HashMap::new(),
             transition_pipelines: HashMap::new(),
             offscreen: HashMap::new(),
-            texture_pool: TexturePool::new(),
             pipeline_caches: HashMap::new(),
         }
     }
@@ -298,25 +236,15 @@ impl Compositor {
         texture_cache: &super::texture_cache::TextureCache,
         registered_images: &mut Vec<ImageData>,
     ) -> Result<VelloScene> {
-        let device_handle = &self.render_cx.devices[dev_id];
-        let device = device_handle.device.clone();
-        let queue = device_handle.queue.clone();
-
         Ok(
             scene.to_vello(viewport_w, viewport_h, |source| match source {
                 RasterGpuSource::Cache(key) => {
                     let texture = texture_cache.get(key)?;
-                    self.register_texture_for_vello(
-                        dev_id,
-                        &device,
-                        &queue,
-                        &texture,
-                        registered_images,
-                    )
-                    .ok()
+                    self.register_texture_for_vello(dev_id, &texture, registered_images)
+                        .ok()
                 }
                 RasterGpuSource::Texture(texture) => self
-                    .register_texture_for_vello(dev_id, &device, &queue, texture, registered_images)
+                    .register_texture_for_vello(dev_id, texture, registered_images)
                     .ok(),
             }),
         )
@@ -343,11 +271,26 @@ impl Compositor {
                     .cloned();
 
                 if let Some(from_layer) = from_layer_opt {
-                    let from_source =
-                        self.layer_to_effect_source(dev_id, scene, &from_layer, texture_cache)?;
+                    // Эффекты слоёв запекаем ДО перехода: иначе эффекты `from`-клипа
+                    // терялись полностью (слой удаляется), а эффекты `to`-клипа
+                    // применялись поверх готового перехода, а не к исходному кадру.
+                    let from_source = self.layer_source_with_effects(
+                        dev_id,
+                        scene,
+                        &from_layer,
+                        texture_cache,
+                        device,
+                        queue,
+                    )?;
 
-                    let to_source =
-                        self.layer_to_effect_source(dev_id, scene, &layers[i], texture_cache)?;
+                    let to_source = self.layer_source_with_effects(
+                        dev_id,
+                        scene,
+                        &layers[i],
+                        texture_cache,
+                        device,
+                        queue,
+                    )?;
 
                     let pipeline = self
                         .transition_pipelines
@@ -368,6 +311,8 @@ impl Compositor {
                                 source: RasterSource::GpuTexture(std::sync::Arc::new(processed)),
                             };
                             layers[i].transition = None;
+                            // Эффекты уже запечены в переход — не применять повторно в шаге 2.
+                            layers[i].effects.clear();
 
                             to_remove.insert(from_layer.id.clone());
                         }
@@ -408,6 +353,25 @@ impl Compositor {
             background: scene.background,
             layers: final_layers,
         })
+    }
+
+    /// Источник пикселей слоя с УЖЕ применёнными собственными эффектами слоя.
+    /// Если эффектов нет — возвращает сырой источник без лишнего прохода.
+    fn layer_source_with_effects(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        layer: &Layer,
+        texture_cache: &super::texture_cache::TextureCache,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<EffectSource> {
+        let base = self.layer_to_effect_source(dev_id, scene, layer, texture_cache)?;
+        if layer.effects.is_empty() {
+            return Ok(base);
+        }
+        let processed = self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects)?;
+        Ok(EffectSource::Gpu(Arc::new(processed)))
     }
 
     fn layer_to_effect_source(
@@ -480,26 +444,10 @@ impl Compositor {
             Ok(texture) => Ok(texture),
             Err(error) => {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
-                // Fallback: использовать пул для промежуточной копии.
-                let (width, height) = match source {
-                    EffectSource::Cpu(img) => (img.width.max(1), img.height.max(1)),
-                    EffectSource::Gpu(tex) => (tex.width().max(1), tex.height().max(1)),
-                };
-                let pooled = self.texture_pool.acquire(
-                    device,
-                    width,
-                    height,
-                    wgpu::TextureUsages::COPY_SRC
-                        | wgpu::TextureUsages::COPY_DST
-                        | wgpu::TextureUsages::TEXTURE_BINDING,
-                    Some("compositor-effect-fallback"),
-                );
+                // Fallback: отдать исходник как есть. GPU-текстура — дешёвый клон хэндла.
                 match source {
                     EffectSource::Cpu(img) => image_to_texture(device, queue, img),
-                    EffectSource::Gpu(tex) => {
-                        copy_texture_to(device, queue, tex, &pooled)?;
-                        Ok(pooled)
-                    }
+                    EffectSource::Gpu(tex) => Ok((**tex).clone()),
                 }
             }
         }
@@ -508,29 +456,19 @@ impl Compositor {
     fn register_texture_for_vello(
         &mut self,
         dev_id: usize,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
         texture: &wgpu::Texture,
         registered_images: &mut Vec<ImageData>,
     ) -> Result<ImageData> {
-        // Используем пул для промежуточной копии (vello требует отдельного владения текстурой).
-        let width = texture.width().max(1);
-        let height = texture.height().max(1);
-        let pooled = self.texture_pool.acquire(
-            device,
-            width,
-            height,
-            wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::COPY_DST
-                | wgpu::TextureUsages::TEXTURE_BINDING,
-            Some("compositor-vello-owned-texture"),
-        );
-        copy_texture_to(device, queue, texture, &pooled)?;
+        // `wgpu::Texture` — это refcounted-хэндл (Arc внутри), а `register_texture`
+        // лишь добавляет override в renderer и копирует пиксели в свой атлас в начале
+        // кадра. Поэтому отдаём дешёвый клон хэндла вместо полной GPU-копии каждый кадр.
+        // Источник всегда имеет COPY_SRC (видеокадры из decode_thread, выходы
+        // effect/transition-пайплайнов) — требование `register_texture` соблюдено.
         let renderer = self
             .renderers
             .get_mut(&dev_id)
             .ok_or_else(|| anyhow!("no renderer for device {}", dev_id))?;
-        let image = renderer.register_texture(pooled);
+        let image = renderer.register_texture(texture.clone());
         registered_images.push(image.clone());
         Ok(image)
     }
@@ -852,38 +790,6 @@ fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
             "unsupported image format for compositor texture upload"
         )),
     }
-}
-
-/// Копирует содержимое `src` в уже существующую текстуру `dst` (должны быть одинакового размера).
-/// Используется с пулом текстур вместо `copy_texture_for_vello`, чтобы избежать GPU-аллокации на каждый кадр.
-fn copy_texture_to(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    src: &wgpu::Texture,
-    dst: &wgpu::Texture,
-) -> Result<()> {
-    let width = src.width().min(dst.width()).max(1);
-    let height = src.height().min(dst.height()).max(1);
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("compositor-texture-copy-to"),
-    });
-    encoder.copy_texture_to_texture(
-        wgpu::TexelCopyTextureInfo {
-            texture: src,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyTextureInfo {
-            texture: dst,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
-    );
-    queue.submit([encoder.finish()]);
-    Ok(())
 }
 
 impl Default for Compositor {

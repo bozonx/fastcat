@@ -127,13 +127,13 @@ mod tests {
 
         // Generic CSS family names should resolve directly without warn / family_id lookup
         let family = build_font_family(&mut font_cx, "sans-serif", GenericFamily::Serif);
-        assert_eq!(family.as_str(), "sans-serif");
+        assert_eq!(family, parley::style::FontFamily::from("sans-serif"));
 
         let family = build_font_family(&mut font_cx, "serif", GenericFamily::SansSerif);
-        assert_eq!(family.as_str(), "serif");
+        assert_eq!(family, parley::style::FontFamily::from("serif"));
 
         let family = build_font_family(&mut font_cx, "monospace", GenericFamily::SansSerif);
-        assert_eq!(family.as_str(), "monospace");
+        assert_eq!(family, parley::style::FontFamily::from("monospace"));
     }
 
     #[test]
@@ -141,6 +141,6 @@ mod tests {
         let mut font_cx = FontContext::new();
 
         let family = build_font_family(&mut font_cx, "DefinitelyNotARealFontXYZ", GenericFamily::Serif);
-        assert_eq!(family.as_str(), "serif");
+        assert_eq!(family, parley::style::FontFamily::from("serif"));
     }
 }

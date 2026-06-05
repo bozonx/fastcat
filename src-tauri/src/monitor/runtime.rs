@@ -156,7 +156,19 @@ impl VideoLayerRt {
             if msg.generation != live_gen {
                 continue;
             }
-            self.cache.insert(video_frame_to_image(msg.frame, cache));
+            // Вставка может вытеснить старые кадры — их GPU-текстуры надо убрать из
+            // общего кеша, иначе он копит осиротевшие текстуры и FIFO-вытесняет ещё
+            // живые (→ видеослой пропадал бы при скрабе).
+            for key in self.cache.insert(video_frame_to_image(msg.frame, cache)) {
+                cache.remove(key);
+            }
+        }
+    }
+
+    /// Освобождает все GPU-текстуры этого рантайма из общего кеша (при teardown слоя).
+    fn release_textures(&self, cache: &mut crate::compositor::texture_cache::TextureCache) {
+        for key in self.cache.texture_keys() {
+            cache.remove(key);
         }
     }
 
@@ -303,6 +315,13 @@ impl LayerRuntimeManager {
             }
         }
         if !to_drop.is_empty() {
+            // Освобождаем GPU-текстуры выбывших слоёв из общего кеша до дропа рантайма,
+            // иначе они осиротели бы в `texture_cache` до FIFO-вытеснения.
+            for rt in &to_drop {
+                if let LayerRuntime::Video(v) = rt {
+                    v.release_textures(&mut self.texture_cache);
+                }
+            }
             std::thread::Builder::new()
                 .name("fastcat-rt-drop".into())
                 .spawn(move || drop(to_drop))
@@ -674,10 +693,14 @@ impl LayerRuntimeManager {
                     match rt {
                         LayerRuntime::Video(v) => match v.current.as_ref() {
                             Some(f) => CompLayerKind::Raster {
-                                source: if let Some(key) = f.texture_key {
-                                    RasterSource::GpuHandle(key)
-                                } else {
-                                    RasterSource::Image(f.image.clone())
+                                // GPU-handle только если текстура всё ещё в кеше; иначе
+                                // (её вытеснил FIFO/скраб) откатываемся на CPU-blob кадра,
+                                // который всегда при нём — без этого слой бы пропал.
+                                source: match f.texture_key {
+                                    Some(key) if self.texture_cache.contains(key) => {
+                                        RasterSource::GpuHandle(key)
+                                    }
+                                    _ => RasterSource::Image(f.image.clone()),
                                 },
                                 natural_size: v.media_size,
                             },

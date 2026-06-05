@@ -59,6 +59,12 @@ impl TextureCache {
         self.textures.get(&key.0).cloned()
     }
 
+    /// Дёшево проверяет, жива ли текстура под этим ключом (без клонирования Arc).
+    /// Используется сборкой сцены, чтобы решить GPU-handle vs CPU-fallback.
+    pub fn contains(&self, key: TextureKey) -> bool {
+        self.textures.contains_key(&key.0)
+    }
+
     pub fn remove(&mut self, key: TextureKey) -> Option<Arc<wgpu::Texture>> {
         let removed = self.textures.remove(&key.0);
         if removed.is_some() {

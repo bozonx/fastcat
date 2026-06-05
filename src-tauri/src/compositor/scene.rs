@@ -755,12 +755,15 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                     }
                 };
 
+                // Трекинг копится по всей строке, а не сбрасывается на каждом run:
+                // иначе на строке из нескольких run'ов (bidi/смешанные шрифты/эмодзи)
+                // второй run не учитывал бы letter-spacing первого → наезд глифов.
+                let mut glyph_idx = 0;
                 for item in line.items() {
                     let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
-                    
+
                     let run_xform = xform * Affine::translate(((line_x_offset + dx) as f64, (text_block_top_px + dy) as f64));
-                    
-                    let mut glyph_idx = 0;
+
                     let adjusted_glyphs = run.positioned_glyphs().map(|g| {
                         let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
                         glyph_idx += 1;
@@ -831,12 +834,12 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
             }
         };
 
+        let mut glyph_idx = 0;
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
-            
+
             let run_xform = xform * Affine::translate((line_x_offset as f64, text_block_top_px as f64));
-            
-            let mut glyph_idx = 0;
+
             let adjusted_glyphs = run.positioned_glyphs().map(|g| {
                 let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
                 glyph_idx += 1;

@@ -64,10 +64,24 @@ impl VideoFrameCache {
         (pts_sec * CACHE_KEY_HZ).round() as i64
     }
 
-    pub fn insert(&mut self, frame: DecodedVideoFrame) {
+    /// Вставляет кадр и возвращает `texture_key`'и кадров, выбывших из кеша
+    /// (вытеснены по бюджету или перезаписаны тем же ключом). Вызывающий обязан
+    /// удалить их из общего `TextureCache`, иначе GPU-текстуры утекут/осиротеют.
+    #[must_use]
+    pub fn insert(
+        &mut self,
+        frame: DecodedVideoFrame,
+    ) -> Vec<crate::compositor::texture_cache::TextureKey> {
         let key = self.index_of(frame.pts_sec);
-        self.frames.insert(key, frame);
-        self.evict();
+        let mut evicted = Vec::new();
+        if let Some(old) = self.frames.insert(key, frame) {
+            // Тот же мс-ключ перезаписан — старая текстура больше не достижима.
+            if let Some(tk) = old.texture_key {
+                evicted.push(tk);
+            }
+        }
+        self.evict(&mut evicted);
+        evicted
     }
 
     /// Кадр с наибольшим PTS ≤ target (то, что должно быть на экране в момент target).
@@ -156,7 +170,7 @@ impl VideoFrameCache {
         }
     }
 
-    fn evict(&mut self) {
+    fn evict(&mut self, evicted: &mut Vec<crate::compositor::texture_cache::TextureKey>) {
         while self.frames.len() > self.capacity {
             // Вытесняем кадр, наиболее удалённый по индексу от последнего запроса:
             // при скрабе/воспроизведении локальность доступа — вокруг текущей позиции.
@@ -167,11 +181,21 @@ impl VideoFrameCache {
                 .max_by_key(|k| (*k - self.last_request).abs());
             match victim {
                 Some(k) => {
-                    self.frames.remove(&k);
+                    if let Some(frame) = self.frames.remove(&k) {
+                        if let Some(tk) = frame.texture_key {
+                            evicted.push(tk);
+                        }
+                    }
                 }
                 None => break,
             }
         }
+    }
+
+    /// Все `texture_key`'и, которые кеш сейчас держит. Нужны при сбросе рантайма,
+    /// чтобы освободить GPU-текстуры в общем `TextureCache`.
+    pub fn texture_keys(&self) -> impl Iterator<Item = crate::compositor::texture_cache::TextureKey> + '_ {
+        self.frames.values().filter_map(|f| f.texture_key)
     }
 }
 
@@ -199,9 +223,9 @@ mod tests {
     #[test]
     fn frame_le_returns_floor() {
         let mut c = VideoFrameCache::new(30.0, 4);
-        c.insert(frame(0.0));
-        c.insert(frame(1.0));
-        c.insert(frame(2.0));
+        let _ = c.insert(frame(0.0));
+        let _ = c.insert(frame(1.0));
+        let _ = c.insert(frame(2.0));
         assert_eq!(c.frame_le(1.4).map(|f| f.pts_sec), Some(1.0));
         assert_eq!(c.frame_le(-1.0).map(|f| f.pts_sec), None);
     }
@@ -209,7 +233,7 @@ mod tests {
     #[test]
     fn frame_le_with_max_lag_rejects_stale_frames() {
         let mut c = VideoFrameCache::new(30.0, 4);
-        c.insert(frame(1.0));
+        let _ = c.insert(frame(1.0));
 
         assert_eq!(
             c.frame_le_with_max_lag(1.05, 0.1).map(|f| f.pts_sec),
@@ -221,7 +245,7 @@ mod tests {
     #[test]
     fn regular_frame_floor_still_allows_holding_last_frame() {
         let mut c = VideoFrameCache::new(30.0, 4);
-        c.insert(frame(1.0));
+        let _ = c.insert(frame(1.0));
 
         assert_eq!(c.frame_le(1.5).map(|f| f.pts_sec), Some(1.0));
     }
@@ -231,8 +255,8 @@ mod tests {
         // avg fps=30 → интервал 33мс. Два кадра в 10мс друг от друга (типично для VFR)
         // при старом ключе round(pts*fps) схлопнулись бы в один индекс; мс-ключ их различает.
         let mut c = VideoFrameCache::new(30.0, 4);
-        c.insert(frame(1.00));
-        c.insert(frame(1.01));
+        let _ = c.insert(frame(1.00));
+        let _ = c.insert(frame(1.01));
         assert_eq!(c.frames.len(), 2);
         assert_eq!(c.frame_le(1.005).map(|f| f.pts_sec), Some(1.00));
         assert_eq!(c.frame_le(1.02).map(|f| f.pts_sec), Some(1.01));
@@ -242,8 +266,8 @@ mod tests {
     fn nearest_distance_picks_closest_side() {
         let mut c = VideoFrameCache::new(30.0, 4);
         assert_eq!(c.nearest_distance_sec(1.0), None);
-        c.insert(frame(1.0));
-        c.insert(frame(3.0));
+        let _ = c.insert(frame(1.0));
+        let _ = c.insert(frame(3.0));
         assert!((c.nearest_distance_sec(1.2).unwrap() - 0.2).abs() < 1e-6);
         // Ближе к 3.0 (0.4), чем к 1.0 (0.6).
         assert!((c.nearest_distance_sec(2.6).unwrap() - 0.4).abs() < 1e-6);
@@ -252,8 +276,8 @@ mod tests {
     #[test]
     fn frame_nearest_returns_either_side() {
         let mut c = VideoFrameCache::new(30.0, 4);
-        c.insert(frame(1.0));
-        c.insert(frame(3.0));
+        let _ = c.insert(frame(1.0));
+        let _ = c.insert(frame(3.0));
         // Промах le (target < min) всё равно даёт ближайший кадр, а не None.
         assert_eq!(c.frame_nearest(0.0).map(|f| f.pts_sec), Some(1.0));
         assert_eq!(c.frame_nearest(2.9).map(|f| f.pts_sec), Some(3.0));
@@ -263,7 +287,7 @@ mod tests {
     #[test]
     fn has_near_within_tolerance() {
         let mut c = VideoFrameCache::new(30.0, 4);
-        c.insert(frame(1.0));
+        let _ = c.insert(frame(1.0));
         assert!(c.has_near(1.0, 1));
         assert!(!c.has_near(5.0, 1));
     }
@@ -273,11 +297,11 @@ mod tests {
         // frame_bytes huge → capacity = MIN_FRAMES (6).
         let mut c = VideoFrameCache::new(30.0, usize::MAX);
         for i in 0..20 {
-            c.insert(frame(i as f64));
+            let _ = c.insert(frame(i as f64));
         }
         // Запрос у конца — дальние от него (нулевые) кадры должны быть вытеснены.
         let _ = c.frame_le(19.0);
-        c.insert(frame(20.0));
+        let _ = c.insert(frame(20.0));
         assert!(c.frames.len() <= MIN_FRAMES + 1);
         assert!(c.frame_le(0.5).map(|f| f.pts_sec) != Some(0.0));
     }
