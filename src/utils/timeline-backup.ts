@@ -1,5 +1,5 @@
 export function getBackupNumber(fileName: string): number | null {
-  const match = fileName.match(/__bak(\d{3})\.otio$/);
+  const match = fileName.match(/__bak(\d{3,})\.otio$/);
   if (!match) return null;
   return parseInt(match[1]!, 10);
 }
@@ -13,7 +13,8 @@ export function getNextBackupName(baseName: string, existingNames: string[]): st
     }
   }
   const nextNum = maxNum + 1;
-  return `${baseName}__bak${nextNum.toString().padStart(3, '0')}.otio`;
+  const digits = Math.max(3, String(nextNum).length);
+  return `${baseName}__bak${nextNum.toString().padStart(digits, '0')}.otio`;
 }
 
 export function getBackupsToDelete(existingNames: string[], maxCount: number): string[] {

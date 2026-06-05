@@ -345,6 +345,9 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
     markTimelineAsDirty: () => lifecycle.markTimelineAsDirty(),
     requestTimelineSave: (options) => lifecycle.requestTimelineSave(options),
+    saveTimeline: () => lifecycle.saveTimeline(),
+    clearSelection: () => selection.clearSelection(),
+    removeSelectionRange: () => selectionRangeModule.removeSelectionRange(),
   });
 
   function isMobileEditorRoute() {
@@ -423,7 +426,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     // short-circuit `??` and silently skip crash recovery on first/startup load.
     shouldRestoreAutosaveSilently: () => {
       if (skipRecoveryDialog.value) return true;
-      return isMobileEditorRoute() || undefined;
+      return isMobileEditorRoute() ? true : false;
     },
     showRecoveryDialog: ({ timelinePath }) => {
       return new Promise((resolve) => {
@@ -803,7 +806,11 @@ export const useTimelineStore = defineStore('timeline', () => {
     extractAudioToTrack: commands.extractAudioToTrack,
     markTimelineAsDirty: lifecycle.markTimelineAsDirty,
     markTimelineAsCleanForCurrentRevision: lifecycle.markTimelineAsCleanForCurrentRevision,
-    resetTimelineState: lifecycle.resetTimelineState,
+    resetTimelineState() {
+      previewMode.value = false;
+      previewBackupInfo.value = null;
+      lifecycle.resetTimelineState();
+    },
     undoTimeline,
     redoTimeline,
     pushTimelineHistory,

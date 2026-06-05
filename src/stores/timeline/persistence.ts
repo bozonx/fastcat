@@ -367,8 +367,8 @@ export function createTimelinePersistenceModule(
 
   function getAutosaveIntervalMs() {
     const raw = deps.getAutosaveIntervalMs?.() ?? 120_000;
-    // Guard against misconfiguration; never autosave more often than every 10s.
-    return Number.isFinite(raw) && raw >= 10_000 ? raw : 120_000;
+    // Guard against misconfiguration; never autosave more often than every 30s.
+    return Number.isFinite(raw) && raw >= 30_000 ? raw : 120_000;
   }
 
   function scheduleAutosave() {
@@ -378,7 +378,7 @@ export function createTimelinePersistenceModule(
       void flushTimelineAutosave();
       return;
     }
-    if (autosaveTimer !== null) return;
+    clearAutosaveTimer();
     autosaveTimer = window.setTimeout(() => {
       autosaveTimer = null;
       void flushTimelineAutosave();
@@ -418,7 +418,6 @@ export function createTimelinePersistenceModule(
 
         await writeSerializedToPath(autosavePath, serialized);
         if (generation !== autosaveGeneration || !isDirty()) {
-          await deps.deleteAutosaveFile?.(currentTimelinePath);
           return false;
         }
         return true;
@@ -463,9 +462,13 @@ export function createTimelinePersistenceModule(
     autoSave.markDirty();
   }
 
-  async function requestTimelineSave(_options?: { immediate?: boolean }) {
+  async function requestTimelineSave(options?: { immediate?: boolean }) {
     if (!deps.timelineDoc.value) return;
-    scheduleAutosave();
+    if (options?.immediate) {
+      await flushTimelineAutosave();
+    } else {
+      scheduleAutosave();
+    }
   }
 
   async function loadTimeline() {

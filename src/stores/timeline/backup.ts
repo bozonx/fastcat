@@ -59,6 +59,9 @@ export interface TimelineBackupDeps {
   ) => Promise<{ text: string; lastModified: number; size: number } | null>;
   markTimelineAsDirty: () => void;
   requestTimelineSave: (options?: { immediate?: boolean }) => Promise<void>;
+  saveTimeline: () => Promise<void>;
+  clearSelection?: () => void;
+  removeSelectionRange?: () => void;
 }
 
 export interface TimelineBackupModule {
@@ -79,6 +82,25 @@ export interface TimelineBackupModule {
  */
 export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBackupModule {
   const backupVersions = ref<TimelineBackupVersion[]>([]);
+
+  async function readVersionText(version: TimelineBackupVersion): Promise<string> {
+    let text: string | null = null;
+    if (version.type === 'main') {
+      const r = await withFileIoSlot(() =>
+        deps.readTimelineFile(deps.currentTimelinePath.value!),
+      );
+      text = r?.text ?? null;
+    } else if (version.type === 'autosave') {
+      const r = await withFileIoSlot(() =>
+        deps.readTimelineFile(`.fastcat/autosave/${deps.currentTimelinePath.value}`),
+      );
+      text = r?.text ?? null;
+    } else {
+      text = await withFileIoSlot(() => deps.projectStore.readTextByPath(version.path));
+    }
+    if (!text) throw new Error('File not found');
+    return text;
+  }
 
   // Backups are a history of EXPLICIT saves (for rollback), so one is taken on
   // every manual save — `handleBackup` is only wired into `onSaveSuccess`, which
@@ -105,7 +127,9 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       );
 
       const nextName = getNextBackupName(baseName, existingBackupNames);
-      await deps.projectStore.writeTextByPath(`${backupDirStr}${nextName}`, serialized);
+      await withFileIoSlot(() =>
+        deps.projectStore.writeTextByPath(`${backupDirStr}${nextName}`, serialized),
+      );
 
       const toDelete = getBackupsToDelete(existingBackupNames, backupSettings.count);
       for (const name of toDelete) {
@@ -149,7 +173,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
     if (deps.currentTimelinePath.value) {
       await deps.deleteTimelineAutosaveFile(deps.currentTimelinePath.value);
     }
-    await deps.requestTimelineSave({ immediate: true });
+    await deps.saveTimeline();
     deps.toast.add({
       title: deps.t('videoEditor.timeline.backups.versionRestored'),
       color: 'success',
@@ -159,22 +183,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   async function openVersionForPreview(version: TimelineBackupVersion) {
     if (!deps.currentTimelinePath.value) return;
     try {
-      let text: string | null = null;
-      if (version.type === 'main') {
-        const r = await withFileIoSlot(() =>
-          deps.readTimelineFile(deps.currentTimelinePath.value!),
-        );
-        text = r?.text ?? null;
-      } else if (version.type === 'autosave') {
-        const r = await withFileIoSlot(() =>
-          deps.readTimelineFile(`.fastcat/autosave/${deps.currentTimelinePath.value}`),
-        );
-        text = r?.text ?? null;
-      } else {
-        text = await withFileIoSlot(() => deps.projectStore.readTextByPath(version.path));
-      }
-
-      if (!text) throw new Error('File not found');
+      const text = await readVersionText(version);
 
       const fallback = deps.projectStore.createFallbackTimelineDoc();
       const parsed = parseTimelineFromOtio(text, {
@@ -191,6 +200,9 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         path: version.path,
         timestamp: version.date?.getTime() || Date.now(),
       };
+
+      deps.clearSelection?.();
+      deps.removeSelectionRange?.();
 
       deps.duration.value = selectTimelineDurationUs(parsed);
       deps.currentTime.value = 0;
@@ -215,22 +227,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       return;
     }
     try {
-      let text: string | null = null;
-      if (version.type === 'main') {
-        const r = await withFileIoSlot(() =>
-          deps.readTimelineFile(deps.currentTimelinePath.value!),
-        );
-        text = r?.text ?? null;
-      } else if (version.type === 'autosave') {
-        const r = await withFileIoSlot(() =>
-          deps.readTimelineFile(`.fastcat/autosave/${deps.currentTimelinePath.value}`),
-        );
-        text = r?.text ?? null;
-      } else {
-        text = await withFileIoSlot(() => deps.projectStore.readTextByPath(version.path));
-      }
-
-      if (!text) throw new Error('File not found');
+      const text = await readVersionText(version);
 
       const fallback = deps.projectStore.createFallbackTimelineDoc();
       const parsed = parseTimelineFromOtio(text, {
@@ -243,6 +240,9 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       deps.previewMode.value = false;
       deps.previewBackupInfo.value = null;
 
+      deps.clearSelection?.();
+      deps.removeSelectionRange?.();
+
       deps.duration.value = selectTimelineDurationUs(parsed);
       deps.currentTime.value = 0;
 
@@ -251,7 +251,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
       if (deps.currentTimelinePath.value) {
         await deps.deleteTimelineAutosaveFile(deps.currentTimelinePath.value);
       }
-      await deps.requestTimelineSave({ immediate: true });
+      await deps.saveTimeline();
 
       deps.toast.add({
         title: deps.t('videoEditor.timeline.backups.versionRestored'),
@@ -285,6 +285,13 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         }
       } else if (version.type === 'backup') {
         await deps.projectStore.deleteByPath(version.path);
+      } else {
+        log.warn('Cannot delete main file version', version);
+        deps.toast.add({
+          title: deps.t('videoEditor.timeline.backups.cannotDeleteMain'),
+          color: 'warning',
+        });
+        return;
       }
       deps.toast.add({
         title: deps.t('videoEditor.timeline.backups.versionDeleted'),
@@ -346,23 +353,32 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
           .filter((n) => n.startsWith(baseName + '__bak') && n.endsWith('.otio'))
           .sort((a, b) => (getBackupNumber(b) || 0) - (getBackupNumber(a) || 0));
 
-        for (const name of backupNames) {
-          const meta = await deps.projectStore.getFileMetadata(`${backupDirStr}${name}`);
-          const num = getBackupNumber(name);
-          list.push({
-            type: 'backup',
-            name,
-            path: `${backupDirStr}${name}`,
-            date: meta ? new Date(meta.lastModified) : null,
-            size: meta?.size ?? null,
-            label: deps.t('videoEditor.timeline.backups.backupNum', {
-              num: num !== null ? `#${num}` : name,
-            }),
-          });
-        }
+        const backupEntries = await Promise.all(
+          backupNames.map(async (name) => {
+            const meta = await deps.projectStore.getFileMetadata(`${backupDirStr}${name}`);
+            const num = getBackupNumber(name);
+            return {
+              type: 'backup' as const,
+              name,
+              path: `${backupDirStr}${name}`,
+              date: meta ? new Date(meta.lastModified) : null,
+              size: meta?.size ?? null,
+              label: deps.t('videoEditor.timeline.backups.backupNum', {
+                num: num !== null ? `#${num}` : name,
+              }),
+            };
+          }),
+        );
+        list.push(...backupEntries);
       }
     } catch (e) {
       log.warn('Failed to load backup versions', e);
+      deps.toast.add({
+        title: deps.t('videoEditor.timeline.backups.loadError'),
+        color: 'error',
+      });
+      backupVersions.value = [];
+      return;
     }
     backupVersions.value = list;
   }

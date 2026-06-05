@@ -14,6 +14,12 @@ describe('timeline-backup', () => {
     expect(next).toBe('timeline__bak004.otio');
   });
 
+  it('handles backup numbers beyond 999', () => {
+    expect(getBackupNumber('timeline__bak1001.otio')).toBe(1001);
+    const next = getNextBackupName('timeline', ['timeline__bak999.otio']);
+    expect(next).toBe('timeline__bak1000.otio');
+  });
+
   it('returns empty array when backups are below max count', () => {
     const toDelete = getBackupsToDelete(['timeline__bak001.otio', 'timeline__bak002.otio'], 5);
     expect(toDelete).toEqual([]);

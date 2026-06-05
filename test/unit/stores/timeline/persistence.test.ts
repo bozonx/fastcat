@@ -260,6 +260,17 @@ describe('TimelinePersistenceModule', () => {
     expect(onSaveBlockedReadOnly).toHaveBeenCalled();
   });
 
+  it('requestTimelineSave({ immediate: true }) flushes autosave immediately', async () => {
+    const deps = createMockDeps({ timelineDoc: ref({ ...fallbackDoc }) });
+    const mod = createTimelinePersistenceModule(deps);
+    mod.markDirty();
+    await mod.requestTimelineSave({ immediate: true });
+    expect(deps.writeTimelineText).toHaveBeenCalledWith(
+      '.fastcat/autosave/timeline.otio',
+      expect.any(String),
+    );
+  });
+
   it('loadTimeline calls exitPreview at the beginning', async () => {
     const exitPreview = vi.fn();
     const deps = createMockDeps({ exitPreview });

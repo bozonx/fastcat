@@ -32,6 +32,11 @@ describe('getNextBackupName', () => {
   it('pads the number with leading zeros', () => {
     expect(getNextBackupName('cut', ['cut__bak099.otio'])).toBe('cut__bak100.otio');
   });
+
+  it('handles 4-digit backup numbers', () => {
+    expect(getBackupNumber('timeline__bak1001.otio')).toBe(1001);
+    expect(getNextBackupName('timeline', ['timeline__bak999.otio'])).toBe('timeline__bak1000.otio');
+  });
 });
 
 describe('getBackupsToDelete', () => {

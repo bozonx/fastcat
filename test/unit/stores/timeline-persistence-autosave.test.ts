@@ -174,7 +174,7 @@ describe('Timeline Persistence and AutoSave', () => {
     expect(timelineStore.isTimelineDirty).toBe(false);
   });
 
-  it('immediate save request still waits for the configured autosave interval', async () => {
+  it('flushes autosave immediately when requested with immediate flag', async () => {
     const timelineStore = useTimelineStore();
     timelineStore.timelineDoc = {
       OTIO_SCHEMA: 'Timeline.1',
@@ -185,9 +185,6 @@ describe('Timeline Persistence and AutoSave', () => {
 
     timelineStore.markTimelineAsDirty();
     await timelineStore.requestTimelineSave({ immediate: true });
-
-    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
-
     await vi.runAllTimersAsync();
     await Promise.resolve();
 

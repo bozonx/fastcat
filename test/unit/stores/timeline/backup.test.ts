@@ -25,7 +25,13 @@ function makeProjectStoreMock(files: Record<string, FileMeta> = {}) {
       const f = files[p];
       return f ? { lastModified: f.lastModified, size: f.text.length } : null;
     }),
-    createFallbackTimelineDoc: vi.fn(),
+    createFallbackTimelineDoc: vi.fn(() => ({
+      id: 'fallback',
+      name: 'Fallback',
+      tracks: [],
+      timebase: { fps: 30 },
+      metadata: { fastcat: { version: '1', format: { fps: 30 } } },
+    })),
   };
 }
 
@@ -46,6 +52,7 @@ function createMockDeps(overrides: Partial<TimelineBackupDeps> = {}): TimelineBa
     readTimelineFile: vi.fn().mockResolvedValue(null),
     markTimelineAsDirty: vi.fn(),
     requestTimelineSave: vi.fn().mockResolvedValue(undefined),
+    saveTimeline: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -158,7 +165,7 @@ describe('createTimelineBackupModule', () => {
         }),
       );
       expect(deps.markTimelineAsDirty).not.toHaveBeenCalled();
-      expect(deps.requestTimelineSave).not.toHaveBeenCalled();
+      expect(deps.saveTimeline).not.toHaveBeenCalled();
     });
 
     it('restorePreviewVersion shows warning and does nothing when readonly', async () => {
@@ -206,6 +213,150 @@ describe('createTimelineBackupModule', () => {
         }),
       );
       expect(projectStore.deleteByPath).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('restoreVersion', () => {
+    it('calls saveTimeline after restoring a version', async () => {
+      const files: Record<string, FileMeta> = {
+        'project/clip.otio': { text: 'main', lastModified: 1000 },
+      };
+      const deps = createMockDeps({ projectStore: makeProjectStoreMock(files) });
+      deps.readTimelineFile.mockResolvedValue({ text: 'restored', lastModified: 500, size: 8 });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.restoreVersion({
+        type: 'main',
+        name: 'clip.otio',
+        path: 'project/clip.otio',
+        date: new Date(),
+        size: 10,
+        label: 'Main',
+      });
+
+      expect(deps.saveTimeline).toHaveBeenCalled();
+      expect(deps.requestTimelineSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('restorePreviewVersion', () => {
+    it('calls saveTimeline after restoring preview', async () => {
+      const deps = createMockDeps({
+        timelineDoc: ref({ id: 'doc', tracks: [] } as any),
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.restorePreviewVersion();
+
+      expect(deps.saveTimeline).toHaveBeenCalled();
+      expect(deps.requestTimelineSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteBackupVersion', () => {
+    it('warns and does nothing when trying to delete main file', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({ projectStore });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.deleteBackupVersion({
+        type: 'main',
+        name: 'clip.otio',
+        path: 'project/clip.otio',
+        date: new Date(),
+        size: 10,
+        label: 'Main',
+      });
+
+      expect(deps.toast.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'videoEditor.timeline.backups.cannotDeleteMain',
+          color: 'warning',
+        }),
+      );
+      expect(projectStore.deleteByPath).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loadBackupVersions', () => {
+    it('clears list and shows error toast when metadata read fails', async () => {
+      const projectStore = makeProjectStoreMock();
+      projectStore.getFileMetadata.mockRejectedValue(new Error('disk error'));
+      const deps = createMockDeps({ projectStore });
+      const backup = createTimelineBackupModule(deps);
+      backup.backupVersions.value = [
+        { type: 'main', name: 'stale', path: 'x', date: null, size: null, label: 'x' },
+      ];
+
+      await backup.loadBackupVersions();
+
+      expect(backup.backupVersions.value).toEqual([]);
+      expect(deps.toast.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'videoEditor.timeline.backups.loadError',
+          color: 'error',
+        }),
+      );
+    });
+  });
+
+  describe('openVersionForPreview', () => {
+    it('clears selection and selection-range when entering preview', async () => {
+      const clearSelection = vi.fn();
+      const removeSelectionRange = vi.fn();
+      const deps = createMockDeps({
+        readTimelineFile: vi.fn().mockResolvedValue({
+          text: '{"tracks":[]}',
+          lastModified: 1000,
+          size: 13,
+        }),
+        clearSelection,
+        removeSelectionRange,
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.openVersionForPreview({
+        type: 'main',
+        name: 'clip.otio',
+        path: 'project/clip.otio',
+        date: new Date(),
+        size: 10,
+        label: 'Main',
+      });
+
+      expect(deps.previewMode.value).toBe(true);
+      expect(clearSelection).toHaveBeenCalledOnce();
+      expect(removeSelectionRange).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('restoreVersion', () => {
+    it('clears selection and selection-range after restoring', async () => {
+      const clearSelection = vi.fn();
+      const removeSelectionRange = vi.fn();
+      const deps = createMockDeps({
+        readTimelineFile: vi.fn().mockResolvedValue({
+          text: '{"tracks":[]}',
+          lastModified: 1000,
+          size: 13,
+        }),
+        clearSelection,
+        removeSelectionRange,
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.restoreVersion({
+        type: 'main',
+        name: 'clip.otio',
+        path: 'project/clip.otio',
+        date: new Date(),
+        size: 10,
+        label: 'Main',
+      });
+
+      expect(deps.previewMode.value).toBe(false);
+      expect(clearSelection).toHaveBeenCalledOnce();
+      expect(removeSelectionRange).toHaveBeenCalledOnce();
     });
   });
 });

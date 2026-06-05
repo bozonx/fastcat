@@ -14,6 +14,7 @@ export function useConfirmClose() {
 
   function onBeforeUnload(e: BeforeUnloadEvent) {
     if (backgroundTasksStore.hasActiveTasks || timelineStore.hasAnyDirtyTimeline) {
+      void timelineStore.flushTimelineAutosave();
       e.preventDefault();
       // Modern browsers ignore the return value text and show a generic message
       e.returnValue = '';
