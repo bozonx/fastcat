@@ -85,12 +85,11 @@ pub fn export_timeline(
     // Frame count: duration times fps. Keep at least one frame for a zero-length range.
     let frame_count = (((end - start) * fps).round() as u64).max(1);
 
-    let hw_mode = options
-        .hardware_acceleration_mode
-        .as_deref()
-        .unwrap_or("none")
-        .to_string();
-    let hw_enabled = options.enable_hardware_encoding.unwrap_or(false);
+    // Resolve the hardware mode once (auto → vaapi/none, alpha forces software) so
+    // the fallback decision below is based on what the first attempt *actually* used.
+    // Otherwise an "auto" export on a machine without a VAAPI device would render the
+    // whole timeline through software, then needlessly render it a second time.
+    let effective_hw = resolve_export_hw_mode(&options);
 
     // Render the audio mix once so hardware-to-software fallback can reuse the
     // same temporary file instead of running the expensive offline mix twice.
@@ -200,11 +199,26 @@ pub fn export_timeline(
         drop(stdin);
 
         if let Err(error) = render_result {
+            // The write failed because ffmpeg closed the pipe — its stderr almost
+            // always says why (bad encoder, unsupported pix_fmt, …). Surface that
+            // instead of the generic "stdin closed prematurely" we observed locally.
             let mut guard = child.lock();
             let _ = guard.kill();
+            let _ = guard.wait();
             drop(guard);
+            let cancelled = tasks.was_cancelled(task_id);
             tasks.remove(task_id);
-            return Err(error);
+            if cancelled {
+                return Err(anyhow!("cancelled"));
+            }
+            let stderr_text = stderr_handle
+                .map(|h| String::from_utf8_lossy(&h.join().unwrap_or_default()).to_string())
+                .unwrap_or_default();
+            let stderr_text = stderr_text.trim();
+            if stderr_text.is_empty() {
+                return Err(error);
+            }
+            return Err(anyhow!("{error}: {stderr_text}"));
         }
 
         let poll_start = std::time::Instant::now();
@@ -220,6 +234,7 @@ pub fn export_timeline(
                     None => String::new(),
                 };
                 drop(guard);
+                let cancelled = tasks.was_cancelled(task_id);
                 tasks.remove(task_id);
                 if status.success() {
                     if !target_path.exists() {
@@ -229,6 +244,9 @@ pub fn export_timeline(
                         ));
                     }
                     return Ok(());
+                }
+                if cancelled {
+                    return Err(anyhow!("cancelled"));
                 }
                 return Err(anyhow!("ffmpeg export failed: {}", stderr_text.trim()));
             }
@@ -249,7 +267,9 @@ pub fn export_timeline(
     };
 
     let result = match run_attempt(&options) {
-        Err(e) if hw_enabled && hw_mode != "none" => {
+        // Only retry in software if the first attempt was actually hardware-encoded
+        // and didn't fail because the user cancelled it.
+        Err(e) if effective_hw != "none" && !e.to_string().contains("cancelled") => {
             log::warn!("[native-media] HW export failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
@@ -272,30 +292,8 @@ fn build_ffmpeg_args(
     fps: f64,
     target_path: &Path,
 ) -> Vec<String> {
-    let export_alpha = options.export_alpha.unwrap_or(false)
-        && (options.format == "webm" || options.format == "mkv");
-
-    let hw_mode = if options.enable_hardware_encoding.unwrap_or(false) && !export_alpha {
-        let mode = options
-            .hardware_acceleration_mode
-            .as_deref()
-            .unwrap_or("none");
-        if mode == "auto" {
-            let vaapi_dev = options
-                .vaapi_device
-                .as_deref()
-                .unwrap_or("/dev/dri/renderD128");
-            if std::path::Path::new(vaapi_dev).exists() {
-                "vaapi"
-            } else {
-                "none"
-            }
-        } else {
-            mode
-        }
-    } else {
-        "none"
-    };
+    let export_alpha = export_uses_alpha(options);
+    let hw_mode = resolve_export_hw_mode(options);
 
     let mut args = Vec::new();
 
@@ -303,7 +301,7 @@ fn build_ffmpeg_args(
         let vaapi_dev = options
             .vaapi_device
             .as_deref()
-            .unwrap_or("/dev/dri/renderD128");
+            .unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-init_hw_device".to_string(),
             format!("vaapi=gpu:{vaapi_dev}"),
@@ -369,23 +367,15 @@ fn build_ffmpeg_args(
     }
 
     if has_audio {
-        let codec = match options.audio_codec.as_deref() {
-            Some("opus") => "libopus",
-            Some("aac") | None => {
-                if options.format == "webm" {
-                    "libopus"
-                } else {
-                    "aac"
-                }
-            }
-            Some(other) => {
-                if options.format == "webm" && other == "aac" {
-                    "libopus"
-                } else {
-                    other
-                }
-            }
-        };
+        let (codec, substituted) =
+            resolve_audio_encoder(options.audio_codec.as_deref(), &options.format);
+        if substituted {
+            log::warn!(
+                "[native-export] audio codec {:?} not usable for {} container; using {codec}",
+                options.audio_codec,
+                options.format
+            );
+        }
         args.extend(["-c:a".to_string(), codec.to_string()]);
         if let Some(bitrate) = options.audio_bitrate_bps {
             args.extend(["-b:a".to_string(), bitrate.max(1).to_string()]);
@@ -402,6 +392,42 @@ fn build_ffmpeg_args(
 
     args.push(target_path.display().to_string());
     args
+}
+
+/// Alpha export is only meaningful for containers/codecs that carry it (webm/mkv);
+/// it also forces software encoding (HW VAAPI/NVENC paths here don't emit alpha).
+fn export_uses_alpha(options: &NativeExportOptions) -> bool {
+    options.export_alpha.unwrap_or(false)
+        && (options.format == "webm" || options.format == "mkv")
+}
+
+/// Resolves the export hardware mode to a concrete `"vaapi" | "nvdec" | "none"`,
+/// applying the same auto-detection used to build the ffmpeg args. Centralised so
+/// the fallback decision and the arg builder can never disagree.
+fn resolve_export_hw_mode(options: &NativeExportOptions) -> &'static str {
+    if !options.enable_hardware_encoding.unwrap_or(false) || export_uses_alpha(options) {
+        return "none";
+    }
+    match options
+        .hardware_acceleration_mode
+        .as_deref()
+        .unwrap_or("none")
+    {
+        "auto" => {
+            let dev = options
+                .vaapi_device
+                .as_deref()
+                .unwrap_or(DEFAULT_VAAPI_DEVICE);
+            if std::path::Path::new(dev).exists() {
+                "vaapi"
+            } else {
+                "none"
+            }
+        }
+        "vaapi" => "vaapi",
+        "nvdec" | "nvenc" => "nvdec",
+        _ => "none",
+    }
 }
 
 /// Returns a temporary path for the audio mix WAV.

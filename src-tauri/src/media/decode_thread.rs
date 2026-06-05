@@ -197,11 +197,16 @@ fn run_decoder_loop(
         if let Some((generation, time_sec)) = latest_seek {
             current_gen = generation;
             if let Err(e) = decoder.seek(time_sec) {
+                // A failed seek must not kill the decode thread permanently: the
+                // layer would freeze forever with no retry. Park until the next
+                // command (e.g. another seek from the user) and try again then.
                 log::error!("[decode] seek({time_sec}) failed: {e:?}");
-                return;
+                at_eof = true;
+                decoded_after_seek = true;
+            } else {
+                at_eof = false;
+                decoded_after_seek = false;
             }
-            at_eof = false;
-            decoded_after_seek = false;
         }
 
         // Если мы не проигрываем, и уже декодировали один кадр после seek, то нам нечего делать — ждём команду блокирующе.
@@ -246,11 +251,14 @@ fn run_decoder_loop(
                     if let Some((generation, time_sec)) = latest_seek {
                         current_gen = generation;
                         if let Err(e) = decoder.seek(time_sec) {
+                            // Stay alive and parked; a later seek can recover.
                             log::error!("[decode] seek({time_sec}) failed: {e:?}");
-                            return;
+                            at_eof = true;
+                            decoded_after_seek = true;
+                        } else {
+                            at_eof = false;
+                            decoded_after_seek = false;
                         }
-                        at_eof = false;
-                        decoded_after_seek = false;
                     }
                     continue;
                 }
@@ -329,8 +337,11 @@ fn run_decoder_loop(
                 at_eof = true;
             }
             Err(e) => {
+                // Don't tear down the thread on a transient decode error — that
+                // would freeze the layer with no way back. Park as if at EOF; a
+                // subsequent seek resets `at_eof` and retries decoding.
                 log::error!("[decode] next_frame failed: {e:?}");
-                return;
+                at_eof = true;
             }
         }
     }

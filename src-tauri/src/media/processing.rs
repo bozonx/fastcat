@@ -1,31 +1,53 @@
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
+
+use crate::media::decode_gate::decoder_load_gate;
 
 #[derive(Clone, Default)]
 pub struct NativeMediaTasks {
     children: Arc<Mutex<HashMap<String, Arc<Mutex<Child>>>>>,
+    /// Task ids that were explicitly cancelled, so a non-zero exit can be reported
+    /// as a cancellation rather than an opaque ffmpeg failure.
+    cancelled: Arc<Mutex<HashSet<String>>>,
 }
 
 impl NativeMediaTasks {
     pub(crate) fn insert(&self, task_id: &str, child: Child) -> Arc<Mutex<Child>> {
         let child = Arc::new(Mutex::new(child));
-        self.children.lock().insert(task_id.to_string(), child.clone());
+        self.cancelled.lock().remove(task_id);
+        // Reusing a task id while a previous process is still registered would
+        // orphan that process (cancel only ever sees the latest). Kill the old one.
+        let previous = self
+            .children
+            .lock()
+            .insert(task_id.to_string(), child.clone());
+        if let Some(previous) = previous {
+            let mut guard = previous.lock();
+            let _ = guard.kill();
+            let _ = guard.wait();
+        }
         child
     }
 
     pub(crate) fn remove(&self, task_id: &str) {
         self.children.lock().remove(task_id);
+        self.cancelled.lock().remove(task_id);
+    }
+
+    pub(crate) fn was_cancelled(&self, task_id: &str) -> bool {
+        self.cancelled.lock().contains(task_id)
     }
 
     pub fn cancel(&self, task_id: &str) -> bool {
+        self.cancelled.lock().insert(task_id.to_string());
         let child = self.children.lock().get(task_id).cloned();
         let Some(child) = child else {
             return false;
@@ -235,7 +257,7 @@ pub fn generate_proxy(
     let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
     let hw_decode = if hw_accel != "none" {
         if hw_accel == "auto" {
-            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
             if std::path::Path::new(vaapi_dev).exists() {
                 "vaapi"
             } else {
@@ -257,7 +279,7 @@ pub fn generate_proxy(
     let mut args = Vec::new();
 
     if hw_encode == "vaapi" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-init_hw_device".to_string(),
             format!("vaapi=gpu:{vaapi_dev}"),
@@ -272,7 +294,7 @@ pub fn generate_proxy(
     ]);
 
     if hw_decode == "vaapi" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-hwaccel".to_string(),
             "vaapi".to_string(),
@@ -356,7 +378,7 @@ pub fn generate_proxy(
             }
             Ok(())
         }
-        Err(e) if hw_encode != "none" => {
+        Err(e) if hw_encode != "none" && !e.to_string().contains("cancelled") => {
             log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
@@ -376,7 +398,7 @@ pub fn convert_media(
     let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
     let hw_decode = if hw_accel != "none" {
         if hw_accel == "auto" {
-            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
             if std::path::Path::new(vaapi_dev).exists() {
                 "vaapi"
             } else {
@@ -398,7 +420,7 @@ pub fn convert_media(
     let mut args = Vec::new();
 
     if hw_encode == "vaapi" && options.kind == "video" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-init_hw_device".to_string(),
             format!("vaapi=gpu:{vaapi_dev}"),
@@ -413,7 +435,7 @@ pub fn convert_media(
     ]);
 
     if hw_decode == "vaapi" && options.kind == "video" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-hwaccel".to_string(),
             "vaapi".to_string(),
@@ -505,7 +527,7 @@ pub fn convert_media(
             }
             Ok(())
         }
-        Err(e) if hw_encode != "none" => {
+        Err(e) if hw_encode != "none" && !e.to_string().contains("cancelled") => {
             log::warn!("[native-media] HW conversion failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
@@ -523,6 +545,9 @@ pub fn extract_video_frame_webp(
     quality: f32,
     hw_settings: crate::FfmpegHardwareSettings,
 ) -> Result<Vec<u8>> {
+    // Throttle concurrent decoder/ffmpeg spawns the same way the monitor does, so a
+    // media panel full of clips can't flood the machine with parallel ffmpeg starts.
+    let _permit = decoder_load_gate().acquire();
     let metadata = probe_media(source_path, &hw_settings.ffprobe_path)?;
     let video = metadata
         .video
@@ -618,6 +643,7 @@ pub fn extract_video_frame_webps(
         .collect();
     sorted_times.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
+    let _permit = decoder_load_gate().acquire();
     let max_edge = max_width.max(max_height);
     let mut decoder = crate::media::decode::open(source_path, Some(max_edge))?;
     let mut results = vec![None; times_sec.len()];
@@ -638,12 +664,25 @@ pub fn extract_video_frame_webps(
         }
 
         let mut last_frame = None;
-        while let Ok(Some(frame)) = decoder.next_frame() {
-            last_pts = frame.pts_sec;
-            let current_pts = frame.pts_sec;
-            last_frame = Some(frame);
-            if current_pts >= target_time {
-                break;
+        loop {
+            match decoder.next_frame() {
+                Ok(Some(frame)) => {
+                    last_pts = frame.pts_sec;
+                    let current_pts = frame.pts_sec;
+                    last_frame = Some(frame);
+                    if current_pts >= target_time {
+                        break;
+                    }
+                }
+                Ok(None) => break, // EOF
+                Err(e) => {
+                    log::warn!(
+                        "[native-media] decode failed at {:.3}s for {}: {e}",
+                        target_time,
+                        source_path.display()
+                    );
+                    break;
+                }
             }
         }
 
@@ -722,6 +761,11 @@ pub fn extract_video_frame_webps(
     Ok(results)
 }
 
+/// Kill a job if ffmpeg makes no progress (no stderr output) for this long. A
+/// stall guard rather than a wall-clock cap, so a legitimately long encode that
+/// keeps emitting progress is never killed mid-run.
+const FFMPEG_STALL_TIMEOUT: Duration = Duration::from_secs(300);
+
 fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, ffmpeg_path: &str, args: Vec<String>) -> Result<()> {
     verify_ffmpeg_binary(ffmpeg_path).context("ffmpeg binary check failed")?;
     let mut child = Command::new(ffmpeg_path)
@@ -732,19 +776,29 @@ fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, ffmpeg_path: &str, a
         .spawn()
         .context("failed to spawn ffmpeg")?;
 
-    // Drain stderr in a background thread to prevent pipe deadlock on long runs.
+    // Drain stderr in a background thread (prevents pipe deadlock) and record the
+    // last time ffmpeg wrote anything, so the poll loop can detect a true stall.
+    let last_activity = Arc::new(Mutex::new(Instant::now()));
+    let activity = last_activity.clone();
     let stderr_handle = child.stderr.take().map(|mut stderr| {
         std::thread::spawn(move || {
             let mut buf = Vec::new();
-            let _ = std::io::Read::read_to_end(&mut stderr, &mut buf);
+            let mut chunk = [0u8; 4096];
+            loop {
+                match std::io::Read::read(&mut stderr, &mut chunk) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        *activity.lock() = Instant::now();
+                        buf.extend_from_slice(&chunk[..n]);
+                    }
+                    Err(_) => break,
+                }
+            }
             buf
         })
     });
 
     let child = tasks.insert(task_id, child);
-
-    let start = std::time::Instant::now();
-    const TIMEOUT: Duration = Duration::from_secs(3600);
 
     loop {
         let mut guard = child.lock();
@@ -756,31 +810,42 @@ fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, ffmpeg_path: &str, a
                 None => String::new(),
             };
             drop(guard);
+            let cancelled = tasks.was_cancelled(task_id);
             tasks.remove(task_id);
             if status.success() {
                 return Ok(());
+            }
+            if cancelled {
+                return Err(anyhow!("cancelled"));
             }
             return Err(anyhow!("ffmpeg failed: {}", stderr_text.trim()));
         }
         drop(guard);
         std::thread::sleep(Duration::from_millis(100));
-        if start.elapsed() > TIMEOUT {
+        if last_activity.lock().elapsed() > FFMPEG_STALL_TIMEOUT {
             let mut guard = child.lock();
             let _ = guard.kill();
             let _ = guard.wait();
             drop(guard);
             tasks.remove(task_id);
-            return Err(anyhow!("ffmpeg timed out after {} seconds", TIMEOUT.as_secs()));
+            return Err(anyhow!(
+                "ffmpeg stalled: no progress for {} seconds",
+                FFMPEG_STALL_TIMEOUT.as_secs()
+            ));
         }
     }
 }
 
 fn audio_args(options: &NativeConvertOptions) -> Vec<String> {
-    let codec = match options.audio_codec.as_deref().unwrap_or("aac") {
-        "opus" => "libopus",
-        "aac" => "aac",
-        other => other,
-    };
+    let (codec, substituted) =
+        resolve_audio_encoder(options.audio_codec.as_deref(), &options.format);
+    if substituted {
+        log::warn!(
+            "[native-media] audio codec {:?} not usable for {} container; using {codec}",
+            options.audio_codec,
+            options.format
+        );
+    }
     let mut args = vec![
         "-c:a".to_string(),
         codec.to_string(),
@@ -871,6 +936,25 @@ mod tests {
         assert_eq!(ffmpeg_video_codec("avc1.64001f"), "libx264");
         assert_eq!(ffmpeg_video_codec("av01.0.05M.08"), "libsvtav1");
         assert_eq!(ffmpeg_video_codec("vp09.00.10.08"), "libvpx-vp9");
+        // HEVC must map to libx265, not silently downgrade to H.264.
+        assert_eq!(ffmpeg_video_codec("hevc"), "libx265");
+        assert_eq!(ffmpeg_video_codec("hvc1.1.6.L93.B0"), "libx265");
+        assert_eq!(ffmpeg_video_codec("h265"), "libx265");
+    }
+
+    #[test]
+    fn resolve_audio_encoder_remaps_unsupported_for_container() {
+        // aac requested for webm → opus (substituted).
+        assert_eq!(resolve_audio_encoder(Some("aac"), "webm"), ("libopus", true));
+        // aac for mp4 is fine.
+        assert_eq!(resolve_audio_encoder(Some("aac"), "mp4"), ("aac", false));
+        // opus passes through.
+        assert_eq!(resolve_audio_encoder(Some("opus"), "webm"), ("libopus", false));
+        // Unknown codec falls back to a safe default per container.
+        assert_eq!(resolve_audio_encoder(Some("garbage"), "mp4"), ("aac", true));
+        assert_eq!(resolve_audio_encoder(Some("garbage"), "webm"), ("libopus", true));
+        // None defaults sensibly.
+        assert_eq!(resolve_audio_encoder(None, "mp4"), ("aac", false));
     }
 
     #[test]

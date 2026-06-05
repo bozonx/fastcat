@@ -29,7 +29,9 @@ use crate::media::image_decode::decode_image;
 use super::frame_cache::{DecodedVideoFrame, VideoFrameCache};
 use super::handle::MonitorCommand;
 use super::scene::{LayerKind, MonitorScene, PreviewSyncMode, SceneLayer};
-use super::scene_build::{build_virtual_kind, finalize_layer, rasterize_svg};
+use super::scene_build::{
+    build_virtual_kind, finalize_layer, layer_with_auto_source_rotation, rasterize_svg,
+};
 
 const EVT_LAYER_FAILED: &str = "monitor:layer_failed";
 const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
@@ -741,20 +743,6 @@ impl LayerRuntimeManager {
     }
 }
 
-fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> SceneLayer {
-    if source_rotation.rem_euclid(360) == 0 {
-        return layer.clone();
-    }
-    match layer.source_orientation.as_deref() {
-        None | Some("auto") => {
-            let mut layer = layer.clone();
-            layer.source_orientation = Some(source_rotation.rem_euclid(360).to_string());
-            layer
-        }
-        Some(_) => layer.clone(),
-    }
-}
-
 /// Защищает preview-FPS: только конечные положительные значения, зажатые в разумный
 /// диапазон. Невалидный вход → 30 fps (как `default_fps`).
 pub fn sanitize_preview_fps(fps: f64) -> f64 {
@@ -840,8 +828,8 @@ fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::approx_eq_opt_scale;
-    use super::layer_with_auto_source_rotation;
     use super::sanitize_preview_fps;
+    use crate::monitor::scene_build::layer_with_auto_source_rotation;
     use super::svg_target_long_edge;
     use super::video_sync_lag_sec;
     use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};

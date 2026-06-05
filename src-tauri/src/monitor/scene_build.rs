@@ -313,6 +313,24 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
 /// Финализирует `CompLayerKind` в `Layer`: transform (явный или center-fit),
 /// opacity и blend-mode из IPC-слоя.
+/// Returns a copy of `layer` with `source_orientation` resolved from the decoder's
+/// detected rotation when the layer left it as auto/unset. An explicit orientation
+/// from the front-end always wins. Shared by the preview runtime and export render
+/// paths so both apply rotation identically.
+pub fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> SceneLayer {
+    if source_rotation.rem_euclid(360) == 0 {
+        return layer.clone();
+    }
+    match layer.source_orientation.as_deref() {
+        None | Some("auto") => {
+            let mut layer = layer.clone();
+            layer.source_orientation = Some(source_rotation.rem_euclid(360).to_string());
+            layer
+        }
+        Some(_) => layer.clone(),
+    }
+}
+
 pub fn finalize_layer(
     sl: &SceneLayer,
     kind: CompLayerKind,

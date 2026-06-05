@@ -8,18 +8,105 @@ use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat as Vello
 
 use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene};
 use crate::compositor::Compositor;
-use crate::media::decode::{open as open_decoder, VideoDecoder, VideoFrame};
+use crate::media::decode::{open as open_decoder, VideoDecoder};
 use crate::media::image_decode::decode_image;
 use crate::monitor::scene::{LayerKind, MonitorScene, SceneLayer};
-use crate::monitor::scene_build::{build_virtual_kind, finalize_layer, rasterize_svg};
+use crate::monitor::scene_build::{
+    build_virtual_kind, finalize_layer, layer_with_auto_source_rotation, rasterize_svg,
+};
 
 struct RasterBuild {
     kind: CompLayerKind,
     source_rotation: i32,
 }
 
+/// A decoded RGBA frame produced for export. Cheap to clone: the pixel buffer is
+/// shared via `Arc`, so holding/reusing the last frame costs a refcount bump.
+#[derive(Clone)]
+struct ExportFrame {
+    width: u32,
+    height: u32,
+    pixels: Arc<Vec<u8>>,
+    pts_sec: f64,
+}
+
+/// One open decoder plus the last frame it produced.
+///
+/// Export advances time monotonically, so the previous decoder position is almost
+/// always exactly where the next frame should come from: we pull forward instead of
+/// re-seeking. A `seek` flushes the decoder and re-decodes from the preceding
+/// keyframe, so seeking every output frame was `O(N · GOP)` — pathological on long
+/// GOP codecs. We only seek on a backward step or a large forward jump.
+struct CachedDecoder {
+    decoder: Box<dyn VideoDecoder>,
+    rotation: i32,
+    fps: f64,
+    last: Option<ExportFrame>,
+}
+
+impl CachedDecoder {
+    /// Forward gap (seconds) beyond which seeking to a nearer keyframe beats
+    /// decoding every intermediate frame.
+    const MAX_SEQUENTIAL_GAP_SEC: f64 = 2.0;
+
+    fn frame_at(&mut self, time_sec: f64) -> Result<ExportFrame> {
+        let fps = if self.fps.is_finite() && self.fps > 0.0 {
+            self.fps
+        } else {
+            30.0
+        };
+        let tol = 0.5 / fps;
+
+        let need_seek = match &self.last {
+            None => true,
+            Some(last) => {
+                time_sec < last.pts_sec - tol
+                    || time_sec - last.pts_sec > Self::MAX_SEQUENTIAL_GAP_SEC
+            }
+        };
+        if need_seek {
+            self.decoder.seek(time_sec)?;
+            self.last = None;
+        } else if let Some(last) = &self.last {
+            // Target hasn't advanced past the frame we already hold — reuse it
+            // (e.g. export fps higher than source fps, or a freeze frame).
+            if last.pts_sec >= time_sec - tol {
+                return Ok(last.clone());
+            }
+        }
+
+        loop {
+            match self.decoder.next_frame()? {
+                Some(mut frame) => {
+                    // VideoFrame implements Drop (texture pooling), so move pixels out
+                    // via take rather than a field move.
+                    let ef = ExportFrame {
+                        width: frame.width,
+                        height: frame.height,
+                        pts_sec: frame.pts_sec,
+                        pixels: Arc::new(std::mem::take(&mut frame.pixels)),
+                    };
+                    let reached = ef.pts_sec >= time_sec - tol;
+                    self.last = Some(ef.clone());
+                    if reached {
+                        return Ok(ef);
+                    }
+                }
+                None => {
+                    // EOF (e.g. target rounded just past the source end): hold the
+                    // last decoded frame rather than aborting the whole export.
+                    if let Some(last) = &self.last {
+                        return Ok(last.clone());
+                    }
+                    return Err(anyhow!("video decoder returned no frame"));
+                }
+            }
+        }
+    }
+}
+
 pub struct VideoDecoderCache {
-    decoders: HashMap<PathBuf, Box<dyn VideoDecoder>>,
+    decoders: HashMap<PathBuf, CachedDecoder>,
     lru: VecDeque<PathBuf>,
     capacity: usize,
 }
@@ -33,7 +120,7 @@ impl VideoDecoderCache {
         }
     }
 
-    pub fn get_or_insert(&mut self, path: &Path) -> Result<&mut dyn VideoDecoder> {
+    fn get_or_insert(&mut self, path: &Path) -> Result<&mut CachedDecoder> {
         let path_buf = path.to_path_buf();
         if !self.decoders.contains_key(&path_buf) {
             while self.decoders.len() >= self.capacity && !self.decoders.is_empty() {
@@ -44,11 +131,23 @@ impl VideoDecoderCache {
                 }
             }
             let decoder = open_decoder(path, None)?;
-            self.decoders.insert(path_buf.clone(), decoder);
+            let (rotation, fps) = {
+                let info = decoder.info();
+                (info.rotation, info.fps)
+            };
+            self.decoders.insert(
+                path_buf.clone(),
+                CachedDecoder {
+                    decoder,
+                    rotation,
+                    fps,
+                    last: None,
+                },
+            );
         }
         self.lru.retain(|p| p != &path_buf);
         self.lru.push_back(path_buf.clone());
-        Ok(self.decoders.get_mut(&path_buf).unwrap().as_mut())
+        Ok(self.decoders.get_mut(&path_buf).unwrap())
     }
 }
 
@@ -170,15 +269,27 @@ fn build_raster_kind(
 ) -> Result<Option<RasterBuild>> {
     let built = match layer.kind {
         LayerKind::Video => {
-            let (frame, source_rotation) = decode_video_frame_cached(
+            let (frame, source_rotation) = match decode_video_frame_cached(
                 Path::new(&layer.path),
                 layer.source_pts_at(time_sec),
                 cache,
-            )?;
+            ) {
+                Ok(decoded) => decoded,
+                Err(e) => {
+                    // A single unreadable frame must not abort the whole export;
+                    // skip this layer for this frame and keep going.
+                    log::warn!(
+                        "[native-export] skipping video layer {} at {:.3}s: {e}",
+                        layer.path,
+                        time_sec
+                    );
+                    return Ok(None);
+                }
+            };
             let size = (frame.width, frame.height);
             RasterBuild {
                 kind: CompLayerKind::Raster {
-                    source: RasterSource::Image(video_frame_to_image(frame)),
+                    source: RasterSource::Image(export_frame_to_image(&frame)),
                     natural_size: size,
                 },
                 source_rotation,
@@ -213,33 +324,17 @@ fn decode_video_frame_cached(
     path: &Path,
     time_sec: f64,
     cache: &mut VideoDecoderCache,
-) -> Result<(VideoFrame, i32)> {
-    let decoder = cache.get_or_insert(path)?;
-    let source_rotation = decoder.info().rotation;
-    decoder.seek(time_sec)?;
-    let frame = decoder
-        .next_frame()?
-        .ok_or_else(|| anyhow!("video decoder returned no frame"))?;
-    Ok((frame, source_rotation))
+) -> Result<(ExportFrame, i32)> {
+    let cached = cache.get_or_insert(path)?;
+    let rotation = cached.rotation;
+    let frame = cached.frame_at(time_sec)?;
+    Ok((frame, rotation))
 }
 
-fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> SceneLayer {
-    if source_rotation.rem_euclid(360) == 0 {
-        return layer.clone();
-    }
-    match layer.source_orientation.as_deref() {
-        None | Some("auto") => {
-            let mut layer = layer.clone();
-            layer.source_orientation = Some(source_rotation.rem_euclid(360).to_string());
-            layer
-        }
-        Some(_) => layer.clone(),
-    }
-}
-
-fn video_frame_to_image(frame: VideoFrame) -> ImageData {
+fn export_frame_to_image(frame: &ExportFrame) -> ImageData {
     ImageData {
-        data: Blob::new(Arc::new(frame.pixels.clone())),
+        // Arc clone: shares the decoded buffer with the cached `last` frame.
+        data: Blob::new(frame.pixels.clone()),
         format: VelloImageFormat::Rgba8,
         alpha_type: ImageAlphaType::Alpha,
         width: frame.width,
