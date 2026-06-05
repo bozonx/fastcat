@@ -232,6 +232,13 @@ config.global.stubs = {
         <button v-if="close" class="modal-close" @click="$emit('update:open', false)">×</button>
       </div>
     `,
+    watch: {
+      open(val: boolean) {
+        if (val && (this as any).content?.onOpenAutoFocus) {
+          (this as any).content.onOpenAutoFocus(new Event('openAutoFocus'));
+        }
+      },
+    },
   },
 };
 

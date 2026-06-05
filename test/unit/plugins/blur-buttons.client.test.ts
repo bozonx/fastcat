@@ -87,4 +87,70 @@ describe('blur-buttons.client plugin', () => {
     });
     normalDiv.dispatchEvent(event);
   });
+
+  it('does not blur buttons inside a dialog (role="dialog")', () => {
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    const dialogButton = document.createElement('button');
+    dialog.appendChild(dialogButton);
+    document.body.appendChild(dialog);
+
+    dialogButton.focus();
+    expect(document.activeElement).toBe(dialogButton);
+
+    const event = new PointerEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      pointerType: 'mouse',
+    });
+    dialogButton.dispatchEvent(event);
+
+    expect(document.activeElement).toBe(dialogButton);
+
+    dialog.remove();
+  });
+
+  it('does not blur buttons inside [data-reka-dialog-content]', () => {
+    const modal = document.createElement('div');
+    modal.setAttribute('data-reka-dialog-content', '');
+    const modalButton = document.createElement('button');
+    modal.appendChild(modalButton);
+    document.body.appendChild(modal);
+
+    modalButton.focus();
+    expect(document.activeElement).toBe(modalButton);
+
+    const event = new PointerEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      pointerType: 'mouse',
+    });
+    modalButton.dispatchEvent(event);
+
+    expect(document.activeElement).toBe(modalButton);
+
+    modal.remove();
+  });
+
+  it('does not blur a button that is not currently focused', () => {
+    const otherButton = document.createElement('button');
+    document.body.appendChild(otherButton);
+
+    // Focus another element
+    otherButton.focus();
+    expect(document.activeElement).toBe(otherButton);
+
+    // Click the first button (which is not focused)
+    const event = new PointerEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      pointerType: 'mouse',
+    });
+    button.dispatchEvent(event);
+
+    // The actually focused element should remain focused
+    expect(document.activeElement).toBe(otherButton);
+
+    otherButton.remove();
+  });
 });

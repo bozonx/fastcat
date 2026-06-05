@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
 import 'splitpanes/dist/splitpanes.css';
 import { useEventListener } from '@vueuse/core';
 
@@ -46,6 +46,16 @@ const {
   cancelUpload,
 } = useGlobalDragAndDrop();
 const fileManager = useFileManager();
+
+watch(
+  () => projectStore.currentProjectName,
+  (name) => {
+    if (name) {
+      void fileManager.loadProjectDirectory({ fullRefresh: true });
+    }
+  },
+  { immediate: true },
+);
 
 // isEditorSettingsOpen and isProjectSettingsOpen are now in uiStore
 const isStartingUp = ref(true);
