@@ -464,6 +464,7 @@ async function buildAudioLayers(params: {
       timeline_start_sec: startUs / 1_000_000,
       timeline_end_sec: (startUs + durationUs) / 1_000_000,
       source_start_sec: clip.sourceRange.startUs / 1_000_000,
+      source_range_duration_sec: Math.max(0, clip.sourceRange.durationUs) / 1_000_000,
       speed: sanitizeAudioSpeed(clip.speed),
       audio_gain: Math.max(
         0,

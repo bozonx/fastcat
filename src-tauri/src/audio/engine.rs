@@ -645,6 +645,7 @@ fn producer_loop(
     output_channels: usize,
 ) {
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
+    let chunk_duration_sec = chunk_frames as f64 / sample_rate as f64;
     let limit_samples = chunk_frames * output_channels * PREBUFFER_CHUNKS;
 
     // Cached clones of the scene/tracks, refreshed only when `scene_serial`
@@ -709,7 +710,7 @@ fn producer_loop(
             tracks,
             master_gain,
             chunk_start,
-            CHUNK_DURATION_SEC,
+            chunk_duration_sec,
             sample_rate,
             output_channels,
             &shared,
@@ -725,7 +726,7 @@ fn producer_loop(
         }
         if ring.len() < limit_samples {
             ring.push_slice(&chunk);
-            state.producer_pts_sec += CHUNK_DURATION_SEC;
+            state.producer_pts_sec += chunk_duration_sec;
         }
     }
 }
@@ -1006,10 +1007,9 @@ fn mix_layer_into(
 
     let speed = sanitize_speed(layer.speed.abs());
     let source_start = if reversed {
-        let source_start_in_range = ((layer.timeline_end_sec - segment_end) * speed).max(0.0);
-        layer.source_start_sec + source_start_in_range
+        layer.source_pts_at(segment_end)
     } else {
-        layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed
+        layer.source_pts_at(segment_start)
     };
 
     let mut decoded = match decode_audio_chunk(
@@ -2081,6 +2081,7 @@ mod tests {
             timeline_start_sec: 0.0,
             timeline_end_sec: 10.0,
             source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
             speed: 1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,
@@ -2733,6 +2734,7 @@ mod tests {
             timeline_start_sec: 0.0,
             timeline_end_sec: 10.0,
             source_start_sec: 5.0,
+            source_range_duration_sec: 0.0,
             speed: -1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,
@@ -2744,10 +2746,10 @@ mod tests {
         // chunk covering timeline 0..0.05
         let _segment_start = 0.0;
         let segment_end = 0.05;
-        let speed = l.speed.abs();
-        let source_start = ((l.timeline_end_sec - segment_end) * speed).max(0.0) + l.source_start_sec;
+        let source_start = l.source_pts_at(segment_end);
         // For reverse playback the first output samples come from the end of the source range.
-        assert!((source_start - 14.95).abs() < 1e-9, "expected 14.95, got {}", source_start);
+        // source_pts_at clamps with SOURCE_END_GUARD_SEC (1 ms), so 14.95 becomes 14.949.
+        assert!((source_start - 14.949).abs() < 1e-9, "expected 14.949, got {}", source_start);
     }
 
     #[test]
@@ -2759,6 +2761,7 @@ mod tests {
             timeline_start_sec: 0.0,
             timeline_end_sec: 10.0,
             source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
             speed: -1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,
@@ -2793,6 +2796,7 @@ mod tests {
             timeline_start_sec: 0.0,
             timeline_end_sec: 10.0,
             source_start_sec: 0.0,
+            source_range_duration_sec: 0.0,
             speed: -1.0,
             audio_gain: 1.0,
             audio_balance: 0.0,

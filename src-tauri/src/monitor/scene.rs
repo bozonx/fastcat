@@ -205,6 +205,9 @@ pub struct SceneAudioLayer {
     pub timeline_start_sec: f64,
     pub timeline_end_sec: f64,
     pub source_start_sec: f64,
+    /// Длина доступного source-range в исходнике. Нужна для speed/reverse clamp.
+    #[serde(default)]
+    pub source_range_duration_sec: f64,
     #[serde(default = "one")]
     pub speed: f64,
     #[serde(default = "one")]
@@ -219,6 +222,29 @@ pub struct SceneAudioLayer {
     pub audio_fade_in_curve: AudioFadeCurve,
     #[serde(default)]
     pub audio_fade_out_curve: AudioFadeCurve,
+}
+
+impl SceneAudioLayer {
+    pub fn source_pts_at(&self, timeline_sec: f64) -> f64 {
+        let local = (timeline_sec - self.timeline_start_sec).max(0.0);
+        let speed = sanitize_clip_speed(self.speed);
+        let abs_speed = speed.abs();
+        let source_range =
+            if self.source_range_duration_sec.is_finite() && self.source_range_duration_sec > 0.0 {
+                self.source_range_duration_sec
+            } else {
+                (self.timeline_end_sec - self.timeline_start_sec).max(0.0) * abs_speed
+            };
+        let last_readable = (source_range - SOURCE_END_GUARD_SEC).max(0.0);
+        let source_delta = local * abs_speed;
+        let source_offset = if speed < 0.0 {
+            (last_readable - source_delta).clamp(0.0, last_readable)
+        } else {
+            source_delta.clamp(0.0, last_readable)
+        };
+
+        (self.source_start_sec + source_offset).max(0.0)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -416,5 +442,49 @@ mod tests {
         assert_eq!(layer.blend_mode, "screen");
         assert_eq!(layer.text.as_deref(), Some("Hello"));
         assert_eq!(layer.style.unwrap()["fontSize"], 72);
+    }
+
+    fn audio_layer(start: f64, end: f64, source_start: f64) -> SceneAudioLayer {
+        SceneAudioLayer {
+            id: "a".into(),
+            track_id: None,
+            path: "/tmp/a.wav".into(),
+            timeline_start_sec: start,
+            timeline_end_sec: end,
+            source_start_sec: source_start,
+            source_range_duration_sec: (end - start).max(0.0),
+            speed: 1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: AudioFadeCurve::Linear,
+            audio_fade_out_curve: AudioFadeCurve::Linear,
+        }
+    }
+
+    #[test]
+    fn audio_source_pts_at_offsets_by_timeline_start() {
+        let l = audio_layer(10.0, 20.0, 3.5);
+        assert!((l.source_pts_at(10.0) - 3.5).abs() < 1e-9);
+        assert!((l.source_pts_at(12.0) - 5.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn audio_source_pts_at_applies_speed_and_reverse() {
+        let mut l = audio_layer(10.0, 20.0, 3.5);
+        l.source_range_duration_sec = 20.0;
+        l.speed = 2.0;
+        assert!((l.source_pts_at(12.0) - 7.5).abs() < 1e-9);
+
+        l.speed = -2.0;
+        assert!((l.source_pts_at(10.0) - 23.499).abs() < 1e-9);
+        assert!((l.source_pts_at(12.0) - 19.499).abs() < 1e-9);
+    }
+
+    #[test]
+    fn audio_source_pts_clamps_to_zero_before_timeline_start() {
+        let l = audio_layer(10.0, 20.0, 0.0);
+        assert_eq!(l.source_pts_at(5.0), 0.0);
     }
 }
