@@ -146,4 +146,22 @@ describe('useProjectLock', () => {
     );
     expect(beforeunloadCalls).toHaveLength(0);
   });
+
+  it('returns trivial stubs when running under Tauri', async () => {
+    vi.stubGlobal('window', {
+      __TAURI_INTERNALS__: {},
+    });
+
+    const lock = useProjectLock();
+    expect(await lock.acquireLock('project-1')).toBe(true);
+    expect(await lock.stealLock('project-1')).toBe(true);
+    expect(lock.isLocked()).toBe(true);
+    expect(lock.isLockLost.value).toBe(false);
+
+    // setOnBeforeRelease should accept a callback without error
+    lock.setOnBeforeRelease(async () => {});
+    // releaseLock should be a no-op
+    await lock.releaseLock();
+    expect(lock.isLocked()).toBe(true);
+  });
 });

@@ -58,6 +58,7 @@ describe('tauri media processing byte handling', () => {
     expect(invokeMock).toHaveBeenCalledWith('native_media_extract_peaks', {
       path: '/tmp/audio.wav',
       maxLength: 2,
+      precision: 0,
     });
     expect(peaks).toHaveLength(2);
     expect(Array.from(peaks[0]!)).toEqual(

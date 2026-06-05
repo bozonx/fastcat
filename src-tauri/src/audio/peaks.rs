@@ -2,10 +2,11 @@ use anyhow::{anyhow, Context, Result};
 use std::path::Path;
 use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{Decoder, DecoderOptions};
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::formats::FormatReader;
+use symphonia::core::formats::{FormatOptions, FormatReader};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
+
+const MAX_PEAK_LENGTH: usize = 500_000;
 
 struct AudioDecoderState {
     format: Box<dyn FormatReader>,
@@ -96,9 +97,7 @@ fn count_decoded_frames(path: &Path) -> Result<(u64, usize)> {
 /// Extracts audio peaks from a media file by streamingly decoding it and downsampling
 /// the absolute amplitude values into a fixed-size buffer per channel.
 pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
-    if max_length == 0 {
-        return Ok(Vec::new());
-    }
+    let max_length = max_length.min(MAX_PEAK_LENGTH).max(1);
 
     let (total_frames, channels) = {
         let state = open_audio_decoder(path)?;
@@ -107,7 +106,7 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
             _ => count_decoded_frames(path)?,
         }
     };
-    let channels = channels.max(1);
+    let mut channels = channels.max(1);
     if total_frames == 0 {
         return Ok(vec![vec![0.0f32; max_length]; channels]);
     }
@@ -147,18 +146,23 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
                     continue;
                 }
 
+                if num_channels > peaks.len() {
+                    channels = channels.max(num_channels);
+                    for _ in peaks.len()..num_channels {
+                        peaks.push(vec![0.0f32; max_length]);
+                    }
+                }
+
                 for frame in 0..num_frames {
                     let global_frame = current_frame_offset + frame as u64;
                     let bucket = ((global_frame as u128 * max_length as u128)
                         / total_frames as u128) as usize;
                     let bucket = bucket.min(max_length - 1);
 
-                    for ch in 0..num_channels.min(channels) {
-                        if ch < channels {
-                            let val = samples[frame * num_channels + ch].abs();
-                            if val > peaks[ch][bucket] {
-                                peaks[ch][bucket] = val;
-                            }
+                    for ch in 0..num_channels {
+                        let val = samples[frame * num_channels + ch].abs();
+                        if val > peaks[ch][bucket] {
+                            peaks[ch][bucket] = val;
                         }
                     }
                 }
@@ -233,6 +237,30 @@ mod tests {
         for (a, b) in peaks[0].iter().zip(expected.iter()) {
             assert!((a - b).abs() < 1e-4, "peak mismatch: {} vs {}", a, b);
         }
+    }
+
+    #[test]
+    fn test_extract_peaks_clamps_max_length() {
+        let path =
+            std::env::temp_dir().join(format!("fastcat-waveform-test-{}.wav", std::process::id()));
+        write_mono_pcm_wav(&path, &[0.1, 0.2]).unwrap();
+
+        let peaks = extract_peaks(&path, 1_000_000).unwrap();
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(peaks[0].len(), MAX_PEAK_LENGTH);
+    }
+
+    #[test]
+    fn test_extract_peaks_zero_max_length_defaults_to_one() {
+        let path =
+            std::env::temp_dir().join(format!("fastcat-waveform-test-{}.wav", std::process::id()));
+        write_mono_pcm_wav(&path, &[0.1, 0.2]).unwrap();
+
+        let peaks = extract_peaks(&path, 0).unwrap();
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(peaks[0].len(), 1);
     }
 
     #[test]

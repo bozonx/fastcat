@@ -182,17 +182,17 @@ export function createTimelineLifecycleModule(
     const requestId = deps.persistence.getLoadRequestId();
     const timelinePathSnapshot = deps.currentTimelinePath.value;
 
-    const items: { path: string }[] = [];
+    const paths = new Set<string>();
     for (const track of deps.timelineDoc.value.tracks) {
       for (const item of track.items) {
         if (item.kind !== 'clip') continue;
 
-        if (item.clipType === 'media' && item.source?.path) {
-          items.push({ path: item.source.path });
+        if (item.source?.path) {
+          paths.add(item.source.path);
         }
 
         if (item.mask?.source?.path) {
-          items.push({ path: item.mask.source.path });
+          paths.add(item.mask.source.path);
         }
       }
     }
@@ -200,7 +200,7 @@ export function createTimelineLifecycleModule(
     if (requestId !== deps.persistence.getLoadRequestId()) return;
     if (timelinePathSnapshot !== deps.currentTimelinePath.value) return;
 
-    await Promise.all(items.map(async (item) => await deps.getOrFetchMetadataByPath(item.path)));
+    await Promise.all(Array.from(paths).map(async (path) => await deps.getOrFetchMetadataByPath(path)));
   }
 
   return {

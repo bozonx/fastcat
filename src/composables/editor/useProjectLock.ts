@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { genUuid } from '~/utils/ids';
 import { createDevLogger } from '~/utils/dev-logger';
+import { isTauriRuntime } from '~/utils/runtime';
 
 const LOCK_CHANNEL_NAME = 'fastcat_project_locks';
 const log = createDevLogger('ProjectLock');
@@ -14,6 +15,20 @@ function createInstanceId(): string {
 }
 
 export function useProjectLock() {
+  // In Tauri the single-instance plugin blocks a second app launch entirely,
+  // so tab-level locking is unnecessary. Keep the interface to avoid branching
+  // at every call site.
+  if (isTauriRuntime()) {
+    return {
+      acquireLock: async () => true,
+      releaseLock: async () => {},
+      stealLock: async () => true,
+      setOnBeforeRelease: () => {},
+      isLocked: () => true,
+      isLockLost: ref(false),
+    };
+  }
+
   const tabId = ref(createInstanceId());
   const lockedProjectId = ref<string | null>(null);
   const isLockLost = ref(false);

@@ -12,14 +12,12 @@
 
 use kurbo::{Affine, BezPath, Rect, RoundedRect, Shape, Stroke};
 use parley::{
-    FontFamily, LineHeight, PositionedLayoutItem, StyleProperty, fontique::FontWeight,
+    LineHeight, PositionedLayoutItem, StyleProperty, fontique::FontWeight,
 };
 use std::sync::Arc;
 use vello::Glyph;
 use vello::Scene as VelloScene;
 use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
-use crate::compositor::text::clean_font_family;
-
 use super::effects::EffectSpec;
 
 #[derive(Debug, Clone)]
@@ -671,9 +669,15 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
 
     // 4. Layout Text
     let lock = crate::compositor::text::get_text_context();
-    let Ok(mut ctx) = lock.lock() else { return };
+    let Ok(mut ctx) = lock.lock() else {
+        log::warn!("[scene] failed to acquire text context lock, skipping text render");
+        return;
+    };
     let (font_cx, layout_cx) = &mut *ctx;
-    
+
+    let (primary, generic) = crate::compositor::text::resolve_font_family(&spec.font_family);
+    let resolved_font_family = crate::compositor::text::build_font_family(font_cx, &primary, generic);
+
     let mut builder = layout_cx.ranged_builder(font_cx, &spec.text, 1.0, true);
     builder.push_default(StyleProperty::FontSize(spec.font_size.max(1.0)));
     builder.push_default(StyleProperty::Brush([255, 255, 255, 255]));
@@ -681,11 +685,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         spec.line_height.max(0.1),
     )));
     builder.push_default(StyleProperty::FontWeight(FontWeight::new(spec.font_weight)));
-    
-    let cleaned_font = clean_font_family(&spec.font_family);
-    builder.push_default(StyleProperty::FontFamily(FontFamily::from(
-        cleaned_font.as_str(),
-    )));
+    builder.push_default(StyleProperty::FontFamily(resolved_font_family));
     let mut layout = builder.build(&spec.text);
     
     let content_width_px = spec.max_width.map(|w| (w - spec.padding_left - spec.padding_right).max(1.0));

@@ -798,6 +798,7 @@ export default {
       "createSelectionArea": "Create selection area",
       "createSelectionFromZone": "Create selection from zone",
       "createVersion": "Create version",
+      "saveAs": "Save as",
       "autoMontage": {
         "title": "Auto Montage (Silence Trimming)",
         "description": "Automatically cut clips based on recognized speech",
@@ -2011,6 +2012,7 @@ export default {
       "saveBlockedPreviewDesc": "Exit backup preview before saving changes.",
       "saveBlockedLockedDesc": "Project lock was not acquired. Return to the editable project tab before saving.",
       "versionCreated": "Version created: {name}",
+      "timelineSavedAs": "Timeline saved as: {name}",
       "versionSaveError": "Version save error",
       "backups": {
         "title": "Backups",

@@ -70,6 +70,44 @@ describe('audio waveform utilities', () => {
     expect(sourceUs).toBe(5_000_000);
   });
 
+  it('reversed speed at clip start maps to source range end', () => {
+    const sourceUs = resolveWaveformSourceUs({
+      absoluteUs: 10_000_000,
+      clipStartUs: 10_000_000,
+      clipDurationUs: 2_000_000,
+      sourceStartUs: 3_000_000,
+      sourceRangeDurationUs: 4_000_000,
+      speed: -2,
+    });
+
+    expect(sourceUs).toBe(7_000_000);
+  });
+
+  it('reversed speed at clip end maps to source range start', () => {
+    const sourceUs = resolveWaveformSourceUs({
+      absoluteUs: 12_000_000,
+      clipStartUs: 10_000_000,
+      clipDurationUs: 2_000_000,
+      sourceStartUs: 3_000_000,
+      sourceRangeDurationUs: 4_000_000,
+      speed: -2,
+    });
+
+    expect(sourceUs).toBe(3_000_000);
+  });
+
+  it('reversed speed yields positive totalWidthPx', () => {
+    const metrics = computeWaveformWindowMetrics({
+      sourceStartUs: 0,
+      sourceDurationUs: 10_000_000,
+      timelineDurationUs: 5_000_000,
+      speed: -2,
+      zoom: 50,
+    });
+
+    expect(metrics.totalWidthPx).toBeGreaterThan(0);
+  });
+
   it('downsamples waveform peaks to visible bins using max amplitude', () => {
     const bins = computeWaveformPeakBins({
       channels: [

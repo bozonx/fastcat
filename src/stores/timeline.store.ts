@@ -669,6 +669,70 @@ export const useTimelineStore = defineStore('timeline', () => {
     }
   }
 
+  async function saveTimelineAs(newName: string) {
+    if (!currentTimelinePath.value || !timelineDoc.value) return;
+    if (projectStore.isReadOnly || previewMode.value) {
+      toast.add({
+        title: t('videoEditor.timeline.saveBlockedReadOnlyTitle'),
+        description: previewMode.value
+          ? t('videoEditor.timeline.saveBlockedPreviewDesc')
+          : t('videoEditor.timeline.saveBlockedLockedDesc'),
+        color: 'warning',
+      });
+      return;
+    }
+
+    const path = currentTimelinePath.value;
+    const parts = path.split('/');
+    const fileName = parts.pop();
+    if (!fileName) return;
+
+    const docSnapshot = timelineDoc.value;
+    const { serializeTimelineToOtio } = await import('~/timeline/otio-serializer');
+    const snapshotSerialized = serializeTimelineToOtio(docSnapshot);
+
+    try {
+      await lifecycle.saveTimeline();
+    } catch (e) {
+      log.error('Failed to save timeline before save as', e);
+      toast.add({
+        title: t('videoEditor.timeline.versionSaveError'),
+        color: 'error',
+      });
+      return;
+    }
+
+    const parentPath = parts.join('/');
+    const sanitizedName = newName.trim();
+    const finalName = sanitizedName.toLowerCase().endsWith('.otio')
+      ? sanitizedName
+      : `${sanitizedName}.otio`;
+
+    try {
+      const newPath = parentPath ? `${parentPath}/${finalName}` : finalName;
+      await projectStore.writeTextByPath(newPath, snapshotSerialized);
+
+      toast.add({
+        title: t('videoEditor.timeline.timelineSavedAs', {
+          name: finalName,
+        }),
+        color: 'success',
+      });
+
+      const newRelativePath = newPath;
+      await projectStore.openTimelineFile(newRelativePath);
+      focusStore.setActiveTimelinePath(newRelativePath);
+      await loadTimeline();
+      void lifecycle.loadTimelineMetadata();
+    } catch (e) {
+      log.error('Failed to save timeline as', e);
+      toast.add({
+        title: t('common.saveError'),
+        color: 'error',
+      });
+    }
+  }
+
   // True when any open timeline (active or background tab) has uncommitted
   // changes. Used by the close handler to warn about unsaved work across tabs.
   const hasAnyDirtyTimeline = computed(() => Object.values(dirtyPaths.value).some(Boolean));
@@ -854,6 +918,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     getHotkeyTargetClip: selection.getHotkeyTargetClip,
     setTimelineZoomExact,
     duplicateCurrentTimeline,
+    saveTimelineAs,
     previewMode,
     previewBackupInfo,
     backupVersions: backup.backupVersions,

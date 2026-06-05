@@ -798,6 +798,7 @@ export default {
       "createSelectionArea": "Создать область выделения",
       "createSelectionFromZone": "Создать выделение из зоны",
       "createVersion": "Создать версию",
+      "saveAs": "Сохранить как",
       "autoMontage": {
         "title": "Авто монтаж (Обрезка пауз)",
         "description": "Автоматическая нарезка клипа на основе распознанной речи",
@@ -2011,6 +2012,7 @@ export default {
       "saveBlockedPreviewDesc": "Выйдите из предпросмотра бэкапа перед сохранением.",
       "saveBlockedLockedDesc": "Блокировка проекта не получена. Вернитесь во вкладку проекта с правом редактирования перед сохранением.",
       "versionCreated": "Версия создана: {name}",
+      "timelineSavedAs": "Таймлайн сохранен как: {name}",
       "versionSaveError": "Ошибка сохранения версии",
       "backups": {
         "title": "Резервные копии",

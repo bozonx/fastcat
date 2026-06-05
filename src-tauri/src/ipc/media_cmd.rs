@@ -622,6 +622,7 @@ pub async fn native_get_ffmpeg_diagnostics(
 pub async fn native_media_extract_peaks(
     path: String,
     max_length: usize,
+    _precision: usize,
 ) -> Result<Vec<u8>, String> {
     let path = PathBuf::from(path);
     tokio::task::spawn_blocking(move || {

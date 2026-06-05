@@ -711,7 +711,7 @@ describe('MediaStore', () => {
     const store = useMediaStore();
     const result = await store.extractPeaks(mockFile, 'audio/audio.mp3', { maxLength: 100 });
 
-    expect(mockNativeMediaExtractPeaks).toHaveBeenCalledWith('audio/audio.mp3', 100);
+    expect(mockNativeMediaExtractPeaks).toHaveBeenCalledWith('audio/audio.mp3', 100, undefined);
     expect(result).toBeDefined();
     expect(result?.[0]).toBeInstanceOf(Float32Array);
     expect(result?.[0]?.[0]).toBeCloseTo(0.1);

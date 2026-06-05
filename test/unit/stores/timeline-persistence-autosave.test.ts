@@ -41,6 +41,7 @@ const mockProjectStore = reactive({
     name: 'Fallback',
     tracks: [],
   }),
+  openTimelineFile: vi.fn(async () => {}),
 });
 
 vi.mock('~/stores/project.store', () => ({
@@ -291,6 +292,70 @@ describe('Timeline Persistence and AutoSave', () => {
     } as any;
 
     await timelineStore.duplicateCurrentTimeline();
+
+    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
+  });
+
+  it('saves timeline as under a new name and opens it', async () => {
+    const timelineStore = useTimelineStore();
+    mockProjectStore.currentTimelinePath = 'timelines/main.otio';
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+
+    await timelineStore.saveTimelineAs('new_timeline');
+
+    await vi.runAllTimersAsync();
+    await Promise.resolve();
+
+    // Should save the original first, then write the new file
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+      'timelines/main.otio',
+      expect.any(String),
+    );
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+      'timelines/new_timeline.otio',
+      expect.any(String),
+    );
+    expect(mockProjectStore.openTimelineFile).toHaveBeenCalledWith('timelines/new_timeline.otio');
+  });
+
+  it('appends .otio extension when saving timeline as', async () => {
+    const timelineStore = useTimelineStore();
+    mockProjectStore.currentTimelinePath = 'timelines/main.otio';
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+
+    await timelineStore.saveTimelineAs('backup.otio');
+
+    await vi.runAllTimersAsync();
+    await Promise.resolve();
+
+    expect(mockProjectStore.writeTextByPath).toHaveBeenCalledWith(
+      'timelines/backup.otio',
+      expect.any(String),
+    );
+  });
+
+  it('blocks saveTimelineAs in read-only mode', async () => {
+    const timelineStore = useTimelineStore();
+    mockProjectStore.isReadOnly = true;
+
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+
+    await timelineStore.saveTimelineAs('new_name');
 
     expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
   });

@@ -24,9 +24,8 @@ use crate::compositor::scene::{
     BlendMode, Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextAlign,
     TextLayer, TextVerticalAlign, Transform, TransitionInfo,
 };
-use crate::compositor::text::clean_font_family;
 use parley::{PositionedLayoutItem, StyleProperty};
-use parley::style::{FontFamily, LineHeight};
+use parley::style::LineHeight;
 use parley::fontique::FontWeight;
 
 use super::scene::{LayerKind, SceneLayer, SceneLayerTransform};
@@ -133,7 +132,7 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     // Core parameters
     let text = sl.text.clone().unwrap_or_default();
     let font_family_raw = string_value(&style, "fontFamily", "sans-serif");
-    let font_family = clean_font_family(&font_family_raw);
+    let (primary_font, generic_fallback) = crate::compositor::text::resolve_font_family(&font_family_raw);
     let font_weight_val = font_weight(&style);
     let line_height_val = number(&style, "lineHeight", 1.2).clamp(0.1, 10.0) as f32;
     let letter_spacing = (number(&style, "letterSpacing", 0.0) * render_scale) as f32;
@@ -203,21 +202,26 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let content_width_px = explicit_width_px.map(|w| (w - padding_left - padding_right).max(1.0));
     
     // Layout parley to compute actual size
-    let mut text_block_width_px = 0.0f32;
-    let mut text_block_height_px = 0.0f32;
-    
+    let text_block_width_px;
+    let text_block_height_px;
+
     let lock = crate::compositor::text::get_text_context();
     if let Ok(mut ctx) = lock.lock() {
         let (font_cx, layout_cx) = &mut *ctx;
+        let resolved_font_family = crate::compositor::text::build_font_family(
+            font_cx,
+            &primary_font,
+            generic_fallback,
+        );
         let mut builder = layout_cx.ranged_builder(font_cx, &text, 1.0, true);
         builder.push_default(StyleProperty::FontSize(font_size_px));
         builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(line_height_val)));
         builder.push_default(StyleProperty::FontWeight(FontWeight::new(font_weight_val)));
-        builder.push_default(StyleProperty::FontFamily(FontFamily::from(font_family.as_str())));
+        builder.push_default(StyleProperty::FontFamily(resolved_font_family));
         let mut layout = builder.build(&text);
-        
+
         layout.break_all_lines(content_width_px);
-        
+
         let mut max_line_w = 0.0f32;
         for line in layout.lines() {
             let mut glyph_count = 0;
@@ -233,6 +237,11 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         }
         text_block_width_px = max_line_w;
         text_block_height_px = layout.height();
+    } else {
+        log::warn!("[scene_build] failed to acquire text context lock, using estimated text size");
+        let approx_chars = text.chars().count().max(1) as f32;
+        text_block_width_px = approx_chars * font_size_px * 0.5;
+        text_block_height_px = font_size_px * line_height_val;
     }
     
     // Frame size
@@ -263,7 +272,7 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     
     TextLayer {
         text,
-        font_family,
+        font_family: primary_font,
         font_size: font_size_px,
         font_weight: font_weight_val,
         color,

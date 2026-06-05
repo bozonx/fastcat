@@ -18,8 +18,10 @@ import UiSliderInput from '~/components/ui/UiSliderInput.vue';
 import EffectsEditor from '~/components/effects/EffectsEditor.vue';
 import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
+import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 import type { FsEntry } from '~/types/fs';
+import { createDevLogger } from '~/utils/dev-logger';
 import { formatDurationSeconds, formatBytes } from '~/utils/format';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
 import FileGeneralInfoSection from '~/components/properties/file/FileGeneralInfoSection.vue';
@@ -47,6 +49,8 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
+const toast = useToast();
+const log = createDevLogger('TimelineProperties');
 const timelineStore = useTimelineStore();
 const projectStore = useProjectStore();
 const uiStore = useUiStore();
@@ -104,12 +108,53 @@ const { timelinesUsingSelectedFile, openTimelineFromUsage } = useFileTimelineUsa
 });
 
 const isRenameModalOpen = ref(false);
+const isSaveAsModalOpen = ref(false);
 
 async function handleRenameConfirm(newName: string) {
   const entry = props.fsEntry;
   if (!entry) return;
   await fileManager.renameEntry(entry, newName.trim());
   isRenameModalOpen.value = false;
+}
+
+async function handleSaveAsConfirm(newName: string) {
+  const entry = props.fsEntry;
+  if (!entry) return;
+
+  const sanitizedName = newName.trim();
+  const finalName = sanitizedName.toLowerCase().endsWith('.otio')
+    ? sanitizedName
+    : `${sanitizedName}.otio`;
+
+  if (isInactiveTimeline.value) {
+    const parentPath = entry.parentPath ?? entry.path.split('/').slice(0, -1).join('/');
+    const newPath = parentPath ? `${parentPath}/${finalName}` : finalName;
+    try {
+      await fileManager.vfs.copyFile(entry.path, newPath);
+      await fileManager.loadProjectDirectory();
+      uiStore.notifyFileManagerUpdate();
+
+      await projectStore.openTimelineFile(newPath);
+      focusStore.setActiveTimelinePath(newPath);
+      await timelineStore.loadTimeline();
+      void timelineStore.loadTimelineMetadata();
+
+      toast.add({
+        title: t('videoEditor.timeline.timelineSavedAs', { name: finalName }),
+        color: 'success',
+      });
+    } catch (e) {
+      log.error('Failed to save timeline as', e);
+      toast.add({
+        title: t('common.saveError'),
+        color: 'error',
+      });
+    }
+  } else {
+    await timelineStore.saveTimelineAs(finalName);
+  }
+
+  isSaveAsModalOpen.value = false;
 }
 
 async function handleSelectInFileManager() {
@@ -186,6 +231,14 @@ const timelineAdditionalActions = computed(() => {
         } else {
           void timelineStore.duplicateCurrentTimeline();
         }
+      },
+    });
+    list.unshift({
+      id: 'saveTimelineAs',
+      label: t('fastcat.timeline.saveAs'),
+      icon: 'i-heroicons-document-arrow-down',
+      onClick: () => {
+        isSaveAsModalOpen.value = true;
       },
     });
   }
@@ -444,6 +497,13 @@ const addTrackActions = computed(() => [
       :current-name="fsEntry.name"
       @update:open="isRenameModalOpen = $event"
       @rename="handleRenameConfirm"
+    />
+
+    <UiEntityCreationModal
+      v-model:open="isSaveAsModalOpen"
+      :title="t('fastcat.timeline.saveAs')"
+      :confirm-label="t('common.save')"
+      @confirm="handleSaveAsConfirm"
     />
   </div>
 </template>
