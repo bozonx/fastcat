@@ -9,11 +9,10 @@ use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{OutputCallbackInfo, SampleFormat, Stream, StreamConfig};
-use parking_lot::{Mutex, Condvar};
+use parking_lot::{Condvar, Mutex};
 
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
-const OUTPUT_CHANNELS: usize = 2;
 const CHUNK_DURATION_SEC: f64 = 0.05;
 const PREBUFFER_CHUNKS: usize = 8;
 
@@ -30,6 +29,10 @@ struct CachedAudioDecoder {
     last_resample_ratio: f64,
     // Last source position we decoded up to; used to skip seeks on sequential chunks.
     last_decode_end_sec: f64,
+    // Planar input frames not yet consumed by the fixed-size resampler. Carried
+    // across sequential chunks so block boundaries don't inject zero-padding,
+    // which would otherwise create periodic clicks in the output.
+    resample_remainder: Vec<Vec<f32>>,
 }
 
 /// Lock-free SPSC ring buffer for real-time audio output.
@@ -78,7 +81,8 @@ impl SpscRingBuffer {
             }
             let idx = write % capacity;
             self.buffer[idx].store(sample.to_bits(), Ordering::Release);
-            self.write_idx.store(write.wrapping_add(1), Ordering::Release);
+            self.write_idx
+                .store(write.wrapping_add(1), Ordering::Release);
             written += 1;
         }
         written
@@ -108,7 +112,8 @@ impl SpscRingBuffer {
                 out[i] = f32::from_bits(self.buffer[i - first].load(Ordering::Relaxed));
             }
         }
-        self.read_idx.store(r.wrapping_add(available), Ordering::Release);
+        self.read_idx
+            .store(r.wrapping_add(available), Ordering::Release);
         available
     }
 }
@@ -119,14 +124,15 @@ struct AudioShared {
     master_gain: f64,
     playing: bool,
     origin_pts_sec: f64,
-    frames_written: u64,
-    output_latency_sec: f64,
-    last_output_buffer_frames: usize,
     producer_pts_sec: f64,
     seek_serial: u64,
     scene_serial: u64,
     decoded_cache: lru::LruCache<String, Arc<Vec<f32>>>,
     decoders: HashMap<String, CachedAudioDecoder>,
+}
+
+fn decoded_cache_key(path: &str, sample_rate: u32, output_channels: usize) -> String {
+    format!("{path}|sr={sample_rate}|ch={output_channels}")
 }
 
 impl Default for AudioShared {
@@ -137,17 +143,38 @@ impl Default for AudioShared {
             master_gain: 1.0,
             playing: false,
             origin_pts_sec: 0.0,
-            frames_written: 0,
-            output_latency_sec: 0.0,
-            last_output_buffer_frames: 0,
             producer_pts_sec: 0.0,
             seek_serial: 0,
             scene_serial: 0,
-            decoded_cache: lru::LruCache::new(
-                std::num::NonZeroUsize::new(20).unwrap(),
-            ),
+            decoded_cache: lru::LruCache::new(std::num::NonZeroUsize::new(20).unwrap()),
             decoders: HashMap::new(),
         }
+    }
+}
+
+/// Lock-free clock/state shared with the real-time output callback. The audio
+/// callback must never block on a mutex, so playback state and frame counters
+/// live in atomics that the callback reads/writes without locking.
+#[derive(Default)]
+struct RealtimeClock {
+    playing: AtomicBool,
+    frames_written: std::sync::atomic::AtomicU64,
+    // f64 output latency (seconds) stored as raw bits for atomic access.
+    output_latency_bits: std::sync::atomic::AtomicU64,
+}
+
+impl RealtimeClock {
+    fn reset_frames(&self) {
+        self.frames_written.store(0, Ordering::Release);
+        self.output_latency_bits.store(0, Ordering::Release);
+    }
+
+    fn frames(&self) -> u64 {
+        self.frames_written.load(Ordering::Acquire)
+    }
+
+    fn output_latency_sec(&self) -> f64 {
+        f64::from_bits(self.output_latency_bits.load(Ordering::Acquire))
     }
 }
 
@@ -155,6 +182,7 @@ pub struct NativeAudioEngine {
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
     ring: Arc<SpscRingBuffer>,
     running: Arc<AtomicBool>,
+    clock: Arc<RealtimeClock>,
     sample_rate: u32,
     device_channels: u16,
     _stream: Stream,
@@ -173,21 +201,24 @@ impl NativeAudioEngine {
         let sample_rate = supported.sample_rate();
         let config: StreamConfig = supported.clone().into();
         let device_channels = config.channels.max(1);
+        // The engine renders directly into the device's native channel layout,
+        // so the ring buffer holds `output_channels`-interleaved samples and the
+        // output callback can copy them 1:1 (no channel remapping at playback).
+        let output_channels = device_channels as usize;
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let running = Arc::new(AtomicBool::new(true));
+        let clock = Arc::new(RealtimeClock::default());
 
-        let chunk_frames =
-            (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
-        let ring_capacity = chunk_frames * OUTPUT_CHANNELS * PREBUFFER_CHUNKS * 2;
+        let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
+        let ring_capacity = chunk_frames * output_channels * PREBUFFER_CHUNKS * 2;
         let ring = Arc::new(SpscRingBuffer::new(ring_capacity));
 
         let stream = build_stream(
             &device,
             &config,
             supported.sample_format(),
-            shared.clone(),
             ring.clone(),
-            sample_rate,
+            clock.clone(),
             device_channels,
         )?;
         stream.play().context("audio stream play failed")?;
@@ -203,13 +234,20 @@ impl NativeAudioEngine {
                 ) {
                     log::warn!("[audio] failed to set real-time priority: {e}");
                 }
-                producer_loop(producer_shared, producer_ring, producer_running, sample_rate)
+                producer_loop(
+                    producer_shared,
+                    producer_ring,
+                    producer_running,
+                    sample_rate,
+                    output_channels,
+                )
             })?;
 
         Ok(Self {
             shared,
             ring,
             running,
+            clock,
             sample_rate,
             device_channels,
             _stream: stream,
@@ -229,25 +267,26 @@ impl NativeAudioEngine {
         state.master_gain = sanitize_master_gain(master_gain);
         self.ring.clear();
         state.producer_pts_sec =
-            state.origin_pts_sec + state.frames_written as f64 / self.sample_rate as f64;
+            state.origin_pts_sec + self.clock.frames() as f64 / self.sample_rate as f64;
         state.scene_serial = state.scene_serial.wrapping_add(1);
 
-        // GC кэша: удаляем файлы, которых больше нет в сцене
+        // Drop decoded files that are no longer referenced by the scene.
         let current_paths: std::collections::HashSet<String> =
             state.scene.iter().map(|l| l.path.clone()).collect();
         let to_remove: Vec<String> = state
             .decoded_cache
             .iter()
-            .filter_map(|(path, _)| {
+            .filter_map(|(key, _)| {
+                let path = key.split("|sr=").next().unwrap_or(key);
                 if current_paths.contains(path) {
                     None
                 } else {
-                    Some(path.clone())
+                    Some(key.clone())
                 }
             })
             .collect();
-        for path in &to_remove {
-            state.decoded_cache.pop(path);
+        for key in &to_remove {
+            state.decoded_cache.pop(key);
         }
         state
             .decoders
@@ -259,8 +298,9 @@ impl NativeAudioEngine {
         let mut state = self.shared.0.lock();
         state.playing = true;
         state.origin_pts_sec = pts_sec.max(0.0);
-        state.frames_written = 0;
         state.producer_pts_sec = state.origin_pts_sec;
+        self.clock.reset_frames();
+        self.clock.playing.store(true, Ordering::Release);
         self.ring.clear();
         state.seek_serial = state.seek_serial.wrapping_add(1);
         self.shared.1.notify_all();
@@ -268,11 +308,11 @@ impl NativeAudioEngine {
 
     pub fn pause(&self) -> f64 {
         let mut state = self.shared.0.lock();
-        let pts = audible_pts_sec(&state, self.sample_rate);
+        let pts = audible_pts_sec(&state, &self.clock, self.sample_rate);
         state.playing = false;
+        self.clock.playing.store(false, Ordering::Release);
         state.origin_pts_sec = pts;
-        state.frames_written = 0;
-        state.last_output_buffer_frames = 0;
+        self.clock.reset_frames();
         self.ring.clear();
         state.producer_pts_sec = pts;
         self.shared.1.notify_all();
@@ -283,10 +323,11 @@ impl NativeAudioEngine {
         let mut state = self.shared.0.lock();
         let pts = pts_sec.max(0.0);
         state.origin_pts_sec = pts;
-        state.frames_written = 0;
+        self.clock.reset_frames();
         state.producer_pts_sec = pts;
         self.ring.clear();
         state.playing = playing;
+        self.clock.playing.store(playing, Ordering::Release);
         state.seek_serial = state.seek_serial.wrapping_add(1);
         self.shared.1.notify_all();
     }
@@ -296,7 +337,7 @@ impl NativeAudioEngine {
         if !state.playing {
             return None;
         }
-        Some(audible_pts_sec(&state, self.sample_rate))
+        Some(audible_pts_sec(&state, &self.clock, self.sample_rate))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -311,8 +352,14 @@ impl NativeAudioEngine {
             .iter()
             .map(|layer| {
                 let duration = (layer.timeline_end_sec - layer.timeline_start_sec).max(0.0);
-                let speed = sanitize_speed(layer.speed);
-                let actual_duration = if speed > 0.0 { duration / speed } else { duration };
+                // `speed` is signed (negative means reversed); only its magnitude
+                // affects how long the clip occupies on the timeline.
+                let speed = sanitize_speed(layer.speed.abs());
+                let actual_duration = if speed > 0.0 {
+                    duration / speed
+                } else {
+                    duration
+                };
                 layer.timeline_start_sec + actual_duration
             })
             .fold(0.0, f64::max)
@@ -340,9 +387,8 @@ fn build_stream(
     device: &cpal::Device,
     config: &StreamConfig,
     format: SampleFormat,
-    shared: Arc<(Mutex<AudioShared>, Condvar)>,
     ring: Arc<SpscRingBuffer>,
-    _sample_rate: u32,
+    clock: Arc<RealtimeClock>,
     device_channels: u16,
 ) -> Result<Stream> {
     let err_fn = |err| log::error!("[audio] output stream error: {err}");
@@ -351,7 +397,7 @@ fn build_stream(
             .build_output_stream(
                 config,
                 move |data: &mut [f32], info| {
-                    write_output(data, info, &shared, &ring, device_channels)
+                    write_output(data, info, &clock, &ring, device_channels)
                 },
                 err_fn,
                 None,
@@ -361,7 +407,7 @@ fn build_stream(
             .build_output_stream(
                 config,
                 move |data: &mut [i16], info| {
-                    write_output(data, info, &shared, &ring, device_channels)
+                    write_output(data, info, &clock, &ring, device_channels)
                 },
                 err_fn,
                 None,
@@ -371,7 +417,7 @@ fn build_stream(
             .build_output_stream(
                 config,
                 move |data: &mut [u16], info| {
-                    write_output(data, info, &shared, &ring, device_channels)
+                    write_output(data, info, &clock, &ring, device_channels)
                 },
                 err_fn,
                 None,
@@ -406,24 +452,17 @@ impl OutputSample for u16 {
 fn write_output<T: OutputSample>(
     data: &mut [T],
     info: &OutputCallbackInfo,
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+    clock: &RealtimeClock,
     ring: &SpscRingBuffer,
     device_channels: u16,
 ) {
     let channels = device_channels.max(1) as usize;
     let frames = data.len() / channels;
 
-    let (playing, mut guard) = match shared.0.try_lock() {
-        Some(g) => (g.playing, Some(g)),
-        None => (false, None),
-    };
-
-    if !playing {
-        for sample in data {
+    // Playback state is read lock-free; the callback never blocks on a mutex.
+    if !clock.playing.load(Ordering::Acquire) {
+        for sample in data.iter_mut() {
             *sample = T::from_f32(0.0);
-        }
-        if let Some(ref mut state) = guard {
-            state.last_output_buffer_frames = 0;
         }
         return;
     }
@@ -438,40 +477,28 @@ fn write_output<T: OutputSample>(
         heap_temp.resize(data.len(), 0.0);
         &mut heap_temp[..]
     };
+    // The ring already holds device-channel interleaved samples, so we copy 1:1.
+    // On underrun the unfilled tail stays zeroed (silence), but the clock still
+    // advances below to prevent drift.
     let _read = ring.pop_slice(temp_slice);
-    // If the ring underruns, the remainder of temp_slice is already zeroed,
-    // so we output silence but still advance the clock to prevent drift.
-    let mut idx = 0;
-    for frame in 0..frames {
-        let left = temp_slice[idx];
-        let right = if channels > 1 { temp_slice[idx + 1] } else { left };
-        idx += channels;
-        for ch in 0..channels {
-            let value = match ch {
-                0 if channels == 1 => left,
-                0 => left,
-                1 => right,
-                _ => left,
-            };
-            data[frame * channels + ch] = T::from_f32(value);
-        }
+    for (out, sample) in data.iter_mut().zip(temp_slice.iter()) {
+        *out = T::from_f32(*sample);
     }
 
-    if let Some(ref mut state) = guard {
-        state.frames_written = state
-            .frames_written
-            .saturating_add(frames as u64);
-        state.last_output_buffer_frames = frames;
-        state.output_latency_sec = output_latency_sec(info);
-    }
+    clock
+        .frames_written
+        .fetch_add(frames as u64, Ordering::AcqRel);
+    clock
+        .output_latency_bits
+        .store(output_latency_sec(info).to_bits(), Ordering::Release);
 }
 
-fn audible_pts_sec(state: &AudioShared, sample_rate: u32) -> f64 {
-    let latency_frames = (state.output_latency_sec.max(0.0) * sample_rate as f64).round() as u64;
+fn audible_pts_sec(state: &AudioShared, clock: &RealtimeClock, sample_rate: u32) -> f64 {
+    let latency_frames = (clock.output_latency_sec().max(0.0) * sample_rate as f64).round() as u64;
     // `frames_written` already accounts for every frame handed to the OS callback;
-    // `output_latency_sec` is the pipeline delay. Subtracting buffer size again
+    // the output latency is the pipeline delay. Subtracting buffer size again
     // would double-count the in-flight audio.
-    let audible_frames = state.frames_written.saturating_sub(latency_frames);
+    let audible_frames = clock.frames().saturating_sub(latency_frames);
     state.origin_pts_sec + audible_frames as f64 / sample_rate as f64
 }
 
@@ -488,9 +515,10 @@ fn producer_loop(
     ring: Arc<SpscRingBuffer>,
     running: Arc<AtomicBool>,
     sample_rate: u32,
+    output_channels: usize,
 ) {
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
-    let limit_samples = chunk_frames * OUTPUT_CHANNELS * PREBUFFER_CHUNKS;
+    let limit_samples = chunk_frames * output_channels * PREBUFFER_CHUNKS;
 
     while running.load(Ordering::Relaxed) {
         let snapshot = {
@@ -510,7 +538,9 @@ fn producer_loop(
                     ));
                 }
                 let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(50));
-                if wait_res.timed_out() && (!state.playing || state.scene.is_empty() || ring.len() >= limit_samples) {
+                if wait_res.timed_out()
+                    && (!state.playing || state.scene.is_empty() || ring.len() >= limit_samples)
+                {
                     break None;
                 }
             }
@@ -528,6 +558,7 @@ fn producer_loop(
             chunk_start,
             CHUNK_DURATION_SEC,
             sample_rate,
+            output_channels,
             &shared,
             false,
         );
@@ -544,6 +575,10 @@ fn producer_loop(
     }
 }
 
+/// Renders the audio scene to an f32 WAV file.
+///
+/// `output_channels` selects the file's channel layout (1 = mono, 2 = stereo).
+/// Export is intentionally limited to mono/stereo for now.
 pub(crate) fn render_scene_to_wav(
     scene: &[SceneAudioLayer],
     tracks: &[SceneAudioTrack],
@@ -551,16 +586,26 @@ pub(crate) fn render_scene_to_wav(
     start_sec: f64,
     end_sec: f64,
     sample_rate: u32,
+    output_channels: usize,
     target_path: &Path,
 ) -> Result<()> {
-    let start = start_sec.max(0.0);
-    let end = end_sec.max(start);
+    let output_channels = output_channels.clamp(1, 2);
+    let start = if start_sec.is_finite() {
+        start_sec.max(0.0)
+    } else {
+        0.0
+    };
+    let end = if end_sec.is_finite() {
+        end_sec.max(start)
+    } else {
+        start
+    };
     let estimated_frames = ((end - start) * sample_rate as f64).round().max(1.0) as u64;
     let mut file = std::fs::File::create(target_path)
         .with_context(|| format!("create audio wav {}", target_path.display()))?;
 
     // Write placeholder header (will be patched after we know actual size).
-    write_wav_f32_header_placeholder(&mut file, sample_rate)?;
+    write_wav_f32_header_placeholder(&mut file, sample_rate, output_channels as u16)?;
 
     let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
@@ -578,10 +623,11 @@ pub(crate) fn render_scene_to_wav(
             chunk_start,
             chunk_duration,
             sample_rate,
+            output_channels,
             &shared,
             true,
         );
-        let samples_to_write = chunk_frames as usize * OUTPUT_CHANNELS;
+        let samples_to_write = chunk_frames as usize * output_channels;
         for sample in chunk.into_iter().take(samples_to_write) {
             file.write_all(&sample.to_le_bytes())?;
         }
@@ -590,19 +636,28 @@ pub(crate) fn render_scene_to_wav(
 
     // Patch header with actual frame count.
     let data_size = written_frames
-        .saturating_mul(OUTPUT_CHANNELS as u64)
+        .saturating_mul(output_channels as u64)
         .saturating_mul(4);
-    let riff_size = 36u64.saturating_add(data_size);
+    if data_size > u32::MAX as u64 {
+        log::warn!(
+            "[audio] WAV data size {} exceeds 32-bit limit; header will be truncated",
+            data_size
+        );
+    }
+    let riff_size = 36u64.saturating_add(data_size).min(u32::MAX as u64);
     file.seek(std::io::SeekFrom::Start(4))?;
     file.write_all(&(riff_size as u32).to_le_bytes())?;
     file.seek(std::io::SeekFrom::Start(40))?;
-    file.write_all(&(data_size as u32).to_le_bytes())?;
+    file.write_all(&(data_size.min(u32::MAX as u64) as u32).to_le_bytes())?;
     Ok(())
 }
 
-fn write_wav_f32_header_placeholder(file: &mut std::fs::File, sample_rate: u32) -> Result<()> {
+fn write_wav_f32_header_placeholder(
+    file: &mut std::fs::File,
+    sample_rate: u32,
+    channels: u16,
+) -> Result<()> {
     // Standard WAV header with zero data_size; will be patched after writing.
-    let channels = OUTPUT_CHANNELS as u16;
     let bits_per_sample = 32u16;
     let bytes_per_sample = (bits_per_sample / 8) as u32;
     let data_size = 0u32;
@@ -615,7 +670,9 @@ fn write_wav_f32_header_placeholder(file: &mut std::fs::File, sample_rate: u32) 
     file.write_all(&3u16.to_le_bytes())?;
     file.write_all(&channels.to_le_bytes())?;
     file.write_all(&sample_rate.to_le_bytes())?;
-    let byte_rate = sample_rate.saturating_mul(channels as u32).saturating_mul(bytes_per_sample);
+    let byte_rate = sample_rate
+        .saturating_mul(channels as u32)
+        .saturating_mul(bytes_per_sample);
     file.write_all(&byte_rate.to_le_bytes())?;
     let block_align = channels.saturating_mul(bytes_per_sample as u16);
     file.write_all(&block_align.to_le_bytes())?;
@@ -632,42 +689,35 @@ fn mix_chunk(
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
     sample_rate: u32,
+    output_channels: usize,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
     is_export: bool,
 ) -> Vec<f32> {
+    let output_channels = output_channels.max(1);
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
-    let mut mixed = vec![0.0f32; frames * OUTPUT_CHANNELS];
+    let mut mixed = vec![0.0f32; frames * output_channels];
     let chunk_end_sec = chunk_start_sec + chunk_duration_sec;
 
-    // 1. Проверяем Solo-состояние треков
+    // 1. Check the solo state of tracks.
     let has_solo = tracks.iter().any(|t| t.audio_solo);
 
-    // 2. Группируем слои по track_id
+    // 2. Group layers by track_id. Layers without a matching track are mixed
+    // directly into the master bus ("orphan" layers, kept for compatibility).
     let mut track_layers: HashMap<String, Vec<&SceneAudioLayer>> = HashMap::new();
     let mut orphan_layers: Vec<&SceneAudioLayer> = Vec::new();
 
     for layer in scene {
         let tid = layer.track_id.as_deref().unwrap_or("");
-        if tid.is_empty() {
-            orphan_layers.push(layer);
-        } else {
-            let matched_track = tracks.iter().find(|t| {
-                t.id == tid
-                    || tid.starts_with(&format!("{}_", t.id))
-                    || tid.starts_with(t.id.as_str())
-            });
-            if let Some(track) = matched_track {
-                track_layers
-                    .entry(track.id.clone())
-                    .or_default()
-                    .push(layer);
-            } else {
-                orphan_layers.push(layer);
-            }
+        match resolve_track_for_layer(tid, tracks) {
+            Some(track) => track_layers
+                .entry(track.id.clone())
+                .or_default()
+                .push(layer),
+            None => orphan_layers.push(layer),
         }
     }
 
-    // 3. Микшируем треки (шины)
+    // 3. Mix track buses.
     for track in tracks {
         if has_solo && !track.audio_solo {
             continue;
@@ -680,174 +730,48 @@ fn mix_chunk(
             continue;
         };
 
-        let mut track_mixed = vec![0.0f32; frames * OUTPUT_CHANNELS];
+        let mut track_mixed = vec![0.0f32; frames * output_channels];
         let mut has_audio_on_track = false;
 
         for layer in layers {
-            if layer.timeline_end_sec <= chunk_start_sec
-                || layer.timeline_start_sec >= chunk_end_sec
-            {
-                continue;
-            }
-            let segment_start = chunk_start_sec.max(layer.timeline_start_sec);
-            let segment_end = chunk_end_sec.min(layer.timeline_end_sec);
-            let segment_duration = segment_end - segment_start;
-            if segment_duration <= 0.0 {
-                continue;
-            }
-
-            let speed_raw = layer.speed;
-            let reversed = speed_raw < 0.0;
-            if !is_export && reversed {
-                continue; // Mute reverse audio in preview/monitor
-            }
-
-            let speed = sanitize_speed(speed_raw.abs());
-            let source_start = if reversed {
-                let source_start_in_range = ((layer.timeline_end_sec - segment_end) * speed).max(0.0);
-                layer.source_start_sec + source_start_in_range
-            } else {
-                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed
-            };
-
-            let mut decoded = match decode_audio_chunk(
-                &layer.path,
-                source_start,
-                segment_duration,
-                speed,
-                sample_rate,
-                shared,
-            )
-            .with_context(|| format!("decode audio layer {}", layer.id))
-            {
-                Ok(decoded) => decoded,
-                Err(error) => {
-                    log::warn!(
-                        "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
-                        layer.id
-                    );
-                    continue;
-                }
-            };
-
-            if reversed {
-                let num_frames = decoded.len() / OUTPUT_CHANNELS;
-                for i in 0..num_frames / 2 {
-                    let j = num_frames - 1 - i;
-                    let idx_i = i * OUTPUT_CHANNELS;
-                    let idx_j = j * OUTPUT_CHANNELS;
-                    decoded.swap(idx_i, idx_j);
-                    decoded.swap(idx_i + 1, idx_j + 1);
-                }
-            }
-
-            let write_start_frame =
-                ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
-            let frames_to_write = frames
-                .saturating_sub(write_start_frame)
-                .min(decoded.len() / OUTPUT_CHANNELS);
-            apply_layer_mix(
+            has_audio_on_track |= mix_layer_into(
                 &mut track_mixed,
-                &mut decoded,
-                write_start_frame,
-                frames_to_write,
-                sample_rate,
                 layer,
-                segment_start,
+                chunk_start_sec,
+                chunk_end_sec,
+                frames,
+                sample_rate,
+                output_channels,
+                is_export,
+                shared,
             );
-            has_audio_on_track = true;
         }
 
         if has_audio_on_track {
-            // Применяем громкость и баланс трека
-            let (ll, lr, rl, rr) = stereo_pan_matrix(track.audio_balance);
-            let gain = track.audio_gain.max(0.0) as f32;
-
-            for i in 0..frames {
-                let dst = i * OUTPUT_CHANNELS;
-                let left = track_mixed[dst] * gain;
-                let right = track_mixed[dst + 1] * gain;
-                let final_left = (ll as f32) * left + (lr as f32) * right;
-                let final_right = (rl as f32) * left + (rr as f32) * right;
-                mixed[dst] = (mixed[dst] + final_left).clamp(-32.0, 32.0);
-                mixed[dst + 1] = (mixed[dst + 1] + final_right).clamp(-32.0, 32.0);
-            }
+            apply_bus_gain_balance(
+                &mut mixed,
+                &track_mixed,
+                frames,
+                output_channels,
+                track.audio_gain,
+                track.audio_balance,
+            );
         }
     }
 
-    // 4. Микшируем сиротские слои (для обратной совместимости)
+    // 4. Mix orphan layers directly into the master bus.
     if !has_solo {
         for layer in orphan_layers {
-            if layer.timeline_end_sec <= chunk_start_sec
-                || layer.timeline_start_sec >= chunk_end_sec
-            {
-                continue;
-            }
-            let segment_start = chunk_start_sec.max(layer.timeline_start_sec);
-            let segment_end = chunk_end_sec.min(layer.timeline_end_sec);
-            let segment_duration = segment_end - segment_start;
-            if segment_duration <= 0.0 {
-                continue;
-            }
-
-            let speed_raw = layer.speed;
-            let reversed = speed_raw < 0.0;
-            if !is_export && reversed {
-                continue; // Mute reverse audio in preview/monitor
-            }
-
-            let speed = sanitize_speed(speed_raw.abs());
-            let source_start = if reversed {
-                let source_start_in_range = ((layer.timeline_end_sec - segment_end) * speed).max(0.0);
-                layer.source_start_sec + source_start_in_range
-            } else {
-                layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed
-            };
-
-            let mut decoded = match decode_audio_chunk(
-                &layer.path,
-                source_start,
-                segment_duration,
-                speed,
-                sample_rate,
-                shared,
-            )
-            .with_context(|| format!("decode audio layer {}", layer.id))
-            {
-                Ok(decoded) => decoded,
-                Err(error) => {
-                    log::warn!(
-                        "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
-                        layer.id
-                    );
-                    continue;
-                }
-            };
-
-            if reversed {
-                let num_frames = decoded.len() / OUTPUT_CHANNELS;
-                for i in 0..num_frames / 2 {
-                    let j = num_frames - 1 - i;
-                    let idx_i = i * OUTPUT_CHANNELS;
-                    let idx_j = j * OUTPUT_CHANNELS;
-                    decoded.swap(idx_i, idx_j);
-                    decoded.swap(idx_i + 1, idx_j + 1);
-                }
-            }
-
-            let write_start_frame =
-                ((segment_start - chunk_start_sec) * sample_rate as f64).round() as usize;
-            let frames_to_write = frames
-                .saturating_sub(write_start_frame)
-                .min(decoded.len() / OUTPUT_CHANNELS);
-            apply_layer_mix(
+            mix_layer_into(
                 &mut mixed,
-                &mut decoded,
-                write_start_frame,
-                frames_to_write,
-                sample_rate,
                 layer,
-                segment_start,
+                chunk_start_sec,
+                chunk_end_sec,
+                frames,
+                sample_rate,
+                output_channels,
+                is_export,
+                shared,
             );
         }
     }
@@ -857,15 +781,192 @@ fn mix_chunk(
     mixed
 }
 
+/// Resolves the bus track that owns a layer. An empty `tid` is never matched
+/// (the layer is treated as orphan). Matching is exact, or `tid` may use the
+/// `"{track_id}_..."` suffix form; the most specific (longest) track id wins to
+/// keep routing deterministic.
+fn resolve_track_for_layer<'a>(
+    tid: &str,
+    tracks: &'a [SceneAudioTrack],
+) -> Option<&'a SceneAudioTrack> {
+    if tid.is_empty() {
+        return None;
+    }
+    tracks
+        .iter()
+        .filter(|t| tid == t.id || tid.starts_with(&format!("{}_", t.id)))
+        .max_by_key(|t| t.id.len())
+}
+
+/// Decodes, optionally reverses, and mixes a single layer into `buffer`.
+/// Returns `true` if the layer contributed audio to this chunk.
+#[allow(clippy::too_many_arguments)]
+fn mix_layer_into(
+    buffer: &mut [f32],
+    layer: &SceneAudioLayer,
+    chunk_start_sec: f64,
+    chunk_end_sec: f64,
+    frames: usize,
+    sample_rate: u32,
+    output_channels: usize,
+    is_export: bool,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+) -> bool {
+    if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
+        return false;
+    }
+    let raw_segment_start = chunk_start_sec.max(layer.timeline_start_sec);
+    let raw_segment_end = chunk_end_sec.min(layer.timeline_end_sec);
+    let (write_start_frame, frames_to_write) = chunk_write_range(
+        chunk_start_sec,
+        raw_segment_start,
+        raw_segment_end,
+        sample_rate,
+        frames,
+    );
+    if frames_to_write == 0 {
+        return false;
+    }
+    let segment_start = chunk_start_sec + write_start_frame as f64 / sample_rate as f64;
+    let segment_duration = frames_to_write as f64 / sample_rate as f64;
+    let segment_end = segment_start + segment_duration;
+
+    let reversed = layer.speed < 0.0;
+    if !is_export && reversed {
+        // Reverse audio is muted in preview/monitor; only rendered on export.
+        return false;
+    }
+
+    let speed = sanitize_speed(layer.speed.abs());
+    let source_start = if reversed {
+        let source_start_in_range = ((layer.timeline_end_sec - segment_end) * speed).max(0.0);
+        layer.source_start_sec + source_start_in_range
+    } else {
+        layer.source_start_sec + (segment_start - layer.timeline_start_sec) * speed
+    };
+
+    let mut decoded = match decode_audio_chunk(
+        &layer.path,
+        source_start,
+        segment_duration,
+        speed,
+        sample_rate,
+        output_channels,
+        shared,
+    )
+    .with_context(|| format!("decode audio layer {}", layer.id))
+    {
+        Ok(decoded) => decoded,
+        Err(error) => {
+            log::warn!(
+                "[audio] skipping layer {} at {chunk_start_sec:.3}s: {error:?}",
+                layer.id
+            );
+            return false;
+        }
+    };
+
+    if reversed {
+        reverse_frames(&mut decoded, output_channels);
+    }
+
+    let frames_to_write = frames_to_write.min(decoded.len() / output_channels);
+    apply_layer_mix(
+        buffer,
+        &decoded,
+        write_start_frame,
+        frames_to_write,
+        sample_rate,
+        layer,
+        segment_start,
+        output_channels,
+    );
+    true
+}
+
+fn chunk_write_range(
+    chunk_start_sec: f64,
+    segment_start_sec: f64,
+    segment_end_sec: f64,
+    sample_rate: u32,
+    chunk_frames: usize,
+) -> (usize, usize) {
+    if segment_end_sec <= segment_start_sec || chunk_frames == 0 {
+        return (0, 0);
+    }
+
+    let sample_rate = sample_rate as f64;
+    let chunk_start_frame = (chunk_start_sec * sample_rate).round() as i64;
+    let segment_start_frame = (segment_start_sec * sample_rate).round() as i64;
+    let segment_end_frame = (segment_end_sec * sample_rate).round() as i64;
+
+    let write_start = segment_start_frame
+        .saturating_sub(chunk_start_frame)
+        .clamp(0, chunk_frames as i64) as usize;
+    let write_end = segment_end_frame
+        .saturating_sub(chunk_start_frame)
+        .clamp(write_start as i64, chunk_frames as i64) as usize;
+
+    (write_start, write_end.saturating_sub(write_start))
+}
+
+/// Reverses an interleaved buffer frame-by-frame, preserving channel order
+/// within each frame, for any channel count.
+fn reverse_frames(decoded: &mut [f32], channels: usize) {
+    if channels == 0 {
+        return;
+    }
+    let num_frames = decoded.len() / channels;
+    for i in 0..num_frames / 2 {
+        let j = num_frames - 1 - i;
+        for ch in 0..channels {
+            decoded.swap(i * channels + ch, j * channels + ch);
+        }
+    }
+}
+
+/// Applies a track bus gain and stereo balance, then accumulates into the
+/// master `mixed` buffer. Balance only affects the front L/R pair (channels 0
+/// and 1); any further channels are passed through with gain only. Mono output
+/// ignores balance entirely.
+fn apply_bus_gain_balance(
+    mixed: &mut [f32],
+    track_mixed: &[f32],
+    frames: usize,
+    channels: usize,
+    audio_gain: f64,
+    audio_balance: f64,
+) {
+    let gain = audio_gain.max(0.0) as f32;
+    if channels >= 2 {
+        let (ll, lr, rl, rr) = stereo_pan_matrix(audio_balance);
+        let (ll, lr, rl, rr) = (ll as f32, lr as f32, rl as f32, rr as f32);
+        for i in 0..frames {
+            let base = i * channels;
+            let left = track_mixed[base] * gain;
+            let right = track_mixed[base + 1] * gain;
+            mixed[base] += ll * left + lr * right;
+            mixed[base + 1] += rl * left + rr * right;
+            for ch in 2..channels {
+                mixed[base + ch] += track_mixed[base + ch] * gain;
+            }
+        }
+    } else {
+        for i in 0..frames {
+            mixed[i] += track_mixed[i] * gain;
+        }
+    }
+}
+
 fn apply_master_gain(samples: &mut [f32], master_gain: f64) {
     let gain = sanitize_master_gain(master_gain) as f32;
     if (gain - 1.0).abs() <= f32::EPSILON {
         return;
     }
+    // The final `soft_clip` pass keeps the signal bounded, so master gain only
+    // needs to scale; no intermediate headroom clamp is required.
     for sample in samples {
-        // Clamp to a generous headroom before soft_clip prevents extreme
-        // values from many mixed layers from distorting unexpectedly.
-        *sample = (*sample * gain).clamp(-128.0, 128.0);
+        *sample *= gain;
     }
 }
 
@@ -943,6 +1044,13 @@ fn resample_planar_with_speed(
     Ok(output)
 }
 
+/// Streaming resampler for sequential chunks. Unlike `resample_planar_with_speed`
+/// it keeps a cached resampler instance and carries unconsumed input frames in
+/// `remainder` across calls. This avoids zero-padding the final partial block of
+/// each chunk (which would feed silence into the resampler delay line and create
+/// periodic clicks at chunk boundaries). The caller must clear `remainder` (and
+/// the cached resampler) whenever it seeks/discontinues the source stream.
+#[allow(clippy::too_many_arguments)]
 fn resample_planar_cached(
     input: Vec<Vec<f32>>,
     source_rate: u32,
@@ -950,6 +1058,7 @@ fn resample_planar_cached(
     speed: f64,
     num_channels: usize,
     cached_resampler: &mut Option<Box<rubato::SincFixedIn<f32>>>,
+    remainder: &mut Vec<Vec<f32>>,
 ) -> Result<Vec<Vec<f32>>> {
     use rubato::{
         Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
@@ -961,7 +1070,7 @@ fn resample_planar_cached(
         return Ok(input);
     }
 
-    if input.is_empty() || input[0].is_empty() {
+    if num_channels == 0 {
         return Ok(input);
     }
 
@@ -979,58 +1088,116 @@ fn resample_planar_cached(
             SincFixedIn::<f32>::new(ratio, max_ratio_factor, params, chunk_size, num_channels)
                 .map_err(|e| anyhow!("failed to create resampler: {:?}", e))?;
         *cached_resampler = Some(Box::new(resampler));
+        *remainder = vec![Vec::new(); num_channels];
+    }
+
+    if remainder.len() != num_channels {
+        *remainder = vec![Vec::new(); num_channels];
     }
 
     let resampler = cached_resampler.as_mut().unwrap();
-    let input_len = input[0].len();
     let chunk_size = resampler.input_frames_max();
+
+    // Combine carried-over remainder with the freshly decoded input.
+    let mut pending: Vec<Vec<f32>> = Vec::with_capacity(num_channels);
+    for ch in 0..num_channels {
+        let mut channel = std::mem::take(&mut remainder[ch]);
+        if let Some(src) = input.get(ch) {
+            channel.extend_from_slice(src);
+        }
+        pending.push(channel);
+    }
+    let pending_len = pending.first().map(|c| c.len()).unwrap_or(0);
+
     let mut output = vec![Vec::new(); num_channels];
     let mut offset = 0;
-
-    while offset < input_len {
-        let copy_len = (input_len - offset).min(chunk_size);
+    while offset + chunk_size <= pending_len {
         let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
         for ch in 0..num_channels {
-            chunk[ch][..copy_len].copy_from_slice(&input[ch][offset..offset + copy_len]);
+            chunk[ch].copy_from_slice(&pending[ch][offset..offset + chunk_size]);
         }
-
         let out_chunk = resampler
             .process(&chunk, None)
             .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
-
         for ch in 0..num_channels {
             output[ch].extend_from_slice(&out_chunk[ch]);
         }
-        offset += copy_len;
+        offset += chunk_size;
+    }
+
+    // Stash the unconsumed tail (< chunk_size frames) for the next call.
+    for ch in 0..num_channels {
+        remainder[ch] = pending[ch][offset..].to_vec();
     }
 
     Ok(output)
 }
 
-fn planar_to_interleaved_stereo(planar: Vec<Vec<f32>>) -> Vec<f32> {
-    let num_channels = planar.len();
-    if num_channels == 0 {
+/// Converts planar channel buffers into an interleaved buffer with exactly
+/// `out_channels` channels, applying a sensible down/up-mix:
+/// - equal channel counts: copied 1:1;
+/// - mono source: duplicated into the front L/R pair (others silent);
+/// - mono output: average of all source channels;
+/// - otherwise: the overlapping channels are copied, extra outputs stay silent.
+///
+/// Channels of unequal length are tolerated (frame count is the shortest
+/// channel) so a malformed decode never panics.
+fn planar_to_interleaved(planar: &[Vec<f32>], out_channels: usize) -> Vec<f32> {
+    let src_channels = planar.len();
+    if src_channels == 0 || out_channels == 0 {
         return Vec::new();
     }
-    let num_frames = planar[0].len();
-    let mut interleaved = vec![0.0f32; num_frames * 2];
+    let num_frames = planar.iter().map(|c| c.len()).min().unwrap_or(0);
+    if num_frames == 0 {
+        return Vec::new();
+    }
+    let mut interleaved = vec![0.0f32; num_frames * out_channels];
 
-    if num_channels == 1 {
-        for i in 0..num_frames {
-            let val = planar[0][i];
-            interleaved[i * 2] = val;
-            interleaved[i * 2 + 1] = val;
+    if src_channels == out_channels {
+        for f in 0..num_frames {
+            let base = f * out_channels;
+            for ch in 0..out_channels {
+                interleaved[base + ch] = planar[ch][f];
+            }
+        }
+    } else if src_channels == 1 {
+        // Mono source: front L/R for stereo+, single channel for mono.
+        let front = out_channels.min(2);
+        for f in 0..num_frames {
+            let val = planar[0][f];
+            let base = f * out_channels;
+            for ch in 0..front {
+                interleaved[base + ch] = val;
+            }
+        }
+    } else if out_channels == 1 {
+        // Downmix every source channel into mono.
+        let inv = 1.0 / src_channels as f32;
+        for f in 0..num_frames {
+            let mut sum = 0.0;
+            for ch in 0..src_channels {
+                sum += planar[ch][f];
+            }
+            interleaved[f] = sum * inv;
         }
     } else {
-        for i in 0..num_frames {
-            interleaved[i * 2] = planar[0][i];
-            interleaved[i * 2 + 1] = planar[1][i];
+        // Mismatched multichannel: copy the overlapping channels, rest silent.
+        let common = src_channels.min(out_channels);
+        for f in 0..num_frames {
+            let base = f * out_channels;
+            for ch in 0..common {
+                interleaved[base + ch] = planar[ch][f];
+            }
         }
     }
     interleaved
 }
 
-fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<Vec<f32>> {
+fn decode_entire_file_symphonia(
+    path: &str,
+    target_sample_rate: u32,
+    output_channels: usize,
+) -> Result<Vec<f32>> {
     use symphonia::core::codecs::DecoderOptions;
     use symphonia::core::formats::FormatOptions;
     use symphonia::core::meta::MetadataOptions;
@@ -1067,9 +1234,10 @@ fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<V
 
     let track_id = track.id;
     let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
-    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
-
+    let declared_channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(0);
+    let mut channels = declared_channels.max(1);
     let mut planar_buffers = vec![Vec::new(); channels];
+    let mut collected_frames = 0usize;
 
     loop {
         let packet = match format.next_packet() {
@@ -1097,13 +1265,23 @@ fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<V
                 let samples = sample_buf.samples();
                 let num_channels = spec.channels.count();
                 let num_frames = samples.len() / num_channels;
+                if num_channels > channels {
+                    for _ in channels..num_channels {
+                        planar_buffers.push(vec![0.0; collected_frames]);
+                    }
+                    channels = num_channels;
+                }
 
                 for frame in 0..num_frames {
-                    for ch in 0..num_channels {
-                        if ch < channels {
-                            planar_buffers[ch].push(samples[frame * num_channels + ch]);
-                        }
+                    for ch in 0..channels {
+                        let sample = if ch < num_channels {
+                            samples[frame * num_channels + ch]
+                        } else {
+                            0.0
+                        };
+                        planar_buffers[ch].push(sample);
                     }
+                    collected_frames += 1;
                 }
             }
             Err(symphonia::core::errors::Error::IoError(ref err))
@@ -1126,16 +1304,18 @@ fn decode_entire_file_symphonia(path: &str, target_sample_rate: u32) -> Result<V
         1.0,
         channels,
     )?;
-    let interleaved = planar_to_interleaved_stereo(resampled);
+    let interleaved = planar_to_interleaved(&resampled, output_channels);
     Ok(interleaved)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn decode_symphonia_chunk(
     path: &str,
     source_start_sec: f64,
     timeline_duration_sec: f64,
     speed: f64,
     target_sample_rate: u32,
+    output_channels: usize,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
     let mut decoder_state = {
@@ -1180,7 +1360,12 @@ fn decode_symphonia_chunk(
 
         let track_id = track.id;
         let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
-        let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(2);
+        let channels = track
+            .codec_params
+            .channels
+            .map(|c| c.count())
+            .unwrap_or(1)
+            .max(1);
         let time_base = track
             .codec_params
             .time_base
@@ -1196,6 +1381,7 @@ fn decode_symphonia_chunk(
             resampler: None,
             last_resample_ratio: 0.0,
             last_decode_end_sec: 0.0,
+            resample_remainder: vec![Vec::new(); channels],
         });
     }
 
@@ -1225,7 +1411,11 @@ fn decode_symphonia_chunk(
             .context("failed to seek in format reader")?;
 
         state_val.decoder.reset();
+        // Seeking discontinues the source stream, so the cached resampler and
+        // its carried-over input remainder must be discarded to avoid splicing
+        // unrelated audio across the seek boundary.
         state_val.resampler = None;
+        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
         state_val.last_resample_ratio = current_ratio;
 
         let actual_sec = {
@@ -1288,6 +1478,15 @@ fn decode_symphonia_chunk(
                 let samples = sample_buf.samples();
                 let num_channels = spec.channels.count();
                 let num_frames = samples.len() / num_channels;
+                if num_channels > state_val.channels {
+                    for _ in state_val.channels..num_channels {
+                        planar_buffers.push(vec![0.0; collected_frames]);
+                    }
+                    state_val.channels = num_channels;
+                    state_val.resampler = None;
+                    state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+                    state_val.last_resample_ratio = current_ratio;
+                }
 
                 for frame in 0..num_frames {
                     if discard_frames_remaining > 0 {
@@ -1298,10 +1497,13 @@ fn decode_symphonia_chunk(
                         break_loop = true;
                         break;
                     }
-                    for ch in 0..num_channels {
-                        if ch < state_val.channels {
-                            planar_buffers[ch].push(samples[frame * num_channels + ch]);
-                        }
+                    for ch in 0..state_val.channels {
+                        let sample = if ch < num_channels {
+                            samples[frame * num_channels + ch]
+                        } else {
+                            0.0
+                        };
+                        planar_buffers[ch].push(sample);
                     }
                     collected_frames += 1;
                 }
@@ -1320,7 +1522,8 @@ fn decode_symphonia_chunk(
     }
 
     if collected_frames == 0 {
-        let silence_len = (timeline_duration_sec * target_sample_rate as f64).round() as usize * 2;
+        let silence_len =
+            (timeline_duration_sec * target_sample_rate as f64).round() as usize * output_channels;
         // Put the state back even on empty decode
         {
             let mut state = shared.0.lock();
@@ -1329,8 +1532,13 @@ fn decode_symphonia_chunk(
         return Ok(vec![0.0f32; silence_len]);
     }
 
-    if state_val.resampler.is_some() && (state_val.last_resample_ratio - current_ratio).abs() > 1e-6 {
+    if state_val.resampler.is_some() && (state_val.last_resample_ratio - current_ratio).abs() > 1e-6
+    {
+        // Ratio changed (e.g. speed change): rebuild the resampler and drop the
+        // stale input remainder captured at the previous ratio.
         state_val.resampler = None;
+        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+        state_val.last_resample_ratio = current_ratio;
     }
     let resampled = resample_planar_cached(
         planar_buffers,
@@ -1339,8 +1547,9 @@ fn decode_symphonia_chunk(
         speed,
         state_val.channels,
         &mut state_val.resampler,
+        &mut state_val.resample_remainder,
     )?;
-    let interleaved = planar_to_interleaved_stereo(resampled);
+    let interleaved = planar_to_interleaved(&resampled, output_channels);
 
     // Record where this decode left off so the next chunk can skip the seek.
     state_val.last_decode_end_sec = source_end_sec;
@@ -1353,39 +1562,42 @@ fn decode_symphonia_chunk(
     Ok(interleaved)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn decode_audio_chunk(
     path: &str,
     source_start_sec: f64,
     timeline_duration_sec: f64,
     speed: f64,
     sample_rate: u32,
+    output_channels: usize,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
     let is_cacheable = (speed - 1.0).abs() <= f64::EPSILON;
     let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
 
     if is_cacheable && file_size > 0 && file_size < 50 * 1024 * 1024 {
+        let cache_key = decoded_cache_key(path, sample_rate, output_channels);
         let cached_samples = {
             let mut state = shared.0.lock();
-            state.decoded_cache.get(path).cloned()
+            state.decoded_cache.get(&cache_key).cloned()
         };
 
         let cached_samples = match cached_samples {
             Some(samples) => samples,
             None => {
                 log::info!("[audio] caching entire file in memory: {}", path);
-                let decoded = decode_entire_file_symphonia(path, sample_rate)?;
+                let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
                 let shared_samples = Arc::new(decoded);
                 let mut state = shared.0.lock();
-                state.decoded_cache.put(path.to_string(), shared_samples.clone());
+                state.decoded_cache.put(cache_key, shared_samples.clone());
                 shared_samples
             }
         };
 
         let start_frame = (source_start_sec * sample_rate as f64).round() as usize;
         let frames_to_read = (timeline_duration_sec * sample_rate as f64).round() as usize;
-        let start_sample = start_frame * OUTPUT_CHANNELS;
-        let samples_to_read = frames_to_read * OUTPUT_CHANNELS;
+        let start_sample = start_frame * output_channels;
+        let samples_to_read = frames_to_read * output_channels;
 
         let mut result = vec![0.0f32; samples_to_read];
         let cached_len = cached_samples.len();
@@ -1404,22 +1616,35 @@ fn decode_audio_chunk(
         timeline_duration_sec,
         speed,
         sample_rate,
+        output_channels,
         shared,
     )
 }
 
+/// Applies the per-layer gain envelope and stereo balance, then accumulates the
+/// `decoded` interleaved samples into `mixed`. Balance only affects the front
+/// L/R pair; extra channels are passed through with gain. Mono output ignores
+/// balance entirely.
+#[allow(clippy::too_many_arguments)]
 fn apply_layer_mix(
     mixed: &mut [f32],
-    decoded: &mut [f32],
+    decoded: &[f32],
     write_start_frame: usize,
     frames_to_write: usize,
     sample_rate: u32,
     layer: &SceneAudioLayer,
     segment_start_sec: f64,
+    channels: usize,
 ) {
-    let (ll, lr, rl, rr) = {
+    if channels == 0 {
+        return;
+    }
+    let stereo = channels >= 2;
+    let (ll, lr, rl, rr) = if stereo {
         let (ll, lr, rl, rr) = stereo_pan_matrix(layer.audio_balance);
         (ll as f32, lr as f32, rl as f32, rr as f32)
+    } else {
+        (1.0, 0.0, 0.0, 1.0)
     };
     for i in 0..frames_to_write {
         let timeline_sec = segment_start_sec + i as f64 / sample_rate as f64;
@@ -1428,12 +1653,19 @@ fn apply_layer_mix(
         if gain == 0.0 {
             continue;
         }
-        let src = i * OUTPUT_CHANNELS;
-        let left = decoded[src] * gain;
-        let right = decoded[src + 1] * gain;
-        let dst = (write_start_frame + i) * OUTPUT_CHANNELS;
-        mixed[dst] = mixed[dst] + ll * left + lr * right;
-        mixed[dst + 1] = mixed[dst + 1] + rl * left + rr * right;
+        let src = i * channels;
+        let dst = (write_start_frame + i) * channels;
+        if stereo {
+            let left = decoded[src] * gain;
+            let right = decoded[src + 1] * gain;
+            mixed[dst] += ll * left + lr * right;
+            mixed[dst + 1] += rl * left + rr * right;
+            for ch in 2..channels {
+                mixed[dst + ch] += decoded[src + ch] * gain;
+            }
+        } else {
+            mixed[dst] += decoded[src] * gain;
+        }
     }
 }
 
@@ -1493,17 +1725,25 @@ fn sanitize_master_gain(gain: f64) -> f64 {
     }
 }
 
+/// Smooth soft-knee limiter. Below the knee the signal is untouched; above it,
+/// magnitudes are mapped asymptotically toward (but never exceeding) 1.0 with a
+/// tanh curve, so loud mixes are gracefully compressed instead of hard-clipped.
+/// Non-finite inputs are flushed to silence to keep the output bounded.
 fn soft_clip(samples: &mut [f32]) {
+    const KNEE: f32 = 0.8;
     for sample in samples {
-        // Only apply non-linearity above unity; below 1.0 signal is untouched.
         let s = *sample;
-        *sample = if s > 1.0 {
-            1.0 + (s - 1.0).tanh() * 0.5
-        } else if s < -1.0 {
-            -1.0 + (s + 1.0).tanh() * 0.5
-        } else {
-            s
-        };
+        if !s.is_finite() {
+            *sample = 0.0;
+            continue;
+        }
+        let mag = s.abs();
+        if mag <= KNEE {
+            continue;
+        }
+        let over = (mag - KNEE) / (1.0 - KNEE);
+        let limited = KNEE + (1.0 - KNEE) * over.tanh();
+        *sample = limited.copysign(s);
     }
 }
 
@@ -1674,17 +1914,37 @@ mod tests {
     // ------------------------------------------------------------------
 
     #[test]
-    fn test_planar_to_interleaved_stereo_mono() {
+    fn planar_to_interleaved_duplicates_mono_to_front_pair() {
         let planar = vec![vec![1.0, 2.0, 3.0]];
-        let interleaved = planar_to_interleaved_stereo(planar);
-        assert_eq!(interleaved, vec![1.0, 1.0, 2.0, 2.0, 3.0, 3.0]);
+        let interleaved = planar_to_interleaved(&planar, 6);
+        assert_eq!(
+            interleaved,
+            vec![
+                1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 3.0, 3.0, 0.0, 0.0,
+                0.0, 0.0,
+            ]
+        );
     }
 
     #[test]
-    fn test_planar_to_interleaved_stereo_stereo() {
+    fn planar_to_interleaved_copies_stereo() {
         let planar = vec![vec![1.0, 2.0], vec![3.0, 4.0]];
-        let interleaved = planar_to_interleaved_stereo(planar);
+        let interleaved = planar_to_interleaved(&planar, 2);
         assert_eq!(interleaved, vec![1.0, 3.0, 2.0, 4.0]);
+    }
+
+    #[test]
+    fn planar_to_interleaved_downmixes_to_mono() {
+        let planar = vec![vec![1.0, 3.0], vec![3.0, 5.0], vec![5.0, 7.0]];
+        let interleaved = planar_to_interleaved(&planar, 1);
+        assert_eq!(interleaved, vec![3.0, 5.0]);
+    }
+
+    #[test]
+    fn planar_to_interleaved_handles_uneven_channels_without_panic() {
+        let planar = vec![vec![1.0, 2.0], vec![3.0]];
+        let interleaved = planar_to_interleaved(&planar, 2);
+        assert_eq!(interleaved, vec![1.0, 3.0]);
     }
 
     // ------------------------------------------------------------------
@@ -1701,12 +1961,44 @@ mod tests {
     #[test]
     fn test_resample_planar_cached_reuses_instance() {
         let mut cached = None;
+        let mut remainder = Vec::new();
         let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
-        let _ = resample_planar_cached(planar.clone(), 44100, 48000, 1.0, 2, &mut cached).unwrap();
+        let _ = resample_planar_cached(
+            planar.clone(),
+            44100,
+            48000,
+            1.0,
+            2,
+            &mut cached,
+            &mut remainder,
+        )
+        .unwrap();
         assert!(cached.is_some());
         // Calling again with the same ratio reuses the cached resampler.
-        let _ = resample_planar_cached(planar.clone(), 44100, 48000, 1.0, 2, &mut cached).unwrap();
+        let _ = resample_planar_cached(
+            planar.clone(),
+            44100,
+            48000,
+            1.0,
+            2,
+            &mut cached,
+            &mut remainder,
+        )
+        .unwrap();
         assert!(cached.is_some());
+    }
+
+    #[test]
+    fn test_resample_planar_cached_keeps_partial_input_as_remainder() {
+        let mut cached = None;
+        let mut remainder = Vec::new();
+        let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
+        let out = resample_planar_cached(planar, 44100, 48000, 1.0, 2, &mut cached, &mut remainder)
+            .unwrap();
+        assert!(out.iter().all(Vec::is_empty));
+        assert_eq!(remainder.len(), 2);
+        assert_eq!(remainder[0].len(), 100);
+        assert_eq!(remainder[1].len(), 100);
     }
 
     // ------------------------------------------------------------------
@@ -1722,21 +2014,28 @@ mod tests {
 
     #[test]
     fn soft_clip_preserves_in_band() {
-        let mut samples = vec![-0.5, 0.0, 0.5, 1.0, -1.0];
+        let mut samples = vec![-0.5, 0.0, 0.5, 0.8, -0.8];
         soft_clip(&mut samples);
         assert!((samples[0] - (-0.5)).abs() < 1e-6);
         assert!((samples[1] - 0.0).abs() < 1e-6);
         assert!((samples[2] - 0.5).abs() < 1e-6);
-        assert!((samples[3] - 1.0).abs() < 1e-6);
-        assert!((samples[4] - (-1.0)).abs() < 1e-6);
+        assert!((samples[3] - 0.8).abs() < 1e-6);
+        assert!((samples[4] - (-0.8)).abs() < 1e-6);
     }
 
     #[test]
     fn soft_clip_limits_out_of_band() {
         let mut samples = vec![2.0, -2.0];
         soft_clip(&mut samples);
-        assert!(samples[0] > 1.0 && samples[0] < 1.5);
-        assert!(samples[1] < -1.0 && samples[1] > -1.5);
+        assert!(samples[0] > 0.8 && samples[0] < 1.0);
+        assert!(samples[1] < -0.8 && samples[1] > -1.0);
+    }
+
+    #[test]
+    fn soft_clip_flushes_non_finite_samples() {
+        let mut samples = vec![f32::NAN, f32::INFINITY, f32::NEG_INFINITY];
+        soft_clip(&mut samples);
+        assert_eq!(samples, vec![0.0, 0.0, 0.0]);
     }
 
     #[test]
@@ -1755,61 +2054,89 @@ mod tests {
 
     #[test]
     fn output_clock_advances_on_underrun_to_prevent_drift() {
-        let shared = Arc::new((Mutex::new(AudioShared {
-            playing: true,
-            ..AudioShared::default()
-        }), Condvar::new()));
+        let clock = RealtimeClock::default();
+        clock.playing.store(true, Ordering::Release);
         let ring = SpscRingBuffer::new(256);
-        let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
+        let channels = 2;
+        let mut data = vec![1.0f32; 128 * channels];
 
         write_output(
             &mut data,
             &callback_info(0.0),
-            &shared,
+            &clock,
             &ring,
-            OUTPUT_CHANNELS as u16,
+            channels as u16,
         );
 
         assert!(data.iter().all(|sample| *sample == 0.0));
-        // Even when the ring underruns we must advance frames_written so
+        // Even when the ring underruns we must advance the frame counter so
         // that audible_pts_sec does not fall behind real time.
-        assert_eq!(shared.0.lock().frames_written, 128);
+        assert_eq!(clock.frames(), 128);
     }
 
     #[test]
-    fn output_clock_advances_when_ring_has_samples() {
+    fn output_callback_copies_multichannel_ring_samples() {
+        let clock = RealtimeClock::default();
+        clock.playing.store(true, Ordering::Release);
         let ring = SpscRingBuffer::new(512);
-        ring.push_slice(&vec![0.0f32; 256]);
-        let shared = Arc::new((Mutex::new(AudioShared {
-            playing: true,
-            ..AudioShared::default()
-        }), Condvar::new()));
-        let mut data = vec![1.0f32; 128 * OUTPUT_CHANNELS];
+        let channels = 6;
+        let frames = 4;
+        let samples: Vec<f32> = (0..frames * channels).map(|i| i as f32 / 100.0).collect();
+        ring.push_slice(&samples);
+        let mut data = vec![1.0f32; frames * channels];
 
         write_output(
             &mut data,
             &callback_info(0.0),
-            &shared,
+            &clock,
             &ring,
-            OUTPUT_CHANNELS as u16,
+            channels as u16,
         );
 
-        assert!(data.iter().all(|sample| *sample == 0.0));
-        assert_eq!(shared.0.lock().frames_written, 128);
+        assert_eq!(data, samples);
+        assert_eq!(clock.frames(), frames as u64);
+    }
+
+    #[test]
+    fn output_callback_copies_mono_ring_samples() {
+        let clock = RealtimeClock::default();
+        clock.playing.store(true, Ordering::Release);
+        let ring = SpscRingBuffer::new(16);
+        ring.push_slice(&[0.25, -0.25, 0.5, -0.5]);
+        let mut data = vec![0.0f32; 4];
+
+        write_output(&mut data, &callback_info(0.0), &clock, &ring, 1);
+
+        assert_eq!(data, vec![0.25, -0.25, 0.5, -0.5]);
+        assert_eq!(clock.frames(), 4);
+    }
+
+    #[test]
+    fn output_callback_outputs_silence_when_stopped_without_advancing_clock() {
+        let clock = RealtimeClock::default();
+        let ring = SpscRingBuffer::new(16);
+        ring.push_slice(&[0.25, -0.25]);
+        let mut data = vec![1.0f32; 2];
+
+        write_output(&mut data, &callback_info(0.0), &clock, &ring, 1);
+
+        assert_eq!(data, vec![0.0, 0.0]);
+        assert_eq!(clock.frames(), 0);
     }
 
     #[test]
     fn audible_pts_compensates_output_latency_only() {
-        let shared = Arc::new(Mutex::new(AudioShared {
-            playing: true,
+        let state = AudioShared {
             origin_pts_sec: 10.0,
-            frames_written: 48_000,
-            output_latency_sec: 0.02,
-            last_output_buffer_frames: 480,
             ..AudioShared::default()
-        }));
+        };
+        let clock = RealtimeClock::default();
+        clock.frames_written.store(48_000, Ordering::Release);
+        clock
+            .output_latency_bits
+            .store(0.02f64.to_bits(), Ordering::Release);
 
-        let pts = audible_pts_sec(&shared.lock(), 48_000);
+        let pts = audible_pts_sec(&state, &clock, 48_000);
 
         // frames_written already accounts for every frame handed to the OS;
         // only pipeline latency should be subtracted (0.02 s = 960 frames).
@@ -1824,7 +2151,7 @@ mod tests {
     #[test]
     fn test_decode_entire_file_symphonia() {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
-        let decoded = decode_entire_file_symphonia(path, 48000);
+        let decoded = decode_entire_file_symphonia(path, 48000, 2);
         assert!(
             decoded.is_ok(),
             "Failed to decode MP3 file: {:?}",
@@ -1838,7 +2165,7 @@ mod tests {
     fn test_decode_symphonia_chunk() {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000, &shared);
+        let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000, 2, &shared);
         assert!(
             decoded.is_ok(),
             "Failed to decode chunk: {:?}",
@@ -1882,10 +2209,11 @@ mod tests {
             0.0,
             1.0,
             48000,
+            2,
             &shared,
             false,
         );
-        assert_eq!(chunk.len(), (1.0f64 * 48000.0).round() as usize * OUTPUT_CHANNELS);
+        assert_eq!(chunk.len(), (1.0f64 * 48000.0).round() as usize * 2);
     }
 
     #[test]
@@ -1898,16 +2226,7 @@ mod tests {
         l2.audio_gain = 1000.0;
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let chunk = mix_chunk(
-            &[l, l2],
-            &[],
-            10.0,
-            0.0,
-            0.01,
-            48000,
-            &shared,
-            false,
-        );
+        let chunk = mix_chunk(&[l, l2], &[], 10.0, 0.0, 0.01, 48000, 2, &shared, false);
         // Must not contain inf or NaN
         assert!(
             chunk.iter().all(|s| s.is_finite()),
@@ -1918,22 +2237,22 @@ mod tests {
     #[test]
     fn apply_layer_mix_zero_gain_skips() {
         let mut mixed = vec![0.0f32; 4];
-        let mut decoded = vec![1.0f32, 2.0f32, 3.0f32, 4.0f32];
+        let decoded = vec![1.0f32, 2.0f32, 3.0f32, 4.0f32];
         let mut l = layer();
         l.audio_gain = 0.0;
-        apply_layer_mix(&mut mixed, &mut decoded, 0, 2, 48000, &l, 0.0);
+        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 2);
         assert_eq!(mixed, vec![0.0, 0.0, 0.0, 0.0]);
     }
 
     #[test]
     fn apply_layer_mix_allows_headroom_for_later_clamp() {
         let mut mixed = vec![0.0f32; 4];
-        let mut decoded = vec![10.0f32, 10.0f32, 10.0f32, 10.0f32];
+        let decoded = vec![10.0f32, 10.0f32, 10.0f32, 10.0f32];
         let mut l = layer();
         l.audio_gain = 5.0;
         l.audio_fade_in_sec = 0.0;
         l.audio_fade_out_sec = 0.0;
-        apply_layer_mix(&mut mixed, &mut decoded, 0, 2, 48000, &l, 0.0);
+        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 2);
         // Each channel: decoded(10) * gain(5) = 50.
         // With centre pan (1.0,0,0,1.0) mixed should accumulate to 50.0.
         assert!((mixed[0] - 50.0).abs() < 1e-5);
@@ -1942,25 +2261,78 @@ mod tests {
         assert!((mixed[3] - 50.0).abs() < 1e-5);
     }
 
+    #[test]
+    fn apply_layer_mix_passes_extra_channels_through() {
+        let mut mixed = vec![0.0f32; 8];
+        let decoded = vec![1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+        let mut l = layer();
+        l.audio_fade_in_sec = 0.0;
+        l.audio_fade_out_sec = 0.0;
+
+        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 4);
+
+        assert_eq!(mixed, decoded);
+    }
+
+    #[test]
+    fn apply_layer_mix_supports_mono_output() {
+        let mut mixed = vec![0.0f32; 2];
+        let decoded = vec![1.0f32, 2.0];
+        let mut l = layer();
+        l.audio_fade_in_sec = 0.0;
+        l.audio_fade_out_sec = 0.0;
+
+        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 1);
+
+        assert_eq!(mixed, decoded);
+    }
+
+    #[test]
+    fn resolve_track_requires_exact_or_underscore_suffix() {
+        let tracks = vec![track("a"), track("abc")];
+        assert_eq!(resolve_track_for_layer("abc", &tracks).unwrap().id, "abc");
+        assert_eq!(resolve_track_for_layer("a_take", &tracks).unwrap().id, "a");
+        assert!(resolve_track_for_layer("ab", &tracks).is_none());
+    }
+
+    #[test]
+    fn chunk_write_range_uses_contiguous_absolute_frame_grid() {
+        let sample_rate = 48_000;
+        let chunk_frames = 2_400;
+        let first = chunk_write_range(0.0, 0.0, 0.05, sample_rate, chunk_frames);
+        let second = chunk_write_range(0.05, 0.05, 0.1, sample_rate, chunk_frames);
+
+        assert_eq!(first, (0, 2_400));
+        assert_eq!(second, (0, 2_400));
+    }
+
+    #[test]
+    fn chunk_write_range_clips_layer_boundary_inside_chunk() {
+        let sample_rate = 48_000;
+        let chunk_frames = 2_400;
+        let range = chunk_write_range(1.0, 1.01, 1.03, sample_rate, chunk_frames);
+
+        assert_eq!(range, (480, 960));
+    }
+
     // ------------------------------------------------------------------
     // WAV Export
     // ------------------------------------------------------------------
 
     #[test]
     fn render_scene_to_wav_produces_valid_header() {
-        let tmp = std::env::temp_dir().join(format!(
-            "fastcat-audit-wav-test-{}.wav",
-            std::process::id()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("fastcat-audit-wav-test-{}.wav", std::process::id()));
         let l = layer();
         // Render a tiny silent scene
-        render_scene_to_wav(&[l], &[], 1.0, 0.0, 0.01, 48000, &tmp).unwrap();
+        render_scene_to_wav(&[l], &[], 1.0, 0.0, 0.01, 48000, 1, &tmp).unwrap();
 
         let bytes = std::fs::read(&tmp).unwrap();
         assert!(bytes.len() >= 44);
         assert_eq!(&bytes[0..4], b"RIFF");
         assert_eq!(&bytes[8..12], b"WAVE");
         assert_eq!(&bytes[12..16], b"fmt ");
+        assert_eq!(u16::from_le_bytes(bytes[22..24].try_into().unwrap()), 1);
 
         // riff_size = 36 + data_size
         let data_size = u32::from_le_bytes(bytes[40..44].try_into().unwrap()) as u64;

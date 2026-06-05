@@ -1,15 +1,16 @@
-//! Нативный экспорт таймлайна: vello-рендер каждого кадра → raw RGBA в stdin ffmpeg → энкод.
+//! Native timeline export: render each frame through vello, stream raw RGBA to
+//! ffmpeg stdin, then encode.
 //!
-//! Архитектура (почему так):
-//!   - ВИДЕО рендерит нативное ядро (тот же `compositor`/`scene_build`, что и preview/thumbnail),
-//!     поэтому экспорт пиксель-в-пиксель совпадает с монитором.
-//!   - АУДИО намеренно вне нативного ядра (см. `media/mod.rs`): микс таймлайна делает JS-воркер
-//!     (mediabunny/OfflineAudioContext) и кладёт готовый файл во временный путь, который мы тут
-//!     просто муксим вторым `-i`. Так мы не дублируем сложную аудио-логику в Rust.
+//! Architecture:
+//!   - Video is rendered by the native core (the same `compositor`/`scene_build`
+//!     path as preview/thumbnail), so export matches the monitor pixel-for-pixel.
+//!   - Audio can come from a pre-mixed browser file, or from the native audio
+//!     mixer when no browser mix path is supplied.
 //!
-//! ffmpeg вызывается одним процессом: `-f rawvideo -pix_fmt rgba -s WxH -r fps -i -` (видео из stdin)
-//! плюс опционально `-i <audio>` и кодек-флаги. Прогресс — колбэк на каждый записанный кадр.
-//! Отмена — процесс регистрируется в `NativeMediaTasks`, та же `native_media_cancel` его убивает.
+//! ffmpeg runs as one process: `-f rawvideo -pix_fmt rgba -s WxH -r fps -i -`
+//! for stdin video, plus optional `-i <audio>` and codec flags. Progress is
+//! reported after each written frame. Cancellation is handled through
+//! `NativeMediaTasks`, the same registry used by `native_media_cancel`.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -32,19 +33,21 @@ pub struct NativeExportOptions {
     pub width: u32,
     pub height: u32,
     pub fps: f64,
-    /// Диапазон экспорта по timeline-времени (секунды). `end` эксклюзивный.
+    /// Export range in timeline seconds. `end` is exclusive.
     pub start_sec: f64,
     pub end_sec: f64,
-    /// Браузерная codec-строка (avc1.* / vp09.* / av01.*) — маппится на ffmpeg-энкодер.
+    /// Browser codec string (avc1.* / vp09.* / av01.*), mapped to an ffmpeg encoder.
     pub video_codec: String,
     pub video_bitrate_bps: u32,
     pub format: String,
-    /// Путь к заранее смикшированному JS аудио-файлу (wav/m4a/...). `None` → без звука.
+    /// Path to a pre-mixed browser audio file (wav/m4a/...); None means no pre-mix.
     #[serde(default)]
     pub audio_enabled: bool,
     pub audio_path: Option<String>,
     pub audio_codec: Option<String>,
     pub audio_bitrate_bps: Option<u32>,
+    #[serde(default)]
+    pub audio_channels: Option<u32>,
 
     // Hardware Acceleration Settings
     #[serde(default)]
@@ -61,7 +64,7 @@ pub struct NativeExportOptions {
     pub export_alpha: Option<bool>,
 }
 
-/// Полный прогон экспорта. `on_progress(0..1)` зовётся после каждого записанного кадра.
+/// Runs the full export. `on_progress(0..1)` is called after each written frame.
 pub fn export_timeline(
     tasks: &NativeMediaTasks,
     task_id: &str,
@@ -79,14 +82,18 @@ pub fn export_timeline(
     };
     let start = options.start_sec.max(0.0);
     let end = options.end_sec.max(start);
-    // Кол-во кадров: длительность × fps. Минимум 1 кадр (стоп-кадр для нулевого диапазона).
+    // Frame count: duration times fps. Keep at least one frame for a zero-length range.
     let frame_count = (((end - start) * fps).round() as u64).max(1);
 
-    let hw_mode = options.hardware_acceleration_mode.as_deref().unwrap_or("none").to_string();
+    let hw_mode = options
+        .hardware_acceleration_mode
+        .as_deref()
+        .unwrap_or("none")
+        .to_string();
     let hw_enabled = options.enable_hardware_encoding.unwrap_or(false);
 
-    // Аудио-микс готовим ОДИН раз: при HW→SW-фолбэке обе попытки переиспользуют один и тот же
-    // временный файл, иначе тяжёлый OfflineAudioContext-микс гонялся бы дважды.
+    // Render the audio mix once so hardware-to-software fallback can reuse the
+    // same temporary file instead of running the expensive offline mix twice.
     let mut temp_audio: Option<PathBuf> = None;
     let audio_input: Option<PathBuf> = if options.audio_enabled {
         match options.audio_path.as_deref().filter(|p| !p.is_empty()) {
@@ -98,8 +105,18 @@ pub fn export_timeline(
                 } else {
                     scene.audio_master_gain
                 };
-                render_scene_to_wav(&scene.audio_layers, &scene.audio_tracks, master_gain, start, end, 48_000, &path)
-                    .context("failed to render native audio mix")?;
+                let output_channels = options.audio_channels.unwrap_or(2) as usize;
+                render_scene_to_wav(
+                    &scene.audio_layers,
+                    &scene.audio_tracks,
+                    master_gain,
+                    start,
+                    end,
+                    48_000,
+                    output_channels,
+                    &path,
+                )
+                .context("failed to render native audio mix")?;
                 temp_audio = Some(path.clone());
                 Some(path)
             }
@@ -109,9 +126,16 @@ pub fn export_timeline(
         None
     };
 
-    // Одна попытка экспорта с данными опциями. Не трогает temp_audio — его чистит вызывающий.
+    // One export attempt with the given options. The caller owns temp_audio cleanup.
     let run_attempt = |opts: &NativeExportOptions| -> Result<()> {
-        let args = build_ffmpeg_args(opts, audio_input.as_deref(), width, height, fps, target_path);
+        let args = build_ffmpeg_args(
+            opts,
+            audio_input.as_deref(),
+            width,
+            height,
+            fps,
+            target_path,
+        );
         let ffmpeg_cmd = opts.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
         let mut child = Command::new(ffmpeg_cmd)
@@ -135,11 +159,12 @@ pub fn export_timeline(
             })
         });
 
-        // Регистрируем процесс, чтобы `native_media_cancel(task_id)` мог его убить.
+        // Register the process so `native_media_cancel(task_id)` can stop it.
         let child = tasks.insert(task_id, child);
 
-        // Рендерим кадры последовательно через выделенный compositor (отдельный от thumbnail-пула,
-        // чтобы экспорт и генерация миниатюр не дрались за один GPU-таргет).
+        // Render frames sequentially through a dedicated compositor, separate
+        // from the thumbnail pool, so export and thumbnail generation do not
+        // contend for the same GPU target.
         let mut compositor = Compositor::new();
         let dev_id = compositor
             .ensure_offscreen_device()
@@ -156,7 +181,13 @@ pub fn export_timeline(
                     (width, height),
                     &mut cache,
                 )?;
-                let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height, &empty_cache)?;
+                let pixels = compositor.render_scene_to_pixels(
+                    dev_id,
+                    &frame_scene,
+                    width,
+                    height,
+                    &empty_cache,
+                )?;
                 if let Err(e) = stdin.write_all(&pixels) {
                     return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                 }
@@ -165,7 +196,7 @@ pub fn export_timeline(
             Ok(())
         })();
 
-        // Закрываем stdin → ffmpeg финализирует контейнер.
+        // Close stdin so ffmpeg finalizes the container.
         drop(stdin);
 
         if let Err(error) = render_result {
@@ -209,7 +240,10 @@ pub fn export_timeline(
                 let _ = guard.wait();
                 drop(guard);
                 tasks.remove(task_id);
-                return Err(anyhow!("ffmpeg export timed out after {} seconds", TIMEOUT.as_secs()));
+                return Err(anyhow!(
+                    "ffmpeg export timed out after {} seconds",
+                    TIMEOUT.as_secs()
+                ));
             }
         }
     };
@@ -242,9 +276,15 @@ fn build_ffmpeg_args(
         && (options.format == "webm" || options.format == "mkv");
 
     let hw_mode = if options.enable_hardware_encoding.unwrap_or(false) && !export_alpha {
-        let mode = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
+        let mode = options
+            .hardware_acceleration_mode
+            .as_deref()
+            .unwrap_or("none");
         if mode == "auto" {
-            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+            let vaapi_dev = options
+                .vaapi_device
+                .as_deref()
+                .unwrap_or("/dev/dri/renderD128");
             if std::path::Path::new(vaapi_dev).exists() {
                 "vaapi"
             } else {
@@ -260,7 +300,10 @@ fn build_ffmpeg_args(
     let mut args = Vec::new();
 
     if hw_mode == "vaapi" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or("/dev/dri/renderD128");
+        let vaapi_dev = options
+            .vaapi_device
+            .as_deref()
+            .unwrap_or("/dev/dri/renderD128");
         args.extend([
             "-init_hw_device".to_string(),
             format!("vaapi=gpu:{vaapi_dev}"),
@@ -273,7 +316,7 @@ fn build_ffmpeg_args(
         "-y".to_string(),
         "-loglevel".to_string(),
         "error".to_string(),
-        // Видео из stdin (raw RGBA).
+        // Video comes from stdin as raw RGBA.
         "-f".to_string(),
         "rawvideo".to_string(),
         "-pix_fmt".to_string(),
@@ -300,10 +343,7 @@ fn build_ffmpeg_args(
     ]);
 
     if export_alpha && video_codec == "libvpx-vp9" {
-        args.extend([
-            "-auto-alt-ref".to_string(),
-            "0".to_string(),
-        ]);
+        args.extend(["-auto-alt-ref".to_string(), "0".to_string()]);
     }
 
     if hw_mode == "vaapi" {
@@ -322,15 +362,9 @@ fn build_ffmpeg_args(
         ]);
     } else {
         if export_alpha {
-            args.extend([
-                "-pix_fmt".to_string(),
-                "yuva420p".to_string(),
-            ]);
+            args.extend(["-pix_fmt".to_string(), "yuva420p".to_string()]);
         } else {
-            args.extend([
-                "-pix_fmt".to_string(),
-                "yuv420p".to_string(),
-            ]);
+            args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
         }
     }
 
@@ -356,7 +390,7 @@ fn build_ffmpeg_args(
         if let Some(bitrate) = options.audio_bitrate_bps {
             args.extend(["-b:a".to_string(), bitrate.max(1).to_string()]);
         }
-        // Обрезаем по более короткому из потоков (видео-длина — эталон).
+        // Trim to the shorter stream; video duration is the reference.
         args.push("-shortest".to_string());
     } else {
         args.push("-an".to_string());
@@ -370,7 +404,7 @@ fn build_ffmpeg_args(
     args
 }
 
-/// Сохраняет временный путь для аудио-микса (JS пишет сюда WAV перед экспортом).
+/// Returns a temporary path for the audio mix WAV.
 pub fn temp_audio_path() -> PathBuf {
     let name = format!(
         "fastcat-export-audio-{}-{}.wav",
@@ -403,6 +437,7 @@ mod tests {
             audio_path: None,
             audio_codec: Some("aac".to_string()),
             audio_bitrate_bps: Some(128_000),
+            audio_channels: Some(2),
             ffmpeg_path: None,
             ffprobe_path: None,
             hardware_acceleration_mode: None,
@@ -446,6 +481,7 @@ mod tests {
             audio_path: None,
             audio_codec: None,
             audio_bitrate_bps: None,
+            audio_channels: None,
             ffmpeg_path: None,
             ffprobe_path: None,
             hardware_acceleration_mode: None,
@@ -453,14 +489,7 @@ mod tests {
             enable_hardware_encoding: None,
             export_alpha: Some(true),
         };
-        let args = build_ffmpeg_args(
-            &options,
-            None,
-            1920,
-            1080,
-            30.0,
-            Path::new("output.webm"),
-        );
+        let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.webm"));
         let mut found_yuva = false;
         let mut found_auto_alt_ref = false;
         let mut idx = 0;
@@ -492,6 +521,7 @@ mod tests {
             audio_path: None,
             audio_codec: None,
             audio_bitrate_bps: None,
+            audio_channels: None,
             ffmpeg_path: None,
             ffprobe_path: None,
             hardware_acceleration_mode: None,
@@ -499,14 +529,7 @@ mod tests {
             enable_hardware_encoding: None,
             export_alpha: Some(true),
         };
-        let args = build_ffmpeg_args(
-            &options,
-            None,
-            1920,
-            1080,
-            30.0,
-            Path::new("output.mp4"),
-        );
+        let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.mp4"));
         assert!(
             !args.contains(&"yuva420p".to_string()),
             "mp4 should ignore alpha flag"
@@ -517,4 +540,3 @@ mod tests {
         );
     }
 }
-
