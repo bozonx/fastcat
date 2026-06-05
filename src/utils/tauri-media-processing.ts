@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { ConversionRequest } from '~/types/conversion';
+import type { NativeMonitorScene } from '~/utils/native-monitor-scene';
 import { deserializeWaveformPeaks } from '~/utils/audio/waveform';
 
 type NativeBytePayload = ArrayBuffer | ArrayBufferView | number[];
@@ -169,7 +170,7 @@ export async function nativeExportTimeline(params: {
 }
 
 export async function nativeRenderTimelineFrameWebp(params: {
-  scene: unknown;
+  scene: NativeMonitorScene;
   timeSec: number;
   width: number;
   height: number;
@@ -233,6 +234,9 @@ export async function nativeVideoFrameWebps(params: {
     if (size === 0) {
       blobs.push(null);
     } else {
+      if (offset + size > packedBytes.byteLength) {
+        throw new Error('Corrupted packed frame data: size exceeds buffer bounds');
+      }
       const slice = packedBytes.subarray(offset, offset + size);
       blobs.push(new Blob([toBlobPart(slice)], { type: 'image/webp' }));
       offset += size;

@@ -677,7 +677,7 @@ struct SvgCacheEntry {
     size: (u32, u32),
 }
 
-static SVG_CACHE: OnceLock<Mutex<HashMap<(PathBuf, u32), SvgCacheEntry>>> = OnceLock::new();
+static SVG_CACHE: OnceLock<Mutex<lru::LruCache<(PathBuf, u32), SvgCacheEntry>>> = OnceLock::new();
 
 /// Растеризует SVG в `ImageData`, целясь в `target_long_edge` пикселей по длинной
 /// стороне (= разрешение, в котором слой будет показан: монитор для preview,
@@ -686,12 +686,10 @@ static SVG_CACHE: OnceLock<Mutex<HashMap<(PathBuf, u32), SvgCacheEntry>>> = Once
 /// маленьком preview зря жгли память.
 pub fn rasterize_svg(path: &Path, target_long_edge: u32) -> Result<(ImageData, (u32, u32))> {
     let path_buf = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let modified = fs::metadata(&path_buf)
-        .and_then(|m| m.modified())
-        .unwrap_or_else(|_| SystemTime::now());
+    let maybe_modified = fs::metadata(&path_buf).and_then(|m| m.modified()).ok();
 
-    let cache_lock = SVG_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Ok(cache) = cache_lock.lock() {
+    let cache_lock = SVG_CACHE.get_or_init(|| Mutex::new(lru::LruCache::new(std::num::NonZeroUsize::new(128).unwrap())));
+    if let (Some(modified), Ok(mut cache)) = (maybe_modified, cache_lock.lock()) {
         if let Some(entry) = cache.get(&(path_buf.clone(), target_long_edge)) {
             if entry.modified == modified {
                 return Ok((entry.image.clone(), entry.size));
@@ -738,15 +736,8 @@ pub fn rasterize_svg(path: &Path, target_long_edge: u32) -> Result<(ImageData, (
     };
     let size = (width, height);
 
-    if let Ok(mut cache) = cache_lock.lock() {
-        const SVG_CACHE_MAX_SIZE: usize = 128;
-        if cache.len() >= SVG_CACHE_MAX_SIZE {
-            // Simple eviction: remove an arbitrary key to cap memory.
-            if let Some(key) = cache.keys().next().cloned() {
-                cache.remove(&key);
-            }
-        }
-        cache.insert(
+    if let (Some(modified), Ok(mut cache)) = (maybe_modified, cache_lock.lock()) {
+        cache.push(
             (path_buf, target_long_edge),
             SvgCacheEntry {
                 modified,

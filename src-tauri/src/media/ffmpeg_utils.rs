@@ -58,6 +58,27 @@ pub fn even(value: u32) -> u32 {
     (v + 1) & !1
 }
 
+/// Resolves hardware decode mode string (auto/vaapi/nvdec/none).
+pub fn resolve_hw_decode_mode<'a>(hw_accel: &'a str, vaapi_device: &'a str) -> &'a str {
+    if hw_accel != "none" {
+        if hw_accel == "auto" {
+            if std::path::Path::new(vaapi_device).exists() {
+                "vaapi"
+            } else {
+                "none"
+            }
+        } else {
+            match hw_accel {
+                "vaapi" => "vaapi",
+                "nvdec" | "nvenc" => "nvdec",
+                _ => "none",
+            }
+        }
+    } else {
+        "none"
+    }
+}
+
 pub fn format_fps(fps: f64) -> String {
     if fps.is_finite() && fps > 0.0 {
         format!("{fps:.6}")

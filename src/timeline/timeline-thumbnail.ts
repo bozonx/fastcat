@@ -7,6 +7,7 @@ import { cloneValue } from '~/utils/clone';
 import { isTauriRuntime } from '~/utils/runtime';
 import { nativeRenderTimelineFrameWebp } from '~/utils/tauri-media-processing';
 import { fileThumbnailGenerator } from '~/utils/file-thumbnail-generator';
+import { TIMELINE_MANAGER_THUMBNAILS } from '~/utils/constants';
 import {
   buildNativeMonitorScene as buildNativeMonitorScenePayload,
   type NativeMonitorScene,
@@ -51,6 +52,8 @@ export function generateTimelineThumbnail(params: {
   void (async () => {
     try {
       const durationUs = selectTimelineDurationUs(timelineDoc);
+      // Ensure the preview time is strictly inside [0, duration) so the
+      // underlying decoder never has to resolve a frame exactly at EOF.
       const previewTimeUs = Math.max(
         0,
         Math.min(Math.round(durationUs / 2), Math.max(0, durationUs - 1)),
@@ -59,12 +62,15 @@ export function generateTimelineThumbnail(params: {
       if (isTauriRuntime()) {
         const scene = await buildNativeMonitorScene(timelineDoc);
         if (scene.layers.length === 0) return;
+        const maxSize = TIMELINE_MANAGER_THUMBNAILS.MAX_SIZE;
+        const longEdge = Math.max(scene.width, scene.height);
+        const scale = longEdge > maxSize ? maxSize / longEdge : 1;
         const blob = await nativeRenderTimelineFrameWebp({
           scene,
           timeSec: previewTimeUs / 1_000_000,
-          width: Math.max(160, Math.round(scene.width)),
-          height: Math.max(90, Math.round(scene.height)),
-          quality: 0.8,
+          width: Math.max(160, Math.round(scene.width * scale)),
+          height: Math.max(90, Math.round(scene.height * scale)),
+          quality: TIMELINE_MANAGER_THUMBNAILS.QUALITY,
         });
         await fileThumbnailGenerator.saveManualThumbnail({
           projectId,

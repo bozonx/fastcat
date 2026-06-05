@@ -217,20 +217,20 @@ export function useEntryPreview(params: {
       let nextUrl: string | null = null;
 
       const avoidAssetProtocol = isVideoOrAudio && (await isLinuxTauri());
-      console.log('[useEntryPreview] avoidAssetProtocol=', avoidAssetProtocol, 'isVideoOrAudio=', isVideoOrAudio);
+      log.debug('[useEntryPreview] avoidAssetProtocol=', avoidAssetProtocol, 'isVideoOrAudio=', isVideoOrAudio);
 
       if (!avoidAssetProtocol && isVideoOrAudio && !fileToPlay && params.getObjectUrlByPath && entry.path) {
         nextUrl = await params.getObjectUrlByPath(entry.path);
-        console.log('[useEntryPreview] asset URL=', nextUrl);
+        log.debug('[useEntryPreview] asset URL=', nextUrl);
       } else {
         if (!fileToPlay && entry.path) {
           fileToPlay = await params.getFileByPath(entry.path);
-          console.log('[useEntryPreview] loaded File=', fileToPlay?.name, 'size=', fileToPlay?.size, 'type=', fileToPlay?.type);
+          log.debug('[useEntryPreview] loaded File=', fileToPlay?.name, 'size=', fileToPlay?.size, 'type=', fileToPlay?.type);
         }
 
         if (fileToPlay && (isVideoOrAudio || isImage)) {
           nextUrl = URL.createObjectURL(fileToPlay);
-          console.log('[useEntryPreview] blob URL=', nextUrl);
+          log.debug('[useEntryPreview] blob URL=', nextUrl);
         }
       }
 
@@ -244,9 +244,14 @@ export function useEntryPreview(params: {
       let nextImageDimensions: { width: number; height: number } | null = null;
       if (resolvedMediaType === 'image' && fileToPlay) {
         try {
-          const bitmap = await createImageBitmap(fileToPlay);
-          nextImageDimensions = { width: bitmap.width, height: bitmap.height };
-          bitmap.close();
+          // Guard against OOM from loading huge images directly into createImageBitmap
+          if (fileToPlay.size > 100 * 1024 * 1024) {
+            nextImageDimensions = null;
+          } else {
+            const bitmap = await createImageBitmap(fileToPlay);
+            nextImageDimensions = { width: bitmap.width, height: bitmap.height };
+            bitmap.close();
+          }
         } catch {
           nextImageDimensions = null;
         }

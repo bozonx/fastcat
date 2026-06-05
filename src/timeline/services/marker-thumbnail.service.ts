@@ -37,7 +37,7 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
         const quality = MARKER_THUMBNAILS.QUALITY;
 
         let blob: Blob | null = null;
-        if (isTauriRuntime() && params.nativeScene) {
+        if (isTauriRuntime() && params.nativeScene && params.nativeScene.layers.length > 0) {
           blob = await nativeRenderTimelineFrameWebp({
             scene: params.nativeScene,
             timeSec: params.timeUs / 1_000_000,

@@ -41,6 +41,7 @@ struct CachedDecoder {
     rotation: i32,
     fps: f64,
     last: Option<ExportFrame>,
+    max_output_long_edge: Option<u32>,
 }
 
 impl CachedDecoder {
@@ -119,9 +120,11 @@ impl VideoDecoderCache {
         }
     }
 
-    fn get_or_insert(&mut self, path: &Path) -> Result<&mut CachedDecoder> {
+    fn get_or_insert(&mut self, path: &Path, max_output_long_edge: Option<u32>) -> Result<&mut CachedDecoder> {
         let path_buf = path.to_path_buf();
-        if !self.decoders.contains_key(&path_buf) {
+        let needs_new = !self.decoders.contains_key(&path_buf)
+            || self.decoders[&path_buf].max_output_long_edge != max_output_long_edge;
+        if needs_new {
             while self.decoders.len() >= self.capacity && !self.decoders.is_empty() {
                 if let Some(oldest) = self.lru.pop_front() {
                     if oldest != path_buf {
@@ -129,7 +132,10 @@ impl VideoDecoderCache {
                     }
                 }
             }
-            let decoder = open_decoder(path, None, None, None)?;
+            if self.decoders.contains_key(&path_buf) {
+                self.decoders.remove(&path_buf);
+            }
+            let decoder = open_decoder(path, max_output_long_edge, None, None)?;
             let (rotation, fps) = {
                 let info = decoder.info();
                 (info.rotation, info.fps)
@@ -141,6 +147,7 @@ impl VideoDecoderCache {
                     rotation,
                     fps,
                     last: None,
+                    max_output_long_edge,
                 },
             );
         }
@@ -225,7 +232,7 @@ pub(crate) fn build_export_scene(
             continue;
         }
         let (layer_kind, source_rotation) =
-            match build_raster_kind(layer, time_sec, svg_long_edge, cache)? {
+            match build_raster_kind(layer, time_sec, svg_long_edge, Some(svg_long_edge), cache)? {
                 Some(built) => (built.kind, built.source_rotation),
                 None => match build_virtual_kind(layer, (scene_w, scene_h)) {
                     Some(kind) => (kind, 0),
@@ -254,6 +261,7 @@ fn build_raster_kind(
     layer: &SceneLayer,
     time_sec: f64,
     svg_long_edge: u32,
+    max_output_long_edge: Option<u32>,
     cache: &mut VideoDecoderCache,
 ) -> Result<Option<RasterBuild>> {
     let built = match layer.kind {
@@ -261,6 +269,7 @@ fn build_raster_kind(
             let (frame, source_rotation) = match decode_video_frame_cached(
                 Path::new(&layer.path),
                 layer.source_pts_at(time_sec),
+                max_output_long_edge,
                 cache,
             ) {
                 Ok(decoded) => decoded,
@@ -312,9 +321,10 @@ fn build_raster_kind(
 fn decode_video_frame_cached(
     path: &Path,
     time_sec: f64,
+    max_output_long_edge: Option<u32>,
     cache: &mut VideoDecoderCache,
 ) -> Result<(ExportFrame, i32)> {
-    let cached = cache.get_or_insert(path)?;
+    let cached = cache.get_or_insert(path, max_output_long_edge)?;
     let rotation = cached.rotation;
     let frame = cached.frame_at(time_sec)?;
     Ok((frame, rotation))
@@ -331,7 +341,7 @@ fn export_frame_to_image(frame: &ExportFrame) -> ImageData {
     }
 }
 
-fn save_rgba_as_webp(
+pub fn save_rgba_as_webp(
     path: &Path,
     pixels: &[u8],
     width: u32,
@@ -342,7 +352,7 @@ fn save_rgba_as_webp(
     Ok(())
 }
 
-fn encode_rgba_as_webp(pixels: &[u8], width: u32, height: u32, quality: f32) -> Result<Vec<u8>> {
+pub fn encode_rgba_as_webp(pixels: &[u8], width: u32, height: u32, quality: f32) -> Result<Vec<u8>> {
     let encoder = webp::Encoder::from_rgba(pixels, width, height);
     let quality = quality.clamp(0.0, 100.0);
     let bytes = if quality >= 100.0 {

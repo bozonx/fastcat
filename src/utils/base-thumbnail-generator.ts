@@ -60,7 +60,9 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
   }
 
   addTask(task: TTask) {
-    if (this.isCancelled(task.id)) {
+    // Only clear the cancelled flag if there is no active task — otherwise a
+    // running task that was marked cancelled would keep going after this add.
+    if (this.isCancelled(task.id) && !this.activeTasks.has(task.id)) {
       this.cancelledTasks.delete(task.id);
     }
     if (this.queuedTasks.has(task.id) || this.activeTasks.has(task.id)) {
@@ -92,13 +94,17 @@ export abstract class BaseThumbnailGenerator<TTask extends BaseThumbnailTask, TC
           log.error(`Task ${task.id} failed:`, e);
         } finally {
           this.activeTasks.delete(task.id);
-          this.cancelledTasks.delete(task.id);
+          if (!this.isCancelled(task.id)) {
+            this.cancelledTasks.delete(task.id);
+          }
         }
       },
       { priority: this.taskPriority },
     ).catch((e) => {
       this.queuedTasks.delete(task.id);
-      this.cancelledTasks.delete(task.id);
+      if (!this.isCancelled(task.id)) {
+        this.cancelledTasks.delete(task.id);
+      }
       log.error(`Task ${task.id} failed:`, e);
     });
   }

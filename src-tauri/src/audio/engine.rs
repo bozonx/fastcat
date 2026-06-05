@@ -2710,6 +2710,114 @@ mod tests {
     }
 
     #[test]
+    fn reverse_frames_flips_interleaved_buffer() {
+        let mut buf = vec![1.0f32, 1.1, 2.0, 2.1, 3.0, 3.1, 4.0, 4.1];
+        reverse_frames(&mut buf, 2);
+        // After reversal: frame order is 4,3,2,1 but channel order inside each frame is preserved.
+        assert_eq!(buf, vec![4.0, 4.1, 3.0, 3.1, 2.0, 2.1, 1.0, 1.1]);
+    }
+
+    #[test]
+    fn reverse_frames_mono_works() {
+        let mut buf = vec![1.0f32, 2.0, 3.0, 4.0];
+        reverse_frames(&mut buf, 1);
+        assert_eq!(buf, vec![4.0, 3.0, 2.0, 1.0]);
+    }
+
+    #[test]
+    fn reversed_source_start_computes_from_timeline_end() {
+        let l = SceneAudioLayer {
+            id: "rev".into(),
+            track_id: None,
+            path: "/tmp/x.wav".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 10.0,
+            source_start_sec: 5.0,
+            speed: -1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: AudioFadeCurve::Linear,
+            audio_fade_out_curve: AudioFadeCurve::Linear,
+        };
+        // chunk covering timeline 0..0.05
+        let _segment_start = 0.0;
+        let segment_end = 0.05;
+        let speed = l.speed.abs();
+        let source_start = ((l.timeline_end_sec - segment_end) * speed).max(0.0) + l.source_start_sec;
+        // For reverse playback the first output samples come from the end of the source range.
+        assert!((source_start - 14.95).abs() < 1e-9, "expected 14.95, got {}", source_start);
+    }
+
+    #[test]
+    fn reversed_layer_is_muted_in_preview() {
+        let l = SceneAudioLayer {
+            id: "rev".into(),
+            track_id: None,
+            path: "/tmp/x.wav".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 10.0,
+            source_start_sec: 0.0,
+            speed: -1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: AudioFadeCurve::Linear,
+            audio_fade_out_curve: AudioFadeCurve::Linear,
+        };
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // Preview (is_export = false) must return false (muted) for reversed clips.
+        let preview_result = mix_layer_into(
+            &mut vec![0.0f32; 4800],
+            &l,
+            0.0,
+            0.05,
+            2400,
+            48000,
+            2,
+            false,
+            &shared,
+        );
+        assert!(!preview_result, "reverse audio should be muted in preview");
+    }
+
+    #[test]
+    fn reversed_layer_is_enabled_in_export() {
+        let path = "../test/fixtures/media/sample-1s-audio.mp3";
+        let l = SceneAudioLayer {
+            id: "rev".into(),
+            track_id: None,
+            path: path.into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 10.0,
+            source_start_sec: 0.0,
+            speed: -1.0,
+            audio_gain: 1.0,
+            audio_balance: 0.0,
+            audio_fade_in_sec: 0.0,
+            audio_fade_out_sec: 0.0,
+            audio_fade_in_curve: AudioFadeCurve::Linear,
+            audio_fade_out_curve: AudioFadeCurve::Linear,
+        };
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // Export (is_export = true) must attempt decoding for reversed clips.
+        let export_result = mix_layer_into(
+            &mut vec![0.0f32; 4800],
+            &l,
+            0.0,
+            0.05,
+            2400,
+            48000,
+            2,
+            true,
+            &shared,
+        );
+        assert!(export_result, "reverse audio should be enabled in export");
+    }
+
+    #[test]
     fn chunk_write_range_uses_contiguous_absolute_frame_grid() {
         let sample_rate = 48_000;
         let chunk_frames = 2_400;

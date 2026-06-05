@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use parking_lot::Mutex;
 
 use crate::media::decode_gate::decoder_load_gate;
+use crate::media::timeline_render::encode_rgba_as_webp;
 
 #[derive(Clone, Default)]
 pub struct NativeMediaTasks {
@@ -255,20 +256,8 @@ pub fn generate_proxy(
     let (width, height) = scaled_even_size(video.width, video.height, options.max_pixels);
 
     let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
-    let hw_decode = if hw_accel != "none" {
-        if hw_accel == "auto" {
-            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
-            if std::path::Path::new(vaapi_dev).exists() {
-                "vaapi"
-            } else {
-                "none"
-            }
-        } else {
-            hw_accel
-        }
-    } else {
-        "none"
-    };
+    let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
 
     let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
         hw_decode
@@ -396,20 +385,8 @@ pub fn convert_media(
     options: NativeConvertOptions,
 ) -> Result<()> {
     let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
-    let hw_decode = if hw_accel != "none" {
-        if hw_accel == "auto" {
-            let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
-            if std::path::Path::new(vaapi_dev).exists() {
-                "vaapi"
-            } else {
-                "none"
-            }
-        } else {
-            hw_accel
-        }
-    } else {
-        "none"
-    };
+    let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
 
     let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
         hw_decode
@@ -556,20 +533,7 @@ pub fn extract_video_frame_webp(
     let (width, height) = video_frame_thumbnail_size(video, max_width, max_height);
 
     let hw_accel = &hw_settings.hardware_acceleration_mode;
-    let hw_decode = if hw_accel != "none" {
-        if hw_accel == "auto" {
-            let vaapi_dev = &hw_settings.vaapi_device;
-            if std::path::Path::new(vaapi_dev).exists() {
-                "vaapi"
-            } else {
-                "none"
-            }
-        } else {
-            hw_accel.as_str()
-        }
-    } else {
-        "none"
-    };
+    let hw_decode = resolve_hw_decode_mode(hw_accel, &hw_settings.vaapi_device);
 
     let mut cmd = Command::new(&hw_settings.ffmpeg_path);
     cmd.arg("-nostdin");
@@ -634,7 +598,7 @@ pub fn extract_video_frame_webps(
     times_sec: &[f64],
     max_width: u32,
     max_height: u32,
-    _quality: f32,
+    quality: f32,
 ) -> Result<Vec<Option<Vec<u8>>>> {
     let mut sorted_times: Vec<(usize, f64)> = times_sec
         .iter()
@@ -643,12 +607,19 @@ pub fn extract_video_frame_webps(
         .collect();
     sorted_times.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-    let _permit = decoder_load_gate().acquire();
     let max_edge = max_width.max(max_height);
-    let mut decoder = crate::media::decode::open(source_path, Some(max_edge), None, None)?;
+    let mut decoder = {
+        let _permit = decoder_load_gate().acquire();
+        crate::media::decode::open(source_path, Some(max_edge), None, None)?
+    };
     let mut results = vec![None; times_sec.len()];
 
     let mut last_pts = -1.0;
+    let webp_quality = if quality.is_finite() {
+        quality.clamp(0.0, 1.0) * 100.0
+    } else {
+        75.0
+    };
 
     for (orig_idx, target_time) in sorted_times {
         let needs_seek = last_pts < 0.0 || target_time < last_pts || (target_time - last_pts) > 5.0;
@@ -659,6 +630,7 @@ pub fn extract_video_frame_webps(
                     target_time,
                     source_path.display()
                 );
+                last_pts = -1.0;
                 continue;
             }
         }
@@ -687,10 +659,9 @@ pub fn extract_video_frame_webps(
         }
 
         if let Some(frame) = last_frame {
-            let mut bytes = Vec::new();
             let rotation = decoder.info().rotation.rem_euclid(360);
 
-            let res: Result<(), anyhow::Error> = if rotation == 90 || rotation == 180 || rotation == 270 {
+            let encode_res: Result<Vec<u8>, anyhow::Error> = if rotation == 90 || rotation == 180 || rotation == 270 {
                 if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
                     frame.width,
                     frame.height,
@@ -699,36 +670,15 @@ pub fn extract_video_frame_webps(
                     match rotation {
                         90 => {
                             let rotated = image::imageops::rotate90(&buf);
-                            image::write_buffer_with_format(
-                                &mut std::io::Cursor::new(&mut bytes),
-                                &rotated,
-                                rotated.width(),
-                                rotated.height(),
-                                image::ColorType::Rgba8,
-                                image::ImageFormat::WebP,
-                            ).map_err(Into::into)
+                            encode_rgba_as_webp(rotated.as_raw(), rotated.width(), rotated.height(), webp_quality).map_err(Into::into)
                         }
                         180 => {
                             let rotated = image::imageops::rotate180(&buf);
-                            image::write_buffer_with_format(
-                                &mut std::io::Cursor::new(&mut bytes),
-                                &rotated,
-                                rotated.width(),
-                                rotated.height(),
-                                image::ColorType::Rgba8,
-                                image::ImageFormat::WebP,
-                            ).map_err(Into::into)
+                            encode_rgba_as_webp(rotated.as_raw(), rotated.width(), rotated.height(), webp_quality).map_err(Into::into)
                         }
                         270 => {
                             let rotated = image::imageops::rotate270(&buf);
-                            image::write_buffer_with_format(
-                                &mut std::io::Cursor::new(&mut bytes),
-                                &rotated,
-                                rotated.width(),
-                                rotated.height(),
-                                image::ColorType::Rgba8,
-                                image::ImageFormat::WebP,
-                            ).map_err(Into::into)
+                            encode_rgba_as_webp(rotated.as_raw(), rotated.width(), rotated.height(), webp_quality).map_err(Into::into)
                         }
                         _ => unreachable!(),
                     }
@@ -736,25 +686,21 @@ pub fn extract_video_frame_webps(
                     Err(anyhow!("failed to create image buffer for rotation"))
                 }
             } else {
-                image::write_buffer_with_format(
-                    &mut std::io::Cursor::new(&mut bytes),
-                    &frame.pixels,
-                    frame.width,
-                    frame.height,
-                    image::ColorType::Rgba8,
-                    image::ImageFormat::WebP,
-                ).map_err(Into::into)
+                encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality).map_err(Into::into)
             };
 
-            if let Err(e) = res {
-                log::warn!(
-                    "[native-media] webp encode/rotate failed at {:.3}s for {}: {e}",
-                    target_time,
-                    source_path.display()
-                );
-                continue;
+            match encode_res {
+                Ok(bytes) => {
+                    results[orig_idx] = Some(bytes);
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[native-media] webp encode/rotate failed at {:.3}s for {}: {e}",
+                        target_time,
+                        source_path.display()
+                    );
+                }
             }
-            results[orig_idx] = Some(bytes);
         }
     }
 

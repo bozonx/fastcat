@@ -23,6 +23,7 @@ import {
   nativeMediaMetadata,
   nativeVideoFrameWebp,
 } from '~/utils/tauri-media-processing';
+import { isNotFoundError } from '~/utils/error-helpers';
 const log = createDevLogger('file-thumbnail-generator');
 const FILE_THUMBNAIL_HASH_VERSION = 2;
 
@@ -57,16 +58,6 @@ function getThumbnailFileVfsPath(input: {
   fileName: string;
 }): string {
   return `${getThumbnailDirVfsPath(input)}/${input.fileName}`;
-}
-
-function isNotFoundError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'name' in error &&
-    ((error as { name?: unknown }).name === 'NotFoundError' ||
-      (error as { name?: unknown }).name === 'VfsNotFoundError')
-  );
 }
 
 async function resizeImage(file: File, maxWidth: number, maxHeight: number): Promise<Blob> {
@@ -278,7 +269,7 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
             return;
           }
         } else {
-          // No native path available — cannot generate thumbnail in Tauri without web worker.
+          task.onError?.(new Error(`No native path for thumbnail task: ${task.projectRelativePath}`));
           return;
         }
       } else {
@@ -296,8 +287,24 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         const { client } = getThumbnailWorkerClient();
 
         try {
+          let timeSec: number = FILE_MANAGER_THUMBNAILS.POSITION_FRACTION;
+          try {
+            const videoUrl = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.src = videoUrl;
+            await new Promise<void>((resolve, reject) => {
+              video.onloadedmetadata = () => resolve();
+              video.onerror = () => reject(new Error('Failed to load video metadata'));
+              setTimeout(() => reject(new Error('Video metadata timeout')), 5000);
+            });
+            timeSec = Math.max(0, video.duration * FILE_MANAGER_THUMBNAILS.POSITION_FRACTION);
+            URL.revokeObjectURL(videoUrl);
+          } catch {
+            // Fallback to fraction-as-seconds for very short clips
+          }
           const blobs = await client.extractVideoFrameBlobs(file, {
-            timesS: [FILE_MANAGER_THUMBNAILS.POSITION_FRACTION],
+            timesS: [timeSec as number],
             maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
             maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
             quality: FILE_MANAGER_THUMBNAILS.QUALITY,

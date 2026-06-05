@@ -16,8 +16,16 @@ pub struct DecodedImage {
 }
 
 pub fn decode_image(path: &Path) -> Result<DecodedImage> {
-    let img = image::open(path)
-        .with_context(|| format!("failed to open image {}", path.display()))?
+    let mut reader = image::io::Reader::open(path)
+        .with_context(|| format!("failed to open image {}", path.display()))?;
+    let mut limits = image::io::Limits::default();
+    limits.max_image_width = Some(16384);
+    limits.max_image_height = Some(16384);
+    limits.max_alloc = Some(1024 * 1024 * 1024);
+    reader.limits(limits);
+    let img = reader
+        .decode()
+        .with_context(|| format!("failed to decode image {}", path.display()))?
         .to_rgba8();
     let (width, height) = img.dimensions();
     let pixels = img.into_raw();

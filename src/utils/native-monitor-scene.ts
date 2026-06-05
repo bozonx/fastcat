@@ -98,7 +98,9 @@ function sanitizeVideoSpeed(value: unknown): number {
 }
 
 function sanitizeAudioSpeed(value: unknown): number {
-  return Math.max(0.01, Math.min(100, Math.abs(finite(value, 1) || 1)));
+  const raw = finite(value, 1) || 1;
+  const clamped = Math.max(0.01, Math.min(100, Math.abs(raw)));
+  return raw < 0 ? -clamped : clamped;
 }
 
 function findPreviousAdjacentClip(

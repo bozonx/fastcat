@@ -16,6 +16,7 @@ import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
+import { isDomExceptionName } from '~/utils/error-helpers';
 const log = createDevLogger('thumbnail-generator');
 const CLIP_THUMBNAIL_HASH_VERSION = 2;
 
@@ -36,15 +37,6 @@ interface ThumbnailTaskListener {
 
 interface WritableFileHandle extends FileSystemFileHandle {
   createWritable: () => Promise<FileSystemWritableFileStream>;
-}
-
-function isDomExceptionName(error: unknown, name: string): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'name' in error &&
-    (error as { name?: unknown }).name === name
-  );
 }
 
 export function getClipThumbnailsHash(input: {
@@ -119,8 +111,10 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
 
   private buildExpectedTimes(duration: number): number[] {
     const timesS: number[] = [];
-    for (let t = 0; t <= duration; t += TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS) {
-      timesS.push(t);
+    const interval = TIMELINE_CLIP_THUMBNAILS.INTERVAL_SECONDS;
+    const count = Math.floor(duration / interval);
+    for (let i = 0; i <= count; i++) {
+      timesS.push(i * interval);
     }
     return timesS;
   }
@@ -135,7 +129,7 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     for (const time of sourceTimes) {
       if (!Number.isFinite(time)) continue;
       const gridTime = Math.round(time / interval) * interval;
-      if (gridTime < 0 || gridTime > task.duration) continue;
+      if (gridTime < 0 || gridTime > task.duration + 1e-6) continue;
       normalized.add(Math.round(gridTime));
     }
 
@@ -206,9 +200,9 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
     const entries = Array.from(urls.entries()).sort(([a], [b]) => a - b);
     const requestedTimes = new Set(this.normalizeRequestedTimes(task));
     const visibleEntries = entries.filter(([time]) => requestedTimes.has(time));
-    const totalFrames = Math.max(1, requestedTimes.size);
+    if (visibleEntries.length === 0) return;
     visibleEntries.forEach(([time, url], index) => {
-      task.onProgress?.(Math.min(1, (index + 1) / totalFrames), url, time);
+      task.onProgress?.(Math.min(1, (index + 1) / visibleEntries.length), url, time);
     });
   }
 
@@ -279,6 +273,52 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
         } finally {
           this.activeTasks.delete(task.id);
           this.cancelledTasks.delete(task.id);
+
+          const pending = this.pendingRequestedTimes.get(task.id);
+          if (pending && pending.size > 0) {
+            if (!this.queuedTasks.has(task.id)) {
+              this.queuedTasks.add(task.id);
+              void addMediaTask(
+                async () => {
+                  this.queuedTasks.delete(task.id);
+
+                  if (this.isCancelled(task.id)) {
+                    this.cancelledTasks.delete(task.id);
+                    this.removeListener(task.id, listener);
+                    return;
+                  }
+
+                  this.activeTasks.add(task.id);
+
+                  try {
+                    await this.executeTask({
+                      ...task,
+                      onProgress: (progress, url, time) => this.emitProgress(task.id, progress, url, time),
+                      onComplete: () => this.emitComplete(task.id),
+                      onError: (err) => this.emitError(task.id, err),
+                    });
+                  } catch (e) {
+                    const err = e instanceof Error ? e : new Error(String(e));
+                    log.error(`Task ${task.id} failed:`, err);
+                    this.emitError(task.id, err);
+                  } finally {
+                    this.activeTasks.delete(task.id);
+                    this.cancelledTasks.delete(task.id);
+                  }
+                },
+                { priority: this.taskPriority },
+              ).catch((e) => {
+                const err = e instanceof Error ? e : new Error(String(e));
+                this.queuedTasks.delete(task.id);
+                this.cancelledTasks.delete(task.id);
+                log.error(`Task ${task.id} failed:`, err);
+                this.emitError(task.id, err);
+              });
+            }
+          } else {
+            this.pendingRequestedTimes.delete(task.id);
+            this.emitComplete(task.id);
+          }
         }
       },
       { priority: this.taskPriority },
@@ -522,8 +562,11 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       }
 
       if (!this.isCancelled(task.id)) {
-        this.pendingRequestedTimes.delete(task.id);
-        task.onComplete?.();
+        const pending = this.pendingRequestedTimes.get(task.id);
+        if (!pending || pending.size === 0) {
+          this.pendingRequestedTimes.delete(task.id);
+          task.onComplete?.();
+        }
       }
     } finally {
       this.opfsExistingFiles.delete(task.id);

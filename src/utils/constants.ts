@@ -132,7 +132,6 @@ export const TIMELINE_CLIP_THUMBNAILS = {
   WIDTH: 320,
   HEIGHT: 320,
   QUALITY: 0.7,
-  MAX_CONCURRENT_TASKS: 2,
 } as const;
 
 export const FILE_MANAGER_THUMBNAILS = {

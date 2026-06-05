@@ -196,6 +196,15 @@ pub async fn native_video_frame_webps(
     max_height: u32,
     quality: f32,
 ) -> Result<Vec<u8>, String> {
+    if times_sec.len() > 1000 {
+        return Err("too many frames requested (max 1000)".into());
+    }
+    if max_width == 0 || max_height == 0 {
+        return Err("max_width and max_height must be greater than 0".into());
+    }
+    if !quality.is_finite() {
+        return Err("quality must be a finite number".into());
+    }
     let source_path = PathBuf::from(source_path);
     let frames = tokio::task::spawn_blocking(move || {
         extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality)
