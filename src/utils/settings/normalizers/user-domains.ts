@@ -311,7 +311,6 @@ export function normalizeMouseSettings(raw: unknown): FastCatUserSettings['mouse
             DEFAULT_USER_SETTINGS.mouse.timeline.wheelSecondaryShift,
           ),
           click: timelineClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.click),
-          shiftClick: timelineClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.shiftClick),
           drag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.drag),
           middleClick: timelineClickEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleClick),
           middleDrag: dragEnum.catch(DEFAULT_USER_SETTINGS.mouse.timeline.middleDrag),

@@ -318,13 +318,6 @@ export function useMouseSettings() {
               options: timelineClickActionOptions.value,
             },
             {
-              key: 'shiftClick',
-              label: t('videoEditor.settings.mouseTimelineShiftClick', {
-                modifier1: modifier1Name.value,
-              }),
-              options: timelineClickActionOptions.value,
-            },
-            {
               key: 'middleClick',
               label: t('videoEditor.settings.mouseTimelineMiddleClick'),
               options: timelineClickActionOptions.value,

@@ -5,7 +5,6 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useTimelineSettingsStore } from '~/stores/timeline-settings.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { pxToTimeUs } from '~/utils/timeline/geometry';
-import { isLayer1Active } from '~/utils/hotkeys/layerUtils';
 import type { TimelineTrack } from '~/timeline/types';
 import { resolvePlayheadClickTimeUs } from './timeline-drag-domain';
 import { createMarkerId } from '~/timeline/id';
@@ -66,7 +65,7 @@ export function useTimelineClickActions({
       timelineStore.fitTimelineZoom();
       return;
     }
-    if (action === 'select_item' || action === 'select_multiple' || action === 'select_area') {
+    if (action === 'select_item' || action === 'select_area') {
       return;
     }
     if (action === 'seek' || action === 'move_playhead') {
@@ -126,11 +125,7 @@ export function useTimelineClickActions({
       return;
     }
 
-    const isShift = isLayer1Active(e, workspaceStore.userSettings);
-    const action = isShift
-      ? timelineMouseSettings.value.shiftClick
-      : timelineMouseSettings.value.click;
-    handleTimelineClickAction(action, e);
+    handleTimelineClickAction(timelineMouseSettings.value.click, e);
   }
 
   function executeTimelineRulerAction(action: string, e: MouseEvent) {

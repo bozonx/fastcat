@@ -148,6 +148,55 @@ describe('PropertiesPanel', () => {
     wrapper.unmount();
   });
 
+  it('shows group header title when selected clips form a single linked group', async () => {
+    timelineStore.timelineDoc = {
+      tracks: [
+        {
+          id: 'track-1',
+          kind: 'video' as const,
+          items: [
+            {
+              id: 'clip-1',
+              kind: 'clip' as const,
+              linkedGroupId: 'group-abc',
+              timelineRange: { startUs: 0, durationUs: 5_000_000 },
+            },
+            {
+              id: 'clip-2',
+              kind: 'clip' as const,
+              linkedGroupId: 'group-abc',
+              timelineRange: { startUs: 5_000_000, durationUs: 5_000_000 },
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    selectionStore.selectedEntity = {
+      source: 'timeline',
+      kind: 'clips',
+      items: [
+        { trackId: 'track-1', itemId: 'clip-1' },
+        { trackId: 'track-1', itemId: 'clip-2' },
+      ],
+    };
+
+    const wrapper = await mountSuspended(PropertiesPanel, {
+      global: {
+        stubs: {
+          UiButtonGroup: true,
+          FileDeleteConfirmModal: true,
+          MultiClipProperties: true,
+        },
+      },
+    });
+
+    await nextTick();
+
+    const headerTitle = wrapper.find('.ml-2.text-xs');
+    expect(headerTitle.text()).toBe('fastcat.timeline.groupSelectedClipsCount');
+  });
+
   it('updates clip prop reactively when timelineDoc clip properties change', async () => {
     const initialClip = {
       id: 'clip-1',

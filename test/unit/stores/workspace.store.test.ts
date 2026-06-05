@@ -217,6 +217,63 @@ describe('WorkspaceStore', () => {
     });
   });
 
+  describe('duplicateProject', () => {
+    it('copies project and generates a new projectId', async () => {
+      const store = useWorkspaceStore();
+      store.recentProjects = [
+        { projectName: 'source', projectId: 'original-id', updatedAt: '2024-01-01' },
+      ];
+      store.projects = ['source'];
+
+      await mockVfs.createDirectory('@project/source');
+      await mockVfs.createDirectory('@project/source/.fastcat');
+      await mockVfs.writeFile(
+        '@project/source/.fastcat/project.meta.json',
+        JSON.stringify({ id: 'original-id', version: 1 }),
+      );
+      await mockVfs.createDirectory('@project/source/timelines');
+      await mockVfs.writeFile('@project/source/timelines/main.otio', '{"tracks":[]}');
+      store.projectsHandle = { name: 'projects' } as any;
+
+      await store.duplicateProject({ sourceName: 'source', targetName: 'copy' });
+
+      expect(store.projects).toContain('copy');
+      expect(store.recentProjects).toHaveLength(2);
+      const copied = store.recentProjects.find(
+        (p: { projectName: string; projectId: string }) => p.projectName === 'copy',
+      );
+      expect(copied).toBeDefined();
+      expect(copied!.projectId).not.toBe('original-id');
+
+      const metaBlob = await mockVfs.readFile('@project/copy/.fastcat/project.meta.json');
+      const meta = JSON.parse(await metaBlob.text());
+      expect(meta.id).toBe(copied!.projectId);
+
+      const mainExists = await mockVfs.exists('@project/copy/timelines/main.otio');
+      expect(mainExists).toBe(true);
+    });
+
+    it('skips backups and autosave folders', async () => {
+      const store = useWorkspaceStore();
+      store.projects = ['source'];
+
+      await mockVfs.createDirectory('@project/source');
+      await mockVfs.createDirectory('@project/source/.fastcat');
+      await mockVfs.createDirectory('@project/source/.fastcat/backups');
+      await mockVfs.createDirectory('@project/source/.fastcat/autosave');
+      await mockVfs.writeFile(
+        '@project/source/.fastcat/project.meta.json',
+        JSON.stringify({ id: 'original-id', version: 1 }),
+      );
+      store.projectsHandle = { name: 'projects' } as any;
+
+      await store.duplicateProject({ sourceName: 'source', targetName: 'copy' });
+
+      expect(await mockVfs.exists('@project/copy/.fastcat/backups')).toBe(false);
+      expect(await mockVfs.exists('@project/copy/.fastcat/autosave')).toBe(false);
+    });
+  });
+
   describe('recentProjects filtering of non-existent projects', () => {
     it('does not filter if workspaceHandle is null', async () => {
       const store = useWorkspaceStore();

@@ -161,7 +161,6 @@ export interface FastCatUserSettings {
       wheelSecondary: CommonWheelAction;
       wheelSecondaryShift: CommonWheelAction;
       click: TimelineClickAction;
-      shiftClick: TimelineClickAction;
       drag: TimelineDragAction;
       middleClick: TimelineClickAction;
       middleDrag: TimelineDragAction;
@@ -326,7 +325,6 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
       wheelSecondary: 'scroll_horizontal',
       wheelSecondaryShift: 'zoom_vertical',
       click: 'select_item',
-      shiftClick: 'select_multiple',
       drag: 'move_clips',
       middleClick: 'fit_zoom',
       middleDrag: 'pan',

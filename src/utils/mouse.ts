@@ -40,7 +40,6 @@ export const TIMELINE_CLICK_ACTIONS = [
   'fit_zoom',
   'clear_selection',
   'select_item',
-  'select_multiple',
   'none',
 ] as const;
 export type TimelineClickAction = (typeof TIMELINE_CLICK_ACTIONS)[number];

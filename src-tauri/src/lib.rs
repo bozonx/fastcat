@@ -219,6 +219,10 @@ pub fn run() {
                         // но он засоряет терминал. Поднимаем порог именно для него.
                         .level_for("wgpu_hal::gles::egl", log::LevelFilter::Off)
                         .level_for("wgpu_hal::gles", log::LevelFilter::Warn)
+                        // symphonia_format_isomp4 логирует [WARN] ignoring stss atom
+                        // при демуксе MP4-контейнеров. stss — это видео-атом (ключевые
+                        // кадры), для аудио-декодинга он безвреден, но засоряет лог.
+                        .level_for("symphonia_format_isomp4", log::LevelFilter::Error)
                         .build(),
                 )?;
             }

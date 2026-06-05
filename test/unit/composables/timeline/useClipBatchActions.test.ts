@@ -222,4 +222,53 @@ describe('useClipBatchActions', () => {
       },
     ]);
   });
+
+  it('reports isSingleGroupSelection as false for empty or single selections', () => {
+    const { actions } = build({ selection: [] });
+    expect(actions.isSingleGroupSelection.value).toBe(false);
+
+    const { actions: singleActions } = build({
+      selection: [{ trackId: 'v1', itemId: 'video-1' }],
+    });
+    expect(singleActions.isSingleGroupSelection.value).toBe(false);
+  });
+
+  it('reports isSingleGroupSelection as true when all selected clips share one linkedGroupId', () => {
+    const clipA = makeClip({ id: 'a', trackId: 'v1', linkedGroupId: 'g1' });
+    const clipB = makeClip({ id: 'b', trackId: 'v1', linkedGroupId: 'g1' });
+    const { actions } = build({
+      tracks: [makeTrack({ id: 'v1', kind: 'video', name: 'Video', items: [clipA, clipB] })],
+      selection: [
+        { trackId: 'v1', itemId: 'a' },
+        { trackId: 'v1', itemId: 'b' },
+      ],
+    });
+    expect(actions.isSingleGroupSelection.value).toBe(true);
+  });
+
+  it('reports isSingleGroupSelection as false when selected clips have different linkedGroupId values', () => {
+    const clipA = makeClip({ id: 'a', trackId: 'v1', linkedGroupId: 'g1' });
+    const clipB = makeClip({ id: 'b', trackId: 'v1', linkedGroupId: 'g2' });
+    const { actions } = build({
+      tracks: [makeTrack({ id: 'v1', kind: 'video', name: 'Video', items: [clipA, clipB] })],
+      selection: [
+        { trackId: 'v1', itemId: 'a' },
+        { trackId: 'v1', itemId: 'b' },
+      ],
+    });
+    expect(actions.isSingleGroupSelection.value).toBe(false);
+  });
+
+  it('reports isSingleGroupSelection as false when some selected clips have no linkedGroupId', () => {
+    const clipA = makeClip({ id: 'a', trackId: 'v1', linkedGroupId: 'g1' });
+    const clipB = makeClip({ id: 'b', trackId: 'v1' });
+    const { actions } = build({
+      tracks: [makeTrack({ id: 'v1', kind: 'video', name: 'Video', items: [clipA, clipB] })],
+      selection: [
+        { trackId: 'v1', itemId: 'a' },
+        { trackId: 'v1', itemId: 'b' },
+      ],
+    });
+    expect(actions.isSingleGroupSelection.value).toBe(false);
+  });
 });

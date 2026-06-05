@@ -31,7 +31,7 @@ export interface TimelineSelectionModule {
   toggleSelection: (itemId: string, options?: { multi?: boolean }) => void;
   selectTimelineItems: (
     itemIds: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
-    options?: { append?: boolean },
+    options?: { append?: boolean; bypassGroup?: boolean },
   ) => void;
   removeFromSelection: (itemIds: string[]) => void;
   selectAllClipsOnTrack: (trackId: string, options?: { append?: boolean }) => void;
@@ -111,7 +111,7 @@ export function createTimelineSelectionModule(
 
   function selectTimelineItems(
     items: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
-    options?: { append?: boolean },
+    options?: { append?: boolean; bypassGroup?: boolean },
   ) {
     deps.selectedTransition.value = null;
     if (items.length === 0) {
@@ -123,11 +123,12 @@ export function createTimelineSelectionModule(
     }
 
     const doc = deps.timelineDoc.value;
+    const bypass = options?.bypassGroup ?? false;
     const nextIds = new Set<string>(options?.append ? deps.selectedItemIds.value : []);
 
     if (typeof items[0] === 'string') {
       for (const id of items as string[]) {
-        if (doc) {
+        if (doc && !bypass) {
           for (const gid of getLinkedClipGroupItemIds(doc, id)) nextIds.add(gid);
         } else {
           nextIds.add(id);
@@ -150,7 +151,7 @@ export function createTimelineSelectionModule(
     } else {
       const objects = items as { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[];
       for (const obj of objects) {
-        if (doc) {
+        if (doc && !bypass) {
           for (const gid of getLinkedClipGroupItemIds(doc, obj.itemId)) nextIds.add(gid);
         } else {
           nextIds.add(obj.itemId);

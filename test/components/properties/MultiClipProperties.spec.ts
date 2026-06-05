@@ -36,7 +36,11 @@ vi.mock('~/components/properties/multi-clip/MultiClipBlendOpacitySection.vue', (
   },
 }));
 vi.mock('~/components/properties/multi-clip/MultiClipTimingSection.vue', () => ({
-  default: { name: 'MultiClipTimingSection', template: '<div data-testid="timing-section"></div>' },
+  default: {
+    name: 'MultiClipTimingSection',
+    props: ['hideUniformDuration'],
+    template: '<div data-testid="timing-section"></div>',
+  },
 }));
 
 const mockTimelineStore = reactive({
@@ -97,6 +101,7 @@ const mockClipBatchActions = {
   selectedClips: ref([] as any[]),
   hasLockedLinks: ref(false),
   hasGroupedClip: ref(false),
+  isSingleGroupSelection: ref(false),
   hasFreeClip: ref(false),
   allDisabled: ref(false),
   allMuted: ref(false),
@@ -217,6 +222,29 @@ describe('MultiClipProperties.vue', () => {
     expect(wrapper.find('[data-testid="actions-section"]').text()).toContain(
       'fastcat.timeline.selectedClipsCount',
     );
+  });
+
+  it('renders group label when selection is a single linked group', async () => {
+    mockClipBatchActions.isSingleGroupSelection.value = true;
+    const wrapper = await mountComponent();
+    expect(wrapper.find('[data-testid="actions-section"]').text()).toContain(
+      'fastcat.timeline.groupSelectedClipsCount',
+    );
+  });
+
+  it('hides group button when all selected clips already form a single group', async () => {
+    mockClipBatchActions.isSingleGroupSelection.value = true;
+    const wrapper = await mountComponent();
+    const otherActions = (wrapper.vm as any).otherActions as Array<{ id: string; hidden?: boolean }>;
+    const groupAction = otherActions.find((a) => a.id === 'group');
+    expect(groupAction?.hidden).toBe(true);
+  });
+
+  it('passes hideUniformDuration to timing section for single group selection', async () => {
+    mockClipBatchActions.isSingleGroupSelection.value = true;
+    const wrapper = await mountComponent();
+    const timingSection = wrapper.findComponent({ name: 'MultiClipTimingSection' });
+    expect(timingSection.props('hideUniformDuration')).toBe(true);
   });
 
   it('displays sub-panels depending on flags', async () => {

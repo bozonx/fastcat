@@ -169,7 +169,7 @@ const selectedClipsAreSingleGroup = computed(() => {
   }
 
   if (clips.length === 0) return false;
-  const firstGroupId = String(clips[0].linkedGroupId ?? '').trim();
+  const firstGroupId = String(clips[0]!.linkedGroupId ?? '').trim();
   if (!firstGroupId) return false;
   return clips.every((c) => String(c.linkedGroupId ?? '').trim() === firstGroupId);
 });
@@ -361,6 +361,14 @@ const headerTitle = computed(() => {
     return isSelectedMarkerZone.value ? t('fastcat.marker.zoneMarker') : t('fastcat.marker.title');
   }
   if (displayMode.value === 'selection-range') return t('fastcat.timeline.selectionRange');
+  if (displayMode.value === 'clips') {
+    if (selectedClipsAreSingleGroup.value && selectedClips.value) {
+      return t('fastcat.timeline.groupSelectedClipsCount', {
+        count: selectedClips.value.length,
+      });
+    }
+    return t('common.properties');
+  }
   return t('common.properties');
 });
 </script>
