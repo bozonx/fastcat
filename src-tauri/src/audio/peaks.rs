@@ -12,6 +12,8 @@ struct AudioDecoderState {
     decoder: Box<dyn Decoder>,
     track_id: u32,
     channels: usize,
+    /// Total frame count reported by container metadata, if available.
+    n_frames: Option<u64>,
 }
 
 fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
@@ -47,6 +49,7 @@ fn open_audio_decoder(path: &Path) -> Result<AudioDecoderState> {
     Ok(AudioDecoderState {
         track_id: track.id,
         channels: track.codec_params.channels.map(|c| c.count()).unwrap_or(1),
+        n_frames: track.codec_params.n_frames,
         format,
         decoder,
     })
@@ -97,7 +100,13 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
         return Ok(Vec::new());
     }
 
-    let (total_frames, channels) = count_decoded_frames(path)?;
+    let (total_frames, channels) = {
+        let state = open_audio_decoder(path)?;
+        match state.n_frames {
+            Some(n) if n > 0 => (n, state.channels.max(1)),
+            _ => count_decoded_frames(path)?,
+        }
+    };
     let channels = channels.max(1);
     if total_frames == 0 {
         return Ok(vec![vec![0.0f32; max_length]; channels]);
@@ -168,12 +177,6 @@ pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
         }
     }
 
-    for ch in 0..channels {
-        for val in peaks[ch].iter_mut() {
-            *val = (*val * 10000.0).round() / 10000.0;
-        }
-    }
-
     Ok(peaks)
 }
 
@@ -226,7 +229,10 @@ mod tests {
 
         assert_eq!(peaks.len(), 1);
         assert_eq!(peaks[0].len(), 5);
-        assert_eq!(peaks[0], vec![0.2, 0.4, 0.6, 0.8, 1.0]);
+        let expected = vec![0.2f32, 0.4, 0.6, 0.8, 1.0];
+        for (a, b) in peaks[0].iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-4, "peak mismatch: {} vs {}", a, b);
+        }
     }
 
     #[test]

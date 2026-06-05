@@ -66,12 +66,17 @@ impl SpscRingBuffer {
     fn len(&self) -> usize {
         let write = self.write_idx.load(Ordering::Acquire);
         let read = self.read_idx.load(Ordering::Acquire);
-        write.wrapping_sub(read)
+        let used = write.wrapping_sub(read);
+        let capacity = self.buffer.len();
+        if used > capacity { 0 } else { used }
     }
 
     fn clear(&self) {
-        let write = self.write_idx.load(Ordering::Acquire);
-        self.read_idx.store(write, Ordering::Release);
+        // SeqCst guarantees the store is visible to the real-time callback
+        // and the producer thread before any subsequent push/pop.
+        let write = self.write_idx.load(Ordering::SeqCst);
+        self.read_idx.store(write, Ordering::SeqCst);
+        std::sync::atomic::fence(Ordering::SeqCst);
     }
 
     /// Push as many samples as capacity allows. Returns count written.
@@ -82,7 +87,11 @@ impl SpscRingBuffer {
         let capacity = self.buffer.len();
         let write = self.write_idx.load(Ordering::Relaxed);
         let read = self.read_idx.load(Ordering::Acquire);
-        let available = capacity - write.wrapping_sub(read);
+        let used = write.wrapping_sub(read);
+        if used > capacity {
+            return 0;
+        }
+        let available = capacity - used;
         let to_write = samples.len().min(available);
         for (i, &sample) in samples.iter().take(to_write).enumerate() {
             let idx = write.wrapping_add(i) % capacity;
@@ -97,7 +106,11 @@ impl SpscRingBuffer {
     fn pop_slice(&self, out: &mut [f32]) -> usize {
         let w = self.write_idx.load(Ordering::Acquire);
         let r = self.read_idx.load(Ordering::Relaxed);
-        let available = w.wrapping_sub(r).min(out.len());
+        let used = w.wrapping_sub(r);
+        if used > self.buffer.len() {
+            return 0;
+        }
+        let available = used.min(out.len());
         if available == 0 {
             return 0;
         }
@@ -146,6 +159,10 @@ struct AudioShared {
     /// decide whether a scene update needs a ring flush (positions changed) or is
     /// a pure mix-param change (gain/balance/fade) that can apply gap-free.
     timing_sig: u64,
+    /// When true, the producer thread will clear the ring buffer on its next
+    /// iteration. This avoids a race between the main thread calling `clear()`
+    /// while the producer is in the middle of `push_slice`.
+    pending_ring_clear: bool,
 }
 
 /// Max bytes of decoded f32 audio kept in `decoded_cache` across all files.
@@ -179,6 +196,7 @@ impl Default for AudioShared {
             file_size_cache: HashMap::new(),
             decoders: HashMap::new(),
             timing_sig: 0,
+            pending_ring_clear: false,
         }
     }
 }
@@ -266,6 +284,8 @@ impl RealtimeClock {
 
 pub struct NativeAudioEngine {
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
+    /// Kept alive so the producer thread and cpal callback can use their clones.
+    #[allow(dead_code)]
     ring: Arc<SpscRingBuffer>,
     running: Arc<AtomicBool>,
     clock: Arc<RealtimeClock>,
@@ -368,7 +388,7 @@ impl NativeAudioEngine {
         state.scene_serial = state.scene_serial.wrapping_add(1);
 
         if needs_flush {
-            self.ring.clear();
+            state.pending_ring_clear = true;
             state.producer_pts_sec =
                 state.origin_pts_sec + self.clock.frames() as f64 / self.sample_rate as f64;
             // Discontinuous output: invalidate in-flight chunks and force decoders
@@ -413,7 +433,7 @@ impl NativeAudioEngine {
         state.producer_pts_sec = state.origin_pts_sec;
         self.clock.reset_frames();
         self.clock.playing.store(true, Ordering::Release);
-        self.ring.clear();
+        state.pending_ring_clear = true;
         state.seek_serial = state.seek_serial.wrapping_add(1);
         self.shared.1.notify_all();
     }
@@ -425,7 +445,7 @@ impl NativeAudioEngine {
         self.clock.playing.store(false, Ordering::Release);
         state.origin_pts_sec = pts;
         self.clock.reset_frames();
-        self.ring.clear();
+        state.pending_ring_clear = true;
         state.producer_pts_sec = pts;
         self.shared.1.notify_all();
         pts
@@ -437,7 +457,7 @@ impl NativeAudioEngine {
         state.origin_pts_sec = pts;
         self.clock.reset_frames();
         state.producer_pts_sec = pts;
-        self.ring.clear();
+        state.pending_ring_clear = true;
         state.playing = playing;
         self.clock.playing.store(playing, Ordering::Release);
         state.seek_serial = state.seek_serial.wrapping_add(1);
@@ -571,23 +591,25 @@ fn write_output<T: OutputSample>(
         return;
     }
 
-    let mut temp = [0.0f32; 4096];
-    let mut heap_temp: Vec<f32> = Vec::new();
-    let temp_slice = if data.len() <= temp.len() {
-        temp[..data.len()].fill(0.0);
-        &mut temp[..data.len()]
-    } else {
-        // Heap fallback for very large device buffers (uncommon).
-        heap_temp.resize(data.len(), 0.0);
-        &mut heap_temp[..]
-    };
-    // The ring already holds device-channel interleaved samples, so we copy 1:1.
-    // On underrun the unfilled tail stays zeroed (silence), but the clock still
-    // advances below to prevent drift.
-    let _read = ring.pop_slice(temp_slice);
-    for (out, sample) in data.iter_mut().zip(temp_slice.iter()) {
-        *out = T::from_f32(*sample);
+    thread_local! {
+        static TEMP_BUF: std::cell::RefCell<Vec<f32>> = std::cell::RefCell::new(Vec::new());
     }
+
+    TEMP_BUF.with(|buf| {
+        let mut buf = buf.borrow_mut();
+        if buf.len() < data.len() {
+            buf.resize(data.len(), 0.0);
+        }
+        let temp_slice = &mut buf[..data.len()];
+        temp_slice.fill(0.0);
+        // The ring already holds device-channel interleaved samples, so we copy 1:1.
+        // On underrun the unfilled tail stays zeroed (silence), but the clock still
+        // advances below to prevent drift.
+        let _read = ring.pop_slice(temp_slice);
+        for (out, sample) in data.iter_mut().zip(temp_slice.iter()) {
+            *out = T::from_f32(*sample);
+        }
+    });
 
     clock
         .frames_written
@@ -635,6 +657,13 @@ fn producer_loop(
             loop {
                 if !running.load(Ordering::Relaxed) {
                     return;
+                }
+                if state.pending_ring_clear {
+                    state.pending_ring_clear = false;
+                    drop(state);
+                    ring.clear();
+                    state = shared.0.lock();
+                    continue;
                 }
                 if state.playing && !state.scene.is_empty() && ring.len() < limit_samples {
                     // Refresh the cached scene clone only on a real change.
@@ -765,12 +794,13 @@ pub(crate) fn render_scene_to_wav(
         .saturating_mul(output_channels as u64)
         .saturating_mul(4);
     if data_size > u32::MAX as u64 {
-        log::warn!(
-            "[audio] WAV data size {} exceeds 32-bit limit; header will be truncated",
-            data_size
-        );
+        return Err(anyhow!(
+            "WAV data size {} exceeds 32-bit limit ({}). Use a shorter export range or lower sample rate.",
+            data_size,
+            u32::MAX
+        ));
     }
-    let riff_size = 36u64.saturating_add(data_size).min(u32::MAX as u64);
+    let riff_size = 36u64.saturating_add(data_size);
     file.seek(std::io::SeekFrom::Start(4))?;
     file.write_all(&(riff_size as u32).to_le_bytes())?;
     file.seek(std::io::SeekFrom::Start(40))?;
@@ -998,6 +1028,10 @@ fn mix_layer_into(
     }
 
     let frames_to_write = frames_to_write.min(decoded.len() / output_channels);
+    debug_assert!(
+        write_start_frame + frames_to_write <= buffer.len() / output_channels,
+        "layer write range exceeds mix buffer"
+    );
     apply_layer_mix(
         buffer,
         &decoded,
@@ -1384,7 +1418,7 @@ fn decode_entire_file_symphonia(
         match decoder.decode(&packet) {
             Ok(audio_buf) => {
                 let spec = *audio_buf.spec();
-                let duration = audio_buf.capacity() as u64;
+                let duration = audio_buf.frames() as u64;
                 let mut sample_buf =
                     symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
                 sample_buf.copy_interleaved_ref(audio_buf);
@@ -1617,7 +1651,7 @@ fn decode_symphonia_chunk(
         match state_val.decoder.decode(&packet) {
             Ok(audio_buf) => {
                 let spec = *audio_buf.spec();
-                let duration = audio_buf.capacity() as u64;
+                let duration = audio_buf.frames() as u64;
                 let mut sample_buf =
                     symphonia::core::audio::SampleBuffer::<f32>::new(duration, spec);
                 sample_buf.copy_interleaved_ref(audio_buf);
@@ -1674,6 +1708,9 @@ fn decode_symphonia_chunk(
 
     if collected_frames == 0 {
         // Put the state back even on empty decode (EOF / past end of source).
+        // Clamp last_decode_end_sec so the next chunk on the same position
+        // does not trigger an unnecessary re-seek.
+        state_val.last_decode_end_sec = source_start_sec;
         {
             let mut state = shared.0.lock();
             state.decoders.insert(layer_id.to_string(), state_val);
@@ -1738,7 +1775,17 @@ fn decode_audio_chunk(
     output_channels: usize,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
-    let is_cacheable = (speed - 1.0).abs() <= f64::EPSILON;
+    let source_start_sec = if source_start_sec.is_finite() {
+        source_start_sec.max(0.0)
+    } else {
+        0.0
+    };
+    let timeline_duration_sec = if timeline_duration_sec.is_finite() {
+        timeline_duration_sec.max(0.0)
+    } else {
+        0.0
+    };
+    let is_cacheable = (speed - 1.0).abs() <= 1e-6;
     let cache_key = decoded_cache_key(path, sample_rate, output_channels);
 
     // Fast path: if the file is already fully cached, serve it without any
@@ -1825,9 +1872,22 @@ fn apply_layer_mix(
     segment_start_sec: f64,
     channels: usize,
 ) {
-    if channels == 0 {
+    if channels == 0 || frames_to_write == 0 {
         return;
     }
+    debug_assert!(
+        write_start_frame + frames_to_write <= mixed.len() / channels,
+        "write range ({}, {}) exceeds mixed buffer capacity ({}",
+        write_start_frame,
+        frames_to_write,
+        mixed.len() / channels
+    );
+    debug_assert!(
+        frames_to_write <= decoded.len() / channels,
+        "decoded buffer too small for frames_to_write ({} > {})",
+        frames_to_write,
+        decoded.len() / channels
+    );
     let stereo = channels >= 2;
     let (ll, lr, rl, rr) = if stereo {
         let (ll, lr, rl, rr) = stereo_pan_matrix(layer.audio_balance);
@@ -1905,14 +1965,14 @@ fn fade_curve(t: f64, curve: AudioFadeCurve) -> f64 {
 
 fn stereo_pan_matrix(balance: f64) -> (f64, f64, f64, f64) {
     let pan = balance.clamp(-1.0, 1.0);
-    // Equal-power stereo balance: attenuate the opposite channel with a cosine taper.
-    if pan <= 0.0 {
-        let right_gain = ((-pan) * std::f64::consts::FRAC_PI_2).cos();
-        (1.0, 0.0, 0.0, right_gain)
-    } else {
-        let left_gain = (pan * std::f64::consts::FRAC_PI_2).cos();
-        (left_gain, 0.0, 0.0, 1.0)
-    }
+    // Equal-power stereo panning: map [-1, 1] to [0, π/2].
+    // Full left  → (1.0, 0.0)
+    // Centre     → (~0.707, ~0.707)
+    // Full right → (0.0, 1.0)
+    let angle = (pan + 1.0) * std::f64::consts::FRAC_PI_4;
+    let left_gain = angle.cos();
+    let right_gain = angle.sin();
+    (left_gain, 0.0, 0.0, right_gain)
 }
 
 fn sanitize_speed(speed: f64) -> f64 {
@@ -1947,8 +2007,12 @@ fn soft_clip(samples: &mut [f32]) {
         if mag <= KNEE {
             continue;
         }
-        let over = (mag - KNEE) / (1.0 - KNEE);
-        let limited = KNEE + (1.0 - KNEE) * over.tanh();
+        let limited = if mag >= 1.0 {
+            1.0
+        } else {
+            let over = (mag - KNEE) / (1.0 - KNEE);
+            KNEE + (1.0 - KNEE) * over.tanh()
+        };
         *sample = limited.copysign(s);
     }
 }
@@ -2074,12 +2138,13 @@ mod tests {
     // ------------------------------------------------------------------
 
     #[test]
-    fn stereo_balance_center_unity() {
+    fn stereo_balance_center_equal_power() {
         let (ll, lr, rl, rr) = stereo_pan_matrix(0.0);
-        assert!((ll - 1.0).abs() < 1e-9);
+        let expected = std::f64::consts::FRAC_PI_4.cos();
+        assert!((ll - expected).abs() < 1e-9);
         assert_eq!(lr, 0.0);
         assert_eq!(rl, 0.0);
-        assert!((rr - 1.0).abs() < 1e-9);
+        assert!((rr - expected).abs() < 1e-9);
     }
 
     #[test]
@@ -2103,7 +2168,8 @@ mod tests {
     #[test]
     fn stereo_balance_half_left_attenuates_right() {
         let (_, _, _, rr) = stereo_pan_matrix(-0.5);
-        let expected = (0.5 * std::f64::consts::FRAC_PI_2).cos();
+        // angle = (-0.5 + 1) * π/4 = π/8
+        let expected = (std::f64::consts::PI / 8.0).sin();
         assert!((rr - expected).abs() < 1e-9);
     }
 
@@ -2233,8 +2299,8 @@ mod tests {
     fn soft_clip_limits_out_of_band() {
         let mut samples = vec![2.0, -2.0];
         soft_clip(&mut samples);
-        assert!(samples[0] > 0.8 && samples[0] < 1.0);
-        assert!(samples[1] < -0.8 && samples[1] > -1.0);
+        assert!(samples[0] >= 0.8 && samples[0] <= 1.0);
+        assert!(samples[1] <= -0.8 && samples[1] >= -1.0);
     }
 
     #[test]
@@ -2503,12 +2569,13 @@ mod tests {
         l.audio_fade_in_sec = 0.0;
         l.audio_fade_out_sec = 0.0;
         apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 2);
-        // Each channel: decoded(10) * gain(5) = 50.
-        // With centre pan (1.0,0,0,1.0) mixed should accumulate to 50.0.
-        assert!((mixed[0] - 50.0).abs() < 1e-5);
-        assert!((mixed[1] - 50.0).abs() < 1e-5);
-        assert!((mixed[2] - 50.0).abs() < 1e-5);
-        assert!((mixed[3] - 50.0).abs() < 1e-5);
+        // Equal-power centre pan attenuates both channels by cos(π/4) ≈ 0.7071.
+        // Each channel: decoded(10) * gain(5) * 0.7071 ≈ 35.355.
+        let expected = 10.0f32 * 5.0 * std::f32::consts::FRAC_PI_4.cos();
+        assert!((mixed[0] - expected).abs() < 1e-4);
+        assert!((mixed[1] - expected).abs() < 1e-4);
+        assert!((mixed[2] - expected).abs() < 1e-4);
+        assert!((mixed[3] - expected).abs() < 1e-4);
     }
 
     #[test]
@@ -2521,7 +2588,20 @@ mod tests {
 
         apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 4);
 
-        assert_eq!(mixed, decoded);
+        // Front L/R are attenuated by centre equal-power pan (~0.7071);
+        // extra channels pass through with unity gain.
+        let g = std::f32::consts::FRAC_PI_4.cos();
+        let expected = vec![
+            1.0 * g,
+            2.0 * g,
+            3.0,
+            4.0,
+            5.0 * g,
+            6.0 * g,
+            7.0,
+            8.0,
+        ];
+        assert_eq!(mixed, expected);
     }
 
     #[test]
