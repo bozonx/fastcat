@@ -424,13 +424,13 @@ impl WindowState {
     }
 
     fn pause(&mut self) {
-        let pts = if let Some(audio) = self.audio.as_ref() {
-            audio.pause()
+        if let Some(audio) = self.audio.as_ref() {
+            let audio_pts = audio.pause();
+            // Sync clock to audio position so both agree on the frozen frame.
+            self.clock.seek(audio_pts);
         } else {
-            self.clock.pause()
-        };
-        self.clock.pause();
-        self.clock.seek(pts);
+            self.clock.pause();
+        }
         self.layers.set_playing(false);
     }
 

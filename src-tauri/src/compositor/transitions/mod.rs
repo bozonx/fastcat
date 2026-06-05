@@ -5,6 +5,7 @@ use anyhow::{Result, anyhow};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use vello::peniko::{ImageData, ImageFormat};
 use wgpu::util::DeviceExt;
@@ -74,7 +75,7 @@ struct CachedTransitionResources {
 
 pub struct TransitionPipeline {
     bind_layout: wgpu::BindGroupLayout,
-    pipelines: HashMap<String, Arc<wgpu::ComputePipeline>>,
+    pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
     resources: Option<CachedTransitionResources>,
 }
 
@@ -184,7 +185,10 @@ impl TransitionPipeline {
         device: &wgpu::Device,
         shader_source: &str,
     ) -> Result<Arc<wgpu::ComputePipeline>> {
-        if !self.pipelines.contains_key(shader_source) {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        shader_source.hash(&mut hasher);
+        let key = hasher.finish();
+        if !self.pipelines.contains_key(&key) {
             let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("native-transition-wgsl"),
                 source: wgpu::ShaderSource::Wgsl(shader_source.into()),
@@ -203,9 +207,10 @@ impl TransitionPipeline {
                 cache: None,
             });
             self.pipelines
-                .insert(shader_source.to_string(), Arc::new(pipeline));
+                .insert(key, Arc::new(pipeline));
         }
-        Ok(self.pipelines.get(shader_source).unwrap().clone())
+        self.pipelines.get(&key).cloned()
+            .ok_or_else(|| anyhow!("transition pipeline missing after insertion"))
     }
 
     pub fn apply_transition(
@@ -237,7 +242,8 @@ impl TransitionPipeline {
         let pipeline = self.get_or_create_pipeline(device, &shader_source)?;
 
         self.ensure_resources(device, width, height);
-        let resources = self.resources.as_ref().unwrap();
+        let resources = self.resources.as_ref()
+            .ok_or_else(|| anyhow!("transition resources not initialized"))?;
 
         // Подготовка текстуры From
         let from_texture = match from_source {
@@ -330,7 +336,6 @@ fn create_temp_texture(
         view_formats: &[],
     });
 
-    let row_bytes = img.width * 4;
     let pixels = image_pixels_rgba8(img)?;
     queue.write_texture(
         wgpu::TexelCopyTextureInfo {
@@ -342,7 +347,7 @@ fn create_temp_texture(
         &pixels,
         wgpu::TexelCopyBufferLayout {
             offset: 0,
-            bytes_per_row: Some(row_bytes),
+            bytes_per_row: Some(img.width * 4),
             rows_per_image: Some(img.height),
         },
         size,

@@ -509,8 +509,11 @@ export function createTimelinePersistenceModule(
       const mainPath = deps.currentTimelinePath.value;
       const autosavePath = getAutosavePath(mainPath);
 
-      const mainMeta = await deps.getTimelineMetadata(mainPath);
-      const autosaveMeta = await deps.getTimelineMetadata(autosavePath);
+      // Independent stat calls — fetch them concurrently rather than chaining.
+      const [mainMeta, autosaveMeta] = await Promise.all([
+        deps.getTimelineMetadata(mainPath),
+        deps.getTimelineMetadata(autosavePath),
+      ]);
 
       if (!mainMeta && !autosaveMeta) {
         if (requestId !== loadTimelineRequestId) return;

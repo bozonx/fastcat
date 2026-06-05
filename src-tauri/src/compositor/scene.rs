@@ -89,10 +89,22 @@ impl Scene {
             // Расчет обрезанного bbox (crop)
             let nw = natural.0 as f64;
             let nh = natural.1 as f64;
-            let crop_left = (layer.transform.crop_left.clamp(0.0, 100.0) / 100.0) * nw;
-            let crop_right = (layer.transform.crop_right.clamp(0.0, 100.0) / 100.0) * nw;
-            let crop_top = (layer.transform.crop_top.clamp(0.0, 100.0) / 100.0) * nh;
-            let crop_bottom = (layer.transform.crop_bottom.clamp(0.0, 100.0) / 100.0) * nh;
+            let mut crop_left = (layer.transform.crop_left.clamp(0.0, 100.0) / 100.0) * nw;
+            let mut crop_right = (layer.transform.crop_right.clamp(0.0, 100.0) / 100.0) * nw;
+            let mut crop_top = (layer.transform.crop_top.clamp(0.0, 100.0) / 100.0) * nh;
+            let mut crop_bottom = (layer.transform.crop_bottom.clamp(0.0, 100.0) / 100.0) * nh;
+
+            // Prevent inverted bbox when opposing crops overlap.
+            if crop_left + crop_right > nw {
+                let scale = nw / (crop_left + crop_right);
+                crop_left *= scale;
+                crop_right *= scale;
+            }
+            if crop_top + crop_bottom > nh {
+                let scale = nh / (crop_top + crop_bottom);
+                crop_top *= scale;
+                crop_bottom *= scale;
+            }
 
             let x_min = crop_left;
             let x_max = (nw - crop_right).max(x_min);
@@ -743,12 +755,12 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                     }
                 };
 
-                let mut glyph_idx = 0;
                 for item in line.items() {
                     let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
                     
                     let run_xform = xform * Affine::translate(((line_x_offset + dx) as f64, (text_block_top_px + dy) as f64));
                     
+                    let mut glyph_idx = 0;
                     let adjusted_glyphs = run.positioned_glyphs().map(|g| {
                         let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
                         glyph_idx += 1;
@@ -819,12 +831,12 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
             }
         };
 
-        let mut glyph_idx = 0;
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
             
             let run_xform = xform * Affine::translate((line_x_offset as f64, text_block_top_px as f64));
             
+            let mut glyph_idx = 0;
             let adjusted_glyphs = run.positioned_glyphs().map(|g| {
                 let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
                 glyph_idx += 1;

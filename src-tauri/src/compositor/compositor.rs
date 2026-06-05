@@ -55,7 +55,7 @@ struct TexturePool {
 
 impl TexturePool {
     fn new() -> Self {
-        Self { free: HashMap::new(), max_per_size: 4 }
+        Self { free: HashMap::new(), max_per_size: 16 }
     }
 
     /// Взять текстуру из пула или создать новую.
@@ -629,7 +629,8 @@ impl Compositor {
                 },
             );
         }
-        let target = self.offscreen.get(&dev_id).unwrap();
+        let target = self.offscreen.get(&dev_id)
+            .ok_or_else(|| anyhow!("offscreen target missing for device {dev_id}"))?;
 
         let renderer = self
             .renderers

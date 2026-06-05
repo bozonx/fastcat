@@ -192,19 +192,16 @@ impl EffectPipeline {
                     recreate = false;
                 }
             }
+            // Shrink if the cached texture is more than 2x larger than needed
+            // to avoid monotonic GPU memory growth after resolution changes.
+            if !recreate && (res.width > width * 2 || res.height > height * 2) {
+                recreate = true;
+            }
         }
 
         if recreate {
-            let new_w = if let Some(res) = &self.resources {
-                res.width.max(width)
-            } else {
-                width
-            };
-            let new_h = if let Some(res) = &self.resources {
-                res.height.max(height)
-            } else {
-                height
-            };
+            let new_w = width.max(1);
+            let new_h = height.max(1);
             let new_size = wgpu::Extent3d {
                 width: new_w,
                 height: new_h,
@@ -290,7 +287,8 @@ impl EffectPipeline {
         let need_input = matches!(source, EffectSource::Cpu(_));
         self.ensure_resources(device, width, height, need_input);
 
-        let resources = self.resources.as_ref().unwrap();
+        let resources = self.resources.as_ref()
+            .ok_or_else(|| anyhow!("effect resources not initialized"))?;
 
         let input_view = match source {
             EffectSource::Cpu(img) => {
@@ -300,7 +298,8 @@ impl EffectPipeline {
                     height,
                     depth_or_array_layers: 1,
                 };
-                let input_tex = resources.input.as_ref().unwrap();
+                let input_tex = resources.input.as_ref()
+                    .ok_or_else(|| anyhow!("effect input texture missing"))?;
                 queue.write_texture(
                     wgpu::TexelCopyTextureInfo {
                         texture: input_tex,

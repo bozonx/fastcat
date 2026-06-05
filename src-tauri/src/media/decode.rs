@@ -71,8 +71,10 @@ pub struct FfmpegNextDecoder {
     seek_target: Option<f64>,
 }
 
-// The decoder is created on the caller thread and then moved as a whole into one decode thread.
-// We never share libav/scaler pointers across threads after that move.
+// SAFETY: FfmpegNextDecoder owns all libav* objects (AVCodecContext, SwsContext,
+// AVFormatContext). These pointers are never shared across threads; the decoder
+// is created on one thread and then moved as a whole into a single decode thread.
+// We never access decoder state concurrently or from multiple threads.
 unsafe impl Send for FfmpegNextDecoder {}
 
 impl FfmpegNextDecoder {

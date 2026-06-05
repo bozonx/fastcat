@@ -60,7 +60,11 @@ impl TextureCache {
     }
 
     pub fn remove(&mut self, key: TextureKey) -> Option<Arc<wgpu::Texture>> {
-        self.textures.remove(&key.0)
+        let removed = self.textures.remove(&key.0);
+        if removed.is_some() {
+            self.order.retain(|k| *k != key.0);
+        }
+        removed
     }
 }
 

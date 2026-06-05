@@ -486,14 +486,14 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
     let in_dur = sl
         .transition_in
         .as_ref()
-        .map(|t| t.duration_sec)
+        .map(|t| t.duration_sec.clamp(0.0, clip_dur))
         .unwrap_or(0.0);
     let out_dur = sl
         .transition_out
         .as_ref()
-        .map(|t| t.duration_sec)
+        .map(|t| t.duration_sec.clamp(0.0, clip_dur))
         .unwrap_or(0.0);
-    let out_start = clip_dur - out_dur;
+    let out_start = (clip_dur - out_dur).max(0.0);
 
     let in_active = in_dur > 0.0 && local_t < in_dur;
     let out_active = out_dur > 0.0 && local_t >= out_start;
@@ -716,6 +716,13 @@ pub fn rasterize_svg(path: &Path, target_long_edge: u32) -> Result<(ImageData, (
     let size = (width, height);
 
     if let Ok(mut cache) = cache_lock.lock() {
+        const SVG_CACHE_MAX_SIZE: usize = 128;
+        if cache.len() >= SVG_CACHE_MAX_SIZE {
+            // Simple eviction: remove an arbitrary key to cap memory.
+            if let Some(key) = cache.keys().next().cloned() {
+                cache.remove(&key);
+            }
+        }
         cache.insert(
             (path_buf, target_long_edge),
             SvgCacheEntry {
@@ -785,10 +792,11 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
                 Some(255)
             },
         ),
-        _ => (Some(255), Some(255), Some(255), Some(255)),
+        _ => (None, None, None, None),
     };
+    // Invalid / non-hex strings fall back to transparent so they don't visually pollute.
     let a = ((a.unwrap_or(255) as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
-    Color::from_rgba8(r.unwrap_or(255), g.unwrap_or(255), b.unwrap_or(255), a)
+    Color::from_rgba8(r.unwrap_or(0), g.unwrap_or(0), b.unwrap_or(0), a)
 }
 
 pub fn number(value: &serde_json::Value, key: &str, fallback: f64) -> f64 {

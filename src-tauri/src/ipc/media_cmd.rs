@@ -17,7 +17,7 @@ pub async fn native_media_metadata(
     hw_settings: State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<NativeMediaMetadata, String> {
     let path = PathBuf::from(path);
-    let ffprobe_path = hw_settings.read().unwrap().ffprobe_path.clone();
+    let ffprobe_path = hw_settings.read().unwrap_or_else(|e| e.into_inner()).ffprobe_path.clone();
     tokio::task::spawn_blocking(move || probe_media(&path, &ffprobe_path))
         .await
         .map_err(|e| e.to_string())?
@@ -37,7 +37,7 @@ pub async fn native_media_generate_proxy(
     let source_path = PathBuf::from(source_path);
     let target_path = PathBuf::from(target_path);
 
-    let hw = hw_settings.read().unwrap().clone();
+    let hw = hw_settings.read().unwrap_or_else(|e| e.into_inner()).clone();
     options.ffmpeg_path = Some(hw.ffmpeg_path);
     options.ffprobe_path = Some(hw.ffprobe_path);
     options.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode);
@@ -65,7 +65,7 @@ pub async fn native_media_convert(
     let source_path = PathBuf::from(source_path);
     let target_path = PathBuf::from(target_path);
 
-    let hw = hw_settings.read().unwrap().clone();
+    let hw = hw_settings.read().unwrap_or_else(|e| e.into_inner()).clone();
     options.ffmpeg_path = Some(hw.ffmpeg_path);
     options.ffprobe_path = Some(hw.ffprobe_path);
     options.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode);
@@ -105,7 +105,7 @@ pub async fn native_timeline_export(
     let tasks = tasks.inner().clone();
     let target_path = PathBuf::from(target_path);
 
-    let hw = hw_settings.read().unwrap().clone();
+    let hw = hw_settings.read().unwrap_or_else(|e| e.into_inner()).clone();
     options.ffmpeg_path = Some(hw.ffmpeg_path);
     options.ffprobe_path = Some(hw.ffprobe_path);
     options.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode);
@@ -179,7 +179,7 @@ pub async fn native_video_frame_webp(
     hw_settings: tauri::State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
     let source_path = PathBuf::from(source_path);
-    let hw = hw_settings.read().unwrap().clone();
+    let hw = hw_settings.read().unwrap_or_else(|e| e.into_inner()).clone();
     tokio::task::spawn_blocking(move || {
         extract_video_frame_webp(&source_path, time_sec, max_width, max_height, quality, hw)
     })

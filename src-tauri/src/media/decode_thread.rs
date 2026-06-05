@@ -279,7 +279,7 @@ fn run_decoder_loop(
                 // Загружаем кадр на GPU, если доступны device и queue
                 if let (Some(device), Some(queue)) = (&device, &queue) {
                     let tex = {
-                        let mut pool = texture_pool.lock().unwrap();
+                        let mut pool = texture_pool.lock().unwrap_or_else(|e| e.into_inner());
                         let slot = pool.entry((frame.width, frame.height)).or_default();
                         slot.pop().unwrap_or_else(|| {
                             device.create_texture(&wgpu::TextureDescriptor {
