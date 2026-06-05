@@ -40,9 +40,17 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     
     var final_color = vec4<f32>(0.0);
     
-    let from_coord = vec2<i32>(i32(from_uv.x * f32(uni.width)), i32(from_uv.y * f32(uni.height)));
-    let to_coord = vec2<i32>(i32(to_uv.x * f32(uni.width)), i32(to_uv.y * f32(uni.height)));
-    
+    let wx = f32(uni.width) - 1.0;
+    let hx = f32(uni.height) - 1.0;
+    let from_coord = vec2<i32>(
+        i32(clamp(from_uv.x * f32(uni.width), 0.0, wx)),
+        i32(clamp(from_uv.y * f32(uni.height), 0.0, hx))
+    );
+    let to_coord = vec2<i32>(
+        i32(clamp(to_uv.x * f32(uni.width), 0.0, wx)),
+        i32(clamp(to_uv.y * f32(uni.height), 0.0, hx))
+    );
+
     let from_valid = from_uv.x >= 0.0 && from_uv.x <= 1.0 && from_uv.y >= 0.0 && from_uv.y <= 1.0;
     let to_valid = to_uv.x >= 0.0 && to_uv.x <= 1.0 && to_uv.y >= 0.0 && to_uv.y <= 1.0;
     

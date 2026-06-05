@@ -24,6 +24,7 @@ use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene 
 use winit::window::Window;
 
 use super::effects::{EffectPipeline, EffectSource, EffectSpec};
+use super::gpu_utils::image_pixels_rgba8;
 use super::scene::{BlendMode, Layer, LayerKind, RasterGpuSource, RasterSource, Transform};
 use super::transitions::TransitionPipeline;
 
@@ -258,6 +259,11 @@ impl Compositor {
 
         for i in 0..layers.len() {
             if let Some(trans_info) = layers[i].transition.clone() {
+                // A layer referencing itself as the from-layer would produce
+                // a zero-area transition and then be erroneously removed.
+                if trans_info.from_layer_id == layers[i].id {
+                    continue;
+                }
                 let from_layer_opt = layers
                     .iter()
                     .find(|l| l.id == trans_info.from_layer_id)
@@ -283,10 +289,11 @@ impl Compositor {
                         queue,
                     )?;
 
+                    let cache = self.pipeline_caches.get(&dev_id);
                     let pipeline = self
                         .transition_pipelines
                         .entry(dev_id)
-                        .or_insert_with(|| TransitionPipeline::new(device));
+                        .or_insert_with(|| TransitionPipeline::new(device, cache));
 
                     match pipeline.apply_transition(
                         device,
@@ -467,10 +474,11 @@ impl Compositor {
         source: &EffectSource,
         effects: &[EffectSpec],
     ) -> Result<wgpu::Texture> {
+        let cache = self.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines
             .entry(dev_id)
-            .or_insert_with(|| EffectPipeline::new(device));
+            .or_insert_with(|| EffectPipeline::new(device, cache));
         match pipeline.apply_effects(device, queue, source, effects) {
             Ok(texture) => Ok(texture),
             Err(error) => {
@@ -792,35 +800,6 @@ fn image_to_texture(
         },
     );
     Ok(texture)
-}
-
-fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
-    let expected = image
-        .format
-        .size_in_bytes(image.width, image.height)
-        .ok_or_else(|| anyhow!("image byte size overflow"))?;
-    let data = image.data.data();
-    if data.len() < expected {
-        return Err(anyhow!(
-            "image data is too small: {} bytes for {}x{}",
-            data.len(),
-            image.width,
-            image.height
-        ));
-    }
-    match image.format {
-        vello::peniko::ImageFormat::Rgba8 => Ok(data[..expected].to_vec()),
-        vello::peniko::ImageFormat::Bgra8 => {
-            let mut rgba = data[..expected].to_vec();
-            for px in rgba.chunks_exact_mut(4) {
-                px.swap(0, 2);
-            }
-            Ok(rgba)
-        }
-        _ => Err(anyhow!(
-            "unsupported image format for compositor texture upload"
-        )),
-    }
 }
 
 // ---------------------------------------------------------------------------

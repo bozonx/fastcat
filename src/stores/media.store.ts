@@ -130,6 +130,7 @@ export const useMediaStore = defineStore('media', () => {
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
     const file = await projectStore.getFileByPath(path);
+    console.log('[getOrFetchMetadataByPath] path=', path, 'file=', file?.name, 'size=', file?.size);
     if (!file) {
       missingPaths.value[path] = true;
       return null;
@@ -301,8 +302,16 @@ export const useMediaStore = defineStore('media', () => {
         if (isTauriRuntime()) {
           const handle = await projectStore.getFileHandleByPath(projectRelativePath);
           const nativePath = getNativeFileHandlePath(handle);
+          console.log('[fetchMetadataInternal] nativePath=', nativePath);
           if (nativePath) {
-            const nativeMeta = await nativeMediaMetadata(nativePath);
+            let nativeMeta;
+            try {
+              nativeMeta = await nativeMediaMetadata(nativePath);
+              console.log('[fetchMetadataInternal] nativeMeta.duration=', nativeMeta.duration, 'video=', !!nativeMeta.video, 'audio=', !!nativeMeta.audio);
+            } catch (e) {
+              console.log('[fetchMetadataInternal] nativeMediaMetadata error:', e);
+              throw e;
+            }
             const mediaType = getMediaTypeFromFilename(projectRelativePath);
 
             if (mediaType === 'image') {

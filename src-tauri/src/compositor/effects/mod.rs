@@ -8,9 +8,13 @@ use anyhow::{Result, anyhow};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use vello::peniko::{ImageData, ImageFormat};
+use vello::peniko::ImageData;
 use wgpu::util::DeviceExt;
+
+use super::gpu_utils::image_pixels_rgba8;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -91,9 +95,10 @@ struct EffectUniform {
     p7: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct EffectPass {
     uniform: EffectUniform,
+    custom_source: Option<String>,
 }
 
 pub enum EffectSource {
@@ -118,12 +123,14 @@ struct CachedResources {
 
 pub struct EffectPipeline {
     bind_layout: wgpu::BindGroupLayout,
-    pipeline: wgpu::ComputePipeline,
+    pipeline: Arc<wgpu::ComputePipeline>,
     resources: Option<CachedResources>,
+    pipeline_cache: Option<wgpu::PipelineCache>,
+    custom_pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
 }
 
 impl EffectPipeline {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, cache: Option<&wgpu::PipelineCache>) -> Self {
         let bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("native-effect-bind-layout"),
             entries: &[
@@ -157,6 +164,17 @@ impl EffectPipeline {
                     },
                     count: None,
                 },
+                // Secondary input for bloom compose / custom effects.
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -168,19 +186,53 @@ impl EffectPipeline {
             bind_group_layouts: &[Some(&bind_layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let pipeline = Arc::new(device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("native-effect-pipeline"),
             layout: Some(&pipeline_layout),
             module: &shader,
             entry_point: Some("main"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
-            cache: None,
-        });
+            cache,
+        }));
         Self {
             bind_layout,
             pipeline,
             resources: None,
+            pipeline_cache: cache.cloned(),
+            custom_pipelines: HashMap::new(),
         }
+    }
+
+    fn get_or_create_custom_pipeline(
+        &mut self,
+        device: &wgpu::Device,
+        shader_source: &str,
+    ) -> Result<Arc<wgpu::ComputePipeline>> {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        shader_source.hash(&mut hasher);
+        let key = hasher.finish();
+        if !self.custom_pipelines.contains_key(&key) {
+            let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("native-effect-custom-wgsl"),
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
+            let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("native-effect-custom-pipeline-layout"),
+                bind_group_layouts: &[Some(&self.bind_layout)],
+                immediate_size: 0,
+            });
+            let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("native-effect-custom-pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: Some("main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: self.pipeline_cache.as_ref(),
+            });
+            self.custom_pipelines.insert(key, Arc::new(pipeline));
+        }
+        self.custom_pipelines.get(&key).cloned()
+            .ok_or_else(|| anyhow!("custom effect pipeline missing after insertion"))
     }
 
     fn ensure_resources(
@@ -331,6 +383,8 @@ impl EffectPipeline {
             }
             EffectSource::Gpu(tex) => tex.create_view(&wgpu::TextureViewDescriptor::default()),
         };
+        let ping_view = resources.ping_view.clone();
+        let pong_view = resources.pong_view.clone();
 
         // Финальный результат пишем сразу в owned-текстуру, а не в кешированную ping/pong
         // с последующей копией: раньше `copy_texture_owned` делал лишний полнокадровый
@@ -353,9 +407,6 @@ impl EffectPipeline {
             view_formats: &[],
         });
         let owned_view = owned.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let ping_view = &resources.ping_view;
-        let pong_view = &resources.pong_view;
         let last_index = passes.len() - 1;
         let mut last_is_ping = false;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -371,20 +422,34 @@ impl EffectPipeline {
             let source_view = if index == 0 {
                 &input_view
             } else if last_is_ping {
-                ping_view
+                &ping_view
             } else {
-                pong_view
+                &pong_view
             };
             // Промежуточный таргет в пинг-понг-кеше; на последнем пассе пишем в owned.
             let intermediate_target = if index == 0 || !last_is_ping {
-                ping_view
+                &ping_view
             } else {
-                pong_view
+                &pong_view
             };
             let target_view = if index == last_index {
                 &owned_view
             } else {
                 intermediate_target
+            };
+            // Bloom compose (mode 18) reads original via input_tex and blurred bloom
+            // via secondary_tex; for all other passes secondary_tex is bound to the
+            // original source (unused in shader).
+            let is_compose = pass.uniform.mode == 18;
+            let (bind_src, bind_secondary) = if is_compose {
+                (&input_view, source_view)
+            } else {
+                (source_view, &input_view)
+            };
+            let pipeline = if let Some(ref src) = pass.custom_source {
+                self.get_or_create_custom_pipeline(device, src)?
+            } else {
+                Arc::clone(&self.pipeline)
             };
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("native-effect-bind-group"),
@@ -392,7 +457,7 @@ impl EffectPipeline {
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: wgpu::BindingResource::TextureView(source_view),
+                        resource: wgpu::BindingResource::TextureView(bind_src),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
@@ -402,6 +467,10 @@ impl EffectPipeline {
                         binding: 2,
                         resource: uniform.as_entire_binding(),
                     },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::TextureView(bind_secondary),
+                    },
                 ],
             });
             {
@@ -409,7 +478,7 @@ impl EffectPipeline {
                     label: Some("native-effect-pass"),
                     timestamp_writes: None,
                 });
-                cpass.set_pipeline(&self.pipeline);
+                cpass.set_pipeline(&pipeline);
                 cpass.set_bind_group(0, &bind_group, &[]);
                 cpass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
             }
@@ -453,6 +522,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                             p0: clamped_r,
                             ..Default::default()
                         },
+                        custom_source: None,
                     });
                     // Pass 2: Vertical Blur (mode 14)
                     passes.push(EffectPass {
@@ -464,6 +534,61 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                             p0: clamped_r,
                             ..Default::default()
                         },
+                        custom_source: None,
+                    });
+                }
+            }
+            EffectSpec::Bloom {
+                threshold,
+                strength,
+                radius,
+            } => {
+                let clamped_r = (radius * scale).clamp(0.0, 16.0);
+                if clamped_r > 0.0 {
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 15,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: threshold.clamp(0.0, 1.0),
+                            ..Default::default()
+                        },
+                        custom_source: None,
+                    });
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 4,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: clamped_r,
+                            ..Default::default()
+                        },
+                        custom_source: None,
+                    });
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 14,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: clamped_r,
+                            ..Default::default()
+                        },
+                        custom_source: None,
+                    });
+                    passes.push(EffectPass {
+                        uniform: EffectUniform {
+                            mode: 18,
+                            width,
+                            height,
+                            seed: 0,
+                            p0: 0.0,
+                            p1: strength.clamp(0.0, 4.0),
+                            ..Default::default()
+                        },
+                        custom_source: None,
                     });
                 }
             }
@@ -494,8 +619,9 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             p6: 0.0,
             p7: 0.0,
         },
+        custom_source: None,
     };
-    match *effect {
+    match effect {
         EffectSpec::Brightness { value } => {
             Some(base(1, value.clamp(0.0, 2.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
         }
@@ -512,22 +638,7 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         EffectSpec::Pixelate { size } => {
             Some(base(6, (size * scale).clamp(1.0, 256.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
         }
-        EffectSpec::Bloom {
-            threshold,
-            strength,
-            radius,
-        } => Some(base(
-            7,
-            threshold.clamp(0.0, 1.0),
-            strength.clamp(0.0, 4.0),
-            // Bloom — 2D-ядро (дорогое), шейдер клампит радиус до 16; держим тот же
-            // потолок, чтобы UI-значение отражало реальный эффект.
-            (radius * scale).clamp(0.0, 16.0),
-            0.0,
-            0.0,
-            0.0,
-            0,
-        )),
+        EffectSpec::Bloom { .. } => None, // Handled in build_passes
         EffectSpec::Vignette {
             strength,
             radius,
@@ -550,19 +661,19 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0.0,
             0.0,
-            seed,
+            *seed,
         )),
         EffectSpec::ChromaticAberration { amount, angle_deg } => Some(base(
             10,
             (amount * scale).clamp(0.0, 80.0),
-            angle_deg,
+            *angle_deg,
             0.0,
             0.0,
             0.0,
             0.0,
             0,
         )),
-        EffectSpec::Hue { degrees } => Some(base(11, degrees, 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
+        EffectSpec::Hue { degrees } => Some(base(11, *degrees, 0.0, 0.0, 0.0, 0.0, 0.0, 0)),
         EffectSpec::Levels {
             in_black,
             in_white,
@@ -593,34 +704,34 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
             0.0,
             0,
         )),
-        EffectSpec::CustomWgsl { .. } => None,
-    }
-}
-
-fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
-    let expected = image
-        .format
-        .size_in_bytes(image.width, image.height)
-        .ok_or_else(|| anyhow!("image byte size overflow"))?;
-    let data = image.data.data();
-    if data.len() < expected {
-        return Err(anyhow!(
-            "image data is too small: {} bytes for {}x{}",
-            data.len(),
-            image.width,
-            image.height
-        ));
-    }
-    match image.format {
-        ImageFormat::Rgba8 => Ok(data[..expected].to_vec()),
-        ImageFormat::Bgra8 => {
-            let mut rgba = data[..expected].to_vec();
-            for px in rgba.chunks_exact_mut(4) {
-                px.swap(0, 2);
+        EffectSpec::CustomWgsl { source, params } => {
+            let mut p = [0.0f32; 8];
+            if let serde_json::Value::Object(map) = params {
+                for i in 0..8 {
+                    let key = format!("p{}", i);
+                    if let Some(v) = map.get(&key).and_then(|v| v.as_f64()) {
+                        p[i] = v as f32;
+                    }
+                }
             }
-            Ok(rgba)
+            Some(EffectPass {
+                uniform: EffectUniform {
+                    mode: 0,
+                    width,
+                    height,
+                    seed: 0,
+                    p0: p[0],
+                    p1: p[1],
+                    p2: p[2],
+                    p3: p[3],
+                    p4: p[4],
+                    p5: p[5],
+                    p6: p[6],
+                    p7: p[7],
+                },
+                custom_source: Some(source.clone()),
+            })
         }
-        _ => Err(anyhow!("unsupported image format for effects")),
     }
 }
 
@@ -671,57 +782,8 @@ fn source_to_owned_texture(
             );
             Ok(texture)
         }
-        EffectSource::Gpu(texture) => copy_texture_owned(device, queue, texture, width, height),
+        EffectSource::Gpu(texture) => Ok((**texture).clone()),
     }
-}
-
-fn copy_texture_owned(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    width: u32,
-    height: u32,
-) -> Result<wgpu::Texture> {
-    let output = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("native-effect-owned-output"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::COPY_SRC
-            | wgpu::TextureUsages::COPY_DST
-            | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    });
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("native-effect-output-copy-encoder"),
-    });
-    encoder.copy_texture_to_texture(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyTextureInfo {
-            texture: &output,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit([encoder.finish()]);
-    Ok(output)
 }
 
 const EFFECT_SHADER: &str = r#"
@@ -743,6 +805,7 @@ struct EffectUniform {
 @group(0) @binding(0) var input_tex: texture_2d<f32>;
 @group(0) @binding(1) var output_tex: texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(2) var<uniform> effect: EffectUniform;
+@group(0) @binding(3) var secondary_tex: texture_2d<f32>;
 
 fn clamp_coord(coord: vec2<i32>) -> vec2<i32> {
     return vec2<i32>(
@@ -753,6 +816,10 @@ fn clamp_coord(coord: vec2<i32>) -> vec2<i32> {
 
 fn load_px(coord: vec2<i32>) -> vec4<f32> {
     return textureLoad(input_tex, clamp_coord(coord), 0);
+}
+
+fn load_secondary(coord: vec2<i32>) -> vec4<f32> {
+    return textureLoad(secondary_tex, clamp_coord(coord), 0);
 }
 
 fn luma(color: vec3<f32>) -> f32 {
@@ -809,28 +876,6 @@ fn sample_blur_v(coord: vec2<i32>, radius: f32) -> vec4<f32> {
     return sum / max(weight_sum, 0.0001);
 }
 
-fn sample_bloom(coord: vec2<i32>, threshold: f32, strength: f32, radius: f32) -> vec3<f32> {
-    let r = i32(clamp(round(radius), 0.0, 16.0));
-    if (r == 0) {
-        return vec3<f32>(0.0);
-    }
-    var sum = vec3<f32>(0.0);
-    var weight_sum = 0.0;
-    let sigma = max(radius * 0.5, 1.0);
-    let double_sigma_sq = 2.0 * sigma * sigma;
-    for (var y = -r; y <= r; y = y + 1) {
-        for (var x = -r; x <= r; x = x + 1) {
-            let color_val = load_px(coord + vec2<i32>(x, y)).rgb;
-            let bright = smoothstep(threshold, 1.0, luma(color_val));
-            let dist = f32(x * x + y * y);
-            let w = exp(-dist / double_sigma_sq);
-            sum += color_val * bright * w;
-            weight_sum += w;
-        }
-    }
-    return (sum / max(weight_sum, 0.0001)) * strength;
-}
-
 @compute @workgroup_size(8, 8, 1)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (gid.x >= effect.width || gid.y >= effect.height) {
@@ -863,9 +908,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             let size = max(effect.p0, 1.0);
             let px = vec2<i32>(i32(floor(f32(gid.x) / size) * size), i32(floor(f32(gid.y) / size) * size));
             color = load_px(px);
-        }
-        case 7u: {
-            color = vec4<f32>(color.rgb + sample_bloom(coord, effect.p0, effect.p1, effect.p2), color.a);
         }
         case 8u: {
             let d = distance(uv, vec2<f32>(0.5, 0.5));
@@ -906,6 +948,15 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         case 14u: {
             color = sample_blur_v(coord, effect.p0);
         }
+        case 15u: {
+            let bright = smoothstep(effect.p0, 1.0, luma(color.rgb));
+            color = vec4<f32>(color.rgb * bright, 1.0);
+        }
+        case 18u: {
+            let bloom = color.rgb;
+            let orig = load_secondary(coord);
+            color = vec4<f32>(orig.rgb + bloom * effect.p1, orig.a);
+        }
         default: {}
     }
 
@@ -916,10 +967,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vello::peniko::{Blob, ImageAlphaType};
+    use vello::peniko::{Blob, ImageAlphaType, ImageFormat};
 
     #[test]
-    fn build_passes_skips_custom_wgsl() {
+    fn build_passes_includes_custom_wgsl() {
         let passes = build_passes(
             &[
                 EffectSpec::Brightness { value: 1.2 },
@@ -931,8 +982,10 @@ mod tests {
             1920,
             1080,
         );
-        assert_eq!(passes.len(), 1);
+        assert_eq!(passes.len(), 2);
         assert_eq!(passes[0].uniform.mode, 1);
+        assert_eq!(passes[1].uniform.mode, 0);
+        assert_eq!(passes[1].custom_source, Some("x".into()));
     }
 
     #[test]
@@ -956,5 +1009,24 @@ mod tests {
         assert_eq!(passes[1].uniform.mode, 14); // Vertical
         assert_eq!(passes[0].uniform.p0, 10.0);
         assert_eq!(passes[1].uniform.p0, 10.0);
+    }
+
+    #[test]
+    fn build_passes_bloom_uses_separable_pipeline() {
+        let passes = build_passes(
+            &[EffectSpec::Bloom {
+                threshold: 0.75,
+                strength: 0.6,
+                radius: 12.0,
+            }],
+            1920,
+            1080,
+        );
+        assert_eq!(passes.len(), 4);
+        assert_eq!(passes[0].uniform.mode, 15); // extract
+        assert_eq!(passes[1].uniform.mode, 4); // blur_h
+        assert_eq!(passes[2].uniform.mode, 14); // blur_v
+        assert_eq!(passes[3].uniform.mode, 18); // compose
+        assert_eq!(passes[3].uniform.p1, 0.6);
     }
 }

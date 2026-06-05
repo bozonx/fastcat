@@ -402,12 +402,15 @@ pub fn finalize_layer(
     let local_t = time_sec - sl.timeline_start_sec;
     let opacity = compute_transition_opacity(sl, local_t, base_opacity);
 
-    // Шейдерные переходы (wipe/slide/circle/…) рендерит ТОЛЬКО входящий клип через
-    // `transition_in` (он композитится поверх `from_layer`). Non-dissolve `transition_out`
-    // намеренно не даёт отдельного шейдерного прохода: переход «принадлежит» следующему
-    // клипу. Для `transition_out` поддержан лишь dissolve (через альфу в
-    // `compute_transition_opacity`). Полноценный «wipe в пустоту» на последнем клипе —
-    // отдельная фича, а не баг этой ветки.
+    // Шейдерные переходы (wipe/slide/circle/…) рендерятся через `transition_in`
+    // входящего клипа (он композитится поверх `from_layer`).
+    // Для смежных клипов `transition_out` исходящего клипа автоматически
+    // наследуется следующим клипом через `getEffectiveTransitionIn` на фронте,
+    // поэтому non-dissolve переходы между соседними клипами РАБОТАЮТ.
+    // Standalone `transition_out` (wipe в пустоту / background / transparent)
+    // намеренно не даёт отдельного шейдерного прохода — это отдельная фича.
+    // Для `transition_out` в Rust поддержан только dissolve (через альфу в
+    // `compute_transition_opacity`).
     let mut transition = None;
     if let Some(t_in) = &sl.transition_in {
         let in_dur = t_in.duration_sec;
@@ -1046,6 +1049,33 @@ mod tests {
     }
 
     #[test]
+    fn finalize_layer_ignores_non_dissolve_transition_out() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "out",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_out": {
+                "type": "wipe",
+                "duration_sec": 2.0,
+                "curve": "linear",
+                "spec": {
+                    "type": "wipe",
+                    "angle_deg": 45.0,
+                    "softness": 0.25
+                }
+            }
+        }))
+        .unwrap();
+
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 19.0);
+        assert!(output.transition.is_none());
+    }
+
+    #[test]
     fn finalize_layer_remaps_raster_crop_for_180_degree_source_orientation() {
         let layer = layer_with_crop("video", "180");
         let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 0.0);
@@ -1174,6 +1204,36 @@ mod tests {
         }));
         let op_smooth = compute_transition_opacity(&layer_bezier, 1.0, 1.0);
         assert!((op_smooth - 0.5).abs() < 1e-5);
+    }
+
+    #[test]
+    fn compute_transition_opacity_non_dissolve_overlap_keeps_base_opacity() {
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "overlap",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 0.8,
+            "transition_in": {
+                "type": "wipe",
+                "duration_sec": 6.0,
+                "curve": "linear"
+            },
+            "transition_out": {
+                "type": "slide",
+                "duration_sec": 6.0,
+                "curve": "linear"
+            }
+        }))
+        .unwrap();
+
+        // During overlap (t=4..6) opacity must stay at base because neither
+        // transition is a dissolve.
+        assert_eq!(compute_transition_opacity(&layer, 4.0, 0.8), 0.8);
+        assert_eq!(compute_transition_opacity(&layer, 5.0, 0.8), 0.8);
+        assert_eq!(compute_transition_opacity(&layer, 6.0, 0.8), 0.8);
     }
 
     #[test]

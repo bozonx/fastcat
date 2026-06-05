@@ -23,3 +23,5 @@ pub mod transitions;
 
 mod compositor;
 pub use compositor::{Compositor, PipelinedReadback};
+
+mod gpu_utils;

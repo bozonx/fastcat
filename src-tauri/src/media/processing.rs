@@ -142,6 +142,7 @@ pub struct NativeConvertOptions {
 
 pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadata> {
     verify_ffmpeg_binary(ffprobe_path).context("ffprobe binary check failed")?;
+    log::debug!("[probe_media] running ffprobe on {}", path.display());
     let output = Command::new(ffprobe_path)
         .arg("-v")
         .arg("error")
@@ -154,14 +155,14 @@ pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadat
         .context("failed to run ffprobe")?;
 
     if !output.status.success() {
-        return Err(anyhow!(
-            "ffprobe failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::warn!("[probe_media] ffprobe failed for {}: {}", path.display(), stderr);
+        return Err(anyhow!("ffprobe failed: {}", stderr));
     }
 
     let json: Value =
         serde_json::from_slice(&output.stdout).context("ffprobe returned invalid JSON")?;
+    log::debug!("[probe_media] ffprobe output keys: {:?}", json.as_object().map(|o| o.keys().collect::<Vec<_>>()));
     metadata_from_ffprobe(json)
 }
 
@@ -658,7 +659,7 @@ pub fn extract_video_frame_webps(
             }
         }
 
-        if let Some(mut frame) = last_frame {
+        if let Some(frame) = last_frame {
             let rotation = decoder.info().rotation.rem_euclid(360);
 
             let encode_res: Result<Vec<u8>, anyhow::Error> = if rotation == 90 || rotation == 180 || rotation == 270 {
@@ -666,7 +667,7 @@ pub fn extract_video_frame_webps(
                 if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
                     frame_width,
                     frame_height,
-                    std::mem::take(&mut frame.pixels),
+                    frame.pixels.clone(),
                 ) {
                     match rotation {
                         90 => {
@@ -897,6 +898,9 @@ mod tests {
         assert_eq!(resolve_audio_encoder(Some("aac"), "mp4"), ("aac", false));
         // opus passes through.
         assert_eq!(resolve_audio_encoder(Some("opus"), "webm"), ("libopus", false));
+        // flac and pcm pass through.
+        assert_eq!(resolve_audio_encoder(Some("flac"), "flac"), ("flac", false));
+        assert_eq!(resolve_audio_encoder(Some("pcm"), "wav"), ("pcm_s16le", false));
         // Unknown codec falls back to a safe default per container.
         assert_eq!(resolve_audio_encoder(Some("garbage"), "mp4"), ("aac", true));
         assert_eq!(resolve_audio_encoder(Some("garbage"), "webm"), ("libopus", true));

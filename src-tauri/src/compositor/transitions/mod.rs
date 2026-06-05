@@ -7,10 +7,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use vello::peniko::{ImageData, ImageFormat};
+use vello::peniko::ImageData;
 use wgpu::util::DeviceExt;
 
 use crate::compositor::effects::EffectSource;
+use crate::compositor::gpu_utils::image_pixels_rgba8;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -69,6 +70,7 @@ pub struct TransitionUniform {
 pub struct TransitionPipeline {
     bind_layout: wgpu::BindGroupLayout,
     pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
+    pipeline_cache: Option<wgpu::PipelineCache>,
     /// Билинейный blit-проход: приводит входы перехода к выходному размеру.
     blit_layout: wgpu::BindGroupLayout,
     blit_pipeline: wgpu::ComputePipeline,
@@ -122,7 +124,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 "#;
 
 impl TransitionPipeline {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, cache: Option<&wgpu::PipelineCache>) -> Self {
         let bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("native-transition-bind-layout"),
             entries: &[
@@ -219,12 +221,13 @@ impl TransitionPipeline {
             module: &blit_shader,
             entry_point: Some("main"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
-            cache: None,
+            cache,
         });
 
         Self {
             bind_layout,
             pipelines: HashMap::new(),
+            pipeline_cache: cache.cloned(),
             blit_layout,
             blit_pipeline,
         }
@@ -336,7 +339,7 @@ impl TransitionPipeline {
                 module: &shader,
                 entry_point: Some("main"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-                cache: None,
+                cache: self.pipeline_cache.as_ref(),
             });
             self.pipelines
                 .insert(key, Arc::new(pipeline));
@@ -497,33 +500,6 @@ fn create_temp_texture(
     Ok(tex)
 }
 
-fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
-    let expected = image
-        .format
-        .size_in_bytes(image.width, image.height)
-        .ok_or_else(|| anyhow!("image byte size overflow"))?;
-    let data = image.data.data();
-    if data.len() < expected {
-        return Err(anyhow!(
-            "image data too small: {} for {}x{}",
-            data.len(),
-            image.width,
-            image.height
-        ));
-    }
-    match image.format {
-        ImageFormat::Rgba8 => Ok(data[..expected].to_vec()),
-        ImageFormat::Bgra8 => {
-            let mut rgba = data[..expected].to_vec();
-            for px in rgba.chunks_exact_mut(4) {
-                px.swap(0, 2);
-            }
-            Ok(rgba)
-        }
-        _ => Err(anyhow!("unsupported format for transition source")),
-    }
-}
-
 fn build_uniform(
     spec: &TransitionSpec,
     progress: f32,
@@ -633,7 +609,7 @@ fn get_shader_source(spec: &TransitionSpec) -> String {
 mod tests {
     use super::*;
     use serde_json::json;
-    use vello::peniko::{Blob, ImageAlphaType};
+    use vello::peniko::{Blob, ImageAlphaType, ImageFormat};
 
     #[test]
     fn test_parse_transition_spec_json() {

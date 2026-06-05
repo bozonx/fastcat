@@ -108,6 +108,8 @@ pub fn resolve_audio_encoder(requested: Option<&str>, format: &str) -> (&'static
     let is_webm = format == "webm";
     match requested.map(|s| s.trim().to_ascii_lowercase()).as_deref() {
         Some("opus") | Some("libopus") => ("libopus", false),
+        Some("flac") => ("flac", false),
+        Some("pcm") => ("pcm_s16le", false),
         // webm only carries opus/vorbis; AAC requests are remapped to opus.
         Some("aac") | None => {
             if is_webm {
