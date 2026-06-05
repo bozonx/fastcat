@@ -4,7 +4,10 @@ import { ref } from 'vue';
 import { createTimelineSelectionModule } from '~/stores/timeline/selection';
 
 vi.mock('~/timeline/commands/utils', () => ({
-  getLinkedClipGroupItemIds: vi.fn((_doc, id) => [id]),
+  getLinkedClipGroupItemIds: vi.fn((_doc, id) => {
+    if (id === 'clip-1') return ['clip-1', 'clip-3'];
+    return [id];
+  }),
 }));
 
 const mockDoc = {
@@ -70,23 +73,23 @@ describe('TimelineSelectionModule', () => {
     expect(deps.selectedTransition.value).toBeNull();
   });
 
-  it('toggleSelection selects a single item', () => {
+  it('toggleSelection selects a single item and expands its linked group', () => {
     const deps = createMockDeps();
     const mod = createTimelineSelectionModule(deps);
 
     mod.toggleSelection('clip-1');
-    expect(deps.selectedItemIds.value).toEqual(['clip-1']);
+    expect(deps.selectedItemIds.value).toEqual(['clip-1', 'clip-3']);
   });
 
-  it('toggleSelection with multi toggles items', () => {
+  it('toggleSelection with multi toggles whole linked groups', () => {
     const deps = createMockDeps();
     const mod = createTimelineSelectionModule(deps);
 
     mod.toggleSelection('clip-1', { multi: true });
-    expect(deps.selectedItemIds.value).toEqual(['clip-1']);
+    expect(deps.selectedItemIds.value).toEqual(['clip-1', 'clip-3']);
 
     mod.toggleSelection('clip-2', { multi: true });
-    expect(deps.selectedItemIds.value).toEqual(['clip-1', 'clip-2']);
+    expect(deps.selectedItemIds.value).toEqual(['clip-1', 'clip-3', 'clip-2']);
 
     mod.toggleSelection('clip-1', { multi: true });
     expect(deps.selectedItemIds.value).toEqual(['clip-2']);
@@ -100,12 +103,12 @@ describe('TimelineSelectionModule', () => {
     expect(deps.selectedItemIds.value.sort()).toEqual(['clip-1', 'clip-2', 'clip-3']);
   });
 
-  it('selectAllClipsOnTrack selects only clips on the given track', () => {
+  it('selectAllClipsOnTrack selects clips on the given track and expands linked groups across tracks', () => {
     const deps = createMockDeps();
     const mod = createTimelineSelectionModule(deps);
 
     mod.selectAllClipsOnTrack('track-1');
-    expect(deps.selectedItemIds.value.sort()).toEqual(['clip-1', 'clip-2']);
+    expect(deps.selectedItemIds.value.sort()).toEqual(['clip-1', 'clip-2', 'clip-3']);
   });
 
   it('selectAllClipsOnTrack with append merges clips into existing selection', () => {
@@ -169,7 +172,55 @@ describe('TimelineSelectionModule', () => {
     mod.selectAllClipsOnTrack('track-1');
     expect(deps.selectionStore.selectTimelineItems).toHaveBeenCalledWith([
       { trackId: 'track-1', itemId: 'clip-1', kind: 'clip' },
+      { trackId: 'track-2', itemId: 'clip-3', kind: 'clip' },
       { trackId: 'track-1', itemId: 'clip-2', kind: 'clip' },
+    ]);
+  });
+
+  it('selectTimelineItems expands linked group by default', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineSelectionModule(deps);
+
+    mod.selectTimelineItems(['clip-1']);
+    expect(deps.selectedItemIds.value).toEqual(['clip-1', 'clip-3']);
+    expect(deps.selectionStore.selectTimelineItems).toHaveBeenCalledWith([
+      { trackId: 'track-1', itemId: 'clip-1', kind: 'clip' },
+      { trackId: 'track-2', itemId: 'clip-3', kind: 'clip' },
+    ]);
+  });
+
+  it('selectTimelineItems with bypassGroup skips linked group expansion', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineSelectionModule(deps);
+
+    mod.selectTimelineItems(['clip-1'], { bypassGroup: true });
+    expect(deps.selectedItemIds.value).toEqual(['clip-1']);
+    expect(deps.selectionStore.selectTimelineItems).toHaveBeenCalledWith([
+      { trackId: 'track-1', itemId: 'clip-1', kind: 'clip' },
+    ]);
+  });
+
+  it('selectTimelineItems with bypassGroup and append merges single items', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineSelectionModule(deps);
+
+    mod.selectTimelineItems(['clip-1'], { bypassGroup: true });
+    expect(deps.selectedItemIds.value).toEqual(['clip-1']);
+
+    mod.selectTimelineItems(['clip-2'], { append: true, bypassGroup: true });
+    expect(deps.selectedItemIds.value).toEqual(['clip-1', 'clip-2']);
+  });
+
+  it('selectTimelineItems with objects and bypassGroup skips group expansion', () => {
+    const deps = createMockDeps();
+    const mod = createTimelineSelectionModule(deps);
+
+    mod.selectTimelineItems([{ trackId: 'track-1', itemId: 'clip-1', kind: 'clip' as const }], {
+      bypassGroup: true,
+    });
+    expect(deps.selectedItemIds.value).toEqual(['clip-1']);
+    expect(deps.selectionStore.selectTimelineItems).toHaveBeenCalledWith([
+      { trackId: 'track-1', itemId: 'clip-1', kind: 'clip' },
     ]);
   });
 });
