@@ -12,7 +12,6 @@ import {
   normalizeExportFilename,
 } from '~/composables/timeline/export';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
-import { save } from '@tauri-apps/plugin-dialog';
 import { copyFile } from '@tauri-apps/plugin-fs';
 import { withFileIoSlot } from '~/utils/io/io-governor';
 import { isTauriRuntime } from '~/utils/runtime';
@@ -545,7 +544,11 @@ export function useExportForm() {
           const tauriFileHandle = fileHandle as unknown as { path?: string };
           if (tauriFileHandle.path) {
             try {
-              await copyFile(tauriFileHandle.path, customExportPath.value);
+              const { join } = await import('@tauri-apps/api/path');
+              await copyFile(
+                tauriFileHandle.path,
+                await join(customExportPath.value, outputFilename.value),
+              );
             } catch (e) {
               log.warn('Failed to copy exported file to custom location', e);
             }
@@ -578,22 +581,10 @@ export function useExportForm() {
   async function pickTauriExportPath() {
     if (!isTauri) return;
     try {
-      const isAudio = exportType.value === 'audio';
-      const audioExt =
-        audioCodec.value === 'opus'
-          ? 'opus'
-          : audioCodec.value === 'flac'
-            ? 'flac'
-            : audioCodec.value === 'pcm'
-              ? 'wav'
-              : audioCodec.value === 'mp3'
-                ? 'mp3'
-                : 'aac';
-      const path = await save({
-        defaultPath: outputFilename.value,
-        filters: isAudio
-          ? [{ name: 'Audio', extensions: [audioExt] }]
-          : [{ name: 'Video', extensions: [outputFormat.value] }],
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const path = await open({
+        directory: true,
+        multiple: false,
       });
       if (path) {
         customExportPath.value = path;

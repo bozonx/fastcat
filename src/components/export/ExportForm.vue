@@ -258,11 +258,15 @@ async function onConfirm() {
           </UiFormField>
           <div v-if="isTauri" class="mt-1">
             <div v-if="!customExportPath" class="flex items-center gap-1.5">
+              <UIcon name="i-heroicons-information-circle" class="h-4 w-4 shrink-0 text-ui-text-muted" />
+              <span class="text-sm text-ui-text-muted leading-relaxed">
+                {{ t('videoEditor.export.defaultExportFolderNote') }}
+              </span>
               <UButton
                 color="neutral"
                 variant="ghost"
                 size="xs"
-                :label="t('videoEditor.export.chooseLocation')"
+                :label="t('videoEditor.export.changeFolder')"
                 :disabled="isExporting"
                 @click="pickTauriExportPath"
               />

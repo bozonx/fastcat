@@ -76,7 +76,7 @@ vi.mock('@tauri-apps/api/webview', () => ({
 }));
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(),
+  invoke: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
