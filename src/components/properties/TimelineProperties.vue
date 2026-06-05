@@ -83,7 +83,9 @@ const isInactiveTimeline = computed(() => {
   return props.fsEntry.path !== projectStore.currentTimelinePath;
 });
 
-const finalIsReadOnly = computed(() => props.isReadOnly || isInactiveTimeline.value);
+const finalIsReadOnly = computed(
+  () => props.isReadOnly || isInactiveTimeline.value || projectStore.isReadOnly || timelineStore.previewMode,
+);
 
 const { onDelete } = useFilePropertiesHandlers({
   // onRename is kept for potential future use but not used for the quick-action button anymore

@@ -873,7 +873,12 @@ fn mix_chunk(
         }
     }
 
-    // 3. Mix track buses.
+    // 3. Mix track buses. Solo takes precedence over mute: when any track is
+    // soloed, only soloed tracks are heard and the per-track `audio_muted` flag
+    // is ignored (a soloed-and-muted track still plays). When nothing is soloed,
+    // muted tracks are dropped. Reused across tracks to avoid a per-track
+    // allocation every chunk; zeroed at the start of each iteration.
+    let mut track_mixed = vec![0.0f32; frames * output_channels];
     for track in tracks {
         if has_solo && !track.audio_solo {
             continue;
@@ -886,7 +891,7 @@ fn mix_chunk(
             continue;
         };
 
-        let mut track_mixed = vec![0.0f32; frames * output_channels];
+        track_mixed.iter_mut().for_each(|s| *s = 0.0);
         let mut has_audio_on_track = false;
 
         for layer in layers {
@@ -915,7 +920,8 @@ fn mix_chunk(
         }
     }
 
-    // 4. Mix orphan layers directly into the master bus.
+    // 4. Mix orphan layers (no owning track) directly into the master bus.
+    // They have no track to solo, so any active solo silences them entirely.
     if !has_solo {
         for layer in orphan_layers {
             mix_layer_into(
@@ -950,7 +956,12 @@ fn resolve_track_for_layer<'a>(
     }
     tracks
         .iter()
-        .filter(|t| tid == t.id || tid.starts_with(&format!("{}_", t.id)))
+        .filter(|t| {
+            tid == t.id
+                || tid
+                    .strip_prefix(t.id.as_str())
+                    .is_some_and(|rest| rest.starts_with('_'))
+        })
         .max_by_key(|t| t.id.len())
 }
 
@@ -1322,10 +1333,17 @@ fn planar_to_interleaved(planar: &[Vec<f32>], out_channels: usize) -> Vec<f32> {
             }
         }
     } else if src_channels == 1 {
-        // Mono source: front L/R for stereo+, single channel for mono.
+        // Mono source: duplicate into the front L/R pair. Scale by 1/√2 so the
+        // summed acoustic power of the two correlated copies matches the original
+        // mono level instead of being ~3 dB louder than a native stereo clip.
         let front = out_channels.min(2);
+        let scale = if front >= 2 {
+            std::f32::consts::FRAC_1_SQRT_2
+        } else {
+            1.0
+        };
         for f in 0..num_frames {
-            let val = planar[0][f];
+            let val = planar[0][f] * scale;
             let base = f * out_channels;
             for ch in 0..front {
                 interleaved[base + ch] = val;
@@ -1899,8 +1917,7 @@ fn apply_layer_mix(
     // If the whole write range sits outside both fade zones the gain is constant,
     // so skip the per-sample envelope evaluation (incl. the fade `sin()`).
     let duration = (layer.timeline_end_sec - layer.timeline_start_sec).max(0.0);
-    let fade_in = layer.audio_fade_in_sec.max(0.0).min(duration);
-    let fade_out = layer.audio_fade_out_sec.max(0.0).min(duration);
+    let (fade_in, fade_out) = effective_fades(layer, duration);
     let clip_start = (segment_start_sec - layer.timeline_start_sec).max(0.0);
     let clip_end = clip_start + frames_to_write.saturating_sub(1) as f64 / sample_rate as f64;
     let constant_gain = duration > 0.0 && clip_start >= fade_in && {
@@ -1935,14 +1952,34 @@ fn apply_layer_mix(
     }
 }
 
+/// Resolves the effective fade-in / fade-out lengths for a layer. Each fade is
+/// clamped to the clip duration, and when the two together would exceed the
+/// duration they are scaled down proportionally so they meet rather than
+/// overlap. Without this, an over-long fade-in and fade-out both stay active in
+/// the middle of the clip and *multiply*, punching an unintended hole in the
+/// gain envelope.
+fn effective_fades(layer: &SceneAudioLayer, duration: f64) -> (f64, f64) {
+    if duration <= 0.0 {
+        return (0.0, 0.0);
+    }
+    let fade_in = layer.audio_fade_in_sec.max(0.0).min(duration);
+    let fade_out = layer.audio_fade_out_sec.max(0.0).min(duration);
+    let total = fade_in + fade_out;
+    if total > duration && total > 0.0 {
+        let scale = duration / total;
+        (fade_in * scale, fade_out * scale)
+    } else {
+        (fade_in, fade_out)
+    }
+}
+
 fn gain_at_clip_time(layer: &SceneAudioLayer, clip_sec: f64) -> f64 {
     let mut gain = layer.audio_gain.max(0.0);
     let duration = (layer.timeline_end_sec - layer.timeline_start_sec).max(0.0);
     if duration <= 0.0 {
         return 0.0;
     }
-    let fade_in = layer.audio_fade_in_sec.max(0.0).min(duration);
-    let fade_out = layer.audio_fade_out_sec.max(0.0).min(duration);
+    let (fade_in, fade_out) = effective_fades(layer, duration);
     if fade_in > 0.0 && clip_sec < fade_in {
         gain *= fade_curve(clip_sec / fade_in, layer.audio_fade_in_curve);
     }
@@ -1959,19 +1996,28 @@ fn fade_curve(t: f64, curve: AudioFadeCurve) -> f64 {
     let x = t.clamp(0.0, 1.0);
     match curve {
         AudioFadeCurve::Linear => x,
+        // The "logarithmic" option is the perceptual fast-rising fade the UI
+        // draws (a quarter-sine / equal-power curve, concave toward unity). It is
+        // not a literal base-N logarithm; the name matches the user-facing label
+        // and the envelope rendered in `ClipAudioFades.vue`.
         AudioFadeCurve::Logarithmic => (x * std::f64::consts::FRAC_PI_2).sin().max(0.0),
     }
 }
 
+/// Stereo balance matrix (diagonal — no channel cross-feed). A balance control
+/// must be unity at the centre: `balance = 0` leaves both channels untouched,
+/// and moving toward one side linearly attenuates the *opposite* channel down to
+/// silence. This is deliberately NOT the equal-power pan law (which dips the
+/// centre by ~3 dB) — applying that law per layer *and* per bus compounded into
+/// a ~6 dB loss on every default-balance clip.
+///   Full left  → (1.0, 0.0)
+///   Centre     → (1.0, 1.0)
+///   Full right → (0.0, 1.0)
+/// `lr`/`rl` are always zero because balance never bleeds one channel into the other.
 fn stereo_pan_matrix(balance: f64) -> (f64, f64, f64, f64) {
     let pan = balance.clamp(-1.0, 1.0);
-    // Equal-power stereo panning: map [-1, 1] to [0, π/2].
-    // Full left  → (1.0, 0.0)
-    // Centre     → (~0.707, ~0.707)
-    // Full right → (0.0, 1.0)
-    let angle = (pan + 1.0) * std::f64::consts::FRAC_PI_4;
-    let left_gain = angle.cos();
-    let right_gain = angle.sin();
+    let left_gain = (1.0 - pan).min(1.0);
+    let right_gain = (1.0 + pan).min(1.0);
     (left_gain, 0.0, 0.0, right_gain)
 }
 
@@ -1983,18 +2029,27 @@ fn sanitize_speed(speed: f64) -> f64 {
     }
 }
 
+/// Upper bound for master gain (~+18 dB). Above this the soft-clip limiter would
+/// simply flatten the entire mix into distortion, so we cap rather than trust an
+/// arbitrarily large value coming from the UI / scene payload.
+const MAX_MASTER_GAIN: f64 = 8.0;
+
 fn sanitize_master_gain(gain: f64) -> f64 {
     if gain.is_finite() {
-        gain.max(0.0)
+        gain.clamp(0.0, MAX_MASTER_GAIN)
     } else {
         1.0
     }
 }
 
 /// Smooth soft-knee limiter. Below the knee the signal is untouched; above it,
-/// magnitudes are mapped asymptotically toward (but never exceeding) 1.0 with a
-/// tanh curve, so loud mixes are gracefully compressed instead of hard-clipped.
-/// Non-finite inputs are flushed to silence to keep the output bounded.
+/// magnitudes are mapped asymptotically toward (but never reaching) 1.0 with a
+/// single continuous tanh curve, so loud mixes are gracefully compressed instead
+/// of hard-clipped. The curve is continuous everywhere: at `mag == KNEE` it
+/// equals `KNEE` (`tanh(0) == 0`) and as `mag → ∞` it approaches 1.0. The
+/// previous implementation special-cased `mag >= 1.0 → 1.0`, which introduced a
+/// ~0.05 jump (audible distortion) right at unity. Non-finite inputs are flushed
+/// to silence to keep the output bounded.
 fn soft_clip(samples: &mut [f32]) {
     const KNEE: f32 = 0.8;
     for sample in samples {
@@ -2007,12 +2062,8 @@ fn soft_clip(samples: &mut [f32]) {
         if mag <= KNEE {
             continue;
         }
-        let limited = if mag >= 1.0 {
-            1.0
-        } else {
-            let over = (mag - KNEE) / (1.0 - KNEE);
-            KNEE + (1.0 - KNEE) * over.tanh()
-        };
+        let over = (mag - KNEE) / (1.0 - KNEE);
+        let limited = KNEE + (1.0 - KNEE) * over.tanh();
         *sample = limited.copysign(s);
     }
 }
@@ -2124,13 +2175,28 @@ mod tests {
     }
 
     #[test]
-    fn gain_clips_negative_and_excess_fade() {
+    fn overlapping_fades_are_scaled_to_meet_without_dipping() {
         let mut l = layer();
-        l.audio_fade_in_sec = 12.0; // longer than duration
+        l.audio_fade_in_sec = 12.0; // longer than the 10s duration
         l.audio_fade_out_sec = 12.0;
-        // Both fades clamped to duration 10s, so at t=5 both are active:
-        // fade_in = 5/10 = 0.5, fade_out = (10-5)/10 = 0.5, total = 0.25
-        assert!((gain_at_clip_time(&l, 5.0) - 0.25).abs() < 1e-9);
+        // Clamped to 10 each, total 20 > 10, so both scale by 10/20 → 5s each.
+        // They now meet exactly at t=5 instead of overlapping and multiplying
+        // into a hole; full gain is reached there.
+        assert!((gain_at_clip_time(&l, 5.0) - 1.0).abs() < 1e-9);
+        // Midpoints of each fade reach the expected linear value with no dip.
+        assert!((gain_at_clip_time(&l, 2.5) - 0.5).abs() < 1e-9);
+        assert!((gain_at_clip_time(&l, 7.5) - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn effective_fades_scales_overlap_proportionally() {
+        let mut l = layer();
+        l.audio_fade_in_sec = 6.0;
+        l.audio_fade_out_sec = 9.0; // 6 + 9 = 15 > 10
+        let (fade_in, fade_out) = effective_fades(&l, 10.0);
+        // Scaled by 10/15: keeps the 2:3 ratio while summing to the duration.
+        assert!((fade_in - 4.0).abs() < 1e-9);
+        assert!((fade_out - 6.0).abs() < 1e-9);
     }
 
     // ------------------------------------------------------------------
@@ -2138,13 +2204,15 @@ mod tests {
     // ------------------------------------------------------------------
 
     #[test]
-    fn stereo_balance_center_equal_power() {
+    fn stereo_balance_center_is_unity() {
+        // A balance control must leave both channels untouched at the centre;
+        // the old equal-power law dipped the centre to ~0.707 and compounded
+        // layer×bus into a ~6 dB loss on every default clip.
         let (ll, lr, rl, rr) = stereo_pan_matrix(0.0);
-        let expected = std::f64::consts::FRAC_PI_4.cos();
-        assert!((ll - expected).abs() < 1e-9);
+        assert!((ll - 1.0).abs() < 1e-9);
         assert_eq!(lr, 0.0);
         assert_eq!(rl, 0.0);
-        assert!((rr - expected).abs() < 1e-9);
+        assert!((rr - 1.0).abs() < 1e-9);
     }
 
     #[test]
@@ -2167,10 +2235,11 @@ mod tests {
 
     #[test]
     fn stereo_balance_half_left_attenuates_right() {
-        let (_, _, _, rr) = stereo_pan_matrix(-0.5);
-        // angle = (-0.5 + 1) * π/4 = π/8
-        let expected = (std::f64::consts::PI / 8.0).sin();
-        assert!((rr - expected).abs() < 1e-9);
+        // Panning half-left keeps the near (left) channel at unity and linearly
+        // attenuates the opposite (right) channel: 1 + (-0.5) = 0.5.
+        let (ll, _, _, rr) = stereo_pan_matrix(-0.5);
+        assert!((ll - 1.0).abs() < 1e-9);
+        assert!((rr - 0.5).abs() < 1e-9);
     }
 
     #[test]
@@ -2189,11 +2258,14 @@ mod tests {
     fn planar_to_interleaved_duplicates_mono_to_front_pair() {
         let planar = vec![vec![1.0, 2.0, 3.0]];
         let interleaved = planar_to_interleaved(&planar, 6);
+        // Mono is duplicated into the front L/R pair, scaled by 1/√2 to preserve
+        // acoustic power; all further channels stay silent.
+        let g = std::f32::consts::FRAC_1_SQRT_2;
         assert_eq!(
             interleaved,
             vec![
-                1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 3.0, 3.0, 0.0, 0.0,
-                0.0, 0.0,
+                1.0 * g, 1.0 * g, 0.0, 0.0, 0.0, 0.0, 2.0 * g, 2.0 * g, 0.0, 0.0, 0.0, 0.0,
+                3.0 * g, 3.0 * g, 0.0, 0.0, 0.0, 0.0,
             ]
         );
     }
@@ -2282,6 +2354,28 @@ mod tests {
         let mut samples = vec![0.25, -0.5, 1.0];
         apply_master_gain(&mut samples, 0.5);
         assert_eq!(samples, vec![0.125, -0.25, 0.5]);
+    }
+
+    #[test]
+    fn sanitize_master_gain_clamps_range_and_non_finite() {
+        assert_eq!(sanitize_master_gain(-1.0), 0.0);
+        assert_eq!(sanitize_master_gain(2.0), 2.0);
+        assert_eq!(sanitize_master_gain(1000.0), MAX_MASTER_GAIN);
+        assert_eq!(sanitize_master_gain(f64::NAN), 1.0);
+        assert_eq!(sanitize_master_gain(f64::INFINITY), 1.0);
+    }
+
+    #[test]
+    fn soft_clip_is_continuous_around_unity() {
+        // The transfer curve must not jump at |x| = 1.0 (the old hard-clip
+        // branch introduced a ~0.05 step there). Sample just below and just
+        // above unity and assert the outputs are adjacent, not discontinuous.
+        let mut below = vec![0.999f32];
+        let mut above = vec![1.001f32];
+        soft_clip(&mut below);
+        soft_clip(&mut above);
+        assert!(below[0] < 1.0 && above[0] < 1.0);
+        assert!((above[0] - below[0]).abs() < 1e-3);
     }
 
     #[test]
@@ -2569,9 +2663,9 @@ mod tests {
         l.audio_fade_in_sec = 0.0;
         l.audio_fade_out_sec = 0.0;
         apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 2);
-        // Equal-power centre pan attenuates both channels by cos(π/4) ≈ 0.7071.
-        // Each channel: decoded(10) * gain(5) * 0.7071 ≈ 35.355.
-        let expected = 10.0f32 * 5.0 * std::f32::consts::FRAC_PI_4.cos();
+        // Centre balance is unity, so each channel: decoded(10) * gain(5) = 50,
+        // left intact for the later soft-clip stage (headroom > 1.0 is allowed).
+        let expected = 10.0f32 * 5.0;
         assert!((mixed[0] - expected).abs() < 1e-4);
         assert!((mixed[1] - expected).abs() < 1e-4);
         assert!((mixed[2] - expected).abs() < 1e-4);
@@ -2588,19 +2682,9 @@ mod tests {
 
         apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 4);
 
-        // Front L/R are attenuated by centre equal-power pan (~0.7071);
-        // extra channels pass through with unity gain.
-        let g = std::f32::consts::FRAC_PI_4.cos();
-        let expected = vec![
-            1.0 * g,
-            2.0 * g,
-            3.0,
-            4.0,
-            5.0 * g,
-            6.0 * g,
-            7.0,
-            8.0,
-        ];
+        // Centre balance is unity, so front L/R pass through unchanged; extra
+        // channels (>= 2) always pass through with gain only.
+        let expected = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         assert_eq!(mixed, expected);
     }
 

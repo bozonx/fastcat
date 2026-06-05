@@ -41,6 +41,7 @@ function createMockDeps() {
     markTimelineAsDirty: vi.fn(),
     selectTimelineItems: vi.fn(),
     selectGlobalTimelineItems: vi.fn(),
+    isReadOnly: ref(false),
   };
 }
 
@@ -104,5 +105,57 @@ describe('TimelineDispatcherModule', () => {
     mod.applyRestoredSnapshot(snap as any);
     expect(deps.timelineDoc.value).toEqual(snap);
     expect(deps.markTimelineAsDirty).toHaveBeenCalled();
+  });
+
+  it('applyTimeline is blocked when isReadOnly is true', () => {
+    const deps = createMockDeps();
+    deps.isReadOnly = ref(true);
+    deps.timelineDoc.value = fallbackDoc;
+    const mod = createTimelineDispatcherModule(deps);
+    const result = mod.applyTimeline({ type: 'addClip' } as any);
+    expect(result).toEqual([]);
+    expect(deps.markTimelineAsDirty).not.toHaveBeenCalled();
+  });
+
+  it('batchApplyTimeline is blocked when isReadOnly is true', () => {
+    const deps = createMockDeps();
+    deps.isReadOnly = ref(true);
+    deps.timelineDoc.value = fallbackDoc;
+    const mod = createTimelineDispatcherModule(deps);
+    const result = mod.batchApplyTimeline([{ type: 'addClip' } as any]);
+    expect(result).toEqual([]);
+    expect(deps.markTimelineAsDirty).not.toHaveBeenCalled();
+  });
+
+  it('undoTimeline is blocked when isReadOnly is true', () => {
+    const deps = createMockDeps();
+    deps.isReadOnly = ref(true);
+    deps.timelineDoc.value = fallbackDoc;
+    deps.historyStore.canUndo.mockReturnValue(true);
+    deps.historyStore.undo.mockReturnValue(fallbackDoc);
+    const mod = createTimelineDispatcherModule(deps);
+    mod.undoTimeline();
+    expect(deps.historyStore.undo).not.toHaveBeenCalled();
+  });
+
+  it('redoTimeline is blocked when isReadOnly is true', () => {
+    const deps = createMockDeps();
+    deps.isReadOnly = ref(true);
+    deps.timelineDoc.value = fallbackDoc;
+    deps.historyStore.canRedo.mockReturnValue(true);
+    deps.historyStore.redo.mockReturnValue(fallbackDoc);
+    const mod = createTimelineDispatcherModule(deps);
+    mod.redoTimeline();
+    expect(deps.historyStore.redo).not.toHaveBeenCalled();
+  });
+
+  it('applyRestoredSnapshot is blocked when isReadOnly is true', () => {
+    const deps = createMockDeps();
+    deps.isReadOnly = ref(true);
+    const mod = createTimelineDispatcherModule(deps);
+    const snap = { id: 'snap', tracks: [] };
+    mod.applyRestoredSnapshot(snap as any);
+    expect(deps.timelineDoc.value).toBeNull();
+    expect(deps.markTimelineAsDirty).not.toHaveBeenCalled();
   });
 });

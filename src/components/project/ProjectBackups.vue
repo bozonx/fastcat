@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import UiEmptyState from '~/components/ui/UiEmptyState.vue';
 
 defineProps<{
@@ -9,6 +10,9 @@ defineProps<{
 
 const { locale, t } = useI18n();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
+
+const isReadOnly = computed(() => projectStore.isReadOnly || timelineStore.previewMode);
 
 onMounted(() => {
   timelineStore.loadBackupVersions();
@@ -144,6 +148,7 @@ const versions = computed(() => timelineStore.backupVersions);
                     variant="ghost"
                     icon="i-heroicons-arrow-path-20-solid"
                     class="cursor-pointer"
+                    :disabled="isReadOnly"
                     @click="timelineStore.restoreVersion(version)"
                   />
                 </UTooltip>
@@ -159,6 +164,7 @@ const versions = computed(() => timelineStore.backupVersions);
                     variant="ghost"
                     icon="i-heroicons-trash"
                     class="cursor-pointer"
+                    :disabled="isReadOnly"
                     @click="timelineStore.deleteBackupVersion(version)"
                   />
                 </UTooltip>

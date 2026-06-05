@@ -260,4 +260,41 @@ describe('Timeline Persistence and AutoSave', () => {
     expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
     expect(timelineStore.isTimelineDirty).toBe(true);
   });
+
+  it('skips autosave when in read-only mode', async () => {
+    const timelineStore = useTimelineStore();
+    mockProjectStore.isReadOnly = true;
+
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+
+    timelineStore.markTimelineAsDirty();
+    await timelineStore.requestTimelineSave();
+
+    vi.advanceTimersByTime(10_000);
+    await vi.runAllTimersAsync();
+    await Promise.resolve();
+
+    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
+  });
+
+  it('blocks duplicateCurrentTimeline in read-only mode', async () => {
+    const timelineStore = useTimelineStore();
+    mockProjectStore.isReadOnly = true;
+
+    timelineStore.timelineDoc = {
+      OTIO_SCHEMA: 'Timeline.1',
+      id: 'test',
+      name: 'test',
+      tracks: [],
+    } as any;
+
+    await timelineStore.duplicateCurrentTimeline();
+
+    expect(mockProjectStore.writeTextByPath).not.toHaveBeenCalled();
+  });
 });

@@ -451,6 +451,7 @@ watch(
 );
 
 function updateTrackHeight(trackId: string, height: number) {
+  if (projectStore.isReadOnly || timelineStore.previewMode) return;
   trackHeights.value[trackId] = height;
   timelineStore.markTimelineAsDirty();
   timelineStore.requestTimelineSave();

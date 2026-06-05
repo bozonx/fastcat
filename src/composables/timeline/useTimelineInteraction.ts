@@ -94,8 +94,11 @@ export function useTimelineInteraction(
     onItemDragGlobalPointerUp(e);
   }
 
+  const isReadOnly = computed(() => projectStore.isReadOnly || timelineStore.previewMode);
+
   function startMoveItem(e: PointerEvent, payload: TimelineMoveItemPayload) {
     if (!canEditClipContent.value) return;
+    if (isReadOnly.value) return;
     onDragStartMoveItem(e, payload);
   }
 
@@ -104,6 +107,7 @@ export function useTimelineInteraction(
     input: { trackId: string; itemId: string; edge: 'start' | 'end'; startUs: number },
   ) {
     if (!canEditClipContent.value) return;
+    if (isReadOnly.value) return;
     onDragStartTrimItem(e, input);
   }
 

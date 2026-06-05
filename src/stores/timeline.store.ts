@@ -330,6 +330,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     currentTime,
     previewMode,
     previewBackupInfo,
+    isReadOnly: computed(() => projectStore.isReadOnly || previewMode.value),
     projectStore,
     workspaceStore,
     toast,
@@ -586,6 +587,16 @@ export const useTimelineStore = defineStore('timeline', () => {
 
   async function duplicateCurrentTimeline() {
     if (!currentTimelinePath.value || !timelineDoc.value) return;
+    if (projectStore.isReadOnly || previewMode.value) {
+      toast.add({
+        title: t('videoEditor.timeline.saveBlockedReadOnlyTitle'),
+        description: previewMode.value
+          ? t('videoEditor.timeline.saveBlockedPreviewDesc')
+          : t('videoEditor.timeline.saveBlockedLockedDesc'),
+        color: 'warning',
+      });
+      return;
+    }
     const path = currentTimelinePath.value;
     const parts = path.split('/');
     const fileName = parts.pop();

@@ -132,4 +132,80 @@ describe('createTimelineBackupModule', () => {
       expect(deps.loadTimeline).toHaveBeenCalledOnce();
     });
   });
+
+  describe('readonly guards', () => {
+    it('restoreVersion shows warning and does nothing when readonly', async () => {
+      const deps = createMockDeps({
+        isReadOnly: ref(true),
+        previewMode: ref(false),
+        timelineDoc: ref({ id: 'doc', tracks: [] } as any),
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.restoreVersion({
+        type: 'main',
+        name: 'clip.otio',
+        path: 'project/clip.otio',
+        date: new Date(),
+        size: 10,
+        label: 'Main',
+      });
+
+      expect(deps.toast.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'videoEditor.timeline.saveBlockedReadOnlyTitle',
+          color: 'warning',
+        }),
+      );
+      expect(deps.markTimelineAsDirty).not.toHaveBeenCalled();
+      expect(deps.requestTimelineSave).not.toHaveBeenCalled();
+    });
+
+    it('restorePreviewVersion shows warning and does nothing when readonly', async () => {
+      const deps = createMockDeps({
+        isReadOnly: ref(true),
+        previewMode: ref(true),
+        timelineDoc: ref({ id: 'doc', tracks: [] } as any),
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.restorePreviewVersion();
+
+      expect(deps.toast.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'videoEditor.timeline.saveBlockedReadOnlyTitle',
+          color: 'warning',
+        }),
+      );
+      expect(deps.previewMode.value).toBe(true);
+      expect(deps.markTimelineAsDirty).not.toHaveBeenCalled();
+    });
+
+    it('deleteBackupVersion shows warning and does nothing when readonly', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deps = createMockDeps({
+        isReadOnly: ref(true),
+        previewMode: ref(false),
+        projectStore,
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.deleteBackupVersion({
+        type: 'backup',
+        name: 'bak',
+        path: 'project/clip__bak1.otio',
+        date: new Date(),
+        size: 10,
+        label: 'Backup #1',
+      });
+
+      expect(deps.toast.add).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'videoEditor.timeline.saveBlockedReadOnlyTitle',
+          color: 'warning',
+        }),
+      );
+      expect(projectStore.deleteByPath).not.toHaveBeenCalled();
+    });
+  });
 });

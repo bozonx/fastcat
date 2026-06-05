@@ -38,6 +38,7 @@ export interface TimelineBackupDeps {
   currentTime: Ref<number>;
   previewMode: Ref<boolean>;
   previewBackupInfo: Ref<TimelinePreviewBackupInfo | null>;
+  isReadOnly?: Ref<boolean>;
   projectStore: {
     readTextByPath: (path: string) => Promise<string | null>;
     writeTextByPath: (path: string, text: string) => Promise<void>;
@@ -132,6 +133,16 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
 
   async function restorePreviewVersion() {
     if (!deps.timelineDoc.value) return;
+    if (deps.isReadOnly?.value) {
+      deps.toast.add({
+        title: deps.t('videoEditor.timeline.saveBlockedReadOnlyTitle'),
+        description: deps.previewMode.value
+          ? deps.t('videoEditor.timeline.saveBlockedPreviewDesc')
+          : deps.t('videoEditor.timeline.saveBlockedLockedDesc'),
+        color: 'warning',
+      });
+      return;
+    }
     deps.previewMode.value = false;
     deps.previewBackupInfo.value = null;
     deps.markTimelineAsDirty();
@@ -193,6 +204,16 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   }
 
   async function restoreVersion(version: TimelineBackupVersion) {
+    if (deps.isReadOnly?.value) {
+      deps.toast.add({
+        title: deps.t('videoEditor.timeline.saveBlockedReadOnlyTitle'),
+        description: deps.previewMode.value
+          ? deps.t('videoEditor.timeline.saveBlockedPreviewDesc')
+          : deps.t('videoEditor.timeline.saveBlockedLockedDesc'),
+        color: 'warning',
+      });
+      return;
+    }
     try {
       let text: string | null = null;
       if (version.type === 'main') {
@@ -247,6 +268,16 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   }
 
   async function deleteBackupVersion(version: TimelineBackupVersion) {
+    if (deps.isReadOnly?.value) {
+      deps.toast.add({
+        title: deps.t('videoEditor.timeline.saveBlockedReadOnlyTitle'),
+        description: deps.previewMode.value
+          ? deps.t('videoEditor.timeline.saveBlockedPreviewDesc')
+          : deps.t('videoEditor.timeline.saveBlockedLockedDesc'),
+        color: 'warning',
+      });
+      return;
+    }
     try {
       if (version.type === 'autosave') {
         if (deps.currentTimelinePath.value) {
