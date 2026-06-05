@@ -36,6 +36,12 @@ export function createProjectTimelinesModule(params: {
     const normalizedPath = params.toProjectRelativePath(path);
     if (!normalizedPath.toLowerCase().endsWith('.otio')) return;
 
+    // Already the active timeline — re-activating it would only re-push the
+    // (deduped) open path and fire a redundant meta write. Document loading is
+    // handled separately by the timeline store, so there is nothing to do here.
+    // This collapses the open-project flow's double `openTimelineFile` call.
+    if (params.currentTimelinePath.value === normalizedPath) return;
+
     if (!params.projectSettings.value.timelines.openPaths.includes(normalizedPath)) {
       params.projectSettings.value.timelines.openPaths.push(normalizedPath);
     }

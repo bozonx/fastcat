@@ -43,30 +43,6 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
   let isOpeningWorkspace = false;
   const workspaceTopology = getWorkspaceStorageTopology();
 
-  async function ensureTauriDirectories() {
-    try {
-      const { resolveTauriAppPaths } = await import('~/utils/tauri-paths');
-      const { join } = await import('@tauri-apps/api/path');
-      const { mkdir, exists } = await import('@tauri-apps/plugin-fs');
-
-      const runtimeConfig = useRuntimeConfig();
-      const fastcatDevDir = runtimeConfig.public.fastcatDevDir as string | undefined;
-      const appPaths = await resolveTauriAppPaths(fastcatDevDir);
-      if (appPaths) {
-        const fastcatDocsDir = await join(appPaths.documentsDir, 'FastCat');
-        const commonDir = await join(fastcatDocsDir, 'common');
-        const projectsDir = await join(fastcatDocsDir, 'projects');
-
-        await Promise.all([
-          exists(commonDir).then((e) => (e ? undefined : mkdir(commonDir, { recursive: true }))),
-          exists(projectsDir).then((e) => (e ? undefined : mkdir(projectsDir, { recursive: true }))),
-        ]);
-      }
-    } catch (e) {
-      log.warn('Failed to ensure default Tauri directories', e);
-    }
-  }
-
   async function setupWorkspace(handle: FileSystemDirectoryHandle) {
     deps.workspaceHandle.value = handle;
     deps.settingsRepo.value = createWorkspaceSettingsRepository({ vfs: deps.getVfs() });
@@ -95,13 +71,20 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
       log.warn('Failed to ensure temp directories during workspace init', e);
     }
 
-    await deps.loadProjects();
-    await deps.loadAppSettingsFromDisk();
-    await deps.loadUserSettingsFromDisk();
-    await deps.loadWorkspaceStateFromDisk();
-    await deps.saveAppSettingsToDisk();
-    await deps.saveUserSettingsToDisk();
-    await deps.saveWorkspaceStateToDisk();
+    // These reads are independent — run them concurrently rather than chaining
+    // four awaits. (The saves below are revision-gated no-ops when nothing
+    // changed on load, but kept for the first-run/normalization case.)
+    await Promise.all([
+      deps.loadProjects(),
+      deps.loadAppSettingsFromDisk(),
+      deps.loadUserSettingsFromDisk(),
+      deps.loadWorkspaceStateFromDisk(),
+    ]);
+    await Promise.all([
+      deps.saveAppSettingsToDisk(),
+      deps.saveUserSettingsToDisk(),
+      deps.saveWorkspaceStateToDisk(),
+    ]);
   }
 
   async function openWorkspace() {
@@ -153,7 +136,9 @@ export function createWorkspaceInitModule(deps: WorkspaceInitDeps): WorkspaceIni
 
     try {
       if (deps.workspaceProvider.id === 'tauri') {
-        await ensureTauriDirectories();
+        // The workspace dir (`~/Documents/FastCat`) is created by
+        // `restoreWorkspace`, and its `projects`/`common`/`temp` subdirs by
+        // `setupWorkspace` — so no separate directory-ensure pass is needed.
         const handle = await deps.workspaceProvider.restoreWorkspace();
         if (handle) {
           await setupWorkspace(handle as unknown as FileSystemDirectoryHandle);

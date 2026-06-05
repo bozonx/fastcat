@@ -62,6 +62,18 @@ async function buildDevOsPaths(devRoot: string): Promise<TauriAppPaths> {
   }
 }
 
+/**
+ * Memoizes the resolved app paths per (devDir, forceDev) key.
+ *
+ * Without this, every VFS operation routed through the config/vardata/temp/
+ * proxies adapters re-runs the full resolver — which in dev means an
+ * `allow_dev_directory_scope` IPC plus five sequential `mkdir` round-trips, and
+ * in production five Tauri path-API IPCs — on *every* read/write. Caching the
+ * Promise collapses all that to a single resolution (and a single dev-mode
+ * directory-ensure) for the lifetime of the process.
+ */
+const appPathsCache = new Map<string, Promise<TauriAppPaths | null>>();
+
 export async function resolveTauriAppPaths(
   fastcatDevDir?: string,
   forceDev?: boolean,
@@ -70,6 +82,28 @@ export async function resolveTauriAppPaths(
     return null;
   }
 
+  const cacheKey = `${fastcatDevDir ?? ''}|${forceDev ? 1 : 0}`;
+  const cached = appPathsCache.get(cacheKey);
+  if (cached) return cached;
+
+  const pending = resolveTauriAppPathsUncached(fastcatDevDir, forceDev).catch((e) => {
+    // Don't poison the cache on failure — a later call may succeed.
+    appPathsCache.delete(cacheKey);
+    throw e;
+  });
+  appPathsCache.set(cacheKey, pending);
+  return pending;
+}
+
+/** Test-only: drop the memoized paths so a spec can re-exercise resolution. */
+export function __resetTauriAppPathsCacheForTesting(): void {
+  appPathsCache.clear();
+}
+
+async function resolveTauriAppPathsUncached(
+  fastcatDevDir?: string,
+  forceDev?: boolean,
+): Promise<TauriAppPaths | null> {
   const { appConfigDir, appDataDir, appCacheDir, documentDir, tempDir, resolve } =
     await import('@tauri-apps/api/path');
 

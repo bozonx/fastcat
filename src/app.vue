@@ -16,14 +16,25 @@ const isMobileLayout = computed(() => route.path === '/m' || route.path.startsWi
 const colorMode = useColorMode();
 const presetsStore = usePresetsStore();
 const runtimeConfig = useRuntimeConfig();
+const workspaceStore = useWorkspaceStore();
 
 function preventContextMenu(e: MouseEvent) {
   e.preventDefault();
 }
 
-// Load presets on startup
+// Load presets on startup. At mount time user settings are still defaults —
+// they are loaded from disk later inside `workspaceStore.init()`, so re-run the
+// load once initialization finishes to pick up custom presets and collapsed
+// states. (`immediate` covers the case where init already completed.)
+watch(
+  () => workspaceStore.isInitializing,
+  (isInitializing) => {
+    if (!isInitializing) presetsStore.load();
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
-  presetsStore.load();
   loadFonts(); // Load Google fonts in the main thread too
   const shouldBlock = String(runtimeConfig.public.blockContextMenu).toLowerCase() !== 'false';
   if (shouldBlock) {
@@ -35,7 +46,6 @@ onUnmounted(() => {
   window.removeEventListener('contextmenu', preventContextMenu);
 });
 
-const workspaceStore = useWorkspaceStore();
 useConfirmClose();
 
 // Apply interface scale dynamically

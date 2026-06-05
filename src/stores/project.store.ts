@@ -434,6 +434,11 @@ export const useProjectStore = defineStore('project', () => {
     currentProjectName.value = name;
     workspaceStore.lastProjectName = name;
 
+    // Project settings load is independent of meta (it only needs the project
+    // dir handle, set above) — start it now and await it after the meta/lock
+    // work so the two disk reads overlap instead of chaining.
+    const settingsLoaded = loadProjectSettings();
+
     await loadProjectMeta();
     if (currentProjectId.value) {
       workspaceStore.updateRecentProject({
@@ -455,7 +460,7 @@ export const useProjectStore = defineStore('project', () => {
       isReadOnly.value = false;
     }
 
-    await loadProjectSettings();
+    await settingsLoaded;
 
     // If no timelines are open, open the last one from meta or default
     const openPaths = projectSettings.value.timelines.openPaths;
