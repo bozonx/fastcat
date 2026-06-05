@@ -235,11 +235,13 @@ fn try_vaapi(_codec_ctx: *mut ffmpeg_sys_next::AVCodecContext, _device: Option<&
 }
 
 #[cfg(not(target_os = "macos"))]
+#[allow(dead_code)]
 fn try_videotoolbox(_codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<HwAccelContext> {
     Err(anyhow!("VideoToolbox is only available on macOS"))
 }
 
 #[cfg(not(target_os = "windows"))]
+#[allow(dead_code)]
 fn try_d3d11va(_codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<HwAccelContext> {
     Err(anyhow!("D3D11VA is only available on Windows"))
 }

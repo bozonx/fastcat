@@ -11,7 +11,6 @@
 //! только «виртуальные» слои (`Background | Shape | Text`) и финализирует любой
 //! `CompLayerKind` в `Layer` (transform + opacity + blend).
 
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};

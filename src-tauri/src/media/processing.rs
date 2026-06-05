@@ -658,14 +658,15 @@ pub fn extract_video_frame_webps(
             }
         }
 
-        if let Some(frame) = last_frame {
+        if let Some(mut frame) = last_frame {
             let rotation = decoder.info().rotation.rem_euclid(360);
 
             let encode_res: Result<Vec<u8>, anyhow::Error> = if rotation == 90 || rotation == 180 || rotation == 270 {
+                let (frame_width, frame_height) = (frame.width, frame.height);
                 if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
-                    frame.width,
-                    frame.height,
-                    frame.pixels.clone(),
+                    frame_width,
+                    frame_height,
+                    std::mem::take(&mut frame.pixels),
                 ) {
                     match rotation {
                         90 => {
