@@ -491,7 +491,7 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
     const metadata = await resolveMetadataByPath(path);
     if (!metadata.audio) throw new Error('Source has no audio');
 
-    deps.applyTimeline({
+    return deps.applyTimeline({
       type: 'extract_audio_to_track',
       videoTrackId: videoTrack.id,
       videoItemId: videoItem.id,

@@ -42,7 +42,7 @@ export interface TimelineCommandsModule {
     itemId: string;
     startUs: number;
   }) => Promise<void>;
-  extractAudioToTrack: (input: { videoTrackId: string; videoItemId: string }) => Promise<void>;
+  extractAudioToTrack: (input: { videoTrackId: string; videoItemId: string }) => Promise<string[]>;
   addClipToTimelineFromPath: (
     input: {
       trackId: string;
@@ -155,7 +155,7 @@ export function createTimelineCommandsModule(params: TimelineCommandsDeps): Time
   }
 
   async function extractAudioToTrack(input: { videoTrackId: string; videoItemId: string }) {
-    await commandService.extractAudioToTrack({
+    return await commandService.extractAudioToTrack({
       videoTrackId: input.videoTrackId,
       videoItemId: input.videoItemId,
     });

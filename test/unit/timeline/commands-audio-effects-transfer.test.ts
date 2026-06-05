@@ -100,6 +100,24 @@ describe('timeline/commands audio effects transfer', () => {
     );
   });
 
+  it('returns createdItemIds with the new audio clip', () => {
+    const doc = makeDoc();
+
+    const result = applyTimelineCommand(doc, {
+      type: 'extract_audio_to_track',
+      videoTrackId: 'v1',
+      videoItemId: 'clip-1',
+      audioTrackId: 'a1',
+    });
+
+    expect(result.createdItemIds).toHaveLength(1);
+    const audioTrack = result.next.tracks.find((track: TimelineTrack) => track.id === 'a1');
+    const audioClip = audioTrack?.items[0];
+    expect(audioClip && audioClip.kind === 'clip' ? audioClip.id : undefined).toBe(
+      result.createdItemIds?.[0],
+    );
+  });
+
   it('rejects extracting audio to an explicitly occupied audio track', () => {
     const doc = makeDoc();
     const audioTrack = doc.tracks.find((track) => track.id === 'a1');

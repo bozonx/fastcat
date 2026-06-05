@@ -6,10 +6,13 @@ export function useTimelineClipActions() {
 
   async function applyClipAction(payload: TimelineClipActionPayload) {
     if (payload.action === 'extractAudio') {
-      await timelineStore.extractAudioToTrack({
+      const createdItemIds = await timelineStore.extractAudioToTrack({
         videoTrackId: payload.trackId,
         videoItemId: payload.itemId,
       });
+      if (createdItemIds.length > 0) {
+        timelineStore.selectTimelineItems([payload.itemId]);
+      }
     } else if (payload.action === 'freezeFrame') {
       timelineStore.setClipFreezeFrameFromPlayhead({
         trackId: payload.trackId,

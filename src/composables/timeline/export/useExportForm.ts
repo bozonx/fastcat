@@ -317,18 +317,29 @@ export function useExportForm() {
         metadataTags.value = saved.metadataTags ?? '';
       } else {
         exportType.value = 'video';
-        outputFormat.value = format.exportFormat ?? projectStore.projectSettings.exportDefaults.encoding.format;
-        videoCodec.value = format.videoCodec ?? projectStore.projectSettings.exportDefaults.encoding.videoCodec;
-        bitrateMbps.value = format.videoBitrateMbps ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
-        excludeAudio.value = format.excludeAudio ?? projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
-        audioCodec.value = format.audioCodec ?? projectStore.projectSettings.exportDefaults.encoding.audioCodec;
-        audioBitrateKbps.value = format.audioBitrateKbps ?? projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
+        outputFormat.value =
+          format.exportFormat ?? projectStore.projectSettings.exportDefaults.encoding.format;
+        videoCodec.value =
+          format.videoCodec ?? projectStore.projectSettings.exportDefaults.encoding.videoCodec;
+        bitrateMbps.value =
+          format.videoBitrateMbps ??
+          projectStore.projectSettings.exportDefaults.encoding.bitrateMbps;
+        excludeAudio.value =
+          format.excludeAudio ?? projectStore.projectSettings.exportDefaults.encoding.excludeAudio;
+        audioCodec.value =
+          format.audioCodec ?? projectStore.projectSettings.exportDefaults.encoding.audioCodec;
+        audioBitrateKbps.value =
+          format.audioBitrateKbps ??
+          projectStore.projectSettings.exportDefaults.encoding.audioBitrateKbps;
         audioChannels.value = format.audioChannels ?? 2;
         audioSampleRate.value = format.sampleRate;
-        bitrateMode.value = format.bitrateMode ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
+        bitrateMode.value =
+          format.bitrateMode ?? projectStore.projectSettings.exportDefaults.encoding.bitrateMode;
         keyframeIntervalSec.value =
-          format.keyframeIntervalSec ?? projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
-        exportAlpha.value = format.exportAlpha ?? projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
+          format.keyframeIntervalSec ??
+          projectStore.projectSettings.exportDefaults.encoding.keyframeIntervalSec;
+        exportAlpha.value =
+          format.exportAlpha ?? projectStore.projectSettings.exportDefaults.encoding.exportAlpha;
 
         metadataTitle.value = projectStore.projectMeta?.title || '';
         metadataDescription.value = projectStore.projectMeta?.description || '';
@@ -348,7 +359,10 @@ export function useExportForm() {
       const timelineBase = sanitizeBaseName(
         projectStore.currentFileName || projectStore.currentProjectName || 'timeline',
       );
-      outputFilename.value = await getNextAvailableFilename(timelineBase, getExt(outputFormat.value));
+      outputFilename.value = await getNextAvailableFilename(
+        timelineBase,
+        getExt(outputFormat.value),
+      );
       await validateFilename();
     } finally {
       await nextTick();
@@ -357,11 +371,7 @@ export function useExportForm() {
   }
 
   function handleOutputFormatChange(fmt: 'mp4' | 'webm' | 'mkv') {
-    const codecConfig = resolveExportCodecs(
-      fmt,
-      videoCodec.value,
-      audioCodec.value,
-    );
+    const codecConfig = resolveExportCodecs(fmt, videoCodec.value, audioCodec.value);
     videoCodec.value = codecConfig.videoCodec;
     audioCodec.value = codecConfig.audioCodec;
   }
@@ -424,11 +434,7 @@ export function useExportForm() {
 
       const resolvedCodecs = isAudio
         ? { videoCodec: 'none', audioCodec: audioCodec.value }
-        : resolveExportCodecs(
-            outputFormat.value,
-            videoCodec.value,
-            audioCodec.value,
-          );
+        : resolveExportCodecs(outputFormat.value, videoCodec.value, audioCodec.value);
 
       let exportSuccess = false;
       try {
@@ -773,7 +779,7 @@ export function useExportForm() {
         metadataTags: metadataTags.value,
       };
     },
-    { deep: true }
+    { deep: true },
   );
 
   return {

@@ -149,5 +149,5 @@ export function extractAudioToTrack(
     return t;
   });
 
-  return { next: { ...doc, tracks: nextTracks } };
+  return { next: { ...doc, tracks: nextTracks }, createdItemIds: [audioClip.id] };
 }

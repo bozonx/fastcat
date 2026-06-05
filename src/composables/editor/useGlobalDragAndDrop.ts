@@ -189,6 +189,22 @@ export function useGlobalDragAndDrop() {
   let isTauriNativeInternalDrag = false;
   let tauriNativeInternalDragPayload: unknown = null;
 
+  function dispatchTauriDragOver(position: { x: number; y: number }) {
+    const scale = window.devicePixelRatio || 1;
+    window.dispatchEvent(
+      new CustomEvent('fastcat:tauri-drag-over', {
+        detail: {
+          clientX: position.x / scale,
+          clientY: position.y / scale,
+        },
+      }),
+    );
+  }
+
+  function dispatchTauriDragLeave() {
+    window.dispatchEvent(new CustomEvent('fastcat:tauri-drag-leave'));
+  }
+
   function dispatchTauriInternalFileDrop(position: { x: number; y: number } | undefined) {
     const payload = draggedFile.value ?? tauriNativeInternalDragPayload;
     if (!payload || !position) return;
@@ -221,9 +237,13 @@ export function useGlobalDragAndDrop() {
               hideGlobalDragOverlay();
             } else {
               showGlobalDragOverlay();
+              if (event.payload.position) {
+                dispatchTauriDragOver(event.payload.position);
+              }
             }
           } else if (event.payload.type === 'leave') {
             scheduleGlobalDragOverlayHide();
+            dispatchTauriDragLeave();
             isTauriNativeInternalDrag = false;
             tauriNativeInternalDragPayload = null;
           } else if (event.payload.type === 'drop') {

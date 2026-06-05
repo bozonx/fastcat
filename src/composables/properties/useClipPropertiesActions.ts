@@ -28,7 +28,10 @@ interface TimelineStoreActions {
   updateClipProperties: (trackId: string, itemId: string, patch: Record<string, unknown>) => void;
 
   renameItem: (trackId: string, itemId: string, name: string) => void;
-  selectTimelineItems: (items: { trackId: string; itemId: string }[]) => void;
+  selectTimelineItems: (
+    items: string[] | { trackId: string; itemId: string; kind?: 'clip' | 'gap' }[],
+    options?: { append?: boolean; bypassGroup?: boolean },
+  ) => void;
   updateTrackProperties: (trackId: string, patch: Record<string, unknown>) => void;
   deleteFirstSelectedItem: () => void;
   rippleDeleteFirstSelectedItem: () => void;
@@ -355,11 +358,14 @@ export function useClipPropertiesActions(options: UseClipPropertiesActionsOption
   }
 
   async function handleExtractAudio() {
-    await timelineStore.applyTimeline({
+    const createdItemIds = await timelineStore.applyTimeline({
       type: 'extract_audio_to_track',
       videoTrackId: options.clip.value.trackId,
       videoItemId: options.clip.value.id,
     });
+    if (createdItemIds.length > 0) {
+      timelineStore.selectTimelineItems([options.clip.value.id]);
+    }
   }
 
   function handlePaste() {

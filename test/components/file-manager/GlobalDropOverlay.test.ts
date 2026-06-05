@@ -38,7 +38,7 @@ describe('GlobalDropOverlay', () => {
       },
     });
 
-    const autoZone = wrapper.find('.flex-1.flex.flex-col.items-center.justify-center');
+    const autoZone = wrapper.find('.global-drop-overlay-auto-zone');
 
     // Mock event with Files type
     const event = {
@@ -52,5 +52,96 @@ describe('GlobalDropOverlay', () => {
 
     await autoZone.trigger('dragover', event);
     expect(wrapper.vm.isDropOverAuto).toBe(true);
+  });
+
+  it('emulates hover on auto-sort zone via Tauri custom event', async () => {
+    const wrapper = mount(GlobalDropOverlay, {
+      props: {
+        rootEntries: rootEntries as any,
+      },
+      global: {
+        stubs: {
+          UIcon: true,
+          GlobalDropOverlayTree: true,
+        },
+      },
+    });
+
+    const autoZone = wrapper.find('.global-drop-overlay-auto-zone').element;
+    const spy = vi.spyOn(document, 'elementFromPoint').mockReturnValue(autoZone);
+
+    window.dispatchEvent(
+      new CustomEvent('fastcat:tauri-drag-over', {
+        detail: { clientX: 100, clientY: 100 },
+      }),
+    );
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.isDropOverAuto).toBe(true);
+    expect(wrapper.vm.dropOverFolderPath).toBeNull();
+    spy.mockRestore();
+  });
+
+  it('emulates hover on folder via Tauri custom event', async () => {
+    const wrapper = mount(GlobalDropOverlay, {
+      props: {
+        rootEntries: rootEntries as any,
+      },
+      global: {
+        stubs: {
+          UIcon: true,
+          GlobalDropOverlayTree: true,
+        },
+      },
+    });
+
+    const fakeFolder = document.createElement('div');
+    fakeFolder.setAttribute('data-folder-path', '_video');
+    const spy = vi.spyOn(document, 'elementFromPoint').mockReturnValue(fakeFolder);
+
+    window.dispatchEvent(
+      new CustomEvent('fastcat:tauri-drag-over', {
+        detail: { clientX: 300, clientY: 200 },
+      }),
+    );
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.isDropOverAuto).toBe(false);
+    expect(wrapper.vm.dropOverFolderPath).toBe('_video');
+    spy.mockRestore();
+  });
+
+  it('clears hover on Tauri drag leave', async () => {
+    const wrapper = mount(GlobalDropOverlay, {
+      props: {
+        rootEntries: rootEntries as any,
+      },
+      global: {
+        stubs: {
+          UIcon: true,
+          GlobalDropOverlayTree: true,
+        },
+      },
+    });
+
+    // Set hover state via custom event
+    const autoZone = wrapper.find('.global-drop-overlay-auto-zone').element;
+    const spy = vi.spyOn(document, 'elementFromPoint').mockReturnValue(autoZone);
+
+    window.dispatchEvent(
+      new CustomEvent('fastcat:tauri-drag-over', {
+        detail: { clientX: 100, clientY: 100 },
+      }),
+    );
+    await wrapper.vm.$nextTick();
+    expect(wrapper.vm.isDropOverAuto).toBe(true);
+
+    spy.mockRestore();
+
+    window.dispatchEvent(new CustomEvent('fastcat:tauri-drag-leave'));
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.isDropOverAuto).toBe(false);
+    expect(wrapper.vm.dropOverFolderPath).toBeNull();
   });
 });

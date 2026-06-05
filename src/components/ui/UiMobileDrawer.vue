@@ -158,6 +158,7 @@ const bdDy = ref(0);
 const bdDx = ref(0);
 
 const containerRef = ref<HTMLElement | null>(null);
+const footerRef = ref<HTMLElement | null>(null);
 
 const isBackdropInteractive = computed(
   () =>
@@ -484,10 +485,20 @@ watch(isOpen, (val) => {
     // Focus management
     nextTick(() => {
       setTimeout(() => {
-        if (!bodyRef.value) return;
-        const target = bodyRef.value.querySelector<HTMLElement>(
-          '[data-primary-focus="true"], [autofocus]',
-        );
+        let target: HTMLElement | null = null;
+
+        if (bodyRef.value) {
+          target = bodyRef.value.querySelector<HTMLElement>(
+            '[data-primary-focus="true"], [autofocus]',
+          );
+        }
+
+        if (!target && footerRef.value) {
+          target = footerRef.value.querySelector<HTMLElement>(
+            '[data-primary-focus="true"], [autofocus]',
+          );
+        }
+
         if (target) {
           target.focus();
         }
@@ -608,6 +619,7 @@ watch(isOpen, (val) => {
         <!-- Footer -->
         <div
           v-if="$slots.footer"
+          ref="footerRef"
           class="shrink-0 px-5 py-4 border-t border-ui-border/60"
           :class="props.ui.footer"
           data-vaul-no-drag

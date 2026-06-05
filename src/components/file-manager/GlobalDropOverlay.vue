@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import type { FsEntry } from '~/types/fs';
 import { hasInternalFileManagerDragType } from '~/composables/file-manager/dragOperation';
 import { WORKSPACE_COMMON_PATH_PREFIX } from '~/utils/workspace-common';
@@ -100,6 +100,50 @@ function onFolderDrop(e: DragEvent, path: string) {
   }
 }
 
+// Tauri native drag does not fire HTML5 dragover/dragleave on DOM elements.
+// We listen to custom events dispatched by useGlobalDragAndDrop and emulate hover.
+function onTauriDragOver(e: CustomEvent<{ clientX: number; clientY: number }>) {
+  const { clientX, clientY } = e.detail;
+  const el = document.elementFromPoint(clientX, clientY);
+  if (!el) {
+    isDropOverAuto.value = false;
+    dropOverFolderPath.value = null;
+    return;
+  }
+
+  const autoZone = el.closest('.global-drop-overlay-auto-zone');
+  if (autoZone) {
+    isDropOverAuto.value = true;
+    dropOverFolderPath.value = null;
+    return;
+  }
+
+  const folderEl = el.closest('[data-folder-path]');
+  if (folderEl) {
+    isDropOverAuto.value = false;
+    dropOverFolderPath.value = folderEl.getAttribute('data-folder-path');
+    return;
+  }
+
+  isDropOverAuto.value = false;
+  dropOverFolderPath.value = null;
+}
+
+function onTauriDragLeave() {
+  isDropOverAuto.value = false;
+  dropOverFolderPath.value = null;
+}
+
+onMounted(() => {
+  window.addEventListener('fastcat:tauri-drag-over', onTauriDragOver as EventListener);
+  window.addEventListener('fastcat:tauri-drag-leave', onTauriDragLeave);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('fastcat:tauri-drag-over', onTauriDragOver as EventListener);
+  window.removeEventListener('fastcat:tauri-drag-leave', onTauriDragLeave);
+});
+
 // Folder icon by name convention
 function getFolderIcon(name: string): string {
   const lower = name.toLowerCase();
@@ -122,7 +166,7 @@ function getFolderIcon(name: string): string {
     >
       <!-- Left column: Auto-sort explanation -->
       <div
-        class="flex-1 flex flex-col items-center justify-center p-8 transition-all duration-200 border-r border-ui-border/40"
+        class="global-drop-overlay-auto-zone flex-1 flex flex-col items-center justify-center p-8 transition-all duration-200 border-r border-ui-border/40"
         :class="
           isDropOverAuto
             ? 'bg-primary-500/15 ring-2 ring-inset ring-primary-500/50'

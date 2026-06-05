@@ -15,18 +15,22 @@ export default defineNuxtPlugin(() => {
       return;
     }
 
-    // Exclude dropdowns, selects, tabs, and sliders which require focus to work.
+    // Exclude dropdowns, selects, tabs, sliders, and modal dialogs which manage their own focus.
     const isExcluded =
       button.hasAttribute('aria-haspopup') ||
       button.getAttribute('aria-expanded') !== null ||
       button.closest('[aria-haspopup]') !== null ||
       button.closest('[role="tablist"]') !== null ||
       button.getAttribute('role') === 'tab' ||
-      button.getAttribute('role') === 'slider';
+      button.getAttribute('role') === 'slider' ||
+      button.closest('[role="dialog"]') !== null ||
+      button.closest('[data-reka-dialog-content]') !== null;
 
     if (isExcluded) return;
 
-    // Remove focus immediately
-    (button as HTMLElement).blur();
+    // Only blur the element if it is currently focused.
+    if (document.activeElement === button) {
+      (button as HTMLElement).blur();
+    }
   });
 });

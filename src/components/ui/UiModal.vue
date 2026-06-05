@@ -43,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const isOpen = defineModel<boolean>('open', { default: false });
 const contentRef = ref<HTMLElement | null>(null);
+const footerRef = ref<HTMLElement | null>(null);
 
 const emit = defineEmits<{
   (e: 'after:enter'): void;
@@ -104,12 +105,18 @@ function isFocusableElement(element: HTMLElement) {
 }
 
 function focusPreferredElement(): boolean {
-  const container = contentRef.value;
-  if (!container) {
-    return false;
+  const bodyContainer = contentRef.value;
+  const footerContainer = footerRef.value;
+
+  let target: HTMLElement | null = null;
+
+  if (bodyContainer) {
+    target = bodyContainer.querySelector<HTMLElement>('[data-primary-focus="true"], [autofocus]');
   }
 
-  const target = container.querySelector<HTMLElement>('[data-primary-focus="true"], [autofocus]');
+  if (!target && footerContainer) {
+    target = footerContainer.querySelector<HTMLElement>('[data-primary-focus="true"], [autofocus]');
+  }
 
   if (!target || !isFocusableElement(target)) {
     return false;
@@ -201,7 +208,7 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-if="$slots.footer" #footer>
-      <div class="flex w-full justify-end gap-3">
+      <div ref="footerRef" class="flex w-full justify-end gap-3">
         <slot name="footer" />
       </div>
     </template>

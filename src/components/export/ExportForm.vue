@@ -188,6 +188,12 @@ async function onConfirm() {
     emit('exported', { file, filename: outputFilename.value });
   });
 }
+
+function middleEllipsis(text: string, maxLen: number = 50): string {
+  if (text.length <= maxLen) return text;
+  const side = Math.floor((maxLen - 1) / 2);
+  return text.slice(0, side) + '…' + text.slice(-side);
+}
 </script>
 
 <template>
@@ -258,7 +264,10 @@ async function onConfirm() {
           </UiFormField>
           <div v-if="isTauri" class="mt-1">
             <div v-if="!customExportPath" class="flex items-center gap-1.5">
-              <UIcon name="i-heroicons-information-circle" class="h-4 w-4 shrink-0 text-ui-text-muted" />
+              <UIcon
+                name="i-heroicons-information-circle"
+                class="h-4 w-4 shrink-0 text-ui-text-muted"
+              />
               <span class="text-sm text-ui-text-muted leading-relaxed">
                 {{ t('videoEditor.export.defaultExportFolderNote') }}
               </span>
@@ -273,7 +282,12 @@ async function onConfirm() {
             </div>
             <div v-else class="flex items-center gap-1.5 text-sm text-ui-text-muted">
               <UIcon name="i-heroicons-check-circle" class="h-4 w-4 shrink-0 text-success" />
-              <span class="truncate leading-relaxed">{{ customExportPath }}</span>
+              <span
+                class="overflow-hidden whitespace-nowrap leading-relaxed"
+                :title="customExportPath"
+              >
+                {{ middleEllipsis(customExportPath) }}
+              </span>
               <UButton
                 color="neutral"
                 variant="ghost"
@@ -421,7 +435,12 @@ async function onConfirm() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <UiFormField :label="t('videoEditor.export.metadataTitle')">
               <div class="flex items-center gap-1.5 w-full">
-                <UiTextInput v-model="metadataTitle" :disabled="isExporting" full-width class="flex-grow" />
+                <UiTextInput
+                  v-model="metadataTitle"
+                  :disabled="isExporting"
+                  full-width
+                  class="flex-grow"
+                />
                 <UButton
                   v-if="isFieldDirty('metadataTitle')"
                   icon="i-heroicons-arrow-path-20-solid"
@@ -435,7 +454,12 @@ async function onConfirm() {
             </UiFormField>
             <UiFormField :label="t('videoEditor.export.metadataAuthor')">
               <div class="flex items-center gap-1.5 w-full">
-                <UiTextInput v-model="metadataAuthor" :disabled="isExporting" full-width class="flex-grow" />
+                <UiTextInput
+                  v-model="metadataAuthor"
+                  :disabled="isExporting"
+                  full-width
+                  class="flex-grow"
+                />
                 <UButton
                   v-if="isFieldDirty('metadataAuthor')"
                   icon="i-heroicons-arrow-path-20-solid"
@@ -474,7 +498,12 @@ async function onConfirm() {
 
           <UiFormField :label="t('videoEditor.export.metadataTags')">
             <div class="flex items-center gap-1.5 w-full">
-              <UiTextInput v-model="metadataTags" :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')" full-width class="flex-grow" />
+              <UiTextInput
+                v-model="metadataTags"
+                :disabled="isExporting || (exportType === 'audio' && audioCodec === 'pcm')"
+                full-width
+                class="flex-grow"
+              />
               <UButton
                 v-if="isFieldDirty('metadataTags')"
                 icon="i-heroicons-arrow-path-20-solid"

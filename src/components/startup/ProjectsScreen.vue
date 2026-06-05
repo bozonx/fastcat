@@ -513,6 +513,7 @@ const formatDate = (dateStr?: string) => {
           color="error"
           :label="t('videoEditor.projectSettings.deleteProjectAction')"
           :loading="workspaceStore.isLoading"
+          data-primary-focus="true"
           @click="confirmDelete"
         />
       </div>
