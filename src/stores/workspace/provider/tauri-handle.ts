@@ -7,9 +7,9 @@ import {
   stat,
   exists,
   rename,
-  open,
 } from '@tauri-apps/plugin-fs';
 import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-governor';
+import { withTauriReadHandle } from '~/stores/workspace/provider/tauri-read-handle-pool';
 import { randomToken } from '~/utils/ids';
 import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 import { joinTauriFsPath } from '~/utils/tauri-local-path';
@@ -75,11 +75,10 @@ export class LazyTauriFile extends File {
   }
 
   override async arrayBuffer(): Promise<ArrayBuffer> {
-    const handle = await open(this.path, { read: true });
-    try {
-      if (this._start > 0) {
-        await handle.seek(this._start, 0);
-      }
+    return withTauriReadHandle(this.path, async (handle) => {
+      // Pooled handles carry an arbitrary cursor from their previous borrow, so
+      // always seek to the absolute start of this range (including 0).
+      await handle.seek(this._start, 0);
       const length = this.size;
       const result = new Uint8Array(length);
       let read = 0;
@@ -89,9 +88,7 @@ export class LazyTauriFile extends File {
         read += chunk;
       }
       return result.buffer;
-    } finally {
-      await handle.close();
-    }
+    });
   }
 
   override async text(): Promise<string> {

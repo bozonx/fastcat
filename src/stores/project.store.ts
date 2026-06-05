@@ -7,6 +7,7 @@ import type { TimelineDocument } from '~/timeline/types';
 import { createDefaultTimelineDocument, serializeTimelineToOtio } from '~/timeline/otio-serializer';
 import { toProjectStoragePath } from '~/utils/workspace-common';
 import { isTauriRuntime } from '~/utils/runtime';
+import { joinTauriFsPath } from '~/utils/tauri-local-path';
 import { createTimelineFormatFromProjectDefaults } from '~/timeline/format';
 
 import { createDefaultProjectSettings } from '~/utils/project-settings';
@@ -399,6 +400,34 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  /**
+   * Sweeps orphaned atomic-write temps under the project dir and the resolved
+   * temp/proxies roots. Resolution mirrors the VFS Tauri adapter: absolute
+   * roots are used as-is, relative roots are joined onto the workspace path.
+   */
+  async function cleanupProjectTempFiles(projectDir: string): Promise<void> {
+    try {
+      const topology = workspaceStore.resolvedStorageTopology;
+      const workspacePath = (workspaceStore.workspaceHandle as unknown as { path?: string } | null)
+        ?.path;
+      const resolveRoot = (root: string): string | null => {
+        const trimmed = (root ?? '').trim();
+        if (!trimmed) return null;
+        if (isAbsoluteStorageRoot(trimmed)) return trimmed;
+        return workspacePath ? joinTauriFsPath(workspacePath, trimmed) : null;
+      };
+      const { cleanupStaleTauriTempFiles } =
+        await import('~/stores/workspace/provider/tauri-temp-cleanup');
+      await cleanupStaleTauriTempFiles([
+        projectDir,
+        resolveRoot(topology.tempRoot),
+        resolveRoot(topology.proxiesRoot),
+      ]);
+    } catch (error) {
+      log.warn('temp cleanup failed', getErrorMessage(error, 'unknown error'));
+    }
+  }
+
   async function openProject(nameOrPath: string) {
     const isTauri = isTauriRuntime();
     let name = nameOrPath;
@@ -424,6 +453,11 @@ export const useProjectStore = defineStore('project', () => {
         path,
         name,
       ) as unknown as FileSystemDirectoryHandle;
+
+      // Best-effort sweep of orphaned atomic-write temps (left only by a hard
+      // crash between temp-write and rename). Fire-and-forget so it never delays
+      // opening the project.
+      void cleanupProjectTempFiles(path);
     } else {
       if (!workspaceStore.projects.includes(name)) {
         workspaceStore.error = 'Project not found';
