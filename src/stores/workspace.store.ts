@@ -169,7 +169,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     resolvedStorageTopology,
     getVfs: () => useVfs(),
   });
-  const { loadProjects, clearVardata, clearProjectVardata, deleteProject, renameProject } =
+  const { loadProjects, clearVardata, clearProjectVardata, deleteProject, renameProject, duplicateProject } =
     projectsModule;
 
   watch(lastProjectName, (v) => {
@@ -452,6 +452,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     clearProjectVardata,
     deleteProject,
     renameProject,
+    duplicateProject,
     recentProjects: skipHydrate(recentProjects),
     updateRecentProject,
     isSttModelDownloaded,

@@ -153,6 +153,27 @@ const selectedClips = computed(() => {
   return null;
 });
 
+const selectedClipsAreSingleGroup = computed(() => {
+  const items = selectedClips.value;
+  if (!items || items.length < 2) return false;
+  const doc = timelineStore.timelineDoc;
+  if (!doc) return false;
+
+  const clips: TimelineClipItem[] = [];
+  for (const item of items) {
+    const track = doc.tracks.find((t) => t.id === item.trackId);
+    const clip = track?.items.find((it) => it.id === item.itemId);
+    if (clip && clip.kind === 'clip') {
+      clips.push(clip as TimelineClipItem);
+    }
+  }
+
+  if (clips.length === 0) return false;
+  const firstGroupId = String(clips[0].linkedGroupId ?? '').trim();
+  if (!firstGroupId) return false;
+  return clips.every((c) => String(c.linkedGroupId ?? '').trim() === firstGroupId);
+});
+
 const displayMode = computed<
   | 'transition'
   | 'clip'

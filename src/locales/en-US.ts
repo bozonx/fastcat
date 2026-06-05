@@ -19,6 +19,7 @@ export default {
     "copied": "Copied",
     "copiedToClipboard": "Copied to clipboard",
     "copy": "Copy",
+    "duplicate": "Duplicate",
     "create": "Create",
     "newPreset": "New preset",
     "createInFolder": "Create in folder",

@@ -19,6 +19,7 @@ export interface WorkspaceProjectsModule {
     newName?: string,
     projectId?: string,
   ) => Promise<void>;
+  duplicateProject: (input: DuplicateProjectInput) => Promise<void>;
 }
 
 export interface DeleteProjectInput {
@@ -32,6 +33,13 @@ export interface RenameProjectInput {
   newName: string;
   projectId?: string;
   projectPath?: string;
+}
+
+export interface DuplicateProjectInput {
+  sourceName: string;
+  targetName: string;
+  sourceProjectId?: string;
+  sourceProjectPath?: string;
 }
 
 export function createWorkspaceProjectsModule(params: {
@@ -407,11 +415,139 @@ export function createWorkspaceProjectsModule(params: {
     }
   }
 
+  async function copyTauriProjectRecursively(
+    sourcePath: string,
+    targetPath: string,
+  ): Promise<void> {
+    const { readDir, mkdir, copyFile } = await import('@tauri-apps/plugin-fs');
+    const { join } = await import('@tauri-apps/api/path');
+    const entries = await readDir(sourcePath);
+    await mkdir(targetPath, { recursive: true });
+    for (const entry of entries) {
+      const srcChild = await join(sourcePath, entry.name);
+      const tgtChild = await join(targetPath, entry.name);
+      if (entry.isDirectory) {
+        if (srcChild.endsWith('/.fastcat/backups') || srcChild.endsWith('\\.fastcat\\backups')) {
+          continue;
+        }
+        if (srcChild.endsWith('/.fastcat/autosave') || srcChild.endsWith('\\.fastcat\\autosave')) {
+          continue;
+        }
+        await copyTauriProjectRecursively(srcChild, tgtChild);
+      } else {
+        await copyFile(srcChild, tgtChild);
+      }
+    }
+  }
+
+  async function duplicateProject(input: DuplicateProjectInput) {
+    const { sourceName, targetName } = input;
+    const { isTauriRuntime } = await import('~/utils/runtime');
+    const { genUuid } = await import('~/utils/ids');
+
+    if (isTauriRuntime()) {
+      const { join, dirname } = await import('@tauri-apps/api/path');
+      const { exists, readTextFile, writeTextFile } = await import('@tauri-apps/plugin-fs');
+
+      const project = findRecentProject({
+        name: sourceName,
+        projectId: input.sourceProjectId,
+        projectPath: input.sourceProjectPath,
+      });
+      const sourcePath =
+        input.sourceProjectPath ??
+        project?.projectPath ??
+        (await join(params.resolvedStorageTopology.value.projectsRoot, sourceName));
+      const parentDir =
+        input.sourceProjectPath || project?.projectPath
+          ? await dirname(sourcePath)
+          : params.resolvedStorageTopology.value.projectsRoot;
+      const targetPath = await join(parentDir, targetName);
+
+      if (await exists(targetPath)) {
+        params.error.value = `Project with name "${targetName}" already exists`;
+        return;
+      }
+
+      await copyTauriProjectRecursively(sourcePath, targetPath);
+
+      const metaPath = await join(targetPath, '.fastcat', 'project.meta.json');
+      let meta: Record<string, unknown> = {};
+      try {
+        const text = await readTextFile(metaPath);
+        meta = JSON.parse(text) as Record<string, unknown>;
+      } catch {
+        // fresh meta if missing
+      }
+      meta.id = genUuid();
+      meta.createdAt = new Date().toISOString();
+      meta.updatedAt = new Date().toISOString();
+      await writeTextFile(metaPath, JSON.stringify(meta, null, 2));
+
+      await loadProjects();
+
+      params.recentProjects.value.unshift({
+        projectName: targetName,
+        projectId: meta.id as string,
+        updatedAt: new Date().toISOString(),
+        projectPath: targetPath,
+      });
+
+      return;
+    }
+
+    if (!params.projectsHandle.value) return;
+    if (params.projects.value.includes(targetName)) {
+      params.error.value = `Project with name "${targetName}" already exists`;
+      return;
+    }
+
+    const vfs = params.getVfs();
+    const sourceVfsPath = toProjectStoragePath(sourceName);
+    const targetVfsPath = toProjectStoragePath(targetName);
+
+    await vfs.copyDirectory(sourceVfsPath, targetVfsPath);
+
+    try {
+      await vfs.deleteEntry(toProjectStoragePath(targetName, '.fastcat/backups'), true);
+    } catch {
+      // ignore if not present
+    }
+    try {
+      await vfs.deleteEntry(toProjectStoragePath(targetName, '.fastcat/autosave'), true);
+    } catch {
+      // ignore if not present
+    }
+
+    const metaPath = toProjectStoragePath(targetName, '.fastcat/project.meta.json');
+    let meta: Record<string, unknown> = {};
+    try {
+      const blob = await vfs.readFile(metaPath);
+      const text = await blob.text();
+      meta = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      // fresh meta if missing
+    }
+    meta.id = genUuid();
+    meta.createdAt = new Date().toISOString();
+    meta.updatedAt = new Date().toISOString();
+    await vfs.writeFile(metaPath, JSON.stringify(meta, null, 2));
+
+    await loadProjects();
+
+    params.recentProjects.value.unshift({
+      projectName: targetName,
+      projectId: meta.id as string,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
   return {
     loadProjects,
     clearVardata,
     clearProjectVardata,
     deleteProject,
     renameProject,
+    duplicateProject,
   };
 }

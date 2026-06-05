@@ -10,6 +10,7 @@ defineProps<{
   durationShiftAccumulator: number;
   startShiftAccumulator: number;
   endShiftAccumulator: number;
+  hideUniformDuration?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -25,6 +26,7 @@ const { t } = useI18n();
 <template>
   <PropertySection :title="t('fastcat.clip.info')">
     <PropertyTimecode
+      v-if="!hideUniformDuration"
       :label="t('common.duration')"
       :model-value="firstClip?.timelineRange.durationUs ?? 0"
       @update:model-value="(value) => emit('setUniformDuration', value)"

@@ -62,6 +62,7 @@ const itemsRef = toRef(props, 'items');
 const {
   selectedClips,
   hasGroupedClip,
+  isSingleGroupSelection,
   hasFreeClip,
   allDisabled,
   allMuted,
@@ -112,6 +113,11 @@ const mediaMeta = computed(() => {
 });
 
 const selectedCountLabel = computed(() => {
+  if (isSingleGroupSelection.value) {
+    return t('fastcat.timeline.groupSelectedClipsCount', {
+      count: props.items.length,
+    });
+  }
   return t('fastcat.timeline.selectedClipsCount', {
     count: props.items.length,
   });
@@ -513,7 +519,7 @@ const otherActions = computed(() => {
     id: 'group',
     label: t('fastcat.timeline.groupClips'),
     icon: 'i-heroicons-link',
-    hidden: props.items.length < 2,
+    hidden: props.items.length < 2 || isSingleGroupSelection.value,
     onClick: handleGroupSelected,
   });
 
@@ -593,6 +599,7 @@ const otherActions = computed(() => {
       :duration-shift-accumulator="durationShiftAccumulator"
       :start-shift-accumulator="startShiftAccumulator"
       :end-shift-accumulator="endShiftAccumulator"
+      :hide-uniform-duration="isSingleGroupSelection"
       @set-uniform-duration="handleSetUniformDuration"
       @duration-shift-change="onDurationShiftChange"
       @start-shift-change="onStartShiftChange"

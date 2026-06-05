@@ -70,6 +70,15 @@ export function useClipBatchActions(
     ),
   );
 
+  const isSingleGroupSelection = computed(() => {
+    if (selectedClips.value.length < 2) return false;
+    const firstGroupId = String(selectedClips.value[0]?.linkedGroupId ?? '').trim();
+    if (!firstGroupId) return false;
+    return selectedClips.value.every(
+      (clip) => String(clip.linkedGroupId ?? '').trim() === firstGroupId,
+    );
+  });
+
   const hasFreeClip = computed(() => {
     const doc = ctx.timelineDoc.value;
     if (!doc) return false;
@@ -382,6 +391,7 @@ export function useClipBatchActions(
   return {
     selectedClips,
     hasGroupedClip,
+    isSingleGroupSelection,
     hasFreeClip,
     allDisabled,
     allMuted,

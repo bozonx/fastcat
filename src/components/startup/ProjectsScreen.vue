@@ -24,6 +24,8 @@ const {
   filteredProjects,
   isRenameModalOpen,
   isDeleteModalOpen,
+  isDuplicateModalOpen,
+  duplicateValue,
   createNewProject,
   startCreateProject,
   applyProjectCreationPreset,
@@ -33,6 +35,9 @@ const {
   startDelete,
   confirmDelete,
   closeDeleteModal,
+  startDuplicate,
+  confirmDuplicate,
+  closeDuplicateModal,
   selectProjectLocation,
   openProjectFromDisk,
 } = useProjectManagement();
@@ -315,6 +320,11 @@ const formatDate = (dateStr?: string) => {
                             onSelect: () => startRename(project),
                           },
                           {
+                            label: t('common.duplicate'),
+                            icon: 'i-heroicons-document-duplicate',
+                            onSelect: () => startDuplicate(project),
+                          },
+                          {
                             label: t('common.delete'),
                             icon: 'i-heroicons-trash',
                             onSelect: () => startDelete(project),
@@ -504,6 +514,40 @@ const formatDate = (dateStr?: string) => {
           :label="t('videoEditor.projectSettings.deleteProjectAction')"
           :loading="workspaceStore.isLoading"
           @click="confirmDelete"
+        />
+      </div>
+    </template>
+  </UiModal>
+
+  <!-- Duplicate Project Modal -->
+  <UiModal
+    v-model:open="isDuplicateModalOpen"
+    :title="t('common.duplicate')"
+    :ui="{ content: 'sm:max-w-lg' }"
+  >
+    <UiFormField :label="t('fastcat.projects.projectNamePlaceholder')">
+      <UiTextInput
+        v-model="duplicateValue"
+        :placeholder="t('fastcat.projects.projectNamePlaceholder')"
+        autofocus
+        @keyup.enter="confirmDuplicate"
+      />
+    </UiFormField>
+
+    <template #footer>
+      <div class="flex justify-end gap-3 w-full">
+        <UButton
+          variant="ghost"
+          color="neutral"
+          :label="t('common.cancel')"
+          @click="closeDuplicateModal"
+        />
+        <UButton
+          color="primary"
+          :disabled="!duplicateValue.trim()"
+          :loading="workspaceStore.isLoading"
+          :label="t('common.duplicate')"
+          @click="confirmDuplicate"
         />
       </div>
     </template>

@@ -19,6 +19,7 @@ export default {
     "copied": "Скопировано",
     "copiedToClipboard": "Скопировано в буфер обмена",
     "copy": "Копировать",
+    "duplicate": "Дублировать",
     "create": "Создать",
     "newPreset": "Новый пресет",
     "createInFolder": "Создать в папке",

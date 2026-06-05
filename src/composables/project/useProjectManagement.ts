@@ -78,6 +78,10 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
   const isDeleteModalOpen = ref(false);
   const deleteTargetProject = ref<ProjectActionTarget | null>(null);
 
+  const isDuplicateModalOpen = ref(false);
+  const duplicateValue = ref('');
+  const duplicateTargetProject = ref<ProjectActionTarget | null>(null);
+
   const filteredProjects = computed(() => {
     if (!searchQuery.value.trim()) {
       return workspaceStore.projects;
@@ -208,6 +212,38 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     deleteTargetProject.value = null;
   }
 
+  function startDuplicate(project: ProjectActionTarget | string) {
+    duplicateTargetProject.value =
+      typeof project === 'string' ? { projectName: project } : { ...project };
+    duplicateValue.value = duplicateTargetProject.value.projectName;
+    isDuplicateModalOpen.value = true;
+  }
+
+  async function confirmDuplicate() {
+    const target = duplicateTargetProject.value;
+    if (!target || !duplicateValue.value.trim()) {
+      closeDuplicateModal();
+      return;
+    }
+    try {
+      await workspaceStore.duplicateProject({
+        sourceName: target.projectName,
+        targetName: duplicateValue.value.trim(),
+        sourceProjectId: target.projectId,
+        sourceProjectPath: target.projectPath,
+      });
+      closeDuplicateModal();
+    } catch (e) {
+      log.error('Failed to duplicate project', e);
+    }
+  }
+
+  function closeDuplicateModal() {
+    isDuplicateModalOpen.value = false;
+    duplicateTargetProject.value = null;
+    duplicateValue.value = '';
+  }
+
   async function selectProjectLocation() {
     const { open } = await import('@tauri-apps/plugin-dialog');
     const selected = await open({
@@ -241,6 +277,9 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     renameTargetProject,
     isDeleteModalOpen,
     deleteTargetProject,
+    isDuplicateModalOpen,
+    duplicateValue,
+    duplicateTargetProject,
     createNewProject,
     startCreateProject,
     applyProjectCreationPreset,
@@ -251,6 +290,9 @@ export function useProjectManagement(options: { isMobile?: boolean } = {}) {
     startDelete,
     confirmDelete,
     closeDeleteModal,
+    startDuplicate,
+    confirmDuplicate,
+    closeDuplicateModal,
     selectProjectLocation,
     openProjectFromDisk,
   };
