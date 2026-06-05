@@ -207,6 +207,7 @@ pub struct LayerRuntimeManager {
     loading_set: HashSet<String>,
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
+    hw_settings: crate::FfmpegHardwareSettings,
 }
 
 impl LayerRuntimeManager {
@@ -214,6 +215,7 @@ impl LayerRuntimeManager {
         app: AppHandle,
         bg_tx: Sender<BgLayerResult>,
         proxy: EventLoopProxy<MonitorCommand>,
+        hw_settings: crate::FfmpegHardwareSettings,
     ) -> Self {
         Self {
             app,
@@ -228,6 +230,7 @@ impl LayerRuntimeManager {
             loading_set: HashSet::new(),
             bg_tx,
             proxy,
+            hw_settings,
         }
     }
 
@@ -354,6 +357,8 @@ impl LayerRuntimeManager {
                     }
                     _ => None,
                 };
+                let hw_mode = self.hw_settings.hardware_acceleration_mode.clone();
+                let vaapi_dev = self.hw_settings.vaapi_device.clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
@@ -369,6 +374,8 @@ impl LayerRuntimeManager {
                             Some(on_frame),
                             device,
                             queue,
+                            Some(hw_mode.as_str()),
+                            Some(vaapi_dev.as_str()),
                         ) {
                             Ok(pump) => {
                                 let media_size = (pump.info.width, pump.info.height);

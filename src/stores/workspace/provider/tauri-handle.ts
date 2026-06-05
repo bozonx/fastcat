@@ -13,6 +13,7 @@ import { withTauriReadHandle } from '~/stores/workspace/provider/tauri-read-hand
 import { randomToken } from '~/utils/ids';
 import { openWriteFileStream } from 'tauri-plugin-fs-stream-api';
 import { joinTauriFsPath } from '~/utils/tauri-local-path';
+import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 const STREAM_WRITER_THRESHOLD_BYTES = 1024 * 1024;
 export const LAZY_FILE_MEDIA_THRESHOLD_BYTES = 5 * 1024 * 1024;
@@ -121,17 +122,20 @@ export class TauriFileHandle {
   async getFile(): Promise<File> {
     const fileStat = await stat(this.path).catch(() => ({ mtime: Date.now(), size: 0 }));
     const size = fileStat.size ?? 0;
+    const mimeType = getMimeTypeFromFilename(this.name);
     if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(this.name)) {
       return new LazyTauriFile({
         path: this.path,
         name: this.name,
         size,
+        type: mimeType,
         lastModified: fileStat.mtime ? new Date(fileStat.mtime).getTime() : Date.now(),
       });
     }
     const bytes = await readFile(this.path);
     const blob = new Blob([bytes]);
     return new File([blob], this.name, {
+      type: mimeType,
       lastModified: fileStat.mtime ? new Date(fileStat.mtime).getTime() : Date.now(),
     });
   }

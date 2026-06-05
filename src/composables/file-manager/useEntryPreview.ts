@@ -11,7 +11,25 @@ import type { FsEntry } from '~/types/fs';
 import type { MediaMetadata } from '~/stores/media.store';
 import { getBdPayload } from '~/types/bloggerdog';
 import { withFileIoSlot } from '~/utils/io/io-governor';
+import { isTauriRuntime } from '~/utils/runtime';
 const log = createDevLogger('useEntryPreview');
+
+let isLinuxTauriCached: boolean | null = null;
+
+async function isLinuxTauri(): Promise<boolean> {
+  if (isLinuxTauriCached !== null) return isLinuxTauriCached;
+  if (!isTauriRuntime()) {
+    isLinuxTauriCached = false;
+    return false;
+  }
+  try {
+    const { platform } = await import('@tauri-apps/plugin-os');
+    isLinuxTauriCached = platform() === 'linux';
+  } catch {
+    isLinuxTauriCached = false;
+  }
+  return isLinuxTauriCached;
+}
 
 export type PreviewMode = 'original' | 'proxy';
 export type MediaType = 'image' | 'video' | 'audio' | 'text' | 'unknown' | null;
@@ -198,7 +216,9 @@ export function useEntryPreview(params: {
 
       let nextUrl: string | null = null;
 
-      if (isVideoOrAudio && !fileToPlay && params.getObjectUrlByPath && entry.path) {
+      const avoidAssetProtocol = isVideoOrAudio && (await isLinuxTauri());
+
+      if (!avoidAssetProtocol && isVideoOrAudio && !fileToPlay && params.getObjectUrlByPath && entry.path) {
         nextUrl = await params.getObjectUrlByPath(entry.path);
       } else {
         if (!fileToPlay && entry.path) {

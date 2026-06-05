@@ -22,4 +22,4 @@ pub mod text;
 pub mod transitions;
 
 mod compositor;
-pub use compositor::Compositor;
+pub use compositor::{Compositor, PipelinedReadback};

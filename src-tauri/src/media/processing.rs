@@ -645,7 +645,7 @@ pub fn extract_video_frame_webps(
 
     let _permit = decoder_load_gate().acquire();
     let max_edge = max_width.max(max_height);
-    let mut decoder = crate::media::decode::open(source_path, Some(max_edge))?;
+    let mut decoder = crate::media::decode::open(source_path, Some(max_edge), None, None)?;
     let mut results = vec![None; times_sec.len()];
 
     let mut last_pts = -1.0;

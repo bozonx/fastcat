@@ -61,6 +61,8 @@ winit = "0.30"
 resvg = "0.46.0"
 # Preview/monitor decode uses libav via ffmpeg-next. Export/proxy/convert still use system ffmpeg CLI.
 ffmpeg-next = "8.1.0"
+ffmpeg-sys-next = "8.1.0"
+libc = "0.2"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2.4.2"

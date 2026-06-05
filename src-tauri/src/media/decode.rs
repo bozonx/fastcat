@@ -13,6 +13,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use super::hwaccel::{HwAccelContext, init_hwaccel, try_transfer_to_cpu};
+
 #[derive(Debug, Clone)]
 pub struct MediaInfo {
     pub duration_sec: f64,
@@ -69,6 +71,7 @@ pub struct FfmpegNextDecoder {
     /// на ближайший ключевой кадр ≤ target; `next_frame` отбрасывает кадры с PTS заметно
     /// меньше target, пока не дойдёт до запрошенного. `None` — нет активного seek.
     seek_target: Option<f64>,
+    hwaccel: Option<HwAccelContext>,
 }
 
 // SAFETY: FfmpegNextDecoder owns all libav* objects (AVCodecContext, SwsContext,
@@ -78,7 +81,12 @@ pub struct FfmpegNextDecoder {
 unsafe impl Send for FfmpegNextDecoder {}
 
 impl FfmpegNextDecoder {
-    pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Self> {
+    pub fn open(
+        path: &Path,
+        max_output_long_edge: Option<u32>,
+        hw_mode: Option<&str>,
+        vaapi_device: Option<&str>,
+    ) -> Result<Self> {
         init_ffmpeg()?;
 
         let ictx = ffmpeg::format::input(path).with_context(|| {
@@ -106,7 +114,7 @@ impl FfmpegNextDecoder {
 
         let context_decoder = ffmpeg::codec::context::Context::from_parameters(parameters)
             .context("failed to create ffmpeg-next decoder context")?;
-        let decoder = if codec == "vp9" {
+        let mut decoder = if codec == "vp9" {
             if let Some(libvpx) = ffmpeg::decoder::find_by_name("libvpx-vp9") {
                 context_decoder
                     .decoder()
@@ -145,6 +153,11 @@ impl FfmpegNextDecoder {
         let scaler_input_width = decoder.width();
         let scaler_input_height = decoder.height();
 
+        let hwaccel = init_hwaccel(&mut decoder, hw_mode, vaapi_device);
+        if hwaccel.is_some() {
+            log::info!("[native-media] hwaccel enabled for {}", path.display());
+        }
+
         Ok(Self {
             path: path.to_path_buf(),
             info: MediaInfo {
@@ -166,6 +179,7 @@ impl FfmpegNextDecoder {
             stream_time_base,
             eof_sent: false,
             seek_target: None,
+            hwaccel,
         })
     }
 
@@ -188,6 +202,18 @@ impl FfmpegNextDecoder {
     }
 
     fn decode_frame(&mut self, decoded: &ffmpeg::util::frame::Video) -> Result<VideoFrame> {
+        // If the decoder produced a hardware frame, download it to system memory first.
+        let sw_frame = if let Some(ref ctx) = self.hwaccel {
+            try_transfer_to_cpu(decoded, ctx)?
+        } else {
+            None
+        };
+        let decoded = if let Some(ref sw) = sw_frame {
+            sw
+        } else {
+            decoded
+        };
+
         if decoded.format() != self.scaler_input_format
             || decoded.width() != self.scaler_input_width
             || decoded.height() != self.scaler_input_height
@@ -232,7 +258,7 @@ impl FfmpegNextDecoder {
                 .copy_from_slice(&rgba.data(0)[src_start..src_start + row_bytes]);
         }
 
-        let pts_sec = self.frame_pts_sec(decoded);
+        let pts_sec = self.frame_pts_sec(&decoded);
 
         Ok(VideoFrame {
             width: coded_width,
@@ -324,10 +350,17 @@ impl VideoDecoder for FfmpegNextDecoder {
 /// расходящееся поведение (другой seek/rotation/PTS) и молча маскировал проблемы
 /// ffmpeg-next. Там, где нужен именно CLI (HW-энкод экспорта, одиночная extract-команда),
 /// он вызывается напрямую, а не как скрытая подмена этого декодера.
-pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Box<dyn VideoDecoder>> {
+pub fn open(
+    path: &Path,
+    max_output_long_edge: Option<u32>,
+    hw_mode: Option<&str>,
+    vaapi_device: Option<&str>,
+) -> Result<Box<dyn VideoDecoder>> {
     Ok(Box::new(FfmpegNextDecoder::open(
         path,
         max_output_long_edge,
+        hw_mode,
+        vaapi_device,
     )?))
 }
 
@@ -599,7 +632,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None).unwrap();
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, None, None).unwrap();
         let frame = decoder.next_frame().unwrap().unwrap();
 
         assert_eq!(decoder.info().width, 1280);
@@ -617,7 +650,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/test_alpha_simple.webm");
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None).unwrap();
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, None, None).unwrap();
         let frame = decoder.next_frame().unwrap().unwrap();
 
         assert_eq!(decoder.info().codec, "vp9");
@@ -638,12 +671,27 @@ mod tests {
     }
 
     #[test]
+    fn ffmpeg_next_decoder_hwaccel_graceful_fallback() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        // Requesting VAAPI on a build without a driver should still open and
+        // decode frames because we fall back to software decode.
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, Some("vaapi"), None).unwrap();
+        let frame = decoder.next_frame().unwrap().unwrap();
+        assert_eq!(frame.width, 1280);
+        assert_eq!(frame.height, 720);
+        assert_eq!(frame.pixels.len(), 1280 * 720 * 4);
+    }
+
+    #[test]
     fn ffmpeg_next_decoder_seek_is_frame_accurate() {
         let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None).unwrap();
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, None, None).unwrap();
         let fps = decoder.effective_fps();
 
         // Seek в середину клипа должен вернуть кадр НА запрошенной позиции (frame-accurate),

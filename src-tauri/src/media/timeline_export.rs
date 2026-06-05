@@ -170,6 +170,10 @@ pub fn export_timeline(
             .context("export: no GPU device")?;
 
         let mut cache = super::timeline_render::VideoDecoderCache::new();
+        let mut pipeline = compositor
+            .begin_pipelined_readback(dev_id, width, height, 2)
+            .context("export: failed to create pipelined readback")?;
+
         let render_result = (|| -> Result<()> {
             for i in 0..frame_count {
                 let time = start + i as f64 / fps;
@@ -179,16 +183,21 @@ pub fn export_timeline(
                     (width, height),
                     &mut cache,
                 )?;
-                let pixels = compositor.render_scene_to_pixels(
-                    dev_id,
-                    &frame_scene,
-                    width,
-                    height,
-                )?;
+                if let Some(pixels) =
+                    compositor.render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
+                {
+                    if let Err(e) = stdin.write_all(&pixels) {
+                        return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
+                    }
+                    on_progress(pipeline.emitted as f64 / frame_count as f64);
+                }
+            }
+            // Сливаем хвостовые кадры, которые ещё висят в pipeline.
+            for pixels in pipeline.drain(&mut compositor)? {
                 if let Err(e) = stdin.write_all(&pixels) {
                     return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                 }
-                on_progress((i + 1) as f64 / frame_count as f64);
+                on_progress(pipeline.emitted as f64 / frame_count as f64);
             }
             Ok(())
         })();

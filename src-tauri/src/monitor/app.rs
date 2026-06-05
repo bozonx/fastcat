@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use vello::util::RenderSurface;
 use winit::application::ApplicationHandler;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -636,13 +636,18 @@ fn init_window(
             None
         }
     };
+    let hw_settings = app
+        .state::<std::sync::RwLock<crate::FfmpegHardwareSettings>>()
+        .read()
+        .unwrap()
+        .clone();
     Ok(WindowState {
         app: app.clone(),
         window,
         compositor,
         surface,
         clock: PlaybackClock::new(),
-        layers: LayerRuntimeManager::new(app, bg_tx, proxy),
+        layers: LayerRuntimeManager::new(app.clone(), bg_tx, proxy, hw_settings),
         audio,
         last_emit_pts: -1.0,
         last_viewport: viewport,

@@ -130,7 +130,7 @@ impl VideoDecoderCache {
                     }
                 }
             }
-            let decoder = open_decoder(path, None)?;
+            let decoder = open_decoder(path, None, None, None)?;
             let (rotation, fps) = {
                 let info = decoder.info();
                 (info.rotation, info.fps)

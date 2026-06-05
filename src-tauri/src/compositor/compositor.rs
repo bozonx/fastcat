@@ -12,9 +12,10 @@
 //!
 //! Конвертация `scene::Scene → vello::Scene` происходит внутри через `scene.to_vello(w, h)`.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::num::NonZeroUsize;
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, TryRecvError};
 
 use anyhow::{Context, Result, anyhow};
 use vello::peniko::{Color, ImageData};
@@ -53,6 +54,11 @@ pub struct Compositor {
 
 impl Compositor {
     pub fn new() -> Self {
+        // Force wgpu to prefer the high-performance adapter (dGPU on hybrid laptops).
+        // Vello's RenderContext uses `initialize_adapter_from_env_or_default`, which
+        // falls back on `PowerPreference::from_env().unwrap_or_default()` — default
+        // is LowPower. We override it here so we never silently land on iGPU.
+        std::env::set_var("WGPU_POWER_PREF", "high");
         Self {
             render_cx: RenderContext::new(),
             renderers: HashMap::new(),
@@ -814,6 +820,350 @@ fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
         _ => Err(anyhow!(
             "unsupported image format for compositor texture upload"
         )),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pipelined async GPU→CPU readback
+// ---------------------------------------------------------------------------
+
+enum SlotState {
+    Idle,
+    InFlight {
+        frame: u64,
+        map_rx: Receiver<Result<(), wgpu::BufferAsyncError>>,
+    },
+    Mapped {
+        frame: u64,
+    },
+}
+
+struct ReadbackSlot {
+    texture: wgpu::Texture,
+    view: wgpu::TextureView,
+    buffer: wgpu::Buffer,
+    state: SlotState,
+    aligned_row_bytes: usize,
+}
+
+/// Асинхронный pipelined readback для экспорта.
+///
+/// Держит `depth` слотов (texture + buffer). На каждом кадре рендер идёт в
+/// следующий свободный слот, `map_async` запускается сразу, а CPU собирает
+/// результаты предыдущего кадра без блокировки. Это убирает синхронный
+/// `device.poll(wait_indefinitely)` на каждом кадре экспорта.
+pub struct PipelinedReadback {
+    dev_id: usize,
+    width: u32,
+    height: u32,
+    row_bytes: usize,
+    slots: Vec<ReadbackSlot>,
+    next_slot: usize,
+    frame_seq: u64,
+    /// Готовые кадры, ожидающие выдачи в порядке frame_seq.
+    pending: VecDeque<(u64, Vec<u8>)>,
+    /// Сколько кадров уже было отдано через `collect`.
+    pub(crate) emitted: u64,
+}
+
+impl PipelinedReadback {
+    pub fn new(
+        device: &wgpu::Device,
+        dev_id: usize,
+        width: u32,
+        height: u32,
+        depth: usize,
+    ) -> Self {
+        let row_bytes = width as usize * 4;
+        let aligned_row_bytes = (row_bytes + 255) & !255;
+        let buffer_size = (aligned_row_bytes * height as usize) as u64;
+        let depth = depth.max(2);
+        let mut slots = Vec::with_capacity(depth);
+        for i in 0..depth {
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some(&format!("pipelined-offscreen-{i}")),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[],
+            });
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(&format!("pipelined-readback-{i}")),
+                size: buffer_size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            slots.push(ReadbackSlot {
+                texture,
+                view,
+                buffer,
+                state: SlotState::Idle,
+                aligned_row_bytes,
+            });
+        }
+        Self {
+            dev_id,
+            width,
+            height,
+            row_bytes,
+            slots,
+            next_slot: 0,
+            frame_seq: 0,
+            pending: VecDeque::new(),
+            emitted: 0,
+        }
+    }
+
+    /// Заблокировать и забрать все оставшиеся in-flight кадры.
+    pub fn drain(&mut self, compositor: &mut Compositor) -> Result<Vec<Vec<u8>>> {
+        let mut out = Vec::new();
+        for i in 0..self.slots.len() {
+            if !matches!(self.slots[i].state, SlotState::Idle) {
+                compositor.drain_slot(self, i)?;
+            }
+        }
+        while let Some((_, pixels)) = self.pending.pop_front() {
+            out.push(pixels);
+            self.emitted += 1;
+        }
+        Ok(out)
+    }
+}
+
+impl Drop for PipelinedReadback {
+    fn drop(&mut self) {
+        for slot in &mut self.slots {
+            if matches!(slot.state, SlotState::Mapped { .. }) {
+                slot.buffer.unmap();
+            }
+        }
+    }
+}
+
+impl Compositor {
+    /// Создать pipelined readback-сессию для заданного device и размера.
+    pub fn begin_pipelined_readback(
+        &mut self,
+        dev_id: usize,
+        width: u32,
+        height: u32,
+        depth: usize,
+    ) -> Result<PipelinedReadback> {
+        let device_handle = &self.render_cx.devices[dev_id];
+        Ok(PipelinedReadback::new(
+            &device_handle.device,
+            dev_id,
+            width,
+            height,
+            depth,
+        ))
+    }
+
+    /// Рендерит сцену и возвращает пиксели самого старого готового кадра,
+    /// либо `None`, если GPU ещё не догнал.
+    pub fn render_to_pixels_pipelined(
+        &mut self,
+        session: &mut PipelinedReadback,
+        scene: &VelloScene,
+        base_color: Color,
+    ) -> Result<Option<Vec<u8>>> {
+        let slot_idx = session.next_slot % session.slots.len();
+        session.next_slot += 1;
+
+        // Если слот занят — сначала забираем его (блокирующе, редкий случай).
+        if !matches!(session.slots[slot_idx].state, SlotState::Idle) {
+            self.drain_slot(session, slot_idx)?;
+        }
+
+        let device_handle = &self.render_cx.devices[session.dev_id];
+        let device = &device_handle.device;
+        let queue = &device_handle.queue;
+        let slot = &mut session.slots[slot_idx];
+
+        let renderer = self
+            .renderers
+            .get_mut(&session.dev_id)
+            .ok_or_else(|| anyhow!("no renderer for device {}", session.dev_id))?;
+        renderer
+            .render_to_texture(
+                device,
+                queue,
+                scene,
+                &slot.view,
+                &RenderParams {
+                    base_color,
+                    width: session.width,
+                    height: session.height,
+                    antialiasing_method: AaConfig::Area,
+                },
+            )
+            .map_err(|e| anyhow!("vello render: {e:?}"))?;
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("pipelined-readback"),
+        });
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &slot.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &slot.buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(slot.aligned_row_bytes as u32),
+                    rows_per_image: Some(session.height),
+                },
+            },
+            wgpu::Extent3d {
+                width: session.width,
+                height: session.height,
+                depth_or_array_layers: 1,
+            },
+        );
+        queue.submit([encoder.finish()]);
+
+        let slice = slot.buffer.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        let frame = session.frame_seq;
+        slice.map_async(wgpu::MapMode::Read, move |r| {
+            let _ = tx.send(r);
+        });
+        slot.state = SlotState::InFlight { frame, map_rx: rx };
+        session.frame_seq += 1;
+
+        // Неблокирующий poll — заставляет wgpu вызвать уже готовые callbacks.
+        device.poll(wgpu::PollType::Poll).ok();
+
+        // Собираем всё, что уже mapped.
+        Compositor::collect_ready_slots(session)?;
+
+        // Возвращаем самый старый готовый кадр.
+        if let Some((_, pixels)) = session.pending.pop_front() {
+            session.emitted += 1;
+            Ok(Some(pixels))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// High-level pipelined аналог `render_scene_to_pixels`.
+    pub fn render_scene_to_pixels_pipelined(
+        &mut self,
+        session: &mut PipelinedReadback,
+        scene: &super::scene::Scene,
+    ) -> Result<Option<Vec<u8>>> {
+        let dev_id = session.dev_id;
+        let device_handle = &self.render_cx.devices[dev_id];
+        let device = device_handle.device.clone();
+        let queue = device_handle.queue.clone();
+        let effective_scene =
+            self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
+        let mut registered_images = Vec::new();
+        let vello = self.build_vello_scene_from_materialized(
+            dev_id,
+            &effective_scene,
+            session.width,
+            session.height,
+            &mut registered_images,
+        )?;
+        let result = self.render_to_pixels_pipelined(session, &vello, scene.background);
+        self.unregister_images(dev_id, registered_images);
+        result
+    }
+
+    /// Дождаться конкретного слота и скопировать данные в `pending`.
+    pub(crate) fn drain_slot(
+        &mut self,
+        session: &mut PipelinedReadback,
+        slot_idx: usize,
+    ) -> Result<()> {
+        let device_handle = &self.render_cx.devices[session.dev_id];
+        let device = &device_handle.device;
+        let slot = &mut session.slots[slot_idx];
+
+        match std::mem::replace(&mut slot.state, SlotState::Idle) {
+            SlotState::Idle => Ok(()),
+            SlotState::InFlight { frame, map_rx } => {
+                device.poll(wgpu::PollType::wait_indefinitely()).ok();
+                map_rx
+                    .recv()
+                    .map_err(|_| anyhow!("buffer map disconnected"))?
+                    .map_err(|e| anyhow!("buffer map: {e:?}"))?;
+                let mapped = slot.buffer.slice(..).get_mapped_range();
+                let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
+                for row in 0..session.height as usize {
+                    let start = row * slot.aligned_row_bytes;
+                    out.extend_from_slice(&mapped[start..start + session.row_bytes]);
+                }
+                drop(mapped);
+                slot.buffer.unmap();
+                session.pending.push_back((frame, out));
+                Ok(())
+            }
+            SlotState::Mapped { frame } => {
+                let mapped = slot.buffer.slice(..).get_mapped_range();
+                let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
+                for row in 0..session.height as usize {
+                    let start = row * slot.aligned_row_bytes;
+                    out.extend_from_slice(&mapped[start..start + session.row_bytes]);
+                }
+                drop(mapped);
+                slot.buffer.unmap();
+                session.pending.push_back((frame, out));
+                Ok(())
+            }
+        }
+    }
+
+    fn collect_ready_slots(session: &mut PipelinedReadback) -> Result<()> {
+        for i in 0..session.slots.len() {
+            // Пробуем забрать готовый InFlight
+            if let SlotState::InFlight { .. } = &session.slots[i].state {
+                if let SlotState::InFlight { frame, map_rx } =
+                    std::mem::replace(&mut session.slots[i].state, SlotState::Idle)
+                {
+                    match map_rx.try_recv() {
+                        Ok(Ok(())) => {
+                            session.slots[i].state = SlotState::Mapped { frame };
+                        }
+                        Ok(Err(e)) => return Err(anyhow!("buffer map: {e:?}")),
+                        Err(TryRecvError::Empty) => {
+                            session.slots[i].state = SlotState::InFlight { frame, map_rx };
+                        }
+                        Err(TryRecvError::Disconnected) => {
+                            return Err(anyhow!("buffer map disconnected"));
+                        }
+                    }
+                }
+            }
+            // Если Mapped — копируем данные и освобождаем слот
+            if let SlotState::Mapped { frame } =
+                std::mem::replace(&mut session.slots[i].state, SlotState::Idle)
+            {
+                let slot = &session.slots[i];
+                let mapped = slot.buffer.slice(..).get_mapped_range();
+                let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
+                for row in 0..session.height as usize {
+                    let start = row * slot.aligned_row_bytes;
+                    out.extend_from_slice(&mapped[start..start + session.row_bytes]);
+                }
+                drop(mapped);
+                session.slots[i].buffer.unmap();
+                session.pending.push_back((frame, out));
+            }
+        }
+        Ok(())
     }
 }
 

@@ -364,7 +364,7 @@ describe('TauriFileSystemAdapter', () => {
       } as any);
       const url = await adapter.getObjectUrl('docs/a.txt');
       expect(convertFileSrc).toHaveBeenCalledWith('/root/docs/a.txt');
-      expect(url).toBe('asset:///root/docs/a.txt?v=1700000000');
+      expect(url).toBe('asset:///root/docs/a.txt#v=1700000000');
     });
 
     it('resolves stream paths under appDataDir when using AppData base', async () => {

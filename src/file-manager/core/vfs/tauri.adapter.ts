@@ -19,6 +19,7 @@ import PQueue from 'p-queue';
 
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { appDataDir } from '@tauri-apps/api/path';
+import { getMimeTypeFromFilename } from '~/utils/media-types';
 import {
   BaseDirectory,
   copyFile,
@@ -38,11 +39,6 @@ import { acquireStreamingFileIoSlot, withFileWriteSlot } from '~/utils/io/io-gov
 import { isTauriRuntime } from '~/utils/runtime';
 import { randomToken } from '~/utils/ids';
 import { joinTauriFsPath } from '~/utils/tauri-local-path';
-import {
-  LazyTauriFile,
-  isMediaFile,
-  LAZY_FILE_MEDIA_THRESHOLD_BYTES,
-} from '~/stores/workspace/provider/tauri-handle';
 
 /** Marker string for the Tauri AppData base directory. */
 export const TAURI_APP_DATA_BASE_PATH = 'app-data';
@@ -302,21 +298,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
     throwIfAborted(options?.signal, path);
     const { tauriPath, options: tauriOptions } = await this.getTauriFsArgs(path);
     try {
-      const metadata = await stat(tauriPath, tauriOptions);
-      const size = metadata.size ?? 0;
+      const bytes = await readFile(tauriPath, tauriOptions);
       const ext = path.split('.').pop()?.toLowerCase() || '';
       const { EXTENSION_MIME_MAPPING } = await import('~/utils/media-types');
       const type = EXTENSION_MIME_MAPPING[ext] || '';
-      if (size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(path)) {
-        return new LazyTauriFile({
-          path: tauriPath,
-          name: this.getEntryName(path),
-          size,
-          type,
-          lastModified: metadata.mtime ? new Date(metadata.mtime).getTime() : Date.now(),
-        });
-      }
-      const bytes = await readFile(tauriPath, tauriOptions);
       return new Blob([bytes], { type });
     } catch (e) {
       if (isNotFoundError(e)) throw new VfsNotFoundError(path, { cause: e });
@@ -481,7 +466,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   async getObjectUrl(path: string): Promise<string> {
     const absolutePath = await this.resolveStreamPath(path);
     const metadata = await this.getMetadata(path);
-    const version = metadata?.lastModified ? `?v=${metadata.lastModified}` : '';
+    const version = metadata?.lastModified ? `#v=${metadata.lastModified}` : '';
     return `${convertFileSrc(absolutePath)}${version}`;
   }
 
@@ -491,20 +476,10 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
       return null;
     }
 
-    if (metadata.size > LAZY_FILE_MEDIA_THRESHOLD_BYTES && isMediaFile(path)) {
-      const { tauriPath } = await this.getTauriFsArgs(path);
-      return new LazyTauriFile({
-        path: tauriPath,
-        name: this.getEntryName(path),
-        size: metadata.size,
-        lastModified: metadata.lastModified,
-      });
-    }
-
     const blob = await this.readFile(path);
     return new File([blob], this.getEntryName(path), {
       lastModified: metadata.lastModified,
-      type: blob.type,
+      type: getMimeTypeFromFilename(path),
     });
   }
 
