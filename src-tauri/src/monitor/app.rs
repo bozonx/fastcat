@@ -8,7 +8,7 @@
 //!   LayerRuntimeManager → `runtime.rs`
 
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use std::sync::Arc;
@@ -16,7 +16,7 @@ use tauri::{AppHandle, Emitter};
 use vello::util::RenderSurface;
 use winit::application::ApplicationHandler;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
-use winit::event::WindowEvent;
+use winit::event::{StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
@@ -165,6 +165,19 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
         self.try_create_window(event_loop);
     }
 
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        // Кадр воспроизведения запрашиваем строго когда истёк WaitUntil-дедлайн,
+        // выставленный в about_to_wait. Это и есть пейсинг по preview_fps: request_redraw
+        // прямо в about_to_wait немедленно диспатчился бы и обнулял таймер (busy-loop).
+        if matches!(cause, StartCause::ResumeTimeReached { .. }) {
+            if let Some(s) = self.state.as_ref() {
+                if s.clock.is_playing() {
+                    s.window.request_redraw();
+                }
+            }
+        }
+    }
+
     fn user_event(&mut self, event_loop: &ActiveEventLoop, cmd: MonitorCommand) {
         match cmd {
             MonitorCommand::SetScene(scene) => {
@@ -206,8 +219,13 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 }
             }
             MonitorCommand::VideoFrameReady => {
+                // Во время play кадры забираются на следующем тике, отмеренном таймером
+                // (см. about_to_wait/new_events) — лишний redraw тут только раскручивал бы
+                // цикл. Нужен он лишь на паузе/скрабе, чтобы показать догнавший кадр.
                 if let Some(s) = self.state.as_ref() {
-                    s.window.request_redraw();
+                    if !s.clock.is_playing() {
+                        s.window.request_redraw();
+                    }
                 }
             }
             MonitorCommand::SetViewport {
@@ -291,10 +309,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             return;
         }
         let frame_duration = Duration::from_secs_f64(1.0 / state.layers.preview_fps);
-        event_loop.set_control_flow(ControlFlow::WaitUntil(
-            std::time::Instant::now() + frame_duration,
-        ));
-        state.window.request_redraw();
+        // Только ставим дедлайн. Redraw произойдёт в new_events(ResumeTimeReached), иначе
+        // ожидающий redraw диспатчится сразу и WaitUntil не пейсит рендер (busy-loop, 100% GPU).
+        event_loop.set_control_flow(ControlFlow::WaitUntil(Instant::now() + frame_duration));
     }
 }
 
@@ -452,7 +469,11 @@ impl WindowState {
                 self.pause();
                 let _ = self.app.emit(EVT_ENDED, ());
                 self.emit_time(scene_end);
-                self.render(scene_end);
+                // covers() — полуоткрытый интервал [start; end): при t == scene_end ни один
+                // слой не активен и сцена была бы пустой (чёрный кадр). Рендерим на 1 мс
+                // раньше конца, чтобы удержать последний кадр клипа.
+                let last_frame_t = (scene_end - 0.001).max(0.0);
+                self.render(last_frame_t);
                 return;
             }
         }
@@ -467,7 +488,7 @@ impl WindowState {
 
     fn emit_time(&mut self, t: f64) {
         // Подавляем дубли: на паузе/повторных redraw'ах не шлём тот же PTS дважды.
-        if t == self.last_emit_pts {
+        if (t - self.last_emit_pts).abs() < 1e-6 {
             return;
         }
         self.last_emit_pts = t;

@@ -42,6 +42,17 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   if (!isTauriRuntime()) return;
 
   let unsubChannel: (() => void) | null = null;
+  // Кешируем 2D-контекст: getContext на каждый кадр стрима — лишняя работа.
+  let ctx2d: CanvasRenderingContext2D | null = null;
+  let ctxEl: HTMLCanvasElement | null = null;
+
+  function getCtx(el: HTMLCanvasElement): CanvasRenderingContext2D | null {
+    if (ctxEl !== el || !ctx2d) {
+      ctxEl = el;
+      ctx2d = el.getContext('2d');
+    }
+    return ctx2d;
+  }
 
   // Максимальный размер render target'а в canvas-режиме. Дальше — CSS-stretch браузером.
   // Это решающий фактор производительности: GPU→CPU readback + IPC масштабируются как
@@ -83,17 +94,20 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   function drawFrame(buffer: ArrayBuffer): void {
     const el = canvasRef.value;
     if (!el) return;
-    const view = new DataView(buffer);
     if (buffer.byteLength < 8) return;
+    const view = new DataView(buffer);
     const width = view.getUint32(0, true);
     const height = view.getUint32(4, true);
+    // Защита от обрезанного/битого кадра: иначе Uint8ClampedArray(...) бросит RangeError.
+    const expectedBytes = 8 + width * height * 4;
+    if (width === 0 || height === 0 || buffer.byteLength < expectedBytes) return;
     const pixels = new Uint8ClampedArray(buffer, 8, width * height * 4);
     if (el.width !== width || el.height !== height) {
       el.width = width;
       el.height = height;
     }
     el.style.background = 'transparent';
-    const ctx = el.getContext('2d');
+    const ctx = getCtx(el);
     if (!ctx) return;
     const imageData = new ImageData(pixels, width, height);
     ctx.putImageData(imageData, 0, 0);
@@ -153,6 +167,8 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   onScopeDispose(() => {
     ro?.disconnect();
     unsubChannel?.();
+    ctx2d = null;
+    ctxEl = null;
   });
 }
 

@@ -23,6 +23,10 @@ interface NativeAudioTrackSelection {
 }
 
 const NATIVE_TIME_STORE_SYNC_MS = 50;
+// Во время воспроизведения мелкие правки currentTime (в пределах этого окна) считаем
+// шумом локального тика, а не реальным seek'ом — иначе натив дёргался бы на каждый тик
+// мастер-клока. Крупные прыжки (drag playhead) — реальная перемотка.
+const PLAYING_SEEK_IGNORE_US = 200_000;
 
 export function isNativeMonitorSceneReady(params: {
   currentProjectName: string | null;
@@ -81,6 +85,9 @@ export function useNativeMonitorBridge(): void {
   let suppressSeekFromTimeUpdate = false;
   let lastSentTime = 0;
   let lastNativeTimeStoreSyncMs = 0;
+  // Монотонный токен сборки сцены: buildScene() — async, и без него медленная сборка,
+  // стартовавшая раньше, могла бы завершиться позже и отправить устаревшую сцену поверх свежей.
+  let sceneBuildSeq = 0;
 
   function warnMonitorFailure(message: string, err: unknown): void {
     const disabledNow = markNativeMonitorInitFailure(err);
@@ -120,6 +127,7 @@ export function useNativeMonitorBridge(): void {
   }
 
   async function syncScene(): Promise<void> {
+    const seq = ++sceneBuildSeq;
     try {
       if (
         !isNativeMonitorSceneReady({
@@ -131,6 +139,8 @@ export function useNativeMonitorBridge(): void {
         return;
       }
       const scene = await buildScene();
+      // Более новая сборка обогнала нас — выходим, чтобы не затереть свежую сцену.
+      if (seq !== sceneBuildSeq) return;
       if (isNativeMonitorDisabled()) return;
       const json = JSON.stringify(scene);
       if (json === lastSceneJson) return;
@@ -186,7 +196,7 @@ export function useNativeMonitorBridge(): void {
 
       if (timelineStore.isPlaying) {
         const diff = Math.abs(t - lastSentTime);
-        if (diff <= 200_000) {
+        if (diff <= PLAYING_SEEK_IGNORE_US) {
           return;
         }
       }

@@ -120,6 +120,42 @@ impl VideoFrameCache {
         best <= tolerance_ms
     }
 
+    /// Расстояние (секунды) до ближайшего кешированного кадра от `target`.
+    /// `None` — кеш пуст. Не трогает `last_request` (чистый запрос для эвристик).
+    pub fn nearest_distance_sec(&self, target_pts: f64) -> Option<f64> {
+        let key = self.index_of(target_pts);
+        let floor = self.frames.range(..=key).next_back().map(|(k, _)| (key - *k).abs());
+        let ceil = self.frames.range(key..).next().map(|(k, _)| (*k - key).abs());
+        let best = match (floor, ceil) {
+            (Some(a), Some(b)) => a.min(b),
+            (Some(a), None) => a,
+            (None, Some(b)) => b,
+            (None, None) => return None,
+        };
+        Some(best as f64 / CACHE_KEY_HZ)
+    }
+
+    /// Ближайший кадр к `target` в любую сторону (для показа во время репозиции
+    /// декодера, чтобы экран не застывал при reverse/fast-forward).
+    pub fn frame_nearest(&mut self, target_pts: f64) -> Option<DecodedVideoFrame> {
+        let key = self.index_of(target_pts);
+        self.last_request = key;
+        let floor = self.frames.range(..=key).next_back();
+        let ceil = self.frames.range(key..).next();
+        match (floor, ceil) {
+            (Some((fk, ff)), Some((ck, cf))) => {
+                if (key - *fk).abs() <= (*ck - key).abs() {
+                    Some(ff.clone())
+                } else {
+                    Some(cf.clone())
+                }
+            }
+            (Some((_, ff)), None) => Some(ff.clone()),
+            (None, Some((_, cf))) => Some(cf.clone()),
+            (None, None) => None,
+        }
+    }
+
     fn evict(&mut self) {
         while self.frames.len() > self.capacity {
             // Вытесняем кадр, наиболее удалённый по индексу от последнего запроса:
@@ -200,6 +236,28 @@ mod tests {
         assert_eq!(c.frames.len(), 2);
         assert_eq!(c.frame_le(1.005).map(|f| f.pts_sec), Some(1.00));
         assert_eq!(c.frame_le(1.02).map(|f| f.pts_sec), Some(1.01));
+    }
+
+    #[test]
+    fn nearest_distance_picks_closest_side() {
+        let mut c = VideoFrameCache::new(30.0, 4);
+        assert_eq!(c.nearest_distance_sec(1.0), None);
+        c.insert(frame(1.0));
+        c.insert(frame(3.0));
+        assert!((c.nearest_distance_sec(1.2).unwrap() - 0.2).abs() < 1e-6);
+        // Ближе к 3.0 (0.4), чем к 1.0 (0.6).
+        assert!((c.nearest_distance_sec(2.6).unwrap() - 0.4).abs() < 1e-6);
+    }
+
+    #[test]
+    fn frame_nearest_returns_either_side() {
+        let mut c = VideoFrameCache::new(30.0, 4);
+        c.insert(frame(1.0));
+        c.insert(frame(3.0));
+        // Промах le (target < min) всё равно даёт ближайший кадр, а не None.
+        assert_eq!(c.frame_nearest(0.0).map(|f| f.pts_sec), Some(1.0));
+        assert_eq!(c.frame_nearest(2.9).map(|f| f.pts_sec), Some(3.0));
+        assert_eq!(c.frame_nearest(1.9).map(|f| f.pts_sec), Some(1.0));
     }
 
     #[test]

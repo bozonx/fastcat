@@ -14,6 +14,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::time::Instant;
 
 use tauri::{AppHandle, Emitter};
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
@@ -35,6 +36,14 @@ const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
 const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
 const BALANCED_VIDEO_SYNC_LAG_FRAMES: f64 = 6.0;
 const BALANCED_VIDEO_SYNC_LAG_SEC: f64 = 0.22;
+
+/// Если ближайший кешированный кадр дальше этого от цели — декодер стоит не там
+/// (reverse / fast-forward / большой скачок) и нужна репозиция. Меньшие промахи —
+/// транзиентный стол декодера на 1×, их не трогаем.
+const RESEEK_MISS_DISTANCE_SEC: f64 = 0.5;
+/// Минимальный интервал между репозициями одного слоя, чтобы in-flight seek успел
+/// долететь и не было storm'а команд декодеру.
+const RESEEK_COOLDOWN_SEC: f64 = 0.15;
 
 // ---------------------------------------------------------------------------
 // Результаты фоновой загрузки
@@ -92,6 +101,8 @@ pub struct VideoLayerRt {
     pub current: Option<DecodedVideoFrame>,
     /// Кеш декодированных кадров для дешёвого скраба назад без респауна ffmpeg.
     cache: VideoFrameCache,
+    /// Время последней репозиции декодера по cache-miss (троттлинг reseek).
+    last_reseek: Option<Instant>,
 }
 
 impl VideoLayerRt {
@@ -106,6 +117,33 @@ impl VideoLayerRt {
             media_size,
             source_rotation,
             current: None,
+            last_reseek: None,
+        }
+    }
+
+    /// Декодер не там, где нужно (reverse / fast-forward / промах кеша): репозиционируем
+    /// его на `target` и сразу показываем ближайший доступный кадр, чтобы экран не застывал.
+    /// Троттлится `RESEEK_COOLDOWN_SEC`; реагирует только на «дальние» промахи.
+    fn maybe_reseek_on_miss(&mut self, target_clip_local: f64) {
+        let far_miss = match self.cache.nearest_distance_sec(target_clip_local) {
+            Some(dist) => dist > RESEEK_MISS_DISTANCE_SEC,
+            None => true,
+        };
+        if !far_miss {
+            return;
+        }
+        let now = Instant::now();
+        if let Some(last) = self.last_reseek {
+            if now.duration_since(last).as_secs_f64() < RESEEK_COOLDOWN_SEC {
+                return;
+            }
+        }
+        self.last_reseek = Some(now);
+        if let Err(e) = self.pump.seek(target_clip_local) {
+            log::error!("[monitor] reseek-on-miss seek: {e:?}");
+        }
+        if let Some(frame) = self.cache.frame_nearest(target_clip_local) {
+            self.current = Some(frame);
         }
     }
 
@@ -158,6 +196,9 @@ pub struct LayerRuntimeManager {
     /// Политика AV-sync для preview.
     pub preview_sync_mode: PreviewSyncMode,
     pub playing: bool,
+    /// Последний timeline-PTS из `tick`/`seek`. Нужен, чтобы лениво открытый рантайм
+    /// сикался на текущий playhead, а не на начало клипа.
+    last_tick_t: f64,
     runtimes: HashMap<String, LayerRuntime>,
     loading_set: HashSet<String>,
     bg_tx: Sender<BgLayerResult>,
@@ -179,6 +220,7 @@ impl LayerRuntimeManager {
             preview_fps: 30.0,
             preview_sync_mode: PreviewSyncMode::Balanced,
             playing: false,
+            last_tick_t: 0.0,
             runtimes: HashMap::new(),
             loading_set: HashSet::new(),
             bg_tx,
@@ -410,11 +452,14 @@ impl LayerRuntimeManager {
                     pump.info.fps,
                     pump.info.codec,
                 );
+                // Сикаем на ТЕКУЩИЙ playhead, а не на начало клипа: иначе при открытии
+                // клипа на середине таймлайна декодер начал бы форвардом от source_start
+                // и playhead показывал бы чёрное/стопкадр, пока декод не догонит позицию.
                 let clip_local = self
                     .scene
                     .iter()
                     .find(|l| l.id == id)
-                    .map(|l| l.source_pts_at(0.0))
+                    .map(|l| l.source_pts_at(self.last_tick_t))
                     .unwrap_or(0.0);
                 let rt = VideoLayerRt::new(pump, media_size, source_rotation);
                 if self.playing {
@@ -488,21 +533,24 @@ impl LayerRuntimeManager {
 
     /// Запускает фоновую загрузку для активных слоёв и прокачивает видеокадры.
     pub fn tick(&mut self, t: f64, device: Option<wgpu::Device>, queue: Option<wgpu::Queue>) {
+        self.last_tick_t = t;
         let scene = self.scene.clone();
-        let mut active_ids = std::collections::HashSet::new();
+        // Активные слои храним индексами в `scene`, а не клонами String id — иначе на
+        // каждый кадр (30–60 fps) аллоцировались бы строки для всех видимых слоёв.
+        let mut active: HashSet<usize> = HashSet::new();
 
-        for layer in scene.iter() {
+        for (i, layer) in scene.iter().enumerate() {
             if layer.covers(t) {
-                active_ids.insert(layer.id.clone());
+                active.insert(i);
                 self.ensure_runtime_for(layer, device.clone(), queue.clone());
 
                 if let Some(t_in) = &layer.transition_in {
                     let local_t = t - layer.timeline_start_sec;
                     if t_in.transition_type != "dissolve" && local_t < t_in.duration_sec && local_t >= 0.0 {
                         if let Some(from_id) = &t_in.from_layer_id {
-                            if let Some(from_layer) = scene.iter().find(|l| &l.id == from_id) {
-                                active_ids.insert(from_layer.id.clone());
-                                self.ensure_runtime_for(from_layer, device.clone(), queue.clone());
+                            if let Some(from_idx) = scene.iter().position(|l| &l.id == from_id) {
+                                active.insert(from_idx);
+                                self.ensure_runtime_for(&scene[from_idx], device.clone(), queue.clone());
                             }
                         }
                     }
@@ -510,15 +558,21 @@ impl LayerRuntimeManager {
             }
         }
 
-        for layer in scene.iter() {
-            if !active_ids.contains(&layer.id) || layer.kind != LayerKind::Video {
+        let playing = self.playing;
+        for (i, layer) in scene.iter().enumerate() {
+            if !active.contains(&i) || layer.kind != LayerKind::Video {
                 continue;
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
                 rt.pull_into_cache(&mut self.texture_cache);
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
-                rt.update_display(clip_local, max_lag_sec);
+                let shown = rt.update_display(clip_local, max_lag_sec);
+                // Промах при воспроизведении = декодер стоит не туда (reverse / fast /
+                // большой скачок): репозиционируем его и показываем ближайший кадр.
+                if playing && !shown {
+                    rt.maybe_reseek_on_miss(clip_local);
+                }
             }
         }
     }
@@ -526,6 +580,7 @@ impl LayerRuntimeManager {
     /// Seek активных видеослоёв на `t`. На паузе при попадании в кеш показывает кадр без
     /// респауна ffmpeg (дешёвый скраб); иначе перепозиционирует декодер.
     pub fn seek(&mut self, t: f64, playing: bool) {
+        self.last_tick_t = t;
         let scene = self.scene.clone();
         for layer in scene.iter() {
             if !layer.covers(t) || layer.kind != LayerKind::Video {
@@ -557,6 +612,7 @@ impl LayerRuntimeManager {
     /// Перепозиционирует декодеры активных видеослоёв к `t`. Вызывается при старте
     /// воспроизведения, чтобы после скраба по кешу forward-стрим был корректным.
     pub fn resync_active_videos(&mut self, t: f64) {
+        self.last_tick_t = t;
         let scene = self.scene.clone();
         for layer in scene.iter() {
             if !layer.covers(t) || layer.kind != LayerKind::Video {

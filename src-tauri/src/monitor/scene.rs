@@ -271,6 +271,10 @@ pub struct MonitorScene {
 fn default_fps() -> f64 {
     30.0
 }
+
+/// Защита от выхода за конец доступного source-range: последний «читаемый» PTS = конец
+/// диапазона минус этот зазор (1 мс), иначе seek/decoder могли бы запросить кадр за EOF.
+const SOURCE_END_GUARD_SEC: f64 = 0.001;
 fn default_blend() -> String {
     "normal".into()
 }
@@ -294,7 +298,7 @@ impl SceneLayer {
             } else {
                 (self.timeline_end_sec - self.timeline_start_sec).max(0.0) * abs_speed
             };
-        let last_readable = (source_range - 0.001).max(0.0);
+        let last_readable = (source_range - SOURCE_END_GUARD_SEC).max(0.0);
         let source_delta = local * abs_speed;
         let source_offset = if speed < 0.0 {
             (last_readable - source_delta).clamp(0.0, last_readable)
