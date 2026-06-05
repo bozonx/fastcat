@@ -217,16 +217,20 @@ export function useEntryPreview(params: {
       let nextUrl: string | null = null;
 
       const avoidAssetProtocol = isVideoOrAudio && (await isLinuxTauri());
+      console.log('[useEntryPreview] avoidAssetProtocol=', avoidAssetProtocol, 'isVideoOrAudio=', isVideoOrAudio);
 
       if (!avoidAssetProtocol && isVideoOrAudio && !fileToPlay && params.getObjectUrlByPath && entry.path) {
         nextUrl = await params.getObjectUrlByPath(entry.path);
+        console.log('[useEntryPreview] asset URL=', nextUrl);
       } else {
         if (!fileToPlay && entry.path) {
           fileToPlay = await params.getFileByPath(entry.path);
+          console.log('[useEntryPreview] loaded File=', fileToPlay?.name, 'size=', fileToPlay?.size, 'type=', fileToPlay?.type);
         }
 
         if (fileToPlay && (isVideoOrAudio || isImage)) {
           nextUrl = URL.createObjectURL(fileToPlay);
+          console.log('[useEntryPreview] blob URL=', nextUrl);
         }
       }
 

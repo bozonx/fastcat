@@ -738,6 +738,65 @@ describe('MediaStore', () => {
     });
   });
 
+  it('sets canDisplay to false for non-native image format in Tauri environment', async () => {
+    mockIsTauriState.value = true;
+
+    const mockFile = { size: 12345, lastModified: 98765, name: 'scan.tiff' } as File;
+    const mockHandle = { path: 'image/scan.tiff' };
+
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
+      getFileByPath: vi.fn().mockResolvedValue(mockFile),
+    } as any);
+
+    const store = useMediaStore();
+
+    mockNativeMediaMetadata.mockResolvedValue({
+      duration: 0.0,
+      video: {
+        width: 1200,
+        height: 800,
+        fps: 0,
+        codec: 'tiff',
+      },
+    });
+
+    const result = await store.getOrFetchMetadata(mockFile, 'image/scan.tiff');
+
+    expect(result).toBeDefined();
+    expect(result?.image).toEqual({
+      canDisplay: false,
+      width: 1200,
+      height: 800,
+    });
+    expect(result?.video).toBeUndefined();
+    expect(result?.audio).toBeUndefined();
+  });
+
+  it('marks metadata as failed when nativeMediaMetadata throws in Tauri environment', async () => {
+    mockIsTauriState.value = true;
+
+    const mockFile = { size: 12345, lastModified: 98765, name: 'movie.mp4' } as File;
+    const mockHandle = { path: 'video/movie.mp4' };
+
+    vi.mocked(useProjectStore).mockReturnValue({
+      currentProjectId: 'test-project',
+      getFileHandleByPath: vi.fn().mockResolvedValue(mockHandle),
+      getFileByPath: vi.fn().mockResolvedValue(mockFile),
+    } as any);
+
+    const store = useMediaStore();
+
+    mockNativeMediaMetadata.mockRejectedValue(new Error('ffprobe failed'));
+
+    const result = await store.getOrFetchMetadata(mockFile, 'video/movie.mp4');
+
+    expect(result).toBeNull();
+    expect(store.metadataLoadFailed['video/movie.mp4']).toBe(true);
+    expect(store.mediaMetadata['video/movie.mp4']?.error).toBe(true);
+  });
+
   it('extracts peaks using Tauri native extraction in Tauri environment', async () => {
     mockIsTauriState.value = true;
     mockNativeMediaExtractPeaks.mockResolvedValue([

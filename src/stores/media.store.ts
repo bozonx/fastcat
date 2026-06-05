@@ -10,7 +10,7 @@ import { createMediaWorkerModule } from '~/stores/media/media-worker';
 import { runQueuedFileAccess } from '~/utils/file-access-queue';
 import { useVfs } from '~/composables/useVfs';
 import { postIoInitMessage } from '~/utils/io/io-budget-main';
-import { getMediaTypeFromFilename } from '~/utils/media-types';
+import { getMediaTypeFromFilename, BROWSER_NATIVE_IMAGE_EXTENSIONS } from '~/utils/media-types';
 import {
   serializeWaveformPeaks,
   deserializeWaveformPeaks,
@@ -306,11 +306,12 @@ export const useMediaStore = defineStore('media', () => {
             const mediaType = getMediaTypeFromFilename(projectRelativePath);
 
             if (mediaType === 'image') {
+              const ext = projectRelativePath.split('.').pop()?.toLowerCase() ?? '';
               meta = {
                 source: { size: file.size, lastModified: file.lastModified },
                 duration: 0,
                 image: {
-                  canDisplay: true,
+                  canDisplay: BROWSER_NATIVE_IMAGE_EXTENSIONS.includes(ext),
                   width: nativeMeta.video?.width ?? 0,
                   height: nativeMeta.video?.height ?? 0,
                 },

@@ -196,7 +196,11 @@ watch(
     await nextTick();
 
     if (mediaElement.value) {
-      mediaElement.value.load();
+      try {
+        mediaElement.value.load();
+      } catch (e) {
+        console.log('[MediaPlayer] load() error:', e);
+      }
       mediaElement.value.volume = Math.min(1, Math.max(0, volume.value));
       mediaElement.value.muted = isMuted.value;
     }

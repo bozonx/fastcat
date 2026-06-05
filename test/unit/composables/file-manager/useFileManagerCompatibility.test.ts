@@ -120,4 +120,26 @@ describe('useFileManagerCompatibility', () => {
     mediaMetadata['failed.png'] = { image: { canDisplay: false } };
     expect(compatibility.value['failed.png']?.status).toBe('corrupt');
   });
+
+  it('identifies non-native image format as fully_unsupported when canDisplay is false', () => {
+    const entries = ref<FsEntry[]>([
+      { kind: 'file', name: 'scan.tiff', path: 'scan.tiff', source: 'local' },
+    ]);
+
+    const { compatibility } = useFileManagerCompatibility(entries);
+
+    mediaMetadata['scan.tiff'] = { image: { canDisplay: false } };
+    expect(compatibility.value['scan.tiff']?.status).toBe('fully_unsupported');
+  });
+
+  it('identifies Tauri video with canDecode as ok', () => {
+    const entries = ref<FsEntry[]>([
+      { kind: 'file', name: 'movie.mp4', path: 'video/movie.mp4', source: 'local' },
+    ]);
+
+    const { compatibility } = useFileManagerCompatibility(entries);
+
+    mediaMetadata['video/movie.mp4'] = { video: { canDecode: true }, audio: { canDecode: true } };
+    expect(compatibility.value['video/movie.mp4']?.status).toBe('ok');
+  });
 });
