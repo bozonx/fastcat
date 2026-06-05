@@ -44,8 +44,13 @@ export async function nativeMediaMetadata(path: string): Promise<NativeMediaMeta
 export async function nativeMediaExtractPeaks(
   path: string,
   maxLength: number,
+  precision?: number,
 ): Promise<Float32Array[]> {
-  const bytes = await invoke<NativeBytePayload>('native_media_extract_peaks', { path, maxLength });
+  const bytes = await invoke<NativeBytePayload>('native_media_extract_peaks', {
+    path,
+    maxLength,
+    precision: precision ?? 0,
+  });
   const peaks = deserializeWaveformPeaks(toBlobPart(bytes));
   if (!peaks) {
     throw new Error('Invalid native waveform payload');
@@ -221,10 +226,12 @@ function toUint8Array(bytes: NativeBytePayload): Uint8Array {
 }
 
 function toBlobPart(bytes: NativeBytePayload): ArrayBuffer {
+  if (bytes instanceof ArrayBuffer) return bytes;
   const view = toUint8Array(bytes);
-  const copy = new Uint8Array(view.byteLength);
-  copy.set(view);
-  return copy.buffer;
+  if (view.byteOffset === 0 && view.byteLength === view.buffer.byteLength) {
+    return view.buffer as ArrayBuffer;
+  }
+  return view.slice().buffer as ArrayBuffer;
 }
 
 export const __tauriMediaProcessingTestHooks = {

@@ -378,6 +378,7 @@ function onToolbarContextMenu(e: MouseEvent) {
                 caretButtonClass: 'px-0.5 hover:bg-ui-bg-hover/60',
                 caretIconClass: 'size-2.5',
                 onClick: toggleTrimMode,
+                disabled: timelineStore.previewMode,
               } as any
             "
           />
@@ -391,6 +392,7 @@ function onToolbarContextMenu(e: MouseEvent) {
               variant="solid"
               icon="i-heroicons-musical-note"
               class="h-6 text-2xs px-2 gap-1 font-bold animate-pulse hover:animate-none"
+              :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
                   timelineStore.unsoloAllTracks();
@@ -414,6 +416,7 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-adjustments-horizontal"
               class="hover:bg-ui-bg-hover/60"
+              :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
                   timelineStore.addAdjustmentClipAtPlayhead();
@@ -434,6 +437,7 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-swatch"
               class="hover:bg-ui-bg-hover/60"
+              :disabled="timelineStore.previewMode"
               @click="
                 (e) => {
                   timelineStore.addBackgroundClipAtPlayhead();
@@ -455,6 +459,7 @@ function onToolbarContextMenu(e: MouseEvent) {
                 color="neutral"
                 icon="i-heroicons-chat-bubble-bottom-center-text"
                 class="hover:bg-ui-bg-hover/60"
+                :disabled="timelineStore.previewMode"
                 @click="
                   (e) => {
                     addTextClip(e);
@@ -491,6 +496,7 @@ function onToolbarContextMenu(e: MouseEvent) {
               color="neutral"
               icon="i-heroicons-bookmark"
               class="hover:bg-ui-bg-hover/60"
+              :disabled="timelineStore.previewMode"
               @click="timelineStore.addMarkerAtPlayhead()"
             />
           </UiTooltip>

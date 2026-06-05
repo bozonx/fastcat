@@ -633,7 +633,7 @@ export const useMediaStore = defineStore('media', () => {
       const handle = await projectStore.getFileHandleByPath(sourceKey);
       const nativePath = getNativeFileHandlePath(handle);
       if (nativePath) {
-        const nativePeaks = await nativeMediaExtractPeaks(nativePath, maxLength);
+        const nativePeaks = await nativeMediaExtractPeaks(nativePath, maxLength, options?.precision);
         if (nativePeaks && nativePeaks.length > 0) {
           return nativePeaks;
         }

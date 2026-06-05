@@ -59,7 +59,7 @@ export function computeWaveformWindowMetrics(
   const sourceDurationUs = Math.max(0, Math.round(params.sourceDurationUs));
   const timelineDurationUs = Math.max(0, Math.round(params.timelineDurationUs));
   const clipWidthPx = Math.round(timeUsToPx(timelineDurationUs, params.zoom));
-  const totalWidthPx = Math.round(timeUsToPx(sourceDurationUs / speed, params.zoom));
+  const totalWidthPx = Math.round(timeUsToPx(sourceDurationUs / Math.abs(speed), params.zoom));
   const trimOffsetPx = Math.round(timeUsToPx(sourceStartUs / speed, params.zoom));
   const reversed =
     typeof params.speed === 'number' && Number.isFinite(params.speed) && params.speed < 0;
@@ -85,7 +85,7 @@ export function resolveWaveformSourceUs(params: WaveformSourceTimeParams): numbe
   const speed = normalizeWaveformSpeed(params.speed);
   const sourceOffsetUs =
     typeof params.speed === 'number' && Number.isFinite(params.speed) && params.speed < 0
-      ? sourceRangeDurationUs - Math.round(localUs * speed)
+      ? sourceRangeDurationUs + Math.round(localUs * speed)
       : Math.round(localUs * speed);
 
   return sourceStartUs + Math.min(sourceRangeDurationUs, Math.max(0, sourceOffsetUs));

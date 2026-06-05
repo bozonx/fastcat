@@ -92,7 +92,7 @@ function makeEmptyPeaks(channelCount: number, length: number): Float32Array[] {
 }
 
 function mixPeakValue(target: number, next: number) {
-  return Math.max(Math.abs(target), Math.abs(next));
+  return Math.min(1, Math.abs(target) + Math.abs(next));
 }
 
 async function ensureMediaPeaks(params: {
