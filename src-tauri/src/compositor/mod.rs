@@ -8,7 +8,10 @@
 //! - `effects`       — `EffectSpec` enum + wgpu runtime для raster layers.
 //! - `transitions`   — `TransitionSpec` enum. Runtime отсутствует.
 //! - `text`, `svg`   — модули-документация для будущих слоёв.
-//! - `texture_cache` — задел под GPU-resident текстуры (HW-decode, group cache).
+//!
+//! GPU-resident видеокадры держат `wgpu::Texture` напрямую в `RasterSource::GpuTexture`
+//! (Arc), время жизни текстуры = время жизни кадра в per-layer кеше; отдельного
+//! глобального texture-кеша с независимым вытеснением больше нет.
 //!
 //! Entrypoint: [`Compositor`] — high-level `render_scene_to_*` + low-level `render_to_*`.
 
@@ -16,7 +19,6 @@ pub mod effects;
 pub mod scene;
 pub mod svg;
 pub mod text;
-pub mod texture_cache;
 pub mod transitions;
 
 mod compositor;

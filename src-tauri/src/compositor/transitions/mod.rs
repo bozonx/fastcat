@@ -66,17 +66,9 @@ pub struct TransitionUniform {
     pub p7: f32,
 }
 
-struct CachedTransitionResources {
-    width: u32,
-    height: u32,
-    output: wgpu::Texture,
-    output_view: wgpu::TextureView,
-}
-
 pub struct TransitionPipeline {
     bind_layout: wgpu::BindGroupLayout,
     pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
-    resources: Option<CachedTransitionResources>,
     /// Билинейный blit-проход: приводит входы перехода к выходному размеру.
     blit_layout: wgpu::BindGroupLayout,
     blit_pipeline: wgpu::ComputePipeline,
@@ -233,7 +225,6 @@ impl TransitionPipeline {
         Self {
             bind_layout,
             pipelines: HashMap::new(),
-            resources: None,
             blit_layout,
             blit_pipeline,
         }
@@ -321,54 +312,6 @@ impl TransitionPipeline {
         Ok(dst)
     }
 
-    fn ensure_resources(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        let recreate = match &self.resources {
-            // Пересоздаём, если не хватает размера ИЛИ если таргет более чем вдвое
-            // больше нужного — иначе после одного 4K-перехода буфер навсегда оставался
-            // бы 4K (монотонный рост GPU-памяти), как замечено в аудите.
-            Some(res) => {
-                res.width < width
-                    || res.height < height
-                    || res.width > width.saturating_mul(2)
-                    || res.height > height.saturating_mul(2)
-            }
-            None => true,
-        };
-
-        if recreate {
-            // Точно под запрошенный размер: и при росте, и при усадке (max со старым
-            // размером свёл бы усадку на нет).
-            let new_w = width.max(1);
-            let new_h = height.max(1);
-            let size = wgpu::Extent3d {
-                width: new_w,
-                height: new_h,
-                depth_or_array_layers: 1,
-            };
-
-            let output = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("native-transition-output"),
-                size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8Unorm,
-                usage: wgpu::TextureUsages::COPY_SRC
-                    | wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::STORAGE_BINDING,
-                view_formats: &[],
-            });
-            let output_view = output.create_view(&wgpu::TextureViewDescriptor::default());
-
-            self.resources = Some(CachedTransitionResources {
-                width: new_w,
-                height: new_h,
-                output,
-                output_view,
-            });
-        }
-    }
-
     fn get_or_create_pipeline(
         &mut self,
         device: &wgpu::Device,
@@ -435,9 +378,28 @@ impl TransitionPipeline {
         let from_tex = self.prepare_input(device, queue, from_source, width, height)?;
         let to_tex = self.prepare_input(device, queue, to_source, width, height)?;
 
-        self.ensure_resources(device, width, height);
-        let resources = self.resources.as_ref()
-            .ok_or_else(|| anyhow!("transition resources not initialized"))?;
+        // Рендерим переход сразу в owned-текстуру результата. Раньше писали в кешированную
+        // `resources.output` и копировали её наружу — лишний полнокадровый GPU→GPU копи на
+        // каждый переход на кадр. Результат всё равно уходит вверх по сцене как owned-Arc,
+        // так что финальная текстура и есть таргет compute-пасса. Кеш не нужен: аллокация
+        // ровно одной выходной текстуры за вызов — то же, что делал прежний `copy_texture_owned`.
+        let output = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("native-transition-owned-output"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        });
+        let output_view = output.create_view(&wgpu::TextureViewDescriptor::default());
 
         let from_texture = from_tex.create_view(&wgpu::TextureViewDescriptor::default());
         let to_texture = to_tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -465,7 +427,7 @@ impl TransitionPipeline {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&resources.output_view),
+                    resource: wgpu::BindingResource::TextureView(&output_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
@@ -490,7 +452,7 @@ impl TransitionPipeline {
 
         queue.submit([encoder.finish()]);
 
-        copy_texture_owned(device, queue, &resources.output, width, height)
+        Ok(output)
     }
 }
 
@@ -560,56 +522,6 @@ fn image_pixels_rgba8(image: &ImageData) -> Result<Vec<u8>> {
         }
         _ => Err(anyhow!("unsupported format for transition source")),
     }
-}
-
-fn copy_texture_owned(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    width: u32,
-    height: u32,
-) -> Result<wgpu::Texture> {
-    let output = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("native-transition-owned-output"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8Unorm,
-        usage: wgpu::TextureUsages::COPY_SRC
-            | wgpu::TextureUsages::COPY_DST
-            | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    });
-
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("native-transition-output-copy-encoder"),
-    });
-    encoder.copy_texture_to_texture(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyTextureInfo {
-            texture: &output,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit([encoder.finish()]);
-    Ok(output)
 }
 
 fn build_uniform(

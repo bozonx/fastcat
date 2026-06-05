@@ -170,7 +170,6 @@ pub fn export_timeline(
             .context("export: no GPU device")?;
 
         let mut cache = super::timeline_render::VideoDecoderCache::new();
-        let empty_cache = crate::compositor::texture_cache::TextureCache::new();
         let render_result = (|| -> Result<()> {
             for i in 0..frame_count {
                 let time = start + i as f64 / fps;
@@ -185,7 +184,6 @@ pub fn export_timeline(
                     &frame_scene,
                     width,
                     height,
-                    &empty_cache,
                 )?;
                 if let Err(e) = stdin.write_all(&pixels) {
                     return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));

@@ -166,7 +166,6 @@ impl Compositor {
         surface: &mut RenderSurface<'static>,
         viewport_w: u32,
         viewport_h: u32,
-        texture_cache: &super::texture_cache::TextureCache,
     ) -> Result<()> {
         let dev_id = surface.dev_id;
         let device_handle = &self.render_cx.devices[dev_id];
@@ -175,7 +174,6 @@ impl Compositor {
         let effective_scene = self.materialize_transitions_and_effects(
             dev_id,
             scene,
-            texture_cache,
             &device,
             &queue,
         )?;
@@ -185,7 +183,6 @@ impl Compositor {
             &effective_scene,
             viewport_w,
             viewport_h,
-            texture_cache,
             &mut registered_images,
         )?;
         let result = self.render_to_surface(surface, &vello, scene.background);
@@ -200,7 +197,6 @@ impl Compositor {
         scene: &super::scene::Scene,
         viewport_w: u32,
         viewport_h: u32,
-        texture_cache: &super::texture_cache::TextureCache,
     ) -> Result<Vec<u8>> {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
@@ -208,7 +204,6 @@ impl Compositor {
         let effective_scene = self.materialize_transitions_and_effects(
             dev_id,
             scene,
-            texture_cache,
             &device,
             &queue,
         )?;
@@ -218,7 +213,6 @@ impl Compositor {
             &effective_scene,
             viewport_w,
             viewport_h,
-            texture_cache,
             &mut registered_images,
         )?;
         let result =
@@ -233,16 +227,10 @@ impl Compositor {
         scene: &super::scene::Scene,
         viewport_w: u32,
         viewport_h: u32,
-        texture_cache: &super::texture_cache::TextureCache,
         registered_images: &mut Vec<ImageData>,
     ) -> Result<VelloScene> {
         Ok(
             scene.to_vello(viewport_w, viewport_h, |source| match source {
-                RasterGpuSource::Cache(key) => {
-                    let texture = texture_cache.get(key)?;
-                    self.register_texture_for_vello(dev_id, &texture, registered_images)
-                        .ok()
-                }
                 RasterGpuSource::Texture(texture) => self
                     .register_texture_for_vello(dev_id, texture, registered_images)
                     .ok(),
@@ -254,7 +242,6 @@ impl Compositor {
         &mut self,
         dev_id: usize,
         scene: &super::scene::Scene,
-        texture_cache: &super::texture_cache::TextureCache,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<super::scene::Scene> {
@@ -278,7 +265,6 @@ impl Compositor {
                         dev_id,
                         scene,
                         &from_layer,
-                        texture_cache,
                         device,
                         queue,
                     )?;
@@ -287,7 +273,6 @@ impl Compositor {
                         dev_id,
                         scene,
                         &layers[i],
-                        texture_cache,
                         device,
                         queue,
                     )?;
@@ -350,7 +335,7 @@ impl Compositor {
                     self.render_layer_to_texture(dev_id, scene, &layer, render_scale)?;
                 EffectSource::Gpu(Arc::new(texture))
             } else {
-                self.layer_to_effect_source(dev_id, scene, &layer, texture_cache)?
+                self.layer_to_effect_source(dev_id, scene, &layer)?
             };
             let processed =
                 self.apply_effects_to_texture(dev_id, device, queue, &source, &layer.effects)?;
@@ -383,11 +368,10 @@ impl Compositor {
         dev_id: usize,
         scene: &super::scene::Scene,
         layer: &Layer,
-        texture_cache: &super::texture_cache::TextureCache,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> Result<EffectSource> {
-        let base = self.layer_to_effect_source(dev_id, scene, layer, texture_cache)?;
+        let base = self.layer_to_effect_source(dev_id, scene, layer)?;
         if layer.effects.is_empty() {
             return Ok(base);
         }
@@ -400,17 +384,10 @@ impl Compositor {
         dev_id: usize,
         scene: &super::scene::Scene,
         layer: &Layer,
-        texture_cache: &super::texture_cache::TextureCache,
     ) -> Result<EffectSource> {
         match &layer.kind {
             LayerKind::Raster { source, .. } => match source {
                 RasterSource::Image(image) => Ok(EffectSource::Cpu(image.clone())),
-                RasterSource::GpuHandle(key) => {
-                    let texture = texture_cache
-                        .get(*key)
-                        .ok_or_else(|| anyhow!("missing GPU texture for effect layer"))?;
-                    Ok(EffectSource::Gpu(texture))
-                }
                 RasterSource::GpuTexture(texture) => Ok(EffectSource::Gpu(texture.clone())),
             },
             LayerKind::Shape(_) | LayerKind::Text(_) => {

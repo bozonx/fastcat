@@ -131,16 +131,6 @@ impl Scene {
                         };
                         out.draw_image(&processed, xform);
                     }
-                    RasterSource::GpuHandle(key) => {
-                        if let Some(img) = resolve_gpu_texture(RasterGpuSource::Cache(*key)) {
-                            let processed = if layer.effects.is_empty() {
-                                img
-                            } else {
-                                process_image(&img, &layer.effects)
-                            };
-                            out.draw_image(&processed, xform);
-                        }
-                    }
                     RasterSource::GpuTexture(texture) => {
                         if let Some(img) = resolve_gpu_texture(RasterGpuSource::Texture(texture)) {
                             let processed = if layer.effects.is_empty() {
@@ -346,12 +336,13 @@ pub enum TextVerticalAlign {
 #[non_exhaustive]
 pub enum RasterSource {
     Image(ImageData),
-    GpuHandle(super::texture_cache::TextureKey),
+    /// GPU-resident кадр. `Arc` владеет текстурой ровно столько, сколько слой/кадр
+    /// на неё ссылается — отдельного кеша с независимым вытеснением больше нет, поэтому
+    /// хэндл никогда не «протухает» под живым кадром (раньше для этого держался CPU-дубль).
     GpuTexture(Arc<wgpu::Texture>),
 }
 
 pub enum RasterGpuSource<'a> {
-    Cache(super::texture_cache::TextureKey),
     Texture(&'a wgpu::Texture),
 }
 

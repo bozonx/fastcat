@@ -150,25 +150,15 @@ impl VideoLayerRt {
     }
 
     /// Сливает все доступные кадры из декодера в кеш (неблокирующе).
-    fn pull_into_cache(&mut self, cache: &mut crate::compositor::texture_cache::TextureCache) {
+    fn pull_into_cache(&mut self) {
         let live_gen = self.pump.current_generation();
         while let Some(msg) = self.pump.try_recv_frame() {
             if msg.generation != live_gen {
                 continue;
             }
-            // Вставка может вытеснить старые кадры — их GPU-текстуры надо убрать из
-            // общего кеша, иначе он копит осиротевшие текстуры и FIFO-вытесняет ещё
-            // живые (→ видеослой пропадал бы при скрабе).
-            for key in self.cache.insert(video_frame_to_image(msg.frame, cache)) {
-                cache.remove(key);
-            }
-        }
-    }
-
-    /// Освобождает все GPU-текстуры этого рантайма из общего кеша (при teardown слоя).
-    fn release_textures(&self, cache: &mut crate::compositor::texture_cache::TextureCache) {
-        for key in self.cache.texture_keys() {
-            cache.remove(key);
+            // GPU-текстура кадра живёт в самом кадре (Arc); вытеснение освобождает её
+            // дропом — отдельной синхронизации с внешним texture-кешем больше нет.
+            self.cache.insert(video_frame_to_cached(msg.frame));
         }
     }
 
@@ -217,7 +207,6 @@ pub struct LayerRuntimeManager {
     loading_set: HashSet<String>,
     bg_tx: Sender<BgLayerResult>,
     proxy: EventLoopProxy<MonitorCommand>,
-    pub texture_cache: crate::compositor::texture_cache::TextureCache,
 }
 
 impl LayerRuntimeManager {
@@ -239,7 +228,6 @@ impl LayerRuntimeManager {
             loading_set: HashSet::new(),
             bg_tx,
             proxy,
-            texture_cache: crate::compositor::texture_cache::TextureCache::new(),
         }
     }
 
@@ -315,13 +303,8 @@ impl LayerRuntimeManager {
             }
         }
         if !to_drop.is_empty() {
-            // Освобождаем GPU-текстуры выбывших слоёв из общего кеша до дропа рантайма,
-            // иначе они осиротели бы в `texture_cache` до FIFO-вытеснения.
-            for rt in &to_drop {
-                if let LayerRuntime::Video(v) = rt {
-                    v.release_textures(&mut self.texture_cache);
-                }
-            }
+            // GPU-текстуры выбывших слоёв освобождаются дропом их кадров (Arc) внутри
+            // самого рантайма — отдельной разсинхронизации с внешним кешем не требуется.
             std::thread::Builder::new()
                 .name("fastcat-rt-drop".into())
                 .spawn(move || drop(to_drop))
@@ -585,7 +568,7 @@ impl LayerRuntimeManager {
                 continue;
             }
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                rt.pull_into_cache(&mut self.texture_cache);
+                rt.pull_into_cache();
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
                 let shown = rt.update_display(clip_local, max_lag_sec);
@@ -609,7 +592,7 @@ impl LayerRuntimeManager {
             }
             let clip_local = layer.source_pts_at(t);
             if let Some(LayerRuntime::Video(rt)) = self.runtimes.get_mut(&layer.id) {
-                rt.pull_into_cache(&mut self.texture_cache);
+                rt.pull_into_cache();
                 // Пауза + попадание в кеш → показываем кадр без перезапуска ffmpeg.
                 if !playing && rt.cache.has_near(clip_local, 1) {
                     rt.update_display(clip_local, None);
@@ -693,14 +676,15 @@ impl LayerRuntimeManager {
                     match rt {
                         LayerRuntime::Video(v) => match v.current.as_ref() {
                             Some(f) => CompLayerKind::Raster {
-                                // GPU-handle только если текстура всё ещё в кеше; иначе
-                                // (её вытеснил FIFO/скраб) откатываемся на CPU-blob кадра,
-                                // который всегда при нём — без этого слой бы пропал.
-                                source: match f.texture_key {
-                                    Some(key) if self.texture_cache.contains(key) => {
-                                        RasterSource::GpuHandle(key)
+                                // GPU-текстура живёт в самом кадре (Arc) → хэндл валиден,
+                                // пока кадр показывается. CPU-blob — только запасной путь,
+                                // когда у декодера не было wgpu device (GPU-аплоад не сделан).
+                                source: match (&f.texture, &f.image) {
+                                    (Some(texture), _) => {
+                                        RasterSource::GpuTexture(texture.clone())
                                     }
-                                    _ => RasterSource::Image(f.image.clone()),
+                                    (None, Some(image)) => RasterSource::Image(image.clone()),
+                                    (None, None) => continue,
                                 },
                                 natural_size: v.media_size,
                             },
@@ -808,25 +792,28 @@ fn svg_target_long_edge(scene_size: (u32, u32), preview_scale: Option<f32>) -> u
 // Вспомогательные функции
 // ---------------------------------------------------------------------------
 
-fn video_frame_to_image(
-    mut frame: VideoFrame,
-    cache: &mut crate::compositor::texture_cache::TextureCache,
-) -> DecodedVideoFrame {
+fn video_frame_to_cached(mut frame: VideoFrame) -> DecodedVideoFrame {
     let width = frame.width;
     let height = frame.height;
     let pts_sec = frame.pts_sec;
-    let texture_key = std::mem::take(&mut frame.texture).map(|t| cache.insert(t));
-    let blob = Blob::new(Arc::new(std::mem::take(&mut frame.pixels)));
-    DecodedVideoFrame {
-        pts_sec,
-        image: ImageData {
-            data: blob,
+    // GPU-текстуру забираем из кадра во владение Arc'а. CPU-пиксели держим ТОЛЬКО если
+    // GPU-аплоада не было (нет device): иначе это чистый дубль GPU-кадра — не копим его.
+    let texture = std::mem::take(&mut frame.texture).map(Arc::new);
+    let image = if texture.is_some() {
+        None
+    } else {
+        Some(ImageData {
+            data: Blob::new(Arc::new(std::mem::take(&mut frame.pixels))),
             format: ImageFormat::Rgba8,
             alpha_type: ImageAlphaType::Alpha,
             width,
             height,
-        },
-        texture_key,
+        })
+    };
+    DecodedVideoFrame {
+        pts_sec,
+        image,
+        texture,
     }
 }
 

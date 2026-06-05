@@ -510,7 +510,6 @@ impl WindowState {
                     &mut self.surface,
                     width,
                     height,
-                    &self.layers.texture_cache,
                 ) {
                     log::error!("[monitor] compositor render: {e:?}");
                     emit_layer_failed(&self.app, "<surface>", "render", &e.to_string());
@@ -535,7 +534,7 @@ impl WindowState {
                 // в `about_to_wait`.
                 match self
                     .compositor
-                    .render_scene_to_pixels(dev_id, &scene, width, height, &self.layers.texture_cache)
+                    .render_scene_to_pixels(dev_id, &scene, width, height)
                 {
                     Ok(pixels) => {
                         let mut payload = Vec::with_capacity(8 + pixels.len());

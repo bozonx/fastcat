@@ -13,15 +13,22 @@
 //! индексу от последнего запрошенного времени.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use vello::peniko::ImageData;
 
-/// Один декодированный кадр: PTS внутри исходника (секунды) + готовый к отрисовке RGBA.
+/// Один декодированный кадр внутри исходника (PTS в секундах).
+///
+/// GPU-резидентный кадр держит `texture` (Arc на `wgpu::Texture`) — текстура жива ровно
+/// пока кадр в кеше или показывается (`current`), без отдельного глобального кеша с
+/// независимым вытеснением. `image` (CPU-blob RGBA) хранится ТОЛЬКО как fallback, когда
+/// GPU-аплоад недоступен (у декодера нет wgpu device): иначе это был бы чистый дубль
+/// GPU-кадра (~8 МБ @1080p на кадр впустую).
 #[derive(Clone)]
 pub struct DecodedVideoFrame {
     pub pts_sec: f64,
-    pub image: ImageData,
-    pub texture_key: Option<crate::compositor::texture_cache::TextureKey>,
+    pub image: Option<ImageData>,
+    pub texture: Option<Arc<wgpu::Texture>>,
 }
 
 /// Бюджет памяти кеша на один слой. ~192 МБ: для 1080p (~8 МБ/кадр) это ~23 кадра,
@@ -64,24 +71,12 @@ impl VideoFrameCache {
         (pts_sec * CACHE_KEY_HZ).round() as i64
     }
 
-    /// Вставляет кадр и возвращает `texture_key`'и кадров, выбывших из кеша
-    /// (вытеснены по бюджету или перезаписаны тем же ключом). Вызывающий обязан
-    /// удалить их из общего `TextureCache`, иначе GPU-текстуры утекут/осиротеют.
-    #[must_use]
-    pub fn insert(
-        &mut self,
-        frame: DecodedVideoFrame,
-    ) -> Vec<crate::compositor::texture_cache::TextureKey> {
+    /// Вставляет кадр. Вытесненные/перезаписанные кадры освобождают свою GPU-текстуру
+    /// автоматически через `Drop` Arc'а — отдельной синхронизации с внешним кешем не нужно.
+    pub fn insert(&mut self, frame: DecodedVideoFrame) {
         let key = self.index_of(frame.pts_sec);
-        let mut evicted = Vec::new();
-        if let Some(old) = self.frames.insert(key, frame) {
-            // Тот же мс-ключ перезаписан — старая текстура больше не достижима.
-            if let Some(tk) = old.texture_key {
-                evicted.push(tk);
-            }
-        }
-        self.evict(&mut evicted);
-        evicted
+        self.frames.insert(key, frame);
+        self.evict();
     }
 
     /// Кадр с наибольшим PTS ≤ target (то, что должно быть на экране в момент target).
@@ -170,7 +165,7 @@ impl VideoFrameCache {
         }
     }
 
-    fn evict(&mut self, evicted: &mut Vec<crate::compositor::texture_cache::TextureKey>) {
+    fn evict(&mut self) {
         while self.frames.len() > self.capacity {
             // Вытесняем кадр, наиболее удалённый по индексу от последнего запроса:
             // при скрабе/воспроизведении локальность доступа — вокруг текущей позиции.
@@ -180,22 +175,13 @@ impl VideoFrameCache {
                 .copied()
                 .max_by_key(|k| (*k - self.last_request).abs());
             match victim {
+                // GPU-текстура вытесненного кадра освобождается дропом его Arc.
                 Some(k) => {
-                    if let Some(frame) = self.frames.remove(&k) {
-                        if let Some(tk) = frame.texture_key {
-                            evicted.push(tk);
-                        }
-                    }
+                    self.frames.remove(&k);
                 }
                 None => break,
             }
         }
-    }
-
-    /// Все `texture_key`'и, которые кеш сейчас держит. Нужны при сбросе рантайма,
-    /// чтобы освободить GPU-текстуры в общем `TextureCache`.
-    pub fn texture_keys(&self) -> impl Iterator<Item = crate::compositor::texture_cache::TextureKey> + '_ {
-        self.frames.values().filter_map(|f| f.texture_key)
     }
 }
 
@@ -215,8 +201,8 @@ mod tests {
         };
         DecodedVideoFrame {
             pts_sec: pts,
-            image,
-            texture_key: None,
+            image: Some(image),
+            texture: None,
         }
     }
 

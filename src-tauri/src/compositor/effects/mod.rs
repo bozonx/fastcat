@@ -105,8 +105,13 @@ struct CachedResources {
     width: u32,
     height: u32,
     input: Option<wgpu::Texture>,
+    // Текстуры держим как канонических владельцев; пассы пишут/читают через *_view.
+    // Финальный пасс теперь целится в отдельную owned-текстуру (см. `apply_effects`),
+    // поэтому сами `ping`/`pong` напрямую больше не читаются — только их вью.
+    #[allow(dead_code)]
     ping: wgpu::Texture,
     ping_view: wgpu::TextureView,
+    #[allow(dead_code)]
     pong: wgpu::Texture,
     pong_view: wgpu::TextureView,
 }
@@ -327,8 +332,31 @@ impl EffectPipeline {
             EffectSource::Gpu(tex) => tex.create_view(&wgpu::TextureViewDescriptor::default()),
         };
 
+        // Финальный результат пишем сразу в owned-текстуру, а не в кешированную ping/pong
+        // с последующей копией: раньше `copy_texture_owned` делал лишний полнокадровый
+        // GPU→GPU копи на каждый слой с эффектами на каждый кадр. Последний пасс целится
+        // прямо в эту текстуру; промежуточные по-прежнему пинг-понгуют по кешу.
+        let owned = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("native-effect-owned-output"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        });
+        let owned_view = owned.create_view(&wgpu::TextureViewDescriptor::default());
+
         let ping_view = &resources.ping_view;
         let pong_view = &resources.pong_view;
+        let last_index = passes.len() - 1;
         let mut last_is_ping = false;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("native-effect-encoder"),
@@ -347,10 +375,16 @@ impl EffectPipeline {
             } else {
                 pong_view
             };
-            let target_view = if index == 0 || !last_is_ping {
+            // Промежуточный таргет в пинг-понг-кеше; на последнем пассе пишем в owned.
+            let intermediate_target = if index == 0 || !last_is_ping {
                 ping_view
             } else {
                 pong_view
+            };
+            let target_view = if index == last_index {
+                &owned_view
+            } else {
+                intermediate_target
             };
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("native-effect-bind-group"),
@@ -383,12 +417,7 @@ impl EffectPipeline {
         }
 
         queue.submit([encoder.finish()]);
-        let output = if last_is_ping {
-            &resources.ping
-        } else {
-            &resources.pong
-        };
-        copy_texture_owned(device, queue, output, width, height)
+        Ok(owned)
     }
 }
 
