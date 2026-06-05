@@ -73,8 +73,9 @@ export interface MediaMetadata {
   };
   /** Per-channel waveform peaks. Stored as Float32Array (4 B/sample) rather
    *  than `number[]` (~28 B/sample) so a 1-hour stereo source costs ~5.7 MB
-   *  in RAM instead of ~40 MB. Persisted to OPFS as JSON `number[][]` for
-   *  backward compatibility — convert at the boundary. */
+   *  in RAM instead of ~40 MB. Persisted to OPFS via a fingerprinted binary
+   *  envelope (see serializeWaveformCacheEntry); legacy JSON `number[][]` and
+   *  bare-binary blobs are still read for backward compatibility. */
   audioPeaks?: Float32Array[];
   error?: boolean;
 }
@@ -671,7 +672,11 @@ export const useMediaStore = defineStore('media', () => {
       const handle = await projectStore.getFileHandleByPath(sourceKey);
       const nativePath = getNativeFileHandlePath(handle);
       if (nativePath) {
-        const nativePeaks = await nativeMediaExtractPeaks(nativePath, maxLength, options?.precision);
+        const nativePeaks = await nativeMediaExtractPeaks(
+          nativePath,
+          maxLength,
+          options?.precision,
+        );
         if (nativePeaks && nativePeaks.length > 0) {
           return nativePeaks;
         }
@@ -706,14 +711,17 @@ export const useMediaStore = defineStore('media', () => {
         options,
       };
       if (isLazyTauriFile(file)) {
-        file.arrayBuffer().then((buf) => {
-          payload.arrayBuffer = buf;
-          worker.postMessage(payload, [buf]);
-        }).catch((err: unknown) => {
-          log.warn('Failed to read lazy file for peaks extraction', err);
-          decodePending.delete(id);
-          resolve(null);
-        });
+        file
+          .arrayBuffer()
+          .then((buf) => {
+            payload.arrayBuffer = buf;
+            worker.postMessage(payload, [buf]);
+          })
+          .catch((err: unknown) => {
+            log.warn('Failed to read lazy file for peaks extraction', err);
+            decodePending.delete(id);
+            resolve(null);
+          });
       } else {
         payload.blob = file;
         worker.postMessage(payload);

@@ -92,7 +92,8 @@ export function resolveWaveformSourceUs(params: WaveformSourceTimeParams): numbe
   const sourceStartUs = Math.max(0, Math.round(params.sourceStartUs));
   const sourceRangeDurationUs = Math.max(0, Math.round(params.sourceRangeDurationUs));
   const speed = normalizeWaveformSpeed(params.speed);
-  const signedSpeed = typeof params.speed === 'number' && Number.isFinite(params.speed) ? params.speed : 1;
+  const signedSpeed =
+    typeof params.speed === 'number' && Number.isFinite(params.speed) ? params.speed : 1;
   const sourceOffsetUs =
     signedSpeed < 0
       ? sourceRangeDurationUs + Math.round(localUs * signedSpeed)

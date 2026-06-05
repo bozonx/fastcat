@@ -116,11 +116,10 @@ fn resample_channel(mip: &[f32], output_len: usize) -> Vec<f32> {
 /// the real decoded frame count, the output never depends on (potentially wrong)
 /// container `n_frames` metadata, and the file is decoded exactly once.
 pub fn extract_peaks(path: &Path, max_length: usize) -> Result<Vec<Vec<f32>>> {
-    let max_length = max_length.min(MAX_PEAK_LENGTH).max(1);
+    let max_length = max_length.clamp(1, MAX_PEAK_LENGTH);
     let target_buckets = max_length
         .saturating_mul(MIP_OVERSAMPLE)
-        .min(MAX_MIP_BUCKETS)
-        .max(1);
+        .clamp(1, MAX_MIP_BUCKETS);
 
     let mut state = open_audio_decoder(path)?;
     let mut mip: Vec<Vec<f32>> = vec![Vec::new(); state.channels.max(1)];

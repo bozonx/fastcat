@@ -67,11 +67,16 @@ export const EXTENSION_MIME_MAPPING: Record<string, string> = {
 
 export type MediaType = 'video' | 'audio' | 'image' | 'text' | 'timeline' | 'unknown';
 
+function extractExtension(filename: string): string {
+  const clean = filename.split(/[?#]/)[0] ?? filename;
+  return clean.split('.').pop()?.toLowerCase() || '';
+}
+
 /**
  * Returns the media type for a filename.
  */
 export function getMediaTypeFromFilename(filename: string): MediaType {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  const ext = extractExtension(filename);
   if (VIDEO_EXTENSIONS.includes(ext)) return 'video';
   if (AUDIO_EXTENSIONS.includes(ext)) return 'audio';
   if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
@@ -84,7 +89,7 @@ export function getMediaTypeFromFilename(filename: string): MediaType {
  * Returns the mime type for a filename based on its extension.
  */
 export function getMimeTypeFromFilename(filename: string): string {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  const ext = extractExtension(filename);
   return EXTENSION_MIME_MAPPING[ext] || 'application/octet-stream';
 }
 

@@ -481,7 +481,7 @@ export class TauriFileSystemAdapter implements IFileSystemAdapter {
   async getObjectUrl(path: string): Promise<string> {
     const absolutePath = await this.resolveStreamPath(path);
     const metadata = await this.getMetadata(path);
-    const version = metadata?.lastModified ? `#v=${metadata.lastModified}` : '';
+    const version = metadata?.lastModified ? `?v=${metadata.lastModified}` : '';
     return `${convertFileSrc(absolutePath)}${version}`;
   }
 
