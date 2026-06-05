@@ -48,12 +48,11 @@ impl DecodePump {
     pub fn open(
         path: &Path,
         max_output_long_edge: Option<u32>,
-        hw_settings: crate::FfmpegHardwareSettings,
         on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
         device: Option<wgpu::Device>,
         queue: Option<wgpu::Queue>,
     ) -> Result<Self> {
-        let decoder = open_decoder(path, max_output_long_edge, hw_settings)?;
+        let decoder = open_decoder(path, max_output_long_edge)?;
         let info = decoder.info().clone();
 
         let (frame_tx, frame_rx) = mpsc::sync_channel::<DecodedFrameMsg>(QUEUE_CAPACITY);

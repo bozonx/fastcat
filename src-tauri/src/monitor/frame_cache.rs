@@ -33,12 +33,17 @@ const MAX_FRAMES: usize = 300;
 pub struct VideoFrameCache {
     fps: f64,
     capacity: usize,
-    /// Ключ — индекс кадра `round(pts * fps)`: абсолютная позиция в исходнике,
-    /// стабильная между поколениями декодера (один файл+scale).
+    /// Ключ — PTS, квантованный к миллисекундам (`round(pts * 1000)`): абсолютная позиция
+    /// в исходнике, стабильная между поколениями декодера (один файл+scale). Миллисекундная
+    /// сетка (а не `round(pts*fps)`) не схлопывает соседние кадры на VFR-источниках, где
+    /// реальный интервал между кадрами не равен 1/avg_fps.
     frames: BTreeMap<i64, DecodedVideoFrame>,
-    /// Последний запрошенный индекс — центр локальности для вытеснения.
+    /// Последний запрошенный ключ (мс) — центр локальности для вытеснения.
     last_request: i64,
 }
+
+/// Квантизация PTS (секунды) в ключ кеша — миллисекунды.
+const CACHE_KEY_HZ: f64 = 1000.0;
 
 impl VideoFrameCache {
     pub fn new(fps: f64, frame_bytes: usize) -> Self {
@@ -56,7 +61,7 @@ impl VideoFrameCache {
     }
 
     fn index_of(&self, pts_sec: f64) -> i64 {
-        (pts_sec * self.fps).round() as i64
+        (pts_sec * CACHE_KEY_HZ).round() as i64
     }
 
     pub fn insert(&mut self, frame: DecodedVideoFrame) {
@@ -110,7 +115,9 @@ impl VideoFrameCache {
             (None, Some(b)) => b,
             (None, None) => return false,
         };
-        best <= tolerance_frames
+        // Ключи в миллисекундах → переводим допуск из кадров в мс по fps.
+        let tolerance_ms = ((tolerance_frames as f64) * CACHE_KEY_HZ / self.fps).round() as i64;
+        best <= tolerance_ms
     }
 
     fn evict(&mut self) {
@@ -181,6 +188,18 @@ mod tests {
         c.insert(frame(1.0));
 
         assert_eq!(c.frame_le(1.5).map(|f| f.pts_sec), Some(1.0));
+    }
+
+    #[test]
+    fn vfr_frames_closer_than_avg_interval_do_not_collide() {
+        // avg fps=30 → интервал 33мс. Два кадра в 10мс друг от друга (типично для VFR)
+        // при старом ключе round(pts*fps) схлопнулись бы в один индекс; мс-ключ их различает.
+        let mut c = VideoFrameCache::new(30.0, 4);
+        c.insert(frame(1.00));
+        c.insert(frame(1.01));
+        assert_eq!(c.frames.len(), 2);
+        assert_eq!(c.frame_le(1.005).map(|f| f.pts_sec), Some(1.00));
+        assert_eq!(c.frame_le(1.02).map(|f| f.pts_sec), Some(1.01));
     }
 
     #[test]

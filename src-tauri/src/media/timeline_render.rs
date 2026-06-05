@@ -33,7 +33,7 @@ impl VideoDecoderCache {
         }
     }
 
-    pub fn get_or_insert(&mut self, path: &Path, hw_settings: crate::FfmpegHardwareSettings) -> Result<&mut dyn VideoDecoder> {
+    pub fn get_or_insert(&mut self, path: &Path) -> Result<&mut dyn VideoDecoder> {
         let path_buf = path.to_path_buf();
         if !self.decoders.contains_key(&path_buf) {
             while self.decoders.len() >= self.capacity && !self.decoders.is_empty() {
@@ -43,7 +43,7 @@ impl VideoDecoderCache {
                     }
                 }
             }
-            let decoder = open_decoder(path, None, hw_settings)?;
+            let decoder = open_decoder(path, None)?;
             self.decoders.insert(path_buf.clone(), decoder);
         }
         self.lru.retain(|p| p != &path_buf);
@@ -83,11 +83,10 @@ pub fn render_timeline_frame_to_file(
     height: u32,
     target_path: &Path,
     quality: f32,
-    hw_settings: crate::FfmpegHardwareSettings,
 ) -> Result<()> {
     let mut cache = VideoDecoderCache::new();
     let compositor_scene =
-        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache, hw_settings)?;
+        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
     let pixels = render_pooled(&compositor_scene, width, height)?;
     save_rgba_as_webp(target_path, &pixels, width.max(1), height.max(1), quality)
 }
@@ -98,11 +97,10 @@ pub fn render_timeline_frame_to_webp(
     width: u32,
     height: u32,
     _quality: f32,
-    hw_settings: crate::FfmpegHardwareSettings,
 ) -> Result<Vec<u8>> {
     let mut cache = VideoDecoderCache::new();
     let compositor_scene =
-        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache, hw_settings)?;
+        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
     let pixels = render_pooled(&compositor_scene, width, height)?;
 
     let mut bytes = Vec::new();
@@ -122,7 +120,6 @@ pub(crate) fn build_export_scene(
     time_sec: f64,
     target_size: (u32, u32),
     cache: &mut VideoDecoderCache,
-    hw_settings: crate::FfmpegHardwareSettings,
 ) -> Result<Scene> {
     let scene_w = scene.width.max(1);
     let scene_h = scene.height.max(1);
@@ -140,7 +137,7 @@ pub(crate) fn build_export_scene(
             continue;
         }
         let (layer_kind, source_rotation) =
-            match build_raster_kind(layer, time_sec, svg_long_edge, cache, hw_settings.clone())? {
+            match build_raster_kind(layer, time_sec, svg_long_edge, cache)? {
                 Some(built) => (built.kind, built.source_rotation),
                 None => match build_virtual_kind(layer, (scene_w, scene_h)) {
                     Some(kind) => (kind, 0),
@@ -170,7 +167,6 @@ fn build_raster_kind(
     time_sec: f64,
     svg_long_edge: u32,
     cache: &mut VideoDecoderCache,
-    hw_settings: crate::FfmpegHardwareSettings,
 ) -> Result<Option<RasterBuild>> {
     let built = match layer.kind {
         LayerKind::Video => {
@@ -178,7 +174,6 @@ fn build_raster_kind(
                 Path::new(&layer.path),
                 layer.source_pts_at(time_sec),
                 cache,
-                hw_settings,
             )?;
             let size = (frame.width, frame.height);
             RasterBuild {
@@ -218,9 +213,8 @@ fn decode_video_frame_cached(
     path: &Path,
     time_sec: f64,
     cache: &mut VideoDecoderCache,
-    hw_settings: crate::FfmpegHardwareSettings,
 ) -> Result<(VideoFrame, i32)> {
-    let decoder = cache.get_or_insert(path, hw_settings)?;
+    let decoder = cache.get_or_insert(path)?;
     let source_rotation = decoder.info().rotation;
     decoder.seek(time_sec)?;
     let frame = decoder

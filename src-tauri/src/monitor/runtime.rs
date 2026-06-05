@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 use winit::event_loop::EventLoopProxy;
 
@@ -222,7 +222,9 @@ impl LayerRuntimeManager {
     /// Обновляет сцену, дропает вышедшие рантаймы, сбрасывает видео при смене scale.
     /// Возвращает `true`, если нужно перерисовать окно.
     pub fn apply_scene(&mut self, scene: MonitorScene) -> bool {
-        self.preview_fps = scene.preview_fps;
+        // Санитайз: фронт может прислать 0/NaN/отрицательное, а `preview_fps` идёт в
+        // `Duration::from_secs_f64(1.0 / fps)` в event-loop, который паникует на не-finite.
+        self.preview_fps = sanitize_preview_fps(scene.preview_fps);
         self.preview_sync_mode = scene.preview_sync_mode;
         let new_ids: HashSet<String> = scene.layers.iter().map(|l| l.id.clone()).collect();
 
@@ -306,12 +308,6 @@ impl LayerRuntimeManager {
                     }
                     _ => None,
                 };
-                let hw_settings = self
-                    .app
-                    .state::<std::sync::RwLock<crate::FfmpegHardwareSettings>>()
-                    .read()
-                    .unwrap()
-                    .clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
                 std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
@@ -324,7 +320,6 @@ impl LayerRuntimeManager {
                         let result = match DecodePump::open(
                             &path,
                             max_long_edge,
-                            hw_settings,
                             Some(on_frame),
                             device,
                             queue,
@@ -704,6 +699,16 @@ fn layer_with_auto_source_rotation(layer: &SceneLayer, source_rotation: i32) -> 
     }
 }
 
+/// Защищает preview-FPS: только конечные положительные значения, зажатые в разумный
+/// диапазон. Невалидный вход → 30 fps (как `default_fps`).
+pub fn sanitize_preview_fps(fps: f64) -> f64 {
+    if fps.is_finite() && fps > 0.0 {
+        fps.clamp(1.0, 240.0)
+    } else {
+        30.0
+    }
+}
+
 fn video_sync_lag_sec(mode: PreviewSyncMode, fps: f64) -> Option<f64> {
     let fps = if fps.is_finite() && fps > 0.0 {
         fps
@@ -780,6 +785,7 @@ fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
 mod tests {
     use super::approx_eq_opt_scale;
     use super::layer_with_auto_source_rotation;
+    use super::sanitize_preview_fps;
     use super::svg_target_long_edge;
     use super::video_sync_lag_sec;
     use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};
@@ -802,6 +808,20 @@ mod tests {
     #[test]
     fn tolerates_float_noise() {
         assert!(approx_eq_opt_scale(Some(0.5), Some(0.5 + 1e-6)));
+    }
+
+    #[test]
+    fn sanitize_preview_fps_guards_against_non_finite_and_nonpositive() {
+        // Валидные значения проходят как есть.
+        assert_eq!(sanitize_preview_fps(30.0), 30.0);
+        assert_eq!(sanitize_preview_fps(60.0), 60.0);
+        // 0/отрицательное/NaN/inf → дефолт 30 (иначе паника в Duration::from_secs_f64).
+        assert_eq!(sanitize_preview_fps(0.0), 30.0);
+        assert_eq!(sanitize_preview_fps(-5.0), 30.0);
+        assert_eq!(sanitize_preview_fps(f64::NAN), 30.0);
+        assert_eq!(sanitize_preview_fps(f64::INFINITY), 30.0);
+        // Кламп сверху.
+        assert_eq!(sanitize_preview_fps(100000.0), 240.0);
     }
 
     #[test]

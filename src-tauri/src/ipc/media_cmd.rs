@@ -143,12 +143,10 @@ pub async fn native_timeline_render_frame_to_file(
     height: u32,
     target_path: String,
     quality: f32,
-    hw_settings: tauri::State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
     let target_path = PathBuf::from(target_path);
-    let hw = hw_settings.read().unwrap().clone();
     tokio::task::spawn_blocking(move || {
-        render_timeline_frame_to_file(scene, time_sec, width, height, &target_path, quality, hw)
+        render_timeline_frame_to_file(scene, time_sec, width, height, &target_path, quality)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -162,11 +160,9 @@ pub async fn native_timeline_render_frame_webp(
     width: u32,
     height: u32,
     quality: f32,
-    hw_settings: tauri::State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
-    let hw = hw_settings.read().unwrap().clone();
     tokio::task::spawn_blocking(move || {
-        render_timeline_frame_to_webp(scene, time_sec, width, height, quality, hw)
+        render_timeline_frame_to_webp(scene, time_sec, width, height, quality)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -199,12 +195,10 @@ pub async fn native_video_frame_webps(
     max_width: u32,
     max_height: u32,
     quality: f32,
-    hw_settings: tauri::State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
     let source_path = PathBuf::from(source_path);
-    let hw = hw_settings.read().unwrap().clone();
     let frames = tokio::task::spawn_blocking(move || {
-        extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality, hw)
+        extract_video_frame_webps(&source_path, &times_sec, max_width, max_height, quality)
     })
     .await
     .map_err(|e| e.to_string())?

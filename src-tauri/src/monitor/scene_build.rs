@@ -376,6 +376,12 @@ pub fn finalize_layer(
     let local_t = time_sec - sl.timeline_start_sec;
     let opacity = compute_transition_opacity(sl, local_t, base_opacity);
 
+    // Шейдерные переходы (wipe/slide/circle/…) рендерит ТОЛЬКО входящий клип через
+    // `transition_in` (он композитится поверх `from_layer`). Non-dissolve `transition_out`
+    // намеренно не даёт отдельного шейдерного прохода: переход «принадлежит» следующему
+    // клипу. Для `transition_out` поддержан лишь dissolve (через альфу в
+    // `compute_transition_opacity`). Полноценный «wipe в пустоту» на последнем клипе —
+    // отдельная фича, а не баг этой ветки.
     let mut transition = None;
     if let Some(t_in) = &sl.transition_in {
         let in_dur = t_in.duration_sec;
@@ -738,16 +744,18 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
     let hex = input.trim().trim_start_matches('#');
     let parse_pair = |s: &str| u8::from_str_radix(s, 16).ok();
     let (r, g, b, a) = match hex.len() {
-        3 => {
+        3 | 4 => {
             let mut chars = hex.chars();
             let dbl =
                 |c: Option<char>| c.and_then(|c| u8::from_str_radix(&format!("{c}{c}"), 16).ok());
-            (
-                dbl(chars.next()),
-                dbl(chars.next()),
-                dbl(chars.next()),
-                Some(255),
-            )
+            let (r, g, b) = (dbl(chars.next()), dbl(chars.next()), dbl(chars.next()));
+            // 4-значная форма `#rgba` несёт альфу в четвёртом ниббле.
+            let a = if hex.len() == 4 {
+                dbl(chars.next())
+            } else {
+                Some(255)
+            };
+            (r, g, b, a)
         }
         6 | 8 => (
             parse_pair(&hex[0..2]),
@@ -925,6 +933,15 @@ mod tests {
         let c2 = parse_color("00ff00", 0.5);
         assert_eq!(c2.to_rgba8().g, 255);
         assert_eq!(c2.to_rgba8().a, 128);
+    }
+
+    #[test]
+    fn parses_four_digit_rgba_hex() {
+        // #rgba: красный, полупрозрачный (a-ниббл 8 → 0x88).
+        let c = parse_color("#f008", 1.0);
+        let rgba = c.to_rgba8();
+        assert_eq!((rgba.r, rgba.g, rgba.b), (255, 0, 0));
+        assert_eq!(rgba.a, 0x88);
     }
 
     #[test]

@@ -10,12 +10,8 @@ use anyhow::{anyhow, Context, Result};
 use ffmpeg_next as ffmpeg;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
-use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Child, ChildStdout, Command, Stdio};
 use std::sync::{Arc, Mutex};
-
-use crate::media::ffmpeg_utils::*;
 
 #[derive(Debug, Clone)]
 pub struct MediaInfo {
@@ -69,6 +65,10 @@ pub struct FfmpegNextDecoder {
     stream_index: usize,
     stream_time_base: ffmpeg::Rational,
     eof_sent: bool,
+    /// Цель frame-accurate seek (секунды stream-time). После `seek` libav становится
+    /// на ближайший ключевой кадр ≤ target; `next_frame` отбрасывает кадры с PTS заметно
+    /// меньше target, пока не дойдёт до запрошенного. `None` — нет активного seek.
+    seek_target: Option<f64>,
 }
 
 // The decoder is created on the caller thread and then moved as a whole into one decode thread.
@@ -163,7 +163,26 @@ impl FfmpegNextDecoder {
             stream_index,
             stream_time_base,
             eof_sent: false,
+            seek_target: None,
         })
+    }
+
+    /// FPS для расчёта допуска frame-accurate seek; защищён от нулевого/невалидного значения.
+    fn effective_fps(&self) -> f64 {
+        if self.info.fps.is_finite() && self.info.fps > 0.0 {
+            self.info.fps
+        } else {
+            30.0
+        }
+    }
+
+    /// PTS декодированного кадра в секундах stream-time.
+    fn frame_pts_sec(&self, decoded: &ffmpeg::util::frame::Video) -> f64 {
+        decoded
+            .timestamp()
+            .or_else(|| decoded.pts())
+            .map(|pts| pts as f64 * rational_as_f64(self.stream_time_base))
+            .unwrap_or(0.0)
     }
 
     fn decode_frame(&mut self, decoded: &ffmpeg::util::frame::Video) -> Result<VideoFrame> {
@@ -211,11 +230,7 @@ impl FfmpegNextDecoder {
                 .copy_from_slice(&rgba.data(0)[src_start..src_start + row_bytes]);
         }
 
-        let pts_sec = decoded
-            .timestamp()
-            .or_else(|| decoded.pts())
-            .map(|pts| pts as f64 * rational_as_f64(self.stream_time_base))
-            .unwrap_or(0.0);
+        let pts_sec = self.frame_pts_sec(decoded);
 
         Ok(VideoFrame {
             width: coded_width,
@@ -234,7 +249,8 @@ impl VideoDecoder for FfmpegNextDecoder {
     }
 
     fn seek(&mut self, time_sec: f64) -> Result<()> {
-        let ts = (time_sec.max(0.0) * 1_000_000.0).round() as i64;
+        let target = time_sec.max(0.0);
+        let ts = (target * 1_000_000.0).round() as i64;
         self.ictx.seek(ts, ..ts).with_context(|| {
             format!(
                 "failed to seek ffmpeg-next decoder for {}",
@@ -243,6 +259,9 @@ impl VideoDecoder for FfmpegNextDecoder {
         })?;
         self.decoder.flush();
         self.eof_sent = false;
+        // libav становится на ключевой кадр ≤ target; запоминаем цель, чтобы `next_frame`
+        // декодировал и отбросил кадры внутри GOP вплоть до запрошенной позиции.
+        self.seek_target = Some(target);
         Ok(())
     }
 
@@ -250,9 +269,23 @@ impl VideoDecoder for FfmpegNextDecoder {
         loop {
             let mut decoded = ffmpeg::util::frame::Video::empty();
             match self.decoder.receive_frame(&mut decoded) {
-                Ok(()) => return self.decode_frame(&decoded).map(Some),
+                Ok(()) => {
+                    // Frame-accurate seek: после прыжка на ключевой кадр пропускаем кадры,
+                    // отстающие от цели больше чем на полкадра, не тратя CPU на их scale-в-RGBA.
+                    if let Some(target) = self.seek_target {
+                        let tolerance = 0.5 / self.effective_fps();
+                        if self.frame_pts_sec(&decoded) < target - tolerance {
+                            continue;
+                        }
+                        self.seek_target = None;
+                    }
+                    return self.decode_frame(&decoded).map(Some);
+                }
                 Err(ffmpeg::Error::Other { errno }) if errno == ffmpeg::error::EAGAIN => {}
-                Err(ffmpeg::Error::Eof) => return Ok(None),
+                Err(ffmpeg::Error::Eof) => {
+                    self.seek_target = None;
+                    return Ok(None);
+                }
                 Err(error) => return Err(error).context("failed to receive ffmpeg-next frame"),
             }
 
@@ -282,243 +315,18 @@ impl VideoDecoder for FfmpegNextDecoder {
     }
 }
 
-pub struct FfmpegCliDecoder {
-    path: PathBuf,
-    info: MediaInfo,
-    frame_bytes: usize,
-    child: Option<Child>,
-    stdout: Option<ChildStdout>,
-    /// Время в треке, с которого запущен текущий subprocess.
-    start_time: f64,
-    /// Индекс кадра в рамках текущего subprocess.
-    frame_index: u64,
-    cached_frame: Option<VideoFrame>,
-    hw_settings: crate::FfmpegHardwareSettings,
-}
-
-impl FfmpegCliDecoder {
-    /// `max_output_long_edge` — максимальная длинная сторона декодированного кадра в пикселях.
-    /// Если `Some(n)` и source-длинная сторона > n, ffmpeg downscale'нет (`-vf scale=...`),
-    /// что радикально снижает CPU/GPU-нагрузку для 4K/HEVC превью. Аспект сохраняется.
-    /// При `None` или если source меньше — декод в source-разрешении.
-    pub fn open(path: &Path, max_output_long_edge: Option<u32>, hw_settings: crate::FfmpegHardwareSettings) -> Result<Self> {
-        let mut info = probe(path, &hw_settings.ffprobe_path)?;
-
-        // FFmpeg autorotate applies display-matrix rotation before our filter graph. For phone
-        // videos stored as landscape-coded frames with a 90/270 degree display rotation, scaling
-        // back to coded width/height would squash the already-rotated portrait frame.
-        let (visual_w, visual_h) = visual_dimensions(info.width, info.height, info.rotation);
-        let (out_w, out_h) = compute_output_dims(visual_w, visual_h, max_output_long_edge);
-        info.width = out_w;
-        info.height = out_h;
-        info.rotation = 0;
-
-        let frame_bytes = (out_w as usize)
-            .checked_mul(out_h as usize)
-            .and_then(|n| n.checked_mul(4))
-            .ok_or_else(|| anyhow!("invalid frame size"))?;
-        let mut dec = Self {
-            path: path.to_path_buf(),
-            info,
-            frame_bytes,
-            child: None,
-            stdout: None,
-            start_time: 0.0,
-            frame_index: 0,
-            cached_frame: None,
-            hw_settings,
-        };
-        dec.spawn(0.0)?;
-        Ok(dec)
-    }
-
-    fn spawn(&mut self, time_sec: f64) -> Result<()> {
-        self.kill();
-        self.cached_frame = None;
-        let time_sec = time_sec.max(0.0);
-        let mut cmd = Command::new(&self.hw_settings.ffmpeg_path);
-        cmd.arg("-nostdin").arg("-loglevel").arg("error");
-
-        let hw_accel = &self.hw_settings.hardware_acceleration_mode;
-        if hw_accel != "none" {
-            let mode = if hw_accel == "auto" {
-                if std::path::Path::new(&self.hw_settings.vaapi_device).exists() {
-                    "vaapi"
-                } else {
-                    "none"
-                }
-            } else {
-                hw_accel.as_str()
-            };
-
-            match mode {
-                "vaapi" => {
-                    cmd.arg("-hwaccel").arg("vaapi")
-                       .arg("-hwaccel_device").arg(&self.hw_settings.vaapi_device);
-                }
-                "nvdec" => {
-                    cmd.arg("-hwaccel").arg("nvdec");
-                }
-                _ => {}
-            }
-        }
-
-        // Двухэтапный seek для frame-accurate позиционирования:
-        //   1) `-ss <pre>` ДО `-i` — быстрый прыжок к ближайшему keyframe (pre = t − 0.5s);
-        //   2) `-ss <post>` ПОСЛЕ `-i` — точный досдвиг оставшихся ≤0.5s внутри GOP.
-        // При time_sec ≤ 0.5 первый этап пропускается (pre=0, post=time_sec).
-        // PTS считаем как start_time + frame_index / fps (cfr-вывод через -vf fps=...).
-        let pre = if time_sec > 0.5 { time_sec - 0.5 } else { 0.0 };
-        let post = time_sec - pre;
-        if pre > 0.0 {
-            cmd.arg("-ss").arg(format!("{pre}"));
-        }
-        if self.info.codec == "vp9" {
-            cmd.arg("-c:v").arg("libvpx-vp9");
-        }
-        cmd.arg("-i").arg(&self.path);
-        if post > 0.0 || pre > 0.0 {
-            cmd.arg("-ss").arg(format!("{post}"));
-        }
-
-        cmd.arg("-f")
-            .arg("rawvideo")
-            .arg("-pix_fmt")
-            .arg("rgba")
-            // На случай не-квадратных пикселей форсим масштаб к декларированным размерам
-            // и cfr-таймбейс, чтобы frame_index/fps давал корректные PTS.
-            .arg("-vf")
-            .arg(format!(
-                "format=rgba,scale={}:{},fps={}",
-                self.info.width,
-                self.info.height,
-                format_fps(self.info.fps)
-            ))
-            .arg("-an")
-            .arg("-")
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
-        let mut child = cmd
-            .spawn()
-            .context("failed to spawn ffmpeg (is it installed and on PATH?)")?;
-        self.stdout = child.stdout.take();
-        self.child = Some(child);
-        self.start_time = time_sec;
-        self.frame_index = 0;
-        Ok(())
-    }
-
-    fn kill(&mut self) {
-        self.stdout = None;
-        if let Some(mut child) = self.child.take() {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
-    }
-}
-
-impl Drop for FfmpegCliDecoder {
-    fn drop(&mut self) {
-        self.kill();
-    }
-}
-
-impl VideoDecoder for FfmpegCliDecoder {
-    fn info(&self) -> &MediaInfo {
-        &self.info
-    }
-
-    fn seek(&mut self, time_sec: f64) -> Result<()> {
-        let fps = if self.info.fps > 0.0 {
-            self.info.fps
-        } else {
-            30.0
-        };
-        let current_pts = self.start_time + self.frame_index as f64 / fps;
-
-        // Если мы хотим переместиться вперед на небольшое расстояние (до 1.0 секунды),
-        // читаем кадры последовательно вместо перезапуска процесса.
-        if time_sec >= current_pts && time_sec - current_pts < 1.0 {
-            let mut last_frame = None;
-            while let Some(frame) = self.next_frame()? {
-                let pts = frame.pts_sec;
-                last_frame = Some(frame);
-                if pts >= time_sec {
-                    break;
-                }
-            }
-            self.cached_frame = last_frame;
-            return Ok(());
-        }
-
-        self.cached_frame = None;
-        self.spawn(time_sec.max(0.0))
-    }
-
-    fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
-        if let Some(frame) = self.cached_frame.take() {
-            return Ok(Some(frame));
-        }
-
-        let stdout = match self.stdout.as_mut() {
-            Some(s) => s,
-            None => return Ok(None),
-        };
-        let mut pixels = vec![0u8; self.frame_bytes];
-        match stdout.read_exact(&mut pixels) {
-            Ok(()) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                if let Some(ref mut child) = self.child {
-                    if let Ok(Some(status)) = child.try_wait() {
-                        if !status.success() {
-                            return Err(anyhow!("ffmpeg decoder exited with error: {status}"));
-                        }
-                    }
-                }
-                return Ok(None);
-            }
-            Err(e) => return Err(e.into()),
-        }
-        let fps = if self.info.fps > 0.0 {
-            self.info.fps
-        } else {
-            30.0
-        };
-        // start_time = первый «полезный» кадр выходного потока (после двухэтапного seek),
-        // выход cfr → PTS=start_time + i/fps корректный.
-        let pts_sec = self.start_time + self.frame_index as f64 / fps;
-        self.frame_index += 1;
-        Ok(Some(VideoFrame {
-            width: self.info.width,
-            height: self.info.height,
-            pixels,
-            pts_sec,
-            texture: None,
-            texture_pool: None,
-        }))
-    }
-}
-
-pub fn open(
-    path: &Path,
-    max_output_long_edge: Option<u32>,
-    hw_settings: crate::FfmpegHardwareSettings,
-) -> Result<Box<dyn VideoDecoder>> {
-    match FfmpegNextDecoder::open(path, max_output_long_edge) {
-        Ok(decoder) => Ok(Box::new(decoder)),
-        Err(error) => {
-            log::warn!(
-                "[native-media] ffmpeg-next decoder failed for {}; falling back to ffmpeg CLI: {error:#}",
-                path.display()
-            );
-            Ok(Box::new(FfmpegCliDecoder::open(
-                path,
-                max_output_long_edge,
-                hw_settings,
-            )?))
-        }
-    }
+/// Открывает видео-декодер для preview/thumbnail/export.
+///
+/// Единственный backend — `ffmpeg-next` поверх libav*: прямой доступ к PTS/timebase,
+/// frame-accurate seek без респауна процесса. CLI-fallback намеренно убран — он давал
+/// расходящееся поведение (другой seek/rotation/PTS) и молча маскировал проблемы
+/// ffmpeg-next. Там, где нужен именно CLI (HW-энкод экспорта, одиночная extract-команда),
+/// он вызывается напрямую, а не как скрытая подмена этого декодера.
+pub fn open(path: &Path, max_output_long_edge: Option<u32>) -> Result<Box<dyn VideoDecoder>> {
+    Ok(Box::new(FfmpegNextDecoder::open(
+        path,
+        max_output_long_edge,
+    )?))
 }
 
 fn init_ffmpeg() -> Result<()> {
@@ -614,78 +422,6 @@ fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u
     (w, h)
 }
 
-fn probe(path: &Path, ffprobe_path: &str) -> Result<MediaInfo> {
-    let output = Command::new(ffprobe_path)
-        .arg("-v")
-        .arg("error")
-        .arg("-print_format")
-        .arg("json")
-        .arg("-show_streams")
-        .arg("-show_format")
-        .arg(path)
-        .output()
-        .context("failed to run ffprobe (is it installed?)")?;
-    if !output.status.success() {
-        return Err(anyhow!(
-            "ffprobe failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    let json: serde_json::Value =
-        serde_json::from_slice(&output.stdout).context("ffprobe returned non-JSON output")?;
-    let streams = json
-        .get("streams")
-        .and_then(|s| s.as_array())
-        .ok_or_else(|| anyhow!("ffprobe: no streams"))?;
-    let video = streams
-        .iter()
-        .find(|s| s.get("codec_type").and_then(|v| v.as_str()) == Some("video"))
-        .ok_or_else(|| anyhow!("no video stream"))?;
-    let width = video
-        .get("width")
-        .and_then(|v| v.as_u64())
-        .ok_or_else(|| anyhow!("missing video width"))? as u32;
-    let height = video
-        .get("height")
-        .and_then(|v| v.as_u64())
-        .ok_or_else(|| anyhow!("missing video height"))? as u32;
-    let codec = video
-        .get("codec_name")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let fps = video
-        .get("avg_frame_rate")
-        .and_then(|v| v.as_str())
-        .and_then(parse_rational)
-        .or_else(|| {
-            video
-                .get("r_frame_rate")
-                .and_then(|v| v.as_str())
-                .and_then(parse_rational)
-        })
-        .unwrap_or(0.0);
-    let duration_sec = json
-        .get("format")
-        .and_then(|f| f.get("duration"))
-        .and_then(|v| v.as_str())
-        .and_then(|s| s.parse::<f64>().ok())
-        .unwrap_or(0.0);
-    let has_audio = streams
-        .iter()
-        .any(|s| s.get("codec_type").and_then(|v| v.as_str()) == Some("audio"));
-
-    Ok(MediaInfo {
-        duration_sec,
-        width,
-        height,
-        rotation: probe_rotation(video),
-        fps,
-        codec,
-        has_audio,
-    })
-}
-
 fn visual_dimensions(width: u32, height: u32, rotation: i32) -> (u32, u32) {
     if is_quarter_turn(rotation) {
         (height, width)
@@ -731,6 +467,7 @@ pub(crate) fn parse_rotation_value(value: &serde_json::Value) -> Option<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::media::ffmpeg_utils::{format_fps, parse_rational};
 
     #[test]
     fn compute_output_dims_no_cap_returns_source() {
@@ -899,33 +636,27 @@ mod tests {
     }
 
     #[test]
-    fn ffmpeg_cli_decoder_reads_alpha_webm() {
+    fn ffmpeg_next_decoder_seek_is_frame_accurate() {
         let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
-            .join("test/fixtures/media/test_alpha_simple.webm");
-        let mut decoder = FfmpegCliDecoder::open(
-            &fixture,
-            None,
-            crate::FfmpegHardwareSettings::default(),
-        )
-        .unwrap();
-        let frame = decoder.next_frame().unwrap().unwrap();
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None).unwrap();
+        let fps = decoder.effective_fps();
 
-        assert_eq!(decoder.info().codec, "vp9");
-        assert_eq!(frame.width, 200);
-        assert_eq!(frame.height, 200);
-        assert_eq!(frame.pixels.len(), 200 * 200 * 4);
-
-        let mut has_transparency = false;
-        for i in 0..(frame.pixels.len() / 4) {
-            let alpha = frame.pixels[i * 4 + 3];
-            if alpha < 255 {
-                has_transparency = true;
-                break;
-            }
-        }
-        assert!(has_transparency, "Expected some transparent pixels in alpha webm (CLI)");
+        // Seek в середину клипа должен вернуть кадр НА запрошенной позиции (frame-accurate),
+        // а не предшествующий ключевой кадр. Допуск — полкадра.
+        let target = 0.5;
+        decoder.seek(target).unwrap();
+        let frame = decoder
+            .next_frame()
+            .unwrap()
+            .expect("frame after mid-clip seek");
+        assert!(
+            (frame.pts_sec - target).abs() <= 0.5 / fps + 1e-6,
+            "seek not frame-accurate: target={target}, got pts={}",
+            frame.pts_sec
+        );
     }
 }
 

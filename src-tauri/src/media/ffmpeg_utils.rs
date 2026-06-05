@@ -38,7 +38,7 @@ pub fn ffmpeg_video_codec_hw(codec: &str, hw_mode: &str) -> &'static str {
     }
 }
 
-/// Round down to an even number, minimum 2.
+/// Round up to the nearest even number, minimum 2.
 /// FFmpeg and many codecs require even dimensions.
 pub fn even(value: u32) -> u32 {
     (value.max(2) + 1) & !1

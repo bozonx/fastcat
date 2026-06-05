@@ -82,41 +82,37 @@ pub fn export_timeline(
     // Кол-во кадров: длительность × fps. Минимум 1 кадр (стоп-кадр для нулевого диапазона).
     let frame_count = (((end - start) * fps).round() as u64).max(1);
 
-    let hw_mode = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
+    let hw_mode = options.hardware_acceleration_mode.as_deref().unwrap_or("none").to_string();
     let hw_enabled = options.enable_hardware_encoding.unwrap_or(false);
 
-    let result = (|| -> Result<()> {
-        let mut temp_audio: Option<PathBuf> = None;
-        let audio_input = if options.audio_enabled {
-            match options.audio_path.as_deref().filter(|p| !p.is_empty()) {
-                Some(path) => Some(PathBuf::from(path)),
-                None if !scene.audio_layers.is_empty() => {
-                    let path = temp_audio_path();
-                    let master_gain = if scene.audio_master_muted {
-                        0.0
-                    } else {
-                        scene.audio_master_gain
-                    };
-                    render_scene_to_wav(&scene.audio_layers, &scene.audio_tracks, master_gain, start, end, 48_000, &path)
-                        .context("failed to render native audio mix")?;
-                    temp_audio = Some(path.clone());
-                    Some(path)
-                }
-                None => None,
+    // Аудио-микс готовим ОДИН раз: при HW→SW-фолбэке обе попытки переиспользуют один и тот же
+    // временный файл, иначе тяжёлый OfflineAudioContext-микс гонялся бы дважды.
+    let mut temp_audio: Option<PathBuf> = None;
+    let audio_input: Option<PathBuf> = if options.audio_enabled {
+        match options.audio_path.as_deref().filter(|p| !p.is_empty()) {
+            Some(path) => Some(PathBuf::from(path)),
+            None if !scene.audio_layers.is_empty() => {
+                let path = temp_audio_path();
+                let master_gain = if scene.audio_master_muted {
+                    0.0
+                } else {
+                    scene.audio_master_gain
+                };
+                render_scene_to_wav(&scene.audio_layers, &scene.audio_tracks, master_gain, start, end, 48_000, &path)
+                    .context("failed to render native audio mix")?;
+                temp_audio = Some(path.clone());
+                Some(path)
             }
-        } else {
-            None
-        };
+            None => None,
+        }
+    } else {
+        None
+    };
 
-        let args = build_ffmpeg_args(
-            &options,
-            audio_input.as_deref(),
-            width,
-            height,
-            fps,
-            target_path,
-        );
-        let ffmpeg_cmd = options.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
+    // Одна попытка экспорта с данными опциями. Не трогает temp_audio — его чистит вызывающий.
+    let run_attempt = |opts: &NativeExportOptions| -> Result<()> {
+        let args = build_ffmpeg_args(opts, audio_input.as_deref(), width, height, fps, target_path);
+        let ffmpeg_cmd = opts.ffmpeg_path.as_deref().unwrap_or("ffmpeg");
         verify_ffmpeg_binary(ffmpeg_cmd).context("ffmpeg binary check failed")?;
         let mut child = Command::new(ffmpeg_cmd)
             .args(&args)
@@ -150,14 +146,6 @@ pub fn export_timeline(
             .context("export: no GPU device")?;
 
         let mut cache = super::timeline_render::VideoDecoderCache::new();
-        let hw_settings = crate::FfmpegHardwareSettings {
-            ffmpeg_path: options.ffmpeg_path.clone().unwrap_or_else(|| "ffmpeg".to_string()),
-            ffprobe_path: options.ffprobe_path.clone().unwrap_or_else(|| "ffprobe".to_string()),
-            hardware_acceleration_mode: options.hardware_acceleration_mode.clone().unwrap_or_else(|| "none".to_string()),
-            vaapi_device: options.vaapi_device.clone().unwrap_or_else(|| "/dev/dri/renderD128".to_string()),
-            enable_hardware_encoding: options.enable_hardware_encoding.unwrap_or(false),
-        };
-
         let empty_cache = crate::compositor::texture_cache::TextureCache::new();
         let render_result = (|| -> Result<()> {
             for i in 0..frame_count {
@@ -167,7 +155,6 @@ pub fn export_timeline(
                     time,
                     (width, height),
                     &mut cache,
-                    hw_settings.clone(),
                 )?;
                 let pixels = compositor.render_scene_to_pixels(dev_id, &frame_scene, width, height, &empty_cache)?;
                 if let Err(e) = stdin.write_all(&pixels) {
@@ -186,9 +173,6 @@ pub fn export_timeline(
             let _ = guard.kill();
             drop(guard);
             tasks.remove(task_id);
-            if let Some(path) = temp_audio.as_deref() {
-                let _ = std::fs::remove_file(path);
-            }
             return Err(error);
         }
 
@@ -208,21 +192,12 @@ pub fn export_timeline(
                 tasks.remove(task_id);
                 if status.success() {
                     if !target_path.exists() {
-                        if let Some(path) = temp_audio.as_deref() {
-                            let _ = std::fs::remove_file(path);
-                        }
                         return Err(anyhow!(
                             "ffmpeg export succeeded but output file is missing: {}",
                             target_path.display()
                         ));
                     }
-                    if let Some(path) = temp_audio.as_deref() {
-                        let _ = std::fs::remove_file(path);
-                    }
                     return Ok(());
-                }
-                if let Some(path) = temp_audio.as_deref() {
-                    let _ = std::fs::remove_file(path);
                 }
                 return Err(anyhow!("ffmpeg export failed: {}", stderr_text.trim()));
             }
@@ -234,24 +209,25 @@ pub fn export_timeline(
                 let _ = guard.wait();
                 drop(guard);
                 tasks.remove(task_id);
-                if let Some(path) = temp_audio.as_deref() {
-                    let _ = std::fs::remove_file(path);
-                }
                 return Err(anyhow!("ffmpeg export timed out after {} seconds", TIMEOUT.as_secs()));
             }
         }
-    })();
+    };
 
-    match result {
-        Ok(()) => Ok(()),
+    let result = match run_attempt(&options) {
         Err(e) if hw_enabled && hw_mode != "none" => {
             log::warn!("[native-media] HW export failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
-            export_timeline(tasks, task_id, scene, sw_options, target_path, on_progress)
+            run_attempt(&sw_options)
         }
-        Err(e) => Err(e),
+        other => other,
+    };
+
+    if let Some(path) = temp_audio.as_deref() {
+        let _ = std::fs::remove_file(path);
     }
+    result
 }
 
 fn build_ffmpeg_args(

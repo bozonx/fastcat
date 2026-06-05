@@ -610,7 +610,6 @@ pub fn extract_video_frame_webps(
     max_width: u32,
     max_height: u32,
     _quality: f32,
-    hw_settings: crate::FfmpegHardwareSettings,
 ) -> Result<Vec<Option<Vec<u8>>>> {
     let mut sorted_times: Vec<(usize, f64)> = times_sec
         .iter()
@@ -620,7 +619,7 @@ pub fn extract_video_frame_webps(
     sorted_times.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let max_edge = max_width.max(max_height);
-    let mut decoder = crate::media::decode::open(source_path, Some(max_edge), hw_settings)?;
+    let mut decoder = crate::media::decode::open(source_path, Some(max_edge))?;
     let mut results = vec![None; times_sec.len()];
 
     let mut last_pts = -1.0;
