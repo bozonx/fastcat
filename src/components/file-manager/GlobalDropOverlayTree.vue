@@ -27,9 +27,10 @@ const emit = defineEmits<{
             ? 'bg-primary-500/20 ring-2 ring-inset ring-primary-500/50'
             : 'hover:bg-ui-bg-hover/50'
         "
-        @dragover="emit('folderDragOver', $event, entry.path ?? '')"
-        @dragleave="emit('folderDragLeave', $event, entry.path ?? '')"
-        @drop="emit('folderDrop', $event, entry.path ?? '')"
+        :data-folder-path="entry.path"
+        @dragover.stop.prevent="emit('folderDragOver', $event, entry.path ?? '')"
+        @dragleave.stop="emit('folderDragLeave', $event, entry.path ?? '')"
+        @drop.stop.prevent="emit('folderDrop', $event, entry.path ?? '')"
       >
         <UIcon :name="getFolderIcon(entry.name)" class="w-4 h-4 text-ui-text-muted/80 shrink-0" />
         <span class="text-sm text-ui-text truncate">

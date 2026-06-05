@@ -32,8 +32,8 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
     const groupedIds = doc && kind === 'clip' ? getLinkedClipGroupItemIds(doc, itemId) : [itemId];
     let nextSelectedIds: string[] = [];
 
-    if (isLayer1) {
-      // Layer 1 modifier: toggle the whole linked group in/out of selection
+    if (isLayer1 && !isLayer2) {
+      // Layer 1 only: toggle the whole linked group in/out of selection
       const nextSelectedIdSet = new Set(timelineStore.selectedItemIds);
       const allGroupedSelected = groupedIds.every((id) => nextSelectedIdSet.has(id));
       if (allGroupedSelected) {
@@ -43,8 +43,8 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
       }
       nextSelectedIds = [...nextSelectedIdSet];
       timelineStore.selectTimelineItems(nextSelectedIds);
-    } else if (isLayer2) {
-      // Layer 2 modifier: toggle a single item, bypassing linked-group expansion
+    } else if (isLayer1 && isLayer2) {
+      // Both modifiers: toggle a single item, bypassing linked-group expansion
       const nextSelectedIdSet = new Set(timelineStore.selectedItemIds);
       if (nextSelectedIdSet.has(itemId)) {
         nextSelectedIdSet.delete(itemId);
@@ -59,6 +59,15 @@ export function useTimelineItemSelection(tracks: ComputedRef<TimelineTrack[]>) {
           itemId: id,
           kind: kind as 'clip' | 'gap',
         })),
+        { bypassGroup: true },
+      );
+    } else if (isLayer2) {
+      // Layer 2 only: exclusive select of a single item, bypassing linked-group expansion
+      nextSelectedIds = [itemId];
+      const trackId = tracks.value.find((t) => t.items.some((i) => i.id === itemId))?.id;
+      timelineStore.selectTrack(null);
+      timelineStore.selectTimelineItems(
+        [{ trackId: trackId ?? '', itemId, kind: kind as 'clip' | 'gap' }],
         { bypassGroup: true },
       );
     } else {

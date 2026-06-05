@@ -151,11 +151,14 @@ describe('useTimelineItemSelection', () => {
     expect(selectTimelineItemsMock).toHaveBeenCalledWith(['clip-1', 'clip-3']);
   });
 
-  it('layer2 click selects single item bypassing linked group', () => {
+  it('layer2 click exclusively selects a single item and clears previous selection', () => {
     const tracks = computed(() => [
       {
         id: 'track-1',
-        items: [{ id: 'clip-1', kind: 'clip', linkedGroupId: 'group-a' }],
+        items: [
+          { id: 'clip-1', kind: 'clip', linkedGroupId: 'group-a' },
+          { id: 'clip-2', kind: 'clip' },
+        ],
       },
       {
         id: 'track-2',
@@ -164,6 +167,28 @@ describe('useTimelineItemSelection', () => {
     ]);
 
     const { selectItem } = useTimelineItemSelection(tracks);
+    selectedItemIds.value = ['clip-2'];
+
+    const e = createMockPointerEvent({ ctrlKey: true });
+    selectItem(e, 'clip-1');
+
+    expect(selectTrackMock).toHaveBeenCalledWith(null);
+    expect(selectTimelineItemsMock).toHaveBeenCalledWith(
+      [{ trackId: 'track-1', itemId: 'clip-1', kind: 'clip' }],
+      { bypassGroup: true },
+    );
+  });
+
+  it('repeated layer2 click on same item keeps selection unchanged', () => {
+    const tracks = computed(() => [
+      {
+        id: 'track-1',
+        items: [{ id: 'clip-1', kind: 'clip' }],
+      },
+    ]);
+
+    const { selectItem } = useTimelineItemSelection(tracks);
+    selectedItemIds.value = ['clip-1'];
 
     const e = createMockPointerEvent({ ctrlKey: true });
     selectItem(e, 'clip-1');
@@ -174,7 +199,7 @@ describe('useTimelineItemSelection', () => {
     );
   });
 
-  it('layer2 click toggles single item in existing selection', () => {
+  it('layer1+layer2 click toggles single item into existing selection', () => {
     const tracks = computed(() => [
       {
         id: 'track-1',
@@ -188,7 +213,7 @@ describe('useTimelineItemSelection', () => {
     const { selectItem } = useTimelineItemSelection(tracks);
     selectedItemIds.value = ['clip-1'];
 
-    const e = createMockPointerEvent({ ctrlKey: true });
+    const e = createMockPointerEvent({ shiftKey: true, ctrlKey: true });
     selectItem(e, 'clip-2');
 
     expect(selectTimelineItemsMock).toHaveBeenCalledWith(
@@ -200,7 +225,7 @@ describe('useTimelineItemSelection', () => {
     );
   });
 
-  it('layer2 click removes already selected single item', () => {
+  it('layer1+layer2 click removes already selected single item', () => {
     const tracks = computed(() => [
       {
         id: 'track-1',
@@ -214,7 +239,7 @@ describe('useTimelineItemSelection', () => {
     const { selectItem } = useTimelineItemSelection(tracks);
     selectedItemIds.value = ['clip-1', 'clip-2'];
 
-    const e = createMockPointerEvent({ ctrlKey: true });
+    const e = createMockPointerEvent({ shiftKey: true, ctrlKey: true });
     selectItem(e, 'clip-1');
 
     expect(selectTimelineItemsMock).toHaveBeenCalledWith(

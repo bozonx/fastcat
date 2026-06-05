@@ -200,6 +200,7 @@ function getFolderIcon(name: string): string {
                 ? 'bg-violet-500/20 ring-2 ring-inset ring-violet-500/50'
                 : 'hover:bg-ui-bg-hover/50'
             "
+            :data-folder-path="WORKSPACE_COMMON_PATH_PREFIX"
             @dragover="onFolderDragOver($event, WORKSPACE_COMMON_PATH_PREFIX)"
             @dragleave="onFolderDragLeave($event, WORKSPACE_COMMON_PATH_PREFIX)"
             @drop="onFolderDrop($event, WORKSPACE_COMMON_PATH_PREFIX)"

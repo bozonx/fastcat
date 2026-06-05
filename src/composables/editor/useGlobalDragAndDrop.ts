@@ -239,6 +239,21 @@ export function useGlobalDragAndDrop() {
             if (isDropInProgress.value) return;
             if (!workspaceStore.projectsHandle || !projectStore.currentProjectName) return;
 
+            // Detect target folder from drop position before DOM is updated
+            let targetDirPath: string | undefined;
+            try {
+              if (event.payload.position) {
+                const scale = window.devicePixelRatio || 1;
+                const x = event.payload.position.x / scale;
+                const y = event.payload.position.y / scale;
+                const el = document.elementFromPoint(x, y);
+                const folderEl = el?.closest('[data-folder-path]');
+                targetDirPath = folderEl?.getAttribute('data-folder-path') || undefined;
+              }
+            } catch (e) {
+              log.warn('Failed to detect drop target folder from position', e);
+            }
+
             isDropInProgress.value = true;
             try {
               const paths = event.payload.paths || [];
@@ -329,7 +344,7 @@ export function useGlobalDragAndDrop() {
               }
 
               if (files.length > 0) {
-                await fm.handleFiles(files);
+                await fm.handleFiles(files, targetDirPath ? { targetDirPath } : undefined);
               }
             } catch (err) {
               log.error('Failed to handle Tauri file drop:', err);

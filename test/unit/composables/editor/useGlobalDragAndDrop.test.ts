@@ -41,7 +41,7 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
     handleFiles: handleFilesMock,
     vfs: {
-      getFile: vi.fn(),
+      getFile: vi.fn(() => new File(['content'], 'video.mp4', { type: 'video/mp4' })),
     },
   }),
 }));
@@ -192,6 +192,92 @@ describe('useGlobalDragAndDrop', () => {
       expect(uiStoreMock.isGlobalDragging).toBe(false);
     } finally {
       vi.useRealTimers();
+      wrapper.unmount();
+    }
+  });
+
+  it('passes targetDirPath to handleFiles when Tauri drop lands on a folder element', async () => {
+    const component = defineComponent({
+      setup() {
+        useGlobalDragAndDrop();
+        return () => null;
+      },
+    });
+
+    const wrapper = mount(component);
+    await flushPromises();
+
+    const callback = onDragDropEventMock.mock.calls[0]?.[0];
+    expect(callback).toBeTypeOf('function');
+
+    const mockFolderEl = {
+      getAttribute: vi.fn().mockReturnValue('_video'),
+    } as unknown as Element;
+
+    const mockPointEl = {
+      closest: vi.fn().mockReturnValue(mockFolderEl),
+    } as unknown as Element;
+
+    const originalElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn().mockReturnValue(mockPointEl);
+
+    try {
+      await callback({
+        payload: {
+          type: 'drop',
+          paths: ['/tmp/video.mp4'],
+          position: { x: 200, y: 300 },
+        },
+      });
+      await flushPromises();
+
+      expect(handleFilesMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ targetDirPath: '_video' }),
+      );
+    } finally {
+      document.elementFromPoint = originalElementFromPoint;
+      wrapper.unmount();
+    }
+  });
+
+  it('auto-sorts Tauri drop when no folder element is under the cursor', async () => {
+    const component = defineComponent({
+      setup() {
+        useGlobalDragAndDrop();
+        return () => null;
+      },
+    });
+
+    const wrapper = mount(component);
+    await flushPromises();
+
+    const callback = onDragDropEventMock.mock.calls[0]?.[0];
+    expect(callback).toBeTypeOf('function');
+
+    const mockPointEl = {
+      closest: vi.fn().mockReturnValue(null),
+    } as unknown as Element;
+
+    const originalElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = vi.fn().mockReturnValue(mockPointEl);
+
+    try {
+      await callback({
+        payload: {
+          type: 'drop',
+          paths: ['/tmp/video.mp4'],
+          position: { x: 200, y: 300 },
+        },
+      });
+      await flushPromises();
+
+      expect(handleFilesMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        undefined,
+      );
+    } finally {
+      document.elementFromPoint = originalElementFromPoint;
       wrapper.unmount();
     }
   });
