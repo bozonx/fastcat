@@ -33,6 +33,12 @@ struct CachedAudioDecoder {
     // across sequential chunks so block boundaries don't inject zero-padding,
     // which would otherwise create periodic clicks in the output.
     resample_remainder: Vec<Vec<f32>>,
+    // Interleaved resampled output produced beyond what a chunk requested. The
+    // block-based resampler emits a variable frame count per call; without this
+    // FIFO the surplus would be truncated (and the deficit zero-padded) every
+    // chunk, leaking samples and clicking at boundaries. Drained first by the
+    // next chunk so output length is exact and lossless.
+    resample_output_remainder: Vec<f32>,
 }
 
 /// Lock-free SPSC ring buffer for real-time audio output.
@@ -69,23 +75,22 @@ impl SpscRingBuffer {
     }
 
     /// Push as many samples as capacity allows. Returns count written.
+    /// Single-producer: the data slots are written with Relaxed ordering and a
+    /// single Release store of `write_idx` publishes them all to the consumer,
+    /// instead of a per-sample Release (which serialized the hot path).
     fn push_slice(&self, samples: &[f32]) -> usize {
         let capacity = self.buffer.len();
-        let mut written = 0;
-        for &sample in samples {
-            let write = self.write_idx.load(Ordering::Relaxed);
-            let read = self.read_idx.load(Ordering::Acquire);
-            let available = capacity - write.wrapping_sub(read);
-            if available == 0 {
-                break;
-            }
-            let idx = write % capacity;
-            self.buffer[idx].store(sample.to_bits(), Ordering::Release);
-            self.write_idx
-                .store(write.wrapping_add(1), Ordering::Release);
-            written += 1;
+        let write = self.write_idx.load(Ordering::Relaxed);
+        let read = self.read_idx.load(Ordering::Acquire);
+        let available = capacity - write.wrapping_sub(read);
+        let to_write = samples.len().min(available);
+        for (i, &sample) in samples.iter().take(to_write).enumerate() {
+            let idx = write.wrapping_add(i) % capacity;
+            self.buffer[idx].store(sample.to_bits(), Ordering::Relaxed);
         }
-        written
+        self.write_idx
+            .store(write.wrapping_add(to_write), Ordering::Release);
+        to_write
     }
 
     /// Pop up to `out.len()` samples. Returns count read.
@@ -128,8 +133,31 @@ struct AudioShared {
     seek_serial: u64,
     scene_serial: u64,
     decoded_cache: lru::LruCache<String, Arc<Vec<f32>>>,
+    /// Total bytes held by `decoded_cache`; bounds the in-memory full-file cache
+    /// by weight (a single 50 MB compressed file can decode to > 1 GB of f32).
+    decoded_cache_bytes: usize,
+    /// Cached `fs::metadata` file sizes so the cache-routing decision doesn't
+    /// `stat` the file on every 50 ms chunk.
+    file_size_cache: HashMap<String, u64>,
+    /// Streaming decoders, keyed per layer (NOT per path): two clips from the
+    /// same media file must not share one stateful decoder or they thrash seeks.
     decoders: HashMap<String, CachedAudioDecoder>,
+    /// Hash of timing-relevant layer fields (path/position/speed/source). Used to
+    /// decide whether a scene update needs a ring flush (positions changed) or is
+    /// a pure mix-param change (gain/balance/fade) that can apply gap-free.
+    timing_sig: u64,
 }
+
+/// Max bytes of decoded f32 audio kept in `decoded_cache` across all files.
+const MAX_DECODED_CACHE_BYTES: usize = 256 * 1024 * 1024;
+/// Only fully decode + cache files whose compressed size is below this. Larger
+/// files stream through the chunk decoder (which is built for it), avoiding a
+/// multi-GB decode of a long track into RAM.
+const MAX_CACHEABLE_FILE_BYTES: u64 = 16 * 1024 * 1024;
+/// Producer resync threshold: if the mix position falls more than this behind
+/// the audible playhead (e.g. after an output underrun), skip stale audio and
+/// realign instead of permanently lagging.
+const PRODUCER_RESYNC_THRESHOLD_SEC: f64 = 0.12;
 
 fn decoded_cache_key(path: &str, sample_rate: u32, output_channels: usize) -> String {
     format!("{path}|sr={sample_rate}|ch={output_channels}")
@@ -146,10 +174,68 @@ impl Default for AudioShared {
             producer_pts_sec: 0.0,
             seek_serial: 0,
             scene_serial: 0,
-            decoded_cache: lru::LruCache::new(std::num::NonZeroUsize::new(20).unwrap()),
+            decoded_cache: lru::LruCache::unbounded(),
+            decoded_cache_bytes: 0,
+            file_size_cache: HashMap::new(),
             decoders: HashMap::new(),
+            timing_sig: 0,
         }
     }
+}
+
+impl AudioShared {
+    /// Inserts a fully decoded file into the byte-bounded cache, evicting the
+    /// least-recently-used entries until the total stays under the budget.
+    /// Skips caching entirely if a single file exceeds the whole budget.
+    fn cache_decoded(&mut self, key: String, samples: Arc<Vec<f32>>) {
+        let bytes = samples.len() * std::mem::size_of::<f32>();
+        if bytes > MAX_DECODED_CACHE_BYTES {
+            return;
+        }
+        if let Some(prev) = self.decoded_cache.put(key, samples) {
+            self.decoded_cache_bytes = self
+                .decoded_cache_bytes
+                .saturating_sub(prev.len() * std::mem::size_of::<f32>());
+        }
+        self.decoded_cache_bytes += bytes;
+        while self.decoded_cache_bytes > MAX_DECODED_CACHE_BYTES {
+            match self.decoded_cache.pop_lru() {
+                Some((_, evicted)) => {
+                    self.decoded_cache_bytes = self
+                        .decoded_cache_bytes
+                        .saturating_sub(evicted.len() * std::mem::size_of::<f32>());
+                }
+                None => break,
+            }
+        }
+    }
+
+    fn drop_decoded(&mut self, key: &str) {
+        if let Some(removed) = self.decoded_cache.pop(key) {
+            self.decoded_cache_bytes = self
+                .decoded_cache_bytes
+                .saturating_sub(removed.len() * std::mem::size_of::<f32>());
+        }
+    }
+}
+
+/// Hashes the timing-relevant fields of the scene. Two scenes with the same
+/// signature place the same audio at the same timeline positions, so a switch
+/// between them does not require flushing already-buffered output.
+fn compute_timing_sig(layers: &[SceneAudioLayer]) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    layers.len().hash(&mut hasher);
+    for l in layers {
+        l.id.hash(&mut hasher);
+        l.path.hash(&mut hasher);
+        l.track_id.hash(&mut hasher);
+        l.timeline_start_sec.to_bits().hash(&mut hasher);
+        l.timeline_end_sec.to_bits().hash(&mut hasher);
+        l.source_start_sec.to_bits().hash(&mut hasher);
+        l.speed.to_bits().hash(&mut hasher);
+    }
+    hasher.finish()
 }
 
 /// Lock-free clock/state shared with the real-time output callback. The audio
@@ -226,6 +312,7 @@ impl NativeAudioEngine {
         let producer_shared = shared.clone();
         let producer_ring = ring.clone();
         let producer_running = running.clone();
+        let producer_clock = clock.clone();
         let producer = std::thread::Builder::new()
             .name("fastcat-audio-producer".into())
             .spawn(move || {
@@ -238,6 +325,7 @@ impl NativeAudioEngine {
                     producer_shared,
                     producer_ring,
                     producer_running,
+                    producer_clock,
                     sample_rate,
                     output_channels,
                 )
@@ -262,17 +350,37 @@ impl NativeAudioEngine {
         master_gain: f64,
     ) {
         let mut state = self.shared.0.lock();
+        // A flush (drop buffered output + realign the producer) is only needed
+        // when audio moves on the timeline. Pure mix-param edits (gain, balance,
+        // fade, mute/solo, master) take effect on the next mixed chunk without a
+        // ring clear, so dragging a slider during playback no longer clicks.
+        let new_sig = compute_timing_sig(&layers);
+        let needs_flush = new_sig != state.timing_sig;
+        state.timing_sig = new_sig;
+
         state.scene = layers;
         state.tracks = tracks;
         state.master_gain = sanitize_master_gain(master_gain);
-        self.ring.clear();
-        state.producer_pts_sec =
-            state.origin_pts_sec + self.clock.frames() as f64 / self.sample_rate as f64;
+        // Bump scene_serial so the producer re-reads the scene (refreshes its
+        // cached snapshot and applies new mix params). This does NOT discard the
+        // in-flight chunk — only a seek (flush) does — so frequent param edits
+        // can't starve the ring.
         state.scene_serial = state.scene_serial.wrapping_add(1);
 
-        // Drop decoded files that are no longer referenced by the scene.
+        if needs_flush {
+            self.ring.clear();
+            state.producer_pts_sec =
+                state.origin_pts_sec + self.clock.frames() as f64 / self.sample_rate as f64;
+            // Discontinuous output: invalidate in-flight chunks and force decoders
+            // to reseek to the new positions.
+            state.seek_serial = state.seek_serial.wrapping_add(1);
+        }
+
+        // Drop decoded files / decoders no longer referenced by the scene.
         let current_paths: std::collections::HashSet<String> =
             state.scene.iter().map(|l| l.path.clone()).collect();
+        let current_layer_ids: std::collections::HashSet<String> =
+            state.scene.iter().map(|l| l.id.clone()).collect();
         let to_remove: Vec<String> = state
             .decoded_cache
             .iter()
@@ -286,11 +394,15 @@ impl NativeAudioEngine {
             })
             .collect();
         for key in &to_remove {
-            state.decoded_cache.pop(key);
+            state.drop_decoded(key);
         }
         state
-            .decoders
+            .file_size_cache
             .retain(|path, _| current_paths.contains(path));
+        // Decoders are keyed per layer id (not per path), so retain by layer id.
+        state
+            .decoders
+            .retain(|layer_id, _| current_layer_ids.contains(layer_id));
         self.shared.1.notify_all();
     }
 
@@ -345,23 +457,15 @@ impl NativeAudioEngine {
     }
 
     pub fn scene_end(&self) -> f64 {
+        // `timeline_end_sec` is already in timeline coordinates (speed is baked
+        // into how the clip was placed), so the scene end is simply the latest
+        // layer end. Dividing by speed here previously cut sped-up clips short.
         self.shared
             .0
             .lock()
             .scene
             .iter()
-            .map(|layer| {
-                let duration = (layer.timeline_end_sec - layer.timeline_start_sec).max(0.0);
-                // `speed` is signed (negative means reversed); only its magnitude
-                // affects how long the clip occupies on the timeline.
-                let speed = sanitize_speed(layer.speed.abs());
-                let actual_duration = if speed > 0.0 {
-                    duration / speed
-                } else {
-                    duration
-                };
-                layer.timeline_start_sec + actual_duration
-            })
+            .map(|layer| layer.timeline_end_sec)
             .fold(0.0, f64::max)
     }
 
@@ -514,11 +618,16 @@ fn producer_loop(
     shared: Arc<(Mutex<AudioShared>, Condvar)>,
     ring: Arc<SpscRingBuffer>,
     running: Arc<AtomicBool>,
+    clock: Arc<RealtimeClock>,
     sample_rate: u32,
     output_channels: usize,
 ) {
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
     let limit_samples = chunk_frames * output_channels * PREBUFFER_CHUNKS;
+
+    // Cached clones of the scene/tracks, refreshed only when `scene_serial`
+    // changes, so a static timeline doesn't re-clone the whole scene 20×/sec.
+    let mut cached: Option<(u64, Vec<SceneAudioLayer>, Vec<SceneAudioTrack>)> = None;
 
     while running.load(Ordering::Relaxed) {
         let snapshot = {
@@ -528,14 +637,27 @@ fn producer_loop(
                     return;
                 }
                 if state.playing && !state.scene.is_empty() && ring.len() < limit_samples {
-                    break Some((
-                        state.scene.clone(),
-                        state.tracks.clone(),
-                        state.master_gain,
-                        state.producer_pts_sec,
-                        state.seek_serial,
-                        state.scene_serial,
-                    ));
+                    // Refresh the cached scene clone only on a real change.
+                    if cached.as_ref().map(|(s, _, _)| *s) != Some(state.scene_serial) {
+                        cached = Some((
+                            state.scene_serial,
+                            state.scene.clone(),
+                            state.tracks.clone(),
+                        ));
+                    }
+
+                    // Realign the mix position with the audible playhead. After an
+                    // output underrun the callback advanced `frames_written` over
+                    // silence; without this the producer would keep emitting audio
+                    // for an already-past position, lagging permanently.
+                    let buffered_frames = (ring.len() / output_channels) as f64;
+                    let expected_pts = state.origin_pts_sec
+                        + (clock.frames() as f64 + buffered_frames) / sample_rate as f64;
+                    if state.producer_pts_sec + PRODUCER_RESYNC_THRESHOLD_SEC < expected_pts {
+                        state.producer_pts_sec = expected_pts;
+                    }
+
+                    break Some((state.master_gain, state.producer_pts_sec, state.seek_serial));
                 }
                 let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(50));
                 if wait_res.timed_out()
@@ -546,14 +668,16 @@ fn producer_loop(
             }
         };
 
-        let Some((scene, tracks, master_gain, chunk_start, seek_serial, scene_serial)) = snapshot
-        else {
+        let Some((master_gain, chunk_start, seek_serial)) = snapshot else {
+            continue;
+        };
+        let Some((_, scene, tracks)) = cached.as_ref() else {
             continue;
         };
 
         let chunk = mix_chunk(
-            &scene,
-            &tracks,
+            scene,
+            tracks,
             master_gain,
             chunk_start,
             CHUNK_DURATION_SEC,
@@ -564,8 +688,10 @@ fn producer_loop(
         );
 
         let mut state = shared.0.lock();
-        if state.seek_serial != seek_serial || state.scene_serial != scene_serial || !state.playing
-        {
+        // Only a seek/flush (or stop) invalidates an in-flight chunk. A pure
+        // mix-param change bumps scene_serial but not seek_serial, so we keep the
+        // chunk — the new params just apply from the following one.
+        if state.seek_serial != seek_serial || !state.playing {
             continue;
         }
         if ring.len() < limit_samples {
@@ -846,6 +972,7 @@ fn mix_layer_into(
     };
 
     let mut decoded = match decode_audio_chunk(
+        &layer.id,
         &layer.path,
         source_start,
         segment_duration,
@@ -1310,6 +1437,7 @@ fn decode_entire_file_symphonia(
 
 #[allow(clippy::too_many_arguments)]
 fn decode_symphonia_chunk(
+    layer_id: &str,
     path: &str,
     source_start_sec: f64,
     timeline_duration_sec: f64,
@@ -1318,9 +1446,11 @@ fn decode_symphonia_chunk(
     output_channels: usize,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
+    // Decoders are keyed per layer, not per path: two clips from the same file
+    // each keep their own stateful decoder so they don't fight over position.
     let mut decoder_state = {
         let mut state = shared.0.lock();
-        state.decoders.remove(path)
+        state.decoders.remove(layer_id)
     };
 
     if decoder_state.is_none() {
@@ -1382,15 +1512,20 @@ fn decode_symphonia_chunk(
             last_resample_ratio: 0.0,
             last_decode_end_sec: 0.0,
             resample_remainder: vec![Vec::new(); channels],
+            resample_output_remainder: Vec::new(),
         });
     }
 
     let mut state_val = decoder_state.unwrap();
 
-    // Only seek/reset when the requested position is not contiguous with
-    // where the decoder left off. Sequential chunk decodes (the common case
-    // in the producer loop) skip the expensive seek+reset.
-    let source_end_sec = source_start_sec + timeline_duration_sec;
+    // Only seek/reset when the requested position is not contiguous with where
+    // the decoder left off. Sequential chunk decodes (the common case in the
+    // producer loop) skip the expensive seek+reset. The decoder advances
+    // `timeline_duration * speed` seconds through the SOURCE per chunk, so the
+    // end position must include `speed` — otherwise fast clips drift and trip a
+    // needless reseek on every chunk.
+    let source_advance_sec = timeline_duration_sec * speed;
+    let source_end_sec = source_start_sec + source_advance_sec;
     let needs_seek = source_start_sec < state_val.last_decode_end_sec - 0.05
         || source_start_sec > state_val.last_decode_end_sec + 0.05;
     let current_ratio = target_sample_rate as f64 / (state_val.source_rate as f64 * speed);
@@ -1411,11 +1546,23 @@ fn decode_symphonia_chunk(
             .context("failed to seek in format reader")?;
 
         state_val.decoder.reset();
-        // Seeking discontinues the source stream, so the cached resampler and
-        // its carried-over input remainder must be discarded to avoid splicing
-        // unrelated audio across the seek boundary.
-        state_val.resampler = None;
+        // Seeking discontinues the source stream, so the resampler's carried-over
+        // input/output remainders must be dropped to avoid splicing unrelated
+        // audio across the seek boundary. The resampler instance itself can be
+        // cheaply `reset()` (keeps its filter table) when the ratio is unchanged;
+        // only rebuild it when the ratio actually differs.
+        if state_val.resampler.is_some()
+            && (state_val.last_resample_ratio - current_ratio).abs() <= 1e-6
+        {
+            if let Some(r) = state_val.resampler.as_mut() {
+                use rubato::Resampler;
+                r.reset();
+            }
+        } else {
+            state_val.resampler = None;
+        }
         state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+        state_val.resample_output_remainder.clear();
         state_val.last_resample_ratio = current_ratio;
 
         let actual_sec = {
@@ -1485,6 +1632,7 @@ fn decode_symphonia_chunk(
                     state_val.channels = num_channels;
                     state_val.resampler = None;
                     state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+                    state_val.resample_output_remainder.clear();
                     state_val.last_resample_ratio = current_ratio;
                 }
 
@@ -1521,23 +1669,25 @@ fn decode_symphonia_chunk(
         }
     }
 
+    let target_frames = (timeline_duration_sec * target_sample_rate as f64).round() as usize;
+    let target_samples = target_frames * output_channels;
+
     if collected_frames == 0 {
-        let silence_len =
-            (timeline_duration_sec * target_sample_rate as f64).round() as usize * output_channels;
-        // Put the state back even on empty decode
+        // Put the state back even on empty decode (EOF / past end of source).
         {
             let mut state = shared.0.lock();
-            state.decoders.insert(path.to_string(), state_val);
+            state.decoders.insert(layer_id.to_string(), state_val);
         }
-        return Ok(vec![0.0f32; silence_len]);
+        return Ok(vec![0.0f32; target_samples]);
     }
 
     if state_val.resampler.is_some() && (state_val.last_resample_ratio - current_ratio).abs() > 1e-6
     {
         // Ratio changed (e.g. speed change): rebuild the resampler and drop the
-        // stale input remainder captured at the previous ratio.
+        // stale input/output remainders captured at the previous ratio.
         state_val.resampler = None;
         state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+        state_val.resample_output_remainder.clear();
         state_val.last_resample_ratio = current_ratio;
     }
     let resampled = resample_planar_cached(
@@ -1551,19 +1701,35 @@ fn decode_symphonia_chunk(
     )?;
     let interleaved = planar_to_interleaved(&resampled, output_channels);
 
+    // The block-based resampler emits a variable sample count per call. Drain any
+    // surplus carried from the previous chunk first, return exactly the requested
+    // length, and stash the rest for the next chunk so no samples are lost (which
+    // would otherwise click at chunk boundaries). A transient deficit (one-time
+    // resampler latency) is zero-padded.
+    let mut combined = std::mem::take(&mut state_val.resample_output_remainder);
+    combined.extend_from_slice(&interleaved);
+    let out = if combined.len() >= target_samples {
+        state_val.resample_output_remainder = combined.split_off(target_samples);
+        combined
+    } else {
+        combined.resize(target_samples, 0.0);
+        combined
+    };
+
     // Record where this decode left off so the next chunk can skip the seek.
     state_val.last_decode_end_sec = source_end_sec;
 
     // Put it back in the cache:
     {
         let mut state = shared.0.lock();
-        state.decoders.insert(path.to_string(), state_val);
+        state.decoders.insert(layer_id.to_string(), state_val);
     }
-    Ok(interleaved)
+    Ok(out)
 }
 
 #[allow(clippy::too_many_arguments)]
 fn decode_audio_chunk(
+    layer_id: &str,
     path: &str,
     source_start_sec: f64,
     timeline_duration_sec: f64,
@@ -1573,44 +1739,67 @@ fn decode_audio_chunk(
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
     let is_cacheable = (speed - 1.0).abs() <= f64::EPSILON;
-    let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    let cache_key = decoded_cache_key(path, sample_rate, output_channels);
 
-    if is_cacheable && file_size > 0 && file_size < 50 * 1024 * 1024 {
-        let cache_key = decoded_cache_key(path, sample_rate, output_channels);
-        let cached_samples = {
-            let mut state = shared.0.lock();
-            state.decoded_cache.get(&cache_key).cloned()
-        };
+    // Fast path: if the file is already fully cached, serve it without any
+    // `stat`. Only when it isn't cached do we (once) look up its size to decide
+    // whether it's small enough to fully decode into memory.
+    let cached_samples = if is_cacheable {
+        let mut state = shared.0.lock();
+        state.decoded_cache.get(&cache_key).cloned()
+    } else {
+        None
+    };
 
+    if is_cacheable {
         let cached_samples = match cached_samples {
-            Some(samples) => samples,
+            Some(samples) => Some(samples),
             None => {
-                log::info!("[audio] caching entire file in memory: {}", path);
-                let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
-                let shared_samples = Arc::new(decoded);
-                let mut state = shared.0.lock();
-                state.decoded_cache.put(cache_key, shared_samples.clone());
-                shared_samples
+                let file_size = {
+                    let mut state = shared.0.lock();
+                    match state.file_size_cache.get(path) {
+                        Some(&size) => size,
+                        None => {
+                            let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                            state.file_size_cache.insert(path.to_string(), size);
+                            size
+                        }
+                    }
+                };
+                if file_size > 0 && file_size < MAX_CACHEABLE_FILE_BYTES {
+                    log::info!("[audio] caching entire file in memory: {}", path);
+                    let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
+                    let shared_samples = Arc::new(decoded);
+                    let mut state = shared.0.lock();
+                    state.cache_decoded(cache_key, shared_samples.clone());
+                    Some(shared_samples)
+                } else {
+                    // Too large to cache: stream it through the chunk decoder.
+                    None
+                }
             }
         };
 
-        let start_frame = (source_start_sec * sample_rate as f64).round() as usize;
-        let frames_to_read = (timeline_duration_sec * sample_rate as f64).round() as usize;
-        let start_sample = start_frame * output_channels;
-        let samples_to_read = frames_to_read * output_channels;
+        if let Some(cached_samples) = cached_samples {
+            let start_frame = (source_start_sec * sample_rate as f64).round() as usize;
+            let frames_to_read = (timeline_duration_sec * sample_rate as f64).round() as usize;
+            let start_sample = start_frame * output_channels;
+            let samples_to_read = frames_to_read * output_channels;
 
-        let mut result = vec![0.0f32; samples_to_read];
-        let cached_len = cached_samples.len();
+            let mut result = vec![0.0f32; samples_to_read];
+            let cached_len = cached_samples.len();
 
-        if start_sample < cached_len {
-            let available = (cached_len - start_sample).min(samples_to_read);
-            result[..available]
-                .copy_from_slice(&cached_samples[start_sample..start_sample + available]);
+            if start_sample < cached_len {
+                let available = (cached_len - start_sample).min(samples_to_read);
+                result[..available]
+                    .copy_from_slice(&cached_samples[start_sample..start_sample + available]);
+            }
+            return Ok(result);
         }
-        return Ok(result);
     }
 
     decode_symphonia_chunk(
+        layer_id,
         path,
         source_start_sec,
         timeline_duration_sec,
@@ -1646,10 +1835,27 @@ fn apply_layer_mix(
     } else {
         (1.0, 0.0, 0.0, 1.0)
     };
+
+    // If the whole write range sits outside both fade zones the gain is constant,
+    // so skip the per-sample envelope evaluation (incl. the fade `sin()`).
+    let duration = (layer.timeline_end_sec - layer.timeline_start_sec).max(0.0);
+    let fade_in = layer.audio_fade_in_sec.max(0.0).min(duration);
+    let fade_out = layer.audio_fade_out_sec.max(0.0).min(duration);
+    let clip_start = (segment_start_sec - layer.timeline_start_sec).max(0.0);
+    let clip_end = clip_start + frames_to_write.saturating_sub(1) as f64 / sample_rate as f64;
+    let constant_gain = duration > 0.0 && clip_start >= fade_in && {
+        let fade_out_start = (duration - fade_out).max(0.0);
+        fade_out <= 0.0 || clip_end < fade_out_start
+    };
+
     for i in 0..frames_to_write {
-        let timeline_sec = segment_start_sec + i as f64 / sample_rate as f64;
-        let clip_sec = (timeline_sec - layer.timeline_start_sec).max(0.0);
-        let gain = gain_at_clip_time(layer, clip_sec) as f32;
+        let gain = if constant_gain {
+            layer.audio_gain.max(0.0) as f32
+        } else {
+            let timeline_sec = segment_start_sec + i as f64 / sample_rate as f64;
+            let clip_sec = (timeline_sec - layer.timeline_start_sec).max(0.0);
+            gain_at_clip_time(layer, clip_sec) as f32
+        };
         if gain == 0.0 {
             continue;
         }
@@ -2165,19 +2371,63 @@ mod tests {
     fn test_decode_symphonia_chunk() {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let decoded = decode_symphonia_chunk(path, 0.2, 0.5, 1.0, 48000, 2, &shared);
+        let decoded = decode_symphonia_chunk("layer-1", path, 0.2, 0.5, 1.0, 48000, 2, &shared);
         assert!(
             decoded.is_ok(),
             "Failed to decode chunk: {:?}",
             decoded.err()
         );
         let samples = decoded.unwrap();
-        assert!(samples.len() > 0, "Decoded chunk buffer is empty");
-        assert!(
-            samples.len() >= 45000 && samples.len() <= 55000,
-            "Unexpected chunk length: {}",
-            samples.len()
-        );
+        // Output length must be EXACTLY round(duration * sample_rate) * channels:
+        // the resampler's per-call jitter is absorbed by the output remainder.
+        let expected = (0.5f64 * 48000.0).round() as usize * 2;
+        assert_eq!(samples.len(), expected, "chunk length must be exact");
+    }
+
+    #[test]
+    fn timing_sig_ignores_mix_params_but_reacts_to_position() {
+        let base = layer();
+        let sig = compute_timing_sig(&[base.clone()]);
+
+        // Pure mix-param edits must NOT change the signature (no ring flush).
+        let mut gained = base.clone();
+        gained.audio_gain = 0.3;
+        gained.audio_balance = -0.7;
+        gained.audio_fade_in_sec = 1.5;
+        assert_eq!(compute_timing_sig(&[gained]), sig);
+
+        // Position / speed / path edits MUST change it (flush required).
+        let mut moved = base.clone();
+        moved.timeline_start_sec = 1.0;
+        assert_ne!(compute_timing_sig(&[moved]), sig);
+        let mut sped = base.clone();
+        sped.speed = 2.0;
+        assert_ne!(compute_timing_sig(&[sped]), sig);
+        let mut repathed = base.clone();
+        repathed.path = "/tmp/other.wav".into();
+        assert_ne!(compute_timing_sig(&[repathed]), sig);
+    }
+
+    #[test]
+    fn decoded_cache_evicts_to_stay_under_byte_budget() {
+        let mut shared = AudioShared::default();
+        // Each ~100 MB; budget is 256 MB, so inserting three drops the oldest.
+        let big = Arc::new(vec![0.0f32; 25 * 1024 * 1024]);
+        shared.cache_decoded("a".into(), big.clone());
+        shared.cache_decoded("b".into(), big.clone());
+        shared.cache_decoded("c".into(), big.clone());
+        assert!(shared.decoded_cache_bytes <= MAX_DECODED_CACHE_BYTES);
+        assert!(shared.decoded_cache.peek("a").is_none(), "oldest evicted");
+        assert!(shared.decoded_cache.peek("c").is_some(), "newest retained");
+    }
+
+    #[test]
+    fn decoded_cache_skips_items_larger_than_budget() {
+        let mut shared = AudioShared::default();
+        let huge = Arc::new(vec![0.0f32; MAX_DECODED_CACHE_BYTES]); // 4x budget in bytes
+        shared.cache_decoded("x".into(), huge);
+        assert!(shared.decoded_cache.peek("x").is_none());
+        assert_eq!(shared.decoded_cache_bytes, 0);
     }
 
     // ------------------------------------------------------------------
