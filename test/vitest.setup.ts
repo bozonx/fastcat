@@ -239,6 +239,11 @@ config.global.stubs = {
         }
       },
     },
+    mounted(this: any) {
+      if (this.open && this.content?.onOpenAutoFocus) {
+        this.content.onOpenAutoFocus(new Event('openAutoFocus'));
+      }
+    },
   },
 };
 
