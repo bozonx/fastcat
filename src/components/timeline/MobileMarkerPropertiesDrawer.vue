@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useTimelineStore } from '~/stores/timeline.store';
 import MarkerProperties from '~/components/properties/MarkerProperties.vue';
-import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
-import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
+import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 
 interface Props {
@@ -20,13 +19,6 @@ const emit = defineEmits<{
 
 const timelineStore = useTimelineStore();
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
-
 const marker = computed(() => {
   return timelineStore.markers.find((m) => m.id === props.markerId) ?? null;
 });
@@ -39,19 +31,17 @@ function confirmDelete() {
 </script>
 
 <template>
-  <MobileTimelineDrawer
-    v-model:open="isOpenLocal"
+  <MobilePropertiesDrawer
     v-model:active-snap-point="activeSnapPoint"
-    with-toolbar-snap
+    :is-open="props.isOpen"
+    @close="emit('close')"
   >
     <template #toolbar>
-      <MobileDrawerToolbar class="border-b border-ui-border">
-        <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="confirmDelete" />
-      </MobileDrawerToolbar>
+      <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="confirmDelete" />
     </template>
 
     <div class="px-4 pb-8 pt-4 flex flex-col gap-5">
       <MarkerProperties :marker-id="markerId" />
     </div>
-  </MobileTimelineDrawer>
+  </MobilePropertiesDrawer>
 </template>

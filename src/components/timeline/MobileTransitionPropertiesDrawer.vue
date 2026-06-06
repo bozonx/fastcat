@@ -2,8 +2,7 @@
 import { computed, ref } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import TransitionProperties from '~/components/properties/TransitionProperties.vue';
-import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
-import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
+import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
@@ -29,13 +28,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
-
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
 
 function handleDeleteTransition() {
   if (props.transitionSelection.edge === 'in') {
@@ -81,19 +73,17 @@ const extraActions = computed(() => {
 </script>
 
 <template>
-  <MobileTimelineDrawer
-    v-model:open="isOpenLocal"
+  <MobilePropertiesDrawer
     v-model:active-snap-point="activeSnapPoint"
-    with-toolbar-snap
+    :is-open="props.isOpen"
+    @close="emit('close')"
   >
     <template #toolbar>
-      <MobileDrawerToolbar class="border-b border-ui-border">
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :label="t('common.delete')"
-          @click="handleDeleteTransition"
-        />
-      </MobileDrawerToolbar>
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-trash"
+        :label="t('common.delete')"
+        @click="handleDeleteTransition"
+      />
     </template>
 
     <div class="px-4 pb-8 pt-4">
@@ -115,5 +105,5 @@ const extraActions = computed(() => {
         hide-actions
       />
     </div>
-  </MobileTimelineDrawer>
+  </MobilePropertiesDrawer>
 </template>

@@ -4,13 +4,10 @@ import { ref, onMounted, onUnmounted } from 'vue';
 interface Props {
   /** Padding and other classes for the inner flex container */
   contentClass?: string;
-  /** Background gradient color variant */
-  variant?: 'drawer' | 'toolbar';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   contentClass: 'gap-1 px-2 py-1.5',
-  variant: 'drawer',
 });
 
 const scrollContainer = ref<HTMLElement | null>(null);
@@ -59,9 +56,7 @@ onUnmounted(() => {
       class="absolute left-0 top-0 bottom-0 w-12 z-10 pointer-events-none transition-opacity duration-300"
       :class="[
         showLeftShadow ? 'opacity-100' : 'opacity-0',
-        props.variant === 'drawer'
-          ? 'bg-linear-to-r from-ui-bg-elevated to-transparent'
-          : 'bg-linear-to-r from-ui-bg-elevated to-transparent',
+        'bg-linear-to-r from-ui-bg-elevated to-transparent',
       ]"
     />
 
@@ -80,9 +75,7 @@ onUnmounted(() => {
       class="absolute right-0 top-0 bottom-0 w-12 z-10 pointer-events-none transition-opacity duration-300"
       :class="[
         showRightShadow ? 'opacity-100' : 'opacity-0',
-        props.variant === 'drawer'
-          ? 'bg-linear-to-l from-ui-bg-elevated to-transparent'
-          : 'bg-linear-to-l from-ui-bg-elevated to-transparent',
+        'bg-linear-to-l from-ui-bg-elevated to-transparent',
       ]"
     />
   </div>

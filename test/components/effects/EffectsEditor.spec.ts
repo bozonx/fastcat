@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import EffectsEditor from '~/components/effects/EffectsEditor.vue';
+import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor';
 
 vi.mock('vue-draggable-plus', () => ({
   VueDraggable: {
@@ -11,6 +11,9 @@ vi.mock('vue-draggable-plus', () => ({
 
 vi.mock('~/components/effects/SelectEffectModal.vue', () => ({
   default: { template: '<div class="mock-select-effect"></div>', props: ['open'] },
+}));
+vi.mock('~/components/effects/EffectSettingsModal.vue', () => ({
+  default: { template: '<div class="mock-effect-settings"></div>' },
 }));
 vi.mock('~/components/properties/ParamsRenderer.vue', () => ({
   default: { template: '<div class="mock-params-renderer"></div>' },
@@ -39,10 +42,11 @@ vi.mock('~/effects', async (importOriginal) => {
         return { name: 'Blur Effect', type: 'blur', defaultValues: { radius: 5 }, controls: [] };
       return null;
     },
+    getAudioEffectManifest: () => null,
   };
 });
 
-describe('EffectsEditor', () => {
+describe('ClipEffectsEditor (video target)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -52,16 +56,16 @@ describe('EffectsEditor', () => {
   ];
 
   it('renders correctly with empty effects', async () => {
-    const component = await mountSuspended(EffectsEditor, {
-      props: { effects: [] },
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: [] },
     });
 
     expect(component.text()).toContain('fastcat.effects.empty');
   });
 
   it('renders correctly with effects', async () => {
-    const component = await mountSuspended(EffectsEditor, {
-      props: { effects: sampleEffects },
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: sampleEffects },
     });
 
     expect(component.text()).toContain('Blur Effect');
@@ -70,8 +74,8 @@ describe('EffectsEditor', () => {
   });
 
   it('emits update:effects when removing an effect', async () => {
-    const component = await mountSuspended(EffectsEditor, {
-      props: { effects: sampleEffects },
+    const component = await mountSuspended(ClipEffectsEditor, {
+      props: { target: 'video', effects: sampleEffects },
     });
 
     const buttons = component.findAllComponents({ name: 'UButton' });

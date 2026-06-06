@@ -3,8 +3,7 @@ import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import SelectionRangeProperties from '~/components/properties/SelectionRangeProperties.vue';
-import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
-import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
+import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 
 interface Props {
@@ -22,13 +21,6 @@ const emit = defineEmits<{
 const timelineStore = useTimelineStore();
 const selectionStore = useSelectionStore();
 
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
-
 const selectionRange = computed(() => timelineStore.getSelectionRange());
 
 function handleDelete() {
@@ -39,19 +31,17 @@ function handleDelete() {
 </script>
 
 <template>
-  <MobileTimelineDrawer
-    v-model:open="isOpenLocal"
+  <MobilePropertiesDrawer
     v-model:active-snap-point="activeSnapPoint"
-    with-toolbar-snap
+    :is-open="props.isOpen"
+    @close="emit('close')"
   >
     <template #toolbar>
-      <MobileDrawerToolbar class="border-b border-ui-border">
-        <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="handleDelete" />
-      </MobileDrawerToolbar>
+      <MobileDrawerToolbarButton icon="i-heroicons-trash" @click="handleDelete" />
     </template>
 
     <div v-if="selectionRange" class="px-4 pb-8 pt-4">
       <SelectionRangeProperties />
     </div>
-  </MobileTimelineDrawer>
+  </MobilePropertiesDrawer>
 </template>

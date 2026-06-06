@@ -201,6 +201,20 @@ const bodyRef = ref<HTMLElement | null>(null);
  */
 const SETTLE_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 
+// Gesture thresholds (px)
+const TAP_THRESHOLD_PX = 10;
+const CLOSE_TOOLBAR_THRESHOLD_PX = 28;
+const CLOSE_FULL_THRESHOLD_PX = 64;
+const EXPAND_THRESHOLD_PX = 40;
+const BACKDROP_SWIPE_THRESHOLD_PX = 50;
+
+// Animation durations (ms)
+const ANIMATION_SETTLE_MS = 320;
+const ANIMATION_EXPAND_MS = 460;
+const ANIMATION_CLOSE_MS = 280;
+const BACKDROP_SHOW_DELAY_MS = 80;
+const FOCUS_DELAY_MS = 400;
+
 const handleStartY = ref(0);
 const handleDragging = ref(false);
 const handleDragged = ref(false);
@@ -307,30 +321,25 @@ function onHandleTouchEnd(e: TouchEvent) {
   if (isExpanded.value && dy < 0) dy = 0;
   else if (!isExpanded.value && dy < -toolbarOffsetPx.value) dy = -toolbarOffsetPx.value;
 
-  const TAP = 10; // below this it's a tap — let the click handler decide
-  const CLOSE_TOOLBAR = 28; // small downward movement closes the short toolbar sheet
-  const CLOSE_FULL = 64;
-  const EXPAND = 40;
-
-  if (Math.abs(dy) < TAP) {
+  if (Math.abs(dy) < TAP_THRESHOLD_PX) {
     resetHandleTransform();
     return;
   }
 
   if (isExpanded.value) {
-    if (dy > CLOSE_FULL) closeByHandle(dy);
+    if (dy > CLOSE_FULL_THRESHOLD_PX) closeByHandle(dy);
     else settleHandle(dy);
     return;
   }
 
-  if (dy > CLOSE_TOOLBAR) closeByHandle(dy);
-  else if (dy < -EXPAND) expandByHandle(dy);
+  if (dy > CLOSE_TOOLBAR_THRESHOLD_PX) closeByHandle(dy);
+  else if (dy < -EXPAND_THRESHOLD_PX) expandByHandle(dy);
   else settleHandle(dy);
 }
 
 /** Ease back to the current snap position. */
 function settleHandle(fromDy: number) {
-  animateHandle(fromDy, 0, 320, resetHandleTransform);
+  animateHandle(fromDy, 0, ANIMATION_SETTLE_MS, resetHandleTransform);
 }
 
 /** Hand off to the full snap, syncing our offset with vaul's snap transition. */
@@ -338,13 +347,13 @@ function expandByHandle(fromDy: number) {
   if (props.snapPoints?.length) {
     activeSnapPoint.value = props.snapPoints[props.snapPoints.length - 1] as string | number;
   }
-  animateHandle(fromDy, 0, 460, resetHandleTransform);
+  animateHandle(fromDy, 0, ANIMATION_EXPAND_MS, resetHandleTransform);
 }
 
 /** Slide the sheet out from the release position, then unmount. */
 function closeByHandle(fromDy: number) {
   handleClosing.value = true;
-  animateHandle(fromDy, window.innerHeight || 900, 280, () => requestClose());
+  animateHandle(fromDy, window.innerHeight || 900, ANIMATION_CLOSE_MS, () => requestClose());
 }
 
 function onBackdropTouchStart(e: TouchEvent) {
@@ -386,7 +395,7 @@ function onBackdropTouchEnd(e: TouchEvent) {
   // is underneath. preventDefault on touchend suppresses the trailing synthetic
   // mouse/click events, which would otherwise hit the element below once the
   // backdrop turns non-interactive on close.
-  if (Math.abs(dy) < 10 && Math.abs(dx) < 10) {
+  if (Math.abs(dy) < TAP_THRESHOLD_PX && Math.abs(dx) < TAP_THRESHOLD_PX) {
     if (e.cancelable) e.preventDefault();
     e.stopPropagation();
     requestClose();
@@ -394,17 +403,17 @@ function onBackdropTouchEnd(e: TouchEvent) {
   }
 
   if (dir === 'bottom' || dir === 'top') {
-    if (dy > 50 && dy > Math.abs(dx) * 1.5) {
+    if (dy > BACKDROP_SWIPE_THRESHOLD_PX && dy > Math.abs(dx) * 1.5) {
       if (e.cancelable) e.preventDefault();
       requestClose();
     }
   } else if (dir === 'right') {
-    if (dx > 50) {
+    if (dx > BACKDROP_SWIPE_THRESHOLD_PX) {
       if (e.cancelable) e.preventDefault();
       requestClose();
     }
   } else if (dir === 'left') {
-    if (dx < -50) {
+    if (dx < -BACKDROP_SWIPE_THRESHOLD_PX) {
       if (e.cancelable) e.preventDefault();
       requestClose();
     }
@@ -465,7 +474,7 @@ watch([isOpen, isExpanded], ([open, expanded]) => {
   if (open && expanded) {
     backdropShowTimer = setTimeout(() => {
       isBackdropVisible.value = true;
-    }, 80);
+    }, BACKDROP_SHOW_DELAY_MS);
   } else {
     isBackdropVisible.value = false;
   }
@@ -502,7 +511,7 @@ watch(isOpen, (val) => {
         if (target) {
           target.focus();
         }
-      }, 400); // Wait for transition completion
+      }, FOCUS_DELAY_MS); // Wait for transition completion
     });
   }
 });

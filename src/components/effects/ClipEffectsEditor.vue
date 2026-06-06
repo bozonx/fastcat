@@ -1,26 +1,32 @@
 <script setup lang="ts">
 import UiModal from '~/components/ui/UiModal.vue';
+import UiTextInput from '~/components/ui/UiTextInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
+import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
 import ParamsRenderer from '~/components/properties/ParamsRenderer.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import EffectSettingsModal from '~/components/effects/EffectSettingsModal.vue';
-import SelectEffectModal from '~/components/effects/SelectEffectModal.vue';
-import { getAudioEffectManifest } from '~/effects';
-import type { AudioClipEffect } from '~/timeline/types';
+import { getVideoEffectManifest, getAudioEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import { genUuid } from '~/utils/ids';
 
-const props = defineProps<{
-  effects?: AudioClipEffect[];
+interface Props {
+  effects?: any[];
+  title?: string;
+  addLabel?: string;
+  emptyLabel?: string;
   hasToggle?: boolean;
   disabled?: boolean;
-}>();
+  target: 'video' | 'audio';
+}
+
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  'update:effects': [effects: AudioClipEffect[]];
+  'update:effects': [effects: any[]];
 }>();
 
 const modelValue = defineModel<boolean>('toggleValue');
@@ -28,25 +34,52 @@ const modelValue = defineModel<boolean>('toggleValue');
 const { t } = useI18n();
 const presetsStore = usePresetsStore();
 
-const isSelectModalOpen = ref(false);
+const isEffectModalOpen = ref(false);
 const isSaveModalOpen = ref(false);
 const settingsEffectId = ref<string | null>(null);
 const newPresetName = ref('');
 const savingEffectId = ref<string | null>(null);
 
+const isAudio = computed(() => props.target === 'audio');
+
+const safeTitle = computed(() => {
+  if (props.title) return props.title;
+  return isAudio.value ? t('fastcat.effects.audioTitle') : t('fastcat.effects.title');
+});
+const safeAddLabel = computed(() => props.addLabel ?? t('fastcat.effects.add'));
+const safeEmptyLabel = computed(() => props.emptyLabel ?? t('fastcat.effects.empty'));
+
 const safeEffects = computed(() => props.effects ?? []);
-const effectsWithManifest = computed(() =>
-  safeEffects.value.map((effect) => ({
-    effect,
-    manifest: getAudioEffectManifest(effect.type),
-  })),
+
+interface EffectItem {
+  effect: Record<string, unknown>;
+  manifest: ReturnType<typeof getVideoEffectManifest | typeof getAudioEffectManifest>;
+}
+
+const effectsWithManifest = computed<EffectItem[]>(() =>
+  safeEffects.value.map((effect) => {
+    const typed = effect as Record<string, unknown>;
+    const type = String(typed.type ?? '');
+    return {
+      effect: typed,
+      manifest: isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type),
+    };
+  }),
 );
-const activeSettingsEffect = computed(
-  () => safeEffects.value.find((effect) => effect.id === settingsEffectId.value) ?? null,
-);
+
+const activeSettingsEffect = computed(() => {
+  if (!settingsEffectId.value) return null;
+  return (
+    (safeEffects.value.find((e) => (e as Record<string, unknown>).id === settingsEffectId.value) as
+      | Record<string, unknown>
+      | undefined) ?? null
+  );
+});
+
 const activeSettingsManifest = computed(() => {
   if (!activeSettingsEffect.value) return null;
-  return getAudioEffectManifest(activeSettingsEffect.value.type);
+  const type = String(activeSettingsEffect.value.type ?? '');
+  return isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
 });
 
 function onDragOver(e: DragEvent) {
@@ -65,54 +98,66 @@ function onDrop(e: DragEvent) {
   handleAddEffect(effectType);
 }
 
-function setEffects(next: AudioClipEffect[]) {
+function setEffects(next: unknown[]) {
   emit('update:effects', next);
 }
 
 function handleAddEffect(type: string) {
-  const manifest = getAudioEffectManifest(type);
+  const manifest = isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
   if (!manifest) return;
 
-  const newEffect: AudioClipEffect = {
-    id: `audio_effect_${genUuid()}`,
+  const newEffect: Record<string, unknown> = {
+    id: isAudio.value ? `audio_effect_${genUuid()}` : `effect_${Date.now()}`,
     type,
     enabled: true,
-    target: 'audio',
+    target: props.target,
     ...manifest.defaultValues,
   };
 
   setEffects([...safeEffects.value, newEffect]);
-  isSelectModalOpen.value = false;
+  isEffectModalOpen.value = false;
 }
 
-function handleUpdateEffect(effectId: string, updates: Partial<AudioClipEffect>) {
-  const next = safeEffects.value.map((e) =>
-    e.id === effectId ? ({ ...e, ...updates } as AudioClipEffect) : e,
-  );
+function handleUpdateEffect(effectId: string, updates: Record<string, unknown>) {
+  const next = safeEffects.value.map((e) => {
+    const item = e as Record<string, unknown>;
+    return item.id === effectId ? { ...item, ...updates } : item;
+  });
   setEffects(next);
 }
 
 function handleRemoveEffect(effectId: string) {
-  setEffects(safeEffects.value.filter((e) => e.id !== effectId));
+  setEffects(safeEffects.value.filter((e) => (e as Record<string, unknown>).id !== effectId));
 }
 
 function handleSavePreset() {
   if (!savingEffectId.value || !newPresetName.value.trim()) return;
 
-  const effect = safeEffects.value.find((e) => e.id === savingEffectId.value);
+  const effect = safeEffects.value.find(
+    (e) => (e as Record<string, unknown>).id === savingEffectId.value,
+  ) as Record<string, unknown> | undefined;
   if (!effect) return;
 
-  const manifest = getAudioEffectManifest(effect.type);
+  const type = String(effect.type ?? '');
+  const manifest = isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
   if (!manifest) return;
 
   const baseType = manifest.baseType || manifest.type;
   const paramsToSave = { ...effect };
-  delete (paramsToSave as Record<string, unknown>).id;
-  delete (paramsToSave as Record<string, unknown>).type;
-  delete (paramsToSave as Record<string, unknown>).enabled;
-  delete (paramsToSave as Record<string, unknown>).target;
+  delete paramsToSave.id;
+  delete paramsToSave.type;
+  delete paramsToSave.enabled;
+  if (isAudio.value) {
+    delete paramsToSave.target;
+  }
 
-  presetsStore.saveAsPreset('effect', baseType, newPresetName.value.trim(), paramsToSave, 'audio');
+  presetsStore.saveAsPreset(
+    'effect',
+    baseType,
+    newPresetName.value.trim(),
+    paramsToSave,
+    isAudio.value ? 'audio' : undefined,
+  );
 
   isSaveModalOpen.value = false;
   newPresetName.value = '';
@@ -125,7 +170,7 @@ function openSaveModal(effectId: string) {
 }
 
 function handleUpdateEffectValue(effectId: string, key: string, value: unknown) {
-  handleUpdateEffect(effectId, { [key]: value } as Partial<AudioClipEffect>);
+  handleUpdateEffect(effectId, { [key]: value });
 }
 
 function handleAction(effectId: string, action: string, _key: string) {
@@ -134,15 +179,23 @@ function handleAction(effectId: string, action: string, _key: string) {
   }
 }
 
-function onUpdateOrder(newEffects: AudioClipEffect[]) {
+function onUpdateOrder(newEffects: unknown[]) {
   setEffects(newEffects);
+}
+
+function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
+  if (!manifest) return type;
+  if ('nameKey' in manifest && manifest.nameKey) {
+    return t(manifest.nameKey);
+  }
+  return manifest.name || type;
 }
 </script>
 
 <template>
   <PropertySection
     v-model:toggle-value="modelValue"
-    :title="t('fastcat.effects.audioTitle')"
+    :title="safeTitle"
     class="mt-2"
     :has-toggle="props.hasToggle"
     @dragover="onDragOver"
@@ -155,16 +208,16 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
         color="primary"
         icon="i-heroicons-plus"
         :disabled="props.disabled"
-        @click="isSelectModalOpen = true"
+        @click="isEffectModalOpen = true"
       >
-        {{ t('fastcat.effects.add') }}
+        {{ safeAddLabel }}
       </UButton>
     </template>
 
     <div class="space-y-2 py-1">
       <UiEmptyState
         v-if="safeEffects.length === 0"
-        :message="t('fastcat.effects.empty')"
+        :message="safeEmptyLabel"
         wrapper-class="py-2 not-italic"
         :class="{ 'opacity-50': props.disabled }"
       />
@@ -179,7 +232,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
       >
         <div
           v-for="{ effect, manifest } in effectsWithManifest"
-          :key="effect.id"
+          :key="String(effect.id)"
           class="bg-ui-bg border border-ui-border rounded px-2 py-2"
           :class="{ 'opacity-50 pointer-events-none': props.disabled }"
         >
@@ -189,14 +242,14 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
               class="drag-handle w-4 h-4 text-ui-text-muted hover:text-ui-text cursor-grab active:cursor-grabbing shrink-0"
             />
             <USwitch
-              :model-value="effect.enabled"
+              :model-value="Boolean(effect.enabled)"
               size="sm"
               class="shrink-0"
               :disabled="props.disabled"
-              @update:model-value="handleUpdateEffect(effect.id, { enabled: $event })"
+              @update:model-value="handleUpdateEffect(String(effect.id), { enabled: $event })"
             />
             <span class="font-medium flex-1 truncate">
-              {{ manifest?.name || effect.type }}
+              {{ resolveEffectName(manifest, String(effect.type)) }}
             </span>
             <div class="flex items-center gap-1 shrink-0">
               <UButton
@@ -206,7 +259,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
                 icon="i-heroicons-bookmark"
                 :title="t('fastcat.effects.saveAsPreset')"
                 :disabled="props.disabled"
-                @click="openSaveModal(effect.id)"
+                @click="openSaveModal(String(effect.id))"
               />
               <UButton
                 size="xs"
@@ -214,7 +267,7 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
                 color="neutral"
                 icon="i-heroicons-trash"
                 :disabled="props.disabled"
-                @click="handleRemoveEffect(effect.id)"
+                @click="handleRemoveEffect(String(effect.id))"
               />
             </div>
           </div>
@@ -222,13 +275,11 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
           <div class="mt-1 pl-1">
             <ParamsRenderer
               v-if="manifest?.controls"
-              :controls="manifest?.controls ?? []"
-              :values="effect as Record<string, unknown>"
+              :controls="manifest.controls"
+              :values="effect"
               :disabled="props.disabled || !effect.enabled"
-              @update:value="
-                (key: string, value: unknown) => handleUpdateEffectValue(effect.id, key, value)
-              "
-              @action="(action: string, key: string) => handleAction(effect.id, action, key)"
+              @update:value="(key: string, value: unknown) => handleUpdateEffectValue(String(effect.id), key, value)"
+              @action="(action: string, key: string) => handleAction(String(effect.id), action, key)"
             />
           </div>
         </div>
@@ -236,19 +287,19 @@ function onUpdateOrder(newEffects: AudioClipEffect[]) {
     </div>
 
     <EffectSettingsModal
-      v-if="settingsEffectId"
+      v-if="isAudio && settingsEffectId"
       :model-value="true"
       :effect="activeSettingsEffect ?? undefined"
       :manifest="activeSettingsManifest ?? undefined"
-      @update:model-value="
-        (val) => {
-          if (!val) settingsEffectId = null;
-        }
-      "
-      @update:effect="(updates) => handleUpdateEffect(settingsEffectId!, updates)"
+      @update:model-value="(val: boolean) => { if (!val) settingsEffectId = null; }"
+      @update:effect="(updates: Record<string, unknown>) => handleUpdateEffect(settingsEffectId!, updates)"
     />
 
-    <SelectEffectModal v-model:open="isSelectModalOpen" target="audio" @select="handleAddEffect" />
+    <SelectEffectModal
+      v-model:open="isEffectModalOpen"
+      :target="props.target"
+      @select="handleAddEffect"
+    />
 
     <UiModal v-model:open="isSaveModalOpen" :title="t('fastcat.effects.savePresetTitle')">
       <template #body>

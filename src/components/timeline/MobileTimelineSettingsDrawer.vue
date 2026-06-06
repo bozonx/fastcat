@@ -3,8 +3,7 @@ import { computed } from 'vue';
 import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
-import EffectsEditor from '~/components/effects/EffectsEditor.vue';
-import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
+import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import MediaResolutionSettings from '~/components/media/MediaResolutionSettings.vue';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -251,13 +250,15 @@ const timelineActions = computed(() => [
 
       <!-- Master Video Effects -->
       <div class="flex flex-col gap-2">
-        <EffectsEditor
+        <ClipEffectsEditor
+          target="video"
           :effects="masterEffects"
           :title="`${t('fastcat.effects.tabs.video')} ${t('fastcat.effects.title').toLowerCase()}`"
           @update:effects="handleUpdateMasterEffects"
         />
 
-        <AudioEffectsEditor
+        <ClipEffectsEditor
+          target="audio"
           :effects="masterAudioEffects"
           @update:effects="handleUpdateMasterAudioEffects"
         />

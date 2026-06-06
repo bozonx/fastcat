@@ -39,8 +39,7 @@ import { useClipTextProperties } from '~/composables/properties/useClipTextPrope
 import { useClipShapeProperties } from '~/composables/properties/useClipShapeProperties';
 import { useClipHudProperties } from '~/composables/properties/useClipHudProperties';
 import { useClipParametersClipboard } from '~/composables/editor/useClipParametersClipboard';
-import EffectsEditor from '~/components/effects/EffectsEditor.vue';
-import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
+import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 
 const props = defineProps<{
   clip: TimelineClipItem;
@@ -555,8 +554,9 @@ defineExpose({
       />
 
       <div ref="effectsSectionRef">
-        <EffectsEditor
+        <ClipEffectsEditor
           v-model:toggle-value="isVideoEffectsEnabled"
+          target="video"
           :effects="clipVideoEffects"
           :title="t('fastcat.effects.videoTitle')"
           :add-label="t('fastcat.effects.add')"
@@ -594,9 +594,10 @@ defineExpose({
         @volume-drag-end="onVolumeDragEnd"
       />
 
-      <AudioEffectsEditor
+      <ClipEffectsEditor
         v-if="canEditAudioEffects"
         v-model:toggle-value="isAudioEffectsEnabled"
+        target="audio"
         :effects="clipAudioEffects"
         :has-toggle="true"
         :disabled="!isAudioEffectsEnabled"

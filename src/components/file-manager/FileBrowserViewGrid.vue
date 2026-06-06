@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { useSelectionStore } from '~/stores/selection.store';
-import { useTimelineMediaUsageStore } from '~/stores/timeline-media-usage.store';
-import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
-import { useFileManager } from '~/composables/file-manager/useFileManager';
-import { useClipboardPaths } from '~/composables/file-manager/useClipboardIndicator';
 import type { FsEntry } from '~/types/fs';
-import type { getBdPayload } from '~/types/bloggerdog';
-import { WORKSPACE_COMMON_PATH_PREFIX, isWorkspaceCommonPath } from '~/utils/workspace-common';
 import type { FileCompatibility } from '~/composables/file-manager/useFileManagerCompatibility';
+import {
+  useFileBrowserEntry,
+  useRenameTimer,
+  getBdType,
+  getBdThumbnail,
+} from '~/composables/file-manager/useFileBrowserEntry';
 import InlineNameEditor from '~/components/file-manager/InlineNameEditor.vue';
 import UiProgressSpinner from '~/components/ui/UiProgressSpinner.vue';
 
@@ -19,14 +18,6 @@ type ExtendedFsEntry = FsEntry & {
   mimeType?: string;
   created?: number;
 };
-
-function getBdType(entry: FsEntry): string | undefined {
-  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.type;
-}
-
-function getBdThumbnail(entry: FsEntry): string | undefined {
-  return (entry.adapterPayload as ReturnType<typeof getBdPayload>)?.thumbnailUrl;
-}
 
 const props = defineProps<{
   entries: ExtendedFsEntry[];
@@ -64,67 +55,27 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const selectionStore = useSelectionStore();
-const timelineMediaUsageStore = useTimelineMediaUsageStore();
-const proxyStore = useProxyStore();
 const projectStore = useProjectStore();
-const fileManager = useFileManager();
-const clipboardPaths = useClipboardPaths();
 
-function getCompatibilityStatus(entry: FsEntry) {
-  if (!entry.path || !props.fileCompatibility) return 'ok';
-  return props.fileCompatibility[entry.path]?.status ?? 'ok';
-}
+const {
+  timelineMediaUsageStore,
+  proxyStore,
+  fileManager,
+  getCompatibilityStatus,
+  isCheckingCompatibility,
+  isCutEntry,
+  isSelected,
+  isWorkspaceCommonRoot,
+  handleImageError,
+} = useFileBrowserEntry({
+  fileCompatibility: props.fileCompatibility,
+  instanceId: props.instanceId,
+});
 
-function isCheckingCompatibility(entry: FsEntry) {
-  return getCompatibilityStatus(entry) === 'checking';
-}
-
-function isCutEntry(entry: FsEntry): boolean {
-  return entry.path ? clipboardPaths.value.has(entry.path) : false;
-}
-
-function isSelected(entry: FsEntry): boolean {
-  const selected = selectionStore.selectedEntity;
-  if (!selected || selected.source !== 'fileManager') return false;
-  if (selected.instanceId && selected.instanceId !== props.instanceId) return false;
-
-  if (selected.kind === 'multiple') {
-    return selected.entries.some((e) => e.path === entry.path);
-  }
-  return selected.path === entry.path;
-}
-
-function isWorkspaceCommonRoot(entry: FsEntry): boolean {
-  return entry.kind === 'directory' && entry.path === WORKSPACE_COMMON_PATH_PREFIX;
-}
-
-let renameTimer: ReturnType<typeof setTimeout> | null = null;
-
-function onNameClick(event: MouseEvent, entry: FsEntry) {
-  if (!isSelected(entry)) return;
-  if (isWorkspaceCommonPath(entry.path)) return;
-  event.stopPropagation();
-
-  if (event.detail === 1) {
-    renameTimer = setTimeout(() => {
-      emit('fileAction', 'rename', entry);
-    }, 250);
-  }
-}
-
-function onNameDblClick() {
-  if (renameTimer) {
-    clearTimeout(renameTimer);
-    renameTimer = null;
-  }
-}
-
-function handleImageError(entry: ExtendedFsEntry) {
-  if (entry.objectUrl) {
-    entry.objectUrl = undefined;
-  }
-}
+const { onNameClick, onNameDblClick } = useRenameTimer({
+  onRename: (entry) => emit('fileAction', 'rename', entry),
+  canRename: (entry) => isSelected(entry),
+});
 </script>
 
 <template>

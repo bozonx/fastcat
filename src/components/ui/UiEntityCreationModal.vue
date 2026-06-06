@@ -22,6 +22,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const INPUT_FOCUS_DELAY_MS = 50;
+
 const name = ref(props.defaultValue || '');
 const inputRef = ref<HTMLElement | null>(null);
 
@@ -50,7 +52,7 @@ watch(
             input.select();
           }
         }
-      }, 50);
+      }, INPUT_FOCUS_DELAY_MS);
     }
   },
   { immediate: true },

@@ -2,7 +2,7 @@
 import UiModal from '~/components/ui/UiModal.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
-import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
+import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import type { AudioClipEffect } from '~/timeline/types';
 
 const props = defineProps<{
@@ -44,7 +44,7 @@ function handleUpdateEffects(effects: AudioClipEffect[]) {
 <template>
   <UiModal v-model:open="isOpen" :title="t('fastcat.effects.trackAudioTitle', { name: trackName })">
     <div class="max-h-[70vh] overflow-y-auto pr-1">
-      <AudioEffectsEditor :effects="trackAudioEffects" @update:effects="handleUpdateEffects" />
+      <ClipEffectsEditor target="audio" :effects="trackAudioEffects" @update:effects="handleUpdateEffects" />
     </div>
     <template #footer>
       <div class="flex justify-end w-full">

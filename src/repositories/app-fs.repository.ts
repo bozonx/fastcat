@@ -1,4 +1,4 @@
-import { isTransientWriteError, withFileIoSlot } from '~/utils/io/io-governor';
+import { isTransientWriteError } from '~/utils/io/io-governor';
 import type { IFileSystemAdapter } from '~/file-manager/core/vfs/types';
 import { VfsNotFoundError } from '~/file-manager/core/vfs/errors';
 
@@ -37,7 +37,11 @@ export function createAppFsJsonStore(vfs: IFileSystemAdapter): AppFsJsonStore {
     async readJson<T>(path: string): Promise<T | null> {
       let blob: Blob;
       try {
-        blob = await withFileIoSlot(() => vfs.readFile(path));
+        // The adapter already acquires an I/O slot inside readFile, so we
+        // must not wrap it again — nesting withFileIoSlot deadlocks the
+        // small interactive budget (pool=2) when multiple reads run
+        // concurrently during workspace init.
+        blob = await vfs.readFile(path);
       } catch (error) {
         if (error instanceof VfsNotFoundError) return null;
         throw error;

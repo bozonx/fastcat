@@ -15,8 +15,7 @@ import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyRow from '~/components/properties/PropertyRow.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
-import EffectsEditor from '~/components/effects/EffectsEditor.vue';
-import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
+import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import UiRenameModal from '~/components/ui/UiRenameModal.vue';
 import UiEntityCreationModal from '~/components/ui/UiEntityCreationModal.vue';
 import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
@@ -473,7 +472,8 @@ const addTrackActions = computed(() => [
 
     <!-- Master Video Effects -->
     <div v-if="!finalIsReadOnly" class="relative">
-      <EffectsEditor
+      <ClipEffectsEditor
+        target="video"
         :effects="masterEffects"
         :title="`${t('fastcat.effects.tabs.video')} ${t('fastcat.effects.title').toLowerCase()}`"
         @update:effects="handleUpdateMasterEffects"
@@ -488,8 +488,9 @@ const addTrackActions = computed(() => [
       </div>
     </div>
 
-    <AudioEffectsEditor
+    <ClipEffectsEditor
       v-if="!finalIsReadOnly"
+      target="audio"
       :effects="masterAudioEffects"
       @update:effects="handleUpdateMasterAudioEffects"
     />

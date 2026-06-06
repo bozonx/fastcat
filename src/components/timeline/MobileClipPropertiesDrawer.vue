@@ -5,8 +5,7 @@ import { useSelectionStore } from '~/stores/selection.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
 import type { TimelineClipItem, TimelineTrack } from '~/timeline/types';
 import ClipProperties from '~/components/properties/ClipProperties.vue';
-import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
-import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
+import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import { useClipPropertiesActions } from '~/composables/properties/useClipPropertiesActions';
@@ -39,13 +38,6 @@ const focusStore = useFocusStore();
 const fileManager = useFileManager();
 const { setActiveTab } = useProjectTabsStore();
 const projectStore = useProjectStore();
-
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
 
 const currentClipAndTrack = computed(() => {
   const entity = selectionStore.selectedEntity;
@@ -169,13 +161,12 @@ const hasAudio = computed(() => {
 </script>
 
 <template>
-  <MobileTimelineDrawer
-    v-model:open="isOpenLocal"
+  <MobilePropertiesDrawer
     v-model:active-snap-point="activeSnapPoint"
-    with-toolbar-snap
+    :is-open="props.isOpen"
+    @close="emit('close')"
   >
     <template #toolbar>
-      <MobileDrawerToolbar class="border-b border-ui-border">
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
           :disabled="isLocked"
@@ -230,7 +221,6 @@ const hasAudio = computed(() => {
           :disabled="isLocked"
           @click="requestRippleDelete"
         />
-      </MobileDrawerToolbar>
     </template>
 
     <div v-if="clip" class="px-4 pb-8 pt-4">
@@ -265,5 +255,5 @@ const hasAudio = computed(() => {
       :groups="clipParameterGroupOptions"
       @apply="applyClipParameters"
     />
-  </MobileTimelineDrawer>
+  </MobilePropertiesDrawer>
 </template>

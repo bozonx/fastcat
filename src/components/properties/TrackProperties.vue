@@ -9,8 +9,7 @@ import type {
   VideoClipEffect,
   AudioClipEffect,
 } from '~/timeline/types';
-import EffectsEditor from '~/components/effects/EffectsEditor.vue';
-import AudioEffectsEditor from '~/components/effects/AudioEffectsEditor.vue';
+import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
 import PropertySection from '~/components/properties/PropertySection.vue';
 import PropertyActionsBlock from '~/components/properties/PropertyActionsBlock.vue';
 import UiSliderInput from '~/components/ui/UiSliderInput.vue';
@@ -311,8 +310,9 @@ const clipCount = computed(
       </div>
     </PropertySection>
 
-    <EffectsEditor
+    <ClipEffectsEditor
       v-if="track.kind === 'video'"
+      target="video"
       :effects="trackVideoEffects"
       :title="`${t('fastcat.effects.tabs.video')} ${t('fastcat.effects.title').toLowerCase()}`"
       :add-label="t('fastcat.effects.add')"
@@ -320,8 +320,9 @@ const clipCount = computed(
       @update:effects="handleUpdateTrackEffects"
     />
 
-    <AudioEffectsEditor
+    <ClipEffectsEditor
       v-if="track.kind === 'audio' || track.kind === 'video'"
+      target="audio"
       :effects="trackAudioEffects"
       @update:effects="handleUpdateTrackAudioEffects"
     />

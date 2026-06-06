@@ -5,8 +5,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import type { TimelineTrack } from '~/timeline/types';
 import TrackProperties from '~/components/properties/TrackProperties.vue';
 import GenerateCaptionsModal from '~/components/properties/GenerateCaptionsModal.vue';
-import MobileTimelineDrawer from './MobileTimelineDrawer.vue';
-import MobileDrawerToolbar from './MobileDrawerToolbar.vue';
+import MobilePropertiesDrawer from './MobilePropertiesDrawer.vue';
 import MobileDrawerToolbarButton from './MobileDrawerToolbarButton.vue';
 import PropertyActionList from '~/components/properties/PropertyActionList.vue';
 import { useTrackExtraActions } from '~/composables/properties/useTrackExtraActions';
@@ -26,13 +25,6 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const timelineStore = useTimelineStore();
 const workspaceStore = useWorkspaceStore();
-
-const isOpenLocal = computed({
-  get: () => props.isOpen,
-  set: (val) => {
-    if (!val) emit('close');
-  },
-});
 
 const tracks = computed(
   () => (timelineStore.timelineDoc?.tracks as TimelineTrack[] | undefined) ?? [],
@@ -117,13 +109,12 @@ const { extraActions } = useTrackExtraActions({
 </script>
 
 <template>
-  <MobileTimelineDrawer
-    v-model:open="isOpenLocal"
+  <MobilePropertiesDrawer
     v-model:active-snap-point="activeSnapPoint"
-    with-toolbar-snap
+    :is-open="props.isOpen"
+    @close="emit('close')"
   >
     <template #toolbar>
-      <MobileDrawerToolbar class="border-b border-ui-border">
         <MobileDrawerToolbarButton
           icon="i-heroicons-trash"
           @click="isGapMode ? deleteGap() : requestDeleteTrack()"
@@ -167,7 +158,6 @@ const { extraActions } = useTrackExtraActions({
           :active="selectedTrack?.audioSolo"
           @click="toggleTrackSolo"
         />
-      </MobileDrawerToolbar>
     </template>
 
     <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">
@@ -209,5 +199,5 @@ const { extraActions } = useTrackExtraActions({
         }
       "
     />
-  </MobileTimelineDrawer>
+  </MobilePropertiesDrawer>
 </template>
