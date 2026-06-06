@@ -53,6 +53,7 @@ vi.mock('~/stores/workspace.store', () => ({
     init: vi.fn().mockResolvedValue(undefined),
     resetWorkspace: vi.fn().mockResolvedValue(undefined),
     workspaceHandle: { kind: 'directory', name: 'test', path: '/' },
+    workspaceProviderId: 'web',
     userSettings: {
       projectDefaults: { defaultAudioFadeCurve: 'linear' },
       optimization: { autoCreateProxies: false },
@@ -69,10 +70,12 @@ vi.mock('~/stores/workspace.store', () => ({
         instances: {},
       },
     },
+    resolvedStorageTopology: { projectsRoot: '/' },
     projects: [],
     recentProjects: [],
     error: null,
     isLoading: false,
+    isInitializing: false,
   })),
 }));
 

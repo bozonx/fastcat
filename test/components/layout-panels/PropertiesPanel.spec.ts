@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, reactive } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -8,6 +8,7 @@ import { useFocusStore } from '~/stores/focus.store';
 
 const timelineStore = reactive({
   timelineDoc: null,
+  timelineFormat: { fps: 30 },
   clearSelection: vi.fn(),
   selectTrack: vi.fn(),
 });
@@ -52,6 +53,16 @@ vi.mock('~/stores/file-conversion.store', () => ({
 vi.mock('~/composables/file-manager/useFileManager', () => ({
   useFileManager: () => ({
     findEntryByPath: vi.fn(() => null),
+    vfs: null,
+    reloadDirectory: vi.fn(),
+  }),
+}));
+
+vi.mock('~/composables/file-manager/useComputerVfs', () => ({
+  useComputerVfs: () => ({
+    vfs: null,
+    rootPath: ref(''),
+    isTauri: false,
   }),
 }));
 
@@ -230,6 +241,7 @@ describe('PropertiesPanel', () => {
         stubs: {
           UiButtonGroup: true,
           FileDeleteConfirmModal: true,
+          UIcon: true,
           ClipProperties: {
             name: 'ClipProperties',
             props: ['clip'],

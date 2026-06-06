@@ -25,5 +25,6 @@ export default defineNuxtPlugin((nuxtApp) => {
       if (isInitializing) return;
       await applyLocale(userLocale);
     },
+    { immediate: true },
   );
 });

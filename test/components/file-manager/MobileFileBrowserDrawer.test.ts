@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import MobileFileBrowserDrawer from '~/components/file-manager/MobileFileBrowserDrawer.vue';
 
 const mockSelectionStore = reactive({
@@ -15,18 +15,6 @@ const mockProxyStore = reactive({
 
 const mockProjectStore = reactive({
   getFileHandleByPath: vi.fn(),
-});
-
-const mockWorkspaceStore = reactive({
-  userSettings: {
-    integrations: {
-      stt: {
-        provider: 'remote',
-      },
-    },
-  },
-  isSttModelDownloaded: false,
-  workspaceHandle: null,
 });
 
 const mockReadDirectory = vi.fn();
@@ -61,8 +49,18 @@ vi.mock('~/composables/file-manager/useComputerVfs', () => ({
   }),
 }));
 
-vi.mock('~/stores/workspace.store', () => ({
-  useWorkspaceStore: () => mockWorkspaceStore,
+vi.mock('~/composables/properties/useFilePropertiesActions', () => ({
+  useFilePropertiesActions: vi.fn(() => ({
+    directoryPrimaryActions: ref([]),
+    directorySecondaryActions: ref([
+      { id: 'createProxyForAll', label: 'videoEditor.fileManager.actions.createProxyForAll', icon: '', onClick: vi.fn(), hidden: false },
+    ]),
+    filePrimaryActions: ref([]),
+    fileSecondaryActions: ref([
+      { id: 'regenerateProxy', label: 'videoEditor.fileManager.actions.regenerateProxy', icon: '', onClick: vi.fn(), hidden: false },
+      { id: 'deleteProxy', label: 'videoEditor.fileManager.actions.deleteProxy', icon: '', onClick: vi.fn(), hidden: false },
+    ]),
+  })),
 }));
 
 vi.mock('~/composables/useAppClipboard', () => ({
@@ -87,16 +85,6 @@ vi.mock('~/composables/file-manager/useFileManager', () => ({
 vi.mock('~/utils/external-integrations', () => ({
   resolveExternalServiceConfig: () => null,
 }));
-
-vi.mock('nuxt/app', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuxt/app')>();
-  return {
-    ...actual,
-    useRuntimeConfig: () => ({
-      public: {},
-    }),
-  };
-});
 
 describe('MobileFileBrowserDrawer', () => {
   beforeEach(() => {
@@ -128,7 +116,6 @@ describe('MobileFileBrowserDrawer', () => {
           UiMobileDrawer: { template: '<div><slot /></div>' },
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
           MobileDrawerToolbarButton: true,
-          FileProperties: true,
           MultiFileProperties: true,
           PropertyActionList: {
             name: 'PropertyActionList',
@@ -169,7 +156,6 @@ describe('MobileFileBrowserDrawer', () => {
           UiMobileDrawer: { template: '<div><slot /></div>' },
           MobileDrawerToolbar: { template: '<div><slot /></div>' },
           MobileDrawerToolbarButton: true,
-          FileProperties: true,
           MultiFileProperties: true,
           PropertyActionList: {
             name: 'PropertyActionList',

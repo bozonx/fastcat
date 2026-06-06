@@ -4,7 +4,7 @@ import type { TimelineTrack } from '~/timeline/types';
 import {
   resolveMoveTargetTrackId,
   resolvePlayheadClickTimeUs,
-} from '~/composables/timeline/timelineInteractionUtils';
+} from '~/composables/timeline/timeline-drag-domain';
 
 describe('timelineInteractionUtils', () => {
   afterEach(() => {

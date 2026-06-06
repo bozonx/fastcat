@@ -21,6 +21,7 @@ vi.mock('~/composables/preview/useMediaPlayerPlayback', () => ({
     duration: ref(60),
     progress: ref(0),
     playbackSpeed: ref(1.0),
+    playbackError: ref(null),
     togglePlay: vi.fn(),
     setForwardPlaybackSpeed: vi.fn(),
     setBackwardPlaybackSpeed: vi.fn(),
@@ -30,6 +31,8 @@ vi.mock('~/composables/preview/useMediaPlayerPlayback', () => ({
     onPause: vi.fn(),
     resetState: vi.fn(),
     pauseAndClearPlayback: vi.fn(),
+    emitPlaybackState: vi.fn(),
+    playOnTimeUpdate: vi.fn(),
   })),
 }));
 
@@ -48,6 +51,12 @@ vi.mock('~/composables/preview/useImagePanZoom', () => ({
     onPointerUp: vi.fn(),
     onAuxClick: vi.fn(),
     onCustomZoom: vi.fn(),
+  })),
+}));
+
+vi.mock('vue-i18n', () => ({
+  useI18n: vi.fn(() => ({
+    t: vi.fn((key: string) => key),
   })),
 }));
 

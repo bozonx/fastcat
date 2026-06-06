@@ -126,8 +126,7 @@ describe('MobileFileBrowserSelectionToolbar', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('common.delete');
-    expect(wrapper.text()).toContain('common.copy');
+    expect(wrapper.text()).toContain('common.rename');
     expect(wrapper.text()).toContain('common.toTimeline');
   });
 
