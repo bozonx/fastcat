@@ -8,6 +8,16 @@
 
 use std::time::Instant;
 
+/// Abstract timeline clock so tests can inject a deterministic/mock time source.
+pub trait Clock: Send + Sync {
+    fn is_playing(&self) -> bool;
+    fn current_pts(&self) -> f64;
+    fn play(&mut self);
+    fn pause(&mut self) -> f64;
+    fn seek(&mut self, t: f64);
+    fn sync_to_audio_pts(&mut self, audio_pts: f64);
+}
+
 pub struct PlaybackClock {
     /// PTS в момент последнего pause/seek (секунды timeline).
     pts_origin: f64,
@@ -71,9 +81,35 @@ impl PlaybackClock {
     }
 }
 
+impl Clock for PlaybackClock {
+    fn is_playing(&self) -> bool {
+        self.is_playing()
+    }
+
+    fn current_pts(&self) -> f64 {
+        self.current_pts()
+    }
+
+    fn play(&mut self) {
+        self.play();
+    }
+
+    fn pause(&mut self) -> f64 {
+        self.pause()
+    }
+
+    fn seek(&mut self, t: f64) {
+        self.seek(t);
+    }
+
+    fn sync_to_audio_pts(&mut self, audio_pts: f64) {
+        self.sync_to_audio_pts(audio_pts);
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::PlaybackClock;
+    use super::{Clock, PlaybackClock};
 
     #[test]
     fn starts_at_zero_paused() {
@@ -145,5 +181,19 @@ mod tests {
             (after - (before - 0.02)).abs() < 0.005,
             "sync created a jump: before={before}, after={after}"
         );
+    }
+
+    #[test]
+    fn playback_clock_implements_clock_trait() {
+        let mut clock: Box<dyn Clock> = Box::new(PlaybackClock::new());
+        assert!(!clock.is_playing());
+        assert_eq!(clock.current_pts(), 0.0);
+        clock.seek(3.5);
+        assert_eq!(clock.current_pts(), 3.5);
+        clock.play();
+        assert!(clock.is_playing());
+        let pts = clock.pause();
+        assert!((pts - 3.5).abs() < 1e-6);
+        assert!(!clock.is_playing());
     }
 }

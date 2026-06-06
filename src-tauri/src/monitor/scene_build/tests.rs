@@ -407,6 +407,25 @@ mod tests {
     }
 
     #[test]
+    fn test_svg_rasterizer_struct_direct_use() {
+        use std::io::Write;
+        let path = std::env::temp_dir().join("test_fastcat_svg_struct.svg");
+        let svg_content = r#"<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>"#;
+        {
+            let mut file = std::fs::File::create(&path).unwrap();
+            file.write_all(svg_content.as_bytes()).unwrap();
+            file.sync_all().unwrap();
+        }
+
+        let rasterizer = SvgRasterizer::new();
+        let (img, size) = rasterizer.rasterize_svg(&path, 64).unwrap();
+        assert_eq!(size, (64, 64));
+        assert_eq!(img.data.as_ref().len(), 64 * 64 * 4);
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
     fn test_build_text_layer_auto_size_and_metrics() {
         let style = json!({
             "fontSize": 48.0,

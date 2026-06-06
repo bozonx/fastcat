@@ -4,7 +4,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { defineComponent, h, reactive } from 'vue';
 import { mount, type VueWrapper } from '@vue/test-utils';
 
-import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
+import { useEditorHotkeys, hasBlockingModalState } from '~/composables/editor/useEditorHotkeys';
+import { getActiveElement } from '~/utils/browser-api';
 import { pressedKeyCodes } from '~/utils/hotkeys/pressedKeys';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -1234,5 +1235,41 @@ describe('useEditorHotkeys', () => {
         properties: { linkedGroupId: undefined },
       },
     ]);
+  });
+});
+
+describe('getActiveElement', () => {
+  it('returns document.activeElement', () => {
+    expect(getActiveElement()).toBe(document.activeElement);
+  });
+});
+
+describe('hasBlockingModalState', () => {
+  it('returns true when dialog is open', () => {
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    document.body.appendChild(dialog);
+
+    try {
+      expect(hasBlockingModalState()).toBe(true);
+    } finally {
+      dialog.remove();
+    }
+  });
+
+  it('returns true when role="dialog" exists', () => {
+    const div = document.createElement('div');
+    div.setAttribute('role', 'dialog');
+    document.body.appendChild(div);
+
+    try {
+      expect(hasBlockingModalState()).toBe(true);
+    } finally {
+      div.remove();
+    }
+  });
+
+  it('returns false when no modal elements exist', () => {
+    expect(hasBlockingModalState()).toBe(false);
   });
 });

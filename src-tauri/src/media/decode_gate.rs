@@ -58,11 +58,29 @@ impl Drop for SemaphorePermit<'_> {
     }
 }
 
-static DECODER_LOAD_GATE: OnceLock<Semaphore> = OnceLock::new();
+/// Gate that limits the number of concurrent heavy decoder initialisations.
+/// Backward-compatible wrapper around a [`Semaphore`].
+pub struct DecoderLoadGate {
+    sem: Semaphore,
+}
+
+impl DecoderLoadGate {
+    pub fn new() -> Self {
+        Self {
+            sem: Semaphore::new(default_permits()),
+        }
+    }
+
+    pub fn acquire(&self) -> SemaphorePermit<'_> {
+        self.sem.acquire()
+    }
+}
+
+static DECODER_LOAD_GATE: OnceLock<DecoderLoadGate> = OnceLock::new();
 
 /// Глобальный гейт открытий медиа-декодеров. Лениво инициализируется по числу ядер.
-pub fn decoder_load_gate() -> &'static Semaphore {
-    DECODER_LOAD_GATE.get_or_init(|| Semaphore::new(default_permits()))
+pub fn decoder_load_gate() -> &'static DecoderLoadGate {
+    DECODER_LOAD_GATE.get_or_init(DecoderLoadGate::new)
 }
 
 /// Половина логических ядер, зажатая в [2; 4]: достаточно для параллельной загрузки,

@@ -208,7 +208,7 @@ pub fn run() {
             ipc::media_cmd::native_get_ffmpeg_diagnostics,
             ipc::fonts_cmd::native_system_fonts,
         ])
-        .manage(media::processing::NativeMediaTasks::default())
+        .manage(ipc::media_cmd::NativeMediaService::new())
         .manage(parking_lot::RwLock::new(FfmpegHardwareSettings::default()))
         .setup(|app| {
             if cfg!(debug_assertions) {

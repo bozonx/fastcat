@@ -20,7 +20,7 @@ use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Context, Result};
 
-use super::decode::{open as open_decoder, MediaInfo, VideoFrame};
+use super::decode::{MediaInfo, VideoFrame, VideoDecoderFactory, FfmpegNextDecoderFactory};
 use super::types::HwAccelMode;
 
 // Размер очереди декодированных кадров. Каждый кадр = ширина × высота × 4 байта.
@@ -60,7 +60,29 @@ impl DecodePump {
         hw_mode: HwAccelMode,
         vaapi_device: Option<&str>,
     ) -> Result<Self> {
-        let decoder = open_decoder(path, max_output_long_edge, hw_mode, vaapi_device)?;
+        Self::open_with_factory(
+            path,
+            max_output_long_edge,
+            on_frame_decoded,
+            device,
+            queue,
+            hw_mode,
+            vaapi_device,
+            &FfmpegNextDecoderFactory,
+        )
+    }
+
+    pub fn open_with_factory(
+        path: &Path,
+        max_output_long_edge: Option<u32>,
+        on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
+        device: Option<wgpu::Device>,
+        queue: Option<wgpu::Queue>,
+        hw_mode: HwAccelMode,
+        vaapi_device: Option<&str>,
+        factory: &dyn VideoDecoderFactory,
+    ) -> Result<Self> {
+        let decoder = factory.open(path, max_output_long_edge, hw_mode, vaapi_device)?;
         let info = decoder.info().clone();
 
         let (frame_tx, frame_rx) = mpsc::sync_channel::<DecodedFrameMsg>(QUEUE_CAPACITY);

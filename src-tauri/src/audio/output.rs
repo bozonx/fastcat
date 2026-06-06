@@ -1,16 +1,145 @@
-use cpal::traits::DeviceTrait;
-use cpal::{OutputCallbackInfo, SampleFormat, Stream, StreamConfig};
+use std::sync::Arc;
+
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::{BufferSize, OutputCallbackInfo, SampleFormat, Stream, StreamConfig, SupportedBufferSize};
 use anyhow::{anyhow, Context, Result};
 
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::clock::RealtimeClock;
 
+/// Abstract audio playback stream so tests can inject a fake sink.
+pub trait AudioStream: Send + Sync {
+    fn play(&self) -> Result<()>;
+    fn pause(&self) -> Result<()>;
+}
+
+struct CpalAudioStream {
+    stream: Stream,
+}
+
+impl AudioStream for CpalAudioStream {
+    fn play(&self) -> Result<()> {
+        self.stream.play().context("audio stream play failed")
+    }
+    fn pause(&self) -> Result<()> {
+        self.stream.pause().context("audio stream pause failed")
+    }
+}
+
+/// Abstraction over the OS audio backend so the engine can be tested without
+/// a real `cpal` device.
+pub trait AudioBackend: Send + Sync {
+    fn sample_rate(&self) -> u32;
+    fn channels(&self) -> u16;
+    fn build_output_stream(
+        &self,
+        ring: Arc<SpscRingBuffer>,
+        clock: Arc<RealtimeClock>,
+    ) -> Result<Box<dyn AudioStream>>;
+}
+
+/// Real `cpal`-based backend.
+pub struct CpalAudioBackend {
+    device: cpal::Device,
+    config: StreamConfig,
+    sample_format: SampleFormat,
+    sample_rate: u32,
+    channels: u16,
+}
+
+impl CpalAudioBackend {
+    pub fn new(settings: &crate::audio::engine::AudioEngineSettings) -> Result<Self> {
+        let host = Self::select_host(settings);
+        let device = host
+            .default_output_device()
+            .ok_or_else(|| anyhow!("no default audio output device"))?;
+        let supported = device
+            .default_output_config()
+            .context("default output config failed")?;
+        let sample_rate = supported.sample_rate();
+        let mut config: StreamConfig = supported.clone().into();
+        let channels = config.channels.max(1);
+
+        if let Some(req_bs) = settings.buffer_size {
+            if let SupportedBufferSize::Range { min, max } = supported.buffer_size() {
+                if req_bs >= *min && req_bs <= *max {
+                    config.buffer_size = BufferSize::Fixed(req_bs);
+                } else {
+                    log::warn!(
+                        "[audio] requested buffer size {req_bs} outside supported range {min}–{max}"
+                    );
+                }
+            }
+        }
+
+        Ok(Self {
+            device,
+            config,
+            sample_format: supported.sample_format(),
+            sample_rate,
+            channels,
+        })
+    }
+
+    fn select_host(settings: &crate::audio::engine::AudioEngineSettings) -> cpal::Host {
+        let requested = settings.backend.as_deref().unwrap_or("default");
+        if requested == "default" {
+            return cpal::default_host();
+        }
+        let available = cpal::available_hosts();
+        let match_id = available.iter().find(|id| {
+            let name = format!("{:?}", id).to_lowercase();
+            name.contains(&requested.to_lowercase())
+        });
+        if let Some(id) = match_id {
+            log::info!("[audio] using backend: {requested}");
+            cpal::host_from_id(*id).unwrap_or_else(|e| {
+                log::warn!(
+                    "[audio] failed to create host {requested}: {e}, falling back to default"
+                );
+                cpal::default_host()
+            })
+        } else {
+            log::warn!(
+                "[audio] requested backend '{requested}' not in available hosts ({available:?}), using default"
+            );
+            cpal::default_host()
+        }
+    }
+}
+
+impl AudioBackend for CpalAudioBackend {
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+
+    fn channels(&self) -> u16 {
+        self.channels
+    }
+
+    fn build_output_stream(
+        &self,
+        ring: Arc<SpscRingBuffer>,
+        clock: Arc<RealtimeClock>,
+    ) -> Result<Box<dyn AudioStream>> {
+        let stream = build_stream(
+            &self.device,
+            &self.config,
+            self.sample_format,
+            ring,
+            clock,
+            self.channels,
+        )?;
+        Ok(Box::new(CpalAudioStream { stream }))
+    }
+}
+
 pub(crate) fn build_stream(
     device: &cpal::Device,
     config: &StreamConfig,
     format: SampleFormat,
-    ring: std::sync::Arc<SpscRingBuffer>,
-    clock: std::sync::Arc<RealtimeClock>,
+    ring: Arc<SpscRingBuffer>,
+    clock: Arc<RealtimeClock>,
     device_channels: u16,
 ) -> Result<Stream> {
     let err_fn = |err| log::error!("[audio] output stream error: {err}");

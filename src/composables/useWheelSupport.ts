@@ -1,4 +1,5 @@
 import { onMounted, onBeforeUnmount, type Ref } from 'vue';
+import { getActiveElement } from '~/utils/browser-api';
 
 export interface UseWheelSupportOptions {
   wrapperRef: Ref<HTMLElement | null>;
@@ -24,7 +25,7 @@ export function useWheelSupport(options: UseWheelSupportOptions) {
     if (options.disabled?.()) return;
 
     if (options.focusOnly) {
-      const activeElement = document.activeElement;
+      const activeElement = getActiveElement();
       if (!activeElement || !options.wrapperRef.value?.contains(activeElement)) {
         return;
       }

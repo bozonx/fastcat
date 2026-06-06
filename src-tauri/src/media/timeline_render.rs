@@ -197,14 +197,74 @@ mod tests {
     }
 }
 
-static THUMBNAIL_COMPOSITOR: once_cell::sync::Lazy<Mutex<Option<Compositor>>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(None));
+/// Holds a lazily-initialised compositor for off-screen thumbnail rendering.
+/// Extracted from a global static so tests can inject a fake compositor.
+pub struct ThumbnailRenderer {
+    compositor: Mutex<Option<Compositor>>,
+}
+
+impl ThumbnailRenderer {
+    pub fn new() -> Self {
+        Self {
+            compositor: Mutex::new(None),
+        }
+    }
+
+    pub fn render(&self, scene: &Scene, width: u32, height: u32) -> Result<Vec<u8>> {
+        let mut guard = self.compositor.lock();
+        let compositor = guard.get_or_insert_with(Compositor::new);
+        let dev_id = compositor.ensure_offscreen_device()?;
+        compositor.render_scene_to_pixels(dev_id, scene, width.max(1), height.max(1))
+    }
+
+    pub fn render_to_file(
+        &self,
+        scene: MonitorScene,
+        time_sec: f64,
+        width: u32,
+        height: u32,
+        target_path: &Path,
+        quality: f32,
+    ) -> Result<()> {
+        let mut cache = VideoDecoderCache::new();
+        let compositor_scene =
+            build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
+        let pixels = self.render(&compositor_scene, width, height)?;
+        save_rgba_as_webp(
+            target_path,
+            &pixels,
+            width.max(1),
+            height.max(1),
+            webp_quality_percent(quality),
+        )
+    }
+
+    pub fn render_to_webp(
+        &self,
+        scene: MonitorScene,
+        time_sec: f64,
+        width: u32,
+        height: u32,
+        quality: f32,
+    ) -> Result<Vec<u8>> {
+        let mut cache = VideoDecoderCache::new();
+        let compositor_scene =
+            build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
+        let pixels = self.render(&compositor_scene, width, height)?;
+        encode_rgba_as_webp(
+            &pixels,
+            width.max(1),
+            height.max(1),
+            webp_quality_percent(quality),
+        )
+    }
+}
+
+static GLOBAL_RENDERER: once_cell::sync::Lazy<ThumbnailRenderer> =
+    once_cell::sync::Lazy::new(ThumbnailRenderer::new);
 
 fn render_pooled(scene: &Scene, width: u32, height: u32) -> Result<Vec<u8>> {
-    let mut guard = THUMBNAIL_COMPOSITOR.lock();
-    let compositor = guard.get_or_insert_with(Compositor::new);
-    let dev_id = compositor.ensure_offscreen_device()?;
-    compositor.render_scene_to_pixels(dev_id, scene, width.max(1), height.max(1))
+    GLOBAL_RENDERER.render(scene, width, height)
 }
 
 pub fn render_timeline_frame_to_file(
@@ -215,17 +275,7 @@ pub fn render_timeline_frame_to_file(
     target_path: &Path,
     quality: f32,
 ) -> Result<()> {
-    let mut cache = VideoDecoderCache::new();
-    let compositor_scene =
-        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
-    let pixels = render_pooled(&compositor_scene, width, height)?;
-    save_rgba_as_webp(
-        target_path,
-        &pixels,
-        width.max(1),
-        height.max(1),
-        webp_quality_percent(quality),
-    )
+    GLOBAL_RENDERER.render_to_file(scene, time_sec, width, height, target_path, quality)
 }
 
 pub fn render_timeline_frame_to_webp(
@@ -235,17 +285,7 @@ pub fn render_timeline_frame_to_webp(
     height: u32,
     quality: f32,
 ) -> Result<Vec<u8>> {
-    let mut cache = VideoDecoderCache::new();
-    let compositor_scene =
-        build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
-    let pixels = render_pooled(&compositor_scene, width, height)?;
-
-    encode_rgba_as_webp(
-        &pixels,
-        width.max(1),
-        height.max(1),
-        webp_quality_percent(quality),
-    )
+    GLOBAL_RENDERER.render_to_webp(scene, time_sec, width, height, quality)
 }
 
 /// JS callers pass WebP quality as a 0..1 fraction, but [`encode_rgba_as_webp`]

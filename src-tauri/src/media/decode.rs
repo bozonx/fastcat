@@ -347,6 +347,38 @@ impl VideoDecoder for FfmpegNextDecoder {
     }
 }
 
+/// Factory for creating `VideoDecoder` instances. Abstracted so tests and
+/// alternative backends can be injected without hard-coding `ffmpeg-next`.
+pub trait VideoDecoderFactory: Send + Sync {
+    fn open(
+        &self,
+        path: &Path,
+        max_output_long_edge: Option<u32>,
+        hw_mode: HwAccelMode,
+        vaapi_device: Option<&str>,
+    ) -> Result<Box<dyn VideoDecoder>>;
+}
+
+/// Real implementation backed by `ffmpeg-next`.
+pub struct FfmpegNextDecoderFactory;
+
+impl VideoDecoderFactory for FfmpegNextDecoderFactory {
+    fn open(
+        &self,
+        path: &Path,
+        max_output_long_edge: Option<u32>,
+        hw_mode: HwAccelMode,
+        vaapi_device: Option<&str>,
+    ) -> Result<Box<dyn VideoDecoder>> {
+        Ok(Box::new(FfmpegNextDecoder::open(
+            path,
+            max_output_long_edge,
+            hw_mode,
+            vaapi_device,
+        )?))
+    }
+}
+
 /// Открывает видео-декодер для preview/thumbnail/export.
 ///
 /// Единственный backend — `ffmpeg-next` поверх libav*: прямой доступ к PTS/timebase,
@@ -360,12 +392,7 @@ pub fn open(
     hw_mode: HwAccelMode,
     vaapi_device: Option<&str>,
 ) -> Result<Box<dyn VideoDecoder>> {
-    Ok(Box::new(FfmpegNextDecoder::open(
-        path,
-        max_output_long_edge,
-        hw_mode,
-        vaapi_device,
-    )?))
+    FfmpegNextDecoderFactory.open(path, max_output_long_edge, hw_mode, vaapi_device)
 }
 
 fn init_ffmpeg() -> Result<()> {
@@ -709,5 +736,21 @@ mod tests {
             "seek not frame-accurate: target={target}, got pts={}",
             frame.pts_sec
         );
+    }
+
+    #[test]
+    fn ffmpeg_next_decoder_factory_opens_fixture_via_trait() {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        let factory = FfmpegNextDecoderFactory;
+        let mut decoder = factory.open(&fixture, None, HwAccelMode::None, None).unwrap();
+        let frame = decoder.next_frame().unwrap().unwrap();
+
+        assert_eq!(decoder.info().width, 1280);
+        assert_eq!(decoder.info().height, 720);
+        assert_eq!(frame.width, 1280);
+        assert_eq!(frame.height, 720);
     }
 }

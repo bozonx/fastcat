@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { getActiveElement } from '~/utils/browser-api';
 import { getEffectiveHotkeyBindings } from '~/utils/hotkeys/effectiveHotkeys';
 import {
   hotkeyFromKeyboardEvent,
@@ -28,6 +29,10 @@ import {
 import { useGeneralHotkeys } from './hotkeys/useGeneralHotkeys';
 import { useTimelineHotkeys } from './hotkeys/useTimelineHotkeys';
 import { usePlaybackHotkeys } from './hotkeys/usePlaybackHotkeys';
+
+export function hasBlockingModalState(): boolean {
+  return !!document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]');
+}
 
 export function useEditorHotkeys() {
   const workspaceStore = useWorkspaceStore();
@@ -71,10 +76,6 @@ export function useEditorHotkeys() {
   );
   const hotkeyLookup = computed(() => createHotkeyLookup(effectiveHotkeys.value, commandOrder));
   const defaultHotkeyLookup = computed(() => createDefaultHotkeyLookup(commandOrder));
-
-  function hasBlockingModalState() {
-    return !!document.querySelector('dialog[open], [role="dialog"], [role="alertdialog"]');
-  }
 
   function isFullscreen() {
     return projectStore.currentView === 'fullscreen';
@@ -121,7 +122,7 @@ export function useEditorHotkeys() {
     }
 
     const isEditableEventTarget = isEditableTarget((e as KeyboardEvent).target);
-    const isEditableActiveElement = isEditableTarget(document.activeElement);
+    const isEditableActiveElement = isEditableTarget(getActiveElement());
 
     const focusAwareOrder = getFocusAwareHotkeyOrder({
       matched,
@@ -151,10 +152,10 @@ export function useEditorHotkeys() {
           if (
             shouldBlurAfterHotkey({
               cmdId,
-              activeElement: document.activeElement,
+              activeElement: getActiveElement(),
             })
           ) {
-            (document.activeElement as HTMLElement).blur();
+            (getActiveElement() as HTMLElement | null)?.blur();
           }
           e.preventDefault();
           e.stopPropagation();

@@ -16,13 +16,18 @@ import { LARGE_UPLOAD_BACKGROUND_THRESHOLD_BYTES } from '~/file-manager/applicat
 import { isTauriRuntime } from '~/utils/runtime';
 import { useDraggedFile } from '~/composables/useDraggedFile';
 import { useUploadProgress } from '~/composables/useUploadProgress';
+import {
+  getDevicePixelRatio,
+  dispatchWindowEvent,
+  elementFromPoint,
+} from '~/utils/browser-api';
 const log = createDevLogger('useGlobalDragAndDrop');
 
-const isDropInProgress = ref(false);
-const isCurrentDragCancelled = ref(false);
 const GLOBAL_DRAG_LEAVE_HIDE_DELAY_MS = 120;
 
 export function useGlobalDragAndDrop() {
+  const isDropInProgress = ref(false);
+  const isCurrentDragCancelled = ref(false);
   const uiStore = useUiStore();
   const workspaceStore = useWorkspaceStore();
   const projectStore = useProjectStore();
@@ -190,8 +195,8 @@ export function useGlobalDragAndDrop() {
   let tauriNativeInternalDragPayload: unknown = null;
 
   function dispatchTauriDragOver(position: { x: number; y: number }) {
-    const scale = window.devicePixelRatio || 1;
-    window.dispatchEvent(
+    const scale = getDevicePixelRatio();
+    dispatchWindowEvent(
       new CustomEvent('fastcat:tauri-drag-over', {
         detail: {
           clientX: position.x / scale,
@@ -202,15 +207,15 @@ export function useGlobalDragAndDrop() {
   }
 
   function dispatchTauriDragLeave() {
-    window.dispatchEvent(new CustomEvent('fastcat:tauri-drag-leave'));
+    dispatchWindowEvent(new CustomEvent('fastcat:tauri-drag-leave'));
   }
 
   function dispatchTauriInternalFileDrop(position: { x: number; y: number } | undefined) {
     const payload = draggedFile.value ?? tauriNativeInternalDragPayload;
     if (!payload || !position) return;
 
-    const scale = window.devicePixelRatio || 1;
-    window.dispatchEvent(
+    const scale = getDevicePixelRatio();
+    dispatchWindowEvent(
       new CustomEvent('fastcat:tauri-internal-file-drop', {
         detail: {
           clientX: position.x / scale,
@@ -263,10 +268,10 @@ export function useGlobalDragAndDrop() {
             let targetDirPath: string | undefined;
             try {
               if (event.payload.position) {
-                const scale = window.devicePixelRatio || 1;
+                const scale = getDevicePixelRatio();
                 const x = event.payload.position.x / scale;
                 const y = event.payload.position.y / scale;
-                const el = document.elementFromPoint(x, y);
+                const el = elementFromPoint(x, y);
                 const folderEl = el?.closest('[data-folder-path]');
                 targetDirPath = folderEl?.getAttribute('data-folder-path') || undefined;
               }

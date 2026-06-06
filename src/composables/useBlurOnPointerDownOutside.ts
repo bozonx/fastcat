@@ -1,5 +1,6 @@
 import { onUnmounted } from 'vue';
 import type { Ref } from 'vue';
+import { getActiveElement, addDocumentEventListener, removeDocumentEventListener } from '~/utils/browser-api';
 
 /**
  * Blurs the focusable element (input or textarea) inside containerRef
@@ -23,13 +24,13 @@ export function useBlurOnPointerDownOutside(containerRef: Ref<HTMLElement | null
     const focusable = container.querySelector('input, textarea') as HTMLElement | null;
     if (!focusable) return;
 
-    if (focusable === document.activeElement) {
+    if (focusable === getActiveElement()) {
       focusable.blur();
     }
   }
 
-  document.addEventListener('pointerdown', handler, true);
+  addDocumentEventListener('pointerdown', handler, true);
   onUnmounted(() => {
-    document.removeEventListener('pointerdown', handler, true);
+    removeDocumentEventListener('pointerdown', handler, true);
   });
 }

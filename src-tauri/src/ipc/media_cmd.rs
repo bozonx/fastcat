@@ -46,6 +46,117 @@ impl ApplyHwSettings for NativeExportOptions {
     }
 }
 
+/// Thin service layer that wraps `NativeMediaTasks` so Tauri commands stay
+/// adapter-only and the business logic is unit-testable without the IPC layer.
+#[derive(Default, Clone)]
+pub struct NativeMediaService {
+    tasks: NativeMediaTasks,
+}
+
+impl NativeMediaService {
+    pub fn new() -> Self {
+        Self {
+            tasks: NativeMediaTasks::default(),
+        }
+    }
+
+    pub fn probe_media(&self, path: &std::path::Path, ffprobe_path: &str) -> anyhow::Result<NativeMediaMetadata> {
+        probe_media(path, ffprobe_path)
+    }
+
+    pub fn generate_proxy(
+        &self,
+        task_id: &str,
+        source_path: &std::path::Path,
+        target_path: &std::path::Path,
+        options: NativeProxyOptions,
+    ) -> anyhow::Result<()> {
+        generate_proxy(&self.tasks, task_id, source_path, target_path, options)
+    }
+
+    pub fn convert_media(
+        &self,
+        task_id: &str,
+        source_path: &std::path::Path,
+        target_path: &std::path::Path,
+        options: NativeConvertOptions,
+    ) -> anyhow::Result<()> {
+        convert_media(&self.tasks, task_id, source_path, target_path, options)
+    }
+
+    pub fn cancel_task(&self, task_id: &str) -> bool {
+        self.tasks.cancel(task_id)
+    }
+
+    pub fn export_timeline(
+        &self,
+        task_id: &str,
+        scene: MonitorScene,
+        options: NativeExportOptions,
+        target_path: &std::path::Path,
+        progress: &(dyn Fn(f64) + Send + Sync),
+    ) -> anyhow::Result<()> {
+        export_timeline(&self.tasks, task_id, scene, options, target_path, progress)
+    }
+
+    pub fn render_timeline_frame_to_file(
+        &self,
+        scene: MonitorScene,
+        time_sec: f64,
+        width: u32,
+        height: u32,
+        target_path: &std::path::Path,
+        quality: f32,
+    ) -> anyhow::Result<()> {
+        render_timeline_frame_to_file(scene, time_sec, width, height, target_path, quality)
+    }
+
+    pub fn render_timeline_frame_to_webp(
+        &self,
+        scene: MonitorScene,
+        time_sec: f64,
+        width: u32,
+        height: u32,
+        quality: f32,
+    ) -> anyhow::Result<Vec<u8>> {
+        render_timeline_frame_to_webp(scene, time_sec, width, height, quality)
+    }
+
+    pub fn extract_video_frame_webp(
+        &self,
+        source_path: &std::path::Path,
+        time_sec: f64,
+        position_fraction: Option<f64>,
+        max_width: u32,
+        max_height: u32,
+        quality: f32,
+        hw: crate::FfmpegHardwareSettings,
+    ) -> anyhow::Result<Vec<u8>> {
+        extract_video_frame_webp(source_path, time_sec, position_fraction, max_width, max_height, quality, hw)
+    }
+
+    pub fn extract_video_frame_webps(
+        &self,
+        source_path: &std::path::Path,
+        times_sec: &[f64],
+        max_width: u32,
+        max_height: u32,
+        quality: f32,
+    ) -> anyhow::Result<Vec<u8>> {
+        let frames = extract_video_frame_webps(source_path, times_sec, max_width, max_height, quality)?;
+        Ok(pack_webp_frames(frames))
+    }
+
+    pub fn extract_peaks(
+        &self,
+        path: &std::path::Path,
+        max_length: usize,
+    ) -> anyhow::Result<Vec<u8>> {
+        let peaks = crate::audio::peaks::extract_peaks(path, max_length)?;
+        Ok(crate::audio::peaks::pack_peaks(&peaks))
+    }
+}
+
 #[tauri::command]
 pub async fn native_media_metadata(
     path: String,
@@ -68,10 +179,10 @@ pub async fn native_media_generate_proxy(
     source_path: String,
     target_path: String,
     mut options: NativeProxyOptions,
-    tasks: State<'_, NativeMediaTasks>,
+    service: State<'_, NativeMediaService>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
-    let tasks = tasks.inner().clone();
+    let service = service.inner().clone();
     let source_path = PathBuf::from(source_path);
     let target_path = PathBuf::from(target_path);
 
@@ -81,7 +192,7 @@ pub async fn native_media_generate_proxy(
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
-        generate_proxy(&tasks, &task_id, &source_path, &target_path, options)
+        service.generate_proxy(&task_id, &source_path, &target_path, options)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -94,10 +205,10 @@ pub async fn native_media_convert(
     source_path: String,
     target_path: String,
     mut options: NativeConvertOptions,
-    tasks: State<'_, NativeMediaTasks>,
+    service: State<'_, NativeMediaService>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
-    let tasks = tasks.inner().clone();
+    let service = service.inner().clone();
     let source_path = PathBuf::from(source_path);
     let target_path = PathBuf::from(target_path);
 
@@ -107,7 +218,7 @@ pub async fn native_media_convert(
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
-        convert_media(&tasks, &task_id, &source_path, &target_path, options)
+        service.convert_media(&task_id, &source_path, &target_path, options)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -115,8 +226,8 @@ pub async fn native_media_convert(
 }
 
 #[tauri::command]
-pub fn native_media_cancel(task_id: String, tasks: State<'_, NativeMediaTasks>) -> bool {
-    tasks.cancel(&task_id)
+pub fn native_media_cancel(task_id: String, service: State<'_, NativeMediaService>) -> bool {
+    service.cancel_task(&task_id)
 }
 
 #[derive(Clone, Serialize)]
@@ -133,10 +244,10 @@ pub async fn native_timeline_export(
     mut options: NativeExportOptions,
     target_path: String,
     app: AppHandle,
-    tasks: State<'_, NativeMediaTasks>,
+    service: State<'_, NativeMediaService>,
     hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
-    let tasks = tasks.inner().clone();
+    let service = service.inner().clone();
     let target_path = PathBuf::from(target_path);
 
     let hw = hw_settings
@@ -145,8 +256,7 @@ pub async fn native_timeline_export(
     options.apply_hw_settings(&hw);
 
     tokio::task::spawn_blocking(move || {
-        export_timeline(
-            &tasks,
+        service.export_timeline(
             &task_id,
             scene,
             options,
@@ -709,5 +819,11 @@ mod tests {
         expected.extend_from_slice(&[4, 5]); // Frame 2 data
 
         assert_eq!(packed, expected);
+    }
+
+    #[test]
+    fn native_media_service_cancel_unknown_task_returns_false() {
+        let service = NativeMediaService::new();
+        assert!(!service.cancel_task("nonexistent"));
     }
 }

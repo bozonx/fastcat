@@ -11,6 +11,7 @@ import {
   zoomToPxPerSecond,
 } from '~/utils/timeline/geometry';
 import type { FastCatUserSettings } from '~/utils/settings';
+import { querySelectorAll, elementsFromPoint } from '~/utils/browser-api';
 
 export interface TimelineMoveOperation {
   fromTrackId: string;
@@ -146,7 +147,7 @@ export function resolveMoveTargetTrackId(params: {
 }): string {
   let hoverTrackId: string | null = null;
 
-  const trackElements = Array.from(document.querySelectorAll<HTMLElement>('[data-track-id]'));
+  const trackElements = Array.from(querySelectorAll<HTMLElement>('[data-track-id]'));
   const sortedTrackElements = trackElements.sort((left, right) => {
     return left.getBoundingClientRect().top - right.getBoundingClientRect().top;
   });
@@ -162,7 +163,7 @@ export function resolveMoveTargetTrackId(params: {
   }
 
   if (!hoverTrackId) {
-    const elements = document.elementsFromPoint(params.clientX, params.clientY);
+    const elements = elementsFromPoint(params.clientX, params.clientY);
     for (const el of elements) {
       const trackId =
         (el as HTMLElement).dataset?.trackId ??

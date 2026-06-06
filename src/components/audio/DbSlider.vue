@@ -7,6 +7,7 @@ import {
   dbToPercent as getDbPercent,
   percentToDb as getPercentDb,
 } from '~/utils/audio';
+import { addDocumentEventListener, removeDocumentEventListener } from '~/utils/browser-api';
 
 const props = defineProps<{
   modelValue: number; // dB value
@@ -115,11 +116,11 @@ function onDocMouseMove(event: MouseEvent) {
 }
 
 function clearDragListeners() {
-  document.removeEventListener('pointermove', onDocPointerMove);
-  document.removeEventListener('pointerup', onDocPointerUp);
-  document.removeEventListener('pointercancel', onDocPointerUp);
-  document.removeEventListener('mousemove', onDocMouseMove);
-  document.removeEventListener('mouseup', onDocMouseUp);
+  removeDocumentEventListener('pointermove', onDocPointerMove);
+  removeDocumentEventListener('pointerup', onDocPointerUp);
+  removeDocumentEventListener('pointercancel', onDocPointerUp);
+  removeDocumentEventListener('mousemove', onDocMouseMove);
+  removeDocumentEventListener('mouseup', onDocMouseUp);
 }
 
 function onDocPointerUp(event: PointerEvent) {
@@ -144,11 +145,11 @@ function onPointerDown(event: PointerEvent) {
   sliderRef.value?.focus(); // Make sure it gets focus on click
   emit('drag-start');
   updateFromY(event.clientY);
-  document.addEventListener('pointermove', onDocPointerMove);
-  document.addEventListener('pointerup', onDocPointerUp);
-  document.addEventListener('pointercancel', onDocPointerUp);
-  document.addEventListener('mousemove', onDocMouseMove);
-  document.addEventListener('mouseup', onDocMouseUp);
+  addDocumentEventListener('pointermove', onDocPointerMove);
+  addDocumentEventListener('pointerup', onDocPointerUp);
+  addDocumentEventListener('pointercancel', onDocPointerUp);
+  addDocumentEventListener('mousemove', onDocMouseMove);
+  addDocumentEventListener('mouseup', onDocMouseUp);
 }
 
 function onDoubleClick() {

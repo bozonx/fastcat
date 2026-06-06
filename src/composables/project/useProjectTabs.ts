@@ -1,4 +1,5 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { querySelector } from '~/utils/browser-api';
 import {
   FILE_MANAGER_ITEMS_DRAG_TYPE,
   FILE_MANAGER_MOVE_DRAG_TYPE,
@@ -327,9 +328,9 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
         await nextTick();
         await nextTick();
 
-        const activeElement = document.querySelector(
+        const activeElement = querySelector<HTMLElement>(
           `[data-tab-id="${newId}"]`,
-        ) as HTMLElement | null;
+        );
         activeElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       },
     );

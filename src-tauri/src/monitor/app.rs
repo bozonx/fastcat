@@ -23,7 +23,7 @@ use winit::window::{Window, WindowId};
 use crate::audio::engine::{AudioEngineSettings, NativeAudioEngine};
 use crate::compositor::Compositor;
 
-use super::clock::PlaybackClock;
+use super::clock::{Clock, PlaybackClock};
 use super::handle::{MonitorCommand, MonitorMode, SendableRawHandle};
 use super::runtime::{emit_layer_failed, BgLayerResult, LayerRuntimeManager};
 use super::scene::{MonitorScene, SceneAudioLayer, SceneAudioTrack};
@@ -359,7 +359,7 @@ struct WindowState {
     compositor: Compositor,
     surface: RenderSurface<'static>,
 
-    clock: PlaybackClock,
+    clock: Box<dyn Clock>,
     layers: LayerRuntimeManager,
     audio: Option<NativeAudioEngine>,
     audio_layers: Vec<SceneAudioLayer>,
@@ -722,7 +722,7 @@ fn init_window(
         window,
         compositor,
         surface,
-        clock: PlaybackClock::new(),
+        clock: Box::new(PlaybackClock::new()),
         layers: LayerRuntimeManager::new(app.clone(), bg_tx, proxy, hw_settings),
         audio,
         audio_layers: Vec::new(),

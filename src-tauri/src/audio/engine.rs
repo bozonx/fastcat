@@ -2,15 +2,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use anyhow::{anyhow, Context, Result};
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{BufferSize, Stream, StreamConfig, SupportedBufferSize};
+use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::clock::RealtimeClock;
 use crate::audio::shared::{AudioShared, compute_timing_sig, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS};
-use crate::audio::output::build_stream;
+use crate::audio::output::{AudioBackend, AudioStream, CpalAudioBackend};
 use crate::audio::producer::{spawn_producer_thread, audible_pts_sec};
 use crate::audio::mix::sanitize_master_gain;
 
@@ -33,38 +31,22 @@ pub struct NativeAudioEngine {
     sample_rate: u32,
     device_channels: u16,
     settings: AudioEngineSettings,
-    _stream: Stream,
+    _stream: Box<dyn AudioStream>,
     producer: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl NativeAudioEngine {
     pub fn new(settings: &AudioEngineSettings) -> Result<Self> {
-        let host = Self::select_host(settings);
-        let device = host
-            .default_output_device()
-            .ok_or_else(|| anyhow!("no default audio output device"))?;
-        let supported = device
-            .default_output_config()
-            .context("default output config failed")?;
-        let sample_rate = supported.sample_rate();
-        let mut config: StreamConfig = supported.clone().into();
-        let device_channels = config.channels.max(1);
+        let backend = Box::new(CpalAudioBackend::new(settings)?);
+        Self::new_with_backend(settings, backend)
+    }
 
-        // Apply user-requested buffer size if the device supports it.
-        if let Some(req_bs) = settings.buffer_size {
-            if let SupportedBufferSize::Range { min, max } = supported.buffer_size() {
-                if req_bs >= *min && req_bs <= *max {
-                    config.buffer_size = BufferSize::Fixed(req_bs);
-                } else {
-                    log::warn!(
-                        "[audio] requested buffer size {req_bs} outside supported range {min}–{max}"
-                    );
-                }
-            }
-        }
-        // The engine renders directly into the device's native channel layout,
-        // so the ring buffer holds `output_channels`-interleaved samples and the
-        // output callback can copy them 1:1 (no channel remapping at playback).
+    pub fn new_with_backend(
+        settings: &AudioEngineSettings,
+        backend: Box<dyn AudioBackend>,
+    ) -> Result<Self> {
+        let sample_rate = backend.sample_rate();
+        let device_channels = backend.channels();
         let output_channels = device_channels as usize;
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let running = Arc::new(AtomicBool::new(true));
@@ -74,14 +56,7 @@ impl NativeAudioEngine {
         let ring_capacity = chunk_frames * output_channels * PREBUFFER_CHUNKS * 2;
         let ring = Arc::new(SpscRingBuffer::new(ring_capacity));
 
-        let stream = build_stream(
-            &device,
-            &config,
-            supported.sample_format(),
-            ring.clone(),
-            clock.clone(),
-            device_channels,
-        )?;
+        let stream = backend.build_output_stream(ring.clone(), clock.clone())?;
         stream.play().context("audio stream play failed")?;
 
         let producer = spawn_producer_thread(
@@ -145,32 +120,6 @@ impl NativeAudioEngine {
             Err(error) => {
                 log::error!("[audio] failed to restart producer thread: {error:?}");
             }
-        }
-    }
-
-    fn select_host(settings: &AudioEngineSettings) -> cpal::Host {
-        let requested = settings.backend.as_deref().unwrap_or("default");
-        if requested == "default" {
-            return cpal::default_host();
-        }
-        let available = cpal::available_hosts();
-        let match_id = available.iter().find(|id| {
-            let name = format!("{:?}", id).to_lowercase();
-            name.contains(&requested.to_lowercase())
-        });
-        if let Some(id) = match_id {
-            log::info!("[audio] using backend: {requested}");
-            cpal::host_from_id(*id).unwrap_or_else(|e| {
-                log::warn!(
-                    "[audio] failed to create host {requested}: {e}, falling back to default"
-                );
-                cpal::default_host()
-            })
-        } else {
-            log::warn!(
-                "[audio] requested backend '{requested}' not in available hosts ({available:?}), using default"
-            );
-            cpal::default_host()
         }
     }
 
@@ -347,5 +296,64 @@ impl Drop for NativeAudioEngine {
                 log::warn!("[audio] producer thread panicked: {e:?}");
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::audio::output::{AudioBackend, AudioStream};
+    use crate::audio::ring::SpscRingBuffer;
+    use crate::audio::clock::RealtimeClock;
+    use std::sync::Arc;
+
+    struct MockAudioStream;
+
+    impl AudioStream for MockAudioStream {
+        fn play(&self) -> Result<()> {
+            Ok(())
+        }
+        fn pause(&self) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    struct MockAudioBackend {
+        sample_rate: u32,
+        channels: u16,
+    }
+
+    impl AudioBackend for MockAudioBackend {
+        fn sample_rate(&self) -> u32 {
+            self.sample_rate
+        }
+
+        fn channels(&self) -> u16 {
+            self.channels
+        }
+
+        fn build_output_stream(
+            &self,
+            _ring: Arc<SpscRingBuffer>,
+            _clock: Arc<RealtimeClock>,
+        ) -> Result<Box<dyn AudioStream>> {
+            Ok(Box::new(MockAudioStream))
+        }
+    }
+
+    #[test]
+    fn native_audio_engine_new_with_backend_sets_fields() {
+        let backend = MockAudioBackend {
+            sample_rate: 48000,
+            channels: 2,
+        };
+        let engine = NativeAudioEngine::new_with_backend(
+            &AudioEngineSettings::default(),
+            Box::new(backend),
+        )
+        .unwrap();
+
+        assert_eq!(engine.sample_rate, 48000);
+        assert_eq!(engine.device_channels, 2);
     }
 }

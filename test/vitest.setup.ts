@@ -5,7 +5,8 @@ import { config } from '@vue/test-utils';
 import { ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
-// Initialize Pinia for all tests
+// Initialize a single Pinia instance for the test process.
+// Individual tests that need full isolation call setActivePinia(createPinia()) in their own beforeEach.
 setActivePinia(createPinia());
 
 // Mock global $fetch to prevent ReferenceError during Nuxt manifest prefetching

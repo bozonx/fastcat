@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, inject } from 'vue';
+import { getActiveElement } from '~/utils/browser-api';
 import { useFileManagerStore } from '~/stores/file-manager.store';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useProjectStore } from '~/stores/project.store';
@@ -577,7 +578,7 @@ function onContainerKeyDown(event: KeyboardEvent) {
   const container = rootContainer.value;
   if (!container) return;
 
-  const activeEl = document.activeElement;
+  const activeEl = getActiveElement();
   if (isTextInputElement(activeEl)) return;
 
   const allowedKeys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'];

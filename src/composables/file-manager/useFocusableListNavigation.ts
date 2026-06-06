@@ -1,4 +1,5 @@
 import type { Ref } from 'vue';
+import { getActiveElement } from '~/utils/browser-api';
 
 export interface FocusableListNavigationOptions {
   containerRef: Ref<HTMLElement | null>;
@@ -24,7 +25,7 @@ export function useFocusableListNavigation({
     const container = containerRef.value;
     if (!container) return;
 
-    const activeEl = document.activeElement;
+    const activeEl = getActiveElement();
     if (isTextInputElement(activeEl)) return;
 
     const items = getFocusableItems(container);

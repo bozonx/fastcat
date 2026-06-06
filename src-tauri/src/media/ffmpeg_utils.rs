@@ -7,6 +7,45 @@ use parking_lot::Mutex;
 
 use super::types::HwAccelMode;
 
+/// Verifies that an ffmpeg/ffprobe binary is available and executable.
+///
+/// Results are memoised per path so hot media paths don't pay an extra
+/// process spawn on every call.
+#[derive(Default)]
+pub struct FfmpegBinaryVerifier {
+    verified: Mutex<HashSet<String>>,
+}
+
+impl FfmpegBinaryVerifier {
+    pub fn new() -> Self {
+        Self {
+            verified: Mutex::new(HashSet::new()),
+        }
+    }
+
+    pub fn verify(&self, path: &str) -> Result<()> {
+        if self.verified.lock().contains(path) {
+            return Ok(());
+        }
+        let result = Command::new(path)
+            .arg("-version")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        match result {
+            Ok(status) if status.success() => {
+                self.verified.lock().insert(path.to_string());
+                Ok(())
+            }
+            Ok(_) => Err(anyhow!("{path} returned non-zero status")),
+            Err(e) => Err(anyhow!("failed to run {path}: {e}")),
+        }
+    }
+}
+
+static GLOBAL_VERIFIER: OnceLock<FfmpegBinaryVerifier> = OnceLock::new();
+
 /// Default VAAPI render node. Centralised so the fallback path is not duplicated
 /// across export/proxy/convert/thumbnail and can be overridden in one place.
 pub const DEFAULT_VAAPI_DEVICE: &str = "/dev/dri/renderD128";
@@ -163,31 +202,11 @@ pub fn parse_rational(s: &str) -> Option<f64> {
     Some(num / den)
 }
 
-/// Verify that the ffmpeg/ffprobe binary is available and executable.
-///
-/// The result is memoised per path: a successful check spawns `-version` only
-/// once, so the hot media paths (per-frame thumbnail, per export attempt) don't
-/// pay an extra process spawn on every call.
+/// Convenience wrapper around the global [`FfmpegBinaryVerifier`].
 pub fn verify_ffmpeg_binary(path: &str) -> Result<()> {
-    static VERIFIED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
-    let verified = VERIFIED.get_or_init(|| Mutex::new(HashSet::new()));
-    if verified.lock().contains(path) {
-        return Ok(());
-    }
-    let result = Command::new(path)
-        .arg("-version")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-    match result {
-        Ok(status) if status.success() => {
-            verified.lock().insert(path.to_string());
-            Ok(())
-        }
-        Ok(_) => Err(anyhow!("{path} returned non-zero status")),
-        Err(e) => Err(anyhow!("failed to run {path}: {e}")),
-    }
+    GLOBAL_VERIFIER
+        .get_or_init(FfmpegBinaryVerifier::new)
+        .verify(path)
 }
 
 #[cfg(test)]
@@ -203,5 +222,23 @@ mod tests {
         assert!(!is_quarter_turn(0.0));
         assert!(!is_quarter_turn(180.0));
         assert!(!is_quarter_turn(45.0));
+    }
+
+    #[test]
+    fn verifier_caches_successful_check() {
+        let v = FfmpegBinaryVerifier::new();
+        let first = v.verify("ffmpeg");
+        let second = v.verify("ffmpeg");
+        assert_eq!(first.is_ok(), second.is_ok());
+        // If the first call succeeded, the set must contain "ffmpeg".
+        if first.is_ok() {
+            assert!(v.verified.lock().contains("ffmpeg"));
+        }
+    }
+
+    #[test]
+    fn verifier_rejects_nonexistent_binary() {
+        let v = FfmpegBinaryVerifier::new();
+        assert!(v.verify("this_binary_does_not_exist_12345").is_err());
     }
 }
