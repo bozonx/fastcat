@@ -38,11 +38,17 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
 
         let blob: Blob | null = null;
         if (isTauriRuntime() && params.nativeScene && params.nativeScene.layers.length > 0) {
+          const scene = params.nativeScene;
+          // Fit the scene into the marker box while preserving aspect ratio, so
+          // non-16:9 timelines aren't squashed/pillarboxed into a fixed 160×90.
+          const sceneW = scene.width > 0 ? scene.width : width;
+          const sceneH = scene.height > 0 ? scene.height : height;
+          const scale = Math.min(width / sceneW, height / sceneH, 1);
           blob = await nativeRenderTimelineFrameWebp({
-            scene: params.nativeScene,
+            scene,
             timeSec: params.timeUs / 1_000_000,
-            width,
-            height,
+            width: Math.max(2, Math.round(sceneW * scale)),
+            height: Math.max(2, Math.round(sceneH * scale)),
             quality,
           });
         } else {
@@ -87,14 +93,15 @@ export function dispatchMarkerThumbnailGeneration(params: MarkerThumbnailParams)
           return;
         }
 
-        await fileThumbnailGenerator.saveMarkerThumbnail({
+        // saveMarkerThumbnail owns and returns the single object URL for this blob;
+        // creating another here would leak the displayed URL.
+        const url = await fileThumbnailGenerator.saveMarkerThumbnail({
           projectId: params.projectId,
           markerId: params.markerId,
           timeUs: params.timeUs,
           blob,
         });
 
-        const url = URL.createObjectURL(blob);
         params.onComplete?.(url);
       } catch (error) {
         log.error('Failed to generate marker thumbnail:', params.markerId, error);

@@ -186,6 +186,7 @@ pub async fn native_timeline_render_frame_webp(
 pub async fn native_video_frame_webp(
     source_path: String,
     time_sec: f64,
+    position_fraction: Option<f64>,
     max_width: u32,
     max_height: u32,
     quality: f32,
@@ -197,7 +198,15 @@ pub async fn native_video_frame_webp(
         .unwrap_or_else(|e| e.into_inner())
         .clone();
     tokio::task::spawn_blocking(move || {
-        extract_video_frame_webp(&source_path, time_sec, max_width, max_height, quality, hw)
+        extract_video_frame_webp(
+            &source_path,
+            time_sec,
+            position_fraction,
+            max_width,
+            max_height,
+            quality,
+            hw,
+        )
     })
     .await
     .map_err(|e| e.to_string())?

@@ -516,6 +516,7 @@ pub fn convert_media(
 pub fn extract_video_frame_webp(
     source_path: &Path,
     time_sec: f64,
+    position_fraction: Option<f64>,
     max_width: u32,
     max_height: u32,
     quality: f32,
@@ -530,6 +531,16 @@ pub fn extract_video_frame_webp(
         .as_ref()
         .ok_or_else(|| anyhow!("source has no video stream"))?;
     let (width, height) = video_frame_thumbnail_size(video, max_width, max_height);
+
+    // When the caller passes a position fraction we derive the timestamp from the
+    // duration we already probed here, so the JS side doesn't have to spawn its own
+    // ffprobe just to compute `duration * fraction`.
+    let time_sec = match position_fraction {
+        Some(fraction) if fraction.is_finite() => {
+            (metadata.duration.max(0.0) * fraction.clamp(0.0, 1.0)).max(0.0)
+        }
+        _ => time_sec.max(0.0),
+    };
 
     let hw_accel = &hw_settings.hardware_acceleration_mode;
     let hw_decode = resolve_hw_decode_mode(hw_accel, &hw_settings.vaapi_device);

@@ -187,14 +187,22 @@ export async function nativeRenderTimelineFrameWebp(params: {
 
 export async function nativeVideoFrameWebp(params: {
   sourcePath: string;
-  timeSec: number;
+  /** Absolute timestamp in seconds. Ignored when `positionFraction` is provided. */
+  timeSec?: number;
+  /**
+   * Position as a 0..1 fraction of the source duration. When set, the native side
+   * derives the timestamp from the duration it already probes, so the caller does
+   * not need a separate `native_media_metadata` (ffprobe) round-trip.
+   */
+  positionFraction?: number;
   maxWidth: number;
   maxHeight: number;
   quality: number;
 }): Promise<Blob> {
   const bytes = await invoke<NativeBytePayload>('native_video_frame_webp', {
     sourcePath: params.sourcePath,
-    timeSec: params.timeSec,
+    timeSec: params.timeSec ?? 0,
+    positionFraction: params.positionFraction ?? null,
     maxWidth: params.maxWidth,
     maxHeight: params.maxHeight,
     quality: params.quality,

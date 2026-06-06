@@ -172,6 +172,18 @@ mod tests {
         assert!(cache.decoders.is_empty());
         assert!(cache.lru.is_empty());
     }
+
+    #[test]
+    fn webp_quality_percent_maps_fraction_to_0_100_scale() {
+        assert!((webp_quality_percent(0.6) - 60.0).abs() < 0.01);
+        assert!((webp_quality_percent(0.8) - 80.0).abs() < 0.01);
+        assert!((webp_quality_percent(0.0) - 0.0).abs() < 0.01);
+        assert!((webp_quality_percent(1.0) - 100.0).abs() < 0.01);
+        // Out-of-range and non-finite inputs are clamped / defaulted.
+        assert!((webp_quality_percent(2.0) - 100.0).abs() < 0.01);
+        assert!((webp_quality_percent(-1.0) - 0.0).abs() < 0.01);
+        assert!((webp_quality_percent(f32::NAN) - 70.0).abs() < 0.01);
+    }
 }
 
 static THUMBNAIL_COMPOSITOR: once_cell::sync::Lazy<Mutex<Option<Compositor>>> =
@@ -196,7 +208,13 @@ pub fn render_timeline_frame_to_file(
     let compositor_scene =
         build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
     let pixels = render_pooled(&compositor_scene, width, height)?;
-    save_rgba_as_webp(target_path, &pixels, width.max(1), height.max(1), quality)
+    save_rgba_as_webp(
+        target_path,
+        &pixels,
+        width.max(1),
+        height.max(1),
+        webp_quality_percent(quality),
+    )
 }
 
 pub fn render_timeline_frame_to_webp(
@@ -211,7 +229,23 @@ pub fn render_timeline_frame_to_webp(
         build_export_scene(&scene, time_sec, (width.max(1), height.max(1)), &mut cache)?;
     let pixels = render_pooled(&compositor_scene, width, height)?;
 
-    encode_rgba_as_webp(&pixels, width.max(1), height.max(1), quality)
+    encode_rgba_as_webp(
+        &pixels,
+        width.max(1),
+        height.max(1),
+        webp_quality_percent(quality),
+    )
+}
+
+/// JS callers pass WebP quality as a 0..1 fraction, but [`encode_rgba_as_webp`]
+/// expects the `webp` crate's 0..100 scale. Without this conversion marker and
+/// timeline thumbnails were encoded at quality 0.6/0.8 (≈1%), i.e. heavily blocky.
+fn webp_quality_percent(fraction: f32) -> f32 {
+    if fraction.is_finite() {
+        fraction.clamp(0.0, 1.0) * 100.0
+    } else {
+        70.0
+    }
 }
 
 pub(crate) fn build_export_scene(

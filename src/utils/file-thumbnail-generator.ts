@@ -18,11 +18,7 @@ import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHost
 import { MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
 import { getMediaTypeFromFilename } from '~/utils/media-types';
 import { isTauriRuntime } from '~/utils/runtime';
-import {
-  getNativeFileHandlePath,
-  nativeMediaMetadata,
-  nativeVideoFrameWebp,
-} from '~/utils/tauri-media-processing';
+import { getNativeFileHandlePath, nativeVideoFrameWebp } from '~/utils/tauri-media-processing';
 import { isNotFoundError } from '~/utils/error-helpers';
 const log = createDevLogger('file-thumbnail-generator');
 const FILE_THUMBNAIL_HASH_VERSION = 2;
@@ -250,14 +246,11 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
         const sourcePath = getNativeFileHandlePath(handle);
         if (sourcePath) {
           try {
-            const meta = await nativeMediaMetadata(sourcePath);
-            const timeSec = Math.max(
-              0,
-              (meta.duration || 0) * FILE_MANAGER_THUMBNAILS.POSITION_FRACTION,
-            );
+            // The native command derives the timestamp from the duration it probes
+            // internally, so we avoid a second ffprobe round-trip here.
             blob = await nativeVideoFrameWebp({
               sourcePath,
-              timeSec,
+              positionFraction: FILE_MANAGER_THUMBNAILS.POSITION_FRACTION,
               maxWidth: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
               maxHeight: FILE_MANAGER_THUMBNAILS.MAX_SIZE,
               quality: FILE_MANAGER_THUMBNAILS.QUALITY,
@@ -269,7 +262,9 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
             return;
           }
         } else {
-          task.onError?.(new Error(`No native path for thumbnail task: ${task.projectRelativePath}`));
+          task.onError?.(
+            new Error(`No native path for thumbnail task: ${task.projectRelativePath}`),
+          );
           return;
         }
       } else {
@@ -483,35 +478,47 @@ class FileThumbnailGenerator extends BaseThumbnailGenerator<FileThumbnailTask, s
     return null;
   }
 
+  /**
+   * Persists a marker thumbnail and returns a single generator-owned object URL.
+   *
+   * The returned URL is cached under `marker:<id>` and revoked here when it is
+   * replaced (next save/load) or when the project is cleared, so callers must NOT
+   * create their own URL for the same blob — that previously double-allocated and
+   * leaked the displayed URL.
+   */
   async saveMarkerThumbnail(input: {
     projectId: string;
     markerId: string;
     timeUs: number;
     blob: Blob;
-  }) {
+  }): Promise<string> {
     const workspaceStore = useWorkspaceStore();
-    if (!workspaceStore.workspaceHandle && !isTauriRuntime()) return;
 
-    try {
-      const vfs = useVfs();
-      const filePath = getThumbnailFileVfsPath({
-        projectId: input.projectId,
-        dirName: MARKER_THUMBNAILS.DIR_NAME,
-        fileName: `${input.markerId}_${input.timeUs}.webp`,
-      });
-      await vfs.writeFile(filePath, input.blob);
-
-      const url = URL.createObjectURL(input.blob);
-      const cacheKey = `marker:${input.markerId}`;
-      const previousUrl = this.cache.get(cacheKey);
-      if (previousUrl && previousUrl !== url) {
-        this.revokeCacheValue(previousUrl);
+    // Persist to the VFS when there is somewhere to write; otherwise keep an
+    // in-memory URL only so the UI can still display the freshly generated frame.
+    if (workspaceStore.workspaceHandle || isTauriRuntime()) {
+      try {
+        const vfs = useVfs();
+        const filePath = getThumbnailFileVfsPath({
+          projectId: input.projectId,
+          dirName: MARKER_THUMBNAILS.DIR_NAME,
+          fileName: `${input.markerId}_${input.timeUs}.webp`,
+        });
+        await vfs.writeFile(filePath, input.blob);
+      } catch (e) {
+        log.error('Failed to save marker thumbnail to VFS', input.markerId, e);
       }
-      this.cache.set(cacheKey, url);
-      this.cacheProjectIds.set(cacheKey, input.projectId);
-    } catch (e) {
-      log.error('Failed to save marker thumbnail to VFS', input.markerId, e);
     }
+
+    const url = URL.createObjectURL(input.blob);
+    const cacheKey = `marker:${input.markerId}`;
+    const previousUrl = this.cache.get(cacheKey);
+    if (previousUrl && previousUrl !== url) {
+      this.revokeCacheValue(previousUrl);
+    }
+    this.cache.set(cacheKey, url);
+    this.cacheProjectIds.set(cacheKey, input.projectId);
+    return url;
   }
 
   async clearAllThumbnails(projectId: string) {
