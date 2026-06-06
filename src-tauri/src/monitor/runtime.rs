@@ -557,10 +557,9 @@ impl LayerRuntimeManager {
 
                 if let Some(t_in) = &layer.transition_in {
                     let local_t = t - layer.timeline_start_sec;
-                    if t_in.transition_type != "dissolve"
-                        && local_t < t_in.duration_sec
-                        && local_t >= 0.0
-                    {
+                    // Любой шейдерный переход (включая dissolve) блендит пиксели
+                    // from-слоя — держим его рантайм живым в окне перехода.
+                    if local_t < t_in.duration_sec && local_t >= 0.0 {
                         if let Some(from_id) = &t_in.from_layer_id {
                             if let Some(from_idx) = scene.iter().position(|l| &l.id == from_id) {
                                 active.insert(from_idx);
@@ -660,10 +659,9 @@ impl LayerRuntimeManager {
 
                 if let Some(t_in) = &self.scene[i].transition_in {
                     let local_t = t - self.scene[i].timeline_start_sec;
-                    if t_in.transition_type != "dissolve"
-                        && local_t < t_in.duration_sec
-                        && local_t >= 0.0
-                    {
+                    // Любой шейдерный переход (включая dissolve) читает from-слой —
+                    // включаем его в активные индексы сцены на время перехода.
+                    if local_t < t_in.duration_sec && local_t >= 0.0 {
                         if let Some(from_id) = &t_in.from_layer_id {
                             if let Some(from_idx) =
                                 (0..self.scene.len()).find(|&idx| &self.scene[idx].id == from_id)

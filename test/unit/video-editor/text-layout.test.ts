@@ -62,6 +62,27 @@ describe('text-layout', () => {
     expect(metrics.backgroundHeight).toBeGreaterThan(metrics.lineHeightPx);
   });
 
+  it('scales text metrics from the project dimensions, not the fixed 1080p design base', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'text',
+      style: {
+        fontSize: 64,
+        padding: 10,
+        align: 'left',
+        verticalAlign: 'top',
+      },
+      canvasWidth: 640,
+      canvasHeight: 360,
+      designWidth: 1280,
+      designHeight: 720,
+      measureText: (text) => text.length * 16,
+    });
+
+    expect(metrics.renderScale).toBe(0.5);
+    expect(metrics.fontSizePx).toBe(32);
+    expect(metrics.backgroundWidth).toBe(74);
+  });
+
   it('uses measured longest line width when explicit width is not set', () => {
     const metrics = computeTextLayoutMetrics({
       text: 'short\nlonger line',

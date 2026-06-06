@@ -155,7 +155,7 @@ export function useImagePanZoom(containerRef: Ref<HTMLElement | null>) {
 
     if (action === 'zoom') {
       e.preventDefault();
-      applyZoomAtPoint({ delta: e.deltaY, clientX: e.clientX, clientY: e.clientY });
+      applyZoomAtPoint({ delta, clientX: e.clientX, clientY: e.clientY });
       return;
     }
 

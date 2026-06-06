@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useSelectionStore } from '~/stores/selection.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useProjectStore } from '~/stores/project.store';
 import { useMonitorTimeline } from '~/composables/monitor/useMonitorTimeline';
 import type { ClipTransform, TextClipStyle } from '~/timeline/types';
 import { computeClipBoxLayout, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
@@ -22,6 +23,7 @@ const props = defineProps<{
 
 const selectionStore = useSelectionStore();
 const timelineStore = useTimelineStore();
+const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
 const { rawWorkerTimelineClips } = useMonitorTimeline();
 
@@ -51,6 +53,11 @@ const clipData = computed(() => {
 
 const measureContext =
   typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+
+const designSize = computed(() => ({
+  width: timelineStore.timelineFormat?.width ?? projectStore.projectSettings.project.width,
+  height: timelineStore.timelineFormat?.height ?? projectStore.projectSettings.project.height,
+}));
 
 const safeTransform = computed(() => {
   const transform: Partial<ClipTransform> =
@@ -118,6 +125,8 @@ const textMetrics = computed(() => {
     style: (clipData.value as { style?: TextClipStyle }).style,
     canvasWidth: props.renderWidth,
     canvasHeight: props.renderHeight,
+    designWidth: designSize.value.width,
+    designHeight: designSize.value.height,
     measureText: (text, font) => {
       measureContext.font = font;
       return measureContext.measureText(text).width;

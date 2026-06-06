@@ -112,6 +112,44 @@ function findPreviousAdjacentClip(
     })[0];
 }
 
+function findNextAdjacentClip(
+  clip: WorkerTimelineClip,
+  allClips: WorkerTimelineClip[],
+): WorkerTimelineClip | undefined {
+  const clipEndUs = clip.timelineRange.startUs + clip.timelineRange.durationUs;
+  return allClips
+    .filter((candidate) => {
+      if (candidate.trackId !== clip.trackId || candidate.id === clip.id) {
+        return false;
+      }
+      return (
+        candidate.timelineRange.startUs > clip.timelineRange.startUs &&
+        candidate.timelineRange.startUs <= clipEndUs + 1_000
+      );
+    })
+    .sort((a, b) => a.timelineRange.startUs - b.timelineRange.startUs)[0];
+}
+
+/**
+ * An adjacent-mode `transitionOut` is rendered by the *next* clip's inherited
+ * `transition_in` (see `getEffectiveTransitionIn`), where it becomes a real
+ * shader crossfade over this clip's held frame. Emitting it on this clip too
+ * would double-apply (for dissolve: an opacity fade-out that zeroes the very
+ * from-frame the next clip crossfades from). So it is "consumed" exactly when
+ * the next adjacent clip would inherit it.
+ */
+function isTransitionOutConsumedByNextClip(
+  clip: WorkerTimelineClip,
+  allClips: WorkerTimelineClip[],
+): boolean {
+  const out = clip.transitionOut;
+  if (!out || (out.mode ?? 'transparent') !== 'adjacent') {
+    return false;
+  }
+  const next = findNextAdjacentClip(clip, allClips);
+  return Boolean(next && !next.transitionIn);
+}
+
 function getEffectiveTransitionIn(
   clip: WorkerTimelineClip,
   allClips: WorkerTimelineClip[],
@@ -295,7 +333,11 @@ function buildBaseLayer(params: {
   })();
 
   const transition_out = (() => {
-    if (clip.transitionOut && clip.transitionOut.durationUs > 0) {
+    if (
+      clip.transitionOut &&
+      clip.transitionOut.durationUs > 0 &&
+      !isTransitionOutConsumedByNextClip(clip, allClips)
+    ) {
       const type = clip.transitionOut.type;
       const manifest = getTauriTransitionManifest(type) || getTransitionManifest(type);
       const spec = manifest?.toTauriSpec

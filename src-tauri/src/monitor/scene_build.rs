@@ -130,12 +130,10 @@ fn parse_padding(style: &serde_json::Value) -> Padding {
     }
 }
 
-fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
-    let scene_w = scene_size.0;
-    let scene_h = scene_size.1;
+fn build_text_layer(sl: &SceneLayer, _scene_size: (u32, u32)) -> TextLayer {
     let style = sl.style.clone().unwrap_or(serde_json::Value::Null);
     let font_size = number(&style, "fontSize", 64.0).clamp(1.0, 1000.0) as f32;
-    let render_scale = (scene_w as f64 / 1920.0).min(scene_h as f64 / 1080.0);
+    let render_scale = 1.0;
 
     // Core parameters
     let text = sl.text.clone().unwrap_or_default();
@@ -250,7 +248,8 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     );
 
     // Determine text wrapping constraint
-    let mut content_width_px = explicit_width_px.map(|w| (w - padding_left - padding_right).max(1.0));
+    let mut content_width_px =
+        explicit_width_px.map(|w| (w - padding_left - padding_right).max(1.0));
     if let Some(ref mut cw) = content_width_px {
         if padding_left + padding_right > explicit_width_px.unwrap_or(0.0) {
             log::warn!(
@@ -457,8 +456,7 @@ pub fn finalize_layer(
             } else {
                 // For text the "no explicit transform" default is center of the
                 // scene with the anchor baked in (same convention as shapes).
-                let (anchor_dx, anchor_dy) =
-                    text_anchor_offset(&kind, media_size, 0.5, 0.5);
+                let (anchor_dx, anchor_dy) = text_anchor_offset(&kind, media_size, 0.5, 0.5);
                 Transform {
                     x: scene_size.0 as f64 / 2.0 + anchor_dx,
                     y: scene_size.1 as f64 / 2.0 + anchor_dy,
@@ -501,30 +499,28 @@ pub fn finalize_layer(
     let local_t = time_sec - sl.timeline_start_sec;
     let opacity = compute_transition_opacity(sl, local_t, base_opacity);
 
-    // Шейдерные переходы (wipe/slide/circle/…) рендерятся через `transition_in`
-    // входящего клипа (он композитится поверх `from_layer`).
-    // Для смежных клипов `transition_out` исходящего клипа автоматически
-    // наследуется следующим клипом через `getEffectiveTransitionIn` на фронте,
-    // поэтому non-dissolve переходы между соседними клипами РАБОТАЮТ.
-    // Standalone `transition_out` (wipe в пустоту / background / transparent)
-    // намеренно не даёт отдельного шейдерного прохода — это отдельная фича.
-    // Для `transition_out` в Rust поддержан только dissolve (через альфу в
-    // `compute_transition_opacity`).
+    // Все шейдерные переходы (включая dissolve → crossfade-spec) рендерятся через
+    // `transition_in` входящего клипа: он композитится поверх `from_layer`, чьи пиксели
+    // блендятся в шейдере. Для смежных клипов `transition_out` исходящего клипа
+    // наследуется следующим клипом через `getEffectiveTransitionIn` на фронте, поэтому
+    // переходы между соседними клипами РАБОТАЮТ как настоящий кроссфейд.
+    // Условие появления прохода — наличие `from_layer_id` + `spec`. Dissolve без
+    // from-слоя (первый клип на таймлайне) проявляется из фона через альфу в
+    // `compute_transition_opacity`. Standalone `transition_out` (в пустоту/background)
+    // в Rust поддержан только для dissolve — тоже через альфу.
     let mut transition = None;
     if let Some(t_in) = &sl.transition_in {
         let in_dur = t_in.duration_sec;
         if in_dur > 0.0 && local_t < in_dur && local_t >= 0.0 {
-            if t_in.transition_type != "dissolve" {
-                if let (Some(from_id), Some(spec)) = (&t_in.from_layer_id, &t_in.spec) {
-                    let progress = (local_t / in_dur).clamp(0.0, 1.0);
-                    let curve = t_in.curve.as_deref().unwrap_or("linear");
-                    let progress_curved = apply_transition_curve(progress, curve) as f32;
-                    transition = Some(TransitionInfo {
-                        spec: spec.clone(),
-                        progress: progress_curved,
-                        from_layer_id: from_id.clone(),
-                    });
-                }
+            if let (Some(from_id), Some(spec)) = (&t_in.from_layer_id, &t_in.spec) {
+                let progress = (local_t / in_dur).clamp(0.0, 1.0);
+                let curve = t_in.curve.as_deref().unwrap_or("linear");
+                let progress_curved = apply_transition_curve(progress, curve) as f32;
+                transition = Some(TransitionInfo {
+                    spec: spec.clone(),
+                    progress: progress_curved,
+                    from_layer_id: from_id.clone(),
+                });
             }
         }
     }
@@ -625,7 +621,12 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
 
     if apply_in {
         if let Some(t_in) = &sl.transition_in {
-            if t_in.transition_type == "dissolve" {
+            // Dissolve с from-слоем и spec рендерится как шейдерный crossfade (см.
+            // `finalize_layer`); гасить альфой здесь же — двойное затухание. Альфа нужна
+            // только когда блендить не с чем: dissolve без from-слоя (первый клип на
+            // таймлайне) проявляется из фона.
+            let rendered_by_shader = t_in.from_layer_id.is_some() && t_in.spec.is_some();
+            if t_in.transition_type == "dissolve" && !rendered_by_shader {
                 let raw_progress = (local_t / in_dur).clamp(0.0, 1.0);
                 let curve = t_in.curve.as_deref().unwrap_or("linear");
                 let progress = apply_transition_curve(raw_progress, curve);
@@ -953,7 +954,10 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
     }
 
     // rgba(r, g, b, a)
-    if let Some(caps) = lower.strip_prefix("rgba(").and_then(|s| s.strip_suffix(")")) {
+    if let Some(caps) = lower
+        .strip_prefix("rgba(")
+        .and_then(|s| s.strip_suffix(")"))
+    {
         let parts: Vec<&str> = caps.split(',').collect();
         if parts.len() == 4 {
             if let (Some(r), Some(g), Some(b), Some(a_in)) = (
@@ -1239,6 +1243,68 @@ mod tests {
             }
             _ => panic!("expected wipe transition"),
         }
+    }
+
+    #[test]
+    fn finalize_layer_builds_shader_transition_for_dissolve_with_from_layer() {
+        // Dissolve с from-слоем теперь рендерится шейдером (crossfade), а не альфой,
+        // иначе кроссфейда между клипами не происходит (проявление из фона).
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "to",
+            "kind": "video",
+            "timeline_start_sec": 10.0,
+            "timeline_end_sec": 20.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_in": {
+                "type": "dissolve",
+                "duration_sec": 2.0,
+                "curve": "linear",
+                "from_layer_id": "from",
+                "spec": { "type": "crossfade" }
+            }
+        }))
+        .unwrap();
+
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 11.0);
+        let transition = output
+            .transition
+            .expect("dissolve must produce shader transition");
+        assert_eq!(transition.from_layer_id, "from");
+        assert!((transition.progress - 0.5).abs() < 1e-6);
+        assert!(matches!(
+            transition.spec,
+            crate::compositor::transitions::TransitionSpec::Crossfade
+        ));
+        // И альфа НЕ должна гаситься (шейдер уже блендит) — иначе двойное затухание.
+        assert!((output.opacity - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn finalize_layer_dissolve_without_from_layer_fades_via_opacity() {
+        // Без from-слоя (первый клип на таймлайне) dissolve по-прежнему проявляется
+        // из фона через альфу: шейдерного прохода нет, opacity = progress.
+        let layer: SceneLayer = serde_json::from_value(json!({
+            "id": "first",
+            "kind": "video",
+            "timeline_start_sec": 0.0,
+            "timeline_end_sec": 10.0,
+            "source_start_sec": 0.0,
+            "z": 1,
+            "opacity": 1.0,
+            "transition_in": {
+                "type": "dissolve",
+                "duration_sec": 2.0,
+                "curve": "linear",
+                "spec": { "type": "crossfade" }
+            }
+        }))
+        .unwrap();
+
+        let output = finalize_layer(&layer, test_shape_kind(), (1920, 1080), 1.0);
+        assert!(output.transition.is_none());
+        assert!((output.opacity - 0.5).abs() < 1e-5);
     }
 
     #[test]
@@ -1532,9 +1598,55 @@ mod tests {
     }
 
     #[test]
+    fn test_build_text_layer_keeps_style_pixels_for_non_1080p_scene() {
+        let sl = SceneLayer {
+            id: "text-layer-720p".into(),
+            kind: LayerKind::Text,
+            path: "".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 10.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 10.0,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 1,
+            opacity: 1.0,
+            blend_mode: "normal".into(),
+            background_color: None,
+            text: Some("Test".into()),
+            style: Some(json!({
+                "fontSize": 64.0,
+                "letterSpacing": 3.0,
+                "padding": 12.0,
+                "width": 220.0
+            })),
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: None,
+            transition_in: None,
+            transition_out: None,
+            effects: Vec::new(),
+        };
+
+        let text_layer = build_text_layer(&sl, (1280, 720));
+
+        assert_eq!(text_layer.font_size, 64.0);
+        assert_eq!(text_layer.letter_spacing, 3.0);
+        assert_eq!(text_layer.padding_top, 12.0);
+        assert_eq!(text_layer.max_width, Some(220.0));
+    }
+
+    #[test]
     fn parse_color_named_colors() {
         let red = parse_color("red", 1.0);
-        assert_eq!(red.to_rgba8(), vello::peniko::Color::from_rgba8(255, 0, 0, 255).to_rgba8());
+        assert_eq!(
+            red.to_rgba8(),
+            vello::peniko::Color::from_rgba8(255, 0, 0, 255).to_rgba8()
+        );
         let white = parse_color("White", 0.5);
         assert_eq!(white.to_rgba8().a, 128);
     }
@@ -1542,7 +1654,10 @@ mod tests {
     #[test]
     fn parse_color_rgb_format() {
         let c = parse_color("rgb(10, 20, 30)", 1.0);
-        assert_eq!(c.to_rgba8(), vello::peniko::Color::from_rgba8(10, 20, 30, 255).to_rgba8());
+        assert_eq!(
+            c.to_rgba8(),
+            vello::peniko::Color::from_rgba8(10, 20, 30, 255).to_rgba8()
+        );
     }
 
     #[test]
@@ -1556,7 +1671,10 @@ mod tests {
     #[test]
     fn parse_color_hex_still_works() {
         let c = parse_color("#ff00aa", 1.0);
-        assert_eq!(c.to_rgba8(), vello::peniko::Color::from_rgba8(255, 0, 170, 255).to_rgba8());
+        assert_eq!(
+            c.to_rgba8(),
+            vello::peniko::Color::from_rgba8(255, 0, 170, 255).to_rgba8()
+        );
     }
 
     #[test]
@@ -1582,7 +1700,10 @@ mod tests {
     #[test]
     fn parse_color_rgb_with_floats() {
         let c = parse_color("rgb(255.7, 128.2, 64.9)", 1.0);
-        assert_eq!(c.to_rgba8(), Color::from_rgba8(255, 128, 65, 255).to_rgba8());
+        assert_eq!(
+            c.to_rgba8(),
+            Color::from_rgba8(255, 128, 65, 255).to_rgba8()
+        );
     }
 
     #[test]

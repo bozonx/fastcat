@@ -63,7 +63,7 @@ const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
-const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom'>('preset', {
+const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom' | 'match-timeline'>('preset', {
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
@@ -342,7 +342,6 @@ watch(
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <UCheckbox
-          v-slot
           v-if="outputFormat === 'webm'"
           v-model="exportAlpha"
           :label="t('videoEditor.export.exportAlpha')"

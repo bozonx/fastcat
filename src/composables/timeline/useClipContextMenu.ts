@@ -6,7 +6,7 @@ import {
   buildSingleItemActionGroup,
 } from '~/composables/timeline/clip-context-menu/buildSingleClipContextMenu';
 import { buildTransitionContextMenu } from '~/composables/timeline/clip-context-menu/buildTransitionContextMenu';
-import type { UseClipContextMenuOptions } from '~/composables/timeline/clip-context-menu/types';
+import type { ContextMenuGroup, UseClipContextMenuOptions } from '~/composables/timeline/clip-context-menu/types';
 
 export function useClipContextMenu(options: UseClipContextMenuOptions) {
   const contextMenuItems = computed(() => {
@@ -24,10 +24,10 @@ export function useClipContextMenu(options: UseClipContextMenuOptions) {
     const mainGroups = buildSingleClipMainGroup(options);
     const actionGroup = buildSingleItemActionGroup(options);
     const transitionGroups = buildTransitionContextMenu(options) ?? [];
-    const result = [];
+    const result: ContextMenuGroup[] = [];
 
     if (mainGroups.length > 0) {
-      result.push(mainGroups[0]); // Группа 1: Скорость и Заморозка
+      result.push(mainGroups[0]!); // Группа 1: Скорость и Заморозка
     }
     result.push(...transitionGroups); // Группа 2: Переходы
     if (mainGroups.length > 1) {

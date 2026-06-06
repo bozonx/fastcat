@@ -268,13 +268,17 @@ export function computeTextLayoutMetrics(input: {
   style?: TextClipStyle;
   canvasWidth: number;
   canvasHeight: number;
+  designWidth?: number;
+  designHeight?: number;
   measureText: (text: string, font: string) => number;
 }): TextLayoutMetrics {
   const safeCanvasWidth = Math.max(1, input.canvasWidth);
   const safeCanvasHeight = Math.max(1, input.canvasHeight);
+  const safeDesignWidth = Math.max(1, input.designWidth ?? TRANSFORM_DESIGN_BASE.width);
+  const safeDesignHeight = Math.max(1, input.designHeight ?? TRANSFORM_DESIGN_BASE.height);
   const renderScale = Math.min(
-    safeCanvasWidth / TRANSFORM_DESIGN_BASE.width,
-    safeCanvasHeight / TRANSFORM_DESIGN_BASE.height,
+    safeCanvasWidth / safeDesignWidth,
+    safeCanvasHeight / safeDesignHeight,
   );
   const normalizedStyle = normalizeTextClipStyle(input.style);
   const fontSizePx = Math.max(1, Math.round(normalizedStyle.fontSize * renderScale));

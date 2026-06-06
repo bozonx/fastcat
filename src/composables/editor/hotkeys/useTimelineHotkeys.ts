@@ -698,7 +698,7 @@ export function useTimelineHotkeys(
 
       if (targets.length === 0) return false;
 
-      const { track, clip } = targets[0];
+      const { track, clip } = targets[0]!;
       const currentSpeed = clip.speed ?? 1;
 
       uiStore.triggerSpeedModal(track.id, clip.id, currentSpeed);

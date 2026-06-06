@@ -515,6 +515,30 @@ export default {
             "description": "Смещение цветовых каналов",
             "name": "Хроматическая аберрация"
           },
+          "chromaKey": {
+            "description": "Удаление заданного цвета фона (зеленый экран)",
+            "name": "Хромакей",
+            "params": {
+              "keyColor": "Ключевой цвет",
+              "threshold": "Порог",
+              "smoothness": "Сглаживание"
+            }
+          },
+          "hue": {
+            "description": "Поворот цветового тона",
+            "name": "Цветовой тон"
+          },
+          "levels": {
+            "description": "Коррекция уровней входа и выхода",
+            "name": "Уровни",
+            "params": {
+              "inBlack": "Точка черного на входе",
+              "inWhite": "Точка белого на входе",
+              "gamma": "Гамма",
+              "outBlack": "Точка черного на выходе",
+              "outWhite": "Точка белого на выходе"
+            }
+          },
           "params": {
             "amount": "Сила"
           },
@@ -654,9 +678,9 @@ export default {
       "resetZoom": "Сбросить зум и панораму",
       "unsupported": "Неподдерживаемый формат файла для предпросмотра",
       "usedInTimelines": "Используется в таймлайнах",
-      "playbackError": "Ошибка воспроизведения",
       "codecError": "Кодек не поддерживается на этой платформе. Конвертируйте в H264/AAC для предпросмотра.",
-      "formatError": "Формат файла не поддерживается браузером. Конвертируйте в MP4/WebM для предпросмотра."
+      "formatError": "Формат файла не поддерживается браузером. Конвертируйте в MP4/WebM для предпросмотра.",
+      "playbackError": "Ошибка воспроизведения"
     },
     "projects": {
       "autoDetectHint": "Разрешение и частота кадров проекта будут автоматически определены из первого видео, добавленного на таймлайн.",
@@ -906,6 +930,7 @@ export default {
       "rippleTrimRight": "Обрезать справа со сдвигом",
       "rippleTrimSelection": "Удалить выделение со сдвигом",
       "selectedClipsCount": "Выделено {count} клипов",
+      "groupSelectedClipsCount": "Группа ({count} клипов)",
       "selectionEndHandle": "Конец области выделения",
       "selectionRange": "Область выделения",
       "selectionStartHandle": "Начало области выделения",
@@ -1089,7 +1114,8 @@ export default {
       "waveformHalf": "Половина вейвформы",
       "zoneMarkerEnd": "Конец зоны",
       "zoneMarkerStart": "Начало зоны",
-      "zoomToFit": "Вписать всё"
+      "zoomToFit": "Вписать всё",
+      "itemOverlap": "Элемент перекрывается с другим элементом"
     },
     "track": {
       "actions": "Действия",
@@ -1103,15 +1129,12 @@ export default {
       "lock": "Заблокировать дорожку",
       "moveDown": "Переместить ниже",
       "moveUp": "Переместить выше",
-      "mute": "Звук",
       "opacity": "Прозрачность",
       "resetHidden": "Показать все скрытые дорожки",
       "resetLocked": "Разблокировать все дорожки",
       "resetMuted": "Включить звук на всех дорожках",
       "resetSolo": "Выключить соло на всех дорожках",
-      "solo": "Соло",
-      "unlock": "Разблокировать дорожку",
-      "unmute": "Вкл. звук"
+      "unlock": "Разблокировать дорожку"
     },
     "transitions": {
       "barn-door": {
@@ -1218,7 +1241,7 @@ export default {
       "confirmCloseMessage": "Есть незавершённые фоновые задачи. Вы уверены, что хотите закрыть приложение?"
     },
     "export": {
-      "audioTab": "Экспорт аудио",
+      "audioTab": "Экспорт только аудио",
       "videoTab": "Экспорт видео",
       "audioBitrate": "Битрейт аудио (кбит/с)",
       "audioBitrateHelp": "Целевой битрейт аудио.",
@@ -1604,8 +1627,6 @@ export default {
         "decreaseSelectedClipsVolume": "Уменьшить громкость выбранных клипов",
         "decreaseSelectedClipsVolumeLarge": "Уменьшить громкость выбранных клипов (сильно)",
         "duplicate": "Дублировать таймлайн / Создать версию",
-        "groupClips": "Сгруппировать клипы",
-        "ungroupClips": "Разгруппировать клипы",
         "increaseSelectedClipsVolume": "Увеличить громкость выбранных клипов",
         "increaseSelectedClipsVolumeLarge": "Увеличить громкость выбранных клипов (сильно)",
         "moveSelectedClipsLeft": "Переместить выбранные клипы влево",
@@ -1636,6 +1657,8 @@ export default {
         "toggleBladeTool": "Вкл/выкл инструмент лезвие",
         "reverseSpeed": "Реверс скорости клипа",
         "openSpeedModal": "Открыть окно изменения скорости",
+        "groupClips": "Сгруппировать клипы",
+        "ungroupClips": "Разгруппировать клипы",
         "toggleMuteClip": "Вкл/выкл звук клипа",
         "toggleMuteTrack": "Вкл/выкл звук дорожки",
         "toggleShowThumbnails": "Показать/скрыть миниатюры",
@@ -1749,10 +1772,6 @@ export default {
       "defaultAudioWaveformModeFull": "Полная",
       "defaultAudioWaveformModeHalf": "Половинная",
       "defaultAudioWaveformModeNone": "Отключена",
-      "contentRootPath": "Путь к корню контента",
-      "contentRootPathHelp": "Путь, где хранится контент проекта.",
-      "dataRootPath": "Путь к корню данных",
-      "dataRootPathHelp": "Путь, где хранятся данные проекта.",
       "commonFilesFolder": "Папка общих файлов (common)",
       "commonFilesFolderHelp": "Ресурсы приложения, общие для всех проектов (шрифты, пресеты, общие медиафайлы).",
       "defaultProjectsFolder": "Папка проектов по умолчанию",
@@ -1770,8 +1789,6 @@ export default {
       "defaultStaticClipDurationHint": "Длительность по умолчанию для изображений и текстов.",
       "defaultTransitionDuration": "Длительность перехода по умолчанию (сек)",
       "deleteWithoutConfirmation": "Удалять без подтверждения",
-      "ephemeralTmpRootPath": "Путь для ephemeral tmp",
-      "ephemeralTmpRootPathHelp": "Короткоживущие временные файлы задач. Оставьте пустым, чтобы использовать системную временную папку.",
       "fastcatAccountConnectAction": "Подключить аккаунт Fastcat",
       "fastcatAccountIntegrationHint": "Подключитесь к вашему аккаунту Fastcat для доступа к облачным сервисам и STT.",
       "historyMaxEntries": "Лимит истории отмены",
@@ -1869,12 +1886,9 @@ export default {
       "mouseTrackHeadersDoubleClick": "Двойной клик",
       "mouseTrackHeadersMiddleClick": "Одиночный клик средней кнопкой",
       "openLastProjectOnStart": "Открывать последний проект при запуске",
-      "portableEphemeralTmpRootPathHelp": "В переносимом режиме кэш проекта хранится внутри workspace. Оставьте это поле пустым, чтобы короткоживущие временные файлы задач использовали системную временную папку.",
       "project": "Проект",
       "projectAudioDeclickHint": "Микро-фейды (линейные), накладываемые на края всех клипов для устранения щелчков. 0 отключает их. Значение по умолчанию, которое используется при создании нового проекта.",
       "projectAudioDeclickTitle": "Длительность De-click",
-      "proxiesRootPath": "Путь к корню прокси",
-      "proxiesRootPathHelp": "Путь, где хранятся прокси-файлы.",
       "proxyAudioBitrate": "Битрейт аудио (кбит/с)",
       "proxyCopyOpusAudio": "Если файл имеет аудио кодек Opus то копировать аудио дорожку без перекодирования, как есть",
       "proxyCopyOpusAudioHelp": "Включение этой опции позволит пропустить перекодирование аудио, если исходный файл уже содержит аудио в формате Opus. Это сохраняет качество и экономит время.",
@@ -1898,7 +1912,6 @@ export default {
       "resetProxySettingsConfirmTitle": "Сбросить настройки прокси?",
       "resetVideoSettingsConfirmDesc": "Это вернет настройки производительности видео к значениям по умолчанию.",
       "resetVideoSettingsConfirmTitle": "Сбросить настройки видео?",
-      "selectWorkspaceFolder": "Выбрать другой воркспейс",
       "snapThresholdDefault": "Порог привязки (px)",
       "snapToClips": "Клипам",
       "snapToMarkers": "Маркерам",
@@ -1911,8 +1924,6 @@ export default {
       "snappingTitle": "Привязка",
       "stopFramesQuality": "Качество снимка кадра",
       "stopFramesQualityHint": "Качество WebP (1-100)",
-      "storageMode": "Режим хранения",
-      "storageModeHelp": "Выберите системные папки ОС или переносимое хранение внутри рабочей области.",
       "storageModePortable": "Переносимый workspace",
       "storageModeSystemDefault": "Системный по умолчанию",
       "sttDownloadModel": "Скачать модель",
@@ -1926,8 +1937,6 @@ export default {
       "sttModelReady": "Готова",
       "sttTranscriptionDescription": "Настройте интеграцию и параметры распознавания речи по умолчанию.",
       "sttTranscriptionSettings": "Настройки транскрибации",
-      "tempRootPath": "Путь к корню временных файлов",
-      "tempRootPathHelp": "Путь для временных файлов.",
       "title": "Настройки редактора",
       "uiInterfaceScale": "Масштаб интерфейса (px)",
       "uiLanguage": "Язык интерфейса",
@@ -1993,8 +2002,6 @@ export default {
       },
       "videoFrameCacheMb": "Кэш видеокадров (МБ)",
       "videoFrameCacheMbHelp": "Максимальный объем оперативной памяти для декодированных кадров предпросмотра. Установите 0 для отключения кэша.",
-      "workspaceFolder": "Папка workspace",
-      "workspaceFolderDescription": "Все данные хранятся в папке воркспейса: настройки, проекты и временные файлы.",
       "workspaceFolderNotSelected": "Папка workspace не выбрана",
       "workspaceSection": "Настройки приложения",
       "workspaceStorage": "Хранилище"
@@ -2059,7 +2066,9 @@ export default {
           "return": "Вернуться",
           "returnMobile": "Вернуться",
           "restoreMobile": "Восстановить"
-        }
+        },
+        "cannotDeleteMain": "Нельзя удалить основную версию файла",
+        "loadError": "Не удалось загрузить резервные копии"
       }
     }
   },

@@ -233,13 +233,16 @@ impl TransitionPipeline {
         }
     }
 
-    /// Готовит вход перехода как текстуру РОВНО `width×height`. Если GPU-источник уже
-    /// нужного размера — отдаёт дешёвый клон хэндла; иначе билинейно масштабирует
-    /// (CPU-источник предварительно заливается во временную текстуру).
+    /// Готовит вход перехода как текстуру РОВНО `width×height`. Если источник уже
+    /// нужного размера — отдаёт его напрямую (GPU: дешёвый клон хэндла; CPU: залитую
+    /// временную текстуру без лишнего blit-копи); иначе билинейно масштабирует.
+    /// Blit-проход пишется в переданный `encoder` — вызывающий сабмитит один раз вместе
+    /// с самим переходом, без отдельных `queue.submit` на каждый вход.
     fn prepare_input(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
         source: &EffectSource,
         width: u32,
         height: u32,
@@ -247,6 +250,11 @@ impl TransitionPipeline {
         let (src_tex, src_w, src_h) = match source {
             EffectSource::Cpu(img) => {
                 let tex = create_temp_texture(device, queue, img)?;
+                // CPU-вход уже точного размера — отдаём залитую текстуру напрямую
+                // (она read-only для шейдера перехода), без полнокадрового blit-копи.
+                if img.width == width && img.height == height {
+                    return Ok(tex);
+                }
                 (tex, img.width, img.height)
             }
             EffectSource::Gpu(tex) => {
@@ -303,9 +311,6 @@ impl TransitionPipeline {
                 },
             ],
         });
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("native-transition-blit-encoder"),
-        });
         {
             let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("native-transition-blit-pass"),
@@ -315,7 +320,6 @@ impl TransitionPipeline {
             cpass.set_bind_group(0, &bind_group, &[]);
             cpass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
         }
-        queue.submit([encoder.finish()]);
         Ok(dst)
     }
 
@@ -381,10 +385,18 @@ impl TransitionPipeline {
         let shader_source = get_shader_source(spec);
         let pipeline = self.get_or_create_pipeline(device, &shader_source)?;
 
+        // Весь переход (оба blit'а входов + сам compute-пасс) пишем в ОДИН encoder и
+        // сабмитим единожды — раньше каждый `prepare_input` делал свой `queue.submit`,
+        // т.е. до трёх сабмитов на переход на кадр (лишний driver-overhead).
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("native-transition-encoder"),
+        });
+
         // Приводим оба входа к выходному размеру (билинейно), иначе вход меньшего
         // размера читался бы за границей в шейдере перехода → чёрные края.
-        let from_tex = self.prepare_input(device, queue, from_source, width, height)?;
-        let to_tex = self.prepare_input(device, queue, to_source, width, height)?;
+        let from_tex =
+            self.prepare_input(device, queue, &mut encoder, from_source, width, height)?;
+        let to_tex = self.prepare_input(device, queue, &mut encoder, to_source, width, height)?;
 
         // Рендерим переход сразу в owned-текстуру результата. Раньше писали в кешированную
         // `resources.output` и копировали её наружу — лишний полнокадровый GPU→GPU копи на
@@ -442,10 +454,6 @@ impl TransitionPipeline {
                     resource: uniform_buffer.as_entire_binding(),
                 },
             ],
-        });
-
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("native-transition-encoder"),
         });
 
         {

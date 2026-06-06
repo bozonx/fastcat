@@ -677,7 +677,10 @@
       "play": "Play",
       "resetZoom": "Reset Zoom & Pan",
       "unsupported": "Unsupported file format for visual preview",
-      "usedInTimelines": "Used in timelines"
+      "usedInTimelines": "Used in timelines",
+      "codecError": "Codec not supported on this platform. Convert to H264/AAC for preview.",
+      "formatError": "File format not supported by the browser. Convert to MP4/WebM for preview.",
+      "playbackError": "Playback error"
     },
     "projects": {
       "autoDetectHint": "Project resolution and framerate will be automatically detected from the first video added to the timeline.",
@@ -1111,7 +1114,8 @@
       "waveformHalf": "Half waveform",
       "zoneMarkerEnd": "Zone marker end",
       "zoneMarkerStart": "Zone marker start",
-      "zoomToFit": "Fit to Project"
+      "zoomToFit": "Fit to Project",
+      "itemOverlap": "Item overlaps with another item"
     },
     "track": {
       "actions": "Actions",
@@ -1125,15 +1129,12 @@
       "lock": "Lock track",
       "moveDown": "Move track down",
       "moveUp": "Move track up",
-      "mute": "Mute",
       "opacity": "Opacity",
       "resetHidden": "Show all hidden tracks",
       "resetLocked": "Unlock all tracks",
       "resetMuted": "Unmute all tracks",
       "resetSolo": "Unsolo all tracks",
-      "solo": "Solo",
-      "unlock": "Unlock track",
-      "unmute": "Unmute"
+      "unlock": "Unlock track"
     },
     "transitions": {
       "barn-door": {
@@ -1771,10 +1772,6 @@
       "defaultAudioWaveformModeFull": "Full waveform",
       "defaultAudioWaveformModeHalf": "Half waveform",
       "defaultAudioWaveformModeNone": "Disabled",
-      "contentRootPath": "Content root path",
-      "contentRootPathHelp": "Path where project content is stored.",
-      "dataRootPath": "Data root path",
-      "dataRootPathHelp": "Path where project data is stored.",
       "commonFilesFolder": "Common files folder (common)",
       "commonFilesFolderHelp": "Application resources shared across all projects (fonts, presets, shared media files).",
       "defaultProjectsFolder": "Default projects folder",
@@ -1792,8 +1789,6 @@
       "defaultStaticClipDurationHint": "Default duration for images and texts.",
       "defaultTransitionDuration": "Default transition duration (s)",
       "deleteWithoutConfirmation": "Delete without confirmation",
-      "ephemeralTmpRootPath": "Ephemeral tmp path",
-      "ephemeralTmpRootPathHelp": "Short-lived task temp files. Leave empty to use system temp folder.",
       "fastcatAccountConnectAction": "Connect Fastcat Account",
       "fastcatAccountIntegrationHint": "Connect to your Fastcat account to access cloud services and STT.",
       "historyMaxEntries": "Undo history limit",
@@ -1891,12 +1886,9 @@
       "mouseTrackHeadersDoubleClick": "Double click",
       "mouseTrackHeadersMiddleClick": "Middle click",
       "openLastProjectOnStart": "Open last project on start",
-      "portableEphemeralTmpRootPathHelp": "Portable mode stores project cache inside workspace. Leave this empty to keep short-lived job files in the system temporary directory.",
       "project": "Project",
       "projectAudioDeclickHint": "Micro-fades (linear) applied to edges of all clips to eliminate clicks. 0 disables it. Default value used when creating a new project.",
       "projectAudioDeclickTitle": "Audio De-click Duration",
-      "proxiesRootPath": "Proxies root path",
-      "proxiesRootPathHelp": "Path where proxy files are stored.",
       "proxyAudioBitrate": "Audio bitrate (kbps)",
       "proxyCopyOpusAudio": "If the file has Opus audio codec, copy the audio track without re-encoding, as is",
       "proxyCopyOpusAudioHelp": "Enabling this will skip audio transcoding if the source already has Opus audio, preserving quality and saving time.",
@@ -1920,7 +1912,6 @@
       "resetProxySettingsConfirmTitle": "Reset proxy settings?",
       "resetVideoSettingsConfirmDesc": "This will restore all video performance settings to their default values.",
       "resetVideoSettingsConfirmTitle": "Reset video settings?",
-      "selectWorkspaceFolder": "Select different workspace",
       "snapThresholdDefault": "Snap threshold (px)",
       "snapToClips": "Clips",
       "snapToMarkers": "Markers",
@@ -1933,8 +1924,6 @@
       "snappingTitle": "Snapping",
       "stopFramesQuality": "Stop frame quality",
       "stopFramesQualityHint": "WebP quality (1-100)",
-      "storageMode": "Storage mode",
-      "storageModeHelp": "Choose between OS default folders and portable workspace-local storage.",
       "storageModePortable": "Workspace portable",
       "storageModeSystemDefault": "System default",
       "sttDownloadModel": "Download Model",
@@ -1948,8 +1937,6 @@
       "sttModelReady": "Ready",
       "sttTranscriptionDescription": "Configure speech-to-text integration and defaults.",
       "sttTranscriptionSettings": "Transcription settings",
-      "tempRootPath": "Temp root path",
-      "tempRootPathHelp": "Path for temporary files.",
       "title": "Editor settings",
       "uiInterfaceScale": "Interface scale (px)",
       "uiLanguage": "Interface language",
@@ -2015,8 +2002,6 @@
       },
       "videoFrameCacheMb": "Video frame cache (MB)",
       "videoFrameCacheMbHelp": "Maximum amount of RAM to use for decoded preview frames. Set to 0 to disable cache.",
-      "workspaceFolder": "Workspace folder",
-      "workspaceFolderDescription": "All data is stored in the workspace folder: settings, projects, and temporary files.",
       "workspaceFolderNotSelected": "Workspace folder not selected",
       "workspaceSection": "App Settings",
       "workspaceStorage": "Storage"
@@ -2081,7 +2066,9 @@
           "return": "Return",
           "returnMobile": "Return",
           "restoreMobile": "Restore"
-        }
+        },
+        "cannotDeleteMain": "Cannot delete main file version",
+        "loadError": "Failed to load backup versions"
       }
     }
   },
