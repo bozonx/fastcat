@@ -800,9 +800,6 @@ enum SlotState {
         frame: u64,
         map_rx: Receiver<Result<(), wgpu::BufferAsyncError>>,
     },
-    Mapped {
-        frame: u64,
-    },
 }
 
 struct ReadbackSlot {
@@ -916,16 +913,6 @@ impl PipelinedReadback {
             self.emitted += 1;
         }
         Ok(out)
-    }
-}
-
-impl Drop for PipelinedReadback {
-    fn drop(&mut self) {
-        for slot in &mut self.slots {
-            if matches!(slot.state, SlotState::Mapped { .. }) {
-                slot.buffer.unmap();
-            }
-        }
     }
 }
 
@@ -1122,47 +1109,26 @@ impl Compositor {
                 session.push_pending(frame, out);
                 Ok(())
             }
-            SlotState::Mapped { frame } => {
-                let guard = UnmapGuard::new(&slot.buffer);
-                let mapped = slot.buffer.slice(..).get_mapped_range();
-                let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
-                for row in 0..session.height as usize {
-                    let start = row * slot.aligned_row_bytes;
-                    out.extend_from_slice(&mapped[start..start + session.row_bytes]);
-                }
-                drop(mapped);
-                slot.buffer.unmap();
-                guard.disarm();
-                session.push_pending(frame, out);
-                Ok(())
-            }
         }
     }
 
     fn collect_ready_slots(session: &mut PipelinedReadback) -> Result<()> {
         for i in 0..session.slots.len() {
-            // Пробуем забрать готовый InFlight
-            if let SlotState::InFlight { .. } = &session.slots[i].state {
-                if let SlotState::InFlight { frame, map_rx } =
-                    std::mem::replace(&mut session.slots[i].state, SlotState::Idle)
-                {
-                    match map_rx.try_recv() {
-                        Ok(Ok(())) => {
-                            session.slots[i].state = SlotState::Mapped { frame };
-                        }
-                        Ok(Err(e)) => return Err(anyhow!("buffer map: {e:?}")),
-                        Err(TryRecvError::Empty) => {
-                            session.slots[i].state = SlotState::InFlight { frame, map_rx };
-                        }
-                        Err(TryRecvError::Disconnected) => {
-                            return Err(anyhow!("buffer map disconnected"));
-                        }
+            let frame = match std::mem::replace(&mut session.slots[i].state, SlotState::Idle) {
+                SlotState::Idle => continue,
+                SlotState::InFlight { frame, map_rx } => match map_rx.try_recv() {
+                    Ok(Ok(())) => frame,
+                    Ok(Err(e)) => return Err(anyhow!("buffer map: {e:?}")),
+                    Err(TryRecvError::Empty) => {
+                        session.slots[i].state = SlotState::InFlight { frame, map_rx };
+                        continue;
                     }
-                }
-            }
-            // Если Mapped — копируем данные и освобождаем слот
-            if let SlotState::Mapped { frame } =
-                std::mem::replace(&mut session.slots[i].state, SlotState::Idle)
+                    Err(TryRecvError::Disconnected) => {
+                        return Err(anyhow!("buffer map disconnected"));
+                    }
+                },
+            };
+
             {
                 let slot = &session.slots[i];
                 let guard = UnmapGuard::new(&slot.buffer);
