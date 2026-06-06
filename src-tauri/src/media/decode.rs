@@ -631,7 +631,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None, None, None).unwrap();
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::None, None).unwrap();
         let frame = decoder.next_frame().unwrap().unwrap();
 
         assert_eq!(decoder.info().width, 1280);
@@ -649,7 +649,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/test_alpha_simple.webm");
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None, None, None).unwrap();
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::None, None).unwrap();
         let frame = decoder.next_frame().unwrap().unwrap();
 
         assert_eq!(decoder.info().codec, "vp9");
@@ -680,7 +680,7 @@ mod tests {
             .join("test/fixtures/media/sample-1s-720p.mp4");
         // Requesting VAAPI on a build without a driver should still open and
         // decode frames because we fall back to software decode.
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None, Some("vaapi"), None).unwrap();
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::Vaapi, None).unwrap();
         let frame = decoder.next_frame().unwrap().unwrap();
         assert_eq!(frame.width, 1280);
         assert_eq!(frame.height, 720);
@@ -693,7 +693,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/fixtures/media/sample-1s-720p.mp4");
-        let mut decoder = FfmpegNextDecoder::open(&fixture, None, None, None).unwrap();
+        let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::None, None).unwrap();
         let fps = decoder.effective_fps();
 
         // Seek в середину клипа должен вернуть кадр НА запрошенной позиции (frame-accurate),
