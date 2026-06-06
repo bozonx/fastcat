@@ -2221,19 +2221,37 @@ fn decode_symphonia_chunk(
         &mut state_val.resampler,
         &mut state_val.resample_remainder,
     )?;
-    // The resampler's delay line is now warm (either it was already primed, or
-    // this decode included the priming frames computed above).
-    state_val.resampler_primed = true;
+    let drop_delay_samples = if resampling_active && !state_val.resampler_primed {
+        let delay_frames = {
+            use rubato::Resampler;
+            state_val
+                .resampler
+                .as_ref()
+                .map(|r| r.output_delay())
+                .unwrap_or(0)
+        };
+        delay_frames * output_channels
+    } else {
+        0
+    };
+
     let interleaved = planar_to_interleaved(&resampled, output_channels);
 
     // The block-based resampler emits a variable sample count per call. Drain any
     // surplus carried from the previous chunk first, return exactly the requested
     // length, and stash the rest for the next chunk so no samples are lost (which
-    // would otherwise click at chunk boundaries). Priming above fills the delay
-    // line so the first post-seek chunk is full; any tiny residual deficit (a few
-    // frames of rounding) is zero-padded.
+    // would otherwise click at chunk boundaries). On a cold/reset resampler, drop
+    // the leading filter latency once. Priming above decodes enough extra source
+    // frames so the first post-seek chunk remains full after this trim.
     let mut combined = std::mem::take(&mut state_val.resample_output_remainder);
     combined.extend_from_slice(&interleaved);
+    if drop_delay_samples > 0 {
+        if combined.len() > drop_delay_samples {
+            combined.drain(0..drop_delay_samples);
+        } else {
+            combined.clear();
+        }
+    }
     let out = if combined.len() >= target_samples {
         state_val.resample_output_remainder = combined.split_off(target_samples);
         combined
@@ -2241,6 +2259,9 @@ fn decode_symphonia_chunk(
         combined.resize(target_samples, 0.0);
         combined
     };
+    // The resampler's delay line is now warm (either it was already primed, or
+    // this decode included the priming frames computed above).
+    state_val.resampler_primed = true;
 
     // Keep the continuity cursor on the logical requested range, not on the
     // read-ahead frames used for resampler priming. Those extra frames already
@@ -3115,6 +3136,42 @@ mod tests {
             "rate-mismatched files must not use full-file cache on the producer thread"
         );
         drop(state);
+
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn streaming_resampler_drops_initial_filter_delay() {
+        let path = write_temp_f32_wav(8000, 1, 8000);
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        let chunk = decode_symphonia_chunk(
+            "delay-layer",
+            &path_str,
+            0.0,
+            0.05,
+            1.0,
+            48000,
+            2,
+            false,
+            &shared,
+        )
+        .unwrap();
+        let full = decode_entire_file_symphonia(&path_str, 48000, 2).unwrap();
+
+        let compare_len = chunk.len().min(full.len()).min(512);
+        let mean_abs_diff = chunk[..compare_len]
+            .iter()
+            .zip(full[..compare_len].iter())
+            .map(|(a, b)| (*a - *b).abs())
+            .sum::<f32>()
+            / compare_len as f32;
+
+        assert!(
+            mean_abs_diff < 0.03,
+            "streaming first chunk should align with whole-file resample, mean abs diff {mean_abs_diff}"
+        );
 
         let _ = std::fs::remove_file(path);
     }
