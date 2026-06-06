@@ -66,7 +66,7 @@ export interface TimelineBackupDeps {
 
 export interface TimelineBackupModule {
   backupVersions: Ref<TimelineBackupVersion[]>;
-  handleBackup: (serialized: string) => Promise<void>;
+  handleBackup: (serialized: string, options?: { force?: boolean }) => Promise<void>;
   preserveAndDiscardAutosave: (timelinePath: string) => Promise<void>;
   exitPreviewAndReload: () => Promise<void>;
   restorePreviewVersion: () => Promise<void>;
@@ -105,10 +105,13 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   // every manual save — `handleBackup` is only wired into `onSaveSuccess`, which
   // fires from `saveTimeline`, never from the periodic crash-recovery autosave.
   // `backup.enabled` is the on/off toggle; `backup.count` controls rotation.
-  async function handleBackup(serialized: string) {
+  // `force` bypasses the toggle for one-off preservation (e.g. discarding an
+  // unsaved sidecar) so the work is never lost even when backups are disabled.
+  async function handleBackup(serialized: string, options?: { force?: boolean }) {
     if (!deps.currentTimelinePath.value) return;
     const backupSettings = deps.workspaceStore.userSettings.backup;
-    if (!backupSettings || !backupSettings.enabled) return;
+    if (!options?.force && (!backupSettings || !backupSettings.enabled)) return;
+    const rotationCount = backupSettings?.count ?? 5;
 
     try {
       const pathParts = deps.currentTimelinePath.value.split('/');
@@ -130,7 +133,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         deps.projectStore.writeTextByPath(`${backupDirStr}${nextName}`, serialized),
       );
 
-      const toDelete = getBackupsToDelete(existingBackupNames, backupSettings.count);
+      const toDelete = getBackupsToDelete(existingBackupNames, rotationCount);
       for (const name of toDelete) {
         try {
           await deps.projectStore.deleteByPath(`${backupDirStr}${name}`);
@@ -150,15 +153,15 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
 
   // Crash-recovery discard path: the user chose to open the saved version and
   // drop the newer unsaved sidecar. Rather than deleting it outright, rotate its
-  // content into the numbered backups (best-effort, subject to the backup
-  // toggle) so the unsaved state stays inspectable/restorable in the Backups
-  // tab, then remove the sidecar so it isn't re-offered on the next launch.
+  // content into the numbered backups (forced, so it's preserved even when the
+  // backup toggle is off) so the unsaved state stays inspectable/restorable in
+  // the Backups tab, then remove the sidecar so it isn't re-offered next launch.
   async function preserveAndDiscardAutosave(timelinePath: string) {
     try {
       const r = await withFileIoSlot(() =>
         deps.readTimelineFile(`.fastcat/autosave/${timelinePath}`),
       );
-      if (r?.text) await handleBackup(r.text);
+      if (r?.text) await handleBackup(r.text, { force: true });
     } catch (e) {
       log.warn('Failed to preserve autosave as backup before discarding', e);
     }

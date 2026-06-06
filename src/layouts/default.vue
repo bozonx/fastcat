@@ -12,7 +12,6 @@ import { useUiStore } from '~/stores/ui.store';
 // Composables
 import { useEditorHotkeys } from '~/composables/editor/useEditorHotkeys';
 import { useGlobalDragAndDrop } from '~/composables/editor/useGlobalDragAndDrop';
-import { useConfirmClose } from '~/composables/useConfirmClose';
 
 // Components
 import LoadingScreen from '~/components/startup/LoadingScreen.vue';
@@ -62,7 +61,6 @@ const isStartingUp = ref(true);
 
 // Initialize Actions and Hotkeys
 useEditorHotkeys();
-useConfirmClose();
 
 // Initialization
 onMounted(() => {

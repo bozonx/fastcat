@@ -147,6 +147,29 @@ describe('createTimelineBackupModule', () => {
       expect(deleteTimelineAutosaveFile).toHaveBeenCalledWith('project/clip.otio');
     });
 
+    it('preserves autosave content even when routine backups are disabled', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deleteTimelineAutosaveFile = vi.fn().mockResolvedValue(undefined);
+      const readTimelineFile = vi
+        .fn()
+        .mockResolvedValue({ text: '<unsaved>', lastModified: 200, size: 9 });
+      const deps = createMockDeps({
+        projectStore,
+        readTimelineFile,
+        deleteTimelineAutosaveFile,
+        workspaceStore: { userSettings: { backup: { enabled: false, count: 5 } } },
+      });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.preserveAndDiscardAutosave('project/clip.otio');
+
+      expect(projectStore.writeTextByPath).toHaveBeenCalledWith(
+        expect.stringContaining('.fastcat/backups/project/clip__bak'),
+        '<unsaved>',
+      );
+      expect(deleteTimelineAutosaveFile).toHaveBeenCalledWith('project/clip.otio');
+    });
+
     it('still deletes the sidecar even if preserving the backup fails', async () => {
       const projectStore = makeProjectStoreMock();
       const deleteTimelineAutosaveFile = vi.fn().mockResolvedValue(undefined);

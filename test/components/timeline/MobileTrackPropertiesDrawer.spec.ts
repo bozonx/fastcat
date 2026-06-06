@@ -98,9 +98,8 @@ describe('MobileTrackPropertiesDrawer', () => {
 
     const buttons = wrapper.findAll('button');
 
-    // In gap mode there are 6 toolbar buttons (delete gap, delete track, rename, lock, mute, solo)
-    // video-hidden button is hidden because selectedTrack is not resolved in this test context
-    expect(buttons.length).toBe(6);
+    // In gap mode there are 7 toolbar buttons (delete gap, delete track, rename, lock, video, mute, solo)
+    expect(buttons.length).toBe(7);
 
     const deleteGapButton = buttons[0];
     expect(deleteGapButton).toBeDefined();

@@ -2012,11 +2012,11 @@ export default {
       "autoSettingsAppliedDesc": "Resolution {width}x{height}, {fps} FPS",
       "format": "Timeline Format",
       "settings": "Timeline settings",
-      "confirmCloseUnsavedMessage": "This timeline has unsaved changes. Close without saving to the main file?",
       "confirmCloseUnsavedTitle": "Unsaved changes",
       "closeUnsavedTitle": "Unsaved changes",
       "closeUnsavedMessage": "There are unsaved changes in timeline \"{name}\". Do you want to save them before closing?",
       "closeUnsavedMessageMultiple": "Some timelines have unsaved changes. Do you want to save them before closing?",
+      "confirmCloseAppMessage": "You have unsaved changes. Save them to their files before closing?",
       "tabs": {
         "cut": "Cut",
         "sound": "Sound"

@@ -41,7 +41,7 @@ import { useFocusStore } from './focus.store';
 import { useUiStore } from './ui.store';
 import { MAX_TIMELINE_ZOOM_POSITION, MIN_TIMELINE_ZOOM_POSITION } from '~/utils/zoom';
 import { TIMELINE_DEFAULTS } from '~/utils/constants';
-import { useNuxtApp, useRoute } from 'nuxt/app';
+import { useNuxtApp } from 'nuxt/app';
 import { useTimelineMediaUsageStore } from './timeline-media-usage.store';
 
 import type { AppNotificationService } from '~/services/app-notification.service';
@@ -60,7 +60,6 @@ export const useTimelineStore = defineStore('timeline', () => {
   const uiStore = useUiStore();
   const focusStore = useFocusStore();
   const nuxtApp = useNuxtApp();
-  const route = useRoute();
   const toast = nuxtApp.$notificationService as AppNotificationService;
   const { t } = nuxtApp.$i18nService as I18nService;
   const timelineMediaUsageStore = useTimelineMediaUsageStore();
@@ -350,13 +349,6 @@ export const useTimelineStore = defineStore('timeline', () => {
     removeSelectionRange: () => selectionRangeModule.removeSelectionRange(),
   });
 
-  function isMobileEditorRoute() {
-    return (
-      route?.path.startsWith('/m/') ||
-      (typeof window !== 'undefined' && window.location.pathname.startsWith('/m/'))
-    );
-  }
-
   // Deletes the crash-recovery sidecar (`.fastcat/autosave/<path>`) for a
   // timeline. Called after an explicit save commits the work, and on clean
   // shutdown so a leftover sidecar is never mistaken for crash data.
@@ -422,15 +414,19 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (!timelinePath) return;
       dirtyPaths.value[timelinePath] = dirty;
     },
-    // Mobile restores silently; on desktop return `undefined` (not `false`) so
-    // the `?? confirm()` fallthrough actually runs — returning `false` would
-    // short-circuit `??` and silently skip crash recovery on first/startup load.
+    // Internal flows (tab close, save-all-on-window-close) can suppress the
+    // recovery prompt intentionally. Normal desktop and mobile loads both show
+    // the dialog so the user can choose saved vs autosaved content.
     shouldRestoreAutosaveSilently: () => {
       if (skipRecoveryDialog.value) return true;
-      return isMobileEditorRoute() ? true : false;
+      return false;
     },
     showRecoveryDialog: ({ timelinePath }) => {
       return new Promise((resolve) => {
+        // Rapid tab switches can start a second load while a recovery dialog is
+        // still pending. Settle the previous one (default: keep the saved file)
+        // so its awaiting load doesn't hang on an orphaned, never-resolved promise.
+        uiStore.pendingRecoveryDialog?.resolve('open-saved');
         uiStore.pendingRecoveryDialog = {
           timelinePath,
           resolve,
@@ -748,6 +744,46 @@ export const useTimelineStore = defineStore('timeline', () => {
     await persistence.flushTimelineAutosave();
   }
 
+  // True when `path` has a crash-recovery sidecar that is both newer than and
+  // genuinely different from the saved file (mtime first, content-confirmed only
+  // when sizes match; see the equality guard in persistence.loadTimeline).
+  async function hasPendingRecovery(path: string): Promise<boolean> {
+    const autosavePath = `.fastcat/autosave/${path}`;
+    const [mainMeta, autosaveMeta] = await Promise.all([
+      projectStore.getFileMetadata(path),
+      projectStore.getFileMetadata(autosavePath),
+    ]);
+    if (!autosaveMeta) return false;
+    if (mainMeta && autosaveMeta.lastModified <= mainMeta.lastModified) return false;
+    if (mainMeta && mainMeta.size === autosaveMeta.size) {
+      const [mainText, autoText] = await Promise.all([
+        projectStore.readTextByPath(path),
+        projectStore.readTextByPath(autosavePath),
+      ]);
+      if (mainText && autoText && mainText === autoText) return false;
+    }
+    return true;
+  }
+
+  // On project open only the active timeline is loaded, so a crash that left
+  // *background* tabs with unsaved work wouldn't surface (no dirty indicator, and
+  // `hasAnyDirtyTimeline` would understate the risk) until each tab is clicked.
+  // Stat every open path up front and flag the ones with pending recovery so the
+  // tab shows dirty and close-protection covers them; opening the tab then runs
+  // the normal recovery dialog.
+  async function scanOpenPathsForRecovery() {
+    const active = currentTimelinePath.value;
+    const paths = projectStore.projectSettings?.timelines?.openPaths ?? [];
+    for (const path of paths) {
+      if (path === active) continue; // the active load handles its own recovery
+      try {
+        if (await hasPendingRecovery(path)) dirtyPaths.value[path] = true;
+      } catch (e) {
+        log.warn('Failed to scan timeline for recovery', path, e);
+      }
+    }
+  }
+
   // Removes crash-recovery sidecars for every open timeline. Called on clean
   // shutdown (and when the user explicitly chooses "Don't save"): a clean exit
   // leaves no sidecar, so its presence on next launch means a crash.
@@ -773,6 +809,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     flushTimelineAutosave,
     deleteAllOpenAutosaves,
     deleteTimelineAutosaveFile,
+    scanOpenPathsForRecovery,
     skipRecoveryDialog,
     markers: computed(() => markerService.getMarkers()),
     selectionRange: computed(() => selectionRangeModule.getSelectionRange()),
@@ -874,6 +911,9 @@ export const useTimelineStore = defineStore('timeline', () => {
       previewMode.value = false;
       previewBackupInfo.value = null;
       lifecycle.resetTimelineState();
+      // Drop stale per-tab dirty flags so they can't leak across projects (a
+      // lingering `true` would falsely trip `hasAnyDirtyTimeline`).
+      dirtyPaths.value = {};
     },
     undoTimeline,
     redoTimeline,

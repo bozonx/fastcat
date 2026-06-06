@@ -3,6 +3,21 @@ import { nextTick, reactive, ref } from 'vue';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createPinia, setActivePinia } from 'pinia';
 
+vi.mock('vue-i18n', () => ({
+  useI18n: vi.fn(() => ({
+    t: vi.fn((key: string) => key),
+    locale: ref('en-US'),
+  })),
+}));
+
+vi.mock('~/components/properties/ClipProperties.vue', () => ({
+  default: {
+    name: 'ClipProperties',
+    props: ['clip'],
+    template: '<div data-testid="clip-properties" :data-disabled="clip.disabled"></div>',
+  },
+}));
+
 import PropertiesPanel from '~/components/layout-panels/PropertiesPanel.vue';
 import { useFocusStore } from '~/stores/focus.store';
 

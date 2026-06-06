@@ -17,10 +17,13 @@ const projectStoreMock = {
   getProjectFileHandleByRelativePath: vi.fn(),
   getFileByPath: vi.fn(),
   getDirectoryHandleByPath: vi.fn(),
+  getFileMetadata: vi.fn(),
+  readTextByPath: vi.fn(),
+  deleteByPath: vi.fn(),
   saveProjectSettings: vi.fn(),
   projectSettings: {
     project: {},
-    timelines: { sessions: {} },
+    timelines: { openPaths: [] as string[], sessions: {} },
   },
   isReadOnly: false,
   createFallbackTimelineDoc: () => ({
@@ -72,10 +75,16 @@ vi.mock('~/stores/workspace.store', () => ({
   useWorkspaceStore: () => workspaceStoreMock,
 }));
 
+const uiStoreMock = {
+  notifyTimelineSave: vi.fn(),
+  pendingRecoveryDialog: null as {
+    timelinePath: string;
+    resolve: (choice: 'open-saved' | 'restore-autosave') => void;
+  } | null,
+};
+
 vi.mock('~/stores/ui.store', () => ({
-  useUiStore: () => ({
-    notifyTimelineSave: vi.fn(),
-  }),
+  useUiStore: () => uiStoreMock,
 }));
 
 const historyStoreMock = {
@@ -121,6 +130,11 @@ describe('TimelineStore', () => {
           text: async () => '{}',
         }) as any,
     );
+    projectStoreMock.currentTimelinePath = 'timeline.otio';
+    projectStoreMock.projectSettings.timelines.openPaths = [];
+    projectStoreMock.getFileMetadata.mockReset();
+    projectStoreMock.readTextByPath.mockReset();
+    projectStoreMock.deleteByPath.mockReset();
 
     store = useTimelineStore();
     // Force initialization of timelineDoc and duration
@@ -131,6 +145,8 @@ describe('TimelineStore', () => {
     mediaStoreMock.getOrFetchMetadata.mockClear();
     mockVfs.getFile.mockClear();
     historyStoreMock.push.mockClear();
+    uiStoreMock.notifyTimelineSave.mockClear();
+    uiStoreMock.pendingRecoveryDialog = null;
   });
 
   it('initializes with default state', () => {
@@ -182,9 +198,70 @@ describe('TimelineStore', () => {
   it('resets state correctly', () => {
     store.currentTime = 1_000_000;
     store.selectTimelineItems(['item-1']);
+    store.dirtyPaths['stale.otio'] = true;
     store.resetTimelineState();
     expect(store.currentTime).toBe(0);
     expect(store.selectedItemIds).toHaveLength(0);
+    expect(store.dirtyPaths).toEqual({});
+  });
+
+  it('marks background open tabs dirty when they have pending recovery', async () => {
+    projectStoreMock.currentTimelinePath = 'active.otio';
+    projectStoreMock.projectSettings.timelines.openPaths = [
+      'active.otio',
+      'background.otio',
+      'clean.otio',
+    ];
+    projectStoreMock.getFileMetadata.mockImplementation(async (path: string) => {
+      const metadata: Record<string, { lastModified: number; size: number }> = {
+        'background.otio': { lastModified: 100, size: 4 },
+        '.fastcat/autosave/background.otio': { lastModified: 200, size: 9 },
+        'clean.otio': { lastModified: 200, size: 4 },
+        '.fastcat/autosave/clean.otio': { lastModified: 100, size: 9 },
+      };
+      return metadata[path] ?? null;
+    });
+
+    await store.scanOpenPathsForRecovery();
+
+    expect(store.dirtyPaths['background.otio']).toBe(true);
+    expect(store.dirtyPaths['active.otio']).toBeUndefined();
+    expect(store.dirtyPaths['clean.otio']).toBeUndefined();
+  });
+
+  it('settles an existing recovery dialog before opening a new one', async () => {
+    const previousResolve = vi.fn();
+    uiStoreMock.pendingRecoveryDialog = {
+      timelinePath: 'old.otio',
+      resolve: previousResolve,
+    };
+    projectStoreMock.currentTimelinePath = 'timeline.otio';
+    projectStoreMock.getFileMetadata.mockImplementation(async (path: string) => {
+      const metadata: Record<string, { lastModified: number; size: number }> = {
+        'timeline.otio': { lastModified: 100, size: 13 },
+        '.fastcat/autosave/timeline.otio': { lastModified: 200, size: 17 },
+      };
+      return metadata[path] ?? null;
+    });
+    projectStoreMock.readTextByPath.mockImplementation(async (path: string) => {
+      const files: Record<string, string> = {
+        'timeline.otio': '{"id":"main"}',
+        '.fastcat/autosave/timeline.otio': '{"id":"autosave"}',
+      };
+      return files[path] ?? null;
+    });
+    vi.mocked(parseTimelineFromOtio).mockReturnValue(projectStoreMock.createFallbackTimelineDoc());
+
+    const loadPromise = store.loadTimeline();
+
+    await vi.waitFor(() => {
+      expect(previousResolve).toHaveBeenCalledWith('open-saved');
+      expect(uiStoreMock.pendingRecoveryDialog?.timelinePath).toBe('timeline.otio');
+    });
+
+    uiStoreMock.pendingRecoveryDialog?.resolve('open-saved');
+    uiStoreMock.pendingRecoveryDialog = null;
+    await loadPromise;
   });
 
   it('sets freeze frame from playhead when playhead is inside clip', async () => {

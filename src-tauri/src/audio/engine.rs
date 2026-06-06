@@ -182,13 +182,6 @@ struct AudioShared {
     /// Cached `fs::metadata` file sizes so the cache-routing decision doesn't
     /// `stat` the file on every 50 ms chunk.
     file_size_cache: HashMap<String, u64>,
-    /// Cached "decode this whole file into memory?" decision, keyed by path. The
-    /// decision is based on the file's *decoded* audio size (duration × target
-    /// rate × channels × 4), not the container size — so a large video file with a
-    /// small audio track takes the clean whole-file path instead of the streaming
-    /// chunk decoder. Cached because for files that DON'T qualify (true streaming)
-    /// it must not re-probe on every 50 ms chunk.
-    whole_file_decode_cache: HashMap<String, bool>,
     /// Streaming decoders, keyed per layer (NOT per path): two clips from the
     /// same media file must not share one stateful decoder or they thrash seeks.
     decoders: HashMap<String, CachedAudioDecoder>,
@@ -204,15 +197,10 @@ struct AudioShared {
 
 /// Max bytes of decoded f32 audio kept in `decoded_cache` across all files.
 const MAX_DECODED_CACHE_BYTES: usize = 256 * 1024 * 1024;
-/// Fallback only: when a file's duration can't be probed we route by compressed
-/// container size instead. Larger files stream through the chunk decoder.
+/// Only fully decode + cache files whose compressed size is below this. Larger
+/// files stream through the chunk decoder (which is built for it), avoiding a
+/// multi-GB decode of a long track into RAM.
 const MAX_CACHEABLE_FILE_BYTES: u64 = 16 * 1024 * 1024;
-/// Whole-file decode budget by *decoded* size. A clip whose audio decodes to at
-/// most this many bytes is fully decoded into memory (the clean, sample-accurate
-/// path); longer audio streams. 128 MB ≈ 5.8 min of 48 kHz stereo f32 — covers
-/// ordinary clips while bounding RAM. The overall `decoded_cache` (256 MB, LRU)
-/// still evicts across files.
-const MAX_WHOLE_FILE_DECODE_BYTES: u64 = 128 * 1024 * 1024;
 /// Producer resync threshold: if the mix position falls more than this behind
 /// the audible playhead (e.g. after an output underrun), skip stale audio and
 /// realign instead of permanently lagging.
@@ -236,7 +224,6 @@ impl Default for AudioShared {
             decoded_cache: lru::LruCache::unbounded(),
             decoded_cache_bytes: 0,
             file_size_cache: HashMap::new(),
-            whole_file_decode_cache: HashMap::new(),
             decoders: HashMap::new(),
             timing_sig: 0,
             pending_ring_clear: false,
@@ -516,9 +503,6 @@ impl NativeAudioEngine {
         }
         state
             .file_size_cache
-            .retain(|path, _| current_paths.contains(path));
-        state
-            .whole_file_decode_cache
             .retain(|path, _| current_paths.contains(path));
         // Decoders are keyed per layer id (not per path), so retain by layer id.
         state
@@ -1447,19 +1431,36 @@ fn resample_planar_with_speed(
         offset += copy_len;
     }
 
-    // Flush any remaining resampler delay/tail samples.
+    // Flush the resampler's group-delay tail. `SincFixedIn` emits a fixed-size
+    // output for EVERY full input block and never returns empty, so the old
+    // "loop until empty" never terminated — it hung the producer thread (and thus
+    // all audio) whenever a cached file's rate differed from the device, e.g. an
+    // 8 kHz clip on a 44.1 kHz device. Instead, collect exactly the expected
+    // number of frames: the correctly resampled stream is `input_len * ratio`
+    // frames long but arrives delayed by `output_delay`, so we gather
+    // `delay + expected` frames, drop the leading delay, and trim to `expected`.
+    let delay = resampler.output_delay();
+    let expected_out = (input_len as f64 * ratio).round() as usize;
+    let target_total = delay + expected_out;
     let flush = vec![vec![0.0f32; chunk_size]; num_channels];
-    loop {
+    while output[0].len() < target_total {
         let out_chunk = resampler
             .process(&flush, None)
             .map_err(|e| anyhow!("failed to flush resampler: {:?}", e))?;
-        let all_empty = out_chunk.iter().all(|ch| ch.is_empty());
-        if all_empty {
+        if out_chunk.iter().all(|ch| ch.is_empty()) {
             break;
         }
         for ch in 0..num_channels {
             output[ch].extend_from_slice(&out_chunk[ch]);
         }
+    }
+    for ch in 0..num_channels {
+        if output[ch].len() > delay {
+            output[ch].drain(0..delay);
+        } else {
+            output[ch].clear();
+        }
+        output[ch].truncate(expected_out);
     }
 
     Ok(output)
@@ -1606,51 +1607,6 @@ fn planar_to_interleaved(planar: &[Vec<f32>], out_channels: usize) -> Vec<f32> {
         }
     }
     interleaved
-}
-
-/// Estimates the in-memory size (bytes) of fully decoding a file's primary audio
-/// track to `target_rate` / `output_channels` f32 samples, WITHOUT decoding it —
-/// it only probes the container for the track's frame count. Returns `None` when
-/// the duration can't be determined cheaply (the caller then falls back to the
-/// container-size heuristic). This is what lets the tiny audio track of a large
-/// *video* file take the clean whole-file decode path.
-fn estimate_decoded_audio_bytes(
-    path: &str,
-    target_rate: u32,
-    output_channels: usize,
-) -> Option<u64> {
-    use symphonia::core::formats::FormatOptions;
-    use symphonia::core::meta::MetadataOptions;
-    use symphonia::core::probe::Hint;
-
-    let file = std::fs::File::open(path).ok()?;
-    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
-    let mut hint = Hint::new();
-    if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
-        hint.with_extension(ext);
-    }
-    let probed = symphonia::default::get_probe()
-        .format(
-            &hint,
-            mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
-        )
-        .ok()?;
-    let track = probed
-        .format
-        .tracks()
-        .iter()
-        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)?;
-    let n_frames = track.codec_params.n_frames?;
-    let src_rate = track.codec_params.sample_rate.unwrap_or(target_rate).max(1);
-    let duration_sec = n_frames as f64 / src_rate as f64;
-    let out_frames = (duration_sec * target_rate as f64).ceil() as u64;
-    Some(
-        out_frames
-            .saturating_mul(output_channels.max(1) as u64)
-            .saturating_mul(std::mem::size_of::<f32>() as u64),
-    )
 }
 
 fn decode_entire_file_symphonia(
@@ -2176,37 +2132,18 @@ fn decode_audio_chunk(
         let cached_samples = match cached_samples {
             Some(samples) => Some(samples),
             None => {
-                // Decide (once per path) whether to fully decode into memory. The
-                // decision is by *decoded* audio size so a huge video container with
-                // a small audio track still uses the clean whole-file path; only
-                // genuinely long audio streams. Cached so true-streaming files don't
-                // re-probe every 50 ms chunk.
-                let cached_decision = shared.0.lock().whole_file_decode_cache.get(path).copied();
-                let should_decode_whole = match cached_decision {
-                    Some(decision) => decision,
-                    None => {
-                        // Probe the decoded size (no lock held: this opens the file);
-                        // fall back to container size when the duration is unknown.
-                        let decision = match estimate_decoded_audio_bytes(
-                            path,
-                            sample_rate,
-                            output_channels,
-                        ) {
-                            Some(bytes) => bytes > 0 && bytes <= MAX_WHOLE_FILE_DECODE_BYTES,
-                            None => {
-                                let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
-                                size > 0 && size < MAX_CACHEABLE_FILE_BYTES
-                            }
-                        };
-                        shared
-                            .0
-                            .lock()
-                            .whole_file_decode_cache
-                            .insert(path.to_string(), decision);
-                        decision
+                let file_size = {
+                    let mut state = shared.0.lock();
+                    match state.file_size_cache.get(path) {
+                        Some(&size) => size,
+                        None => {
+                            let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+                            state.file_size_cache.insert(path.to_string(), size);
+                            size
+                        }
                     }
                 };
-                if should_decode_whole {
+                if file_size > 0 && file_size < MAX_CACHEABLE_FILE_BYTES {
                     log::info!("[audio] caching entire file in memory: {}", path);
                     let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
                     let shared_samples = Arc::new(decoded);

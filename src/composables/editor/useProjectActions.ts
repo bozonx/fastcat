@@ -16,6 +16,14 @@ export function useProjectActions() {
   const router = useRouter();
 
   async function resetProjectState() {
+    // Flush the active timeline's pending (scheduled) autosave before tearing
+    // down: `resetTimelineState` clears the timer without writing, so otherwise
+    // un-flushed drag edits would be lost on project leave/switch.
+    try {
+      await timelineStore.flushTimelineAutosave();
+    } catch (e) {
+      log.warn('Failed to flush autosave during reset:', e);
+    }
     try {
       await projectStore.saveProjectSettings();
     } catch (e) {
@@ -73,6 +81,9 @@ export function useProjectActions() {
       if (projectStore.currentTimelinePath) {
         await loadTimeline(projectStore.currentTimelinePath);
       }
+      // Surface crashed *background* tabs (newer sidecar than saved file) so they
+      // show as dirty and are covered by close-protection, not just the active one.
+      void timelineStore.scanOpenPathsForRecovery();
     } catch (e) {
       toast.add({
         color: 'error',

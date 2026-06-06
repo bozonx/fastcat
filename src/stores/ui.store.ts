@@ -72,6 +72,10 @@ export const useUiStore = defineStore('ui', () => {
     timelinePath: string;
     resolve: (choice: 'open-saved' | 'restore-autosave') => void;
   } | null>(null);
+  const pendingCloseDialog = ref<{
+    dirtyCount: number;
+    resolve: (choice: 'save' | 'dont-save' | 'cancel') => void;
+  } | null>(null);
   const clipPasteParametersTrigger = ref<{
     trackId: string;
     itemId: string;
@@ -277,6 +281,7 @@ export const useUiStore = defineStore('ui', () => {
     remoteExchangeModalOpen,
     remoteExchangeLocalEntry,
     pendingRecoveryDialog,
+    pendingCloseDialog,
 
     previewZoomTrigger,
     previewZoomResetTrigger,

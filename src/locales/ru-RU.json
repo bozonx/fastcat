@@ -2012,11 +2012,11 @@
       "autoSettingsAppliedDesc": "Разрешение {width}x{height}, {fps} FPS",
       "format": "Формат таймлайна",
       "settings": "Настройки таймлайна",
-      "confirmCloseUnsavedMessage": "В таймлайне есть несохраненные изменения. Закрыть без записи в основной файл?",
       "confirmCloseUnsavedTitle": "Несохраненные изменения",
       "closeUnsavedTitle": "Несохраненные изменения",
       "closeUnsavedMessage": "В таймлайне «{name}» есть несохраненные изменения. Хотите сохранить их перед закрытием?",
       "closeUnsavedMessageMultiple": "В некоторых таймлайнах есть несохраненные изменения. Хотите сохранить их перед закрытием?",
+      "confirmCloseAppMessage": "Есть несохранённые изменения. Сохранить их в файлы перед закрытием?",
       "tabs": {
         "cut": "Монтаж",
         "sound": "Звук"

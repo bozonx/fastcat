@@ -64,9 +64,10 @@ export interface TimelinePersistenceDeps {
 
   shouldRestoreAutosaveSilently?: () => boolean | undefined;
   /**
-   * Returns the periodic crash-recovery autosave interval in milliseconds.
-   * The sidecar is written at most once per interval after the first change,
-   * not on every edit. Defaults to 2 minutes.
+   * Returns the periodic crash-recovery autosave interval in milliseconds. This
+   * timer covers continuous gestures (e.g. drags); discrete edits bypass it with
+   * an immediate write. Within a window the timer is armed once and not reset by
+   * further edits. Defaults to 2 minutes.
    */
   getAutosaveIntervalMs?: () => number;
   /**
@@ -360,9 +361,12 @@ export function createTimelinePersistenceModule(
     return serialized;
   }
 
-  // Crash-recovery autosave is periodic, not per-edit: the first change after a
-  // clean state arms a single timer; further edits within the window do not
-  // reset it; when it fires the accumulated state is written to the sidecar.
+  // Crash-recovery autosave has two paths. Discrete edits (trim commit, paste,
+  // context-menu ops, hotkeys, etc.) request an *immediate* sidecar write via
+  // `requestTimelineSave({ immediate: true })`. Continuous gestures (e.g. clip
+  // drags) instead use this periodic timer: the first change after a clean state
+  // arms a single timer; further edits within the window do not reset it; when
+  // it fires the accumulated state is written to the sidecar.
   let autosaveTimer: number | null = null;
   let autosaveGeneration = 0;
 
@@ -535,8 +539,26 @@ export function createTimelinePersistenceModule(
       let text = mainMeta
         ? ((await withFileIoSlot(() => deps.readTimelineText(mainPath))) ?? '')
         : '';
-      const shouldOfferAutosave =
+      let shouldOfferAutosave =
         !!autosaveMeta && (!mainMeta || autosaveMeta.lastModified > mainMeta.lastModified);
+
+      // Suppress spurious recovery: a best-effort sidecar delete that failed
+      // after a clean save (or an autosave that wrote byte-identical content) can
+      // leave a sidecar that's newer-but-equal. Only pay for the extra read when
+      // the sizes match exactly; if the content is identical there's nothing to
+      // recover, so drop the redundant sidecar and load the saved file silently.
+      if (shouldOfferAutosave && mainMeta && autosaveMeta && mainMeta.size === autosaveMeta.size) {
+        const autosaveText =
+          (await withFileIoSlot(() => deps.readTimelineText(autosavePath))) ?? '';
+        if (autosaveText && autosaveText === text) {
+          shouldOfferAutosave = false;
+          try {
+            await deps.deleteAutosaveFile?.(mainPath);
+          } catch (e) {
+            log.warn('Failed to remove redundant identical autosave sidecar', e);
+          }
+        }
+      }
 
       if (shouldOfferAutosave) {
         if (deps.shouldRestoreAutosaveSilently?.()) {

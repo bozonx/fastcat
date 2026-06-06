@@ -303,6 +303,27 @@ describe('TimelinePersistenceModule', () => {
     expect(parseTimelineFromOtio).toHaveBeenCalledWith('{"id":"main"}', expect.any(Object));
   });
 
+  it('loadTimeline suppresses recovery when newer autosave content is identical', async () => {
+    const showRecoveryDialog = vi.fn().mockResolvedValue('restore-autosave');
+    const deleteAutosaveFile = vi.fn().mockResolvedValue(undefined);
+    const files: FileStore = {
+      'timeline.otio': { text: '{"id":"same"}', lastModified: 100 },
+      '.fastcat/autosave/timeline.otio': { text: '{"id":"same"}', lastModified: 200 },
+    };
+    const deps = createMockDeps({
+      ...makeVfsMock(files),
+      showRecoveryDialog,
+      deleteAutosaveFile,
+    });
+    const mod = createTimelinePersistenceModule(deps);
+
+    await mod.loadTimeline();
+
+    expect(showRecoveryDialog).not.toHaveBeenCalled();
+    expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');
+    expect(parseTimelineFromOtio).toHaveBeenCalledWith('{"id":"same"}', expect.any(Object));
+  });
+
   it('loadTimeline handles showRecoveryDialog for restore-autosave', async () => {
     const showRecoveryDialog = vi.fn().mockResolvedValue('restore-autosave');
     const onRecoveryChoice = vi.fn();

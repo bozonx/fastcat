@@ -1,10 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mountSuspended, mockComponent } from '@nuxt/test-utils/runtime';
-import { reactive, nextTick, toRef } from 'vue';
+import { reactive, nextTick, toRef, ref } from 'vue';
 import { defineStore } from 'pinia';
 import TimelineTracks from '~/components/timeline/TimelineTracks.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useAppClipboard } from '~/composables/useAppClipboard';
+
+vi.mock('vue-i18n', () => ({
+  useI18n: vi.fn(() => ({
+    t: vi.fn((key: string) => key),
+    locale: ref('en-US'),
+  })),
+}));
 
 mockComponent('UContextMenu', {
   template: '<div><slot /></div>',
@@ -110,6 +117,8 @@ describe('TimelineTracks', () => {
     vi.clearAllMocks();
     const timelineStore = useMockTimelineStore();
     timelineStore.timelineZoom = 50;
+    const uiStore = useUiStore();
+    uiStore.clipPasteParametersTrigger = null;
   });
 
   afterEach(() => {
