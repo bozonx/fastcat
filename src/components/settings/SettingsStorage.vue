@@ -7,8 +7,6 @@ import UiFormField from '~/components/ui/UiFormField.vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
-import type { StoragePlacementMode } from '~/utils/storage-roots';
-
 const { t } = useI18n();
 const workspaceStore = useWorkspaceStore();
 
@@ -16,9 +14,6 @@ const isClearWorkspaceVardataConfirmOpen = ref(false);
 
 const isDesktopTauri = computed(() => workspaceStore.workspaceProviderId === 'tauri');
 const isBrowserWorkspaceMode = computed(() => workspaceStore.workspaceProviderId === 'web');
-const isPortableMode = computed(
-  () => workspaceStore.appSettings.paths.placementMode === 'portable',
-);
 const contentRootPath = computed({
   get: () => workspaceStore.appSettings.paths.contentRootPath,
   set: (v: string) => {

@@ -8,7 +8,6 @@ import UiVolumeControl from '~/components/ui/editor/UiVolumeControl.vue';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore, type PanelFocusId } from '~/stores/focus.store';
 import { useHotkeyLabel } from '~/composables/useHotkeyLabel';
-import { getMimeTypeFromFilename } from '~/utils/media-types';
 
 interface MediaPlaybackTransferState {
   currentTime: number;

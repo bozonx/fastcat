@@ -1924,8 +1924,6 @@ export default {
       "snappingTitle": "Привязка",
       "stopFramesQuality": "Качество снимка кадра",
       "stopFramesQualityHint": "Качество WebP (1-100)",
-      "storageModePortable": "Переносимый workspace",
-      "storageModeSystemDefault": "Системный по умолчанию",
       "sttDownloadModel": "Скачать модель",
       "sttFastcat": "FASTCAT STT",
       "sttLocal": "Локальное (Whisper)",
@@ -2002,7 +2000,6 @@ export default {
       },
       "videoFrameCacheMb": "Кэш видеокадров (МБ)",
       "videoFrameCacheMbHelp": "Максимальный объем оперативной памяти для декодированных кадров предпросмотра. Установите 0 для отключения кэша.",
-      "workspaceFolderNotSelected": "Папка workspace не выбрана",
       "workspaceSection": "Настройки приложения",
       "workspaceStorage": "Хранилище"
     },

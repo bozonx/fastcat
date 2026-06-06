@@ -389,14 +389,7 @@ impl NativeAudioEngine {
         let producer = std::thread::Builder::new()
             .name("fastcat-audio-producer".into())
             .spawn(move || {
-                // Max priority gives SCHED_FIFO real-time scheduling on Linux when
-                // the process has CAP_SYS_NICE (or is root). Without it the call
-                // fails harmlessly — we just log and continue with default priority.
-                if let Err(e) = thread_priority::set_current_thread_priority(
-                    thread_priority::ThreadPriority::Max,
-                ) {
-                    log::warn!("[audio] failed to set real-time priority: {e}");
-                }
+                set_producer_realtime_priority();
                 producer_loop(
                     producer_shared,
                     producer_ring,
@@ -757,6 +750,76 @@ fn output_latency_sec(info: &OutputCallbackInfo) -> f64 {
         .map(|duration| duration.as_secs_f64().clamp(0.0, 0.5))
         .unwrap_or(0.0)
 }
+
+/// SCHED_FIFO priority for the audio mixer thread on Linux. Deliberately modest:
+/// low enough to stay beneath the audio server (PipeWire runs at ~88) and system
+/// real-time threads, but far above every SCHED_OTHER thread in the editor (UI,
+/// wgpu/vello compositor, media decoders) so the producer always wins the CPU and
+/// keeps the playback ring full.
+#[cfg(target_os = "linux")]
+const DESIRED_RT_PRIORITY: i32 = 20;
+
+/// Requests real-time scheduling for the calling (producer) thread, clamped to
+/// the process's `RLIMIT_RTPRIO` ceiling.
+///
+/// The previous implementation asked `thread_priority` for `Max`, which on Linux
+/// maps to SCHED_FIFO priority 99 — one above a typical `@realtime rtprio 98`
+/// limit — so the kernel returned `EACCES` and the thread silently stayed on
+/// SCHED_OTHER. Under the editor's compositor/decode load it then got preempted,
+/// draining the audio ring and producing the crackle. Picking a priority within
+/// the limit actually grants real-time scheduling.
+#[cfg(target_os = "linux")]
+fn set_producer_realtime_priority() {
+    let soft_limit = unsafe {
+        let mut rl: libc::rlimit = std::mem::zeroed();
+        if libc::getrlimit(libc::RLIMIT_RTPRIO, &mut rl) != 0 {
+            log::warn!(
+                "[audio] getrlimit(RLIMIT_RTPRIO) failed; leaving producer at default priority"
+            );
+            return;
+        }
+        rl.rlim_cur
+    };
+
+    if soft_limit == 0 {
+        log::warn!(
+            "[audio] RLIMIT_RTPRIO is 0 — real-time scheduling not permitted; audio may glitch \
+             under load. Add the user to a 'realtime'/'audio' group or set rtprio in \
+             /etc/security/limits.d/."
+        );
+        return;
+    }
+
+    // Clamp the desired priority to both the kernel's valid SCHED_FIFO range and
+    // the rtprio soft limit (RLIM_INFINITY collapses to the kernel max).
+    let max_fifo = unsafe { libc::sched_get_priority_max(libc::SCHED_FIFO) }.max(1);
+    let min_fifo = unsafe { libc::sched_get_priority_min(libc::SCHED_FIFO) }.max(1);
+    let ceiling = (soft_limit.min(max_fifo as u64)) as i32;
+    let priority = DESIRED_RT_PRIORITY.clamp(min_fifo, ceiling);
+
+    let param = libc::sched_param {
+        sched_priority: priority,
+    };
+    // pthread_setschedparam returns the errno directly (0 on success).
+    let ret = unsafe {
+        libc::pthread_setschedparam(libc::pthread_self(), libc::SCHED_FIFO, &param)
+    };
+    if ret == 0 {
+        log::info!(
+            "[audio] producer thread on SCHED_FIFO priority {priority} (rtprio limit {soft_limit})"
+        );
+    } else {
+        log::warn!(
+            "[audio] failed to set SCHED_FIFO priority {priority} (errno {ret}); \
+             audio may glitch under load"
+        );
+    }
+}
+
+/// Non-Linux platforms manage audio-thread priority through their own backends;
+/// no-op here so the producer simply runs at the default priority.
+#[cfg(not(target_os = "linux"))]
+fn set_producer_realtime_priority() {}
 
 fn producer_loop(
     shared: Arc<(Mutex<AudioShared>, Condvar)>,

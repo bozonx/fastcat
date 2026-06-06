@@ -143,7 +143,10 @@ const api: Omit<VideoCoreWorkerAPI, 'initCompositor'> & {
     bgColor: string,
     rendererPreference: 'webgl' | 'webgpu' = 'webgl',
   ) {
-    if (typeof (globalThis as any).__TAURI_INTERNALS__ !== 'undefined') {
+    if (
+      typeof (globalThis as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !==
+      'undefined'
+    ) {
       throw new Error('JS video core is disabled in Tauri runtime');
     }
     await loadFonts();

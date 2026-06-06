@@ -330,17 +330,16 @@ export class TextRenderer {
     const { ctx, line, startX, y, letterSpacingPx, mode = 'fill' } = params;
 
     // Prefer native letterSpacing when available (handles RTL, emoji, ligatures, perf)
-    if (typeof (ctx as any).letterSpacing === 'string') {
+    const ctxWithSpacing = ctx as unknown as CanvasRenderingContext2D & { letterSpacing?: string };
+    if (typeof ctxWithSpacing.letterSpacing === 'string') {
       ctx.textAlign = params.align;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (ctx as any).letterSpacing = `${letterSpacingPx}px`;
+      ctxWithSpacing.letterSpacing = `${letterSpacingPx}px`;
       if (mode === 'stroke') {
         ctx.strokeText(line, startX, y);
       } else {
         ctx.fillText(line, startX, y);
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (ctx as any).letterSpacing = '0px';
+      ctxWithSpacing.letterSpacing = '0px';
       return;
     }
 
