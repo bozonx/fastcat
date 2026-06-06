@@ -4,7 +4,7 @@
 //! a wgpu compute pass over a texture, so the same code path can be used by the
 //! native monitor and export.
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -186,14 +186,16 @@ impl EffectPipeline {
             bind_group_layouts: &[Some(&bind_layout)],
             immediate_size: 0,
         });
-        let pipeline = Arc::new(device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("native-effect-pipeline"),
-            layout: Some(&pipeline_layout),
-            module: &shader,
-            entry_point: Some("main"),
-            compilation_options: wgpu::PipelineCompilationOptions::default(),
-            cache,
-        }));
+        let pipeline = Arc::new(
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("native-effect-pipeline"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: Some("main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache,
+            }),
+        );
         Self {
             bind_layout,
             pipeline,
@@ -231,7 +233,9 @@ impl EffectPipeline {
             });
             self.custom_pipelines.insert(key, Arc::new(pipeline));
         }
-        self.custom_pipelines.get(&key).cloned()
+        self.custom_pipelines
+            .get(&key)
+            .cloned()
             .ok_or_else(|| anyhow!("custom effect pipeline missing after insertion"))
     }
 
@@ -344,7 +348,9 @@ impl EffectPipeline {
         let need_input = matches!(source, EffectSource::Cpu(_));
         self.ensure_resources(device, width, height, need_input);
 
-        let resources = self.resources.as_ref()
+        let resources = self
+            .resources
+            .as_ref()
             .ok_or_else(|| anyhow!("effect resources not initialized"))?;
 
         let input_view = match source {
@@ -355,7 +361,9 @@ impl EffectPipeline {
                     height,
                     depth_or_array_layers: 1,
                 };
-                let input_tex = resources.input.as_ref()
+                let input_tex = resources
+                    .input
+                    .as_ref()
                     .ok_or_else(|| anyhow!("effect input texture missing"))?;
                 queue.write_texture(
                     wgpu::TexelCopyTextureInfo {
@@ -635,9 +643,16 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         EffectSpec::Sharpen { amount } => {
             Some(base(5, amount.clamp(0.0, 1.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
         }
-        EffectSpec::Pixelate { size } => {
-            Some(base(6, (size * scale).clamp(1.0, 256.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0))
-        }
+        EffectSpec::Pixelate { size } => Some(base(
+            6,
+            (size * scale).clamp(1.0, 256.0),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0,
+        )),
         EffectSpec::Bloom { .. } => None, // Handled in build_passes
         EffectSpec::Vignette {
             strength,

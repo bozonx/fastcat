@@ -353,7 +353,11 @@ impl WindowState {
             } else {
                 scene.audio_master_gain
             };
-            audio.set_scene(scene.audio_layers.clone(), scene.audio_tracks.clone(), master_gain);
+            audio.set_scene(
+                scene.audio_layers.clone(),
+                scene.audio_tracks.clone(),
+                master_gain,
+            );
         }
         self.layers.apply_scene(scene);
         self.window.request_redraw();
@@ -449,12 +453,13 @@ impl WindowState {
     // -----------------------------------------------------------------------
 
     fn tick_and_render(&mut self) {
-        let t = if let Some(audio_pts) = self.audio.as_ref().and_then(NativeAudioEngine::current_pts) {
-            self.clock.sync_to_audio_pts(audio_pts);
-            audio_pts
-        } else {
-            self.clock.current_pts()
-        };
+        let t =
+            if let Some(audio_pts) = self.audio.as_ref().and_then(NativeAudioEngine::current_pts) {
+                self.clock.sync_to_audio_pts(audio_pts);
+                audio_pts
+            } else {
+                self.clock.current_pts()
+            };
 
         // Детектируем конец сцены во время воспроизведения.
         if self.clock.is_playing() {

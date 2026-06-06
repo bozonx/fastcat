@@ -20,12 +20,12 @@ use anyhow::Result;
 use vello::peniko::{Blob, Color, ImageAlphaType, ImageData, ImageFormat};
 
 use crate::compositor::scene::{
-    BlendMode, Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextAlign,
-    TextLayer, TextVerticalAlign, Transform, TransitionInfo,
+    BlendMode, Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextAlign, TextLayer,
+    TextVerticalAlign, Transform, TransitionInfo,
 };
-use parley::{PositionedLayoutItem, StyleProperty};
-use parley::style::LineHeight;
 use parley::fontique::FontWeight;
+use parley::style::LineHeight;
+use parley::{PositionedLayoutItem, StyleProperty};
 
 use super::scene::{LayerKind, SceneLayer, SceneLayerTransform};
 
@@ -76,7 +76,7 @@ struct Padding {
 fn parse_padding(style: &serde_json::Value) -> Padding {
     let padding_linked = bool_value(style, "paddingLinked", true);
     let padding_val = style.get("padding");
-    
+
     let mut top = 60.0;
     let mut right = 60.0;
     let mut bottom = 60.0;
@@ -118,88 +118,134 @@ fn parse_padding(style: &serde_json::Value) -> Padding {
         bottom = left;
     }
 
-    Padding { top, right, bottom, left }
+    Padding {
+        top,
+        right,
+        bottom,
+        left,
+    }
 }
-
 
 fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let scene_h = scene_size.1;
     let style = sl.style.clone().unwrap_or(serde_json::Value::Null);
     let font_size = number(&style, "fontSize", 64.0).clamp(1.0, 1000.0) as f32;
     let render_scale = scene_h as f64 / 1080.0;
-    
+
     // Core parameters
     let text = sl.text.clone().unwrap_or_default();
     let font_family_raw = string_value(&style, "fontFamily", "sans-serif");
-    let (primary_font, generic_fallback) = crate::compositor::text::resolve_font_family(&font_family_raw);
+    let (primary_font, generic_fallback) =
+        crate::compositor::text::resolve_font_family(&font_family_raw);
     let font_weight_val = font_weight(&style);
     let line_height_val = number(&style, "lineHeight", 1.2).clamp(0.1, 10.0) as f32;
     let letter_spacing = (number(&style, "letterSpacing", 0.0) * render_scale) as f32;
-    
+
     let font_size_px = (font_size as f64 * render_scale).max(1.0) as f32;
-    
+
     let color_alpha = number(&style, "colorAlpha", 1.0).clamp(0.0, 1.0);
     let color = parse_color(
         string_value(&style, "color", "#ffffff").as_str(),
         color_alpha,
     );
-    
+
     let align = text_align(&style);
     let vertical_align = text_vertical_align(&style);
-    
+
     // Padding
     let padding = parse_padding(&style);
     let padding_top = (padding.top * render_scale) as f32;
     let padding_right = (padding.right * render_scale) as f32;
     let padding_bottom = (padding.bottom * render_scale) as f32;
     let padding_left = (padding.left * render_scale) as f32;
-    
+
     // Explicit sizing
     let explicit_width_px = number_opt(&style, "width").map(|w| (w * render_scale).max(1.0) as f32);
-    let explicit_height_px = number_opt(&style, "height").map(|h| (h * render_scale).max(1.0) as f32);
-    
+    let explicit_height_px =
+        number_opt(&style, "height").map(|h| (h * render_scale).max(1.0) as f32);
+
     // Border
     let border_enabled = bool_value(&style, "borderEnabled", false);
-    let border_width = if border_enabled { (number(&style, "borderWidth", 0.0).max(0.0) * render_scale) as f32 } else { 0.0 };
+    let border_width = if border_enabled {
+        (number(&style, "borderWidth", 0.0).max(0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
     let border_color = parse_color(
         string_value(&style, "borderColor", "#ffffff").as_str(),
         number(&style, "borderAlpha", 1.0).clamp(0.0, 1.0),
     );
-    
+
     // Background
     let background_enabled = bool_value(&style, "backgroundEnabled", false)
-        || style.get("backgroundColor").and_then(|v| v.as_str()).map(|s| !s.trim().is_empty()).unwrap_or(false);
+        || style
+            .get("backgroundColor")
+            .and_then(|v| v.as_str())
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false);
     let background_color = parse_color(
         string_value(&style, "backgroundColor", "#000000").as_str(),
         number(&style, "backgroundAlpha", 1.0).clamp(0.0, 1.0),
     );
     let background_radius = number(&style, "backgroundRadius", 0.0).max(0.0) * render_scale;
-    
+
     // Background Shadow
     let bg_shadow_enabled = bool_value(&style, "backgroundShadowEnabled", false);
-    let bg_shadow_blur = if bg_shadow_enabled { (number(&style, "backgroundShadowBlur", 0.0).max(0.0) * render_scale) as f32 } else { 0.0 };
-    let bg_shadow_spread = if bg_shadow_enabled { (number(&style, "backgroundShadowSpread", 0.0).max(0.0) * render_scale) as f32 } else { 0.0 };
-    let bg_shadow_offset_x = if bg_shadow_enabled { (number(&style, "backgroundShadowOffsetX", 0.0) * render_scale) as f32 } else { 0.0 };
-    let bg_shadow_offset_y = if bg_shadow_enabled { (number(&style, "backgroundShadowOffsetY", 0.0) * render_scale) as f32 } else { 0.0 };
+    let bg_shadow_blur = if bg_shadow_enabled {
+        (number(&style, "backgroundShadowBlur", 0.0).max(0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
+    let bg_shadow_spread = if bg_shadow_enabled {
+        (number(&style, "backgroundShadowSpread", 0.0).max(0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
+    let bg_shadow_offset_x = if bg_shadow_enabled {
+        (number(&style, "backgroundShadowOffsetX", 0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
+    let bg_shadow_offset_y = if bg_shadow_enabled {
+        (number(&style, "backgroundShadowOffsetY", 0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
     let bg_shadow_color = parse_color(
         string_value(&style, "backgroundShadowColor", "#000000").as_str(),
         number(&style, "backgroundShadowAlpha", 1.0).clamp(0.0, 1.0),
     );
-    
+
     // Text Shadow
     let text_shadow_enabled = bool_value(&style, "textShadowEnabled", false);
-    let text_shadow_blur = if text_shadow_enabled { (number(&style, "textShadowBlur", 0.0).max(0.0) * render_scale) as f32 } else { 0.0 };
-    let text_shadow_spread = if text_shadow_enabled { (number(&style, "textShadowSpread", 0.0).max(0.0) * render_scale) as f32 } else { 0.0 };
-    let text_shadow_offset_x = if text_shadow_enabled { (number(&style, "textShadowOffsetX", 0.0) * render_scale) as f32 } else { 0.0 };
-    let text_shadow_offset_y = if text_shadow_enabled { (number(&style, "textShadowOffsetY", 0.0) * render_scale) as f32 } else { 0.0 };
+    let text_shadow_blur = if text_shadow_enabled {
+        (number(&style, "textShadowBlur", 0.0).max(0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
+    let text_shadow_spread = if text_shadow_enabled {
+        (number(&style, "textShadowSpread", 0.0).max(0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
+    let text_shadow_offset_x = if text_shadow_enabled {
+        (number(&style, "textShadowOffsetX", 0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
+    let text_shadow_offset_y = if text_shadow_enabled {
+        (number(&style, "textShadowOffsetY", 0.0) * render_scale) as f32
+    } else {
+        0.0
+    };
     let text_shadow_color = parse_color(
         string_value(&style, "textShadowColor", "#000000").as_str(),
         number(&style, "textShadowAlpha", 1.0).clamp(0.0, 1.0),
     );
-    
+
     // Determine text wrapping constraint
     let content_width_px = explicit_width_px.map(|w| (w - padding_left - padding_right).max(1.0));
-    
+
     // Layout parley to compute actual size
     let text_block_width_px;
     let text_block_height_px;
@@ -207,14 +253,13 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let lock = crate::compositor::text::get_text_context();
     if let Ok(mut ctx) = lock.lock() {
         let (font_cx, layout_cx) = &mut *ctx;
-        let resolved_font_family = crate::compositor::text::build_font_family(
-            font_cx,
-            &primary_font,
-            generic_fallback,
-        );
+        let resolved_font_family =
+            crate::compositor::text::build_font_family(font_cx, &primary_font, generic_fallback);
         let mut builder = layout_cx.ranged_builder(font_cx, &text, 1.0, true);
         builder.push_default(StyleProperty::FontSize(font_size_px));
-        builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(line_height_val)));
+        builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(
+            line_height_val,
+        )));
         builder.push_default(StyleProperty::FontWeight(FontWeight::new(font_weight_val)));
         builder.push_default(StyleProperty::FontFamily(resolved_font_family));
         let mut layout = builder.build(&text);
@@ -229,7 +274,8 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
                     glyph_count += run.positioned_glyphs().count();
                 }
             }
-            let line_w = line.metrics().advance + (glyph_count.saturating_sub(1) as f32) * letter_spacing;
+            let line_w =
+                line.metrics().advance + (glyph_count.saturating_sub(1) as f32) * letter_spacing;
             if line_w > max_line_w {
                 max_line_w = line_w;
             }
@@ -242,13 +288,13 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         text_block_width_px = approx_chars * font_size_px * 0.5;
         text_block_height_px = font_size_px * line_height_val;
     }
-    
+
     // Frame size
     let frame_content_width_px = content_width_px.unwrap_or(text_block_width_px);
     let frame_width_px = frame_content_width_px + padding_left + padding_right;
     let auto_frame_height_px = text_block_height_px + padding_top + padding_bottom;
     let frame_height_px = explicit_height_px.unwrap_or(auto_frame_height_px).max(1.0);
-    
+
     // Shadows bounding box adjustment
     let shadow_left = (bg_shadow_blur + bg_shadow_spread - bg_shadow_offset_x)
         .max(text_shadow_blur + text_shadow_spread - text_shadow_offset_x)
@@ -262,13 +308,13 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let shadow_bottom = (bg_shadow_blur + bg_shadow_spread + bg_shadow_offset_y)
         .max(text_shadow_blur + text_shadow_spread + text_shadow_offset_y)
         .max(0.0);
-        
+
     let background_width = frame_width_px + border_width * 2.0 + shadow_left + shadow_right;
     let background_height = frame_height_px + border_width * 2.0 + shadow_top + shadow_bottom;
-    
+
     let natural_width = background_width.ceil() as u32;
     let natural_height = background_height.ceil() as u32;
-    
+
     TextLayer {
         text,
         font_family: primary_font,
@@ -281,40 +327,40 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         letter_spacing,
         max_width: explicit_width_px,
         explicit_height: explicit_height_px,
-        
+
         background_enabled,
         background_color,
         background_radius,
-        
+
         bg_shadow_enabled,
         bg_shadow_color,
         bg_shadow_blur,
         bg_shadow_spread,
         bg_shadow_offset_x,
         bg_shadow_offset_y,
-        
+
         border_enabled,
         border_color,
         border_width,
-        
+
         text_shadow_enabled,
         text_shadow_color,
         text_shadow_blur,
         text_shadow_spread,
         text_shadow_offset_x,
         text_shadow_offset_y,
-        
+
         padding_top,
         padding_right,
         padding_bottom,
         padding_left,
-        
+
         shadow_left,
         shadow_top,
         frame_width: frame_width_px,
         frame_height: frame_height_px,
         text_block_height: text_block_height_px,
-        
+
         natural_size: (natural_width, natural_height),
     }
 }
@@ -690,7 +736,11 @@ pub fn rasterize_svg(path: &Path, target_long_edge: u32) -> Result<(ImageData, (
     let path_buf = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     let maybe_modified = fs::metadata(&path_buf).and_then(|m| m.modified()).ok();
 
-    let cache_lock = SVG_CACHE.get_or_init(|| Mutex::new(lru::LruCache::new(std::num::NonZeroUsize::new(128).unwrap())));
+    let cache_lock = SVG_CACHE.get_or_init(|| {
+        Mutex::new(lru::LruCache::new(
+            std::num::NonZeroUsize::new(128).unwrap(),
+        ))
+    });
     if let (Some(modified), Ok(mut cache)) = (maybe_modified, cache_lock.lock()) {
         if let Some(entry) = cache.get(&(path_buf.clone(), target_long_edge)) {
             if entry.modified == modified {
@@ -1330,7 +1380,7 @@ mod tests {
         assert_eq!(text_layer.padding_left, 25.0);
         assert_eq!(text_layer.border_width, 4.0);
         assert_eq!(text_layer.background_radius, 8.0);
-        
+
         assert!(text_layer.natural_size.0 > 0);
         assert!(text_layer.natural_size.1 > 0);
         assert!(text_layer.frame_width > 0.0);

@@ -4,8 +4,8 @@
 //! Architecture:
 //!   - Video is rendered by the native core (the same `compositor`/`scene_build`
 //!     path as preview/thumbnail), so export matches the monitor pixel-for-pixel.
-//!   - Audio can come from a pre-mixed browser file, or from the native audio
-//!     mixer when no browser mix path is supplied.
+//!   - Audio is rendered by the native audio mixer (`render_scene_to_wav`) over the
+//!     export range; the native side has no browser pre-mix path.
 //!
 //! ffmpeg runs as one process: `-f rawvideo -pix_fmt rgba -s WxH -r fps -i -`
 //! for stdin video, plus optional `-i <audio>` and codec flags. Progress is
@@ -15,9 +15,12 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
+use parking_lot::Mutex;
 use serde::Deserialize;
 
 use crate::audio::engine::render_scene_to_wav;
@@ -26,6 +29,12 @@ use crate::monitor::scene::MonitorScene;
 
 use super::ffmpeg_utils::*;
 use super::processing::NativeMediaTasks;
+
+/// Kill the export if ffmpeg makes no progress for this long. A stall guard rather
+/// than a wall-clock cap, so a legitimately long encode that keeps streaming frames
+/// (or flushing the container) is never killed mid-run, while a genuinely hung
+/// process — a blocked stdin write or a stuck finalization — is reaped.
+const EXPORT_STALL_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,10 +49,8 @@ pub struct NativeExportOptions {
     pub video_codec: String,
     pub video_bitrate_bps: u32,
     pub format: String,
-    /// Path to a pre-mixed browser audio file (wav/m4a/...); None means no pre-mix.
     #[serde(default)]
     pub audio_enabled: bool,
-    pub audio_path: Option<String>,
     pub audio_codec: Option<String>,
     pub audio_bitrate_bps: Option<u32>,
     #[serde(default)]
@@ -112,46 +119,56 @@ pub fn export_timeline(
     // Frame count: duration times fps, rounded up so the last frame covers the end.
     let frame_count = (((end - start) * fps).ceil() as u64).max(1);
 
+    // Video runs `frame_count / fps` seconds, which is ≥ (end - start). Render the
+    // audio mix to that same length so the muxer's `-shortest` doesn't clip the
+    // final partial frame. Audio-only exports keep the exact requested range.
+    let audio_end = if options.video_enabled.unwrap_or(true) {
+        start + frame_count as f64 / fps
+    } else {
+        end
+    };
+
     // Resolve the hardware mode once (auto → vaapi/none, alpha forces software) so
     // the fallback decision below is based on what the first attempt *actually* used.
     // Otherwise an "auto" export on a machine without a VAAPI device would render the
     // whole timeline through software, then needlessly render it a second time.
     let effective_hw = resolve_export_hw_mode(&options);
 
-    // Render the audio mix once so hardware-to-software fallback can reuse the
+    // Render the native audio mix once so hardware-to-software fallback can reuse the
     // same temporary file instead of running the expensive offline mix twice.
     let mut temp_audio: Option<PathBuf> = None;
-    let audio_input: Option<PathBuf> = if options.audio_enabled {
-        match options.audio_path.as_deref().filter(|p| !p.is_empty()) {
-            Some(path) => Some(PathBuf::from(path)),
-            None if !scene.audio_layers.is_empty() => {
-                let path = temp_audio_path();
-                let master_gain = if scene.audio_master_muted {
-                    0.0
-                } else {
-                    scene.audio_master_gain
-                };
-                let output_channels = options.audio_channels.unwrap_or(2).clamp(1, 2) as usize;
-                let sample_rate = options
-                    .audio_sample_rate
-                    .unwrap_or(48_000)
-                    .clamp(8_000, 192_000);
-                render_scene_to_wav(
-                    &scene.audio_layers,
-                    &scene.audio_tracks,
-                    master_gain,
-                    start,
-                    end,
-                    sample_rate,
-                    output_channels,
-                    &path,
-                )
-                .context("failed to render native audio mix")?;
-                temp_audio = Some(path.clone());
-                Some(path)
-            }
-            None => None,
+    let audio_input: Option<PathBuf> = if options.audio_enabled && !scene.audio_layers.is_empty() {
+        let path = temp_audio_path();
+        // Register the temp path for cleanup *before* rendering: render_scene_to_wav
+        // creates the file up front and may fail mid-write, which would otherwise
+        // orphan it.
+        temp_audio = Some(path.clone());
+        let master_gain = if scene.audio_master_muted {
+            0.0
+        } else {
+            scene.audio_master_gain
+        };
+        let output_channels = options.audio_channels.unwrap_or(2).clamp(1, 2) as usize;
+        let sample_rate = options
+            .audio_sample_rate
+            .unwrap_or(48_000)
+            .clamp(8_000, 192_000);
+        if let Err(e) = render_scene_to_wav(
+            &scene.audio_layers,
+            &scene.audio_tracks,
+            master_gain,
+            start,
+            audio_end,
+            sample_rate,
+            output_channels,
+            &path,
+        )
+        .context("failed to render native audio mix")
+        {
+            let _ = std::fs::remove_file(&path);
+            return Err(e);
         }
+        Some(path)
     } else {
         None
     };
@@ -185,11 +202,25 @@ pub fn export_timeline(
             .spawn()
             .context("failed to spawn ffmpeg for timeline export")?;
 
-        // Drain stderr in background to avoid pipe deadlock.
+        // Drain stderr in background to avoid pipe deadlock, recording the last time
+        // ffmpeg emitted anything so the watchdog can tell a true stall from a slow
+        // but otherwise healthy encode.
+        let last_activity = Arc::new(Mutex::new(Instant::now()));
+        let stderr_activity = last_activity.clone();
         let stderr_handle = child.stderr.take().map(|mut stderr| {
             std::thread::spawn(move || {
                 let mut buf = Vec::new();
-                let _ = std::io::Read::read_to_end(&mut stderr, &mut buf);
+                let mut chunk = [0u8; 4096];
+                loop {
+                    match std::io::Read::read(&mut stderr, &mut chunk) {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            *stderr_activity.lock() = Instant::now();
+                            buf.extend_from_slice(&chunk[..n]);
+                        }
+                        Err(_) => break,
+                    }
+                }
                 buf
             })
         });
@@ -197,134 +228,182 @@ pub fn export_timeline(
         // Register the process so `native_media_cancel(task_id)` can stop it.
         let child = tasks.insert(task_id, child);
 
-        let render_result = if is_video {
-            let mut stdin = child
-                .lock()
-                .stdin
-                .take()
-                .ok_or_else(|| anyhow!("ffmpeg stdin unavailable"))?;
+        // Watchdog: kill ffmpeg if it makes no progress for EXPORT_STALL_TIMEOUT. The
+        // main thread can't enforce this itself — a blocked `stdin.write_all` (encoder
+        // stopped consuming) only returns once the pipe is torn down, and finalization
+        // is a plain blocking wait. The watchdog tears the process down on stall, which
+        // unblocks both paths with an error.
+        let watchdog_done = Arc::new(AtomicBool::new(false));
+        let watchdog_stalled = Arc::new(AtomicBool::new(false));
+        let watchdog = {
+            let child = child.clone();
+            let activity = last_activity.clone();
+            let done = watchdog_done.clone();
+            let stalled = watchdog_stalled.clone();
+            std::thread::spawn(move || {
+                while !done.load(Ordering::Relaxed) {
+                    std::thread::sleep(Duration::from_millis(250));
+                    if activity.lock().elapsed() > EXPORT_STALL_TIMEOUT {
+                        stalled.store(true, Ordering::Relaxed);
+                        let mut guard = child.lock();
+                        let _ = guard.kill();
+                        let _ = guard.wait();
+                        break;
+                    }
+                }
+            })
+        };
 
-            // Render frames sequentially through a dedicated compositor, separate
-            // from the thumbnail pool, so export and thumbnail generation do not
-            // contend for the same GPU target.
-            let mut compositor = Compositor::new();
-            let dev_id = compositor
-                .ensure_offscreen_device()
-                .context("export: no GPU device")?;
+        let io_result = (|| -> Result<()> {
+            let render_result = if is_video {
+                let mut stdin = child
+                    .lock()
+                    .stdin
+                    .take()
+                    .ok_or_else(|| anyhow!("ffmpeg stdin unavailable"))?;
 
-            let mut cache = super::timeline_render::VideoDecoderCache::new();
-            let mut pipeline = compositor
-                .begin_pipelined_readback(dev_id, width, height, 2)
-                .context("export: failed to create pipelined readback")?;
+                // Render frames sequentially through a dedicated compositor, separate
+                // from the thumbnail pool, so export and thumbnail generation do not
+                // contend for the same GPU target.
+                let mut compositor = Compositor::new();
+                let dev_id = compositor
+                    .ensure_offscreen_device()
+                    .context("export: no GPU device")?;
 
-            let result = (|| -> Result<()> {
-                for i in 0..frame_count {
-                    let time = start + i as f64 / fps;
-                    let frame_scene = super::timeline_render::build_export_scene(
-                        &scene,
-                        time,
-                        (width, height),
-                        &mut cache,
-                    )?;
-                    if let Some(pixels) =
-                        compositor.render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
-                    {
+                let mut cache = super::timeline_render::VideoDecoderCache::new();
+                let mut pipeline = compositor
+                    .begin_pipelined_readback(dev_id, width, height, 2)
+                    .context("export: failed to create pipelined readback")?;
+
+                let result = (|| -> Result<()> {
+                    for i in 0..frame_count {
+                        // Honour cancellation even while the GPU is the bottleneck and no
+                        // frame is being written (the stdin-write path below only notices a
+                        // killed ffmpeg on the next successful emit).
+                        if tasks.was_cancelled(task_id) {
+                            return Err(anyhow!("cancelled"));
+                        }
+                        let time = start + i as f64 / fps;
+                        let frame_scene = super::timeline_render::build_export_scene(
+                            &scene,
+                            time,
+                            (width, height),
+                            &mut cache,
+                        )?;
+                        if let Some(pixels) = compositor
+                            .render_scene_to_pixels_pipelined(&mut pipeline, &frame_scene)?
+                        {
+                            if let Err(e) = stdin.write_all(&pixels) {
+                                return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
+                            }
+                            *last_activity.lock() = Instant::now();
+                            on_progress(pipeline.emitted as f64 / frame_count as f64);
+                        }
+                    }
+                    // Сливаем хвостовые кадры, которые ещё висят в pipeline.
+                    for pixels in pipeline.drain(&mut compositor)? {
                         if let Err(e) = stdin.write_all(&pixels) {
                             return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                         }
+                        *last_activity.lock() = Instant::now();
                         on_progress(pipeline.emitted as f64 / frame_count as f64);
                     }
-                }
-                // Сливаем хвостовые кадры, которые ещё висят в pipeline.
-                for pixels in pipeline.drain(&mut compositor)? {
-                    if let Err(e) = stdin.write_all(&pixels) {
-                        return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
-                    }
-                    on_progress(pipeline.emitted as f64 / frame_count as f64);
-                }
+                    Ok(())
+                })();
+
+                // Close stdin so ffmpeg finalizes the container.
+                drop(stdin);
+                result
+            } else {
+                on_progress(1.0);
                 Ok(())
-            })();
+            };
 
-            // Close stdin so ffmpeg finalizes the container.
-            drop(stdin);
-            result
-        } else {
-            on_progress(1.0);
-            Ok(())
-        };
-
-        if let Err(error) = render_result {
-            // The write failed because ffmpeg closed the pipe — its stderr almost
-            // always says why (bad encoder, unsupported pix_fmt, …). Surface that
-            // instead of the generic "stdin closed prematurely" we observed locally.
-            let mut guard = child.lock();
-            let _ = guard.kill();
-            let _ = guard.wait();
-            drop(guard);
-            let cancelled = tasks.was_cancelled(task_id);
-            tasks.remove(task_id);
-            if cancelled {
-                return Err(anyhow!("cancelled"));
-            }
-            let stderr_text = stderr_handle
-                .map(|h| String::from_utf8_lossy(&h.join().unwrap_or_default()).to_string())
-                .unwrap_or_default();
-            let stderr_text = stderr_text.trim();
-            if stderr_text.is_empty() {
-                return Err(error);
-            }
-            return Err(anyhow!("{error}: {stderr_text}"));
-        }
-
-        let poll_start = std::time::Instant::now();
-        const TIMEOUT: Duration = Duration::from_secs(3600);
-
-        loop {
-            let mut guard = child.lock();
-            if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
-                let stderr_text = match stderr_handle {
-                    Some(handle) => {
-                        String::from_utf8_lossy(&handle.join().unwrap_or_default()).to_string()
-                    }
-                    None => String::new(),
-                };
-                drop(guard);
-                let cancelled = tasks.was_cancelled(task_id);
-                tasks.remove(task_id);
-                if status.success() {
-                    if !target_path.exists() {
-                        return Err(anyhow!(
-                            "ffmpeg export succeeded but output file is missing: {}",
-                            target_path.display()
-                        ));
-                    }
-                    return Ok(());
-                }
-                if cancelled {
-                    return Err(anyhow!("cancelled"));
-                }
-                return Err(anyhow!("ffmpeg export failed: {}", stderr_text.trim()));
-            }
-            drop(guard);
-            std::thread::sleep(Duration::from_millis(100));
-            if poll_start.elapsed() > TIMEOUT {
+            if let Err(error) = render_result {
+                // The write failed because ffmpeg closed the pipe — its stderr almost
+                // always says why (bad encoder, unsupported pix_fmt, …). Surface that
+                // instead of the generic "stdin closed prematurely" we observed locally.
                 let mut guard = child.lock();
                 let _ = guard.kill();
                 let _ = guard.wait();
                 drop(guard);
+                let cancelled = tasks.was_cancelled(task_id);
                 tasks.remove(task_id);
-                return Err(anyhow!(
-                    "ffmpeg export timed out after {} seconds",
-                    TIMEOUT.as_secs()
-                ));
+                if cancelled {
+                    return Err(anyhow!("cancelled"));
+                }
+                let stderr_text = stderr_handle
+                    .map(|h| String::from_utf8_lossy(&h.join().unwrap_or_default()).to_string())
+                    .unwrap_or_default();
+                let stderr_text = stderr_text.trim();
+                if stderr_text.is_empty() {
+                    return Err(error);
+                }
+                return Err(anyhow!("{error}: {stderr_text}"));
             }
+
+            loop {
+                let mut guard = child.lock();
+                if let Some(status) = guard.try_wait().context("failed to poll ffmpeg export")? {
+                    let stderr_text = match stderr_handle {
+                        Some(handle) => {
+                            String::from_utf8_lossy(&handle.join().unwrap_or_default()).to_string()
+                        }
+                        None => String::new(),
+                    };
+                    drop(guard);
+                    let cancelled = tasks.was_cancelled(task_id);
+                    tasks.remove(task_id);
+                    if status.success() {
+                        if !target_path.exists() {
+                            return Err(anyhow!(
+                                "ffmpeg export succeeded but output file is missing: {}",
+                                target_path.display()
+                            ));
+                        }
+                        return Ok(());
+                    }
+                    if cancelled {
+                        return Err(anyhow!("cancelled"));
+                    }
+                    return Err(anyhow!("ffmpeg export failed: {}", stderr_text.trim()));
+                }
+                drop(guard);
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        })();
+
+        // Stop the watchdog before returning so it can't kill a later attempt's
+        // process (the HW→SW fallback spawns a fresh ffmpeg under the same task id).
+        watchdog_done.store(true, Ordering::Relaxed);
+        let _ = watchdog.join();
+
+        // A stall surfaces as a broken pipe / non-zero exit; relabel it so the user
+        // sees the real cause. Cancellation takes precedence over a coincident stall.
+        match io_result {
+            Err(e)
+                if watchdog_stalled.load(Ordering::Relaxed)
+                    && !e.to_string().contains("cancelled") =>
+            {
+                Err(anyhow!(
+                    "ffmpeg export stalled: no progress for {} seconds",
+                    EXPORT_STALL_TIMEOUT.as_secs()
+                ))
+            }
+            other => other,
         }
     };
 
     let result = match run_attempt(&options) {
-        // Only retry in software if the first attempt was actually hardware-encoded
-        // and didn't fail because the user cancelled it.
-        Err(e) if effective_hw != "none" && !e.to_string().contains("cancelled") => {
+        // Only retry in software if the first attempt was actually hardware-encoded,
+        // wasn't cancelled, and didn't fail in the GPU render path. Software fallback
+        // only swaps the encoder, so a render/GPU error would recur identically and a
+        // full re-render would be wasted work.
+        Err(e)
+            if effective_hw != "none"
+                && !e.to_string().contains("cancelled")
+                && !is_gpu_render_error(&e.to_string()) =>
+        {
             log::warn!("[native-media] HW export failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
@@ -402,22 +481,26 @@ fn build_ffmpeg_args(
             options.video_bitrate_bps.max(1).to_string(),
         ]);
 
-        // Bitrate mode
+        // Bitrate mode. CBR must actually pin the rate, not just select a mode flag
+        // on one backend and a peak cap on another. Combine the backend-specific
+        // rate-control selector with a shared HRD buffer (maxrate == bufsize ==
+        // bitrate) so every encoder targets the same constant rate.
         let is_cbr = options.bitrate_mode.as_deref() == Some("constant");
         if is_cbr {
-            let bitrate = options.video_bitrate_bps.max(1);
-            if hw_mode == "nvdec" || hw_mode == "nvenc" {
-                args.extend(["-rc".to_string(), "cbr".to_string()]);
-            } else if hw_mode == "vaapi" {
-                args.extend(["-rc_mode".to_string(), "CBR".to_string()]);
-            } else {
-                args.extend([
-                    "-maxrate".to_string(),
-                    bitrate.to_string(),
-                    "-bufsize".to_string(),
-                    bitrate.to_string(),
-                ]);
+            let bitrate = options.video_bitrate_bps.max(1).to_string();
+            match hw_mode {
+                "nvdec" | "nvenc" => args.extend(["-rc".to_string(), "cbr".to_string()]),
+                "vaapi" => args.extend(["-rc_mode".to_string(), "CBR".to_string()]),
+                // Software encoders only get a *cap* from maxrate/bufsize; add an equal
+                // floor so the rate is constant rather than merely bounded above.
+                _ => args.extend(["-minrate".to_string(), bitrate.clone()]),
             }
+            args.extend([
+                "-maxrate".to_string(),
+                bitrate.clone(),
+                "-bufsize".to_string(),
+                bitrate,
+            ]);
         }
 
         // Keyframe interval
@@ -470,8 +553,12 @@ fn build_ffmpeg_args(
             );
         }
         args.extend(["-c:a".to_string(), codec.to_string()]);
-        if let Some(bitrate) = options.audio_bitrate_bps {
-            args.extend(["-b:a".to_string(), bitrate.max(1).to_string()]);
+        // Lossless encoders ignore (and warn about) a target bitrate.
+        let is_lossless_audio = codec == "flac" || codec.starts_with("pcm");
+        if !is_lossless_audio {
+            if let Some(bitrate) = options.audio_bitrate_bps {
+                args.extend(["-b:a".to_string(), bitrate.max(1).to_string()]);
+            }
         }
         if let Some(sample_rate) = options.audio_sample_rate {
             let sr = sample_rate.clamp(8_000, 192_000);
@@ -516,8 +603,15 @@ fn build_ffmpeg_args(
 
 /// Alpha export is only meaningful for containers/codecs that carry it (webm/mkv);
 /// it also forces software encoding (HW VAAPI/NVENC paths here don't emit alpha).
+///
+/// The only encoder path that actually emits alpha is VP9 software (yuva420p +
+/// libvpx-vp9). MKV's default codec is AV1 (libsvtav1), which rejects yuva420p, so
+/// gate on the resolved codec too — otherwise an alpha+MKV request would slip past
+/// the validation in `export_timeline` and produce a broken ffmpeg invocation.
 fn export_uses_alpha(options: &NativeExportOptions) -> bool {
-    options.export_alpha.unwrap_or(false) && (options.format == "webm" || options.format == "mkv")
+    options.export_alpha.unwrap_or(false)
+        && (options.format == "webm" || options.format == "mkv")
+        && ffmpeg_video_codec(&options.video_codec) == "libvpx-vp9"
 }
 
 /// Resolves the export hardware mode to a concrete `"vaapi" | "nvdec" | "none"`,
@@ -539,6 +633,10 @@ fn resolve_export_hw_mode(options: &NativeExportOptions) -> &'static str {
                 .unwrap_or(DEFAULT_VAAPI_DEVICE);
             if std::path::Path::new(dev).exists() {
                 "vaapi"
+            } else if std::path::Path::new("/dev/nvidia0").exists() {
+                // No VAAPI render node, but an NVIDIA device is present — use NVENC
+                // instead of silently dropping to software.
+                "nvdec"
             } else {
                 "none"
             }
@@ -547,6 +645,16 @@ fn resolve_export_hw_mode(options: &NativeExportOptions) -> &'static str {
         "nvdec" | "nvenc" => "nvdec",
         _ => "none",
     }
+}
+
+/// True for errors raised by the GPU render path rather than the ffmpeg encoder.
+/// A software fallback only swaps the encoder, so such failures would recur and a
+/// full re-render would be wasted work — see the fallback guard in `export_timeline`.
+fn is_gpu_render_error(message: &str) -> bool {
+    message.contains("no GPU device")
+        || message.contains("pipelined readback")
+        || message.contains("vello render")
+        || message.contains("no renderer for device")
 }
 
 /// Returns a temporary path for the audio mix WAV.
@@ -578,7 +686,6 @@ mod tests {
             video_bitrate_bps: 5_000_000,
             format: "mp4".to_string(),
             audio_enabled: false,
-            audio_path: None,
             audio_codec: None,
             audio_bitrate_bps: None,
             audio_channels: None,
@@ -611,7 +718,6 @@ mod tests {
             video_bitrate_bps: 5_000_000,
             format: "webm".to_string(),
             audio_enabled: true,
-            audio_path: None,
             audio_codec: Some("aac".to_string()),
             audio_bitrate_bps: Some(128_000),
             audio_channels: Some(2),
@@ -663,7 +769,6 @@ mod tests {
             video_bitrate_bps: 5_000_000,
             format: "webm".to_string(),
             audio_enabled: false,
-            audio_path: None,
             audio_codec: None,
             audio_bitrate_bps: None,
             audio_channels: None,
@@ -711,7 +816,6 @@ mod tests {
             video_bitrate_bps: 5_000_000,
             format: "mp4".to_string(),
             audio_enabled: false,
-            audio_path: None,
             audio_codec: None,
             audio_bitrate_bps: None,
             audio_channels: None,
@@ -755,6 +859,8 @@ mod tests {
         let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.mp4"));
 
         assert!(args.windows(2).any(|pair| pair == ["-g", "60"]));
+        // Software CBR pins the rate with an equal floor/ceiling, not just a cap.
+        assert!(args.windows(2).any(|pair| pair == ["-minrate", "5000000"]));
         assert!(args.windows(2).any(|pair| pair == ["-maxrate", "5000000"]));
         assert!(args.windows(2).any(|pair| pair == ["-bufsize", "5000000"]));
         assert!(args
@@ -794,5 +900,75 @@ mod tests {
         assert!(args.windows(2).any(|pair| pair == ["-ar", "44100"]));
         assert!(!args.windows(2).any(|pair| pair == ["-f", "rawvideo"]));
         assert!(!args.contains(&"-c:v".to_string()));
+        // WAV/PCM must use a PCM encoder, not silently downgrade to AAC.
+        assert!(args.windows(2).any(|pair| pair == ["-c:a", "pcm_s16le"]));
+        assert!(!args.contains(&"aac".to_string()));
+    }
+
+    #[test]
+    fn test_lossless_audio_skips_bitrate() {
+        let options = NativeExportOptions {
+            format: "flac".to_string(),
+            video_enabled: Some(false),
+            audio_enabled: true,
+            audio_codec: Some("flac".to_string()),
+            audio_bitrate_bps: Some(320_000),
+            ..base_options()
+        };
+        let args = build_ffmpeg_args(
+            &options,
+            Some(Path::new("dummy.wav")),
+            2,
+            2,
+            30.0,
+            Path::new("output.flac"),
+        );
+        assert!(args.windows(2).any(|pair| pair == ["-c:a", "flac"]));
+        // FLAC ignores a target bitrate; -b:a must not be emitted.
+        assert!(!args.contains(&"-b:a".to_string()));
+    }
+
+    #[test]
+    fn test_alpha_mkv_av1_does_not_emit_yuva() {
+        // MKV's default codec is AV1 (libsvtav1), which can't carry alpha. The
+        // request must not produce a yuva420p invocation that ffmpeg would reject.
+        let options = NativeExportOptions {
+            video_codec: "av01.0.05M.08".to_string(),
+            format: "mkv".to_string(),
+            export_alpha: Some(true),
+            ..base_options()
+        };
+        assert!(!export_uses_alpha(&options));
+        let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.mkv"));
+        assert!(!args.contains(&"yuva420p".to_string()));
+        assert!(!args.contains(&"-auto-alt-ref".to_string()));
+    }
+
+    #[test]
+    fn test_alpha_mkv_vp9_emits_yuva() {
+        // VP9 in MKV is the one codec/container pairing that does carry alpha.
+        let options = NativeExportOptions {
+            video_codec: "vp9".to_string(),
+            format: "mkv".to_string(),
+            export_alpha: Some(true),
+            ..base_options()
+        };
+        assert!(export_uses_alpha(&options));
+        let args = build_ffmpeg_args(&options, None, 1920, 1080, 30.0, Path::new("output.mkv"));
+        assert!(args.contains(&"yuva420p".to_string()));
+        assert!(args.windows(2).any(|pair| pair == ["-auto-alt-ref", "0"]));
+    }
+
+    #[test]
+    fn test_mp4_flac_request_remaps_to_aac() {
+        // mp4/mov can't carry FLAC/PCM — those must remap to AAC.
+        assert_eq!(resolve_audio_encoder(Some("flac"), "mp4"), ("aac", true));
+        assert_eq!(resolve_audio_encoder(Some("pcm"), "mov"), ("aac", true));
+        // mkv keeps them.
+        assert_eq!(resolve_audio_encoder(Some("flac"), "mkv"), ("flac", false));
+        assert_eq!(
+            resolve_audio_encoder(Some("pcm"), "mkv"),
+            ("pcm_s16le", false)
+        );
     }
 }

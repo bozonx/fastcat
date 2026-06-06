@@ -156,13 +156,20 @@ pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadat
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        log::warn!("[probe_media] ffprobe failed for {}: {}", path.display(), stderr);
+        log::warn!(
+            "[probe_media] ffprobe failed for {}: {}",
+            path.display(),
+            stderr
+        );
         return Err(anyhow!("ffprobe failed: {}", stderr));
     }
 
     let json: Value =
         serde_json::from_slice(&output.stdout).context("ffprobe returned invalid JSON")?;
-    log::debug!("[probe_media] ffprobe output keys: {:?}", json.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+    log::debug!(
+        "[probe_media] ffprobe output keys: {:?}",
+        json.as_object().map(|o| o.keys().collect::<Vec<_>>())
+    );
     metadata_from_ffprobe(json)
 }
 
@@ -256,8 +263,14 @@ pub fn generate_proxy(
         .ok_or_else(|| anyhow!("source has no video stream"))?;
     let (width, height) = scaled_even_size(video.width, video.height, options.max_pixels);
 
-    let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
-    let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let hw_accel = options
+        .hardware_acceleration_mode
+        .as_deref()
+        .unwrap_or("none");
+    let vaapi_dev = options
+        .vaapi_device
+        .as_deref()
+        .unwrap_or(DEFAULT_VAAPI_DEVICE);
     let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
 
     let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
@@ -269,7 +282,10 @@ pub fn generate_proxy(
     let mut args = Vec::new();
 
     if hw_encode == "vaapi" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+        let vaapi_dev = options
+            .vaapi_device
+            .as_deref()
+            .unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-init_hw_device".to_string(),
             format!("vaapi=gpu:{vaapi_dev}"),
@@ -278,13 +294,13 @@ pub fn generate_proxy(
         ]);
     }
 
-    args.extend([
-        "-nostdin".to_string(),
-        "-y".to_string(),
-    ]);
+    args.extend(["-nostdin".to_string(), "-y".to_string()]);
 
     if hw_decode == "vaapi" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+        let vaapi_dev = options
+            .vaapi_device
+            .as_deref()
+            .unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-hwaccel".to_string(),
             "vaapi".to_string(),
@@ -292,16 +308,10 @@ pub fn generate_proxy(
             vaapi_dev.to_string(),
         ]);
     } else if hw_decode == "nvdec" {
-        args.extend([
-            "-hwaccel".to_string(),
-            "nvdec".to_string(),
-        ]);
+        args.extend(["-hwaccel".to_string(), "nvdec".to_string()]);
     }
 
-    args.extend([
-        "-i".to_string(),
-        source_path.display().to_string(),
-    ]);
+    args.extend(["-i".to_string(), source_path.display().to_string()]);
 
     let vf_filter = if hw_encode == "vaapi" {
         format!("scale={width}:{height},format=nv12|vaapi,hwupload")
@@ -310,10 +320,7 @@ pub fn generate_proxy(
     } else {
         format!("scale={width}:{height}")
     };
-    args.extend([
-        "-vf".to_string(),
-        vf_filter,
-    ]);
+    args.extend(["-vf".to_string(), vf_filter]);
 
     let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_encode);
     args.extend([
@@ -324,21 +331,12 @@ pub fn generate_proxy(
     ]);
 
     if hw_encode == "vaapi" {
-        args.extend([
-            "-pix_fmt".to_string(),
-            "vaapi".to_string(),
-        ]);
+        args.extend(["-pix_fmt".to_string(), "vaapi".to_string()]);
     } else if hw_encode == "nvdec" {
-        args.extend([
-            "-pix_fmt".to_string(),
-            "yuv420p".to_string(),
-        ]);
+        args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
     }
 
-    args.extend([
-        "-movflags".to_string(),
-        "+faststart".to_string(),
-    ]);
+    args.extend(["-movflags".to_string(), "+faststart".to_string()]);
 
     if let Some(audio) = metadata.audio.as_ref() {
         if options.copy_opus_audio && audio.codec.to_lowercase().starts_with("opus") {
@@ -385,8 +383,14 @@ pub fn convert_media(
     target_path: &Path,
     options: NativeConvertOptions,
 ) -> Result<()> {
-    let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
-    let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let hw_accel = options
+        .hardware_acceleration_mode
+        .as_deref()
+        .unwrap_or("none");
+    let vaapi_dev = options
+        .vaapi_device
+        .as_deref()
+        .unwrap_or(DEFAULT_VAAPI_DEVICE);
     let hw_decode = resolve_hw_decode_mode(hw_accel, vaapi_dev);
 
     let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
@@ -398,7 +402,10 @@ pub fn convert_media(
     let mut args = Vec::new();
 
     if hw_encode == "vaapi" && options.kind == "video" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+        let vaapi_dev = options
+            .vaapi_device
+            .as_deref()
+            .unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-init_hw_device".to_string(),
             format!("vaapi=gpu:{vaapi_dev}"),
@@ -407,13 +414,13 @@ pub fn convert_media(
         ]);
     }
 
-    args.extend([
-        "-nostdin".to_string(),
-        "-y".to_string(),
-    ]);
+    args.extend(["-nostdin".to_string(), "-y".to_string()]);
 
     if hw_decode == "vaapi" && options.kind == "video" {
-        let vaapi_dev = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+        let vaapi_dev = options
+            .vaapi_device
+            .as_deref()
+            .unwrap_or(DEFAULT_VAAPI_DEVICE);
         args.extend([
             "-hwaccel".to_string(),
             "vaapi".to_string(),
@@ -421,33 +428,28 @@ pub fn convert_media(
             vaapi_dev.to_string(),
         ]);
     } else if hw_decode == "nvdec" && options.kind == "video" {
-        args.extend([
-            "-hwaccel".to_string(),
-            "nvdec".to_string(),
-        ]);
+        args.extend(["-hwaccel".to_string(), "nvdec".to_string()]);
     }
 
-    args.extend([
-        "-i".to_string(),
-        source_path.display().to_string(),
-    ]);
+    args.extend(["-i".to_string(), source_path.display().to_string()]);
 
     match options.kind.as_str() {
         "video" => {
             let width = options.width.unwrap_or(1920).max(1);
             let height = options.height.unwrap_or(1080).max(1);
-            
+
             let vf_filter = if hw_encode == "vaapi" {
-                format!("scale={}:{}:format=nv12|vaapi,hwupload", even(width), even(height))
+                format!(
+                    "scale={}:{}:format=nv12|vaapi,hwupload",
+                    even(width),
+                    even(height)
+                )
             } else if hw_encode == "nvdec" {
                 format!("scale={}:{}:format=yuv420p", even(width), even(height))
             } else {
                 format!("scale={}:{}", even(width), even(height))
             };
-            args.extend([
-                "-vf".into(),
-                vf_filter,
-            ]);
+            args.extend(["-vf".into(), vf_filter]);
 
             let raw_video_codec = options.video_codec.as_deref().unwrap_or("avc1");
             let video_codec = ffmpeg_video_codec_hw(raw_video_codec, hw_encode);
@@ -462,15 +464,9 @@ pub fn convert_media(
             ]);
 
             if hw_encode == "vaapi" {
-                args.extend([
-                    "-pix_fmt".to_string(),
-                    "vaapi".to_string(),
-                ]);
+                args.extend(["-pix_fmt".to_string(), "vaapi".to_string()]);
             } else if hw_encode == "nvdec" {
-                args.extend([
-                    "-pix_fmt".to_string(),
-                    "yuv420p".to_string(),
-                ]);
+                args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
             }
 
             if options.audio.unwrap_or(true) {
@@ -506,7 +502,9 @@ pub fn convert_media(
             Ok(())
         }
         Err(e) if hw_encode != "none" && !e.to_string().contains("cancelled") => {
-            log::warn!("[native-media] HW conversion failed ({e}), falling back to software encoding");
+            log::warn!(
+                "[native-media] HW conversion failed ({e}), falling back to software encoding"
+            );
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
             convert_media(tasks, task_id, source_path, target_path, sw_options)
@@ -540,8 +538,10 @@ pub fn extract_video_frame_webp(
     cmd.arg("-nostdin");
 
     if hw_decode == "vaapi" {
-        cmd.arg("-hwaccel").arg("vaapi")
-           .arg("-hwaccel_device").arg(&hw_settings.vaapi_device);
+        cmd.arg("-hwaccel")
+            .arg("vaapi")
+            .arg("-hwaccel_device")
+            .arg(&hw_settings.vaapi_device);
     } else if hw_decode == "nvdec" {
         cmd.arg("-hwaccel").arg("nvdec");
     }
@@ -565,7 +565,9 @@ pub fn extract_video_frame_webp(
         .arg("-")
         .stdin(Stdio::null());
 
-    let output = cmd.output().context("failed to run ffmpeg frame extraction")?;
+    let output = cmd
+        .output()
+        .context("failed to run ffmpeg frame extraction")?;
 
     if !output.status.success() {
         return Err(anyhow!(
@@ -601,11 +603,7 @@ pub fn extract_video_frame_webps(
     max_height: u32,
     quality: f32,
 ) -> Result<Vec<Option<Vec<u8>>>> {
-    let mut sorted_times: Vec<(usize, f64)> = times_sec
-        .iter()
-        .copied()
-        .enumerate()
-        .collect();
+    let mut sorted_times: Vec<(usize, f64)> = times_sec.iter().copied().enumerate().collect();
     sorted_times.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let max_edge = max_width.max(max_height);
@@ -662,34 +660,54 @@ pub fn extract_video_frame_webps(
         if let Some(frame) = last_frame {
             let rotation = decoder.info().rotation.rem_euclid(360);
 
-            let encode_res: Result<Vec<u8>, anyhow::Error> = if rotation == 90 || rotation == 180 || rotation == 270 {
-                let (frame_width, frame_height) = (frame.width, frame.height);
-                if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
-                    frame_width,
-                    frame_height,
-                    frame.pixels.clone(),
-                ) {
-                    match rotation {
-                        90 => {
-                            let rotated = image::imageops::rotate90(&buf);
-                            encode_rgba_as_webp(rotated.as_raw(), rotated.width(), rotated.height(), webp_quality).map_err(Into::into)
+            let encode_res: Result<Vec<u8>, anyhow::Error> =
+                if rotation == 90 || rotation == 180 || rotation == 270 {
+                    let (frame_width, frame_height) = (frame.width, frame.height);
+                    if let Some(buf) = image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
+                        frame_width,
+                        frame_height,
+                        frame.pixels.clone(),
+                    ) {
+                        match rotation {
+                            90 => {
+                                let rotated = image::imageops::rotate90(&buf);
+                                encode_rgba_as_webp(
+                                    rotated.as_raw(),
+                                    rotated.width(),
+                                    rotated.height(),
+                                    webp_quality,
+                                )
+                                .map_err(Into::into)
+                            }
+                            180 => {
+                                let rotated = image::imageops::rotate180(&buf);
+                                encode_rgba_as_webp(
+                                    rotated.as_raw(),
+                                    rotated.width(),
+                                    rotated.height(),
+                                    webp_quality,
+                                )
+                                .map_err(Into::into)
+                            }
+                            270 => {
+                                let rotated = image::imageops::rotate270(&buf);
+                                encode_rgba_as_webp(
+                                    rotated.as_raw(),
+                                    rotated.width(),
+                                    rotated.height(),
+                                    webp_quality,
+                                )
+                                .map_err(Into::into)
+                            }
+                            _ => unreachable!(),
                         }
-                        180 => {
-                            let rotated = image::imageops::rotate180(&buf);
-                            encode_rgba_as_webp(rotated.as_raw(), rotated.width(), rotated.height(), webp_quality).map_err(Into::into)
-                        }
-                        270 => {
-                            let rotated = image::imageops::rotate270(&buf);
-                            encode_rgba_as_webp(rotated.as_raw(), rotated.width(), rotated.height(), webp_quality).map_err(Into::into)
-                        }
-                        _ => unreachable!(),
+                    } else {
+                        Err(anyhow!("failed to create image buffer for rotation"))
                     }
                 } else {
-                    Err(anyhow!("failed to create image buffer for rotation"))
-                }
-            } else {
-                encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality).map_err(Into::into)
-            };
+                    encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality)
+                        .map_err(Into::into)
+                };
 
             match encode_res {
                 Ok(bytes) => {
@@ -714,7 +732,12 @@ pub fn extract_video_frame_webps(
 /// keeps emitting progress is never killed mid-run.
 const FFMPEG_STALL_TIMEOUT: Duration = Duration::from_secs(300);
 
-fn run_ffmpeg_task(tasks: &NativeMediaTasks, task_id: &str, ffmpeg_path: &str, args: Vec<String>) -> Result<()> {
+fn run_ffmpeg_task(
+    tasks: &NativeMediaTasks,
+    task_id: &str,
+    ffmpeg_path: &str,
+    args: Vec<String>,
+) -> Result<()> {
     verify_ffmpeg_binary(ffmpeg_path).context("ffmpeg binary check failed")?;
     let mut child = Command::new(ffmpeg_path)
         .args(&args)
@@ -893,17 +916,29 @@ mod tests {
     #[test]
     fn resolve_audio_encoder_remaps_unsupported_for_container() {
         // aac requested for webm → opus (substituted).
-        assert_eq!(resolve_audio_encoder(Some("aac"), "webm"), ("libopus", true));
+        assert_eq!(
+            resolve_audio_encoder(Some("aac"), "webm"),
+            ("libopus", true)
+        );
         // aac for mp4 is fine.
         assert_eq!(resolve_audio_encoder(Some("aac"), "mp4"), ("aac", false));
         // opus passes through.
-        assert_eq!(resolve_audio_encoder(Some("opus"), "webm"), ("libopus", false));
+        assert_eq!(
+            resolve_audio_encoder(Some("opus"), "webm"),
+            ("libopus", false)
+        );
         // flac and pcm pass through.
         assert_eq!(resolve_audio_encoder(Some("flac"), "flac"), ("flac", false));
-        assert_eq!(resolve_audio_encoder(Some("pcm"), "wav"), ("pcm_s16le", false));
+        assert_eq!(
+            resolve_audio_encoder(Some("pcm"), "wav"),
+            ("pcm_s16le", false)
+        );
         // Unknown codec falls back to a safe default per container.
         assert_eq!(resolve_audio_encoder(Some("garbage"), "mp4"), ("aac", true));
-        assert_eq!(resolve_audio_encoder(Some("garbage"), "webm"), ("libopus", true));
+        assert_eq!(
+            resolve_audio_encoder(Some("garbage"), "webm"),
+            ("libopus", true)
+        );
         // None defaults sensibly.
         assert_eq!(resolve_audio_encoder(None, "mp4"), ("aac", false));
     }

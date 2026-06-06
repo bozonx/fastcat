@@ -1,8 +1,8 @@
 //! Текстовый рендер: parley (layout + shaping) -> vello Glyph runs.
 
-use std::sync::{Mutex, OnceLock};
-use parley::{FontContext, LayoutContext};
 use parley::fontique::GenericFamily;
+use parley::{FontContext, LayoutContext};
+use std::sync::{Mutex, OnceLock};
 
 pub static TEXT_CTX: OnceLock<Mutex<(FontContext, LayoutContext<[u8; 4]>)>> = OnceLock::new();
 
@@ -80,7 +80,9 @@ pub fn build_font_family<'a>(
 
 pub fn clean_font_family(raw: &str) -> String {
     let first_part = raw.split(',').next().unwrap_or(raw).trim();
-    first_part.trim_matches(|c| c == '\'' || c == '"').to_string()
+    first_part
+        .trim_matches(|c| c == '\'' || c == '"')
+        .to_string()
 }
 
 #[cfg(test)]
@@ -89,12 +91,27 @@ mod tests {
 
     #[test]
     fn parse_generic_family_recognises_css_names() {
-        assert_eq!(parse_generic_family("sans-serif"), Some(GenericFamily::SansSerif));
-        assert_eq!(parse_generic_family("Sans-Serif"), Some(GenericFamily::SansSerif));
+        assert_eq!(
+            parse_generic_family("sans-serif"),
+            Some(GenericFamily::SansSerif)
+        );
+        assert_eq!(
+            parse_generic_family("Sans-Serif"),
+            Some(GenericFamily::SansSerif)
+        );
         assert_eq!(parse_generic_family("serif"), Some(GenericFamily::Serif));
-        assert_eq!(parse_generic_family("monospace"), Some(GenericFamily::Monospace));
-        assert_eq!(parse_generic_family("cursive"), Some(GenericFamily::Cursive));
-        assert_eq!(parse_generic_family("fantasy"), Some(GenericFamily::Fantasy));
+        assert_eq!(
+            parse_generic_family("monospace"),
+            Some(GenericFamily::Monospace)
+        );
+        assert_eq!(
+            parse_generic_family("cursive"),
+            Some(GenericFamily::Cursive)
+        );
+        assert_eq!(
+            parse_generic_family("fantasy"),
+            Some(GenericFamily::Fantasy)
+        );
         assert_eq!(parse_generic_family("Inter"), None);
         assert_eq!(parse_generic_family(""), None);
     }
@@ -140,7 +157,11 @@ mod tests {
     fn build_font_family_falls_back_for_unknown_custom_font() {
         let mut font_cx = FontContext::new();
 
-        let family = build_font_family(&mut font_cx, "DefinitelyNotARealFontXYZ", GenericFamily::Serif);
+        let family = build_font_family(
+            &mut font_cx,
+            "DefinitelyNotARealFontXYZ",
+            GenericFamily::Serif,
+        );
         assert_eq!(family, parley::style::FontFamily::from("serif"));
     }
 }

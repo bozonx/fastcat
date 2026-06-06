@@ -329,7 +329,6 @@ onUnmounted(() => {
         <video
           ref="mediaElement"
           :src="src"
-          :type="sourceType"
           class="max-w-full max-h-full object-contain transition-transform duration-75"
           :class="isReady ? 'opacity-100' : 'opacity-0'"
           :style="mediaStyle"
@@ -353,7 +352,6 @@ onUnmounted(() => {
       <audio
         ref="mediaElement"
         :src="src"
-        :type="sourceType"
         class="hidden"
         @timeupdate="onTimeUpdate"
         @loadedmetadata="onLoadedMetadata"

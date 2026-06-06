@@ -14,10 +14,10 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::num::NonZeroUsize;
-use std::sync::Arc;
 use std::sync::mpsc::{Receiver, TryRecvError};
+use std::sync::Arc;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use vello::peniko::{Color, ImageData};
 use vello::util::{RenderContext, RenderSurface};
 use vello::{AaConfig, AaSupport, RenderParams, Renderer, RendererOptions, Scene as VelloScene};
@@ -178,12 +178,8 @@ impl Compositor {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
-        let effective_scene = self.materialize_transitions_and_effects(
-            dev_id,
-            scene,
-            &device,
-            &queue,
-        )?;
+        let effective_scene =
+            self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
         let mut registered_images = Vec::new();
         let vello = self.build_vello_scene_from_materialized(
             dev_id,
@@ -208,12 +204,8 @@ impl Compositor {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
-        let effective_scene = self.materialize_transitions_and_effects(
-            dev_id,
-            scene,
-            &device,
-            &queue,
-        )?;
+        let effective_scene =
+            self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
         let mut registered_images = Vec::new();
         let vello = self.build_vello_scene_from_materialized(
             dev_id,
@@ -273,21 +265,11 @@ impl Compositor {
                     // Эффекты слоёв запекаем ДО перехода: иначе эффекты `from`-клипа
                     // терялись полностью (слой удаляется), а эффекты `to`-клипа
                     // применялись поверх готового перехода, а не к исходному кадру.
-                    let from_source = self.layer_source_with_effects(
-                        dev_id,
-                        scene,
-                        &from_layer,
-                        device,
-                        queue,
-                    )?;
+                    let from_source =
+                        self.layer_source_with_effects(dev_id, scene, &from_layer, device, queue)?;
 
-                    let to_source = self.layer_source_with_effects(
-                        dev_id,
-                        scene,
-                        &layers[i],
-                        device,
-                        queue,
-                    )?;
+                    let to_source =
+                        self.layer_source_with_effects(dev_id, scene, &layers[i], device, queue)?;
 
                     let cache = self.pipeline_caches.get(&dev_id);
                     let pipeline = self
@@ -344,8 +326,7 @@ impl Compositor {
             };
 
             let source = if is_vector {
-                let texture =
-                    self.render_layer_to_texture(dev_id, scene, &layer, render_scale)?;
+                let texture = self.render_layer_to_texture(dev_id, scene, &layer, render_scale)?;
                 EffectSource::Gpu(Arc::new(texture))
             } else {
                 self.layer_to_effect_source(dev_id, scene, &layer)?
@@ -388,7 +369,8 @@ impl Compositor {
         if layer.effects.is_empty() {
             return Ok(base);
         }
-        let processed = self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects)?;
+        let processed =
+            self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects)?;
         Ok(EffectSource::Gpu(Arc::new(processed)))
     }
 
@@ -606,7 +588,9 @@ impl Compositor {
                 },
             );
         }
-        let target = self.offscreen.get(&dev_id)
+        let target = self
+            .offscreen
+            .get(&dev_id)
             .ok_or_else(|| anyhow!("offscreen target missing for device {dev_id}"))?;
 
         let renderer = self
@@ -730,17 +714,21 @@ impl Compositor {
             return Ok(());
         }
         let device_handle = &self.render_cx.devices[dev_id];
-        
+
         // Получаем или создаем PipelineCache для этого устройства
-        let pipeline_cache = self.pipeline_caches.entry(dev_id).or_insert_with(|| {
-            unsafe {
-                device_handle.device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
-                    label: Some("vello-pipeline-cache"),
-                    data: None,
-                    fallback: true,
-                })
-            }
-        }).clone();
+        let pipeline_cache = self
+            .pipeline_caches
+            .entry(dev_id)
+            .or_insert_with(|| unsafe {
+                device_handle
+                    .device
+                    .create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+                        label: Some("vello-pipeline-cache"),
+                        data: None,
+                        fallback: true,
+                    })
+            })
+            .clone();
 
         let renderer = Renderer::new(
             &device_handle.device,
@@ -899,6 +887,20 @@ impl PipelinedReadback {
             pending: VecDeque::new(),
             emitted: 0,
         }
+    }
+
+    /// Вставить готовый кадр, сохраняя порядок `pending` по frame_seq.
+    ///
+    /// Слоты могут становиться готовыми не по порядку (особенно при depth > 2),
+    /// а выдача идёт через `pop_front`, поэтому сортированная вставка гарантирует,
+    /// что кадры уходят в энкодер строго в порядке рендера.
+    fn push_pending(&mut self, frame: u64, pixels: Vec<u8>) {
+        let pos = self
+            .pending
+            .iter()
+            .position(|(f, _)| *f > frame)
+            .unwrap_or(self.pending.len());
+        self.pending.insert(pos, (frame, pixels));
     }
 
     /// Заблокировать и забрать все оставшиеся in-flight кадры.
@@ -1087,7 +1089,7 @@ impl Compositor {
                 }
                 drop(mapped);
                 slot.buffer.unmap();
-                session.pending.push_back((frame, out));
+                session.push_pending(frame, out);
                 Ok(())
             }
             SlotState::Mapped { frame } => {
@@ -1099,7 +1101,7 @@ impl Compositor {
                 }
                 drop(mapped);
                 slot.buffer.unmap();
-                session.pending.push_back((frame, out));
+                session.push_pending(frame, out);
                 Ok(())
             }
         }
@@ -1139,7 +1141,7 @@ impl Compositor {
                 }
                 drop(mapped);
                 session.slots[i].buffer.unmap();
-                session.pending.push_back((frame, out));
+                session.push_pending(frame, out);
             }
         }
         Ok(())

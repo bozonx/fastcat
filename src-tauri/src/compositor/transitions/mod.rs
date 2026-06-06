@@ -1,7 +1,7 @@
 //! Переходы между двумя сценами (например A→B на стыке клипов).
 //! Каждый transition — wgpu shader pass над двумя текстурами (from, to) + прогресс 0..1.
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -259,7 +259,11 @@ impl TransitionPipeline {
 
         let dst = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("native-transition-scaled-input"),
-            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -341,10 +345,11 @@ impl TransitionPipeline {
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 cache: self.pipeline_cache.as_ref(),
             });
-            self.pipelines
-                .insert(key, Arc::new(pipeline));
+            self.pipelines.insert(key, Arc::new(pipeline));
         }
-        self.pipelines.get(&key).cloned()
+        self.pipelines
+            .get(&key)
+            .cloned()
             .ok_or_else(|| anyhow!("transition pipeline missing after insertion"))
     }
 

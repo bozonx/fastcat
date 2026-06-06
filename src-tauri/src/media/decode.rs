@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use super::hwaccel::{HwAccelContext, init_hwaccel, try_transfer_to_cpu};
+use super::hwaccel::{init_hwaccel, try_transfer_to_cpu, HwAccelContext};
 
 #[derive(Debug, Clone)]
 pub struct MediaInfo {
@@ -41,7 +41,9 @@ impl Drop for VideoFrame {
     fn drop(&mut self) {
         if let (Some(tex), Some(pool)) = (self.texture.take(), self.texture_pool.take()) {
             if let Ok(mut p) = pool.lock() {
-                p.entry((tex.size().width, tex.size().height)).or_default().push(tex);
+                p.entry((tex.size().width, tex.size().height))
+                    .or_default()
+                    .push(tex);
             }
         }
     }
@@ -667,7 +669,10 @@ mod tests {
                 break;
             }
         }
-        assert!(has_transparency, "Expected some transparent pixels in alpha webm");
+        assert!(
+            has_transparency,
+            "Expected some transparent pixels in alpha webm"
+        );
     }
 
     #[test]
@@ -709,7 +714,3 @@ mod tests {
         );
     }
 }
-
-
-
-

@@ -107,7 +107,10 @@ pub fn try_transfer_to_cpu(
     // Transfer data from GPU frame to CPU frame.
     let ret = unsafe { ffmpeg_sys_next::av_hwframe_transfer_data(sw_ptr, hw_frame, 0) };
     if ret < 0 {
-        return Err(anyhow!("av_hwframe_transfer_data failed: {}", ffmpeg_error_str(ret)));
+        return Err(anyhow!(
+            "av_hwframe_transfer_data failed: {}",
+            ffmpeg_error_str(ret)
+        ));
     }
 
     Ok(Some(sw_frame))
@@ -118,10 +121,15 @@ pub fn try_transfer_to_cpu(
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "linux")]
-fn try_vaapi(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext, device: Option<&str>) -> Result<HwAccelContext> {
+fn try_vaapi(
+    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    device: Option<&str>,
+) -> Result<HwAccelContext> {
     let dev = device.unwrap_or("/dev/dri/renderD128");
     let dev_c = CString::new(dev).context("invalid vaapi device path")?;
-    let hw_type = unsafe { ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"vaapi".as_ptr() as *const c_char) };
+    let hw_type = unsafe {
+        ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"vaapi".as_ptr() as *const c_char)
+    };
     if hw_type == ffmpeg_sys_next::AVHWDeviceType::AV_HWDEVICE_TYPE_NONE {
         return Err(anyhow!("VAAPI is not supported by this FFmpeg build"));
     }
@@ -159,9 +167,13 @@ fn try_vaapi(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext, device: Option<&st
 
 #[cfg(target_os = "macos")]
 fn try_videotoolbox(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<HwAccelContext> {
-    let hw_type = unsafe { ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"videotoolbox".as_ptr() as *const c_char) };
+    let hw_type = unsafe {
+        ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"videotoolbox".as_ptr() as *const c_char)
+    };
     if hw_type == ffmpeg_sys_next::AVHWDeviceType::AV_HWDEVICE_TYPE_NONE {
-        return Err(anyhow!("VideoToolbox is not supported by this FFmpeg build"));
+        return Err(anyhow!(
+            "VideoToolbox is not supported by this FFmpeg build"
+        ));
     }
 
     let mut hw_device_ref: *mut ffmpeg_sys_next::AVBufferRef = std::ptr::null_mut();
@@ -195,7 +207,9 @@ fn try_videotoolbox(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<H
 
 #[cfg(target_os = "windows")]
 fn try_d3d11va(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<HwAccelContext> {
-    let hw_type = unsafe { ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"d3d11va".as_ptr() as *const c_char) };
+    let hw_type = unsafe {
+        ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"d3d11va".as_ptr() as *const c_char)
+    };
     if hw_type == ffmpeg_sys_next::AVHWDeviceType::AV_HWDEVICE_TYPE_NONE {
         return Err(anyhow!("D3D11VA is not supported by this FFmpeg build"));
     }
@@ -230,7 +244,10 @@ fn try_d3d11va(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<HwAcce
 // ---------------------------------------------------------------------------
 
 #[cfg(not(target_os = "linux"))]
-fn try_vaapi(_codec_ctx: *mut ffmpeg_sys_next::AVCodecContext, _device: Option<&str>) -> Result<HwAccelContext> {
+fn try_vaapi(
+    _codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    _device: Option<&str>,
+) -> Result<HwAccelContext> {
     Err(anyhow!("VAAPI is only available on Linux"))
 }
 
@@ -267,11 +284,7 @@ fn is_hw_pixel_format(pixel: ffmpeg::format::Pixel) -> bool {
 fn ffmpeg_error_str(err: c_int) -> String {
     let mut buf = [0u8; 256];
     unsafe {
-        ffmpeg_sys_next::av_strerror(
-            err,
-            buf.as_mut_ptr() as *mut c_char,
-            buf.len(),
-        );
+        ffmpeg_sys_next::av_strerror(err, buf.as_mut_ptr() as *mut c_char, buf.len());
     }
     // Find null terminator
     let len = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());

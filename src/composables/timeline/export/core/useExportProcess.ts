@@ -200,7 +200,6 @@ export function useExportProcess(
             videoBitrateBps: options.bitrate,
             format: options.format,
             audioEnabled: options.audio,
-            audioPath: null,
             audioCodec: options.audioCodec || null,
             audioBitrateBps: options.audioBitrate,
             audioChannels: options.audioChannels === 'mono' ? 1 : 2,

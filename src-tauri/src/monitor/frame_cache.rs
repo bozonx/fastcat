@@ -133,8 +133,16 @@ impl VideoFrameCache {
     /// `None` — кеш пуст. Не трогает `last_request` (чистый запрос для эвристик).
     pub fn nearest_distance_sec(&self, target_pts: f64) -> Option<f64> {
         let key = self.index_of(target_pts);
-        let floor = self.frames.range(..=key).next_back().map(|(k, _)| (key - *k).abs());
-        let ceil = self.frames.range(key..).next().map(|(k, _)| (*k - key).abs());
+        let floor = self
+            .frames
+            .range(..=key)
+            .next_back()
+            .map(|(k, _)| (key - *k).abs());
+        let ceil = self
+            .frames
+            .range(key..)
+            .next()
+            .map(|(k, _)| (*k - key).abs());
         let best = match (floor, ceil) {
             (Some(a), Some(b)) => a.min(b),
             (Some(a), None) => a,

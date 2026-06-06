@@ -557,11 +557,18 @@ impl LayerRuntimeManager {
 
                 if let Some(t_in) = &layer.transition_in {
                     let local_t = t - layer.timeline_start_sec;
-                    if t_in.transition_type != "dissolve" && local_t < t_in.duration_sec && local_t >= 0.0 {
+                    if t_in.transition_type != "dissolve"
+                        && local_t < t_in.duration_sec
+                        && local_t >= 0.0
+                    {
                         if let Some(from_id) = &t_in.from_layer_id {
                             if let Some(from_idx) = scene.iter().position(|l| &l.id == from_id) {
                                 active.insert(from_idx);
-                                self.ensure_runtime_for(&scene[from_idx], device.clone(), queue.clone());
+                                self.ensure_runtime_for(
+                                    &scene[from_idx],
+                                    device.clone(),
+                                    queue.clone(),
+                                );
                             }
                         }
                     }
@@ -653,9 +660,14 @@ impl LayerRuntimeManager {
 
                 if let Some(t_in) = &self.scene[i].transition_in {
                     let local_t = t - self.scene[i].timeline_start_sec;
-                    if t_in.transition_type != "dissolve" && local_t < t_in.duration_sec && local_t >= 0.0 {
+                    if t_in.transition_type != "dissolve"
+                        && local_t < t_in.duration_sec
+                        && local_t >= 0.0
+                    {
                         if let Some(from_id) = &t_in.from_layer_id {
-                            if let Some(from_idx) = (0..self.scene.len()).find(|&idx| &self.scene[idx].id == from_id) {
+                            if let Some(from_idx) =
+                                (0..self.scene.len()).find(|&idx| &self.scene[idx].id == from_id)
+                            {
                                 active_indices.insert(from_idx);
                             }
                         }
@@ -687,9 +699,7 @@ impl LayerRuntimeManager {
                                 // пока кадр показывается. CPU-blob — только запасной путь,
                                 // когда у декодера не было wgpu device (GPU-аплоад не сделан).
                                 source: match (&f.texture, &f.image) {
-                                    (Some(texture), _) => {
-                                        RasterSource::GpuTexture(texture.clone())
-                                    }
+                                    (Some(texture), _) => RasterSource::GpuTexture(texture.clone()),
                                     (None, Some(image)) => RasterSource::Image(image.clone()),
                                     (None, None) => continue,
                                 },
@@ -846,11 +856,11 @@ fn approx_eq_opt_scale(a: Option<f32>, b: Option<f32>) -> bool {
 mod tests {
     use super::approx_eq_opt_scale;
     use super::sanitize_preview_fps;
-    use crate::monitor::scene_build::layer_with_auto_source_rotation;
     use super::svg_target_long_edge;
     use super::video_sync_lag_sec;
     use super::{BALANCED_VIDEO_SYNC_LAG_SEC, STRICT_VIDEO_SYNC_LAG_SEC};
     use crate::monitor::scene::{LayerKind, PreviewSyncMode, SceneLayer};
+    use crate::monitor::scene_build::layer_with_auto_source_rotation;
 
     #[test]
     fn none_equals_some_one() {

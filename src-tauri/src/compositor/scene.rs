@@ -10,15 +10,13 @@
 //! Расширение: новые типы слоёв добавляются как варианты `LayerKind`
 //! (он `#[non_exhaustive]`), плюс ветка в `Scene::to_vello`.
 
+use super::effects::EffectSpec;
 use kurbo::{Affine, BezPath, Rect, RoundedRect, Shape, Stroke};
-use parley::{
-    LineHeight, PositionedLayoutItem, StyleProperty, fontique::FontWeight,
-};
+use parley::{fontique::FontWeight, LineHeight, PositionedLayoutItem, StyleProperty};
 use std::sync::Arc;
+use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
 use vello::Glyph;
 use vello::Scene as VelloScene;
-use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
-use super::effects::EffectSpec;
 
 #[derive(Debug, Clone)]
 pub struct Scene {
@@ -579,7 +577,13 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
             scene.draw_blurred_rounded_rect(xform, rect, spec.bg_shadow_color, radius, std_dev);
         } else {
             let path = RoundedRect::new(rect.x0, rect.y0, rect.x1, rect.y1, radius).to_path(0.1);
-            scene.fill(Fill::NonZero, xform, Brush::Solid(spec.bg_shadow_color), None, &path);
+            scene.fill(
+                Fill::NonZero,
+                xform,
+                Brush::Solid(spec.bg_shadow_color),
+                None,
+                &path,
+            );
         }
     }
 
@@ -593,7 +597,13 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
             spec.background_radius,
         )
         .to_path(0.1);
-        scene.fill(Fill::NonZero, xform, Brush::Solid(spec.background_color), None, &rect);
+        scene.fill(
+            Fill::NonZero,
+            xform,
+            Brush::Solid(spec.background_color),
+            None,
+            &rect,
+        );
     }
 
     // 3. Draw Border
@@ -607,7 +617,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
             (spec.background_radius + inset as f64).max(0.0),
         )
         .to_path(0.1);
-        
+
         scene.stroke(
             &Stroke::new(spec.border_width as f64),
             xform,
@@ -626,7 +636,8 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     let (font_cx, layout_cx) = &mut *ctx;
 
     let (primary, generic) = crate::compositor::text::resolve_font_family(&spec.font_family);
-    let resolved_font_family = crate::compositor::text::build_font_family(font_cx, &primary, generic);
+    let resolved_font_family =
+        crate::compositor::text::build_font_family(font_cx, &primary, generic);
 
     let mut builder = layout_cx.ranged_builder(font_cx, &spec.text, 1.0, true);
     builder.push_default(StyleProperty::FontSize(spec.font_size.max(1.0)));
@@ -637,14 +648,16 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     builder.push_default(StyleProperty::FontWeight(FontWeight::new(spec.font_weight)));
     builder.push_default(StyleProperty::FontFamily(resolved_font_family));
     let mut layout = builder.build(&spec.text);
-    
-    let content_width_px = spec.max_width.map(|w| (w - spec.padding_left - spec.padding_right).max(1.0));
+
+    let content_width_px = spec
+        .max_width
+        .map(|w| (w - spec.padding_left - spec.padding_right).max(1.0));
     layout.break_all_lines(content_width_px);
 
     // Compute vertical positioning
     let content_top_px = frame_y + spec.padding_top;
     let content_height_px = (spec.frame_height - spec.padding_top - spec.padding_bottom).max(1.0);
-    
+
     let mut text_block_top_px = content_top_px;
     if spec.explicit_height.is_some() {
         match spec.vertical_align {
@@ -672,8 +685,12 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                 glyph_count += run.positioned_glyphs().count();
             }
         }
-        let adjusted_width = line.metrics().advance + (glyph_count.saturating_sub(1) as f32) * spec.letter_spacing;
-        lines_info.push(LineDrawInfo { glyph_count, adjusted_width });
+        let adjusted_width =
+            line.metrics().advance + (glyph_count.saturating_sub(1) as f32) * spec.letter_spacing;
+        lines_info.push(LineDrawInfo {
+            glyph_count,
+            adjusted_width,
+        });
     }
 
     // 5. Draw Text Shadows (if enabled)
@@ -691,16 +708,22 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
 
             for (line_idx, line) in layout.lines().enumerate() {
                 let info = &lines_info[line_idx];
-                if info.glyph_count == 0 { continue; }
+                if info.glyph_count == 0 {
+                    continue;
+                }
 
                 let line_x_offset = match spec.align {
                     TextAlign::Left => frame_x + spec.padding_left,
                     TextAlign::Center => {
-                        let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
-                        frame_x + spec.padding_left + (frame_content_width - info.adjusted_width) * 0.5
+                        let frame_content_width =
+                            (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                        frame_x
+                            + spec.padding_left
+                            + (frame_content_width - info.adjusted_width) * 0.5
                     }
                     TextAlign::Right => {
-                        let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                        let frame_content_width =
+                            (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
                         frame_x + spec.padding_left + frame_content_width - info.adjusted_width
                     }
                 };
@@ -710,19 +733,28 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                 // второй run не учитывал бы letter-spacing первого → наезд глифов.
                 let mut glyph_idx = 0;
                 for item in line.items() {
-                    let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
+                    let PositionedLayoutItem::GlyphRun(run) = item else {
+                        continue;
+                    };
 
-                    let run_xform = xform * Affine::translate(((line_x_offset + dx) as f64, (text_block_top_px + dy) as f64));
+                    let run_xform = xform
+                        * Affine::translate((
+                            (line_x_offset + dx) as f64,
+                            (text_block_top_px + dy) as f64,
+                        ));
 
-                    let adjusted_glyphs = run.positioned_glyphs().map(|g| {
-                        let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
-                        glyph_idx += 1;
-                        Glyph {
-                            id: g.id,
-                            x: x_adj,
-                            y: g.y,
-                        }
-                    }).collect::<Vec<_>>();
+                    let adjusted_glyphs = run
+                        .positioned_glyphs()
+                        .map(|g| {
+                            let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
+                            glyph_idx += 1;
+                            Glyph {
+                                id: g.id,
+                                x: x_adj,
+                                y: g.y,
+                            }
+                        })
+                        .collect::<Vec<_>>();
 
                     if spec.text_shadow_spread > 0.0 {
                         scene
@@ -735,16 +767,13 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                                 adjusted_glyphs.clone().into_iter(),
                             );
                     }
-                    
+
                     scene
                         .draw_glyphs(run.run().font())
                         .font_size(run.run().font_size())
                         .brush(shadow_color)
                         .transform(run_xform)
-                        .draw(
-                            Fill::NonZero,
-                            adjusted_glyphs.into_iter(),
-                        );
+                        .draw(Fill::NonZero, adjusted_glyphs.into_iter());
                 }
             }
         };
@@ -770,45 +799,52 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
     // 6. Draw Main Text
     for (line_idx, line) in layout.lines().enumerate() {
         let info = &lines_info[line_idx];
-        if info.glyph_count == 0 { continue; }
+        if info.glyph_count == 0 {
+            continue;
+        }
 
         let line_x_offset = match spec.align {
             TextAlign::Left => frame_x + spec.padding_left,
             TextAlign::Center => {
-                let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                let frame_content_width =
+                    (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
                 frame_x + spec.padding_left + (frame_content_width - info.adjusted_width) * 0.5
             }
             TextAlign::Right => {
-                let frame_content_width = (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
+                let frame_content_width =
+                    (spec.frame_width - spec.padding_left - spec.padding_right).max(0.0);
                 frame_x + spec.padding_left + frame_content_width - info.adjusted_width
             }
         };
 
         let mut glyph_idx = 0;
         for item in line.items() {
-            let PositionedLayoutItem::GlyphRun(run) = item else { continue; };
+            let PositionedLayoutItem::GlyphRun(run) = item else {
+                continue;
+            };
 
-            let run_xform = xform * Affine::translate((line_x_offset as f64, text_block_top_px as f64));
+            let run_xform =
+                xform * Affine::translate((line_x_offset as f64, text_block_top_px as f64));
 
-            let adjusted_glyphs = run.positioned_glyphs().map(|g| {
-                let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
-                glyph_idx += 1;
-                Glyph {
-                    id: g.id,
-                    x: x_adj,
-                    y: g.y,
-                }
-            }).collect::<Vec<_>>();
+            let adjusted_glyphs = run
+                .positioned_glyphs()
+                .map(|g| {
+                    let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
+                    glyph_idx += 1;
+                    Glyph {
+                        id: g.id,
+                        x: x_adj,
+                        y: g.y,
+                    }
+                })
+                .collect::<Vec<_>>();
 
             scene
                 .draw_glyphs(run.run().font())
                 .font_size(run.run().font_size())
                 .brush(spec.color)
                 .transform(run_xform)
-                .draw(
-                    Fill::NonZero,
-                    adjusted_glyphs.into_iter(),
-                );
+                .draw(Fill::NonZero, adjusted_glyphs.into_iter());
         }
     }
 }
@@ -1216,12 +1252,18 @@ mod tests {
         let taps = gaussian_kernel_taps(6.0);
         assert!(taps.len() > 1);
         let wsum: f32 = taps.iter().map(|t| t.2).sum();
-        assert!((wsum - 1.0).abs() < 1e-4, "weights must sum to 1, got {wsum}");
+        assert!(
+            (wsum - 1.0).abs() < 1e-4,
+            "weights must sum to 1, got {wsum}"
+        );
         let center = taps.iter().find(|t| t.0 == 0.0 && t.1 == 0.0).unwrap();
         assert!(taps.iter().all(|t| t.2 <= center.2 + 1e-6));
         let sum_dx: f32 = taps.iter().map(|t| t.0).sum();
         let sum_dy: f32 = taps.iter().map(|t| t.1).sum();
-        assert!(sum_dx.abs() < 1e-3 && sum_dy.abs() < 1e-3, "kernel must be symmetric");
+        assert!(
+            sum_dx.abs() < 1e-3 && sum_dy.abs() < 1e-3,
+            "kernel must be symmetric"
+        );
     }
 
     #[test]

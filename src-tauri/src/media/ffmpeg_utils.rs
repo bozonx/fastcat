@@ -108,8 +108,27 @@ pub fn resolve_audio_encoder(requested: Option<&str>, format: &str) -> (&'static
     let is_webm = format == "webm";
     match requested.map(|s| s.trim().to_ascii_lowercase()).as_deref() {
         Some("opus") | Some("libopus") => ("libopus", false),
-        Some("flac") => ("flac", false),
-        Some("pcm") => ("pcm_s16le", false),
+        // FLAC/PCM ride in mkv/flac/wav containers, but mp4/mov and webm can't
+        // carry them — remap to the container's safe lossy default rather than
+        // handing ffmpeg an invalid stream/container pairing.
+        Some("flac") => {
+            if is_webm {
+                ("libopus", true)
+            } else if format == "mp4" || format == "mov" {
+                ("aac", true)
+            } else {
+                ("flac", false)
+            }
+        }
+        Some("pcm") => {
+            if is_webm {
+                ("libopus", true)
+            } else if format == "mp4" || format == "mov" {
+                ("aac", true)
+            } else {
+                ("pcm_s16le", false)
+            }
+        }
         // webm only carries opus/vorbis; AAC requests are remapped to opus.
         Some("aac") | None => {
             if is_webm {

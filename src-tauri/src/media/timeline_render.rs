@@ -120,7 +120,11 @@ impl VideoDecoderCache {
         }
     }
 
-    fn get_or_insert(&mut self, path: &Path, max_output_long_edge: Option<u32>) -> Result<&mut CachedDecoder> {
+    fn get_or_insert(
+        &mut self,
+        path: &Path,
+        max_output_long_edge: Option<u32>,
+    ) -> Result<&mut CachedDecoder> {
         let path_buf = path.to_path_buf();
         let needs_new = !self.decoders.contains_key(&path_buf)
             || self.decoders[&path_buf].max_output_long_edge != max_output_long_edge;
@@ -352,7 +356,12 @@ pub fn save_rgba_as_webp(
     Ok(())
 }
 
-pub fn encode_rgba_as_webp(pixels: &[u8], width: u32, height: u32, quality: f32) -> Result<Vec<u8>> {
+pub fn encode_rgba_as_webp(
+    pixels: &[u8],
+    width: u32,
+    height: u32,
+    quality: f32,
+) -> Result<Vec<u8>> {
     let encoder = webp::Encoder::from_rgba(pixels, width, height);
     let quality = quality.clamp(0.0, 100.0);
     let bytes = if quality >= 100.0 {

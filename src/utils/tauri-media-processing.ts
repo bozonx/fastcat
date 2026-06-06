@@ -125,7 +125,6 @@ export interface NativeTimelineExportOptions {
   videoBitrateBps: number;
   format: string;
   audioEnabled?: boolean;
-  audioPath?: string | null;
   audioCodec?: string | null;
   audioBitrateBps?: number | null;
   audioChannels?: number;

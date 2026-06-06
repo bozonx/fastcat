@@ -19,7 +19,11 @@ use crate::compositor::effects::EffectSpec;
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export, export_to = "../../src/types/generated/native-monitor/", rename_all = "lowercase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/native-monitor/",
+    rename_all = "lowercase"
+)]
 pub enum LayerKind {
     Video,
     Image,
@@ -161,13 +165,20 @@ pub struct SceneTransition {
     #[ts(optional)]
     pub from_layer_id: Option<String>,
     // Transition spec — produced by the frontend transition manifests.
-    #[ts(optional, type = "import('~/transitions/core/registry').TauriTransitionSpec")]
+    #[ts(
+        optional,
+        type = "import('~/transitions/core/registry').TauriTransitionSpec"
+    )]
     pub spec: Option<TransitionSpec>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export, export_to = "../../src/types/generated/native-monitor/", rename_all = "lowercase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/native-monitor/",
+    rename_all = "lowercase"
+)]
 pub enum AudioFadeCurve {
     Linear,
     Logarithmic,
@@ -181,7 +192,11 @@ impl Default for AudioFadeCurve {
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
-#[ts(export, export_to = "../../src/types/generated/native-monitor/", rename_all = "lowercase")]
+#[ts(
+    export,
+    export_to = "../../src/types/generated/native-monitor/",
+    rename_all = "lowercase"
+)]
 pub enum PreviewSyncMode {
     Smooth,
     Balanced,

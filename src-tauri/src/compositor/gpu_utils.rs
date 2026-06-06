@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use vello::peniko::{ImageData, ImageFormat};
 
 /// Extract dense RGBA8 bytes from an `ImageData`, converting BGRA8 if needed.

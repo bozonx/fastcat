@@ -68,7 +68,11 @@ impl SpscRingBuffer {
         let read = self.read_idx.load(Ordering::Acquire);
         let used = write.wrapping_sub(read);
         let capacity = self.buffer.len();
-        if used > capacity { 0 } else { used }
+        if used > capacity {
+            0
+        } else {
+            used
+        }
     }
 
     fn clear(&self) {
@@ -2265,8 +2269,24 @@ mod tests {
         assert_eq!(
             interleaved,
             vec![
-                1.0 * g, 1.0 * g, 0.0, 0.0, 0.0, 0.0, 2.0 * g, 2.0 * g, 0.0, 0.0, 0.0, 0.0,
-                3.0 * g, 3.0 * g, 0.0, 0.0, 0.0, 0.0,
+                1.0 * g,
+                1.0 * g,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                2.0 * g,
+                2.0 * g,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                3.0 * g,
+                3.0 * g,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
             ]
         );
     }
@@ -2749,7 +2769,11 @@ mod tests {
         let source_start = l.source_pts_at(segment_end);
         // For reverse playback the first output samples come from the end of the source range.
         // source_pts_at clamps with SOURCE_END_GUARD_SEC (1 ms), so 14.95 becomes 14.949.
-        assert!((source_start - 14.949).abs() < 1e-9, "expected 14.949, got {}", source_start);
+        assert!(
+            (source_start - 14.949).abs() < 1e-9,
+            "expected 14.949, got {}",
+            source_start
+        );
     }
 
     #[test]
