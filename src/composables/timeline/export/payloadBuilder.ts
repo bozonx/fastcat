@@ -100,6 +100,10 @@ interface BuildVideoTrackTreeParams {
 
 const _nestedDocCache = new Map<string, { doc: TimelineDocument; mtime: number }>();
 
+export function clearNestedDocCacheForTests(): void {
+  _nestedDocCache.clear();
+}
+
 async function readNestedTimelineDoc(params: {
   path: string;
   projectStore: ReturnType<typeof useProjectStore>;

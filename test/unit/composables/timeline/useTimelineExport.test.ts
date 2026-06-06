@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   buildVideoWorkerPayloadFromTracks,
   buildVideoWorkerPayload,
@@ -12,12 +12,18 @@ import {
   supportsExportAlpha,
   toWorkerTimelineClips,
   trimWorkerClipToRange,
+  clearNestedDocCacheForTests,
 } from '~/composables/timeline/export';
 import type { VideoCoreHostAPI } from '~/utils/video-editor/worker-client';
 import type { TimelineTrackItem } from '~/timeline/types';
 
 describe('useTimelineExport pure functions', () => {
   const wsMock: any = { userSettings: { projectDefaults: { defaultAudioFadeCurve: 'linear' } } };
+
+  beforeEach(() => {
+    clearNestedDocCacheForTests();
+  });
+
   it('VideoCoreHostAPI allows omitting onExportPhase (backward compatible)', () => {
     const api: VideoCoreHostAPI = {
       getCurrentProjectId: async () => null,

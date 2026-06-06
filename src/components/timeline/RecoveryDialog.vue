@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
 import UiModal from '~/components/ui/UiModal.vue';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
+
+const showDetails = ref(false);
 
 const isOpen = computed({
   get: () => uiStore.pendingRecoveryDialog !== null,
@@ -22,7 +24,7 @@ const timelineName = computed(() => {
   return path.split('/').pop() || path;
 });
 
-function handleChoice(choice: 'open-saved' | 'restore-autosave' | 'view-backups') {
+function handleChoice(choice: 'open-saved' | 'restore-autosave') {
   if (uiStore.pendingRecoveryDialog) {
     uiStore.pendingRecoveryDialog.resolve(choice);
     uiStore.pendingRecoveryDialog = null;
@@ -46,8 +48,9 @@ function handleChoice(choice: 'open-saved' | 'restore-autosave' | 'view-backups'
       </p>
 
       <div class="space-y-3 pt-2">
-        <!-- 1. Restore Autosave (Recommended) -->
+        <!-- 1. Restore Work (Recommended) -->
         <button
+          autofocus
           class="w-full text-left p-3.5 rounded-xl border border-primary-500/30 bg-primary-950/10 hover:bg-primary-950/25 hover:border-primary-500/50 transition-all flex items-start gap-3.5 group focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
           @click="handleChoice('restore-autosave')"
         >
@@ -85,26 +88,33 @@ function handleChoice(choice: 'open-saved' | 'restore-autosave' | 'view-backups'
             </div>
           </div>
         </button>
+      </div>
 
-        <!-- 3. View Options / Compare -->
+      <!-- Learn more (for users worried about making a mistake) -->
+      <div class="pt-1">
         <button
-          class="w-full text-left p-3.5 rounded-xl border border-ui-border bg-ui-bg hover:bg-ui-bg-elevated hover:border-ui-border-accent transition-all flex items-start gap-3.5 group focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
-          @click="handleChoice('view-backups')"
+          class="inline-flex items-center gap-1 text-xs text-ui-text-muted hover:text-ui-text transition-colors focus:outline-none focus:text-ui-text cursor-pointer"
+          :aria-expanded="showDetails"
+          @click="showDetails = !showDetails"
         >
-          <div class="p-2 rounded-lg bg-ui-border-accent/10 text-ui-text-muted shrink-0">
-            <UIcon name="i-heroicons-squares-2x2" class="w-5 h-5" />
-          </div>
-          <div class="min-w-0 flex-1">
-            <div
-              class="font-semibold text-ui-text group-hover:text-ui-text transition-colors text-sm"
-            >
-              {{ t('videoEditor.timeline.backups.viewBackupsTitle') }}
-            </div>
-            <div class="text-xs text-ui-text-muted mt-1 leading-normal">
-              {{ t('videoEditor.timeline.backups.viewBackupsDesc') }}
-            </div>
-          </div>
+          <UIcon
+            name="i-heroicons-chevron-right-20-solid"
+            class="w-3.5 h-3.5 transition-transform"
+            :class="{ 'rotate-90': showDetails }"
+          />
+          {{ t('videoEditor.timeline.backups.recoveryLearnMore') }}
         </button>
+
+        <div
+          v-if="showDetails"
+          class="mt-2.5 space-y-2.5 text-xs text-ui-text-muted leading-relaxed border-l-2 border-ui-border pl-3"
+        >
+          <p>{{ t('videoEditor.timeline.backups.recoveryLearnMoreRestore') }}</p>
+          <p>{{ t('videoEditor.timeline.backups.recoveryLearnMoreOpen') }}</p>
+          <p class="text-ui-text">
+            {{ t('videoEditor.timeline.backups.recoveryLearnMoreBackups') }}
+          </p>
+        </div>
       </div>
     </div>
   </UiModal>

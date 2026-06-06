@@ -12,6 +12,7 @@ import {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
   trimWorkerClipToRange,
+  clearNestedDocCacheForTests,
 } from './payloadBuilder';
 import { useTimelineExport } from './useTimelineExport';
 
@@ -28,6 +29,7 @@ export {
   buildVideoWorkerPayloadFromTracks,
   toWorkerTimelineClips,
   trimWorkerClipToRange,
+  clearNestedDocCacheForTests,
   useTimelineExport,
 };
 
