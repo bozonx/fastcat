@@ -1179,7 +1179,8 @@ mod tests {
     #[test]
     fn take_ready_frame_returns_completed_frame_and_idles_slot() {
         let (tx, rx) = std::sync::mpsc::channel::<Result<(), wgpu::BufferAsyncError>>();
-        tx.send(Ok(())).expect("test channel should accept map result");
+        tx.send(Ok(()))
+            .expect("test channel should accept map result");
         let mut state = SlotState::InFlight {
             frame: 7,
             map_rx: rx,

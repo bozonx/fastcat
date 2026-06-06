@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::{Seek, Write};
+use std::panic::{self, AssertUnwindSafe};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -65,6 +66,12 @@ struct CachedAudioDecoder {
     // chunk, leaking samples and clicking at boundaries. Drained first by the
     // next chunk so output length is exact and lossless.
     resample_output_remainder: Vec<f32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct AudioSourceMetadata {
+    sample_rate: u32,
+    channels: usize,
 }
 
 /// Lock-free SPSC ring buffer for real-time audio output.
@@ -182,6 +189,11 @@ struct AudioShared {
     /// Cached `fs::metadata` file sizes so the cache-routing decision doesn't
     /// `stat` the file on every 50 ms chunk.
     file_size_cache: HashMap<String, u64>,
+    /// Lightweight source metadata used for cache routing. The producer must not
+    /// eagerly decode+resample whole files whose source rate differs from the
+    /// output device: an 8 kHz WAV can otherwise pin the only producer thread
+    /// long enough to make all monitor audio disappear.
+    source_metadata_cache: HashMap<String, AudioSourceMetadata>,
     /// Streaming decoders, keyed per layer (NOT per path): two clips from the
     /// same media file must not share one stateful decoder or they thrash seeks.
     decoders: HashMap<String, CachedAudioDecoder>,
@@ -224,6 +236,7 @@ impl Default for AudioShared {
             decoded_cache: lru::LruCache::unbounded(),
             decoded_cache_bytes: 0,
             file_size_cache: HashMap::new(),
+            source_metadata_cache: HashMap::new(),
             decoders: HashMap::new(),
             timing_sig: 0,
             pending_ring_clear: false,
@@ -332,7 +345,7 @@ pub struct NativeAudioEngine {
     device_channels: u16,
     settings: AudioEngineSettings,
     _stream: Stream,
-    producer: Option<JoinHandle<()>>,
+    producer: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl NativeAudioEngine {
@@ -382,23 +395,14 @@ impl NativeAudioEngine {
         )?;
         stream.play().context("audio stream play failed")?;
 
-        let producer_shared = shared.clone();
-        let producer_ring = ring.clone();
-        let producer_running = running.clone();
-        let producer_clock = clock.clone();
-        let producer = std::thread::Builder::new()
-            .name("fastcat-audio-producer".into())
-            .spawn(move || {
-                set_producer_realtime_priority();
-                producer_loop(
-                    producer_shared,
-                    producer_ring,
-                    producer_running,
-                    producer_clock,
-                    sample_rate,
-                    output_channels,
-                )
-            })?;
+        let producer = spawn_producer_thread(
+            shared.clone(),
+            ring.clone(),
+            running.clone(),
+            clock.clone(),
+            sample_rate,
+            output_channels,
+        )?;
 
         Ok(Self {
             shared,
@@ -409,8 +413,50 @@ impl NativeAudioEngine {
             device_channels,
             settings: settings.clone(),
             _stream: stream,
-            producer: Some(producer),
+            producer: Mutex::new(Some(producer)),
         })
+    }
+
+    fn restart_finished_producer(&self) {
+        if !self.running.load(Ordering::Acquire) {
+            return;
+        }
+
+        let mut producer = self.producer.lock();
+        if producer
+            .as_ref()
+            .is_some_and(|handle| !handle.is_finished())
+        {
+            return;
+        }
+
+        if let Some(handle) = producer.take() {
+            match handle.join() {
+                Ok(()) => log::error!("[audio] producer thread stopped; restarting it"),
+                Err(error) => log::error!(
+                    "[audio] producer thread panicked before watchdog join: {error:?}; restarting it"
+                ),
+            }
+        } else {
+            log::error!("[audio] producer thread missing; restarting it");
+        }
+
+        match spawn_producer_thread(
+            self.shared.clone(),
+            self.ring.clone(),
+            self.running.clone(),
+            self.clock.clone(),
+            self.sample_rate,
+            self.device_channels as usize,
+        ) {
+            Ok(handle) => {
+                *producer = Some(handle);
+                self.shared.1.notify_all();
+            }
+            Err(error) => {
+                log::error!("[audio] failed to restart producer thread: {error:?}");
+            }
+        }
     }
 
     fn select_host(settings: &AudioEngineSettings) -> cpal::Host {
@@ -440,6 +486,7 @@ impl NativeAudioEngine {
     }
 
     pub fn update_settings(&mut self, settings: &AudioEngineSettings) {
+        self.restart_finished_producer();
         if self.settings.buffer_size != settings.buffer_size
             || self.settings.backend != settings.backend
         {
@@ -454,6 +501,7 @@ impl NativeAudioEngine {
         tracks: Vec<SceneAudioTrack>,
         master_gain: f64,
     ) {
+        self.restart_finished_producer();
         let mut state = self.shared.0.lock();
         // A flush (drop buffered output + realign the producer) is only needed
         // when audio moves on the timeline. Pure mix-param edits (gain, balance,
@@ -504,6 +552,9 @@ impl NativeAudioEngine {
         state
             .file_size_cache
             .retain(|path, _| current_paths.contains(path));
+        state
+            .source_metadata_cache
+            .retain(|path, _| current_paths.contains(path));
         // Decoders are keyed per layer id (not per path), so retain by layer id.
         state
             .decoders
@@ -512,6 +563,7 @@ impl NativeAudioEngine {
     }
 
     pub fn play(&self, pts_sec: f64) {
+        self.restart_finished_producer();
         let mut state = self.shared.0.lock();
         state.playing = true;
         state.origin_pts_sec = pts_sec.max(0.0);
@@ -524,6 +576,7 @@ impl NativeAudioEngine {
     }
 
     pub fn pause(&self) -> f64 {
+        self.restart_finished_producer();
         let mut state = self.shared.0.lock();
         let pts = audible_pts_sec(
             &state,
@@ -543,6 +596,7 @@ impl NativeAudioEngine {
     }
 
     pub fn seek(&self, pts_sec: f64, playing: bool) {
+        self.restart_finished_producer();
         let mut state = self.shared.0.lock();
         let pts = pts_sec.max(0.0);
         state.origin_pts_sec = pts;
@@ -556,6 +610,7 @@ impl NativeAudioEngine {
     }
 
     pub fn current_pts(&self) -> Option<f64> {
+        self.restart_finished_producer();
         let state = self.shared.0.lock();
         if !state.playing {
             return None;
@@ -570,10 +625,12 @@ impl NativeAudioEngine {
     }
 
     pub fn is_empty(&self) -> bool {
+        self.restart_finished_producer();
         self.shared.0.lock().scene.is_empty()
     }
 
     pub fn scene_end(&self) -> f64 {
+        self.restart_finished_producer();
         // `timeline_end_sec` is already in timeline coordinates (speed is baked
         // into how the clip was placed), so the scene end is simply the latest
         // layer end. Dividing by speed here previously cut sped-up clips short.
@@ -596,12 +653,42 @@ impl Drop for NativeAudioEngine {
     fn drop(&mut self) {
         self.running.store(false, Ordering::Release);
         self.shared.1.notify_all();
-        if let Some(handle) = self.producer.take() {
+        if let Some(handle) = self.producer.lock().take() {
             if let Err(e) = handle.join() {
                 log::warn!("[audio] producer thread panicked: {e:?}");
             }
         }
     }
+}
+
+fn spawn_producer_thread(
+    shared: Arc<(Mutex<AudioShared>, Condvar)>,
+    ring: Arc<SpscRingBuffer>,
+    running: Arc<AtomicBool>,
+    clock: Arc<RealtimeClock>,
+    sample_rate: u32,
+    output_channels: usize,
+) -> Result<JoinHandle<()>> {
+    std::thread::Builder::new()
+        .name("fastcat-audio-producer".into())
+        .spawn(move || {
+            set_producer_realtime_priority();
+            let running_for_log = running.clone();
+            let result = panic::catch_unwind(AssertUnwindSafe(|| {
+                producer_loop(shared, ring, running, clock, sample_rate, output_channels);
+            }));
+            match result {
+                Ok(()) if running_for_log.load(Ordering::Acquire) => {
+                    log::error!("[audio] producer thread exited")
+                }
+                Ok(()) => log::debug!("[audio] producer thread exited"),
+                Err(error) => log::error!(
+                    "[audio] producer thread panicked and exited: {}",
+                    panic_payload_message(&error)
+                ),
+            }
+        })
+        .context("failed to spawn audio producer thread")
 }
 
 fn build_stream(
@@ -801,9 +888,8 @@ fn set_producer_realtime_priority() {
         sched_priority: priority,
     };
     // pthread_setschedparam returns the errno directly (0 on success).
-    let ret = unsafe {
-        libc::pthread_setschedparam(libc::pthread_self(), libc::SCHED_FIFO, &param)
-    };
+    let ret =
+        unsafe { libc::pthread_setschedparam(libc::pthread_self(), libc::SCHED_FIFO, &param) };
     if ret == 0 {
         log::info!(
             "[audio] producer thread on SCHED_FIFO priority {priority} (rtprio limit {soft_limit})"
@@ -920,17 +1006,28 @@ fn producer_loop(
             continue;
         };
 
-        let chunk = mix_chunk(
-            scene,
-            tracks,
-            master_gain,
-            chunk_start,
-            chunk_duration_sec,
-            sample_rate,
-            output_channels,
-            &shared,
-            false,
-        );
+        let chunk = match panic::catch_unwind(AssertUnwindSafe(|| {
+            mix_chunk(
+                scene,
+                tracks,
+                master_gain,
+                chunk_start,
+                chunk_duration_sec,
+                sample_rate,
+                output_channels,
+                &shared,
+                false,
+            )
+        })) {
+            Ok(chunk) => chunk,
+            Err(error) => {
+                log::error!(
+                    "[audio] producer skipped chunk at {chunk_start:.3}s after panic: {}",
+                    panic_payload_message(&error)
+                );
+                vec![0.0; chunk_frames * output_channels]
+            }
+        };
 
         let mut state = shared.0.lock();
         // Only a seek/flush (or stop) invalidates an in-flight chunk. A pure
@@ -944,6 +1041,16 @@ fn producer_loop(
             state.producer_pts_sec += chunk_duration_sec;
         }
     }
+}
+
+fn panic_payload_message(error: &Box<dyn std::any::Any + Send>) -> String {
+    if let Some(message) = error.downcast_ref::<&str>() {
+        return (*message).to_string();
+    }
+    if let Some(message) = error.downcast_ref::<String>() {
+        return message.clone();
+    }
+    "non-string panic payload".to_string()
 }
 
 /// Renders the audio scene to an f32 WAV file.
@@ -1609,6 +1716,68 @@ fn planar_to_interleaved(planar: &[Vec<f32>], out_channels: usize) -> Vec<f32> {
     interleaved
 }
 
+fn probe_audio_source_metadata(path: &str) -> Result<AudioSourceMetadata> {
+    use symphonia::core::formats::FormatOptions;
+    use symphonia::core::meta::MetadataOptions;
+    use symphonia::core::probe::Hint;
+
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("failed to open audio file for metadata: {}", path))?;
+    let mss = symphonia::core::io::MediaSourceStream::new(Box::new(file), Default::default());
+
+    let mut hint = Hint::new();
+    if let Some(ext) = Path::new(path).extension().and_then(|e| e.to_str()) {
+        hint.with_extension(ext);
+    }
+
+    let probed = symphonia::default::get_probe()
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
+        .context("failed to probe media metadata")?;
+
+    let track = probed
+        .format
+        .tracks()
+        .iter()
+        .find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL)
+        .ok_or_else(|| anyhow!("no active audio track found"))?;
+    let sample_rate = track
+        .codec_params
+        .sample_rate
+        .ok_or_else(|| anyhow!("audio track has no declared sample rate"))?;
+    let channels = track
+        .codec_params
+        .channels
+        .map(|channels| channels.count())
+        .unwrap_or(1)
+        .max(1);
+
+    Ok(AudioSourceMetadata {
+        sample_rate,
+        channels,
+    })
+}
+
+fn cached_audio_source_metadata(
+    path: &str,
+    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
+) -> Result<AudioSourceMetadata> {
+    if let Some(metadata) = shared.0.lock().source_metadata_cache.get(path).copied() {
+        return Ok(metadata);
+    }
+
+    let metadata = probe_audio_source_metadata(path)?;
+    let mut state = shared.0.lock();
+    Ok(*state
+        .source_metadata_cache
+        .entry(path.to_string())
+        .or_insert(metadata))
+}
+
 fn decode_entire_file_symphonia(
     path: &str,
     target_sample_rate: u32,
@@ -2143,15 +2312,26 @@ fn decode_audio_chunk(
                         }
                     }
                 };
-                if file_size > 0 && file_size < MAX_CACHEABLE_FILE_BYTES {
-                    log::info!("[audio] caching entire file in memory: {}", path);
+                let source_metadata = cached_audio_source_metadata(path, shared)?;
+                if file_size > 0
+                    && file_size < MAX_CACHEABLE_FILE_BYTES
+                    && source_metadata.sample_rate == sample_rate
+                {
+                    log::info!(
+                        "[audio] caching entire file in memory: {} ({} Hz, {} ch)",
+                        path,
+                        source_metadata.sample_rate,
+                        source_metadata.channels,
+                    );
                     let decoded = decode_entire_file_symphonia(path, sample_rate, output_channels)?;
                     let shared_samples = Arc::new(decoded);
                     let mut state = shared.0.lock();
                     state.cache_decoded(cache_key, shared_samples.clone());
                     Some(shared_samples)
                 } else {
-                    // Too long to cache: stream it through the chunk decoder.
+                    // Too long or rate-mismatched: stream it through the bounded
+                    // chunk decoder. The full-file route runs on the only
+                    // producer thread, so it must avoid whole-file resampling.
                     None
                 }
             }
@@ -2421,6 +2601,41 @@ mod tests {
             .add(Duration::from_secs_f64(latency_sec))
             .unwrap_or(callback);
         OutputCallbackInfo::new(OutputStreamTimestamp { callback, playback })
+    }
+
+    fn write_temp_f32_wav(sample_rate: u32, channels: usize, frames: usize) -> std::path::PathBuf {
+        let mut path = std::env::temp_dir();
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        path.push(format!("fastcat-audio-test-{unique}.wav"));
+
+        let mut file = std::fs::File::create(&path).unwrap();
+        write_wav_f32_header_placeholder(&mut file, sample_rate, channels as u16).unwrap();
+        for frame in 0..frames {
+            let sample =
+                ((frame as f32 / sample_rate as f32) * 440.0 * std::f32::consts::TAU).sin() * 0.25;
+            for _ in 0..channels {
+                file.write_all(&sample.to_le_bytes()).unwrap();
+            }
+        }
+        let data_size = (frames * channels * std::mem::size_of::<f32>()) as u32;
+        file.seek(std::io::SeekFrom::Start(4)).unwrap();
+        file.write_all(&(36u32 + data_size).to_le_bytes()).unwrap();
+        file.seek(std::io::SeekFrom::Start(40)).unwrap();
+        file.write_all(&data_size.to_le_bytes()).unwrap();
+
+        path
+    }
+
+    #[test]
+    fn panic_payload_message_extracts_string_payloads() {
+        let literal: Box<dyn std::any::Any + Send> = Box::new("literal panic");
+        assert_eq!(panic_payload_message(&literal), "literal panic");
+
+        let owned: Box<dyn std::any::Any + Send> = Box::new(String::from("owned panic"));
+        assert_eq!(panic_payload_message(&owned), "owned panic");
     }
 
     // ------------------------------------------------------------------
@@ -2873,6 +3088,35 @@ mod tests {
         // the resampler's per-call jitter is absorbed by the output remainder.
         let expected = (0.5f64 * 48000.0).round() as usize * 2;
         assert_eq!(samples.len(), expected, "chunk length must be exact");
+    }
+
+    #[test]
+    fn rate_mismatched_small_file_streams_instead_of_full_cache() {
+        let path = write_temp_f32_wav(8000, 1, 8000);
+        let path_str = path.to_string_lossy().to_string();
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+
+        let decoded = decode_audio_chunk(
+            "layer-8k", &path_str, 0.0, 0.05, 1.0, 48000, 2, false, &shared,
+        )
+        .unwrap();
+
+        assert_eq!(decoded.len(), (0.05f64 * 48000.0).round() as usize * 2);
+        let state = shared.0.lock();
+        assert_eq!(
+            state.source_metadata_cache.get(&path_str),
+            Some(&AudioSourceMetadata {
+                sample_rate: 8000,
+                channels: 1,
+            })
+        );
+        assert!(
+            state.decoded_cache.is_empty(),
+            "rate-mismatched files must not use full-file cache on the producer thread"
+        );
+        drop(state);
+
+        let _ = std::fs::remove_file(path);
     }
 
     // The fixture is 48 kHz; decoding to a DIFFERENT rate forces the resampler

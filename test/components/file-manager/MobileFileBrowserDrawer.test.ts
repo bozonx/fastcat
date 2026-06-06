@@ -53,12 +53,30 @@ vi.mock('~/composables/properties/useFilePropertiesActions', () => ({
   useFilePropertiesActions: vi.fn(() => ({
     directoryPrimaryActions: ref([]),
     directorySecondaryActions: ref([
-      { id: 'createProxyForAll', label: 'videoEditor.fileManager.actions.createProxyForAll', icon: '', onClick: vi.fn(), hidden: false },
+      {
+        id: 'createProxyForAll',
+        label: 'videoEditor.fileManager.actions.createProxyForAll',
+        icon: '',
+        onClick: vi.fn(),
+        hidden: false,
+      },
     ]),
     filePrimaryActions: ref([]),
     fileSecondaryActions: ref([
-      { id: 'regenerateProxy', label: 'videoEditor.fileManager.actions.regenerateProxy', icon: '', onClick: vi.fn(), hidden: false },
-      { id: 'deleteProxy', label: 'videoEditor.fileManager.actions.deleteProxy', icon: '', onClick: vi.fn(), hidden: false },
+      {
+        id: 'regenerateProxy',
+        label: 'videoEditor.fileManager.actions.regenerateProxy',
+        icon: '',
+        onClick: vi.fn(),
+        hidden: false,
+      },
+      {
+        id: 'deleteProxy',
+        label: 'videoEditor.fileManager.actions.deleteProxy',
+        icon: '',
+        onClick: vi.fn(),
+        hidden: false,
+      },
     ]),
   })),
 }));

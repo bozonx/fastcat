@@ -3,9 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { defineComponent, h, ref, computed, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import {
-  useTimelineInteraction,
-} from '~/composables/timeline/useTimelineInteraction';
+import { useTimelineInteraction } from '~/composables/timeline/useTimelineInteraction';
 import {
   timeUsToPx,
   pxToTimeUs,

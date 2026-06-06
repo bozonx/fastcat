@@ -80,9 +80,7 @@ describe('TimelineCommandService', () => {
       );
 
       // Should return FPS mismatch warning
-      expect(result.warnings).toEqual([
-        { type: 'fpsMismatch', fileFps: 60, projectFps: 30 },
-      ]);
+      expect(result.warnings).toEqual([{ type: 'fpsMismatch', fileFps: 60, projectFps: 30 }]);
     });
 
     it('does not warn for tiny FPS metadata drift', async () => {

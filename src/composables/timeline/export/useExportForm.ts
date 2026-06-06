@@ -446,7 +446,9 @@ export function useExportForm() {
         ? { videoCodec: 'none', audioCodec: audioCodec.value }
         : resolveExportCodecs(outputFormat.value, videoCodec.value, audioCodec.value);
       const effectiveExportAlpha =
-        !isAudio && supportsExportAlpha(finalFormat, resolvedCodecs.videoCodec) && exportAlpha.value;
+        !isAudio &&
+        supportsExportAlpha(finalFormat, resolvedCodecs.videoCodec) &&
+        exportAlpha.value;
 
       let exportSuccess = false;
       try {
