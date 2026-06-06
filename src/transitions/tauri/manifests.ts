@@ -368,23 +368,24 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    toTauriSpec: (params: any) => {
+    toTauriSpec: (params: Record<string, unknown>) => {
       let samples = 16.0;
-      if (params.blurQuality === 'low') samples = 8.0;
-      else if (params.blurQuality === 'high') samples = 32.0;
-      else if (params.blurQuality === 'ultra') samples = 64.0;
+      const blurQuality = params.blurQuality as string;
+      if (blurQuality === 'low') samples = 8.0;
+      else if (blurQuality === 'high') samples = 32.0;
+      else if (blurQuality === 'ultra') samples = 64.0;
 
       return {
         type: 'custom-wgsl',
         source: ZOOM_WGSL,
         params: {
-          p0: finiteNumber(params.scale, 3.0),
-          p1: finiteNumber(params.fromRotation, 0.0),
-          p2: finiteNumber(params.toRotation, 0.0),
-          p3: finiteNumber(params.blur, 20.0),
+          p0: finiteNumber(params.scale as number, 3.0),
+          p1: finiteNumber(params.fromRotation as number, 0.0),
+          p2: finiteNumber(params.toRotation as number, 0.0),
+          p3: finiteNumber(params.blur as number, 20.0),
           p4: samples,
           p5: params.brightnessMode === 'bloom' ? 1.0 : 0.0,
-          p6: finiteNumber(params.brightness, 0.0),
+          p6: finiteNumber(params.brightness as number, 0.0),
         },
       };
     },
@@ -404,12 +405,12 @@ export const tauriTransitionManifests: TransitionManifest[] = [
     },
     renderMode: 'shader',
     renderer: 'wgpu',
-    toTauriSpec: (params: any) => ({
+    toTauriSpec: (params: Record<string, unknown>) => ({
       type: 'custom-wgsl',
       source: BLOOM_WGSL,
       params: {
-        p0: finiteNumber(params.brightness, 1.5),
-        p1: finiteNumber(params.blurLevel, 1.0),
+        p0: finiteNumber(params.brightness as number, 1.5),
+        p1: finiteNumber(params.blurLevel as number, 1.0),
         p2: params.mode === 'normal' ? 0.0 : 1.0,
       },
     }),

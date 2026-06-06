@@ -313,10 +313,10 @@ const { showVideoProxyActions, isGeneratingProxyForFile, hasExistingProxyForFile
     isMediaFullyUnsupported,
   });
 
-const liveMediaMeta = computed(() => {
+const liveMediaMeta = computed((): MediaMetadata | null => {
   const path = selectedPath.value;
   if (!path) return null;
-  return (mediaStore.mediaMetadata as Record<string, unknown>)[path] || null;
+  return (mediaStore.mediaMetadata as Record<string, MediaMetadata | undefined>)[path] ?? null;
 });
 
 const {
@@ -569,7 +569,7 @@ const {
           (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
           (isVideoFile || mediaType === 'audio')
         "
-        :media-meta="liveMediaMeta as MediaMetadata | null"
+        :media-meta="liveMediaMeta"
         :format-duration-seconds="formatDurationSeconds"
         :format-bitrate="formatBitrate"
         :latest-transcription-cache-key="latestTranscriptionCacheKey"

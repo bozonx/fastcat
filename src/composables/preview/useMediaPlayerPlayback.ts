@@ -1,5 +1,8 @@
 import { ref, watch, onUnmounted, type Ref } from 'vue';
 import { useUiStore } from '~/stores/ui.store';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('mediaPlayerPlayback');
 
 export function useMediaPlayerPlayback(
   mediaElement: Ref<HTMLVideoElement | HTMLAudioElement | null>,
@@ -43,7 +46,7 @@ export function useMediaPlayerPlayback(
     }
 
     mediaElement.value.play().catch((e) => {
-      console.log(
+      log.debug(
         '[MediaPlayer] play() error:',
         e,
         'readyState:',

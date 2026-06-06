@@ -36,7 +36,6 @@ const emit = defineEmits<{
   (e: 'add-to-timeline'): void;
 }>();
 
-const { t } = useI18n();
 const selectionStore = useSelectionStore();
 const proxyStore = useProxyStore();
 const mediaStore = useMediaStore();

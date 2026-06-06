@@ -12,11 +12,9 @@ import { useVfs } from '~/composables/useVfs';
 import { getThumbnailWorkerClient, setThumbnailHostApi } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { addMediaTask, MEDIA_TASK_PRIORITIES } from '~/utils/media-task-queue';
-import { withFileWriteSlot, withFileIoSlot } from '~/utils/io/io-governor';
 import { randomToken } from '~/utils/ids';
 import { isTauriRuntime } from '~/utils/runtime';
 import { getNativeFileHandlePath, nativeVideoFrameWebps } from '~/utils/tauri-media-processing';
-import { isDomExceptionName } from '~/utils/error-helpers';
 const log = createDevLogger('thumbnail-generator');
 const CLIP_THUMBNAIL_HASH_VERSION = 2;
 
@@ -33,10 +31,6 @@ interface ThumbnailTaskListener {
   onProgress?: ThumbnailTask['onProgress'];
   onComplete?: ThumbnailTask['onComplete'];
   onError?: ThumbnailTask['onError'];
-}
-
-interface WritableFileHandle extends FileSystemFileHandle {
-  createWritable: () => Promise<FileSystemWritableFileStream>;
 }
 
 export function getClipThumbnailsHash(input: {

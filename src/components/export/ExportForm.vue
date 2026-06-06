@@ -12,9 +12,6 @@ import UiTextarea from '~/components/ui/UiTextarea.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiFormSectionHeader from '~/components/ui/UiFormSectionHeader.vue';
 import UiTabs from '~/components/ui/UiTabs.vue';
-import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
-import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
 
 import {
   BASE_VIDEO_CODEC_OPTIONS,
@@ -71,18 +68,12 @@ const {
   metadataDescription,
   metadataAuthor,
   metadataTags,
-  audioCodecSupport,
-
   selectedExportRangeId,
   saveAsDefaults,
   exportRangeOptions,
   hasSelectableExportRanges,
   isSettingsDirty,
   matchTimeline,
-  customWidth,
-  customHeight,
-  customFps,
-  customAudioSampleRate,
   customExportPath,
   isTauri,
   exportType,

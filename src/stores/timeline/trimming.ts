@@ -438,7 +438,9 @@ export function createTimelineTrimmingModule(deps: TimelineTrimmingDeps): Timeli
     });
 
     if (createdIds && createdIds.length > 0) {
-      const splitItemIds = cmds.map((c) => (c as any).itemId).filter(Boolean) as string[];
+      const splitItemIds = cmds
+        .map((c) => (c as { itemId?: string }).itemId)
+        .filter((id): id is string => typeof id === 'string');
       const splitItemIdsSet = new Set(splitItemIds);
       const remainingSelection = selectedItemIds.filter((id) => !splitItemIdsSet.has(id));
       const allIds = Array.from(new Set([...remainingSelection, ...createdIds]));

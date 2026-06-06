@@ -16,7 +16,13 @@ use parking_lot::{Condvar, Mutex};
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 const CHUNK_DURATION_SEC: f64 = 0.05;
-const PREBUFFER_CHUNKS: usize = 8;
+/// Target fill of the playback ring buffer, in `CHUNK_DURATION_SEC` chunks. This
+/// is the real defence against crackle: it sits upstream of the cpal device
+/// buffer and absorbs scheduler jitter / decode spikes when the producer thread
+/// briefly misses its 50ms deadline (e.g. without real-time priority on Linux).
+/// At 50ms/chunk, 16 chunks = ~800ms of headroom (ring capacity is 2× this).
+/// Raised from 8 (~400ms) after observed underruns under UI/decode contention.
+const PREBUFFER_CHUNKS: usize = 16;
 
 /// Per-layer audio engine settings forwarded from the UI.
 #[derive(Debug, Clone, Default, PartialEq, Eq, serde::Deserialize)]

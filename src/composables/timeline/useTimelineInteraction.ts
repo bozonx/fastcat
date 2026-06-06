@@ -12,13 +12,7 @@ import {
   createHotkeyLookup,
   isCommandMatched,
 } from '~/utils/hotkeys/runtime';
-import {
-  BASE_PX_PER_SECOND,
-  timeUsToPx,
-  pxToTimeUs,
-  pxToDeltaUs,
-  computeAnchoredScrollLeft,
-} from '~/utils/timeline/geometry';
+import { pxToTimeUs } from '~/utils/timeline/geometry';
 import { useTimelinePlayheadDrag } from '~/composables/timeline/useTimelinePlayheadDrag';
 import { useTimelineItemSelection } from '~/composables/timeline/useTimelineItemSelection';
 import { useTimelineItemDrag } from '~/composables/timeline/useTimelineItemDrag';

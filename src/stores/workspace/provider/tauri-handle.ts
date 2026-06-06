@@ -117,10 +117,9 @@ export class LazyTauriFile extends File {
   }
 
   override stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
-    const self = this;
     return new ReadableStream<Uint8Array<ArrayBuffer>>({
-      async pull(controller) {
-        const chunk = await self.arrayBuffer();
+      pull: async (controller) => {
+        const chunk = await this.arrayBuffer();
         controller.enqueue(new Uint8Array(chunk) as Uint8Array<ArrayBuffer>);
         controller.close();
       },

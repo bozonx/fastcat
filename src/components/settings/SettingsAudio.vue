@@ -45,7 +45,7 @@ const webAudioSupport = ref<Record<string, boolean>>({});
 const isLoadingWebDiagnostics = ref(false);
 
 const isAudioEncoderAvailable = computed(() => {
-  return typeof globalThis !== 'undefined' && !!(globalThis as any).AudioEncoder?.isConfigSupported;
+  return typeof globalThis !== 'undefined' && !!(globalThis as unknown as { AudioEncoder?: typeof AudioEncoder }).AudioEncoder?.isConfigSupported;
 });
 
 const statusToneClasses = {

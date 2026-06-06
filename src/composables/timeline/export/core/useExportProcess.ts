@@ -19,7 +19,7 @@ import {
 } from '~/utils/video-editor/worker-client';
 import { createVideoCoreHostApi } from '~/utils/video-editor/createVideoCoreHostApi';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
-import type { ClipEffect, TimelineDocument } from '~/timeline/types';
+import type { TimelineDocument } from '~/timeline/types';
 import { buildNativeMonitorScene } from '~/utils/native-monitor-scene';
 
 import type { ExportOptions, WorkerTimelineClip } from '../types';

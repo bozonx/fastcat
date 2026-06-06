@@ -130,7 +130,7 @@ export const useMediaStore = defineStore('media', () => {
 
   async function getOrFetchMetadataByPath(path: string, options?: { forceRefresh?: boolean }) {
     const file = await projectStore.getFileByPath(path);
-    console.log('[getOrFetchMetadataByPath] path=', path, 'file=', file?.name, 'size=', file?.size);
+    log.debug('[getOrFetchMetadataByPath] path=', path, 'file=', file?.name, 'size=', file?.size);
     if (!file) {
       missingPaths.value[path] = true;
       return null;
@@ -260,13 +260,13 @@ export const useMediaStore = defineStore('media', () => {
 
           if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat && !lacksContainer) {
             parsedMeta = parsed;
-            console.log(
+            log.debug(
               '[fetchMetadataInternal] using cached meta for',
               projectRelativePath,
               'duration=',
               parsed.duration,
               'container=',
-              (parsed as any).container,
+              parsed.container,
               'error=',
               parsed.error,
             );
@@ -274,7 +274,7 @@ export const useMediaStore = defineStore('media', () => {
               metadataLoadFailed.value[cacheKey] = true;
             }
           } else {
-            console.log(
+            log.debug(
               '[fetchMetadataInternal] cache rejected for',
               projectRelativePath,
               'lacksVideoCompat=',
@@ -329,12 +329,12 @@ export const useMediaStore = defineStore('media', () => {
         if (isTauriRuntime()) {
           const handle = await projectStore.getFileHandleByPath(projectRelativePath);
           const nativePath = getNativeFileHandlePath(handle);
-          console.log('[fetchMetadataInternal] nativePath=', nativePath);
+          log.debug('[fetchMetadataInternal] nativePath=', nativePath);
           if (nativePath) {
             let nativeMeta;
             try {
               nativeMeta = await nativeMediaMetadata(nativePath);
-              console.log(
+              log.debug(
                 '[fetchMetadataInternal] nativeMeta.duration=',
                 nativeMeta.duration,
                 'video=',
@@ -343,7 +343,7 @@ export const useMediaStore = defineStore('media', () => {
                 !!nativeMeta.audio,
               );
             } catch (e) {
-              console.log('[fetchMetadataInternal] nativeMediaMetadata error:', e);
+              log.debug('[fetchMetadataInternal] nativeMediaMetadata error:', e);
               throw e;
             }
             const mediaType = getMediaTypeFromFilename(projectRelativePath);

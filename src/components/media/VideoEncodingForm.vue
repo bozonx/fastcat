@@ -98,7 +98,7 @@ function applyPreset(presetId: string) {
     videoCodec.value = encDefaults.videoCodec;
     bitrateMbps.value = encDefaults.bitrateMbps;
     excludeAudio.value = encDefaults.excludeAudio;
-    audioCodec.value = encDefaults.audioCodec as any;
+    audioCodec.value = encDefaults.audioCodec as typeof audioCodec.value;
     audioBitrateKbps.value = encDefaults.audioBitrateKbps;
     bitrateMode.value = encDefaults.bitrateMode;
     keyframeIntervalSec.value = encDefaults.keyframeIntervalSec;
@@ -114,7 +114,7 @@ function applyPreset(presetId: string) {
   videoCodec.value = found.videoCodec;
   bitrateMbps.value = found.bitrateMbps;
   excludeAudio.value = found.excludeAudio;
-  audioCodec.value = found.audioCodec as any;
+  audioCodec.value = found.audioCodec as typeof audioCodec.value;
   audioBitrateKbps.value = found.audioBitrateKbps;
   bitrateMode.value = found.bitrateMode;
   keyframeIntervalSec.value = found.keyframeIntervalSec;

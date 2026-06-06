@@ -2,7 +2,6 @@ import { createDevLogger } from '~/utils/dev-logger';
 import { TimelineActiveTracker } from './TimelineActiveTracker';
 import { Texture } from 'pixi.js';
 import type { Application, Filter, RenderTexture } from 'pixi.js';
-import type { WorkerTimelineClip } from '../../composables/monitor/types';
 import type { WorkerVideoPayloadItem } from '../../composables/timeline/export/types';
 import type { PreviewRenderOptions } from './worker-rpc';
 import { VIDEO_CORE_LIMITS } from '../constants';

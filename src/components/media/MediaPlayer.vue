@@ -45,12 +45,6 @@ const emit = defineEmits<{
 const mediaElement = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
 const playerRootEl = ref<HTMLElement | null>(null);
 
-const sourceType = computed(() => {
-  const cleanSrc = props.src.split(/[?#]/)[0] ?? props.src;
-  const mimeType = getMimeTypeFromFilename(cleanSrc);
-  return mimeType === 'application/octet-stream' ? undefined : mimeType;
-});
-
 const {
   isPlaying,
   currentTime,

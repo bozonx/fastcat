@@ -18,7 +18,6 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const { t } = useI18n();
 const timelineStore = useTimelineStore();
 
 const isOpenLocal = computed({

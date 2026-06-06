@@ -3,7 +3,6 @@ import { ImageSource } from 'pixi.js';
 import PQueue from 'p-queue';
 import { getMediaTypeFromFilename } from '../../media-types';
 import { runResilientWorkerFileIo } from '../../../workers/core/io-governor';
-import type { WorkerTimelineClip } from '../../../composables/monitor/types';
 import type { WorkerVideoPayloadItem } from '../../../composables/timeline/export/types';
 import type { VideoClipEffect } from '~/timeline/types';
 import type { MediaClipLoader, MediaClipLoaderMediabunny } from './MediaClipLoader';

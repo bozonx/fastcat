@@ -5,7 +5,6 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import UiFormField from '~/components/ui/UiFormField.vue';
 
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
-import UiSelect from '~/components/ui/UiSelect.vue';
 import UiTextInput from '~/components/ui/UiTextInput.vue';
 import { DEFAULT_APP_SETTINGS } from '~/utils/settings/defaults';
 import type { StoragePlacementMode } from '~/utils/storage-roots';
@@ -20,42 +19,6 @@ const isBrowserWorkspaceMode = computed(() => workspaceStore.workspaceProviderId
 const isPortableMode = computed(
   () => workspaceStore.appSettings.paths.placementMode === 'portable',
 );
-const isDesktopSystemMode = computed(() => isDesktopTauri.value && !isPortableMode.value);
-const isDesktopPortableMode = computed(() => isDesktopTauri.value && isPortableMode.value);
-
-const placementModeOptions = computed(() => [
-  {
-    label: t('videoEditor.settings.storageModeSystemDefault'),
-    value: 'system-default',
-  },
-  {
-    label: t('videoEditor.settings.storageModePortable'),
-    value: 'portable',
-  },
-]);
-
-const placementMode = computed({
-  get: () => workspaceStore.appSettings.paths.placementMode,
-  set: (value: StoragePlacementMode) => {
-    workspaceStore.appSettings.paths.placementMode = value;
-  },
-});
-
-const workspaceFolderLabel = computed(() => {
-  const handle = workspaceStore.workspaceHandle as
-    | (FileSystemDirectoryHandle & { path?: string })
-    | null;
-  if (!handle) {
-    return t('videoEditor.settings.workspaceFolderNotSelected');
-  }
-
-  if (typeof handle.path === 'string' && handle.path.trim().length > 0) {
-    return handle.path;
-  }
-
-  return handle.name;
-});
-
 const contentRootPath = computed({
   get: () => workspaceStore.appSettings.paths.contentRootPath,
   set: (v: string) => {
@@ -90,10 +53,6 @@ const ephemeralTmpRootPath = computed({
     workspaceStore.appSettings.paths.ephemeralTmpRootPath = v.trim();
   },
 });
-
-async function pickWorkspaceFolder() {
-  await workspaceStore.openWorkspace();
-}
 
 async function pickDesktopPath(target: 'content' | 'data' | 'temp' | 'proxies' | 'ephemeralTmp') {
   if (!isDesktopTauri.value) return;
