@@ -2,14 +2,12 @@
 import { onBeforeUnmount, ref } from 'vue';
 import type { TimelineTrack, TimelineClipItem } from '~/timeline/types';
 import { timeUsToPx } from '~/utils/timeline/geometry';
+import { getFadeLinePattern as getTransitionFadeLinePattern, getTransitionSolidPath } from '~/utils/timeline/clip';
 import {
-  getFadeLinePattern as getTransitionFadeLinePattern,
-  getTransitionSolidPath,
-  getClipHeadTimelineHandleUs,
-  getClipTailTimelineHandleUs,
-  getNextClipForItem,
-  getPrevClipForItem,
-} from '~/utils/timeline/clip';
+  validateTransitionIn,
+  validateTransitionOut,
+  type TransitionValidationError,
+} from '~/utils/timeline/transition-validation';
 import { DEFAULT_TRANSITION_CURVE, DEFAULT_TRANSITION_MODE } from '~/transitions';
 
 const { t } = useI18n();
@@ -97,88 +95,16 @@ function getTransitionSvgClass(edge: 'in' | 'out') {
     : 'w-full h-full block absolute inset-0 bg-linear-to-r from-black/30 to-transparent';
 }
 
-function hasTransitionInProblem(track: TimelineTrack, item: TimelineClipItem): string | null {
-  const tr = item.transitionIn;
-  if (!tr) return null;
-  const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
-
-  if (mode === 'background' || mode === 'transparent') return null;
-
-  const needS = tr.durationUs / 1e6;
-  const clipDurS = item.timelineRange.durationUs / 1e6;
-  if (clipDurS < needS) {
-    return t('fastcat.timeline.transition.errorClipTooShort', {
-      need: needS.toFixed(2),
-      have: clipDurS.toFixed(2),
-    });
-  }
-
-  if (mode === 'adjacent') {
-    const prev = getPrevClipForItem(track, item);
-    if (!prev)
-      return t(
-        'fastcat.timeline.transition.errorNoPreviousClip',
-        'No previous clip found for transition',
-      );
-    const prevEndUs = prev.timelineRange.startUs + prev.timelineRange.durationUs;
-    const gapUs = item.timelineRange.startUs - prevEndUs;
-    if (gapUs > 1_000)
-      return t('fastcat.timeline.transition.errorGapBetweenClips', {
-        gapSeconds: (gapUs / 1e6).toFixed(2),
-      });
-    const prevTailHandleUs = getClipTailTimelineHandleUs(prev);
-    if (Number.isFinite(prevTailHandleUs) && prevTailHandleUs < tr.durationUs - 1_000) {
-      return t('fastcat.timeline.transition.errorPrevHandleTooShort', {
-        needSeconds: needS.toFixed(2),
-        haveSeconds: Math.max(0, prevTailHandleUs / 1e6).toFixed(2),
-      });
-    }
-  }
-
-  return null;
-}
-
-function hasTransitionOutProblem(track: TimelineTrack, item: TimelineClipItem): string | null {
-  const tr = item.transitionOut;
-  if (!tr) return null;
-  const mode = tr.mode ?? DEFAULT_TRANSITION_MODE;
-
-  if (mode === 'background' || mode === 'transparent') return null;
-
-  const clipDurS = item.timelineRange.durationUs / 1e6;
-  const needS = tr.durationUs / 1e6;
-  if (clipDurS < needS) {
-    return t('fastcat.timeline.transition.errorClipTooShort', {
-      need: needS.toFixed(2),
-      have: clipDurS.toFixed(2),
-    });
-  }
-
-  if (mode === 'adjacent') {
-    const next = getNextClipForItem(track, item);
-    if (!next) return t('fastcat.timeline.transition.errorNoNextClip');
-    const clipEndUs = item.timelineRange.startUs + item.timelineRange.durationUs;
-    const gapUs = next.timelineRange.startUs - clipEndUs;
-    if (gapUs > 1_000)
-      return t('fastcat.timeline.transition.errorGapBetweenClips', {
-        gapSeconds: (gapUs / 1e6).toFixed(2),
-      });
-    const nextHeadHandleUs = getClipHeadTimelineHandleUs(next);
-    if (Number.isFinite(nextHeadHandleUs) && nextHeadHandleUs < tr.durationUs - 1_000)
-      return t('fastcat.timeline.transition.errorNextHandleTooShort', {
-        needSeconds: needS.toFixed(2),
-        haveSeconds: Math.max(0, nextHeadHandleUs / 1e6).toFixed(2),
-      });
-  }
-
-  return null;
+function getErrorMessage(error: TransitionValidationError | null): string | null {
+  if (!error) return null;
+  return t(error.key, error.params ?? {});
 }
 
 function hasTransitionProblem(edge: 'in' | 'out'): boolean {
   return Boolean(
     edge === 'in'
-      ? hasTransitionInProblem(props.track, props.clip)
-      : hasTransitionOutProblem(props.track, props.clip),
+      ? getErrorMessage(validateTransitionIn(props.track, props.clip))
+      : getErrorMessage(validateTransitionOut(props.track, props.clip)),
   );
 }
 
@@ -191,8 +117,8 @@ function getTransitionButtonTitle(edge: 'in' | 'out'): string | undefined {
 
   return (
     (edge === 'in'
-      ? hasTransitionInProblem(props.track, props.clip)
-      : hasTransitionOutProblem(props.track, props.clip)) ?? undefined
+      ? getErrorMessage(validateTransitionIn(props.track, props.clip))
+      : getErrorMessage(validateTransitionOut(props.track, props.clip))) ?? undefined
   );
 }
 
