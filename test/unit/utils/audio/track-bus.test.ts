@@ -198,4 +198,60 @@ describe('buildEffectiveAudioClipItems', () => {
 
     expect(result).toHaveLength(0);
   });
+
+  it('ignores image and svg clips on video tracks', () => {
+    const videoTrack = {
+      id: 'v1',
+      kind: 'video',
+      name: 'V1',
+      items: [
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c1',
+          trackId: 'v1',
+          name: 'image1',
+          timelineRange: { startUs: 0, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          source: { path: 'images/map.png' },
+          sourceDurationUs: 1_000_000,
+          audioGain: 1,
+        },
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c2',
+          trackId: 'v1',
+          name: 'image2',
+          timelineRange: { startUs: 1_000_000, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          source: { path: 'images/icon.svg' },
+          sourceDurationUs: 1_000_000,
+          audioGain: 1,
+        },
+        {
+          kind: 'clip',
+          clipType: 'media',
+          id: 'c3',
+          trackId: 'v1',
+          name: 'video1',
+          timelineRange: { startUs: 2_000_000, durationUs: 1_000_000 },
+          sourceRange: { startUs: 0, durationUs: 1_000_000 },
+          source: { path: 'video/x.mp4' },
+          sourceDurationUs: 1_000_000,
+          audioGain: 1,
+        },
+      ],
+      audioGain: 1,
+    };
+
+    const result = buildEffectiveAudioClipItems({
+      audioTracks: [],
+      videoTracks: [videoTrack as any],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.id).toBe('c3__audio');
+    expect(result[0]!.source.path).toBe('video/x.mp4');
+  });
 });

@@ -2,6 +2,19 @@ import type { TimelineTrack, TimelineTrackItem, ClipEffect } from '~/timeline/ty
 import { mergeBalance, mergeGain } from '~/utils/audio/envelope';
 import { cloneEffects } from '~/utils/video-editor/worker-clip-utils';
 
+const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp']);
+const SVG_EXT = new Set(['svg']);
+
+function extOf(path: string): string {
+  const i = path.lastIndexOf('.');
+  return i >= 0 ? path.slice(i + 1).toLowerCase() : '';
+}
+
+function isImageOrSvgPath(path: string): boolean {
+  const ext = extOf(path);
+  return IMAGE_EXT.has(ext) || SVG_EXT.has(ext);
+}
+
 export interface BuildEffectiveAudioClipItemsParams {
   audioTracks: TimelineTrack[];
   videoTracks: TimelineTrack[];
@@ -37,6 +50,7 @@ export function buildEffectiveAudioClipItems(
       if (clipType !== 'media' && clipType !== 'timeline') continue;
       const path = item.source?.path;
       if (!path) continue;
+      if (isImageOrSvgPath(path)) continue;
 
       const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
       const combinedEffects = [...itemEffects];
@@ -69,6 +83,7 @@ export function buildEffectiveAudioClipItems(
       if (clipType !== 'media' && clipType !== 'timeline') continue;
       const path = item.source?.path;
       if (!path) continue;
+      if (isImageOrSvgPath(path)) continue;
 
       const itemEffects = Array.isArray(item.effects) ? cloneEffects(item.effects) : [];
       const combinedEffects = [...itemEffects];
