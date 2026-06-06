@@ -272,7 +272,10 @@ export function computeTextLayoutMetrics(input: {
 }): TextLayoutMetrics {
   const safeCanvasWidth = Math.max(1, input.canvasWidth);
   const safeCanvasHeight = Math.max(1, input.canvasHeight);
-  const renderScale = safeCanvasHeight / TRANSFORM_DESIGN_BASE.height;
+  const renderScale = Math.min(
+    safeCanvasWidth / TRANSFORM_DESIGN_BASE.width,
+    safeCanvasHeight / TRANSFORM_DESIGN_BASE.height,
+  );
   const normalizedStyle = normalizeTextClipStyle(input.style);
   const fontSizePx = Math.max(1, Math.round(normalizedStyle.fontSize * renderScale));
   const lineHeightPx = Math.max(1, Math.round(fontSizePx * normalizedStyle.lineHeight));
@@ -302,7 +305,7 @@ export function computeTextLayoutMetrics(input: {
   // the spacing to >= 0 here over-measured tight (negative-spacing) text, which
   // made the background/border box wider than the glyphs and shifted wrapping.
   const measureLine = (text: string) =>
-    input.measureText(text, font) + Math.max(0, Array.from(text).length - 1) * letterSpacingPx;
+    input.measureText(text, font) + (Array.from(text).length - 1) * letterSpacingPx;
 
   // Initialize a segmenter for word/grapheme boundaries, falling back to simple split if unsupported
   const segmenter =
@@ -339,16 +342,37 @@ export function computeTextLayoutMetrics(input: {
 
     for (const word of words) {
       const nextLine = currentLine.length > 0 ? `${currentLine} ${word}` : word;
-      if (measureLine(nextLine) <= contentWidthPx || currentLine.length === 0) {
+      if (measureLine(nextLine) <= contentWidthPx) {
         currentLine = nextLine;
         continue;
       }
-      lines.push(currentLine);
-      currentLine = word;
+
+      if (currentLine.length > 0) {
+        lines.push(currentLine);
+        currentLine = '';
+      }
+
+      // Force-break the word if it is wider than the line by itself
+      if (contentWidthPx > 0 && measureLine(word) > contentWidthPx) {
+        const graphemes = Array.from(word);
+        for (const g of graphemes) {
+          const test = currentLine.length > 0 ? `${currentLine}${g}` : g;
+          if (measureLine(test) <= contentWidthPx || currentLine.length === 0) {
+            currentLine = test;
+          } else {
+            lines.push(currentLine);
+            currentLine = g;
+          }
+        }
+      } else {
+        currentLine = word;
+      }
     }
 
-    lines.push(currentLine);
-    return lines;
+    if (currentLine.length > 0) {
+      lines.push(currentLine);
+    }
+    return lines.length > 0 ? lines : [''];
   };
 
   const paragraphs = String(input.text).split(/\r?\n/g);

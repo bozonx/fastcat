@@ -14,6 +14,13 @@ export class TextRenderer {
     const ctx = canvas.getContext('2d');
     if (!ctx) return false;
 
+    // Guard against lost 2D context (e.g. GPU pressure)
+    try {
+      ctx.clearRect(0, 0, 1, 1);
+    } catch {
+      return false;
+    }
+
     clip.canvas = canvas;
     clip.ctx = ctx as OffscreenCanvasRenderingContext2D;
 
@@ -322,16 +329,38 @@ export class TextRenderer {
   }): void {
     const { ctx, line, startX, y, letterSpacingPx, mode = 'fill' } = params;
 
-    // Measure total line width with letter spacing for alignment
+    // Prefer native letterSpacing when available (handles RTL, emoji, ligatures, perf)
+    if (typeof (ctx as any).letterSpacing === 'string') {
+      ctx.textAlign = params.align;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (ctx as any).letterSpacing = `${letterSpacingPx}px`;
+      if (mode === 'stroke') {
+        ctx.strokeText(line, startX, y);
+      } else {
+        ctx.fillText(line, startX, y);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (ctx as any).letterSpacing = '0px';
+      return;
+    }
+
+    // Fallback: grapheme-aware per-glyph rendering (better than per-code-point for emoji)
+    const segmenter =
+      typeof Intl !== 'undefined' && Intl.Segmenter
+        ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+        : null;
+    const graphemes: string[] = segmenter
+      ? Array.from(segmenter.segment(line), (s: { segment: string }) => s.segment)
+      : Array.from(line);
+
     let totalWidth = 0;
     const charWidths: number[] = [];
     ctx.textAlign = 'left';
-    const chars = Array.from(line);
-    for (let i = 0; i < chars.length; i++) {
-      const ch = chars[i] ?? '';
+    for (let i = 0; i < graphemes.length; i++) {
+      const ch = graphemes[i] ?? '';
       const w = ctx.measureText(ch).width;
       charWidths.push(w);
-      totalWidth += w + (i < chars.length - 1 ? letterSpacingPx : 0);
+      totalWidth += w + (i < graphemes.length - 1 ? letterSpacingPx : 0);
     }
 
     let x: number;
@@ -343,11 +372,11 @@ export class TextRenderer {
       x = startX;
     }
 
-    for (let i = 0; i < chars.length; i++) {
+    for (let i = 0; i < graphemes.length; i++) {
       if (mode === 'stroke') {
-        ctx.strokeText(chars[i] ?? '', x, y);
+        ctx.strokeText(graphemes[i] ?? '', x, y);
       } else {
-        ctx.fillText(chars[i] ?? '', x, y);
+        ctx.fillText(graphemes[i] ?? '', x, y);
       }
       x += (charWidths[i] ?? 0) + letterSpacingPx;
     }
@@ -377,18 +406,54 @@ export class TextRenderer {
   }
 
   private toCanvasShadowColor(color: string, alpha: number): string {
-    const trimmed = color.trim();
-    const match = trimmed.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
-    if (!match) return trimmed;
+    const trimmed = color.trim().toLowerCase();
 
-    const hex = match[1]!;
+    // Named colors map (subset of CSS named colors)
+    const namedColors: Record<string, string> = {
+      black: '#000000', white: '#ffffff', red: '#ff0000', green: '#008000',
+      blue: '#0000ff', yellow: '#ffff00', cyan: '#00ffff', magenta: '#ff00ff',
+      silver: '#c0c0c0', gray: '#808080', grey: '#808080', maroon: '#800000',
+      olive: '#808000', lime: '#00ff00', aqua: '#00ffff', teal: '#008080',
+      navy: '#000080', fuchsia: '#ff00ff', purple: '#800080', orange: '#ffa500',
+    };
+    const named = namedColors[trimmed];
+    if (named) {
+      return this.hexToRgba(named, alpha);
+    }
+
+    // #rgb / #rrggbb
+    const hexMatch = trimmed.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      return this.hexToRgba('#' + hexMatch[1], alpha);
+    }
+
+    // rgb(r,g,b)
+    const rgbMatch = trimmed.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/);
+    if (rgbMatch) {
+      return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${Math.max(0, Math.min(1, alpha))})`;
+    }
+
+    // rgba(r,g,b,a)
+    const rgbaMatch = trimmed.match(/^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([\d.]+)\s*\)$/);
+    if (rgbaMatch) {
+      const a = Math.max(0, Math.min(1, Number(rgbaMatch[4]) * alpha));
+      return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${a})`;
+    }
+
+    // Already rgba with alpha multiplier applied
+    if (trimmed.startsWith('rgba(')) {
+      return trimmed;
+    }
+
+    return trimmed;
+  }
+
+  private hexToRgba(hex: string, alpha: number): string {
+    const clean = hex.replace('#', '');
     const full =
-      hex.length === 3
-        ? hex
-            .split('')
-            .map((char) => `${char}${char}`)
-            .join('')
-        : hex;
+      clean.length === 3
+        ? clean.split('').map((c) => c + c).join('')
+        : clean;
     const value = Number.parseInt(full, 16);
     const r = (value >> 16) & 255;
     const g = (value >> 8) & 255;

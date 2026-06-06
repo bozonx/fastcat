@@ -127,10 +127,11 @@ fn parse_padding(style: &serde_json::Value) -> Padding {
 }
 
 fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
+    let scene_w = scene_size.0;
     let scene_h = scene_size.1;
     let style = sl.style.clone().unwrap_or(serde_json::Value::Null);
     let font_size = number(&style, "fontSize", 64.0).clamp(1.0, 1000.0) as f32;
-    let render_scale = scene_h as f64 / 1080.0;
+    let render_scale = (scene_w as f64 / 1920.0).min(scene_h as f64 / 1080.0);
 
     // Core parameters
     let text = sl.text.clone().unwrap_or_default();
@@ -244,7 +245,16 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     );
 
     // Determine text wrapping constraint
-    let content_width_px = explicit_width_px.map(|w| (w - padding_left - padding_right).max(1.0));
+    let mut content_width_px = explicit_width_px.map(|w| (w - padding_left - padding_right).max(1.0));
+    if let Some(ref mut cw) = content_width_px {
+        if padding_left + padding_right > explicit_width_px.unwrap_or(0.0) {
+            log::warn!(
+                "[scene_build] padding ({:.1}+{:.1}) exceeds explicit width ({:.1}), clamping content width to 1.0",
+                padding_left, padding_right, explicit_width_px.unwrap_or(0.0)
+            );
+            *cw = 1.0;
+        }
+    }
 
     // Layout parley to compute actual size
     let text_block_width_px;
@@ -832,7 +842,64 @@ pub fn parse_blend_mode(value: &str) -> BlendMode {
 }
 
 pub fn parse_color(input: &str, alpha: f64) -> Color {
-    let hex = input.trim().trim_start_matches('#');
+    let trimmed = input.trim();
+    let lower = trimmed.to_lowercase();
+
+    // Named colors (subset of CSS)
+    let named = match lower.as_str() {
+        "black" => Some((0, 0, 0)),
+        "white" => Some((255, 255, 255)),
+        "red" => Some((255, 0, 0)),
+        "green" => Some((0, 128, 0)),
+        "blue" => Some((0, 0, 255)),
+        "yellow" => Some((255, 255, 0)),
+        "cyan" => Some((0, 255, 255)),
+        "magenta" => Some((255, 0, 255)),
+        "silver" => Some((192, 192, 192)),
+        "gray" | "grey" => Some((128, 128, 128)),
+        "maroon" => Some((128, 0, 0)),
+        "olive" => Some((128, 128, 0)),
+        "lime" => Some((0, 255, 0)),
+        "aqua" => Some((0, 255, 255)),
+        "teal" => Some((0, 128, 128)),
+        "navy" => Some((0, 0, 128)),
+        "fuchsia" => Some((255, 0, 255)),
+        "purple" => Some((128, 0, 128)),
+        "orange" => Some((255, 165, 0)),
+        _ => None,
+    };
+    if let Some((r, g, b)) = named {
+        let a = ((255_u8 as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
+        return Color::from_rgba8(r, g, b, a);
+    }
+
+    // rgb(r, g, b)
+    if let Some(caps) = lower.strip_prefix("rgb(").and_then(|s| s.strip_suffix(")")) {
+        let parts: Vec<_> = caps.split(',').map(|s| s.trim().parse::<u8>().ok()).collect();
+        if let [Some(r), Some(g), Some(b)] = parts[..] {
+            let a = ((255_u8 as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
+            return Color::from_rgba8(r, g, b, a);
+        }
+    }
+
+    // rgba(r, g, b, a)
+    if let Some(caps) = lower.strip_prefix("rgba(").and_then(|s| s.strip_suffix(")")) {
+        let parts: Vec<_> = caps.split(',').map(|s| s.trim()).collect();
+        if parts.len() == 4 {
+            if let (Ok(r), Ok(g), Ok(b), Ok(a_in)) = (
+                parts[0].parse::<u8>(),
+                parts[1].parse::<u8>(),
+                parts[2].parse::<u8>(),
+                parts[3].parse::<f64>(),
+            ) {
+                let a = ((255.0 * a_in * alpha).clamp(0.0, 255.0)).round() as u8;
+                return Color::from_rgba8(r, g, b, a);
+            }
+        }
+    }
+
+    // Hex
+    let hex = trimmed.trim_start_matches('#');
     let parse_pair = |s: &str| u8::from_str_radix(s, 16).ok();
     let (r, g, b, a) = match hex.len() {
         3 | 4 => {
@@ -1386,5 +1453,33 @@ mod tests {
         assert!(text_layer.frame_width > 0.0);
         assert!(text_layer.frame_height > 0.0);
         assert!(text_layer.shadow_left > 0.0);
+    }
+
+    #[test]
+    fn parse_color_named_colors() {
+        let red = parse_color("red", 1.0);
+        assert_eq!(red.to_rgba8(), vello::peniko::Color::from_rgba8(255, 0, 0, 255).to_rgba8());
+        let white = parse_color("White", 0.5);
+        assert_eq!(white.to_rgba8().a, 128);
+    }
+
+    #[test]
+    fn parse_color_rgb_format() {
+        let c = parse_color("rgb(10, 20, 30)", 1.0);
+        assert_eq!(c.to_rgba8(), vello::peniko::Color::from_rgba8(10, 20, 30, 255).to_rgba8());
+    }
+
+    #[test]
+    fn parse_color_rgba_format() {
+        let c = parse_color("rgba(10, 20, 30, 0.5)", 1.0);
+        assert_eq!(c.to_rgba8().a, 128);
+        let c2 = parse_color("rgba(10, 20, 30, 0.5)", 0.5);
+        assert_eq!(c2.to_rgba8().a, 64);
+    }
+
+    #[test]
+    fn parse_color_hex_still_works() {
+        let c = parse_color("#ff00aa", 1.0);
+        assert_eq!(c.to_rgba8(), vello::peniko::Color::from_rgba8(255, 0, 170, 255).to_rgba8());
     }
 }

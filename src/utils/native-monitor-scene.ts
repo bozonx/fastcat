@@ -195,7 +195,10 @@ function buildNativeTextTransform(params: {
     },
   });
 
-  const renderScale = sceneHeight / TRANSFORM_DESIGN_BASE.height;
+  const renderScale = Math.min(
+    sceneWidth / TRANSFORM_DESIGN_BASE.width,
+    sceneHeight / TRANSFORM_DESIGN_BASE.height,
+  );
 
   const bgW = layout.backgroundWidth;
   const bgH = layout.backgroundHeight;
@@ -238,25 +241,27 @@ function buildNativeTextTransform(params: {
   const textShadowOffsetXPx = Math.round(textShadowOffsetX * renderScale);
   const textShadowOffsetYPx = Math.round(textShadowOffsetY * renderScale);
 
+  // Gaussian blur visible extent is roughly 1.5× the blur radius (σ ≈ radius/2,
+  // tail reaches ~3σ). Using 1.5× as a conservative practical bound.
   const shadowLeft = Math.max(
     0,
-    bgShadowBlurPx + bgShadowSpreadPx - bgShadowOffsetXPx,
-    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetXPx,
+    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx - bgShadowOffsetXPx,
+    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx - textShadowOffsetXPx,
   );
   const shadowRight = Math.max(
     0,
-    bgShadowBlurPx + bgShadowSpreadPx + bgShadowOffsetXPx,
-    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetXPx,
+    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx + bgShadowOffsetXPx,
+    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx + textShadowOffsetXPx,
   );
   const shadowTop = Math.max(
     0,
-    bgShadowBlurPx + bgShadowSpreadPx - bgShadowOffsetYPx,
-    textShadowBlurPx + textShadowSpreadPx - textShadowOffsetYPx,
+    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx - bgShadowOffsetYPx,
+    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx - textShadowOffsetYPx,
   );
   const shadowBottom = Math.max(
     0,
-    bgShadowBlurPx + bgShadowSpreadPx + bgShadowOffsetYPx,
-    textShadowBlurPx + textShadowSpreadPx + textShadowOffsetYPx,
+    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx + bgShadowOffsetYPx,
+    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx + textShadowOffsetYPx,
   );
 
   const posX = finite(transform.position?.x, 0) * renderScale;
@@ -286,7 +291,10 @@ function buildNativeShapeTransform(params: {
   const { transform, strokeWidth, sceneWidth, sceneHeight } = params;
   if (!transform) return undefined;
   const anchor = resolveNormalizedAnchor(transform.anchor);
-  const renderScale = sceneHeight / TRANSFORM_DESIGN_BASE.height;
+  const renderScale = Math.min(
+    sceneWidth / TRANSFORM_DESIGN_BASE.width,
+    sceneHeight / TRANSFORM_DESIGN_BASE.height,
+  );
   const size = Math.min(sceneWidth, sceneHeight) * 0.8;
   const sW = strokeWidth ?? 0;
   const targetW = Math.max(1, Math.ceil(size + sW * 2));

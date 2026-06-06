@@ -172,6 +172,30 @@ describe('text-layout', () => {
     expect(metrics.textBlockTopPx).toBe(572);
   });
 
+  it('force-breaks words that are wider than the content width', () => {
+    const metrics = computeTextLayoutMetrics({
+      text: 'supercalifragilistic',
+      style: {
+        width: 100,
+        fontSize: 40,
+        padding: 0,
+        align: 'left',
+        verticalAlign: 'top',
+      },
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+      // Each char is 20 px wide, so a 20-char word is 400 px — well over 100 px.
+      measureText: (text) => text.length * 20,
+    });
+
+    // The single word must be broken into multiple lines.
+    expect(metrics.lines.length).toBeGreaterThan(1);
+    // Every line should fit inside the 100 px content width.
+    for (const line of metrics.lines) {
+      expect(line.length * 20 + (line.length - 1) * 0).toBeLessThanOrEqual(100);
+    }
+  });
+
   describe('getFontStack', () => {
     it('returns custom or mapped stack with quotes and fallbacks', () => {
       expect(getFontStack('Arial Black')).toBe('"Arial Black", "Arial Bold", sans-serif');
