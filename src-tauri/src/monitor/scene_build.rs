@@ -130,10 +130,16 @@ fn parse_padding(style: &serde_json::Value) -> Padding {
     }
 }
 
-fn build_text_layer(sl: &SceneLayer, _scene_size: (u32, u32)) -> TextLayer {
+fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let style = sl.style.clone().unwrap_or(serde_json::Value::Null);
     let font_size = number(&style, "fontSize", 64.0).clamp(1.0, 1000.0) as f32;
-    let render_scale = 1.0;
+    // Text style values (fontSize, padding, letterSpacing, shadows, border,
+    // explicit width/height) are authored in the 1920x1080 design space, the same
+    // convention as transforms (`TRANSFORM_DESIGN_BASE`) and the web compositor
+    // (`text-layout.ts`). Scale them to the actual scene resolution so a 64px font
+    // renders as 128px at 4K instead of staying tiny. Must match the front-end
+    // `buildNativeTextTransform` render-scale so glyph size and position agree.
+    let render_scale = (scene_size.0 as f64 / 1920.0).min(scene_size.1 as f64 / 1080.0);
 
     // Core parameters
     let text = sl.text.clone().unwrap_or_default();
@@ -1598,7 +1604,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_text_layer_keeps_style_pixels_for_non_1080p_scene() {
+    fn test_build_text_layer_scales_style_to_scene_resolution() {
         let sl = SceneLayer {
             id: "text-layer-720p".into(),
             kind: LayerKind::Text,
@@ -1632,12 +1638,16 @@ mod tests {
             effects: Vec::new(),
         };
 
+        // 720p scene → render_scale = min(1280/1920, 720/1080) = 2/3. Design-space
+        // style values are scaled down accordingly, matching the web compositor.
         let text_layer = build_text_layer(&sl, (1280, 720));
 
-        assert_eq!(text_layer.font_size, 64.0);
-        assert_eq!(text_layer.letter_spacing, 3.0);
-        assert_eq!(text_layer.padding_top, 12.0);
-        assert_eq!(text_layer.max_width, Some(220.0));
+        let scale = 2.0 / 3.0;
+        assert!((text_layer.font_size - (64.0 * scale) as f32).abs() < 0.01);
+        assert!((text_layer.letter_spacing - (3.0 * scale) as f32).abs() < 0.01);
+        assert!((text_layer.padding_top - (12.0 * scale) as f32).abs() < 0.01);
+        let max_width = text_layer.max_width.expect("explicit width");
+        assert!((max_width - (220.0 * scale) as f32).abs() < 0.01);
     }
 
     #[test]

@@ -110,6 +110,11 @@ struct MonitorApp {
     pending_scene: Option<MonitorScene>,
     /// Последний viewport. Если окна ещё нет — создадим по нему в resumed/SetViewport.
     pending_viewport: Option<ViewportSpec>,
+    /// Команды canvas-режима могут прийти раньше первого SetViewport, когда WindowState
+    /// ещё не создан. Храним их, чтобы первичная canvas-подписка не терялась.
+    pending_mode: MonitorMode,
+    pending_frame_channel: Option<Channel<InvokeResponseBody>>,
+    pending_canvas_size: Option<(u32, u32)>,
     /// True после первого вызова `resumed` — до него create_window падает.
     resumed: bool,
     audio_settings: AudioEngineSettings,
@@ -131,6 +136,9 @@ impl MonitorApp {
             state: None,
             pending_scene: None,
             pending_viewport: None,
+            pending_mode: MonitorMode::Embedded,
+            pending_frame_channel: None,
+            pending_canvas_size: None,
             resumed: false,
             audio_settings,
         }
@@ -153,6 +161,18 @@ impl MonitorApp {
         ) {
             Ok(state) => {
                 self.state = Some(state);
+                if let Some(s) = self.state.as_mut() {
+                    if let Some(channel) = self.pending_frame_channel.take() {
+                        s.frame_channel = Some(channel);
+                    }
+                    if let Some((width, height)) = self.pending_canvas_size.take() {
+                        s.canvas_size = (width.max(1), height.max(1));
+                    }
+                    s.set_mode(self.pending_mode);
+                    if self.pending_mode == MonitorMode::Canvas {
+                        s.window.request_redraw();
+                    }
+                }
                 if let Some(scene) = self.pending_scene.take() {
                     if let Some(s) = self.state.as_mut() {
                         s.apply_scene(scene);
@@ -263,6 +283,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 }
             }
             MonitorCommand::SetMode(mode) => {
+                self.pending_mode = mode;
                 if let Some(s) = self.state.as_mut() {
                     s.set_mode(mode);
                     s.window.request_redraw();
@@ -272,12 +293,14 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 if let Some(s) = self.state.as_mut() {
                     s.frame_channel = Some(ch);
                 } else {
-                    log::warn!("[monitor] SetFrameChannel before window init — ignored");
+                    self.pending_frame_channel = Some(ch);
                 }
             }
             MonitorCommand::SetCanvasSize { width, height } => {
+                let size = (width.max(1), height.max(1));
+                self.pending_canvas_size = Some(size);
                 if let Some(s) = self.state.as_mut() {
-                    s.canvas_size = (width.max(1), height.max(1));
+                    s.canvas_size = size;
                     if s.mode == MonitorMode::Canvas {
                         s.window.request_redraw();
                     }

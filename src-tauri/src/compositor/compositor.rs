@@ -929,6 +929,34 @@ impl Drop for PipelinedReadback {
     }
 }
 
+/// RAII guard that ensures `buffer.unmap()` is called on drop unless disarmed.
+/// Prevents leaving a buffer in mapped state after a panic.
+struct UnmapGuard<'a> {
+    buffer: &'a wgpu::Buffer,
+    unmapped: bool,
+}
+
+impl<'a> UnmapGuard<'a> {
+    fn new(buffer: &'a wgpu::Buffer) -> Self {
+        Self {
+            buffer,
+            unmapped: false,
+        }
+    }
+
+    fn disarm(mut self) {
+        self.unmapped = true;
+    }
+}
+
+impl<'a> Drop for UnmapGuard<'a> {
+    fn drop(&mut self) {
+        if !self.unmapped {
+            self.buffer.unmap();
+        }
+    }
+}
+
 impl Compositor {
     /// Создать pipelined readback-сессию для заданного device и размера.
     pub fn begin_pipelined_readback(
@@ -1081,6 +1109,7 @@ impl Compositor {
                     .recv()
                     .map_err(|_| anyhow!("buffer map disconnected"))?
                     .map_err(|e| anyhow!("buffer map: {e:?}"))?;
+                let guard = UnmapGuard::new(&slot.buffer);
                 let mapped = slot.buffer.slice(..).get_mapped_range();
                 let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
                 for row in 0..session.height as usize {
@@ -1089,10 +1118,12 @@ impl Compositor {
                 }
                 drop(mapped);
                 slot.buffer.unmap();
+                guard.disarm();
                 session.push_pending(frame, out);
                 Ok(())
             }
             SlotState::Mapped { frame } => {
+                let guard = UnmapGuard::new(&slot.buffer);
                 let mapped = slot.buffer.slice(..).get_mapped_range();
                 let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
                 for row in 0..session.height as usize {
@@ -1101,6 +1132,7 @@ impl Compositor {
                 }
                 drop(mapped);
                 slot.buffer.unmap();
+                guard.disarm();
                 session.push_pending(frame, out);
                 Ok(())
             }
@@ -1133,6 +1165,7 @@ impl Compositor {
                 std::mem::replace(&mut session.slots[i].state, SlotState::Idle)
             {
                 let slot = &session.slots[i];
+                let guard = UnmapGuard::new(&slot.buffer);
                 let mapped = slot.buffer.slice(..).get_mapped_range();
                 let mut out = Vec::with_capacity(session.row_bytes * session.height as usize);
                 for row in 0..session.height as usize {
@@ -1140,7 +1173,8 @@ impl Compositor {
                     out.extend_from_slice(&mapped[start..start + session.row_bytes]);
                 }
                 drop(mapped);
-                session.slots[i].buffer.unmap();
+                slot.buffer.unmap();
+                guard.disarm();
                 session.push_pending(frame, out);
             }
         }

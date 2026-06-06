@@ -150,19 +150,27 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     }
   }
 
-  watch(mode, async (m) => {
-    if (isNativeMonitorDisabled()) return;
-    try {
-      await nativeMonitorIpc.setMode(m);
-    } catch (err) {
-      warnMonitorFailure('monitor_set_mode failed', err);
-    }
-    if (isNativeMonitorDisabled()) return;
-    if (m === 'canvas') {
-      syncCanvasSize();
-      if (!unsubChannel) await subscribe();
-    }
-  });
+  async function activateCanvasMode(): Promise<void> {
+    syncCanvasSize();
+    if (!unsubChannel) await subscribe();
+  }
+
+  watch(
+    mode,
+    async (m) => {
+      if (isNativeMonitorDisabled()) return;
+      try {
+        await nativeMonitorIpc.setMode(m);
+      } catch (err) {
+        warnMonitorFailure('monitor_set_mode failed', err);
+      }
+      if (isNativeMonitorDisabled()) return;
+      if (m === 'canvas') {
+        await activateCanvasMode();
+      }
+    },
+    { immediate: true },
+  );
 
   // Реактивно подстраиваем canvas size при resize.
   let ro: ResizeObserver | null = null;
@@ -176,7 +184,7 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   });
 
   watch(canvasRef, (el) => {
-    if (el && mode.value === 'canvas') syncCanvasSize();
+    if (el && mode.value === 'canvas') void activateCanvasMode();
   });
 
   onScopeDispose(() => {
