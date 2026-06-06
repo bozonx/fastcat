@@ -29,6 +29,25 @@ export interface MonitorViewportArgs {
   visible: boolean;
 }
 
+export interface MonitorAudioSettingsInput {
+  bufferSize: 'default' | number;
+  backend: 'default' | string;
+}
+
+export interface MonitorAudioSettingsPayload extends Record<string, unknown> {
+  bufferSize: number | null;
+  backend: string | null;
+}
+
+export function toMonitorAudioSettingsPayload(
+  settings: MonitorAudioSettingsInput,
+): MonitorAudioSettingsPayload {
+  return {
+    bufferSize: settings.bufferSize === 'default' ? null : settings.bufferSize,
+    backend: settings.backend === 'default' ? null : settings.backend,
+  };
+}
+
 export const nativeMonitorIpc = {
   /** Push the current timeline snapshot (video + audio layers) to the window. */
   setScene(scene: NativeMonitorScene): Promise<void> {
@@ -60,6 +79,9 @@ export const nativeMonitorIpc = {
   /** Render-target size in canvas mode, physical pixels. */
   setCanvasSize(width: number, height: number): Promise<void> {
     return invoke('monitor_set_canvas_size', { width, height });
+  },
+  setAudioSettings(settings: MonitorAudioSettingsInput): Promise<void> {
+    return invoke('monitor_set_audio_settings', toMonitorAudioSettingsPayload(settings));
   },
   close(): Promise<void> {
     return invoke('monitor_close');

@@ -3,6 +3,7 @@
 //! Compositor + GPU-ресурсы живут ВНУТРИ потока монитора (см. `monitor::app`) — там, где
 //! находятся wgpu device/surface/vello renderer, и где их безопасно мутировать.
 
+use crate::audio::engine::AudioEngineSettings;
 use anyhow::Result;
 use parking_lot::Mutex;
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use crate::monitor::MonitorHandle;
 pub struct VideoEngine {
     app: AppHandle,
     monitor: Mutex<Option<Arc<MonitorHandle>>>,
+    audio_settings: Mutex<AudioEngineSettings>,
 }
 
 impl VideoEngine {
@@ -20,7 +22,19 @@ impl VideoEngine {
         Self {
             app,
             monitor: Mutex::new(None),
+            audio_settings: Mutex::new(AudioEngineSettings::default()),
         }
+    }
+
+    /// Stores settings used by the next native monitor/audio stream creation.
+    /// Returns true when a live monitor must be recreated to apply them.
+    pub fn set_audio_settings(&self, settings: AudioEngineSettings) -> bool {
+        let mut guard = self.audio_settings.lock();
+        let changed = *guard != settings;
+        if changed {
+            *guard = settings;
+        }
+        changed
     }
 
     /// Лениво создаёт окно монитора. Если предыдущее окно умерло (юзер закрыл / Close),
@@ -35,7 +49,8 @@ impl VideoEngine {
             *guard = None;
         }
         drop(guard);
-        let handle = Arc::new(MonitorHandle::spawn(self.app.clone())?);
+        let audio_settings = self.audio_settings.lock().clone();
+        let handle = Arc::new(MonitorHandle::spawn(self.app.clone(), audio_settings)?);
         *self.monitor.lock() = Some(handle.clone());
         Ok(handle)
     }

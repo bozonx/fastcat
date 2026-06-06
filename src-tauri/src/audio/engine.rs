@@ -8,7 +8,9 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{BufferSize, OutputCallbackInfo, SampleFormat, Stream, StreamConfig, SupportedBufferSize};
+use cpal::{
+    BufferSize, OutputCallbackInfo, SampleFormat, Stream, StreamConfig, SupportedBufferSize,
+};
 use parking_lot::{Condvar, Mutex};
 
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
@@ -17,7 +19,7 @@ const CHUNK_DURATION_SEC: f64 = 0.05;
 const PREBUFFER_CHUNKS: usize = 8;
 
 /// Per-layer audio engine settings forwarded from the UI.
-#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Deserialize)]
 pub struct AudioEngineSettings {
     pub buffer_size: Option<u32>,
     pub backend: Option<String>,
@@ -416,7 +418,9 @@ impl NativeAudioEngine {
         if let Some(id) = match_id {
             log::info!("[audio] using backend: {requested}");
             cpal::host_from_id(*id).unwrap_or_else(|e| {
-                log::warn!("[audio] failed to create host {requested}: {e}, falling back to default");
+                log::warn!(
+                    "[audio] failed to create host {requested}: {e}, falling back to default"
+                );
                 cpal::default_host()
             })
         } else {
@@ -711,7 +715,8 @@ fn audible_pts_sec(
     output_channels: usize,
     ring_samples: usize,
 ) -> f64 {
-    let hw_latency_frames = (clock.output_latency_sec().max(0.0) * sample_rate as f64).round() as u64;
+    let hw_latency_frames =
+        (clock.output_latency_sec().max(0.0) * sample_rate as f64).round() as u64;
     // The ring buffer holds already-mixed but not-yet-audible samples.
     // On Linux cpal often reports zero hardware latency, so this is the
     // dominant delay in the audio pipeline and must be subtracted too.

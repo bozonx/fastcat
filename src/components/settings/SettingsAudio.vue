@@ -8,6 +8,7 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { isTauriRuntime } from '~/utils/runtime';
+import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
 
 interface FfmpegComponentDiagnostic {
   name: string;
@@ -122,18 +123,14 @@ watch(
 
 // Forward native audio engine settings to the Rust backend.
 watch(
-  () => [
-    workspaceStore.userSettings.audioEngine.bufferSize,
-    workspaceStore.userSettings.audioEngine.backend,
-  ],
-  async ([bufferSize, backend]) => {
+  () => ({
+    bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
+    backend: workspaceStore.userSettings.audioEngine.backend,
+  }),
+  async (settings) => {
     if (!isTauri.value) return;
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('monitor_set_audio_settings', {
-        bufferSize: bufferSize === 'default' ? null : bufferSize,
-        backend: backend === 'default' ? null : backend,
-      });
+      await nativeMonitorIpc.setAudioSettings(settings);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Failed to update audio engine settings:', err);

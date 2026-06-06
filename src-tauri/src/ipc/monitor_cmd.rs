@@ -138,11 +138,17 @@ pub async fn monitor_set_audio_settings(
         buffer_size,
         backend,
     };
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::SetAudioSettings(settings))
-        .map_err(|e| e.to_string())
+    if !engine.set_audio_settings(settings.clone()) {
+        return Ok(());
+    }
+
+    if let Some(monitor) = engine.monitor() {
+        monitor
+            .send(MonitorCommand::SetAudioSettings(settings))
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }
 
 #[tauri::command]

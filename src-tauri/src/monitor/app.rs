@@ -20,13 +20,13 @@ use winit::event::{StartCause, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
 
-use crate::audio::engine::NativeAudioEngine;
+use crate::audio::engine::{AudioEngineSettings, NativeAudioEngine};
 use crate::compositor::Compositor;
 
 use super::clock::PlaybackClock;
 use super::handle::{MonitorCommand, MonitorMode, SendableRawHandle};
 use super::runtime::{emit_layer_failed, BgLayerResult, LayerRuntimeManager};
-use super::scene::MonitorScene;
+use super::scene::{MonitorScene, SceneAudioLayer, SceneAudioTrack};
 use tauri::ipc::{Channel, InvokeResponseBody};
 
 const DEFAULT_TITLE: &str = "FastCat Monitor";
@@ -51,6 +51,7 @@ struct ViewportSpec {
 pub fn run_event_loop(
     app: AppHandle,
     proxy_tx: Sender<Result<EventLoopProxy<MonitorCommand>, String>>,
+    audio_settings: AudioEngineSettings,
 ) {
     let event_loop = match build_event_loop() {
         Ok(el) => el,
@@ -65,7 +66,7 @@ pub fn run_event_loop(
     }
 
     let (bg_tx, bg_rx) = mpsc::channel::<BgLayerResult>();
-    let mut app_handler = MonitorApp::new(app, proxy, bg_tx, bg_rx);
+    let mut app_handler = MonitorApp::new(app, proxy, bg_tx, bg_rx, audio_settings);
     event_loop.set_control_flow(ControlFlow::Wait);
     if let Err(e) = event_loop.run_app(&mut app_handler) {
         log::error!("[monitor] event loop terminated: {e:?}");
@@ -111,6 +112,7 @@ struct MonitorApp {
     pending_viewport: Option<ViewportSpec>,
     /// True после первого вызова `resumed` — до него create_window падает.
     resumed: bool,
+    audio_settings: AudioEngineSettings,
 }
 
 impl MonitorApp {
@@ -119,6 +121,7 @@ impl MonitorApp {
         proxy: EventLoopProxy<MonitorCommand>,
         bg_tx: Sender<BgLayerResult>,
         bg_rx: Receiver<BgLayerResult>,
+        audio_settings: AudioEngineSettings,
     ) -> Self {
         Self {
             app,
@@ -129,6 +132,7 @@ impl MonitorApp {
             pending_scene: None,
             pending_viewport: None,
             resumed: false,
+            audio_settings,
         }
     }
 
@@ -145,6 +149,7 @@ impl MonitorApp {
             self.proxy.clone(),
             self.bg_tx.clone(),
             vp,
+            self.audio_settings.clone(),
         ) {
             Ok(state) => {
                 self.state = Some(state);
@@ -206,10 +211,9 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 }
             }
             MonitorCommand::SetAudioSettings(settings) => {
+                self.audio_settings = settings.clone();
                 if let Some(s) = self.state.as_mut() {
-                    if let Some(audio) = s.audio.as_mut() {
-                        audio.update_settings(&settings);
-                    }
+                    s.recreate_audio(settings);
                 }
             }
             MonitorCommand::Close => {
@@ -335,6 +339,9 @@ struct WindowState {
     clock: PlaybackClock,
     layers: LayerRuntimeManager,
     audio: Option<NativeAudioEngine>,
+    audio_layers: Vec<SceneAudioLayer>,
+    audio_tracks: Vec<SceneAudioTrack>,
+    audio_master_gain: f64,
 
     last_emit_pts: f64,
     last_viewport: ViewportSpec,
@@ -354,20 +361,48 @@ impl WindowState {
     }
 
     fn apply_scene(&mut self, scene: MonitorScene) {
+        let master_gain = if scene.audio_master_muted {
+            0.0
+        } else {
+            scene.audio_master_gain
+        };
+        self.audio_layers = scene.audio_layers.clone();
+        self.audio_tracks = scene.audio_tracks.clone();
+        self.audio_master_gain = master_gain;
+
         if let Some(audio) = self.audio.as_ref() {
-            let master_gain = if scene.audio_master_muted {
-                0.0
-            } else {
-                scene.audio_master_gain
-            };
             audio.set_scene(
-                scene.audio_layers.clone(),
-                scene.audio_tracks.clone(),
+                self.audio_layers.clone(),
+                self.audio_tracks.clone(),
                 master_gain,
             );
         }
         self.layers.apply_scene(scene);
         self.window.request_redraw();
+    }
+
+    fn recreate_audio(&mut self, settings: AudioEngineSettings) {
+        let playing = self.clock.is_playing();
+        let pts = self.clock.current_pts();
+        self.audio = match NativeAudioEngine::new(&settings) {
+            Ok(audio) => {
+                audio.set_scene(
+                    self.audio_layers.clone(),
+                    self.audio_tracks.clone(),
+                    self.audio_master_gain,
+                );
+                if playing {
+                    audio.play(pts);
+                } else {
+                    audio.seek(pts, false);
+                }
+                Some(audio)
+            }
+            Err(error) => {
+                log::warn!("[audio] disabled after settings update: {error:?}");
+                None
+            }
+        };
     }
 
     fn set_mode(&mut self, mode: MonitorMode) {
@@ -583,6 +618,7 @@ fn init_window(
     proxy: EventLoopProxy<MonitorCommand>,
     bg_tx: Sender<BgLayerResult>,
     viewport: ViewportSpec,
+    audio_settings: AudioEngineSettings,
 ) -> Result<WindowState> {
     let mut window_attrs = Window::default_attributes()
         .with_title(DEFAULT_TITLE)
@@ -647,7 +683,7 @@ fn init_window(
     }
 
     let offscreen_dev_id = Some(surface.dev_id);
-    let audio = match NativeAudioEngine::new(&crate::audio::engine::AudioEngineSettings::default()) {
+    let audio = match NativeAudioEngine::new(&audio_settings) {
         Ok(engine) => Some(engine),
         Err(error) => {
             log::warn!("[audio] disabled: {error:?}");
@@ -667,6 +703,9 @@ fn init_window(
         clock: PlaybackClock::new(),
         layers: LayerRuntimeManager::new(app.clone(), bg_tx, proxy, hw_settings),
         audio,
+        audio_layers: Vec::new(),
+        audio_tracks: Vec::new(),
+        audio_master_gain: 1.0,
         last_emit_pts: -1.0,
         last_viewport: viewport,
         mode: MonitorMode::Embedded,

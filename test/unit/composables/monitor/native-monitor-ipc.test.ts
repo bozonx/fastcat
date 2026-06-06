@@ -4,6 +4,7 @@ import {
   onMonitorTime,
   onMonitorEnded,
   MONITOR_EVENTS,
+  toMonitorAudioSettingsPayload,
 } from '~/composables/monitor/native-monitor-ipc';
 
 const { invokeMock, listenMock } = vi.hoisted(() => ({
@@ -33,6 +34,7 @@ describe('native-monitor-ipc', () => {
     await nativeMonitorIpc.setCanvasSize(640, 360);
     await nativeMonitorIpc.setMode('canvas');
     await nativeMonitorIpc.setViewport({ x: 1, y: 2, width: 3, height: 4, visible: true });
+    await nativeMonitorIpc.setAudioSettings({ bufferSize: 2048, backend: 'pulseaudio' });
     await nativeMonitorIpc.close();
 
     expect(invokeMock.mock.calls).toEqual([
@@ -42,6 +44,7 @@ describe('native-monitor-ipc', () => {
       ['monitor_set_canvas_size', { width: 640, height: 360 }],
       ['monitor_set_mode', { mode: 'canvas' }],
       ['monitor_set_viewport', { x: 1, y: 2, width: 3, height: 4, visible: true }],
+      ['monitor_set_audio_settings', { bufferSize: 2048, backend: 'pulseaudio' }],
       ['monitor_close'],
     ]);
   });
@@ -60,5 +63,31 @@ describe('native-monitor-ipc', () => {
     const registeredCb = listenMock.mock.calls[0]?.[1] as (e: { payload: number }) => void;
     registeredCb({ payload: 3.14 });
     expect(handler).toHaveBeenCalledWith(3.14);
+  });
+});
+
+describe('toMonitorAudioSettingsPayload', () => {
+  it('maps default audio settings to null native values', () => {
+    expect(
+      toMonitorAudioSettingsPayload({
+        bufferSize: 'default',
+        backend: 'default',
+      }),
+    ).toEqual({
+      bufferSize: null,
+      backend: null,
+    });
+  });
+
+  it('keeps explicit native audio settings', () => {
+    expect(
+      toMonitorAudioSettingsPayload({
+        bufferSize: 2048,
+        backend: 'pulseaudio',
+      }),
+    ).toEqual({
+      bufferSize: 2048,
+      backend: 'pulseaudio',
+    });
   });
 });

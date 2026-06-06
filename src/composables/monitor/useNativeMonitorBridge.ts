@@ -151,6 +151,20 @@ export function useNativeMonitorBridge(): void {
     }
   }
 
+  watch(
+    () => ({
+      bufferSize: workspaceStore.userSettings.audioEngine.bufferSize,
+      backend: workspaceStore.userSettings.audioEngine.backend,
+    }),
+    (settings) => {
+      if (isNativeMonitorDisabled()) return;
+      void nativeMonitorIpc
+        .setAudioSettings(settings)
+        .catch((err) => warnMonitorFailure('monitor_set_audio_settings failed', err));
+    },
+    { immediate: true },
+  );
+
   // Сцена меняется при правках треков/клипов и формата.
   // Наблюдаем только tracks + format (не весь doc), чтобы не гонять IPC на каждое
   // изменение waveform-данных или UI-полей, не влияющих на рендер.

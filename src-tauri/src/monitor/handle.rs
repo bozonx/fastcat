@@ -12,6 +12,8 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::AppHandle;
 use winit::event_loop::EventLoopProxy;
 
+use crate::audio::engine::AudioEngineSettings;
+
 use super::app::run_event_loop;
 use super::scene::MonitorScene;
 
@@ -85,14 +87,14 @@ pub struct MonitorHandle {
 }
 
 impl MonitorHandle {
-    pub fn spawn(app: AppHandle) -> Result<Self> {
+    pub fn spawn(app: AppHandle, audio_settings: AudioEngineSettings) -> Result<Self> {
         let alive = Arc::new(AtomicBool::new(true));
         let alive_clone = alive.clone();
         let (tx, rx) = mpsc::channel::<Result<EventLoopProxy<MonitorCommand>, String>>();
         let thread = std::thread::Builder::new()
             .name("fastcat-monitor".into())
             .spawn(move || {
-                run_event_loop(app, tx);
+                run_event_loop(app, tx, audio_settings);
                 alive_clone.store(false, Ordering::Relaxed);
             })?;
         let proxy = rx
