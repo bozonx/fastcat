@@ -62,6 +62,8 @@ const {
   onLoadedMetadata,
   onPlay,
   onPause,
+  onPlaybackError,
+  playbackError,
   resetState: resetPlaybackState,
 } = useMediaPlayerPlayback(mediaElement, props, volume, isMuted, focusStore);
 
@@ -69,6 +71,14 @@ function onTimeUpdate() {
   playOnTimeUpdate(isDragging);
   emitPlaybackState();
 }
+
+const playbackErrorMessage = computed(() => {
+  if (!playbackError.value) return null;
+  const code = playbackError.value.code;
+  if (code === 3) return t('fastcat.preview.codecError');
+  if (code === 4) return t('fastcat.preview.formatError');
+  return t('fastcat.preview.playbackError');
+});
 
 const playbackSpeedLabel = computed(() => {
   const s = playbackSpeed.value;
@@ -340,7 +350,7 @@ onUnmounted(() => {
           @play="onPlay"
           @pause="onPause"
           @ended="onPause"
-          @error="console.log('[MediaPlayer] video error:', $event, 'code:', ($event.target as HTMLVideoElement).error?.code, 'msg:', ($event.target as HTMLVideoElement).error?.message)"
+          @error="onPlaybackError($event)"
           @click="togglePlay"
           @dblclick.prevent="resetZoom"
         />
@@ -358,7 +368,7 @@ onUnmounted(() => {
         @play="onPlay"
         @pause="onPause"
         @ended="onPause"
-        @error="console.log('[MediaPlayer] audio error:', $event, 'code:', ($event.target as HTMLAudioElement).error?.code)"
+        @error="onPlaybackError($event)"
       />
 
       <div class="flex-1 min-h-0 flex items-center justify-center bg-(--media-bg) relative">
@@ -385,6 +395,15 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Playback Error Banner -->
+    <div
+      v-if="playbackErrorMessage"
+      class="shrink-0 px-4 py-2 bg-amber-500/10 border-t border-amber-500/30 text-amber-400 text-xs flex items-center gap-2"
+    >
+      <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 shrink-0" />
+      <span>{{ playbackErrorMessage }}</span>
     </div>
 
     <!-- Controls -->

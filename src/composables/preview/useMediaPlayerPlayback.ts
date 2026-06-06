@@ -14,6 +14,7 @@ export function useMediaPlayerPlayback(
   const duration = ref(0);
   const progress = ref(0);
   const playbackSpeed = ref(1);
+  const playbackError = ref<{ code: number; message: string } | null>(null);
 
   let reversePlaybackRaf: number | null = null;
   let reverseLastTs = 0;
@@ -139,7 +140,18 @@ export function useMediaPlayerPlayback(
     progress.value = 0;
     duration.value = 0;
     playbackSpeed.value = 1;
+    playbackError.value = null;
     clearReversePlaybackTimer();
+  }
+
+  function onPlaybackError(event: Event) {
+    const target = event.target as HTMLVideoElement | HTMLAudioElement;
+    const error = target.error;
+    if (!error) return;
+    playbackError.value = {
+      code: error.code,
+      message: error.message || '',
+    };
   }
 
   function shouldHandlePreviewPlaybackEvent() {
@@ -203,6 +215,7 @@ export function useMediaPlayerPlayback(
     duration,
     progress,
     playbackSpeed,
+    playbackError,
     togglePlay,
     setForwardPlaybackSpeed,
     setBackwardPlaybackSpeed,
@@ -210,6 +223,7 @@ export function useMediaPlayerPlayback(
     onLoadedMetadata,
     onPlay,
     onPause,
+    onPlaybackError,
     resetState,
     pauseAndClearPlayback,
   };

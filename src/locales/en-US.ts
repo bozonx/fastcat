@@ -653,7 +653,10 @@ export default {
       "play": "Play",
       "resetZoom": "Reset Zoom & Pan",
       "unsupported": "Unsupported file format for visual preview",
-      "usedInTimelines": "Used in timelines"
+      "usedInTimelines": "Used in timelines",
+      "playbackError": "Playback error",
+      "codecError": "Codec not supported on this platform. Convert to H264/AAC for preview.",
+      "formatError": "File format not supported by the browser. Convert to MP4/WebM for preview."
     },
     "projects": {
       "autoDetectHint": "Project resolution and framerate will be automatically detected from the first video added to the timeline.",
