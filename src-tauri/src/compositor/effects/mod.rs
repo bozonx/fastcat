@@ -593,7 +593,7 @@ fn build_passes(effects: &[EffectSpec], width: u32, height: u32) -> Vec<EffectPa
                             height,
                             seed: 0,
                             p0: 0.0,
-                            p1: strength.clamp(0.0, 4.0),
+                            p1: strength.clamp(0.0, 2.0),
                             ..Default::default()
                         },
                         custom_source: None,
@@ -968,9 +968,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             color = vec4<f32>(color.rgb * bright, 1.0);
         }
         case 18u: {
-            let bloom = color.rgb;
-            let orig = load_secondary(coord);
-            color = vec4<f32>(orig.rgb + bloom * effect.p1, orig.a);
+            // input_tex = оригинальный кадр (bind_src), secondary_tex = размытая
+            // яркая маска (bind_secondary). Bloom = оригинал + glow * strength;
+            // раньше слагаемые были перепутаны (база — размытие, оригинал слабым
+            // множителем), из-за чего кадр получался размыто-засвеченным.
+            let orig = color;
+            let bloom = load_secondary(coord);
+            color = vec4<f32>(orig.rgb + bloom.rgb * effect.p1, orig.a);
         }
         default: {}
     }
