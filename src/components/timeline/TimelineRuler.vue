@@ -226,7 +226,7 @@ const {
   snapThresholdPx: computed(() => snapThresholdPx.value),
   isSnappingEnabled,
   scrollLeft,
-  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
+  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event),
 });
 
 const {
@@ -241,7 +241,7 @@ const {
   zoom,
   fps,
   scrollLeft,
-  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event as unknown as MouseEvent),
+  getTimeUsFromPointerEvent: (event) => getTimeUsFromMouseEvent(event),
   selectSelectionRange,
   updateSelectionRange: timelineStore.updateSelectionRange,
   createSelectionRange: timelineStore.createSelectionRange,

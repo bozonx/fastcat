@@ -1,21 +1,27 @@
-//! Фоновый поток декодера: владеет `VideoDecoder`, шлёт готовые кадры в bounded queue.
-//! Event-loop монитора только тянет кадры — без блокирующего IO в UI-потоке.
+//! Background decoder thread: owns the `VideoDecoder` and pushes decoded frames into a
+//! bounded queue. The monitor event-loop only pulls frames — no blocking IO on the UI thread.
 //!
-//! Контракт по seek:
-//!   - consumer вызывает `seek(t)` → внутри инкрементится generation, отправляется команда;
-//!   - старые кадры в очереди помечены прошлым generation → consumer их выбрасывает.
-//! Гарантия: после `seek(t)` все кадры, дошедшие до consumer'а, имеют PTS >= t (с допуском 1/2*1/fps).
+//! Seek contract:
+//!   - The consumer calls `seek(t)`. Internally the generation counter is incremented and a
+//!     command is sent to the decoder thread.
+//!   - Frames already in the queue tagged with the old generation are discarded by the consumer.
+//!
+//! Guarantee: after `seek(t)` every frame that reaches the consumer has PTS >= t
+//! (within a tolerance of 1/2 * 1/fps).
 
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, SyncSender, TryRecvError};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+
+use parking_lot::Mutex;
 use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Context, Result};
 
 use super::decode::{open as open_decoder, MediaInfo, VideoFrame};
+use super::types::HwAccelMode;
 
 // Размер очереди декодированных кадров. Каждый кадр = ширина × высота × 4 байта.
 // Для 1080×1920 это ~8 МБ/кадр, так что 2 = 16 МБ буфера на слой — достаточно для smooth
@@ -51,7 +57,7 @@ impl DecodePump {
         on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
         device: Option<wgpu::Device>,
         queue: Option<wgpu::Queue>,
-        hw_mode: Option<&str>,
+        hw_mode: HwAccelMode,
         vaapi_device: Option<&str>,
     ) -> Result<Self> {
         let decoder = open_decoder(path, max_output_long_edge, hw_mode, vaapi_device)?;
@@ -64,6 +70,7 @@ impl DecodePump {
         let generation = Arc::new(AtomicU64::new(0));
         let gen_in_thread = generation.clone();
         let path_str = path.display().to_string();
+        #[allow(clippy::type_complexity)]
         let texture_pool: Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let texture_pool_thread = texture_pool.clone();
@@ -149,6 +156,7 @@ impl Drop for DecodePump {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn run_decoder_loop(
     mut decoder: Box<dyn super::decode::VideoDecoder>,
     frame_tx: SyncSender<DecodedFrameMsg>,
@@ -281,7 +289,7 @@ fn run_decoder_loop(
                 // Загружаем кадр на GPU, если доступны device и queue
                 if let (Some(device), Some(queue)) = (&device, &queue) {
                     let tex = {
-                        let mut pool = texture_pool.lock().unwrap_or_else(|e| e.into_inner());
+                        let mut pool = texture_pool.lock();
                         let slot = pool.entry((frame.width, frame.height)).or_default();
                         slot.pop().unwrap_or_else(|| {
                             device.create_texture(&wgpu::TextureDescriptor {

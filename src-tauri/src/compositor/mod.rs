@@ -1,17 +1,16 @@
 //! Vello-based video compositor.
 //!
-//! Раскладка:
-//! - `scene`         — доменная модель кадра (`Scene`, `Layer`, `LayerKind`,
-//!                     `Transform`, `BlendMode`, `Mask`, `RasterSource`).
-//!                     `Scene::to_vello(w, h)` — единственное место, строящее
-//!                     `vello::Scene` из доменной; вызывается внутри `Compositor`.
-//! - `effects`       — `EffectSpec` enum + wgpu runtime для raster layers.
-//! - `transitions`   — `TransitionSpec` enum. Runtime отсутствует.
-//! - `text`, `svg`   — модули-документация для будущих слоёв.
+//! Layout:
+//! - `scene` — domain frame model (`Scene`, `Layer`, `LayerKind`, `Transform`,
+//!   `BlendMode`, `Mask`, `RasterSource`). `Scene::to_vello(w, h)` is the single
+//!   place that builds a `vello::Scene` from the domain model; called inside `Compositor`.
+//! - `effects` — `EffectSpec` enum + wgpu runtime for raster layers.
+//! - `transitions` — `TransitionSpec` enum. No dedicated runtime.
+//! - `text`, `svg` — documentation-only modules for future layers.
 //!
-//! GPU-resident видеокадры держат `wgpu::Texture` напрямую в `RasterSource::GpuTexture`
-//! (Arc), время жизни текстуры = время жизни кадра в per-layer кеше; отдельного
-//! глобального texture-кеша с независимым вытеснением больше нет.
+//! GPU-resident video frames hold `wgpu::Texture` directly in `RasterSource::GpuTexture`
+//! (Arc). The texture lifetime equals the frame lifetime in the per-layer cache;
+//! no separate global texture cache with independent eviction remains.
 //!
 //! Entrypoint: [`Compositor`] — high-level `render_scene_to_*` + low-level `render_to_*`.
 
@@ -21,6 +20,7 @@ pub mod svg;
 pub mod text;
 pub mod transitions;
 
+#[allow(clippy::module_inception)]
 mod compositor;
 pub use compositor::{Compositor, PipelinedReadback};
 

@@ -721,14 +721,19 @@ impl Compositor {
         let pipeline_cache = self
             .pipeline_caches
             .entry(dev_id)
-            .or_insert_with(|| unsafe {
-                device_handle
-                    .device
-                    .create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
-                        label: Some("vello-pipeline-cache"),
-                        data: None,
-                        fallback: true,
-                    })
+            .or_insert_with(|| {
+                // SAFETY: create_pipeline_cache is safe when data is None and fallback is true,
+                // as no external initialization data is provided and the driver will fall back
+                // to its default behaviour.
+                unsafe {
+                    device_handle
+                        .device
+                        .create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+                            label: Some("vello-pipeline-cache"),
+                            data: None,
+                            fallback: true,
+                        })
+                }
             })
             .clone();
 

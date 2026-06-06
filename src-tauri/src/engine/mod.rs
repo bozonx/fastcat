@@ -40,18 +40,15 @@ impl VideoEngine {
     /// Лениво создаёт окно монитора. Если предыдущее окно умерло (юзер закрыл / Close),
     /// автоматически респавнит.
     pub fn ensure_monitor(&self) -> Result<Arc<MonitorHandle>> {
+        let audio_settings = self.audio_settings.lock().clone();
         let mut guard = self.monitor.lock();
         if let Some(existing) = guard.as_ref() {
             if existing.is_alive() {
                 return Ok(existing.clone());
             }
-            // Стейл — выкидываем, пересоздадим ниже.
-            *guard = None;
         }
-        drop(guard);
-        let audio_settings = self.audio_settings.lock().clone();
         let handle = Arc::new(MonitorHandle::spawn(self.app.clone(), audio_settings)?);
-        *self.monitor.lock() = Some(handle.clone());
+        *guard = Some(handle.clone());
         Ok(handle)
     }
 

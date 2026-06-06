@@ -1,16 +1,21 @@
 use super::ffmpeg_utils::even;
+use super::types::HwAccelMode;
 
 /// Appends hardware-accelerated decode CLI flags to an ffmpeg argument vector.
-pub fn push_hw_accel_decode_args(args: &mut Vec<String>, hw_mode: &str, vaapi_device: &str) {
-    if hw_mode == "vaapi" {
-        args.extend([
-            "-hwaccel".to_string(),
-            "vaapi".to_string(),
-            "-hwaccel_device".to_string(),
-            vaapi_device.to_string(),
-        ]);
-    } else if hw_mode == "nvdec" {
-        args.extend(["-hwaccel".to_string(), "nvdec".to_string()]);
+pub fn push_hw_accel_decode_args(args: &mut Vec<String>, hw_mode: HwAccelMode, vaapi_device: &str) {
+    match hw_mode {
+        HwAccelMode::Vaapi => {
+            args.extend([
+                "-hwaccel".to_string(),
+                "vaapi".to_string(),
+                "-hwaccel_device".to_string(),
+                vaapi_device.to_string(),
+            ]);
+        }
+        HwAccelMode::Nvdec => {
+            args.extend(["-hwaccel".to_string(), "nvdec".to_string()]);
+        }
+        _ => {}
     }
 }
 
@@ -18,41 +23,45 @@ pub fn push_hw_accel_decode_args(args: &mut Vec<String>, hw_mode: &str, vaapi_de
 /// hardware mode and whether alpha is requested.
 pub fn push_video_encode_filter_args(
     args: &mut Vec<String>,
-    hw_mode: &str,
+    hw_mode: HwAccelMode,
     width: u32,
     height: u32,
     export_alpha: bool,
 ) {
     let has_scale = width > 0 && height > 0;
-    if hw_mode == "vaapi" {
-        let vf = if has_scale {
-            format!(
-                "scale={}:{}:format=nv12|vaapi,hwupload",
-                even(width),
-                even(height)
-            )
-        } else {
-            "format=nv12|vaapi,hwupload".to_string()
-        };
-        args.extend(["-vf".to_string(), vf, "-pix_fmt".to_string(), "vaapi".to_string()]);
-    } else if hw_mode == "nvdec" {
-        let vf = if has_scale {
-            format!("scale={}:{}:format=yuv420p", even(width), even(height))
-        } else {
-            "format=yuv420p".to_string()
-        };
-        args.extend(["-vf".to_string(), vf, "-pix_fmt".to_string(), "yuv420p".to_string()]);
-    } else {
-        if has_scale {
-            args.extend([
-                "-vf".to_string(),
-                format!("scale={}:{}", even(width), even(height)),
-            ]);
+    match hw_mode {
+        HwAccelMode::Vaapi => {
+            let vf = if has_scale {
+                format!(
+                    "scale={}:{}:format=nv12|vaapi,hwupload",
+                    even(width),
+                    even(height)
+                )
+            } else {
+                "format=nv12|vaapi,hwupload".to_string()
+            };
+            args.extend(["-vf".to_string(), vf, "-pix_fmt".to_string(), "vaapi".to_string()]);
         }
-        if export_alpha {
-            args.extend(["-pix_fmt".to_string(), "yuva420p".to_string()]);
-        } else {
-            args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
+        HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
+            let vf = if has_scale {
+                format!("scale={}:{}:format=yuv420p", even(width), even(height))
+            } else {
+                "format=yuv420p".to_string()
+            };
+            args.extend(["-vf".to_string(), vf, "-pix_fmt".to_string(), "yuv420p".to_string()]);
+        }
+        HwAccelMode::None | HwAccelMode::Auto => {
+            if has_scale {
+                args.extend([
+                    "-vf".to_string(),
+                    format!("scale={}:{}", even(width), even(height)),
+                ]);
+            }
+            if export_alpha {
+                args.extend(["-pix_fmt".to_string(), "yuva420p".to_string()]);
+            } else {
+                args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
+            }
         }
     }
 }

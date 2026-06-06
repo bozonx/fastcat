@@ -28,6 +28,7 @@ use crate::monitor::scene::MonitorScene;
 
 use super::ffmpeg_args::*;
 use super::ffmpeg_utils::*;
+use super::types::HwAccelMode;
 use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
 
 /// Kill the export if ffmpeg makes no progress for this long. A stall guard rather
@@ -35,6 +36,8 @@ use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
 /// (or flushing the container) is never killed mid-run, while a genuinely hung
 /// process — a blocked stdin write or a stuck finalization — is reaped.
 const EXPORT_STALL_TIMEOUT: Duration = Duration::from_secs(300);
+const DEFAULT_FALLBACK_FPS: f64 = 30.0;
+const DEFAULT_AUDIO_SAMPLE_RATE: u32 = 48_000;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -101,7 +104,7 @@ pub fn export_timeline(
     let fps = if options.fps.is_finite() && options.fps > 0.0 {
         options.fps
     } else {
-        30.0
+        DEFAULT_FALLBACK_FPS
     };
     let start = options.start_sec.max(0.0);
     let end = options.end_sec.max(start);
@@ -151,7 +154,7 @@ pub fn export_timeline(
         let output_channels = options.audio_channels.unwrap_or(2).clamp(1, 2) as usize;
         let sample_rate = options
             .audio_sample_rate
-            .unwrap_or(48_000)
+            .unwrap_or(DEFAULT_AUDIO_SAMPLE_RATE)
             .clamp(8_000, 192_000);
         if let Err(e) = render_scene_to_wav(
             &scene.audio_layers,
@@ -383,7 +386,7 @@ pub fn export_timeline(
         // only swaps the encoder, so a render/GPU error would recur identically and a
         // full re-render would be wasted work.
         Err(e)
-            if effective_hw != "none"
+            if effective_hw != HwAccelMode::None
                 && !e.to_string().contains("cancelled")
                 && !is_gpu_render_error(&e.to_string()) =>
         {
@@ -415,7 +418,7 @@ fn build_ffmpeg_args(
     let has_audio = audio_input.is_some();
     let mut args = Vec::new();
 
-    if hw_mode == "vaapi" {
+    if hw_mode == HwAccelMode::Vaapi {
         let vaapi_dev = options
             .vaapi_device
             .as_deref()
@@ -467,8 +470,8 @@ fn build_ffmpeg_args(
         if is_cbr {
             let bitrate = options.video_bitrate_bps.max(1).to_string();
             match hw_mode {
-                "nvdec" | "nvenc" => args.extend(["-rc".to_string(), "cbr".to_string()]),
-                "vaapi" => args.extend(["-rc_mode".to_string(), "CBR".to_string()]),
+                HwAccelMode::Nvdec | HwAccelMode::Nvenc => args.extend(["-rc".to_string(), "cbr".to_string()]),
+                HwAccelMode::Vaapi => args.extend(["-rc_mode".to_string(), "CBR".to_string()]),
                 // Software encoders only get a *cap* from maxrate/bufsize; add an equal
                 // floor so the rate is constant rather than merely bounded above.
                 _ => args.extend(["-minrate".to_string(), bitrate.clone()]),
@@ -575,17 +578,17 @@ fn export_uses_alpha(options: &NativeExportOptions) -> bool {
 /// Resolves the export hardware mode to a concrete `"vaapi" | "nvdec" | "none"`,
 /// applying the same auto-detection used to build the ffmpeg args. Centralised so
 /// the fallback decision and the arg builder can never disagree.
-fn resolve_export_hw_mode(options: &NativeExportOptions) -> &'static str {
+fn resolve_export_hw_mode(options: &NativeExportOptions) -> HwAccelMode {
     if !options.enable_hardware_encoding.unwrap_or(false) || export_uses_alpha(options) {
-        return "none";
+        return HwAccelMode::None;
     }
     let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
     let vaapi_device = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
     let mode = resolve_hw_decode_mode(hw_accel, vaapi_device);
-    if mode == "none" && hw_accel == "auto" && std::path::Path::new("/dev/nvidia0").exists() {
+    if mode == HwAccelMode::None && hw_accel == "auto" && std::path::Path::new("/dev/nvidia0").exists() {
         // No VAAPI render node, but an NVIDIA device is present — use NVENC
         // instead of silently dropping to software.
-        "nvdec"
+        HwAccelMode::Nvdec
     } else {
         mode
     }

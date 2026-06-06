@@ -2,9 +2,6 @@
 name = "fastcat"
 version = "0.5.2"
 description = "FastCat video editor"
-authors = []
-license = ""
-repository = ""
 edition = "2021"
 rust-version = "1.87.0"
 
@@ -49,12 +46,12 @@ vello = "0.9"
 vello_svg = "0.9"
 peniko = "0.6"
 kurbo = "0.13"
-# Text shaping/layout — Linebender stack, тот же что и Vello.
+# Text shaping/layout — Linebender stack, same as Vello.
 parley = "0.9"
-# Растр-декод для image-слоёв (PNG/JPEG/WebP). Видеокадры приходят отдельно от декодера.
+# Raster decode for image layers (PNG/JPEG/WebP). Video frames arrive separately from the decoder.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 raw-window-handle = "0.6"
-# Нативный монитор: окно + декодер.
+# Native monitor: window + decoder.
 winit = "0.30"
 resvg = "0.46.0"
 # Preview/monitor decode uses libav via ffmpeg-next. Export/proxy/convert still use system ffmpeg CLI.

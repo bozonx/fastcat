@@ -1,3 +1,12 @@
+use anyhow::{anyhow, Result};
+use std::collections::HashSet;
+use std::process::{Command, Stdio};
+use std::sync::OnceLock;
+
+use parking_lot::Mutex;
+
+use super::types::HwAccelMode;
+
 /// Default VAAPI render node. Centralised so the fallback path is not duplicated
 /// across export/proxy/convert/thumbnail and can be overridden in one place.
 pub const DEFAULT_VAAPI_DEVICE: &str = "/dev/dri/renderD128";
@@ -24,27 +33,29 @@ pub fn ffmpeg_video_codec(codec: &str) -> &'static str {
     }
 }
 
-pub fn ffmpeg_video_codec_hw(codec: &str, hw_mode: &str) -> &'static str {
-    if hw_mode == "vaapi" {
-        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-            "av1_vaapi"
-        } else if codec.contains("vp09") || codec.eq_ignore_ascii_case("vp9") {
-            "vp9_vaapi"
-        } else if is_hevc_codec(codec) {
-            "hevc_vaapi"
-        } else {
-            "h264_vaapi"
+pub fn ffmpeg_video_codec_hw(codec: &str, hw_mode: HwAccelMode) -> &'static str {
+    match hw_mode {
+        HwAccelMode::Vaapi => {
+            if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
+                "av1_vaapi"
+            } else if codec.contains("vp09") || codec.eq_ignore_ascii_case("vp9") {
+                "vp9_vaapi"
+            } else if is_hevc_codec(codec) {
+                "hevc_vaapi"
+            } else {
+                "h264_vaapi"
+            }
         }
-    } else if hw_mode == "nvdec" || hw_mode == "nvenc" {
-        if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
-            "av1_nvenc"
-        } else if is_hevc_codec(codec) {
-            "hevc_nvenc"
-        } else {
-            "h264_nvenc"
+        HwAccelMode::Nvdec | HwAccelMode::Nvenc => {
+            if codec.contains("av01") || codec.eq_ignore_ascii_case("av1") {
+                "av1_nvenc"
+            } else if is_hevc_codec(codec) {
+                "hevc_nvenc"
+            } else {
+                "h264_nvenc"
+            }
         }
-    } else {
-        ffmpeg_video_codec(codec)
+        HwAccelMode::None | HwAccelMode::Auto => ffmpeg_video_codec(codec),
     }
 }
 
@@ -64,25 +75,9 @@ pub fn even(value: u32) -> u32 {
     (v + 1) & !1
 }
 
-/// Resolves hardware decode mode string (auto/vaapi/nvdec/none).
-pub fn resolve_hw_decode_mode(hw_accel: &str, vaapi_device: &str) -> &'static str {
-    if hw_accel != "none" {
-        if hw_accel == "auto" {
-            if std::path::Path::new(vaapi_device).exists() {
-                "vaapi"
-            } else {
-                "none"
-            }
-        } else {
-            match hw_accel {
-                "vaapi" => "vaapi",
-                "nvdec" | "nvenc" => "nvdec",
-                _ => "none",
-            }
-        }
-    } else {
-        "none"
-    }
+/// Resolves hardware decode mode string (auto/vaapi/nvdec/none) into a typed enum.
+pub fn resolve_hw_decode_mode(hw_accel: &str, vaapi_device: &str) -> HwAccelMode {
+    HwAccelMode::from_str(hw_accel).decode_mode(vaapi_device)
 }
 
 pub fn format_fps(fps: f64) -> String {
@@ -100,11 +95,6 @@ pub fn format_time(time_sec: f64) -> String {
         "0.000000".into()
     }
 }
-
-use anyhow::{anyhow, Result};
-use std::collections::HashSet;
-use std::process::{Command, Stdio};
-use std::sync::{Mutex, OnceLock};
 
 /// Maps a requested audio codec to a concrete ffmpeg encoder name, taking the
 /// container into account. Unknown/unsupported values fall back to a safe default
@@ -181,7 +171,7 @@ pub fn parse_rational(s: &str) -> Option<f64> {
 pub fn verify_ffmpeg_binary(path: &str) -> Result<()> {
     static VERIFIED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
     let verified = VERIFIED.get_or_init(|| Mutex::new(HashSet::new()));
-    if verified.lock().unwrap().contains(path) {
+    if verified.lock().contains(path) {
         return Ok(());
     }
     let result = Command::new(path)
@@ -192,7 +182,7 @@ pub fn verify_ffmpeg_binary(path: &str) -> Result<()> {
         .status();
     match result {
         Ok(status) if status.success() => {
-            verified.lock().unwrap().insert(path.to_string());
+            verified.lock().insert(path.to_string());
             Ok(())
         }
         Ok(_) => Err(anyhow!("{path} returned non-zero status")),

@@ -11,10 +11,13 @@ use ffmpeg_next as ffmpeg;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+
+use parking_lot::Mutex;
 
 use super::ffmpeg_utils::is_quarter_turn;
 use super::hwaccel::{init_hwaccel, try_transfer_to_cpu, HwAccelContext};
+use super::types::HwAccelMode;
 
 #[derive(Debug, Clone)]
 pub struct MediaInfo {
@@ -40,11 +43,10 @@ pub struct VideoFrame {
 impl Drop for VideoFrame {
     fn drop(&mut self) {
         if let (Some(tex), Some(pool)) = (self.texture.take(), self.texture_pool.take()) {
-            if let Ok(mut p) = pool.lock() {
-                p.entry((tex.size().width, tex.size().height))
-                    .or_default()
-                    .push(tex);
-            }
+            let mut p = pool.lock();
+            p.entry((tex.size().width, tex.size().height))
+                .or_default()
+                .push(tex);
         }
     }
 }
@@ -86,7 +88,7 @@ impl FfmpegNextDecoder {
     pub fn open(
         path: &Path,
         max_output_long_edge: Option<u32>,
-        hw_mode: Option<&str>,
+        hw_mode: HwAccelMode,
         vaapi_device: Option<&str>,
     ) -> Result<Self> {
         init_ffmpeg()?;
@@ -260,7 +262,7 @@ impl FfmpegNextDecoder {
                 .copy_from_slice(&rgba.data(0)[src_start..src_start + row_bytes]);
         }
 
-        let pts_sec = self.frame_pts_sec(&decoded);
+        let pts_sec = self.frame_pts_sec(decoded);
 
         Ok(VideoFrame {
             width: coded_width,
@@ -355,7 +357,7 @@ impl VideoDecoder for FfmpegNextDecoder {
 pub fn open(
     path: &Path,
     max_output_long_edge: Option<u32>,
-    hw_mode: Option<&str>,
+    hw_mode: HwAccelMode,
     vaapi_device: Option<&str>,
 ) -> Result<Box<dyn VideoDecoder>> {
     Ok(Box::new(FfmpegNextDecoder::open(

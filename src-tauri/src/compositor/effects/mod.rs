@@ -248,11 +248,10 @@ impl EffectPipeline {
     ) {
         let mut recreate = true;
         if let Some(res) = &self.resources {
-            if res.width >= width && res.height >= height {
-                if !need_input || res.input.is_some() {
+            if res.width >= width && res.height >= height
+                && (!need_input || res.input.is_some()) {
                     recreate = false;
                 }
-            }
             // Shrink if the cached texture is more than 2x larger than needed
             // to avoid monotonic GPU memory growth after resolution changes.
             if !recreate && (res.width > width * 2 || res.height > height * 2) {
@@ -722,10 +721,10 @@ fn effect_to_pass(effect: &EffectSpec, width: u32, height: u32) -> Option<Effect
         EffectSpec::CustomWgsl { source, params } => {
             let mut p = [0.0f32; 8];
             if let serde_json::Value::Object(map) = params {
-                for i in 0..8 {
+                for (i, pi) in p.iter_mut().enumerate() {
                     let key = format!("p{}", i);
                     if let Some(v) = map.get(&key).and_then(|v| v.as_f64()) {
-                        p[i] = v as f32;
+                        *pi = v as f32;
                     }
                 }
             }

@@ -23,23 +23,25 @@ use super::scene::MonitorScene;
 ///   Позволяет ставить SVG/HTML-оверлеи (transform handles, grid, timecode) поверх изображения.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum MonitorMode {
+    #[default]
     Embedded,
     Canvas,
 }
 
-impl Default for MonitorMode {
-    fn default() -> Self {
-        Self::Embedded
-    }
-}
 
 /// Обёртка над `RawWindowHandle` для безопасной (для нас) передачи между потоками.
 /// `RawWindowHandle` содержит сырой указатель/идентификатор окна; он остаётся валидным
 /// всё время жизни главного Tauri-окна, которое мы не закрываем досрочно.
 #[derive(Debug, Clone, Copy)]
 pub struct SendableRawHandle(pub RawWindowHandle);
+// SAFETY: SendableRawHandle wraps a RawWindowHandle that is only used while the
+// parent Tauri window is alive. The window is never closed early, so the raw
+// handle/ID remains valid for the entire lifetime of the monitor thread.
 unsafe impl Send for SendableRawHandle {}
+// SAFETY: Same reasoning as Send — the raw handle is never mutated and remains
+// valid as long as the parent window exists.
 unsafe impl Sync for SendableRawHandle {}
 
 pub enum MonitorCommand {

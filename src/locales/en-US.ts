@@ -582,6 +582,7 @@ export default {
         "not_configured_title": "BloggerDog not configured"
       },
       "tabs": {
+        "bloggerdog": "BloggerDog",
         "computer": "Computer",
         "workspace": "Workspace"
       },
@@ -2082,4 +2083,4 @@ export default {
   "custom": {
     "delete": "Delete"
   }
-};
+}

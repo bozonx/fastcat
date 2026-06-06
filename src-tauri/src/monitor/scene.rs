@@ -12,6 +12,7 @@ use serde_json::Value;
 use ts_rs::TS;
 
 use crate::compositor::effects::EffectSpec;
+use crate::compositor::transitions::TransitionSpec;
 
 // ts-rs generates the TypeScript mirror of these IPC DTOs into
 // `src/types/generated/native-monitor/` (see `export_to` below). The frontend
@@ -152,8 +153,6 @@ pub struct SceneLayer {
     pub effects: Vec<EffectSpec>,
 }
 
-use crate::compositor::transitions::TransitionSpec;
-
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]
 pub struct SceneTransition {
@@ -179,16 +178,13 @@ pub struct SceneTransition {
     export_to = "../../src/types/generated/native-monitor/",
     rename_all = "lowercase"
 )]
+#[derive(Default)]
 pub enum AudioFadeCurve {
+    #[default]
     Linear,
     Logarithmic,
 }
 
-impl Default for AudioFadeCurve {
-    fn default() -> Self {
-        Self::Linear
-    }
-}
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
@@ -197,17 +193,14 @@ impl Default for AudioFadeCurve {
     export_to = "../../src/types/generated/native-monitor/",
     rename_all = "lowercase"
 )]
+#[derive(Default)]
 pub enum PreviewSyncMode {
     Smooth,
+    #[default]
     Balanced,
     Strict,
 }
 
-impl Default for PreviewSyncMode {
-    fn default() -> Self {
-        Self::Balanced
-    }
-}
 
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]

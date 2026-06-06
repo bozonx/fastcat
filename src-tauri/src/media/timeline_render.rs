@@ -9,6 +9,7 @@ use crate::compositor::scene::{LayerKind as CompLayerKind, RasterSource, Scene};
 use crate::compositor::Compositor;
 use crate::media::decode::{open as open_decoder, VideoDecoder};
 use crate::media::image_decode::decode_image;
+use crate::media::types::HwAccelMode;
 use crate::monitor::scene::{LayerKind, MonitorScene, SceneLayer};
 use crate::monitor::scene_build::{
     build_virtual_kind, finalize_layer, layer_with_auto_source_rotation, rasterize_svg,
@@ -111,6 +112,12 @@ pub struct VideoDecoderCache {
     capacity: usize,
 }
 
+impl Default for VideoDecoderCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VideoDecoderCache {
     pub fn new() -> Self {
         Self {
@@ -141,7 +148,7 @@ impl VideoDecoderCache {
             if self.decoders.contains_key(&path_buf) {
                 self.decoders.remove(&path_buf);
             }
-            let decoder = open_decoder(path, max_output_long_edge, None, None)?;
+            let decoder = open_decoder(path, max_output_long_edge, HwAccelMode::None, None)?;
             let (rotation, fps) = {
                 let info = decoder.info();
                 (info.rotation, info.fps)

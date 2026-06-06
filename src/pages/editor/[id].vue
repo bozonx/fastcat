@@ -181,35 +181,18 @@ function isDynamicPanelFocused(panelId: string) {
   // the monitor panel inside dynamic layout also needs to show its focus frame,
   // since MonitorContainer uses useExternalFocus and delegates frame rendering here.
   const activePanelId = focusStore.activePanelId;
-  if (activePanelId === 'monitor') {
-    const panel = [...projectStore.cutPanels, ...projectStore.soundPanels]
-      .flatMap((col) => col.panels)
-      .find((p) => p.id === panelId);
-    return panel?.type === 'monitor';
+  if (activePanelId !== 'monitor') return false;
+
+  for (const col of projectStore.cutPanels) {
+    const panel = col.panels.find((p) => p.id === panelId);
+    if (panel) return panel.type === 'monitor';
+  }
+  for (const col of projectStore.soundPanels) {
+    const panel = col.panels.find((p) => p.id === panelId);
+    if (panel) return panel.type === 'monitor';
   }
 
   return false;
-}
-
-function getDynamicPanelVerticalSize(
-  colId: string,
-  rowIndex: number,
-  totalRows: number,
-  view?: 'cut' | 'sound',
-) {
-  return getVerticalSize({ colId, rowIndex, totalRows, view });
-}
-
-function onDynamicPanelDrop(event: DragEvent, targetPanelId: string, view: 'cut' | 'sound') {
-  onDrop({ event, targetPanelId, view });
-}
-
-function onDynamicPanelVerticalResize(
-  event: { panes?: Array<{ size: number }> } | Array<{ size: number }>,
-  colId: string,
-  view: 'cut' | 'sound',
-) {
-  onVerticalSplitResize({ event, colId, view });
 }
 
 const { openProject } = useProjectActions();
@@ -277,15 +260,15 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"
             :drop-position="dropPosition"
-            :get-vertical-size="getDynamicPanelVerticalSize"
+            :get-vertical-size="(colId, rowIndex, totalRows, view) => getVerticalSize({ colId, rowIndex, totalRows, view })"
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
             @top-resize="onTopSplitResize"
-            @vertical-resize="onDynamicPanelVerticalResize"
+            @vertical-resize="(event, colId, view) => onVerticalSplitResize({ event, colId, view })"
             @drag-start="onDragStart"
             @drag-over="onDragOver"
             @drag-leave="onDragLeave"
-            @drop="onDynamicPanelDrop"
+            @drop="(event, targetPanelId, view) => onDrop({ event, targetPanelId, view })"
             @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"
@@ -302,16 +285,16 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"
             :drop-position="dropPosition"
-            :get-vertical-size="getDynamicPanelVerticalSize"
+            :get-vertical-size="(colId, rowIndex, totalRows, view) => getVerticalSize({ colId, rowIndex, totalRows, view })"
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
             @resized="onSoundResize"
             @top-resize="onSoundTopSplitResize"
-            @vertical-resize="onDynamicPanelVerticalResize"
+            @vertical-resize="(event, colId, view) => onVerticalSplitResize({ event, colId, view })"
             @drag-start="onDragStart"
             @drag-over="onDragOver"
             @drag-leave="onDragLeave"
-            @drop="onDynamicPanelDrop"
+            @drop="(event, targetPanelId, view) => onDrop({ event, targetPanelId, view })"
             @drag-end="onDragEnd"
             @focus="focusDynamicPanel"
             @close="(panel, view) => closePanelAndRestoreTab(panel, { view })"

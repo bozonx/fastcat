@@ -49,3 +49,12 @@ export function formatFps(fps: number | undefined | null): string {
   const value = typeof fps === 'number' && Number.isFinite(fps) ? fps : 0;
   return parseFloat(value.toFixed(2)).toString();
 }
+
+/**
+ * Truncates a string from the middle, replacing the omitted part with an ellipsis.
+ */
+export function middleEllipsis(text: string, maxLen: number = 50): string {
+  if (text.length <= maxLen) return text;
+  const side = Math.floor((maxLen - 1) / 2);
+  return text.slice(0, side) + '…' + text.slice(-side);
+}

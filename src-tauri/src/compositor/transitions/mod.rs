@@ -565,26 +565,28 @@ fn build_uniform(
             uni.p1 = rgb[1];
             uni.p2 = rgb[2];
         }
-        TransitionSpec::CustomWgsl { params, .. } => {
-            if let serde_json::Value::Object(map) = params {
-                for i in 0..8 {
-                    let key = format!("p{}", i);
-                    if let Some(v) = map.get(&key).and_then(|v| v.as_f64()) {
-                        match i {
-                            0 => uni.p0 = v as f32,
-                            1 => uni.p1 = v as f32,
-                            2 => uni.p2 = v as f32,
-                            3 => uni.p3 = v as f32,
-                            4 => uni.p4 = v as f32,
-                            5 => uni.p5 = v as f32,
-                            6 => uni.p6 = v as f32,
-                            7 => uni.p7 = v as f32,
-                            _ => {}
-                        }
+        TransitionSpec::CustomWgsl {
+            params: serde_json::Value::Object(map),
+            ..
+        } => {
+            for i in 0..8 {
+                let key = format!("p{}", i);
+                if let Some(v) = map.get(&key).and_then(|v| v.as_f64()) {
+                    match i {
+                        0 => uni.p0 = v as f32,
+                        1 => uni.p1 = v as f32,
+                        2 => uni.p2 = v as f32,
+                        3 => uni.p3 = v as f32,
+                        4 => uni.p4 = v as f32,
+                        5 => uni.p5 = v as f32,
+                        6 => uni.p6 = v as f32,
+                        7 => uni.p7 = v as f32,
+                        _ => {}
                     }
                 }
             }
         }
+        TransitionSpec::CustomWgsl { .. } => {}
         _ => {}
     }
 

@@ -16,6 +16,7 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useUiStore } from '~/stores/ui.store';
 import { useFocusStore } from '~/stores/focus.store';
 import { resolveExternalServiceConfig } from '~/utils/external-integrations';
+import { useVfs } from '~/composables/useVfs';
 import type { FsEntry } from '~/types/fs';
 import type { SelectedEntity } from '~/stores/selection.store';
 
@@ -72,8 +73,8 @@ const isBloggerDogConfigured = computed(() => {
 });
 
 const bloggerDogVfs = computed(() => {
-  if (!isBloggerDogConfigured.value) return null;
-  return (nuxtApp as { $vfs?: unknown }).$vfs;
+  if (!isBloggerDogConfigured.value) return undefined;
+  return useVfs();
 });
 
 function openIntegrationsSettings() {
@@ -184,7 +185,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
             class="flex-1 justify-center truncate"
             @click="setFilesPageActiveTab('bloggerdog')"
           >
-            Bloggerdog
+            {{ t('fastcat.fileManager.tabs.bloggerdog') }}
           </UButton>
         </div>
 
@@ -208,7 +209,6 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
                   {{
                     t(
                       'fastcat.fileManager.remote.not_configured_title',
-                      'BloggerDog not configured',
                     )
                   }}
                 </h3>
@@ -216,7 +216,6 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
                   {{
                     t(
                       'fastcat.fileManager.remote.not_configured_desc',
-                      'Integrate with BloggerDog to manage your remote content.',
                     )
                   }}
                 </p>
@@ -233,7 +232,7 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
             <FileBrowser
               v-else
               :remote-mode-only="true"
-              :vfs="bloggerDogVfs as any"
+              :vfs="bloggerDogVfs"
               instance-id="sidebar"
               hide-focus-frame
               class="h-full"

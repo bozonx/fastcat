@@ -141,7 +141,7 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
 pub fn init_env_vars() {
     #[cfg(target_os = "linux")]
     {
-        // SAFETY: вызывается до tauri::Builder и до любого взаимодействия с GTK/winit.
+        // SAFETY: Called before tauri::Builder and before any GTK/winit interaction.
         unsafe {
             std::env::set_var("GDK_BACKEND", "x11");
             std::env::set_var("WINIT_UNIX_BACKEND", "x11");

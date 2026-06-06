@@ -15,7 +15,15 @@ use crate::media::decode::probe_rotation;
 use crate::media::decode_gate::decoder_load_gate;
 use crate::media::ffmpeg_args::*;
 use crate::media::ffmpeg_utils::*;
+use crate::media::types::HwAccelMode;
 use crate::media::timeline_render::encode_rgba_as_webp;
+
+const DEFAULT_VIDEO_WIDTH: u32 = 1920;
+const DEFAULT_VIDEO_HEIGHT: u32 = 1080;
+const DEFAULT_VIDEO_FPS: f64 = 30.0;
+const DEFAULT_VIDEO_BITRATE_BPS: u32 = 5_000_000;
+const DEFAULT_WEBP_QUALITY: f32 = 75.0;
+const SEEK_THRESHOLD_SEC: f64 = 5.0;
 
 #[derive(Clone, Default)]
 pub struct NativeMediaTasks {
@@ -290,12 +298,12 @@ pub fn generate_proxy(
     let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
         hw_decode
     } else {
-        "none"
+        HwAccelMode::None
     };
 
     let mut args = Vec::new();
 
-    if hw_encode == "vaapi" {
+    if hw_encode == HwAccelMode::Vaapi {
         push_vaapi_init_device_args(&mut args, vaapi_dev);
     }
 
@@ -345,7 +353,7 @@ pub fn generate_proxy(
             }
             Ok(())
         }
-        Err(e) if hw_encode != "none" && !e.to_string().contains("cancelled") => {
+        Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
             log::warn!("[native-media] HW proxy failed ({e}), falling back to software encoding");
             let mut sw_options = options.clone();
             sw_options.enable_hardware_encoding = Some(false);
@@ -375,12 +383,12 @@ pub fn convert_media(
     let hw_encode = if options.enable_hardware_encoding.unwrap_or(false) {
         hw_decode
     } else {
-        "none"
+        HwAccelMode::None
     };
 
     let mut args = Vec::new();
 
-    if hw_encode == "vaapi" && options.kind == "video" {
+    if hw_encode == HwAccelMode::Vaapi && options.kind == "video" {
         push_vaapi_init_device_args(&mut args, vaapi_dev);
     }
 
@@ -394,8 +402,8 @@ pub fn convert_media(
 
     match options.kind.as_str() {
         "video" => {
-            let width = options.width.unwrap_or(1920).max(1);
-            let height = options.height.unwrap_or(1080).max(1);
+            let width = options.width.unwrap_or(DEFAULT_VIDEO_WIDTH).max(1);
+            let height = options.height.unwrap_or(DEFAULT_VIDEO_HEIGHT).max(1);
 
             push_video_encode_filter_args(&mut args, hw_encode, width, height, false);
 
@@ -404,11 +412,11 @@ pub fn convert_media(
 
             args.extend([
                 "-r".into(),
-                format_fps(options.fps.unwrap_or(30.0)),
+                format_fps(options.fps.unwrap_or(DEFAULT_VIDEO_FPS)),
                 "-c:v".into(),
                 video_codec.to_string(),
                 "-b:v".into(),
-                options.video_bitrate_bps.unwrap_or(5_000_000).to_string(),
+                options.video_bitrate_bps.unwrap_or(DEFAULT_VIDEO_BITRATE_BPS).to_string(),
             ]);
 
             if options.audio.unwrap_or(true) {
@@ -443,7 +451,7 @@ pub fn convert_media(
             }
             Ok(())
         }
-        Err(e) if hw_encode != "none" && !e.to_string().contains("cancelled") => {
+        Err(e) if hw_encode != HwAccelMode::None && !e.to_string().contains("cancelled") => {
             log::warn!(
                 "[native-media] HW conversion failed ({e}), falling back to software encoding"
             );
@@ -490,13 +498,17 @@ pub fn extract_video_frame_webp(
     let mut cmd = Command::new(&hw_settings.ffmpeg_path);
     cmd.arg("-nostdin");
 
-    if hw_decode == "vaapi" {
-        cmd.arg("-hwaccel")
-            .arg("vaapi")
-            .arg("-hwaccel_device")
-            .arg(&hw_settings.vaapi_device);
-    } else if hw_decode == "nvdec" {
-        cmd.arg("-hwaccel").arg("nvdec");
+    match hw_decode {
+        HwAccelMode::Vaapi => {
+            cmd.arg("-hwaccel")
+                .arg("vaapi")
+                .arg("-hwaccel_device")
+                .arg(&hw_settings.vaapi_device);
+        }
+        HwAccelMode::Nvdec => {
+            cmd.arg("-hwaccel").arg("nvdec");
+        }
+        _ => {}
     }
 
     cmd.arg("-v")
@@ -562,7 +574,7 @@ pub fn extract_video_frame_webps(
     let max_edge = max_width.max(max_height);
     let mut decoder = {
         let _permit = decoder_load_gate().acquire();
-        crate::media::decode::open(source_path, Some(max_edge), None, None)?
+        crate::media::decode::open(source_path, Some(max_edge), HwAccelMode::None, None)?
     };
     let mut results = vec![None; times_sec.len()];
 
@@ -570,11 +582,11 @@ pub fn extract_video_frame_webps(
     let webp_quality = if quality.is_finite() {
         quality.clamp(0.0, 1.0) * 100.0
     } else {
-        75.0
+        DEFAULT_WEBP_QUALITY
     };
 
     for (orig_idx, target_time) in sorted_times {
-        let needs_seek = last_pts < 0.0 || target_time < last_pts || (target_time - last_pts) > 5.0;
+        let needs_seek = last_pts < 0.0 || target_time < last_pts || (target_time - last_pts) > SEEK_THRESHOLD_SEC;
         if needs_seek {
             if let Err(e) = decoder.seek(target_time) {
                 log::warn!(
@@ -629,9 +641,7 @@ pub fn extract_video_frame_webps(
                                     rotated.width(),
                                     rotated.height(),
                                     webp_quality,
-                                )
-                                .map_err(Into::into)
-                            }
+                                )}
                             180 => {
                                 let rotated = image::imageops::rotate180(&buf);
                                 encode_rgba_as_webp(
@@ -639,9 +649,7 @@ pub fn extract_video_frame_webps(
                                     rotated.width(),
                                     rotated.height(),
                                     webp_quality,
-                                )
-                                .map_err(Into::into)
-                            }
+                                )}
                             270 => {
                                 let rotated = image::imageops::rotate270(&buf);
                                 encode_rgba_as_webp(
@@ -649,18 +657,14 @@ pub fn extract_video_frame_webps(
                                     rotated.width(),
                                     rotated.height(),
                                     webp_quality,
-                                )
-                                .map_err(Into::into)
-                            }
+                                )}
                             _ => unreachable!(),
                         }
                     } else {
                         Err(anyhow!("failed to create image buffer for rotation"))
                     }
                 } else {
-                    encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality)
-                        .map_err(Into::into)
-                };
+                    encode_rgba_as_webp(&frame.pixels, frame.width, frame.height, webp_quality)};
 
             match encode_res {
                 Ok(bytes) => {

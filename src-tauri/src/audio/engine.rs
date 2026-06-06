@@ -140,6 +140,7 @@ impl SpscRingBuffer {
     }
 
     /// Pop up to `out.len()` samples. Returns count read.
+    #[allow(clippy::needless_range_loop)]
     fn pop_slice(&self, out: &mut [f32]) -> usize {
         let w = self.write_idx.load(Ordering::Acquire);
         let r = self.read_idx.load(Ordering::Relaxed);
@@ -866,6 +867,8 @@ const DESIRED_RT_PRIORITY: i32 = 20;
 #[cfg(target_os = "linux")]
 fn set_producer_realtime_priority() {
     let soft_limit = unsafe {
+        // SAFETY: `rl` is a zeroed `rlimit` struct on the stack. `getrlimit` only reads/writes
+        // this well-defined struct and is a standard POSIX call.
         let mut rl: libc::rlimit = std::mem::zeroed();
         if libc::getrlimit(libc::RLIMIT_RTPRIO, &mut rl) != 0 {
             log::warn!(
@@ -887,6 +890,8 @@ fn set_producer_realtime_priority() {
 
     // Clamp the desired priority to both the kernel's valid SCHED_FIFO range and
     // the rtprio soft limit (RLIM_INFINITY collapses to the kernel max).
+    // SAFETY: `sched_get_priority_max/min` are standard POSIX calls with a well-known
+    // constant argument (SCHED_FIFO) and only return an integer value.
     let max_fifo = unsafe { libc::sched_get_priority_max(libc::SCHED_FIFO) }.max(1);
     let min_fifo = unsafe { libc::sched_get_priority_min(libc::SCHED_FIFO) }.max(1);
     let ceiling = (soft_limit.min(max_fifo as u64)) as i32;
@@ -896,6 +901,8 @@ fn set_producer_realtime_priority() {
         sched_priority: priority,
     };
     // pthread_setschedparam returns the errno directly (0 on success).
+    // SAFETY: `pthread_self()` returns the current thread handle. `param` is a valid
+    // `sched_param` on the stack with a priority already clamped to the kernel limits.
     let ret =
         unsafe { libc::pthread_setschedparam(libc::pthread_self(), libc::SCHED_FIFO, &param) };
     if ret == 0 {
@@ -1532,16 +1539,16 @@ fn resample_planar_with_speed(
     while offset < input_len {
         let copy_len = (input_len - offset).min(chunk_size);
         let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
-        for ch in 0..num_channels {
-            chunk[ch][..copy_len].copy_from_slice(&input[ch][offset..offset + copy_len]);
+        for (ch, inp) in chunk.iter_mut().zip(input.iter()) {
+            ch[..copy_len].copy_from_slice(&inp[offset..offset + copy_len]);
         }
 
         let out_chunk = resampler
             .process(&chunk, None)
             .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
 
-        for ch in 0..num_channels {
-            output[ch].extend_from_slice(&out_chunk[ch]);
+        for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
+            out.extend_from_slice(och);
         }
         offset += copy_len;
     }
@@ -1565,17 +1572,17 @@ fn resample_planar_with_speed(
         if out_chunk.iter().all(|ch| ch.is_empty()) {
             break;
         }
-        for ch in 0..num_channels {
-            output[ch].extend_from_slice(&out_chunk[ch]);
+        for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
+            out.extend_from_slice(och);
         }
     }
-    for ch in 0..num_channels {
-        if output[ch].len() > delay {
-            output[ch].drain(0..delay);
+    for out in output.iter_mut().take(num_channels) {
+        if out.len() > delay {
+            out.drain(0..delay);
         } else {
-            output[ch].clear();
+            out.clear();
         }
-        output[ch].truncate(expected_out);
+        out.truncate(expected_out);
     }
 
     Ok(output)
@@ -1624,11 +1631,9 @@ fn resample_planar_cached(
 
     // Combine carried-over remainder with the freshly decoded input.
     let mut pending: Vec<Vec<f32>> = Vec::with_capacity(num_channels);
-    for ch in 0..num_channels {
-        let mut channel = std::mem::take(&mut remainder[ch]);
-        if let Some(src) = input.get(ch) {
-            channel.extend_from_slice(src);
-        }
+    for (rem, src) in remainder.iter_mut().zip(input.iter()) {
+        let mut channel = std::mem::take(rem);
+        channel.extend_from_slice(src);
         pending.push(channel);
     }
     let pending_len = pending.first().map(|c| c.len()).unwrap_or(0);
@@ -1637,21 +1642,21 @@ fn resample_planar_cached(
     let mut offset = 0;
     while offset + chunk_size <= pending_len {
         let mut chunk = vec![vec![0.0f32; chunk_size]; num_channels];
-        for ch in 0..num_channels {
-            chunk[ch].copy_from_slice(&pending[ch][offset..offset + chunk_size]);
+        for (ch, pen) in chunk.iter_mut().zip(pending.iter()) {
+            ch.copy_from_slice(&pen[offset..offset + chunk_size]);
         }
         let out_chunk = resampler
             .process(&chunk, None)
             .map_err(|e| anyhow!("failed to resample chunk: {:?}", e))?;
-        for ch in 0..num_channels {
-            output[ch].extend_from_slice(&out_chunk[ch]);
+        for (out, och) in output.iter_mut().zip(out_chunk.iter()) {
+            out.extend_from_slice(och);
         }
         offset += chunk_size;
     }
 
     // Stash the unconsumed tail (< chunk_size frames) for the next call.
-    for ch in 0..num_channels {
-        remainder[ch] = pending[ch][offset..].to_vec();
+    for (rem, pen) in remainder.iter_mut().zip(pending.iter()) {
+        *rem = pen[offset..].to_vec();
     }
 
     Ok(output)
@@ -1666,6 +1671,7 @@ fn resample_planar_cached(
 ///
 /// Channels of unequal length are tolerated (frame count is the shortest
 /// channel) so a malformed decode never panics.
+#[allow(clippy::needless_range_loop)]
 fn planar_to_interleaved(planar: &[Vec<f32>], out_channels: usize) -> Vec<f32> {
     let src_channels = planar.len();
     if src_channels == 0 || out_channels == 0 {

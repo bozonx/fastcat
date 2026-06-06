@@ -582,6 +582,7 @@
         "not_configured_title": "BloggerDog не настроен"
       },
       "tabs": {
+        "bloggerdog": "BloggerDog",
         "computer": "Компьютер",
         "workspace": "Воркспейс"
       },

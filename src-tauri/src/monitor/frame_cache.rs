@@ -54,11 +54,10 @@ const CACHE_KEY_HZ: f64 = 1000.0;
 
 impl VideoFrameCache {
     pub fn new(fps: f64, frame_bytes: usize) -> Self {
-        let capacity = if frame_bytes == 0 {
-            MIN_FRAMES
-        } else {
-            (CACHE_BUDGET_BYTES / frame_bytes).clamp(MIN_FRAMES, MAX_FRAMES)
-        };
+        let capacity = CACHE_BUDGET_BYTES
+            .checked_div(frame_bytes)
+            .map(|n| n.clamp(MIN_FRAMES, MAX_FRAMES))
+            .unwrap_or(MIN_FRAMES);
         Self {
             fps: if fps > 0.0 { fps } else { 30.0 },
             capacity,

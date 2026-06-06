@@ -683,7 +683,7 @@ fn init_window(
     }
     #[cfg(not(target_os = "linux"))]
     {
-        // SAFETY: родительский handle = главное окно Tauri, живёт дольше монитора.
+        // SAFETY: The parent handle belongs to the main Tauri window, which outlives the monitor.
         window_attrs = unsafe { window_attrs.with_parent_window(Some(viewport.parent.0)) };
     }
 

@@ -657,7 +657,7 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
                 let raw_progress = (local_t / in_dur).clamp(0.0, 1.0);
                 let curve = t_in.curve.as_deref().unwrap_or("linear");
                 let progress = apply_transition_curve(raw_progress, curve);
-                opacity = opacity * progress as f32;
+                opacity *= progress as f32;
             }
         }
     } else if apply_out {
@@ -666,7 +666,7 @@ pub fn compute_transition_opacity(sl: &SceneLayer, local_t: f64, base_opacity: f
                 let raw_progress = ((local_t - out_start) / out_dur).clamp(0.0, 1.0);
                 let curve = t_out.curve.as_deref().unwrap_or("linear");
                 let progress = apply_transition_curve(raw_progress, curve);
-                opacity = opacity * (1.0 - progress) as f32;
+                opacity *= (1.0 - progress) as f32;
             }
         }
     }
@@ -944,7 +944,7 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
         _ => None,
     };
     if let Some((r, g, b)) = named {
-        let a = ((255_u8 as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
+        let a = (255_f64 * alpha.clamp(0.0, 1.0)).round() as u8;
         return Color::from_rgba8(r, g, b, a);
     }
 
@@ -970,7 +970,7 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
                 parse_color_channel(parts[1]),
                 parse_color_channel(parts[2]),
             ) {
-                let a = ((255_u8 as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
+                let a = (255_f64 * alpha.clamp(0.0, 1.0)).round() as u8;
                 return Color::from_rgba8(r, g, b, a);
             }
         }

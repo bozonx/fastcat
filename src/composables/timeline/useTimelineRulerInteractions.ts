@@ -52,7 +52,7 @@ export function useTimelineRulerInteractions(options: UseTimelineRulerInteractio
 
   const rulerSettings = computed(() => options.workspaceStore.userSettings.mouse.ruler);
 
-  function getTimeUsFromMouseEvent(event: MouseEvent): number {
+  function getTimeUsFromMouseEvent(event: PointerEvent | MouseEvent): number {
     const rect = options.containerRef.value?.getBoundingClientRect();
     if (!rect) return 0;
 

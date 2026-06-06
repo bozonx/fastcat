@@ -18,7 +18,7 @@ import {
   BASE_AUDIO_CODEC_OPTIONS,
   VIDEO_FORMAT_OPTIONS,
 } from '~/utils/webcodecs';
-import { formatFps } from '~/utils/format';
+import { formatFps, middleEllipsis } from '~/utils/format';
 import { useExportForm } from '~/composables/timeline/export/useExportForm';
 
 const props = defineProps<{
@@ -91,8 +91,8 @@ const {
 } = useExportForm();
 
 const tabOptions = computed(() => [
-  { label: t('videoEditor.export.videoTab', 'Экспорт видео'), value: 'video' },
-  { label: t('videoEditor.export.audioTab', 'Экспорт аудио'), value: 'audio' },
+  { label: t('videoEditor.export.videoTab'), value: 'video' },
+  { label: t('videoEditor.export.audioTab'), value: 'audio' },
 ]);
 
 const resolutionSummary = computed(() => {
@@ -180,11 +180,6 @@ async function onConfirm() {
   });
 }
 
-function middleEllipsis(text: string, maxLen: number = 50): string {
-  if (text.length <= maxLen) return text;
-  const side = Math.floor((maxLen - 1) / 2);
-  return text.slice(0, side) + '…' + text.slice(-side);
-}
 </script>
 
 <template>
@@ -560,7 +555,6 @@ function middleEllipsis(text: string, maxLen: number = 50): string {
             {{
               t(
                 'videoEditor.export.doNotClose',
-                'Please do not close this window or navigate away during export.',
               )
             }}
           </p>

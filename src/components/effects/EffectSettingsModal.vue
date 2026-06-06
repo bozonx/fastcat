@@ -40,9 +40,24 @@ interface ParametricEqPoint {
   gain?: number;
 }
 
+const EQ_CANVAS_WIDTH = 720;
+const EQ_CANVAS_HEIGHT = 220;
+const EQ_MIN_FREQUENCY = 20;
+const EQ_MAX_FREQUENCY = 20000;
+const EQ_MIN_GAIN = -24;
+const EQ_MAX_GAIN = 24;
+const EQ_MIN_Q = 0.1;
+const EQ_MAX_Q = 20;
+const EQ_GAUSSIAN_BASE_WIDTH = 1.6;
+const EQ_GAUSSIAN_MIN_WIDTH = 0.12;
+const EQ_SHELF_STEEPNESS = 4;
+const EQ_LOWPASS_ATTENUATION_DB = -24;
+const EQ_BANDPASS_ATTENUATION_DB = -18;
+const EQ_NOTCH_ATTENUATION_DB = -24;
+
 const curveCanvas = ref<HTMLCanvasElement | null>(null);
-const canvasWidth = 720;
-const canvasHeight = 220;
+const canvasWidth = EQ_CANVAS_WIDTH;
+const canvasHeight = EQ_CANVAS_HEIGHT;
 
 const isParametricEq = computed(() => {
   return props.manifest?.type === 'audio-parametric-eq';
@@ -61,8 +76,8 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function frequencyToX(frequency: number) {
-  const minFrequency = 20;
-  const maxFrequency = 20000;
+  const minFrequency = EQ_MIN_FREQUENCY;
+  const maxFrequency = EQ_MAX_FREQUENCY;
   const safeFrequency = clamp(frequency, minFrequency, maxFrequency);
   const ratio =
     (Math.log10(safeFrequency) - Math.log10(minFrequency)) /
@@ -72,8 +87,8 @@ function frequencyToX(frequency: number) {
 }
 
 function gainToY(gain: number) {
-  const minGain = -24;
-  const maxGain = 24;
+  const minGain = EQ_MIN_GAIN;
+  const maxGain = EQ_MAX_GAIN;
   const ratio = (clamp(gain, minGain, maxGain) - minGain) / (maxGain - minGain);
 
   return canvasHeight - ratio * canvasHeight;
@@ -84,11 +99,11 @@ function getPointContribution(point: ParametricEqPoint, frequency: number) {
     return 0;
   }
 
-  const pointFrequency = clamp(point.frequency ?? 1000, 20, 20000);
-  const normalizedQ = clamp(point.q ?? 1, 0.1, 20);
-  const gain = clamp(point.gain ?? 0, -24, 24);
+  const pointFrequency = clamp(point.frequency ?? 1000, EQ_MIN_FREQUENCY, EQ_MAX_FREQUENCY);
+  const normalizedQ = clamp(point.q ?? 1, EQ_MIN_Q, EQ_MAX_Q);
+  const gain = clamp(point.gain ?? 0, EQ_MIN_GAIN, EQ_MAX_GAIN);
   const distance = Math.abs(Math.log2(frequency / pointFrequency));
-  const gaussianWidth = Math.max(0.12, 1.6 / normalizedQ);
+  const gaussianWidth = Math.max(EQ_GAUSSIAN_MIN_WIDTH, EQ_GAUSSIAN_BASE_WIDTH / normalizedQ);
   const gaussian = Math.exp(-0.5 * (distance / gaussianWidth) ** 2);
 
   switch (point.type) {
@@ -97,21 +112,21 @@ function getPointContribution(point: ParametricEqPoint, frequency: number) {
     case 'lowshelf':
       return (
         gain /
-        (1 + Math.exp((distance * 4 * Math.sign(frequency - pointFrequency)) / gaussianWidth))
+        (1 + Math.exp((distance * EQ_SHELF_STEEPNESS * Math.sign(frequency - pointFrequency)) / gaussianWidth))
       );
     case 'highshelf':
       return (
         gain /
-        (1 + Math.exp((distance * -4 * Math.sign(frequency - pointFrequency)) / gaussianWidth))
+        (1 + Math.exp((distance * -EQ_SHELF_STEEPNESS * Math.sign(frequency - pointFrequency)) / gaussianWidth))
       );
     case 'lowpass':
-      return frequency > pointFrequency ? -24 * (1 - Math.exp(-distance * normalizedQ)) : 0;
+      return frequency > pointFrequency ? EQ_LOWPASS_ATTENUATION_DB * (1 - Math.exp(-distance * normalizedQ)) : 0;
     case 'highpass':
-      return frequency < pointFrequency ? -24 * (1 - Math.exp(-distance * normalizedQ)) : 0;
+      return frequency < pointFrequency ? EQ_LOWPASS_ATTENUATION_DB * (1 - Math.exp(-distance * normalizedQ)) : 0;
     case 'bandpass':
-      return -18 * (1 - gaussian);
+      return EQ_BANDPASS_ATTENUATION_DB * (1 - gaussian);
     case 'notch':
-      return -Math.min(24, 24 * gaussian);
+      return -Math.min(Math.abs(EQ_NOTCH_ATTENUATION_DB), Math.abs(EQ_NOTCH_ATTENUATION_DB) * gaussian);
     case 'allpass':
     default:
       return 0;
@@ -155,7 +170,7 @@ function drawEqVisualization() {
 
     // Draw text label
     context.fillStyle = 'rgba(148, 163, 184, 0.7)';
-    const label = marker >= 1000 ? `${marker / 1000}k` : `${marker}`;
+    const label = marker >= 1000 ? `${marker / 1000}k` : String(marker);
     context.fillText(label, x, canvasHeight - 16);
   }
 
@@ -197,8 +212,8 @@ function drawEqVisualization() {
     const frequency = 20 * 10 ** ((x / canvasWidth) * 3);
     const totalGain = clamp(
       eqPoints.value.reduce((sum, point) => sum + getPointContribution(point, frequency), 0),
-      -24,
-      24,
+      EQ_MIN_GAIN,
+      EQ_MAX_GAIN,
     );
     const y = gainToY(totalGain);
 
@@ -217,7 +232,7 @@ function drawEqVisualization() {
     }
 
     const x = frequencyToX(point.frequency ?? 1000);
-    const y = gainToY(clamp(point.gain ?? 0, -24, 24));
+    const y = gainToY(clamp(point.gain ?? 0, EQ_MIN_GAIN, EQ_MAX_GAIN));
 
     context.fillStyle = '#22c55e';
     context.beginPath();
@@ -258,16 +273,18 @@ function handleUpdateValue(key: string, value: unknown) {
   };
 
   // Traverse and set
-  let current: Record<string, unknown> = updates[rootKey] as Record<string, unknown>;
+  let current = updates[rootKey] as Record<string, unknown>;
   for (let i = 1; i < keys.length - 1; i++) {
     const k = keys[i];
-    if (k && current[k] === undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (current as any)[k] = isNaN(Number(keys[i + 1])) ? {} : [];
+    if (!k) continue;
+    if (current[k] === undefined) {
+      current[k] = isNaN(Number(keys[i + 1])) ? {} : [];
     }
-    if (k) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      current = current[k] as any;
+    const next = current[k];
+    if (next !== null && typeof next === 'object') {
+      current = next as Record<string, unknown>;
+    } else {
+      return;
     }
   }
 
@@ -283,7 +300,7 @@ function handleClose() {
 }
 
 watch(
-  () => [isOpen.value, isParametricEq.value, JSON.stringify(eqPoints.value)],
+  [isOpen, isParametricEq, eqPoints],
   async ([open, isEq]) => {
     if (!open || !isEq) {
       return;
@@ -292,7 +309,7 @@ watch(
     await nextTick();
     scheduleEqVisualizationDraw();
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 );
 
 onMounted(() => {

@@ -25,6 +25,7 @@ use crate::media::decode::VideoFrame;
 use crate::media::decode_gate::decoder_load_gate;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
+use crate::media::types::HwAccelMode;
 
 use super::frame_cache::{DecodedVideoFrame, VideoFrameCache};
 use super::handle::MonitorCommand;
@@ -374,7 +375,7 @@ impl LayerRuntimeManager {
                             Some(on_frame),
                             device,
                             queue,
-                            Some(hw_mode.as_str()),
+                            HwAccelMode::from_str(&hw_mode),
                             Some(vaapi_dev.as_str()),
                         ) {
                             Ok(pump) => {
