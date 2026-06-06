@@ -241,24 +241,15 @@ pub struct SceneAudioLayer {
 
 impl SceneAudioLayer {
     pub fn source_pts_at(&self, timeline_sec: f64) -> f64 {
-        let local = (timeline_sec - self.timeline_start_sec).max(0.0);
-        let speed = sanitize_clip_speed(self.speed);
-        let abs_speed = speed.abs();
-        let source_range =
-            if self.source_range_duration_sec.is_finite() && self.source_range_duration_sec > 0.0 {
-                self.source_range_duration_sec
-            } else {
-                (self.timeline_end_sec - self.timeline_start_sec).max(0.0) * abs_speed
-            };
-        let last_readable = (source_range - SOURCE_END_GUARD_SEC).max(0.0);
-        let source_delta = local * abs_speed;
-        let source_offset = if speed < 0.0 {
-            (last_readable - source_delta).clamp(0.0, last_readable)
-        } else {
-            source_delta.clamp(0.0, last_readable)
-        };
-
-        (self.source_start_sec + source_offset).max(0.0)
+        compute_source_pts_at(
+            timeline_sec,
+            self.timeline_start_sec,
+            self.timeline_end_sec,
+            self.source_start_sec,
+            self.source_range_duration_sec,
+            self.speed,
+            None,
+        )
     }
 }
 
@@ -326,29 +317,50 @@ impl SceneLayer {
     }
 
     pub fn source_pts_at(&self, timeline_sec: f64) -> f64 {
-        if let Some(freeze) = self.freeze_frame_source_sec {
-            return freeze.max(0.0);
-        }
-
-        let local = (timeline_sec - self.timeline_start_sec).max(0.0);
-        let speed = sanitize_clip_speed(self.speed);
-        let abs_speed = speed.abs();
-        let source_range =
-            if self.source_range_duration_sec.is_finite() && self.source_range_duration_sec > 0.0 {
-                self.source_range_duration_sec
-            } else {
-                (self.timeline_end_sec - self.timeline_start_sec).max(0.0) * abs_speed
-            };
-        let last_readable = (source_range - SOURCE_END_GUARD_SEC).max(0.0);
-        let source_delta = local * abs_speed;
-        let source_offset = if speed < 0.0 {
-            (last_readable - source_delta).clamp(0.0, last_readable)
-        } else {
-            source_delta.clamp(0.0, last_readable)
-        };
-
-        (self.source_start_sec + source_offset).max(0.0)
+        compute_source_pts_at(
+            timeline_sec,
+            self.timeline_start_sec,
+            self.timeline_end_sec,
+            self.source_start_sec,
+            self.source_range_duration_sec,
+            self.speed,
+            self.freeze_frame_source_sec,
+        )
     }
+}
+
+/// Shared implementation of source PTS computation for both video and audio layers.
+fn compute_source_pts_at(
+    timeline_sec: f64,
+    timeline_start_sec: f64,
+    timeline_end_sec: f64,
+    source_start_sec: f64,
+    source_range_duration_sec: f64,
+    speed: f64,
+    freeze_frame_source_sec: Option<f64>,
+) -> f64 {
+    if let Some(freeze) = freeze_frame_source_sec {
+        return freeze.max(0.0);
+    }
+
+    let local = (timeline_sec - timeline_start_sec).max(0.0);
+    let speed = sanitize_clip_speed(speed);
+    let abs_speed = speed.abs();
+    let source_range =
+        if source_range_duration_sec.is_finite() && source_range_duration_sec > 0.0 {
+            source_range_duration_sec
+        } else {
+            (timeline_end_sec - timeline_start_sec).max(0.0) * abs_speed
+        };
+    let last_readable = (source_range - SOURCE_END_GUARD_SEC).max(0.0);
+    let source_delta = local * abs_speed;
+    let source_offset = if speed < 0.0 {
+        (last_readable - source_delta).clamp(0.0, last_readable)
+    } else {
+        source_delta.clamp(0.0, last_readable)
+    };
+
+    (source_start_sec + source_offset).max(0.0)
 }
 
 fn sanitize_clip_speed(speed: f64) -> f64 {

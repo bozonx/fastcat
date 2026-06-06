@@ -23,11 +23,30 @@ use crate::compositor::scene::{
     BlendMode, Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextAlign, TextLayer,
     TextVerticalAlign, Transform, TransitionInfo,
 };
+use crate::media::ffmpeg_utils::is_quarter_turn;
 use parley::fontique::FontWeight;
 use parley::style::LineHeight;
 use parley::StyleProperty;
 
 use super::scene::{LayerKind, SceneLayer, SceneLayerTransform};
+
+impl From<&SceneLayerTransform> for Transform {
+    fn from(t: &SceneLayerTransform) -> Self {
+        Transform {
+            x: t.x,
+            y: t.y,
+            scale_x: t.scale_x,
+            scale_y: t.scale_y,
+            rotation_deg: t.rotation_deg,
+            anchor_x: t.anchor_x,
+            anchor_y: t.anchor_y,
+            crop_top: t.crop_top,
+            crop_bottom: t.crop_bottom,
+            crop_left: t.crop_left,
+            crop_right: t.crop_right,
+        }
+    }
+}
 
 /// Visible extent of a Gaussian blur as a multiple of the CSS-like blur radius.
 /// blur radius → σ ≈ blur/2, and the perceptible tail reaches ~3σ = 1.5·blur.
@@ -438,19 +457,17 @@ pub fn finalize_layer(
             // size is authoritative (the front-end cannot reproduce glyph shaping).
             let (anchor_dx, anchor_dy) =
                 text_anchor_offset(&kind, media_size, t.anchor_x, t.anchor_y);
-            Transform {
-                x: t.x + anchor_dx,
-                y: t.y + anchor_dy,
-                scale_x: t.scale_x * fit,
-                scale_y: t.scale_y * fit,
-                rotation_deg: t.rotation_deg + source_rotation,
-                anchor_x: t.anchor_x,
-                anchor_y: t.anchor_y,
-                crop_top: crop.top,
-                crop_bottom: crop.bottom,
-                crop_left: crop.left,
-                crop_right: crop.right,
-            }
+            let mut transform = Transform::from(t);
+            transform.x += anchor_dx;
+            transform.y += anchor_dy;
+            transform.scale_x *= fit;
+            transform.scale_y *= fit;
+            transform.rotation_deg += source_rotation;
+            transform.crop_top = crop.top;
+            transform.crop_bottom = crop.bottom;
+            transform.crop_left = crop.left;
+            transform.crop_right = crop.right;
+            transform
         }
         None => {
             if is_raster_layer {
@@ -746,10 +763,6 @@ fn oriented_fit_scale(natural: (u32, u32), scene_size: (u32, u32), rotation_deg:
     let sw = scene_size.0.max(1) as f64;
     let sh = scene_size.1.max(1) as f64;
     (sw / nw).min(sh / nh)
-}
-
-fn is_quarter_turn(rotation_deg: f64) -> bool {
-    matches!(normalized_right_angle(rotation_deg), 90 | 270)
 }
 
 // ---------------------------------------------------------------------------
@@ -1786,5 +1799,34 @@ mod tests {
             out.transform.x != 100.0,
             "center anchor with asymmetric shadow must bake a non-zero offset"
         );
+    }
+
+    #[test]
+    fn scene_layer_transform_into_compositor_transform() {
+        let slt = SceneLayerTransform {
+            x: 10.0,
+            y: 20.0,
+            scale_x: 2.0,
+            scale_y: 3.0,
+            rotation_deg: 45.0,
+            anchor_x: 0.5,
+            anchor_y: 0.25,
+            crop_top: 1.0,
+            crop_bottom: 2.0,
+            crop_left: 3.0,
+            crop_right: 4.0,
+        };
+        let t: Transform = Transform::from(&slt);
+        assert_eq!(t.x, 10.0);
+        assert_eq!(t.y, 20.0);
+        assert_eq!(t.scale_x, 2.0);
+        assert_eq!(t.scale_y, 3.0);
+        assert_eq!(t.rotation_deg, 45.0);
+        assert_eq!(t.anchor_x, 0.5);
+        assert_eq!(t.anchor_y, 0.25);
+        assert_eq!(t.crop_top, 1.0);
+        assert_eq!(t.crop_bottom, 2.0);
+        assert_eq!(t.crop_left, 3.0);
+        assert_eq!(t.crop_right, 4.0);
     }
 }

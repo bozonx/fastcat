@@ -107,17 +107,21 @@ fn allow_dropped_file_scope(app: tauri::AppHandle, path: String) -> Result<(), S
         .map_err(|e| e.to_string())
 }
 
+fn allow_directory_scope(app: &tauri::AppHandle, path: &str) -> Result<(), String> {
+    app.fs_scope()
+        .allow_directory(path, true)
+        .map_err(|e| e.to_string())?;
+    app.asset_protocol_scope()
+        .allow_directory(path, true)
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn allow_path_scope(app: tauri::AppHandle, path: String) -> Result<(), String> {
     reject_dangerous_scope_path(Path::new(&path))?;
 
     log::info!("[allow_path_scope] extending scope to: {path}");
-    app.fs_scope()
-        .allow_directory(&path, true)
-        .map_err(|e| e.to_string())?;
-    app.asset_protocol_scope()
-        .allow_directory(&path, true)
-        .map_err(|e| e.to_string())
+    allow_directory_scope(&app, &path)
 }
 
 #[tauri::command]
@@ -129,12 +133,7 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
     reject_dangerous_scope_path(Path::new(&path))?;
 
     log::info!("[allow_dev_directory_scope] extending scope to: {}", path);
-    app.fs_scope()
-        .allow_directory(&path, true)
-        .map_err(|error| error.to_string())?;
-    app.asset_protocol_scope()
-        .allow_directory(&path, true)
-        .map_err(|error| error.to_string())?;
+    allow_directory_scope(&app, &path)?;
     log::info!("[allow_dev_directory_scope] scope extended successfully");
     Ok(())
 }

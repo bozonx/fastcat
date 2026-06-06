@@ -126,8 +126,10 @@ impl VideoDecoderCache {
         max_output_long_edge: Option<u32>,
     ) -> Result<&mut CachedDecoder> {
         let path_buf = path.to_path_buf();
-        let needs_new = !self.decoders.contains_key(&path_buf)
-            || self.decoders[&path_buf].max_output_long_edge != max_output_long_edge;
+        let needs_new = match self.decoders.get(&path_buf) {
+            Some(entry) => entry.max_output_long_edge != max_output_long_edge,
+            None => true,
+        };
         if needs_new {
             while self.decoders.len() >= self.capacity && !self.decoders.is_empty() {
                 if let Some(oldest) = self.lru.pop_front() {

@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use super::ffmpeg_utils::is_quarter_turn;
 use super::hwaccel::{init_hwaccel, try_transfer_to_cpu, HwAccelContext};
 
 #[derive(Debug, Clone)]
@@ -432,7 +433,7 @@ fn rational_as_f64(value: ffmpeg::Rational) -> f64 {
 }
 
 fn coded_output_dimensions(visual_w: u32, visual_h: u32, rotation: i32) -> (u32, u32) {
-    if is_quarter_turn(rotation) {
+    if is_quarter_turn(rotation as f64) {
         (visual_h, visual_w)
     } else {
         (visual_w, visual_h)
@@ -460,16 +461,11 @@ fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u
 }
 
 fn visual_dimensions(width: u32, height: u32, rotation: i32) -> (u32, u32) {
-    if is_quarter_turn(rotation) {
+    if is_quarter_turn(rotation as f64) {
         (height, width)
     } else {
         (width, height)
     }
-}
-
-fn is_quarter_turn(rotation: i32) -> bool {
-    let normalized = rotation.rem_euclid(360).abs();
-    normalized == 90 || normalized == 270
 }
 
 pub(crate) fn probe_rotation(video: &serde_json::Value) -> i32 {

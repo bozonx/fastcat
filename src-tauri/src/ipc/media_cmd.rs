@@ -11,6 +11,16 @@ use crate::media::timeline_export::{export_timeline, NativeExportOptions};
 use crate::media::timeline_render::{render_timeline_frame_to_file, render_timeline_frame_to_webp};
 use crate::monitor::MonitorScene;
 
+macro_rules! apply_hw_settings {
+    ($options:expr, $hw:expr) => {
+        $options.ffmpeg_path = Some($hw.ffmpeg_path.clone());
+        $options.ffprobe_path = Some($hw.ffprobe_path.clone());
+        $options.hardware_acceleration_mode = Some($hw.hardware_acceleration_mode.clone());
+        $options.vaapi_device = Some($hw.vaapi_device.clone());
+        $options.enable_hardware_encoding = Some($hw.enable_hardware_encoding);
+    };
+}
+
 #[tauri::command]
 pub async fn native_media_metadata(
     path: String,
@@ -45,11 +55,7 @@ pub async fn native_media_generate_proxy(
         .read()
         .unwrap_or_else(|e| e.into_inner())
         .clone();
-    options.ffmpeg_path = Some(hw.ffmpeg_path);
-    options.ffprobe_path = Some(hw.ffprobe_path);
-    options.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode);
-    options.vaapi_device = Some(hw.vaapi_device);
-    options.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
+    apply_hw_settings!(options, hw);
 
     tokio::task::spawn_blocking(move || {
         generate_proxy(&tasks, &task_id, &source_path, &target_path, options)
@@ -76,11 +82,7 @@ pub async fn native_media_convert(
         .read()
         .unwrap_or_else(|e| e.into_inner())
         .clone();
-    options.ffmpeg_path = Some(hw.ffmpeg_path);
-    options.ffprobe_path = Some(hw.ffprobe_path);
-    options.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode);
-    options.vaapi_device = Some(hw.vaapi_device);
-    options.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
+    apply_hw_settings!(options, hw);
 
     tokio::task::spawn_blocking(move || {
         convert_media(&tasks, &task_id, &source_path, &target_path, options)
@@ -119,11 +121,7 @@ pub async fn native_timeline_export(
         .read()
         .unwrap_or_else(|e| e.into_inner())
         .clone();
-    options.ffmpeg_path = Some(hw.ffmpeg_path);
-    options.ffprobe_path = Some(hw.ffprobe_path);
-    options.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode);
-    options.vaapi_device = Some(hw.vaapi_device);
-    options.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
+    apply_hw_settings!(options, hw);
 
     tokio::task::spawn_blocking(move || {
         export_timeline(

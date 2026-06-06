@@ -48,6 +48,12 @@ pub fn ffmpeg_video_codec_hw(codec: &str, hw_mode: &str) -> &'static str {
     }
 }
 
+/// True if the rotation is a quarter-turn (90° or 270°), which swaps width/height.
+pub fn is_quarter_turn(rotation_deg: f64) -> bool {
+    let normalized = rotation_deg.rem_euclid(360.0).abs();
+    normalized == 90.0 || normalized == 270.0
+}
+
 /// Round up to the nearest even number, minimum 2.
 /// FFmpeg and many codecs require even dimensions.
 pub fn even(value: u32) -> u32 {
@@ -59,7 +65,7 @@ pub fn even(value: u32) -> u32 {
 }
 
 /// Resolves hardware decode mode string (auto/vaapi/nvdec/none).
-pub fn resolve_hw_decode_mode<'a>(hw_accel: &'a str, vaapi_device: &'a str) -> &'a str {
+pub fn resolve_hw_decode_mode(hw_accel: &str, vaapi_device: &str) -> &'static str {
     if hw_accel != "none" {
         if hw_accel == "auto" {
             if std::path::Path::new(vaapi_device).exists() {
@@ -191,5 +197,21 @@ pub fn verify_ffmpeg_binary(path: &str) -> Result<()> {
         }
         Ok(_) => Err(anyhow!("{path} returned non-zero status")),
         Err(e) => Err(anyhow!("failed to run {path}: {e}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_quarter_turn_detects_90_and_270() {
+        assert!(is_quarter_turn(90.0));
+        assert!(is_quarter_turn(270.0));
+        assert!(is_quarter_turn(-90.0));
+        assert!(is_quarter_turn(450.0));
+        assert!(!is_quarter_turn(0.0));
+        assert!(!is_quarter_turn(180.0));
+        assert!(!is_quarter_turn(45.0));
     }
 }

@@ -49,38 +49,30 @@ async fn probe_webgpu_render_engine() -> WebGpuRenderEngineStatus {
     let info = adapter.get_info();
     let limits = adapter.limits();
 
+    let adapter_status = Some(WebGpuAdapterStatus {
+        name: info.name,
+        vendor: info.vendor,
+        device: info.device,
+        device_type: format!("{:?}", info.device_type),
+        backend: format!("{:?}", info.backend),
+        driver: info.driver,
+        driver_info: info.driver_info,
+        max_texture_dimension_2d: limits.max_texture_dimension_2d,
+        max_buffer_size: limits.max_buffer_size,
+    });
+
     match adapter
         .request_device(&wgpu::DeviceDescriptor::default())
         .await
     {
         Ok((_device, _queue)) => WebGpuRenderEngineStatus {
             available: true,
-            adapter: Some(WebGpuAdapterStatus {
-                name: info.name,
-                vendor: info.vendor,
-                device: info.device,
-                device_type: format!("{:?}", info.device_type),
-                backend: format!("{:?}", info.backend),
-                driver: info.driver,
-                driver_info: info.driver_info,
-                max_texture_dimension_2d: limits.max_texture_dimension_2d,
-                max_buffer_size: limits.max_buffer_size,
-            }),
+            adapter: adapter_status,
             error: None,
         },
         Err(error) => WebGpuRenderEngineStatus {
             available: false,
-            adapter: Some(WebGpuAdapterStatus {
-                name: info.name,
-                vendor: info.vendor,
-                device: info.device,
-                device_type: format!("{:?}", info.device_type),
-                backend: format!("{:?}", info.backend),
-                driver: info.driver,
-                driver_info: info.driver_info,
-                max_texture_dimension_2d: limits.max_texture_dimension_2d,
-                max_buffer_size: limits.max_buffer_size,
-            }),
+            adapter: adapter_status,
             error: Some(error.to_string()),
         },
     }

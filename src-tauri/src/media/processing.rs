@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use parking_lot::Mutex;
@@ -755,26 +756,12 @@ pub fn extract_video_frame_webps(
 /// keeps emitting progress is never killed mid-run.
 const FFMPEG_STALL_TIMEOUT: Duration = Duration::from_secs(300);
 
-fn run_ffmpeg_task(
-    tasks: &NativeMediaTasks,
-    task_id: &str,
-    ffmpeg_path: &str,
-    args: Vec<String>,
-) -> Result<()> {
-    verify_ffmpeg_binary(ffmpeg_path).context("ffmpeg binary check failed")?;
-    let mut child = Command::new(ffmpeg_path)
-        .args(&args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context("failed to spawn ffmpeg")?;
-
-    // Drain stderr in a background thread (prevents pipe deadlock) and record the
-    // last time ffmpeg wrote anything, so the poll loop can detect a true stall.
+pub(crate) fn spawn_stderr_drain(
+    child: &mut Child,
+) -> (Option<JoinHandle<Vec<u8>>>, Arc<Mutex<Instant>>) {
     let last_activity = Arc::new(Mutex::new(Instant::now()));
     let activity = last_activity.clone();
-    let stderr_handle = child.stderr.take().map(|mut stderr| {
+    let handle = child.stderr.take().map(|mut stderr| {
         std::thread::spawn(move || {
             let mut buf = Vec::new();
             let mut chunk = [0u8; 4096];
@@ -791,7 +778,25 @@ fn run_ffmpeg_task(
             buf
         })
     });
+    (handle, last_activity)
+}
 
+fn run_ffmpeg_task(
+    tasks: &NativeMediaTasks,
+    task_id: &str,
+    ffmpeg_path: &str,
+    args: Vec<String>,
+) -> Result<()> {
+    verify_ffmpeg_binary(ffmpeg_path).context("ffmpeg binary check failed")?;
+    let mut child = Command::new(ffmpeg_path)
+        .args(&args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("failed to spawn ffmpeg")?;
+
+    let (stderr_handle, last_activity) = spawn_stderr_drain(&mut child);
     let child = tasks.insert(task_id, child);
 
     loop {

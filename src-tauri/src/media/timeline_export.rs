@@ -20,7 +20,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
-use parking_lot::Mutex;
 use serde::Deserialize;
 
 use crate::audio::engine::render_scene_to_wav;
@@ -28,7 +27,7 @@ use crate::compositor::Compositor;
 use crate::monitor::scene::MonitorScene;
 
 use super::ffmpeg_utils::*;
-use super::processing::NativeMediaTasks;
+use super::processing::{spawn_stderr_drain, NativeMediaTasks};
 
 /// Kill the export if ffmpeg makes no progress for this long. A stall guard rather
 /// than a wall-clock cap, so a legitimately long encode that keeps streaming frames
@@ -205,25 +204,7 @@ pub fn export_timeline(
         // Drain stderr in background to avoid pipe deadlock, recording the last time
         // ffmpeg emitted anything so the watchdog can tell a true stall from a slow
         // but otherwise healthy encode.
-        let last_activity = Arc::new(Mutex::new(Instant::now()));
-        let stderr_activity = last_activity.clone();
-        let stderr_handle = child.stderr.take().map(|mut stderr| {
-            std::thread::spawn(move || {
-                let mut buf = Vec::new();
-                let mut chunk = [0u8; 4096];
-                loop {
-                    match std::io::Read::read(&mut stderr, &mut chunk) {
-                        Ok(0) => break,
-                        Ok(n) => {
-                            *stderr_activity.lock() = Instant::now();
-                            buf.extend_from_slice(&chunk[..n]);
-                        }
-                        Err(_) => break,
-                    }
-                }
-                buf
-            })
-        });
+        let (stderr_handle, last_activity) = spawn_stderr_drain(&mut child);
 
         // Register the process so `native_media_cancel(task_id)` can stop it.
         let child = tasks.insert(task_id, child);
@@ -621,29 +602,15 @@ fn resolve_export_hw_mode(options: &NativeExportOptions) -> &'static str {
     if !options.enable_hardware_encoding.unwrap_or(false) || export_uses_alpha(options) {
         return "none";
     }
-    match options
-        .hardware_acceleration_mode
-        .as_deref()
-        .unwrap_or("none")
-    {
-        "auto" => {
-            let dev = options
-                .vaapi_device
-                .as_deref()
-                .unwrap_or(DEFAULT_VAAPI_DEVICE);
-            if std::path::Path::new(dev).exists() {
-                "vaapi"
-            } else if std::path::Path::new("/dev/nvidia0").exists() {
-                // No VAAPI render node, but an NVIDIA device is present — use NVENC
-                // instead of silently dropping to software.
-                "nvdec"
-            } else {
-                "none"
-            }
-        }
-        "vaapi" => "vaapi",
-        "nvdec" | "nvenc" => "nvdec",
-        _ => "none",
+    let hw_accel = options.hardware_acceleration_mode.as_deref().unwrap_or("none");
+    let vaapi_device = options.vaapi_device.as_deref().unwrap_or(DEFAULT_VAAPI_DEVICE);
+    let mode = resolve_hw_decode_mode(hw_accel, vaapi_device);
+    if mode == "none" && hw_accel == "auto" && std::path::Path::new("/dev/nvidia0").exists() {
+        // No VAAPI render node, but an NVIDIA device is present — use NVENC
+        // instead of silently dropping to software.
+        "nvdec"
+    } else {
+        mode
     }
 }
 

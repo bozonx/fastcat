@@ -175,19 +175,8 @@ impl Compositor {
         viewport_h: u32,
     ) -> Result<()> {
         let dev_id = surface.dev_id;
-        let device_handle = &self.render_cx.devices[dev_id];
-        let device = device_handle.device.clone();
-        let queue = device_handle.queue.clone();
-        let effective_scene =
-            self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
-        let mut registered_images = Vec::new();
-        let vello = self.build_vello_scene_from_materialized(
-            dev_id,
-            &effective_scene,
-            viewport_w,
-            viewport_h,
-            &mut registered_images,
-        )?;
+        let (vello, registered_images) =
+            self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h)?;
         let result = self.render_to_surface(surface, &vello, scene.background);
         self.unregister_images(dev_id, registered_images);
         result
@@ -201,6 +190,21 @@ impl Compositor {
         viewport_w: u32,
         viewport_h: u32,
     ) -> Result<Vec<u8>> {
+        let (vello, registered_images) =
+            self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h)?;
+        let result =
+            self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background);
+        self.unregister_images(dev_id, registered_images);
+        result
+    }
+
+    fn prepare_vello_scene(
+        &mut self,
+        dev_id: usize,
+        scene: &super::scene::Scene,
+        viewport_w: u32,
+        viewport_h: u32,
+    ) -> Result<(VelloScene, Vec<ImageData>)> {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
@@ -214,10 +218,7 @@ impl Compositor {
             viewport_h,
             &mut registered_images,
         )?;
-        let result =
-            self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background);
-        self.unregister_images(dev_id, registered_images);
-        result
+        Ok((vello, registered_images))
     }
 
     fn build_vello_scene_from_materialized(
