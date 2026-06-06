@@ -416,11 +416,14 @@ impl WindowState {
         if self.layers.is_empty() && self.audio.as_ref().is_none_or(NativeAudioEngine::is_empty) {
             return;
         }
+        // Start wall-clock first so audio.play() and video layers share the
+        // exact same origin. Reversing the order lets audio buffer ahead of
+        // the visual timeline, making the waveform lag behind the voice.
+        self.clock.play();
         let pts = self.clock.current_pts();
         if let Some(audio) = self.audio.as_ref() {
             audio.play(pts);
         }
-        self.clock.play();
         self.layers.set_playing(true);
         // После скраба по кешу декодеры могут стоять не на текущей позиции —
         // перепозиционируем, чтобы forward-стрим воспроизведения был корректным.

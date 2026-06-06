@@ -64,6 +64,7 @@ impl NativeMediaTasks {
 #[serde(rename_all = "camelCase")]
 pub struct NativeMediaMetadata {
     pub duration: f64,
+    pub container: String,
     pub video: Option<NativeVideoMetadata>,
     pub audio: Option<NativeAudioMetadata>,
 }
@@ -182,12 +183,22 @@ fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
         .and_then(|s| s.as_array())
         .ok_or_else(|| anyhow!("ffprobe: no streams"))?;
 
-    let duration = json
-        .get("format")
+    let format = json.get("format").and_then(|f| f.as_object());
+
+    let duration = format
         .and_then(|f| f.get("duration"))
         .and_then(|v| v.as_str())
         .and_then(|s| s.parse::<f64>().ok())
         .unwrap_or(0.0);
+
+    let container = format
+        .and_then(|f| f.get("format_name"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .split(',')
+        .next()
+        .unwrap_or("")
+        .to_string();
 
     let video = streams
         .iter()
@@ -243,6 +254,7 @@ fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
 
     Ok(NativeMediaMetadata {
         duration,
+        container,
         video,
         audio,
     })

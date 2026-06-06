@@ -332,6 +332,7 @@ export const useMediaStore = defineStore('media', () => {
               meta = {
                 source: { size: file.size, lastModified: file.lastModified },
                 duration: nativeMeta.duration,
+                container: nativeMeta.container,
               };
               if (nativeMeta.video) {
                 const normalizedRotation =

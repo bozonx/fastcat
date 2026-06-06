@@ -8,6 +8,7 @@ type NativeBytePayload = ArrayBuffer | ArrayBufferView | number[];
 
 export interface NativeMediaMetadata {
   duration: number;
+  container: string;
   video?: {
     width: number;
     height: number;

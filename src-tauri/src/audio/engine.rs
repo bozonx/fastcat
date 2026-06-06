@@ -455,7 +455,13 @@ impl NativeAudioEngine {
 
     pub fn pause(&self) -> f64 {
         let mut state = self.shared.0.lock();
-        let pts = audible_pts_sec(&state, &self.clock, self.sample_rate);
+        let pts = audible_pts_sec(
+            &state,
+            &self.clock,
+            self.sample_rate,
+            self.device_channels as usize,
+            self.ring.len(),
+        );
         state.playing = false;
         self.clock.playing.store(false, Ordering::Release);
         state.origin_pts_sec = pts;
@@ -484,7 +490,13 @@ impl NativeAudioEngine {
         if !state.playing {
             return None;
         }
-        Some(audible_pts_sec(&state, &self.clock, self.sample_rate))
+        Some(audible_pts_sec(
+            &state,
+            &self.clock,
+            self.sample_rate,
+            self.device_channels as usize,
+            self.ring.len(),
+        ))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -634,12 +646,20 @@ fn write_output<T: OutputSample>(
         .store(output_latency_sec(info).to_bits(), Ordering::Release);
 }
 
-fn audible_pts_sec(state: &AudioShared, clock: &RealtimeClock, sample_rate: u32) -> f64 {
-    let latency_frames = (clock.output_latency_sec().max(0.0) * sample_rate as f64).round() as u64;
-    // `frames_written` already accounts for every frame handed to the OS callback;
-    // the output latency is the pipeline delay. Subtracting buffer size again
-    // would double-count the in-flight audio.
-    let audible_frames = clock.frames().saturating_sub(latency_frames);
+fn audible_pts_sec(
+    state: &AudioShared,
+    clock: &RealtimeClock,
+    sample_rate: u32,
+    output_channels: usize,
+    ring_samples: usize,
+) -> f64 {
+    let hw_latency_frames = (clock.output_latency_sec().max(0.0) * sample_rate as f64).round() as u64;
+    // The ring buffer holds already-mixed but not-yet-audible samples.
+    // On Linux cpal often reports zero hardware latency, so this is the
+    // dominant delay in the audio pipeline and must be subtracted too.
+    let ring_frames = (ring_samples / output_channels.max(1)) as u64;
+    let total_latency_frames = hw_latency_frames + ring_frames;
+    let audible_frames = clock.frames().saturating_sub(total_latency_frames);
     state.origin_pts_sec + audible_frames as f64 / sample_rate as f64
 }
 
