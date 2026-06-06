@@ -120,6 +120,17 @@ mod tests {
     }
 
     #[test]
+    fn seek_while_paused_keeps_paused() {
+        let mut c = PlaybackClock::new();
+        c.seek(5.0);
+        c.pause();
+        c.seek(7.0);
+        // seek() after pause must not restart the clock.
+        assert!(!c.is_playing());
+        assert_eq!(c.current_pts(), 7.0);
+    }
+
+    #[test]
     fn sync_to_audio_pts_does_not_jump_backwards() {
         let mut c = PlaybackClock::new();
         c.play();

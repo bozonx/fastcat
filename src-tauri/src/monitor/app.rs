@@ -430,7 +430,10 @@ impl WindowState {
     fn pause(&mut self) {
         if let Some(audio) = self.audio.as_ref() {
             let audio_pts = audio.pause();
-            // Sync clock to audio position so both agree on the frozen frame.
+            // Stop the clock first, then sync its paused position to audio.
+            // Using seek() alone leaves wall_origin set, so the clock keeps
+            // ticking and the event loop never stops emitting monitor:time.
+            self.clock.pause();
             self.clock.seek(audio_pts);
         } else {
             self.clock.pause();
