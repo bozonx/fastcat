@@ -4,6 +4,7 @@ import { normalizeAppSettings, normalizeWorkspaceSettings } from './normalizers/
 import { normalizeHotkeys } from './normalizers/hotkeys';
 import { normalizeUserPresets } from './normalizers/presets';
 import {
+  normalizeAudioEngineSettings,
   normalizeDeleteWithoutConfirmation,
   normalizeIntegrationsSettings,
   normalizeMouseSettings,
@@ -62,6 +63,7 @@ export function normalizeUserSettings(raw: unknown): FastCatUserSettings {
     backup: normalizeBackupSettings(input),
     autosave: normalizeAutosaveSettings(input),
     presets: normalizePresetsSettings(input),
+    audioEngine: normalizeAudioEngineSettings(input),
   };
 }
 

@@ -128,6 +128,24 @@ pub async fn monitor_set_canvas_size(
 }
 
 #[tauri::command]
+pub async fn monitor_set_audio_settings(
+    buffer_size: Option<u32>,
+    backend: Option<String>,
+    engine: State<'_, VideoEngine>,
+) -> Result<(), String> {
+    use crate::audio::engine::AudioEngineSettings;
+    let settings = AudioEngineSettings {
+        buffer_size,
+        backend,
+    };
+    engine
+        .ensure_monitor()
+        .map_err(|e| e.to_string())?
+        .send(MonitorCommand::SetAudioSettings(settings))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String> {
     if let Some(m) = engine.monitor() {
         m.send(MonitorCommand::Close).map_err(|e| e.to_string())?;

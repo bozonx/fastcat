@@ -92,6 +92,10 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled;
   workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
     DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
+  workspaceStore.userSettings.audioEngine.bufferSize =
+    DEFAULT_USER_SETTINGS.audioEngine.bufferSize;
+  workspaceStore.userSettings.audioEngine.backend =
+    DEFAULT_USER_SETTINGS.audioEngine.backend;
   isResetConfirmOpen.value = false;
 }
 
@@ -113,6 +117,28 @@ watch(
       await loadTauriDiagnostics();
     }
   },
+);
+
+// Forward native audio engine settings to the Rust backend.
+watch(
+  () => [
+    workspaceStore.userSettings.audioEngine.bufferSize,
+    workspaceStore.userSettings.audioEngine.backend,
+  ],
+  async ([bufferSize, backend]) => {
+    if (!isTauri.value) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('monitor_set_audio_settings', {
+        bufferSize: bufferSize === 'default' ? null : bufferSize,
+        backend: backend === 'default' ? null : backend,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to update audio engine settings:', err);
+    }
+  },
+  { deep: true },
 );
 
 const tauriAudioCodecs = computed(() => {
@@ -208,6 +234,53 @@ const webAudioCodecs = computed(() => {
         "
       />
     </UiFormField>
+
+    <!-- Native audio engine settings (Tauri only) -->
+    <template v-if="isTauri">
+      <div class="flex flex-col gap-4 pt-4 border-t border-ui-border-muted/50">
+        <div class="text-sm font-medium text-ui-text">
+          {{ t('videoEditor.settings.audio.nativeEngineTitle') }}
+        </div>
+
+        <UiFormField
+          :label="t('videoEditor.settings.audio.bufferSizeTitle')"
+          :help="t('videoEditor.settings.audio.bufferSizeHelp')"
+        >
+          <USelect
+            v-model="workspaceStore.userSettings.audioEngine.bufferSize"
+            size="sm"
+            :options="[
+              { label: t('common.default'), value: 'default' },
+              { label: '64', value: 64 },
+              { label: '128', value: 128 },
+              { label: '256', value: 256 },
+              { label: '512', value: 512 },
+              { label: '1024', value: 1024 },
+              { label: '2048', value: 2048 },
+              { label: '4096', value: 4096 },
+            ]"
+          />
+        </UiFormField>
+
+        <UiFormField
+          :label="t('videoEditor.settings.audio.backendTitle')"
+          :help="t('videoEditor.settings.audio.backendHelp')"
+        >
+          <USelect
+            v-model="workspaceStore.userSettings.audioEngine.backend"
+            size="sm"
+            :options="[
+              { label: t('common.default'), value: 'default' },
+              { label: 'ALSA', value: 'alsa' },
+              { label: 'PulseAudio', value: 'pulseaudio' },
+              { label: 'JACK', value: 'jack' },
+              { label: 'WASAPI', value: 'wasapi' },
+              { label: 'CoreAudio', value: 'coreaudio' },
+            ]"
+          />
+        </UiFormField>
+      </div>
+    </template>
 
     <!-- Diagnostics section -->
     <div class="flex flex-col gap-3 pt-4 border-t border-ui-border-muted/50">

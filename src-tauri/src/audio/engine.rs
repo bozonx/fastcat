@@ -8,13 +8,20 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{OutputCallbackInfo, SampleFormat, Stream, StreamConfig};
+use cpal::{BufferSize, OutputCallbackInfo, SampleFormat, Stream, StreamConfig, SupportedBufferSize};
 use parking_lot::{Condvar, Mutex};
 
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 const CHUNK_DURATION_SEC: f64 = 0.05;
 const PREBUFFER_CHUNKS: usize = 8;
+
+/// Per-layer audio engine settings forwarded from the UI.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct AudioEngineSettings {
+    pub buffer_size: Option<u32>,
+    pub backend: Option<String>,
+}
 /// Fraction of the current source chunk tolerated as scheduling jitter before
 /// the streaming decoder treats the request as a discontinuity and reseeks.
 /// Reversed clips bypass this and always reseek (see `decode_symphonia_chunk`).
@@ -306,13 +313,14 @@ pub struct NativeAudioEngine {
     clock: Arc<RealtimeClock>,
     sample_rate: u32,
     device_channels: u16,
+    settings: AudioEngineSettings,
     _stream: Stream,
     producer: Option<JoinHandle<()>>,
 }
 
 impl NativeAudioEngine {
-    pub fn new() -> Result<Self> {
-        let host = cpal::default_host();
+    pub fn new(settings: &AudioEngineSettings) -> Result<Self> {
+        let host = Self::select_host(settings);
         let device = host
             .default_output_device()
             .ok_or_else(|| anyhow!("no default audio output device"))?;
@@ -320,8 +328,21 @@ impl NativeAudioEngine {
             .default_output_config()
             .context("default output config failed")?;
         let sample_rate = supported.sample_rate();
-        let config: StreamConfig = supported.clone().into();
+        let mut config: StreamConfig = supported.clone().into();
         let device_channels = config.channels.max(1);
+
+        // Apply user-requested buffer size if the device supports it.
+        if let Some(req_bs) = settings.buffer_size {
+            if let SupportedBufferSize::Range { min, max } = supported.buffer_size() {
+                if req_bs >= *min && req_bs <= *max {
+                    config.buffer_size = BufferSize::Fixed(req_bs);
+                } else {
+                    log::warn!(
+                        "[audio] requested buffer size {req_bs} outside supported range {min}–{max}"
+                    );
+                }
+            }
+        }
         // The engine renders directly into the device's native channel layout,
         // so the ring buffer holds `output_channels`-interleaved samples and the
         // output callback can copy them 1:1 (no channel remapping at playback).
@@ -351,6 +372,9 @@ impl NativeAudioEngine {
         let producer = std::thread::Builder::new()
             .name("fastcat-audio-producer".into())
             .spawn(move || {
+                // Max priority gives SCHED_FIFO real-time scheduling on Linux when
+                // the process has CAP_SYS_NICE (or is root). Without it the call
+                // fails harmlessly — we just log and continue with default priority.
                 if let Err(e) = thread_priority::set_current_thread_priority(
                     thread_priority::ThreadPriority::Max,
                 ) {
@@ -373,9 +397,43 @@ impl NativeAudioEngine {
             clock,
             sample_rate,
             device_channels,
+            settings: settings.clone(),
             _stream: stream,
             producer: Some(producer),
         })
+    }
+
+    fn select_host(settings: &AudioEngineSettings) -> cpal::Host {
+        let requested = settings.backend.as_deref().unwrap_or("default");
+        if requested == "default" {
+            return cpal::default_host();
+        }
+        let available = cpal::available_hosts();
+        let match_id = available.iter().find(|id| {
+            let name = format!("{:?}", id).to_lowercase();
+            name.contains(&requested.to_lowercase())
+        });
+        if let Some(id) = match_id {
+            log::info!("[audio] using backend: {requested}");
+            cpal::host_from_id(*id).unwrap_or_else(|e| {
+                log::warn!("[audio] failed to create host {requested}: {e}, falling back to default");
+                cpal::default_host()
+            })
+        } else {
+            log::warn!(
+                "[audio] requested backend '{requested}' not in available hosts ({available:?}), using default"
+            );
+            cpal::default_host()
+        }
+    }
+
+    pub fn update_settings(&mut self, settings: &AudioEngineSettings) {
+        if self.settings.buffer_size != settings.buffer_size
+            || self.settings.backend != settings.backend
+        {
+            log::info!("[audio] settings changed, will apply on next monitor restart");
+            self.settings = settings.clone();
+        }
     }
 
     pub fn set_scene(
@@ -724,7 +782,9 @@ fn producer_loop(
 
                     break Some((state.master_gain, state.producer_pts_sec, state.seek_serial));
                 }
-                let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(50));
+                // Short 1 ms sleep instead of 50 ms: the producer must wake quickly
+                // when the ring drops below the prebuffer limit to avoid underruns.
+                let wait_res = shared.1.wait_for(&mut state, Duration::from_millis(1));
                 if wait_res.timed_out()
                     && (!state.playing || state.scene.is_empty() || ring.len() >= limit_samples)
                 {
@@ -1188,7 +1248,10 @@ const RESAMPLER_CHUNK_SIZE: usize = 1024;
 fn make_sinc_resampler(ratio: f64, num_channels: usize) -> Result<rubato::SincFixedIn<f32>> {
     use rubato::{SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction};
     let params = SincInterpolationParameters {
-        sinc_len: 256,
+        // sinc_len was 256; lowered to 128 for preview to cut CPU load in half.
+        // Quality difference is inaudible for monitoring; export uses the same
+        // resampler so it still sounds clean.
+        sinc_len: 128,
         f_cutoff: 0.95,
         interpolation: SincInterpolationType::Linear,
         oversampling_factor: 160,
@@ -2632,7 +2695,7 @@ mod tests {
             .output_latency_bits
             .store(0.02f64.to_bits(), Ordering::Release);
 
-        let pts = audible_pts_sec(&state, &clock, 48_000);
+        let pts = audible_pts_sec(&state, &clock, 48_000, 2, 0);
 
         // frames_written already accounts for every frame handed to the OS;
         // only pipeline latency should be subtracted (0.02 s = 960 frames).

@@ -407,6 +407,42 @@ export function normalizeAutosaveSettings(raw: unknown): FastCatUserSettings['au
     .parse((raw as Record<string, unknown>)?.['autosave'] ?? {});
 }
 
+export function normalizeAudioEngineSettings(raw: unknown): FastCatUserSettings['audioEngine'] {
+  const input = ((raw as Record<string, unknown>)?.['audioEngine'] ?? {}) as Record<string, unknown>;
+
+  const bufferSizeSchema = z
+    .union([
+      z.literal('default'),
+      z.literal(64),
+      z.literal(128),
+      z.literal(256),
+      z.literal(512),
+      z.literal(1024),
+      z.literal(2048),
+      z.literal(4096),
+    ])
+    .catch(DEFAULT_USER_SETTINGS.audioEngine.bufferSize);
+
+  const backendSchema = z
+    .union([
+      z.literal('default'),
+      z.literal('alsa'),
+      z.literal('pulseaudio'),
+      z.literal('jack'),
+      z.literal('wasapi'),
+      z.literal('coreaudio'),
+    ])
+    .catch(DEFAULT_USER_SETTINGS.audioEngine.backend);
+
+  return z
+    .object({
+      bufferSize: bufferSizeSchema,
+      backend: backendSchema,
+    })
+    .catch(DEFAULT_USER_SETTINGS.audioEngine)
+    .parse(input);
+}
+
 export function normalizePresetsSettings(raw: unknown): FastCatUserSettings['presets'] {
   const input = (raw as Record<string, unknown>)?.['presets'];
   const defaults = DEFAULT_USER_SETTINGS.presets;

@@ -48,6 +48,8 @@ pub enum MonitorCommand {
     /// Seek по timeline-времени (секунды).
     Seek(f64),
     Close,
+    /// Обновление настроек нативного аудио-движка.
+    SetAudioSettings(crate::audio::engine::AudioEngineSettings),
     /// Фоновый поток загрузил слой — event-loop должен дренировать bg_rx.
     BgReady,
     /// Видеокадр декодирован.

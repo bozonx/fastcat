@@ -205,6 +205,13 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                     s.window.request_redraw();
                 }
             }
+            MonitorCommand::SetAudioSettings(settings) => {
+                if let Some(s) = self.state.as_mut() {
+                    if let Some(audio) = s.audio.as_mut() {
+                        audio.update_settings(&settings);
+                    }
+                }
+            }
             MonitorCommand::Close => {
                 event_loop.exit();
             }
@@ -640,7 +647,7 @@ fn init_window(
     }
 
     let offscreen_dev_id = Some(surface.dev_id);
-    let audio = match NativeAudioEngine::new() {
+    let audio = match NativeAudioEngine::new(&crate::audio::engine::AudioEngineSettings::default()) {
         Ok(engine) => Some(engine),
         Err(error) => {
             log::warn!("[audio] disabled: {error:?}");

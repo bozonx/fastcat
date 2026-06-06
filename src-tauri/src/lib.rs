@@ -202,6 +202,7 @@ pub fn run() {
             ipc::monitor_cmd::monitor_set_mode,
             ipc::monitor_cmd::monitor_subscribe_frames,
             ipc::monitor_cmd::monitor_set_canvas_size,
+            ipc::monitor_cmd::monitor_set_audio_settings,
             ipc::monitor_cmd::monitor_close,
             native_update_ffmpeg_settings,
             ipc::media_cmd::native_get_ffmpeg_diagnostics,
