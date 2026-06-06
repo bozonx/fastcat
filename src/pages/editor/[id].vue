@@ -214,6 +214,8 @@ function onDynamicPanelVerticalResize(
 
 const { openProject } = useProjectActions();
 
+useNativeMonitorBridge();
+
 onMounted(async () => {
   const projectId = route.params.id as string;
   if (!projectId) {
@@ -233,8 +235,6 @@ onMounted(async () => {
 
   await openProject(decodeURIComponent(projectId));
 
-  // Start native monitor sync only after project is actually loaded.
-  useNativeMonitorBridge();
 });
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {
