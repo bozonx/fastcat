@@ -279,10 +279,10 @@ describe('TimelinePersistenceModule', () => {
     expect(exitPreview).toHaveBeenCalled();
   });
 
-  it('loadTimeline handles showRecoveryDialog for open-saved and view-backups', async () => {
+  it('loadTimeline handles showRecoveryDialog for open-saved by discarding the autosave', async () => {
     const showRecoveryDialog = vi.fn().mockResolvedValue('open-saved');
     const onRecoveryChoice = vi.fn();
-    const deleteAutosaveFile = vi.fn().mockResolvedValue(undefined);
+    const discardAutosave = vi.fn().mockResolvedValue(undefined);
     // autosave is newer → should trigger dialog
     const files: FileStore = {
       'timeline.otio': { text: '{"id":"main"}', lastModified: 100 },
@@ -292,14 +292,14 @@ describe('TimelinePersistenceModule', () => {
       ...makeVfsMock(files),
       showRecoveryDialog,
       onRecoveryChoice,
-      deleteAutosaveFile,
+      discardAutosave,
     });
     const mod = createTimelinePersistenceModule(deps);
     await mod.loadTimeline();
 
     expect(showRecoveryDialog).toHaveBeenCalled();
     expect(onRecoveryChoice).toHaveBeenCalledWith('open-saved');
-    expect(deleteAutosaveFile).toHaveBeenCalledWith('timeline.otio');
+    expect(discardAutosave).toHaveBeenCalledWith('timeline.otio');
     expect(parseTimelineFromOtio).toHaveBeenCalledWith('{"id":"main"}', expect.any(Object));
   });
 

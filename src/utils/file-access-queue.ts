@@ -46,3 +46,7 @@ export async function acquireQueuedFileAccess(key: string): Promise<() => void> 
 export function getQueuedFileAccessSize(): number {
   return fileAccessQueues.size;
 }
+
+export function resetFileAccessQueuesForTests(): void {
+  fileAccessQueues.clear();
+}

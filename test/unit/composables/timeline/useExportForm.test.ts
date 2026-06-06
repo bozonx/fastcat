@@ -120,7 +120,7 @@ vi.mock('~/composables/timeline/export', () => ({
     videoCodec,
     audioCodec: format === 'webm' ? 'opus' : audioCodec,
   }),
-  supportsExportAlpha: (format: string) => format === 'webm',
+  supportsExportAlpha: (format: string, _videoCodec?: string) => format === 'webm',
   useTimelineExport: () => ({
     isExporting: ref(false),
     exportProgress: ref(0),

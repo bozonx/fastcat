@@ -73,7 +73,7 @@ const { isLoadingCodecSupport, videoCodecOptions } = useVideoCodecs();
 const formatOptions: readonly FormatOption[] = [
   { value: 'mp4', label: 'MP4' },
   { value: 'webm', label: 'WEBM' },
-  { value: 'mkv', label: 'MKV (AV1)' },
+  { value: 'mkv', label: 'MKV' },
 ];
 
 const presetOptions = computed(() => {

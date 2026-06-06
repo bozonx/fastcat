@@ -472,11 +472,11 @@ export class OpfsFileSystemAdapter implements IFileSystemAdapter {
     // Re-check abort after the async existence check so a late cancellation still triggers.
     throwIfAborted(options?.signal, sourcePath);
 
-    const readStream = await this.readStream(sourcePath, options);
-    const writeStream = await this.writeStream(targetPath, options);
-    await readStream
-      .pipeThrough(new TransformStream<Uint8Array, Uint8Array>())
-      .pipeTo(writeStream, { signal: options?.signal });
+    const file = await this.getFile(sourcePath);
+    if (!file) {
+      throw new VfsNotFoundError(sourcePath);
+    }
+    await this.writeFile(targetPath, file, options);
   }
 
   async copyDirectory(

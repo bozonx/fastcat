@@ -75,6 +75,14 @@ export interface TimelinePersistenceDeps {
    */
   deleteAutosaveFile?: (timelinePath: string) => Promise<void>;
   /**
+   * Discards the crash-recovery sidecar when the user chooses to open the saved
+   * version instead. Unlike {@link deleteAutosaveFile}, this is non-destructive:
+   * the sidecar's content is first rotated into the numbered backups so it stays
+   * available in the Backups tab for later comparison/restore, then the sidecar
+   * is removed (so it isn't mistaken for unsaved work on the next launch).
+   */
+  discardAutosave?: (timelinePath: string) => Promise<void>;
+  /**
    * Notified whenever the dirty state of a specific timeline path changes, so
    * the store can keep per-path (per-tab) dirty indicators in sync.
    */
@@ -85,8 +93,8 @@ export interface TimelinePersistenceDeps {
   }) => boolean | Promise<boolean>;
   showRecoveryDialog?: (input: {
     timelinePath: string;
-  }) => Promise<'open-saved' | 'restore-autosave' | 'view-backups'>;
-  onRecoveryChoice?: (choice: 'open-saved' | 'view-backups') => void;
+  }) => Promise<'open-saved' | 'restore-autosave'>;
+  onRecoveryChoice?: (choice: 'open-saved') => void;
   exitPreview?: () => void;
   onSaveSuccess?: (serialized: string) => void;
   onSaveError?: (error: unknown) => void;
@@ -543,9 +551,9 @@ export function createTimelinePersistenceModule(
             deps.onRecoveryChoice?.(choice);
             if (choice === 'open-saved') {
               try {
-                await deps.deleteAutosaveFile?.(mainPath);
+                await deps.discardAutosave?.(mainPath);
               } catch (e) {
-                log.warn('Failed to remove discarded autosave sidecar', e);
+                log.warn('Failed to discard autosave sidecar', e);
               }
             }
           }

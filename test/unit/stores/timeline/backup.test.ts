@@ -127,6 +127,40 @@ describe('createTimelineBackupModule', () => {
     });
   });
 
+  describe('preserveAndDiscardAutosave', () => {
+    it('rotates the autosave content into a backup, then deletes the sidecar', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deleteTimelineAutosaveFile = vi.fn().mockResolvedValue(undefined);
+      const readTimelineFile = vi
+        .fn()
+        .mockResolvedValue({ text: '<unsaved>', lastModified: 200, size: 9 });
+      const deps = createMockDeps({ projectStore, readTimelineFile, deleteTimelineAutosaveFile });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.preserveAndDiscardAutosave('project/clip.otio');
+
+      expect(readTimelineFile).toHaveBeenCalledWith('.fastcat/autosave/project/clip.otio');
+      expect(projectStore.writeTextByPath).toHaveBeenCalledWith(
+        expect.stringContaining('.fastcat/backups/project/clip__bak'),
+        '<unsaved>',
+      );
+      expect(deleteTimelineAutosaveFile).toHaveBeenCalledWith('project/clip.otio');
+    });
+
+    it('still deletes the sidecar even if preserving the backup fails', async () => {
+      const projectStore = makeProjectStoreMock();
+      const deleteTimelineAutosaveFile = vi.fn().mockResolvedValue(undefined);
+      const readTimelineFile = vi.fn().mockRejectedValue(new Error('read failed'));
+      const deps = createMockDeps({ projectStore, readTimelineFile, deleteTimelineAutosaveFile });
+      const backup = createTimelineBackupModule(deps);
+
+      await backup.preserveAndDiscardAutosave('project/clip.otio');
+
+      expect(projectStore.writeTextByPath).not.toHaveBeenCalled();
+      expect(deleteTimelineAutosaveFile).toHaveBeenCalledWith('project/clip.otio');
+    });
+  });
+
   describe('exitPreviewAndReload', () => {
     it('clears preview state and reloads the timeline', async () => {
       const deps = createMockDeps({ previewMode: ref(true) });

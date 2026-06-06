@@ -1,3 +1,5 @@
+const MKV_VIDEO_CODECS = ['avc1.640032', 'vp09.00.10.08', 'av01.0.05M.08'] as const;
+
 export function resolveExportCodecs(
   format: 'mp4' | 'webm' | 'mkv',
   selectedVideoCodec: string,
@@ -11,8 +13,12 @@ export function resolveExportCodecs(
   }
 
   if (format === 'mkv') {
+    const mkvAllowed = MKV_VIDEO_CODECS as unknown as string[];
+    const videoCodec = mkvAllowed.includes(selectedVideoCodec)
+      ? selectedVideoCodec
+      : 'av01.0.05M.08';
     return {
-      videoCodec: 'av01.0.05M.08',
+      videoCodec,
       audioCodec: selectedAudioCodec,
     };
   }
@@ -25,11 +31,16 @@ export function resolveExportCodecs(
   }
 
   return {
-    videoCodec: selectedVideoCodec,
+    videoCodec: 'avc1.640032',
     audioCodec,
   };
 }
 
-export function supportsExportAlpha(format: string) {
-  return format === 'webm';
+export function supportsExportAlpha(format: string, videoCodec?: string) {
+  if (format === 'webm') return true;
+  if (format === 'mkv') {
+    const alphaCodecs = ['vp09.00.10.08', 'av01.0.05M.08'];
+    return alphaCodecs.includes(videoCodec ?? '');
+  }
+  return false;
 }

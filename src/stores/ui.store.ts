@@ -70,7 +70,7 @@ export const useUiStore = defineStore('ui', () => {
   const pendingClipRename = ref<{ trackId: string; itemId: string; name: string } | null>(null);
   const pendingRecoveryDialog = ref<{
     timelinePath: string;
-    resolve: (choice: 'open-saved' | 'restore-autosave' | 'view-backups') => void;
+    resolve: (choice: 'open-saved' | 'restore-autosave') => void;
   } | null>(null);
   const clipPasteParametersTrigger = ref<{
     trackId: string;

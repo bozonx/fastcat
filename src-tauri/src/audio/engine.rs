@@ -347,6 +347,14 @@ impl NativeAudioEngine {
         let sample_rate = supported.sample_rate();
         let mut config: StreamConfig = supported.clone().into();
         let device_channels = config.channels.max(1);
+        // DIAGNOSTIC: the device rate is the playback resample target; compare with
+        // each file's source rate in the decode log to spot rate mismatches.
+        log::info!(
+            "[audio][diag] output device: rate={} channels={} format={:?}",
+            sample_rate,
+            device_channels,
+            supported.sample_format()
+        );
 
         // Apply user-requested buffer size if the device supports it.
         if let Some(req_bs) = settings.buffer_size {
@@ -1635,6 +1643,16 @@ fn decode_entire_file_symphonia(
     let source_rate = track.codec_params.sample_rate.unwrap_or(target_sample_rate);
     let declared_channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(0);
     let mut channels = declared_channels.max(1);
+    // DIAGNOSTIC: dump the rates so we can see if a source rate is mis-detected
+    // (e.g. codec reports None → falls back to target → resampling is skipped and
+    // the clip plays sped up). Remove once the crackle/speedup is root-caused.
+    log::info!(
+        "[audio][diag] decode_entire_file: path={path} declared_source_rate={:?} \
+         effective_source_rate={source_rate} target_rate={target_sample_rate} \
+         declared_channels={declared_channels} resample={}",
+        track.codec_params.sample_rate,
+        source_rate != target_sample_rate
+    );
     let mut planar_buffers = vec![Vec::new(); channels];
     let mut collected_frames = 0usize;
 

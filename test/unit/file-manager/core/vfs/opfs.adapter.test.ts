@@ -1,6 +1,8 @@
 /** @vitest-environment node */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OpfsFileSystemAdapter } from '~/file-manager/core/vfs/opfs.adapter';
+import { resetFileAccessQueuesForTests } from '~/utils/file-access-queue';
+import { resetIoBudgetForTests } from '~/utils/io/io-budget-main';
 
 // ---------- Mocks ----------
 
@@ -72,6 +74,9 @@ class MockFileHandle {
         chunks.push(new TextEncoder().encode(chunk));
       } else if (ArrayBuffer.isView(chunk)) {
         chunks.push(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
+      } else if (chunk instanceof Blob) {
+        const buffer = await chunk.arrayBuffer();
+        chunks.push(new Uint8Array(buffer));
       }
     });
     const close = vi.fn(async () => {
@@ -198,6 +203,8 @@ describe('OpfsFileSystemAdapter', () => {
   let adapter: OpfsFileSystemAdapter;
 
   beforeEach(() => {
+    resetFileAccessQueuesForTests();
+    resetIoBudgetForTests();
     root = createTestRoot();
     adapter = new OpfsFileSystemAdapter(async () => root as unknown as FileSystemDirectoryHandle);
   });

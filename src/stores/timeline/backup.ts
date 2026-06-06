@@ -67,6 +67,7 @@ export interface TimelineBackupDeps {
 export interface TimelineBackupModule {
   backupVersions: Ref<TimelineBackupVersion[]>;
   handleBackup: (serialized: string) => Promise<void>;
+  preserveAndDiscardAutosave: (timelinePath: string) => Promise<void>;
   exitPreviewAndReload: () => Promise<void>;
   restorePreviewVersion: () => Promise<void>;
   openVersionForPreview: (version: TimelineBackupVersion) => Promise<void>;
@@ -145,6 +146,23 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
         color: 'warning',
       });
     }
+  }
+
+  // Crash-recovery discard path: the user chose to open the saved version and
+  // drop the newer unsaved sidecar. Rather than deleting it outright, rotate its
+  // content into the numbered backups (best-effort, subject to the backup
+  // toggle) so the unsaved state stays inspectable/restorable in the Backups
+  // tab, then remove the sidecar so it isn't re-offered on the next launch.
+  async function preserveAndDiscardAutosave(timelinePath: string) {
+    try {
+      const r = await withFileIoSlot(() =>
+        deps.readTimelineFile(`.fastcat/autosave/${timelinePath}`),
+      );
+      if (r?.text) await handleBackup(r.text);
+    } catch (e) {
+      log.warn('Failed to preserve autosave as backup before discarding', e);
+    }
+    await deps.deleteTimelineAutosaveFile(timelinePath);
   }
 
   async function exitPreviewAndReload() {
@@ -384,6 +402,7 @@ export function createTimelineBackupModule(deps: TimelineBackupDeps): TimelineBa
   return {
     backupVersions,
     handleBackup,
+    preserveAndDiscardAutosave,
     exitPreviewAndReload,
     restorePreviewVersion,
     openVersionForPreview,

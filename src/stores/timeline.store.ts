@@ -417,6 +417,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       return Math.max(1, minutes) * 60_000;
     },
     deleteAutosaveFile: (timelinePath) => deleteTimelineAutosaveFile(timelinePath),
+    discardAutosave: (timelinePath) => backup.preserveAndDiscardAutosave(timelinePath),
     onDirtyStateChange: (timelinePath, dirty) => {
       if (!timelinePath) return;
       dirtyPaths.value[timelinePath] = dirty;
@@ -438,14 +439,13 @@ export const useTimelineStore = defineStore('timeline', () => {
     },
     onRecoveryChoice: (choice) => {
       if (choice === 'open-saved') {
+        // The newer unsaved sidecar is preserved as a numbered backup (see
+        // `discardAutosave`), so point the user at the Backups tab to find it.
         toast.add({
           title: t('videoEditor.timeline.backups.toastUnsavedTitle'),
           description: t('videoEditor.timeline.backups.toastUnsavedDesc'),
           color: 'warning',
         });
-      } else if (choice === 'view-backups') {
-        const projectTabsStore = useProjectTabsStore();
-        projectTabsStore.setActiveTab('backups');
       }
     },
     exitPreview: () => {

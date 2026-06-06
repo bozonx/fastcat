@@ -82,26 +82,49 @@ describe('useTimelineExport pure functions', () => {
   });
 
   it('resolveExportCodecs should force codecs for webm and mkv', () => {
-    expect(resolveExportCodecs('webm', 'avc1.42E032', 'aac')).toEqual({
+    expect(resolveExportCodecs('webm', 'avc1.640032', 'aac')).toEqual({
       videoCodec: 'vp09.00.10.08',
       audioCodec: 'opus',
     });
 
-    expect(resolveExportCodecs('mkv', 'avc1.42E032', 'aac')).toEqual({
+    expect(resolveExportCodecs('mkv', 'avc1.640032', 'aac')).toEqual({
+      videoCodec: 'avc1.640032',
+      audioCodec: 'aac',
+    });
+
+    expect(resolveExportCodecs('mkv', 'vp09.00.10.08', 'aac')).toEqual({
+      videoCodec: 'vp09.00.10.08',
+      audioCodec: 'aac',
+    });
+
+    expect(resolveExportCodecs('mkv', 'unsupported', 'aac')).toEqual({
       videoCodec: 'av01.0.05M.08',
       audioCodec: 'aac',
     });
 
-    expect(resolveExportCodecs('mp4', 'avc1.42E032', 'aac')).toEqual({
-      videoCodec: 'avc1.42E032',
+    expect(resolveExportCodecs('mp4', 'avc1.640032', 'aac')).toEqual({
+      videoCodec: 'avc1.640032',
+      audioCodec: 'aac',
+    });
+
+    expect(resolveExportCodecs('mp4', 'av01.0.05M.08', 'aac')).toEqual({
+      videoCodec: 'avc1.640032',
+      audioCodec: 'aac',
+    });
+
+    expect(resolveExportCodecs('mp4', 'unsupported', 'aac')).toEqual({
+      videoCodec: 'avc1.640032',
       audioCodec: 'aac',
     });
   });
 
-  it('supportsExportAlpha should only allow webm exports', () => {
+  it('supportsExportAlpha should only allow webm exports and mkv with alpha-capable codecs', () => {
     expect(supportsExportAlpha('webm')).toBe(true);
     expect(supportsExportAlpha('mp4')).toBe(false);
     expect(supportsExportAlpha('mkv')).toBe(false);
+    expect(supportsExportAlpha('mkv', 'av01.0.05M.08')).toBe(true);
+    expect(supportsExportAlpha('mkv', 'vp09.00.10.08')).toBe(true);
+    expect(supportsExportAlpha('mkv', 'avc1.640032')).toBe(false);
   });
 
   it('buildVideoWorkerPayload should emit meta, track and clip items', () => {

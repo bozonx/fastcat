@@ -83,13 +83,21 @@ const { t } = useI18n();
 const isAudioDisabled = computed(() => props.disabled || !props.hasAudio);
 
 const filteredVideoCodecOptions = computed(() => {
+  const format = outputFormat.value;
   return props.videoCodecOptions.filter((opt: VideoCodecOptionResolved) => {
-    if (outputFormat.value === 'mp4') {
+    if (format === 'webm') {
+      return opt.value === 'vp09.00.10.08';
+    }
+
+    if (opt.disabled) return false;
+
+    if (format === 'mp4') {
       const v = opt.value.toLowerCase();
       if (v.startsWith('hev1') || v.startsWith('hvc1')) {
         return false;
       }
     }
+
     return true;
   });
 });
@@ -102,8 +110,8 @@ function getDefaultBitrateModeByCodec(_codec: string): 'constant' | 'variable' {
 }
 
 function getEffectiveVideoCodec(): string {
-  if (outputFormat.value === 'webm') return 'vp09.00.10.08';
-  if (outputFormat.value === 'mkv') return 'av01.0.05M.08';
+  if (outputFormat.value === 'webm') return videoCodec.value || 'vp09.00.10.08';
+  if (outputFormat.value === 'mkv') return videoCodec.value || 'av01.0.05M.08';
   return videoCodec.value || '';
 }
 
@@ -116,17 +124,20 @@ const includeAudio = computed({
 
 const videoCodecHelp = computed(() => {
   const help = t('videoEditor.export.videoBitrateHelp');
-  if (outputFormat.value === 'webm') {
-    return `${help} (VP9)`;
-  }
-  if (outputFormat.value === 'mkv') {
-    return `${help} (AV1)`;
-  }
   const option = filteredVideoCodecOptions.value.find(
     (o: VideoCodecOptionResolved) => o.value === videoCodec.value,
   );
   const label = option?.label || videoCodec.value;
   return `${help} (${label})`;
+});
+
+const canExportAlpha = computed(() => {
+  if (outputFormat.value === 'webm') return true;
+  if (outputFormat.value === 'mkv') {
+    const alphaCodecs = ['vp09.00.10.08', 'av01.0.05M.08'];
+    return alphaCodecs.includes(videoCodec.value);
+  }
+  return false;
 });
 
 watch(outputFormat, (fmt) => {
@@ -233,7 +244,7 @@ watch(
       </div>
     </UiFormField>
 
-    <UiFormField v-if="outputFormat === 'mp4'" :label="t('videoEditor.export.videoCodec')">
+    <UiFormField :label="t('videoEditor.export.videoCodec')">
       <div class="flex items-center gap-1.5 w-full">
         <UiSelect
           :model-value="
@@ -244,7 +255,7 @@ watch(
           :items="filteredVideoCodecOptions"
           value-key="value"
           label-key="label"
-          :disabled="props.disabled || props.isLoadingCodecSupport"
+          :disabled="props.disabled || props.isLoadingCodecSupport || outputFormat === 'webm'"
           size="sm"
           full-width
           :search-input="false"
@@ -347,7 +358,7 @@ watch(
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <UCheckbox
-          v-if="outputFormat === 'webm'"
+          v-if="canExportAlpha"
           v-model="exportAlpha"
           :label="t('videoEditor.export.exportAlpha')"
           :disabled="props.disabled"
@@ -355,7 +366,7 @@ watch(
           class="cursor-pointer"
         />
         <UButton
-          v-if="outputFormat === 'webm' && props.isFieldDirty?.('exportAlpha')"
+          v-if="canExportAlpha && props.isFieldDirty?.('exportAlpha')"
           icon="i-heroicons-arrow-path-20-solid"
           color="warning"
           variant="ghost"

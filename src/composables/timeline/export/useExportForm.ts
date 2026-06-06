@@ -355,7 +355,7 @@ export function useExportForm() {
         customAudioSampleRate.value = format.sampleRate;
       }
 
-      if (!supportsExportAlpha(outputFormat.value)) {
+      if (!supportsExportAlpha(outputFormat.value, videoCodec.value)) {
         exportAlpha.value = false;
       }
 
@@ -380,7 +380,7 @@ export function useExportForm() {
     const codecConfig = resolveExportCodecs(fmt, videoCodec.value, audioCodec.value);
     videoCodec.value = codecConfig.videoCodec;
     audioCodec.value = codecConfig.audioCodec;
-    if (!supportsExportAlpha(fmt)) {
+    if (!supportsExportAlpha(fmt, videoCodec.value)) {
       exportAlpha.value = false;
     }
   }
@@ -446,7 +446,7 @@ export function useExportForm() {
         ? { videoCodec: 'none', audioCodec: audioCodec.value }
         : resolveExportCodecs(outputFormat.value, videoCodec.value, audioCodec.value);
       const effectiveExportAlpha =
-        !isAudio && supportsExportAlpha(finalFormat) && exportAlpha.value;
+        !isAudio && supportsExportAlpha(finalFormat, resolvedCodecs.videoCodec) && exportAlpha.value;
 
       let exportSuccess = false;
       try {

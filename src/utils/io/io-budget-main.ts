@@ -73,6 +73,10 @@ export function getMainIoBudget(): IoBudget {
   return ensureState().budget;
 }
 
+export function resetIoBudgetForTests(): void {
+  state = null;
+}
+
 /**
  * Post an `io-init` message to a newly created worker so its budget is wired up
  * to the same shared pool. No-op when running with the local fallback.
