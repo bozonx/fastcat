@@ -77,7 +77,7 @@ describe('fileManagerCommands', () => {
       },
     );
 
-    expect(vfs.writeStream).toHaveBeenCalledWith('images/logo.svg');
+    expect(vfs.writeStream).toHaveBeenCalledWith('images/logo.svg', { signal: undefined });
     expect(vfs.writeFile).not.toHaveBeenCalled();
     expect(onMediaImported).toHaveBeenCalledWith({ projectRelativePath: 'images/logo.svg', file });
   });
@@ -150,7 +150,7 @@ describe('fileManagerCommands', () => {
       },
     );
 
-    expect(vfs.writeStream).toHaveBeenCalledWith('video/clip (1).mp4');
+    expect(vfs.writeStream).toHaveBeenCalledWith('video/clip (1).mp4', { signal: undefined });
     expect(result).toEqual({
       fileName: 'clip (1).mp4',
       targetPath: 'video/clip (1).mp4',

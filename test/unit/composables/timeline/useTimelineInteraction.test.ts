@@ -4,14 +4,14 @@ import { defineComponent, h, ref, computed, nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import {
+  useTimelineInteraction,
+} from '~/composables/timeline/useTimelineInteraction';
+import {
   timeUsToPx,
   pxToTimeUs,
   pxToDeltaUs,
   BASE_PX_PER_SECOND,
   computeAnchoredScrollLeft,
-  useTimelineInteraction,
-} from '~/composables/timeline/useTimelineInteraction';
-import {
   computeTimelinePlaybackAutoScrollLeft,
   computeSnappedStartUs,
   quantizeStartUsToFrames,
