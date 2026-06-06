@@ -197,12 +197,12 @@ function buildNativeTextTransform(params: {
   const { transform, sceneWidth, sceneHeight } = params;
   if (!transform) return undefined;
 
-  const renderScale = Math.min(
-    sceneWidth / TRANSFORM_DESIGN_BASE.width,
-    sceneHeight / TRANSFORM_DESIGN_BASE.height,
-  );
-  const posX = finite(transform.position?.x, 0) * renderScale;
-  const posY = finite(transform.position?.y, 0) * renderScale;
+  // Position is a design-space offset (1920x1080 base) scaled per-axis to the
+  // scene resolution — identical to media (`buildNativeTransform`) and the web
+  // compositor (`LayoutApplier.applyScreenSpaceLayout`). Using a uniform min()
+  // here desynced text/shape placement from media on non-16:9 outputs.
+  const posX = finite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width);
+  const posY = finite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height);
   const anchor = resolveNormalizedAnchor(transform.anchor);
 
   return {
@@ -236,14 +236,24 @@ function buildNativeShapeTransform(params: {
     sceneHeight / TRANSFORM_DESIGN_BASE.height,
   );
   const size = Math.min(sceneWidth, sceneHeight) * 0.8;
-  const sW = strokeWidth ?? 0;
+  // Stroke width is a design-space value: scale it with the shape body (which is
+  // a fixed fraction of the frame) so the outline keeps its relative thickness at
+  // any resolution. Must match the native `build_virtual_kind` shape branch and
+  // the web `ShapeRenderer`/`LayoutApplier`.
+  const sW = (strokeWidth ?? 0) * renderScale;
   const targetW = Math.max(1, Math.ceil(size + sW * 2));
   const targetH = Math.max(1, Math.ceil(size + sW * 2));
 
   return {
-    x: sceneWidth / 2 + finite(transform.position?.x, 0) * renderScale + (anchor.x - 0.5) * targetW,
+    // Position scales per-axis (design-space), matching media and the web compositor.
+    x:
+      sceneWidth / 2 +
+      finite(transform.position?.x, 0) * (sceneWidth / TRANSFORM_DESIGN_BASE.width) +
+      (anchor.x - 0.5) * targetW,
     y:
-      sceneHeight / 2 + finite(transform.position?.y, 0) * renderScale + (anchor.y - 0.5) * targetH,
+      sceneHeight / 2 +
+      finite(transform.position?.y, 0) * (sceneHeight / TRANSFORM_DESIGN_BASE.height) +
+      (anchor.y - 0.5) * targetH,
     scale_x: finite(transform.scale?.x, 1),
     scale_y: finite(transform.scale?.y, 1),
     rotation_deg: finite(transform.rotationDeg, 0),

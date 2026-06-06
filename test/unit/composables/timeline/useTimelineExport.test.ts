@@ -9,6 +9,7 @@ import {
   hasInvalidExportFilenameChars,
   resolveNextAvailableFilename,
   resolveExportCodecs,
+  supportsExportAlpha,
   toWorkerTimelineClips,
   trimWorkerClipToRange,
 } from '~/composables/timeline/export';
@@ -89,6 +90,12 @@ describe('useTimelineExport pure functions', () => {
       videoCodec: 'avc1.42E032',
       audioCodec: 'aac',
     });
+  });
+
+  it('supportsExportAlpha should only allow webm exports', () => {
+    expect(supportsExportAlpha('webm')).toBe(true);
+    expect(supportsExportAlpha('mp4')).toBe(false);
+    expect(supportsExportAlpha('mkv')).toBe(false);
   });
 
   it('buildVideoWorkerPayload should emit meta, track and clip items', () => {

@@ -22,10 +22,10 @@ describe('clampNumber', () => {
 
 describe('sanitizeBlendMode', () => {
   it('accepts known modes and rejects everything else', () => {
-    for (const mode of ['add', 'multiply', 'screen', 'darken', 'lighten', 'normal']) {
+    for (const mode of ['add', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'normal']) {
       expect(sanitizeBlendMode(mode)).toBe(mode);
     }
-    expect(sanitizeBlendMode('overlay')).toBeUndefined();
+    expect(sanitizeBlendMode('invalid-mode')).toBeUndefined();
     expect(sanitizeBlendMode(42)).toBeUndefined();
     expect(sanitizeBlendMode(undefined)).toBeUndefined();
   });

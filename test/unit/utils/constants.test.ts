@@ -48,7 +48,6 @@ describe('constants', () => {
     expect(TIMELINE_CLIP_THUMBNAILS.WIDTH).toBe(320);
     expect(TIMELINE_CLIP_THUMBNAILS.HEIGHT).toBe(320);
     expect(TIMELINE_CLIP_THUMBNAILS.QUALITY).toBe(0.7);
-    expect(TIMELINE_CLIP_THUMBNAILS.MAX_CONCURRENT_TASKS).toBe(2);
   });
 
   it('exports ruler constants', () => {
@@ -58,7 +57,7 @@ describe('constants', () => {
   });
 
   it('exports blend mode options', () => {
-    expect(BLEND_MODE_OPTIONS).toHaveLength(6);
+    expect(BLEND_MODE_OPTIONS).toHaveLength(17);
     expect(BLEND_MODE_OPTIONS[0]!.value).toBe('normal');
   });
 

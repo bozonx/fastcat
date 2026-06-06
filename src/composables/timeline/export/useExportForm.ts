@@ -8,6 +8,7 @@ import {
   useTimelineExport,
   sanitizeBaseName,
   resolveExportCodecs,
+  supportsExportAlpha,
   getExt,
   normalizeExportFilename,
 } from '~/composables/timeline/export';
@@ -354,6 +355,10 @@ export function useExportForm() {
         customAudioSampleRate.value = format.sampleRate;
       }
 
+      if (!supportsExportAlpha(outputFormat.value)) {
+        exportAlpha.value = false;
+      }
+
       initialSavedSettingsSnapshot.value = savedSettingsSnapshot.value;
 
       await ensureExportDir();
@@ -375,6 +380,9 @@ export function useExportForm() {
     const codecConfig = resolveExportCodecs(fmt, videoCodec.value, audioCodec.value);
     videoCodec.value = codecConfig.videoCodec;
     audioCodec.value = codecConfig.audioCodec;
+    if (!supportsExportAlpha(fmt)) {
+      exportAlpha.value = false;
+    }
   }
 
   async function handleStartExport(onSuccess?: (file: File) => void | Promise<void>) {
@@ -437,6 +445,8 @@ export function useExportForm() {
       const resolvedCodecs = isAudio
         ? { videoCodec: 'none', audioCodec: audioCodec.value }
         : resolveExportCodecs(outputFormat.value, videoCodec.value, audioCodec.value);
+      const effectiveExportAlpha =
+        !isAudio && supportsExportAlpha(finalFormat) && exportAlpha.value;
 
       let exportSuccess = false;
       try {
@@ -456,7 +466,7 @@ export function useExportForm() {
             fps: isAudio ? 30 : normalizedExportFps.value,
             bitrateMode: bitrateMode.value,
             keyframeIntervalSec: keyframeIntervalSec.value,
-            exportAlpha: isAudio ? false : exportAlpha.value,
+            exportAlpha: effectiveExportAlpha,
             metadata: {
               title: metadataTitle.value,
               description: metadataDescription.value,

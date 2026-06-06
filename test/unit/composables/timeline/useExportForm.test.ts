@@ -120,6 +120,7 @@ vi.mock('~/composables/timeline/export', () => ({
     videoCodec,
     audioCodec: format === 'webm' ? 'opus' : audioCodec,
   }),
+  supportsExportAlpha: (format: string) => format === 'webm',
   useTimelineExport: () => ({
     isExporting: ref(false),
     exportProgress: ref(0),
@@ -198,7 +199,31 @@ describe('useExportForm', () => {
     exportTimelineToFileMock.mockReset();
     validateFilenameMock.mockClear();
     getNextAvailableFilenameMock.mockClear();
-    ensureExportDirMock.mockClear();
+    ensureExportDirMock.mockReset();
+    ensureExportDirMock.mockImplementation(async () => ({
+      getFileHandle: vi.fn(async (_name: string, options?: { create?: boolean }) => {
+        if (!options?.create) {
+          if (existingFilesMock.has(_name)) {
+            return {
+              getFile: vi.fn(async () => new File([''], _name)),
+            };
+          }
+          const error = new Error('Not found');
+          (error as Error & { name: string }).name = 'NotFoundError';
+          throw error;
+        }
+
+        return {
+          getFile: vi.fn(async () => new File([''], _name)),
+          createWritable: vi.fn(async () => ({
+            write: vi.fn(async () => undefined),
+            close: vi.fn(async () => undefined),
+            abort: vi.fn(async () => undefined),
+          })),
+        };
+      }),
+      removeEntry: vi.fn(async () => undefined),
+    }));
     existingFilesMock.clear();
   });
 
@@ -412,6 +437,33 @@ describe('useExportForm', () => {
       audioChannels: 6,
       bitrateMode: 'vbr',
       keyframeIntervalSec: 3,
+      exportAlpha: false,
+    });
+  });
+
+  it('сбрасывает экспорт альфа-канала при переключении с webm на mp4', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    form.outputFormat.value = 'webm';
+    form.exportAlpha.value = true;
+    form.outputFormat.value = 'mp4';
+    form.handleOutputFormatChange('mp4');
+
+    expect(form.exportAlpha.value).toBe(false);
+  });
+
+  it('не передает exportAlpha в mp4 payload, даже если состояние осталось true', async () => {
+    const form = useExportForm();
+    await form.initializeExportForm();
+
+    form.outputFormat.value = 'mp4';
+    form.exportAlpha.value = true;
+
+    await form.handleStartExport();
+
+    expect(exportTimelineToFileMock.mock.calls[0]?.[0]).toMatchObject({
+      format: 'mp4',
       exportAlpha: false,
     });
   });

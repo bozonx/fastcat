@@ -557,11 +557,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
       }
 
       if (!this.isCancelled(task.id)) {
-        const pending = this.pendingRequestedTimes.get(task.id);
-        if (!pending || pending.size === 0) {
-          this.pendingRequestedTimes.delete(task.id);
-          task.onComplete?.();
-        }
+        this.pendingRequestedTimes.delete(task.id);
+        task.onComplete?.();
       }
     } finally {
       this.opfsExistingFiles.delete(task.id);

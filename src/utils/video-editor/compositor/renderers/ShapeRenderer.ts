@@ -1,6 +1,21 @@
 import type { ShapeConfig, ShapeType } from '~/timeline/types';
 import { parseHexColor } from '../../utils';
+import { TRANSFORM_DESIGN_BASE } from '../../clip-layout';
 import type { Graphics } from 'pixi.js';
+
+/**
+ * Stroke width is authored in the 1920x1080 design space. Scale it to the render
+ * resolution (uniform, matching the shape body which is a fixed fraction of the
+ * frame) so the outline keeps its relative thickness at any resolution. Must stay
+ * in sync with `LayoutApplier.applyShapeLayout` and the native scene builder.
+ */
+function scaleStroke(strokeWidth: number, canvasWidth: number, canvasHeight: number): number {
+  const renderScale = Math.min(
+    canvasWidth / TRANSFORM_DESIGN_BASE.width,
+    canvasHeight / TRANSFORM_DESIGN_BASE.height,
+  );
+  return strokeWidth * renderScale;
+}
 
 export interface ShapeDrawParams {
   graphics: Graphics;
@@ -27,9 +42,10 @@ export class ShapeRenderer {
     strokeWidth: number;
   }): ShapeLayoutResult {
     const { canvasWidth, canvasHeight, strokeWidth } = params;
+    const scaledStroke = scaleStroke(strokeWidth, canvasWidth, canvasHeight);
     const size = Math.min(canvasWidth, canvasHeight) * 0.8;
-    const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
-    const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    const targetW = Math.max(1, Math.ceil(size + scaledStroke * 2));
+    const targetH = Math.max(1, Math.ceil(size + scaledStroke * 2));
     const baseX = (canvasWidth - targetW) / 2;
     const baseY = (canvasHeight - targetH) / 2;
     return { targetW, targetH, baseX, baseY };
@@ -40,9 +56,10 @@ export class ShapeRenderer {
 
     graphics.clear();
 
+    const scaledStroke = scaleStroke(strokeWidth, canvasWidth, canvasHeight);
     const size = Math.min(canvasWidth, canvasHeight) * 0.8;
-    const totalW = Math.max(1, Math.ceil(size + strokeWidth * 2));
-    const totalH = Math.max(1, Math.ceil(size + strokeWidth * 2));
+    const totalW = Math.max(1, Math.ceil(size + scaledStroke * 2));
+    const totalH = Math.max(1, Math.ceil(size + scaledStroke * 2));
     const cx = totalW / 2;
     const cy = totalH / 2;
     const half = size / 2;
@@ -162,8 +179,8 @@ export class ShapeRenderer {
     }
 
     graphics.fill(parseHexColor(fill));
-    if (strokeWidth > 0) {
-      graphics.stroke({ width: strokeWidth, color: parseHexColor(stroke) });
+    if (scaledStroke > 0) {
+      graphics.stroke({ width: scaledStroke, color: parseHexColor(stroke) });
     }
   }
 }

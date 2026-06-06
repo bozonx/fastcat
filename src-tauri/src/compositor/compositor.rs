@@ -944,6 +944,21 @@ impl<'a> Drop for UnmapGuard<'a> {
     }
 }
 
+fn take_ready_frame(state: &mut SlotState) -> Result<Option<u64>> {
+    match std::mem::replace(state, SlotState::Idle) {
+        SlotState::Idle => Ok(None),
+        SlotState::InFlight { frame, map_rx } => match map_rx.try_recv() {
+            Ok(Ok(())) => Ok(Some(frame)),
+            Ok(Err(e)) => Err(anyhow!("buffer map: {e:?}")),
+            Err(TryRecvError::Empty) => {
+                *state = SlotState::InFlight { frame, map_rx };
+                Ok(None)
+            }
+            Err(TryRecvError::Disconnected) => Err(anyhow!("buffer map disconnected")),
+        },
+    }
+}
+
 impl Compositor {
     /// Создать pipelined readback-сессию для заданного device и размера.
     pub fn begin_pipelined_readback(
@@ -1114,19 +1129,8 @@ impl Compositor {
 
     fn collect_ready_slots(session: &mut PipelinedReadback) -> Result<()> {
         for i in 0..session.slots.len() {
-            let frame = match std::mem::replace(&mut session.slots[i].state, SlotState::Idle) {
-                SlotState::Idle => continue,
-                SlotState::InFlight { frame, map_rx } => match map_rx.try_recv() {
-                    Ok(Ok(())) => frame,
-                    Ok(Err(e)) => return Err(anyhow!("buffer map: {e:?}")),
-                    Err(TryRecvError::Empty) => {
-                        session.slots[i].state = SlotState::InFlight { frame, map_rx };
-                        continue;
-                    }
-                    Err(TryRecvError::Disconnected) => {
-                        return Err(anyhow!("buffer map disconnected"));
-                    }
-                },
+            let Some(frame) = take_ready_frame(&mut session.slots[i].state)? else {
+                continue;
             };
 
             {
@@ -1151,5 +1155,39 @@ impl Compositor {
 impl Default for Compositor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn take_ready_frame_keeps_pending_inflight_slot_busy() {
+        let (_tx, rx) = std::sync::mpsc::channel::<Result<(), wgpu::BufferAsyncError>>();
+        let mut state = SlotState::InFlight {
+            frame: 42,
+            map_rx: rx,
+        };
+
+        let ready = take_ready_frame(&mut state).expect("pending map should not fail");
+
+        assert_eq!(ready, None);
+        assert!(matches!(state, SlotState::InFlight { frame: 42, .. }));
+    }
+
+    #[test]
+    fn take_ready_frame_returns_completed_frame_and_idles_slot() {
+        let (tx, rx) = std::sync::mpsc::channel::<Result<(), wgpu::BufferAsyncError>>();
+        tx.send(Ok(())).expect("test channel should accept map result");
+        let mut state = SlotState::InFlight {
+            frame: 7,
+            map_rx: rx,
+        };
+
+        let ready = take_ready_frame(&mut state).expect("completed map should not fail");
+
+        assert_eq!(ready, Some(7));
+        assert!(matches!(state, SlotState::Idle));
     }
 }

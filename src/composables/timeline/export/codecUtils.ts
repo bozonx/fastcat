@@ -29,3 +29,7 @@ export function resolveExportCodecs(
     audioCodec,
   };
 }
+
+export function supportsExportAlpha(format: string) {
+  return format === 'webm';
+}

@@ -45,7 +45,6 @@ describe('TimelineCommandService', () => {
         project: { width: 1920, height: 1080, fps: 30, isAutoSettings: false },
       })),
       updateTimelineFormat: vi.fn(),
-      showFpsWarning: vi.fn(),
       showAutoSettingsApplied: vi.fn(),
       mediaCache: { hasProxy: vi.fn(() => false), ensureProxy: vi.fn() },
       defaultImageDurationUs: 5_000_000,
@@ -65,7 +64,7 @@ describe('TimelineCommandService', () => {
       });
       deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
 
-      await service.addClipToTimelineFromPath({
+      const result = await service.addClipToTimelineFromPath({
         trackId: 'v1',
         name: 'Test Clip',
         path: 'video/test.mp4',
@@ -80,8 +79,10 @@ describe('TimelineCommandService', () => {
         undefined,
       );
 
-      // Should show FPS warning
-      expect(deps.showFpsWarning).toHaveBeenCalledWith(60, 30);
+      // Should return FPS mismatch warning
+      expect(result.warnings).toEqual([
+        { type: 'fpsMismatch', fileFps: 60, projectFps: 30 },
+      ]);
     });
 
     it('does not warn for tiny FPS metadata drift', async () => {
@@ -107,13 +108,13 @@ describe('TimelineCommandService', () => {
       });
       deps.getFileByPath.mockResolvedValue(new File([], 'test.mp4'));
 
-      await service.addClipToTimelineFromPath({
+      const result = await service.addClipToTimelineFromPath({
         trackId: 'v1',
         name: 'Test Clip',
         path: 'video/test.mp4',
       });
 
-      expect(deps.showFpsWarning).not.toHaveBeenCalled();
+      expect(result.warnings).toBeUndefined();
     });
 
     it('rejects media when the target track codec cannot be decoded', async () => {

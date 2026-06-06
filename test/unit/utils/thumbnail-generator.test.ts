@@ -41,7 +41,9 @@ vi.mock('~/utils/runtime', () => ({
 
 vi.mock('~/utils/tauri-media-processing', () => ({
   getNativeFileHandlePath: (handle: any) => handle?.path || null,
-  nativeVideoFrameWebps: vi.fn(async () => [new Blob(['tauri-frame'], { type: 'image/webp' })]),
+  nativeVideoFrameWebps: vi.fn(async (params: any) =>
+    (params.timesSec ?? []).map(() => new Blob(['tauri-frame'], { type: 'image/webp' })),
+  ),
   nativeVideoFrameWebp: vi.fn(async () => new Blob(['tauri-frame'], { type: 'image/webp' })),
   nativeMediaMetadata: vi.fn(async () => ({ duration: 10 })),
 }));

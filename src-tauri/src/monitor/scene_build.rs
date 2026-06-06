@@ -52,7 +52,11 @@ pub fn build_virtual_kind(sl: &SceneLayer, scene_size: (u32, u32)) -> Option<Com
             natural_size: (scene_w, scene_h),
         })),
         LayerKind::Shape => {
-            let stroke_width = sl.stroke_width.unwrap_or(0.0).max(0.0);
+            // Stroke width is authored in the 1920x1080 design space, so scale it to
+            // the scene resolution (uniform, matching the shape body which is a fixed
+            // fraction of the frame). Mirrors the web `ShapeRenderer`/`LayoutApplier`.
+            let render_scale = (scene_w as f64 / 1920.0).min(scene_h as f64 / 1080.0);
+            let stroke_width = sl.stroke_width.unwrap_or(0.0).max(0.0) * render_scale;
             let size = (scene_w.min(scene_h) as f64 * 0.8 + stroke_width * 2.0)
                 .ceil()
                 .max(1.0) as u32;

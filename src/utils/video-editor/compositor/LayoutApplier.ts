@@ -44,7 +44,14 @@ export class LayoutApplier {
 
   public applyShapeLayout(clip: CompositorClip) {
     const size = Math.min(this.context.width, this.context.height) * 0.8;
-    const strokeWidth = clip.strokeWidth ?? 0;
+    // Stroke width is design-space (1920x1080) and scaled uniformly to the render
+    // resolution. Must match `ShapeRenderer` (which draws the graphics) so the
+    // sprite box, anchor offset and crop mask line up with the painted outline.
+    const renderScale = Math.min(
+      this.context.width / TRANSFORM_DESIGN_BASE.width,
+      this.context.height / TRANSFORM_DESIGN_BASE.height,
+    );
+    const strokeWidth = (clip.strokeWidth ?? 0) * renderScale;
     const targetW = Math.max(1, Math.ceil(size + strokeWidth * 2));
     const targetH = Math.max(1, Math.ceil(size + strokeWidth * 2));
     const baseX = (this.context.width - targetW) / 2;
