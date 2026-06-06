@@ -77,10 +77,7 @@ function resetSpeed() {
           :disabled="!isEnabled"
           unit="x"
         />
-        <div
-          v-if="showReverseAudioWarning"
-          class="flex items-start gap-2 text-2xs text-warning"
-        >
+        <div v-if="showReverseAudioWarning" class="flex items-start gap-2 text-2xs text-warning">
           <UIcon name="i-heroicons-exclamation-triangle" class="w-4 h-4 shrink-0 mt-0.5 block" />
           <span>{{ t('fastcat.clip.speed.reverseAudioWarning') }}</span>
         </div>

@@ -19,8 +19,27 @@ const STREAM_WRITER_THRESHOLD_BYTES = 1024 * 1024;
 export const LAZY_FILE_MEDIA_THRESHOLD_BYTES = 5 * 1024 * 1024;
 
 const MEDIA_EXTENSIONS = new Set([
-  'mp4', 'mov', 'mkv', 'webm', 'avi', 'mp3', 'wav', 'flac', 'aac', 'ogg', 'opus', 'm4a', 'mka',
-  'wmv', 'm4v', '3gp', 'ogv', 'oga', 'wma', 'aiff', 'au',
+  'mp4',
+  'mov',
+  'mkv',
+  'webm',
+  'avi',
+  'mp3',
+  'wav',
+  'flac',
+  'aac',
+  'ogg',
+  'opus',
+  'm4a',
+  'mka',
+  'wmv',
+  'm4v',
+  '3gp',
+  'ogv',
+  'oga',
+  'wma',
+  'aiff',
+  'au',
 ]);
 
 export function isMediaFile(name: string): boolean {

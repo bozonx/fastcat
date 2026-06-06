@@ -260,12 +260,32 @@ export const useMediaStore = defineStore('media', () => {
 
           if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat && !lacksContainer) {
             parsedMeta = parsed;
-            console.log('[fetchMetadataInternal] using cached meta for', projectRelativePath, 'duration=', parsed.duration, 'container=', (parsed as any).container, 'error=', parsed.error);
+            console.log(
+              '[fetchMetadataInternal] using cached meta for',
+              projectRelativePath,
+              'duration=',
+              parsed.duration,
+              'container=',
+              (parsed as any).container,
+              'error=',
+              parsed.error,
+            );
             if (parsed.error) {
               metadataLoadFailed.value[cacheKey] = true;
             }
           } else {
-            console.log('[fetchMetadataInternal] cache rejected for', projectRelativePath, 'lacksVideoCompat=', lacksVideoCompat, 'lacksAudioCompat=', lacksAudioCompat, 'lacksImageCompat=', lacksImageCompat, 'lacksContainer=', lacksContainer);
+            console.log(
+              '[fetchMetadataInternal] cache rejected for',
+              projectRelativePath,
+              'lacksVideoCompat=',
+              lacksVideoCompat,
+              'lacksAudioCompat=',
+              lacksAudioCompat,
+              'lacksImageCompat=',
+              lacksImageCompat,
+              'lacksContainer=',
+              lacksContainer,
+            );
           }
         } else {
           // File changed! Drop stale peaks and thumbnail caches
@@ -314,7 +334,14 @@ export const useMediaStore = defineStore('media', () => {
             let nativeMeta;
             try {
               nativeMeta = await nativeMediaMetadata(nativePath);
-              console.log('[fetchMetadataInternal] nativeMeta.duration=', nativeMeta.duration, 'video=', !!nativeMeta.video, 'audio=', !!nativeMeta.audio);
+              console.log(
+                '[fetchMetadataInternal] nativeMeta.duration=',
+                nativeMeta.duration,
+                'video=',
+                !!nativeMeta.video,
+                'audio=',
+                !!nativeMeta.audio,
+              );
             } catch (e) {
               console.log('[fetchMetadataInternal] nativeMediaMetadata error:', e);
               throw e;

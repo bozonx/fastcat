@@ -293,7 +293,8 @@ class ThumbnailGenerator extends BaseThumbnailGenerator<ThumbnailTask, Map<numbe
                   try {
                     await this.executeTask({
                       ...task,
-                      onProgress: (progress, url, time) => this.emitProgress(task.id, progress, url, time),
+                      onProgress: (progress, url, time) =>
+                        this.emitProgress(task.id, progress, url, time),
                       onComplete: () => this.emitComplete(task.id),
                       onError: (err) => this.emitError(task.id, err),
                     });

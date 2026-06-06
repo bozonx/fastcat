@@ -635,7 +635,12 @@ const formatDate = (dateStr?: string) => {
             <UButton variant="ghost" color="neutral" @click="closeDeleteModal">
               {{ t('common.cancel') }}
             </UButton>
-            <UButton color="error" :loading="workspaceStore.isLoading" data-primary-focus="true" @click="confirmDelete">
+            <UButton
+              color="error"
+              :loading="workspaceStore.isLoading"
+              data-primary-focus="true"
+              @click="confirmDelete"
+            >
               {{ t('videoEditor.projectSettings.deleteProjectAction') }}
             </UButton>
           </div>

@@ -44,7 +44,15 @@ describe('tauri native effect manifests', () => {
   it('exposes the Tauri transition catalog instead of Pixi shader filters', () => {
     const types = getAllTransitionManifests().map((manifest) => manifest.type);
 
-    expect(types).toEqual(['dissolve', 'wipe', 'slide', 'fade-to-black', 'circle', 'zoom', 'bloom']);
+    expect(types).toEqual([
+      'dissolve',
+      'wipe',
+      'slide',
+      'fade-to-black',
+      'circle',
+      'zoom',
+      'bloom',
+    ]);
     expect(types).not.toContain('cube');
     expect(types).not.toContain('card-swap');
     expect(getTransitionManifest('dissolve')?.renderer).toBe('wgpu');

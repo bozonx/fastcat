@@ -200,7 +200,9 @@ export function createTimelineLifecycleModule(
     if (requestId !== deps.persistence.getLoadRequestId()) return;
     if (timelinePathSnapshot !== deps.currentTimelinePath.value) return;
 
-    await Promise.all(Array.from(paths).map(async (path) => await deps.getOrFetchMetadataByPath(path)));
+    await Promise.all(
+      Array.from(paths).map(async (path) => await deps.getOrFetchMetadataByPath(path)),
+    );
   }
 
   return {

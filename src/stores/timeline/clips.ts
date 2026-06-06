@@ -8,7 +8,12 @@ import type {
   TimelineTrack,
 } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
-import { getDocFps, nextItemId, nextItemIds, quantizeTimeUsToFrames } from '~/timeline/commands/utils';
+import {
+  getDocFps,
+  nextItemId,
+  nextItemIds,
+  quantizeTimeUsToFrames,
+} from '~/timeline/commands/utils';
 import { CLIP_AUDIO_GAIN_MAX } from '~/utils/audio/envelope';
 import { cloneValue } from '~/utils/clone';
 import { resolveClipSourceTimeUs } from '~/utils/video-editor/source-time';

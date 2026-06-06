@@ -94,10 +94,8 @@ function resetDefaults() {
     DEFAULT_USER_SETTINGS.projectDefaults.audioScrubbingEnabled;
   workspaceStore.userSettings.projectDefaults.defaultAudioFadeCurve =
     DEFAULT_USER_SETTINGS.projectDefaults.defaultAudioFadeCurve;
-  workspaceStore.userSettings.audioEngine.bufferSize =
-    DEFAULT_USER_SETTINGS.audioEngine.bufferSize;
-  workspaceStore.userSettings.audioEngine.backend =
-    DEFAULT_USER_SETTINGS.audioEngine.backend;
+  workspaceStore.userSettings.audioEngine.bufferSize = DEFAULT_USER_SETTINGS.audioEngine.bufferSize;
+  workspaceStore.userSettings.audioEngine.backend = DEFAULT_USER_SETTINGS.audioEngine.backend;
   isResetConfirmOpen.value = false;
 }
 
@@ -140,7 +138,7 @@ watch(
 );
 
 const tauriAudioCodecs = computed(() => {
-  return tauriDiagnostics.value?.codecs.filter(c => ['aac', 'opus'].includes(c.key)) || [];
+  return tauriDiagnostics.value?.codecs.filter((c) => ['aac', 'opus'].includes(c.key)) || [];
 });
 
 const webAudioCodecs = computed(() => {
@@ -283,7 +281,11 @@ const webAudioCodecs = computed(() => {
     <!-- Diagnostics section -->
     <div class="flex flex-col gap-3 pt-4 border-t border-ui-border-muted/50">
       <div class="text-sm font-medium text-ui-text-muted">
-        {{ isTauri ? t('videoEditor.settings.audio.tauriDiagnosticsHeader') : t('videoEditor.settings.audio.accelerationDiagnostics') }}
+        {{
+          isTauri
+            ? t('videoEditor.settings.audio.tauriDiagnosticsHeader')
+            : t('videoEditor.settings.audio.accelerationDiagnostics')
+        }}
       </div>
 
       <!-- Web Diagnostics -->
@@ -307,18 +309,29 @@ const webAudioCodecs = computed(() => {
         </div>
 
         <div v-else class="flex flex-col gap-4">
-          <div class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10">
+          <div
+            class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10"
+          >
             <div class="text-sm font-medium text-ui-text border-b border-ui-border-muted/50 pb-2">
               Browser Audio Codec Support
             </div>
-            <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+            <div
+              class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+            >
               <div
                 v-for="codec in webAudioCodecs"
                 :key="codec.label"
                 class="flex items-center justify-between px-3 py-2.5"
               >
                 <span class="text-sm text-ui-text-muted">{{ codec.label }}</span>
-                <span :class="['text-xs font-medium px-2 py-0.5 rounded-full border', codec.supported ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20']">
+                <span
+                  :class="[
+                    'text-xs font-medium px-2 py-0.5 rounded-full border',
+                    codec.supported
+                      ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                      : 'bg-red-500/10 text-red-400 border-red-500/20',
+                  ]"
+                >
                   {{ codec.supported ? 'Supported' : 'Unsupported' }}
                 </span>
               </div>
@@ -335,9 +348,17 @@ const webAudioCodecs = computed(() => {
         >
           <div
             class="inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-xs font-medium"
-            :class="tauriDiagnostics.ffmpegAvailable ? statusToneClasses.success : statusToneClasses.danger"
+            :class="
+              tauriDiagnostics.ffmpegAvailable
+                ? statusToneClasses.success
+                : statusToneClasses.danger
+            "
           >
-            {{ tauriDiagnostics.ffmpegAvailable ? t('videoEditor.settings.audio.ffmpegAvailable') : t('videoEditor.settings.audio.unavailableDiagnostics') }}
+            {{
+              tauriDiagnostics.ffmpegAvailable
+                ? t('videoEditor.settings.audio.ffmpegAvailable')
+                : t('videoEditor.settings.audio.unavailableDiagnostics')
+            }}
           </div>
           <div class="text-sm text-ui-text-muted">
             {{ t('videoEditor.settings.audio.ffmpegDiagnosticsHelp') }}
@@ -354,22 +375,48 @@ const webAudioCodecs = computed(() => {
 
         <div v-if="tauriDiagnostics" class="flex flex-col gap-4">
           <!-- FFmpeg & FFprobe status -->
-          <div class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10">
+          <div
+            class="rounded-lg border border-ui-border-muted p-4 flex flex-col gap-3 bg-ui-bg-muted/10"
+          >
             <div class="text-sm font-medium text-ui-text">
               {{ t('videoEditor.settings.audio.ffmpegDiagnostics') }}
             </div>
-            
-            <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+
+            <div
+              class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+            >
               <div class="flex items-start justify-between gap-4 px-3 py-2.5">
-                <span class="text-sm text-ui-text-muted">{{ t('videoEditor.settings.audio.ffmpegAvailable') }}</span>
-                <span :class="['text-sm font-medium', tauriDiagnostics.ffmpegAvailable ? 'text-green-400' : 'text-red-400']">
-                  {{ tauriDiagnostics.ffmpegAvailable ? tauriDiagnostics.ffmpegVersion : t('common.no') }}
+                <span class="text-sm text-ui-text-muted">{{
+                  t('videoEditor.settings.audio.ffmpegAvailable')
+                }}</span>
+                <span
+                  :class="[
+                    'text-sm font-medium',
+                    tauriDiagnostics.ffmpegAvailable ? 'text-green-400' : 'text-red-400',
+                  ]"
+                >
+                  {{
+                    tauriDiagnostics.ffmpegAvailable
+                      ? tauriDiagnostics.ffmpegVersion
+                      : t('common.no')
+                  }}
                 </span>
               </div>
               <div class="flex items-start justify-between gap-4 px-3 py-2.5">
-                <span class="text-sm text-ui-text-muted">{{ t('videoEditor.settings.audio.ffprobeAvailable') }}</span>
-                <span :class="['text-sm font-medium', tauriDiagnostics.ffprobeAvailable ? 'text-green-400' : 'text-red-400']">
-                  {{ tauriDiagnostics.ffprobeAvailable ? tauriDiagnostics.ffprobeVersion : t('common.no') }}
+                <span class="text-sm text-ui-text-muted">{{
+                  t('videoEditor.settings.audio.ffprobeAvailable')
+                }}</span>
+                <span
+                  :class="[
+                    'text-sm font-medium',
+                    tauriDiagnostics.ffprobeAvailable ? 'text-green-400' : 'text-red-400',
+                  ]"
+                >
+                  {{
+                    tauriDiagnostics.ffprobeAvailable
+                      ? tauriDiagnostics.ffprobeVersion
+                      : t('common.no')
+                  }}
                 </span>
               </div>
             </div>
@@ -391,14 +438,23 @@ const webAudioCodecs = computed(() => {
                 <div class="text-xs font-semibold text-ui-text-muted px-1">
                   {{ t('videoEditor.settings.audio.codecDecoderSupport') }}
                 </div>
-                <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+                <div
+                  class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+                >
                   <div
                     v-for="decoder in codec.decoders"
                     :key="decoder.name"
                     class="flex items-center justify-between px-3 py-2"
                   >
                     <span class="text-xs text-ui-text-muted">{{ decoder.label }}</span>
-                    <span :class="['text-xs font-medium px-2 py-0.5 rounded-full border', decoder.supported ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20']">
+                    <span
+                      :class="[
+                        'text-xs font-medium px-2 py-0.5 rounded-full border',
+                        decoder.supported
+                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                          : 'bg-red-500/10 text-red-400 border-red-500/20',
+                      ]"
+                    >
                       {{ decoder.supported ? 'Supported' : 'Unsupported' }}
                     </span>
                   </div>
@@ -410,14 +466,23 @@ const webAudioCodecs = computed(() => {
                 <div class="text-xs font-semibold text-ui-text-muted px-1">
                   {{ t('videoEditor.settings.audio.codecEncoderSupport') }}
                 </div>
-                <div class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30">
+                <div
+                  class="flex flex-col rounded-md border border-ui-border-muted/50 bg-ui-bg/40 divide-y divide-ui-border-muted/30"
+                >
                   <div
                     v-for="encoder in codec.encoders"
                     :key="encoder.name"
                     class="flex items-center justify-between px-3 py-2"
                   >
                     <span class="text-xs text-ui-text-muted">{{ encoder.label }}</span>
-                    <span :class="['text-xs font-medium px-2 py-0.5 rounded-full border', encoder.supported ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20']">
+                    <span
+                      :class="[
+                        'text-xs font-medium px-2 py-0.5 rounded-full border',
+                        encoder.supported
+                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                          : 'bg-red-500/10 text-red-400 border-red-500/20',
+                      ]"
+                    >
                       {{ encoder.supported ? 'Supported' : 'Unsupported' }}
                     </span>
                   </div>

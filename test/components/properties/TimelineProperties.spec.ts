@@ -60,7 +60,16 @@ const mockTimelineStore = reactive({
     tracks: [],
     metadata: { fastcat: {} },
   },
-  timelineFormat: { width: 1920, height: 1080, fps: 30, resolutionFormat: '1080p', orientation: 'landscape', aspectRatio: '16:9', isCustomResolution: false, sampleRate: 48000 },
+  timelineFormat: {
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    resolutionFormat: '1080p',
+    orientation: 'landscape',
+    aspectRatio: '16:9',
+    isCustomResolution: false,
+    sampleRate: 48000,
+  },
   applyTimeline: vi.fn(),
   saveTimelineAs: vi.fn(),
   duplicateCurrentTimeline: vi.fn(),
@@ -262,6 +271,8 @@ describe('TimelineProperties', () => {
       'timelines/inactive_copy.otio',
     );
     expect(mockProjectStore.openTimelineFile).toHaveBeenCalledWith('timelines/inactive_copy.otio');
-    expect(mockFocusStore.setActiveTimelinePath).toHaveBeenCalledWith('timelines/inactive_copy.otio');
+    expect(mockFocusStore.setActiveTimelinePath).toHaveBeenCalledWith(
+      'timelines/inactive_copy.otio',
+    );
   });
 });

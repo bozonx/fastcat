@@ -43,7 +43,14 @@ export function useMediaPlayerPlayback(
     }
 
     mediaElement.value.play().catch((e) => {
-      console.log('[MediaPlayer] play() error:', e, 'readyState:', mediaElement.value?.readyState, 'error:', mediaElement.value?.error);
+      console.log(
+        '[MediaPlayer] play() error:',
+        e,
+        'readyState:',
+        mediaElement.value?.readyState,
+        'error:',
+        mediaElement.value?.error,
+      );
     });
   }
 

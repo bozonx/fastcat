@@ -646,9 +646,7 @@ export class VideoCompositor {
   }
 
   private updateTimelineLayoutLocked(timelineClips: ReadonlyArray<WorkerVideoPayloadItem>): number {
-    const meta = timelineClips.find(
-      (x) => x && typeof x === 'object' && x.kind === 'meta',
-    );
+    const meta = timelineClips.find((x) => x && typeof x === 'object' && x.kind === 'meta');
     const nextMaster = meta
       ? (this.toVideoEffects((meta as { masterEffects?: unknown }).masterEffects) ?? null)
       : null;

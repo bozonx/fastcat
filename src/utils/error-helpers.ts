@@ -9,7 +9,6 @@ export function isDomExceptionName(error: unknown, name: string): boolean {
 
 export function isNotFoundError(error: unknown): boolean {
   return (
-    isDomExceptionName(error, 'NotFoundError') ||
-    isDomExceptionName(error, 'VfsNotFoundError')
+    isDomExceptionName(error, 'NotFoundError') || isDomExceptionName(error, 'VfsNotFoundError')
   );
 }

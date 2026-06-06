@@ -27,7 +27,10 @@ export function createTimelineHydrationModule(
             const durationUs =
               Number.isFinite(durationS) && durationS > 0 ? Math.floor(durationS * 1_000_000) : 0;
             const isImageLike = !meta.video && !meta.audio;
-            if ((durationUs > 0 && it.sourceDurationUs !== durationUs) || it.isImage !== isImageLike) {
+            if (
+              (durationUs > 0 && it.sourceDurationUs !== durationUs) ||
+              it.isImage !== isImageLike
+            ) {
               anyPatch = true;
               break;
             }

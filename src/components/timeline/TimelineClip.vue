@@ -335,8 +335,10 @@ const { clipItem, onClipClick: onClipClickInteraction } = useClipInteractions({
     ),
   trimToPlayheadLeftNoRipple: (target) => void timelineContext.trimToPlayheadLeftNoRipple(target),
   trimToPlayheadRightNoRipple: (target) => void timelineContext.trimToPlayheadRightNoRipple(target),
-  trimToTimeLeftNoRipple: (target, atUs) => void timelineContext.trimToTimeLeftNoRipple(target, atUs),
-  trimToTimeRightNoRipple: (target, atUs) => void timelineContext.trimToTimeRightNoRipple(target, atUs),
+  trimToTimeLeftNoRipple: (target, atUs) =>
+    void timelineContext.trimToTimeLeftNoRipple(target, atUs),
+  trimToTimeRightNoRipple: (target, atUs) =>
+    void timelineContext.trimToTimeRightNoRipple(target, atUs),
   splitClipAtPlayhead: (target) => void timelineContext.splitClipAtPlayhead(target),
   splitClipAtTime: (target, atUs) => void timelineContext.splitClipAtTime(target, atUs),
   getPointerTimeUs: getClipPointerTimeUs,

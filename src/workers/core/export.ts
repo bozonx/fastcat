@@ -665,7 +665,9 @@ export async function runExport(
                 : options.format === 'wav' || options.format === 'pcm'
                   ? new WavOutputFormat()
                   : options.format === 'mp3'
-                    ? (() => { throw new Error('MP3 export is not supported in the web version'); })()
+                    ? (() => {
+                        throw new Error('MP3 export is not supported in the web version');
+                      })()
                     : new Mp4OutputFormat();
 
     async function runExportWithHardwareAcceleration(

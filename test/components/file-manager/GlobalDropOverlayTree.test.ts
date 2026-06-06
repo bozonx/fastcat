@@ -9,14 +9,14 @@ describe('GlobalDropOverlayTree', () => {
       name: 'Video',
       kind: 'directory',
       path: '_video',
-      children: [
-        { name: 'Sub', kind: 'directory', path: '_video/sub', children: [] },
-      ],
+      children: [{ name: 'Sub', kind: 'directory', path: '_video/sub', children: [] }],
     },
     { name: 'Audio', kind: 'directory', path: '_audio', children: [] },
   ];
 
-  function createWrapper(props: { entries?: FsEntry[]; depth?: number; dropOverPath?: string | null } = {}) {
+  function createWrapper(
+    props: { entries?: FsEntry[]; depth?: number; dropOverPath?: string | null } = {},
+  ) {
     return mount(GlobalDropOverlayTree, {
       props: {
         entries: props.entries ?? entries,

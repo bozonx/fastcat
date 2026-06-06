@@ -132,13 +132,18 @@ export function useTimelineClipHandleResize(
       const newVol = clipYPercentToGain(newYPercent);
 
       scheduleUpdate(() => {
-        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-          audioGain: newVol,
-          audioMuted: false,
-        }, {
-          skipHistory: true,
-          saveMode: 'none',
-        });
+        timelineStore.updateClipProperties(
+          payload.trackId,
+          payload.itemId,
+          {
+            audioGain: newVol,
+            audioMuted: false,
+          },
+          {
+            skipHistory: true,
+            saveMode: 'none',
+          },
+        );
       });
     }
 
@@ -167,12 +172,17 @@ export function useTimelineClipHandleResize(
       });
 
       if (isCancel && resizeVolume.value) {
-        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-          audioGain: resizeVolume.value.startGain,
-        }, {
-          skipHistory: true,
-          saveMode: 'none',
-        });
+        timelineStore.updateClipProperties(
+          payload.trackId,
+          payload.itemId,
+          {
+            audioGain: resizeVolume.value.startGain,
+          },
+          {
+            skipHistory: true,
+            saveMode: 'none',
+          },
+        );
         resizeVolume.value = null;
         clearSession();
       }
@@ -290,13 +300,18 @@ export function useTimelineClipHandleResize(
       resizeFade.value.activeCurve = nextCurve;
       const nextFadeUs = Math.round(newFadeUs);
       scheduleUpdate(() => {
-        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-          [propName]: nextFadeUs,
-          ...(curveChanged ? { [curveProp]: nextCurve } : {}),
-        }, {
-          skipHistory: true,
-          saveMode: 'none',
-        });
+        timelineStore.updateClipProperties(
+          payload.trackId,
+          payload.itemId,
+          {
+            [propName]: nextFadeUs,
+            ...(curveChanged ? { [curveProp]: nextCurve } : {}),
+          },
+          {
+            skipHistory: true,
+            saveMode: 'none',
+          },
+        );
       });
     }
 
@@ -327,13 +342,18 @@ export function useTimelineClipHandleResize(
       if (isCancel && resizeFade.value) {
         const propName = payload.edge === 'in' ? 'audioFadeInUs' : 'audioFadeOutUs';
         const curveProp = payload.edge === 'in' ? 'audioFadeInCurve' : 'audioFadeOutCurve';
-        timelineStore.updateClipProperties(payload.trackId, payload.itemId, {
-          [propName]: resizeFade.value.startFadeUs,
-          [curveProp]: resizeFade.value.startCurve,
-        }, {
-          skipHistory: true,
-          saveMode: 'none',
-        });
+        timelineStore.updateClipProperties(
+          payload.trackId,
+          payload.itemId,
+          {
+            [propName]: resizeFade.value.startFadeUs,
+            [curveProp]: resizeFade.value.startCurve,
+          },
+          {
+            skipHistory: true,
+            saveMode: 'none',
+          },
+        );
         resizeFade.value = null;
         clearSession();
       }

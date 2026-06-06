@@ -235,7 +235,10 @@ describe('MultiClipProperties.vue', () => {
   it('hides group button when all selected clips already form a single group', async () => {
     mockClipBatchActions.isSingleGroupSelection.value = true;
     const wrapper = await mountComponent();
-    const otherActions = (wrapper.vm as any).otherActions as Array<{ id: string; hidden?: boolean }>;
+    const otherActions = (wrapper.vm as any).otherActions as Array<{
+      id: string;
+      hidden?: boolean;
+    }>;
     const groupAction = otherActions.find((a) => a.id === 'group');
     expect(groupAction?.hidden).toBe(true);
   });

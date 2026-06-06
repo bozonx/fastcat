@@ -129,11 +129,7 @@ const selectedSampleRate = computed({
       <label class="text-xs text-ui-text-muted font-medium">
         {{ t('videoEditor.export.audioCodec') }}
       </label>
-      <UiButtonGroup
-        v-model="audioCodec"
-        :options="audioCodecOptions"
-        :disabled="props.disabled"
-      />
+      <UiButtonGroup v-model="audioCodec" :options="audioCodecOptions" :disabled="props.disabled" />
     </div>
 
     <!-- Audio Channels Select -->
@@ -148,7 +144,15 @@ const selectedSampleRate = computed({
       />
     </div>
 
-    <div :class="props.hideSampleRate && (audioCodec === 'flac' || audioCodec === 'pcm') ? 'hidden' : props.hideSampleRate || (audioCodec === 'flac' || audioCodec === 'pcm') ? 'flex flex-col gap-2' : 'grid grid-cols-2 gap-3'">
+    <div
+      :class="
+        props.hideSampleRate && (audioCodec === 'flac' || audioCodec === 'pcm')
+          ? 'hidden'
+          : props.hideSampleRate || audioCodec === 'flac' || audioCodec === 'pcm'
+            ? 'flex flex-col gap-2'
+            : 'grid grid-cols-2 gap-3'
+      "
+    >
       <!-- Audio Bitrate Select -->
       <div v-if="audioCodec !== 'flac' && audioCodec !== 'pcm'" class="flex flex-col gap-2">
         <label class="text-xs text-ui-text-muted font-medium">

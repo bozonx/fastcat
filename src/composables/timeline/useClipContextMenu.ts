@@ -6,7 +6,10 @@ import {
   buildSingleItemActionGroup,
 } from '~/composables/timeline/clip-context-menu/buildSingleClipContextMenu';
 import { buildTransitionContextMenu } from '~/composables/timeline/clip-context-menu/buildTransitionContextMenu';
-import type { ContextMenuGroup, UseClipContextMenuOptions } from '~/composables/timeline/clip-context-menu/types';
+import type {
+  ContextMenuGroup,
+  UseClipContextMenuOptions,
+} from '~/composables/timeline/clip-context-menu/types';
 
 export function useClipContextMenu(options: UseClipContextMenuOptions) {
   const contextMenuItems = computed(() => {

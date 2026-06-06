@@ -54,7 +54,7 @@ describe('SettingsAudio', () => {
 
   it('renders Web audio settings and diagnostics when isTauriRuntime is false', async () => {
     mockIsTauriRuntime.mockReturnValue(false);
-    
+
     // Mock AudioEncoder on globalThis to simulate support in browser
     (globalThis as any).AudioEncoder = {
       isConfigSupported: vi.fn().mockResolvedValue({ supported: true }),

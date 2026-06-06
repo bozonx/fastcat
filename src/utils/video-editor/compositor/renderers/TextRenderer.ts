@@ -410,11 +410,26 @@ export class TextRenderer {
 
     // Named colors map (subset of CSS named colors)
     const namedColors: Record<string, string> = {
-      black: '#000000', white: '#ffffff', red: '#ff0000', green: '#008000',
-      blue: '#0000ff', yellow: '#ffff00', cyan: '#00ffff', magenta: '#ff00ff',
-      silver: '#c0c0c0', gray: '#808080', grey: '#808080', maroon: '#800000',
-      olive: '#808000', lime: '#00ff00', aqua: '#00ffff', teal: '#008080',
-      navy: '#000080', fuchsia: '#ff00ff', purple: '#800080', orange: '#ffa500',
+      black: '#000000',
+      white: '#ffffff',
+      red: '#ff0000',
+      green: '#008000',
+      blue: '#0000ff',
+      yellow: '#ffff00',
+      cyan: '#00ffff',
+      magenta: '#ff00ff',
+      silver: '#c0c0c0',
+      gray: '#808080',
+      grey: '#808080',
+      maroon: '#800000',
+      olive: '#808000',
+      lime: '#00ff00',
+      aqua: '#00ffff',
+      teal: '#008080',
+      navy: '#000080',
+      fuchsia: '#ff00ff',
+      purple: '#800080',
+      orange: '#ffa500',
     };
     const named = namedColors[trimmed];
     if (named) {
@@ -434,7 +449,9 @@ export class TextRenderer {
     }
 
     // rgba(r,g,b,a)
-    const rgbaMatch = trimmed.match(/^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([\d.]+)\s*\)$/);
+    const rgbaMatch = trimmed.match(
+      /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([\d.]+)\s*\)$/,
+    );
     if (rgbaMatch) {
       const a = Math.max(0, Math.min(1, Number(rgbaMatch[4]) * alpha));
       return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${a})`;
@@ -452,7 +469,10 @@ export class TextRenderer {
     const clean = hex.replace('#', '');
     const full =
       clean.length === 3
-        ? clean.split('').map((c) => c + c).join('')
+        ? clean
+            .split('')
+            .map((c) => c + c)
+            .join('')
         : clean;
     const value = Number.parseInt(full, 16);
     const r = (value >> 16) & 255;

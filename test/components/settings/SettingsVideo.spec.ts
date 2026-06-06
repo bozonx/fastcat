@@ -64,7 +64,7 @@ describe('SettingsVideo', () => {
     // Should NOT render ffmpeg settings
     expect(wrapper.text()).not.toContain('videoEditor.settings.video.ffmpegSettings');
     expect(wrapper.text()).not.toContain('videoEditor.settings.video.hwaccelMode');
-    
+
     // Should show browser diagnostics
     expect(wrapper.text()).toContain('Mock Browser Compositor');
     expect(wrapper.text()).toContain('WebGL available');

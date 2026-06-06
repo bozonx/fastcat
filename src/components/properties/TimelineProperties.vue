@@ -88,7 +88,11 @@ const isInactiveTimeline = computed(() => {
 });
 
 const finalIsReadOnly = computed(
-  () => props.isReadOnly || isInactiveTimeline.value || projectStore.isReadOnly || timelineStore.previewMode,
+  () =>
+    props.isReadOnly ||
+    isInactiveTimeline.value ||
+    projectStore.isReadOnly ||
+    timelineStore.previewMode,
 );
 
 const { onDelete } = useFilePropertiesHandlers({

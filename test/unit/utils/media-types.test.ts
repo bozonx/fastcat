@@ -26,7 +26,9 @@ describe('media-types', () => {
   it('extracts MIME type ignoring query and hash', () => {
     expect(getMimeTypeFromFilename('video.mp4?v=123')).toBe('video/mp4');
     expect(getMimeTypeFromFilename('video.mp4#v=123')).toBe('video/mp4');
-    expect(getMimeTypeFromFilename('asset://localhost/path/video.mkv?ts=1#frag')).toBe('video/x-matroska');
+    expect(getMimeTypeFromFilename('asset://localhost/path/video.mkv?ts=1#frag')).toBe(
+      'video/x-matroska',
+    );
     expect(getMimeTypeFromFilename('audio.wav?v=2')).toBe('audio/wav');
     expect(getMimeTypeFromFilename('unknown.xyz')).toBe('application/octet-stream');
   });

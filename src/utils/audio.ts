@@ -92,5 +92,3 @@ export function percentToDb(percent: number, minDb = -60, maxDb = 12): number {
   const gain = Math.pow(percent / 100, 3) * maxGain;
   return 20 * Math.log10(gain);
 }
-
-

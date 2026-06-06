@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 
 import UiModal from '~/components/ui/UiModal.vue';
 import UiMobileDrawer from '~/components/ui/UiMobileDrawer.vue';
@@ -10,6 +10,8 @@ import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { storeToRefs } from 'pinia';
 import { useFileConversionStore } from '~/stores/file-conversion.store';
 import { resolveAudioOnlyFileExtension } from '~/utils/conversion/helpers';
+
+import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
 
 const { t } = useI18n();
 const { isMobile } = useDevice();
@@ -42,9 +44,6 @@ const isOpen = computed({
     isModalOpen.value = value;
   },
 });
-
-import { useExportCodecs } from '~/composables/timeline/export/core/useExportCodecs';
-import { onMounted } from 'vue';
 
 const { audioCodecSupport, loadCodecSupport } = useExportCodecs();
 

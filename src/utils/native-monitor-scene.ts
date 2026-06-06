@@ -5,11 +5,7 @@ import {
 import type { WorkerTimelineClip } from '~/composables/timeline/export/types';
 import type { useProjectStore } from '~/stores/project.store';
 import type { useWorkspaceStore } from '~/stores/workspace.store';
-import type {
-  ClipEffect,
-  ClipTransform,
-  TimelineDocument,
-} from '~/timeline/types';
+import type { ClipEffect, ClipTransform, TimelineDocument } from '~/timeline/types';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
 import type { SceneAudioLayer } from '~/types/generated/native-monitor/SceneAudioLayer';

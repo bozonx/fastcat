@@ -42,9 +42,7 @@ for (const { json, ts, isRu } of configs) {
       : 'File format not supported by the browser. Convert to MP4/WebM for preview.';
   }
   if (!data.fastcat.preview.playbackError) {
-    data.fastcat.preview.playbackError = isRu
-      ? 'Ошибка воспроизведения'
-      : 'Playback error';
+    data.fastcat.preview.playbackError = isRu ? 'Ошибка воспроизведения' : 'Playback error';
   }
   if (!data.fastcat.timeline.itemOverlap) {
     data.fastcat.timeline.itemOverlap = isRu

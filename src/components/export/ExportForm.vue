@@ -340,8 +340,8 @@ function middleEllipsis(text: string, maxLen: number = 50): string {
                 color="warning"
                 variant="ghost"
                 size="xs"
-                @click="resetField('matchTimeline')"
                 class="shrink-0"
+                @click="resetField('matchTimeline')"
               />
             </div>
             <MediaResolutionSettings
@@ -447,8 +447,8 @@ function middleEllipsis(text: string, maxLen: number = 50): string {
                   color="warning"
                   variant="ghost"
                   size="xs"
-                  @click="resetField('metadataTitle')"
                   class="shrink-0"
+                  @click="resetField('metadataTitle')"
                 />
               </div>
             </UiFormField>
@@ -466,8 +466,8 @@ function middleEllipsis(text: string, maxLen: number = 50): string {
                   color="warning"
                   variant="ghost"
                   size="xs"
-                  @click="resetField('metadataAuthor')"
                   class="shrink-0"
+                  @click="resetField('metadataAuthor')"
                 />
               </div>
             </UiFormField>
@@ -490,8 +490,8 @@ function middleEllipsis(text: string, maxLen: number = 50): string {
                 color="warning"
                 variant="ghost"
                 size="xs"
-                @click="resetField('metadataDescription')"
                 class="shrink-0 mt-2"
+                @click="resetField('metadataDescription')"
               />
             </div>
           </UiFormField>
@@ -510,8 +510,8 @@ function middleEllipsis(text: string, maxLen: number = 50): string {
                 color="warning"
                 variant="ghost"
                 size="xs"
-                @click="resetField('metadataTags')"
                 class="shrink-0"
+                @click="resetField('metadataTags')"
               />
             </div>
           </UiFormField>

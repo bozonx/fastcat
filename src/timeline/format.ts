@@ -98,13 +98,26 @@ export function normalizeTimelineFormat(
     exportFormat: (input?.exportFormat as 'mp4' | 'webm' | 'mkv') ?? fallback.exportFormat ?? 'mp4',
     videoCodec: (input?.videoCodec as string) ?? fallback.videoCodec ?? 'avc1.640032',
     videoBitrateMbps: toNumber(input?.videoBitrateMbps, fallback.videoBitrateMbps ?? 5, 0.2, 200),
-    excludeAudio: typeof input?.excludeAudio === 'boolean' ? input.excludeAudio : (fallback.excludeAudio ?? false),
-    audioCodec: (input?.audioCodec as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3') ?? fallback.audioCodec ?? 'aac',
+    excludeAudio:
+      typeof input?.excludeAudio === 'boolean'
+        ? input.excludeAudio
+        : (fallback.excludeAudio ?? false),
+    audioCodec:
+      (input?.audioCodec as 'aac' | 'opus' | 'flac' | 'pcm' | 'mp3') ??
+      fallback.audioCodec ??
+      'aac',
     audioBitrateKbps: toInt(input?.audioBitrateKbps, fallback.audioBitrateKbps ?? 128, 8, 512),
     audioChannels: toInt(input?.audioChannels, fallback.audioChannels ?? 2, 1, 8),
-    bitrateMode: (input?.bitrateMode as 'constant' | 'variable') ?? fallback.bitrateMode ?? 'variable',
-    keyframeIntervalSec: toInt(input?.keyframeIntervalSec, fallback.keyframeIntervalSec ?? 2, 1, 60),
-    exportAlpha: typeof input?.exportAlpha === 'boolean' ? input.exportAlpha : (fallback.exportAlpha ?? false),
+    bitrateMode:
+      (input?.bitrateMode as 'constant' | 'variable') ?? fallback.bitrateMode ?? 'variable',
+    keyframeIntervalSec: toInt(
+      input?.keyframeIntervalSec,
+      fallback.keyframeIntervalSec ?? 2,
+      1,
+      60,
+    ),
+    exportAlpha:
+      typeof input?.exportAlpha === 'boolean' ? input.exportAlpha : (fallback.exportAlpha ?? false),
   };
 }
 

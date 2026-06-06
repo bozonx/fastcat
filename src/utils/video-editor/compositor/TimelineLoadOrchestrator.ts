@@ -110,7 +110,9 @@ export class TimelineLoadOrchestrator {
         index,
         clipData: clipData as unknown as Record<string, unknown>,
         sequentialTimeUs,
-        fallbackTrackId: callbacks.getFallbackTrackId(clipData as unknown as Record<string, unknown>),
+        fallbackTrackId: callbacks.getFallbackTrackId(
+          clipData as unknown as Record<string, unknown>,
+        ),
       });
       if (!descriptor) {
         continue;

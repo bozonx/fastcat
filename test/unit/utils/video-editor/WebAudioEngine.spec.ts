@@ -100,7 +100,7 @@ describe('WebAudioEngine', () => {
       ];
 
       await engine.updateTimelineLayout(clips);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect((engine as any).currentClips).toEqual(clips);
     });
   });

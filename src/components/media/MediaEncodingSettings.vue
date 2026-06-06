@@ -57,13 +57,17 @@ const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { requi
 const videoCodec = defineModel<string>('videoCodec', { required: true });
 const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
-const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('audioCodec', { default: 'aac' });
+const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('audioCodec', {
+  default: 'aac',
+});
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
-const preset = defineModel<'optimal' | 'social' | 'high' | 'lossless' | 'custom' | 'match-timeline'>('preset', {
+const preset = defineModel<
+  'optimal' | 'social' | 'high' | 'lossless' | 'custom' | 'match-timeline'
+>('preset', {
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });
@@ -161,9 +165,9 @@ const audioCodecOptions = computed(() => {
     { value: 'mp3', label: 'MP3' },
   ];
 
-  return allOptions.map(opt => {
+  return allOptions.map((opt) => {
     let disabled = false;
-    
+
     // Блокировка по формату контейнера
     if (outputFormat.value === 'webm') {
       disabled = opt.value !== 'opus';
@@ -171,13 +175,14 @@ const audioCodecOptions = computed(() => {
       // MP4 не поддерживает PCM и FLAC в нашем экспортере
       disabled = opt.value === 'pcm' || opt.value === 'flac';
     }
-    
+
     // Блокировка по системе (браузер / ОС / Tauri)
-    const isSupported = audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
-    
+    const isSupported =
+      audioCodecSupport.value[opt.value as keyof typeof audioCodecSupport.value] !== false;
+
     return {
       ...opt,
-      disabled: disabled || !isSupported
+      disabled: disabled || !isSupported,
     };
   });
 });
@@ -222,8 +227,8 @@ watch(
           color="warning"
           variant="ghost"
           size="xs"
-          @click="props.resetField?.('outputFormat')"
           class="shrink-0"
+          @click="props.resetField?.('outputFormat')"
         />
       </div>
     </UiFormField>
@@ -243,10 +248,10 @@ watch(
           size="sm"
           full-width
           :search-input="false"
+          class="flex-grow"
           @update:model-value="
             (v: unknown) => (videoCodec = (v as { value: string })?.value ?? (v as string))
           "
-          class="flex-grow"
         />
         <UButton
           v-if="props.isFieldDirty?.('videoCodec')"
@@ -254,8 +259,8 @@ watch(
           color="warning"
           variant="ghost"
           size="xs"
-          @click="props.resetField?.('videoCodec')"
           class="shrink-0"
+          @click="props.resetField?.('videoCodec')"
         />
       </div>
     </UiFormField>
@@ -285,8 +290,8 @@ watch(
             color="warning"
             variant="ghost"
             size="xs"
-            @click="props.resetField?.('bitrateMbps')"
             class="shrink-0"
+            @click="props.resetField?.('bitrateMbps')"
           />
         </div>
       </UiFormField>
@@ -307,8 +312,8 @@ watch(
             color="warning"
             variant="ghost"
             size="xs"
-            @click="props.resetField?.('keyframeIntervalSec')"
             class="shrink-0"
+            @click="props.resetField?.('keyframeIntervalSec')"
           />
         </div>
       </UiFormField>
@@ -320,12 +325,12 @@ watch(
           v-model="bitrateMode"
           :options="bitrateModeOptions"
           :disabled="props.disabled"
+          class="flex-grow"
           @change="
             () => {
               isBitrateModeTouched = true;
             }
           "
-          class="flex-grow"
         />
         <UButton
           v-if="props.isFieldDirty?.('bitrateMode')"
@@ -333,8 +338,8 @@ watch(
           color="warning"
           variant="ghost"
           size="xs"
-          @click="props.resetField?.('bitrateMode')"
           class="shrink-0"
+          @click="props.resetField?.('bitrateMode')"
         />
       </div>
     </UiFormField>
@@ -355,8 +360,8 @@ watch(
           color="warning"
           variant="ghost"
           size="xs"
-          @click="props.resetField?.('exportAlpha')"
           class="shrink-0"
+          @click="props.resetField?.('exportAlpha')"
         />
       </div>
     </div>
@@ -365,7 +370,9 @@ watch(
 
     <div class="flex items-center justify-between">
       <span class="text-sm text-ui-text-muted">
-        {{ t('common.audio') }} ({{ audioCodecOptions.find(o => o.value === audioCodec)?.label || audioCodec.toUpperCase() }})
+        {{ t('common.audio') }} ({{
+          audioCodecOptions.find((o) => o.value === audioCodec)?.label || audioCodec.toUpperCase()
+        }})
       </span>
       <div class="flex items-center gap-2">
         <USwitch v-model="includeAudio" :disabled="isAudioDisabled" />
@@ -375,17 +382,14 @@ watch(
           color="warning"
           variant="ghost"
           size="xs"
-          @click="props.resetField?.('excludeAudio')"
           class="shrink-0"
+          @click="props.resetField?.('excludeAudio')"
         />
       </div>
     </div>
 
     <div v-if="includeAudio && !props.hideAudioBitrate" class="flex flex-col gap-4">
-      <UiFormField
-        v-if="!props.showAudioAdvanced"
-        :label="t('videoEditor.export.audioCodec')"
-      >
+      <UiFormField v-if="!props.showAudioAdvanced" :label="t('videoEditor.export.audioCodec')">
         <div class="flex items-center gap-1.5 w-full">
           <UiButtonGroup
             v-model="audioCodec"
@@ -399,8 +403,8 @@ watch(
             color="warning"
             variant="ghost"
             size="xs"
-            @click="props.resetField?.('audioCodec')"
             class="shrink-0"
+            @click="props.resetField?.('audioCodec')"
           />
         </div>
       </UiFormField>
@@ -443,8 +447,8 @@ watch(
             color="warning"
             variant="ghost"
             size="xs"
-            @click="props.resetField?.('audioBitrateKbps')"
             class="shrink-0"
+            @click="props.resetField?.('audioBitrateKbps')"
           />
         </div>
       </UiFormField>

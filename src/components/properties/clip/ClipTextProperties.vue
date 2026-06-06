@@ -89,8 +89,10 @@ const backgroundShadowEnabled = computed({
     const patch: Record<string, unknown> = { backgroundShadowEnabled: value };
     if (value) {
       if (props.clip.style?.backgroundShadowBlur === undefined) patch.backgroundShadowBlur = 12;
-      if (props.clip.style?.backgroundShadowOffsetY === undefined) patch.backgroundShadowOffsetY = 6;
-      if (props.clip.style?.backgroundShadowColor === undefined) patch.backgroundShadowColor = '#000000';
+      if (props.clip.style?.backgroundShadowOffsetY === undefined)
+        patch.backgroundShadowOffsetY = 6;
+      if (props.clip.style?.backgroundShadowColor === undefined)
+        patch.backgroundShadowColor = '#000000';
     }
     emit('updateTextStyle', patch);
   },
@@ -205,7 +207,11 @@ const fontFamilyOptions = computed(() => {
 
   const current = props.clip.style?.fontFamily;
   if (typeof current === 'string' && current.length > 0) {
-    const primary = current.split(',')[0]?.trim().replace(/^['"]|['"]$/g, '') ?? current;
+    const primary =
+      current
+        .split(',')[0]
+        ?.trim()
+        .replace(/^['"]|['"]$/g, '') ?? current;
     if (primary && !options.some((o) => o.value === primary)) {
       options.push({ value: primary, label: primary });
     }

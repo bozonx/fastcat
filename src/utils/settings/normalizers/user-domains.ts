@@ -408,7 +408,10 @@ export function normalizeAutosaveSettings(raw: unknown): FastCatUserSettings['au
 }
 
 export function normalizeAudioEngineSettings(raw: unknown): FastCatUserSettings['audioEngine'] {
-  const input = ((raw as Record<string, unknown>)?.['audioEngine'] ?? {}) as Record<string, unknown>;
+  const input = ((raw as Record<string, unknown>)?.['audioEngine'] ?? {}) as Record<
+    string,
+    unknown
+  >;
 
   const bufferSizeSchema = z
     .union([

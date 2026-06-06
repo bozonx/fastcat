@@ -236,4 +236,3 @@ describe('utils/audio', () => {
     expect(percentToDb(0, -60, 12)).toBeCloseTo(-60, 1);
   });
 });
-

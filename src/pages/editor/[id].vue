@@ -234,7 +234,6 @@ onMounted(async () => {
   }
 
   await openProject(decodeURIComponent(projectId));
-
 });
 
 function onMainSplitResize(event: { panes: { size: number }[] }) {

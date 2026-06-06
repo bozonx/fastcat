@@ -169,8 +169,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     resolvedStorageTopology,
     getVfs: () => useVfs(),
   });
-  const { loadProjects, clearVardata, clearProjectVardata, deleteProject, renameProject, duplicateProject } =
-    projectsModule;
+  const {
+    loadProjects,
+    clearVardata,
+    clearProjectVardata,
+    deleteProject,
+    renameProject,
+    duplicateProject,
+  } = projectsModule;
 
   watch(lastProjectName, (v) => {
     if (typeof window !== 'undefined') {

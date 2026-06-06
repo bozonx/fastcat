@@ -5,7 +5,10 @@ import type { TimelineDocument } from '~/timeline/types';
 import type { TimelineCommand } from '~/timeline/commands';
 import { applyTimelineCommand } from '~/timeline/commands';
 import { selectTimelineDurationUs } from '~/timeline/selectors';
-import type { TimelineApplyOptions, TimelineApplyWithHistoryOptions } from '~/timeline/apply-options';
+import type {
+  TimelineApplyOptions,
+  TimelineApplyWithHistoryOptions,
+} from '~/timeline/apply-options';
 import { TIMELINE_MULTIPLE_ACTIONS_LABEL_KEY } from './history-labels';
 
 import type { TimelineHydrationModule } from './hydration';
@@ -34,14 +37,8 @@ export interface TimelineDispatcherDeps {
 }
 
 export interface TimelineDispatcherModule {
-  applyTimeline: (
-    cmd: TimelineCommand,
-    options?: TimelineApplyWithHistoryOptions,
-  ) => string[];
-  batchApplyTimeline: (
-    cmds: TimelineCommand[],
-    options?: TimelineApplyOptions,
-  ) => string[];
+  applyTimeline: (cmd: TimelineCommand, options?: TimelineApplyWithHistoryOptions) => string[];
+  batchApplyTimeline: (cmds: TimelineCommand[], options?: TimelineApplyOptions) => string[];
   pushTimelineHistory: (preState: TimelineDocument, commandType: string, labelKey: string) => void;
   undoTimeline: () => void;
   redoTimeline: () => void;
@@ -116,10 +113,7 @@ export function createTimelineDispatcherModule(
     return createdItemIds ?? [];
   }
 
-  function batchApplyTimeline(
-    cmds: TimelineCommand[],
-    options?: TimelineApplyOptions,
-  ): string[] {
+  function batchApplyTimeline(cmds: TimelineCommand[], options?: TimelineApplyOptions): string[] {
     if (deps.isReadOnly?.value) {
       log.warn('Timeline command ignored: timeline is read-only');
       return [];

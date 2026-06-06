@@ -392,7 +392,11 @@ export function createTimelineCommandService(deps: TimelineCommandServiceDeps) {
           fps: metadata.video.fps,
         });
       } else if (!areFpsClose(metadata.video.fps, timelineFormat.fps)) {
-        warnings.push({ type: 'fpsMismatch', fileFps: metadata.video.fps, projectFps: timelineFormat.fps });
+        warnings.push({
+          type: 'fpsMismatch',
+          fileFps: metadata.video.fps,
+          projectFps: timelineFormat.fps,
+        });
       }
     }
 

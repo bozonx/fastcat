@@ -235,7 +235,11 @@ describe('useFileManager', () => {
     const { manager, vfs } = createUploadManager();
     const file = createUploadFile({ name: 'test.mp4', size: 1024 });
 
-    vi.mocked(vfs.getMetadata).mockResolvedValue({ kind: 'file', lastModified: Date.now(), size: 1024 });
+    vi.mocked(vfs.getMetadata).mockResolvedValue({
+      kind: 'file',
+      lastModified: Date.now(),
+      size: 1024,
+    });
 
     const fileManagerStore = useFileManagerStore();
     const selectionStore = useSelectionStore();

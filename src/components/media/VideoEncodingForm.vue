@@ -43,13 +43,17 @@ const outputFormat = defineModel<'mp4' | 'webm' | 'mkv'>('outputFormat', { requi
 const videoCodec = defineModel<string>('videoCodec', { required: true });
 const bitrateMbps = defineModel<number>('bitrateMbps', { required: true });
 const excludeAudio = defineModel<boolean>('excludeAudio', { required: true });
-const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('audioCodec', { default: 'aac' });
+const audioCodec = defineModel<'aac' | 'opus' | 'flac' | 'pcm' | 'mp3'>('audioCodec', {
+  default: 'aac',
+});
 const audioBitrateKbps = defineModel<number>('audioBitrateKbps', { required: true });
 const audioChannels = defineModel<number>('audioChannels', { default: 2 });
 const audioSampleRate = defineModel<number | 'original'>('audioSampleRate', {
   default: 'original',
 });
-const preset = defineModel<'custom' | 'high' | 'optimal' | 'social' | 'lossless' | 'match-timeline'>('preset', {
+const preset = defineModel<
+  'custom' | 'high' | 'optimal' | 'social' | 'lossless' | 'match-timeline'
+>('preset', {
   default: 'custom',
 });
 const bitrateMode = defineModel<'constant' | 'variable'>('bitrateMode', { default: 'variable' });

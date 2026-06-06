@@ -281,7 +281,13 @@ export function createFileManager(deps: FileManagerCreateDeps) {
     const projectName = deps.getProjectName();
     if (!projectName) return;
 
-    const { targetDirPath, abortSignal, onProgress, backgroundMode = 'auto', selectInFileManager = true } = options ?? {};
+    const {
+      targetDirPath,
+      abortSignal,
+      onProgress,
+      backgroundMode = 'auto',
+      selectInFileManager = true,
+    } = options ?? {};
     const inputFiles = Array.from(files);
     const totalBytes = inputFiles.reduce((acc, file) => acc + file.size, 0);
     const shouldUseBackgroundTask =

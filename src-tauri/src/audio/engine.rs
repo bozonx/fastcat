@@ -289,12 +289,21 @@ struct RealtimeClock {
     frames_written: std::sync::atomic::AtomicU64,
     // f64 output latency (seconds) stored as raw bits for atomic access.
     output_latency_bits: std::sync::atomic::AtomicU64,
+    // Underrun instrumentation. The real-time callback only increments these
+    // (Relaxed, never blocks); the producer thread reads + logs them throttled.
+    // `underrun_events` counts callbacks that found the ring short of the
+    // requested frame count; `underrun_frames` is the total silent frames
+    // emitted as a result. Both are cumulative since the last `reset_frames`.
+    underrun_events: std::sync::atomic::AtomicU64,
+    underrun_frames: std::sync::atomic::AtomicU64,
 }
 
 impl RealtimeClock {
     fn reset_frames(&self) {
         self.frames_written.store(0, Ordering::Release);
         self.output_latency_bits.store(0, Ordering::Release);
+        self.underrun_events.store(0, Ordering::Release);
+        self.underrun_frames.store(0, Ordering::Release);
     }
 
     fn frames(&self) -> u64 {
@@ -694,7 +703,16 @@ fn write_output<T: OutputSample>(
         // The ring already holds device-channel interleaved samples, so we copy 1:1.
         // On underrun the unfilled tail stays zeroed (silence), but the clock still
         // advances below to prevent drift.
-        let _read = ring.pop_slice(temp_slice);
+        let read = ring.pop_slice(temp_slice);
+        // Record any shortfall as an underrun. Relaxed stores keep the real-time
+        // callback lock-free; the producer thread reads these to log throttled.
+        if read < temp_slice.len() {
+            let silent_frames = ((temp_slice.len() - read) / channels) as u64;
+            clock.underrun_events.fetch_add(1, Ordering::Relaxed);
+            clock
+                .underrun_frames
+                .fetch_add(silent_frames, Ordering::Relaxed);
+        }
         for (out, sample) in data.iter_mut().zip(temp_slice.iter()) {
             *out = T::from_f32(*sample);
         }
@@ -750,7 +768,35 @@ fn producer_loop(
     // changes, so a static timeline doesn't re-clone the whole scene 20×/sec.
     let mut cached: Option<(u64, Vec<SceneAudioLayer>, Vec<SceneAudioTrack>)> = None;
 
+    // Throttled underrun reporting. The real-time callback only bumps the atomic
+    // counters; here we log at most once per second when new underruns appear, so
+    // crackle/dropouts become visible without spamming or touching the RT path.
+    let mut last_underrun_events = 0u64;
+    let mut last_underrun_log = std::time::Instant::now();
+
     while running.load(Ordering::Relaxed) {
+        if last_underrun_log.elapsed() >= Duration::from_secs(1) {
+            let events = clock.underrun_events.load(Ordering::Relaxed);
+            // A seek/play calls `reset_frames`, zeroing the counters; rebase so we
+            // don't go silent until the count climbs back past the old baseline.
+            if events < last_underrun_events {
+                last_underrun_events = 0;
+            }
+            if events > last_underrun_events {
+                let frames = clock.underrun_frames.load(Ordering::Relaxed);
+                let new_events = events - last_underrun_events;
+                log::warn!(
+                    "[audio] ring underrun: {new_events} dropout(s) in the last ~1s \
+                     ({frames} total silent frames, {events} events since start) — \
+                     producer is missing the {:.0}ms chunk deadline; raise PREBUFFER_CHUNKS \
+                     or grant the producer real-time priority",
+                    CHUNK_DURATION_SEC * 1000.0,
+                );
+                last_underrun_events = events;
+            }
+            last_underrun_log = std::time::Instant::now();
+        }
+
         let snapshot = {
             let mut state = shared.0.lock();
             loop {

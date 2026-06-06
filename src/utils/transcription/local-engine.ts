@@ -55,7 +55,7 @@ async function decodeAudioForStt(file: File, signal?: AbortSignal): Promise<Floa
   const decodeWorker = getDecodeWorker();
   const id = Math.random();
 
-  let request: DecodeRequest = {
+  const request: DecodeRequest = {
     type: 'decode-stt',
     id,
     sourceKey: 'stt-decode',

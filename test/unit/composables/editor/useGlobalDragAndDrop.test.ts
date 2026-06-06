@@ -272,10 +272,7 @@ describe('useGlobalDragAndDrop', () => {
       });
       await flushPromises();
 
-      expect(handleFilesMock).toHaveBeenCalledWith(
-        expect.any(Array),
-        undefined,
-      );
+      expect(handleFilesMock).toHaveBeenCalledWith(expect.any(Array), undefined);
     } finally {
       document.elementFromPoint = originalElementFromPoint;
       wrapper.unmount();
