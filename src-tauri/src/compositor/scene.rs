@@ -303,6 +303,8 @@ pub struct TextLayer {
     // Offset helper metrics calculated at construction
     pub shadow_left: f32,
     pub shadow_top: f32,
+    pub shadow_right: f32,
+    pub shadow_bottom: f32,
     pub frame_width: f32,
     pub frame_height: f32,
     pub text_block_height: f32,
@@ -646,6 +648,9 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
         spec.line_height.max(0.1),
     )));
     builder.push_default(StyleProperty::FontWeight(FontWeight::new(spec.font_weight)));
+    // Letter-spacing is shaped natively by parley so it is reflected in glyph
+    // positions, line metrics and wrapping. Must match `build_text_layer`.
+    builder.push_default(StyleProperty::LetterSpacing(spec.letter_spacing));
     builder.push_default(StyleProperty::FontFamily(resolved_font_family));
     let mut layout = builder.build(&spec.text);
 
@@ -685,8 +690,8 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                 glyph_count += run.positioned_glyphs().count();
             }
         }
-        let adjusted_width =
-            line.metrics().advance + (glyph_count.saturating_sub(1) as f32) * spec.letter_spacing;
+        // `advance` already accounts for letter-spacing (shaped by parley above).
+        let adjusted_width = line.metrics().advance;
         lines_info.push(LineDrawInfo {
             glyph_count,
             adjusted_width,
@@ -728,10 +733,8 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                     }
                 };
 
-                // Трекинг копится по всей строке, а не сбрасывается на каждом run:
-                // иначе на строке из нескольких run'ов (bidi/смешанные шрифты/эмодзи)
-                // второй run не учитывал бы letter-spacing первого → наезд глифов.
-                let mut glyph_idx = 0;
+                // Letter-spacing is baked into glyph positions by parley, so glyph
+                // offsets are used as-is (bidi / mixed runs / emoji handled natively).
                 for item in line.items() {
                     let PositionedLayoutItem::GlyphRun(run) = item else {
                         continue;
@@ -743,16 +746,12 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                             (text_block_top_px + dy) as f64,
                         ));
 
-                    let adjusted_glyphs = run
+                    let glyphs = run
                         .positioned_glyphs()
-                        .map(|g| {
-                            let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
-                            glyph_idx += 1;
-                            Glyph {
-                                id: g.id,
-                                x: x_adj,
-                                y: g.y,
-                            }
+                        .map(|g| Glyph {
+                            id: g.id,
+                            x: g.x,
+                            y: g.y,
                         })
                         .collect::<Vec<_>>();
 
@@ -764,7 +763,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                             .transform(run_xform)
                             .draw(
                                 &Stroke::new(spec.text_shadow_spread as f64),
-                                adjusted_glyphs.clone().into_iter(),
+                                glyphs.clone().into_iter(),
                             );
                     }
 
@@ -773,7 +772,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                         .font_size(run.run().font_size())
                         .brush(shadow_color)
                         .transform(run_xform)
-                        .draw(Fill::NonZero, adjusted_glyphs.into_iter());
+                        .draw(Fill::NonZero, glyphs.into_iter());
                 }
             }
         };
@@ -817,7 +816,6 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
             }
         };
 
-        let mut glyph_idx = 0;
         for item in line.items() {
             let PositionedLayoutItem::GlyphRun(run) = item else {
                 continue;
@@ -826,16 +824,12 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
             let run_xform =
                 xform * Affine::translate((line_x_offset as f64, text_block_top_px as f64));
 
-            let adjusted_glyphs = run
+            let glyphs = run
                 .positioned_glyphs()
-                .map(|g| {
-                    let x_adj = g.x + glyph_idx as f32 * spec.letter_spacing;
-                    glyph_idx += 1;
-                    Glyph {
-                        id: g.id,
-                        x: x_adj,
-                        y: g.y,
-                    }
+                .map(|g| Glyph {
+                    id: g.id,
+                    x: g.x,
+                    y: g.y,
                 })
                 .collect::<Vec<_>>();
 
@@ -844,7 +838,7 @@ fn draw_text(scene: &mut VelloScene, spec: &TextLayer, xform: Affine) {
                 .font_size(run.run().font_size())
                 .brush(spec.color)
                 .transform(run_xform)
-                .draw(Fill::NonZero, adjusted_glyphs.into_iter());
+                .draw(Fill::NonZero, glyphs.into_iter());
         }
     }
 }

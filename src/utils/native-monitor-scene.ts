@@ -9,7 +9,6 @@ import type {
   ClipEffect,
   ClipTransform,
   TimelineDocument,
-  TimelineTextClipItem,
 } from '~/timeline/types';
 import type { MonitorScene } from '~/types/generated/native-monitor/MonitorScene';
 import type { SceneLayer } from '~/types/generated/native-monitor/SceneLayer';
@@ -19,24 +18,12 @@ import type { TimelineFormatInput } from '~/timeline/format';
 import { getTimelineFormat } from '~/timeline/format';
 import { buildEffectiveAudioClipItems } from '~/utils/audio/track-bus';
 import { resolveNormalizedAnchor, TRANSFORM_DESIGN_BASE } from '~/utils/video-editor/clip-layout';
-import { computeTextLayoutMetrics } from '~/utils/video-editor/text-layout';
 import { normalizeClipSpeed } from '~/utils/video-editor/source-time';
 import type { TauriDirectoryHandle } from '~/stores/workspace/provider/tauri-handle';
 import { getVideoEffectManifest, type TauriEffectSpec } from '~/effects';
 import { getTauriVideoEffectManifest } from '~/effects/tauri/manifests';
 import { getTauriTransitionManifest } from '~/transitions/tauri/manifests';
 import { getTransitionManifest } from '~/transitions/core/registry';
-
-let _measureCtx: CanvasRenderingContext2D | null | undefined;
-function getMeasureCtx() {
-  if (_measureCtx !== undefined) return _measureCtx;
-  if (typeof document === 'undefined') {
-    _measureCtx = null;
-    return _measureCtx;
-  }
-  _measureCtx = document.createElement('canvas').getContext('2d');
-  return _measureCtx;
-}
 
 // Preload Tauri path helper so we don't dynamic-import it per clip.
 let _tauriJoin: ((...paths: string[]) => Promise<string>) | null = null;
@@ -170,106 +157,25 @@ function buildNativeTransform(
 
 function buildNativeTextTransform(params: {
   transform: ClipTransform | undefined;
-  style: TimelineTextClipItem['style'];
-  text: string;
   sceneWidth: number;
   sceneHeight: number;
 }) {
-  const { transform, style, text, sceneWidth, sceneHeight } = params;
+  const { transform, sceneWidth, sceneHeight } = params;
   if (!transform) return undefined;
-
-  const anchor = resolveNormalizedAnchor(transform.anchor);
-
-  const layout = computeTextLayoutMetrics({
-    text,
-    style,
-    canvasWidth: sceneWidth,
-    canvasHeight: sceneHeight,
-    measureText: (txt, font) => {
-      const measureCtx = getMeasureCtx();
-      if (measureCtx) {
-        measureCtx.font = font;
-        return measureCtx.measureText(txt).width;
-      }
-      return txt.length * 10;
-    },
-  });
 
   const renderScale = Math.min(
     sceneWidth / TRANSFORM_DESIGN_BASE.width,
     sceneHeight / TRANSFORM_DESIGN_BASE.height,
   );
-
-  const bgW = layout.backgroundWidth;
-  const bgH = layout.backgroundHeight;
-
-  const bgShadowEnabled = style?.backgroundShadowEnabled ?? false;
-  const bgShadowBlur =
-    bgShadowEnabled && typeof style?.backgroundShadowBlur === 'number'
-      ? style.backgroundShadowBlur
-      : 0;
-  const bgShadowSpread =
-    bgShadowEnabled && typeof style?.backgroundShadowSpread === 'number'
-      ? style.backgroundShadowSpread
-      : 0;
-  const bgShadowOffsetX =
-    bgShadowEnabled && typeof style?.backgroundShadowOffsetX === 'number'
-      ? style.backgroundShadowOffsetX
-      : 0;
-  const bgShadowOffsetY =
-    bgShadowEnabled && typeof style?.backgroundShadowOffsetY === 'number'
-      ? style.backgroundShadowOffsetY
-      : 0;
-
-  const textShadowEnabled = style?.textShadowEnabled ?? false;
-  const textShadowBlur =
-    textShadowEnabled && typeof style?.textShadowBlur === 'number' ? style.textShadowBlur : 0;
-  const textShadowSpread =
-    textShadowEnabled && typeof style?.textShadowSpread === 'number' ? style.textShadowSpread : 0;
-  const textShadowOffsetX =
-    textShadowEnabled && typeof style?.textShadowOffsetX === 'number' ? style.textShadowOffsetX : 0;
-  const textShadowOffsetY =
-    textShadowEnabled && typeof style?.textShadowOffsetY === 'number' ? style.textShadowOffsetY : 0;
-
-  const bgShadowBlurPx = Math.round(bgShadowBlur * renderScale);
-  const bgShadowSpreadPx = Math.round(bgShadowSpread * renderScale);
-  const bgShadowOffsetXPx = Math.round(bgShadowOffsetX * renderScale);
-  const bgShadowOffsetYPx = Math.round(bgShadowOffsetY * renderScale);
-
-  const textShadowBlurPx = Math.round(textShadowBlur * renderScale);
-  const textShadowSpreadPx = Math.round(textShadowSpread * renderScale);
-  const textShadowOffsetXPx = Math.round(textShadowOffsetX * renderScale);
-  const textShadowOffsetYPx = Math.round(textShadowOffsetY * renderScale);
-
-  // Gaussian blur visible extent is roughly 1.5× the blur radius (σ ≈ radius/2,
-  // tail reaches ~3σ). Using 1.5× as a conservative practical bound.
-  const shadowLeft = Math.max(
-    0,
-    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx - bgShadowOffsetXPx,
-    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx - textShadowOffsetXPx,
-  );
-  const shadowRight = Math.max(
-    0,
-    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx + bgShadowOffsetXPx,
-    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx + textShadowOffsetXPx,
-  );
-  const shadowTop = Math.max(
-    0,
-    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx - bgShadowOffsetYPx,
-    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx - textShadowOffsetYPx,
-  );
-  const shadowBottom = Math.max(
-    0,
-    Math.round(bgShadowBlurPx * 1.5) + bgShadowSpreadPx + bgShadowOffsetYPx,
-    Math.round(textShadowBlurPx * 1.5) + textShadowSpreadPx + textShadowOffsetYPx,
-  );
-
   const posX = finite(transform.position?.x, 0) * renderScale;
   const posY = finite(transform.position?.y, 0) * renderScale;
+  const anchor = resolveNormalizedAnchor(transform.anchor);
 
   return {
-    x: sceneWidth / 2 + posX + (anchor.x - 0.5) * bgW + 0.5 * (shadowRight - shadowLeft),
-    y: sceneHeight / 2 + posY + (anchor.y - 0.5) * bgH + 0.5 * (shadowBottom - shadowTop),
+    // Text anchor offset is baked in Rust using the parley-measured natural
+    // size. The front-end sends center-of-scene + design-position only.
+    x: sceneWidth / 2 + posX,
+    y: sceneHeight / 2 + posY,
     scale_x: finite(transform.scale?.x, 1),
     scale_y: finite(transform.scale?.y, 1),
     rotation_deg: finite(transform.rotationDeg, 0),
@@ -544,8 +450,6 @@ export async function buildNativeMonitorScene(
     if (clip.clipType === 'text') {
       const textTransform = buildNativeTextTransform({
         transform: clip.transform,
-        style: clip.style,
-        text: clip.text ?? '',
         sceneWidth,
         sceneHeight,
       });

@@ -15,6 +15,11 @@ use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 const CHUNK_DURATION_SEC: f64 = 0.05;
 const PREBUFFER_CHUNKS: usize = 8;
+/// Fraction of the current source chunk tolerated as scheduling jitter before
+/// the streaming decoder treats the request as a discontinuity and reseeks.
+/// Reversed clips bypass this and always reseek (see `decode_symphonia_chunk`).
+const SEEK_TOLERANCE_CHUNK_FRACTION: f64 = 0.25;
+const SEEK_TOLERANCE_MIN_SEC: f64 = 0.001;
 
 struct CachedAudioDecoder {
     format: Box<dyn symphonia::core::formats::FormatReader>,
@@ -27,6 +32,12 @@ struct CachedAudioDecoder {
     // Stored as Option<Box<...>> because resamplers are large and rarely change ratio.
     resampler: Option<Box<rubato::SincFixedIn<f32>>>,
     last_resample_ratio: f64,
+    // False whenever the resampler was just created/reset (its delay line is
+    // empty). The next decode then primes it with `output_delay`-worth of extra
+    // source frames so the first emitted chunk isn't short by the resampler
+    // latency (which would zero-pad a ~3 ms silent gap into the tail after every
+    // seek and into every chunk of a reversed clip).
+    resampler_primed: bool,
     // Last source position we decoded up to; used to skip seeks on sequential chunks.
     last_decode_end_sec: f64,
     // Planar input frames not yet consumed by the fixed-size resampler. Carried
@@ -1024,6 +1035,7 @@ fn mix_layer_into(
         speed,
         sample_rate,
         output_channels,
+        reversed,
         shared,
     )
     .with_context(|| format!("decode audio layer {}", layer.id))
@@ -1146,6 +1158,33 @@ fn apply_master_gain(samples: &mut [f32], master_gain: f64) {
     }
 }
 
+/// Builds the SincFixedIn resampler used everywhere in the engine. Centralised so
+/// every call site (one-shot, cached streaming, and the eager pre-decode build
+/// used for delay-line priming) shares identical filter parameters and block
+/// size; otherwise their group delays would differ and priming maths would be
+/// wrong.
+const RESAMPLER_CHUNK_SIZE: usize = 1024;
+
+fn make_sinc_resampler(ratio: f64, num_channels: usize) -> Result<rubato::SincFixedIn<f32>> {
+    use rubato::{SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction};
+    let params = SincInterpolationParameters {
+        sinc_len: 256,
+        f_cutoff: 0.95,
+        interpolation: SincInterpolationType::Linear,
+        oversampling_factor: 160,
+        window: WindowFunction::BlackmanHarris2,
+    };
+    let max_ratio_factor = ratio.max(2.0);
+    SincFixedIn::<f32>::new(
+        ratio,
+        max_ratio_factor,
+        params,
+        RESAMPLER_CHUNK_SIZE,
+        num_channels,
+    )
+    .map_err(|e| anyhow!("failed to create resampler: {:?}", e))
+}
+
 fn resample_planar_with_speed(
     input: Vec<Vec<f32>>,
     source_rate: u32,
@@ -1153,9 +1192,7 @@ fn resample_planar_with_speed(
     speed: f64,
     num_channels: usize,
 ) -> Result<Vec<Vec<f32>>> {
-    use rubato::{
-        Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
-    };
+    use rubato::Resampler;
 
     let ratio = target_rate as f64 / (source_rate as f64 * speed);
 
@@ -1167,19 +1204,8 @@ fn resample_planar_with_speed(
         return Ok(input);
     }
 
-    let params = SincInterpolationParameters {
-        sinc_len: 256,
-        f_cutoff: 0.95,
-        interpolation: SincInterpolationType::Linear,
-        oversampling_factor: 160,
-        window: WindowFunction::BlackmanHarris2,
-    };
-
-    let chunk_size = 1024;
-    let max_ratio_factor = ratio.max(2.0);
-    let mut resampler =
-        SincFixedIn::<f32>::new(ratio, max_ratio_factor, params, chunk_size, num_channels)
-            .map_err(|e| anyhow!("failed to create resampler: {:?}", e))?;
+    let chunk_size = RESAMPLER_CHUNK_SIZE;
+    let mut resampler = make_sinc_resampler(ratio, num_channels)?;
 
     let input_len = input[0].len();
     let mut output = vec![Vec::new(); num_channels];
@@ -1236,9 +1262,7 @@ fn resample_planar_cached(
     cached_resampler: &mut Option<Box<rubato::SincFixedIn<f32>>>,
     remainder: &mut Vec<Vec<f32>>,
 ) -> Result<Vec<Vec<f32>>> {
-    use rubato::{
-        Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
-    };
+    use rubato::Resampler;
 
     let ratio = target_rate as f64 / (source_rate as f64 * speed);
 
@@ -1251,18 +1275,7 @@ fn resample_planar_cached(
     }
 
     if cached_resampler.is_none() {
-        let params = SincInterpolationParameters {
-            sinc_len: 256,
-            f_cutoff: 0.95,
-            interpolation: SincInterpolationType::Linear,
-            oversampling_factor: 160,
-            window: WindowFunction::BlackmanHarris2,
-        };
-        let chunk_size = 1024;
-        let max_ratio_factor = ratio.max(2.0);
-        let resampler =
-            SincFixedIn::<f32>::new(ratio, max_ratio_factor, params, chunk_size, num_channels)
-                .map_err(|e| anyhow!("failed to create resampler: {:?}", e))?;
+        let resampler = make_sinc_resampler(ratio, num_channels)?;
         *cached_resampler = Some(Box::new(resampler));
         *remainder = vec![Vec::new(); num_channels];
     }
@@ -1500,6 +1513,7 @@ fn decode_symphonia_chunk(
     speed: f64,
     target_sample_rate: u32,
     output_channels: usize,
+    reverse: bool,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
     // Decoders are keyed per layer, not per path: two clips from the same file
@@ -1566,6 +1580,7 @@ fn decode_symphonia_chunk(
             time_base,
             resampler: None,
             last_resample_ratio: 0.0,
+            resampler_primed: false,
             last_decode_end_sec: 0.0,
             resample_remainder: vec![Vec::new(); channels],
             resample_output_remainder: Vec::new(),
@@ -1575,15 +1590,20 @@ fn decode_symphonia_chunk(
     let mut state_val = decoder_state.unwrap();
 
     // Only seek/reset when the requested position is not contiguous with where
-    // the decoder left off. Sequential chunk decodes (the common case in the
-    // producer loop) skip the expensive seek+reset. The decoder advances
-    // `timeline_duration * speed` seconds through the SOURCE per chunk, so the
-    // end position must include `speed` — otherwise fast clips drift and trip a
-    // needless reseek on every chunk.
+    // the decoder left off (tracked in source time as `last_decode_end_sec`).
+    // Sequential chunk decodes (the common case in the producer loop) skip the
+    // expensive seek+reset.
     let source_advance_sec = timeline_duration_sec * speed;
-    let source_end_sec = source_start_sec + source_advance_sec;
-    let needs_seek = source_start_sec < state_val.last_decode_end_sec - 0.05
-        || source_start_sec > state_val.last_decode_end_sec + 0.05;
+    let seek_tolerance_sec =
+        (source_advance_sec.abs() * SEEK_TOLERANCE_CHUNK_FRACTION).max(SEEK_TOLERANCE_MIN_SEC);
+    // Reversed clips decode short forward windows that step BACKWARD through the
+    // source each chunk; that jump is never contiguous with where the decoder
+    // left off, so force a reseek (and a clean resampler prime) every chunk
+    // rather than relying on the sequential-decode fast path, which would emit
+    // forward-running audio for a clip meant to play backward.
+    let needs_seek = reverse
+        || source_start_sec < state_val.last_decode_end_sec - seek_tolerance_sec
+        || source_start_sec > state_val.last_decode_end_sec + seek_tolerance_sec;
     let current_ratio = target_sample_rate as f64 / (state_val.source_rate as f64 * speed);
 
     let (_actual_sec, discard_frames_remaining) = if needs_seek {
@@ -1620,6 +1640,9 @@ fn decode_symphonia_chunk(
         state_val.resample_remainder = vec![Vec::new(); state_val.channels];
         state_val.resample_output_remainder.clear();
         state_val.last_resample_ratio = current_ratio;
+        // The reset() / rebuild above empties the resampler's delay line, so the
+        // next decode must re-prime it.
+        state_val.resampler_primed = false;
 
         let actual_sec = {
             let t = state_val.time_base.calc_time(seeked_to.actual_ts);
@@ -1644,8 +1667,64 @@ fn decode_symphonia_chunk(
         (source_start_sec, 0usize)
     };
     let mut discard_frames_remaining = discard_frames_remaining;
-    let source_frames_needed =
-        (timeline_duration_sec * speed * state_val.source_rate as f64).round() as usize;
+
+    // Bring the cached resampler in line with the current ratio BEFORE decoding,
+    // so we know its output delay and can size the decode to prime it. A ratio
+    // change (speed edit) invalidates the instance and its carried remainders.
+    let resampling_active =
+        !((current_ratio - 1.0).abs() < 1e-6 && state_val.source_rate == target_sample_rate);
+    if state_val.resampler.is_some() && (state_val.last_resample_ratio - current_ratio).abs() > 1e-6
+    {
+        state_val.resampler = None;
+        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+        state_val.resample_output_remainder.clear();
+        state_val.resampler_primed = false;
+    }
+    state_val.last_resample_ratio = current_ratio;
+
+    // When the resampler's delay line is empty (freshly created or reset) the
+    // first `output_delay` output frames it would otherwise withhold are decoded
+    // up-front as extra source frames. They fill the delay line so the requested
+    // region emits a full-length chunk instead of being zero-padded by ~3 ms at
+    // the tail. The withheld frames stay live in the resampler and are emitted by
+    // the next sequential chunk, which therefore reads forward past them, so no
+    // audio is lost or duplicated. Reversed clips reset every chunk and so prime
+    // every chunk, which is exactly what removes their per-chunk silence.
+    let mut prime_source_frames = 0usize;
+    if resampling_active {
+        if state_val.resampler.is_none() {
+            state_val.resampler = Some(Box::new(make_sinc_resampler(
+                current_ratio,
+                state_val.channels,
+            )?));
+            state_val.resample_remainder = vec![Vec::new(); state_val.channels];
+            state_val.resampler_primed = false;
+        }
+        if !state_val.resampler_primed {
+            let delay = {
+                use rubato::Resampler;
+                state_val
+                    .resampler
+                    .as_ref()
+                    .map(|r| r.output_delay())
+                    .unwrap_or(0)
+            };
+            // The streaming resampler withholds two things on a cold start: the
+            // `output_delay` output frames of filter latency, and up to one input
+            // block that hasn't accumulated to the fixed `RESAMPLER_CHUNK_SIZE`.
+            // Decode enough extra source frames to cover BOTH so this first chunk
+            // emits a full-length output instead of a zero-padded silent tail.
+            // The surplus stays live in the resampler FIFOs and feeds later
+            // chunks, so nothing is duplicated or skipped (the decoder's file
+            // position is recorded from the frames actually read, below).
+            prime_source_frames =
+                (delay as f64 / current_ratio).ceil() as usize + RESAMPLER_CHUNK_SIZE + 1;
+        }
+    }
+
+    let source_frames_needed = (timeline_duration_sec * speed * state_val.source_rate as f64)
+        .round() as usize
+        + prime_source_frames;
 
     let mut planar_buffers = vec![Vec::new(); state_val.channels];
     let mut collected_frames = 0;
@@ -1690,6 +1769,10 @@ fn decode_symphonia_chunk(
                     state_val.resample_remainder = vec![Vec::new(); state_val.channels];
                     state_val.resample_output_remainder.clear();
                     state_val.last_resample_ratio = current_ratio;
+                    // Rebuilt for the new channel count: delay line empty, but we
+                    // already sized this chunk's decode for the old resampler, so
+                    // it may fall short here; reprime on the next chunk.
+                    state_val.resampler_primed = false;
                 }
 
                 for frame in 0..num_frames {
@@ -1740,15 +1823,6 @@ fn decode_symphonia_chunk(
         return Ok(vec![0.0f32; target_samples]);
     }
 
-    if state_val.resampler.is_some() && (state_val.last_resample_ratio - current_ratio).abs() > 1e-6
-    {
-        // Ratio changed (e.g. speed change): rebuild the resampler and drop the
-        // stale input/output remainders captured at the previous ratio.
-        state_val.resampler = None;
-        state_val.resample_remainder = vec![Vec::new(); state_val.channels];
-        state_val.resample_output_remainder.clear();
-        state_val.last_resample_ratio = current_ratio;
-    }
     let resampled = resample_planar_cached(
         planar_buffers,
         state_val.source_rate,
@@ -1758,13 +1832,17 @@ fn decode_symphonia_chunk(
         &mut state_val.resampler,
         &mut state_val.resample_remainder,
     )?;
+    // The resampler's delay line is now warm (either it was already primed, or
+    // this decode included the priming frames computed above).
+    state_val.resampler_primed = true;
     let interleaved = planar_to_interleaved(&resampled, output_channels);
 
     // The block-based resampler emits a variable sample count per call. Drain any
     // surplus carried from the previous chunk first, return exactly the requested
     // length, and stash the rest for the next chunk so no samples are lost (which
-    // would otherwise click at chunk boundaries). A transient deficit (one-time
-    // resampler latency) is zero-padded.
+    // would otherwise click at chunk boundaries). Priming above fills the delay
+    // line so the first post-seek chunk is full; any tiny residual deficit (a few
+    // frames of rounding) is zero-padded.
     let mut combined = std::mem::take(&mut state_val.resample_output_remainder);
     combined.extend_from_slice(&interleaved);
     let out = if combined.len() >= target_samples {
@@ -1775,8 +1853,17 @@ fn decode_symphonia_chunk(
         combined
     };
 
-    // Record where this decode left off so the next chunk can skip the seek.
-    state_val.last_decode_end_sec = source_end_sec;
+    // Keep the continuity cursor on the logical requested range, not on the
+    // read-ahead frames used for resampler priming. Those extra frames already
+    // live in the resampler FIFOs, so the next sequential chunk must not seek
+    // back to them. If we hit EOF / a clamped source tail, hold the cursor at
+    // the current request so repeated tail chunks do not reseek pointlessly.
+    let logical_source_end_sec = source_start_sec + source_advance_sec;
+    state_val.last_decode_end_sec = if collected_frames < source_frames_needed {
+        source_start_sec
+    } else {
+        logical_source_end_sec
+    };
 
     // Put it back in the cache:
     {
@@ -1795,6 +1882,7 @@ fn decode_audio_chunk(
     speed: f64,
     sample_rate: u32,
     output_channels: usize,
+    reverse: bool,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
     let source_start_sec = if source_start_sec.is_finite() {
@@ -1875,6 +1963,7 @@ fn decode_audio_chunk(
         speed,
         sample_rate,
         output_channels,
+        reverse,
         shared,
     )
 }
@@ -2552,7 +2641,8 @@ mod tests {
     fn test_decode_symphonia_chunk() {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let decoded = decode_symphonia_chunk("layer-1", path, 0.2, 0.5, 1.0, 48000, 2, &shared);
+        let decoded =
+            decode_symphonia_chunk("layer-1", path, 0.2, 0.5, 1.0, 48000, 2, false, &shared);
         assert!(
             decoded.is_ok(),
             "Failed to decode chunk: {:?}",
@@ -2563,6 +2653,91 @@ mod tests {
         // the resampler's per-call jitter is absorbed by the output remainder.
         let expected = (0.5f64 * 48000.0).round() as usize * 2;
         assert_eq!(samples.len(), expected, "chunk length must be exact");
+    }
+
+    // The fixture is 48 kHz; decoding to a DIFFERENT rate forces the resampler
+    // path so we can verify delay-line priming removes the post-seek tail gap.
+    #[test]
+    fn decode_chunk_primes_resampler_no_tail_silence_after_seek() {
+        let path = "../test/fixtures/media/sample-1s-audio.mp3";
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        // First (post-seek) chunk at a resampling ratio (48k -> 44.1k).
+        let chunk =
+            decode_symphonia_chunk("seek-layer", path, 0.1, 0.05, 1.0, 44100, 2, false, &shared)
+                .expect("decode chunk");
+        let frames = chunk.len() / 2;
+        let expected_frames = (0.05f64 * 44100.0).round() as usize;
+        assert_eq!(frames, expected_frames, "chunk length must be exact");
+
+        let state = shared.0.lock();
+        let decoder = state.decoders.get("seek-layer").expect("decoder cached");
+        assert!(decoder.resampler_primed, "resampler should be primed");
+        assert!(
+            !decoder.resample_output_remainder.is_empty(),
+            "priming should leave surplus resampled audio for the next chunk"
+        );
+    }
+
+    // Reversed streaming clips reseek every chunk; priming must keep each chunk
+    // full (no per-chunk silent gap) and length-exact.
+    #[test]
+    fn decode_chunk_reverse_resampled_stays_full() {
+        let path = "../test/fixtures/media/sample-1s-audio.mp3";
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let expected_frames = (0.05f64 * 44100.0).round() as usize;
+        for i in 0..3 {
+            let src = 0.5 - i as f64 * 0.05; // stepping backward, as reverse does
+            let chunk =
+                decode_symphonia_chunk("rev-layer", path, src, 0.05, 1.0, 44100, 2, true, &shared)
+                    .expect("decode reverse chunk");
+            assert_eq!(
+                chunk.len() / 2,
+                expected_frames,
+                "reverse chunk exact length"
+            );
+            let state = shared.0.lock();
+            let decoder = state.decoders.get("rev-layer").expect("decoder cached");
+            assert!(
+                decoder.resampler_primed,
+                "reverse resampler should be primed"
+            );
+            assert!(
+                !decoder.resample_output_remainder.is_empty(),
+                "reverse priming should leave surplus resampled audio"
+            );
+        }
+    }
+
+    #[test]
+    fn decode_chunk_tail_eof_keeps_cursor_on_clamped_source_start() {
+        let path = "../test/fixtures/media/sample-1s-audio.mp3";
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let source_start = 0.999;
+        let chunk = decode_symphonia_chunk(
+            "tail-layer",
+            path,
+            source_start,
+            0.05,
+            1.0,
+            44100,
+            2,
+            false,
+            &shared,
+        )
+        .expect("decode tail chunk");
+        let expected_samples = (0.05f64 * 44100.0).round() as usize * 2;
+        assert_eq!(
+            chunk.len(),
+            expected_samples,
+            "tail chunk length must be exact"
+        );
+
+        let state = shared.0.lock();
+        let decoder = state.decoders.get("tail-layer").expect("decoder cached");
+        assert!(
+            (decoder.last_decode_end_sec - source_start).abs() < 1e-9,
+            "EOF tail cursor should stay at clamped source start"
+        );
     }
 
     #[test]

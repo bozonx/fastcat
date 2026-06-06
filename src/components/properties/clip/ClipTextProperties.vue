@@ -61,17 +61,39 @@ const backgroundEnabled = computed({
 
 const borderEnabled = computed({
   get: () => Boolean(props.clip.style?.borderEnabled),
-  set: (value: boolean) => emit('updateTextStyle', { borderEnabled: value }),
+  set: (value: boolean) => {
+    const patch: Record<string, unknown> = { borderEnabled: value };
+    if (value && props.clip.style?.borderWidth === undefined) {
+      patch.borderWidth = 2;
+    }
+    emit('updateTextStyle', patch);
+  },
 });
 
 const textShadowEnabled = computed({
   get: () => Boolean(props.clip.style?.textShadowEnabled),
-  set: (value: boolean) => emit('updateTextStyle', { textShadowEnabled: value }),
+  set: (value: boolean) => {
+    const patch: Record<string, unknown> = { textShadowEnabled: value };
+    if (value) {
+      if (props.clip.style?.textShadowBlur === undefined) patch.textShadowBlur = 8;
+      if (props.clip.style?.textShadowOffsetY === undefined) patch.textShadowOffsetY = 4;
+      if (props.clip.style?.textShadowColor === undefined) patch.textShadowColor = '#000000';
+    }
+    emit('updateTextStyle', patch);
+  },
 });
 
 const backgroundShadowEnabled = computed({
   get: () => Boolean(props.clip.style?.backgroundShadowEnabled),
-  set: (value: boolean) => emit('updateTextStyle', { backgroundShadowEnabled: value }),
+  set: (value: boolean) => {
+    const patch: Record<string, unknown> = { backgroundShadowEnabled: value };
+    if (value) {
+      if (props.clip.style?.backgroundShadowBlur === undefined) patch.backgroundShadowBlur = 12;
+      if (props.clip.style?.backgroundShadowOffsetY === undefined) patch.backgroundShadowOffsetY = 6;
+      if (props.clip.style?.backgroundShadowColor === undefined) patch.backgroundShadowColor = '#000000';
+    }
+    emit('updateTextStyle', patch);
+  },
 });
 
 const paddingLinked = computed({

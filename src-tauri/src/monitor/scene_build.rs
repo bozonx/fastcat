@@ -25,9 +25,13 @@ use crate::compositor::scene::{
 };
 use parley::fontique::FontWeight;
 use parley::style::LineHeight;
-use parley::{PositionedLayoutItem, StyleProperty};
+use parley::StyleProperty;
 
 use super::scene::{LayerKind, SceneLayer, SceneLayerTransform};
+
+/// Visible extent of a Gaussian blur as a multiple of the CSS-like blur radius.
+/// blur radius → σ ≈ blur/2, and the perceptible tail reaches ~3σ = 1.5·blur.
+const SHADOW_BLUR_EXTENT_FACTOR: f32 = 1.5;
 
 /// Строит «виртуальный» (не требующий декода) `CompLayerKind` для слоёв
 /// `Background | Shape | Text`. Для растровых kind'ов возвращает `None` —
@@ -140,7 +144,8 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
         crate::compositor::text::resolve_font_family(&font_family_raw);
     let font_weight_val = font_weight(&style);
     let line_height_val = number(&style, "lineHeight", 1.2).clamp(0.1, 10.0) as f32;
-    let letter_spacing = (number(&style, "letterSpacing", 0.0) * render_scale) as f32;
+    let letter_spacing =
+        (number(&style, "letterSpacing", 0.0).clamp(-1000.0, 1000.0) * render_scale) as f32;
 
     let font_size_px = (font_size as f64 * render_scale).max(1.0) as f32;
 
@@ -271,6 +276,9 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
             line_height_val,
         )));
         builder.push_default(StyleProperty::FontWeight(FontWeight::new(font_weight_val)));
+        // Letter-spacing is shaped natively by parley so it is reflected in line
+        // metrics AND wrapping. Must match the draw pass in `scene::draw_text`.
+        builder.push_default(StyleProperty::LetterSpacing(letter_spacing));
         builder.push_default(StyleProperty::FontFamily(resolved_font_family));
         let mut layout = builder.build(&text);
 
@@ -278,14 +286,8 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
         let mut max_line_w = 0.0f32;
         for line in layout.lines() {
-            let mut glyph_count = 0;
-            for item in line.items() {
-                if let PositionedLayoutItem::GlyphRun(run) = item {
-                    glyph_count += run.positioned_glyphs().count();
-                }
-            }
-            let line_w =
-                line.metrics().advance + (glyph_count.saturating_sub(1) as f32) * letter_spacing;
+            // `advance` already includes letter-spacing applied above.
+            let line_w = line.metrics().advance;
             if line_w > max_line_w {
                 max_line_w = line_w;
             }
@@ -305,18 +307,24 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
     let auto_frame_height_px = text_block_height_px + padding_top + padding_bottom;
     let frame_height_px = explicit_height_px.unwrap_or(auto_frame_height_px).max(1.0);
 
-    // Shadows bounding box adjustment
-    let shadow_left = (bg_shadow_blur + bg_shadow_spread - bg_shadow_offset_x)
-        .max(text_shadow_blur + text_shadow_spread - text_shadow_offset_x)
+    // Shadows bounding box adjustment.
+    // The blur radius maps to a Gaussian with σ ≈ blur/2; its visible tail reaches
+    // ~3σ = 1.5·blur. We reserve that much room in the layer's natural size so the
+    // blurred shadow is not clipped when the layer is composited inside a clip group
+    // (opacity < 1 / non-normal blend / crop all push a natural-bounds clip).
+    let bg_shadow_extent = bg_shadow_blur * SHADOW_BLUR_EXTENT_FACTOR + bg_shadow_spread;
+    let text_shadow_extent = text_shadow_blur * SHADOW_BLUR_EXTENT_FACTOR + text_shadow_spread;
+    let shadow_left = (bg_shadow_extent - bg_shadow_offset_x)
+        .max(text_shadow_extent - text_shadow_offset_x)
         .max(0.0);
-    let shadow_right = (bg_shadow_blur + bg_shadow_spread + bg_shadow_offset_x)
-        .max(text_shadow_blur + text_shadow_spread + text_shadow_offset_x)
+    let shadow_right = (bg_shadow_extent + bg_shadow_offset_x)
+        .max(text_shadow_extent + text_shadow_offset_x)
         .max(0.0);
-    let shadow_top = (bg_shadow_blur + bg_shadow_spread - bg_shadow_offset_y)
-        .max(text_shadow_blur + text_shadow_spread - text_shadow_offset_y)
+    let shadow_top = (bg_shadow_extent - bg_shadow_offset_y)
+        .max(text_shadow_extent - text_shadow_offset_y)
         .max(0.0);
-    let shadow_bottom = (bg_shadow_blur + bg_shadow_spread + bg_shadow_offset_y)
-        .max(text_shadow_blur + text_shadow_spread + text_shadow_offset_y)
+    let shadow_bottom = (bg_shadow_extent + bg_shadow_offset_y)
+        .max(text_shadow_extent + text_shadow_offset_y)
         .max(0.0);
 
     let background_width = frame_width_px + border_width * 2.0 + shadow_left + shadow_right;
@@ -367,6 +375,8 @@ fn build_text_layer(sl: &SceneLayer, scene_size: (u32, u32)) -> TextLayer {
 
         shadow_left,
         shadow_top,
+        shadow_right,
+        shadow_bottom,
         frame_width: frame_width_px,
         frame_height: frame_height_px,
         text_block_height: text_block_height_px,
@@ -415,9 +425,13 @@ pub fn finalize_layer(
                 1.0
             };
             let crop = local_crop_from_display_transform(t, source_rotation, is_raster_layer);
+            // Text anchoring is finalized here, where the parley-measured natural
+            // size is authoritative (the front-end cannot reproduce glyph shaping).
+            let (anchor_dx, anchor_dy) =
+                text_anchor_offset(&kind, media_size, t.anchor_x, t.anchor_y);
             Transform {
-                x: t.x,
-                y: t.y,
+                x: t.x + anchor_dx,
+                y: t.y + anchor_dy,
                 scale_x: t.scale_x * fit,
                 scale_y: t.scale_y * fit,
                 rotation_deg: t.rotation_deg + source_rotation,
@@ -441,9 +455,13 @@ pub fn finalize_layer(
                     ..Transform::center_fit(fit_media_size, scene_size)
                 }
             } else {
+                // For text the "no explicit transform" default is center of the
+                // scene with the anchor baked in (same convention as shapes).
+                let (anchor_dx, anchor_dy) =
+                    text_anchor_offset(&kind, media_size, 0.5, 0.5);
                 Transform {
-                    x: scene_size.0 as f64 / 2.0,
-                    y: scene_size.1 as f64 / 2.0,
+                    x: scene_size.0 as f64 / 2.0 + anchor_dx,
+                    y: scene_size.1 as f64 / 2.0 + anchor_dy,
                     scale_x: 1.0,
                     scale_y: 1.0,
                     rotation_deg: source_rotation,
@@ -454,6 +472,31 @@ pub fn finalize_layer(
             }
         }
     };
+
+    fn text_anchor_offset(
+        kind: &CompLayerKind,
+        natural: (u32, u32),
+        anchor_x: f64,
+        anchor_y: f64,
+    ) -> (f64, f64) {
+        match kind {
+            CompLayerKind::Text(spec) => {
+                let inner_w = spec.frame_width as f64 + spec.border_width as f64 * 2.0;
+                let inner_h = spec.frame_height as f64 + spec.border_width as f64 * 2.0;
+                let dx = (anchor_x - 0.5) * inner_w
+                    + 0.5 * ((spec.shadow_right - spec.shadow_left) as f64);
+                let dy = (anchor_y - 0.5) * inner_h
+                    + 0.5 * ((spec.shadow_bottom - spec.shadow_top) as f64);
+                (dx, dy)
+            }
+            _ => {
+                let _nw = natural.0 as f64;
+                let _nh = natural.1 as f64;
+                ((anchor_x - 0.5) * _nw, (anchor_y - 0.5) * _nh)
+            }
+        }
+    }
+
     let base_opacity = sl.opacity.clamp(0.0, 1.0) as f32;
     let local_t = time_sec - sl.timeline_start_sec;
     let opacity = compute_transition_opacity(sl, local_t, base_opacity);
@@ -843,7 +886,15 @@ pub fn parse_blend_mode(value: &str) -> BlendMode {
 
 pub fn parse_color(input: &str, alpha: f64) -> Color {
     let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Color::TRANSPARENT;
+    }
     let lower = trimmed.to_lowercase();
+
+    // `transparent` keyword
+    if lower == "transparent" {
+        return Color::TRANSPARENT;
+    }
 
     // Named colors (subset of CSS)
     let named = match lower.as_str() {
@@ -873,24 +924,43 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
         return Color::from_rgba8(r, g, b, a);
     }
 
+    fn parse_color_channel(s: &str) -> Option<u8> {
+        let s = s.trim();
+        if let Some(pct) = s.strip_suffix('%') {
+            let pct = pct.trim().parse::<f64>().ok()?;
+            return Some(((pct / 100.0) * 255.0).round().clamp(0.0, 255.0) as u8);
+        }
+        // Allow floats by rounding to nearest u8
+        if let Ok(v) = s.parse::<f64>() {
+            return Some(v.round().clamp(0.0, 255.0) as u8);
+        }
+        s.parse::<u8>().ok()
+    }
+
     // rgb(r, g, b)
     if let Some(caps) = lower.strip_prefix("rgb(").and_then(|s| s.strip_suffix(")")) {
-        let parts: Vec<_> = caps.split(',').map(|s| s.trim().parse::<u8>().ok()).collect();
-        if let [Some(r), Some(g), Some(b)] = parts[..] {
-            let a = ((255_u8 as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
-            return Color::from_rgba8(r, g, b, a);
+        let parts: Vec<&str> = caps.split(',').collect();
+        if parts.len() == 3 {
+            if let (Some(r), Some(g), Some(b)) = (
+                parse_color_channel(parts[0]),
+                parse_color_channel(parts[1]),
+                parse_color_channel(parts[2]),
+            ) {
+                let a = ((255_u8 as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
+                return Color::from_rgba8(r, g, b, a);
+            }
         }
     }
 
     // rgba(r, g, b, a)
     if let Some(caps) = lower.strip_prefix("rgba(").and_then(|s| s.strip_suffix(")")) {
-        let parts: Vec<_> = caps.split(',').map(|s| s.trim()).collect();
+        let parts: Vec<&str> = caps.split(',').collect();
         if parts.len() == 4 {
-            if let (Ok(r), Ok(g), Ok(b), Ok(a_in)) = (
-                parts[0].parse::<u8>(),
-                parts[1].parse::<u8>(),
-                parts[2].parse::<u8>(),
-                parts[3].parse::<f64>(),
+            if let (Some(r), Some(g), Some(b), Some(a_in)) = (
+                parse_color_channel(parts[0]),
+                parse_color_channel(parts[1]),
+                parse_color_channel(parts[2]),
+                parts[3].trim().parse::<f64>().ok(),
             ) {
                 let a = ((255.0 * a_in * alpha).clamp(0.0, 255.0)).round() as u8;
                 return Color::from_rgba8(r, g, b, a);
@@ -907,7 +977,7 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
             let dbl =
                 |c: Option<char>| c.and_then(|c| u8::from_str_radix(&format!("{c}{c}"), 16).ok());
             let (r, g, b) = (dbl(chars.next()), dbl(chars.next()), dbl(chars.next()));
-            // 4-значная форма `#rgba` несёт альфу в четвёртом ниббле.
+            // 4-digit hex form carries alpha in the fourth nibble.
             let a = if hex.len() == 4 {
                 dbl(chars.next())
             } else {
@@ -927,9 +997,15 @@ pub fn parse_color(input: &str, alpha: f64) -> Color {
         ),
         _ => (None, None, None, None),
     };
-    // Invalid / non-hex strings fall back to transparent so they don't visually pollute.
-    let a = ((a.unwrap_or(255) as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
-    Color::from_rgba8(r.unwrap_or(0), g.unwrap_or(0), b.unwrap_or(0), a)
+
+    // Invalid / unknown strings fall back to transparent.
+    match (r, g, b, a) {
+        (Some(r), Some(g), Some(b), Some(a_raw)) => {
+            let a = ((a_raw as f64) * alpha.clamp(0.0, 1.0)).round() as u8;
+            Color::from_rgba8(r, g, b, a)
+        }
+        _ => Color::TRANSPARENT,
+    }
 }
 
 pub fn number(value: &serde_json::Value, key: &str, fallback: f64) -> f64 {
@@ -1481,5 +1557,99 @@ mod tests {
     fn parse_color_hex_still_works() {
         let c = parse_color("#ff00aa", 1.0);
         assert_eq!(c.to_rgba8(), vello::peniko::Color::from_rgba8(255, 0, 170, 255).to_rgba8());
+    }
+
+    #[test]
+    fn parse_color_unknown_returns_transparent() {
+        let c = parse_color("not_a_color", 1.0);
+        assert_eq!(c.to_rgba8(), Color::TRANSPARENT.to_rgba8());
+    }
+
+    #[test]
+    fn parse_color_empty_returns_transparent() {
+        let c = parse_color("", 1.0);
+        assert_eq!(c.to_rgba8(), Color::TRANSPARENT.to_rgba8());
+    }
+
+    #[test]
+    fn parse_color_transparent_keyword() {
+        let c = parse_color("transparent", 1.0);
+        assert_eq!(c.to_rgba8(), Color::TRANSPARENT.to_rgba8());
+        let c2 = parse_color("TrAnSpArEnT", 0.5);
+        assert_eq!(c2.to_rgba8(), Color::TRANSPARENT.to_rgba8());
+    }
+
+    #[test]
+    fn parse_color_rgb_with_floats() {
+        let c = parse_color("rgb(255.7, 128.2, 64.9)", 1.0);
+        assert_eq!(c.to_rgba8(), Color::from_rgba8(255, 128, 65, 255).to_rgba8());
+    }
+
+    #[test]
+    fn parse_color_rgb_with_percentages() {
+        let c = parse_color("rgb(100%, 50%, 0%)", 1.0);
+        assert_eq!(c.to_rgba8(), Color::from_rgba8(255, 128, 0, 255).to_rgba8());
+    }
+
+    #[test]
+    fn finalize_layer_bakes_text_anchor_offset() {
+        // Center anchor with asymmetric shadow: the baked offset should account
+        // for the shadow asymmetry so the frame center lands at the requested
+        // position, not the background center.
+        let layer = SceneLayer {
+            id: "t".into(),
+            kind: LayerKind::Text,
+            path: "".into(),
+            timeline_start_sec: 0.0,
+            timeline_end_sec: 5.0,
+            source_start_sec: 0.0,
+            source_range_duration_sec: 5.0,
+            speed: 1.0,
+            freeze_frame_source_sec: None,
+            source_orientation: None,
+            z: 1,
+            opacity: 1.0,
+            blend_mode: "normal".into(),
+            background_color: None,
+            text: Some("Hello".into()),
+            style: Some(serde_json::json!({
+                "fontSize": 64.0,
+                "align": "center",
+                "backgroundShadowEnabled": true,
+                "backgroundShadowBlur": 10.0,
+                "backgroundShadowOffsetX": 20.0,
+            })),
+            shape_type: None,
+            fill_color: None,
+            stroke_color: None,
+            stroke_width: None,
+            shape_config: None,
+            transform: Some(SceneLayerTransform {
+                x: 100.0,
+                y: 200.0,
+                scale_x: 1.0,
+                scale_y: 1.0,
+                rotation_deg: 0.0,
+                anchor_x: 0.5, // center anchor
+                anchor_y: 0.5,
+                crop_top: 0.0,
+                crop_bottom: 0.0,
+                crop_left: 0.0,
+                crop_right: 0.0,
+            }),
+            transition_in: None,
+            transition_out: None,
+            effects: Vec::new(),
+        };
+        let scene_size = (1920u32, 1080u32);
+        let kind = build_virtual_kind(&layer, scene_size).unwrap();
+        let out = finalize_layer(&layer, kind, scene_size, 0.0);
+        // With a positive shadow offset, the natural size is asymmetric.
+        // The baked x/y must deviate from the raw 100/200 to keep the frame
+        // center at the user's position.
+        assert!(
+            out.transform.x != 100.0,
+            "center anchor with asymmetric shadow must bake a non-zero offset"
+        );
     }
 }
