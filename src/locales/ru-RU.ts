@@ -1950,6 +1950,11 @@ export default {
         "ffprobeAvailable": "FFprobe доступен",
         "codecDecoderSupport": "Поддержка декодирования (декодеры)",
         "codecEncoderSupport": "Поддержка кодирования (кодеры)",
+        "nativeEngineTitle": "Нативный аудио-движок",
+        "bufferSizeTitle": "Размер буфера",
+        "bufferSizeHelp": "Меньшие значения снижают задержку, но увеличивают нагрузку на CPU и риск сбоев. По умолчанию используется системная настройка.",
+        "backendTitle": "Аудио-бэкенд",
+        "backendHelp": "Выбор аудио-бэкенда. По умолчанию система выбирает автоматически.",
         "tauriDiagnosticsHeader": "Tauri аудио-движок (FFmpeg)"
       },
       "video": {

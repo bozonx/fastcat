@@ -1950,6 +1950,11 @@ export default {
         "ffprobeAvailable": "FFprobe available",
         "codecDecoderSupport": "Decoding support (decoders)",
         "codecEncoderSupport": "Encoding support (encoders)",
+        "nativeEngineTitle": "Native Audio Engine",
+        "bufferSizeTitle": "Buffer size",
+        "bufferSizeHelp": "Lower values reduce latency but increase CPU load and glitch risk. Default uses the system setting.",
+        "backendTitle": "Audio backend",
+        "backendHelp": "Select the audio backend. Default lets the system choose.",
         "tauriDiagnosticsHeader": "Tauri Audio Engine (FFmpeg)"
       },
       "video": {

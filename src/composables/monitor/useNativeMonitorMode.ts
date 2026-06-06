@@ -13,11 +13,34 @@ const log = createDevLogger('useNativeMonitorMode');
 
 export type MonitorMode = 'embedded' | 'canvas';
 
+// Максимальный размер render target'а в canvas-режиме. Дальше — CSS-stretch браузером.
+// Это решающий фактор производительности: GPU→CPU readback + IPC масштабируются как
+// O(w*h). Кэп ~960px даёт ~2-3 МБ/кадр вместо 8+ МБ для FullHD.
+const MAX_RENDER_DIM = 960;
+
 /**
  * Глобальный (на модуль) реактивный режим монитора. Делим между кнопкой-переключателем
  * и компонентом, который рисует `<canvas>` или нативное окно.
  */
 const mode = ref<MonitorMode>('embedded');
+
+export function resolveNativeMonitorCanvasSize(params: {
+  layoutWidth: number;
+  layoutHeight: number;
+  dpr: number;
+  maxRenderDim?: number;
+}): { width: number; height: number } {
+  const maxRenderDim = params.maxRenderDim ?? MAX_RENDER_DIM;
+  let width = Math.max(1, Math.round(params.layoutWidth * params.dpr));
+  let height = Math.max(1, Math.round(params.layoutHeight * params.dpr));
+  const longest = Math.max(width, height);
+  if (longest > maxRenderDim) {
+    const scale = maxRenderDim / longest;
+    width = Math.max(1, Math.round(width * scale));
+    height = Math.max(1, Math.round(height * scale));
+  }
+  return { width, height };
+}
 
 export function useMonitorMode() {
   return {
@@ -54,11 +77,6 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
     return ctx2d;
   }
 
-  // Максимальный размер render target'а в canvas-режиме. Дальше — CSS-stretch браузером.
-  // Это решающий фактор производительности: GPU→CPU readback + IPC масштабируются как
-  // O(w*h). Кэп ~960px даёт ~2-3 МБ/кадр вместо 8+ МБ для FullHD.
-  const MAX_RENDER_DIM = 960;
-
   function warnMonitorFailure(message: string, err: unknown): void {
     const disabledNow = markNativeMonitorInitFailure(err);
     if (disabledNow || !isNativeMonitorDisabled()) {
@@ -71,16 +89,13 @@ export function useNativeMonitorCanvas(canvasRef: Ref<HTMLCanvasElement | null>)
   function syncCanvasSize(): void {
     const el = canvasRef.value;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    let w = Math.max(1, Math.round(rect.width * dpr));
-    let h = Math.max(1, Math.round(rect.height * dpr));
-    const longest = Math.max(w, h);
-    if (longest > MAX_RENDER_DIM) {
-      const scale = MAX_RENDER_DIM / longest;
-      w = Math.max(1, Math.round(w * scale));
-      h = Math.max(1, Math.round(h * scale));
-    }
+    const layoutWidth = el.offsetWidth || el.clientWidth || el.getBoundingClientRect().width;
+    const layoutHeight = el.offsetHeight || el.clientHeight || el.getBoundingClientRect().height;
+    const { width: w, height: h } = resolveNativeMonitorCanvasSize({
+      layoutWidth,
+      layoutHeight,
+      dpr: window.devicePixelRatio || 1,
+    });
     if (el.width !== w || el.height !== h) {
       el.width = w;
       el.height = h;

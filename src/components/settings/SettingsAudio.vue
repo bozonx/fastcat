@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+import UiSelect from '~/components/ui/UiSelect.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
@@ -246,10 +247,10 @@ const webAudioCodecs = computed(() => {
           :label="t('videoEditor.settings.audio.bufferSizeTitle')"
           :help="t('videoEditor.settings.audio.bufferSizeHelp')"
         >
-          <USelect
+          <UiSelect
             v-model="workspaceStore.userSettings.audioEngine.bufferSize"
             size="sm"
-            :options="[
+            :items="[
               { label: t('common.default'), value: 'default' },
               { label: '64', value: 64 },
               { label: '128', value: 128 },
@@ -266,10 +267,10 @@ const webAudioCodecs = computed(() => {
           :label="t('videoEditor.settings.audio.backendTitle')"
           :help="t('videoEditor.settings.audio.backendHelp')"
         >
-          <USelect
+          <UiSelect
             v-model="workspaceStore.userSettings.audioEngine.backend"
             size="sm"
-            :options="[
+            :items="[
               { label: t('common.default'), value: 'default' },
               { label: 'ALSA', value: 'alsa' },
               { label: 'PulseAudio', value: 'pulseaudio' },
