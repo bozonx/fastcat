@@ -206,6 +206,10 @@ export interface FastCatUserSettings {
   autosave: {
     intervalMinutes: number;
   };
+  audioEngine: {
+    bufferSize: 'default' | 64 | 128 | 256 | 512 | 1024 | 2048 | 4096;
+    backend: 'default' | 'alsa' | 'pulseaudio' | 'jack' | 'wasapi' | 'coreaudio';
+  };
 }
 
 export interface FastCatAppSettings {
@@ -367,6 +371,10 @@ export const DEFAULT_USER_SETTINGS: FastCatUserSettings = {
   },
   autosave: {
     intervalMinutes: 2,
+  },
+  audioEngine: {
+    bufferSize: 'default',
+    backend: 'default',
   },
 };
 

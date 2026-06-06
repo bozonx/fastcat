@@ -98,6 +98,7 @@ export function createDefaultUserSettings(): FastCatUserSettings {
     backup: { ...DEFAULT_USER_SETTINGS.backup },
     presets: { ...DEFAULT_USER_SETTINGS.presets },
     autosave: { ...DEFAULT_USER_SETTINGS.autosave },
+    audioEngine: { ...DEFAULT_USER_SETTINGS.audioEngine },
   } as FastCatUserSettings;
 }
 

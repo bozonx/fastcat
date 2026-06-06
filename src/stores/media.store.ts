@@ -253,15 +253,19 @@ export const useMediaStore = defineStore('media', () => {
             parsed.audio.canDecode === undefined;
           const lacksImageCompat =
             !parsed.error && mediaType === 'image' && parsed.image === undefined;
+          const lacksContainer =
+            !parsed.error &&
+            (mediaType === 'video' || mediaType === 'audio') &&
+            parsed.container === undefined;
 
-          if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat) {
+          if (!lacksVideoCompat && !lacksAudioCompat && !lacksImageCompat && !lacksContainer) {
             parsedMeta = parsed;
             console.log('[fetchMetadataInternal] using cached meta for', projectRelativePath, 'duration=', parsed.duration, 'container=', (parsed as any).container, 'error=', parsed.error);
             if (parsed.error) {
               metadataLoadFailed.value[cacheKey] = true;
             }
           } else {
-            console.log('[fetchMetadataInternal] cache rejected for', projectRelativePath, 'lacksVideoCompat=', lacksVideoCompat, 'lacksAudioCompat=', lacksAudioCompat, 'lacksImageCompat=', lacksImageCompat);
+            console.log('[fetchMetadataInternal] cache rejected for', projectRelativePath, 'lacksVideoCompat=', lacksVideoCompat, 'lacksAudioCompat=', lacksAudioCompat, 'lacksImageCompat=', lacksImageCompat, 'lacksContainer=', lacksContainer);
           }
         } else {
           // File changed! Drop stale peaks and thumbnail caches

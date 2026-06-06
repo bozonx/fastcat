@@ -2,7 +2,7 @@
 import { createDevLogger } from '~/utils/dev-logger';
 
 import { ref, computed } from 'vue';
-import { useMediaStore } from '~/stores/media.store';
+import { useMediaStore, type MediaMetadata } from '~/stores/media.store';
 import { useProxyStore } from '~/stores/proxy.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -313,6 +313,12 @@ const { showVideoProxyActions, isGeneratingProxyForFile, hasExistingProxyForFile
     isMediaFullyUnsupported,
   });
 
+const liveMediaMeta = computed(() => {
+  const path = selectedPath.value;
+  if (!path) return null;
+  return (mediaStore.mediaMetadata as Record<string, unknown>)[path] || null;
+});
+
 const {
   canTranscribeMedia,
   isTranscriptionModalOpen,
@@ -563,7 +569,7 @@ const {
           (fileInfo?.kind === 'file' || selectedFsEntry?.kind === 'file') &&
           (isVideoFile || mediaType === 'audio')
         "
-        :media-meta="mediaMeta as any"
+        :media-meta="liveMediaMeta as MediaMetadata | null"
         :format-duration-seconds="formatDurationSeconds"
         :format-bitrate="formatBitrate"
         :latest-transcription-cache-key="latestTranscriptionCacheKey"
