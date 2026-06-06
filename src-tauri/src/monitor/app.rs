@@ -714,9 +714,8 @@ fn init_window(
         }
     };
     let hw_settings = app
-        .state::<std::sync::RwLock<crate::FfmpegHardwareSettings>>()
+        .state::<parking_lot::RwLock<crate::FfmpegHardwareSettings>>()
         .read()
-        .unwrap()
         .clone();
     Ok(WindowState {
         app: app.clone(),

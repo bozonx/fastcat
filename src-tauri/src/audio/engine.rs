@@ -776,15 +776,23 @@ fn write_output<T: OutputSample>(
     }
 
     thread_local! {
-        static TEMP_BUF: std::cell::RefCell<Vec<f32>> = std::cell::RefCell::new(Vec::new());
+        static TEMP_BUF: std::cell::RefCell<Vec<f32>> = {
+            let mut v = Vec::with_capacity(131072);
+            v.resize(131072, 0.0);
+            std::cell::RefCell::new(v)
+        };
     }
 
     TEMP_BUF.with(|buf| {
         let mut buf = buf.borrow_mut();
-        if buf.len() < data.len() {
-            buf.resize(data.len(), 0.0);
-        }
-        let temp_slice = &mut buf[..data.len()];
+        let needed = data.len();
+        assert!(
+            needed <= buf.len(),
+            "audio callback buffer size {} exceeds preallocated temp capacity {}",
+            needed,
+            buf.len()
+        );
+        let temp_slice = &mut buf[..needed];
         temp_slice.fill(0.0);
         // The ring already holds device-channel interleaved samples, so we copy 1:1.
         // On underrun the unfilled tail stays zeroed (silence), but the clock still

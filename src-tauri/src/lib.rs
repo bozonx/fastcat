@@ -79,11 +79,9 @@ impl Default for FfmpegHardwareSettings {
 #[tauri::command]
 fn native_update_ffmpeg_settings(
     settings: FfmpegHardwareSettings,
-    state: tauri::State<'_, std::sync::RwLock<FfmpegHardwareSettings>>,
+    state: tauri::State<'_, parking_lot::RwLock<FfmpegHardwareSettings>>,
 ) {
-    if let Ok(mut guard) = state.write() {
-        *guard = settings;
-    }
+    *state.write() = settings;
 }
 
 /// Extends the fs scope to allow reading a file dropped from the OS.
@@ -138,13 +136,9 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
     Ok(())
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    // На Linux форсируем X11 backend для GTK/webkit2gtk и winit. Это нужно для
-    // встраивания нативного монитора (winit child window) в главное окно Tauri:
-    // honestный `wl_subsurface` между двумя разными wl_display connections невозможен,
-    // а на X11 `with_parent_window` создаёт настоящий child через XCreateWindow.
-    // На Wayland-сессии оба окна поднимутся через XWayland.
+/// Platform-specific environment variables that must be set before any windowing
+/// or GPU subsystem is initialized.
+pub fn init_env_vars() {
     #[cfg(target_os = "linux")]
     {
         // SAFETY: вызывается до tauri::Builder и до любого взаимодействия с GTK/winit.
@@ -153,20 +147,27 @@ pub fn run() {
             std::env::set_var("WINIT_UNIX_BACKEND", "x11");
         }
     }
+    // Force wgpu to prefer the high-performance adapter (dGPU on hybrid laptops).
+    // Vello's RenderContext uses `initialize_adapter_from_env_or_default`, which
+    // falls back on `PowerPreference::from_env().unwrap_or_default()` — default
+    // is LowPower. We override it here so we never silently land on iGPU.
+    std::env::set_var("WGPU_POWER_PREF", "high");
+}
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
     let mut builder = tauri::Builder::default();
 
     #[cfg(desktop)]
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let _ = app
-                .get_webview_window("main")
-                .expect("no main window")
-                .set_focus();
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.set_focus();
+            }
         }));
     }
 
-    builder
+    builder = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_os::init())
@@ -208,7 +209,7 @@ pub fn run() {
             ipc::fonts_cmd::native_system_fonts,
         ])
         .manage(media::processing::NativeMediaTasks::default())
-        .manage(std::sync::RwLock::new(FfmpegHardwareSettings::default()))
+        .manage(parking_lot::RwLock::new(FfmpegHardwareSettings::default()))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -230,7 +231,9 @@ pub fn run() {
             // Видео-движок-singleton; AppHandle нужен, чтобы натив мог эмитить события на фронт.
             app.manage(engine::VideoEngine::new(app.handle().clone()));
             Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        });
+    let result = builder.run(tauri::generate_context!());
+    if let Err(e) = result {
+            log::error!("error while running tauri application: {e}");
+        }
 }

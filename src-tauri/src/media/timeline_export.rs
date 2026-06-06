@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
@@ -26,8 +26,9 @@ use crate::audio::engine::render_scene_to_wav;
 use crate::compositor::Compositor;
 use crate::monitor::scene::MonitorScene;
 
+use super::ffmpeg_args::*;
 use super::ffmpeg_utils::*;
-use super::processing::{spawn_stderr_drain, NativeMediaTasks};
+use super::processing::{now_millis, spawn_stderr_drain, NativeMediaTasks};
 
 /// Kill the export if ffmpeg makes no progress for this long. A stall guard rather
 /// than a wall-clock cap, so a legitimately long encode that keeps streaming frames
@@ -224,7 +225,8 @@ pub fn export_timeline(
             std::thread::spawn(move || {
                 while !done.load(Ordering::Relaxed) {
                     std::thread::sleep(Duration::from_millis(250));
-                    if activity.lock().elapsed() > EXPORT_STALL_TIMEOUT {
+                    let idle_ms = now_millis().saturating_sub(activity.load(Ordering::Acquire));
+                    if idle_ms > EXPORT_STALL_TIMEOUT.as_millis() as u64 {
                         stalled.store(true, Ordering::Relaxed);
                         let mut guard = child.lock();
                         let _ = guard.kill();
@@ -277,7 +279,7 @@ pub fn export_timeline(
                             if let Err(e) = stdin.write_all(&pixels) {
                                 return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                             }
-                            *last_activity.lock() = Instant::now();
+                            last_activity.store(now_millis(), Ordering::Release);
                             on_progress(pipeline.emitted as f64 / frame_count as f64);
                         }
                     }
@@ -286,7 +288,7 @@ pub fn export_timeline(
                         if let Err(e) = stdin.write_all(&pixels) {
                             return Err(anyhow!("ffmpeg stdin closed prematurely: {e}"));
                         }
-                        *last_activity.lock() = Instant::now();
+                        last_activity.store(now_millis(), Ordering::Release);
                         on_progress(pipeline.emitted as f64 / frame_count as f64);
                     }
                     Ok(())
@@ -418,12 +420,7 @@ fn build_ffmpeg_args(
             .vaapi_device
             .as_deref()
             .unwrap_or(DEFAULT_VAAPI_DEVICE);
-        args.extend([
-            "-init_hw_device".to_string(),
-            format!("vaapi=gpu:{vaapi_dev}"),
-            "-filter_hw_device".to_string(),
-            "gpu".to_string(),
-        ]);
+        push_vaapi_init_device_args(&mut args, vaapi_dev);
     }
 
     args.extend([
@@ -498,27 +495,7 @@ fn build_ffmpeg_args(
             args.extend(["-auto-alt-ref".to_string(), "0".to_string()]);
         }
 
-        if hw_mode == "vaapi" {
-            args.extend([
-                "-vf".to_string(),
-                "format=nv12|vaapi,hwupload".to_string(),
-                "-pix_fmt".to_string(),
-                "vaapi".to_string(),
-            ]);
-        } else if hw_mode == "nvdec" {
-            args.extend([
-                "-vf".to_string(),
-                "format=yuv420p".to_string(),
-                "-pix_fmt".to_string(),
-                "yuv420p".to_string(),
-            ]);
-        } else {
-            if export_alpha {
-                args.extend(["-pix_fmt".to_string(), "yuva420p".to_string()]);
-            } else {
-                args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
-            }
-        }
+        push_video_encode_filter_args(&mut args, hw_mode, 0, 0, export_alpha);
     } else {
         args.push("-vn".to_string());
     }

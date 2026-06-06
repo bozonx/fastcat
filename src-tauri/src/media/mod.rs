@@ -6,6 +6,7 @@
 pub mod decode;
 pub mod decode_gate;
 pub mod decode_thread;
+pub mod ffmpeg_args;
 pub mod ffmpeg_utils;
 pub mod hwaccel;
 pub mod image_decode;

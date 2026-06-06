@@ -25,7 +25,6 @@ ts-rs = "10.1"
 log = "0.4"
 pollster = "0.4.0"
 anyhow = "1"
-thiserror = "2"
 parking_lot = "0.12"
 bytemuck = { version = "1.16", features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time"] }
@@ -34,7 +33,6 @@ cpal = "0.17.3"
 symphonia = { version = "0.5.4", features = ["all"] }
 rubato = "0.16.0"
 lru = "0.12"
-thread-priority = "1.2"
 
 # --- Tauri ---
 tauri = { version = "2.11.2", features = ["protocol-asset"] }

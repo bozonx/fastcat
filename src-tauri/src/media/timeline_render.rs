@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use parking_lot::Mutex;
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
@@ -159,7 +159,9 @@ impl VideoDecoderCache {
         }
         self.lru.retain(|p| p != &path_buf);
         self.lru.push_back(path_buf.clone());
-        Ok(self.decoders.get_mut(&path_buf).unwrap())
+        self.decoders
+            .get_mut(&path_buf)
+            .context("decoder cache insertion failed")
     }
 }
 

@@ -51,15 +51,12 @@ pub struct Compositor {
     offscreen: HashMap<usize, OffscreenTarget>,
     /// Кэш скомпилированных GPU пайплайнов (шейдеров) для каждого wgpu-устройства.
     pipeline_caches: HashMap<usize, wgpu::PipelineCache>,
+    /// Reusable scratch buffer for image registration, avoiding per-frame allocations.
+    scratch_images: Vec<ImageData>,
 }
 
 impl Compositor {
     pub fn new() -> Self {
-        // Force wgpu to prefer the high-performance adapter (dGPU on hybrid laptops).
-        // Vello's RenderContext uses `initialize_adapter_from_env_or_default`, which
-        // falls back on `PowerPreference::from_env().unwrap_or_default()` — default
-        // is LowPower. We override it here so we never silently land on iGPU.
-        std::env::set_var("WGPU_POWER_PREF", "high");
         Self {
             render_cx: RenderContext::new(),
             renderers: HashMap::new(),
@@ -67,6 +64,7 @@ impl Compositor {
             transition_pipelines: HashMap::new(),
             offscreen: HashMap::new(),
             pipeline_caches: HashMap::new(),
+            scratch_images: Vec::with_capacity(16),
         }
     }
 
@@ -175,10 +173,11 @@ impl Compositor {
         viewport_h: u32,
     ) -> Result<()> {
         let dev_id = surface.dev_id;
-        let (vello, registered_images) =
-            self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h)?;
+        let mut images = std::mem::take(&mut self.scratch_images);
+        let vello = self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
         let result = self.render_to_surface(surface, &vello, scene.background);
-        self.unregister_images(dev_id, registered_images);
+        self.unregister_images(dev_id, &mut images);
+        self.scratch_images = images;
         result
     }
 
@@ -190,11 +189,12 @@ impl Compositor {
         viewport_w: u32,
         viewport_h: u32,
     ) -> Result<Vec<u8>> {
-        let (vello, registered_images) =
-            self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h)?;
+        let mut images = std::mem::take(&mut self.scratch_images);
+        let vello = self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
         let result =
             self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background);
-        self.unregister_images(dev_id, registered_images);
+        self.unregister_images(dev_id, &mut images);
+        self.scratch_images = images;
         result
     }
 
@@ -204,21 +204,21 @@ impl Compositor {
         scene: &super::scene::Scene,
         viewport_w: u32,
         viewport_h: u32,
-    ) -> Result<(VelloScene, Vec<ImageData>)> {
+        registered_images: &mut Vec<ImageData>,
+    ) -> Result<VelloScene> {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
         let effective_scene =
             self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
-        let mut registered_images = Vec::new();
         let vello = self.build_vello_scene_from_materialized(
             dev_id,
             &effective_scene,
             viewport_w,
             viewport_h,
-            &mut registered_images,
+            registered_images,
         )?;
-        Ok((vello, registered_images))
+        Ok(vello)
     }
 
     fn build_vello_scene_from_materialized(
@@ -495,11 +495,12 @@ impl Compositor {
         Ok(image)
     }
 
-    fn unregister_images(&mut self, dev_id: usize, images: Vec<ImageData>) {
+    fn unregister_images(&mut self, dev_id: usize, images: &mut Vec<ImageData>) {
         let Some(renderer) = self.renderers.get_mut(&dev_id) else {
+            images.clear();
             return;
         };
-        for image in images {
+        for image in images.drain(..) {
             renderer.unregister_texture(image);
         }
     }
@@ -1090,7 +1091,7 @@ impl Compositor {
             &mut registered_images,
         )?;
         let result = self.render_to_pixels_pipelined(session, &vello, scene.background);
-        self.unregister_images(dev_id, registered_images);
+        self.unregister_images(dev_id, &mut registered_images);
         result
     }
 

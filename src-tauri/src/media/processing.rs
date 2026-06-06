@@ -4,13 +4,17 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::{Duration, SystemTime};
 
 use parking_lot::Mutex;
 
+use crate::media::decode::probe_rotation;
 use crate::media::decode_gate::decoder_load_gate;
+use crate::media::ffmpeg_args::*;
+use crate::media::ffmpeg_utils::*;
 use crate::media::timeline_render::encode_rgba_as_webp;
 
 #[derive(Clone, Default)]
@@ -175,9 +179,6 @@ pub fn probe_media(path: &Path, ffprobe_path: &str) -> Result<NativeMediaMetadat
     metadata_from_ffprobe(json)
 }
 
-use crate::media::decode::probe_rotation;
-use crate::media::ffmpeg_utils::*;
-
 fn metadata_from_ffprobe(json: Value) -> Result<NativeMediaMetadata> {
     let streams = json
         .get("streams")
@@ -295,45 +296,16 @@ pub fn generate_proxy(
     let mut args = Vec::new();
 
     if hw_encode == "vaapi" {
-        let vaapi_dev = options
-            .vaapi_device
-            .as_deref()
-            .unwrap_or(DEFAULT_VAAPI_DEVICE);
-        args.extend([
-            "-init_hw_device".to_string(),
-            format!("vaapi=gpu:{vaapi_dev}"),
-            "-filter_hw_device".to_string(),
-            "gpu".to_string(),
-        ]);
+        push_vaapi_init_device_args(&mut args, vaapi_dev);
     }
 
     args.extend(["-nostdin".to_string(), "-y".to_string()]);
 
-    if hw_decode == "vaapi" {
-        let vaapi_dev = options
-            .vaapi_device
-            .as_deref()
-            .unwrap_or(DEFAULT_VAAPI_DEVICE);
-        args.extend([
-            "-hwaccel".to_string(),
-            "vaapi".to_string(),
-            "-hwaccel_device".to_string(),
-            vaapi_dev.to_string(),
-        ]);
-    } else if hw_decode == "nvdec" {
-        args.extend(["-hwaccel".to_string(), "nvdec".to_string()]);
-    }
+    push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
 
     args.extend(["-i".to_string(), source_path.display().to_string()]);
 
-    let vf_filter = if hw_encode == "vaapi" {
-        format!("scale={width}:{height},format=nv12|vaapi,hwupload")
-    } else if hw_encode == "nvdec" {
-        format!("scale={width}:{height},format=yuv420p")
-    } else {
-        format!("scale={width}:{height}")
-    };
-    args.extend(["-vf".to_string(), vf_filter]);
+    push_video_encode_filter_args(&mut args, hw_encode, width, height, false);
 
     let video_codec = ffmpeg_video_codec_hw(&options.video_codec, hw_encode);
     args.extend([
@@ -342,12 +314,6 @@ pub fn generate_proxy(
         "-b:v".to_string(),
         options.video_bitrate_bps.to_string(),
     ]);
-
-    if hw_encode == "vaapi" {
-        args.extend(["-pix_fmt".to_string(), "vaapi".to_string()]);
-    } else if hw_encode == "nvdec" {
-        args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
-    }
 
     args.extend(["-movflags".to_string(), "+faststart".to_string()]);
 
@@ -415,33 +381,13 @@ pub fn convert_media(
     let mut args = Vec::new();
 
     if hw_encode == "vaapi" && options.kind == "video" {
-        let vaapi_dev = options
-            .vaapi_device
-            .as_deref()
-            .unwrap_or(DEFAULT_VAAPI_DEVICE);
-        args.extend([
-            "-init_hw_device".to_string(),
-            format!("vaapi=gpu:{vaapi_dev}"),
-            "-filter_hw_device".to_string(),
-            "gpu".to_string(),
-        ]);
+        push_vaapi_init_device_args(&mut args, vaapi_dev);
     }
 
     args.extend(["-nostdin".to_string(), "-y".to_string()]);
 
-    if hw_decode == "vaapi" && options.kind == "video" {
-        let vaapi_dev = options
-            .vaapi_device
-            .as_deref()
-            .unwrap_or(DEFAULT_VAAPI_DEVICE);
-        args.extend([
-            "-hwaccel".to_string(),
-            "vaapi".to_string(),
-            "-hwaccel_device".to_string(),
-            vaapi_dev.to_string(),
-        ]);
-    } else if hw_decode == "nvdec" && options.kind == "video" {
-        args.extend(["-hwaccel".to_string(), "nvdec".to_string()]);
+    if options.kind == "video" {
+        push_hw_accel_decode_args(&mut args, hw_decode, vaapi_dev);
     }
 
     args.extend(["-i".to_string(), source_path.display().to_string()]);
@@ -451,18 +397,7 @@ pub fn convert_media(
             let width = options.width.unwrap_or(1920).max(1);
             let height = options.height.unwrap_or(1080).max(1);
 
-            let vf_filter = if hw_encode == "vaapi" {
-                format!(
-                    "scale={}:{}:format=nv12|vaapi,hwupload",
-                    even(width),
-                    even(height)
-                )
-            } else if hw_encode == "nvdec" {
-                format!("scale={}:{}:format=yuv420p", even(width), even(height))
-            } else {
-                format!("scale={}:{}", even(width), even(height))
-            };
-            args.extend(["-vf".into(), vf_filter]);
+            push_video_encode_filter_args(&mut args, hw_encode, width, height, false);
 
             let raw_video_codec = options.video_codec.as_deref().unwrap_or("avc1");
             let video_codec = ffmpeg_video_codec_hw(raw_video_codec, hw_encode);
@@ -475,12 +410,6 @@ pub fn convert_media(
                 "-b:v".into(),
                 options.video_bitrate_bps.unwrap_or(5_000_000).to_string(),
             ]);
-
-            if hw_encode == "vaapi" {
-                args.extend(["-pix_fmt".to_string(), "vaapi".to_string()]);
-            } else if hw_encode == "nvdec" {
-                args.extend(["-pix_fmt".to_string(), "yuv420p".to_string()]);
-            }
 
             if options.audio.unwrap_or(true) {
                 args.extend(audio_args(&options));
@@ -756,10 +685,17 @@ pub fn extract_video_frame_webps(
 /// keeps emitting progress is never killed mid-run.
 const FFMPEG_STALL_TIMEOUT: Duration = Duration::from_secs(300);
 
+pub(crate) fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
 pub(crate) fn spawn_stderr_drain(
     child: &mut Child,
-) -> (Option<JoinHandle<Vec<u8>>>, Arc<Mutex<Instant>>) {
-    let last_activity = Arc::new(Mutex::new(Instant::now()));
+) -> (Option<JoinHandle<Vec<u8>>>, Arc<AtomicU64>) {
+    let last_activity = Arc::new(AtomicU64::new(now_millis()));
     let activity = last_activity.clone();
     let handle = child.stderr.take().map(|mut stderr| {
         std::thread::spawn(move || {
@@ -769,7 +705,7 @@ pub(crate) fn spawn_stderr_drain(
                 match std::io::Read::read(&mut stderr, &mut chunk) {
                     Ok(0) => break,
                     Ok(n) => {
-                        *activity.lock() = Instant::now();
+                        activity.store(now_millis(), Ordering::Release);
                         buf.extend_from_slice(&chunk[..n]);
                     }
                     Err(_) => break,
@@ -821,7 +757,8 @@ fn run_ffmpeg_task(
         }
         drop(guard);
         std::thread::sleep(Duration::from_millis(100));
-        if last_activity.lock().elapsed() > FFMPEG_STALL_TIMEOUT {
+        let idle_ms = now_millis().saturating_sub(last_activity.load(Ordering::Acquire));
+        if idle_ms > FFMPEG_STALL_TIMEOUT.as_millis() as u64 {
             let mut guard = child.lock();
             let _ = guard.kill();
             let _ = guard.wait();

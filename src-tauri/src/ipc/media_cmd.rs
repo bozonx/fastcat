@@ -24,12 +24,11 @@ macro_rules! apply_hw_settings {
 #[tauri::command]
 pub async fn native_media_metadata(
     path: String,
-    hw_settings: State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<NativeMediaMetadata, String> {
     let path = PathBuf::from(path);
     let ffprobe_path = hw_settings
         .read()
-        .unwrap_or_else(|e| e.into_inner())
         .ffprobe_path
         .clone();
     tokio::task::spawn_blocking(move || probe_media(&path, &ffprobe_path))
@@ -45,7 +44,7 @@ pub async fn native_media_generate_proxy(
     target_path: String,
     mut options: NativeProxyOptions,
     tasks: State<'_, NativeMediaTasks>,
-    hw_settings: State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
     let tasks = tasks.inner().clone();
     let source_path = PathBuf::from(source_path);
@@ -53,7 +52,6 @@ pub async fn native_media_generate_proxy(
 
     let hw = hw_settings
         .read()
-        .unwrap_or_else(|e| e.into_inner())
         .clone();
     apply_hw_settings!(options, hw);
 
@@ -72,7 +70,7 @@ pub async fn native_media_convert(
     target_path: String,
     mut options: NativeConvertOptions,
     tasks: State<'_, NativeMediaTasks>,
-    hw_settings: State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
     let tasks = tasks.inner().clone();
     let source_path = PathBuf::from(source_path);
@@ -80,7 +78,6 @@ pub async fn native_media_convert(
 
     let hw = hw_settings
         .read()
-        .unwrap_or_else(|e| e.into_inner())
         .clone();
     apply_hw_settings!(options, hw);
 
@@ -112,14 +109,13 @@ pub async fn native_timeline_export(
     target_path: String,
     app: AppHandle,
     tasks: State<'_, NativeMediaTasks>,
-    hw_settings: State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<(), String> {
     let tasks = tasks.inner().clone();
     let target_path = PathBuf::from(target_path);
 
     let hw = hw_settings
         .read()
-        .unwrap_or_else(|e| e.into_inner())
         .clone();
     apply_hw_settings!(options, hw);
 
@@ -188,12 +184,11 @@ pub async fn native_video_frame_webp(
     max_width: u32,
     max_height: u32,
     quality: f32,
-    hw_settings: tauri::State<'_, std::sync::RwLock<crate::FfmpegHardwareSettings>>,
+    hw_settings: tauri::State<'_, parking_lot::RwLock<crate::FfmpegHardwareSettings>>,
 ) -> Result<Vec<u8>, String> {
     let source_path = PathBuf::from(source_path);
     let hw = hw_settings
         .read()
-        .unwrap_or_else(|e| e.into_inner())
         .clone();
     tokio::task::spawn_blocking(move || {
         extract_video_frame_webp(

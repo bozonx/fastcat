@@ -89,14 +89,14 @@ pub fn init_hwaccel(
 /// If `decoded` is a hardware frame, transfer it to a software frame.
 /// Returns `Ok(None)` if the frame is already in system memory.
 pub fn try_transfer_to_cpu(
-    decoded: &ffmpeg::util::frame::Video,
+    decoded: &mut ffmpeg::util::frame::Video,
     _ctx: &HwAccelContext,
 ) -> Result<Option<ffmpeg::util::frame::Video>> {
     if !is_hw_pixel_format(decoded.format()) {
         return Ok(None);
     }
 
-    let hw_frame = unsafe { decoded.as_ptr() as *mut ffmpeg_sys_next::AVFrame };
+    let hw_frame = unsafe { decoded.as_mut_ptr() as *mut ffmpeg_sys_next::AVFrame };
     if hw_frame.is_null() {
         return Err(anyhow!("hw frame pointer is null"));
     }

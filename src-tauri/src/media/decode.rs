@@ -34,7 +34,6 @@ pub struct VideoFrame {
     pub pixels: Vec<u8>,
     pub pts_sec: f64,
     pub texture: Option<wgpu::Texture>,
-    #[allow(dead_code)]
     pub texture_pool: Option<Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>>,
 }
 
@@ -204,7 +203,7 @@ impl FfmpegNextDecoder {
             .unwrap_or(0.0)
     }
 
-    fn decode_frame(&mut self, decoded: &ffmpeg::util::frame::Video) -> Result<VideoFrame> {
+    fn decode_frame(&mut self, decoded: &mut ffmpeg::util::frame::Video) -> Result<VideoFrame> {
         // If the decoder produced a hardware frame, download it to system memory first.
         let sw_frame = if let Some(ref ctx) = self.hwaccel {
             try_transfer_to_cpu(decoded, ctx)?
@@ -310,7 +309,7 @@ impl VideoDecoder for FfmpegNextDecoder {
                         }
                         self.seek_target = None;
                     }
-                    return self.decode_frame(&decoded).map(Some);
+                    return self.decode_frame(&mut decoded).map(Some);
                 }
                 Err(ffmpeg::Error::Other { errno }) if errno == ffmpeg::error::EAGAIN => {}
                 Err(ffmpeg::Error::Eof) => {
