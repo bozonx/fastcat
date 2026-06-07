@@ -15,6 +15,7 @@
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use vello::peniko::{Color, ImageData};
@@ -40,6 +41,81 @@ struct OffscreenTarget {
     aligned_row_bytes: usize,
 }
 
+#[derive(Clone, Copy, Default)]
+struct RenderStageTiming {
+    materialize_ms: f64,
+    build_vello_ms: f64,
+    render_ms: f64,
+    total_ms: f64,
+}
+
+#[derive(Default)]
+struct RenderPrepareTiming {
+    materialize_ms: f64,
+    build_vello_ms: f64,
+}
+
+struct RenderTelemetry {
+    enabled: bool,
+    frames: u64,
+    last_log: Instant,
+    materialize_sum_ms: f64,
+    build_vello_sum_ms: f64,
+    render_sum_ms: f64,
+    total_sum_ms: f64,
+}
+
+impl RenderTelemetry {
+    fn new() -> Self {
+        Self::with_enabled(std::env::var("FASTCAT_RENDER_TIMING").is_ok_and(|value| value != "0"))
+    }
+
+    fn with_enabled(enabled: bool) -> Self {
+        Self {
+            enabled,
+            frames: 0,
+            last_log: Instant::now(),
+            materialize_sum_ms: 0.0,
+            build_vello_sum_ms: 0.0,
+            render_sum_ms: 0.0,
+            total_sum_ms: 0.0,
+        }
+    }
+
+    fn record(&mut self, target: &'static str, timing: RenderStageTiming) {
+        if !self.enabled {
+            return;
+        }
+        self.frames += 1;
+        self.materialize_sum_ms += timing.materialize_ms;
+        self.build_vello_sum_ms += timing.build_vello_ms;
+        self.render_sum_ms += timing.render_ms;
+        self.total_sum_ms += timing.total_ms;
+
+        let should_log_periodic = self.frames % 120 == 0;
+        let should_log_slow =
+            timing.total_ms >= 50.0 && self.last_log.elapsed() >= Duration::from_secs(1);
+        if !should_log_periodic && !should_log_slow {
+            return;
+        }
+
+        let frames = self.frames as f64;
+        log::info!(
+            "[compositor-timing] {target}: last total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms; avg total={:.2}ms materialize={:.2}ms build_vello={:.2}ms render={:.2}ms over {} frames",
+            timing.total_ms,
+            timing.materialize_ms,
+            timing.build_vello_ms,
+            timing.render_ms,
+            self.total_sum_ms / frames,
+            self.materialize_sum_ms / frames,
+            self.build_vello_sum_ms / frames,
+            self.render_sum_ms / frames,
+            self.frames,
+        );
+        self.last_log = Instant::now();
+    }
+}
+
 pub struct Compositor {
     render_cx: RenderContext,
     renderers: HashMap<usize, Renderer>,
@@ -53,6 +129,7 @@ pub struct Compositor {
     pipeline_caches: HashMap<usize, wgpu::PipelineCache>,
     /// Reusable scratch buffer for image registration, avoiding per-frame allocations.
     scratch_images: Vec<ImageData>,
+    render_telemetry: RenderTelemetry,
 }
 
 impl Compositor {
@@ -65,6 +142,7 @@ impl Compositor {
             offscreen: HashMap::new(),
             pipeline_caches: HashMap::new(),
             scratch_images: Vec::with_capacity(16),
+            render_telemetry: RenderTelemetry::new(),
         }
     }
 
@@ -172,12 +250,25 @@ impl Compositor {
         viewport_w: u32,
         viewport_h: u32,
     ) -> Result<()> {
+        let total_started = Instant::now();
         let dev_id = surface.dev_id;
         let mut images = std::mem::take(&mut self.scratch_images);
-        let vello = self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
+        let (vello, prepare_timing) =
+            self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
+        let render_started = Instant::now();
         let result = self.render_to_surface(surface, &vello, scene.background);
+        let render_ms = elapsed_ms(render_started);
         self.unregister_images(dev_id, &mut images);
         self.scratch_images = images;
+        self.render_telemetry.record(
+            "surface",
+            RenderStageTiming {
+                materialize_ms: prepare_timing.materialize_ms,
+                build_vello_ms: prepare_timing.build_vello_ms,
+                render_ms,
+                total_ms: elapsed_ms(total_started),
+            },
+        );
         result
     }
 
@@ -189,12 +280,25 @@ impl Compositor {
         viewport_w: u32,
         viewport_h: u32,
     ) -> Result<Vec<u8>> {
+        let total_started = Instant::now();
         let mut images = std::mem::take(&mut self.scratch_images);
-        let vello = self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
+        let (vello, prepare_timing) =
+            self.prepare_vello_scene(dev_id, scene, viewport_w, viewport_h, &mut images)?;
+        let render_started = Instant::now();
         let result =
             self.render_to_pixels(dev_id, &vello, viewport_w, viewport_h, scene.background);
+        let render_ms = elapsed_ms(render_started);
         self.unregister_images(dev_id, &mut images);
         self.scratch_images = images;
+        self.render_telemetry.record(
+            "pixels",
+            RenderStageTiming {
+                materialize_ms: prepare_timing.materialize_ms,
+                build_vello_ms: prepare_timing.build_vello_ms,
+                render_ms,
+                total_ms: elapsed_ms(total_started),
+            },
+        );
         result
     }
 
@@ -205,12 +309,15 @@ impl Compositor {
         viewport_w: u32,
         viewport_h: u32,
         registered_images: &mut Vec<ImageData>,
-    ) -> Result<VelloScene> {
+    ) -> Result<(VelloScene, RenderPrepareTiming)> {
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
+        let materialize_started = Instant::now();
         let effective_scene =
             self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
+        let materialize_ms = elapsed_ms(materialize_started);
+        let build_started = Instant::now();
         let vello = self.build_vello_scene_from_materialized(
             dev_id,
             &effective_scene,
@@ -218,7 +325,14 @@ impl Compositor {
             viewport_h,
             registered_images,
         )?;
-        Ok(vello)
+        let build_vello_ms = elapsed_ms(build_started);
+        Ok((
+            vello,
+            RenderPrepareTiming {
+                materialize_ms,
+                build_vello_ms,
+            },
+        ))
     }
 
     fn build_vello_scene_from_materialized(
@@ -910,13 +1024,17 @@ impl Compositor {
         session: &mut PipelinedReadback,
         scene: &super::scene::Scene,
     ) -> Result<Option<Vec<u8>>> {
+        let total_started = Instant::now();
         let dev_id = session.dev_id;
         let device_handle = &self.render_cx.devices[dev_id];
         let device = device_handle.device.clone();
         let queue = device_handle.queue.clone();
+        let materialize_started = Instant::now();
         let effective_scene =
             self.materialize_transitions_and_effects(dev_id, scene, &device, &queue)?;
+        let materialize_ms = elapsed_ms(materialize_started);
         let mut registered_images = Vec::new();
+        let build_started = Instant::now();
         let vello = self.build_vello_scene_from_materialized(
             dev_id,
             &effective_scene,
@@ -924,8 +1042,20 @@ impl Compositor {
             session.height,
             &mut registered_images,
         )?;
+        let build_vello_ms = elapsed_ms(build_started);
+        let render_started = Instant::now();
         let result = self.render_to_pixels_pipelined(session, &vello, scene.background);
+        let render_ms = elapsed_ms(render_started);
         self.unregister_images(dev_id, &mut registered_images);
+        self.render_telemetry.record(
+            "pixels-pipelined",
+            RenderStageTiming {
+                materialize_ms,
+                build_vello_ms,
+                render_ms,
+                total_ms: elapsed_ms(total_started),
+            },
+        );
         result
     }
 
@@ -964,8 +1094,65 @@ impl Compositor {
     }
 }
 
+fn elapsed_ms(started: Instant) -> f64 {
+    started.elapsed().as_secs_f64() * 1000.0
+}
+
 impl Default for Compositor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_telemetry_disabled_ignores_records() {
+        let mut telemetry = RenderTelemetry::with_enabled(false);
+
+        telemetry.record(
+            "surface",
+            RenderStageTiming {
+                materialize_ms: 1.0,
+                build_vello_ms: 2.0,
+                render_ms: 3.0,
+                total_ms: 6.0,
+            },
+        );
+
+        assert_eq!(telemetry.frames, 0);
+        assert_eq!(telemetry.total_sum_ms, 0.0);
+    }
+
+    #[test]
+    fn render_telemetry_enabled_accumulates_stage_totals() {
+        let mut telemetry = RenderTelemetry::with_enabled(true);
+
+        telemetry.record(
+            "surface",
+            RenderStageTiming {
+                materialize_ms: 1.0,
+                build_vello_ms: 2.0,
+                render_ms: 3.0,
+                total_ms: 6.0,
+            },
+        );
+        telemetry.record(
+            "pixels",
+            RenderStageTiming {
+                materialize_ms: 4.0,
+                build_vello_ms: 5.0,
+                render_ms: 6.0,
+                total_ms: 15.0,
+            },
+        );
+
+        assert_eq!(telemetry.frames, 2);
+        assert_eq!(telemetry.materialize_sum_ms, 5.0);
+        assert_eq!(telemetry.build_vello_sum_ms, 7.0);
+        assert_eq!(telemetry.render_sum_ms, 9.0);
+        assert_eq!(telemetry.total_sum_ms, 21.0);
     }
 }

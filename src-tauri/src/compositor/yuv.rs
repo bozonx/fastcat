@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Result};
 use bytemuck::{Pod, Zeroable};
-use wgpu::util::DeviceExt;
 
 use crate::media::decode::{YuvColorMatrix, YuvColorRange, YuvFrame};
 
@@ -26,6 +25,7 @@ pub struct YuvToRgbaPipeline {
     bind_layout: wgpu::BindGroupLayout,
     pipeline: wgpu::ComputePipeline,
     textures: Option<YuvTextures>,
+    uniform_buffer: wgpu::Buffer,
 }
 
 const YUV_TO_RGBA_SHADER: &str = r#"
@@ -150,10 +150,17 @@ impl YuvToRgbaPipeline {
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             cache,
         });
+        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("native-yuv-uniform"),
+            size: std::mem::size_of::<YuvUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         Self {
             bind_layout,
             pipeline,
             textures: None,
+            uniform_buffer,
         }
     }
 
@@ -214,16 +221,16 @@ impl YuvToRgbaPipeline {
             },
         );
 
-        let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("native-yuv-uniform"),
-            contents: bytemuck::bytes_of(&YuvUniform {
+        queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            bytemuck::bytes_of(&YuvUniform {
                 width,
                 height,
                 matrix: matrix_code(frame.color.matrix),
                 range: range_code(frame.color.range),
             }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+        );
         let y_view = textures
             .y
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -249,7 +256,7 @@ impl YuvToRgbaPipeline {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
-                    resource: uniform.as_entire_binding(),
+                    resource: self.uniform_buffer.as_entire_binding(),
                 },
             ],
         });

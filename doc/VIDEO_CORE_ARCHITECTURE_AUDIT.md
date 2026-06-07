@@ -111,6 +111,8 @@ next.kind = LayerKind::Raster {
 #### 2.1.3. Отсутствие zero-copy видео декодинга 🟡
 Preview-путь теперь избегает полного CPU RGBA для поддерживаемых 8-bit 4:2:0 кадров: `ffmpeg-next` отдаёт NV12-style Y/UV planes, `decode_thread` грузит их как `R8Unorm`/`Rg8Unorm`, а `compositor::yuv` конвертирует YUV→RGBA на GPU перед существующим Vello texture path. Это всё ещё не zero-copy HW decode: неподдерживаемые форматы и export остаются на RGBA fallback.
 
+Для профилирования native compositor можно запускать приложение с `FASTCAT_RENDER_TIMING=1`; Rust-ядро будет логировать stage timings для `materialize`, `build_vello`, `render` и total.
+
 **Рекомендация:** Интеграция HW-decode (VAAPI/VideoToolbox/D3D11) с `wgpu::Texture` напрямую.
 
 #### 2.1.4. Busy-polling в аудио-производителе 🟡
