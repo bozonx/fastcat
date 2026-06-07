@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use vello::peniko::ImageData;
-use wgpu::util::DeviceExt;
 
 use super::gpu_utils::image_pixels_rgba8;
 
@@ -121,12 +120,86 @@ struct CachedResources {
     pong_view: wgpu::TextureView,
 }
 
+/// Запись пула owned-выходов эффектов. Текстура отдаётся вызывающему как
+/// `Arc`, а пул держит свой клон — когда `strong_count` падает до 1 (остался
+/// только пул), кадр-потребитель уже освободил её и текстуру можно переиспользовать.
+struct PooledTexture {
+    texture: Arc<wgpu::Texture>,
+    view: wgpu::TextureView,
+    width: u32,
+    height: u32,
+}
+
+/// Пул owned-текстур для финального выхода эффектов. Раньше на КАЖДЫЙ слой с
+/// эффектами на КАЖДЫЙ кадр делался `device.create_texture` (+ view) — постоянное
+/// давление на GPU-аллокатор и фрагментация. Пул возвращает свободную текстуру
+/// нужного размера (reclaim по `Arc::strong_count == 1`) или создаёт новую.
+#[derive(Default)]
+struct OwnedTexturePool {
+    entries: Vec<PooledTexture>,
+}
+
+impl OwnedTexturePool {
+    fn acquire(
+        &mut self,
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+    ) -> (Arc<wgpu::Texture>, wgpu::TextureView) {
+        // Свободная (никто кроме пула не держит) текстура точного размера — переиспользуем.
+        if let Some(entry) = self
+            .entries
+            .iter()
+            .find(|e| e.width == width && e.height == height && Arc::strong_count(&e.texture) == 1)
+        {
+            return (entry.texture.clone(), entry.view.clone());
+        }
+
+        // Промах: выкидываем свободные записи другого размера, чтобы пул не рос
+        // монотонно после смены разрешения (preview ↔ export, ресайз окна).
+        self.entries
+            .retain(|e| Arc::strong_count(&e.texture) > 1 || (e.width == width && e.height == height));
+
+        let texture = Arc::new(device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("native-effect-owned-output"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        }));
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.entries.push(PooledTexture {
+            texture: texture.clone(),
+            view: view.clone(),
+            width,
+            height,
+        });
+        (texture, view)
+    }
+}
+
 pub struct EffectPipeline {
     bind_layout: wgpu::BindGroupLayout,
     pipeline: Arc<wgpu::ComputePipeline>,
     resources: Option<CachedResources>,
     pipeline_cache: Option<wgpu::PipelineCache>,
     custom_pipelines: HashMap<u64, Arc<wgpu::ComputePipeline>>,
+    /// Один постоянный uniform-буфер на все пассы кадра: пассы адресуются через
+    /// dynamic offset (`uniform_stride`), значения пишутся одним `write_buffer`.
+    /// Раньше каждый пасс делал `create_buffer_init` — аллокация в горячем цикле.
+    uniform_buffer: Option<wgpu::Buffer>,
+    uniform_capacity: u64,
+    uniform_stride: u64,
+    owned_pool: OwnedTexturePool,
 }
 
 impl EffectPipeline {
@@ -159,8 +232,10 @@ impl EffectPipeline {
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                        has_dynamic_offset: true,
+                        min_binding_size: wgpu::BufferSize::new(
+                            std::mem::size_of::<EffectUniform>() as u64,
+                        ),
                     },
                     count: None,
                 },
@@ -196,13 +271,38 @@ impl EffectPipeline {
                 cache,
             }),
         );
+        // Шаг между uniform'ами пассов в общем буфере: размер uniform'а,
+        // выровненный до `min_uniform_buffer_offset_alignment` (требование dynamic offset).
+        let uniform_size = std::mem::size_of::<EffectUniform>() as u64;
+        let align = device.limits().min_uniform_buffer_offset_alignment.max(1) as u64;
+        let uniform_stride = uniform_size.div_ceil(align) * align;
         Self {
             bind_layout,
             pipeline,
             resources: None,
             pipeline_cache: cache.cloned(),
             custom_pipelines: HashMap::new(),
+            uniform_buffer: None,
+            uniform_capacity: 0,
+            uniform_stride,
+            owned_pool: OwnedTexturePool::default(),
         }
+    }
+
+    /// Гарантирует, что постоянный uniform-буфер вмещает `pass_count` пассов.
+    /// Растёт по мере надобности; стабильные цепочки эффектов аллокаций не делают.
+    fn ensure_uniform_buffer(&mut self, device: &wgpu::Device, pass_count: usize) {
+        let needed = self.uniform_stride * pass_count.max(1) as u64;
+        if self.uniform_buffer.is_some() && self.uniform_capacity >= needed {
+            return;
+        }
+        self.uniform_buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("native-effect-uniform-ring"),
+            size: needed,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        }));
+        self.uniform_capacity = needed;
     }
 
     fn get_or_create_custom_pipeline(
@@ -329,7 +429,7 @@ impl EffectPipeline {
         queue: &wgpu::Queue,
         source: &EffectSource,
         effects: &[EffectSpec],
-    ) -> Result<wgpu::Texture> {
+    ) -> Result<Arc<wgpu::Texture>> {
         let (width, height) = match source {
             EffectSource::Cpu(img) => (img.width, img.height),
             EffectSource::Gpu(tex) => (tex.width(), tex.height()),
@@ -391,28 +491,33 @@ impl EffectPipeline {
         };
         let ping_view = resources.ping_view.clone();
         let pong_view = resources.pong_view.clone();
+        // `resources` (immutable borrow of self) больше не нужен — дальше идут
+        // мутабельные вызовы (uniform-буфер, пул owned-текстур).
 
         // Финальный результат пишем сразу в owned-текстуру, а не в кешированную ping/pong
         // с последующей копией: раньше `copy_texture_owned` делал лишний полнокадровый
         // GPU→GPU копи на каждый слой с эффектами на каждый кадр. Последний пасс целится
         // прямо в эту текстуру; промежуточные по-прежнему пинг-понгуют по кешу.
-        let owned = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("native-effect-owned-output"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::STORAGE_BINDING,
-            view_formats: &[],
-        });
-        let owned_view = owned.create_view(&wgpu::TextureViewDescriptor::default());
+        // Текстуру берём из пула (reclaim по strong_count), а не аллоцируем каждый кадр.
+        let (owned, owned_view) = self.owned_pool.acquire(device, width, height);
+
+        // Все uniform'ы пассов — в один постоянный буфер; пассы адресуются dynamic offset'ом.
+        self.ensure_uniform_buffer(device, passes.len());
+        let stride = self.uniform_stride as usize;
+        let mut staging = vec![0u8; stride * passes.len()];
+        for (i, pass) in passes.iter().enumerate() {
+            let bytes = bytemuck::bytes_of(&pass.uniform);
+            staging[i * stride..i * stride + bytes.len()].copy_from_slice(bytes);
+        }
+        {
+            let uniform_buffer = self
+                .uniform_buffer
+                .as_ref()
+                .ok_or_else(|| anyhow!("effect uniform buffer not initialized"))?;
+            queue.write_buffer(uniform_buffer, 0, &staging);
+        }
+        let uniform_size = wgpu::BufferSize::new(std::mem::size_of::<EffectUniform>() as u64);
+
         let last_index = passes.len() - 1;
         let mut last_is_ping = false;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -420,11 +525,7 @@ impl EffectPipeline {
         });
 
         for (index, pass) in passes.iter().enumerate() {
-            let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("native-effect-uniform"),
-                contents: bytemuck::bytes_of(&pass.uniform),
-                usage: wgpu::BufferUsages::UNIFORM,
-            });
+            let uniform_offset = (index as u64 * self.uniform_stride) as u32;
             let source_view = if index == 0 {
                 &input_view
             } else if last_is_ping {
@@ -452,11 +553,17 @@ impl EffectPipeline {
             } else {
                 (source_view, &input_view)
             };
+            // Сначала разрешаем pipeline (&mut self для кеша кастомных шейдеров),
+            // затем берём иммутабельную ссылку на постоянный uniform-буфер.
             let pipeline = if let Some(ref src) = pass.custom_source {
                 self.get_or_create_custom_pipeline(device, src)?
             } else {
                 Arc::clone(&self.pipeline)
             };
+            let uniform_buffer = self
+                .uniform_buffer
+                .as_ref()
+                .ok_or_else(|| anyhow!("effect uniform buffer not initialized"))?;
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("native-effect-bind-group"),
                 layout: &self.bind_layout,
@@ -471,7 +578,11 @@ impl EffectPipeline {
                     },
                     wgpu::BindGroupEntry {
                         binding: 2,
-                        resource: uniform.as_entire_binding(),
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: uniform_buffer,
+                            offset: 0,
+                            size: uniform_size,
+                        }),
                     },
                     wgpu::BindGroupEntry {
                         binding: 3,
@@ -485,7 +596,7 @@ impl EffectPipeline {
                     timestamp_writes: None,
                 });
                 cpass.set_pipeline(&pipeline);
-                cpass.set_bind_group(0, &bind_group, &[]);
+                cpass.set_bind_group(0, &bind_group, &[uniform_offset]);
                 cpass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
             }
             last_is_ping = index == 0 || !last_is_ping;
@@ -754,7 +865,7 @@ fn source_to_owned_texture(
     source: &EffectSource,
     width: u32,
     height: u32,
-) -> Result<wgpu::Texture> {
+) -> Result<Arc<wgpu::Texture>> {
     match source {
         EffectSource::Cpu(img) => {
             let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -793,9 +904,9 @@ fn source_to_owned_texture(
                     depth_or_array_layers: 1,
                 },
             );
-            Ok(texture)
+            Ok(Arc::new(texture))
         }
-        EffectSource::Gpu(texture) => Ok((**texture).clone()),
+        EffectSource::Gpu(texture) => Ok(texture.clone()),
     }
 }
 

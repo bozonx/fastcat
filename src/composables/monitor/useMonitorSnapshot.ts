@@ -47,9 +47,36 @@ export function useMonitorSnapshot(input: {
   async function saveTimelineThumbnail() {
     if (input.isLoading.value || input.loadError.value) return;
     if (!input.projectStore.currentProjectId || !input.projectStore.currentTimelinePath) return;
+    // In Tauri the web thumbnail worker has no workspace handle; render the
+    // current frame through the native offscreen compositor instead.
+    if (isTauriRuntime()) {
+      const timelineDoc = input.timelineStore.timelineDoc;
+      if (!timelineDoc) return;
+      try {
+        const [{ renderNativeTimelineThumbnail }, { fileThumbnailGenerator }] = await Promise.all([
+          import('~/timeline/timeline-thumbnail'),
+          import('~/utils/file-thumbnail-generator'),
+        ]);
+        const blob = await renderNativeTimelineThumbnail({
+          timelineDoc,
+          timeUs: input.uiCurrentTimeUs.value,
+          maxSize: 1280,
+          quality: 0.8,
+        });
+        if (!blob) return;
+        await fileThumbnailGenerator.saveManualThumbnail({
+          projectId: input.projectStore.currentProjectId,
+          projectRelativePath: input.projectStore.currentTimelinePath,
+          blob,
+        });
+        uiStore.notifyFileManagerUpdate();
+      } catch (error) {
+        log.error('Failed to save native timeline thumbnail:', error);
+      }
+      return;
+    }
+
     if (!input.workspaceStore.workspaceHandle) return;
-    // Timeline thumbnails require the web-based thumbnail worker; skip in Tauri.
-    if (isTauriRuntime()) return;
 
     const projectWidth = Number(
       input.timelineStore.timelineFormat?.width ??

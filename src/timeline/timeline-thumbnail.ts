@@ -32,6 +32,32 @@ export async function buildNativeMonitorScene(
   });
 }
 
+/**
+ * Renders a timeline frame to a WebP blob via the native (Tauri) offscreen
+ * compositor. Returns `null` when the scene has no visual layers. The output is
+ * fitted into `maxSize` (long edge) preserving the scene's aspect ratio, so
+ * non-16:9 timelines aren't squashed. Shared by the timeline-manager thumbnail
+ * and the monitor "save current frame as thumbnail" action.
+ */
+export async function renderNativeTimelineThumbnail(params: {
+  timelineDoc: TimelineDocument;
+  timeUs: number;
+  maxSize: number;
+  quality: number;
+}): Promise<Blob | null> {
+  const scene = await buildNativeMonitorScene(params.timelineDoc);
+  if (scene.layers.length === 0) return null;
+  const longEdge = Math.max(scene.width, scene.height);
+  const scale = longEdge > params.maxSize ? params.maxSize / longEdge : 1;
+  return await nativeRenderTimelineFrameWebp({
+    scene,
+    timeSec: params.timeUs / 1_000_000,
+    width: Math.max(160, Math.round(scene.width * scale)),
+    height: Math.max(90, Math.round(scene.height * scale)),
+    quality: params.quality,
+  });
+}
+
 export function generateTimelineThumbnail(params: {
   timelinePath: string;
   timelineDoc: TimelineDocument;
@@ -60,18 +86,13 @@ export function generateTimelineThumbnail(params: {
       );
 
       if (isTauriRuntime()) {
-        const scene = await buildNativeMonitorScene(timelineDoc);
-        if (scene.layers.length === 0) return;
-        const maxSize = TIMELINE_MANAGER_THUMBNAILS.MAX_SIZE;
-        const longEdge = Math.max(scene.width, scene.height);
-        const scale = longEdge > maxSize ? maxSize / longEdge : 1;
-        const blob = await nativeRenderTimelineFrameWebp({
-          scene,
-          timeSec: previewTimeUs / 1_000_000,
-          width: Math.max(160, Math.round(scene.width * scale)),
-          height: Math.max(90, Math.round(scene.height * scale)),
+        const blob = await renderNativeTimelineThumbnail({
+          timelineDoc,
+          timeUs: previewTimeUs,
+          maxSize: TIMELINE_MANAGER_THUMBNAILS.MAX_SIZE,
           quality: TIMELINE_MANAGER_THUMBNAILS.QUALITY,
         });
+        if (!blob) return;
         await fileThumbnailGenerator.saveManualThumbnail({
           projectId,
           projectRelativePath: timelinePath,

@@ -337,7 +337,7 @@ impl Compositor {
             let mut next = layer.clone();
             next.kind = LayerKind::Raster {
                 natural_size: (processed.width(), processed.height()),
-                source: RasterSource::GpuTexture(std::sync::Arc::new(processed)),
+                source: RasterSource::GpuTexture(processed),
             };
             if is_vector {
                 next.transform.scale_x /= render_scale.0;
@@ -372,7 +372,7 @@ impl Compositor {
         }
         let processed =
             self.apply_effects_to_texture(dev_id, device, queue, &base, &layer.effects)?;
-        Ok(EffectSource::Gpu(Arc::new(processed)))
+        Ok(EffectSource::Gpu(processed))
     }
 
     fn layer_to_effect_source(
@@ -456,7 +456,7 @@ impl Compositor {
         queue: &wgpu::Queue,
         source: &EffectSource,
         effects: &[EffectSpec],
-    ) -> Result<wgpu::Texture> {
+    ) -> Result<Arc<wgpu::Texture>> {
         let cache = self.pipeline_caches.get(&dev_id);
         let pipeline = self
             .effect_pipelines
@@ -468,8 +468,8 @@ impl Compositor {
                 log::warn!("[compositor] layer effects skipped: {error:?}");
                 // Fallback: отдать исходник как есть. GPU-текстура — дешёвый клон хэндла.
                 match source {
-                    EffectSource::Cpu(img) => image_to_texture(device, queue, img),
-                    EffectSource::Gpu(tex) => Ok((**tex).clone()),
+                    EffectSource::Cpu(img) => Ok(Arc::new(image_to_texture(device, queue, img)?)),
+                    EffectSource::Gpu(tex) => Ok(tex.clone()),
                 }
             }
         }
