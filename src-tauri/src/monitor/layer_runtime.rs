@@ -259,3 +259,49 @@ pub fn emit_layer_failed(app: &AppHandle, id: &str, kind: &str, error: &str) {
     }
     let _ = app.emit(EVT_LAYER_FAILED, Payload { id, kind, error });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::media::types::HwAccelMode;
+    use std::path::Path;
+
+    fn fixture_video_rt() -> VideoLayerRt {
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("test/fixtures/media/sample-1s-720p.mp4");
+        let pump = DecodePump::open(&fixture, None, None, None, None, HwAccelMode::None, None)
+            .expect("open fixture decoder");
+        let media_size = (pump.info.width, pump.info.height);
+        let rotation = pump.info.rotation;
+        VideoLayerRt::new(pump, media_size, rotation)
+    }
+
+    // Guards the graceful-degradation contract for decode-bound sources (e.g. 4K):
+    // after `DECODE_BOUND_LAG_TICKS` consecutive lagged ticks the layer must report
+    // decode-bound so the monitor stops re-seeking (which would flush the decoder and
+    // freeze), and regaining sync must clear it. See `LayerRuntimeManager::tick`.
+    #[test]
+    fn decode_bound_trips_after_threshold_and_resets_on_sync() {
+        let mut rt = fixture_video_rt();
+        assert!(!rt.is_decode_bound(), "fresh layer is not decode-bound");
+
+        for _ in 0..DECODE_BOUND_LAG_TICKS {
+            rt.note_lagged();
+            assert!(
+                !rt.is_decode_bound(),
+                "must keep trying to re-seek up to the threshold"
+            );
+        }
+
+        rt.note_lagged(); // one tick past the threshold
+        assert!(rt.is_decode_bound(), "trips past the threshold");
+
+        rt.note_synced();
+        assert!(
+            !rt.is_decode_bound(),
+            "regaining sync must clear decode-bound so re-seeking can resume"
+        );
+    }
+}

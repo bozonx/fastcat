@@ -196,6 +196,14 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         // Кадр воспроизведения отрисовываем строго когда истёк WaitUntil-дедлайн,
         // выставленный в about_to_wait — это и есть пейсинг по preview_fps.
+        //
+        // ИНВАРИАНТ ПЕЙСИНГА МОНИТОРА (история: монитор тормозил до ~10fps на 4K/XWayland,
+        // см. memory monitor-playback-seek-thrash). Три связанных правила, ломать порознь нельзя:
+        //   1) рендерим ЗДЕСЬ, напрямую, а не через `request_redraw` (та под XWayland добавляет
+        //      ~65мс латентности доставки RedrawRequested);
+        //   2) дедлайн следующего кадра двигаем ТОЛЬКО здесь, после рендера;
+        //   3) `about_to_wait` дедлайн НЕ пересчитывает, лишь пере-взводит сохранённый —
+        //      иначе посторонние пробуждения (WaitCancelled) сдвигают сетку и роняют fps вдвое.
         if matches!(cause, StartCause::ResumeTimeReached { .. }) {
             let is_playing = self
                 .state
@@ -369,11 +377,11 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             event_loop.set_control_flow(ControlFlow::Wait);
             return;
         }
-        // Дедлайн продвигается ТОЛЬКО после рендера (в new_events). Здесь мы лишь
-        // (пере-)взводим уже сохранённый дедлайн — пересчёт на каждом пробуждении позволял
-        // бы посторонним событиям сдвигать сетку и ронять кадры. Рендер происходит в
-        // new_events(ResumeTimeReached), а не тут, иначе redraw диспатчился бы сразу
-        // (busy-loop, 100% GPU).
+        // ИНВАРИАНТ ПЕЙСИНГА (парно с new_events, см. там): дедлайн продвигается ТОЛЬКО
+        // после рендера (в new_events). Здесь мы лишь (пере-)взводим уже сохранённый дедлайн —
+        // пересчёт на каждом пробуждении позволял бы посторонним событиям (WaitCancelled)
+        // сдвигать сетку и ронять fps вдвое. Рендер происходит в new_events(ResumeTimeReached),
+        // а не тут, иначе redraw диспатчился бы сразу (busy-loop, 100% GPU).
         let deadline = match self.next_redraw_at {
             Some(d) => d,
             None => {
@@ -572,10 +580,11 @@ impl WindowState {
     // -----------------------------------------------------------------------
 
     fn tick_and_render(&mut self) {
-        // `current_pts` (audible position) джиттерит на величину аудио-чанка, т.к. вычитает
-        // мгновенную заполненность ринга — использовать его напрямую для выбора видеокадра
-        // нельзя (кадры скачут назад). Сглаживаем через wall-clock (`PlaybackClock`), который
-        // корректируется к аудио только при значимом дрейфе.
+        // ИНВАРИАНТ ИСТОЧНИКА ВРЕМЕНИ: для выбора кадра берём СГЛАЖЕННЫЙ `clock.current_pts()`,
+        // НЕ сырой `audio_pts`. `current_pts` (audible position) джиттерит на величину аудио-чанка
+        // (~50мс), т.к. вычитает мгновенную заполненность ринга — при выводе напрямую кадры
+        // скачут назад. `PlaybackClock` идёт по wall-clock и подтягивается к аудио только при
+        // значимом дрейфе (см. `sync_to_audio_pts`), поэтому `t` монотонный и плавный.
         if let Some(audio_pts) = self.audio.as_ref().and_then(NativeAudioEngine::current_pts) {
             self.clock.sync_to_audio_pts(audio_pts);
         }
