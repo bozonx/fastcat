@@ -128,6 +128,34 @@ impl VideoLayerRt {
         }
     }
 
+    /// Sync modes with a finite lag window should catch up by moving the decoder,
+    /// not by blanking the layer. This keeps the monitor stable while still
+    /// allowing strict/balanced modes to skip stale decode history.
+    pub fn maybe_reseek_on_sync_lag(&mut self, target_clip_local: f64, max_lag_sec: f64) {
+        let lagged = match self.cache.nearest_distance_sec(target_clip_local) {
+            Some(dist) => dist > max_lag_sec.max(0.0),
+            None => true,
+        };
+        if !lagged {
+            return;
+        }
+
+        self.seek_with_cooldown(target_clip_local, "sync-lag");
+    }
+
+    fn seek_with_cooldown(&mut self, target_clip_local: f64, reason: &str) {
+        let now = Instant::now();
+        if let Some(last) = self.last_reseek {
+            if now.duration_since(last).as_secs_f64() < RESEEK_COOLDOWN_SEC {
+                return;
+            }
+        }
+        self.last_reseek = Some(now);
+        if let Err(e) = self.pump.seek(target_clip_local) {
+            log::error!("[monitor] {reason} seek: {e:?}");
+        }
+    }
+
     /// Drains all available frames from the decoder into the cache (non-blocking).
     pub fn pull_into_cache(&mut self) {
         let live_gen = self.pump.current_generation();

@@ -1,6 +1,7 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use parking_lot::{Condvar, Mutex};
@@ -35,6 +36,14 @@ pub struct NativeAudioEngine {
     settings: AudioEngineSettings,
     _stream: Box<dyn AudioStream>,
     producer: Mutex<Option<JoinHandle<()>>>,
+    /// Diagnostics: how often `set_scene` is called and how often it forces a
+    /// flush (ring clear + decoder reseek) WHILE PLAYING. A flush mid-playback
+    /// resets the streaming resampler and re-decodes already-played audio, which
+    /// is heard as periodic crackle/echo. If the frontend re-pushes a jittery
+    /// scene every frame this counter exposes it; logged throttled (≤1/s).
+    scene_calls_while_playing: AtomicU64,
+    scene_flushes_while_playing: AtomicU64,
+    last_scene_diag_log: Mutex<Instant>,
 }
 
 impl NativeAudioEngine {
@@ -79,6 +88,9 @@ impl NativeAudioEngine {
             settings: settings.clone(),
             _stream: stream,
             producer: Mutex::new(Some(producer)),
+            scene_calls_while_playing: AtomicU64::new(0),
+            scene_flushes_while_playing: AtomicU64::new(0),
+            last_scene_diag_log: Mutex::new(Instant::now()),
         })
     }
 
@@ -148,6 +160,29 @@ impl NativeAudioEngine {
         let new_sig = compute_timing_sig(layers);
         let needs_flush = new_sig != state.timing_sig;
         state.timing_sig = new_sig;
+
+        // Surface mid-playback flush churn: a flush here re-decodes already-played
+        // audio and resets the resampler (periodic crackle/echo). See field docs.
+        if state.playing {
+            self.scene_calls_while_playing.fetch_add(1, Ordering::Relaxed);
+            if needs_flush {
+                self.scene_flushes_while_playing
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            let mut last = self.last_scene_diag_log.lock();
+            if last.elapsed().as_secs_f64() >= 1.0 {
+                let calls = self.scene_calls_while_playing.swap(0, Ordering::Relaxed);
+                let flushes = self.scene_flushes_while_playing.swap(0, Ordering::Relaxed);
+                if flushes > 0 {
+                    log::warn!(
+                        "[audio] set_scene during playback: {calls} call(s)/s, {flushes} forced a \
+                         flush+reseek (resampler reset) — likely cause of periodic crackle/echo; \
+                         the frontend is re-pushing a scene whose clip positions/speed changed"
+                    );
+                }
+                *last = Instant::now();
+            }
+        }
 
         state.scene = layers.to_vec();
         state.tracks = tracks.to_vec();

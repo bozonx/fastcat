@@ -19,14 +19,14 @@ use std::sync::Arc;
 use tauri::AppHandle;
 use winit::event_loop::EventLoopProxy;
 
-use crate::compositor::scene::Scene;
-use crate::media::decode_gate::decoder_load_gate;
-use crate::media::decode_thread::DecodePump;
-use crate::media::image_decode::decode_image;
 use super::handle::MonitorCommand;
 use super::layer_runtime::*;
 use super::scene::{LayerKind, MonitorScene, PreviewSyncMode, SceneLayer};
 use super::scene_build::{build_compositor_scene, rasterize_svg};
+use crate::compositor::scene::Scene;
+use crate::media::decode_gate::decoder_load_gate;
+use crate::media::decode_thread::DecodePump;
+use crate::media::image_decode::decode_image;
 
 const STRICT_VIDEO_SYNC_LAG_FRAMES: f64 = 2.0;
 const STRICT_VIDEO_SYNC_LAG_SEC: f64 = 0.08;
@@ -291,7 +291,11 @@ impl LayerRuntimeManager {
                     .spawn(move || {
                         let _permit = decoder_load_gate().acquire();
                         let result = match rasterize_svg(&path, target_long_edge) {
-                            Ok((image, size)) => BgLayerResult::SvgOk { id: spawn_id, image, size },
+                            Ok((image, size)) => BgLayerResult::SvgOk {
+                                id: spawn_id,
+                                image,
+                                size,
+                            },
                             Err(e) => BgLayerResult::SvgErr {
                                 id: spawn_id,
                                 error: format!("{e:?}"),
@@ -452,6 +456,11 @@ impl LayerRuntimeManager {
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
                 let shown = rt.update_display(clip_local, max_lag_sec);
+                if playing && !shown {
+                    if let Some(max_lag_sec) = max_lag_sec {
+                        rt.maybe_reseek_on_sync_lag(clip_local, max_lag_sec);
+                    }
+                }
                 // Промах при воспроизведении = декодер стоит не туда (reverse / fast /
                 // большой скачок): репозиционируем его и показываем ближайший кадр.
                 if playing && !shown {

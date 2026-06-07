@@ -71,6 +71,15 @@ pub(crate) fn producer_loop(
     let mut last_underrun_events = 0u64;
     let mut last_underrun_log = std::time::Instant::now();
 
+    // Decode-budget instrumentation. If producing one chunk takes longer than the
+    // chunk's own playback duration, the producer is slower than real time and the
+    // ring will drain under sustained load (heard as crackle) no matter how large
+    // the prebuffer. Counted here and logged throttled (≤1/s) so we can tell a
+    // "decode too slow" problem apart from a device-level xrun without spamming.
+    let mut over_budget_chunks = 0u64;
+    let mut worst_chunk_ms = 0.0f64;
+    let mut last_budget_log = std::time::Instant::now();
+
     while running.load(Ordering::Relaxed) {
         if last_underrun_log.elapsed() >= Duration::from_secs(1) {
             let events = clock.underrun_events.load(Ordering::SeqCst);
@@ -146,6 +155,7 @@ pub(crate) fn producer_loop(
             continue;
         };
 
+        let mix_started = std::time::Instant::now();
         let chunk = match panic::catch_unwind(AssertUnwindSafe(|| {
             mix_chunk(
                 scene,
@@ -166,6 +176,25 @@ pub(crate) fn producer_loop(
                 vec![0.0; chunk_frames * output_channels]
             }
         };
+
+        let mix_ms = mix_started.elapsed().as_secs_f64() * 1000.0;
+        if mix_ms > chunk_duration_sec * 1000.0 {
+            over_budget_chunks += 1;
+            worst_chunk_ms = worst_chunk_ms.max(mix_ms);
+        }
+        if last_budget_log.elapsed() >= Duration::from_secs(1) {
+            if over_budget_chunks > 0 {
+                log::warn!(
+                    "[audio] decode behind real time: {over_budget_chunks} chunk(s) in the last \
+                     ~1s exceeded the {:.0}ms budget (worst {worst_chunk_ms:.1}ms) — the producer \
+                     cannot mix/decode fast enough under load, ring will drain and crackle",
+                    chunk_duration_sec * 1000.0,
+                );
+            }
+            over_budget_chunks = 0;
+            worst_chunk_ms = 0.0;
+            last_budget_log = std::time::Instant::now();
+        }
 
         let mut state = shared.0.lock();
         // Only a seek/flush (or stop) invalidates an in-flight chunk. A pure
