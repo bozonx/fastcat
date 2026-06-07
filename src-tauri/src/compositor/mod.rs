@@ -20,9 +20,8 @@ pub mod svg;
 pub mod text;
 pub mod transitions;
 
-#[allow(clippy::module_inception)]
-mod compositor;
-pub use compositor::Compositor;
+mod engine;
+pub use engine::Compositor;
 
 mod readback;
 pub use readback::PipelinedReadback;

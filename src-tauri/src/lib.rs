@@ -141,17 +141,20 @@ fn allow_dev_directory_scope(app: tauri::AppHandle, path: String) -> Result<(), 
 pub fn init_env_vars() {
     #[cfg(target_os = "linux")]
     {
-        // SAFETY: Called before tauri::Builder and before any GTK/winit interaction.
+        // SAFETY: These must be set before any GTK or winit initialization.
+        // Called from `run()` before `tauri::Builder`; no other threads are
+        // running, satisfying the `std::env::set_var` safety contract.
         unsafe {
             std::env::set_var("GDK_BACKEND", "x11");
             std::env::set_var("WINIT_UNIX_BACKEND", "x11");
         }
     }
     // Force wgpu to prefer the high-performance adapter (dGPU on hybrid laptops).
-    // Vello's RenderContext uses `initialize_adapter_from_env_or_default`, which
-    // falls back on `PowerPreference::from_env().unwrap_or_default()` — default
-    // is LowPower. We override it here so we never silently land on iGPU.
-    std::env::set_var("WGPU_POWER_PREF", "high");
+    // SAFETY: No wgpu code is running concurrently; the variable is read later
+    // during adapter enumeration on the same thread.
+    unsafe {
+        std::env::set_var("WGPU_POWER_PREF", "high");
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

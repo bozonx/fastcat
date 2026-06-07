@@ -277,7 +277,8 @@ pub(crate) fn decode_symphonia_chunk(
         });
     }
 
-    let mut state_val = decoder_state.unwrap();
+    let mut state_val = decoder_state
+        .ok_or_else(|| anyhow!("decoder state missing for layer {}", layer_id))?;
 
     let source_advance_sec = timeline_duration_sec * speed;
     let seek_tolerance_sec =

@@ -24,9 +24,6 @@ pub struct HwAccelContext {
     hw_device_ref: *mut ffmpeg_sys_next::AVBufferRef,
 }
 
-// SAFETY: `HwAccelContext` is created on the decoder thread and never shared.
-unsafe impl Send for HwAccelContext {}
-
 impl Drop for HwAccelContext {
     fn drop(&mut self) {
         if !self.hw_device_ref.is_null() {

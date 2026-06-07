@@ -96,7 +96,7 @@ impl MonitorHandle {
             .name("fastcat-monitor".into())
             .spawn(move || {
                 run_event_loop(app, tx, audio_settings);
-                alive_clone.store(false, Ordering::Relaxed);
+                alive_clone.store(false, Ordering::Release);
             })?;
         let proxy = rx
             .recv()
@@ -110,12 +110,29 @@ impl MonitorHandle {
     }
 
     pub fn send(&self, cmd: MonitorCommand) -> Result<()> {
+        if !self.is_alive() {
+            return Err(anyhow!("monitor event loop is no longer alive"));
+        }
         self.proxy
             .send_event(cmd)
             .map_err(|_| anyhow!("monitor event loop is gone"))
     }
 
     pub fn is_alive(&self) -> bool {
-        self.alive.load(Ordering::Relaxed)
+        self.alive.load(Ordering::Acquire)
+    }
+}
+
+impl Drop for MonitorHandle {
+    fn drop(&mut self) {
+        let _ = self.proxy.send_event(MonitorCommand::Close);
+        if let Some(handle) = self._thread.take() {
+            if handle.is_finished() {
+                let _ = handle.join();
+            }
+            // If the thread is still running, we drop the JoinHandle and
+            // let it become detached. The Close command above tells the event
+            // loop to exit; the thread will clean itself up.
+        }
     }
 }

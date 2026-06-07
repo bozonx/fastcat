@@ -180,7 +180,7 @@ pub async fn native_media_metadata(
     tokio::task::spawn_blocking(move || probe_media(&path, &ffprobe_path))
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())
+        .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -204,7 +204,7 @@ pub async fn native_media_generate_proxy(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -228,7 +228,7 @@ pub async fn native_media_convert(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -272,7 +272,7 @@ pub async fn native_timeline_export(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -290,7 +290,7 @@ pub async fn native_timeline_render_frame_to_file(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -306,7 +306,7 @@ pub async fn native_timeline_render_frame_webp(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -334,7 +334,7 @@ pub async fn native_video_frame_webp(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{e:?}"))
 }
 
 #[tauri::command]
@@ -360,7 +360,7 @@ pub async fn native_video_frame_webps(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| format!("{e:?}"))?;
 
     Ok(pack_webp_frames(frames))
 }
@@ -787,7 +787,7 @@ pub async fn native_media_extract_peaks(
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())
+    .map_err(|e| format!("{e:?}"))
 }
 
 #[cfg(test)]

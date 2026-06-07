@@ -260,8 +260,8 @@ impl ThumbnailRenderer {
     }
 }
 
-static GLOBAL_RENDERER: once_cell::sync::Lazy<ThumbnailRenderer> =
-    once_cell::sync::Lazy::new(ThumbnailRenderer::new);
+static GLOBAL_RENDERER: std::sync::LazyLock<ThumbnailRenderer> =
+    std::sync::LazyLock::new(ThumbnailRenderer::new);
 
 fn render_pooled(scene: &Scene, width: u32, height: u32) -> Result<Vec<u8>> {
     GLOBAL_RENDERER.render(scene, width, height)

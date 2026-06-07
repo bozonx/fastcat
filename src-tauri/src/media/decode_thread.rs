@@ -68,11 +68,11 @@ impl DecodePump {
             queue,
             hw_mode,
             vaapi_device,
-            &FfmpegNextDecoderFactory,
+            FfmpegNextDecoderFactory,
         )
     }
 
-    pub fn open_with_factory(
+    pub fn open_with_factory<F>(
         path: &Path,
         max_output_long_edge: Option<u32>,
         on_frame_decoded: Option<Box<dyn Fn() + Send + Sync + 'static>>,
@@ -80,10 +80,13 @@ impl DecodePump {
         queue: Option<wgpu::Queue>,
         hw_mode: HwAccelMode,
         vaapi_device: Option<&str>,
-        factory: &dyn VideoDecoderFactory,
-    ) -> Result<Self> {
-        let decoder = factory.open(path, max_output_long_edge, hw_mode, vaapi_device)?;
-        let info = decoder.info().clone();
+        factory: F,
+    ) -> Result<Self>
+    where
+        F: VideoDecoderFactory + 'static,
+    {
+        let path_buf = path.to_path_buf();
+        let vaapi_device_str = vaapi_device.map(|s| s.to_string());
 
         let (frame_tx, frame_rx) = mpsc::sync_channel::<DecodedFrameMsg>(QUEUE_CAPACITY);
         // Маленькая command-очередь: seek/stop. sync_channel(1) — чтобы consumer не уехал
@@ -97,21 +100,44 @@ impl DecodePump {
             Arc::new(Mutex::new(HashMap::new()));
         let texture_pool_thread = texture_pool.clone();
 
+        let (init_tx, init_rx) = mpsc::channel::<Result<MediaInfo>>();
         let thread = std::thread::Builder::new()
             .name(format!("fastcat-decode:{}", path_str))
             .spawn(move || {
-                run_decoder_loop(
-                    decoder,
-                    frame_tx,
-                    cmd_rx,
-                    gen_in_thread,
-                    on_frame_decoded,
-                    device,
-                    queue,
-                    texture_pool_thread,
+                let decoder = factory.open(
+                    &path_buf,
+                    max_output_long_edge,
+                    hw_mode,
+                    vaapi_device_str.as_deref(),
                 );
+                match decoder {
+                    Ok(decoder) => {
+                        let info = decoder.info().clone();
+                        if init_tx.send(Ok(info)).is_err() {
+                            return; // caller dropped
+                        }
+                        run_decoder_loop(
+                            decoder,
+                            frame_tx,
+                            cmd_rx,
+                            gen_in_thread,
+                            on_frame_decoded,
+                            device,
+                            queue,
+                            texture_pool_thread,
+                        );
+                    }
+                    Err(e) => {
+                        let _ = init_tx.send(Err(e));
+                    }
+                }
             })
             .context("spawn decoder thread")?;
+
+        let info = init_rx
+            .recv()
+            .context("decoder thread died before completing init")?
+            .context("failed to open decoder in thread")?;
 
         Ok(Self {
             info,

@@ -158,10 +158,13 @@ impl LayerRuntimeManager {
         if !to_drop.is_empty() {
             // GPU-текстуры выбывших слоёв освобождаются дропом их кадров (Arc) внутри
             // самого рантайма — отдельной разсинхронизации с внешним кешем не требуется.
-            std::thread::Builder::new()
+            if let Err(e) = std::thread::Builder::new()
                 .name("fastcat-rt-drop".into())
                 .spawn(move || drop(to_drop))
-                .ok();
+            {
+                log::error!("[monitor] failed to spawn drop thread: {e:?}");
+                // The closure is dropped by spawn on failure, which drops to_drop.
+            }
         }
 
         self.loading_set.retain(|id| new_ids.contains(id));
@@ -210,7 +213,8 @@ impl LayerRuntimeManager {
                 let hw_mode = self.hw_settings.hardware_acceleration_mode.clone();
                 let vaapi_dev = self.hw_settings.vaapi_device.clone();
                 log::info!("[monitor] spawn video decoder {id} (max_long_edge={max_long_edge:?})");
-                std::thread::Builder::new()
+                let spawn_id = id.clone();
+                if let Err(e) = std::thread::Builder::new()
                     .name(format!("fastcat-load-video:{}", path.display()))
                     .spawn(move || {
                         let _permit = decoder_load_gate().acquire();
@@ -231,63 +235,77 @@ impl LayerRuntimeManager {
                                 let media_size = (pump.info.width, pump.info.height);
                                 let source_rotation = pump.info.rotation;
                                 BgLayerResult::VideoOk {
-                                    id,
+                                    id: spawn_id,
                                     pump,
                                     media_size,
                                     source_rotation,
                                 }
                             }
                             Err(e) => BgLayerResult::VideoErr {
-                                id,
-                                error: e.to_string(),
+                                id: spawn_id,
+                                error: format!("{e:?}"),
                             },
                         };
                         let _ = bg_tx.send(result);
                         let _ = proxy.send_event(MonitorCommand::BgReady);
                     })
-                    .ok();
+                {
+                    log::error!("[monitor] failed to spawn video loader for {id}: {e:?}");
+                    self.loading_set.remove(&id);
+                    self.runtimes.insert(id, LayerRuntime::Failed);
+                }
             }
             LayerKind::Image => {
-                std::thread::Builder::new()
+                let spawn_id = id.clone();
+                if let Err(e) = std::thread::Builder::new()
                     .name(format!("fastcat-load-img:{}", path.display()))
                     .spawn(move || {
                         let _permit = decoder_load_gate().acquire();
                         let result = match decode_image(&path) {
                             Ok(img) => BgLayerResult::ImageOk {
-                                id,
+                                id: spawn_id,
                                 image: img.image,
                                 size: (img.width, img.height),
                             },
                             Err(e) => BgLayerResult::ImageErr {
-                                id,
-                                error: e.to_string(),
+                                id: spawn_id,
+                                error: format!("{e:?}"),
                             },
                         };
                         let _ = bg_tx.send(result);
                         let _ = proxy.send_event(MonitorCommand::BgReady);
                     })
-                    .ok();
+                {
+                    log::error!("[monitor] failed to spawn image loader for {id}: {e:?}");
+                    self.loading_set.remove(&id);
+                    self.runtimes.insert(id, LayerRuntime::Failed);
+                }
             }
             LayerKind::Svg => {
                 // Целевое разрешение растеризации = разрешение, в котором слой будет
                 // показан на мониторе (scene long edge × preview_scale). Так SVG не
                 // мылится при увеличении и не жжёт память при маленьком preview.
                 let target_long_edge = svg_target_long_edge(self.scene_size, self.preview_scale);
-                std::thread::Builder::new()
+                let spawn_id = id.clone();
+                if let Err(e) = std::thread::Builder::new()
                     .name(format!("fastcat-load-svg:{}", path.display()))
                     .spawn(move || {
                         let _permit = decoder_load_gate().acquire();
                         let result = match rasterize_svg(&path, target_long_edge) {
-                            Ok((image, size)) => BgLayerResult::SvgOk { id, image, size },
+                            Ok((image, size)) => BgLayerResult::SvgOk { id: spawn_id, image, size },
                             Err(e) => BgLayerResult::SvgErr {
-                                id,
-                                error: e.to_string(),
+                                id: spawn_id,
+                                error: format!("{e:?}"),
                             },
                         };
                         let _ = bg_tx.send(result);
                         let _ = proxy.send_event(MonitorCommand::BgReady);
                     })
-                    .ok();
+                {
+                    log::error!("[monitor] failed to spawn svg loader for {id}: {e:?}");
+                    self.loading_set.remove(&id);
+                    self.runtimes.insert(id, LayerRuntime::Failed);
+                }
             }
             LayerKind::Text | LayerKind::Shape | LayerKind::Background => {}
         }

@@ -8,10 +8,9 @@
 
 use anyhow::{anyhow, Context, Result};
 use ffmpeg_next as ffmpeg;
-use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use parking_lot::Mutex;
 
@@ -51,14 +50,13 @@ impl Drop for VideoFrame {
     }
 }
 
-pub trait VideoDecoder: Send {
+pub trait VideoDecoder {
     fn info(&self) -> &MediaInfo;
     fn seek(&mut self, time_sec: f64) -> Result<()>;
     fn next_frame(&mut self) -> Result<Option<VideoFrame>>;
 }
 
-static FFMPEG_INIT: OnceCell<()> = OnceCell::new();
-
+static FFMPEG_INIT: OnceLock<Result<(), String>> = OnceLock::new();
 pub struct FfmpegNextDecoder {
     path: PathBuf,
     info: MediaInfo,
@@ -78,11 +76,6 @@ pub struct FfmpegNextDecoder {
     hwaccel: Option<HwAccelContext>,
 }
 
-// SAFETY: FfmpegNextDecoder owns all libav* objects (AVCodecContext, SwsContext,
-// AVFormatContext). These pointers are never shared across threads; the decoder
-// is created on one thread and then moved as a whole into a single decode thread.
-// We never access decoder state concurrently or from multiple threads.
-unsafe impl Send for FfmpegNextDecoder {}
 
 impl FfmpegNextDecoder {
     pub fn open(
@@ -396,9 +389,13 @@ pub fn open(
 }
 
 fn init_ffmpeg() -> Result<()> {
-    FFMPEG_INIT
-        .get_or_try_init(|| ffmpeg::init().context("failed to initialize ffmpeg-next"))
-        .map(|_| ())
+    let result = FFMPEG_INIT.get_or_init(|| {
+        ffmpeg::init().map_err(|e| format!("{e}"))
+    });
+    match result {
+        Ok(()) => Ok(()),
+        Err(e) => Err(anyhow!("failed to initialize ffmpeg-next: {e}")),
+    }
 }
 
 fn input_duration_sec(ictx: &ffmpeg::format::context::Input, stream: &ffmpeg::Stream<'_>) -> f64 {
@@ -436,6 +433,8 @@ fn display_matrix_rotation(data: &[u8]) -> Option<i32> {
 
     let read_i32 = |index: usize| -> Option<i32> {
         let start = index * std::mem::size_of::<i32>();
+        // ffmpeg converts container big-endian values to native endian when
+        // building side data, so native-endian read is correct.
         Some(i32::from_ne_bytes(data[start..start + 4].try_into().ok()?))
     };
     let a = read_i32(0)? as f64;
