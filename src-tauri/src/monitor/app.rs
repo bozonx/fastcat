@@ -119,6 +119,7 @@ struct MonitorApp {
     /// True после первого вызова `resumed` — до него create_window падает.
     resumed: bool,
     audio_settings: AudioEngineSettings,
+    next_redraw_at: Option<Instant>,
 }
 
 impl MonitorApp {
@@ -142,6 +143,7 @@ impl MonitorApp {
             pending_canvas_size: None,
             resumed: false,
             audio_settings,
+            next_redraw_at: None,
         }
     }
 
@@ -217,6 +219,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             MonitorCommand::Play => {
                 if let Some(s) = self.state.as_mut() {
                     s.play();
+                    self.next_redraw_at = Some(Instant::now());
                     s.window.request_redraw();
                 }
             }
@@ -224,6 +227,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
                 if let Some(s) = self.state.as_mut() {
                     s.pause();
                 }
+                self.next_redraw_at = None;
             }
             MonitorCommand::Seek(t) => {
                 if let Some(s) = self.state.as_mut() {
@@ -323,6 +327,7 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             WindowEvent::CloseRequested => {
                 state.window.set_visible(false);
                 state.pause();
+                self.next_redraw_at = None;
             }
             WindowEvent::Resized(size) => {
                 state.resize(size.width.max(1), size.height.max(1));
@@ -340,13 +345,30 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             return;
         };
         if !state.clock.is_playing() {
+            self.next_redraw_at = None;
             event_loop.set_control_flow(ControlFlow::Wait);
             return;
         }
         let frame_duration = Duration::from_secs_f64(1.0 / state.layers.preview_fps);
+        let deadline = next_redraw_deadline(self.next_redraw_at, Instant::now(), frame_duration);
+        self.next_redraw_at = Some(deadline);
         // Только ставим дедлайн. Redraw произойдёт в new_events(ResumeTimeReached), иначе
         // ожидающий redraw диспатчится сразу и WaitUntil не пейсит рендер (busy-loop, 100% GPU).
-        event_loop.set_control_flow(ControlFlow::WaitUntil(Instant::now() + frame_duration));
+        event_loop.set_control_flow(ControlFlow::WaitUntil(deadline));
+    }
+}
+
+fn next_redraw_deadline(
+    previous_deadline: Option<Instant>,
+    now: Instant,
+    frame_duration: Duration,
+) -> Instant {
+    let mut deadline = previous_deadline.unwrap_or(now);
+    loop {
+        deadline += frame_duration;
+        if deadline > now {
+            return deadline;
+        }
     }
 }
 
@@ -732,4 +754,45 @@ fn init_window(
         canvas_size: (viewport.width.max(1), viewport.height.max(1)),
         offscreen_dev_id,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, Instant};
+
+    use super::next_redraw_deadline;
+
+    #[test]
+    fn next_redraw_deadline_starts_one_frame_after_now() {
+        let now = Instant::now();
+        let frame = Duration::from_millis(33);
+
+        assert_eq!(next_redraw_deadline(None, now, frame), now + frame);
+    }
+
+    #[test]
+    fn next_redraw_deadline_keeps_previous_pacing_after_render_cost() {
+        let start = Instant::now();
+        let frame = Duration::from_millis(33);
+        let previous = start + frame;
+        let now_after_render = previous + Duration::from_millis(8);
+
+        assert_eq!(
+            next_redraw_deadline(Some(previous), now_after_render, frame),
+            start + frame + frame
+        );
+    }
+
+    #[test]
+    fn next_redraw_deadline_skips_missed_frames_after_long_stall() {
+        let start = Instant::now();
+        let frame = Duration::from_millis(33);
+        let previous = start + frame;
+        let stalled_now = previous + Duration::from_millis(90);
+
+        assert_eq!(
+            next_redraw_deadline(Some(previous), stalled_now, frame),
+            start + frame * 4
+        );
+    }
 }

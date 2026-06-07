@@ -5,10 +5,12 @@ import { useFullscreen } from '@vueuse/core';
 import { useFocusStore } from '~/stores/focus.store';
 import { useProjectStore } from '~/stores/project.store';
 import { useTimelineStore } from '~/stores/timeline.store';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 import { useMonitorContainerControls } from '~/composables/monitor/useMonitorContainerControls';
 import { useMonitorGrid } from '~/composables/monitor/useMonitorGrid';
 import { useMonitorMode } from '~/composables/monitor/useNativeMonitorMode';
 import { useMonitorRuntime } from '~/composables/monitor/useMonitorRuntime';
+import type { MonitorSyncMode } from '~/composables/monitor/useMonitorPlayback';
 import MonitorAudioControl from './MonitorAudioControl.vue';
 import MonitorTextTransformBox from './MonitorTextTransformBox.vue';
 import MonitorViewport from './MonitorViewport.vue';
@@ -23,6 +25,7 @@ const toast = useToast();
 const focusStore = useFocusStore();
 const projectStore = useProjectStore();
 const timelineStore = useTimelineStore();
+const workspaceStore = useWorkspaceStore();
 const fileManager = useFileManager();
 const { loadTimeline } = useProjectActions();
 const { getHotkeyTitle } = useHotkeyLabel();
@@ -201,6 +204,59 @@ const monitorZoomLabel = computed(() => {
   const zoom = projectStore.activeMonitor?.zoom ?? 1;
   return `x${zoom.toFixed(2)}`;
 });
+
+const monitorSyncOptions: Array<{
+  value: MonitorSyncMode;
+  icon: string;
+  labelKey: string;
+  titleKey: string;
+}> = [
+  {
+    value: 'smooth',
+    icon: 'i-lucide-waves',
+    labelKey: 'fastcat.monitor.syncSmooth',
+    titleKey: 'fastcat.monitor.syncSmoothTitle',
+  },
+  {
+    value: 'balanced',
+    icon: 'i-lucide-gauge',
+    labelKey: 'fastcat.monitor.syncBalanced',
+    titleKey: 'fastcat.monitor.syncBalancedTitle',
+  },
+  {
+    value: 'strict',
+    icon: 'i-lucide-crosshair',
+    labelKey: 'fastcat.monitor.syncStrict',
+    titleKey: 'fastcat.monitor.syncStrictTitle',
+  },
+];
+
+const currentMonitorSyncMode = computed<MonitorSyncMode>(
+  () => workspaceStore.userSettings?.optimization?.nativeMonitorSyncMode ?? 'balanced',
+);
+
+const selectedMonitorSyncOption = computed(
+  () =>
+    monitorSyncOptions.find((option) => option.value === currentMonitorSyncMode.value) ??
+    monitorSyncOptions[1]!,
+);
+
+const selectedMonitorSyncTitle = computed(() => t(selectedMonitorSyncOption.value.titleKey));
+
+const monitorSyncMenuItems = computed(() => [
+  monitorSyncOptions.map((option) => ({
+    label: t(option.labelKey),
+    icon: option.icon,
+    title: t(option.titleKey),
+    type: 'checkbox' as const,
+    checked: option.value === currentMonitorSyncMode.value,
+    onSelect: () => {
+      if (workspaceStore.userSettings?.optimization) {
+        workspaceStore.userSettings.optimization.nativeMonitorSyncMode = option.value;
+      }
+    },
+  })),
+]);
 
 const isIdle = ref(false);
 let idleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -412,6 +468,27 @@ watch(viewportRef, (vp) => {
               no-toggle
               @click="toggleProxyUsage"
             />
+          </UiTooltip>
+
+          <UiTooltip :text="selectedMonitorSyncTitle">
+            <UDropdownMenu
+              :items="monitorSyncMenuItems"
+              :portal="monitorMenuPortal"
+              :ui="{ content: 'min-w-44' }"
+            >
+              <UButton
+                v-if="projectStore.activeMonitor"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                :icon="selectedMonitorSyncOption.icon"
+                :title="selectedMonitorSyncTitle"
+                :aria-label="t('fastcat.monitor.syncMode')"
+                class="px-1.5"
+              >
+                <UIcon name="i-lucide-chevron-down" class="size-3 text-ui-text-muted" />
+              </UButton>
+            </UDropdownMenu>
           </UiTooltip>
 
           <UiTooltip

@@ -9,6 +9,8 @@ import { useTimelineStore } from '~/stores/timeline.store';
 import { useWorkspaceStore } from '~/stores/workspace.store';
 const log = createDevLogger('useMonitorPlayback');
 
+export type MonitorSyncMode = 'smooth' | 'balanced' | 'strict';
+
 interface MonitorPlaybackLoopState {
   lastFrameTimeMs: number;
   renderAccumulatorMs: number;
@@ -38,6 +40,30 @@ function advanceMonitorPlaybackLoop(params: {
   params.state.renderAccumulatorMs += deltaMs;
   params.state.storeSyncAccumulatorMs += deltaMs;
   params.state.audioLevelsAccumulatorMs += deltaMs;
+}
+
+export function consumeMonitorRenderAccumulator(params: {
+  accumulatorMs: number;
+  frameIntervalMs: number;
+  syncMode: MonitorSyncMode;
+}): { shouldRender: boolean; accumulatorMs: number } {
+  if (params.accumulatorMs < params.frameIntervalMs) {
+    return { shouldRender: false, accumulatorMs: params.accumulatorMs };
+  }
+
+  const remainingMs = params.accumulatorMs - params.frameIntervalMs;
+  if (params.syncMode === 'smooth') {
+    return { shouldRender: true, accumulatorMs: 0 };
+  }
+
+  if (params.syncMode === 'balanced') {
+    return {
+      shouldRender: true,
+      accumulatorMs: Math.min(remainingMs, params.frameIntervalMs),
+    };
+  }
+
+  return { shouldRender: true, accumulatorMs: remainingMs };
 }
 
 function canPlayMonitorScrubPreview(params: {
@@ -343,9 +369,14 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
 
     const fps = sanitizeFps(getFps());
     const frameIntervalMs = 1000 / fps;
+    const renderBudget = consumeMonitorRenderAccumulator({
+      accumulatorMs: playbackLoopState.renderAccumulatorMs,
+      frameIntervalMs,
+      syncMode: workspaceStore.userSettings?.optimization?.nativeMonitorSyncMode ?? 'balanced',
+    });
 
-    if (playbackLoopState.renderAccumulatorMs >= frameIntervalMs) {
-      playbackLoopState.renderAccumulatorMs -= frameIntervalMs;
+    if (renderBudget.shouldRender) {
+      playbackLoopState.renderAccumulatorMs = renderBudget.accumulatorMs;
       // Only schedule render if document is visible to save resources in background (Desktop)
       if (!document.hidden) {
         scheduleRender(newTimeUs);

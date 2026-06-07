@@ -58,17 +58,45 @@ impl CpalAudioBackend {
         let mut config: StreamConfig = supported.clone().into();
         let channels = config.channels.max(1);
 
-        if let Some(req_bs) = settings.buffer_size {
-            if let SupportedBufferSize::Range { min, max } = supported.buffer_size() {
-                if req_bs >= *min && req_bs <= *max {
-                    config.buffer_size = BufferSize::Fixed(req_bs);
-                } else {
+        // Pick the device buffer size. Under PipeWire's ALSA-compat shim the
+        // default quantum is often tiny (≈256–512 frames) and xruns whenever the
+        // 4K-decode/compositor load briefly preempts cpal's (non-RT) ALSA stream
+        // thread — heard as the persistent crackle. A larger device buffer gives
+        // that thread more slack, and our 800 ms ring upstream hides the added
+        // latency. So: honour the user's request but CLAMP it into the supported
+        // range instead of silently discarding an out-of-range value (the old
+        // behaviour, which fell back to a tiny Default); when nothing is
+        // requested, ask for a generous default rather than the device minimum.
+        const DEFAULT_BUFFER_FRAMES: u32 = 2048;
+        match supported.buffer_size() {
+            SupportedBufferSize::Range { min, max } => {
+                let requested = settings.buffer_size.unwrap_or(DEFAULT_BUFFER_FRAMES);
+                let clamped = requested.clamp(*min, *max);
+                if Some(clamped) != settings.buffer_size && settings.buffer_size.is_some() {
                     log::warn!(
-                        "[audio] requested buffer size {req_bs} outside supported range {min}–{max}"
+                        "[audio] requested buffer size {requested} clamped to {clamped} \
+                         (device supports {min}–{max})"
+                    );
+                }
+                config.buffer_size = BufferSize::Fixed(clamped);
+            }
+            SupportedBufferSize::Unknown => {
+                // Device won't report a range; leave cpal's default and just note it.
+                if settings.buffer_size.is_some() {
+                    log::warn!(
+                        "[audio] device reports no buffer-size range; using backend default"
                     );
                 }
             }
         }
+
+        log::info!(
+            "[audio] output config: {} Hz, {} ch, buffer {:?}, format {:?}",
+            sample_rate,
+            channels,
+            config.buffer_size,
+            supported.sample_format(),
+        );
 
         Ok(Self {
             device,

@@ -3,7 +3,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref, nextTick, defineComponent, h, reactive } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
-import { useMonitorPlayback } from '~/composables/monitor/useMonitorPlayback';
+import {
+  consumeMonitorRenderAccumulator,
+  useMonitorPlayback,
+} from '~/composables/monitor/useMonitorPlayback';
 import { useTimelineStore } from '~/stores/timeline.store';
 
 describe('useMonitorPlayback', () => {
@@ -33,6 +36,32 @@ describe('useMonitorPlayback', () => {
         },
       },
     });
+  });
+
+  it('applies monitor sync mode render accumulator policies', () => {
+    expect(
+      consumeMonitorRenderAccumulator({
+        accumulatorMs: 70,
+        frameIntervalMs: 30,
+        syncMode: 'smooth',
+      }),
+    ).toEqual({ shouldRender: true, accumulatorMs: 0 });
+
+    expect(
+      consumeMonitorRenderAccumulator({
+        accumulatorMs: 70,
+        frameIntervalMs: 30,
+        syncMode: 'balanced',
+      }),
+    ).toEqual({ shouldRender: true, accumulatorMs: 30 });
+
+    expect(
+      consumeMonitorRenderAccumulator({
+        accumulatorMs: 70,
+        frameIntervalMs: 30,
+        syncMode: 'strict',
+      }),
+    ).toEqual({ shouldRender: true, accumulatorMs: 40 });
   });
 
   function createAudioEngineMock() {

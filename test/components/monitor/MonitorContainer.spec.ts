@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import MonitorContainer from '~/components/monitor/MonitorContainer.vue';
 import { ref } from 'vue';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
+import { useWorkspaceStore } from '~/stores/workspace.store';
 
 // Mock all the monitor-related composables used in MonitorContainer
 vi.mock('~/composables/monitor/useMonitorRuntime', () => ({
@@ -225,5 +226,55 @@ describe('MonitorContainer', () => {
 
     expect(wrapper.findComponent(contextMenuStub).props('portal')).toBe(panel);
     expect(wrapper.findComponent(dropdownMenuStub).props('portal')).toBe(panel);
+  });
+
+  it('renders monitor sync dropdown with item titles', async () => {
+    const dropdownMenuStub = {
+      name: 'UDropdownMenu',
+      props: ['items', 'portal'],
+      template: '<div data-dropdown-menu><slot /></div>',
+    };
+    const workspaceStore = useWorkspaceStore(pinia);
+    workspaceStore.userSettings = JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS));
+
+    const wrapper = mount(MonitorContainer, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          MonitorViewport: true,
+          MonitorAudioControl: true,
+          UiTooltip: { template: '<div><slot /></div>' },
+          UButton: {
+            props: ['title', 'ariaLabel'],
+            template:
+              '<button class="u-button-stub" :title="title" :aria-label="ariaLabel"><slot /></button>',
+          },
+          UiActionButton: true,
+          UiToggleButton: true,
+          UDropdownMenu: dropdownMenuStub,
+          UContextMenu: { template: '<div><slot /></div>' },
+          UiContextMenuPortal: true,
+          UIcon: true,
+        },
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+
+    const syncDropdown = wrapper.findAllComponents(dropdownMenuStub).find((component) => {
+      const items = component.props('items') as Array<Array<{ label: string }>>;
+      return items?.[0]?.some((item) => item.label === 'fastcat.monitor.syncSmooth');
+    });
+
+    expect(syncDropdown).toBeTruthy();
+
+    const items = syncDropdown!.props('items') as Array<
+      Array<{ label: string; title: string; onSelect: () => void }>
+    >;
+    const strictItem = items[0].find((item) => item.label === 'fastcat.monitor.syncStrict');
+
+    expect(strictItem?.title).toBe('fastcat.monitor.syncStrictTitle');
+
+    expect(strictItem?.onSelect).toEqual(expect.any(Function));
   });
 });
