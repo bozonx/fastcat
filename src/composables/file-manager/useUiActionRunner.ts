@@ -1,4 +1,7 @@
 import type { Ref } from 'vue';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('UiActionRunner');
 
 export interface UiActionRunnerState {
   isLoading: Ref<boolean>;
@@ -36,10 +39,9 @@ export function createUiActionRunner(state: UiActionRunnerState, deps: UiActionR
         return null;
       }
 
-      // Стек в консоль обязателен — без него toast'у часто нечего сказать
-      // (типа "I/O error at _files"), а реальная причина теряется.
-      // eslint-disable-next-line no-console
-      console.error(`[${params.toastTitle}]`, e);
+      // Log the full stack trace so the toast has something meaningful to show
+      // (otherwise generic messages like "I/O error at _files" hide the root cause).
+      log.error(`[${params.toastTitle}]`, e);
 
       const message = e instanceof Error ? e.message : params.defaultErrorMessage;
       state.error.value = message;

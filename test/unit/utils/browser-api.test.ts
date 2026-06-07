@@ -54,7 +54,9 @@ describe('browser-api', () => {
 
   describe('querySelectorAll', () => {
     it('delegates to document.querySelectorAll', () => {
-      const spy = vi.spyOn(document, 'querySelectorAll').mockReturnValue(document.querySelectorAll('.foo'));
+      const spy = vi
+        .spyOn(document, 'querySelectorAll')
+        .mockReturnValue(document.querySelectorAll('.foo'));
       querySelectorAll('.bar');
       expect(spy).toHaveBeenCalledWith('.bar');
       spy.mockRestore();

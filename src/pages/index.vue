@@ -14,10 +14,10 @@ const route = useRoute();
 const router = useRouter();
 const { isMobile } = useDevice();
 
-// Сбрасываем состояние проекта в Pinia при попадании на корень — но только если
-// проект реально открыт. Иначе это floating-промис (closeProject + save), который
-// при автостарте (`openLastProjectOnStart` → navigateTo('/editor/X')) может
-// «догнать» уже идущую загрузку проекта в редакторе и обнулить её состояние.
+// Reset project state in Pinia when landing on the root — but only if a project
+// is actually open. Otherwise this becomes a floating promise (closeProject + save)
+// that may race the ongoing project load in the editor during autostart
+// (`openLastProjectOnStart` → navigateTo('/editor/X')) and wipe its state.
 if (projectStore.currentProjectName) {
   void resetProjectState();
 }
@@ -29,7 +29,7 @@ onMounted(() => {
 
   const preferDesktop = readLocalStorageString(STORAGE_KEYS.APP.PREFER_DESKTOP) === 'true';
 
-  // Если мобильное устройство и не выбран принудительный десктопный режим
+  // If on a mobile device and forced desktop mode is not selected
   if (isMobile && !preferDesktop) {
     router.replace('/m');
     return;

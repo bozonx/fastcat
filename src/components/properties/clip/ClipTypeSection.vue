@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ShapeType, TimelineClipItem, TimelineTextClipItem } from '~/timeline/types';
+import type {
+  ShapeType,
+  TimelineClipItem,
+  TimelineTextClipItem,
+  TimelineBackgroundClipItem,
+} from '~/timeline/types';
 import type { ParamControl } from '~/components/properties/params';
 import { usePresetsStore } from '~/stores/presets.store';
 import ClipBackgroundProperties from './ClipBackgroundProperties.vue';
@@ -59,8 +64,7 @@ function handleLoadTextPreset(presetId: string) {
   if (!preset) return;
 
   const p = preset.params;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (p.style) emit('updateTextStyle', p.style as any);
+  if (p.style) emit('updateTextStyle', p.style as Record<string, unknown>);
 }
 
 function handleLoadShapePreset(presetId: string) {
@@ -68,16 +72,11 @@ function handleLoadShapePreset(presetId: string) {
   if (!preset) return;
 
   const p = preset.params;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (p.shapeType) emit('updateShapeType', p.shapeType as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (p.fillColor) emit('updateFillColor', p.fillColor as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (p.strokeColor) emit('updateStrokeColor', p.strokeColor as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (p.strokeWidth !== undefined) emit('updateStrokeWidth', p.strokeWidth as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (p.shapeConfig) emit('updateShapeConfig', p.shapeConfig as any);
+  if (p.shapeType) emit('updateShapeType', p.shapeType as ShapeType);
+  if (p.fillColor) emit('updateFillColor', p.fillColor as string);
+  if (p.strokeColor) emit('updateStrokeColor', p.strokeColor as string);
+  if (p.strokeWidth !== undefined) emit('updateStrokeWidth', p.strokeWidth as number);
+  if (p.shapeConfig) emit('updateShapeConfig', p.shapeConfig as Record<string, unknown>);
 }
 
 function handleLoadHudPreset(presetId: string) {
@@ -137,7 +136,7 @@ function confirmSavePreset() {
 <template>
   <ClipBackgroundProperties
     v-if="props.clip.clipType === 'background'"
-    :clip="props.clip as any"
+    :clip="props.clip as TimelineBackgroundClipItem"
     @update-background-color="emit('updateBackgroundColor', $event)"
   />
 

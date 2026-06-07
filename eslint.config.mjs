@@ -18,18 +18,18 @@ export default withNuxt(eslintPluginPrettierRecommended)
   })
   .append({
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unsafe-function-type': 'warn',
-      '@typescript-eslint/no-unused-vars': 'warn',
-      '@typescript-eslint/no-extraneous-class': 'warn',
-      '@typescript-eslint/no-dynamic-delete': 'warn',
-      '@typescript-eslint/no-useless-constructor': 'warn',
-      '@typescript-eslint/unified-signatures': 'warn',
-      'no-useless-escape': 'warn',
-      'vue/multi-word-component-names': 'warn',
-      'vue/require-default-prop': 'warn',
-      'no-empty': 'warn',
-      'no-unsafe-finally': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-function-type': 'error',
+      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-extraneous-class': 'error',
+      '@typescript-eslint/no-dynamic-delete': 'error',
+      '@typescript-eslint/no-useless-constructor': 'error',
+      '@typescript-eslint/unified-signatures': 'error',
+      'no-useless-escape': 'error',
+      'vue/multi-word-component-names': 'error',
+      'vue/require-default-prop': 'error',
+      'no-empty': 'error',
+      'no-unsafe-finally': 'error',
       // Diagnostic logging must go through ~/utils/dev-logger (gated by env and
       // mockable in tests).
       'no-console': 'error',

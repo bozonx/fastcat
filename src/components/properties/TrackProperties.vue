@@ -117,19 +117,19 @@ const trackAudioEffects = computed(() =>
   ),
 );
 
-function handleUpdateTrackEffects(effects: VideoClipEffect[]) {
+function handleUpdateTrackEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   const audioEffects = (props.track.effects ?? []).filter(
     (e): e is AudioClipEffect => e?.target === 'audio',
   );
   timelineStore.updateTrackProperties(props.track.id, {
-    effects: [...effects, ...audioEffects] as (VideoClipEffect | AudioClipEffect)[],
+    effects: [...effects.filter((e) => e.target !== 'audio'), ...audioEffects],
   });
 }
 
-function handleUpdateTrackAudioEffects(effects: AudioClipEffect[]) {
+function handleUpdateTrackAudioEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   const videoEffects = (props.track.effects ?? []).filter((e) => e?.target !== 'audio');
   timelineStore.updateTrackProperties(props.track.id, {
-    effects: [...videoEffects, ...effects] as (VideoClipEffect | AudioClipEffect)[],
+    effects: [...videoEffects, ...effects.filter((e) => e.target === 'audio')],
   });
 }
 

@@ -167,60 +167,60 @@ const hasAudio = computed(() => {
     @close="emit('close')"
   >
     <template #toolbar>
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-trash"
+        :disabled="isLocked"
+        @click="requestDelete"
+      />
+
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-pencil"
+        :label="t('common.rename')"
+        :disabled="isLocked"
+        @click="isRenameModalOpen = true"
+      />
+
+      <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
+
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-scissors"
+        :disabled="isLocked"
+        @click="handleCut"
+      />
+
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-arrows-right-left"
+        :label="t('fastcat.timeline.trimMode')"
+        :disabled="isLocked"
+        @click="$emit('open-trim-drawer')"
+      />
+
+      <MobileDrawerToolbarButton
+        :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
+        :active="clip?.disabled"
+        @click="handleToggleDisabled"
+      />
+
+      <template v-if="hasAudio">
         <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          :disabled="isLocked"
-          @click="requestDelete"
+          :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
+          :active="clip?.audioMuted"
+          @click="handleToggleMuted"
         />
+      </template>
 
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-pencil"
-          :label="t('common.rename')"
-          :disabled="isLocked"
-          @click="isRenameModalOpen = true"
-        />
+      <MobileDrawerToolbarButton
+        :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
+        :active="clip?.locked"
+        @click="handleToggleLocked"
+      />
 
-        <MobileDrawerToolbarButton icon="i-heroicons-document-duplicate" @click="handleCopy" />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-scissors"
-          :disabled="isLocked"
-          @click="handleCut"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-arrows-right-left"
-          :label="t('fastcat.timeline.trimMode')"
-          :disabled="isLocked"
-          @click="$emit('open-trim-drawer')"
-        />
-
-        <MobileDrawerToolbarButton
-          :icon="clip?.disabled ? 'i-heroicons-eye' : 'i-heroicons-eye-slash'"
-          :active="clip?.disabled"
-          @click="handleToggleDisabled"
-        />
-
-        <template v-if="hasAudio">
-          <MobileDrawerToolbarButton
-            :icon="clip?.audioMuted ? 'i-heroicons-speaker-wave' : 'i-heroicons-speaker-x-mark'"
-            :active="clip?.audioMuted"
-            @click="handleToggleMuted"
-          />
-        </template>
-
-        <MobileDrawerToolbarButton
-          :icon="clip?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-          :active="clip?.locked"
-          @click="handleToggleLocked"
-        />
-
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-backspace"
-          :label="t('fastcat.timeline.rippleDelete')"
-          :disabled="isLocked"
-          @click="requestRippleDelete"
-        />
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-backspace"
+        :label="t('fastcat.timeline.rippleDelete')"
+        :disabled="isLocked"
+        @click="requestRippleDelete"
+      />
     </template>
 
     <div v-if="clip" class="px-4 pb-8 pt-4">

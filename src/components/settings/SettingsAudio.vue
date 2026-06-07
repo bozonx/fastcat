@@ -9,6 +9,9 @@ import { useWorkspaceStore } from '~/stores/workspace.store';
 import { DEFAULT_USER_SETTINGS } from '~/utils/settings/defaults';
 import { isTauriRuntime } from '~/utils/runtime';
 import { nativeMonitorIpc } from '~/composables/monitor/native-monitor-ipc';
+import { createDevLogger } from '~/utils/dev-logger';
+
+const log = createDevLogger('SettingsAudio');
 
 interface FfmpegComponentDiagnostic {
   name: string;
@@ -69,8 +72,7 @@ async function loadTauriDiagnostics() {
       ffprobePath: workspaceStore.userSettings.optimization.ffprobePath || null,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to load Tauri FFmpeg diagnostics:', err);
+    log.error('Failed to load Tauri FFmpeg diagnostics:', err);
     tauriDiagnostics.value = null;
   } finally {
     isLoadingTauriDiagnostics.value = false;
@@ -84,8 +86,7 @@ async function loadWebDiagnostics() {
     const { checkAudioCodecSupport, BASE_AUDIO_CODEC_OPTIONS } = await import('~/utils/webcodecs');
     webAudioSupport.value = await checkAudioCodecSupport(BASE_AUDIO_CODEC_OPTIONS);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to load Web WebCodecs diagnostics:', err);
+    log.error('Failed to load Web WebCodecs diagnostics:', err);
   } finally {
     isLoadingWebDiagnostics.value = false;
   }
@@ -134,8 +135,7 @@ watch(
     try {
       await nativeMonitorIpc.setAudioSettings(settings);
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to update audio engine settings:', err);
+      log.error('Failed to update audio engine settings:', err);
     }
   },
   { deep: true },

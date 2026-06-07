@@ -198,8 +198,7 @@ function handleCutClip() {
 const { handleDeleteClip, otherActionsList, commonActionsList } = useClipPropertiesActions({
   clip: clipRef,
   trackKind: clipTrackKind,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  timelineStore: timelineStore as any,
+  timelineStore,
   projectStore,
   uiStore,
   fileManagerStore,
@@ -265,23 +264,24 @@ function handleUpdateBlendMode(val: TimelineBlendMode | string) {
 }
 
 function handleUpdateMask(mask: unknown) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, { mask } as any);
+  timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
+    mask: mask as TimelineClipItem['mask'],
+  });
 }
 
-function handleUpdateClipEffects(effects: VideoClipEffect[]) {
+function handleUpdateClipEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   const audioEffects = (clipRef.value?.effects ?? []).filter(
     (e): e is AudioClipEffect => e?.target === 'audio',
   );
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    effects: [...effects, ...audioEffects] as (VideoClipEffect | AudioClipEffect)[],
+    effects: [...effects.filter((e) => e.target !== 'audio'), ...audioEffects],
   });
 }
 
-function handleUpdateClipAudioEffects(effects: AudioClipEffect[]) {
+function handleUpdateClipAudioEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   const videoEffects = (clipRef.value?.effects ?? []).filter((e) => e?.target !== 'audio');
   timelineStore.updateClipProperties(props.clip.trackId, props.clip.id, {
-    effects: [...videoEffects, ...effects] as (VideoClipEffect | AudioClipEffect)[],
+    effects: [...videoEffects, ...effects.filter((e) => e.target === 'audio')],
   });
 }
 
@@ -311,8 +311,7 @@ const {
 
 const { hudManifest, hudControlValues, handleUpdateHudControl } = useClipHudProperties({
   clip: clipRef,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  timelineStore: timelineStore as any,
+  timelineStore,
 });
 
 const canEditReversed = computed(() => {
@@ -529,7 +528,9 @@ defineExpose({
         "
         @update-source-orientation="
           (sourceOrientation) =>
-            timelineStore.updateClipProperties(clip.trackId, clip.id, { sourceOrientation } as any)
+            timelineStore.updateClipProperties(clip.trackId, clip.id, {
+              sourceOrientation: sourceOrientation as TimelineClipItem['sourceOrientation'],
+            })
         "
         @toggle-reversed="toggleReversed"
       />

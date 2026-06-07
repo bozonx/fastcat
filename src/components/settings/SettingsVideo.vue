@@ -10,10 +10,13 @@ import {
 } from '~/utils/settings/videoDiagnostics';
 import { broadcastPixiRendererPreference } from '~/utils/video-editor/worker-client';
 import { isTauriRuntime } from '~/utils/runtime';
+import { createDevLogger } from '~/utils/dev-logger';
 import UiConfirmModal from '~/components/ui/UiConfirmModal.vue';
 import UiWheelNumberInput from '~/components/ui/UiWheelNumberInput.vue';
 import UiFormField from '~/components/ui/UiFormField.vue';
 import UiButtonGroup from '~/components/ui/UiButtonGroup.vue';
+
+const log = createDevLogger('SettingsVideo');
 
 interface FfmpegComponentDiagnostic {
   name: string;
@@ -106,8 +109,7 @@ async function loadTauriDiagnostics() {
       ffprobePath: workspaceStore.userSettings.optimization.ffprobePath || null,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to load Tauri FFmpeg diagnostics:', err);
+    log.error('Failed to load Tauri FFmpeg diagnostics:', err);
     tauriDiagnostics.value = null;
   } finally {
     isLoadingTauriDiagnostics.value = false;
@@ -128,8 +130,7 @@ async function syncFfmpegSettings() {
       },
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to sync ffmpeg settings to backend:', err);
+    log.error('Failed to sync ffmpeg settings to backend:', err);
   }
 }
 

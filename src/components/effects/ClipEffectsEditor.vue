@@ -12,9 +12,10 @@ import EffectSettingsModal from '~/components/effects/EffectSettingsModal.vue';
 import { getVideoEffectManifest, getAudioEffectManifest } from '~/effects';
 import { usePresetsStore } from '~/stores/presets.store';
 import { genUuid } from '~/utils/ids';
+import type { VideoClipEffect, AudioClipEffect } from '~/timeline/types';
 
 interface Props {
-  effects?: any[];
+  effects?: Array<VideoClipEffect | AudioClipEffect>;
   title?: string;
   addLabel?: string;
   emptyLabel?: string;
@@ -26,7 +27,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  'update:effects': [effects: any[]];
+  'update:effects': [effects: Array<VideoClipEffect | AudioClipEffect>];
 }>();
 
 const modelValue = defineModel<boolean>('toggleValue');
@@ -98,7 +99,7 @@ function onDrop(e: DragEvent) {
   handleAddEffect(effectType);
 }
 
-function setEffects(next: unknown[]) {
+function setEffects(next: Array<VideoClipEffect | AudioClipEffect>) {
   emit('update:effects', next);
 }
 
@@ -106,13 +107,13 @@ function handleAddEffect(type: string) {
   const manifest = isAudio.value ? getAudioEffectManifest(type) : getVideoEffectManifest(type);
   if (!manifest) return;
 
-  const newEffect: Record<string, unknown> = {
+  const newEffect = {
     id: isAudio.value ? `audio_effect_${genUuid()}` : `effect_${Date.now()}`,
     type,
     enabled: true,
     target: props.target,
     ...manifest.defaultValues,
-  };
+  } as VideoClipEffect | AudioClipEffect;
 
   setEffects([...safeEffects.value, newEffect]);
   isEffectModalOpen.value = false;
@@ -121,7 +122,9 @@ function handleAddEffect(type: string) {
 function handleUpdateEffect(effectId: string, updates: Record<string, unknown>) {
   const next = safeEffects.value.map((e) => {
     const item = e as Record<string, unknown>;
-    return item.id === effectId ? { ...item, ...updates } : item;
+    return item.id === effectId
+      ? ({ ...item, ...updates } as VideoClipEffect | AudioClipEffect)
+      : e;
   });
   setEffects(next);
 }
@@ -180,7 +183,7 @@ function handleAction(effectId: string, action: string, _key: string) {
 }
 
 function onUpdateOrder(newEffects: unknown[]) {
-  setEffects(newEffects);
+  setEffects(newEffects as Array<VideoClipEffect | AudioClipEffect>);
 }
 
 function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
@@ -278,8 +281,13 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
               :controls="manifest.controls"
               :values="effect"
               :disabled="props.disabled || !effect.enabled"
-              @update:value="(key: string, value: unknown) => handleUpdateEffectValue(String(effect.id), key, value)"
-              @action="(action: string, key: string) => handleAction(String(effect.id), action, key)"
+              @update:value="
+                (key: string, value: unknown) =>
+                  handleUpdateEffectValue(String(effect.id), key, value)
+              "
+              @action="
+                (action: string, key: string) => handleAction(String(effect.id), action, key)
+              "
             />
           </div>
         </div>
@@ -291,8 +299,14 @@ function resolveEffectName(manifest: EffectItem['manifest'], type: string) {
       :model-value="true"
       :effect="activeSettingsEffect ?? undefined"
       :manifest="activeSettingsManifest ?? undefined"
-      @update:model-value="(val: boolean) => { if (!val) settingsEffectId = null; }"
-      @update:effect="(updates: Record<string, unknown>) => handleUpdateEffect(settingsEffectId!, updates)"
+      @update:model-value="
+        (val: boolean) => {
+          if (!val) settingsEffectId = null;
+        }
+      "
+      @update:effect="
+        (updates: Record<string, unknown>) => handleUpdateEffect(settingsEffectId!, updates)
+      "
     />
 
     <SelectEffectModal

@@ -404,8 +404,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isLoading.value = true;
     try {
       // Clear all entries in the workspace handle
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const entries = (handle as any).values();
+      const entries = handle.values();
       for await (const entry of entries) {
         await handle.removeEntry(entry.name, { recursive: entry.kind === 'directory' });
       }

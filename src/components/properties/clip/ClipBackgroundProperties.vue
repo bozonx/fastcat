@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { TimelineBackgroundClipItem } from '~/timeline/types';
 import PropertySection from '~/components/properties/PropertySection.vue';
 
 defineProps<{
-  clip: Record<string, unknown>;
+  clip: TimelineBackgroundClipItem;
 }>();
 
 const emit = defineEmits<{

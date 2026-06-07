@@ -102,6 +102,7 @@ export interface TimelineClipsModule {
         | 'blendModeActive'
         | 'mask'
         | 'maskActive'
+        | 'sourceOrientation'
       >
     > & {
       backgroundColor?: string;
@@ -293,6 +294,7 @@ export function createTimelineClipsModule(deps: TimelineClipsDeps): TimelineClip
         | 'blendModeActive'
         | 'mask'
         | 'maskActive'
+        | 'sourceOrientation'
       >
     > & {
       backgroundColor?: string;

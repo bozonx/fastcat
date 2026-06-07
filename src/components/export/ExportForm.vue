@@ -179,7 +179,6 @@ async function onConfirm() {
     emit('exported', { file, filename: outputFilename.value });
   });
 }
-
 </script>
 
 <template>
@@ -552,11 +551,7 @@ async function onConfirm() {
           </div>
           <UProgress :value="exportProgress * 100" />
           <p class="text-sm text-ui-text-muted text-center mt-1">
-            {{
-              t(
-                'videoEditor.export.doNotClose',
-              )
-            }}
+            {{ t('videoEditor.export.doNotClose') }}
           </p>
         </div>
         <div class="flex flex-wrap justify-end gap-2" :class="{ 'mt-2': isExporting }">

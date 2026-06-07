@@ -4,7 +4,7 @@ import { getHudManifest } from '~/hud/registry';
 
 interface UseClipHudPropertiesOptions {
   clip: Ref<TimelineClipItem>;
-  timelineStore: { timelineDoc?: import('~/timeline/types').TimelineDocument };
+  timelineStore: { timelineDoc: import('~/timeline/types').TimelineDocument | null };
 }
 
 export function useClipHudProperties(options: UseClipHudPropertiesOptions) {

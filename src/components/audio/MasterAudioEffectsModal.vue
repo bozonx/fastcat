@@ -3,7 +3,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
-import type { AudioClipEffect } from '~/timeline/types';
+import type { AudioClipEffect, VideoClipEffect } from '~/timeline/types';
 
 const props = defineProps<{
   open: boolean;
@@ -25,10 +25,10 @@ const masterEffects = computed(
   () => (timelineStore.timelineDoc?.metadata?.fastcat?.masterEffects ?? []) as AudioClipEffect[],
 );
 
-function handleUpdateEffects(effects: AudioClipEffect[]) {
+function handleUpdateEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects,
+    effects: effects.filter((e): e is AudioClipEffect => e.target === 'audio'),
   });
 }
 </script>
@@ -36,7 +36,11 @@ function handleUpdateEffects(effects: AudioClipEffect[]) {
 <template>
   <UiModal v-model:open="isOpen" :title="t('fastcat.effects.masterTitle')">
     <div class="max-h-[70vh] overflow-y-auto pr-1">
-      <ClipEffectsEditor target="audio" :effects="masterEffects" @update:effects="handleUpdateEffects" />
+      <ClipEffectsEditor
+        target="audio"
+        :effects="masterEffects"
+        @update:effects="handleUpdateEffects"
+      />
     </div>
     <template #footer>
       <div class="flex justify-end w-full">

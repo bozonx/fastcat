@@ -57,7 +57,6 @@ function setFilesPageActiveTab(tab: 'computer' | 'bloggerdog' | 'fastcat') {
 
 provide('fileManagerStore', mainStore);
 
-const nuxtApp = useNuxtApp();
 const isBloggerDogConfigured = computed(() => {
   const bloggerDogApiUrl =
     typeof runtimeConfig.public.bloggerDogApiUrl === 'string'
@@ -206,18 +205,10 @@ function onBrowserResized(event: { panes: Array<{ size: number }> }) {
               </div>
               <div class="space-y-1">
                 <h3 class="font-medium text-ui-text">
-                  {{
-                    t(
-                      'fastcat.fileManager.remote.not_configured_title',
-                    )
-                  }}
+                  {{ t('fastcat.fileManager.remote.not_configured_title') }}
                 </h3>
                 <p class="text-sm text-ui-text-dim">
-                  {{
-                    t(
-                      'fastcat.fileManager.remote.not_configured_desc',
-                    )
-                  }}
+                  {{ t('fastcat.fileManager.remote.not_configured_desc') }}
                 </p>
               </div>
               <UButton

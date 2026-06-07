@@ -3,7 +3,7 @@ import UiModal from '~/components/ui/UiModal.vue';
 import { computed } from 'vue';
 import { useTimelineStore } from '~/stores/timeline.store';
 import ClipEffectsEditor from '~/components/effects/ClipEffectsEditor.vue';
-import type { AudioClipEffect } from '~/timeline/types';
+import type { AudioClipEffect, VideoClipEffect } from '~/timeline/types';
 
 const props = defineProps<{
   trackId: string;
@@ -32,11 +32,11 @@ const trackAudioEffects = computed(() =>
   ),
 );
 
-function handleUpdateEffects(effects: AudioClipEffect[]) {
+function handleUpdateEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   if (!track.value) return;
   const videoEffects = (track.value.effects ?? []).filter((e) => e?.target !== 'audio');
   timelineStore.updateTrackProperties(props.trackId, {
-    effects: [...videoEffects, ...effects],
+    effects: [...videoEffects, ...effects.filter((e): e is AudioClipEffect => e.target === 'audio')],
   });
 }
 </script>
@@ -44,7 +44,11 @@ function handleUpdateEffects(effects: AudioClipEffect[]) {
 <template>
   <UiModal v-model:open="isOpen" :title="t('fastcat.effects.trackAudioTitle', { name: trackName })">
     <div class="max-h-[70vh] overflow-y-auto pr-1">
-      <ClipEffectsEditor target="audio" :effects="trackAudioEffects" @update:effects="handleUpdateEffects" />
+      <ClipEffectsEditor
+        target="audio"
+        :effects="trackAudioEffects"
+        @update:effects="handleUpdateEffects"
+      />
     </div>
     <template #footer>
       <div class="flex justify-end w-full">

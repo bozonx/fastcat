@@ -10,8 +10,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  updateVideoEffects: [effects: VideoClipEffect[]];
-  updateAudioEffects: [effects: AudioClipEffect[]];
+  updateVideoEffects: [effects: Array<VideoClipEffect | AudioClipEffect>];
+  updateAudioEffects: [effects: Array<VideoClipEffect | AudioClipEffect>];
 }>();
 
 const { t } = useI18n();

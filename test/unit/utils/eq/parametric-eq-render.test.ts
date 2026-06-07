@@ -60,27 +60,42 @@ describe('parametric-eq-render', () => {
 
   describe('getPointContribution', () => {
     it('returns 0 for disabled point', () => {
-      const result = getPointContribution({ enabled: false, type: 'peaking', frequency: 1000, q: 1, gain: 6 }, 1000);
+      const result = getPointContribution(
+        { enabled: false, type: 'peaking', frequency: 1000, q: 1, gain: 6 },
+        1000,
+      );
       expect(result).toBe(0);
     });
 
     it('returns gain at center frequency for peaking', () => {
-      const result = getPointContribution({ enabled: true, type: 'peaking', frequency: 1000, q: 1, gain: 6 }, 1000);
+      const result = getPointContribution(
+        { enabled: true, type: 'peaking', frequency: 1000, q: 1, gain: 6 },
+        1000,
+      );
       expect(result).toBeCloseTo(6, 0);
     });
 
     it('returns 0 for allpass', () => {
-      const result = getPointContribution({ enabled: true, type: 'allpass', frequency: 1000, q: 1, gain: 6 }, 1000);
+      const result = getPointContribution(
+        { enabled: true, type: 'allpass', frequency: 1000, q: 1, gain: 6 },
+        1000,
+      );
       expect(result).toBe(0);
     });
 
     it('attenuates lowpass above frequency', () => {
-      const result = getPointContribution({ enabled: true, type: 'lowpass', frequency: 1000, q: 1, gain: 6 }, 2000);
+      const result = getPointContribution(
+        { enabled: true, type: 'lowpass', frequency: 1000, q: 1, gain: 6 },
+        2000,
+      );
       expect(result).toBeLessThan(0);
     });
 
     it('returns 0 for lowpass below frequency', () => {
-      const result = getPointContribution({ enabled: true, type: 'lowpass', frequency: 1000, q: 1, gain: 6 }, 500);
+      const result = getPointContribution(
+        { enabled: true, type: 'lowpass', frequency: 1000, q: 1, gain: 6 },
+        500,
+      );
       expect(result).toBe(0);
     });
   });
@@ -140,7 +155,7 @@ describe('parametric-eq-render', () => {
         drawParametricEqVisualization({
           canvas,
           points: [],
-        })
+        }),
       ).not.toThrow();
 
       expect(canvas.getContext).toHaveBeenCalledWith('2d');

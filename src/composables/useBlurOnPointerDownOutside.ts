@@ -1,6 +1,10 @@
 import { onUnmounted } from 'vue';
 import type { Ref } from 'vue';
-import { getActiveElement, addDocumentEventListener, removeDocumentEventListener } from '~/utils/browser-api';
+import {
+  getActiveElement,
+  addDocumentEventListener,
+  removeDocumentEventListener,
+} from '~/utils/browser-api';
 
 /**
  * Blurs the focusable element (input or textarea) inside containerRef

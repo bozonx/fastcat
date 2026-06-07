@@ -123,17 +123,17 @@ const masterAudioEffects = computed(() =>
   ),
 );
 
-function handleUpdateMasterEffects(effects: VideoClipEffect[]) {
+function handleUpdateMasterEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects: [...effects, ...masterAudioEffects.value] as (VideoClipEffect | AudioClipEffect)[],
+    effects: [...effects.filter((e) => e.target !== 'audio'), ...masterAudioEffects.value],
   });
 }
 
-function handleUpdateMasterAudioEffects(effects: AudioClipEffect[]) {
+function handleUpdateMasterAudioEffects(effects: Array<VideoClipEffect | AudioClipEffect>) {
   timelineStore.applyTimeline({
     type: 'update_master_effects',
-    effects: [...masterEffects.value, ...effects] as (VideoClipEffect | AudioClipEffect)[],
+    effects: [...masterEffects.value, ...effects.filter((e) => e.target === 'audio')],
   });
 }
 

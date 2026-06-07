@@ -115,49 +115,49 @@ const { extraActions } = useTrackExtraActions({
     @close="emit('close')"
   >
     <template #toolbar>
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-trash"
-          @click="isGapMode ? deleteGap() : requestDeleteTrack()"
-        />
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-trash"
+        @click="isGapMode ? deleteGap() : requestDeleteTrack()"
+      />
 
-        <MobileDrawerToolbarButton
-          v-if="isGapMode"
-          icon="i-heroicons-trash"
-          @click="requestDeleteTrack"
-        />
+      <MobileDrawerToolbarButton
+        v-if="isGapMode"
+        icon="i-heroicons-trash"
+        @click="requestDeleteTrack"
+      />
 
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-pencil-square"
-          :label="t('common.rename')"
-          @click="isTrackRenameOpen = true"
-        />
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-pencil-square"
+        :label="t('common.rename')"
+        @click="isTrackRenameOpen = true"
+      />
 
-        <MobileDrawerToolbarButton
-          :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
-          :active="selectedTrack?.locked"
-          @click="toggleTrackLock"
-        />
+      <MobileDrawerToolbarButton
+        :icon="selectedTrack?.locked ? 'i-heroicons-lock-open' : 'i-heroicons-lock-closed'"
+        :active="selectedTrack?.locked"
+        @click="toggleTrackLock"
+      />
 
-        <MobileDrawerToolbarButton
-          v-if="selectedTrack?.kind === 'video'"
-          :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
-          :active="selectedTrack?.videoHidden"
-          @click="toggleTrackVideoHidden"
-        />
+      <MobileDrawerToolbarButton
+        v-if="selectedTrack?.kind === 'video'"
+        :icon="selectedTrack?.videoHidden ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+        :active="selectedTrack?.videoHidden"
+        @click="toggleTrackVideoHidden"
+      />
 
-        <MobileDrawerToolbarButton
-          :icon="
-            selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
-          "
-          :active="selectedTrack?.audioMuted"
-          @click="toggleTrackMute"
-        />
+      <MobileDrawerToolbarButton
+        :icon="
+          selectedTrack?.audioMuted ? 'i-heroicons-speaker-x-mark' : 'i-heroicons-speaker-wave'
+        "
+        :active="selectedTrack?.audioMuted"
+        @click="toggleTrackMute"
+      />
 
-        <MobileDrawerToolbarButton
-          icon="i-heroicons-musical-note"
-          :active="selectedTrack?.audioSolo"
-          @click="toggleTrackSolo"
-        />
+      <MobileDrawerToolbarButton
+        icon="i-heroicons-musical-note"
+        :active="selectedTrack?.audioSolo"
+        @click="toggleTrackSolo"
+      />
     </template>
 
     <div v-if="selectedTrack" class="px-4 pb-8 pt-4 flex flex-col gap-4">

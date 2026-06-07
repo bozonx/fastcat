@@ -260,7 +260,10 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"
             :drop-position="dropPosition"
-            :get-vertical-size="(colId, rowIndex, totalRows, view) => getVerticalSize({ colId, rowIndex, totalRows, view })"
+            :get-vertical-size="
+              (colId, rowIndex, totalRows, view) =>
+                getVerticalSize({ colId, rowIndex, totalRows, view })
+            "
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
             @top-resize="onTopSplitResize"
@@ -285,7 +288,10 @@ function onMainSplitResize(event: { panes: { size: number }[] }) {
             :dragging-panel-id="draggingPanelId"
             :drag-over-panel-id="dragOverPanelId"
             :drop-position="dropPosition"
-            :get-vertical-size="(colId, rowIndex, totalRows, view) => getVerticalSize({ colId, rowIndex, totalRows, view })"
+            :get-vertical-size="
+              (colId, rowIndex, totalRows, view) =>
+                getVerticalSize({ colId, rowIndex, totalRows, view })
+            "
             :is-focused="isDynamicPanelFocused"
             :get-focus-id="getDynamicPanelFocusId"
             @resized="onSoundResize"

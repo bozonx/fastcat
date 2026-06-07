@@ -328,9 +328,7 @@ export function useProjectTabs(options: UseProjectTabsOptions = {}) {
         await nextTick();
         await nextTick();
 
-        const activeElement = querySelector<HTMLElement>(
-          `[data-tab-id="${newId}"]`,
-        );
+        const activeElement = querySelector<HTMLElement>(`[data-tab-id="${newId}"]`);
         activeElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       },
     );

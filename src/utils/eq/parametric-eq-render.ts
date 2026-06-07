@@ -58,21 +58,35 @@ export function getPointContribution(point: ParametricEqPoint, frequency: number
     case 'lowshelf':
       return (
         gain /
-        (1 + Math.exp((distance * EQ_SHELF_STEEPNESS * Math.sign(frequency - pointFrequency)) / gaussianWidth))
+        (1 +
+          Math.exp(
+            (distance * EQ_SHELF_STEEPNESS * Math.sign(frequency - pointFrequency)) / gaussianWidth,
+          ))
       );
     case 'highshelf':
       return (
         gain /
-        (1 + Math.exp((distance * -EQ_SHELF_STEEPNESS * Math.sign(frequency - pointFrequency)) / gaussianWidth))
+        (1 +
+          Math.exp(
+            (distance * -EQ_SHELF_STEEPNESS * Math.sign(frequency - pointFrequency)) /
+              gaussianWidth,
+          ))
       );
     case 'lowpass':
-      return frequency > pointFrequency ? EQ_LOWPASS_ATTENUATION_DB * (1 - Math.exp(-distance * normalizedQ)) : 0;
+      return frequency > pointFrequency
+        ? EQ_LOWPASS_ATTENUATION_DB * (1 - Math.exp(-distance * normalizedQ))
+        : 0;
     case 'highpass':
-      return frequency < pointFrequency ? EQ_LOWPASS_ATTENUATION_DB * (1 - Math.exp(-distance * normalizedQ)) : 0;
+      return frequency < pointFrequency
+        ? EQ_LOWPASS_ATTENUATION_DB * (1 - Math.exp(-distance * normalizedQ))
+        : 0;
     case 'bandpass':
       return EQ_BANDPASS_ATTENUATION_DB * (1 - gaussian);
     case 'notch':
-      return -Math.min(Math.abs(EQ_NOTCH_ATTENUATION_DB), Math.abs(EQ_NOTCH_ATTENUATION_DB) * gaussian);
+      return -Math.min(
+        Math.abs(EQ_NOTCH_ATTENUATION_DB),
+        Math.abs(EQ_NOTCH_ATTENUATION_DB) * gaussian,
+      );
     case 'allpass':
     default:
       return 0;
@@ -87,7 +101,12 @@ export interface DrawParametricEqOptions {
 }
 
 export function drawParametricEqVisualization(options: DrawParametricEqOptions) {
-  const { canvas, points, canvasWidth = EQ_CANVAS_WIDTH, canvasHeight = EQ_CANVAS_HEIGHT } = options;
+  const {
+    canvas,
+    points,
+    canvasWidth = EQ_CANVAS_WIDTH,
+    canvasHeight = EQ_CANVAS_HEIGHT,
+  } = options;
   const context = canvas.getContext('2d');
   if (!context) {
     return;
