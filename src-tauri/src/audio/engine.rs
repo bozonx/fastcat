@@ -44,7 +44,17 @@ pub struct NativeAudioEngine {
     scene_calls_while_playing: AtomicU64,
     scene_flushes_while_playing: AtomicU64,
     last_scene_diag_log: Mutex<Instant>,
+    /// Count of redundant in-place seeks ignored during playback (master-clock
+    /// echoes). Logged throttled so the guard's effect is observable.
+    ignored_echo_seeks: AtomicU64,
+    last_seek_diag_log: Mutex<Instant>,
 }
+
+/// A seek to within this of the current playback position, while already playing,
+/// is treated as a redundant master-clock echo and ignored (no ring flush / no
+/// decoder reseek). Comfortably larger than the frontend's interpolation window
+/// (~200ms) and sync jitter, yet far below any deliberate scrub jump.
+const SEEK_IGNORE_SEC: f64 = 0.4;
 
 impl NativeAudioEngine {
     pub fn new(settings: &AudioEngineSettings) -> Result<Self> {
@@ -91,6 +101,8 @@ impl NativeAudioEngine {
             scene_calls_while_playing: AtomicU64::new(0),
             scene_flushes_while_playing: AtomicU64::new(0),
             last_scene_diag_log: Mutex::new(Instant::now()),
+            ignored_echo_seeks: AtomicU64::new(0),
+            last_seek_diag_log: Mutex::new(Instant::now()),
         })
     }
 
@@ -173,11 +185,16 @@ impl NativeAudioEngine {
             if last.elapsed().as_secs_f64() >= 1.0 {
                 let calls = self.scene_calls_while_playing.swap(0, Ordering::Relaxed);
                 let flushes = self.scene_flushes_while_playing.swap(0, Ordering::Relaxed);
-                if flushes > 0 {
+                // Even flush-free calls matter: each one locks `shared.0` and does
+                // O(scene) clone/retain work, contending with the real-time producer
+                // for the lock. A high call rate during playback can starve the
+                // producer (priority inversion) and drain the ring.
+                if calls > 0 {
                     log::warn!(
-                        "[audio] set_scene during playback: {calls} call(s)/s, {flushes} forced a \
-                         flush+reseek (resampler reset) — likely cause of periodic crackle/echo; \
-                         the frontend is re-pushing a scene whose clip positions/speed changed"
+                        "[audio] set_scene during playback: {calls} call(s)/s ({flushes} forced a \
+                         flush+reseek). Each call locks the shared audio state and clones the \
+                         scene, contending with the producer; flushes also reset the resampler \
+                         (crackle/echo)"
                     );
                 }
                 *last = Instant::now();
@@ -267,8 +284,41 @@ impl NativeAudioEngine {
 
     pub fn seek(&self, pts_sec: f64, playing: bool) {
         self.restart_finished_producer();
-        let mut state = self.shared.0.lock();
         let pts = pts_sec.max(0.0);
+        let mut state = self.shared.0.lock();
+
+        // Guard against redundant in-place seeks during playback. The native engine
+        // is the master clock; the frontend interpolates its OWN smooth playhead
+        // between our `monitor:time` emits and, if not careful, echoes that back as
+        // a `monitor_seek` to ~the current position several times a second. Each
+        // real seek clears the ring (drops the whole ~800ms prebuffer) and resets
+        // the streaming decoders/resampler — heard as constant crackle. So when we
+        // are already playing, staying playing, and the target is essentially where
+        // playback already is, treat it as a no-op: do NOT flush or reseek. A real
+        // scrub (a genuine position jump) exceeds the tolerance and seeks normally.
+        if playing && state.playing {
+            let current = audible_pts_sec(
+                &state,
+                &self.clock,
+                self.sample_rate,
+                self.device_channels as usize,
+                self.ring.len(),
+            );
+            if (pts - current).abs() < SEEK_IGNORE_SEC {
+                self.ignored_echo_seeks.fetch_add(1, Ordering::Relaxed);
+                let mut last = self.last_seek_diag_log.lock();
+                if last.elapsed().as_secs_f64() >= 5.0 {
+                    let n = self.ignored_echo_seeks.swap(0, Ordering::Relaxed);
+                    log::debug!(
+                        "[audio] ignored {n} redundant in-place seek(s) during playback in the \
+                         last ~5s (master-clock echo; kept the ring intact)"
+                    );
+                    *last = Instant::now();
+                }
+                return;
+            }
+        }
+
         state.origin_pts_sec = pts;
         self.clock.reset_frames();
         state.producer_pts_sec = pts;
@@ -382,5 +432,71 @@ mod tests {
 
         assert_eq!(engine.sample_rate, 48000);
         assert_eq!(engine.device_channels, 2);
+    }
+
+    fn mock_engine() -> NativeAudioEngine {
+        NativeAudioEngine::new_with_backend(
+            &AudioEngineSettings::default(),
+            Box::new(MockAudioBackend {
+                sample_rate: 48000,
+                channels: 2,
+            }),
+        )
+        .unwrap()
+    }
+
+    fn seek_serial(engine: &NativeAudioEngine) -> u64 {
+        engine.shared.0.lock().seek_serial
+    }
+
+    #[test]
+    fn seek_ignores_redundant_in_place_echo_during_playback() {
+        let engine = mock_engine();
+        // No scene set → the producer never fills the ring, so the audible
+        // position stays exactly at the play origin (deterministic).
+        engine.play(10.0);
+        let before = seek_serial(&engine);
+
+        // An echo seek to ~the current position must be ignored: no reseek,
+        // no ring flush. seek_serial is the observable proxy for "we reseeked".
+        engine.seek(10.0 + SEEK_IGNORE_SEC / 2.0, true);
+        assert_eq!(
+            seek_serial(&engine),
+            before,
+            "redundant in-place seek during playback must not reseek/flush"
+        );
+        assert_eq!(engine.shared.0.lock().origin_pts_sec, 10.0);
+    }
+
+    #[test]
+    fn seek_honors_real_scrub_during_playback() {
+        let engine = mock_engine();
+        engine.play(10.0);
+        let before = seek_serial(&engine);
+
+        // A genuine position jump (beyond the tolerance) must seek normally.
+        engine.seek(25.0, true);
+        assert_eq!(
+            seek_serial(&engine),
+            before.wrapping_add(1),
+            "a real scrub during playback must reseek"
+        );
+        assert_eq!(engine.shared.0.lock().origin_pts_sec, 25.0);
+    }
+
+    #[test]
+    fn seek_while_paused_is_never_swallowed() {
+        let engine = mock_engine();
+        engine.play(10.0);
+        let before = seek_serial(&engine);
+
+        // A scrub that pauses (playing=false) must seek even if very close to the
+        // current position — the guard only applies to play→play echoes.
+        engine.seek(10.0, false);
+        assert_eq!(
+            seek_serial(&engine),
+            before.wrapping_add(1),
+            "a paused scrub must always seek"
+        );
     }
 }

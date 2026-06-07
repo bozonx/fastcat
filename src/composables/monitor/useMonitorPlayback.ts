@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { normalizeTimeUs, sanitizeFps } from '~/utils/monitor-time';
 import { formatTimecode } from '~/utils/timecode';
+import { isTauriRuntime } from '~/utils/runtime';
 
 import type { IAudioEngine } from '~/utils/video-editor/AudioEngine';
 import { useTimelineStore } from '~/stores/timeline.store';
@@ -243,6 +244,14 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
   const timelineStore = useTimelineStore();
   const workspaceStore = useWorkspaceStore();
 
+  // In Tauri the native monitor is the sole playback master clock (drives audio,
+  // video and time via `monitor:time`). Running this frontend RAF loop in addition
+  // would spin a second wall-clock and write `currentTime` every tick, which the
+  // native bridge then echoes back as `monitor_seek` ~4-5×/s — thrashing the audio
+  // ring and video decoders down to ~9fps. So here we never drive playback; we only
+  // mirror the native clock into the timecode/UI. See [[monitor-playback-seek-thrash]].
+  const isNativeMonitor = isTauriRuntime();
+
   const STORE_TIME_SYNC_MS = 100;
   const AUDIO_LEVELS_SYNC_MS = 120; // Avoid excessive store churn (can stress DevTools)
   const PLAYBACK_SEEK_EPSILON_US = 25_000;
@@ -422,6 +431,10 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         // video aligned from the very first frame.
         void audioEngine.play(localCurrentTimeUs, timelineStore.playbackSpeed).then(() => {
           if (isUnmounted || !isPlaying.value) return;
+          // Native monitor owns the clock: don't run the frontend RAF loop (it would
+          // write `currentTime` each tick and get echoed back as seeks). The timecode
+          // UI is mirrored from `monitor:time` in the currentTime watcher below.
+          if (isNativeMonitor) return;
           playbackLoopId = requestAnimationFrame((ts) => {
             playbackLoopState.lastFrameTimeMs = ts;
             updatePlayback(ts);
@@ -484,6 +497,14 @@ export function useMonitorPlayback(options: UseMonitorPlaybackOptions) {
         }
 
         scheduleRender(normalizedTimeUs);
+      } else if (isNativeMonitor) {
+        // Native monitor is the master clock: `currentTime` advances from
+        // `monitor:time` (the bridge). Mirror it into the timecode/UI without
+        // echoing a seek — the native bridge owns transport, and user scrubs
+        // during playback already seek the native engine through it.
+        localCurrentTimeUs = normalizedTimeUs;
+        uiCurrentTimeUs.value = normalizedTimeUs;
+        updateTimecodeUi(normalizedTimeUs);
       } else {
         // Ignore tiny store updates produced by the local playback loop itself.
         // Only external timeline jumps should trigger an actual seek.

@@ -841,6 +841,109 @@ mod tests {
         Ok(())
     }
 
+    /// Offline probe (ignored): decode a real file through the streaming chunk
+    /// path exactly like the producer does — fixed 0.05s chunks at the device
+    /// rate — and write the concatenated result to a WAV, reporting tail-zero
+    /// runs at chunk boundaries (the periodic-click fingerprint). Run with:
+    ///   FASTCAT_PROBE_FILE=/abs/path.wav cargo test -p app_lib \
+    ///     decode_streaming_offline_probe -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn decode_streaming_offline_probe() -> anyhow::Result<()> {
+        let path = std::env::var("FASTCAT_PROBE_FILE")
+            .map_err(|_| anyhow::anyhow!("set FASTCAT_PROBE_FILE to an absolute media path"))?;
+        let target_rate = std::env::var("FASTCAT_PROBE_RATE")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(44100u32);
+        let out_channels = 2usize;
+        let chunk_sec = 0.05f64;
+        let total_sec = std::env::var("FASTCAT_PROBE_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(5.0f64);
+
+        let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
+        let target = AudioRenderTarget::monitor(target_rate, out_channels);
+        let chunk_frames = (chunk_sec * target_rate as f64).round() as usize;
+        let chunk_samples = chunk_frames * out_channels;
+        let n_chunks = (total_sec / chunk_sec).round() as usize;
+
+        let mut all = Vec::<f32>::new();
+        let mut boundary_zero_runs = Vec::<usize>::new();
+        for k in 0..n_chunks {
+            let source_start = k as f64 * chunk_sec;
+            let chunk = decode_audio_chunk(DecodeAudioChunkParams {
+                layer_id: "probe",
+                path: &path,
+                source_start_sec: source_start,
+                timeline_duration_sec: chunk_sec,
+                speed: 1.0,
+                target,
+                reverse: false,
+                shared: &shared,
+            })?;
+            assert_eq!(chunk.len(), chunk_samples, "chunk {k} wrong length");
+            // Count trailing zero frames in this chunk (a zero-padded tail = the
+            // resampler-starved click fingerprint).
+            let mut trailing = 0usize;
+            for f in (0..chunk_frames).rev() {
+                let base = f * out_channels;
+                if chunk[base..base + out_channels].iter().all(|s| *s == 0.0) {
+                    trailing += 1;
+                } else {
+                    break;
+                }
+            }
+            boundary_zero_runs.push(trailing);
+            all.extend_from_slice(&chunk);
+        }
+
+        let padded_chunks = boundary_zero_runs.iter().filter(|&&z| z > 0).count();
+        let max_run = boundary_zero_runs.iter().copied().max().unwrap_or(0);
+        eprintln!(
+            "[probe] {path} @ {target_rate}Hz: {n_chunks} chunks, {padded_chunks} with a \
+             zero-padded tail (max {max_run} frames). per-chunk tail-zeros: {:?}",
+            &boundary_zero_runs[..boundary_zero_runs.len().min(40)]
+        );
+
+        // Write a WAV for listening / spectral inspection.
+        let out_path = std::env::temp_dir().join("fastcat-probe-out.wav");
+        write_f32_wav(&out_path, &all, target_rate, out_channels as u16)?;
+        eprintln!("[probe] wrote {}", out_path.display());
+        Ok(())
+    }
+
+    fn write_f32_wav(
+        path: &std::path::Path,
+        samples: &[f32],
+        sample_rate: u32,
+        channels: u16,
+    ) -> anyhow::Result<()> {
+        use std::io::Write;
+        let mut file = std::fs::File::create(path)?;
+        let data_size = (samples.len() * 4) as u32;
+        let byte_rate = sample_rate * channels as u32 * 4;
+        let block_align = channels * 4;
+        file.write_all(b"RIFF")?;
+        file.write_all(&(36 + data_size).to_le_bytes())?;
+        file.write_all(b"WAVE")?;
+        file.write_all(b"fmt ")?;
+        file.write_all(&16u32.to_le_bytes())?;
+        file.write_all(&3u16.to_le_bytes())?;
+        file.write_all(&channels.to_le_bytes())?;
+        file.write_all(&sample_rate.to_le_bytes())?;
+        file.write_all(&byte_rate.to_le_bytes())?;
+        file.write_all(&block_align.to_le_bytes())?;
+        file.write_all(&32u16.to_le_bytes())?;
+        file.write_all(b"data")?;
+        file.write_all(&data_size.to_le_bytes())?;
+        for s in samples {
+            file.write_all(&s.to_le_bytes())?;
+        }
+        Ok(())
+    }
+
     #[test]
     fn decode_chunk_tail_eof_keeps_cursor_on_clamped_source_start() -> anyhow::Result<()> {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../test/fixtures/media/sample-1s-audio.mp3");

@@ -101,6 +101,29 @@ fn build_event_loop() -> Result<EventLoop<MonitorCommand>> {
 // MonitorApp (ApplicationHandler)
 // ---------------------------------------------------------------------------
 
+// [perf-probe] Временная диагностика производительности монитора. Снять после анализа.
+struct PerfProbe {
+    frames: u32,
+    tick_ns: u128,
+    render_ns: u128,
+    emit_ns: u128,
+    period_ns: u128,
+    last_frame_at: Option<Instant>,
+    resume_events: u32,
+    wake_late_ns: u128,
+    wake_samples: u32,
+    loop_wakes: u32,
+    overshoot_ns: u128,
+    overshoot_samples: u32,
+    last_log: Instant,
+    adapter_logged: bool,
+}
+
+thread_local! {
+    static PERF_PROBE: std::cell::RefCell<Option<PerfProbe>> =
+        const { std::cell::RefCell::new(None) };
+}
+
 struct MonitorApp {
     app: AppHandle,
     proxy: EventLoopProxy<MonitorCommand>,
@@ -194,14 +217,54 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
     }
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        // [perf-probe] считаем все пробуждения цикла (любой StartCause).
+        PERF_PROBE.with(|cell| {
+            if let Some(p) = cell.borrow_mut().as_mut() {
+                p.loop_wakes += 1;
+            }
+        });
         // Кадр воспроизведения запрашиваем строго когда истёк WaitUntil-дедлайн,
         // выставленный в about_to_wait. Это и есть пейсинг по preview_fps: request_redraw
         // прямо в about_to_wait немедленно диспатчился бы и обнулял таймер (busy-loop).
         if matches!(cause, StartCause::ResumeTimeReached { .. }) {
-            if let Some(s) = self.state.as_ref() {
-                if s.clock.is_playing() {
-                    s.window.request_redraw();
+            let is_playing = self
+                .state
+                .as_ref()
+                .map(|s| s.clock.is_playing())
+                .unwrap_or(false);
+            if is_playing {
+                // [perf-probe] считаем срабатывания таймера + опоздание относительно дедлайна.
+                let late = self
+                    .next_redraw_at
+                    .map(|d| Instant::now().saturating_duration_since(d));
+                PERF_PROBE.with(|cell| {
+                    if let Some(p) = cell.borrow_mut().as_mut() {
+                        p.resume_events += 1;
+                        if let Some(late) = late {
+                            p.wake_late_ns += late.as_nanos();
+                            p.wake_samples += 1;
+                        }
+                    }
+                });
+                // Рендерим НАПРЯМУЮ по таймеру пейсинга. Путь `request_redraw` →
+                // `RedrawRequested` под X11/XWayland добавляет ~65мс латентности на доставку
+                // (замерено), упирая монитор в ~10fps. Таймер уже пейсит (см. about_to_wait),
+                // поэтому busy-loop не возникает.
+                let frame_duration = self
+                    .state
+                    .as_ref()
+                    .map(|s| Duration::from_secs_f64(1.0 / s.layers.preview_fps.max(1.0)))
+                    .unwrap_or_else(|| Duration::from_millis(33));
+                if let Some(s) = self.state.as_mut() {
+                    s.tick_and_render();
                 }
+                // Дедлайн следующего кадра продвигаем ТОЛЬКО после реального рендера. Иначе
+                // посторонние пробуждения (WaitCancelled от IPC фронта, приходящие прямо у
+                // дедлайна) заставляли `about_to_wait` перескакивать сетку на +кадр и ронять
+                // каждый второй кадр (fps вдвое). about_to_wait теперь лишь пере-взводит это.
+                let base = self.next_redraw_at.unwrap_or_else(Instant::now);
+                self.next_redraw_at =
+                    Some(next_redraw_deadline(Some(base), Instant::now(), frame_duration));
             }
         }
     }
@@ -349,11 +412,20 @@ impl ApplicationHandler<MonitorCommand> for MonitorApp {
             event_loop.set_control_flow(ControlFlow::Wait);
             return;
         }
-        let frame_duration = Duration::from_secs_f64(1.0 / state.layers.preview_fps);
-        let deadline = next_redraw_deadline(self.next_redraw_at, Instant::now(), frame_duration);
-        self.next_redraw_at = Some(deadline);
-        // Только ставим дедлайн. Redraw произойдёт в new_events(ResumeTimeReached), иначе
-        // ожидающий redraw диспатчится сразу и WaitUntil не пейсит рендер (busy-loop, 100% GPU).
+        // Дедлайн продвигается ТОЛЬКО после рендера (в new_events). Здесь мы лишь
+        // (пере-)взводим уже сохранённый дедлайн — пересчёт на каждом пробуждении позволял
+        // бы посторонним событиям сдвигать сетку и ронять кадры. Рендер происходит в
+        // new_events(ResumeTimeReached), а не тут, иначе redraw диспатчился бы сразу
+        // (busy-loop, 100% GPU).
+        let deadline = match self.next_redraw_at {
+            Some(d) => d,
+            None => {
+                let frame_duration = Duration::from_secs_f64(1.0 / state.layers.preview_fps.max(1.0));
+                let d = Instant::now() + frame_duration;
+                self.next_redraw_at = Some(d);
+                d
+            }
+        };
         event_loop.set_control_flow(ControlFlow::WaitUntil(deadline));
     }
 }
@@ -576,9 +648,101 @@ impl WindowState {
         let dev_id = self.offscreen_dev_id.unwrap_or(self.surface.dev_id);
         let device = self.compositor.device(dev_id);
         let queue = self.compositor.queue(dev_id);
+
+        // [perf-probe] измеряем декод-pull/выбор кадра (tick) отдельно от рендера.
+        let probe_t0 = Instant::now();
         self.layers.tick(t, device, queue);
+        let tick_dt = probe_t0.elapsed();
+        let probe_t1 = Instant::now();
         self.render(t);
+        let render_dt = probe_t1.elapsed();
+        let probe_t2 = Instant::now();
         self.emit_time(t);
+        let emit_dt = probe_t2.elapsed();
+
+        // [perf-probe] агрегируем и логируем раз в секунду.
+        let playing = self.clock.is_playing();
+        let preview_fps = self.layers.preview_fps;
+        let (gpu_frames, cpu_frames) = self.layers.debug_video_frame_residency();
+        let adapter = self.compositor.adapter_info(dev_id);
+        let mode = match self.mode {
+            MonitorMode::Embedded => "embedded",
+            MonitorMode::Canvas => "canvas",
+        };
+        let canvas_size = self.canvas_size;
+        PERF_PROBE.with(|cell| {
+            let mut guard = cell.borrow_mut();
+            let p = guard.get_or_insert_with(|| PerfProbe {
+                frames: 0,
+                tick_ns: 0,
+                render_ns: 0,
+                emit_ns: 0,
+                period_ns: 0,
+                last_frame_at: None,
+                resume_events: 0,
+                wake_late_ns: 0,
+                wake_samples: 0,
+                loop_wakes: 0,
+                overshoot_ns: 0,
+                overshoot_samples: 0,
+                last_log: Instant::now(),
+                adapter_logged: false,
+            });
+            let frame_start = probe_t0;
+            if let Some(prev) = p.last_frame_at {
+                p.period_ns += frame_start.duration_since(prev).as_nanos();
+            }
+            p.last_frame_at = Some(frame_start);
+            if !p.adapter_logged {
+                match &adapter {
+                    Some(info) => log::info!(
+                        "[perf-probe] compositor adapter: backend={:?} type={:?} name={:?} driver={:?}",
+                        info.backend,
+                        info.device_type,
+                        info.name,
+                        info.driver
+                    ),
+                    None => log::info!("[perf-probe] compositor adapter: <unknown> (dev_id={dev_id})"),
+                }
+                p.adapter_logged = true;
+            }
+            p.frames += 1;
+            p.tick_ns += tick_dt.as_nanos();
+            p.render_ns += render_dt.as_nanos();
+            p.emit_ns += emit_dt.as_nanos();
+            let elapsed = p.last_log.elapsed().as_secs_f64();
+            if elapsed >= 1.0 {
+                let n = p.frames.max(1) as f64;
+                let wake_n = p.wake_samples.max(1) as f64;
+                let over_n = p.overshoot_samples.max(1) as f64;
+                log::info!(
+                    "[perf-probe] playing={playing} mode={mode} canvas={canvas_size:?} preview_fps={preview_fps:.1} fps={:.1} resume/s={:.1} wakes/s={:.0} period_avg={:.1}ms wake_late_avg={:.1}ms overshoot_avg={:.1}ms tick_avg={:.2}ms render_avg={:.2}ms emit_avg={:.2}ms rest_avg={:.1}ms video_frames(gpu={gpu_frames},cpu={cpu_frames})",
+                    p.frames as f64 / elapsed,
+                    p.resume_events as f64 / elapsed,
+                    p.loop_wakes as f64 / elapsed,
+                    (p.period_ns as f64 / n) / 1e6,
+                    (p.wake_late_ns as f64 / wake_n) / 1e6,
+                    (p.overshoot_ns as f64 / over_n) / 1e6,
+                    (p.tick_ns as f64 / n) / 1e6,
+                    (p.render_ns as f64 / n) / 1e6,
+                    (p.emit_ns as f64 / n) / 1e6,
+                    ((p.period_ns.saturating_sub(p.tick_ns + p.render_ns + p.emit_ns)) as f64 / n)
+                        / 1e6,
+                );
+                p.frames = 0;
+                p.tick_ns = 0;
+                p.render_ns = 0;
+                p.emit_ns = 0;
+                p.period_ns = 0;
+                p.resume_events = 0;
+                p.wake_late_ns = 0;
+                p.wake_samples = 0;
+                p.loop_wakes = 0;
+                p.overshoot_ns = 0;
+                p.overshoot_samples = 0;
+                p.last_log = Instant::now();
+            }
+        });
     }
 
     fn emit_time(&mut self, t: f64) {

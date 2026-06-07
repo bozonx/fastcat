@@ -87,6 +87,26 @@ impl LayerRuntimeManager {
         self.scene.is_empty()
     }
 
+    /// [perf-probe] Residency of the currently-displayed video frames:
+    /// `(gpu_texture_count, cpu_image_count)`. If `cpu` dominates during playback,
+    /// frames are NOT on the GPU and vello re-uploads them every render.
+    pub fn debug_video_frame_residency(&self) -> (usize, usize) {
+        let mut gpu = 0;
+        let mut cpu = 0;
+        for rt in self.runtimes.values() {
+            if let LayerRuntime::Video(v) = rt {
+                if let Some(frame) = v.current.as_ref() {
+                    if frame.texture.is_some() {
+                        gpu += 1;
+                    } else if frame.image.is_some() {
+                        cpu += 1;
+                    }
+                }
+            }
+        }
+        (gpu, cpu)
+    }
+
     pub fn set_playing(&mut self, playing: bool) {
         if self.playing == playing {
             return;

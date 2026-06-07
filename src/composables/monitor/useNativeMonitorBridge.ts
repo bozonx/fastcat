@@ -85,6 +85,17 @@ export function useNativeMonitorBridge(): void {
   let suppressSeekFromTimeUpdate = false;
   let lastSentTime = 0;
   let lastNativeTimeStoreSyncMs = 0;
+  // Expected-playback-position anchor. The native engine is the master clock but
+  // only emits `monitor:time` a handful of times per second; the timeline store
+  // interpolates its own smooth playhead in between. Comparing currentTime to a
+  // stale `lastSentTime` made that interpolation drift past the ignore window and
+  // echo back as a `monitor_seek` ~5×/s, which wiped the native audio prebuffer
+  // and reset its decoders every time (constant crackle, monitor stuck ~9fps).
+  // Instead we anchor to the last authoritative native time + wall clock and only
+  // treat a currentTime change as a real seek when it deviates from where playback
+  // SHOULD be by now. Re-pinned on every native sync so drift can't accumulate.
+  let playbackAnchorUs = 0;
+  let playbackAnchorWallMs = 0;
   // Монотонный токен сборки сцены: buildScene() — async, и без него медленная сборка,
   // стартовавшая раньше, могла бы завершиться позже и отправить устаревшую сцену поверх свежей.
   let sceneBuildSeq = 0;
@@ -187,6 +198,13 @@ export function useNativeMonitorBridge(): void {
   watch(
     () => timelineStore.isPlaying,
     async (playing) => {
+      if (playing) {
+        // Seed the expected-position anchor at the moment playback starts so the
+        // first local ticks (before any native `monitor:time` arrives) are judged
+        // as normal progression, not seeks.
+        playbackAnchorUs = timelineStore.currentTime;
+        playbackAnchorWallMs = performance.now();
+      }
       if (isNativeMonitorDisabled()) return;
       try {
         await (playing ? nativeMonitorIpc.play() : nativeMonitorIpc.pause());
@@ -209,8 +227,13 @@ export function useNativeMonitorBridge(): void {
       }
 
       if (timelineStore.isPlaying) {
-        const diff = Math.abs(t - lastSentTime);
-        if (diff <= PLAYING_SEEK_IGNORE_US) {
+        // Where playback should be by now, extrapolated from the last native
+        // (master-clock) anchor. Local interpolation that simply follows the
+        // master clock stays within the window → NOT a seek. A genuine scrub
+        // jumps off this trajectory and exceeds the window → real seek.
+        const expectedUs = playbackAnchorUs + (performance.now() - playbackAnchorWallMs) * 1000;
+        if (Math.abs(t - expectedUs) <= PLAYING_SEEK_IGNORE_US) {
+          lastSentTime = t;
           return;
         }
       }
@@ -249,6 +272,11 @@ export function useNativeMonitorBridge(): void {
     }
 
     lastNativeTimeStoreSyncMs = nowMs;
+    // Re-pin the expected-position anchor to the authoritative native time so the
+    // seek watcher's extrapolation tracks the master clock and never drifts into
+    // a spurious echo-seek.
+    playbackAnchorUs = timelineUs;
+    playbackAnchorWallMs = nowMs;
     suppressSeekFromTimeUpdate = true;
     timelineStore.currentTime = timelineUs;
     queueMicrotask(() => {
