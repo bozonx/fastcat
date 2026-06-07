@@ -24,6 +24,12 @@ const RESEEK_MISS_DISTANCE_SEC: f64 = 0.5;
 /// Minimum interval between re-seeks for a single layer so an in-flight seek
 /// can finish and we avoid command storms to the decoder.
 const RESEEK_COOLDOWN_SEC: f64 = 0.15;
+/// After this many consecutive ticks lagged beyond the sync window we treat the
+/// source as decode-bound (the decoder can't keep up with realtime, e.g. 4K) and
+/// stop re-seeking-on-lag: re-seeking only flushes the decoder and re-decodes the
+/// GOP, making it worse (freezes). Instead we show the newest decoded frame
+/// (graceful smooth-lag). Recovers automatically once sync is regained.
+const DECODE_BOUND_LAG_TICKS: u32 = 12;
 
 // ---------------------------------------------------------------------------
 // Background loading results
@@ -83,6 +89,8 @@ pub struct VideoLayerRt {
     cache: VideoFrameCache,
     /// Time of the last cache-miss re-seek (throttles re-seeking).
     last_reseek: Option<Instant>,
+    /// Consecutive ticks lagged beyond the sync window (decode-bound detector).
+    lagged_ticks: u32,
 }
 
 impl VideoLayerRt {
@@ -98,7 +106,24 @@ impl VideoLayerRt {
             source_rotation,
             current: None,
             last_reseek: None,
+            lagged_ticks: 0,
         }
+    }
+
+    /// Sync is satisfied this tick — reset the decode-bound lag counter.
+    pub fn note_synced(&mut self) {
+        self.lagged_ticks = 0;
+    }
+
+    /// Lagged beyond the sync window this tick.
+    pub fn note_lagged(&mut self) {
+        self.lagged_ticks = self.lagged_ticks.saturating_add(1);
+    }
+
+    /// True once the source has been lagged long enough that re-seeking is futile
+    /// (decoder can't keep up with realtime); show the newest frame instead.
+    pub fn is_decode_bound(&self) -> bool {
+        self.lagged_ticks > DECODE_BOUND_LAG_TICKS
     }
 
     /// Decoder is not where it should be (reverse / fast-forward / cache miss):

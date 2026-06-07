@@ -532,14 +532,6 @@ impl Compositor {
             .map(|dh| dh.queue.clone())
     }
 
-    /// [perf-probe] Info about the wgpu adapter backing `dev_id` (backend/name/type).
-    pub fn adapter_info(&self, dev_id: usize) -> Option<wgpu::AdapterInfo> {
-        self.render_cx
-            .devices
-            .get(dev_id)
-            .map(|dh| dh.adapter().get_info())
-    }
-
     /// Рендерит сцену в Rgba8 texture и читает её обратно в `Vec<u8>` (RGBA, length = w*h*4).
     /// `(width, height)` должны быть кратны 256 / 64 — это требование `copy_texture_to_buffer`
     /// учитываем выравниванием `bytes_per_row`; здесь не требуем кратности от вызывающего.

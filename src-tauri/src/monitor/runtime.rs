@@ -87,26 +87,6 @@ impl LayerRuntimeManager {
         self.scene.is_empty()
     }
 
-    /// [perf-probe] Residency of the currently-displayed video frames:
-    /// `(gpu_texture_count, cpu_image_count)`. If `cpu` dominates during playback,
-    /// frames are NOT on the GPU and vello re-uploads them every render.
-    pub fn debug_video_frame_residency(&self) -> (usize, usize) {
-        let mut gpu = 0;
-        let mut cpu = 0;
-        for rt in self.runtimes.values() {
-            if let LayerRuntime::Video(v) = rt {
-                if let Some(frame) = v.current.as_ref() {
-                    if frame.texture.is_some() {
-                        gpu += 1;
-                    } else if frame.image.is_some() {
-                        cpu += 1;
-                    }
-                }
-            }
-        }
-        (gpu, cpu)
-    }
-
     pub fn set_playing(&mut self, playing: bool) {
         if self.playing == playing {
             return;
@@ -475,16 +455,33 @@ impl LayerRuntimeManager {
                 rt.pull_into_cache();
                 let clip_local = layer.source_pts_at(t);
                 let max_lag_sec = video_sync_lag_sec(self.preview_sync_mode, rt.pump.info.fps);
-                let shown = rt.update_display(clip_local, max_lag_sec);
-                if playing && !shown {
-                    if let Some(max_lag_sec) = max_lag_sec {
-                        rt.maybe_reseek_on_sync_lag(clip_local, max_lag_sec);
+
+                // Сначала пробуем кадр в окне синка (balanced/strict). Если его нет —
+                // показываем СВЕЖАЙШИЙ декодированный кадр ≤ target, чтобы экран не застывал:
+                // он просто отстаёт (как в smooth), а не держит устаревший кадр.
+                let shown_in_window = rt.update_display(clip_local, max_lag_sec);
+                let shown_any = shown_in_window || rt.update_display(clip_local, None);
+
+                if playing {
+                    if !shown_any {
+                        // Вообще нет кадра ≤ target (reverse / до начала клипа): репозиция.
+                        rt.note_synced();
+                        rt.maybe_reseek_on_miss(clip_local);
+                    } else if !shown_in_window {
+                        // Отстали за окно синка. Reseek скидывает бэклог ради синка — полезно,
+                        // только если декодер декодит GOP→target быстрее реалтайма. На
+                        // decode-bound источнике (4K) он лишь флашит буфер и пере-декодит →
+                        // фризы. Пробуем несколько тиков; если синк не вернулся — отступаем в
+                        // плавный smooth-lag (reseek прекращаем).
+                        rt.note_lagged();
+                        if !rt.is_decode_bound() {
+                            if let Some(max_lag_sec) = max_lag_sec {
+                                rt.maybe_reseek_on_sync_lag(clip_local, max_lag_sec);
+                            }
+                        }
+                    } else {
+                        rt.note_synced();
                     }
-                }
-                // Промах при воспроизведении = декодер стоит не туда (reverse / fast /
-                // большой скачок): репозиционируем его и показываем ближайший кадр.
-                if playing && !shown {
-                    rt.maybe_reseek_on_miss(clip_local);
                 }
             }
         }
