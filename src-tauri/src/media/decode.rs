@@ -34,9 +34,41 @@ pub struct VideoFrame {
     pub height: u32,
     /// RGBA8, dense layout (`width * height * 4`).
     pub pixels: Vec<u8>,
+    pub yuv: Option<YuvFrame>,
     pub pts_sec: f64,
     pub texture: Option<wgpu::Texture>,
     pub texture_pool: Option<Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum YuvColorMatrix {
+    Bt601,
+    Bt709,
+    Bt2020,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum YuvColorRange {
+    Limited,
+    Full,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct YuvColor {
+    pub matrix: YuvColorMatrix,
+    pub range: YuvColorRange,
+}
+
+#[derive(Debug, Clone)]
+pub struct YuvFrame {
+    pub y: Vec<u8>,
+    /// Interleaved UV plane, equivalent to NV12 plane 1.
+    pub uv: Vec<u8>,
+    pub y_stride: u32,
+    pub uv_stride: u32,
+    pub uv_width: u32,
+    pub uv_height: u32,
+    pub color: YuvColor,
 }
 
 /// Maximum pooled textures for any single (width, height) to avoid
@@ -61,6 +93,9 @@ pub trait VideoDecoder {
     fn info(&self) -> &MediaInfo;
     fn seek(&mut self, time_sec: f64) -> Result<()>;
     fn next_frame(&mut self) -> Result<Option<VideoFrame>>;
+    fn next_frame_for_gpu(&mut self) -> Result<Option<VideoFrame>> {
+        self.next_frame()
+    }
 }
 
 static FFMPEG_INIT: OnceLock<Result<(), String>> = OnceLock::new();
@@ -73,6 +108,10 @@ pub struct FfmpegNextDecoder {
     scaler_input_format: ffmpeg::format::Pixel,
     scaler_input_width: u32,
     scaler_input_height: u32,
+    yuv_scaler: Option<ffmpeg::software::scaling::Context>,
+    yuv_scaler_input_format: ffmpeg::format::Pixel,
+    yuv_scaler_input_width: u32,
+    yuv_scaler_input_height: u32,
     stream_index: usize,
     stream_time_base: ffmpeg::Rational,
     eof_sent: bool,
@@ -82,7 +121,6 @@ pub struct FfmpegNextDecoder {
     seek_target: Option<f64>,
     hwaccel: Option<HwAccelContext>,
 }
-
 
 impl FfmpegNextDecoder {
     pub fn open(
@@ -179,6 +217,10 @@ impl FfmpegNextDecoder {
             scaler_input_format,
             scaler_input_width,
             scaler_input_height,
+            yuv_scaler: None,
+            yuv_scaler_input_format: ffmpeg::format::Pixel::None,
+            yuv_scaler_input_width: 0,
+            yuv_scaler_input_height: 0,
             stream_index,
             stream_time_base,
             eof_sent: false,
@@ -268,36 +310,98 @@ impl FfmpegNextDecoder {
             width: coded_width,
             height: coded_height,
             pixels,
+            yuv: None,
             pts_sec,
             texture: None,
             texture_pool: None,
         })
     }
-}
 
-impl VideoDecoder for FfmpegNextDecoder {
-    fn info(&self) -> &MediaInfo {
-        &self.info
+    fn decode_frame_for_gpu(
+        &mut self,
+        decoded_frame: &mut ffmpeg::util::frame::Video,
+    ) -> Result<VideoFrame> {
+        let sw_frame = if let Some(ref ctx) = self.hwaccel {
+            try_transfer_to_cpu(decoded_frame, ctx)?
+        } else {
+            None
+        };
+        let decoded: &ffmpeg::util::frame::Video = if let Some(ref sw) = sw_frame {
+            sw
+        } else {
+            &*decoded_frame
+        };
+
+        if !is_supported_yuv_fast_path(decoded.format()) {
+            return self.decode_frame(decoded_frame);
+        }
+
+        let color = yuv_color(decoded);
+        let (width, height, yuv) =
+            if decoded.width() == self.info.width && decoded.height() == self.info.height {
+                match decoded.format() {
+                    ffmpeg::format::Pixel::NV12 => (
+                        decoded.width(),
+                        decoded.height(),
+                        copy_nv12_frame(decoded, color),
+                    ),
+                    ffmpeg::format::Pixel::YUV420P | ffmpeg::format::Pixel::YUVJ420P => (
+                        decoded.width(),
+                        decoded.height(),
+                        copy_yuv420p_as_nv12_frame(decoded, color),
+                    ),
+                    _ => return self.decode_frame(decoded_frame),
+                }
+            } else {
+                let mut scaled = ffmpeg::util::frame::Video::empty();
+                if self.yuv_scaler.is_none()
+                    || decoded.format() != self.yuv_scaler_input_format
+                    || decoded.width() != self.yuv_scaler_input_width
+                    || decoded.height() != self.yuv_scaler_input_height
+                {
+                    self.yuv_scaler = Some(
+                        ffmpeg::software::scaling::Context::get(
+                            decoded.format(),
+                            decoded.width(),
+                            decoded.height(),
+                            ffmpeg::format::Pixel::NV12,
+                            self.info.width,
+                            self.info.height,
+                            ffmpeg::software::scaling::flag::Flags::BILINEAR,
+                        )
+                        .context("failed to create ffmpeg-next YUV scaler")?,
+                    );
+                    self.yuv_scaler_input_format = decoded.format();
+                    self.yuv_scaler_input_width = decoded.width();
+                    self.yuv_scaler_input_height = decoded.height();
+                }
+                self.yuv_scaler
+                    .as_mut()
+                    .context("YUV scaler missing")?
+                    .run(decoded, &mut scaled)
+                    .context("failed to scale decoded video frame to NV12")?;
+                if scaled.format() != ffmpeg::format::Pixel::NV12 {
+                    return self.decode_frame(decoded_frame);
+                }
+                (
+                    scaled.width(),
+                    scaled.height(),
+                    copy_nv12_frame(&scaled, color),
+                )
+            };
+
+        Ok(VideoFrame {
+            width,
+            height,
+            pixels: Vec::new(),
+            yuv: Some(yuv),
+            pts_sec: self.frame_pts_sec(decoded),
+            texture: None,
+            texture_pool: None,
+        })
     }
 
-    fn seek(&mut self, time_sec: f64) -> Result<()> {
-        let target = time_sec.max(0.0);
-        let ts = (target * 1_000_000.0).round() as i64;
-        self.ictx.seek(ts, ..ts).with_context(|| {
-            format!(
-                "failed to seek ffmpeg-next decoder for {}",
-                self.path.display()
-            )
-        })?;
-        self.decoder.flush();
-        self.eof_sent = false;
-        // libav lands on the nearest key frame ≤ target; remember the target so that
-        // `next_frame` decodes and discards intra-GOP frames until the requested position.
-        self.seek_target = Some(target);
-        Ok(())
-    }
-
-    fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
+    fn next_frame_with_mode(&mut self, prefer_yuv: bool) -> Result<Option<VideoFrame>> {
         loop {
             let mut decoded = ffmpeg::util::frame::Video::empty();
             match self.decoder.receive_frame(&mut decoded) {
@@ -312,7 +416,11 @@ impl VideoDecoder for FfmpegNextDecoder {
                         }
                         self.seek_target = None;
                     }
-                    return self.decode_frame(&mut decoded).map(Some);
+                    return if prefer_yuv {
+                        self.decode_frame_for_gpu(&mut decoded).map(Some)
+                    } else {
+                        self.decode_frame(&mut decoded).map(Some)
+                    };
                 }
                 Err(ffmpeg::Error::Other { errno }) if errno == ffmpeg::error::EAGAIN => {}
                 Err(ffmpeg::Error::Eof) => {
@@ -345,6 +453,37 @@ impl VideoDecoder for FfmpegNextDecoder {
                 self.eof_sent = true;
             }
         }
+    }
+}
+
+impl VideoDecoder for FfmpegNextDecoder {
+    fn info(&self) -> &MediaInfo {
+        &self.info
+    }
+
+    fn seek(&mut self, time_sec: f64) -> Result<()> {
+        let target = time_sec.max(0.0);
+        let ts = (target * 1_000_000.0).round() as i64;
+        self.ictx.seek(ts, ..ts).with_context(|| {
+            format!(
+                "failed to seek ffmpeg-next decoder for {}",
+                self.path.display()
+            )
+        })?;
+        self.decoder.flush();
+        self.eof_sent = false;
+        // libav lands on the nearest key frame ≤ target; remember the target so that
+        // `next_frame` decodes and discards intra-GOP frames until the requested position.
+        self.seek_target = Some(target);
+        Ok(())
+    }
+
+    fn next_frame(&mut self) -> Result<Option<VideoFrame>> {
+        self.next_frame_with_mode(false)
+    }
+
+    fn next_frame_for_gpu(&mut self) -> Result<Option<VideoFrame>> {
+        self.next_frame_with_mode(true)
     }
 }
 
@@ -397,9 +536,7 @@ pub fn open(
 }
 
 fn init_ffmpeg() -> Result<()> {
-    let result = FFMPEG_INIT.get_or_init(|| {
-        ffmpeg::init().map_err(|e| format!("{e}"))
-    });
+    let result = FFMPEG_INIT.get_or_init(|| ffmpeg::init().map_err(|e| format!("{e}")));
     match result {
         Ok(()) => Ok(()),
         Err(e) => Err(anyhow!("failed to initialize ffmpeg-next: {e}")),
@@ -503,6 +640,99 @@ fn visual_dimensions(width: u32, height: u32, rotation: i32) -> (u32, u32) {
     }
 }
 
+fn is_supported_yuv_fast_path(format: ffmpeg::format::Pixel) -> bool {
+    matches!(
+        format,
+        ffmpeg::format::Pixel::NV12
+            | ffmpeg::format::Pixel::YUV420P
+            | ffmpeg::format::Pixel::YUVJ420P
+    )
+}
+
+fn yuv_color(frame: &ffmpeg::util::frame::Video) -> YuvColor {
+    let matrix = match frame.color_space() {
+        ffmpeg::util::color::Space::BT709 => YuvColorMatrix::Bt709,
+        ffmpeg::util::color::Space::BT2020NCL | ffmpeg::util::color::Space::BT2020CL => {
+            YuvColorMatrix::Bt2020
+        }
+        ffmpeg::util::color::Space::BT470BG
+        | ffmpeg::util::color::Space::SMPTE170M
+        | ffmpeg::util::color::Space::FCC
+        | ffmpeg::util::color::Space::SMPTE240M => YuvColorMatrix::Bt601,
+        _ => {
+            if frame.width() >= 1280 || frame.height() > 576 {
+                YuvColorMatrix::Bt709
+            } else {
+                YuvColorMatrix::Bt601
+            }
+        }
+    };
+    let range = if frame.color_range() == ffmpeg::util::color::Range::JPEG
+        || frame.format() == ffmpeg::format::Pixel::YUVJ420P
+    {
+        YuvColorRange::Full
+    } else {
+        YuvColorRange::Limited
+    };
+    YuvColor { matrix, range }
+}
+
+fn copy_nv12_frame(frame: &ffmpeg::util::frame::Video, color: YuvColor) -> YuvFrame {
+    let width = frame.width() as usize;
+    let height = frame.height() as usize;
+    let uv_width = width.div_ceil(2);
+    let uv_height = height.div_ceil(2);
+    let y = copy_plane_rows(frame.data(0), frame.stride(0), width, height);
+    let uv = copy_plane_rows(frame.data(1), frame.stride(1), uv_width * 2, uv_height);
+    YuvFrame {
+        y,
+        uv,
+        y_stride: width as u32,
+        uv_stride: (uv_width * 2) as u32,
+        uv_width: uv_width as u32,
+        uv_height: uv_height as u32,
+        color,
+    }
+}
+
+fn copy_yuv420p_as_nv12_frame(frame: &ffmpeg::util::frame::Video, color: YuvColor) -> YuvFrame {
+    let width = frame.width() as usize;
+    let height = frame.height() as usize;
+    let uv_width = width.div_ceil(2);
+    let uv_height = height.div_ceil(2);
+    let y = copy_plane_rows(frame.data(0), frame.stride(0), width, height);
+    let mut uv = vec![0u8; uv_width * 2 * uv_height];
+    for row in 0..uv_height {
+        let u_start = row * frame.stride(1);
+        let v_start = row * frame.stride(2);
+        let dst_start = row * uv_width * 2;
+        for col in 0..uv_width {
+            uv[dst_start + col * 2] = frame.data(1)[u_start + col];
+            uv[dst_start + col * 2 + 1] = frame.data(2)[v_start + col];
+        }
+    }
+    YuvFrame {
+        y,
+        uv,
+        y_stride: width as u32,
+        uv_stride: (uv_width * 2) as u32,
+        uv_width: uv_width as u32,
+        uv_height: uv_height as u32,
+        color,
+    }
+}
+
+fn copy_plane_rows(src: &[u8], stride: usize, row_bytes: usize, rows: usize) -> Vec<u8> {
+    let mut out = vec![0u8; row_bytes * rows];
+    for row in 0..rows {
+        let src_start = row * stride;
+        let dst_start = row * row_bytes;
+        out[dst_start..dst_start + row_bytes]
+            .copy_from_slice(&src[src_start..src_start + row_bytes]);
+    }
+    out
+}
+
 pub(crate) fn probe_rotation(video: &serde_json::Value) -> i32 {
     video
         .get("tags")
@@ -583,6 +813,66 @@ mod tests {
         assert_eq!(coded_output_dimensions(1080, 1920, 90), (1920, 1080));
         assert_eq!(coded_output_dimensions(1080, 1920, 270), (1920, 1080));
         assert_eq!(coded_output_dimensions(1920, 1080, 0), (1920, 1080));
+    }
+
+    #[test]
+    fn yuv_color_uses_frame_metadata() {
+        let mut frame = ffmpeg::util::frame::Video::new(ffmpeg::format::Pixel::NV12, 1920, 1080);
+        frame.set_color_space(ffmpeg::util::color::Space::BT709);
+        frame.set_color_range(ffmpeg::util::color::Range::JPEG);
+
+        assert_eq!(
+            yuv_color(&frame),
+            YuvColor {
+                matrix: YuvColorMatrix::Bt709,
+                range: YuvColorRange::Full,
+            }
+        );
+    }
+
+    #[test]
+    fn yuv_color_defaults_sd_unspecified_to_bt601_limited() {
+        let frame = ffmpeg::util::frame::Video::new(ffmpeg::format::Pixel::NV12, 720, 576);
+
+        assert_eq!(
+            yuv_color(&frame),
+            YuvColor {
+                matrix: YuvColorMatrix::Bt601,
+                range: YuvColorRange::Limited,
+            }
+        );
+    }
+
+    #[test]
+    fn copy_plane_rows_removes_stride_padding() {
+        let src = [1, 2, 3, 9, 4, 5, 6, 9];
+
+        assert_eq!(copy_plane_rows(&src, 4, 3, 2), vec![1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn copy_yuv420p_as_nv12_interleaves_uv() {
+        let mut frame = ffmpeg::util::frame::Video::new(ffmpeg::format::Pixel::YUV420P, 4, 2);
+        let y_stride = frame.stride(0);
+        let u_stride = frame.stride(1);
+        let v_stride = frame.stride(2);
+        frame.data_mut(0)[..4].copy_from_slice(&[1, 2, 3, 4]);
+        frame.data_mut(0)[y_stride..y_stride + 4].copy_from_slice(&[5, 6, 7, 8]);
+        frame.data_mut(1)[..2].copy_from_slice(&[10, 11]);
+        frame.data_mut(2)[..2].copy_from_slice(&[20, 21]);
+
+        let yuv = copy_yuv420p_as_nv12_frame(
+            &frame,
+            YuvColor {
+                matrix: YuvColorMatrix::Bt709,
+                range: YuvColorRange::Limited,
+            },
+        );
+
+        assert_eq!(u_stride, frame.stride(1));
+        assert_eq!(v_stride, frame.stride(2));
+        assert_eq!(yuv.y, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+        assert_eq!(yuv.uv, vec![10, 20, 11, 21]);
     }
 
     #[test]

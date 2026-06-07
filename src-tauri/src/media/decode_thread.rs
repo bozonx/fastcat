@@ -20,6 +20,8 @@ use std::thread::JoinHandle;
 
 use anyhow::{anyhow, Context, Result};
 
+use crate::compositor::yuv::YuvToRgbaPipeline;
+
 use super::decode::{FfmpegNextDecoderFactory, MediaInfo, VideoDecoderFactory, VideoFrame};
 use super::types::HwAccelMode;
 
@@ -219,6 +221,8 @@ fn run_decoder_loop(
     let mut decoded_after_seek = false;
     let mut current_gen = gen.load(Ordering::SeqCst);
     let mut at_eof = false;
+    let mut prefer_yuv = device.is_some() && queue.is_some();
+    let mut yuv_pipeline: Option<YuvToRgbaPipeline> = None;
 
     loop {
         // 1) Обработать все накопившиеся команды.
@@ -325,7 +329,12 @@ fn run_decoder_loop(
         }
 
         // 3) Тянем следующий кадр.
-        match decoder.next_frame() {
+        let decoded = if prefer_yuv {
+            decoder.next_frame_for_gpu()
+        } else {
+            decoder.next_frame()
+        };
+        match decoded {
             Ok(Some(mut frame)) => {
                 // Если consumer уже сделал seek во время нашего read_exact —
                 // отбросим этот кадр, не нагружая канал. Generation atomics свежее.
@@ -353,32 +362,58 @@ fn run_decoder_loop(
                                 format: wgpu::TextureFormat::Rgba8Unorm,
                                 usage: wgpu::TextureUsages::COPY_DST
                                     | wgpu::TextureUsages::TEXTURE_BINDING
-                                    | wgpu::TextureUsages::COPY_SRC,
+                                    | wgpu::TextureUsages::COPY_SRC
+                                    | wgpu::TextureUsages::STORAGE_BINDING,
                                 view_formats: &[],
                             })
                         })
                     };
-                    queue.write_texture(
-                        wgpu::TexelCopyTextureInfo {
-                            texture: &tex,
-                            mip_level: 0,
-                            origin: wgpu::Origin3d::ZERO,
-                            aspect: wgpu::TextureAspect::All,
-                        },
-                        &frame.pixels,
-                        wgpu::TexelCopyBufferLayout {
-                            offset: 0,
-                            bytes_per_row: Some(frame.width * 4),
-                            rows_per_image: Some(frame.height),
-                        },
-                        wgpu::Extent3d {
-                            width: frame.width,
-                            height: frame.height,
-                            depth_or_array_layers: 1,
-                        },
-                    );
-                    frame.texture = Some(tex);
-                    frame.texture_pool = Some(texture_pool.clone());
+                    if let Some(yuv) = frame.yuv.as_ref() {
+                        let pipeline = yuv_pipeline
+                            .get_or_insert_with(|| YuvToRgbaPipeline::new(device, None));
+                        match pipeline.upload_and_convert(
+                            device,
+                            queue,
+                            yuv,
+                            frame.width,
+                            frame.height,
+                            &tex,
+                        ) {
+                            Ok(()) => {
+                                frame.texture = Some(tex);
+                                frame.texture_pool = Some(texture_pool.clone());
+                            }
+                            Err(error) => {
+                                log::warn!(
+                                    "[decode] YUV GPU upload failed, falling back to RGBA decode: {error:?}"
+                                );
+                                prefer_yuv = false;
+                                continue;
+                            }
+                        }
+                    } else {
+                        queue.write_texture(
+                            wgpu::TexelCopyTextureInfo {
+                                texture: &tex,
+                                mip_level: 0,
+                                origin: wgpu::Origin3d::ZERO,
+                                aspect: wgpu::TextureAspect::All,
+                            },
+                            &frame.pixels,
+                            wgpu::TexelCopyBufferLayout {
+                                offset: 0,
+                                bytes_per_row: Some(frame.width * 4),
+                                rows_per_image: Some(frame.height),
+                            },
+                            wgpu::Extent3d {
+                                width: frame.width,
+                                height: frame.height,
+                                depth_or_array_layers: 1,
+                            },
+                        );
+                        frame.texture = Some(tex);
+                        frame.texture_pool = Some(texture_pool.clone());
+                    }
                 }
 
                 let msg = DecodedFrameMsg {

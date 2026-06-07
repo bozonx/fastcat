@@ -108,8 +108,8 @@ next.kind = LayerKind::Raster {
 
 **Рекомендация:** Пул текстур (texture pool / render target cache) с reuse по размеру.
 
-#### 2.1.3. Отсутствие zero-copy видео декодинга 🔴
-`ffmpeg-next` декодит в CPU `Vec<u8>`, затем `queue.write_texture` грузит на GPU. `texture_cache.rs` и `RasterSource::GpuHandle` — задел, но активный путь всегда идёт через CPU.
+#### 2.1.3. Отсутствие zero-copy видео декодинга 🟡
+Preview-путь теперь избегает полного CPU RGBA для поддерживаемых 8-bit 4:2:0 кадров: `ffmpeg-next` отдаёт NV12-style Y/UV planes, `decode_thread` грузит их как `R8Unorm`/`Rg8Unorm`, а `compositor::yuv` конвертирует YUV→RGBA на GPU перед существующим Vello texture path. Это всё ещё не zero-copy HW decode: неподдерживаемые форматы и export остаются на RGBA fallback.
 
 **Рекомендация:** Интеграция HW-decode (VAAPI/VideoToolbox/D3D11) с `wgpu::Texture` напрямую.
 

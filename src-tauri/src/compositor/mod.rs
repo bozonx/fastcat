@@ -19,6 +19,7 @@ pub mod scene;
 pub mod svg;
 pub mod text;
 pub mod transitions;
+pub mod yuv;
 
 mod engine;
 pub use engine::Compositor;
