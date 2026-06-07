@@ -245,10 +245,10 @@ pub(crate) fn write_output<T: OutputSample>(
             let silent_frames = ((temp_slice.len() - read) / channels) as u64;
             clock
                 .underrun_events
-                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             clock
                 .underrun_frames
-                .fetch_add(silent_frames, std::sync::atomic::Ordering::Relaxed);
+                .fetch_add(silent_frames, std::sync::atomic::Ordering::SeqCst);
         }
         for (out, sample) in data.iter_mut().zip(temp_slice.iter()) {
             *out = T::from_f32(*sample);

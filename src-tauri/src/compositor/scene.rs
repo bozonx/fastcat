@@ -1,14 +1,14 @@
-//! Доменная модель кадра, ready-to-render.
+//! Domain model of a single ready-to-render frame.
 //!
-//! `Scene` описывает ОДИН композитный кадр в момент `time` (секунды timeline).
-//! Это внутренний контракт между `monitor` (владелец таймлайна) и `Compositor`
-//! (исполнитель отрисовки) — она НЕ сериализуется и не пересекает Tauri-границу.
+//! `Scene` describes ONE composite frame at the given `time` (timeline seconds).
+//! This is an internal contract between `monitor` (timeline owner) and `Compositor`
+//! (render executor) — it is NOT serialized and does not cross the Tauri boundary.
 //!
-//! Timeline-DTO (что есть на таймлайне в принципе) живёт в [`crate::monitor::scene::MonitorScene`];
-//! мост `MonitorScene + t → compositor::scene::Scene` — в `monitor::app::WindowState::build_scene`.
+//! The timeline DTO lives in [`crate::monitor::scene::MonitorScene`];
+//! the bridge `MonitorScene + t → compositor::scene::Scene` is in `monitor::app::WindowState::build_scene`.
 //!
-//! Расширение: новые типы слоёв добавляются как варианты `LayerKind`
-//! (он `#[non_exhaustive]`), плюс ветка в `Scene::to_vello`.
+//! Extension: new layer kinds are added as variants of `LayerKind`
+//! (it is `#[non_exhaustive]`), plus a branch in `Scene::to_vello`.
 
 use super::effects::EffectSpec;
 use kurbo::{Affine, BezPath, Rect, RoundedRect, Shape, Stroke};
@@ -22,20 +22,20 @@ use vello::Scene as VelloScene;
 pub struct Scene {
     pub width: u32,
     pub height: u32,
-    /// Текущее время кадра по timeline-clock'у, секунды. Используется будущими
-    /// эффектами/transitions с временной зависимостью; сейчас informational.
+    /// Current frame time on the timeline clock, in seconds. Intended for future
+    /// time-dependent effects / transitions; currently informational.
     pub time: f64,
     pub background: Color,
-    /// Слои предварительно отсортированы снизу-вверх (по `z` источника).
+    /// Layers are pre-sorted bottom-to-top (by source `z`).
     pub layers: Vec<Layer>,
 }
 
 impl Scene {
-    /// Композит сцены в `vello::Scene`. Вписывает (`scene.width × scene.height`)
-    /// в (`viewport_w × viewport_h`) с сохранением аспекта (letterbox).
+    /// Composites the scene into a `vello::Scene`. Fits (`scene.width × scene.height`)
+    /// into (`viewport_w × viewport_h`) while preserving aspect ratio (letterbox).
     ///
-    /// Это единственное место в кодовой базе, которое строит vello-команды для
-    /// доменной сцены — все будущие kind'ы/эффекты/transitions подключаются здесь.
+    /// This is the single place in the codebase that builds vello commands for the
+    /// domain scene — all future kinds / effects / transitions are wired in here.
     pub fn to_vello<F>(
         &self,
         viewport_w: u32,

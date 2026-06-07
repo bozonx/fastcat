@@ -629,94 +629,87 @@ mod tests {
     use super::*;
     use crate::audio::shared::AudioShared;
 
-    fn write_temp_f32_wav(sample_rate: u32, channels: usize, frames: usize) -> std::path::PathBuf {
+    fn write_temp_f32_wav(
+        sample_rate: u32,
+        channels: usize,
+        frames: usize,
+    ) -> anyhow::Result<std::path::PathBuf> {
         use std::io::{Seek, Write};
         let mut path = std::env::temp_dir();
         let unique = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .map_err(|e| anyhow::anyhow!("system time error: {e}"))?
             .as_nanos();
         path.push(format!("fastcat-audio-test-{unique}.wav"));
 
-        let mut file = std::fs::File::create(&path).unwrap();
+        let mut file = std::fs::File::create(&path)?;
         let bits_per_sample = 32u16;
         let bytes_per_sample = (bits_per_sample / 8) as u32;
         let data_size = 0u32;
         let riff_size = 36u32.saturating_add(data_size);
-        file.write_all(b"RIFF").unwrap();
-        file.write_all(&riff_size.to_le_bytes()).unwrap();
-        file.write_all(b"WAVE").unwrap();
-        file.write_all(b"fmt ").unwrap();
-        file.write_all(&16u32.to_le_bytes()).unwrap();
-        file.write_all(&3u16.to_le_bytes()).unwrap();
-        file.write_all(&(channels as u16).to_le_bytes()).unwrap();
-        file.write_all(&sample_rate.to_le_bytes()).unwrap();
+        file.write_all(b"RIFF")?;
+        file.write_all(&riff_size.to_le_bytes())?;
+        file.write_all(b"WAVE")?;
+        file.write_all(b"fmt ")?;
+        file.write_all(&16u32.to_le_bytes())?;
+        file.write_all(&3u16.to_le_bytes())?;
+        file.write_all(&(channels as u16).to_le_bytes())?;
+        file.write_all(&sample_rate.to_le_bytes())?;
         let byte_rate = sample_rate
             .saturating_mul(channels as u32)
             .saturating_mul(bytes_per_sample);
-        file.write_all(&byte_rate.to_le_bytes()).unwrap();
+        file.write_all(&byte_rate.to_le_bytes())?;
         let block_align = (channels as u16).saturating_mul(bytes_per_sample as u16);
-        file.write_all(&block_align.to_le_bytes()).unwrap();
-        file.write_all(&bits_per_sample.to_le_bytes()).unwrap();
-        file.write_all(b"data").unwrap();
-        file.write_all(&data_size.to_le_bytes()).unwrap();
+        file.write_all(&block_align.to_le_bytes())?;
+        file.write_all(&bits_per_sample.to_le_bytes())?;
+        file.write_all(b"data")?;
+        file.write_all(&data_size.to_le_bytes())?;
 
         for frame in 0..frames {
             let sample =
                 ((frame as f32 / sample_rate as f32) * 440.0 * std::f32::consts::TAU).sin() * 0.25;
             for _ in 0..channels {
-                file.write_all(&sample.to_le_bytes()).unwrap();
+                file.write_all(&sample.to_le_bytes())?;
             }
         }
         let data_size = (frames * channels * std::mem::size_of::<f32>()) as u32;
-        file.seek(std::io::SeekFrom::Start(4)).unwrap();
-        file.write_all(&(36u32 + data_size).to_le_bytes()).unwrap();
-        file.seek(std::io::SeekFrom::Start(40)).unwrap();
-        file.write_all(&data_size.to_le_bytes()).unwrap();
+        file.seek(std::io::SeekFrom::Start(4))?;
+        file.write_all(&(36u32 + data_size).to_le_bytes())?;
+        file.seek(std::io::SeekFrom::Start(40))?;
+        file.write_all(&data_size.to_le_bytes())?;
 
-        path
+        Ok(path)
     }
 
     #[test]
-    fn test_decode_entire_file_symphonia() {
+    fn test_decode_entire_file_symphonia() -> anyhow::Result<()> {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
-        let decoded = decode_entire_file_symphonia(path, 48000, 2);
-        assert!(
-            decoded.is_ok(),
-            "Failed to decode MP3 file: {:?}",
-            decoded.err()
-        );
-        let samples = decoded.unwrap();
-        assert!(samples.len() > 0, "Decoded sample buffer is empty");
+        let samples = decode_entire_file_symphonia(path, 48000, 2)?;
+        assert!(!samples.is_empty(), "Decoded sample buffer is empty");
+        Ok(())
     }
 
     #[test]
-    fn test_decode_symphonia_chunk() {
+    fn test_decode_symphonia_chunk() -> anyhow::Result<()> {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let decoded =
-            decode_symphonia_chunk("layer-1", path, 0.2, 0.5, 1.0, 48000, 2, false, &shared);
-        assert!(
-            decoded.is_ok(),
-            "Failed to decode chunk: {:?}",
-            decoded.err()
-        );
-        let samples = decoded.unwrap();
+        let samples =
+            decode_symphonia_chunk("layer-1", path, 0.2, 0.5, 1.0, 48000, 2, false, &shared)?;
         let expected = (0.5f64 * 48000.0).round() as usize * 2;
         assert_eq!(samples.len(), expected, "chunk length must be exact");
+        Ok(())
     }
 
     #[test]
-    fn rate_mismatched_small_file_streams_instead_of_full_cache() {
-        let path = write_temp_f32_wav(8000, 1, 8000);
+    fn rate_mismatched_small_file_streams_instead_of_full_cache() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(8000, 1, 8000)?;
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
         let target = AudioRenderTarget::monitor(48000, 2);
         let decoded = decode_audio_chunk(
             "layer-8k", &path_str, 0.0, 0.05, 1.0, target, false, &shared,
-        )
-        .unwrap();
+        )?;
 
         assert_eq!(decoded.len(), (0.05f64 * 48000.0).round() as usize * 2);
         let state = shared.0.lock();
@@ -734,11 +727,12 @@ mod tests {
         drop(state);
 
         let _ = std::fs::remove_file(path);
+        Ok(())
     }
 
     #[test]
-    fn streaming_resampler_drops_initial_filter_delay() {
-        let path = write_temp_f32_wav(8000, 1, 8000);
+    fn streaming_resampler_drops_initial_filter_delay() -> anyhow::Result<()> {
+        let path = write_temp_f32_wav(8000, 1, 8000)?;
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
@@ -752,9 +746,8 @@ mod tests {
             2,
             false,
             &shared,
-        )
-        .unwrap();
-        let full = decode_entire_file_symphonia(&path_str, 48000, 2).unwrap();
+        )?;
+        let full = decode_entire_file_symphonia(&path_str, 48000, 2)?;
 
         let compare_len = chunk.len().min(full.len()).min(512);
         let mean_abs_diff = chunk[..compare_len]
@@ -770,45 +763,52 @@ mod tests {
         );
 
         let _ = std::fs::remove_file(path);
+        Ok(())
     }
 
     #[test]
-    fn decode_chunk_primes_resampler_no_tail_silence_after_seek() {
+    fn decode_chunk_primes_resampler_no_tail_silence_after_seek() -> anyhow::Result<()> {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let chunk =
-            decode_symphonia_chunk("seek-layer", path, 0.1, 0.05, 1.0, 44100, 2, false, &shared)
-                .expect("decode chunk");
+            decode_symphonia_chunk("seek-layer", path, 0.1, 0.05, 1.0, 44100, 2, false, &shared)?;
         let frames = chunk.len() / 2;
         let expected_frames = (0.05f64 * 44100.0).round() as usize;
         assert_eq!(frames, expected_frames, "chunk length must be exact");
 
         let state = shared.0.lock();
-        let decoder = state.decoders.get("seek-layer").expect("decoder cached");
+        let decoder = state
+            .decoders
+            .get("seek-layer")
+            .ok_or_else(|| anyhow::anyhow!("decoder cached"))?;
         assert!(decoder.resampler_primed, "resampler should be primed");
         assert!(
             !decoder.resample_output_remainder.is_empty(),
             "priming should leave surplus resampled audio for the next chunk"
         );
+        Ok(())
     }
 
     #[test]
-    fn decode_chunk_reverse_resampled_stays_full() {
+    fn decode_chunk_reverse_resampled_stays_full() -> anyhow::Result<()> {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let expected_frames = (0.05f64 * 44100.0).round() as usize;
         for i in 0..3 {
             let src = 0.5 - i as f64 * 0.05;
-            let chunk =
-                decode_symphonia_chunk("rev-layer", path, src, 0.05, 1.0, 44100, 2, true, &shared)
-                    .expect("decode reverse chunk");
+            let chunk = decode_symphonia_chunk(
+                "rev-layer", path, src, 0.05, 1.0, 44100, 2, true, &shared,
+            )?;
             assert_eq!(
                 chunk.len() / 2,
                 expected_frames,
                 "reverse chunk exact length"
             );
             let state = shared.0.lock();
-            let decoder = state.decoders.get("rev-layer").expect("decoder cached");
+            let decoder = state
+                .decoders
+                .get("rev-layer")
+                .ok_or_else(|| anyhow::anyhow!("decoder cached"))?;
             assert!(
                 decoder.resampler_primed,
                 "reverse resampler should be primed"
@@ -818,10 +818,11 @@ mod tests {
                 "reverse priming should leave surplus resampled audio"
             );
         }
+        Ok(())
     }
 
     #[test]
-    fn decode_chunk_tail_eof_keeps_cursor_on_clamped_source_start() {
+    fn decode_chunk_tail_eof_keeps_cursor_on_clamped_source_start() -> anyhow::Result<()> {
         let path = "../test/fixtures/media/sample-1s-audio.mp3";
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
         let source_start = 0.999;
@@ -835,8 +836,7 @@ mod tests {
             2,
             false,
             &shared,
-        )
-        .expect("decode tail chunk");
+        )?;
         let expected_samples = (0.05f64 * 44100.0).round() as usize * 2;
         assert_eq!(
             chunk.len(),
@@ -845,10 +845,14 @@ mod tests {
         );
 
         let state = shared.0.lock();
-        let decoder = state.decoders.get("tail-layer").expect("decoder cached");
+        let decoder = state
+            .decoders
+            .get("tail-layer")
+            .ok_or_else(|| anyhow::anyhow!("decoder cached"))?;
         assert!(
             (decoder.last_decode_end_sec - source_start).abs() < 1e-9,
             "EOF tail cursor should stay at clamped source start"
         );
+        Ok(())
     }
 }

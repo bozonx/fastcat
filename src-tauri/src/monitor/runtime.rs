@@ -1,14 +1,14 @@
-//! Жизненный цикл слоёв рантайма и менеджер рантаймов.
+//! Layer runtime lifecycle and runtime manager.
 //!
-//! `LayerRuntimeManager` владеет всеми декодерами и кешами, производит diff сцены
-//! (сохраняя живые рантаймы), запускает фоновую загрузку и строит compositor-снимок.
+//! `LayerRuntimeManager` owns all decoders and caches, diffs the scene
+//! (keeping alive runtimes), starts background loading, and builds the compositor snapshot.
 //!
-//! Жизненный цикл слоя:
-//!   `tick` → `ensure_runtime_for` → `LayerRuntime::Loading` + фоновый поток
+//! Layer lifecycle:
+//!   `tick` → `ensure_runtime_for` → `LayerRuntime::Loading` + background thread
 //!   → `BgLayerResult` → `apply_bg_result` → `Video | Image | Failed`
-//!   `apply_scene` (новая сцена) → `Failed` удаляется → retry
+//!   `apply_scene` (new scene) → `Failed` is removed → retry
 //!
-//! Намеренно не знает о winit, wgpu или Tauri IPC.
+//! Intentionally unaware of winit, wgpu, or Tauri IPC.
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;

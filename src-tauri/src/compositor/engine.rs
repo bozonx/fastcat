@@ -1,16 +1,16 @@
-//! Главный объект композитора. Один на приложение (живёт внутри monitor-потока,
-//! т.к. wgpu device, surface, vello renderer хотят жить рядом).
+//! Main compositor object. One per application (lives inside the monitor thread,
+//! because wgpu device, surface, and vello renderer prefer to stay together).
 //!
-//! Compositor отвечает за:
-//!   1) владение `vello::RenderContext` и кешем `Renderer` по device-id;
-//!   2) создание оконных surface'ов;
-//!   3) рендер `scene::Scene` в surface / пиксели.
+//! Compositor is responsible for:
+//!   1) owning the `vello::RenderContext` and per-device-id `Renderer` cache;
+//!   2) creating window surfaces;
+//!   3) rendering `scene::Scene` into a surface / pixels.
 //!
-//! Точки входа:
-//!   - `render_scene_to_surface` / `render_scene_to_pixels` — high-level, принимают доменную `Scene`.
-//!   - `render_to_surface` / `render_to_pixels` — low-level, принимают готовую `vello::Scene`.
+//! Entry points:
+//!   - `render_scene_to_surface` / `render_scene_to_pixels` — high-level, accept a domain `Scene`.
+//!   - `render_to_surface` / `render_to_pixels` — low-level, accept a ready `vello::Scene`.
 //!
-//! Конвертация `scene::Scene → vello::Scene` происходит внутри через `scene.to_vello(w, h)`.
+//! Conversion `scene::Scene → vello::Scene` happens internally via `scene.to_vello(w, h)`.
 
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
@@ -722,9 +722,7 @@ impl Compositor {
             .pipeline_caches
             .entry(dev_id)
             .or_insert_with(|| {
-                // SAFETY: create_pipeline_cache is safe when data is None and fallback is true,
-                // as no external initialization data is provided and the driver will fall back
-                // to its default behaviour.
+                // SAFETY: create_pipeline_cache is safe when data is None and fallback is true.
                 unsafe {
                     device_handle
                         .device

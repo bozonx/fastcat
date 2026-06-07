@@ -1,9 +1,9 @@
-//! ApplicationHandler winit: окно + PlaybackClock + LayerRuntimeManager.
+//! winit ApplicationHandler: window + PlaybackClock + LayerRuntimeManager.
 //!
-//! Архитектура:
-//!   MonitorApp — winit ApplicationHandler; хранит WindowState и отложенные данные до
-//!               первого SetViewport / resumed.
-//!   WindowState — тонкий coordinator: window, surface, compositor + clock + layers.
+//! Architecture:
+//!   MonitorApp — winit ApplicationHandler; holds WindowState and deferred data until
+//!               the first SetViewport / resumed.
+//!   WindowState — thin coordinator: window, surface, compositor + clock + layers.
 //!   PlaybackClock  → `clock.rs`
 //!   LayerRuntimeManager → `runtime.rs`
 
@@ -390,16 +390,12 @@ impl WindowState {
         } else {
             scene.audio_master_gain
         };
-        self.audio_layers = scene.audio_layers.clone();
-        self.audio_tracks = scene.audio_tracks.clone();
+        self.audio_layers.clone_from(&scene.audio_layers);
+        self.audio_tracks.clone_from(&scene.audio_tracks);
         self.audio_master_gain = master_gain;
 
         if let Some(audio) = self.audio.as_ref() {
-            audio.set_scene(
-                self.audio_layers.clone(),
-                self.audio_tracks.clone(),
-                master_gain,
-            );
+            audio.set_scene(&scene.audio_layers, &scene.audio_tracks, master_gain);
         }
         self.layers.apply_scene(scene);
         self.window.request_redraw();
@@ -411,8 +407,8 @@ impl WindowState {
         self.audio = match NativeAudioEngine::new(&settings) {
             Ok(audio) => {
                 audio.set_scene(
-                    self.audio_layers.clone(),
-                    self.audio_tracks.clone(),
+                    &self.audio_layers,
+                    &self.audio_tracks,
                     self.audio_master_gain,
                 );
                 if playing {

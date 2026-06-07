@@ -16,35 +16,23 @@ pub trait ApplyHwSettings {
     fn apply_hw_settings(&mut self, hw: &crate::FfmpegHardwareSettings);
 }
 
-impl ApplyHwSettings for NativeProxyOptions {
-    fn apply_hw_settings(&mut self, hw: &crate::FfmpegHardwareSettings) {
-        self.ffmpeg_path = Some(hw.ffmpeg_path.clone());
-        self.ffprobe_path = Some(hw.ffprobe_path.clone());
-        self.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode.clone());
-        self.vaapi_device = Some(hw.vaapi_device.clone());
-        self.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
-    }
+macro_rules! impl_apply_hw_settings {
+    ($type:ty) => {
+        impl ApplyHwSettings for $type {
+            fn apply_hw_settings(&mut self, hw: &crate::FfmpegHardwareSettings) {
+                self.ffmpeg_path = Some(hw.ffmpeg_path.clone());
+                self.ffprobe_path = Some(hw.ffprobe_path.clone());
+                self.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode.clone());
+                self.vaapi_device = Some(hw.vaapi_device.clone());
+                self.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
+            }
+        }
+    };
 }
 
-impl ApplyHwSettings for NativeConvertOptions {
-    fn apply_hw_settings(&mut self, hw: &crate::FfmpegHardwareSettings) {
-        self.ffmpeg_path = Some(hw.ffmpeg_path.clone());
-        self.ffprobe_path = Some(hw.ffprobe_path.clone());
-        self.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode.clone());
-        self.vaapi_device = Some(hw.vaapi_device.clone());
-        self.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
-    }
-}
-
-impl ApplyHwSettings for NativeExportOptions {
-    fn apply_hw_settings(&mut self, hw: &crate::FfmpegHardwareSettings) {
-        self.ffmpeg_path = Some(hw.ffmpeg_path.clone());
-        self.ffprobe_path = Some(hw.ffprobe_path.clone());
-        self.hardware_acceleration_mode = Some(hw.hardware_acceleration_mode.clone());
-        self.vaapi_device = Some(hw.vaapi_device.clone());
-        self.enable_hardware_encoding = Some(hw.enable_hardware_encoding);
-    }
-}
+impl_apply_hw_settings!(NativeProxyOptions);
+impl_apply_hw_settings!(NativeConvertOptions);
+impl_apply_hw_settings!(NativeExportOptions);
 
 /// Thin service layer that wraps `NativeMediaTasks` so Tauri commands stay
 /// adapter-only and the business logic is unit-testable without the IPC layer.
@@ -180,7 +168,7 @@ pub async fn native_media_metadata(
     tokio::task::spawn_blocking(move || probe_media(&path, &ffprobe_path))
         .await
         .map_err(|e| e.to_string())?
-        .map_err(|e| format!("{e:?}"))
+        .map_err(|e| format!("{e:#}"))
 }
 
 #[tauri::command]

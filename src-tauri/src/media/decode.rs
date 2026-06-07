@@ -1,10 +1,10 @@
-//! Видео-декодер для нативного monitor/preview.
+//! Video decoder for the native monitor / preview.
 //!
-//! Основной backend — `ffmpeg-next` поверх libav*: он не респаунит внешний процесс на seek
-//! и даёт прямой доступ к PTS/timebase. Системный `ffmpeg` CLI остаётся fallback'ом только
-//! для preview-декода; экспорт, прокси и конвертация по-прежнему используют CLI отдельно.
+//! The primary backend is `ffmpeg-next` over libav*: it does not respawn an external process on
+//! seek and gives direct access to PTS/timebase. The system `ffmpeg` CLI remains a fallback only
+//! for preview decode; export, proxy, and conversion still use the CLI separately.
 //!
-//! Контракт: наружу всегда отдаём плотный RGBA8 (`width * height * 4`) и PTS в секундах.
+//! Contract: always returns dense RGBA8 (`width * height * 4`) and PTS in seconds.
 
 use anyhow::{anyhow, Context, Result};
 use ffmpeg_next as ffmpeg;
@@ -32,20 +32,27 @@ pub struct MediaInfo {
 pub struct VideoFrame {
     pub width: u32,
     pub height: u32,
-    /// RGBA8, плотная упаковка (`width * height * 4`).
+    /// RGBA8, dense layout (`width * height * 4`).
     pub pixels: Vec<u8>,
     pub pts_sec: f64,
     pub texture: Option<wgpu::Texture>,
     pub texture_pool: Option<Arc<Mutex<HashMap<(u32, u32), Vec<wgpu::Texture>>>>>,
 }
 
+/// Maximum pooled textures for any single (width, height) to avoid
+/// unbounded growth when switching between clips of different resolutions.
+const MAX_TEXTURES_PER_SIZE: usize = 4;
+
 impl Drop for VideoFrame {
     fn drop(&mut self) {
         if let (Some(tex), Some(pool)) = (self.texture.take(), self.texture_pool.take()) {
             let mut p = pool.lock();
-            p.entry((tex.size().width, tex.size().height))
-                .or_default()
-                .push(tex);
+            let slot = p.entry((tex.size().width, tex.size().height)).or_default();
+            if slot.len() >= MAX_TEXTURES_PER_SIZE {
+                // Evict the oldest (front) to keep the pool bounded.
+                slot.remove(0);
+            }
+            slot.push(tex);
         }
     }
 }
@@ -69,9 +76,9 @@ pub struct FfmpegNextDecoder {
     stream_index: usize,
     stream_time_base: ffmpeg::Rational,
     eof_sent: bool,
-    /// Цель frame-accurate seek (секунды stream-time). После `seek` libav становится
-    /// на ближайший ключевой кадр ≤ target; `next_frame` отбрасывает кадры с PTS заметно
-    /// меньше target, пока не дойдёт до запрошенного. `None` — нет активного seek.
+    /// Frame-accurate seek target (stream-time seconds). After `seek`, libav lands on
+    /// the nearest key frame ≤ target; `next_frame` drops frames with PTS noticeably
+    /// less than target until the requested position is reached. `None` = no active seek.
     seek_target: Option<f64>,
     hwaccel: Option<HwAccelContext>,
 }
@@ -180,7 +187,7 @@ impl FfmpegNextDecoder {
         })
     }
 
-    /// FPS для расчёта допуска frame-accurate seek; защищён от нулевого/невалидного значения.
+    /// FPS used to compute the frame-accurate seek tolerance; guarded against zero/invalid values.
     fn effective_fps(&self) -> f64 {
         if self.info.fps.is_finite() && self.info.fps > 0.0 {
             self.info.fps
@@ -189,7 +196,7 @@ impl FfmpegNextDecoder {
         }
     }
 
-    /// PTS декодированного кадра в секундах stream-time.
+    /// PTS of the decoded frame in stream-time seconds.
     fn frame_pts_sec(&self, decoded: &ffmpeg::util::frame::Video) -> f64 {
         decoded
             .timestamp()
@@ -284,8 +291,8 @@ impl VideoDecoder for FfmpegNextDecoder {
         })?;
         self.decoder.flush();
         self.eof_sent = false;
-        // libav становится на ключевой кадр ≤ target; запоминаем цель, чтобы `next_frame`
-        // декодировал и отбросил кадры внутри GOP вплоть до запрошенной позиции.
+        // libav lands on the nearest key frame ≤ target; remember the target so that
+        // `next_frame` decodes and discards intra-GOP frames until the requested position.
         self.seek_target = Some(target);
         Ok(())
     }
@@ -295,8 +302,9 @@ impl VideoDecoder for FfmpegNextDecoder {
             let mut decoded = ffmpeg::util::frame::Video::empty();
             match self.decoder.receive_frame(&mut decoded) {
                 Ok(()) => {
-                    // Frame-accurate seek: после прыжка на ключевой кадр пропускаем кадры,
-                    // отстающие от цели больше чем на полкадра, не тратя CPU на их scale-в-RGBA.
+                    // Frame-accurate seek: after jumping to the key frame, skip frames that
+                    // lag behind the target by more than half a frame, avoiding wasted CPU on
+                    // scaling them to RGBA.
                     if let Some(target) = self.seek_target {
                         let tolerance = 0.5 / self.effective_fps();
                         if self.frame_pts_sec(&decoded) < target - tolerance {
@@ -372,13 +380,13 @@ impl VideoDecoderFactory for FfmpegNextDecoderFactory {
     }
 }
 
-/// Открывает видео-декодер для preview/thumbnail/export.
+/// Opens a video decoder for preview / thumbnail / export.
 ///
-/// Единственный backend — `ffmpeg-next` поверх libav*: прямой доступ к PTS/timebase,
-/// frame-accurate seek без респауна процесса. CLI-fallback намеренно убран — он давал
-/// расходящееся поведение (другой seek/rotation/PTS) и молча маскировал проблемы
-/// ffmpeg-next. Там, где нужен именно CLI (HW-энкод экспорта, одиночная extract-команда),
-/// он вызывается напрямую, а не как скрытая подмена этого декодера.
+/// The only backend is `ffmpeg-next` over libav*: direct access to PTS/timebase,
+/// frame-accurate seek without respawning a process. The CLI fallback was intentionally
+/// removed — it produced divergent behaviour (different seek/rotation/PTS) and silently
+/// masked ffmpeg-next issues. Where the CLI is actually needed (HW encode export, single
+/// extract command), it is invoked directly rather than as a hidden replacement for this decoder.
 pub fn open(
     path: &Path,
     max_output_long_edge: Option<u32>,
@@ -467,7 +475,7 @@ fn coded_output_dimensions(visual_w: u32, visual_h: u32, rotation: i32) -> (u32,
     }
 }
 
-/// Считает target dims декода, сохраняя aspect и НЕ увеличивая разрешение.
+/// Computes decode target dimensions while preserving aspect ratio and NEVER upscaling.
 fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u32, u32) {
     let Some(max) = max_long_edge else {
         return (src_w, src_h);
@@ -480,8 +488,8 @@ fn compute_output_dims(src_w: u32, src_h: u32, max_long_edge: Option<u32>) -> (u
         return (src_w, src_h);
     }
     let scale = max as f64 / long as f64;
-    // Кратность 2 — ffmpeg требует чётных размеров для yuv-целевых форматов; нам RGBA,
-    // но всё равно проще держать чётно, чтобы избежать редких артефактов scale-фильтра.
+    // Even dimensions — ffmpeg requires even sizes for YUV target formats; we use RGBA,
+    // but keeping them even still avoids rare scaler-filter artefacts.
     let w = ((src_w as f64 * scale).round() as u32).max(2) & !1;
     let h = ((src_h as f64 * scale).round() as u32).max(2) & !1;
     (w, h)
@@ -683,7 +691,7 @@ mod tests {
         assert_eq!(frame.height, 200);
         assert_eq!(frame.pixels.len(), 200 * 200 * 4);
 
-        // Проверяем, что в видео есть прозрачность (хотя бы один пиксель имеет альфа < 255)
+        // Verify that the video contains transparency (at least one pixel has alpha < 255)
         let mut has_transparency = false;
         for i in 0..(frame.pixels.len() / 4) {
             let alpha = frame.pixels[i * 4 + 3];
@@ -723,8 +731,8 @@ mod tests {
         let mut decoder = FfmpegNextDecoder::open(&fixture, None, HwAccelMode::None, None).unwrap();
         let fps = decoder.effective_fps();
 
-        // Seek в середину клипа должен вернуть кадр НА запрошенной позиции (frame-accurate),
-        // а не предшествующий ключевой кадр. Допуск — полкадра.
+        // A seek to the middle of the clip must return the frame AT the requested position
+        // (frame-accurate), not the preceding key frame. Tolerance is half a frame.
         let target = 0.5;
         decoder.seek(target).unwrap();
         let frame = decoder

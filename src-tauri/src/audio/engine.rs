@@ -135,8 +135,8 @@ impl NativeAudioEngine {
 
     pub fn set_scene(
         &self,
-        layers: Vec<crate::monitor::scene::SceneAudioLayer>,
-        tracks: Vec<crate::monitor::scene::SceneAudioTrack>,
+        layers: &[crate::monitor::scene::SceneAudioLayer],
+        tracks: &[crate::monitor::scene::SceneAudioTrack],
         master_gain: f64,
     ) {
         self.restart_finished_producer();
@@ -145,12 +145,12 @@ impl NativeAudioEngine {
         // when audio moves on the timeline. Pure mix-param edits (gain, balance,
         // fade, mute/solo, master) take effect on the next mixed chunk without a
         // ring clear, so dragging a slider during playback no longer clicks.
-        let new_sig = compute_timing_sig(&layers);
+        let new_sig = compute_timing_sig(layers);
         let needs_flush = new_sig != state.timing_sig;
         state.timing_sig = new_sig;
 
-        state.scene = layers;
-        state.tracks = tracks;
+        state.scene = layers.to_vec();
+        state.tracks = tracks.to_vec();
         state.master_gain = sanitize_master_gain(master_gain);
         // Bump scene_serial so the producer re-reads the scene (refreshes its
         // cached snapshot and applies new mix params). This does NOT discard the
@@ -168,16 +168,13 @@ impl NativeAudioEngine {
         }
 
         // Drop decoded files / decoders no longer referenced by the scene.
-        let current_paths: std::collections::HashSet<String> =
-            state.scene.iter().map(|l| l.path.clone()).collect();
-        let current_layer_ids: std::collections::HashSet<String> =
-            state.scene.iter().map(|l| l.id.clone()).collect();
+        let scene_clone = state.scene.clone();
         let to_remove: Vec<String> = state
             .decoded_cache
             .iter()
             .filter_map(|(key, _)| {
                 let path = key.split("|sr=").next().unwrap_or(key);
-                if current_paths.contains(path) {
+                if scene_clone.iter().any(|l| l.path == path) {
                     None
                 } else {
                     Some(key.clone())
@@ -189,14 +186,14 @@ impl NativeAudioEngine {
         }
         state
             .file_size_cache
-            .retain(|path, _| current_paths.contains(path));
+            .retain(|path, _| scene_clone.iter().any(|l| l.path == *path));
         state
             .source_metadata_cache
-            .retain(|path, _| current_paths.contains(path));
+            .retain(|path, _| scene_clone.iter().any(|l| l.path == *path));
         // Decoders are keyed per layer id (not per path), so retain by layer id.
         state
             .decoders
-            .retain(|layer_id, _| current_layer_ids.contains(layer_id));
+            .retain(|layer_id, _| scene_clone.iter().any(|l| l.id == *layer_id));
         self.shared.1.notify_all();
     }
 

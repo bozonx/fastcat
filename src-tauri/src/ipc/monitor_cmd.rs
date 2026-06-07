@@ -1,10 +1,10 @@
-//! Команды нативного монитора (winit-окно + Vello).
+//! Native monitor commands (winit window + Vello).
 //!
-//! Модель API:
-//!   - `monitor_set_scene` — фронт шлёт текущий снимок таймлайна (video+image слои);
-//!   - `monitor_play` / `monitor_pause` — транспорт по timeline-времени;
-//!   - `monitor_seek(timeline_sec)` — позиционирование по timeline-PTS;
-//!   - `monitor_close` — закрыть окно (event-loop умрёт, респавн на следующем set_scene).
+//! API model:
+//!   - `monitor_set_scene` — front-end sends the current timeline snapshot (video + image layers);
+//!   - `monitor_play` / `monitor_pause` — transport control by timeline time;
+//!   - `monitor_seek(timeline_sec)` — seek to a timeline PTS;
+//!   - `monitor_close` — close the window (event loop dies, respawned on the next set_scene).
 
 use raw_window_handle::HasWindowHandle;
 use tauri::ipc::{Channel, InvokeResponseBody};
@@ -52,8 +52,8 @@ pub async fn monitor_seek(time_sec: f64, engine: State<'_, VideoEngine>) -> Resu
         .map_err(|e| e.to_string())
 }
 
-/// Положение/размер встроенного child-окна монитора. Координаты — в физических пикселях
-/// относительно клиентской области главного окна (== viewport вебвью на десктопе).
+/// Position / size of the embedded monitor child window. Coordinates are in physical pixels
+/// relative to the client area of the main window (== webview viewport on desktop).
 #[tauri::command]
 pub async fn monitor_set_viewport(
     x: i32,
@@ -86,7 +86,7 @@ pub async fn monitor_set_viewport(
         .map_err(|e| e.to_string())
 }
 
-/// Переключение режима вывода: `embedded` (X11 child) или `canvas` (offscreen → stream в HTML canvas).
+/// Switch output mode: `embedded` (X11 child) or `canvas` (offscreen → stream to HTML canvas).
 #[tauri::command]
 pub async fn monitor_set_mode(
     mode: MonitorMode,
@@ -99,8 +99,8 @@ pub async fn monitor_set_mode(
         .map_err(|e| e.to_string())
 }
 
-/// Подписка на стрим RGBA-кадров. Каждое сообщение в channel = bytes:
-/// `u32 LE width` + `u32 LE height` + `width*height*4` байт RGBA8.
+/// Subscribe to the RGBA frame stream. Each channel message = bytes:
+/// `u32 LE width` + `u32 LE height` + `width*height*4` RGBA8 bytes.
 #[tauri::command]
 pub async fn monitor_subscribe_frames(
     channel: Channel<InvokeResponseBody>,
@@ -113,7 +113,7 @@ pub async fn monitor_subscribe_frames(
         .map_err(|e| e.to_string())
 }
 
-/// Размер render target'а в canvas-режиме (физические пиксели).
+/// Render target size in canvas mode (physical pixels).
 #[tauri::command]
 pub async fn monitor_set_canvas_size(
     width: u32,
@@ -156,8 +156,8 @@ pub async fn monitor_close(engine: State<'_, VideoEngine>) -> Result<(), String>
     if let Some(m) = engine.monitor() {
         m.send(MonitorCommand::Close).map_err(|e| e.to_string())?;
     }
-    // Сбрасываем кэш — event-loop умрёт асинхронно, но новый ensure_monitor должен
-    // увидеть свежее состояние и при необходимости спавнить заново.
+    // Reset the cache — the event loop dies asynchronously, but the next ensure_monitor
+    // must see fresh state and respawn if necessary.
     engine.clear_monitor();
     Ok(())
 }

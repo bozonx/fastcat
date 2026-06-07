@@ -22,8 +22,8 @@ impl RealtimeClock {
     pub(crate) fn reset_frames(&self) {
         self.frames_written.store(0, Ordering::Release);
         self.output_latency_bits.store(0, Ordering::Release);
-        self.underrun_events.store(0, Ordering::Release);
-        self.underrun_frames.store(0, Ordering::Release);
+        self.underrun_events.store(0, Ordering::SeqCst);
+        self.underrun_frames.store(0, Ordering::SeqCst);
     }
 
     pub(crate) fn frames(&self) -> u64 {
