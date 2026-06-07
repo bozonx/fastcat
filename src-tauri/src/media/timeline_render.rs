@@ -263,10 +263,6 @@ impl ThumbnailRenderer {
 static GLOBAL_RENDERER: std::sync::LazyLock<ThumbnailRenderer> =
     std::sync::LazyLock::new(ThumbnailRenderer::new);
 
-fn render_pooled(scene: &Scene, width: u32, height: u32) -> Result<Vec<u8>> {
-    GLOBAL_RENDERER.render(scene, width, height)
-}
-
 pub fn render_timeline_frame_to_file(
     scene: MonitorScene,
     time_sec: f64,
