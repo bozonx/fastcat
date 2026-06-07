@@ -13,6 +13,7 @@
 use super::effects::EffectSpec;
 use kurbo::{Affine, BezPath, Rect, RoundedRect, Shape, Stroke};
 use parley::{fontique::FontWeight, LineHeight, PositionedLayoutItem, StyleProperty};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use vello::peniko::{BlendMode as PenikoBlendMode, Brush, Color, Compose, Fill, ImageData, Mix};
 use vello::Glyph;
@@ -418,7 +419,9 @@ impl Default for Transform {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(rename_all = "snake_case")]
 pub enum BlendMode {
     Normal,
     Add,

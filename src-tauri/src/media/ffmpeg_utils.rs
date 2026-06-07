@@ -114,9 +114,9 @@ pub fn even(value: u32) -> u32 {
     (v + 1) & !1
 }
 
-/// Resolves hardware decode mode string (auto/vaapi/nvdec/none) into a typed enum.
-pub fn resolve_hw_decode_mode(hw_accel: &str, vaapi_device: &str) -> HwAccelMode {
-    HwAccelMode::from_str(hw_accel).decode_mode(vaapi_device)
+/// Resolves hardware decode mode into a concrete decode enum variant.
+pub fn resolve_hw_decode_mode(hw_accel: &HwAccelMode, vaapi_device: &str) -> HwAccelMode {
+    hw_accel.decode_mode(vaapi_device)
 }
 
 pub fn format_fps(fps: f64) -> String {

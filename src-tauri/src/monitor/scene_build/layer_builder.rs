@@ -508,7 +508,7 @@ pub fn finalize_layer(
         kind,
         transform,
         opacity,
-        blend: parse_blend_mode(&sl.blend_mode),
+        blend: sl.blend_mode,
         mask: None,
         effects: sl.effects.clone(),
         transition,

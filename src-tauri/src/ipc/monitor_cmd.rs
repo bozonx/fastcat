@@ -13,43 +13,35 @@ use tauri::{AppHandle, Manager, State};
 use crate::engine::VideoEngine;
 use crate::monitor::{MonitorCommand, MonitorMode, MonitorScene, SendableRawHandle};
 
+fn send_monitor_cmd(engine: &VideoEngine, cmd: MonitorCommand) -> Result<(), String> {
+    engine
+        .ensure_monitor()
+        .map_err(|e| e.to_string())?
+        .send(cmd)
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn monitor_set_scene(
     scene: MonitorScene,
     engine: State<'_, VideoEngine>,
 ) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::SetScene(scene))
-        .map_err(|e| e.to_string())
+    send_monitor_cmd(&engine, MonitorCommand::SetScene(scene))
 }
 
 #[tauri::command]
 pub async fn monitor_play(engine: State<'_, VideoEngine>) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::Play)
-        .map_err(|e| e.to_string())
+    send_monitor_cmd(&engine, MonitorCommand::Play)
 }
 
 #[tauri::command]
 pub async fn monitor_pause(engine: State<'_, VideoEngine>) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::Pause)
-        .map_err(|e| e.to_string())
+    send_monitor_cmd(&engine, MonitorCommand::Pause)
 }
 
 #[tauri::command]
 pub async fn monitor_seek(time_sec: f64, engine: State<'_, VideoEngine>) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::Seek(time_sec))
-        .map_err(|e| e.to_string())
+    send_monitor_cmd(&engine, MonitorCommand::Seek(time_sec))
 }
 
 /// Position / size of the embedded monitor child window. Coordinates are in physical pixels
@@ -92,11 +84,7 @@ pub async fn monitor_set_mode(
     mode: MonitorMode,
     engine: State<'_, VideoEngine>,
 ) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::SetMode(mode))
-        .map_err(|e| e.to_string())
+    send_monitor_cmd(&engine, MonitorCommand::SetMode(mode))
 }
 
 /// Subscribe to the RGBA frame stream. Each channel message = bytes:
@@ -106,11 +94,7 @@ pub async fn monitor_subscribe_frames(
     channel: Channel<InvokeResponseBody>,
     engine: State<'_, VideoEngine>,
 ) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::SetFrameChannel(channel))
-        .map_err(|e| e.to_string())
+    send_monitor_cmd(&engine, MonitorCommand::SetFrameChannel(channel))
 }
 
 /// Render target size in canvas mode (physical pixels).
@@ -120,11 +104,7 @@ pub async fn monitor_set_canvas_size(
     height: u32,
     engine: State<'_, VideoEngine>,
 ) -> Result<(), String> {
-    engine
-        .ensure_monitor()
-        .map_err(|e| e.to_string())?
-        .send(MonitorCommand::SetCanvasSize { width, height })
-        .map_err(|e| e.to_string())
+    send_monitor_cmd(&engine, MonitorCommand::SetCanvasSize { width, height })
 }
 
 #[tauri::command]

@@ -227,12 +227,14 @@ pub(crate) fn write_output<T: OutputSample>(
     TEMP_BUF.with(|buf| {
         let mut buf = buf.borrow_mut();
         let needed = data.len();
-        assert!(
-            needed <= buf.len(),
-            "audio callback buffer size {} exceeds preallocated temp capacity {}",
-            needed,
-            buf.len()
-        );
+        if needed > buf.len() {
+            log::warn!(
+                "[audio] callback buffer size {} exceeds preallocated temp capacity {}; resizing",
+                needed,
+                buf.len()
+            );
+            buf.resize(needed, 0.0);
+        }
         let temp_slice = &mut buf[..needed];
         temp_slice.fill(0.0);
         // The ring already holds device-channel interleaved samples, so we copy 1:1.

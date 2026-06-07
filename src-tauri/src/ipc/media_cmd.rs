@@ -399,6 +399,10 @@ pub struct FfmpegDiagnostics {
 fn parse_ffmpeg_components(output_str: &str) -> std::collections::HashSet<String> {
     let mut names = std::collections::HashSet::new();
     let mut in_list = false;
+
+    /// Valid flag characters in the first token of an ffmpeg encoder/decoder list.
+    const FLAG_CHARS: &str = ".VASFXBDELCRTHPMYOIN";
+
     for line in output_str.lines() {
         let line = line.trim();
         if line.starts_with("------") {
@@ -408,23 +412,39 @@ fn parse_ffmpeg_components(output_str: &str) -> std::collections::HashSet<String
         if !in_list {
             continue;
         }
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() >= 2 {
-            names.insert(parts[1].to_string());
-        }
-    }
-    if names.is_empty() {
-        for line in output_str.lines() {
-            let line = line.trim();
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2
-                && parts[0].len() == 6
-                && parts[0].chars().all(|c| c == '.' || c.is_alphabetic())
+
+        // Lines after the separator look like:
+        // "V....D av1       libaom-av1 (codec av1)"
+        // The first token is exactly 6 flag characters, the second is the name.
+        let mut parts = line.split_whitespace();
+        let flags = parts.next();
+        let name = parts.next();
+        if let (Some(flags), Some(name)) = (flags, name) {
+            if flags.len() == 6
+                && flags.chars().all(|c| FLAG_CHARS.contains(c))
             {
-                names.insert(parts[1].to_string());
+                names.insert(name.to_string());
             }
         }
     }
+
+    // Fallback: if no separator was found, scan the entire output with the same heuristic.
+    if names.is_empty() {
+        for line in output_str.lines() {
+            let line = line.trim();
+            let mut parts = line.split_whitespace();
+            let flags = parts.next();
+            let name = parts.next();
+            if let (Some(flags), Some(name)) = (flags, name) {
+                if flags.len() == 6
+                    && flags.chars().all(|c| FLAG_CHARS.contains(c))
+                {
+                    names.insert(name.to_string());
+                }
+            }
+        }
+    }
+
     names
 }
 

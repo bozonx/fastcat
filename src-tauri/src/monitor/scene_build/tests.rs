@@ -471,7 +471,7 @@ mod tests {
             source_orientation: None,
             z: 1,
             opacity: 1.0,
-            blend_mode: "normal".into(),
+            blend_mode: BlendMode::Normal,
             background_color: None,
             text: Some("Test".into()),
             style: Some(style),
@@ -518,7 +518,7 @@ mod tests {
             source_orientation: None,
             z: 1,
             opacity: 1.0,
-            blend_mode: "normal".into(),
+            blend_mode: BlendMode::Normal,
             background_color: None,
             text: Some("Test".into()),
             style: Some(json!({
@@ -637,7 +637,7 @@ mod tests {
             source_orientation: None,
             z: 1,
             opacity: 1.0,
-            blend_mode: "normal".into(),
+            blend_mode: BlendMode::Normal,
             background_color: None,
             text: Some("Hello".into()),
             style: Some(serde_json::json!({

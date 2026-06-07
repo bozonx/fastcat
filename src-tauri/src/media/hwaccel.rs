@@ -132,36 +132,35 @@ pub fn try_transfer_to_cpu(
 // Linux VAAPI
 // ---------------------------------------------------------------------------
 
-#[cfg(target_os = "linux")]
-fn try_vaapi(
+fn create_hwaccel_context(
     codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    name: &str,
     device: Option<&str>,
 ) -> Result<HwAccelContext> {
-    let dev = device.unwrap_or("/dev/dri/renderD128");
-    let dev_c = CString::new(dev).context("invalid vaapi device path")?;
-    // SAFETY: `c"vaapi"` is a static null-terminated C string literal.
-    let hw_type = unsafe {
-        ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"vaapi".as_ptr() as *const c_char)
-    };
+    let name_c = CString::new(name).context("invalid hwaccel name")?;
+    let hw_type = unsafe { ffmpeg_sys_next::av_hwdevice_find_type_by_name(name_c.as_ptr()) };
     if hw_type == ffmpeg_sys_next::AVHWDeviceType::AV_HWDEVICE_TYPE_NONE {
-        return Err(anyhow!("VAAPI is not supported by this FFmpeg build"));
+        return Err(anyhow!("{name} is not supported by this FFmpeg build"));
     }
 
     let mut hw_device_ref: *mut ffmpeg_sys_next::AVBufferRef = std::ptr::null_mut();
-    // SAFETY: `dev_c` is a valid CString; `hw_type` was just returned by libav*.
+    let device_c = device
+        .map(|d| CString::new(d).context("invalid device path"))
+        .transpose()?;
+    let device_ptr = device_c.as_ref().map_or(std::ptr::null(), |c| c.as_ptr());
+
     let ret = unsafe {
         ffmpeg_sys_next::av_hwdevice_ctx_create(
             &mut hw_device_ref,
             hw_type,
-            dev_c.as_ptr(),
+            device_ptr,
             std::ptr::null_mut(),
             0,
         )
     };
     if ret < 0 {
         return Err(anyhow!(
-            "av_hwdevice_ctx_create failed for {}: {}",
-            dev,
+            "av_hwdevice_ctx_create failed for {name}: {}",
             ffmpeg_error_str(ret)
         ));
     }
@@ -171,8 +170,21 @@ fn try_vaapi(
         (*codec_ctx).hw_device_ctx = ffmpeg_sys_next::av_buffer_ref(hw_device_ref);
     }
 
-    log::info!("[hwaccel] VAAPI initialised on {}", dev);
+    if let Some(dev) = device {
+        log::info!("[hwaccel] {name} initialised on {dev}");
+    } else {
+        log::info!("[hwaccel] {name} initialised");
+    }
     Ok(HwAccelContext { hw_device_ref })
+}
+
+#[cfg(target_os = "linux")]
+fn try_vaapi(
+    codec_ctx: *mut ffmpeg_sys_next::AVCodecContext,
+    device: Option<&str>,
+) -> Result<HwAccelContext> {
+    let dev = device.unwrap_or("/dev/dri/renderD128");
+    create_hwaccel_context(codec_ctx, "vaapi", Some(dev))
 }
 
 // ---------------------------------------------------------------------------
@@ -181,40 +193,7 @@ fn try_vaapi(
 
 #[cfg(target_os = "macos")]
 fn try_videotoolbox(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<HwAccelContext> {
-    // SAFETY: `c"videotoolbox"` is a static null-terminated C string literal.
-    let hw_type = unsafe {
-        ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"videotoolbox".as_ptr() as *const c_char)
-    };
-    if hw_type == ffmpeg_sys_next::AVHWDeviceType::AV_HWDEVICE_TYPE_NONE {
-        return Err(anyhow!(
-            "VideoToolbox is not supported by this FFmpeg build"
-        ));
-    }
-
-    let mut hw_device_ref: *mut ffmpeg_sys_next::AVBufferRef = std::ptr::null_mut();
-    let ret = unsafe {
-        ffmpeg_sys_next::av_hwdevice_ctx_create(
-            &mut hw_device_ref,
-            hw_type,
-            std::ptr::null(),
-            std::ptr::null_mut(),
-            0,
-        )
-    };
-    if ret < 0 {
-        return Err(anyhow!(
-            "av_hwdevice_ctx_create failed for VideoToolbox: {}",
-            ffmpeg_error_str(ret)
-        ));
-    }
-
-    // SAFETY: `hw_device_ref` is valid; `codec_ctx` is a valid decoder context.
-    unsafe {
-        (*codec_ctx).hw_device_ctx = ffmpeg_sys_next::av_buffer_ref(hw_device_ref);
-    }
-
-    log::info!("[hwaccel] VideoToolbox initialised");
-    Ok(HwAccelContext { hw_device_ref })
+    create_hwaccel_context(codec_ctx, "videotoolbox", None)
 }
 
 // ---------------------------------------------------------------------------
@@ -223,39 +202,7 @@ fn try_videotoolbox(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<H
 
 #[cfg(target_os = "windows")]
 fn try_d3d11va(codec_ctx: *mut ffmpeg_sys_next::AVCodecContext) -> Result<HwAccelContext> {
-    // SAFETY: `c"d3d11va"` is a static null-terminated C string literal.
-    let hw_type = unsafe {
-        ffmpeg_sys_next::av_hwdevice_find_type_by_name(c"d3d11va".as_ptr() as *const c_char)
-    };
-    if hw_type == ffmpeg_sys_next::AVHWDeviceType::AV_HWDEVICE_TYPE_NONE {
-        return Err(anyhow!("D3D11VA is not supported by this FFmpeg build"));
-    }
-
-    let mut hw_device_ref: *mut ffmpeg_sys_next::AVBufferRef = std::ptr::null_mut();
-    // SAFETY: `hw_type` was just returned by libav*.
-    let ret = unsafe {
-        ffmpeg_sys_next::av_hwdevice_ctx_create(
-            &mut hw_device_ref,
-            hw_type,
-            std::ptr::null(),
-            std::ptr::null_mut(),
-            0,
-        )
-    };
-    if ret < 0 {
-        return Err(anyhow!(
-            "av_hwdevice_ctx_create failed for D3D11VA: {}",
-            ffmpeg_error_str(ret)
-        ));
-    }
-
-    // SAFETY: `hw_device_ref` is valid; `codec_ctx` is a valid decoder context.
-    unsafe {
-        (*codec_ctx).hw_device_ctx = ffmpeg_sys_next::av_buffer_ref(hw_device_ref);
-    }
-
-    log::info!("[hwaccel] D3D11VA initialised");
-    Ok(HwAccelContext { hw_device_ref })
+    create_hwaccel_context(codec_ctx, "d3d11va", None)
 }
 
 // ---------------------------------------------------------------------------

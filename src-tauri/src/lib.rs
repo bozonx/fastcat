@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
+use crate::media::types::HwAccelMode;
+
 pub mod video_render;
 
 /// Best-effort resolution of the current user's home directory without pulling
@@ -44,6 +46,21 @@ fn reject_dangerous_scope_path(path: &Path) -> Result<(), String> {
         }
     }
 
+    // Reject paths that contain sensitive directory components.
+    for component in path.components() {
+        if let std::path::Component::Normal(name) = component {
+            let name = name.to_string_lossy();
+            if matches!(
+                name.as_ref(),
+                ".git" | ".gitignore" | "node_modules" | ".env" | ".ssh"
+            ) {
+                return Err(format!(
+                    "refusing to extend scope to a path containing sensitive component: {path:?}"
+                ));
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -59,7 +76,7 @@ pub mod monitor;
 pub struct FfmpegHardwareSettings {
     pub ffmpeg_path: String,
     pub ffprobe_path: String,
-    pub hardware_acceleration_mode: String,
+    pub hardware_acceleration_mode: HwAccelMode,
     pub vaapi_device: String,
     pub enable_hardware_encoding: bool,
 }
@@ -69,7 +86,7 @@ impl Default for FfmpegHardwareSettings {
         Self {
             ffmpeg_path: "ffmpeg".to_string(),
             ffprobe_path: "ffprobe".to_string(),
-            hardware_acceleration_mode: "none".to_string(),
+            hardware_acceleration_mode: HwAccelMode::None,
             vaapi_device: "/dev/dri/renderD128".to_string(),
             enable_hardware_encoding: false,
         }

@@ -13,6 +13,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
+
 use std::sync::Arc;
 
 use tauri::AppHandle;
@@ -22,8 +23,6 @@ use crate::compositor::scene::Scene;
 use crate::media::decode_gate::decoder_load_gate;
 use crate::media::decode_thread::DecodePump;
 use crate::media::image_decode::decode_image;
-use crate::media::types::HwAccelMode;
-
 use super::handle::MonitorCommand;
 use super::layer_runtime::*;
 use super::scene::{LayerKind, MonitorScene, PreviewSyncMode, SceneLayer};
@@ -228,7 +227,7 @@ impl LayerRuntimeManager {
                             Some(on_frame),
                             device,
                             queue,
-                            HwAccelMode::from_str(&hw_mode),
+                            hw_mode,
                             Some(vaapi_dev.as_str()),
                         ) {
                             Ok(pump) => {
@@ -671,7 +670,7 @@ mod tests {
             source_orientation: source_orientation.map(str::to_string),
             z: 0,
             opacity: 1.0,
-            blend_mode: "normal".into(),
+            blend_mode: crate::compositor::scene::BlendMode::Normal,
             background_color: None,
             text: None,
             style: None,

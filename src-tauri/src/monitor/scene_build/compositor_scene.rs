@@ -167,7 +167,7 @@ mod tests {
             source_orientation: None,
             z,
             opacity: 1.0,
-            blend_mode: "normal".into(),
+            blend_mode: crate::compositor::scene::BlendMode::Normal,
             background_color: Some("#000000".into()),
             text: None,
             style: None,

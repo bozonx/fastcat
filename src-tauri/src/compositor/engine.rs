@@ -896,7 +896,7 @@ impl Compositor {
         collect_ready_slots(session)?;
 
         // Возвращаем самый старый готовый кадр.
-        if let Some((_, pixels)) = session.pending.pop_front() {
+        if let Some((_, pixels)) = session.pending.pop_first() {
             session.emitted += 1;
             Ok(Some(pixels))
         } else {

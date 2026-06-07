@@ -117,7 +117,7 @@ pub struct NativeProxyOptions {
     #[serde(default)]
     pub ffprobe_path: Option<String>,
     #[serde(default)]
-    pub hardware_acceleration_mode: Option<String>,
+    pub hardware_acceleration_mode: Option<HwAccelMode>,
     #[serde(default)]
     pub vaapi_device: Option<String>,
     #[serde(default)]
@@ -147,7 +147,7 @@ pub struct NativeConvertOptions {
     #[serde(default)]
     pub ffprobe_path: Option<String>,
     #[serde(default)]
-    pub hardware_acceleration_mode: Option<String>,
+    pub hardware_acceleration_mode: Option<HwAccelMode>,
     #[serde(default)]
     pub vaapi_device: Option<String>,
     #[serde(default)]
@@ -287,8 +287,8 @@ pub fn generate_proxy(
 
     let hw_accel = options
         .hardware_acceleration_mode
-        .as_deref()
-        .unwrap_or("none");
+        .as_ref()
+        .unwrap_or(&HwAccelMode::None);
     let vaapi_dev = options
         .vaapi_device
         .as_deref()
@@ -372,8 +372,8 @@ pub fn convert_media(
 ) -> Result<()> {
     let hw_accel = options
         .hardware_acceleration_mode
-        .as_deref()
-        .unwrap_or("none");
+        .as_ref()
+        .unwrap_or(&HwAccelMode::None);
     let vaapi_dev = options
         .vaapi_device
         .as_deref()

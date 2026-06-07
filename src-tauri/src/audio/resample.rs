@@ -117,16 +117,28 @@ pub(crate) fn resample_planar_with_speed(
 /// each chunk (which would feed silence into the resampler delay line and create
 /// periodic clicks at chunk boundaries). The caller must clear `remainder` (and
 /// the cached resampler) whenever it seeks/discontinues the source stream.
-#[allow(clippy::too_many_arguments)]
+pub(crate) struct ResamplePlanarCachedParams<'a> {
+    pub input: Vec<Vec<f32>>,
+    pub source_rate: u32,
+    pub target_rate: u32,
+    pub speed: f64,
+    pub num_channels: usize,
+    pub cached_resampler: &'a mut Option<Box<rubato::SincFixedIn<f32>>>,
+    pub remainder: &'a mut Vec<Vec<f32>>,
+}
+
 pub(crate) fn resample_planar_cached(
-    input: Vec<Vec<f32>>,
-    source_rate: u32,
-    target_rate: u32,
-    speed: f64,
-    num_channels: usize,
-    cached_resampler: &mut Option<Box<rubato::SincFixedIn<f32>>>,
-    remainder: &mut Vec<Vec<f32>>,
+    params: ResamplePlanarCachedParams<'_>,
 ) -> Result<Vec<Vec<f32>>> {
+    let ResamplePlanarCachedParams {
+        input,
+        source_rate,
+        target_rate,
+        speed,
+        num_channels,
+        cached_resampler,
+        remainder,
+    } = params;
     use rubato::Resampler;
 
     let ratio = target_rate as f64 / (source_rate as f64 * speed);
@@ -322,27 +334,27 @@ mod tests {
         let mut cached = None;
         let mut remainder = Vec::new();
         let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
-        let _ = resample_planar_cached(
-            planar.clone(),
-            44100,
-            48000,
-            1.0,
-            2,
-            &mut cached,
-            &mut remainder,
-        )
+        let _ = resample_planar_cached(ResamplePlanarCachedParams {
+            input: planar.clone(),
+            source_rate: 44100,
+            target_rate: 48000,
+            speed: 1.0,
+            num_channels: 2,
+            cached_resampler: &mut cached,
+            remainder: &mut remainder,
+        })
         .unwrap();
         assert!(cached.is_some());
         // Calling again with the same ratio reuses the cached resampler.
-        let _ = resample_planar_cached(
-            planar.clone(),
-            44100,
-            48000,
-            1.0,
-            2,
-            &mut cached,
-            &mut remainder,
-        )
+        let _ = resample_planar_cached(ResamplePlanarCachedParams {
+            input: planar.clone(),
+            source_rate: 44100,
+            target_rate: 48000,
+            speed: 1.0,
+            num_channels: 2,
+            cached_resampler: &mut cached,
+            remainder: &mut remainder,
+        })
         .unwrap();
         assert!(cached.is_some());
     }
@@ -352,8 +364,16 @@ mod tests {
         let mut cached = None;
         let mut remainder = Vec::new();
         let planar = vec![vec![0.5; 100], vec![-0.5; 100]];
-        let out = resample_planar_cached(planar, 44100, 48000, 1.0, 2, &mut cached, &mut remainder)
-            .unwrap();
+        let out = resample_planar_cached(ResamplePlanarCachedParams {
+            input: planar,
+            source_rate: 44100,
+            target_rate: 48000,
+            speed: 1.0,
+            num_channels: 2,
+            cached_resampler: &mut cached,
+            remainder: &mut remainder,
+        })
+        .unwrap();
         assert!(out.iter().all(Vec::is_empty));
         assert_eq!(remainder.len(), 2);
         assert_eq!(remainder[0].len(), 100);

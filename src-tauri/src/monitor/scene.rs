@@ -12,6 +12,7 @@ use serde_json::Value;
 use ts_rs::TS;
 
 use crate::compositor::effects::EffectSpec;
+use crate::compositor::scene::BlendMode;
 use crate::compositor::transitions::TransitionSpec;
 
 // ts-rs generates the TypeScript mirror of these IPC DTOs into
@@ -110,7 +111,7 @@ pub struct SceneLayer {
     pub opacity: f64,
     /// Blend mode из таймлайна. Поддерживаем текущий frontend-набор.
     #[serde(default = "default_blend")]
-    pub blend_mode: String,
+    pub blend_mode: BlendMode,
     #[serde(default)]
     #[ts(optional)]
     pub background_color: Option<String>,
@@ -298,8 +299,8 @@ fn default_fps() -> f64 {
 /// Защита от выхода за конец доступного source-range: последний «читаемый» PTS = конец
 /// диапазона минус этот зазор (1 мс), иначе seek/decoder могли бы запросить кадр за EOF.
 const SOURCE_END_GUARD_SEC: f64 = 0.001;
-fn default_blend() -> String {
-    "normal".into()
+fn default_blend() -> BlendMode {
+    BlendMode::Normal
 }
 
 impl SceneLayer {
@@ -379,7 +380,7 @@ mod tests {
             source_orientation: None,
             z: 0,
             opacity: 1.0,
-            blend_mode: "normal".into(),
+            blend_mode: BlendMode::Normal,
             background_color: None,
             text: None,
             style: None,
@@ -456,7 +457,7 @@ mod tests {
         let layer: SceneLayer = serde_json::from_str(json).unwrap();
         assert_eq!(layer.kind, LayerKind::Text);
         assert_eq!(layer.path, "");
-        assert_eq!(layer.blend_mode, "screen");
+        assert_eq!(layer.blend_mode, BlendMode::Screen);
         assert_eq!(layer.text.as_deref(), Some("Hello"));
         assert_eq!(layer.style.unwrap()["fontSize"], 72);
     }

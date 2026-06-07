@@ -171,8 +171,8 @@ pub(crate) fn mix_chunk(
         let mut has_audio_on_track = false;
 
         for layer in layers {
-            has_audio_on_track |= mix_layer_into(
-                &mut track_mixed,
+            has_audio_on_track |= mix_layer_into(MixLayerParams {
+                buffer: &mut track_mixed,
                 layer,
                 chunk_start_sec,
                 chunk_end_sec,
@@ -181,7 +181,7 @@ pub(crate) fn mix_chunk(
                 output_channels,
                 target,
                 shared,
-            );
+            });
         }
 
         if has_audio_on_track {
@@ -200,8 +200,8 @@ pub(crate) fn mix_chunk(
     // They have no track to solo, so any active solo silences them entirely.
     if !has_solo {
         for layer in orphan_layers {
-            mix_layer_into(
-                &mut mixed,
+            mix_layer_into(MixLayerParams {
+                buffer: &mut mixed,
                 layer,
                 chunk_start_sec,
                 chunk_end_sec,
@@ -210,7 +210,7 @@ pub(crate) fn mix_chunk(
                 output_channels,
                 target,
                 shared,
-            );
+            });
         }
     }
 
@@ -241,20 +241,32 @@ fn resolve_track_for_layer<'a>(
         .max_by_key(|t| t.id.len())
 }
 
-/// Decodes, optionally reverses, and mixes a single layer into `buffer`.
-/// Returns `true` if the layer contributed audio to this chunk.
-#[allow(clippy::too_many_arguments)]
-fn mix_layer_into(
-    buffer: &mut [f32],
-    layer: &SceneAudioLayer,
+struct MixLayerParams<'a> {
+    buffer: &'a mut [f32],
+    layer: &'a SceneAudioLayer,
     chunk_start_sec: f64,
     chunk_end_sec: f64,
     frames: usize,
     sample_rate: u32,
     output_channels: usize,
     target: AudioRenderTarget,
-    shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-) -> bool {
+    shared: &'a Arc<(Mutex<AudioShared>, Condvar)>,
+}
+
+/// Decodes, optionally reverses, and mixes a single layer into `buffer`.
+/// Returns `true` if the layer contributed audio to this chunk.
+fn mix_layer_into(params: MixLayerParams<'_>) -> bool {
+    let MixLayerParams {
+        buffer,
+        layer,
+        chunk_start_sec,
+        chunk_end_sec,
+        frames,
+        sample_rate,
+        output_channels,
+        target,
+        shared,
+    } = params;
     if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
         return false;
     }
@@ -288,14 +300,16 @@ fn mix_layer_into(
     };
 
     let mut decoded = match decode_audio_chunk(
-        &layer.id,
-        &layer.path,
-        source_start,
-        segment_duration,
-        speed,
-        target,
-        reversed,
-        shared,
+        crate::audio::decode::DecodeAudioChunkParams {
+            layer_id: &layer.id,
+            path: &layer.path,
+            source_start_sec: source_start,
+            timeline_duration_sec: segment_duration,
+            speed,
+            target,
+            reverse: reversed,
+            shared,
+        },
     )
     .with_context(|| format!("decode audio layer {}", layer.id))
     {
@@ -318,16 +332,16 @@ fn mix_layer_into(
         write_start_frame + frames_to_write <= buffer.len() / output_channels,
         "layer write range exceeds mix buffer"
     );
-    apply_layer_mix(
-        buffer,
-        &decoded,
+    apply_layer_mix(ApplyLayerMixParams {
+        mixed: buffer,
+        decoded: &decoded,
         write_start_frame,
         frames_to_write,
         sample_rate,
         layer,
-        segment_start,
-        output_channels,
-    );
+        segment_start_sec: segment_start,
+        channels: output_channels,
+    });
     true
 }
 
@@ -443,19 +457,30 @@ fn soft_clip(samples: &mut [f32]) {
 
 /// Applies the per-layer gain envelope and stereo balance, then accumulates the
 /// `decoded` interleaved samples into `mixed`. Balance only affects the front
-/// L/R pair; extra channels are passed through with gain. Mono output ignores
-/// balance entirely.
-#[allow(clippy::too_many_arguments)]
-fn apply_layer_mix(
-    mixed: &mut [f32],
-    decoded: &[f32],
+struct ApplyLayerMixParams<'a> {
+    mixed: &'a mut [f32],
+    decoded: &'a [f32],
     write_start_frame: usize,
     frames_to_write: usize,
     sample_rate: u32,
-    layer: &SceneAudioLayer,
+    layer: &'a SceneAudioLayer,
     segment_start_sec: f64,
     channels: usize,
-) {
+}
+
+/// L/R pair; extra channels are passed through with gain. Mono output ignores
+/// balance entirely.
+fn apply_layer_mix(params: ApplyLayerMixParams<'_>) {
+    let ApplyLayerMixParams {
+        mixed,
+        decoded,
+        write_start_frame,
+        frames_to_write,
+        sample_rate,
+        layer,
+        segment_start_sec,
+        channels,
+    } = params;
     if channels == 0 || frames_to_write == 0 {
         return;
     }
@@ -832,7 +857,16 @@ mod tests {
         let decoded = vec![1.0f32, 2.0f32, 3.0f32, 4.0f32];
         let mut l = layer();
         l.audio_gain = 0.0;
-        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 2);
+        apply_layer_mix(ApplyLayerMixParams {
+            mixed: &mut mixed,
+            decoded: &decoded,
+            write_start_frame: 0,
+            frames_to_write: 2,
+            sample_rate: 48000,
+            layer: &l,
+            segment_start_sec: 0.0,
+            channels: 2,
+        });
         assert_eq!(mixed, vec![0.0, 0.0, 0.0, 0.0]);
     }
 
@@ -844,7 +878,16 @@ mod tests {
         l.audio_gain = 5.0;
         l.audio_fade_in_sec = 0.0;
         l.audio_fade_out_sec = 0.0;
-        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 2);
+        apply_layer_mix(ApplyLayerMixParams {
+            mixed: &mut mixed,
+            decoded: &decoded,
+            write_start_frame: 0,
+            frames_to_write: 2,
+            sample_rate: 48000,
+            layer: &l,
+            segment_start_sec: 0.0,
+            channels: 2,
+        });
         let expected = 10.0f32 * 5.0;
         assert!((mixed[0] - expected).abs() < 1e-4);
         assert!((mixed[1] - expected).abs() < 1e-4);
@@ -860,7 +903,16 @@ mod tests {
         l.audio_fade_in_sec = 0.0;
         l.audio_fade_out_sec = 0.0;
 
-        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 4);
+        apply_layer_mix(ApplyLayerMixParams {
+            mixed: &mut mixed,
+            decoded: &decoded,
+            write_start_frame: 0,
+            frames_to_write: 2,
+            sample_rate: 48000,
+            layer: &l,
+            segment_start_sec: 0.0,
+            channels: 4,
+        });
 
         let expected = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
         assert_eq!(mixed, expected);
@@ -874,7 +926,16 @@ mod tests {
         l.audio_fade_in_sec = 0.0;
         l.audio_fade_out_sec = 0.0;
 
-        apply_layer_mix(&mut mixed, &decoded, 0, 2, 48000, &l, 0.0, 1);
+        apply_layer_mix(ApplyLayerMixParams {
+            mixed: &mut mixed,
+            decoded: &decoded,
+            write_start_frame: 0,
+            frames_to_write: 2,
+            sample_rate: 48000,
+            layer: &l,
+            segment_start_sec: 0.0,
+            channels: 1,
+        });
 
         assert_eq!(mixed, decoded);
     }
@@ -947,17 +1008,17 @@ mod tests {
             audio_fade_out_curve: AudioFadeCurve::Linear,
         };
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let preview_result = mix_layer_into(
-            &mut vec![0.0f32; 4800],
-            &l,
-            0.0,
-            0.05,
-            2400,
-            48000,
-            2,
-            AudioRenderTarget::monitor(48000, 2),
-            &shared,
-        );
+        let preview_result = mix_layer_into(MixLayerParams {
+            buffer: &mut vec![0.0f32; 4800],
+            layer: &l,
+            chunk_start_sec: 0.0,
+            chunk_end_sec: 0.05,
+            frames: 2400,
+            sample_rate: 48000,
+            output_channels: 2,
+            target: AudioRenderTarget::monitor(48000, 2),
+            shared: &shared,
+        });
         assert!(!preview_result, "reverse audio should be muted in preview");
     }
 
@@ -981,17 +1042,17 @@ mod tests {
             audio_fade_out_curve: AudioFadeCurve::Linear,
         };
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let export_result = mix_layer_into(
-            &mut vec![0.0f32; 4800],
-            &l,
-            0.0,
-            0.05,
-            2400,
-            48000,
-            2,
-            AudioRenderTarget::export(48000, 2),
-            &shared,
-        );
+        let export_result = mix_layer_into(MixLayerParams {
+            buffer: &mut vec![0.0f32; 4800],
+            layer: &l,
+            chunk_start_sec: 0.0,
+            chunk_end_sec: 0.05,
+            frames: 2400,
+            sample_rate: 48000,
+            output_channels: 2,
+            target: AudioRenderTarget::export(48000, 2),
+            shared: &shared,
+        });
         assert!(export_result, "reverse audio should be enabled in export");
     }
 

@@ -187,15 +187,15 @@ pub(crate) fn resolve_export_hw_mode(options: &NativeExportOptions) -> HwAccelMo
     }
     let hw_accel = options
         .hardware_acceleration_mode
-        .as_deref()
-        .unwrap_or("none");
+        .as_ref()
+        .unwrap_or(&HwAccelMode::None);
     let vaapi_device = options
         .vaapi_device
         .as_deref()
         .unwrap_or(DEFAULT_VAAPI_DEVICE);
     let mode = resolve_hw_decode_mode(hw_accel, vaapi_device);
     if mode == HwAccelMode::None
-        && hw_accel == "auto"
+        && *hw_accel == HwAccelMode::Auto
         && std::path::Path::new("/dev/nvidia0").exists()
     {
         // No VAAPI render node, but an NVIDIA device is present — use NVENC

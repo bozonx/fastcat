@@ -5,7 +5,7 @@
 //! collects the previous frame's result without blocking. This removes the
 //! synchronous `device.poll(wait_indefinitely)` on every export frame.
 
-use std::collections::VecDeque;
+use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 use anyhow::{anyhow, Result};
@@ -37,7 +37,7 @@ pub struct PipelinedReadback {
     pub(crate) next_slot: usize,
     pub(crate) frame_seq: u64,
     /// Ready frames waiting for ordered output by `frame_seq`.
-    pub(crate) pending: VecDeque<(u64, Vec<u8>)>,
+    pub(crate) pending: BTreeMap<u64, Vec<u8>>,
     /// How many frames have already been emitted via `collect`.
     pub(crate) emitted: u64,
 }
@@ -93,7 +93,7 @@ impl PipelinedReadback {
             slots,
             next_slot: 0,
             frame_seq: 0,
-            pending: VecDeque::new(),
+            pending: BTreeMap::new(),
             emitted: 0,
         }
     }
@@ -104,12 +104,7 @@ impl PipelinedReadback {
     /// output goes through `pop_front`, so sorted insertion guarantees frames
     /// leave to the encoder in strict render order.
     pub(crate) fn push_pending(&mut self, frame: u64, pixels: Vec<u8>) {
-        let pos = self
-            .pending
-            .iter()
-            .position(|(f, _)| *f > frame)
-            .unwrap_or(self.pending.len());
-        self.pending.insert(pos, (frame, pixels));
+        self.pending.insert(frame, pixels);
     }
 
     /// Block and collect all remaining in-flight frames.
@@ -120,7 +115,7 @@ impl PipelinedReadback {
                 compositor.drain_slot(self, i)?;
             }
         }
-        while let Some((_, pixels)) = self.pending.pop_front() {
+        while let Some((_, pixels)) = self.pending.pop_first() {
             out.push(pixels);
             self.emitted += 1;
         }
