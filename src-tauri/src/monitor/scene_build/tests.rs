@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::monitor::scene_build::*;
     use crate::compositor::scene::{BlendMode, ShapeGeometry, ShapeLayer, Transform};
     use crate::monitor::scene::{LayerKind, SceneLayer, SceneLayerTransform};
+    use crate::monitor::scene_build::*;
     use serde_json::json;
     use vello::peniko::Color;
 

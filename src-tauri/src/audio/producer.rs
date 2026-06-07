@@ -11,7 +11,8 @@ use crate::audio::clock::RealtimeClock;
 use crate::audio::mix::mix_chunk;
 use crate::audio::ring::SpscRingBuffer;
 use crate::audio::shared::{
-    AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS, PRODUCER_RESYNC_THRESHOLD_SEC,
+    AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS,
+    PRODUCER_RESYNC_THRESHOLD_SEC,
 };
 
 pub(crate) fn spawn_producer_thread(
@@ -19,8 +20,7 @@ pub(crate) fn spawn_producer_thread(
     ring: Arc<SpscRingBuffer>,
     running: Arc<AtomicBool>,
     clock: Arc<RealtimeClock>,
-    sample_rate: u32,
-    output_channels: usize,
+    target: AudioRenderTarget,
 ) -> Result<JoinHandle<()>> {
     std::thread::Builder::new()
         .name("fastcat-audio-producer".into())
@@ -28,7 +28,7 @@ pub(crate) fn spawn_producer_thread(
             set_producer_realtime_priority();
             let running_for_log = running.clone();
             let result = panic::catch_unwind(AssertUnwindSafe(|| {
-                producer_loop(shared, ring, running, clock, sample_rate, output_channels);
+                producer_loop(shared, ring, running, clock, target);
             }));
             match result {
                 Ok(()) if running_for_log.load(Ordering::Acquire) => {
@@ -49,9 +49,10 @@ pub(crate) fn producer_loop(
     ring: Arc<SpscRingBuffer>,
     running: Arc<AtomicBool>,
     clock: Arc<RealtimeClock>,
-    sample_rate: u32,
-    output_channels: usize,
+    target: AudioRenderTarget,
 ) {
+    let sample_rate = target.sample_rate;
+    let output_channels = target.channels;
     let chunk_frames = (CHUNK_DURATION_SEC * sample_rate as f64).round().max(1.0) as usize;
     let chunk_duration_sec = chunk_frames as f64 / sample_rate as f64;
     let limit_samples = chunk_frames * output_channels * PREBUFFER_CHUNKS;
@@ -154,10 +155,8 @@ pub(crate) fn producer_loop(
                 master_gain,
                 chunk_start,
                 chunk_duration_sec,
-                sample_rate,
-                output_channels,
+                target,
                 &shared,
-                false,
             )
         })) {
             Ok(chunk) => chunk,

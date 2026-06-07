@@ -248,10 +248,9 @@ impl EffectPipeline {
     ) {
         let mut recreate = true;
         if let Some(res) = &self.resources {
-            if res.width >= width && res.height >= height
-                && (!need_input || res.input.is_some()) {
-                    recreate = false;
-                }
+            if res.width >= width && res.height >= height && (!need_input || res.input.is_some()) {
+                recreate = false;
+            }
             // Shrink if the cached texture is more than 2x larger than needed
             // to avoid monotonic GPU memory growth after resolution changes.
             if !recreate && (res.width > width * 2 || res.height > height * 2) {

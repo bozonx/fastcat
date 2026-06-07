@@ -9,7 +9,7 @@ use crate::audio::resample::{
     RESAMPLER_CHUNK_SIZE,
 };
 use crate::audio::shared::{
-    decoded_cache_key, AudioShared, AudioSourceMetadata, CachedAudioDecoder,
+    decoded_cache_key, AudioRenderTarget, AudioShared, AudioSourceMetadata, CachedAudioDecoder,
     MAX_CACHEABLE_FILE_BYTES,
 };
 
@@ -529,11 +529,12 @@ pub(crate) fn decode_audio_chunk(
     source_start_sec: f64,
     timeline_duration_sec: f64,
     speed: f64,
-    sample_rate: u32,
-    output_channels: usize,
+    target: AudioRenderTarget,
     reverse: bool,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> Result<Vec<f32>> {
+    let sample_rate = target.sample_rate;
+    let output_channels = target.channels;
     let source_start_sec = if source_start_sec.is_finite() {
         source_start_sec.max(0.0)
     } else {
@@ -710,8 +711,9 @@ mod tests {
         let path_str = path.to_string_lossy().to_string();
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
+        let target = AudioRenderTarget::monitor(48000, 2);
         let decoded = decode_audio_chunk(
-            "layer-8k", &path_str, 0.0, 0.05, 1.0, 48000, 2, false, &shared,
+            "layer-8k", &path_str, 0.0, 0.05, 1.0, target, false, &shared,
         )
         .unwrap();
 

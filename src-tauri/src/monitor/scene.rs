@@ -185,7 +185,6 @@ pub enum AudioFadeCurve {
     Logarithmic,
 }
 
-
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
 #[ts(
@@ -200,7 +199,6 @@ pub enum PreviewSyncMode {
     Balanced,
     Strict,
 }
-
 
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export, export_to = "../../src/types/generated/native-monitor/")]
@@ -339,12 +337,11 @@ fn compute_source_pts_at(
     let local = (timeline_sec - timeline_start_sec).max(0.0);
     let speed = sanitize_clip_speed(speed);
     let abs_speed = speed.abs();
-    let source_range =
-        if source_range_duration_sec.is_finite() && source_range_duration_sec > 0.0 {
-            source_range_duration_sec
-        } else {
-            (timeline_end_sec - timeline_start_sec).max(0.0) * abs_speed
-        };
+    let source_range = if source_range_duration_sec.is_finite() && source_range_duration_sec > 0.0 {
+        source_range_duration_sec
+    } else {
+        (timeline_end_sec - timeline_start_sec).max(0.0) * abs_speed
+    };
     let last_readable = (source_range - SOURCE_END_GUARD_SEC).max(0.0);
     let source_delta = local * abs_speed;
     let source_offset = if speed < 0.0 {

@@ -10,9 +10,8 @@ use crate::audio::clock::RealtimeClock;
 use crate::audio::ring::SpscRingBuffer;
 
 /// Abstract audio playback stream so tests can inject a fake sink.
-pub trait AudioStream: Send + Sync {
+pub(crate) trait AudioStream: Send + Sync {
     fn play(&self) -> Result<()>;
-    fn pause(&self) -> Result<()>;
 }
 
 struct CpalAudioStream {
@@ -23,14 +22,11 @@ impl AudioStream for CpalAudioStream {
     fn play(&self) -> Result<()> {
         self.stream.play().context("audio stream play failed")
     }
-    fn pause(&self) -> Result<()> {
-        self.stream.pause().context("audio stream pause failed")
-    }
 }
 
 /// Abstraction over the OS audio backend so the engine can be tested without
 /// a real `cpal` device.
-pub trait AudioBackend: Send + Sync {
+pub(crate) trait AudioBackend: Send + Sync {
     fn sample_rate(&self) -> u32;
     fn channels(&self) -> u16;
     fn build_output_stream(
@@ -41,7 +37,7 @@ pub trait AudioBackend: Send + Sync {
 }
 
 /// Real `cpal`-based backend.
-pub struct CpalAudioBackend {
+pub(crate) struct CpalAudioBackend {
     device: cpal::Device,
     config: StreamConfig,
     sample_format: SampleFormat,

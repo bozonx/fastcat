@@ -10,7 +10,9 @@ use crate::audio::mix::sanitize_master_gain;
 use crate::audio::output::{AudioBackend, AudioStream, CpalAudioBackend};
 use crate::audio::producer::{audible_pts_sec, spawn_producer_thread};
 use crate::audio::ring::SpscRingBuffer;
-use crate::audio::shared::{compute_timing_sig, AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS};
+use crate::audio::shared::{
+    compute_timing_sig, AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC, PREBUFFER_CHUNKS,
+};
 
 pub use crate::audio::mix::render_scene_to_wav;
 
@@ -41,7 +43,7 @@ impl NativeAudioEngine {
         Self::new_with_backend(settings, backend)
     }
 
-    pub fn new_with_backend(
+    pub(crate) fn new_with_backend(
         settings: &AudioEngineSettings,
         backend: Box<dyn AudioBackend>,
     ) -> Result<Self> {
@@ -64,8 +66,7 @@ impl NativeAudioEngine {
             ring.clone(),
             running.clone(),
             clock.clone(),
-            sample_rate,
-            output_channels,
+            AudioRenderTarget::monitor(sample_rate, output_channels),
         )?;
 
         Ok(Self {
@@ -110,8 +111,7 @@ impl NativeAudioEngine {
             self.ring.clone(),
             self.running.clone(),
             self.clock.clone(),
-            self.sample_rate,
-            self.device_channels as usize,
+            AudioRenderTarget::monitor(self.sample_rate, self.device_channels as usize),
         ) {
             Ok(handle) => {
                 *producer = Some(handle);
@@ -311,9 +311,6 @@ mod tests {
 
     impl AudioStream for MockAudioStream {
         fn play(&self) -> Result<()> {
-            Ok(())
-        }
-        fn pause(&self) -> Result<()> {
             Ok(())
         }
     }

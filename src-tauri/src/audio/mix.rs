@@ -7,7 +7,7 @@ use anyhow::Context;
 use parking_lot::{Condvar, Mutex};
 
 use crate::audio::decode::decode_audio_chunk;
-use crate::audio::shared::{AudioShared, CHUNK_DURATION_SEC};
+use crate::audio::shared::{AudioRenderTarget, AudioShared, CHUNK_DURATION_SEC};
 use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
 
 /// Renders the audio scene to an f32 WAV file.
@@ -24,7 +24,7 @@ pub fn render_scene_to_wav(
     output_channels: usize,
     target_path: &Path,
 ) -> anyhow::Result<()> {
-    let output_channels = output_channels.clamp(1, 2);
+    let target = AudioRenderTarget::export(sample_rate, output_channels);
     let start = if start_sec.is_finite() {
         start_sec.max(0.0)
     } else {
@@ -35,34 +35,32 @@ pub fn render_scene_to_wav(
     } else {
         start
     };
-    let estimated_frames = ((end - start) * sample_rate as f64).round().max(1.0) as u64;
+    let estimated_frames = ((end - start) * target.sample_rate as f64).round().max(1.0) as u64;
     let mut file = std::fs::File::create(target_path)
         .with_context(|| format!("create audio wav {}", target_path.display()))?;
 
     // Write placeholder header (will be patched after we know actual size).
-    write_wav_f32_header_placeholder(&mut file, sample_rate, output_channels as u16)?;
+    write_wav_f32_header_placeholder(&mut file, target.sample_rate, target.channels as u16)?;
 
     let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
 
     let mut written_frames = 0u64;
     while written_frames < estimated_frames {
-        let chunk_frames = ((CHUNK_DURATION_SEC * sample_rate as f64).round() as u64)
+        let chunk_frames = ((CHUNK_DURATION_SEC * target.sample_rate as f64).round() as u64)
             .min(estimated_frames - written_frames)
             .max(1);
-        let chunk_duration = chunk_frames as f64 / sample_rate as f64;
-        let chunk_start = start + written_frames as f64 / sample_rate as f64;
+        let chunk_duration = chunk_frames as f64 / target.sample_rate as f64;
+        let chunk_start = start + written_frames as f64 / target.sample_rate as f64;
         let chunk = mix_chunk(
             scene,
             tracks,
             master_gain,
             chunk_start,
             chunk_duration,
-            sample_rate,
-            output_channels,
+            target,
             &shared,
-            true,
         );
-        let samples_to_write = chunk_frames as usize * output_channels;
+        let samples_to_write = chunk_frames as usize * target.channels;
         for sample in chunk.into_iter().take(samples_to_write) {
             file.write_all(&sample.to_le_bytes())?;
         }
@@ -71,7 +69,7 @@ pub fn render_scene_to_wav(
 
     // Patch header with actual frame count.
     let data_size = written_frames
-        .saturating_mul(output_channels as u64)
+        .saturating_mul(target.channels as u64)
         .saturating_mul(4);
     if data_size > u32::MAX as u64 {
         return Err(anyhow::anyhow!(
@@ -123,12 +121,11 @@ pub(crate) fn mix_chunk(
     master_gain: f64,
     chunk_start_sec: f64,
     chunk_duration_sec: f64,
-    sample_rate: u32,
-    output_channels: usize,
+    target: AudioRenderTarget,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
-    is_export: bool,
 ) -> Vec<f32> {
-    let output_channels = output_channels.max(1);
+    let sample_rate = target.sample_rate;
+    let output_channels = target.channels;
     let frames = (chunk_duration_sec * sample_rate as f64).round().max(1.0) as usize;
     let mut mixed = vec![0.0f32; frames * output_channels];
     let chunk_end_sec = chunk_start_sec + chunk_duration_sec;
@@ -182,7 +179,7 @@ pub(crate) fn mix_chunk(
                 frames,
                 sample_rate,
                 output_channels,
-                is_export,
+                target,
                 shared,
             );
         }
@@ -211,7 +208,7 @@ pub(crate) fn mix_chunk(
                 frames,
                 sample_rate,
                 output_channels,
-                is_export,
+                target,
                 shared,
             );
         }
@@ -255,7 +252,7 @@ fn mix_layer_into(
     frames: usize,
     sample_rate: u32,
     output_channels: usize,
-    is_export: bool,
+    target: AudioRenderTarget,
     shared: &Arc<(Mutex<AudioShared>, Condvar)>,
 ) -> bool {
     if layer.timeline_end_sec <= chunk_start_sec || layer.timeline_start_sec >= chunk_end_sec {
@@ -278,7 +275,7 @@ fn mix_layer_into(
     let segment_end = segment_start + segment_duration;
 
     let reversed = layer.speed < 0.0;
-    if !is_export && reversed {
+    if !target.is_export() && reversed {
         // Reverse audio is muted in preview/monitor; only rendered on export.
         return false;
     }
@@ -296,8 +293,7 @@ fn mix_layer_into(
         source_start,
         segment_duration,
         speed,
-        sample_rate,
-        output_channels,
+        target,
         reversed,
         shared,
     )
@@ -808,17 +804,8 @@ mod tests {
         let t2 = track("t2");
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let chunk = mix_chunk(
-            &[l1, l2],
-            &[t1, t2],
-            1.0,
-            0.0,
-            1.0,
-            48000,
-            2,
-            &shared,
-            false,
-        );
+        let target = AudioRenderTarget::monitor(48000, 2);
+        let chunk = mix_chunk(&[l1, l2], &[t1, t2], 1.0, 0.0, 1.0, target, &shared);
         assert_eq!(chunk.len(), (1.0f64 * 48000.0).round() as usize * 2);
     }
 
@@ -831,7 +818,8 @@ mod tests {
         l2.audio_gain = 1000.0;
 
         let shared = Arc::new((Mutex::new(AudioShared::default()), Condvar::new()));
-        let chunk = mix_chunk(&[l, l2], &[], 10.0, 0.0, 0.01, 48000, 2, &shared, false);
+        let target = AudioRenderTarget::monitor(48000, 2);
+        let chunk = mix_chunk(&[l, l2], &[], 10.0, 0.0, 0.01, target, &shared);
         assert!(
             chunk.iter().all(|s| s.is_finite()),
             "mix produced non-finite sample"
@@ -967,7 +955,7 @@ mod tests {
             2400,
             48000,
             2,
-            false,
+            AudioRenderTarget::monitor(48000, 2),
             &shared,
         );
         assert!(!preview_result, "reverse audio should be muted in preview");
@@ -1001,7 +989,7 @@ mod tests {
             2400,
             48000,
             2,
-            true,
+            AudioRenderTarget::export(48000, 2),
             &shared,
         );
         assert!(export_result, "reverse audio should be enabled in export");

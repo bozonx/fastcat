@@ -108,10 +108,10 @@ pub fn text_anchor_offset(
         CompLayerKind::Text(spec) => {
             let inner_w = spec.frame_width as f64 + spec.border_width as f64 * 2.0;
             let inner_h = spec.frame_height as f64 + spec.border_width as f64 * 2.0;
-            let dx = (anchor_x - 0.5) * inner_w
-                + 0.5 * ((spec.shadow_right - spec.shadow_left) as f64);
-            let dy = (anchor_y - 0.5) * inner_h
-                + 0.5 * ((spec.shadow_bottom - spec.shadow_top) as f64);
+            let dx =
+                (anchor_x - 0.5) * inner_w + 0.5 * ((spec.shadow_right - spec.shadow_left) as f64);
+            let dy =
+                (anchor_y - 0.5) * inner_h + 0.5 * ((spec.shadow_bottom - spec.shadow_top) as f64);
             (dx, dy)
         }
         _ => {

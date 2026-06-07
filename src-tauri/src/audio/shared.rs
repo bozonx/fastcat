@@ -22,6 +22,45 @@ pub(crate) const MAX_CACHEABLE_FILE_BYTES: u64 = 16 * 1024 * 1024;
 /// realign instead of permanently lagging.
 pub(crate) const PRODUCER_RESYNC_THRESHOLD_SEC: f64 = 0.12;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum AudioRenderMode {
+    /// Realtime monitor/preview. The render rate and channel layout are dictated
+    /// by the current output device, independent of the project/export settings.
+    Monitor,
+    /// Offline export. The render rate and channel layout are dictated by the
+    /// requested export/timeline audio settings, independent of the output device.
+    Export,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AudioRenderTarget {
+    pub(crate) sample_rate: u32,
+    pub(crate) channels: usize,
+    pub(crate) mode: AudioRenderMode,
+}
+
+impl AudioRenderTarget {
+    pub(crate) fn monitor(device_sample_rate: u32, device_channels: usize) -> Self {
+        Self {
+            sample_rate: device_sample_rate.max(1),
+            channels: device_channels.max(1),
+            mode: AudioRenderMode::Monitor,
+        }
+    }
+
+    pub(crate) fn export(sample_rate: u32, channels: usize) -> Self {
+        Self {
+            sample_rate: sample_rate.max(1),
+            channels: channels.clamp(1, 2),
+            mode: AudioRenderMode::Export,
+        }
+    }
+
+    pub(crate) fn is_export(self) -> bool {
+        matches!(self.mode, AudioRenderMode::Export)
+    }
+}
+
 pub(crate) struct CachedAudioDecoder {
     pub(crate) format: Box<dyn symphonia::core::formats::FormatReader>,
     pub(crate) decoder: Box<dyn symphonia::core::codecs::Decoder>,
@@ -177,7 +216,7 @@ pub(crate) fn compute_timing_sig(layers: &[SceneAudioLayer]) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer, SceneAudioTrack};
+    use crate::monitor::scene::{AudioFadeCurve, SceneAudioLayer};
 
     fn layer() -> SceneAudioLayer {
         SceneAudioLayer {
@@ -198,14 +237,19 @@ mod tests {
         }
     }
 
-    fn track(id: &str) -> SceneAudioTrack {
-        SceneAudioTrack {
-            id: id.into(),
-            audio_gain: 1.0,
-            audio_balance: 0.0,
-            audio_muted: false,
-            audio_solo: false,
-        }
+    #[test]
+    fn render_targets_encode_monitor_vs_export_rate_ownership() {
+        let monitor = AudioRenderTarget::monitor(44_100, 6);
+        assert_eq!(monitor.sample_rate, 44_100);
+        assert_eq!(monitor.channels, 6);
+        assert_eq!(monitor.mode, AudioRenderMode::Monitor);
+        assert!(!monitor.is_export());
+
+        let export = AudioRenderTarget::export(48_000, 6);
+        assert_eq!(export.sample_rate, 48_000);
+        assert_eq!(export.channels, 2);
+        assert_eq!(export.mode, AudioRenderMode::Export);
+        assert!(export.is_export());
     }
 
     #[test]

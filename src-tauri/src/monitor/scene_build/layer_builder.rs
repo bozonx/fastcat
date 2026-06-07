@@ -4,19 +4,22 @@
 //! только «виртуальные» слои (`Background | Shape | Text`) и финализирует любой
 //! `CompLayerKind` в `Layer` (transform + opacity + blend).
 
-use vello::peniko::Color;
 use parley::fontique::FontWeight;
 use parley::style::LineHeight;
 use parley::StyleProperty;
+use vello::peniko::Color;
 
 use crate::compositor::scene::{
-    Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextLayer,
-    Transform, TransitionInfo,
+    Layer, LayerKind as CompLayerKind, ShapeGeometry, ShapeLayer, TextLayer, Transform,
+    TransitionInfo,
 };
 use crate::media::ffmpeg_utils::is_quarter_turn;
 
 use super::ipc_parsers::*;
-use super::transform::{local_crop_from_display_transform, oriented_fit_scale, source_orientation_deg, text_anchor_offset};
+use super::transform::{
+    local_crop_from_display_transform, oriented_fit_scale, source_orientation_deg,
+    text_anchor_offset,
+};
 use super::transition::{apply_transition_curve, compute_transition_opacity};
 use crate::monitor::scene::{LayerKind, SceneLayer};
 
